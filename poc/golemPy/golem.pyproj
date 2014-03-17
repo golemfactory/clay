@@ -5,13 +5,18 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>golem.py</StartupFile>
-    <SearchPath>
-    </SearchPath>
+    <StartupFile>test\test_golem.py</StartupFile>
+    <SearchPath>src</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>golem</Name>
     <RootNamespace>golem</RootNamespace>
+    <IsWindowsApplication>False</IsWindowsApplication>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <CommandLineArguments />
+    <InterpreterPath />
+    <InterpreterArguments />
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -22,7 +27,14 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="golem.py" />
+    <Folder Include="src\" />
+    <Folder Include="test\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="src\golem.py" />
+    <Compile Include="src\__init__.py" />
+    <Compile Include="test\test_golem.py" />
+    <Compile Include="test\__init__.py" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
 </Project>

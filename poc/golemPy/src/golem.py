@@ -10,9 +10,3 @@ class HelloResource(resource.Resource):
         request.setHeader("content-type", "text/plain")
         return "I am request #" + str(self.numberRequests) + "\n"
 
-hr1 = HelloResource()
-hr2 = HelloResource()
-reactor.callInThread(reactor.listenTCP, 8080, server.Site(hr1))
-reactor.callInThread(reactor.listenTCP, 8081, server.Site(hr2))
-#reactor.listenTCP(8080, server.Site(hr1))
-reactor.run()
