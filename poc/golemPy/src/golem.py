@@ -1,11 +1,13 @@
 from twisted.web import server, resource
-from twisted.internet import reactor
+from twisted.internet import reactor, task
 from twisted.internet.endpoints import TCP4ClientEndpoint, connectProtocol, TCP4ServerEndpoint
 from twisted.internet.protocol import Factory, Protocol
 from twisted.protocols.amp import AMP
 from twisted.protocols.basic import LineReceiver
+
 import json
 import struct
+import time
 
 PingMessage = "\0x02"
 PongMessage = "\0x03"
@@ -17,36 +19,56 @@ class Message:
     def __str__(self):
         return "{}".format(self.__class__)
 
+    def getType(self):
+        return self.type
+
     def serialize(self):
         mess = self.serializeTyped()
         return struct.pack("!L", len(mess)) + mess
 
     @classmethod
     def deserialize(cls, message):
+        curIdx = 0
+        
+        messages = []
+        
+        while curIdx < len(message):
+            msg, l = cls.deserializeSingle( message[curIdx:] )
+            
+            if msg is None:
+                print "Failed to deserialize multiple at: {} {}".format( curIdx, message[curIdx:] )
+
+            curIdx += l
+            messages.append( msg )
+            
+        return messages
+  
+    @classmethod
+    def deserializeSingle(cls, message):
 
         if(len(message) < 4):
             print "Message shorter than 4 bytes"
-            return None
+            return None, 0
 
         (l,) = struct.unpack( "!L", message[0:4])
 
-        m = message[4:]
+        m = message[4:l + 4]
 
-        if l != len(m):
-            print "Wrong message length: {} != {}".format(l, len(m))
-            return None
+        if l > len(m):
+            print "Wrong message length: {} > {}".format(l, len(m))
+            return None, 0
 
         dMessage = json.loads(str(m))
         messType = dMessage[0]
 
         if messType == HelloMessage.Type:
-            return HelloMessage()
+            return HelloMessage(), l + 4
         elif messType == PingMessage.Type:
-            return PingMessage()
+            return PingMessage(), l + 4
         elif messType == PongMessage.Type:
-            return PongMessage()
+            return PongMessage(), l + 4
         
-        return None
+        return None, 0
      
     def serializeTyped(self):
         pass
@@ -78,47 +100,82 @@ class PongMessage(Message):
 
 
 
-class GolemProtocol(LineReceiver):
+class GolemProtocol(Protocol):
 
-    def __init__(self):
-        self.setRawMode()
+    def __init__(self, client):
+        self.client = client
 
     def sendMessage(self, msg):
         sMessage = msg.serialize()
-        print "Sending: {}".format(msg)
+        print "Sending message {} to {}".format(msg, self.transport.getPeer())
         self.transport.write(sMessage)
 
     def connectionMade(self):
         print "Connection made"
 
-    def rawDataReceived(self, data):  
-        print data.__class__
-        print "Received data: {}".format(Message.deserialize(data))
+    def dataReceived(self, data):
+        mess = Message.deserialize(data)
+        if mess is None:
+            print "Deserialization message failed"
+            return
 
-    def lineReceived(self, line):
-        self.setRawMode()
-        return super(GolemProtocol, self).lineReceived(line)
+        peer = self.transport.getPeer()
+        for m in mess:
+            print "Received message {} from {}".format(m, peer)
+            msg = self.client.interpret(self, m)
+            if msg:
+                self.sendMessage(msg)
+
+class GolemServerFactory(Factory):
+
+    def __init__(self, client):
+        self.client = client
+
+    def buildProtocol(self, addr):
+        return GolemProtocol(self.client)
+
 
 
 class Client:
 
     def __init__(self, port):
         self.listenPort = port
+        self.t = task.LoopingCall(self.doWork)
+        self.t.start(0.5)
+
+    def doWork(self):
+        print "Ass fucking..."
 
     def start(self):
         print "Start listening ..."
         endpoint = TCP4ServerEndpoint(reactor, self.listenPort)
-        endpoint.listen(Factory.forProtocol(GolemProtocol))
+        endpoint.listen(GolemServerFactory(self))
 
-    def gotProtocol(self, p):
+    def connected(self, p):
+        assert isinstance(p, GolemProtocol)
         p.sendMessage(HelloMessage())
+        p.sendMessage(PingMessage())
+
+    def interpret(self, p, mess):
+
+        type = mess.getType()
+
+        if type == PingMessage.Type:
+            self.lastPingTime = time.time()
+            return PongMessage()
+        elif type == PongMessage.Type:
+            pass
+        elif type == HelloMessage.Type:
+            return PingMessage()
+
+        return None
 
     def connect(self, address, port):
         print "Connecting to host {} : {}".format(address ,port)
         endpoint = TCP4ClientEndpoint(reactor, address, port)
         endpoint.connect(Factory.forProtocol(AMP))
-        d = connectProtocol(endpoint, GolemProtocol())
-        d.addCallback(self.gotProtocol)
+        d = connectProtocol(endpoint, GolemProtocol(self))
+        d.addCallback(self.connected)
        
 
 if __name__ == "__main__":
@@ -132,4 +189,6 @@ if __name__ == "__main__":
     print Message.deserialize(sm1)
     print Message.deserialize(sm2)
     print Message.deserialize(sm3)
+
+    reactor.add()
 
