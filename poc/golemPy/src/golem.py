@@ -30,7 +30,7 @@ class Message:
 class HelloMessage(Message):
     Type = 0
     def __init__(self):
-        super(HelloMessage, self).__init__(HelloMessage.Type)
+        Message.__init__(self, HelloMessage.Type)
 
     def serializeTyped(self):
         return json.dumps([HelloMessage.Type, "Hello World !!!"])
@@ -38,7 +38,7 @@ class HelloMessage(Message):
 class PingMessage(Message):
     Type = 1
     def __init__(self):
-        super(PingMessage, self).__init__(PingMessage.Type)
+        Message.__init__(self, PingMessage.Type)
 
     def serializeTyped(self):
         return json.dumps([PingMessage.Type, "Ping"])
@@ -46,7 +46,7 @@ class PingMessage(Message):
 class PongMessage(Message):
     Type = 2
     def __init__(self):
-        super(PongMessage, self).__init__(PongMessage.Type)
+        Message.__init__(self, PongMessage.Type)
 
     def serializeTyped(self):
         return json.dumps([PongMessage.Type ,"Pong"])
@@ -90,3 +90,10 @@ class Client:
         d.addCallback(self.gotProtocol)
        
 
+if __name__ == "__main__":
+    m1 = HelloMessage()
+    print m1.serialize()
+    m2 = PingMessage()
+    print m2.serialize()
+    m3 = PongMessage()
+    print m3.serialize()
