@@ -19,24 +19,8 @@ class Message:
 
     def serialize(self):
         mess = self.serializeTyped()
+        return struct.pack("!L", len(mess)) + mess
 
-        s = bytearray()
-        s.append(0)
-        s.append(0)
-        s.append(0)
-        s.append(0)
-
-        s += mess
-
-        l = len(s) - 4 
-
-        s[0] = (l >> 24) & 0xff
-        s[1] = (l >> 16) & 0xff
-        s[2] = (l >> 8) & 0xff
-        s[3] = l & 0xff
-
-        return s
-       
     @classmethod
     def deserialize(cls, message):
 
@@ -44,11 +28,7 @@ class Message:
             print "Message shorter than 4 bytes"
             return None
 
-        print message[0].__class__
-        l =  message[0] & 0xff << 24
-        l += message[1] << 16 & 0xff
-        l += message[2] <<  8 & 0xff
-        l += message[3] <<  0 & 0xff
+        (l,) = struct.unpack( "!L", message[0:4])
 
         m = message[4:]
 
@@ -118,9 +98,6 @@ class GolemProtocol(LineReceiver):
     def lineReceived(self, line):
         self.setRawMode()
         return super(GolemProtocol, self).lineReceived(line)
-
-    #def dataReceived(self, data):
-    #    print "Received data: {}".format(Message.deserialize(data))
 
 
 class Client:
