@@ -140,11 +140,14 @@ class Client:
 
     def __init__(self, port):
         self.listenPort = port
+        self.lastPingTime = 0.0
+        self.peer = None
         self.t = task.LoopingCall(self.doWork)
         self.t.start(0.5)
 
     def doWork(self):
-        print "Ass fucking..."
+        if self.peer and time.time() - self.lastPingTime > 0.5:
+            self.peer.sendMessage(PingMessage())
 
     def start(self):
         print "Start listening ..."
@@ -153,8 +156,10 @@ class Client:
 
     def connected(self, p):
         assert isinstance(p, GolemProtocol)
+        self.peer = p
         p.sendMessage(HelloMessage())
         p.sendMessage(PingMessage())
+        
 
     def interpret(self, p, mess):
 
