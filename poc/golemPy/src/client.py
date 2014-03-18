@@ -59,7 +59,7 @@ class Client:
 
     def doWork(self):
         if self.peer and time.time() - self.lastPingTime > 0.5:
-            self.peer.sendMessage(PingMessage())
+            self.peer.sendMessage(MessagePing())
 
     def listeningEstablished(self, p):
         print "Listening established on {} : {}".format(p.getHost().host, p.getHost().port)

@@ -1,5 +1,6 @@
-from message import *
+from protomessages import *
 from twisted.internet import task
+import time
 
 class PeerSession:
     StateInitialize = 0
@@ -49,11 +50,11 @@ class PeerSession:
 
         type = msg.getType()
 
-        if type == PingMessage.Type:
+        if type == MessagePing.Type:
             self.sendPong()
-        elif type == PongMessage.Type:
+        elif type == MessagePong.Type:
             pass
-        elif type == HelloMessage.Type:
+        elif type == MessageHello.Type:
             self.port = msg.port
             self.id = msg.clientUID
             self.client.peers[self.id] = self
@@ -63,13 +64,13 @@ class PeerSession:
     # private
        
     def sendHello(self):
-        self.send(HelloMessage(self.client.listenPort, self.client.publicKey))
+        self.send(MessageHello(self.client.listenPort, self.client.publicKey))
 
     def sendPing(self):
-        self.send(PingMessage())
+        self.send(MessagePing())
 
     def sendPong(self):
-        self.send(PongMessage())
+        self.send(MessagePong())
 
 
     def send(self, message):
