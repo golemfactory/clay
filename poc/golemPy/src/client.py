@@ -72,6 +72,7 @@ class Client:
 
     def newConnection(self, protocol):
         pp = protocol.transport.getPeer()
+        print "newConnection {} {}".format(pp.host, pp.port)
         peer = PeerSession(self, pp.host, pp.port)
         self.ppMap.add(peer, protocol)
         peer.start()
