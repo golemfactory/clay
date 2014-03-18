@@ -57,10 +57,6 @@ class Client:
         self.publicKey = uuid.uuid1().get_hex()
         self.pingInterval =  PING_INTERVAL
 
-    def doWork(self):
-        if self.peer and time.time() - self.lastPingTime > 0.5:
-            self.peer.sendMessage(MessagePing())
-
     def listeningEstablished(self, p):
         print "Listening established on {} : {}".format(p.getHost().host, p.getHost().port)
 
