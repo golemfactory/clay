@@ -58,7 +58,7 @@ class PeerSession:
             self.port = msg.port
             self.id = msg.clientUID
             self.client.peers[self.id] = self
-            print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.port, self.address)
+            print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)
             self.sendPing()
 
     # private
