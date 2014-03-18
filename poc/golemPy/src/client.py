@@ -6,6 +6,7 @@ from twisted.protocols.amp import AMP
 import time
 from protocol import *
 from peer import *
+import random
 
 class GolemServerFactory(Factory):
 
@@ -13,7 +14,8 @@ class GolemServerFactory(Factory):
         self.client = client
 
     def buildProtocol(self, addr):
-        return GolemProtocol(self.client)
+        self.client.protocol = GolemProtocol(self.client)
+        return self.client.protocol
 
 
 class PeerToProtocol:
@@ -43,7 +45,6 @@ class PeerToProtocol:
 
 
 class Client:
-
     def __init__(self, port):
         self.listenPort = port
         self.lastPingTime = 0.0
@@ -52,21 +53,25 @@ class Client:
         self.t.start(0.5)
         self.peers = []
         self.ppMap = PeerToProtocol()
+        self.publicKey = random.getrandbits(128)
+        self.protocol = None
 
     def doWork(self):
         if self.peer and time.time() - self.lastPingTime > 0.5:
             self.peer.sendMessage(PingMessage())
 
+    def listeningEstablished(self, p):
+        print "Listening established on {} : {}".format(p.getHost().host, p.getHost().port)
+
     def start(self):
         print "Start listening ..."
         endpoint = TCP4ServerEndpoint(reactor, self.listenPort)
-        endpoint.listen(GolemServerFactory(self))
+        endpoint.listen(GolemServerFactory(self)).addCallback(self.listeningEstablished)
 
     def connectToPeer(self, peer):
         peer.setConnecting()
         protocol = connect(self, peer.address, peer.port)
         self.peers.append(peer)
-        self.ppMap.add(peer, protocol)
         
 
     def sendMessage(self, peer, message):
@@ -76,18 +81,22 @@ class Client:
 
     def connected(self, p):
         assert isinstance(p, GolemProtocol)
-        peer =  self.ppMap.getPeer[p]
-        assert peer
+
+        pp = p.transport.getPeer()
+        peer = PeerSession(self, pp.host, pp.port)
+        self.ppMap.add(peer, p)  
+
         peer.setConnected()
+        peer.start()
 
     def connectionFailure(self, p):
         assert isinstance(p, GolemProtocol)
         peer =  self.ppMap.getPeer[p]
         assert peer
-        print "Connectio nto peer: {} failure.".format(peer)
+        print "Connection to peer: {} failure.".format(peer)
         self.ppMap.remove(peer)
 
-    def interpret(self, p, mess):
+    def interpret(self, mess):
 
         type = mess.getType()
 
@@ -104,7 +113,7 @@ class Client:
     def connect(self, address, port):
         print "Connecting to host {} : {}".format(address ,port)
         endpoint = TCP4ClientEndpoint(reactor, address, port)
-        endpoint.connect(Factory.forProtocol(AMP))
+        #endpoint.connect(Factory.forProtocol(AMP))
         protocol = GolemProtocol(self);
         d = connectProtocol(endpoint, protocol)
         d.addCallback(self.connected)

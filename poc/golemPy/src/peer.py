@@ -1,18 +1,23 @@
-from client import Client
+#from client import Client
+from message import *
 
 
 class PeerSession:
+    StateInitialize = 0
+    StateConnecting = 1
+    StateConnected  = 2 
+
     def __init__(self, client, address, port):
-        assert isinstance(client, Client)
         self.client = client
         self.address = address
         self.port = port
+        self.state = PeerSession.StateInitialize
 
     def __str__(self):
         return "{} : {}".format(self.address, self.port)
      
     def start(self):
-        pass
+        self.sendHello()
     
     def disconnect(self):
         pass
@@ -20,7 +25,19 @@ class PeerSession:
     def ping(self):
         pass
     
+    def setConnecting(self):
+        self.state = PeerSession.StateConnecting
+
+    def setConnected(self):
+        self.state = PeerSession.StateConnected
+
+    def getState(self):
+        return self.state
+
     # private
        
-    def send(message):
-        self.client.sendMessage(message)
+    def sendHello(self):
+        self.send(HelloMessage())
+
+    def send(self, message):
+        self.client.sendMessage(self, message)
