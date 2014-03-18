@@ -1,4 +1,4 @@
-from message import *
+from message import MessageHello, MessagePing, MessagePong
 import uuid
 
 if __name__ == "__main__":

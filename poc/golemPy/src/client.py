@@ -4,8 +4,8 @@ from twisted.internet.endpoints import TCP4ClientEndpoint, connectProtocol, TCP4
 from twisted.protocols.amp import AMP
 
 import time
-from protocol import *
-from peer import *
+from protocol import GolemProtocol
+from peer import PeerSession
 import uuid
 
 class GolemServerFactory(Factory):

@@ -1,4 +1,4 @@
-from protomessages import *
+from message import MessageHello, MessagePing, MessagePong
 from twisted.internet import task
 import time
 
@@ -58,7 +58,7 @@ class PeerSession:
             self.port = msg.port
             self.id = msg.clientUID
             self.client.peers[self.id] = self
-#            print self.client.peers
+            print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.port, self.address)
             self.sendPing()
 
     # private
