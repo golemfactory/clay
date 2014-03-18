@@ -50,7 +50,8 @@ class DataBuffer:
         retStr = None
 
         if self.dataSize() > 4 and self.dataSize() >= ( self.peekUInt() + 4 ):
-            retStr = self.readString( self.readUInt() )
+            numChars = self.readUInt()
+            retStr = self.readString( numChars )
 
         return retStr
 
