@@ -1,4 +1,3 @@
-import message
 import struct
 
 class DataBuffer:
@@ -17,20 +16,48 @@ class DataBuffer:
     def dataSize( self ):
         return len( self.bufferedData )
 
-    def readUInt( self ):
+    def peekUInt( self ):
         assert len( self.bufferedData ) >= 4
-        (retVal,) = struct.unpack( "!L", self.bufferedData[0:4] )
-        self.bufferedData = self.bufferedData[4:]
 
+        (retVal,) = struct.unpack( "!L", self.bufferedData[0:4] )
         return retVal
 
-    def readString( self, numChars ):
+    def readUInt( self ):
+        val = self.peekUInt()
+        self.bufferedData = self.bufferedData[4:]
+
+        return val
+
+    def peekString( self, numChars ):
         assert numChars <= len( self.bufferedData )
+
         retStr = self.bufferedData[:numChars]
+        return retStr
+
+    def readString( self, numChars ):
+        val = self.peekString( numChars )
         self.bufferedData = self.bufferedData[numChars:]
 
-        return retStr
+        return val
         
+    def readAll( self ):
+        retData = self.bufferData
+        self.bufferedData = ""
+
+        return retData
+
+    def readLenPrefixedString( self ):
+        retStr = None
+
+        if self.dataSize() > 4 and self.dataSize() >= ( self.peekUInt() + 4 ):
+            retStr = self.readString( self.readUInt() )
+
+        return retStr
+
+    def appendLenPrefixedString( self, data ):
+        self.appendUInt( len( data ) )
+        self.appendString( data )
+
 if __name__ == "__main__":
 
     db = DataBuffer()
@@ -66,4 +93,17 @@ if __name__ == "__main__":
     print "Read string '{}' len remaining {}".format( val, db.dataSize() )
 
     print "{}".format( db.readString( 0 ) )
-    print "{}".format( db.readUInt() )
+    #expected to fail on assert
+    #print "{}".format( db.readUInt() )
+
+
+    s3 = "test string 3"
+    s4 = "not a very test string"
+
+    db.appendLenPrefixedString( s3 )
+    db.appendLenPrefixedString( s4 )
+
+    print db.readLenPrefixedString()
+    print db.dataSize()
+    print db.readLenPrefixedString()
+    print db.dataSize()

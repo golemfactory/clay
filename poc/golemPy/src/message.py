@@ -1,26 +1,35 @@
+import databuffer
 import json
-import struct
 import time
 
 PingMessage = "\0x02"
 PongMessage = "\0x03"
 
 class Message:
-    def __init__(self, type):
+
+    def __init__( self, type ):
         self.type = type
+        self.serializer = databuffer.DataBuffer()
 
-    def __str__(self):
-        return "{}".format(self.__class__)
+    def __str__( self ):
+        return "{}".format( self.__class__ )
 
-    def getType(self):
+    def __repr__( self ):
+        return "{}".format( self.__class__ )
+
+    def getType( self ):
         return self.type
 
-    def serialize(self):
-        mess = self.serializeTyped()
-        return struct.pack("!L", len(mess)) + mess
+    def serialize( self ):
+        strRepr =  json.dumps( self.dictRepr() )
+
+        self.serializer.appendUInt( len( strRepr ) )
+        self.serializer.appendString( strRepr )
+
+        return self.serializer.readAll()
 
     @classmethod
-    def deserialize(cls, message):
+    def deserialize( cls, message ):
         curIdx = 0
         
         messages = []
