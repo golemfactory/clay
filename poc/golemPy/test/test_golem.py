@@ -1,10 +1,7 @@
 import sys
 sys.path.append('../src/')
 
-from golem import *
-import sys
-import time
-
+from client import *
 
 args = sys.argv
 

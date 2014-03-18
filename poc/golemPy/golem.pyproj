@@ -31,7 +31,10 @@
     <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src\client.py" />
     <Compile Include="src\golem.py" />
+    <Compile Include="src\message.py" />
+    <Compile Include="src\protocol.py" />
     <Compile Include="src\__init__.py" />
     <Compile Include="test\test_golem.py" />
     <Compile Include="test\__init__.py" />
