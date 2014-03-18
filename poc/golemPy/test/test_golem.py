@@ -1,7 +1,8 @@
 import sys
 sys.path.append('../src/')
 
-from client import *
+from client import Client
+from twisted.internet import reactor
 
 args = sys.argv
 

@@ -11,11 +11,15 @@ class Message:
     def getType( self ):
         return self.type
 
+    def serializeWithHeader( self ):
+        self.serializeToBuffer(self.serializer)
+        return self.serializer.readAll()
+
     def serialize( self ):
         return json.dumps( [ self.type, self.dictRepr() ] )
 
     def serializeToBuffer( self, db ):
-        assert isinstance( db, DataBuffr )
+        assert isinstance( db, DataBuffer )
         db.appendLenPrefixedString( self.serialize() )
 
     @classmethod
@@ -67,25 +71,36 @@ class Message:
         return "{}".format( self.__class__ )
 
 
+
 class MessageHello(Message):
 
     Type = 0
 
-    PROTO_ID_STR = "protoId"
-    CLI_VER_STR =  "clientVer"
+    PROTO_ID_STR    = "protoId"
+    CLI_VER_STR     = "clientVer"
+    PORT_STR        = "port"
+    CLIENT_UID_STR  = "clientUID"
 
-    def __init__( self, protoId = 0, cliVer = 0, dictRepr = None ):
+    def __init__( self, port = 0, clientUID = None, protoId = 0, cliVer = 0, dictRepr = None ):
         Message.__init__( self, MessageHello.Type )
         
         self.protoId    = protoId
         self.clientVer  = cliVer
+        self.port       = port
+        self.clientUID  = clientUID
 
         if dictRepr:
             self.protoId    = dictRepr[ MessageHello.PROTO_ID_STR ]
             self.clientVer  = dictRepr[ MessageHello.CLI_VER_STR ]
+            self.port       = dictRepr[ MessageHello.PORT_STR ]
+            self.clientUID  = dictRepr[ MessageHello.CLIENT_UID_STR ]
 
     def dictRepr(self):
-        return { MessageHello.PROTO_ID_STR : self.protoId, MessageHello.CLI_VER_STR : self.clientVer }
+        return {    MessageHello.PROTO_ID_STR : self.protoId,
+                    MessageHello.CLI_VER_STR : self.clientVer,
+                    MessageHello.PORT_STR : self.port,
+                    MessageHello.CLIENT_UID_STR : self.clientUID
+                    }
 
 class MessagePing(Message):
 

@@ -1,12 +1,12 @@
 from twisted.internet.protocol import Factory
-from twisted.internet import reactor, task
+from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ClientEndpoint, connectProtocol, TCP4ServerEndpoint
 from twisted.protocols.amp import AMP
 
 import time
-from protocol import *
-from peer import *
-import random
+from protocol import GolemProtocol
+from peer import PeerSession
+import uuid
 
 class GolemServerFactory(Factory):
 
@@ -14,8 +14,10 @@ class GolemServerFactory(Factory):
         self.client = client
 
     def buildProtocol(self, addr):
-        self.client.protocol = GolemProtocol(self.client)
-        return self.client.protocol
+        print "Protocol build"
+        protocol = GolemProtocol(self.client)
+        #self.client.newConnection(protocol)
+        return protocol
 
 
 class PeerToProtocol:
@@ -44,21 +46,16 @@ class PeerToProtocol:
         del self.peerToProtocol[peer]
 
 
+PING_INTERVAL = 1.0
+
 class Client:
     def __init__(self, port):
         self.listenPort = port
         self.lastPingTime = 0.0
-        self.peer = None
-        self.t = task.LoopingCall(self.doWork)
-        self.t.start(0.5)
-        self.peers = []
+        self.peers = {}
         self.ppMap = PeerToProtocol()
-        self.publicKey = random.getrandbits(128)
-        self.protocol = None
-
-    def doWork(self):
-        if self.peer and time.time() - self.lastPingTime > 0.5:
-            self.peer.sendMessage(PingMessage())
+        self.publicKey = uuid.uuid1().get_hex()
+        self.pingInterval =  PING_INTERVAL
 
     def listeningEstablished(self, p):
         print "Listening established on {} : {}".format(p.getHost().host, p.getHost().port)
@@ -68,25 +65,15 @@ class Client:
         endpoint = TCP4ServerEndpoint(reactor, self.listenPort)
         endpoint.listen(GolemServerFactory(self)).addCallback(self.listeningEstablished)
 
-    def connectToPeer(self, peer):
-        peer.setConnecting()
-        protocol = connect(self, peer.address, peer.port)
-        self.peers.append(peer)
-        
-
     def sendMessage(self, peer, message):
         protocol = self.ppMap.getProtocol(peer)
         assert protocol
         protocol.sendMessage(message)
 
-    def connected(self, p):
-        assert isinstance(p, GolemProtocol)
-
-        pp = p.transport.getPeer()
+    def newConnection(self, protocol):
+        pp = protocol.transport.getPeer()
         peer = PeerSession(self, pp.host, pp.port)
-        self.ppMap.add(peer, p)  
-
-        peer.setConnected()
+        self.ppMap.add(peer, protocol)
         peer.start()
 
     def connectionFailure(self, p):
@@ -96,27 +83,15 @@ class Client:
         print "Connection to peer: {} failure.".format(peer)
         self.ppMap.remove(peer)
 
-    def interpret(self, mess):
-
-        type = mess.getType()
-
-        if type == PingMessage.Type:
-            self.lastPingTime = time.time()
-            return PongMessage()
-        elif type == PongMessage.Type:
-            pass
-        elif type == HelloMessage.Type:
-            return PingMessage()
-
-        return None
+    def interpret(self, protocol, mess):
+        peer = self.ppMap.getPeer(protocol)
+        peer.interpret(mess)
 
     def connect(self, address, port):
         print "Connecting to host {} : {}".format(address ,port)
         endpoint = TCP4ClientEndpoint(reactor, address, port)
-        #endpoint.connect(Factory.forProtocol(AMP))
         protocol = GolemProtocol(self);
         d = connectProtocol(endpoint, protocol)
-        d.addCallback(self.connected)
         d.addErrback(self.connectionFailure)
         return protocol
 
