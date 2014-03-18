@@ -12,4 +12,3 @@ if __name__ == "__main__":
     print Message.deserialize(sm1)
     print Message.deserialize(sm2)
     print Message.deserialize(sm3)
-

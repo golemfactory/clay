@@ -41,7 +41,7 @@ class DataBuffer:
         return val
         
     def readAll( self ):
-        retData = self.bufferData
+        retData = self.bufferedData
         self.bufferedData = ""
 
         return retData

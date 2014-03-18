@@ -1,40 +1,44 @@
 import abc
-import databuffer
 import json
-import time
-
-PingMessage = "\0x02"
-PongMessage = "\0x03"
+from databuffer import DataBuffer
 
 class Message:
 
     def __init__( self, type ):
         self.type = type
-        self.serializer = databuffer.DataBuffer()
+        self.serializer = DataBuffer()
 
     def getType( self ):
         return self.type
 
     def serialize( self ):
         strJSONRepr = json.dumps( [ self.type, self.dictRepr() ] )
-        self.seralizer.appendLenPrefixedString( strJSONRepr )
+        print strJSONRepr
+        self.serializer.appendLenPrefixedString( strJSONRepr )
 
         return self.serializer.readAll()
 
     @classmethod
     def deserialize( cls, db ):
-        assert isinstance( db, databuffer.DataBuffer )
+        assert isinstance( db, DataBuffer )
         messages = []
         msg = db.readLenPrefixedString()
 
         while msg:
-            messages.append( msg )
+            m = cls.deserializeMessage( msg )
+            
+            if m is None:
+                print "Failed to deserialize message {}".format( msg )
+                assert false
+ 
+            messages.append( m )
             msg = db.readLenPrefixedString()
 
         return messages
   
     @classmethod
     def deserializeMessage( cls, msg ):
+        print msg, msg.__class__
         msgRepr  = json.loads( msg )
 
         msgType  = msgRepr[ 0 ]
@@ -48,7 +52,7 @@ class Message:
             return PongMessage( dictRepr )
 
         return None
-     
+
     @abc.abstractmethod
     def dictRepr(self):
         """
@@ -64,41 +68,83 @@ class Message:
         return "{}".format( self.__class__ )
 
 
-class HelloMessage(Message):
+class MessageHello(Message):
 
     Type = 0
 
-    def __init__( self, protoId, cliVer ):
-        Message.__init__( self, HelloMessage.Type )
+    PROTO_ID_STR = "protoId"
+    CLI_VER_STR =  "clientVer"
+
+    def __init__( self, protoId = 0, cliVer = 0, dictRepr = None ):
+        Message.__init__( self, MessageHello.Type )
+        
         self.protoId    = protoId
         self.clientVer  = cliVer
 
-    def __init__( self, dictRepr ):
-        self.protoId    = dictRepr[ "protoId" ]
-        self.clientVer  = dictRepr[ "clientVer" ]
+        if dictRepr:
+            self.protoId    = dictRepr[ MessageHello.PROTO_ID_STR ]
+            self.clientVer  = dictRepr[ MessageHello.CLI_VER_STR ]
 
     def dictRepr(self):
-        
-        return super(HelloMessage, self).dictRepr()( sel
-    def serializeTyped(self):
-        return json.dumps([HelloMessage.Type, "Hello World !!!"])
+        return { MessageHello.PROTO_ID_STR : self.protoId, MessageHello.CLI_VER_STR : self.clientVer }
 
-class PingMessage(Message):
+class MessagePing(Message):
 
     Type = 1
 
-    def __init__(self):
-        Message.__init__(self, PingMessage.Type)
+    PING_STR = "PING"
 
-    def serializeTyped(self):
-        return json.dumps([PingMessage.Type, "Ping"])
+    def __init__( self, dictRepr = None ):
+        Message.__init__(self, MessagePing.Type)
+        
+        if dictRepr:
+            assert dictRepr[ 0 ] == MessagePing.PING_STR
 
-class PongMessage(Message):
+    def dictRepr(self):
+        return [ MessagePing.PING_STR ]
 
-    Type = 2
+class MessagePong(Message):
 
-    def __init__(self):
-        Message.__init__(self, PongMessage.Type)
+    Type = 1
 
-    def serializeTyped(self):
-        return json.dumps([PongMessage.Type ,"Pong"])
+    PONG_STR = "PONG"
+
+    def __init__( self ):
+        Message.__init__(self, MessagePong.Type)
+
+    def __init__( self, dictRepr = None ):
+        Message.__init__(self, MessagePong.Type)
+        
+        if dictRepr:
+            assert dictRepr[ 0 ] == MessagePong.PONG_STR
+
+    def dictRepr(self):
+        return [ MessagePong.PONG_STR ]
+
+if __name__ == "__main__":
+
+    hem = MessageHello( 1, 2 )
+    pim = MessagePing()
+    pom = MessagePong()
+
+    print hem
+    print pim
+    print pom
+
+    db = DataBuffer()
+    db.appendLenPrefixedString( hem.serialize() )
+    db.appendLenPrefixedString( pim.serialize() )
+    db.appendLenPrefixedString( pom.serialize() )
+
+    print db
+
+    streamedData = db.readAll();
+
+    print streamedData
+
+    db.appendString( streamedData )
+
+    messages = Message.deserialize( db )
+
+    for msg in messages:
+        print msg
