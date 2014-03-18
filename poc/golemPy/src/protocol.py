@@ -12,7 +12,7 @@ class GolemProtocol(Protocol):
         self.transport.write(sMessage)
 
     def connectionMade(self):
-        print "Connection made"
+        self.client.newConnection(self)
 
     def dataReceived(self, data):
         mess = Message.deserialize(data)
@@ -23,6 +23,6 @@ class GolemProtocol(Protocol):
         peer = self.transport.getPeer()
         for m in mess:
             print "Received message {} from {}".format(m, peer)
-            msg = self.client.interpret(m)
+            msg = self.client.interpret(self, m)
             if msg:
                 self.sendMessage(msg)

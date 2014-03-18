@@ -55,7 +55,7 @@ class Message:
         messType = dMessage[0]
 
         if messType == HelloMessage.Type:
-            return HelloMessage(), l + 4
+            return HelloMessage(dMessage[1], dMessage[2]), l + 4
         elif messType == PingMessage.Type:
             return PingMessage(), l + 4
         elif messType == PongMessage.Type:
@@ -69,11 +69,13 @@ class Message:
 
 class HelloMessage(Message):
     Type = 0
-    def __init__(self):
+    def __init__(self, port, clientUID):
         Message.__init__(self, HelloMessage.Type)
+        self.port = port
+        self.clientUID = clientUID
 
     def serializeTyped(self):
-        return json.dumps([HelloMessage.Type, "Hello World !!!"])
+        return json.dumps([HelloMessage.Type, self.port, self.clientUID, "Hello World !!!"])
 
 class PingMessage(Message):
     Type = 1

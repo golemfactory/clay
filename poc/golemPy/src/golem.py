@@ -1,8 +1,8 @@
 from message import *
-
+import uuid
 
 if __name__ == "__main__":
-    m1 = HelloMessage()
+    m1 = HelloMessage(3030303, uuid.uuid1().get_hex())
     sm1 = m1.serialize()
     m2 = PingMessage()
     sm2 = m2.serialize()
