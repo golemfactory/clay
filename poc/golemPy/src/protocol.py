@@ -23,6 +23,6 @@ class GolemProtocol(Protocol):
         peer = self.transport.getPeer()
         for m in mess:
             print "Received message {} from {}".format(m, peer)
-            msg = self.client.interpret(self, m)
+            msg = self.client.interpret(m)
             if msg:
                 self.sendMessage(msg)
