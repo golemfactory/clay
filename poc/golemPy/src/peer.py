@@ -2,13 +2,17 @@ from message import MessageHello, MessagePing, MessagePong
 from twisted.internet import task
 import time
 
-class PeerSession:
+class PeerSessionInterface:
+    def inretpret(self, msg):
+        pass
+
+class PeerSession(PeerSessionInterface):
     StateInitialize = 0
     StateConnecting = 1
     StateConnected  = 2 
 
     def __init__(self, client, address, port):
-
+        PeerSessionInterface.__init__(self)
         self.client = client
         self.address = address
         self.id = 0
