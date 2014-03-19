@@ -1,4 +1,4 @@
-﻿1. Konfiguracja klienta (zakres portów, na których może nasłuchiwać, preferred peers i ewentualnie typ noda, seedd host, a w przyszłości parametry obliczenia, bandwidth, latency i oraz te statystyczne)
+﻿1. Konfiguracja klienta (zakres portów, na których może nasłuchiwać, preferred peers i ewentualnie typ noda, seed host, a w przyszłości parametry obliczenia, bandwidth, latency i oraz te statystyczne)
 2. Jakiś małe API do haszowania funkcji
 3. Obsługa niepoprawnych wiadomości - albo na szybko MessageInvalid, które oznacza, że wiadomość się albo nie sparsowała albo jakiś nieco lepszy mechanizm4
 4. Pyqt i manager do odpalania i zabijania klientów
