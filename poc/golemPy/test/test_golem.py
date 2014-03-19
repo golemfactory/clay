@@ -11,7 +11,7 @@ c = Client(int(args[1]))
 c.start()
 
 if len(args) > 2:
-    c.connect("127.0.0.1", int(args[2]))
+    c.connect("10.30.10.69", int(args[2]))
 
 #hr1 = HelloResource()
 #hr2 = HelloResource()
