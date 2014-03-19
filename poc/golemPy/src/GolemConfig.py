@@ -12,7 +12,7 @@ class DefaultConfig:
     DEFAULT_OPTIMAL_PEER_NUM    = 10
     DEFAULT_START_PORT          = 40102
     DEFAULT_END_PORT            = 60102
-    DEFAULT_SEED_HOST           = None
+    DEFAULT_SEED_HOST           = ""
     DEFAULT_SEED_HOST_PORT      = 0
 
     OPTIMAL_PEER_NUM_STR    = "optimal peer num"
@@ -35,11 +35,11 @@ class DefaultConfig:
             cfg = ConfigParser.ConfigParser()
             cfg.read( iniFile )
             
-            optimalPeerNum  = cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.OPTIMAL_PEER_NUM_STR )
-            startPort       = cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.START_PORT_STR )
-            endPort         = cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.END_PORT_STR )
+            optimalPeerNum  = int( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.OPTIMAL_PEER_NUM_STR ) )
+            startPort       = int( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.START_PORT_STR ) )
+            endPort         = int( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.END_PORT_STR ) )
             seedHost        = cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEED_HOST_STR )
-            seedHostPort    = cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEED_HOST_PORT_STR )
+            seedHostPort    = int( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEED_HOST_PORT_STR ) )
 
             self.optimalPeerNum = optimalPeerNum 
             self.startPort      = startPort      

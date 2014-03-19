@@ -3,6 +3,7 @@ from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ClientEndpoint, connectProtocol, TCP4ServerEndpoint
 from twisted.protocols.amp import AMP
 
+import sys
 import time
 from protocol import GolemProtocol
 from peer import PeerSession
@@ -63,27 +64,39 @@ class Client:
         self.publicKey = uuid.uuid1().get_hex()
         self.pingInterval =  PING_INTERVAL
 
+    def runListenOnce( self ):
+        ep = TCP4ServerEndpoint( reactor, self.curPort )
+        
+        d = ep.listen( GolemServerFactory( self ) )
+        
+        d.addCallback( self.listeningEstablished )
+        d.addErrback( self.listeningFailure )
+
     #FIXME: implement with p2p server
     def startNetwork( self, seedHost, seedHostPort ):
         print "Starting network service"
 
         #FIXME: use p2p sever here
-        endpoint = TCP4ServerEndpoint( reactor, self.curPort )
-    
-        d = endpoint.listen( GolemServerFactory( self ) )
-        d.addCallback( self.listeningEstablished )
-        d.addErrback( self.listeningFailure )
+        self.runListenOnce()
 
         if seedHost and seedHostPort:
             self.connect( seedHost, seedHostPort )
 
+    #FIXME: tutaj trzeba zwiekszyc numer portu i odpalic ponownie endpoint listen - i tak az do momenty, kiedy sie uda lub skoncza sie porty - wtedy pad
     def listeningFailure(self, p):
-        print "Listening failure due to {}".format( p )
-        #FIXME: tutaj trzeba zwiekszyc numer portu i odpalic ponownie endpoint listen - i tak az do momenty, kiedy sie uda lub skoncza sie porty - wtedy pad
-        #print "Listening established on {} : {}".format(p.getHost().host, p.getHost().port)
+        #print "Listening failure due to {}".format( p )
+        print "Listetning on port {} failed, trying the next one".format( self.curPort )
+
+        self.curPort = self.curPort + 1
+
+        if self.curPort <= self.endPort:
+            self.runListenOnce()
+        else:
+            #FIXME: some graceful terminations should take place here
+            sys.exit(0)
 
     def listeningEstablished(self, p):
-        print "Listening established on {} : {}".format(p.getHost().host, p.getHost().port)
+        print "Listening on {} : {}".format(p.getHost().host, p.getHost().port)
 
     def sendMessage(self, peer, message):
         protocol = self.ppMap.getProtocol(peer)
