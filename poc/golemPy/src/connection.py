@@ -30,4 +30,7 @@ class GolemConnection(Protocol):
         if self.peer:
             for m in mess:
                 self.peer.interpret(m)
+        else:
+            print "Peer for connection is None"
+            assert False
 

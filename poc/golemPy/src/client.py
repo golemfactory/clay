@@ -10,7 +10,6 @@ class Client:
         self.listenPort = port
         self.lastPingTime = 0.0
         self.publicKey = uuid.uuid1().get_hex()
-        self.pingInterval =  PING_INTERVAL
         self.p2pserver = None
 
     def startNetwork(self):
