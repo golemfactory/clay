@@ -11,8 +11,7 @@ class GolemProtocol(Protocol):
 
     def sendMessage(self, msg):
         db = DataBuffer()
-        db.appendLenPrefixedString( msg.serialize() )
- 
+        db.appendLenPrefixedString( msg )
         self.transport.write( db.readAll() )
 
     def connectionMade(self):

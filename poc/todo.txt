@@ -1,0 +1,3 @@
+﻿1. Konfiguracja klienta (zakres portów, na których może nasłuchiwać, preferred peers i ewentualnie typ noda, seedd host, a w przyszłości parametry obliczenia, bandwidth, latency i oraz te statystyczne)
+2. Obsługa niepoprawnych wiadomości - albo na szybko MessageInvalid, które oznacza, że wiadomość się albo nie sparsowała albo jakiś nieco lepszy mechanizm
+3. Pyqt i manager do odpalania i zabijania klientów
