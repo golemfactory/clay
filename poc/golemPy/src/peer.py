@@ -50,6 +50,10 @@ class PeerSession:
 
         type = msg.getType()
 
+        localtime   = time.localtime()
+        timeString  = time.strftime("%H:%M:%S", localtime)
+        print "{} at {} | ".format( msg.serialize(), timeString ),
+
         if type == MessagePing.Type:
             self.sendPong()
         elif type == MessagePong.Type:

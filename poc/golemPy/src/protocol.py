@@ -10,9 +10,9 @@ class GolemProtocol(Protocol):
         self.db = DataBuffer()
 
     def sendMessage(self, msg):
-        sMessage = msg.serializeWithHeader()
-        #print "Sending message {} to {}".format(msg, self.transport.getPeer())
-        self.transport.write(sMessage)
+        db = DataBuffer()
+        db.appendLenPrefixedString( msg )
+        self.transport.write( db.readAll() )
 
     def connectionMade(self):
         self.client.newConnection(self)
@@ -26,7 +26,4 @@ class GolemProtocol(Protocol):
 
         peer = self.transport.getPeer()
         for m in mess:
-            #print "Received message {} from {}".format(m, peer)
-            msg = self.client.interpret(self, m)
-            if msg:
-                self.sendMessage(msg)
+            self.client.interpret(self, m)

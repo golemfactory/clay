@@ -1,0 +1,30 @@
+﻿1. Konfiguracja klienta (zakres portów, na których może nasłuchiwać, preferred peers i ewentualnie typ noda, seedd host, a w przyszłości parametry obliczenia, bandwidth, latency i oraz te statystyczne)
+2. Jakiś małe API do haszowania funkcji
+3. Obsługa niepoprawnych wiadomości - albo na szybko MessageInvalid, które oznacza, że wiadomość się albo nie sparsowała albo jakiś nieco lepszy mechanizm4
+4. Pyqt i manager do odpalania i zabijania klientów
+5. Klaska routera (a w zasadzie broadcast cache, bo routera mam nadzieję, nie będziemy potrzebowali), która przesyła dalej broadcastowane pakiety, ale tak, żeby ich nie duplikować - czyli trzyma hasz/id
+   pakietu i czas otrzymania - jeśli minęło odpowiednio dużo czasu to usuwa i może przesłać jeszcze raz
+   
+   
+Pakiet z danymi powiniem być przetwarzany w następujący sposób (cyhba):
+
+|
+V
+
+MessageLayer - z tego poziomu wychodzą wiadomości w postaci (tutaj może być od razu trzymany hash message_data - ale to zależy od rodzaju wiadomości)
+ML_msg == message_header | message_data
+|
+V
+ProtocolLayer - dodaje dane niezbędne dla porotokołu ( nagłówek protokołu jest potrzebny chyba tylko do sprawdzania poprawności, więc u nas może być zbędny)
+PL_msg == protocol_header | ML_msg
+|
+V
+TransportLayer:
+TL_msg = size( PL_msg ) | PL_msg
+|
+V
+Low level transport layer (dowolnie opakowane TCP - u nas Twisted)
+TCP_abstraction.send( TL_msg )
+
+Uwaga: docelowo wiadomości powinny być jak najmniejsze, ale na razie to nie robi wielkiej różnicy.
+TTL u nas będzie miał sens tylko w wiadomościach broadcastowanych i trzeba po testach ustalić czy to jest MessageLayer czy już ProtocolLayer (a być może nawet TransportLayer)

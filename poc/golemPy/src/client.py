@@ -68,7 +68,7 @@ class Client:
     def sendMessage(self, peer, message):
         protocol = self.ppMap.getProtocol(peer)
         assert protocol
-        protocol.sendMessage(message)
+        protocol.sendMessage(message.serialize())
 
     def newConnection(self, protocol):
         pp = protocol.transport.getPeer()
