@@ -1,5 +1,9 @@
+from twisted.internet import reactor
+from twisted.internet.protocol import Factory
+from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
+
 from connection import GolemConnection
-from twisted.internet.endpoints import TCP4ServerEndpoint
+from peer import PeerSession
 
 class GolemServerFactory(Factory):
 
@@ -8,19 +12,24 @@ class GolemServerFactory(Factory):
 
     def buildProtocol(self, addr):
         print "Protocol build for {}".format(addr)
-        return GolemConnection(self.client)
+        return GolemConnection(self.p2pserver)
 
 class P2PServerInterface:
+    def __init__(self):
+        pass
+
     def newConnection(self, connection):
         pass
 
 class P2PServer(P2PServerInterface):
-    def __init__(self, clientVerssion, port):
+    def __init__(self, clientVerssion, port, publicKey):
         P2PServerInterface.__init__(self)
         self.clientVersion = clientVerssion
         self.port = port
         self.idealPeerCount = 0
-        self.peers = []
+        self.peers = {}
+        self.startAccepting()
+        self.publicKey = publicKey
 
     def startAccepting(self):
         endpoint = TCP4ServerEndpoint(reactor, self.port)
@@ -33,12 +42,11 @@ class P2PServer(P2PServerInterface):
     def setIdealPeerCount(self, n):
         self.idealPeerCount = n
 
-    def newConnection(self, connection):
-        pp = protocol.transport.getPeer()
+    def newConnection(self, conn):
+        pp = conn.transport.getPeer()
         print "newConnection {} {}".format(pp.host, pp.port)
-        peer = PeerSession(self, pp.host, pp.port)
-        connection.setPeerSession(peer)
-        self.peers.append(peer)
+        peer = PeerSession(conn, self, pp.host, pp.port)
+        conn.setPeerSession(peer)
         peer.start()
         
     def connect(self, address, port):
@@ -53,6 +61,6 @@ class P2PServer(P2PServerInterface):
         p = conn.transport.getPeer()
         print "Connection to peer: {} : {} failure.".format(p.host, p.port)
 
-    def sendMessage(self, connection, msg):
-        assert connection
-        protocol.sendMessage(msg.serialize())
+    def sendMessage(self, conn, msg):
+        assert conn
+        conn.sendMessage(msg.serialize())

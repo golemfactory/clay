@@ -1,9 +1,6 @@
 from twisted.internet.protocol import Protocol 
-from message import MessageHello, MessagePing, MessagePong
+from message import Message, MessageHello, MessagePing, MessagePong
 from databuffer import DataBuffer
-from message import Message
-from p2pserver import P2PServerInterface
-from peer import PeerSessionInterface
 
 class GolemConnection(Protocol):
 
@@ -32,5 +29,5 @@ class GolemConnection(Protocol):
 
         if self.peer:
             for m in mess:
-                self.peer.interpret(self, m)
+                self.peer.interpret(m)
 
