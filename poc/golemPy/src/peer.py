@@ -15,6 +15,7 @@ class PeerSession(PeerSessionInterface):
 
     DCRBadProtocol      = "Bad protocol"
     DCRDuplicatePeers   = "Duplicate peers"
+
     def __init__(self, conn, server, address, port):
         PeerSessionInterface.__init__(self)
         self.server = server
@@ -35,17 +36,6 @@ class PeerSession(PeerSessionInterface):
     def start(self):
         print "Starting peer session {} : {}".format(self.address, self.port)
         self.sendHello()
-        self.sendPing()
-        self.doWorkTask.start(0.1, False)
-    
-    def doWork(self):
-        if time.time() - self.lastMessageTime >= self.client.pingInterval:
-        self.sendPing()
-        self.doWorkTask.start(0.1, False)
-    
-    def doWork(self):
-        #pass
-        if time.time() - self.lastMessageTime >= 1.0:
         self.sendPing()        
 
     def disconnect(self, reason):
@@ -110,8 +100,6 @@ class PeerSession(PeerSessionInterface):
     # private
        
     def sendHello(self):
-        self.send(MessageHello(self.client.listenPort, self.client.publicKey))
-        self.send(MessageHello(self.server.port, self.server.publicKey))
         self.send(MessageHello(self.server.curPort, self.server.publicKey))
 
     def sendPing(self):
