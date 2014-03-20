@@ -1,13 +1,16 @@
 from twisted.internet.protocol import Protocol 
-from message import MessageHello, MessagePing, MessagePong
+from message import Message, MessageHello, MessagePing, MessagePong
 from databuffer import DataBuffer
-from message import Message
 
-class GolemProtocol(Protocol):
+class GolemConnection(Protocol):
 
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, server):
+        self.server = server
+        self.peer = None
         self.db = DataBuffer()
+
+    def setPeerSession(self, peerSession):
+        self.peer = peerSession
 
     def sendMessage(self, msg):
         db = DataBuffer()
@@ -15,7 +18,7 @@ class GolemProtocol(Protocol):
         self.transport.write( db.readAll() )
 
     def connectionMade(self):
-        self.client.newConnection(self)
+        self.server.newConnection(self)
 
     def dataReceived(self, data):
         self.db.appendString(data)
@@ -24,6 +27,10 @@ class GolemProtocol(Protocol):
             print "Deserialization message failed"
             return
 
-        peer = self.transport.getPeer()
-        for m in mess:
-            self.client.interpret(self, m)
+        if self.peer:
+            for m in mess:
+                self.peer.interpret(m)
+        else:
+            print "Peer for connection is None"
+            assert False
+

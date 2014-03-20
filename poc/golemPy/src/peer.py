@@ -2,20 +2,28 @@ from message import MessageHello, MessagePing, MessagePong
 from twisted.internet import task
 import time
 
-class PeerSession:
+class PeerSessionInterface:
+    def __init__(self):
+        pass
+
+    def inretpret(self, msg):
+        pass
+
+class PeerSession(PeerSessionInterface):
     StateInitialize = 0
     StateConnecting = 1
     StateConnected  = 2 
 
-    def __init__(self, client, address, port):
-
-        self.client = client
+    def __init__(self, conn, server, address, port):
+        PeerSessionInterface.__init__(self)
+        self.server = server
         self.address = address
         self.id = 0
         self.port = port
         self.state = PeerSession.StateInitialize
         self.lastMessageTime = 0.0
         self.doWorkTask = task.LoopingCall(self.doWork)
+        self.conn = conn
 
     def __str__(self):
         return "{} : {}".format(self.address, self.port)
@@ -27,7 +35,8 @@ class PeerSession:
         self.doWorkTask.start(0.1, False)
     
     def doWork(self):
-        if time.time() - self.lastMessageTime >= self.client.pingInterval:
+        #pass
+        if time.time() - self.lastMessageTime >= 1.0:
             self.sendPing()
 
     def disconnect(self):
@@ -61,14 +70,14 @@ class PeerSession:
         elif type == MessageHello.Type:
             self.port = msg.port
             self.id = msg.clientUID
-            self.client.peers[self.id] = self
+            self.server.peers[self.id] = self
             print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)
             self.sendPing()
 
     # private
        
     def sendHello(self):
-        self.send(MessageHello(self.client.listenPort, self.client.publicKey))
+        self.send(MessageHello(self.server.curPort, self.server.publicKey))
 
     def sendPing(self):
         self.send(MessagePing())
@@ -78,5 +87,5 @@ class PeerSession:
 
 
     def send(self, message):
-        self.client.sendMessage(self, message)
+        self.server.sendMessage(self.conn, message)
         self.lastMessageTime = time.time()
