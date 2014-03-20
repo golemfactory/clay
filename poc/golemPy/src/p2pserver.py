@@ -67,7 +67,7 @@ class P2PServer(P2PServerInterface):
 
     def sendMessage(self, conn, msg):
         assert conn
-        conn.sendMessage(msg.serialize())
+        return conn.sendMessage(msg.serialize())
 
     def findPeer( self, peerID ):
         if peerID in self.peers:

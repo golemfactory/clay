@@ -112,5 +112,7 @@ class PeerSession(PeerSessionInterface):
         self.send( MessageDisconnect( reason ) )
 
     def send(self, message):
-        self.server.sendMessage(self.conn, message)
+        if not self.server.sendMessage(self.conn, message):
+            self.dropped()
+            return
         self.lastMessageTime = time.time()
