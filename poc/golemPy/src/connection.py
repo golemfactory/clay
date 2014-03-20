@@ -16,11 +16,12 @@ class GolemConnection(Protocol):
     def sendMessage(self, msg):
         if not self.opened:
             print "Connection is not open. Cannot send"
-            assert False
+            return False
         db = DataBuffer()
         db.appendLenPrefixedString( msg )
         self.transport.getHandle()
         self.transport.write( db.readAll() )
+        return True
 
     def connectionMade(self):
         self.opened = True
