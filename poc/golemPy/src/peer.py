@@ -39,6 +39,7 @@ class PeerSession(PeerSessionInterface):
         self.sendPing()        
 
     def disconnect(self, reason):
+        print "Disconnecting {} : {} reason: {}".format( self.address, self.port, reason )
         if self.conn.isOpen():
             if self.lastDisconnectTime:
                 self.dropped()
@@ -91,7 +92,7 @@ class PeerSession(PeerSessionInterface):
             p = self.server.findPeer( self.id )
 
             if p and p != self and p.conn.isOpen():
-                disconnect(DCRDuplicatePeers)
+                self.disconnect( PeerSession.DCRDuplicatePeers )
 
             self.server.peers[self.id] = self
             print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)

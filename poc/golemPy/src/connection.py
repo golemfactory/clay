@@ -51,4 +51,4 @@ class GolemConnection(Protocol):
         self.transport.loseConnection()
 
     def isOpen(self):
-        return self.open
+        return self.opened
