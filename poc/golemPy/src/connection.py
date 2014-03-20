@@ -45,6 +45,7 @@ class GolemConnection(Protocol):
 
     def connectionLost(self, reason):
         self.opened = False
+        print "LOST CONNECTION"
 
     def close(self):
         self.transport.loseConnection()

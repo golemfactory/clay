@@ -12,10 +12,10 @@ class DefaultConfig:
     DEFAULT_OPTIMAL_PEER_NUM    = 10
     DEFAULT_START_PORT          = 40102
     DEFAULT_END_PORT            = 60102
-    DEFAULT_SEED_HOST           = ""
-    DEFAULT_SEED_HOST_PORT      = 0
-    DEFAULT_SEND_PINGS          = 0
-    DEFAULT_PINGS_INTERVAL      = 0.0
+    DEFAULT_SEED_HOST           = "127.0.0.1"
+    DEFAULT_SEED_HOST_PORT      = 40102
+    DEFAULT_SEND_PINGS          = 1
+    DEFAULT_PINGS_INTERVAL      = 5.0
 
     OPTIMAL_PEER_NUM_STR    = "optimal peer num"
     START_PORT_STR          = "start port"
