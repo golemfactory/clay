@@ -37,8 +37,9 @@
     <Compile Include="src\databuffer.py" />
     <Compile Include="src\p2pserver.py" />
     <Compile Include="src\peer.py" />
-    <Compile Include="src\protocol.py" />
+    <Compile Include="src\connection.py" />
     <Compile Include="src\protomessages.py" />
+    <Compile Include="src\test_golem.py" />
     <Compile Include="src\__init__.py" />
     <Compile Include="test\test_golem.py" />
     <Compile Include="test\__init__.py" />
