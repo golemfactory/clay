@@ -16,8 +16,10 @@ def main():
     endPort         = cfg.getEndPort()
     seedHost        = cfg.getSeedHost()
     seedHostPort    = cfg.getSeedHostPort()
+    sendPings       = cfg.getSendPings()
+    pingsInterval   = cfg.getPingsInterval()
 
-    c = Client( optNumPeers, startPort, endPort ) 
+    c = Client( optNumPeers, startPort, endPort, sendPings, pingsInterval ) 
     c.startNetwork( seedHost, seedHostPort )
 
     reactor.run()

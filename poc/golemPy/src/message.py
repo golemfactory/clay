@@ -33,7 +33,7 @@ class Message:
             
             if m is None:
                 print "Failed to deserialize message {}".format( msg )
-                assert false
+                assert False
  
             messages.append( m )
             msg = db.readLenPrefixedString()
@@ -53,6 +53,8 @@ class Message:
             return MessagePing( dictRepr = dRepr )
         elif msgType == MessagePong.Type:
             return MessagePong( dictRepr = dRepr )
+        elif msgType == MessageDisconnect.Type:
+            return MessageDisconnect( dictRepr = dRepr )
 
         return None
 
@@ -132,20 +134,40 @@ class MessagePong(Message):
     def dictRepr(self):
         return [ MessagePong.PONG_STR ]
 
+class MessageDisconnect(Message):
+
+    Type = 3
+
+    DISCONNECT_REASON_STR = "DISCONNECT_REASON"
+
+    def __init__( self, reason = -1, dictRepr = None ):
+        Message.__init__( self, MessageDisconnect.Type )
+
+        self.reason = reason
+
+        if dictRepr:
+            self.reason = dictRepr[ MessageDisconnect.DISCONNECT_REASON_STR ]
+
+    def dictRepr( self ):
+        return { MessageDisconnect.DISCONNECT_REASON_STR : self.reason }
+
 if __name__ == "__main__":
 
     hem = MessageHello( 1, 2 )
     pim = MessagePing()
     pom = MessagePong()
+    dcm = MessageDisconnect(3)
 
     print hem
     print pim
     print pom
+    print dcm
 
     db = DataBuffer()
     db.appendLenPrefixedString( hem.serialize() )
     db.appendLenPrefixedString( pim.serialize() )
     db.appendLenPrefixedString( pom.serialize() )
+    db.appendLenPrefixedString( dcm.serialize() )
 
     print db.dataSize()
     streamedData = db.readAll();

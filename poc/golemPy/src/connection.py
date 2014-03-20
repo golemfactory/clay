@@ -15,6 +15,7 @@ class GolemConnection(Protocol):
     def sendMessage(self, msg):
         db = DataBuffer()
         db.appendLenPrefixedString( msg )
+        self.transport.getHandle()
         self.transport.write( db.readAll() )
 
     def connectionMade(self):
@@ -25,7 +26,7 @@ class GolemConnection(Protocol):
         mess = Message.deserialize(self.db)
         if mess is None:
             print "Deserialization message failed"
-            return
+            self.peer.interpret(None)
 
         if self.peer:
             for m in mess:
@@ -34,3 +35,8 @@ class GolemConnection(Protocol):
             print "Peer for connection is None"
             assert False
 
+    def close(self):
+        self.transport.loseConnection()
+
+    def isOpen(self):
+        return self.transport.isOpen()

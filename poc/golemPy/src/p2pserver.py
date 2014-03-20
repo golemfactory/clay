@@ -35,38 +35,14 @@ class P2PServer(P2PServerInterface):
         self.startAccepting()
         self.publicKey = publicKey
 
-    def runListenOnce( self ):
-        ep = TCP4ServerEndpoint( reactor, self.curPort )
-        
-        d = ep.listen( GolemServerFactory( self ) )
-        
-        d.addCallback( self.listeningEstablished )
-        d.addErrback( self.listeningFailure )
-
-    #FIXME: tutaj trzeba zwiekszyc numer portu i odpalic ponownie endpoint listen - i tak az do momenty, kiedy sie uda lub skoncza sie porty - wtedy pad
-    def listeningFailure(self, p):
-        print "Listetning on port {} failed, trying the next one".format( self.curPort )
-
-        self.curPort = self.curPort + 1
-
-        if self.curPort <= self.endPort:
-            self.runListenOnce()
-        else:
-            #FIXME: some graceful terminations should take place here
-            sys.exit(0)
-
     def startAccepting(self):
         print "Starting network service"
 
-        self.runListenOnce()
+        self.__runListenOnce()
 
         if self.seedHost and self.seedHostPort:
-            if self.seedHost != "127.0.0.1" or self.seedHostPort != self.curPort: #FIXME workoround to test on one machine
+            if self.seedHost != "127.0.0.1" or self.seedHostPort != self.curPort: #FIXME workaround to test on one machine
                 self.connect( self.seedHost, self.seedHostPort )
-
-    def listeningEstablished(self, p):
-        assert p.getHost().port == self.curPort
-        print "Listening established on {} : {}".format(p.getHost().host, p.getHost().port)
 
     def setIdealPeerCount(self, n):
         self.idealPeerCount = n
@@ -83,13 +59,53 @@ class P2PServer(P2PServerInterface):
         endpoint = TCP4ClientEndpoint(reactor, address, port)
         connection = GolemConnection(self);
         d = connectProtocol(endpoint, connection)
-        d.addErrback(self.connectionFailure)
+        d.addErrback(self.__connectionFailure)
 
-    def connectionFailure(self, conn):
-        assert isinstance(conn, GolemConnection)
-        p = conn.transport.getPeer()
-        print "Connection to peer: {} : {} failure.".format(p.host, p.port)
+    def pingPeers( self, interval ):
+        for p in self.peers.values():
+            p.ping( interval )
 
     def sendMessage(self, conn, msg):
         assert conn
         conn.sendMessage(msg.serialize())
+
+    def findPeer( self, peerID ):
+        if peerID in self.peers:
+            return self.peers[ peerID ]
+        else:
+            return None
+
+    def removePeer( self, peerSession ):
+        for p in self.peers.keys():
+            if self.peers[p] == peerSession:
+                del self.peers[p]
+
+    def __connectionFailure(self, conn):
+        assert isinstance(conn, GolemConnection)
+        p = conn.transport.getPeer()
+        print "Connection to peer: {} : {} failure.".format(p.host, p.port)
+
+    def __runListenOnce( self ):
+        ep = TCP4ServerEndpoint( reactor, self.curPort )
+        
+        d = ep.listen( GolemServerFactory( self ) )
+        
+        d.addCallback( self.__listeningEstablished )
+        d.addErrback( self.__listeningFailure )
+
+    def __listeningEstablished(self, p):
+        assert p.getHost().port == self.curPort
+        print "Listening established on {} : {}".format(p.getHost().host, p.getHost().port)
+
+    #FIXME: tutaj trzeba zwiekszyc numer portu i odpalic ponownie endpoint listen - i tak az do momenty, kiedy sie uda lub skoncza sie porty - wtedy pad
+    def __listeningFailure(self, p):
+        print "Listetning on port {} failed, trying the next one".format( self.curPort )
+
+        self.curPort = self.curPort + 1
+
+        if self.curPort <= self.endPort:
+            self.__runListenOnce()
+        else:
+            #FIXME: some graceful terminations should take place here
+            sys.exit(0)
+
