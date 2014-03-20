@@ -61,7 +61,8 @@ class P2PServer(P2PServerInterface):
         self.runListenOnce()
 
         if self.seedHost and self.seedHostPort:
-            self.connect( self.seedHost, self.seedHostPort )
+            if self.seedHost != "127.0.0.1" or self.seedHostPort != self.curPort: #FIXME workoround to test on one machine
+                self.connect( self.seedHost, self.seedHostPort )
 
     def listeningEstablished(self, p):
         assert p.getHost().port == self.curPort
