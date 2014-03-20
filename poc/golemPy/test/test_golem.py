@@ -3,7 +3,7 @@ sys.path.append('../src/')
 
 from client import Client
 from twisted.internet import reactor
-from GolemConfig import DefaultConfig
+from appconfig import DefaultConfig
 
 def main():
     

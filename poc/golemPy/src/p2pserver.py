@@ -95,11 +95,11 @@ class P2PServer(P2PServerInterface):
 
     def __listeningEstablished(self, p):
         assert p.getHost().port == self.curPort
-        print "Listening established on {} : {}".format(p.getHost().host, p.getHost().port)
+        print "Port {} opened - listening".format(p.getHost().port)
 
     #FIXME: tutaj trzeba zwiekszyc numer portu i odpalic ponownie endpoint listen - i tak az do momenty, kiedy sie uda lub skoncza sie porty - wtedy pad
     def __listeningFailure(self, p):
-        print "Listetning on port {} failed, trying the next one".format( self.curPort )
+        print "Opening {} port for listetning failed, trying the next one".format( self.curPort )
 
         self.curPort = self.curPort + 1
 

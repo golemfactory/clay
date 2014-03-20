@@ -23,7 +23,7 @@ class DefaultConfig:
     SEED_HOST_STR           = "seed host"
     SEED_HOST_PORT_STR      = "seed host port"
     SEND_PINGS_STR          = "send pings"
-    PINGS_INTERVAL_STR      = "pigns interval"
+    PINGS_INTERVAL_STR      = "pings interval"
 
     def __init__(self, iniFile = GOLEM_CFG_INI_FILENAME):
         
@@ -104,7 +104,6 @@ class DefaultConfig:
 
     def getPingsInterval( self ):
         return self.pingsInterval
-
 
     def __str__( self ):
         rs = "DefaultConfig\n"
