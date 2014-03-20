@@ -34,7 +34,7 @@
   <ItemGroup>
     <Compile Include="src\client.py" />
     <Compile Include="src\golem.py" />
-    <Compile Include="src\GolemConfig.py" />
+    <Compile Include="src\appconfig.py" />
     <Compile Include="src\message.py" />
     <Compile Include="src\databuffer.py" />
     <Compile Include="src\p2pserver.py" />

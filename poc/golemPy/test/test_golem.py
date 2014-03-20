@@ -3,7 +3,7 @@ sys.path.append('../src/')
 
 from client import Client
 from twisted.internet import reactor
-from GolemConfig import DefaultConfig
+from appconfig import DefaultConfig
 
 def main():
     
@@ -18,8 +18,9 @@ def main():
     seedHostPort    = cfg.getSeedHostPort()
     sendPings       = cfg.getSendPings()
     pingsInterval   = cfg.getPingsInterval()
+    clientUuid      = cfg.getClientUuid()
 
-    c = Client( optNumPeers, startPort, endPort, sendPings, pingsInterval ) 
+    c = Client( clientUuid, optNumPeers, startPort, endPort, sendPings, pingsInterval ) 
     c.startNetwork( seedHost, seedHostPort )
 
     reactor.run()
