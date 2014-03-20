@@ -1,6 +1,7 @@
 import ConfigParser
 import os
 import shutil
+import uuid
 
 GOLEM_CFG_INI_FILENAME = "golem_test_config.ini"
 
@@ -12,10 +13,11 @@ class DefaultConfig:
     DEFAULT_OPTIMAL_PEER_NUM    = 10
     DEFAULT_START_PORT          = 40102
     DEFAULT_END_PORT            = 60102
-    DEFAULT_SEED_HOST           = "127.0.0.1"
-    DEFAULT_SEED_HOST_PORT      = 40102
-    DEFAULT_SEND_PINGS          = 1
-    DEFAULT_PINGS_INTERVAL      = 5.0
+    DEFAULT_SEED_HOST           = ""
+    DEFAULT_SEED_HOST_PORT      = 0
+    DEFAULT_SEND_PINGS          = 0
+    DEFAULT_PINGS_INTERVAL      = 0.0
+    DEFAULT_UUID                = u""
 
     OPTIMAL_PEER_NUM_STR    = "optimal peer num"
     START_PORT_STR          = "start port"
@@ -23,7 +25,8 @@ class DefaultConfig:
     SEED_HOST_STR           = "seed host"
     SEED_HOST_PORT_STR      = "seed host port"
     SEND_PINGS_STR          = "send pings"
-    PINGS_INTERVAL_STR      = "pings interval"
+    PINGS_INTERVAL_STR      = "pigns interval"
+    UUID_STR                = "client clientUuid"
 
     def __init__(self, iniFile = GOLEM_CFG_INI_FILENAME):
         
@@ -34,6 +37,7 @@ class DefaultConfig:
         self.seedHostPort   = DefaultConfig.DEFAULT_SEED_HOST_PORT
         self.sendPings      = DefaultConfig.DEFAULT_SEND_PINGS
         self.pingsInterval  = DefaultConfig.DEFAULT_PINGS_INTERVAL
+        self.clientUuid     = DefaultConfig.DEFAULT_UUID
 
         print "Reading config from file {}".format( iniFile ), 
 
@@ -48,6 +52,10 @@ class DefaultConfig:
             seedHostPort    = int( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEED_HOST_PORT_STR ) )
             sendPings       = int( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEND_PINGS_STR ) )
             pingsInterval   = float( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.PINGS_INTERVAL_STR ) )
+            clientUuid      = cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.UUID_STR )
+
+            if len( clientUuid ) == 0:
+                clientUuid = uuid.uuid1().get_hex()
 
             self.optimalPeerNum = optimalPeerNum 
             self.startPort      = startPort      
@@ -56,6 +64,7 @@ class DefaultConfig:
             self.seedHostPort   = seedHostPort
             self.sendPings      = sendPings
             self.pingsInterval  = pingsInterval
+            self.clientUuid     = clientUuid
 
             print " ... successfully"
 
@@ -79,6 +88,7 @@ class DefaultConfig:
             cfg.set( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEED_HOST_PORT_STR, self.seedHostPort )
             cfg.set( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEND_PINGS_STR, self.sendPings )
             cfg.set( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.PINGS_INTERVAL_STR, self.pingsInterval )
+            cfg.set( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.UUID_STR, uuid.uuid1().get_hex() )
 
             cfg.write( cfgfile )
             
@@ -105,6 +115,10 @@ class DefaultConfig:
     def getPingsInterval( self ):
         return self.pingsInterval
 
+    def getClientUuid( self ):
+        return self.clientUuid
+
+
     def __str__( self ):
         rs = "DefaultConfig\n"
         rs += "{:20} {self.optimalPeerNum}\n".format( "optimalPeerNumb", self = self )
@@ -114,6 +128,7 @@ class DefaultConfig:
         rs += "{:20} {self.seedHostPort}\n".format( "seedHostPort", self = self )
         rs += "{:20} {self.sendPings}\n".format( "sendPings", self = self )
         rs += "{:20} {self.pingsInterval}".format( "pingsInterval", self = self )
+        rs += "{:20} {self.clientUuid}".format( "clientUuid", self = self )
 
         return rs
 

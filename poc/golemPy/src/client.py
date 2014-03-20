@@ -4,13 +4,12 @@ from p2pserver import P2PServer
 
 import sys
 import time
-import uuid
 
 PING_INTERVAL = 1.0
 
 class Client:
     
-    def __init__(self, optimalNumPeers, startPort, endPort, sendPings, pingsInterval ):
+    def __init__(self, publicKey, optimalNumPeers, startPort, endPort, sendPings, pingsInterval ):
 
         self.optNumPeers    = optimalNumPeers
         self.startPort      = startPort
@@ -19,7 +18,7 @@ class Client:
         self.pingsInterval  = pingsInterval
 
         self.lastPingTime = 0.0
-        self.publicKey = uuid.uuid1().get_hex()
+        self.publicKey = publicKey
         self.p2pserver = None
 
         self.doWorkTask = task.LoopingCall(self.__doWork)

@@ -44,6 +44,7 @@ class GolemConnection(Protocol):
             assert False
 
     def connectionLost(self, reason):
+        print "LOST CONNECTION"
         self.opened = False
         print "LOST CONNECTION"
 
