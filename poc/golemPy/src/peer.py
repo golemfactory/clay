@@ -13,7 +13,8 @@ class PeerSession(PeerSessionInterface):
     StateConnecting = 1
     StateConnected  = 2 
 
-    DCRBadProtocol = 1
+    DCRBadProtocol      = "Bad protocol"
+    DCRDuplicatePeers   = "Duplicate peers"
 
     def __init__(self, conn, server, address, port):
         PeerSessionInterface.__init__(self)
@@ -65,7 +66,7 @@ class PeerSession(PeerSessionInterface):
     def interpret(self, msg):
         self.lastMessageTime = time.time()
 
-        if msg in None:
+        if msg is None:
             self.disconnect( PeerSession.DCRBadProtocol )
 
         type = msg.getType()
@@ -89,8 +90,8 @@ class PeerSession(PeerSessionInterface):
 
             p = self.server.findPeer( self.id )
 
-            if p and p != self:
-                p.conn
+            if p and p != self and p.conn.isOpen():
+                disconnect(DCRDuplicatePeers)
 
             self.server.peers[self.id] = self
             print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)

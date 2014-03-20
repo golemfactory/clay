@@ -8,20 +8,27 @@ class GolemConnection(Protocol):
         self.server = server
         self.peer = None
         self.db = DataBuffer()
+        self.opened = False
 
     def setPeerSession(self, peerSession):
         self.peer = peerSession
 
     def sendMessage(self, msg):
+        if not self.opened:
+            print "Connection is not open. Cannot send"
+            assert False
         db = DataBuffer()
         db.appendLenPrefixedString( msg )
         self.transport.getHandle()
         self.transport.write( db.readAll() )
 
     def connectionMade(self):
+        self.opened = True
         self.server.newConnection(self)
 
     def dataReceived(self, data):
+        assert self.opened
+
         self.db.appendString(data)
         mess = Message.deserialize(self.db)
         if mess is None:
@@ -35,8 +42,11 @@ class GolemConnection(Protocol):
             print "Peer for connection is None"
             assert False
 
+    def connectionLost(self, reason):
+        self.opened = False
+
     def close(self):
         self.transport.loseConnection()
 
     def isOpen(self):
-        return self.transport.isOpen()
+        return self.open
