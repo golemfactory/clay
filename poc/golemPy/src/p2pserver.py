@@ -22,21 +22,49 @@ class P2PServerInterface:
         pass
 
 class P2PServer(P2PServerInterface):
-    def __init__(self, clientVerssion, port, publicKey):
+    def __init__(self, clientVerssion, startPort, endPort, publicKey, seedHost, seedHostPort):
         P2PServerInterface.__init__(self)
         self.clientVersion = clientVerssion
-        self.port = port
+        self.startPort = startPort
+        self.endPort = endPort
+        self.curPort = self.startPort
         self.idealPeerCount = 0
         self.peers = {}
+        self.seedHost = seedHost
+        self.seedHostPort = seedHostPort
         self.startAccepting()
         self.publicKey = publicKey
 
+    def runListenOnce( self ):
+        ep = TCP4ServerEndpoint( reactor, self.curPort )
+        
+        d = ep.listen( GolemServerFactory( self ) )
+        
+        d.addCallback( self.listeningEstablished )
+        d.addErrback( self.listeningFailure )
+
+    #FIXME: tutaj trzeba zwiekszyc numer portu i odpalic ponownie endpoint listen - i tak az do momenty, kiedy sie uda lub skoncza sie porty - wtedy pad
+    def listeningFailure(self, p):
+        print "Listetning on port {} failed, trying the next one".format( self.curPort )
+
+        self.curPort = self.curPort + 1
+
+        if self.curPort <= self.endPort:
+            self.runListenOnce()
+        else:
+            #FIXME: some graceful terminations should take place here
+            sys.exit(0)
+
     def startAccepting(self):
-        endpoint = TCP4ServerEndpoint(reactor, self.port)
-        endpoint.listen(GolemServerFactory(self)).addCallback(self.listeningEstablished)
+        print "Starting network service"
+
+        self.runListenOnce()
+
+        if self.seedHost and self.seedHostPort:
+            self.connect( self.seedHost, self.seedHostPort )
 
     def listeningEstablished(self, p):
-        assert p.getHost().port == self.port
+        assert p.getHost().port == self.curPort
         print "Listening established on {} : {}".format(p.getHost().host, p.getHost().port)
 
     def setIdealPeerCount(self, n):

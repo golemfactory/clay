@@ -1,10 +1,12 @@
-﻿1. Konfiguracja klienta (zakres portów, na których może nasłuchiwać, preferred peers i ewentualnie typ noda, seedd host, a w przyszłości parametry obliczenia, bandwidth, latency i oraz te statystyczne)
-2. Jakiś małe API do haszowania funkcji
+﻿1. Konfiguracja klienta (zakres portów, na których może nasłuchiwać, preferred peers i ewentualnie typ noda, seed host, a w przyszłości parametry obliczenia, bandwidth, latency i oraz te statystyczne) - done
+2. Jakiś małe API do haszowania funkcji - done
 3. Obsługa niepoprawnych wiadomości - albo na szybko MessageInvalid, które oznacza, że wiadomość się albo nie sparsowała albo jakiś nieco lepszy mechanizm4
 4. Pyqt i manager do odpalania i zabijania klientów
 5. Klaska routera (a w zasadzie broadcast cache, bo routera mam nadzieję, nie będziemy potrzebowali), która przesyła dalej broadcastowane pakiety, ale tak, żeby ich nie duplikować - czyli trzyma hasz/id
    pakietu i czas otrzymania - jeśli minęło odpowiednio dużo czasu to usuwa i może przesłać jeszcze raz
-   
+6. Zmienić nazwy zawierające Golem na takie, które nie zawierają (np. GolemConnection na ConnectionState, GolemConfig.py na AppConfig.py lub
+   DefaultConfig.py)
+7. Dodać do serwera to, co jest teraz u mnie w kliencie i zmerdżować dopiero wtedy
    
 Pakiet z danymi powiniem być przetwarzany w następujący sposób (cyhba):
 

@@ -77,7 +77,7 @@ class PeerSession(PeerSessionInterface):
     # private
        
     def sendHello(self):
-        self.send(MessageHello(self.server.port, self.server.publicKey))
+        self.send(MessageHello(self.server.curPort, self.server.publicKey))
 
     def sendPing(self):
         self.send(MessagePing())

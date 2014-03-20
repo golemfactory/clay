@@ -13,7 +13,8 @@
     <RootNamespace>golem</RootNamespace>
     <IsWindowsApplication>False</IsWindowsApplication>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <CommandLineArguments>30301 30302</CommandLineArguments>
+    <CommandLineArguments>
+    </CommandLineArguments>
     <InterpreterPath />
     <InterpreterArguments />
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
@@ -33,6 +34,7 @@
   <ItemGroup>
     <Compile Include="src\client.py" />
     <Compile Include="src\golem.py" />
+    <Compile Include="src\GolemConfig.py" />
     <Compile Include="src\message.py" />
     <Compile Include="src\databuffer.py" />
     <Compile Include="src\p2pserver.py" />
@@ -40,6 +42,7 @@
     <Compile Include="src\connection.py" />
     <Compile Include="src\protomessages.py" />
     <Compile Include="src\test_golem.py" />
+    <Compile Include="src\simplehash.py" />
     <Compile Include="src\__init__.py" />
     <Compile Include="test\test_golem.py" />
     <Compile Include="test\__init__.py" />

@@ -3,23 +3,24 @@ sys.path.append('../src/')
 
 from client import Client
 from twisted.internet import reactor
+from GolemConfig import DefaultConfig
 
-args = sys.argv
+def main():
+    
+    cfg = DefaultConfig()
 
-c = Client(int(args[1]))
+    assert isinstance( cfg, DefaultConfig )
 
-c.start()
+    optNumPeers     = cfg.getOptimalNumberOfPeers()
+    startPort       = cfg.getStartPort()
+    endPort         = cfg.getEndPort()
+    seedHost        = cfg.getSeedHost()
+    seedHostPort    = cfg.getSeedHostPort()
 
-if len(args) > 2:
-    #c.connect("10.30.10.69", int(args[2]))
-    c.connect("127.0.0.1", int(args[2]))
+    c = Client( optNumPeers, startPort, endPort ) 
+    c.startNetwork( seedHost, seedHostPort )
 
-#hr1 = HelloResource()
-#hr2 = HelloResource()
-#reactor.callInThread(reactor.listenTCP, 8080, server.Site(hr1))
-#reactor.callInThread(reactor.listenTCP, 8081, server.Site(hr2))
-#reactor.listenTCP(8080, server.Site(hr1))
-
+    reactor.run()
 
 
-reactor.run()
+main()
