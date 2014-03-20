@@ -2,7 +2,7 @@ from twisted.internet import reactor
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
 
-from connection import GolemConnection
+from connectionstate import ConnectionState
 from peer import PeerSession
 
 class GolemServerFactory(Factory):
@@ -24,6 +24,7 @@ class P2PServerInterface:
 class P2PServer(P2PServerInterface):
     def __init__(self, clientVerssion, startPort, endPort, publicKey, seedHost, seedHostPort):
         P2PServerInterface.__init__(self)
+
         self.clientVersion = clientVerssion
         self.startPort = startPort
         self.endPort = endPort
@@ -57,7 +58,7 @@ class P2PServer(P2PServerInterface):
     def connect(self, address, port):
         print "Connecting to host {} : {}".format(address ,port)
         endpoint = TCP4ClientEndpoint(reactor, address, port)
-        connection = GolemConnection(self);
+        connection = ConnectionState(self);
         d = connectProtocol(endpoint, connection)
         d.addErrback(self.__connectionFailure)
 
@@ -81,7 +82,7 @@ class P2PServer(P2PServerInterface):
                 del self.peers[p]
 
     def __connectionFailure(self, conn):
-        assert isinstance(conn, GolemConnection)
+        assert isinstance(conn, ConnectionState)
         p = conn.transport.getPeer()
         print "Connection to peer: {} : {} failure.".format(p.host, p.port)
 

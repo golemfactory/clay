@@ -5,72 +5,68 @@ import uuid
 
 GOLEM_CFG_INI_FILENAME = "golem_test_config.ini"
 
+class ConfigEntry:
+
+    def __init__( self, key, value ):
+        self._key = key
+        self._value = value
+
+    def key( self ):
+        return self._key
+
+    def value( self ):
+        return self._value
+
+    def setKey( self, k ):
+        self._key = k
+
+    def setValue( self, v ):
+        self._value = v
+
 class DefaultConfig:
+
 
     MAIN_SECTION_STR        = "GOLEM CONFIG"
     #DEFAULT_NODE_TYPE
 
-    DEFAULT_OPTIMAL_PEER_NUM    = 10
-    DEFAULT_START_PORT          = 40102
-    DEFAULT_END_PORT            = 60102
-    DEFAULT_SEED_HOST           = ""
-    DEFAULT_SEED_HOST_PORT      = 0
-    DEFAULT_SEND_PINGS          = 0
-    DEFAULT_PINGS_INTERVAL      = 0.0
-    DEFAULT_UUID                = u""
-
-    OPTIMAL_PEER_NUM_STR    = "optimal peer num"
-    START_PORT_STR          = "start port"
-    END_PORT_STR            = "end port"
-    SEED_HOST_STR           = "seed host"
-    SEED_HOST_PORT_STR      = "seed host port"
-    SEND_PINGS_STR          = "send pings"
-    PINGS_INTERVAL_STR      = "pigns interval"
-    UUID_STR                = "client clientUuid"
-
     def __init__(self, iniFile = GOLEM_CFG_INI_FILENAME):
         
-        self.optimalPeerNum = DefaultConfig.DEFAULT_OPTIMAL_PEER_NUM
-        self.startPort      = DefaultConfig.DEFAULT_START_PORT
-        self.endPort        = DefaultConfig.DEFAULT_END_PORT
-        self.seedHost       = DefaultConfig.DEFAULT_SEED_HOST
-        self.seedHostPort   = DefaultConfig.DEFAULT_SEED_HOST_PORT
-        self.sendPings      = DefaultConfig.DEFAULT_SEND_PINGS
-        self.pingsInterval  = DefaultConfig.DEFAULT_PINGS_INTERVAL
-        self.clientUuid     = DefaultConfig.DEFAULT_UUID
+        self.optimalPeerNum = ConfigEntry( "optimal peer num",  10 )
+        self.startPort      = ConfigEntry( "start port",        40102 )
+        self.endPort        = ConfigEntry( "end port",          60102 )
+        self.seedHost       = ConfigEntry( "seed host",         "" )
+        self.seedHostPort   = ConfigEntry( "seed host port",    0 )
+        self.sendPings      = ConfigEntry( "send pings",        0 )
+        self.pingsInterval  = ConfigEntry( "pigns interval",    0 )
+        self.clientUuid     = ConfigEntry( "client clientUuid", u"" )
 
         print "Reading config from file {}".format( iniFile ), 
 
         try:
             cfg = ConfigParser.ConfigParser()
+
             cfg.read( iniFile )
             
-            optimalPeerNum  = int( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.OPTIMAL_PEER_NUM_STR ) )
-            startPort       = int( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.START_PORT_STR ) )
-            endPort         = int( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.END_PORT_STR ) )
-            seedHost        = cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEED_HOST_STR )
-            seedHostPort    = int( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEED_HOST_PORT_STR ) )
-            sendPings       = int( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEND_PINGS_STR ) )
-            pingsInterval   = float( cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.PINGS_INTERVAL_STR ) )
-            clientUuid      = cfg.get( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.UUID_STR )
-
-            if len( clientUuid ) == 0:
-                clientUuid = uuid.uuid1().get_hex()
-
-            self.optimalPeerNum = optimalPeerNum 
-            self.startPort      = startPort      
-            self.endPort        = endPort        
-            self.seedHost       = seedHost       
-            self.seedHostPort   = seedHostPort
-            self.sendPings      = sendPings
-            self.pingsInterval  = pingsInterval
-            self.clientUuid     = clientUuid
+            self.optimalPeerNum.setValue    ( int(   self.__readOption( cfg, self.optimalPeerNum ) ) )
+            self.startPort.setValue         ( int(   self.__readOption( cfg, self.startPort ) ) )
+            self.endPort.setValue           ( int(   self.__readOption( cfg, self.endPort ) ) )
+            self.seedHost.setValue          (        self.__readOption( cfg, self.seedHost ) )
+            self.seedHostPort.setValue      ( int(   self.__readOption( cfg, self.seedHostPort ) ) )
+            self.sendPings.setValue         ( int (  self.__readOption( cfg, self.sendPings ) ) )
+            self.pingsInterval.setValue     ( float( self.__readOption( cfg, self.pingsInterval ) ) )
+            self.clientUuid.setValue        (        self.__readOption( cfg, self.clientUuid ) )
+                                                          
+            if len( self.clientUuid.value() ) == 0:
+                self.clientUuid.setValue( uuid.uuid1().get_hex() )
 
             print " ... successfully"
 
         except Exception as ex:
             print " ... failed with exception {}".format( ex )
             print "Trying to write default values to config file (keeping old data in bak file)"
+
+            if len( self.clientUuid.value() ) == 0:
+                self.clientUuid.setValue( uuid.uuid1().get_hex() )
 
             if os.path.isfile( iniFile ):
                 shutil.copy( iniFile, iniFile + ".bak" )
@@ -81,24 +77,24 @@ class DefaultConfig:
 
             cfg.add_section( DefaultConfig.MAIN_SECTION_STR )
 
-            cfg.set( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.OPTIMAL_PEER_NUM_STR, self.optimalPeerNum )
-            cfg.set( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.START_PORT_STR, self.startPort )
-            cfg.set( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.END_PORT_STR, self.endPort )
-            cfg.set( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEED_HOST_STR, self.seedHost )
-            cfg.set( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEED_HOST_PORT_STR, self.seedHostPort )
-            cfg.set( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.SEND_PINGS_STR, self.sendPings )
-            cfg.set( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.PINGS_INTERVAL_STR, self.pingsInterval )
-            cfg.set( DefaultConfig.MAIN_SECTION_STR, DefaultConfig.UUID_STR, uuid.uuid1().get_hex() )
+            self.__writeOption( cfg, self.optimalPeerNum )
+            self.__writeOption( cfg, self.startPort )
+            self.__writeOption( cfg, self.endPort )
+            self.__writeOption( cfg, self.seedHost )
+            self.__writeOption( cfg, self.seedHostPort )
+            self.__writeOption( cfg, self.sendPings )
+            self.__writeOption( cfg, self.pingsInterval )
+            self.__writeOption( cfg, self.clientUuid )
 
             cfg.write( cfgfile )
             
             cfgfile.close()
     
     def getOptimalNumberOfPeers( self ):
-        return self.optimalPeerNum
+        return self.optimalPeerNum.value()
 
     def getStartPort( self ):
-        return self.startPort
+        return self.startPort.value()
 
     def getEndPort( self ):
         return self.endPort
@@ -118,6 +114,11 @@ class DefaultConfig:
     def getClientUuid( self ):
         return self.clientUuid
 
+    def __readOption( self, cfg, cfgOption ):
+        return cfg.get( DefaultConfig.MAIN_SECTION_STR, cfgOption.key() )
+
+    def __writeOption( self, cfg, cfgOption ):
+        return cfg.set( DefaultConfig.MAIN_SECTION_STR, cfgOption.key(), cfgOption.value() )
 
     def __str__( self ):
         rs = "DefaultConfig\n"

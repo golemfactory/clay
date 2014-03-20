@@ -2,7 +2,7 @@ from twisted.internet.protocol import Protocol
 from message import Message, MessageHello, MessagePing, MessagePong
 from databuffer import DataBuffer
 
-class GolemConnection(Protocol):
+class ConnectionState(Protocol):
 
     def __init__(self, server):
         self.server = server
@@ -15,7 +15,7 @@ class GolemConnection(Protocol):
 
     def sendMessage(self, msg):
         if not self.opened:
-            print "Connection is not open. Cannot send"
+            print "sendMessage failed - connection closed."
             return False
         db = DataBuffer()
         db.appendLenPrefixedString( msg )
@@ -44,9 +44,7 @@ class GolemConnection(Protocol):
             assert False
 
     def connectionLost(self, reason):
-        print "LOST CONNECTION"
         self.opened = False
-        print "LOST CONNECTION"
 
     def close(self):
         self.transport.loseConnection()
