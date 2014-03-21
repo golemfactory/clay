@@ -1,0 +1,59 @@
+
+
+MiniLight 1.6 Python
+======================================================================
+
+
+Harrison Ainsworth / HXA7241 and Juraj Sukop : 2007-2008, 2013.  
+http://www.hxa.name/minilight
+
+2013-05-04
+
+
+
+
+Contents
+--------
+
+* Description
+* Usage
+* Acknowledgements
+
+
+
+
+Description
+-----------
+
+This Python translation of MiniLight is a guest contribution by Juraj Sukop.
+
+MiniLight is a minimal global illumination renderer. See the main MiniLight
+readme for a general description.
+
+
+
+
+Usage
+-----
+
+Requirements:
+* Python 2.5
+
+Installation:
+1. extract/copy the files to somewhere
+
+Run:
+   python minilight.py cornellbox.ml.txt
+
+
+
+
+Acknowledgements
+----------------
+
+### implementations ###
+
+* Python 2.5.1 and 2.6.1  
+  http://www.python.org/
+* PyPy 2.0 beta1  
+  http://pypy.org/

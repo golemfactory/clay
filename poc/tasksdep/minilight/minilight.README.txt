@@ -1,0 +1,238 @@
+
+
+MiniLight 1.6
+======================================================================
+
+
+Harrison Ainsworth / HXA7241 : 2006-2013  
+http://www.hxa.name/minilight
+
+2013-05-04
+2009-06-14
+
+
+
+
+Contents
+--------
+
+* Description
+* Usage
+* Acknowledgements
+* Appendix
+
+
+
+
+Description
+-----------
+
+* Introduction
+* Features
+
+
+### Introduction ###
+
+MiniLight is a minimal global illumination renderer. It is primarily an exercise
+in simplicity. Someone asked me how to develop a renderer in three months. It
+seemed not nearly enough time. But then I began to think how small such a
+program could be, whilst still being a complete physically based simulation with
+a clear, well-formed design . . .
+
+It is a command-line application. It reads a simple text model file and writes a
+PPM image file. Supported platforms include Mac, Linux, and Windows.
+
+Full source code is provided under a permissive license. There are various
+translations, all of about ten classes/modules. The design follows one for a
+full-scale renderer, and an engineering design description document is included.
+
+See the translation-specific readmes for installation and build information.
+
+
+### Features ###
+
+* Monte-carlo path-tracing transport
+* Emitter sampling
+* Progressive refinement
+* RGB light
+* Diffuse materials
+* Triangle modelling primitives
+* Octree spatial index
+* Pin-hole 'lens'
+* Ward linear tone-mapping
+
+
+
+
+Usage
+-----
+
+* Running
+* Model format
+
+
+### Running ###
+
+When running it, just supply a model file name, e.g.:
+
+   minilight modelFilePathName
+
+Errors in a model file may or may not be reported, and then not very clearly.
+
+During rendering, the image so far is automatically saved at each power-of-two
+iteration. (Effective refinement rate is logarithmic.)
+
+To interrupt a render, press ctrl-c. (Preferably not on a power-of-two
+iteration -- since that would have a small chance of corrupting the saved
+image.)
+
+The C translation can alternatively output HDRI images as Ward's RGBE/Radiance
+format: to do so, supply the command-line switch -hdri .
+
+For built-in help:
+
+   minilight {-?|--help}
+
+
+### Model format ###
+
+The model file format is:
+
+   #MiniLight
+
+   iterations
+
+   imagewidth imageheight
+   viewposition viewdirection viewangle
+
+   skyemission groundreflection
+
+   trivertex0 trivertex1 trivertex2 reflectivity emitivity
+   trivertex0 trivertex1 trivertex2 reflectivity emitivity
+   ...
+
+- where iterations and image values are integers, viewangle is a real, and all
+other values are three parenthised reals. The file must end with a newline.
+For example:
+
+   #MiniLight
+
+   100
+
+   200 150
+   (0 0.75 -2) (0 0 1) 45
+
+   (3626 5572 5802) (0.1 0.09 0.07)
+
+   (0 0 0) (0 1 0) (1 1 0)  (0.7 0.7 0.7) (0 0 0)
+
+Other model details:
+
+* World axes are: X positive rightwards, Y positive upwards, Z positive
+forwards.
+* Triangle front face has clock-wise vertexes.
+* Triangles are reflective (therefore visible) on both faces, but emissive on
+the front face only.
+
+
+
+
+Acknowledgements
+----------------
+
+* Favourite rendering books
+* Reused code/algorithms/equations
+* Image file format
+* Tools
+
+
+### Favourite rendering books ###
+
+* 'Principles Of Digital Image Synthesis';  
+  Andrew Glassner;  
+  1995.  
+  1-55860-276-3
+* 'Realistic Image Synthesis Using Photon Mapping';  
+  Henrik Wann Jensen;  
+  2001.  
+  1-56881-147-0
+* 'Global Illumination Compendium';  
+  Philip Dutre;  
+  2003.  
+  http://www.cs.kuleuven.ac.be/~phil/GI/
+
+
+### Reused code/algorithms/equations ###
+
+* 'Fast, Minimum Storage Ray-Triangle Intersection';  
+  Moller, Trumbore;  
+  1997.  
+  (Journal of Graphics Tools, v2 n1 p21)  
+  http://www.acm.org/jgt/papers/MollerTrumbore97/
+* 'A Contrast Based Scalefactor For Luminance Display';  
+  Greg Ward/Larson;  
+  1994.  
+  (Graphics Gems 4, AP)  
+  0123361559
+* 'Maximally Equidistributed Combined Tausworthe Generators';  
+  L'Ecuyer;  
+  1996.  
+  http://www.iro.umontreal.ca/~lecuyer/myftp/papers/tausme2.ps
+  http://www.iro.umontreal.ca/~simardr/rng/lfsr113.c
+* 'Conversion of High-Period Random Numbers to Floating Point';
+  Doornik;  
+  2006.  
+  http://www.doornik.com/research/randomdouble.pdf
+* 'The Solid Angle of a Plane Triangle';  
+  Oosterom, Strackee;  
+  1983.  
+  (IEEE Transactions on Biomedical Engineering, Vol. BME-30, No. 2.)
+
+
+### Image file format ###
+
+* PPM image format  
+  http://netpbm.sourceforge.net/doc/ppm.html
+* RGBE image format  
+  http://radsite.lbl.gov/radiance/refer/filefmts.pdf  
+  'Real Pixels';  
+  Greg Ward/Larson;  
+  1991.  
+  (Graphics Gems 2, AP)  
+  0120644819
+
+
+### Tools ###
+
+* Vim text editor  
+  http://www.vim.org/
+* various GNU things
+
+
+
+
+Appendix
+--------
+
+* Emitter values
+
+
+### Emitter values ###
+
+Here are the emitter values for the cornell box models:
+
+* morning
+   * sky:  8000 K,   5000 cd/m^2 (4532 4712 5756)
+* noon
+   * sun:  5400 K, 1*10^9 cd/m^2 (1177902548 993796380 828301072)
+   * sky: 10000 K,  10000 cd/m^2 (8068 9060 12872)
+* evening
+   * sun:  2000 K, 5*10^5 cd/m^2 (1182965 313131 3904)
+   * sky:  5000 K,    125 cd/m^2 (156 125 94)
+   * lamp: equal-energy white, 1000 cd/m^2
+* night
+   * sky:  8000 K,    0.1 cd/m^2 (0.0906 0.0942 0.1151)
+   * lamp: equal-energy white, 1000 cd/m^2
+
+The sun has a diameter of 1.392 x 10^9 m, and distance of 149.6 x 10^9 m. (It is
+just a square though.)
