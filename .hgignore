@@ -2,3 +2,6 @@ syntax: glob
 *.pyc
 *.suo
 *.ini
+*.orig
+*.bak
+*.ppm
