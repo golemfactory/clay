@@ -1,0 +1,445 @@
+
+MiniLight Renderer Development Description
+==========================================
+
+Version 1.6
+
+
+### Harrison Ainsworth ###
+
+<http://www.hxa.name/minilight>  
+hxa7241+minilight *at* googlemail *dot* com
+
+2013-05-04
+2007-01-08
+
+
+### Document Format ###
+
+This document follows the format in:
+http://www.hxa.name/articles/content/usdp-distilled-documentation_hxa7241_2005.html
+updated according to:
+http://www.hxa.name/articles/content/building-model-for-software_hxa7241_2009.html
+
+
+
+
+Contents
+--------
+
+* Proposition
+* Architecture
+* Algorithmic model
+* Analysis
+* Design
+* Implementation
+* Test
+* Plan
+* References
+* Time
+
+
+
+
+Proposition
+-----------
+
+### What And Why ###
+
+Develop the simplest possible global illumination renderer. Not really to be
+useful, but as a development challenge. Could be a benchmark and basis for
+experimentation.
+
+
+### How ###
+
+Restrict to:
+
+* Diffuse materials
+* RGB color
+* Path-tracing
+* Emitter sampling
+* Random stochastic generator
+* Triangles
+* Pin-hole 'lens'
+* Ward linear tone-mapping
+* PPM images
+
+Being:
+
+* C++
+* command-line package
+* Windows executable
+* Linux executable
+
+It should be less than 2000 lines, and writeable in about 1 month.
+
+
+### Aims ###
+
+* simple as possible
+* well-structured, clear code
+
+
+
+
+Architecture
+------------
+
+[requirements as use cases and features, plus a high-level view]
+[Architecture is details of the Proposition's 'What' -- the overall external
+appearance, usage, and functionality]
+
+There is only one use case. It follows basic command-line tool form: read a
+file, process it, output a file.
+
+
+### Use Case ###
+
+(actor - user)
+1. run program, input text command file
+2. (maybe read output error message, then repeat from first step)
+3. receive image file (PPM format)
+
+
+### Other Features ###
+
+command-line switches:
+* image file pathname
+* model file pathname
+
+model file format:
+* text
+
+
+### Deployment ###
+
+Command-line program:
+* in:  command switches, model text file
+* out: RGB image in PPM format
+
+Platforms:
+* Mac
+* Linux
+* Windows
+
+
+
+
+Algorithmic model
+-----------------
+
+[main subject model, computation mechanics principle]
+
+The simplest method of global illumination is pure monte-carlo path tracing. The
+camera samples the image plane with many independent rays. Each ray is a single
+chain of ray-steps between reflections. The chain is built recursively, each
+step returning the emission at the reflection point plus the value of the next
+recursion.
+
+But this is too slow for small emitters and therefore indoor scenes. It must be
+augmented with emitter sampling: Each node sends a sample ray to an emitter
+position. Local emission is no longer included.
+
+Sampling is done with an ordinary random generator. This allows the rendering to
+be an indefinite progressive refinement. The reflection cosine-weighting is done
+by importance sampling, and path termination with russian roulette. The image
+sampling is stratified by pixels.
+
+The scene is an array of triangles. Each has two quality attributes:
+reflectivity and emitivity. Ray intersection is done exhaustively, choosing the
+nearest. The model file format is one line per triangle with a header specifying
+the view and image size.
+
+
+
+
+Analysis
+--------
+
+[packages and dependencies, main modules -- disregarding implementation]
+[Analysis and the following sections are all details of the Proposition's 'How']
+
+The packages are the same as for a full-scale renderer. The top level divides
+into application-specific, and general. The application-specific part is divided
+into reasonable parts. In this simplified version each package has only one
+module (except modelling, with three).
+
+
+### Packages ###
+
+* main
+   * control
+   * rasterization
+   * illumination
+   * interaction
+   * modelling
+   * imaging
+* non-project-specific
+   * graphics
+   * general
+
+
+### Dependencies ###
+
+* control
+   * rasterization
+   * modelling
+   * imaging
+* rasterization
+   * illumination
+   * modelling
+   * imaging
+* illumination
+   * modelling
+   * interaction
+* interaction
+   * modelling
+* modelling
+* imaging
+
+* all
+   * general
+   * graphics
+      * general
+
+
+### Modules/Classes ###
+
+* main
+   * control
+      * MiniLight
+   * rasterization
+      * Camera
+   * illumination
+      * RayTracer
+   * interaction
+      * SurfacePoint
+   * modelling
+      * Scene
+      * SpatialIndex
+      * Triangle
+   * imaging
+      * Image
+
+* graphics
+   * Vector3f
+* general
+   * RandomMwc
+   * (any others needed)
+
+
+
+
+Design
+------
+
+[reused components, subsystems, main modules and interfaces, use-case
+realisation]
+
+All modules/classes are constant, except for Image.
+
+
+### Components/Libraries Reused ###
+
+* Random number generator from:  
+ 'Maximally Equidistributed Combined Tausworthe Generators'; L'Ecuyer; 1996.
+  * http://www.iro.umontreal.ca/~lecuyer/myftp/papers/tausme2.ps
+  * http://www.iro.umontreal.ca/~simardr/rng/lfsr113.c
+* Triangle intersector from:  
+ 'Fast, Minimum Storage Ray-Triangle Intersection'; Moller, Trumbore; 1997.
+  (Journal of Graphics Tools, v2 n1 p21)
+  * http://www.acm.org/jgt/papers/MollerTrumbore97/
+* some HXA7241 code
+
+
+### Module/Class Interfaces ###
+
+* Camera
+   * construct with file part (view definition)
+   * get frame of render with Scene and Image
+
+* RayTracer
+   * construct with Scene
+   * get radiance value with ray
+
+* SurfacePoint
+   * construct with triangle and position
+   * get emission with ray
+   * get reflection with in and out rays and in radiance
+   * get next ray step with ray
+
+* Scene
+   * construct with file part (object definitions)
+   * get intersection with ray
+   * get emitter
+   * get default emission
+
+* SpatialIndex
+   * construct with triangles and eye position
+   * get intersection with ray
+
+* Triangle
+   * construct with file part (coords and attributes)
+   * get intersection with ray
+   * get sample point
+   * get geometry and qualities
+
+* Image
+   * construct with file part (image size)
+   * set pixel with coords and radiance value
+   * get formatted with array or file
+
+
+### Sequences ###
+
+1. open model file
+2. create Scene with model file
+3. create Image with model file
+4. create Camera with model file
+5. do progressive render loop
+   1. get frame of render from Camera
+      1. do image sampling loop
+         1. make ray direction
+         2. get light value from RayTracer
+            1. get nearest intersection from Scene
+               1. get nearest intersection from SpatialIndex
+            2. get inward light from emitter sample
+            3. get inward light from next path step, by recursing
+            4. return total reflected light
+         3. set value to Image
+   2. get formatted from Image
+      1. apply simple tone-mapping
+   3. save formatted
+6. exit
+
+
+
+
+Implementation
+--------------
+
+Just straightforward, portable C++.
+
+* ISO-98 C++, with exceptions, no templates, no RTTI
+* nothing platform specific
+* no other dependencies
+* tested with GCC and MS compilers
+
+
+
+
+Test
+----
+
+Some simple scenes which can be compared with manual calculation. -- Various
+permutations of triangle pairs emitting and reflecting each other at different
+orientations and view angles.
+
+
+
+
+Plan
+----
+
+### Estimate ###
+
+* total size: 1000 lines (discluding reuse)
+* rate: 3 minutes per line
+* time: 50 hours ~ 13 days ~ 3 weeks ~ 0.6 months
+
+
+### Construction Order ###
+
+1. control
+2. imaging
+3. rasterization
+4. illumination
+5. interaction
+6. modelling
+
+
+### Possible Feature Additions ###
+
+* Multi-threading for parallel tracing...
+   * would be quite simple
+   * has platform dependencies
+
+
+
+
+References
+----------
+
+* 'Principles Of Digital Image Synthesis';  
+  Andrew Glassner;  
+  1995.  
+  1-55860-276-3
+* 'Realistic Image Synthesis Using Photon Mapping';  
+  Henrik Wann Jensen;  
+  2001.  
+  1-56881-147-0
+* 'Global Illumination Compendium';  
+  Philip Dutre;  
+  2003.  
+  http://www.cs.kuleuven.ac.be/~phil/GI/
+* 'Fast, Minimum Storage Ray-Triangle Intersection';  
+  Moller, Trumbore;  
+  1997.  
+  (Journal of Graphics Tools, v2 n1 p21)  
+  http://www.acm.org/jgt/papers/MollerTrumbore97/
+* 'A Contrast Based Scalefactor For Luminance Display';  
+  Greg Ward/Larson;  
+  1994.  
+  (Graphics Gems 4, AP)  
+  0123361559
+* 'Maximally Equidistributed Combined Tausworthe Generators';  
+  L'Ecuyer;  
+  1996.  
+  http://www.iro.umontreal.ca/~lecuyer/myftp/papers/tausme2.ps
+  http://www.iro.umontreal.ca/~simardr/rng/lfsr113.c
+* 'Conversion of High-Period Random Numbers to Floating Point';
+  Doornik;  
+  2006.  
+  http://www.doornik.com/research/randomdouble.pdf
+* 'The Solid Angle of a Plane Triangle';  
+  Oosterom, Strackee;  
+  1983.  
+  (IEEE Transactions on Biomedical Engineering, Vol. BME-30, No. 2.)
+* PPM image format;  
+  <http://netpbm.sourceforge.net/doc/ppm.html>
+* RGBE image format;  
+  <http://radsite.lbl.gov/radiance/refer/filefmts.pdf>  
+  'Real Pixels';  
+  Greg Ward/Larson;  
+  1991.  
+  (Graphics Gems 2, AP)  
+  0120644819
+
+
+
+
+Time
+----
+
+### inception and elaboration ###
+
+0.8 hour  
+1.0 hour  
+1.0 hour  
+0.8 hour  
+1.8 hour  
+0.2 hour  
+0.3 hour  
+0.1 hour  
+0.5 hour  
+
+
+### re-presentation ###
+
+1.4 hour
+
+
+### total ###
+
+7.9 hour
