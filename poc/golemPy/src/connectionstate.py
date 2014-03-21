@@ -45,6 +45,7 @@ class ConnectionState(Protocol):
 
     def connectionLost(self, reason):
         self.opened = False
+        self.peer.dropped()
 
     def close(self):
         self.transport.loseConnection()
