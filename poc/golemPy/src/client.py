@@ -40,6 +40,9 @@ class Client:
             print "Trying to connect when server is not started yet"
 
     def __doWork(self):
-        if self.sendPings:
-            self.p2pserver.pingPeers( self.pingsInterval )
+        if self.p2pserver:
+            if self.sendPings:
+                self.p2pserver.pingPeers( self.pingsInterval )
+
+            self.p2pserver.
             

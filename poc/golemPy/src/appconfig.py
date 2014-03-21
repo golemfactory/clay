@@ -97,22 +97,22 @@ class DefaultConfig:
         return self.startPort.value()
 
     def getEndPort( self ):
-        return self.endPort
+        return self.endPort.value()
 
     def getSeedHost( self ):
-        return self.seedHost
+        return self.seedHost.value()
 
     def getSeedHostPort( self ):
-        return self.seedHostPort
+        return self.seedHostPort.value()
 
     def getSendPings( self ):
-        return self.sendPings
+        return self.sendPings.value()
 
     def getPingsInterval( self ):
-        return self.pingsInterval
+        return self.pingsInterval.value()
 
     def getClientUuid( self ):
-        return self.clientUuid
+        return self.clientUuid.value()
 
     def __readOption( self, cfg, cfgOption ):
         return cfg.get( DefaultConfig.MAIN_SECTION_STR, cfgOption.key() )

@@ -78,10 +78,10 @@ class MessageHello(Message):
 
     Type = 0
 
-    PROTO_ID_STR    = "protoId"
-    CLI_VER_STR     = "clientVer"
-    PORT_STR        = "port"
-    CLIENT_UID_STR  = "clientUID"
+    PROTO_ID_STR    = u"protoId"
+    CLI_VER_STR     = u"clientVer"
+    PORT_STR        = u"port"
+    CLIENT_UID_STR  = u"clientUID"
 
     def __init__( self, port = 0, clientUID = None, protoId = 0, cliVer = 0, dictRepr = None ):
         Message.__init__( self, MessageHello.Type )
@@ -123,7 +123,7 @@ class MessagePong(Message):
 
     Type = 2
 
-    PONG_STR = "PONG"
+    PONG_STR = u"PONG"
 
     def __init__( self, dictRepr = None ):
         Message.__init__(self, MessagePong.Type)
@@ -138,7 +138,7 @@ class MessageDisconnect(Message):
 
     Type = 3
 
-    DISCONNECT_REASON_STR = "DISCONNECT_REASON"
+    DISCONNECT_REASON_STR = u"DISCONNECT_REASON"
 
     def __init__( self, reason = -1, dictRepr = None ):
         Message.__init__( self, MessageDisconnect.Type )
@@ -150,6 +150,22 @@ class MessageDisconnect(Message):
 
     def dictRepr( self ):
         return { MessageDisconnect.DISCONNECT_REASON_STR : self.reason }
+
+class MessageGetPeers( Message ):
+
+    Type = 4
+
+    GET_PEERS_STR = u"GET_PEERS"
+
+    def __init__( self, dictRepr = None ):
+        Message.__init__(self, MessageGetPeers.Type)
+        
+        if dictRepr:
+            assert dictRepr[ 0 ] == MessageGetPeers.GET_PEERS_STR
+
+    def dictRepr(self):
+        return [ MessageGetPeers.GET_PEERS_STR ]
+
 
 if __name__ == "__main__":
 

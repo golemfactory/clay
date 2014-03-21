@@ -4,6 +4,7 @@ from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, c
 
 from connectionstate import ConnectionState
 from peer import PeerSession
+import time
 
 class GolemServerFactory(Factory):
 
@@ -12,7 +13,7 @@ class GolemServerFactory(Factory):
 
     def buildProtocol(self, addr):
         print "Protocol build for {}".format(addr)
-        return GolemConnection(self.p2pserver)
+        return ConnectionState(self.p2pserver)
 
 class P2PServerInterface:
     def __init__(self):
@@ -35,6 +36,7 @@ class P2PServer(P2PServerInterface):
         self.seedHostPort = seedHostPort
         self.startAccepting()
         self.publicKey = publicKey
+        self.lastGetPeersRequest = time.time()
 
     def startAccepting(self):
         print "Starting network service"
@@ -80,6 +82,11 @@ class P2PServer(P2PServerInterface):
         for p in self.peers.keys():
             if self.peers[p] == peerSession:
                 del self.peers[p]
+
+    def startSendingGetPeers( self ):
+
+        for p in self.peers.values():
+            p.send( MessageGetPeers() )
 
     def __connectionFailure(self, conn):
         assert isinstance(conn, ConnectionState)

@@ -34,11 +34,11 @@
   <ItemGroup>
     <Compile Include="src\client.py" />
     <Compile Include="src\appconfig.py" />
+    <Compile Include="src\connectionstate.py" />
     <Compile Include="src\message.py" />
     <Compile Include="src\databuffer.py" />
     <Compile Include="src\p2pserver.py" />
     <Compile Include="src\peer.py" />
-    <Compile Include="src\connection.py" />
     <Compile Include="src\protomessages.py" />
     <Compile Include="src\test_golem.py" />
     <Compile Include="src\simplehash.py" />
