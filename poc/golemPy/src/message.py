@@ -55,6 +55,10 @@ class Message:
             return MessagePong( dictRepr = dRepr )
         elif msgType == MessageDisconnect.Type:
             return MessageDisconnect( dictRepr = dRepr )
+        elif msgType == MessageGetPeers.Type:
+            return MessageGetPeers( dictRepr = dRepr )
+        elif msgType == MessagePeers.Type:
+            return MessagePeers( dictRepr = dRepr )
 
         return None
 
@@ -166,6 +170,22 @@ class MessageGetPeers( Message ):
     def dictRepr(self):
         return [ MessageGetPeers.GET_PEERS_STR ]
 
+class MessagePeers( Message ):
+
+    Type = 5
+
+    PEERS_STR = u"PEERS"
+
+    def __init__( self, peersArray = [], dictRepr = None ):
+        Message.__init__(self, MessagePeers.Type)
+        
+        self.peersArray = peersArray
+
+        if dictRepr:
+            self.peersArray = dictRepr[ MessagePeers.PEERS_STR ]
+
+    def dictRepr(self):
+        return { MessagePeers.PEERS_STR : self.peersArray }
 
 if __name__ == "__main__":
 

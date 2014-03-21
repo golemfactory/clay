@@ -56,8 +56,8 @@ class DefaultConfig:
             self.pingsInterval.setValue     ( float( self.__readOption( cfg, self.pingsInterval ) ) )
             self.clientUuid.setValue        (        self.__readOption( cfg, self.clientUuid ) )
                                                           
-            if len( self.clientUuid.value() ) == 0:
-                self.clientUuid.setValue( uuid.uuid1().get_hex() )
+            #if len( self.clientUuid.value() ) == 0:
+            self.clientUuid.setValue( uuid.uuid1().get_hex() )
 
             print " ... successfully"
 

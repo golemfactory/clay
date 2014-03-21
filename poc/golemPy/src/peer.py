@@ -1,4 +1,4 @@
-from message import MessageHello, MessagePing, MessagePong, MessageDisconnect
+from message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers
 import time
 
 class PeerSessionInterface:
@@ -74,7 +74,7 @@ class PeerSession(PeerSessionInterface):
 
         localtime   = time.localtime()
         timeString  = time.strftime("%H:%M:%S", localtime)
-        print "{} at {} | ".format( msg.serialize(), timeString ),
+        print "{} at {}".format( msg.serialize(), timeString )
 
         if type == MessagePing.Type:
             self.sendPong()
@@ -98,6 +98,18 @@ class PeerSession(PeerSessionInterface):
             print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)
             self.sendPing()
 
+        elif type == MessageGetPeers.Type:
+            self.sendPeers()
+
+        elif type == MessagePeers.Type:
+            peersInfo = msg.peersArray
+            for pi in peersInfo:
+                if pi[ "id" ] not in self.server.incommingPeers and pi[ "id" ] not in self.server.peers and pi[ "id" ] != self.server.publicKey:
+                    print "add peer to incoming {} {} {}".format( pi[ "id" ], pi[ "address" ], pi[ "port" ] )
+                    self.server.incommingPeers[ pi[ "id" ] ] = { "address" : pi[ "address" ], "port" : pi[ "port" ], "conn_trials" : 0 }
+                    self.server.freePeers.append( pi[ "id" ] )
+                    print self.server.incommingPeers
+
     # private
        
     def sendHello(self):
@@ -111,6 +123,16 @@ class PeerSession(PeerSessionInterface):
 
     def sendDisconnect(self, reason):
         self.send( MessageDisconnect( reason ) )
+
+    def sendGetPeers( self ):
+        self.send( MessageGetPeers() )
+
+    def sendPeers( self ):
+        peersInfo = []
+        for p in self.server.peers.values():
+            peersInfo.append( { "address" : p.address, "port" : p.port, "id" : p.id } )
+        self.send( MessagePeers( peersInfo ) )
+
 
     def send(self, message):
         if not self.server.sendMessage(self.conn, message):
