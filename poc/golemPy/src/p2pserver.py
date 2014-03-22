@@ -44,7 +44,7 @@ class P2PServer(P2PServerInterface):
 
     #############################
     def startAccepting(self):
-        print "Starting network service"
+        print "Enabling network accepting state"
 
         self.__runListenOnce()
 

@@ -8,10 +8,12 @@ import json
 #RELEASE VERSION
 #import pickle
 
+DEFAULT_PROC_FILE = "processes.ctl"
+
 class ProcessService:
 
     #################################
-    def __init__( self, ctlFileName ):
+    def __init__( self, ctlFileName = DEFAULT_PROC_FILE ):
 
         self.maxFileSize = 1024 * 1024
         self.fd = -1
@@ -80,7 +82,6 @@ class ProcessService:
         pids = psutil.pids()
         updatedState = {}
 
-        print "STATE {}".format( self.state )
         for p in self.state:
             if int( p ) in pids:
                 updatedState[ p ] = self.state[ p ]
