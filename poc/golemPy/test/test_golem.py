@@ -1,4 +1,5 @@
 import sys
+import psutil
 sys.path.append('../src/')
 
 from client import Client

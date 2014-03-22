@@ -29,12 +29,15 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="src\" />
+    <Folder Include="src\core\" />
     <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="src\client.py" />
     <Compile Include="src\appconfig.py" />
     <Compile Include="src\connectionstate.py" />
+    <Compile Include="src\core\filelock.py" />
+    <Compile Include="src\core\prochelper.py" />
     <Compile Include="src\message.py" />
     <Compile Include="src\databuffer.py" />
     <Compile Include="src\p2pserver.py" />
