@@ -30,6 +30,7 @@
   <ItemGroup>
     <Folder Include="src\" />
     <Folder Include="src\core\" />
+    <Folder Include="src\vm\" />
     <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>
@@ -45,6 +46,11 @@
     <Compile Include="src\protomessages.py" />
     <Compile Include="src\test_golem.py" />
     <Compile Include="src\simplehash.py" />
+    <Compile Include="src\vm\resource.py" />
+    <Compile Include="src\vm\task.py" />
+    <Compile Include="src\vm\taskdistributor.py" />
+    <Compile Include="src\vm\test.py" />
+    <Compile Include="src\vm\vm.py" />
     <Compile Include="src\__init__.py" />
     <Compile Include="test\test_golem.py" />
     <Compile Include="test\__init__.py" />
