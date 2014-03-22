@@ -33,7 +33,7 @@ class PythonVM( IGolemVM ):
         output = None
         res = self.resources
         code = self.codeResource.read()
-        exec code in { "taskResources" : res, "output" : output }
+        exec code #in { "taskResources" : res, "output" : output }
         assert isinstance( output, IResource )
         return output
 

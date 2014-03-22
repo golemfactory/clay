@@ -1,4 +1,5 @@
 from twisted.internet import task
+from twisted.internet import reactor
 
 from p2pserver import P2PServer
 

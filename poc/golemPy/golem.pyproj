@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>test\test_golem.py</StartupFile>
+    <StartupFile>src\vm\test.py</StartupFile>
     <SearchPath>src</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>

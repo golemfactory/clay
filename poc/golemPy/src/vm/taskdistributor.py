@@ -18,10 +18,11 @@ class TaskDistributor:
 
     ##########################
     def giveTask( self, id ):
-        if id in self.tasks:
+        if id in self.tasks.keys():
             self.lock.acquire( True )
             if self.tasks[ id ][ "status" ] == TSWaiting:
                 self.tasks[ id ][ "status" ] = TSSent
+                self.free.remove( self.tasks[ id ][ "task" ].desc )
                 self.lock.release()
                 return self.tasks[ id ][ "task" ]
             else:
@@ -35,7 +36,7 @@ class TaskDistributor:
     ##########################
     def acceptTask( self, task ):
         id = task.desc.id
-        if id in self.tasks:
+        if id in self.tasks.keys():
             self.lock.acquire( True )
             if self.tasks[ id ][ "status" ] == TSSent:
                 if task.taskResult:
@@ -51,7 +52,8 @@ class TaskDistributor:
 
     ##########################
     def appendTask( self, task ):
-        self.tasks = { task.desc.id : { "task" : task , "status" : TSWaiting } }
+        self.tasks[ task.desc.id ] = { "task" : task , "status" : TSWaiting }
         self.free.append( task.desc )
+        print "Append task {}".format( task.desc.id )
 
 g_taskDistributor = TaskDistributor()
