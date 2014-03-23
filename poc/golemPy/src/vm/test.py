@@ -37,7 +37,7 @@ output = IntResource( 1 )
 def prepareTasks():
     tasks = []
     n = 0
-    while n < 100: 
+    while n < 30: 
         td = TaskDescriptor( n, 5, { "g_start" : n * 100000, "g_end" : ( n + 1 ) * 100000 } )
 
         tasks.append( Task( td, [], PyCodeResource( testTaskScr1 ), 0 ) )
