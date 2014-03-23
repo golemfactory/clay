@@ -21,13 +21,26 @@ def sum( start, end ):
 output = IntResource( sum( g_start, g_end ) )
 """
 
+
+testTaskScr1 = """ 
+from subprocess import call
+from resource import IntResource
+
+def foo():
+    call( ["python", "c:/src/golem/poc/tasksdep/minilight/src/minilight.py", "c:/src/golem/poc/tasksdep/minilight/cornellbox.ml.txt"] )
+
+foo()
+
+output = IntResource( 1 )
+"""
+
 def prepareTasks():
     tasks = []
     n = 0
     while n < 100: 
         td = TaskDescriptor( n, 5, { "g_start" : n * 100000, "g_end" : ( n + 1 ) * 100000 } )
 
-        tasks.append( Task( td, [], PyCodeResource( testTaskScr ), 0 ) )
+        tasks.append( Task( td, [], PyCodeResource( testTaskScr1 ), 0 ) )
         n += 1
 
     return tasks
