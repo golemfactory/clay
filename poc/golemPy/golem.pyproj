@@ -6,7 +6,7 @@
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
     <StartupFile>src\vm\test.py</StartupFile>
-    <SearchPath>src</SearchPath>
+    <SearchPath>src;..\tasksdep\minilight\src</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>golem</Name>

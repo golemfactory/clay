@@ -37,13 +37,13 @@ class Camera(object):
                     self.up = self.view_direction.cross(self.right).unitize()
                 break
 
-    def pixel_accumulated_radiance(self, scene, random, image, x, y, aspect, num_samples):
+    def pixel_accumulated_radiance(self, scene, random, width, height, x, y, aspect, num_samples):
         raytracer = RayTracer(scene)
         acc_radiance = [ 0.0, 0.0, 0.0 ]
 
         for i in range(num_samples):
-            x_coefficient = ((x + random.real64()) * 2.0 / image.width) - 1.0
-            y_coefficient = ((y + random.real64()) * 2.0 / image.height) - 1.0
+            x_coefficient = ((x + random.real64()) * 2.0 / width) - 1.0
+            y_coefficient = ((y + random.real64()) * 2.0 / height) - 1.0
 			
             offset = self.right * x_coefficient + self.up * (y_coefficient * aspect)
 			

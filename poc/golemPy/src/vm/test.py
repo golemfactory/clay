@@ -1,3 +1,6 @@
+import sys
+sys.path.append('../../../tasksdep/minilight/src/')
+
 from vm import PythonVM
 from task import Task, TaskDescriptor
 from resource import PyCodeResource
@@ -34,6 +37,16 @@ foo()
 output = IntResource( 1 )
 """
 
+testTaskScr2 = """ 
+from minilight import render_task
+from resource import IntResource
+
+res = render_task( "c:/src/golem/poc/tasksdep/minilight/cornellbox.ml.txt", startX, startY, width, height )
+
+
+output = IntResource( 1 )
+"""
+
 def prepareTasks():
     tasks = []
     n = 0
@@ -45,6 +58,16 @@ def prepareTasks():
 
     return tasks
 
+def prepareTasks1( width, height ):
+    tasks = []
+    n = 0
+    for n in range(0, height - 1): 
+        td = TaskDescriptor( n, 5, { "startX" : 0 , "startY" : n, "width" : width, "height" : 1 } )
+
+        tasks.append( Task( td, [], PyCodeResource( testTaskScr2 ), 0 ) )
+        n += 1
+
+    return tasks
 
 class TaskPerformer( Thread ):
     def __init__( self, perfIndex ):
@@ -66,7 +89,7 @@ class TaskPerformer( Thread ):
 
 def main():
 
-    tasks = prepareTasks()
+    tasks = prepareTasks1( 1024, 1024 )
     for t in  tasks:
         g_taskDistributor.appendTask( t )
 
