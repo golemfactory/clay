@@ -4,14 +4,11 @@ import fnmatch
 import filelock
 import time
 
-#DEBUG VERSION
-import json
-#RELEASE VERSION
-#import pickle
-
+from simpleserializer import SimpleSerializer
 from simpleenv import SimpleEnv
 
 DEFAULT_PROC_FILE = "node_processes.ctl"
+
 
 class ProcessService:
 
@@ -54,11 +51,11 @@ class ProcessService:
     def __readStateSnapshot( self ):
         os.lseek( self.fd, 0, 0 )
         data = os.read( self.fd, self.maxFileSize )
-        self.state = json.loads( data )
+        self.state = SimpleSerializer.loads( data )
 
     #################################
     def __writeStateSnapshot( self ):
-        data = json.dumps( self.state )
+        data = SimpleSerializer.dumps( self.state )
 
         os.lseek( self.fd, 0, 0 )
 

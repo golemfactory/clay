@@ -1,5 +1,8 @@
+import sys
+sys.path.append('core')
+
 import abc
-import json
+from simpleserializer import SimpleSerializer
 from databuffer import DataBuffer
 
 class Message:
@@ -16,7 +19,7 @@ class Message:
         return self.serializer.readAll()
 
     def serialize( self ):
-        return json.dumps( [ self.type, self.dictRepr() ] )
+        return SimpleSerializer.dumps( [ self.type, self.dictRepr() ] )
 
     def serializeToBuffer( self, db ):
         assert isinstance( db, DataBuffer )
@@ -42,10 +45,10 @@ class Message:
   
     @classmethod
     def deserializeMessage( cls, msg ):
-        jsonRepr = json.loads( msg )
+        msgRepr = SimpleSerializer.loads( msg )
 
-        msgType = jsonRepr[ 0 ]
-        dRepr   = jsonRepr[ 1 ]
+        msgType = msgRepr[ 0 ]
+        dRepr   = msgRepr[ 1 ]
 
         if msgType == MessageHello.Type:
             return MessageHello( dictRepr = dRepr )
