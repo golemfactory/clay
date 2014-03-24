@@ -1,10 +1,14 @@
 import ConfigParser
+
 import os
 import shutil
 import uuid
+import types
+import inspect
 
 GOLEM_CFG_INI_FILENAME = "test_config.ini"
 
+##############################
 ##############################
 class ConfigEntry:
 
@@ -12,6 +16,7 @@ class ConfigEntry:
         self._key = key
         self._value = value
         self._section = section
+        self._valueType = type( value )
 
     def section( self ):
         return self._section
@@ -28,55 +33,112 @@ class ConfigEntry:
     def setValue( self, v ):
         self._value = v
 
+    def setValueFromStr( self, val ):
+        self.setValue( self._valueType( val ) )
+
+    def __str__( self ):
+        return "Section {0._section:7} prop: {0._key:17} -> {0._value:10} {0._valueType}".format( self )
+
+    @classmethod
+    def createProperty( cls, section, key, value, other, propName ):
+        property = ConfigEntry( section, key, value )
+
+        getterName = "get{}".format( propName )
+        setterName = "set{}".format( propName )
+
+        def getProp( _self ):
+            return getattr( _self, propName ).value()
+
+        def setProp( _self, val ):
+            return getattr( _self, propName ).setValue( val )
+
+        def getProperties( _self ):
+            return getattr( _self, '_properties' )
+
+        setattr( other.__class__, propName, property )
+        setattr( other.__class__, getterName, getProp )
+        setattr( other.__class__, setterName, setProp )
+
+        if not hasattr( other.__class__, 'properties' ):
+            setattr( other.__class__, '_properties', [] )
+            setattr( other.__class__, 'properties', getProperties )
+
+        getattr( other.__class__, '_properties' ).append( getattr( other.__class__, propName ) )
+
+
+##############################
+##############################
+class GlobalConfig:
+
+    ##############################
+    def __init__( self, section = "Common" ):
+
+        self._section = section
+
+        ConfigEntry.createProperty( section, "optimal peer num", 10,    self, "OptimalPeerNum" )
+        ConfigEntry.createProperty( section, "start port",       40102, self, "StartPort" )
+        ConfigEntry.createProperty( section, "end port",         60102, self, "EndPort" )
+
+    ##############################
+    def section( self ):
+        return self._section
+
+
+##############################
+##############################
+class NodeConfig:
+
+    ##############################
+    def __init__( self, nodeId ):
+        self._section = "Node {}".format( nodeId )
+
+        ConfigEntry.createProperty( self.section(), "seed host",        "",   self, "SeedHost" )
+        ConfigEntry.createProperty( self.section(), "seed host port",    0,   self, "SeedHostPort")
+        ConfigEntry.createProperty( self.section(), "send pings",        0,   self, "SendPings" )
+        ConfigEntry.createProperty( self.section(), "pigns interval",    0,   self, "PingsInterval" )
+        ConfigEntry.createProperty( self.section(), "client clientUuid", u"", self, "ClientUuid" )
+
+    ##############################
+    def section( self ):
+        return self._section
+
+##############################
 ##############################
 class DefaultConfig:
-
-    MAIN_SECTION_STR        = "GOLEM CONFIG"
-    ENTRY_STR               = "NODE_ENTRY_"
-    #DEFAULT_NODE_TYPE
 
     ##############################
     def __init__(self, localId, iniFile = GOLEM_CFG_INI_FILENAME):
 
-        entrySection = "{}{}".format( DefaultConfig.ENTRY_STR, localId )
-
-        self.optimalPeerNum = ConfigEntry( DefaultConfig.MAIN_SECTION_STR, "optimal peer num",  10 )
-        self.startPort      = ConfigEntry( DefaultConfig.MAIN_SECTION_STR, "start port",        40102 )
-        self.endPort        = ConfigEntry( DefaultConfig.MAIN_SECTION_STR, "end port",          60102 )
-        self.seedHost       = ConfigEntry( entrySection, "seed host",         "" )
-        self.seedHostPort   = ConfigEntry( entrySection, "seed host port",    0 )
-        self.sendPings      = ConfigEntry( entrySection, "send pings",        0 )
-        self.pingsInterval  = ConfigEntry( entrySection, "pigns interval",    0 )
-        self.clientUuid     = ConfigEntry( entrySection, "client clientUuid", u"" )
+        self._globalConfig = GlobalConfig()
+        self._nodeConfig = NodeConfig( localId )
 
         print "Reading config from file {}".format( iniFile ), 
 
-        writeConfig = False
+        writeConfig = True
         cfg = ConfigParser.ConfigParser()
         files = cfg.read( iniFile )
 
         if len( files ) == 1:
-            if entrySection in cfg.sections():
-                assert DefaultConfig.MAIN_SECTION_STR in cfg.sections()
+            if self._nodeConfig.section() in cfg.sections():
+                assert self._globalConfig.section() in cfg.sections()
 
                 self.__readOptions( cfg )
 
-                if len( self.clientUuid.value() ) == 0:
-                    writeConfig = True
+                if len( self._nodeConfig.getClientUuid() ) > 0:
+                    writeConfig = False
             else:
-                cfg.add_section( entrySection )
-                writeConfig = True
+                cfg.add_section( self._nodeConfig.section() )
 
-            print " ... successfully"
+            print "... successfully"
         else:
-            cfg = self.__createFreshConfig( entrySection )
-            writeConfig = True
+            print "... failed"
+            cfg = self.__createFreshConfig()
 
         if writeConfig:
-            print "Writing confing for current entry {} to config file {}".format( entrySection, iniFile )
+            print "Writing confing for {} to {}".format( self.getNodeConfig().section(), iniFile )
 
             print "Generating fresh UUID for current node"
-            self.clientUuid.setValue( uuid.uuid1().get_hex() )
+            self.getNodeConfig().setClientUuid( uuid.uuid1().get_hex() )
 
             self.__writeOptions( cfg )
    
@@ -85,93 +147,67 @@ class DefaultConfig:
             cfgfile.close()
     
     ##############################
-    def getOptimalNumberOfPeers( self ):
-        return self.optimalPeerNum.value()
+    def getGlobalConfig( self ):
+        return self._globalConfig
 
     ##############################
-    def getStartPort( self ):
-        return self.startPort.value()
+    def getNodeConfig( self ):
+        return self._nodeConfig
 
     ##############################
-    def getEndPort( self ):
-        return self.endPort.value()
-
-    ##############################
-    def getSeedHost( self ):
-        return self.seedHost.value()
-
-    ##############################
-    def getSeedHostPort( self ):
-        return self.seedHostPort.value()
-
-    ##############################
-    def getSendPings( self ):
-        return self.sendPings.value()
-
-    ##############################
-    def getPingsInterval( self ):
-        return self.pingsInterval.value()
-
-    ##############################
-    def getClientUuid( self ):
-        return self.clientUuid.value()
-
-    ##############################
-    def __createFreshConfig( self, entrySection ):
+    def __createFreshConfig( self ):
         cfg = ConfigParser.ConfigParser()
-        cfg.add_section( DefaultConfig.MAIN_SECTION_STR )
-        cfg.add_section( entrySection )
+        cfg.add_section( self.getGlobalConfig().section() )
+        cfg.add_section( self.getNodeConfig().section() )
 
         return cfg
 
     ##############################
-    def __readOption( self, cfg, cfgOption ):
-        return cfg.get( cfgOption.section(), cfgOption.key() )
+    def __readOption( self, cfg, property ):
+        return cfg.get( property.section(), property.key() )
 
     ##############################
-    def __writeOption( self, cfg, cfgOption ):
-        return cfg.set( cfgOption.section(), cfgOption.key(), cfgOption.value() )
+    def __writeOption( self, cfg, property ):
+        return cfg.set( property.section(), property.key(), property.value() )
 
     ##############################
     def __readOptions( self, cfg ):
 
-        self.optimalPeerNum.setValue    ( int(   self.__readOption( cfg, self.optimalPeerNum ) ) )
-        self.startPort.setValue         ( int(   self.__readOption( cfg, self.startPort ) ) )
-        self.endPort.setValue           ( int(   self.__readOption( cfg, self.endPort ) ) )
-        self.seedHost.setValue          (        self.__readOption( cfg, self.seedHost ) )
-        self.seedHostPort.setValue      ( int(   self.__readOption( cfg, self.seedHostPort ) ) )
-        self.sendPings.setValue         ( int (  self.__readOption( cfg, self.sendPings ) ) )
-        self.pingsInterval.setValue     ( float( self.__readOption( cfg, self.pingsInterval ) ) )
-        self.clientUuid.setValue        (        self.__readOption( cfg, self.clientUuid ) )
+        for prop in self.getGlobalConfig().properties() + self.getNodeConfig().properties():
+            prop.setValueFromStr( self.__readOption( cfg, prop ) )
 
     ##############################
     def __writeOptions( self, cfg ):
 
-        self.__writeOption( cfg, self.optimalPeerNum )
-        self.__writeOption( cfg, self.startPort )
-        self.__writeOption( cfg, self.endPort )
-        self.__writeOption( cfg, self.seedHost )
-        self.__writeOption( cfg, self.seedHostPort )
-        self.__writeOption( cfg, self.sendPings )
-        self.__writeOption( cfg, self.pingsInterval )
-        self.__writeOption( cfg, self.clientUuid )
+        for prop in self.getGlobalConfig().properties() + self.getNodeConfig().properties():
+            self.__writeOption( cfg, prop )
 
     ##############################
     def __str__( self ):
         rs = "DefaultConfig\n"
-        rs += "{:20} {self.optimalPeerNum}\n".format( "optimalPeerNumb", self = self )
-        rs += "{:20} {self.startPort}\n".format( "startPort", self = self )
-        rs += "{:20} {self.endPort}\n".format( "endPort", self = self )
-        rs += "{:20} {self.seedHost}\n".format( "seedHost", self = self )
-        rs += "{:20} {self.seedHostPort}\n".format( "seedHostPort", self = self )
-        rs += "{:20} {self.sendPings}\n".format( "sendPings", self = self )
-        rs += "{:20} {self.pingsInterval}".format( "pingsInterval", self = self )
-        rs += "{:20} {self.clientUuid}".format( "clientUuid", self = self )
+
+        for prop in self.getGlobalConfig().properties() + self.getNodeConfig().properties():
+            rs += "{}\n".format( str( prop ) )
 
         return rs
 
 if __name__ == "__main__":
 
-    cfg = DefaultConfig( 0, "some_test_cfg.ini" )
-    cfg1 = DefaultConfig( 1, "some_test_cfg.ini" )
-    cfg2 = DefaultConfig( 2, "some_test_cfg.ini" )
+    # get a list of a class's method type attributes
+    def listattr(c):
+        for m in [(n, v) for n, v in inspect.getmembers(c, inspect.ismethod) if isinstance(v,types.MethodType)]:
+            print m[0], m[1]
+
+    c = DefaultConfig( 0 )
+    print c
+#    c = GlobalConfig()
+    
+#    listattr( c )
+
+#    print c.getOptimalPeerNum()
+#    c.setOptimalPeerNum( 20 )
+#    print c.getOptimalPeerNum()
+
+#    cfg = DefaultConfig( 0, "some_test_cfg.ini" )
+#    cfg1 = DefaultConfig( 1, "some_test_cfg.ini" )
+#    cfg2 = DefaultConfig( 2, "some_test_cfg.ini" )
