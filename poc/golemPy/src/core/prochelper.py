@@ -81,28 +81,37 @@ class ProcessService:
     def __updateState( self ):
         pids = psutil.pids()
         updatedState = {}
+        ids = []
 
         for p in self.state:
             if int( p ) in pids:
                 updatedState[ p ] = self.state[ p ]
+                ids.append( self.state[ p ][ 1 ] ) #localId    
             else:
                 print "Process PID {} is inactive - removing".format( p )
 
         self.state = updatedState
+
+        if len(ids) > 0:
+            sids = sorted( ids, key = int )
+            for i in range(len(sids)):
+                if i < sids[ i ]:
+                    return i
+
+        return len(ids)
 
     #################################
     def registerSelf( self, extraData = None ):
         spid = int( os.getpid() )
         timestamp = time.time()
 
-        print "Registering new process with PID {} at timestamp {}".format( spid, timestamp )
-
         if self.lockState():
-            self.__updateState()
-            self.state[ spid ] = [ timestamp, extraData ]
+            id = self.__updateState()
+            self.state[ spid ] = [ timestamp, id, extraData ]
             self.unlockState()
+            print "Registering new process - PID {} at time {} at location {}".format( spid, timestamp, id )
 
-            return len( self.state ) - 1
+            return id
 
         return -1
 
@@ -127,6 +136,8 @@ if __name__ == "__main__":
     #for p in ps.listAll( filter = "*python.exe*"):
     #    print p
 
+    import random
+
     id = ps.registerSelf()
     print "Registered id {}".format( id )
-    time.sleep( 10 )
+    time.sleep( 5.0 + 10.0 * random.random() )
