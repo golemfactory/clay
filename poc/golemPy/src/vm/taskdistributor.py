@@ -1,5 +1,5 @@
 from task import Task
-from threading import Lock
+from multiprocessing import Lock
 
 TSWaiting   = 0
 TSSent      = 1

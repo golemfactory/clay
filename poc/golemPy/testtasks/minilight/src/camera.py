@@ -44,13 +44,13 @@ class Camera(object):
         for i in range(num_samples):
             x_coefficient = ((x + random.real64()) * 2.0 / width) - 1.0
             y_coefficient = ((y + random.real64()) * 2.0 / height) - 1.0
-			
+
             offset = self.right * x_coefficient + self.up * (y_coefficient * aspect)
-			
+
             sample_direction = (self.view_direction + (offset * tan(self.view_angle * 0.5))).unitize()
-			
+
             radiance = raytracer.get_radiance(self.view_position,sample_direction, random)
-			
+
             acc_radiance[ 0 ] += radiance[ 0 ]          
             acc_radiance[ 1 ] += radiance[ 1 ]          
             acc_radiance[ 2 ] += radiance[ 2 ]          				

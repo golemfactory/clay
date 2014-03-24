@@ -6,7 +6,7 @@
 
 from math import sqrt
 from vector3f import Vector3f, ZERO, ONE, MAX
-from random import Random
+from randommini import Random
 
 import re
 SEARCH = re.compile('(\(.+\))\s*(\(.+\))\s*(\(.+\))\s*(\(.+\))\s*(\(.+\))'

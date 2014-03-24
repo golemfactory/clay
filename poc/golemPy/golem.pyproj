@@ -6,7 +6,7 @@
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
     <StartupFile>src\vm\test.py</StartupFile>
-    <SearchPath>src;testtasks;testtasks\minilight</SearchPath>
+    <SearchPath>src;testtasks;testtasks\minilight\src</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>golem</Name>
@@ -32,6 +32,8 @@
     <Folder Include="src\" />
     <Folder Include="src\core\" />
     <Folder Include="src\vm\" />
+    <Folder Include="testtasks\minilight\" />
+    <Folder Include="testtasks\minilight\src\" />
     <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>
@@ -56,18 +58,31 @@
     <Compile Include="src\vm\test.py" />
     <Compile Include="src\vm\vm.py" />
     <Compile Include="src\__init__.py" />
-    <Compile Include="testtasks\camera.py" />
-    <Compile Include="testtasks\image.py" />
-    <Compile Include="testtasks\minilight.py" />
-    <Compile Include="testtasks\random.py" />
-    <Compile Include="testtasks\raytracer.py" />
-    <Compile Include="testtasks\scene.py" />
-    <Compile Include="testtasks\spatialindex.py" />
-    <Compile Include="testtasks\surfacepoint.py" />
-    <Compile Include="testtasks\triangle.py" />
-    <Compile Include="testtasks\vector3f.py" />
+    <Compile Include="testtasks\minilight\src\camera.py" />
+    <Compile Include="testtasks\minilight\src\image.py" />
+    <Compile Include="testtasks\minilight\src\minilight.py" />
+    <Compile Include="testtasks\minilight\src\random.py" />
+    <Compile Include="testtasks\minilight\src\raytracer.py" />
+    <Compile Include="testtasks\minilight\src\scene.py" />
+    <Compile Include="testtasks\minilight\src\spatialindex.py" />
+    <Compile Include="testtasks\minilight\src\surfacepoint.py" />
+    <Compile Include="testtasks\minilight\src\triangle.py" />
+    <Compile Include="testtasks\minilight\src\vector3f.py" />
     <Compile Include="test\main.py" />
     <Compile Include="test\__init__.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="testtasks\minilight\cornellbox.ml.txt" />
+    <Content Include="testtasks\minilight\src\camera.pyc" />
+    <Content Include="testtasks\minilight\src\image.pyc" />
+    <Content Include="testtasks\minilight\src\minilight.pyc" />
+    <Content Include="testtasks\minilight\src\random.pyc" />
+    <Content Include="testtasks\minilight\src\raytracer.pyc" />
+    <Content Include="testtasks\minilight\src\scene.pyc" />
+    <Content Include="testtasks\minilight\src\spatialindex.pyc" />
+    <Content Include="testtasks\minilight\src\surfacepoint.pyc" />
+    <Content Include="testtasks\minilight\src\triangle.pyc" />
+    <Content Include="testtasks\minilight\src\vector3f.pyc" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
 </Project>

@@ -7,7 +7,7 @@
 from camera import Camera
 from image import Image
 from scene import Scene
-from random import Random
+from randommini import Random
 
 from sys import argv, stdout
 from time import time
@@ -67,7 +67,7 @@ class Rect:
 		self.width 	= width
 		self.height = height
 
-def render_task( sceneFile, x, y, width, height ):
+def render_task( sceneFile, x, y, width, height, img_width, img_height ):
     print BANNER
     model_file_pathname = sceneFile
     model_file = open(model_file_pathname, 'r')
@@ -77,12 +77,12 @@ def render_task( sceneFile, x, y, width, height ):
         if not line.isspace():
             iterations = int(line)
             break
-    image = Image(model_file)
+    #image = Image(model_file)
     camera = Camera(model_file)
     scene = Scene(model_file, camera.view_position)
     model_file.close()
     
-    res = render_rect( Rect(x, y, width, height), image.width, image.height, camera, scene, iterations )
+    res = render_rect( Rect(x, y, width, height), img_width, img_height, camera, scene, iterations )
     # totalSamples = image.width * image.height * iterations
     # avgSpeed = float( numSamples ) / duration
     # expectedTime = totalSamples / avgSpeed
@@ -172,8 +172,8 @@ def render_rect( rect, img_width, img_height, camera, scene, num_samples ):
         totalPasses = float( rect.width * rect.height )
         passUpdateDelta = samplesPerUpdate // num_samples if  num_samples < samplesPerUpdate else 1
         
-        for y in range(rect.y, rect.height):
-            for x in range(rect.x, rect.width):
+        for y in range(rect.y, rect.y + rect.height):
+            for x in range(rect.x, rect.x + rect.width):
                 radiance = camera.pixel_accumulated_radiance(scene, random, img_width, img_height, x, y, aspect, num_samples)
                                     
                 if x >= 0 and x < rect.width and y >= 0 and y < rect.height:
@@ -184,9 +184,9 @@ def render_rect( rect, img_width, img_height, camera, scene, num_samples ):
                 
                 curPass += 1
 
-                if curPass % passUpdateDelta == 0:
-                    stdout.write('\r                                          ')
-                    stdout.write('\rProgress: {} %'.format( float( curPass ) * 100.0 / totalPasses ) )
+                if curPass:
+                    #stdout.write('\r                                          ')
+                    stdout.write('\rProgress: {} % \n'.format( float( curPass ) * 100.0 / totalPasses ) )
                     stdout.flush()
         print '\nfinished'
     except KeyboardInterrupt:
@@ -195,36 +195,36 @@ def render_rect( rect, img_width, img_height, camera, scene, num_samples ):
     return out
      
 
-def main():
-    if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
-        print HELP
-    else:
-        print BANNER
-        model_file_pathname = argv[1]
-        image_file_pathname = model_file_pathname + '.ppm'
-        model_file = open(model_file_pathname, 'r')
-        if model_file.next().strip() != MODEL_FORMAT_ID:
-            raise 'invalid model file'
-        for line in model_file:
-            if not line.isspace():
-                iterations = int(line)
-                break
-        image = Image(model_file)
-        camera = Camera(model_file)
-        scene = Scene(model_file, camera.view_position)
-        model_file.close()
+#def main():
+#    if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
+#        print HELP
+#    else:
+#        print BANNER
+#        model_file_pathname = argv[1]
+#        image_file_pathname = model_file_pathname + '.ppm'
+#        model_file = open(model_file_pathname, 'r')
+#        if model_file.next().strip() != MODEL_FORMAT_ID:
+#            raise 'invalid model file'
+#        for line in model_file:
+#            if not line.isspace():
+#                iterations = int(line)
+#                break
+#        image = Image(model_file)
+#        camera = Camera(model_file)
+#        scene = Scene(model_file, camera.view_position)
+#        model_file.close()
         
-        #render_orig( image, image_file_pathname, camera, scene, iterations )
-        #numSamples, duration = render_taskable( image, image_file_pathname, camera, scene, iterations )
-        #numSamples, duration = render_rect( Rect(0, 0, 50, 1), image.width, image.height, camera, scene, iterations )
-        numSamples, duration = render_rect( Rect(0, 0, image.width, image.height), image.width, image.height, camera, scene, iterations )
-        totalSamples = image.width * image.height * iterations
-        avgSpeed = float( numSamples ) / duration
-        expectedTime = totalSamples / avgSpeed
+#        #render_orig( image, image_file_pathname, camera, scene, iterations )
+#        #numSamples, duration = render_taskable( image, image_file_pathname, camera, scene, iterations )
+#        #numSamples, duration = render_rect( Rect(0, 0, 50, 1), image.width, image.height, camera, scene, iterations )
+#        numSamples, duration = render_rect( Rect(0, 0, image.width, image.height), image.width, image.height, camera, scene, iterations )
+#        totalSamples = image.width * image.height * iterations
+#        avgSpeed = float( numSamples ) / duration
+#        expectedTime = totalSamples / avgSpeed
 
-        print "\nSummary:"
-        print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
-        print "    giving an average speed of {} rays/s".format( avgSpeed )
-        print "    estimated time for the whole scene is {} seconds".format( expectedTime )
+#        print "\nSummary:"
+#        print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
+#        print "    giving an average speed of {} rays/s".format( avgSpeed )
+#        print "    estimated time for the whole scene is {} seconds".format( expectedTime )
         
-main()
+#main()
