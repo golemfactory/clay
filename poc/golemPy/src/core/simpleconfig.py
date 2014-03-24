@@ -1,5 +1,7 @@
 import ConfigParser
 
+import os
+import shutil
 import types
 import inspect
 
@@ -69,48 +71,42 @@ class ConfigEntry:
 class SimpleConfig:
 
     ##############################
-    def __init__(self, commonConfig, nodeConfig, iniFile):
+    def __init__(self, commonConfig, nodeConfig, cfgFile):
 
         self._commonConfig  = commonConfig
         self._nodeConfig    = nodeConfig
 
-        iniFile = SimpleEnv.envFileName( iniFile )
+        cfgFile = SimpleEnv.envFileName( cfgFile )
 
-        print "Reading config from file {}".format( iniFile ),
+        print "Reading config from file {}".format( cfgFile ),
 
-        writeConfig = True
-        cfg = ConfigParser.ConfigParser()
-        files = cfg.read( iniFile )
+        try:
+            writeConfig = True
+            cfg = ConfigParser.ConfigParser()
+            files = cfg.read( cfgFile )
 
-        if len( files ) == 1:
-            if self._nodeConfig.section() in cfg.sections():
-                assert self._commonConfig.section() in cfg.sections()
+            if len( files ) == 1 and self._commonConfig.section() in cfg.sections():
+                if self._nodeConfig.section() in cfg.sections():
+                    self.__readOptions( cfg )
 
-                self.__readOptions( cfg )
+                    if len( self._nodeConfig.getClientUuid() ) > 0:
+                        writeConfig = False
+                else:
+                    cfg.add_section( self._nodeConfig.section() )
 
-                if len( self._nodeConfig.getClientUuid() ) > 0:
-                    writeConfig = False
+                print "... successfully"
             else:
-                cfg.add_section( self._nodeConfig.section() )
+                print "... failed"
+                cfg = self.__createFreshConfig()
 
-            print "... successfully"
-        else:
-            print "... failed"
-            cfg = self.__createFreshConfig()
-
-        if writeConfig:
-            print "Writing confing for {} to {}".format( self.getNodeConfig().section(), iniFile )
-
-            print "Generating fresh UUID for {} ->".format( self.getNodeConfig().section() ), 
-            uajdi = SimpleAuth.generateUUID()
-            print " {}".format( uajdi.get_hex() )
-            self.getNodeConfig().setClientUuid( uajdi.get_hex() )
-
-            self.__writeOptions( cfg )
-   
-            cfgfile = open( iniFile, 'w' ) #no try catch because this cannot fail (if it fails then the program shouldn't start anyway)
-            cfg.write( cfgfile )            
-            cfgfile.close()
+            if writeConfig:
+                print "Writing {}'s configuration to {}".format( self.getNodeConfig().section(), cfgFile )
+                self.__writeConfig( cfg, cfgFile )
+        except Exception as ex:
+            print "... failed with an exception"
+            #no additional try catch because this cannot fail (if it fails then the program shouldn't start anyway)
+            print "Failed to write configuration file. Creating fresh config."
+            self.__writeConfig( self.__createFreshConfig(), cfgFile )
 
     ##############################
     def getCommonConfig( self ):
@@ -127,6 +123,24 @@ class SimpleConfig:
         cfg.add_section( self.getNodeConfig().section() )
 
         return cfg
+
+    ##############################
+    def __writeConfig( self, cfg, cfgFile ):
+        print "Generating fresh UUID for {} ->".format( self.getNodeConfig().section() ), 
+        uajdi = SimpleAuth.generateUUID()
+        print " {}".format( uajdi.get_hex() )
+        self.getNodeConfig().setClientUuid( uajdi.get_hex() )
+
+        self.__writeOptions( cfg )
+   
+        if os.path.exists( cfgFile ):
+            backupFileName = "{}.bak".format( cfgFile )
+            print "Creating backup configuration file {}".format( backupFileName )
+            shutil.copy( cfgFile, backupFileName )
+
+        f = open( cfgFile, 'w' )
+        cfg.write( f )            
+        f.close()
 
     ##############################
     def __readOption( self, cfg, property ):
