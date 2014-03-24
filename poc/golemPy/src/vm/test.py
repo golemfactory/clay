@@ -96,8 +96,8 @@ class TaskPerformer( Thread ):
 
 def main():
 
-    img_width = 3
-    img_height = 3
+    img_width = 100
+    img_height = 100
     tasks = prepareTasks1( img_width, img_height )
     for t in  tasks:
         g_taskDistributor.appendTask( t )
@@ -115,9 +115,9 @@ def main():
 
 
     image_file = open("result.ppm", 'wb')
-    image_file.write('%u %u\n255\n' % (img_width, img_height))
+    image_file.write('%s\n %u %u\n255\n' % ('P6', img_width, img_height))
 
-    for t in tasks:
+    for t in reversed( tasks ):
         image_file.write( t.taskResult.read() )
 
     image_file.close()
