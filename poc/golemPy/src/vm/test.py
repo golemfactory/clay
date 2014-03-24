@@ -1,3 +1,6 @@
+import sys
+sys.path.append('../../testtasks/minilight/src/')
+
 from vm import PythonVM
 from task import Task, TaskDescriptor
 from resource import PyCodeResource
@@ -5,7 +8,7 @@ from twisted.internet import task
 from taskdistributor import g_taskDistributor
 import time
 from twisted.internet import reactor
-from threading import Thread
+from multiprocessing import Process, freeze_support
 import random
 
 testTaskScr = """ 
@@ -34,6 +37,16 @@ foo()
 output = IntResource( 1 )
 """
 
+testTaskScr2 = """ 
+from minilight import render_task
+from resource import IntResource
+
+res = render_task( "c:/src/golem/poc/golemPy/testtasks/minilight/cornellbox.ml.txt", startX, startY, width, height, img_width, img_height )
+
+
+output = IntResource( 1 )
+"""
+
 def prepareTasks():
     tasks = []
     n = 0
@@ -45,28 +58,39 @@ def prepareTasks():
 
     return tasks
 
+def prepareTasks1( width, height ):
+    tasks = []
+    n = 0
+    for n in range(0, height - 1): 
+        td = TaskDescriptor( n, 5, { "startX" : 0 , "startY" : n, "width" : width, "height" : 1, "img_width" : width, "img_height" : height } )
 
-class TaskPerformer( Thread ):
-    def __init__( self, perfIndex ):
+        tasks.append( Task( td, [], PyCodeResource( testTaskScr2 ), 0 ) )
+        n += 1
+
+    return tasks
+
+class TaskPerformer( Process ):
+    def __init__( self, perfIndex, g_taskDistributor ):
         super(TaskPerformer, self).__init__()
         self.vm = PythonVM()
         self.perfIndex = perfIndex
+        self.g_taskDistributor = g_taskDistributor
    
     def run( self ):
-        self.__doWork()
+        self.doWork()
 
-    def __doWork( self ):
+    def doWork( self ):
         while True:
-            t = g_taskDistributor.giveTask( self.perfIndex )
+            t = self.g_taskDistributor.giveTask( self.perfIndex )
             if t:
                 self.vm.runTask( t )
-                g_taskDistributor.acceptTask( t )
+                self.g_taskDistributor.acceptTask( t )
             else:
                 time.sleep( 0.5 )
 
-def main():
 
-    tasks = prepareTasks()
+def main():
+    tasks = prepareTasks1( 10, 10 )
     for t in  tasks:
         g_taskDistributor.appendTask( t )
 
@@ -74,7 +98,8 @@ def main():
 
     for i in range( 4 ):
         #tp = TaskPerformer( random.randrange( 1, 10 ) )
-        tp = TaskPerformer( 5 )
+        tp = TaskPerformer( 5, g_taskDistributor )
+        #tp.doWork()
         tps.append( tp )
         tp.start()
 
@@ -82,4 +107,9 @@ def main():
         tp.join()
 
 
-main()
+
+if __name__ == '__main__':
+    freeze_support()
+    main()
+
+
