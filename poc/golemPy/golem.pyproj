@@ -44,6 +44,7 @@
     <Compile Include="src\core\simpleconfig.py" />
     <Compile Include="src\core\simpleenv.py" />
     <Compile Include="src\core\simplehash.py" />
+    <Compile Include="src\core\simpleserializer.py" />
     <Compile Include="src\message.py" />
     <Compile Include="src\p2pserver.py" />
     <Compile Include="src\peer.py" />
