@@ -13,6 +13,9 @@ class SimpleEnv:
     def envFileName( cls, filename ):
         cls.__envDirGuard()
 
+        if DATA_DIRECTORY in filename:
+            return filename
+
         return os.path.join( DATA_DIRECTORY, filename )
 
     @classmethod

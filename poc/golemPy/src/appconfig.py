@@ -2,6 +2,7 @@ import sys
 sys.path.append('core')
 
 from simpleconfig import SimpleConfig, ConfigEntry
+from prochelper import ProcessService
 
 CONFIG_FILENAME = "app_cfg.ini"
 
@@ -31,7 +32,7 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "seed host port",    0,   self, "SeedHostPort")
         ConfigEntry.createProperty( self.section(), "send pings",        0,   self, "SendPings" )
         ConfigEntry.createProperty( self.section(), "pigns interval",    0,   self, "PingsInterval" )
-        ConfigEntry.createProperty( self.section(), "client clientUuid", u"", self, "ClientUuid" )
+        ConfigEntry.createProperty( self.section(), "client UUID", u"", self, "ClientUuid" )
 
     ##############################
     def section( self ):
@@ -42,23 +43,46 @@ class NodeConfig:
 ##############################
 class AppConfig:
 
+    CONFIG_LOADED = False
+
     ##############################
-    def __init__(self, localId, iniFile = CONFIG_FILENAME):
+    @classmethod
+    def loadConfig( cls, cfgFile = CONFIG_FILENAME ):
 
-        cCfg = CommonConfig()
-        nCfg = NodeConfig( localId )
+        if cls.CONFIG_LOADED:
+            print "Application already configured"
+            return None
+        
+        print "Starting generic process service..."
+        ps = ProcessService()
+        print "Generic process service started\n"
 
-        self._cfg = SimpleConfig( cCfg, nCfg, iniFile )
-    
+        print "Trying to register current process"
+        localId = ps.registerSelf()
 
+        if( localId < 0 ):
+            print "Failed to register current process - bailing out"
+            return None
+
+        cfg  = SimpleConfig( CommonConfig(), NodeConfig( localId ), cfgFile )
+
+        cls.CONFIG_LOADED = True
+
+        return AppConfig( cfg )
+
+    ##############################
+    def __init__( self, cfg ):
+        self._cfg = cfg
+
+    ##############################
     def getOptimalPeerNum( self ):
-        return self._cfg.getComonConfig().getOptimalPeerNum()
+        return self._cfg.getCommonConfig().getOptimalPeerNum()
 
     def getStartPort( self ):
-        return self._cfg.getComonConfig().getStartPort()
+        return self._cfg.getCommonConfig().getStartPort()
 
     def getEndPort( self ):
-        return self._cfg.getComonConfig().getEndPort()
+        return self._cfg.getCommonConfig().getEndPort()
 
     def getSeedHost( self ):
         return self._cfg.getNodeConfig().getSeedHost()

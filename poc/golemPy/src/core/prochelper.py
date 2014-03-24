@@ -3,24 +3,29 @@ import psutil
 import fnmatch
 import filelock
 import time
+
 #DEBUG VERSION
 import json
 #RELEASE VERSION
 #import pickle
 
-DEFAULT_PROC_FILE = "processes.ctl"
+from simpleenv import SimpleEnv
+
+DEFAULT_PROC_FILE = "node_processes.ctl"
 
 class ProcessService:
 
     #################################
     def __init__( self, ctlFileName = DEFAULT_PROC_FILE ):
 
+        ctlFile = SimpleEnv.envFileName( ctlFileName )
+
         self.maxFileSize = 1024 * 1024
         self.fd = -1
-        self.ctlFile = ctlFileName
+        self.ctlFile = ctlFile
         self.state = {}
 
-        if not os.path.exists( ctlFileName ) or os.path.getsize( ctlFileName ) < 2:
+        if not os.path.exists( ctlFile ) or os.path.getsize( ctlFile ) < 2:
             if self.__acquireLock():
                 self.__writeStateSnapshot()
 
