@@ -69,7 +69,7 @@ if __name__ == '__main__':
             result = function ( *args, **kwargs )
             t1 = time()
 
-            return t1 - t0
+            return result, t1 - t0
             
         return timedExecution
 
@@ -93,11 +93,11 @@ if __name__ == '__main__':
     def render_taskable( image, image_file_pathname, camera, scene, num_samples ):
         random = Random()
         aspect = float(image.height) / float(image.width)
-        samplesPerUpdate = 200
+        samplesPerUpdate = 2000
         
+        curPass = 0
         try:
             totalPasses = float( image.height * image.width )
-            curPass = 0
             passUpdateDelta = samplesPerUpdate // num_samples if  num_samples < samplesPerUpdate else 1
             
             for y in range(image.height):
@@ -124,6 +124,8 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             print '\ninterrupted'
         
+        return curPass * num_samples
+
     def main():
         if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
             print HELP
@@ -144,11 +146,14 @@ if __name__ == '__main__':
             model_file.close()
             
             #render_orig( image, image_file_pathname, camera, scene, iterations )
-            duration = render_taskable( image, image_file_pathname, camera, scene, iterations )
+            numSamples, duration = render_taskable( image, image_file_pathname, camera, scene, iterations )
+            totalSamples = image.width * image.height * iterations
+            avgSpeed = float( numSamples ) / duration
+            expectedTime = totalSamples / avgSpeed
 
-            numSamples = image.width * image.height * iterations
             print "\nSummary:"
             print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
-            print "    giving an average speed of {} rays/s".format( float( numSamples ) / duration )
-
+            print "    giving an average speed of {} rays/s".format( avgSpeed )
+            print "    estimated time for the whole scene is {} seconds".format( expectedTime )
+            
     main()
