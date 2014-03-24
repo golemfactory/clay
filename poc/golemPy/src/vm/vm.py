@@ -26,14 +26,14 @@ class PythonVM( IGolemVM ):
         assert isinstance( task, Task )
         self.resources = task.getResources()
         self.codeResource = task.getCode()
+        self.scope = task.getExtra()
         task.setResult( self.interpret() )
 
     #######################
     def interpret( self ):
-        output = None
         res = self.resources
         code = self.codeResource.read()
-        exec code #in { "taskResources" : res, "output" : output }
-        assert isinstance( output, IResource )
-        return output
+        exec code in self.scope
+        assert isinstance( self.scope[ "output" ], IResource )
+        return self.scope[ "output" ]
 

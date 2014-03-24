@@ -84,10 +84,10 @@ if __name__ == '__main__':
                 stdout.write('\riteration: %u' % frame_no)
                 stdout.flush()
                 camera.get_frame(scene, random, image)
-                if ((frame_no & (frame_no -1)) == 0) or frame_no == iterations:
-                    image_file = open(image_file_pathname, 'wb')
-                    image.get_formatted(image_file, frame_no)
-                    image_file.close()
+                # if ((frame_no & (frame_no -1)) == 0) or frame_no == iterations:
+                    # image_file = open(image_file_pathname, 'wb')
+                    # image.get_formatted(image_file, frame_no)
+                    # image_file.close()
             print '\nfinished'
         except KeyboardInterrupt:
             print '\ninterrupted'
