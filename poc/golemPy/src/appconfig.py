@@ -1,10 +1,14 @@
+import sys
+sys.path.append('core')
+
 import ConfigParser
 
 import os
-import shutil
-import uuid
+#import shutil
 import types
 import inspect
+
+from simpleauth import SimpleAuth
 
 GOLEM_CFG_INI_FILENAME = "test_config.ini"
 
@@ -137,8 +141,10 @@ class DefaultConfig:
         if writeConfig:
             print "Writing confing for {} to {}".format( self.getNodeConfig().section(), iniFile )
 
-            print "Generating fresh UUID for current node"
-            self.getNodeConfig().setClientUuid( uuid.uuid1().get_hex() )
+            print "Generating fresh UUID for {} ->".format( self.getNodeConfig().section() ), 
+            uajdi = SimpleAuth.generateUUID()
+            print " {}".format( uajdi.get_hex() )
+            self.getNodeConfig().setClientUuid( uajdi.get_hex() )
 
             self.__writeOptions( cfg )
    
@@ -199,6 +205,10 @@ if __name__ == "__main__":
             print m[0], m[1]
 
     c = DefaultConfig( 0 )
+    print c
+    c = DefaultConfig( 1 )
+    print c
+    c = DefaultConfig( 2 )
     print c
 #    c = GlobalConfig()
     
