@@ -61,33 +61,94 @@ with a newline. E.g.:
 MODEL_FORMAT_ID = '#MiniLight'
 
 if __name__ == '__main__':
-    if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
-        print HELP
-    else:
-        print BANNER
+
+    def timedafunc( function ):
+    
+        def timedExecution(*args, **kwargs):
+            t0 = time()
+            result = function ( *args, **kwargs )
+            t1 = time()
+
+            return t1 - t0
+            
+        return timedExecution
+
+    def render_orig( image, image_file_pathname, camera, scene, iterations ): 
         random = Random()
-        model_file_pathname = argv[1]
-        image_file_pathname = model_file_pathname + '.ppm'
-        model_file = open(model_file_pathname, 'r')
-        if model_file.next().strip() != MODEL_FORMAT_ID:
-            raise 'invalid model file'
-        for line in model_file:
-            if not line.isspace():
-                iterations = int(line)
-                break
-        image = Image(model_file)
-        camera = Camera(model_file)
-        scene = Scene(model_file, camera.view_position)
-        model_file.close()
+
         try:
             for frame_no in range(1, iterations + 1):
                 stdout.write('\riteration: %u' % frame_no)
                 stdout.flush()
                 camera.get_frame(scene, random, image)
-                # if ((frame_no & (frame_no -1)) == 0) or frame_no == iterations:
-                    # image_file = open(image_file_pathname, 'wb')
-                    # image.get_formatted(image_file, frame_no)
-                    # image_file.close()
+                if ((frame_no & (frame_no -1)) == 0) or frame_no == iterations:
+                    image_file = open(image_file_pathname, 'wb')
+                    image.get_formatted(image_file, frame_no)
+                    image_file.close()
             print '\nfinished'
         except KeyboardInterrupt:
             print '\ninterrupted'
+ 
+    @timedafunc
+    def render_taskable( image, image_file_pathname, camera, scene, num_samples ):
+        random = Random()
+        aspect = float(image.height) / float(image.width)
+        samplesPerUpdate = 200
+        
+        try:
+            totalPasses = float( image.height * image.width )
+            curPass = 0
+            passUpdateDelta = samplesPerUpdate // num_samples if  num_samples < samplesPerUpdate else 1
+            
+            for y in range(image.height):
+                for x in range(image.width):
+                    #separated tasks which should be added to the final image when they are ready (even better simple pixel values can be accumulated simply via additions and num iterations just 
+                    #has to be passed to tone mapper)
+                    r = camera.pixel_accumulated_radiance(scene, random, image, x, y, aspect, num_samples)
+                    
+                    #accumulation of stored values (can be easily moved to a separate loop over x and y (and the results from radiance calculations) 
+                    image.add_to_pixel( x, y, r )
+                    
+                    curPass += 1
+
+                    if curPass % passUpdateDelta == 0:
+                        stdout.write('\r                                          ')
+                        stdout.write('\rProgress: {} %'.format( float( curPass ) * 100.0 / totalPasses ) )
+                        stdout.flush()
+                        
+            image_file = open(image_file_pathname, 'wb')
+            image.get_formatted(image_file, num_samples)
+            image_file.close()
+
+            print '\nfinished'
+        except KeyboardInterrupt:
+            print '\ninterrupted'
+        
+    def main():
+        if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
+            print HELP
+        else:
+            print BANNER
+            model_file_pathname = argv[1]
+            image_file_pathname = model_file_pathname + '.ppm'
+            model_file = open(model_file_pathname, 'r')
+            if model_file.next().strip() != MODEL_FORMAT_ID:
+                raise 'invalid model file'
+            for line in model_file:
+                if not line.isspace():
+                    iterations = int(line)
+                    break
+            image = Image(model_file)
+            camera = Camera(model_file)
+            scene = Scene(model_file, camera.view_position)
+            model_file.close()
+            
+            #render_orig( image, image_file_pathname, camera, scene, iterations )
+            duration = render_taskable( image, image_file_pathname, camera, scene, iterations )
+
+            numSamples = image.width * image.height * iterations
+            print "\nSummary:"
+            print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
+            print "    giving an average speed of {} rays/s".format( float( numSamples ) / duration )
+
+    main()
