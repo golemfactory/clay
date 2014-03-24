@@ -28,16 +28,19 @@ def main():
 
     assert isinstance( cfg, DefaultConfig )
 
-    optNumPeers     = cfg.getOptimalNumberOfPeers()
-    startPort       = cfg.getStartPort()
-    endPort         = cfg.getEndPort()
-    seedHost        = cfg.getSeedHost()
-    seedHostPort    = cfg.getSeedHostPort()
-    sendPings       = cfg.getSendPings()
-    pingsInterval   = cfg.getPingsInterval()
-    clientUuid      = cfg.getClientUuid()
+    gCfg = cfg.getCommonConfig()
+    nCfg = cfg.getNodeConfig()
 
-    print "Creating public client interface uuid: {}".format( clientUuid )
+    optNumPeers     = gCfg.getOptimalPeerNum()
+    startPort       = gCfg.getStartPort()
+    endPort         = gCfg.getEndPort()
+    seedHost        = nCfg.getSeedHost()
+    seedHostPort    = nCfg.getSeedHostPort()
+    sendPings       = nCfg.getSendPings()
+    pingsInterval   = nCfg.getPingsInterval()
+    clientUuid      = nCfg.getClientUuid()
+
+    print "Creating public client interface with uuid: {}".format( clientUuid )
     c = Client( clientUuid, optNumPeers, startPort, endPort, sendPings, pingsInterval ) 
 
     print "Starting all asynchronous services"
