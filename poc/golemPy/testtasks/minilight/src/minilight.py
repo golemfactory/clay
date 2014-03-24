@@ -8,6 +8,8 @@ from camera import Camera
 from image import Image
 from scene import Scene
 from randommini import Random
+from vector3f import Vector3f
+from math import log10
 
 from sys import argv, stdout
 from time import time
@@ -158,7 +160,7 @@ def render_taskable( image, image_file_pathname, camera, scene, num_samples ):
     
     return curPass * num_samples
 
-@timedafunc
+
 def render_rect( rect, img_width, img_height, camera, scene, num_samples ):
     assert isinstance( rect, Rect )
     aspect = float(img_height) / float(img_width)
@@ -175,9 +177,11 @@ def render_rect( rect, img_width, img_height, camera, scene, num_samples ):
         for y in range(rect.y, rect.y + rect.height):
             for x in range(rect.x, rect.x + rect.width):
                 radiance = camera.pixel_accumulated_radiance(scene, random, img_width, img_height, x, y, aspect, num_samples)
-                                    
-                if x >= 0 and x < rect.width and y >= 0 and y < rect.height:
-                    index = (x + ((rect.height - 1 - y) * rect.width)) * 3
+                  
+                absX = x - rect.x             
+                absY = y - rect.y             
+                if absX >= 0 and absX < rect.width and absY >= 0 and absY < rect.height:
+                    index = (absX + ((rect.height - 1 - absY) * rect.width)) * 3
                     for a in radiance:
                         out[index] += a
                         index += 1
@@ -190,10 +194,38 @@ def render_rect( rect, img_width, img_height, camera, scene, num_samples ):
                     stdout.flush()
         print '\nfinished'
     except KeyboardInterrupt:
-        print '\ninterrupted'
-    
+        print '\ninterrupted'  
+
+    print out
+    return get_formatted( out, num_samples )
+   
+IMAGE_DIM_MAX = 4000
+PPM_ID = 'P6'
+MINILIGHT_URI = 'http://www.hxa.name/minilight'
+DISPLAY_LUMINANCE_MAX = 200.0
+RGB_LUMINANCE = Vector3f(0.2126, 0.7152, 0.0722)
+GAMMA_ENCODE = 0.45
+
+def get_formatted(pixels, iteration):
+    divider = 1.0 / (iteration if iteration >= 1 else 1)
+    tonemap_scaling = calculate_tone_mapping(pixels, divider)
+    out = bytearray()
+    for channel in pixels:
+        mapped = channel * divider * tonemap_scaling
+        gammaed = (mapped if mapped > 0.0 else 0.0) ** GAMMA_ENCODE
+        out.append(chr(min(int((gammaed * 255.0) + 0.5), 255)))
+
     return out
-     
+
+def calculate_tone_mapping(pixels, divider):
+    sum_of_logs = 0.0
+    for i in range(len(pixels) / 3):
+        y = Vector3f(pixels[i * 3: i * 3 + 3]).dot(RGB_LUMINANCE) * divider
+        sum_of_logs += log10(y if y > 1e-4 else 1e-4)
+    adapt_luminance = 10.0 ** (sum_of_logs / (len(pixels) / 3))
+    a = 1.219 + (DISPLAY_LUMINANCE_MAX * 0.25) ** 0.4
+    b = 1.219 + adapt_luminance ** 0.4
+    return ((a / b) ** 2.5) / DISPLAY_LUMINANCE_MAX  
 
 #def main():
 #    if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':

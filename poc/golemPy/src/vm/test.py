@@ -8,7 +8,7 @@ from twisted.internet import task
 from taskdistributor import g_taskDistributor
 import time
 from twisted.internet import reactor
-from multiprocessing import Process, freeze_support
+from threading import Thread
 import random
 
 testTaskScr = """ 
@@ -39,12 +39,11 @@ output = IntResource( 1 )
 
 testTaskScr2 = """ 
 from minilight import render_task
-from resource import IntResource
+from resource import ArrayResource
 
 res = render_task( "c:/src/golem/poc/golemPy/testtasks/minilight/cornellbox.ml.txt", startX, startY, width, height, img_width, img_height )
 
-
-output = IntResource( 1 )
+output = ArrayResource( res )
 """
 
 def prepareTasks():
@@ -61,7 +60,7 @@ def prepareTasks():
 def prepareTasks1( width, height ):
     tasks = []
     n = 0
-    for n in range(0, height - 1): 
+    for n in range(0, height): 
         td = TaskDescriptor( n, 5, { "startX" : 0 , "startY" : n, "width" : width, "height" : 1, "img_width" : width, "img_height" : height } )
 
         tasks.append( Task( td, [], PyCodeResource( testTaskScr2 ), 0 ) )
@@ -69,8 +68,8 @@ def prepareTasks1( width, height ):
 
     return tasks
 
-class TaskPerformer( Process ):
-    def __init__( self, perfIndex, g_taskDistributor ):
+class TaskPerformer( Thread ):
+    def __init__( self, perfIndex ):
         super(TaskPerformer, self).__init__()
         self.vm = PythonVM()
         self.perfIndex = perfIndex
@@ -80,36 +79,51 @@ class TaskPerformer( Process ):
         self.doWork()
 
     def doWork( self ):
+        s = 0
         while True:
             t = self.g_taskDistributor.giveTask( self.perfIndex )
             if t:
                 self.vm.runTask( t )
+                s = 0
                 self.g_taskDistributor.acceptTask( t )
             else:
-                time.sleep( 0.5 )
+                if s < 10:
+                    time.sleep( 0.5 )
+                else:
+                    return
+                s += 1
 
 
 def main():
-    tasks = prepareTasks1( 10, 10 )
+
+    img_width = 3
+    img_height = 3
+    tasks = prepareTasks1( img_width, img_height )
     for t in  tasks:
         g_taskDistributor.appendTask( t )
 
     tps = []
 
-    for i in range( 4 ):
-        #tp = TaskPerformer( random.randrange( 1, 10 ) )
-        tp = TaskPerformer( 5, g_taskDistributor )
-        #tp.doWork()
-        tps.append( tp )
-        tp.start()
+    for i in range( 1 ):
+        tp = TaskPerformer( 5 )
+        #tps.append( tp )
+        tp.doWork()
+        #tp.start()
 
-    for tp in tps:
-        tp.join()
+    #for tp in tps:
+    #    tp.join()
 
+
+    image_file = open("result.ppm", 'wb')
+    image_file.write('%u %u\n255\n' % (img_width, img_height))
+
+    for t in tasks:
+        image_file.write( t.taskResult.read() )
+
+    image_file.close()
 
 
 if __name__ == '__main__':
-    freeze_support()
     main()
 
 
