@@ -24,9 +24,6 @@ class Image(object):
                 self.pixels = [0.0] * self.width * self.height * 3
                 break
 
-    def accessRawPixelData( self ):
-        return self.pixels
-
     def add_to_pixel(self, x, y, radiance):
         if x >= 0 and x < self.width and y >= 0 and y < self.height:
             index = (x + ((self.height - 1 - y) * self.width)) * 3

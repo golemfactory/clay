@@ -75,7 +75,7 @@ if __name__ == '__main__':
             camera = Camera(model_file)
             scene = Scene(model_file, camera.view_position)
             model_file.close()
-            
+
             numSamples, duration = render_taskable( image, image_file_pathname, camera, scene, iterations, 4 )
             totalSamples = image.width * image.height * iterations
             avgSpeed = float( numSamples ) / duration
