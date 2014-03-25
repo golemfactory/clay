@@ -150,7 +150,12 @@ class PeerSession(PeerSessionInterface):
         tasksInfo = []
         for t in tasks:
             assert isinstance( t, TaskDescriptor )
-            tasksInfo.append( { "id" : t.id, "difficulty" : t.difficultyIndex, "extra" : t.extraData } )
+            tasksInfo.append( {"id" : t.id, 
+                               "difficulty" : t.difficultyIndex,
+                               "extra" : t.extraData,
+                               "address" : t.taskOwnerAddress,
+                               "port" : t.taskOwnerPort } )
+
         self.send( MessageTasks( tasksInfo ) )
 
     def send(self, message):

@@ -50,4 +50,5 @@ class Client:
                 self.p2pserver.pingPeers( self.pingsInterval )
 
             self.p2pserver.syncNetwork()
+            self.p2pserver.taskManager.runTasks()
             

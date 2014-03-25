@@ -1,30 +1,59 @@
 from resource import IResource
+import random
 
 class TaskManager:
-    def __init__( self, server ):
+    def __init__( self, server, maxTasksCount = 1 ):
         self.server = server
         self.tasks = {} # TaskDescriptors
+        self.maxTasksCount = maxTasksCount
+        self.runningTasks = 0
+        self.performenceIndex = 10
+        self.myTasks = {}
+
+    def addMyTaskToCompute( self, task ):
+        assert isinstance( task, Task )
+        assert task.desc.id not in self.myTasks.keys() # trying to add same task again
+
+        self.myTasks[ task.desc.id ] = task
 
     def getTasks( self ):
-        return self.tasks.values()
+        myTasksDesc = []
+
+        for mt in self.myTasks.values:
+            myTasksDesc.append( mt.desc )
+
+        return myTasksDesc.append( self.tasks.values() )
 
     def addTask( self, taskDict ):
         try:
             id = taskDict[ "id" ]
             if id not in self.tasks.keys():
-                self.tasks[ id ] = TaskDescriptor( id, taskDict[ "difficulty" ], taskDict[ "extra" ] )
+                self.tasks[ id ] = TaskDescriptor( id, taskDict[ "difficulty" ], taskDict[ "extra" ], taskDict[ "address" ], taskDict[ "port" ] )
             return True
         except:
             print "Wrong task received"
             return False
 
+    def chooseTaskWantToCompute( self ):
+        if len( self.tasks ) > 0:
+            i = random.randrange( 0, len( self.tasks.values() - 1 ) )
+            t = self.tasks.values()[ i ]
+            self.server.sendMessageWantToCoumpute( self.performenceIndex, t.id, t.address, t.port )
+
+    def runTasks( self ):
+        if self.runningTasks < self.maxTasksCount:
+            assert False # TODO:
+            pass
+
 
 class TaskDescriptor:
     #######################
-    def __init__( self, id, difficultyIndex, extraData ):
+    def __init__( self, id, difficultyIndex, extraData, taskOwnerAddress, taskOwnerPort ):
         self.difficultyIndex = difficultyIndex
         self.id = id
         self.extraData = extraData
+        self.taskOwnerAddress = taskOwnerAddress
+        self.taskOwnerPort = taskOwnerPort
 
 class Task:
     #######################

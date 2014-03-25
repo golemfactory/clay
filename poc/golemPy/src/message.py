@@ -66,6 +66,10 @@ class Message:
             return MessageGetTasks( dictRepr = dRepr )
         elif msgType == MessageTasks.Type:
             return MessageTasks( dictRepr = dRepr )
+        elif msgType == MessageWantToComputeTask.Type:
+            return MessageWantToComputeTask( dictRepr = dRepr )
+        elif msgType == MessageTaskToCompute.Type:
+            return MessageTaskToCompute( dictRepr = dRepr )
 
         return None
 
@@ -209,7 +213,6 @@ class MessageGetTasks( Message ):
     def dictRepr(self):
         return [ MessageGetTasks.GET_TASTKS_STR ]
 
-
 class MessageTasks( Message ):
 
     Type = 7
@@ -226,6 +229,52 @@ class MessageTasks( Message ):
 
     def dictRepr(self):
         return { MessageTasks.TASKS_STR : self.tasksArray }
+
+class MessageWantToComputeTask( Message ):
+
+    Type = 8
+
+    TASK_ID_STR     = u"TASK_ID"
+    PERF_INDEX_STR  = u"PERF_INDEX"
+
+    def __init__( self, taskId = 0, perfIndex = 0, dictRepr = None ):
+        Message.__init__(self, MessageWantToComputeTask.Type)
+
+        self.taskId = taskId
+        self.perfIndex = perfIndex
+
+        if dictRepr:
+            self.taskId     = dictRepr[ MessageWantToComputeTask.TASK_ID_STR ]
+            self.perfIndex  = dictRepr[ MessageWantToComputeTask.PERF_INDEX_STR ]
+
+    def dictRepr(self):
+        return {    MessageWantToComputeTask.TASK_ID_STR : self.taskId,
+                    MessageWantToComputeTask.PERF_INDEX_STR: self.perfIndex }
+
+class MessageTaskToCompute( Message ):
+
+    Type = 9
+
+    TASK_ID_STR     = u"TASK_ID"
+    EXTRA_DATA_STR  = u"EXTRA_DATA"
+    SOURCE_CODE_STR = u"SOURCE_CODE"
+
+    def __init__( self, taskId = 0, extraData = {}, sourceCode = "", dictRepr = None ):
+        Message.__init__(self, MessageTaskToCompute.Type)
+
+        self.taskId = taskId
+        self.extraData = extraData
+        self.sourceCode = sourceCode
+
+        if dictRepr:
+            self.taskId     = dictRepr[ MessageTaskToCompute.TASK_ID_STR ]
+            self.extraData  = dictRepr[ MessageTaskToCompute.EXTRA_DATA_STR ]
+            self.sourceCode = dictRepr[ MessageTaskToCompute.SOURCE_CODE_STR ]
+
+    def dictRepr(self):
+        return {    MessageTaskToCompute.TASK_ID_STR : self.taskId,
+                    MessageTaskToCompute.EXTRA_DATA_STR: self.extraData,
+                    MessageTaskToCompute.SOURCE_CODE_STR: self.sourceCode }
 
 if __name__ == "__main__":
 

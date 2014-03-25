@@ -119,6 +119,10 @@ class P2PServer(P2PServerInterface):
             p.sendGetTasks()
 
     #############################
+    def sendMessageWantToCoumpute( self, perfIndex, id, address, port ):
+        pass
+
+    #############################
     def __connectionFailure(self, conn):
         #assert isinstance(conn, ConnectionState)
         #p = conn.transport.getPeer()
