@@ -27,10 +27,10 @@ class RenderWorker:
 
 def renderPixels( 
 BANNER = ''
-HELP = """
+HELP = '''
 usage:
   minilight image_file_pathname
-"""
+'''
 
 MODEL_FORMAT_ID = '#MiniLight'
 
