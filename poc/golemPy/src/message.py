@@ -62,6 +62,10 @@ class Message:
             return MessageGetPeers( dictRepr = dRepr )
         elif msgType == MessagePeers.Type:
             return MessagePeers( dictRepr = dRepr )
+        elif msgType == MessageGetTasks.Type:
+            return MessageGetTasks( dictRepr = dRepr )
+        elif msgType == MessageTasks.Type:
+            return MessageTasks( dictRepr = dRepr )
 
         return None
 
@@ -205,6 +209,23 @@ class MessageGetTasks( Message ):
     def dictRepr(self):
         return [ MessageGetTasks.GET_TASTKS_STR ]
 
+
+class MessageTasks( Message ):
+
+    Type = 7
+
+    TASKS_STR = u"TASKS"
+
+    def __init__( self, tasksArray = [], dictRepr = None ):
+        Message.__init__(self, MessageTasks.Type)
+        
+        self.tasksArray = tasksArray
+
+        if dictRepr:
+            self.tasksArray = dictRepr[ MessageTasks.PEERS_STR ]
+
+    def dictRepr(self):
+        return { MessageTasks.TASKS_STR : self.tasksArray }
 
 if __name__ == "__main__":
 

@@ -1,5 +1,23 @@
 from resource import IResource
 
+class TaskManager:
+    def __init__( self, server ):
+        self.server = server
+        self.tasks = {} # TaskDescriptors
+
+    def getTasks( self ):
+        return self.tasks.values()
+
+    def addTask( self, taskDict ):
+        try:
+            id = taskDict[ "id" ]
+            if id not in self.tasks.keys():
+                self.tasks[ id ] = TaskDescriptor( id, taskDict[ "difficulty" ], taskDict[ "extra" ] )
+            return True
+        except:
+            print "Wrong task received"
+            return False
+
 
 class TaskDescriptor:
     #######################

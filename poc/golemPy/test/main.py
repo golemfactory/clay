@@ -2,6 +2,7 @@
 import sys
 sys.path.append('../src/')
 sys.path.append('../src/core')
+sys.path.append('../src/vm')
 
 from twisted.internet import reactor
 

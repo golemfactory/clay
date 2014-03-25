@@ -4,6 +4,7 @@ from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, c
 
 from connectionstate import ConnectionState
 from peer import PeerSession
+from task import TaskManager
 import time
 
 class GolemServerFactory(Factory):
@@ -34,7 +35,7 @@ class P2PServer(P2PServerInterface):
         self.curPort = self.startPort
         self.idealPeerCount = 2
         self.peers = {}
-        self.tasks = {}
+        self.taskManager = TaskManager( self )
         self.seedHost = seedHost
         self.seedHostPort = seedHostPort
         self.startAccepting()
