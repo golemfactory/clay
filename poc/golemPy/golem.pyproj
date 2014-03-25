@@ -61,6 +61,7 @@
     <Compile Include="src\__init__.py" />
     <Compile Include="testtasks\minilight\src\camera.py" />
     <Compile Include="testtasks\minilight\src\image.py" />
+    <Compile Include="testtasks\minilight\src\img.py" />
     <Compile Include="testtasks\minilight\src\maxilight.py" />
     <Compile Include="testtasks\minilight\src\minilight.py" />
     <Compile Include="testtasks\minilight\src\mtrenderer.py" />

@@ -4,7 +4,7 @@ from io import StringIO
 from math import pi, tan
 
 from camera import Camera
-from image import Image
+from img import Img
 from scene import Scene
 from raytracer import RayTracer
 from vector3f import Vector3f
@@ -91,8 +91,19 @@ class RenderWorker:
 
 if __name__ == "__main__":
 
-    rw = RenderWorker.createWorker( 0, 0, 20, 20, 400, 4, task_data_0.deserialized_task )
-    print rw.render()
+    w = 20
+    h = 20
+    num_samples = 40
+
+    rw = RenderWorker.createWorker( 0, 0, w, h, w * h, num_samples, task_data_0.deserialized_task )
+    data = rw.render()
+
+    img = Img( w, h )
+    img.copyPixels( data )
+
+    image_file = open( "temp_file.ppm", 'wb')
+    img.get_formatted(image_file, num_samples)
+    image_file.close()
 #        return RenderWorker( x, y, w, h, num_pixels, num_samples, sce
 
 #    def __init__( self, x, y, w, h, 
