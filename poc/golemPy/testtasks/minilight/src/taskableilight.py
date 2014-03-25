@@ -2,10 +2,11 @@ from camera import Camera
 from image import Image
 from scene import Scene
 
-from mtrenderer import RenderWorker
-
 from sys import argv, stdout
 from time import time
+from io import StringIO
+
+import task_data_0
 
 class RenderWorker:
 
@@ -20,89 +21,99 @@ class RenderWorker:
         if leftOver < num_pixels < 1:
             return None
 
-        camera = Camera(model_file)
+        data_stream = StringIO( scene_data )
 
-        return RenderWorker( x, y, w, h, num_pixels, num_samples, sce
-    def __init__( self, x, y, w, h, 
+        camera  = Camera( data_stream )
+        scene   = Scene( data_stream, camera.view_position )
 
-def renderPixels( 
-BANNER = ''
-HELP = '''
-usage:
-  minilight image_file_pathname
-'''
+        print camera
+        print scene
 
-MODEL_FORMAT_ID = '#MiniLight'
+if __name__ == "__main__":
+    rw = RenderWorker.createWorker( 0, 0, 100, 100, 100, 100, task_data_0.deserialized_task )
 
-if __name__ == '__main__':
+#        return RenderWorker( x, y, w, h, num_pixels, num_samples, sce
 
-    def timedafunc( function ):
+#    def __init__( self, x, y, w, h, 
+
+#def renderPixels( 
+#BANNER = ''
+#HELP = '''
+#usage:
+#  minilight image_file_pathname
+#'''
+
+#MODEL_FORMAT_ID = '#MiniLight'
+
+#if __name__ == '__main__':
+
+#    def timedafunc( function ):
     
-        def timedExecution(*args, **kwargs):
-            t0 = time()
-            result = function ( *args, **kwargs )
-            t1 = time()
+#        def timedExecution(*args, **kwargs):
+#            t0 = time()
+#            result = function ( *args, **kwargs )
+#            t1 = time()
 
-            return result, t1 - t0
+#            return result, t1 - t0
             
-        return timedExecution
+#        return timedExecution
  
-    @timedafunc
-    def render_taskable( image, image_file_pathname, camera, scene, num_samples, num_threads ):
-        workers = []
+#    @timedafunc
+#    def render_taskable( image, image_file_pathname, camera, scene, num_samples, num_threads ):
+#        workers = []
         
-        for i in range( num_threads ):
-            worker = RenderWorker( camera, scene, image.width, image.height, i, num_threads, num_samples, image.accessRawPixelData() )
-            workers.append( worker )
-            worker.start()
+#        for i in range( num_threads ):
+#            worker = RenderWorker( camera, scene, image.width, image.height, i, num_threads, num_samples, image.accessRawPixelData() )
+#            workers.append( worker )
+#            worker.start()
             
-        totalRays = 0.0
+#        totalRays = 0.0
         
-        try:
-            for w in workers:
-                w.join()
+#        try:
+#            for w in workers:
+#                w.join()
             
-        except KeyboardInterrupt:
-            for w in workers:
-                w.interrupt()
-                w.join()
-        finally:
-            for w in workers:
-                totalRays += w.progress() * image.width * image.height * num_samples / num_threads
+#        except KeyboardInterrupt:
+#            for w in workers:
+#                w.interrupt()
+#                w.join()
+#        finally:
+#            for w in workers:
+#                totalRays += w.progress() * image.width * image.height * num_samples / num_threads
             
-        image_file = open(image_file_pathname, 'wb')
-        image.get_formatted(image_file, num_samples)
-        image_file.close()
+#        image_file = open(image_file_pathname, 'wb')
+#        image.get_formatted(image_file, num_samples)
+#        image_file.close()
 
-        return totalRays
+#        return totalRays
 
-    def main():
-        if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
-            print HELP
-        else:
-            print BANNER
-            model_file_pathname = argv[1]
-            image_file_pathname = model_file_pathname + '.ppm'
-            model_file = open(model_file_pathname, 'r')
-            if model_file.next().strip() != MODEL_FORMAT_ID:
-                raise 'invalid model file'
-            for line in model_file:
-                if not line.isspace():
-                    iterations = int(line)
-                    break
-            image = Image(model_file)
-            camera = Camera(model_file)
-            scene = Scene(model_file, camera.view_position)
-            model_file.close()
+#    def main():
+#        if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
+#            print HELP
+#        else:
+#            print BANNER
+#            model_file_pathname = argv[1]
+#            image_file_pathname = model_file_pathname + '.ppm'
+#            model_file = open(model_file_pathname, 'r')
+#            if model_file.next().strip() != MODEL_FORMAT_ID:
+#                raise 'invalid model file'
+#            for line in model_file:
+#                if not line.isspace():
+#                    iterations = int(line)
+#                    break
+#            image = Image(model_file)
+#            camera = Camera(model_file)
+#            scene = Scene(model_file, camera.view_position)
+#            model_file.close()
 
-            numSamples, duration = render_taskable( image, image_file_pathname, camera, scene, iterations, 4 )
-            totalSamples = image.width * image.height * iterations
-            avgSpeed = float( numSamples ) / duration
-            expectedTime = totalSamples / avgSpeed
+#            numSamples, duration = render_taskable( image, image_file_pathname, camera, scene, iterations, 4 )
+#            totalSamples = image.width * image.height * iterations
+#            avgSpeed = float( numSamples ) / duration
+#            expectedTime = totalSamples / avgSpeed
 
-            print "\nSummary:"
-            print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
-            print "    giving an average speed of {} rays/s".format( avgSpeed )
-            print "    estimated time for the whole scene is {} seconds".format( expectedTime )
+#            print "\nSummary:"
+#            print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
+#            print "    giving an average speed of {} rays/s".format( avgSpeed )
+#            print "    estimated time for the whole scene is {} seconds".format( expectedTime )
             
-    main()
+#    main()
