@@ -60,8 +60,10 @@
     <Compile Include="src\__init__.py" />
     <Compile Include="testtasks\minilight\src\camera.py" />
     <Compile Include="testtasks\minilight\src\image.py" />
+    <Compile Include="testtasks\minilight\src\maxilight.py" />
     <Compile Include="testtasks\minilight\src\minilight.py" />
-    <Compile Include="testtasks\minilight\src\random.py" />
+    <Compile Include="testtasks\minilight\src\mtrenderer.py" />
+    <Compile Include="testtasks\minilight\src\randommini.py" />
     <Compile Include="testtasks\minilight\src\raytracer.py" />
     <Compile Include="testtasks\minilight\src\scene.py" />
     <Compile Include="testtasks\minilight\src\spatialindex.py" />
@@ -73,16 +75,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="testtasks\minilight\cornellbox.ml.txt" />
-    <Content Include="testtasks\minilight\src\camera.pyc" />
-    <Content Include="testtasks\minilight\src\image.pyc" />
-    <Content Include="testtasks\minilight\src\minilight.pyc" />
-    <Content Include="testtasks\minilight\src\random.pyc" />
-    <Content Include="testtasks\minilight\src\raytracer.pyc" />
-    <Content Include="testtasks\minilight\src\scene.pyc" />
-    <Content Include="testtasks\minilight\src\spatialindex.pyc" />
-    <Content Include="testtasks\minilight\src\surfacepoint.pyc" />
-    <Content Include="testtasks\minilight\src\triangle.pyc" />
-    <Content Include="testtasks\minilight\src\vector3f.pyc" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
 </Project>

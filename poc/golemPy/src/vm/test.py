@@ -30,7 +30,7 @@ from subprocess import call
 from resource import IntResource
 
 def foo():
-    call( ["python", "c:/src/golem/poc/tasksdep/minilight/src/minilight.py", "c:/src/golem/poc/tasksdep/minilight/cornellbox.ml.txt"] )
+    call( ["python", "d:/src/golem/poc/golemPy/testtasks/minilight/src/minilight.py", "d:/src/golem/poc/golemPy/testtasks/minilight/cornellbox.ml.txt"] )
 
 foo()
 
@@ -41,7 +41,7 @@ testTaskScr2 = """
 from minilight import render_task
 from resource import ArrayResource
 
-res = render_task( "c:/src/golem/poc/golemPy/testtasks/minilight/cornellbox.ml.txt", startX, startY, width, height, img_width, img_height )
+res = render_task( "d:/src/golem/poc/golemPy/testtasks/minilight/cornellbox.ml.txt", startX, startY, width, height, img_width, img_height )
 
 output = ArrayResource( res )
 """
@@ -96,8 +96,8 @@ class TaskPerformer( Thread ):
 
 def main():
 
-    img_width = 100
-    img_height = 100
+    img_width = 10
+    img_height = 10
     tasks = prepareTasks1( img_width, img_height )
     for t in  tasks:
         g_taskDistributor.appendTask( t )
