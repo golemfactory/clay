@@ -94,7 +94,6 @@ def render_task( sceneFile, x, y, width, height, img_width, img_height ):
     # print "    giving an average speed of {} rays/s".format( avgSpeed )
     # print "    estimated time for the whole scene is {} seconds".format( expectedTime )
     return res
-        
 
 def timedafunc( function ):
 

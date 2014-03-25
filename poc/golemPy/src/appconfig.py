@@ -13,9 +13,9 @@ class CommonConfig:
 
         self._section = section
 
-        ConfigEntry.createProperty( section, "optimal peer num", 10,    self, "OptimalPeerNum" )
-        ConfigEntry.createProperty( section, "start port",       40102, self, "StartPort" )
-        ConfigEntry.createProperty( section, "end port",         60102, self, "EndPort" )
+        ConfigEntry.createProperty( section, "optimal peer num",    10,    self, "OptimalPeerNum" )
+        ConfigEntry.createProperty( section, "start port",          40102, self, "StartPort" )
+        ConfigEntry.createProperty( section, "end port",            60102, self, "EndPort" )
 
     ##############################
     def section( self ):
@@ -28,11 +28,12 @@ class NodeConfig:
     def __init__( self, nodeId ):
         self._section = "Node {}".format( nodeId )
 
-        ConfigEntry.createProperty( self.section(), "seed host",        "",   self, "SeedHost" )
-        ConfigEntry.createProperty( self.section(), "seed host port",    0,   self, "SeedHostPort")
-        ConfigEntry.createProperty( self.section(), "send pings",        0,   self, "SendPings" )
-        ConfigEntry.createProperty( self.section(), "pigns interval",    0,   self, "PingsInterval" )
-        ConfigEntry.createProperty( self.section(), "client UUID", u"", self, "ClientUuid" )
+        ConfigEntry.createProperty( self.section(), "seed host",           "",    self, "SeedHost" )
+        ConfigEntry.createProperty( self.section(), "seed host port",      0,     self, "SeedHostPort")
+        ConfigEntry.createProperty( self.section(), "send pings",          0,     self, "SendPings" )
+        ConfigEntry.createProperty( self.section(), "pigns interval",      0,     self, "PingsInterval" )
+        ConfigEntry.createProperty( self.section(), "client UUID",         u"",   self, "ClientUuid" )
+        ConfigEntry.createProperty( self.section(), "compute listen port", 30456, self, "computeListenPort" )
 
     ##############################
     def section( self ):
@@ -98,6 +99,9 @@ class AppConfig:
 
     def getClientUuid( self ):
         return self._cfg.getNodeConfig().getClientUuid()
+
+    def getComputeListenPort( self ):
+        return self._cfg.getNodeConfig().getComputeListenPort()
 
     def __str__( self ):
         return str( self._cfg )

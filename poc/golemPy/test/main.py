@@ -10,8 +10,25 @@ from appconfig import AppConfig
 from client import Client
 
 
+def test():
+    lis = u''' l0
+    l1
+    l2
+    l3
+    4l
+    l5'''
+
+    from io import StringIO
+
+    strm = StringIO( lis )
+    for i in strm:
+        print i.strip( )
+
 def main():
     
+    test()
+    return
+
     cfg = AppConfig.loadConfig()
 
     optNumPeers     = cfg.getOptimalPeerNum()
