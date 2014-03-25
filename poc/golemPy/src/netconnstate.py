@@ -1,18 +1,21 @@
 from connectionstate import ConnectionState
 
-class GolemNetConnState( ConnectionState ):
+class NetConnState( ConnectionState ):
     ############################
     def __init__( self, server ):
         ConnectionState.__init__( self, server )
         self.peer = None
-
+    
+    ############################
     def setPeerSession(self, peerSession):
         self.peer = peerSession
 
+    ############################
     def connectionMade(self):
         self.opened = True
         self.server.newConnection(self)
 
+    ############################
     def dataReceived(self, data):
         assert self.opened
 
@@ -28,3 +31,8 @@ class GolemNetConnState( ConnectionState ):
         else:
             print "Peer for connection is None"
             assert False
+
+    ############################
+    def connectionLost(self, reason):
+        self.opened = False
+        self.peer.dropped()
