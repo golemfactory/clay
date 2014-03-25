@@ -10,9 +10,6 @@ class ConnectionState(Protocol):
         self.db = DataBuffer()
         self.opened = False
 
-    def setPeerSession(self, peerSession):
-        self.peer = peerSession
-
     def sendMessage(self, msg):
         if not self.opened:
             print "sendMessage failed - connection closed."
@@ -24,8 +21,7 @@ class ConnectionState(Protocol):
         return True
 
     def connectionMade(self):
-        self.opened = True
-        self.server.newConnection(self)
+        assert False
 
     def dataReceived(self, data):
         assert self.opened
