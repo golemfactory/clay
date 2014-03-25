@@ -9,6 +9,8 @@ class TaskManager:
         self.runningTasks = 0
         self.performenceIndex = 10
         self.myTasks = {}
+        self.computeSession = None
+        self.currentlyComputedTask = None
 
     def addMyTaskToCompute( self, task ):
         assert isinstance( task, Task )
@@ -38,12 +40,19 @@ class TaskManager:
         if len( self.tasks ) > 0:
             i = random.randrange( 0, len( self.tasks.values() - 1 ) )
             t = self.tasks.values()[ i ]
-            self.server.sendMessageWantToCoumpute( self.performenceIndex, t.id, t.address, t.port )
+            return t
+
+    def computeSessionEstablished( self, computeSession ):
+        self.computeSession = computeSession
 
     def runTasks( self ):
         if self.runningTasks < self.maxTasksCount:
-            assert False # TODO:
-            pass
+            self.currentlyComputedTask = self.chooseTaskWantToCompute()
+            self.server.connectComputeSession( self.currentlyComputedTask.address, self.currentlyComputedTask.port )
+            self.runningTasks += 1
+
+        if self.computeSession:
+            self.computeSession.askForTask( self.currentlyComputedTask.id, self.performenceIndex )
 
 class TaskDescriptor:
     #######################

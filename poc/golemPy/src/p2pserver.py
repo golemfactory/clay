@@ -109,7 +109,17 @@ class P2PServer(P2PServerInterface):
         endpoint = TCP4ClientEndpoint(reactor, address, port)
         connection = ComputeConnState(self);
         d = connectProtocol(endpoint, connection)
+        d.addCallback( self.__connectionComputeSessionEstablished )
         d.addErrback(self.__connectionFailure)
+
+    #############################
+    def __connectionComputeSessionEstablished( self, conn ):
+        pp = conn.transport.getPeer()
+        print "newComputeConnection {} {}".format(pp.host, pp.port)
+        computeSession = ComputeSession(conn, self, pp.host, pp.port)
+        conn.setComputeSession(computeSession)
+
+        self.taskManager.computeSessionEstablished( computeSession )
 
     #############################
     def pingPeers( self, interval ):
@@ -157,11 +167,6 @@ class P2PServer(P2PServerInterface):
             self.lastGetTasksRequest = time.time()
 
     #############################
-    def sendMessageWantToCoumpute( self, perfIndex, id, address, port ):
-
-        pass
-
-    #############################
     def syncNetwork( self ):
         self.sendMessageGetPeers()
         self.sendMessageGetTasks()
@@ -183,7 +188,7 @@ class P2PServer(P2PServerInterface):
     def __runListenOnceNet( self ):
         ep = TCP4ServerEndpoint( reactor, self.netListeningPort )
         
-        d = ep.listen( GolemServerFactory( self ) )
+        d = ep.listen( NetServerFactory( self ) )
         
         d.addCallback( self.__netListeningEstablished )
         d.addErrback( self.__netListeningFailure )
