@@ -21,6 +21,9 @@ class Vector3f(object):
             if len(args) > 2:
                 self.y, self.z = float(args[1]), float(args[2])
 
+    def __str__(self):
+        return "({0.x}, {0.y}, {0.z})".format( self )
+
     def __iter__(self):
         yield self.x
         yield self.y
