@@ -9,3 +9,5 @@ class ComputeSession:
         self.port = port
 
     ##########################
+    def start( self ):
+        pass
