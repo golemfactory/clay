@@ -1,6 +1,6 @@
 from multiprocessing import Process, Array
 from raytracer import RayTracer
-from random import Random
+from randommini import Random
 from math import pi, tan
 from vector3f import Vector3f
 
