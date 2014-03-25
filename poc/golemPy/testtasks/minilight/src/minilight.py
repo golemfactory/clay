@@ -128,6 +128,8 @@ def render_taskable( image, image_file_pathname, camera, scene, num_samples ):
     aspect = float(image.height) / float(image.width)
     samplesPerUpdate = 2000
     
+    print camera
+
     curPass = 0
     try:
         totalPasses = float( image.height * image.width )
@@ -226,36 +228,39 @@ def calculate_tone_mapping(pixels, divider):
     b = 1.219 + adapt_luminance ** 0.4
     return ((a / b) ** 2.5) / DISPLAY_LUMINANCE_MAX  
 
-#def main():
-#    if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
-#        print HELP
-#    else:
-#        print BANNER
-#        model_file_pathname = argv[1]
-#        image_file_pathname = model_file_pathname + '.ppm'
-#        model_file = open(model_file_pathname, 'r')
-#        if model_file.next().strip() != MODEL_FORMAT_ID:
-#            raise 'invalid model file'
-#        for line in model_file:
-#            if not line.isspace():
-#                iterations = int(line)
-#                break
-#        image = Image(model_file)
-#        camera = Camera(model_file)
-#        scene = Scene(model_file, camera.view_position)
-#        model_file.close()
+def main():
+   if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
+       print HELP
+   else:
+       print BANNER
+       model_file_pathname = argv[1]
+       image_file_pathname = model_file_pathname + '.ppm'
+       model_file = open(model_file_pathname, 'r')
+       if model_file.next().strip() != MODEL_FORMAT_ID:
+           raise 'invalid model file'
+       for line in model_file:
+           if not line.isspace():
+               iterations = int(line)
+               break
+       image = Image(model_file)
+       camera = Camera(model_file)
+       
+       print camera
+       return
+       scene = Scene(model_file, camera.view_position)
+       model_file.close()
         
-#        #render_orig( image, image_file_pathname, camera, scene, iterations )
-#        #numSamples, duration = render_taskable( image, image_file_pathname, camera, scene, iterations )
-#        #numSamples, duration = render_rect( Rect(0, 0, 50, 1), image.width, image.height, camera, scene, iterations )
-#        numSamples, duration = render_rect( Rect(0, 0, image.width, image.height), image.width, image.height, camera, scene, iterations )
-#        totalSamples = image.width * image.height * iterations
-#        avgSpeed = float( numSamples ) / duration
-#        expectedTime = totalSamples / avgSpeed
+       #render_orig( image, image_file_pathname, camera, scene, iterations )
+       #numSamples, duration = render_taskable( image, image_file_pathname, camera, scene, iterations )
+       #numSamples, duration = render_rect( Rect(0, 0, 50, 1), image.width, image.height, camera, scene, iterations )
+       numSamples, duration = render_rect( Rect(0, 0, image.width, image.height), image.width, image.height, camera, scene, iterations )
+       totalSamples = image.width * image.height * iterations
+       avgSpeed = float( numSamples ) / duration
+       expectedTime = totalSamples / avgSpeed
 
-#        print "\nSummary:"
-#        print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
-#        print "    giving an average speed of {} rays/s".format( avgSpeed )
-#        print "    estimated time for the whole scene is {} seconds".format( expectedTime )
+       print "\nSummary:"
+       print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
+       print "    giving an average speed of {} rays/s".format( avgSpeed )
+       print "    estimated time for the whole scene is {} seconds".format( expectedTime )
         
-#main()
+main()

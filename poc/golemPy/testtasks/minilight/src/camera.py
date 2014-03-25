@@ -37,6 +37,9 @@ class Camera(object):
                     self.up = self.view_direction.cross(self.right).unitize()
                 break
 
+    def __str__(self):
+        return "{} {} {} {} {} ".format( self.view_position, self.view_angle, self.up, self.right, self.view_direction )
+
     def pixel_accumulated_radiance(self, scene, random, width, height, x, y, aspect, num_samples):
         raytracer = RayTracer(scene)
         acc_radiance = [ 0.0, 0.0, 0.0 ]
