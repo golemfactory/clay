@@ -190,6 +190,22 @@ class MessagePeers( Message ):
     def dictRepr(self):
         return { MessagePeers.PEERS_STR : self.peersArray }
 
+class MessageGetTasks( Message ):
+
+    Type = 6
+
+    GET_TASTKS_STR = u"GET_TASKS"
+
+    def __init__( self, peersArray = [], dictRepr = None ):
+        Message.__init__(self, MessageGetTasks.Type)
+
+        if dictRepr:
+            assert dictRepr[ 0 ] == MessageGetTasks.GET_TASTKS_STR
+
+    def dictRepr(self):
+        return [ MessageGetTasks.GET_TASTKS_STR ]
+
+
 if __name__ == "__main__":
 
     hem = MessageHello( 1, 2 )

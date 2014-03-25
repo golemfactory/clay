@@ -1,4 +1,4 @@
-from message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers
+from message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks
 import time
 
 class PeerSessionInterface:
@@ -110,6 +110,10 @@ class PeerSession(PeerSessionInterface):
                     self.server.freePeers.append( pi[ "id" ] )
                     print self.server.incommingPeers
 
+        elif type == MessageGetTasks:
+            self.sendTasks()
+
+
     # private
        
     def sendHello(self):
@@ -127,12 +131,17 @@ class PeerSession(PeerSessionInterface):
     def sendGetPeers( self ):
         self.send( MessageGetPeers() )
 
+    def sendGetTasks( self ):
+        self.send( MessageGetTasks() )
+
     def sendPeers( self ):
         peersInfo = []
         for p in self.server.peers.values():
             peersInfo.append( { "address" : p.address, "port" : p.port, "id" : p.id } )
         self.send( MessagePeers( peersInfo ) )
 
+    def sendTasks( self ):
+        assert False
 
     def send(self, message):
         if not self.server.sendMessage(self.conn, message):

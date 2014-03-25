@@ -34,11 +34,13 @@ class P2PServer(P2PServerInterface):
         self.curPort = self.startPort
         self.idealPeerCount = 2
         self.peers = {}
+        self.tasks = {}
         self.seedHost = seedHost
         self.seedHostPort = seedHostPort
         self.startAccepting()
         self.publicKey = publicKey
         self.lastGetPeersRequest = time.time()
+        self.lastGetTasksRequest = time.time()
         self.incommingPeers = {}
         self.freePeers = []
 
@@ -110,6 +112,10 @@ class P2PServer(P2PServerInterface):
             self.connect( self.incommingPeers[ self.freePeers[ x ] ][ "address" ], self.incommingPeers[ self.freePeers[ x ] ][ "port" ] )
             self.freePeers.remove( self.freePeers[ x ] )
 
+    #############################
+    def sendMessageGetTasks( self ):
+        for p in self.peers.values():
+            p.sendGetTasks()
 
     #############################
     def __connectionFailure(self, conn):
@@ -146,6 +152,6 @@ class P2PServer(P2PServerInterface):
 
     #############################
     def syncNetwork( self ):
-
         self.sendMessageGetPeers()
+        self.sendMessageGetTasks()
 

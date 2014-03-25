@@ -5,8 +5,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>testtasks\minilight\src\maxilight.py</StartupFile>
-    <SearchPath>src;testtasks;testtasks\minilight\src</SearchPath>
+    <StartupFile>test\main.py</StartupFile>
+    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>golem</Name>
@@ -51,7 +51,6 @@
     <Compile Include="src\message.py" />
     <Compile Include="src\p2pserver.py" />
     <Compile Include="src\peer.py" />
-    <Compile Include="src\protomessages.py" />
     <Compile Include="src\vm\resource.py" />
     <Compile Include="src\vm\task.py" />
     <Compile Include="src\vm\taskdistributor.py" />
