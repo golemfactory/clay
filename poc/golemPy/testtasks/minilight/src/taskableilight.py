@@ -1,28 +1,39 @@
-#from camera import Camera
-#from image import Image
-#from scene import Scene
+from camera import Camera
+from image import Image
+from scene import Scene
 
-#from mtrenderer import RenderWorker
+from sys import argv, stdout
+from time import time
+from io import StringIO
 
-#from sys import argv, stdout
-#from time import time
+import task_data_0
 
-#class RenderWorker:
+class RenderWorker:
 
-#    @classmethod
-#    def createWorker( cls, x, y, w, h, num_pixels, num_samples, scene_data ):
-#        if x >= w or y >= h or num_samples < 1:
-#            return None
+    @classmethod
+    def createWorker( cls, x, y, w, h, num_pixels, num_samples, scene_data ):
+        if x >= w or y >= h or num_samples < 1:
+            return None
 
-#        totalPixels = w * h
-#        leftOver = totalPixels - h * y + x
+        totalPixels = w * h
+        leftOver = totalPixels - h * y + x
 
-#        if leftOver < num_pixels < 1:
-#            return None
+        if leftOver < num_pixels < 1:
+            return None
 
-#        camera = Camera(model_file)
+        data_stream = StringIO( scene_data )
+
+        camera  = Camera( data_stream )
+        scene   = Scene( data_stream, camera.view_position )
+
+        print camera
+        print scene
+
+if __name__ == "__main__":
+    rw = RenderWorker.createWorker( 0, 0, 100, 100, 100, 100, task_data_0.deserialized_task )
 
 #        return RenderWorker( x, y, w, h, num_pixels, num_samples, sce
+
 #    def __init__( self, x, y, w, h, 
 
 #def renderPixels( 

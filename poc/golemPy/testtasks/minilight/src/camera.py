@@ -18,7 +18,8 @@ VIEW_ANGLE_MAX = 160.0
 class Camera(object):
 
     def __init__(self, in_stream):
-        for line in in_stream:
+        for l in in_stream:
+            line = l.encode('ascii','ignore')
             if not line.isspace():
                 p, d, a = SEARCH(line).groups()
                 self.view_position = Vector3f(p)
