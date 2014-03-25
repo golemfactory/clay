@@ -45,7 +45,6 @@ class TaskManager:
             assert False # TODO:
             pass
 
-
 class TaskDescriptor:
     #######################
     def __init__( self, id, difficultyIndex, extraData, taskOwnerAddress, taskOwnerPort ):

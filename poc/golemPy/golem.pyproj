@@ -70,6 +70,8 @@
     <Compile Include="testtasks\minilight\src\scene.py" />
     <Compile Include="testtasks\minilight\src\spatialindex.py" />
     <Compile Include="testtasks\minilight\src\surfacepoint.py" />
+    <Compile Include="testtasks\minilight\src\taskableilight.py" />
+    <Compile Include="testtasks\minilight\src\task_data_0.py" />
     <Compile Include="testtasks\minilight\src\triangle.py" />
     <Compile Include="testtasks\minilight\src\vector3f.py" />
     <Compile Include="test\main.py" />
