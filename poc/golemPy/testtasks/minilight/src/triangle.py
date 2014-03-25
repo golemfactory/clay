@@ -18,7 +18,11 @@ EPSILON   = 1.0 / 1048576.0
 class Triangle(object):
 
     def __init__(self, in_stream):
-        for line in in_stream:
+        for l in in_stream:
+            if type( l ) == type( u"" ):
+                line = l.encode('ascii','ignore')
+            else:
+                line = l
             if not line.isspace():
                 v0, v1, v2, r, e = SEARCH(line).groups()
                 self.vertexs = map(Vector3f, [v0, v1, v2])

@@ -19,7 +19,10 @@ class Camera(object):
 
     def __init__(self, in_stream):
         for l in in_stream:
-            line = l.encode('ascii','ignore')
+            if type( l ) == type( u"" ):
+                line = l.encode('ascii','ignore')
+            else:
+                line = l
             if not line.isspace():
                 p, d, a = SEARCH(line).groups()
                 self.view_position = Vector3f(p)

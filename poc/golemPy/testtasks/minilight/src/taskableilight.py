@@ -1,10 +1,14 @@
-from camera import Camera
-from image import Image
-from scene import Scene
-
 from sys import argv, stdout
 from time import time
 from io import StringIO
+from math import pi, tan
+
+from camera import Camera
+from image import Image
+from scene import Scene
+from raytracer import RayTracer
+from vector3f import Vector3f
+from randommini import Random
 
 import task_data_0
 
@@ -26,12 +30,69 @@ class RenderWorker:
         camera  = Camera( data_stream )
         scene   = Scene( data_stream, camera.view_position )
 
-        print camera
-        print scene
+        return RenderWorker( x, y, w, h, num_pixels, num_samples, camera, scene )
+
+    def __init__( self, x, y, w, h, num_pixels, num_samples, camera, scene ):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.aspect = float( h ) / float( w )
+        
+        self.num_pixels = num_pixels
+        self.num_samples = num_samples
+
+        self.camera = camera
+        self.scene = scene
+        self.raytracer = RayTracer(scene)
+
+        self.random = Random()
+
+        self.progress = 0.0
+
+    def getProgress( self ):
+        return self.progress
+
+    def sample_radiance( self, x, y ):
+        acc_radiance = [ 0.0, 0.0, 0.0 ]
+
+        for i in range(self.num_samples):
+            x_coefficient = ((x + self.random.real64()) * 2.0 / self.w) - 1.0
+            y_coefficient = ((y + self.random.real64()) * 2.0 / self.h) - 1.0
+
+            offset = self.camera.right * x_coefficient + self.camera.up * (y_coefficient * self.aspect)
+
+            sample_direction = (self.camera.view_direction + (offset * tan(self.camera.view_angle * 0.5))).unitize()
+
+            radiance = self.raytracer.get_radiance(self.camera.view_position,sample_direction, self.random)
+
+            acc_radiance[ 0 ] += radiance[ 0 ]          
+            acc_radiance[ 1 ] += radiance[ 1 ]          
+            acc_radiance[ 2 ] += radiance[ 2 ]          				
+        
+        return Vector3f( acc_radiance[ 0 ], acc_radiance[ 1 ], acc_radiance[ 2 ] )
+
+    def getXY( self, idx ):
+        return idx % self.w, idx // self.w
+
+    def render( self ):
+        pixels = [0.0] * 3 * self.num_pixels
+        offset  = self .y * self.w + self.x
+
+        for k in range( self.num_pixels ):
+            x, y = self.getXY( k + offset )
+            radiance = self.sample_radiance( x, y )
+
+            pixels[ 3 * k + 0 ] = radiance[ 0 ]                
+            pixels[ 3 * k + 1 ] = radiance[ 1 ]                
+            pixels[ 3 * k + 2 ] = radiance[ 2 ]                
+        
+        return pixels
 
 if __name__ == "__main__":
-    rw = RenderWorker.createWorker( 0, 0, 100, 100, 100, 100, task_data_0.deserialized_task )
 
+    rw = RenderWorker.createWorker( 0, 0, 20, 20, 400, 4, task_data_0.deserialized_task )
+    print rw.render()
 #        return RenderWorker( x, y, w, h, num_pixels, num_samples, sce
 
 #    def __init__( self, x, y, w, h, 
