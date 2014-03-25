@@ -1,3 +1,6 @@
+from computeconnstate import ComputeConnState
+from message import MessageWantToComputeTask, MessageTaskToCompute
+import time
 
 class ComputeSession:
 
@@ -11,3 +14,25 @@ class ComputeSession:
     ##########################
     def start( self ):
         pass
+
+    ##########################
+    def askForTask( self, taskId, performenceIndex ):
+        self.sever.sendMessage( self.conn, MessageWantToComputeTask( taskId, performenceIndex ) )
+
+    ##########################
+    def interpret( self, msg ):
+        if msg is None:
+            pass #TODO
+
+        type = msg.getType()
+
+        localtime   = time.localtime()
+        timeString  = time.strftime("%H:%M:%S", localtime)
+        print "{} at {}".format( msg.serialize(), timeString )
+
+        if type == MessageWantToComputeTask.Type:
+            pass # TODO send back the massege with task
+        elif type == MessageTaskToCompute.Type:
+            pass # TODO intepret and start computing
+        else:
+            assert False
