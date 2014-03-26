@@ -14,8 +14,11 @@ class ConnectionState(Protocol):
         if not self.opened:
             print "sendMessage failed - connection closed."
             return False
+
+        serMsg = msg.serialize()
+
         db = DataBuffer()
-        db.appendLenPrefixedString( msg )
+        db.appendLenPrefixedString( serMsg )
         self.transport.getHandle()
         self.transport.write( db.readAll() )
         return True

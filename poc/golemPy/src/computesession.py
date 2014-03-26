@@ -17,7 +17,7 @@ class ComputeSession:
 
     ##########################
     def askForTask( self, taskId, performenceIndex ):
-        self.sever.sendMessage( self.conn, MessageWantToComputeTask( taskId, performenceIndex ) )
+        self.conn.sendMessage( MessageWantToComputeTask( taskId, performenceIndex ) )
 
     ##########################
     def interpret( self, msg ):

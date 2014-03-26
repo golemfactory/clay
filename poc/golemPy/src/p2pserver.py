@@ -127,11 +127,6 @@ class P2PServer(P2PServerInterface):
             p.ping( interval )
 
     #############################
-    def sendMessage(self, conn, msg):
-        assert conn
-        return conn.sendMessage(msg.serialize())
-
-    #############################
     def findPeer( self, peerID ):
         if peerID in self.peers:
             return self.peers[ peerID ]
