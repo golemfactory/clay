@@ -13,9 +13,6 @@ class RenderWorker:
         if not renderTask.isValid():
             return None
 
-        if not onFinishedCallback:
-            return None
-
         return RenderWorker( renderTask )
 
     def __init__( self, task ):
@@ -56,7 +53,8 @@ class RenderWorker:
         result = RenderTaskResult.createRenderTaskResult( self.task.getDesc(), pixels )
 
         if result:
-            self.task.callback( result )
+            if self.task.callback:
+                self.task.callback( result )
         else:
             print "Failed to acquire result"
             
