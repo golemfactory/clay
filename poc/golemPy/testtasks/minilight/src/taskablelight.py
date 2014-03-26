@@ -47,10 +47,10 @@ if __name__ == "__main__":
             print "Active worker count {}".format( pool.activeCount() )
             tr.printStats()
 
+    pool.joinAll()
+
     tr.printStats()
 
     print "All tasks finished gracefully"
     print "Writing result image {}".format( IMG_NAME )
     save_image( IMG_NAME, INPUT_W, INPUT_H, tr.getResult(), SAMPLES )
-
-    pool.joinAll()
