@@ -48,7 +48,9 @@ Główne okienka
    - lista tasków
    - aktualny task + progress + dla kogo liczony
  - okienko taska odpalane z poziomou noda
-     - pozawala zlecić task i śledzić jego progress
+     - pozawala zlecić task i śledzić jego progress (docelowo jeden node powinien być w stanie zlecać kilka różnych tasków)
+       - podstawowa konfiguracja taska (u nas, w, h, num_samples oraz można dać ustawienia kamery, żeby było widać, że
+         taski odpowiadają różnym scenom)
      - lista aktywnie liczących nodów
      - czasy (oczekiwany, poszczególnych nodów)
      - progressy pojedyncze
@@ -56,3 +58,9 @@ Główne okienka
       
 Przemyśleć, jakie dane słać do managera, kto inicjuje połączenia i jak ten protokół ma wyglądać
 Dodać API do pobierania własnego ip, które nie jest loopbackiem
+
+Config:
+  - domyślna wydajność danego noda (w praktyce powinna być liczona na żywca, bo może w danym momencie być liczonych więcej tasków, 
+    ale co tam)
+  - czasy oczekiwania na synchronizację
+  - seed host/port
