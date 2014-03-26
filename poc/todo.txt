@@ -33,4 +33,26 @@ TTL u nas będzie miał sens tylko w wiadomościach broadcastowanych i trzeba po
 
 UI:
 
+Docelowo jeden ndoe może liczyć więcej, niż jeden task i trzeba to brać pod uwagę
+
 Główne okienka
+ - okiengo managera
+   - lista aktywnych (lub ostatnio padniętych) nodów na danym kompie
+     - każdy wpis ma stan noda
+       - uid, aktywne peery, liczba tasków, aktualnie liczony task (z progressem) lub info, że nie liczy - oraz info, dla kogo liczy
+ - okienko pojedynczego noda (z możliwością przepięcia konsoli na okienkową)
+   - uid
+   - adres
+   - lista uidów z podpiętymi nodami (oraz czasy ostatnich wiadomości (dla każdego typu wiadomości)
+   - konsola
+   - lista tasków
+   - aktualny task + progress + dla kogo liczony
+ - okienko taska odpalane z poziomou noda
+     - pozawala zlecić task i śledzić jego progress
+     - lista aktywnie liczących nodów
+     - czasy (oczekiwany, poszczególnych nodów)
+     - progressy pojedyncze
+     - progress totalny (już policzone, już liczone)
+      
+Przemyśleć, jakie dane słać do managera, kto inicjuje połączenia i jak ten protokół ma wyglądać
+Dodać API do pobierania własnego ip, które nie jest loopbackiem
