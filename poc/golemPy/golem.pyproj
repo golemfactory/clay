@@ -29,6 +29,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Folder Include="src\ui\" />
     <Folder Include="testtasks\" />
     <Folder Include="src\" />
     <Folder Include="src\core\" />
@@ -55,6 +56,7 @@
     <Compile Include="src\netconnstate.py" />
     <Compile Include="src\p2pserver.py" />
     <Compile Include="src\peer.py" />
+    <Compile Include="src\ui\progressbar.py" />
     <Compile Include="src\vm\resource.py" />
     <Compile Include="src\vm\task.py" />
     <Compile Include="src\vm\taskdistributor.py" />
