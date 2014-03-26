@@ -91,6 +91,40 @@ class RenderWorker:
 
 if __name__ == "__main__":
 
+    import sys
+
+    rn = Random()
+    
+    print "Preallocating"
+
+    ilo = [0.0] * 1024 * 1024 * 10
+    rdn = []
+    
+    print "Pregenerating"
+
+    for k in range( 1024 // 32 ):
+        rdn.append( rn.real64() )
+
+    print "Starting adding"
+
+    z = 0
+    for k in range( 1024 // 32 ):
+        print "\rElt {}".format( k ),
+        for i in range( 1024 * 10 * 32 ):
+            ilo[ z ] = rdn[ k ]
+            z += 1
+
+    z = 0
+    print "Starting printing"
+    for k in range( 1024 // 32 ):
+        sum = 0.0
+        for i in range( 1024 * 10 * 32 ):
+            sum += ilo[ z ]
+            z += 1
+        print "\rPresummer {:02} {}".format( k, sum )
+
+    sys.exit( 0 )
+
     w = 20
     h = 20
     num_samples = 40
