@@ -40,6 +40,9 @@ class TaskableRenderer:
     def isFinished( self ):
         return self.pixelsCalculated == self.w * self.h
 
+    def hasMoreTasks( self ):
+        return self.pixelsLeft > 0
+
     def getProgress( self ):
         return float( self.pixelsCalculated ) / float( self.w * self.h )
 
@@ -90,7 +93,7 @@ class TaskableRenderer:
             self.activeTasks += 1
             self.totalTasks += 1
 
-            print "Task {:5} with {:5} pixels at ({}, {}) - ASSIGNED".format( task.desc.getID(), task.desc.getNumPixels(), task.desc.getX(), task.desc.getY() )
+            print "Task {:5} with {:5} pixels at ({}, {}) at {} rays/s - ASSIGNED".format( task.desc.getID(), task.desc.getNumPixels(), task.desc.getX(), task.desc.getY(), estimatedSpeed )
 
             return task
 
