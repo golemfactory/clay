@@ -67,10 +67,14 @@
     <Compile Include="testtasks\minilight\src\mtrenderer.py" />
     <Compile Include="testtasks\minilight\src\randommini.py" />
     <Compile Include="testtasks\minilight\src\raytracer.py" />
+    <Compile Include="testtasks\minilight\src\rendertask.py" />
+    <Compile Include="testtasks\minilight\src\renderworker.py" />
     <Compile Include="testtasks\minilight\src\scene.py" />
     <Compile Include="testtasks\minilight\src\spatialindex.py" />
     <Compile Include="testtasks\minilight\src\surfacepoint.py" />
     <Compile Include="testtasks\minilight\src\taskablelight.py" />
+    <Compile Include="testtasks\minilight\src\taskablerenderer.py" />
+    <Compile Include="testtasks\minilight\src\rendertaskcreator.py" />
     <Compile Include="testtasks\minilight\src\task_data_0.py" />
     <Compile Include="testtasks\minilight\src\triangle.py" />
     <Compile Include="testtasks\minilight\src\vector3f.py" />

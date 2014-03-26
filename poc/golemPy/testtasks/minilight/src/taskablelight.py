@@ -1,67 +1,73 @@
-from sys import argv, stdout
-from time import time
-from io import StringIO
-from math import pi, tan
-
-from camera import Camera
-from img import Img
-from scene import Scene
-from raytracer import RayTracer
-from vector3f import Vector3f
-from randommini import Random
-
+from taskablerenderer import TaskableRenderer
 import task_data_0
 
 if __name__ == "__main__":
 
-    w = 20
-    h = 20
-    num_samples = 40
 
-    rw = RenderWorker.createWorker( 0, 0, w, h, w * h, num_samples, task_data_0.deserialized_task )
-    data = rw.render()
+#from sys import argv, stdout
+#from time import time
+#from io import StringIO
+#from math import pi, tan
 
-    img = Img( w, h )
-    img.copyPixels( data )
+#from camera import Camera
+#from img import Img
+#from scene import Scene
+#from raytracer import RayTracer
+#from vector3f import Vector3f
+#from randommini import Random
 
-    image_file = open( "temp_file.ppm", 'wb')
-    img.get_formatted(image_file, num_samples)
-    image_file.close()
+#import task_data_0
 
-    def some_shit():
-        import sys
+#if __name__ == "__main__":
 
-        rn = Random()
+#    w = 20
+#    h = 20
+#    num_samples = 40
+
+#    rw = RenderWorker.createWorker( 0, 0, w, h, w * h, num_samples, task_data_0.deserialized_task )
+#    data = rw.render()
+
+#    img = Img( w, h )
+#    img.copyPixels( data )
+
+#    image_file = open( "temp_file.ppm", 'wb')
+#    img.get_formatted(image_file, num_samples)
+#    image_file.close()
+
+#    def some_shit():
+#        import sys
+
+#        rn = Random()
     
-        print "Preallocating"
+#        print "Preallocating"
 
-        ilo = [0.0] * 1024 * 1024 * 10
-        rdn = []
+#        ilo = [0.0] * 1024 * 1024 * 10
+#        rdn = []
     
-        print "Pregenerating"
+#        print "Pregenerating"
 
-        for k in range( 1024 // 32 ):
-            rdn.append( rn.real64() )
+#        for k in range( 1024 // 32 ):
+#            rdn.append( rn.real64() )
 
-        print "Starting adding"
+#        print "Starting adding"
 
-        z = 0
-        for k in range( 1024 // 32 ):
-            print "\rElt {}".format( k ),
-            for i in range( 1024 * 10 * 32 ):
-                ilo[ z ] = rdn[ k ]
-                z += 1
+#        z = 0
+#        for k in range( 1024 // 32 ):
+#            print "\rElt {}".format( k ),
+#            for i in range( 1024 * 10 * 32 ):
+#                ilo[ z ] = rdn[ k ]
+#                z += 1
 
-        z = 0
-        print "Starting printing"
-        for k in range( 1024 // 32 ):
-            sum = 0.0
-            for i in range( 1024 * 10 * 32 ):
-                sum += ilo[ z ]
-                z += 1
-            print "\rPresummer {:02} {}".format( k, sum )
+#        z = 0
+#        print "Starting printing"
+#        for k in range( 1024 // 32 ):
+#            sum = 0.0
+#            for i in range( 1024 * 10 * 32 ):
+#                sum += ilo[ z ]
+#                z += 1
+#            print "\rPresummer {:02} {}".format( k, sum )
 
-        sys.exit( 0 )
+#        sys.exit( 0 )
 
 #        return RenderWorker( x, y, w, h, num_pixels, num_samples, sce
 

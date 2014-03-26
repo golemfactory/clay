@@ -1,12 +1,10 @@
 from rendertask import RenderTask, RenderTaskDesc, RenderTaskResult
-from threading import Lock, Thread
+from threading import Lock
 from time import time
 
-class TaskableRenderer(Thread):
+class TaskableRenderer:
 
     def __init__( self, w, h, num_samples, scene_data, preferredTaskTimeSlice, timeoutTime ):
-        super( TaskableRenderer, self ).__init__()
-
         self.w = w
         selg.h = h
         self.num_samples = num_sampes
@@ -16,6 +14,7 @@ class TaskableRenderer(Thread):
         self.preferredTaskTime = preferredTaskTimeSlice 
         self.startTime = time()
 
+        #FIXME: validate scene data here
         #FIXME: this should be a bit more sophisticated structure (to collect more than one result per pixel and to calc some stats using this data)
         self.data = [0.0] * w * h * 3
         self.pixelsCalculated = 0
@@ -33,6 +32,7 @@ class TaskableRenderer(Thread):
         print "Total pixels calculated : {}".format( self.pixelsCalculated )
         print "Active pixels (in tasks): {}".format( self.nextPixel - self.pixelsCalculated )
         print "Unallocated pixels:       {}".format( self.pixelsLeft )
+        print "Progress:                 {}".format( self.getProgress() )
 
     def start( self ):
         self.startTime = time()
@@ -42,6 +42,11 @@ class TaskableRenderer(Thread):
 
     def getProgress( self ):
         return float( self.pixelsCalculated ) / float( self.w * self.h )
+
+    def getResult( self ):
+        if isFinished():
+            return None
+        return None
 
     def __createTask( self, curPixel, numPixels ):
         x = curPixel % self.w
@@ -84,10 +89,24 @@ class TaskableRenderer(Thread):
             self.activeTasks += 1
             self.totalTasks += 1
 
+            print "Task {:6} with {} pixels assigned at x {} y {}".format( task.desc.getID(), task.desc.getNumPixels(), task.desc.getX(), task.desc.getY() )
+
             return task
 
-    def taskFinished( self, taskResult ):
-        assert isinstance( taskResult, RenderTaskResult )
-        self.activeTasks -= 1
-        self.pixelsCalculated += taskResult.getDesc().getNumPixels()
+    def taskFinished( self, result ):
+        assert isinstance( result, RenderTaskResult )
+        assert result.desc.getW() == self.w and result.desc.getH() == self.h
+
+        print "Task {:6} with {} pixels at x {} y {}".format( result.desc.getID(), result.desc.getNumPixels(), result.desc.getX(), result.desc.getY() )
+
+        desc    = result.getDesc()
+        pixels  = result.getPixelData()
+        offset  = 3 * desc.getY() * desc.getW() + desc.getX()
+
+        with self.lock:
+            self.activeTasks -= 1
+            self.pixelsCalculated += taskResult.getDesc().getNumPixels()
+
+        for k in range( 3 * desc.getNumPixels() ):
+            self.data[ k + offset ] = pixels[ k ]
 
