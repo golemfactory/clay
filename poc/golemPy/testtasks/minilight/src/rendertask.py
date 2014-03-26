@@ -56,7 +56,7 @@ class RenderTaskDesc:
 class RenderTask:
     
     @classmethod
-    def createRenderTask( cls, renderTaskDesc, scene_data ):
+    def createRenderTask( cls, renderTaskDesc, scene_data, callback ):
 
         if not renderTaskDesc.isValid():
             return None
@@ -70,12 +70,13 @@ class RenderTask:
             #if verbose -> dump all data
             return None
 
-        return RenderTask( renderTaskDesc, camera, scene )
+        return RenderTask( renderTaskDesc, camera, scene, callback )
 
-    def __init__( self, desc, camera, scene ):
+    def __init__( self, desc, camera, scene, callback ):
         self.desc = desc
         self.camera = camera
         self.scene = scene
+        self.callback = callback
 
     def isValid( self ):
         return desc.isValid()

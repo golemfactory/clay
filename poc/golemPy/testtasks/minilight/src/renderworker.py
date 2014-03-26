@@ -3,7 +3,7 @@ from rendertask import RenderTaskDesc, RenderTask, RenderTaskResult
 class RenderWorker:
 
     @classmethod
-    def createWorker( cls, renderTask, onFinishedCallback ):
+    def createWorker( cls, renderTask  ):
         
         if not renderTask.isValid():
             return None
@@ -11,13 +11,12 @@ class RenderWorker:
         if not onFinishedCallback:
             return None
 
-        return RenderWorker( renderTask, onFinishedCallback )
+        return RenderWorker( renderTask )
 
     def __init__( self, task ):
         assert isinstance( task, RenderTask )
 
         self.task = task
-        self.ofcb = onFinishedCallback
 
         self.random     = Random()
         self.raytracer  = RayTracer( task.getScene() )
@@ -52,7 +51,7 @@ class RenderWorker:
         result = RenderTaskResult.createRenderTaskResult( self.task.getDesc(), pixels )
 
         if result:
-            self.ofcb( result )
+            self.task.callback( result )
         else:
             print "Failed to acquire result"
             
