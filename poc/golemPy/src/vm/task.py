@@ -1,10 +1,11 @@
 from resource import PyCodeResource
-from message import MessageTaskToCompute
+from message import MessageTaskToCompute, MessageCannotAssignTask
 from vm import PythonVM
 
 from threading import Thread
 from twisted.internet import reactor
 import random
+import time
 
 class TaskManager:
     def __init__( self, server, maxTasksCount = 1 ):
@@ -18,6 +19,7 @@ class TaskManager:
         self.waitingFotTask = None
         self.currentlyComputedTask = None
         self.currentComputation = None
+        self.dontAskTasks = {}
 
     def addMyTaskToCompute( self, task ):
         if task:
@@ -27,7 +29,7 @@ class TaskManager:
             self.myTasks[ task.desc.id ] = task
 
         else:
-            td = TaskDescriptor( u"231231231", 5, None, "127.0.0.1", self.server.computeListeningPort )
+            td = TaskDescriptor( u"231231231", 5, None, "127.0.0.1", self.server.computeListeningPort, 1000 )
             t = RayTracingTask( 10, 10, td )
             self.myTasks[ t.desc.id ] = t
 
@@ -48,7 +50,7 @@ class TaskManager:
             id = taskDict[ "id" ]
             if id not in self.tasks.keys() and id not in self.myTasks.keys():
                 print "Adding task {}".format( id )
-                self.tasks[ id ] = TaskDescriptor( id, taskDict[ "difficulty" ], taskDict[ "extra" ], taskDict[ "address" ], taskDict[ "port" ] )
+                self.tasks[ id ] = TaskDescriptor( id, taskDict[ "difficulty" ], taskDict[ "extra" ], taskDict[ "address" ], taskDict[ "port" ], taskDict[ "ttl" ] )
             return True
         except:
             print "Wrong task received"
@@ -58,7 +60,10 @@ class TaskManager:
         if len( self.tasks ) > 0:
             i = random.randrange( 0, len( self.tasks.values() ) )
             t = self.tasks.values()[ i ]
-            return t
+            if t.id not in self.dontAskTasks.keys():
+                return t
+        return None
+
 
     def computeSessionEstablished( self, computeSession ):
         self.computeSession = computeSession
@@ -72,8 +77,9 @@ class TaskManager:
                 task.computationStarted( extraData )
                 return MessageTaskToCompute( id, extraData, task.getCode().read() )
             else:
-                print "Task {} does not need computation yet. Sorry".format( id )
-                return None #TODO: implement message when this scenario occurs
+                return MessageCannotAssignTask( id, "Task does not need computation yet. Sorry")
+        else:
+            return MessageCannotAssignTask( id, "It is not my task")
 
     def taskToComputeReceived( self, taskMsg ):
         id = taskMsg.taskId
@@ -96,24 +102,49 @@ class TaskManager:
             print "Task {} computed".format( task.desc.id )
 
     def runTasks( self ):
-        if self.runningTasks < self.maxTasksCount:
+        if self.waitingFotTask and self.waitingFotTask.id in self.dontAskTasks.keys():
+            self.waitingFotTask = None
+
+        if not self.waitingFotTask and self.runningTasks < self.maxTasksCount:
             self.waitingFotTask = self.chooseTaskWantToCompute()
             if self.waitingFotTask:
-                self.server.connectComputeSession( self.waitingFotTask.taskOwnerAddress, self.waitingFotTask.taskOwnerPort )
+                if not self.computeSession:
+                    self.server.connectComputeSession( self.waitingFotTask.taskOwnerAddress, self.waitingFotTask.taskOwnerPort )
                 self.runningTasks += 1
 
         if self.computeSession:
             if self.waitingFotTask:
                 self.computeSession.askForTask( self.waitingFotTask.id, self.performenceIndex )
 
+    def removeOldTasks( self ):
+        for t in self.tasks.values():
+            currTime = time.time()
+            t.ttl = t.ttl - ( currTime - t.lastChecking )
+            t.lastChecking = currTime
+            if t.ttl <= 0:
+                print "Task {} dies".format( t.id )
+                del self.tasks[ t.id ]
+                print self.tasks
+
+        for k in self.dontAskTasks.keys():
+            if time.time() - self.dontAskTasks[ k ][ "time" ] > 1000:
+                del self.dontAskTasks[ k ]
+
+    def stopAsking( self, id, reason ):
+        if id not in self.dontAskTasks.keys():
+            self.dontAskTasks[ id ] = { "time" : time.time(), "reason" : reason }
+
+
 class TaskDescriptor:
     #######################
-    def __init__( self, id, difficultyIndex, extraData, taskOwnerAddress, taskOwnerPort ):
+    def __init__( self, id, difficultyIndex, extraData, taskOwnerAddress, taskOwnerPort, ttl ):
         self.difficultyIndex = difficultyIndex
         self.id = id
         self.extraData = extraData
         self.taskOwnerAddress = taskOwnerAddress
         self.taskOwnerPort = taskOwnerPort
+        self.lastChecking = time.time()
+        self.ttl = ttl
 
 class Task:
     #######################

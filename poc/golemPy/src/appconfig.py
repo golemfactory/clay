@@ -34,7 +34,7 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "pigns interval",      0,     self, "PingsInterval" )
         ConfigEntry.createProperty( self.section(), "client UUID",         u"",   self, "ClientUuid" )
         ConfigEntry.createProperty( self.section(), "compute listen port", 30456, self, "computeListenPort" )
-        ConfigEntry.createProperty( self.section(), "add tasks",           False, self, "AddTasks" )
+        ConfigEntry.createProperty( self.section(), "add tasks",           0,     self, "AddTasks" )
 
     ##############################
     def section( self ):

@@ -164,18 +164,16 @@ class P2PServer(P2PServerInterface):
     #############################
     def sendMessageGetTasks( self ):
         if time.time() - self.lastGetTasksRequest > 10:
+            self.lastGetTasksRequest = time.time()
             for p in self.peers.values():
                 p.sendGetTasks()
-            self.lastGetTasksRequest = time.time()
+            
 
     #############################
     def syncNetwork( self ):
         self.sendMessageGetPeers()
+        self.taskManager.removeOldTasks()
         self.sendMessageGetTasks()
-
-
-
-
 
 
     #############################

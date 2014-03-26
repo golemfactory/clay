@@ -154,7 +154,8 @@ class PeerSession(PeerSessionInterface):
                                "difficulty" : t.difficultyIndex,
                                "extra" : t.extraData,
                                "address" : t.taskOwnerAddress,
-                               "port" : t.taskOwnerPort } )
+                               "port" : t.taskOwnerPort,
+                               "ttl" : t.ttl } )
 
         self.send( MessageTasks( tasksInfo ) )
 

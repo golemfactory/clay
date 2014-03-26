@@ -70,6 +70,8 @@ class Message:
             return MessageWantToComputeTask( dictRepr = dRepr )
         elif msgType == MessageTaskToCompute.Type:
             return MessageTaskToCompute( dictRepr = dRepr )
+        elif msgType == MessageCannotAssignTask.Type:
+            return MessageCannotAssignTask( dictRepr = dRepr )
 
         return None
 
@@ -275,6 +277,27 @@ class MessageTaskToCompute( Message ):
         return {    MessageTaskToCompute.TASK_ID_STR : self.taskId,
                     MessageTaskToCompute.EXTRA_DATA_STR: self.extraData,
                     MessageTaskToCompute.SOURCE_CODE_STR: self.sourceCode }
+
+class MessageCannotAssignTask( Message ):
+    
+    Type = 10
+
+    REASON_STR      = u"REASON"
+    ID_STR          = u"ID"
+
+    def __init__( self, id = 0, reason = "", dictRepr = None ):
+        Message.__init__(self, MessageCannotAssignTask.Type)
+
+        self.id = id
+        self.reason = reason
+
+        if dictRepr:
+            self.id         = dictRepr[ MessageCannotAssignTask.ID_STR ]
+            self.reason     = dictRepr[ MessageCannotAssignTask.REASON_STR ]
+
+    def dictRepr(self):
+        return {    MessageCannotAssignTask.ID_STR : self.id,
+                    MessageCannotAssignTask.REASON_STR: self.reason }
 
 if __name__ == "__main__":
 
