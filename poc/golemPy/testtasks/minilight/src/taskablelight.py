@@ -7,13 +7,14 @@ from rendertaskcreator import ThreadRenderWorkerPool
 
 import task_data_0
 
-INPUT_W  = 30
-INPUT_H  = 30
-SAMPLES  = 20
-TIMESLC  = 2.0
+INPUT_W  = 50
+INPUT_H  = 50
+SAMPLES  = 30
+TIMESLC  = 1.0
 TIMEOUT  = 3600.0
 IMG_NAME = "test_sliced_img.ppm"
-MAX_CONCURRENT_WORKERS = 5
+MAX_CONCURRENT_WORKERS = 25
+
 
 def save_image( img_name, w, h, data, num_samples ):
     if not data:
@@ -26,6 +27,7 @@ def save_image( img_name, w, h, data, num_samples ):
     image_file = open( img_name, 'wb')
     img.get_formatted(image_file, num_samples)
     image_file.close()
+
 
 if __name__ == "__main__":
 
@@ -42,10 +44,12 @@ if __name__ == "__main__":
         
         if( time.time() - lastPrint > 2.0 ):
             lastPrint = time.time()
+            print "Active worker count {}".format( pool.activeCount() )
             tr.printStats()
 
     tr.printStats()
 
+    print "All tasks finished gracefuly"
     print "Writing result image {}".format( IMG_NAME )
     save_image( IMG_NAME, INPUT_W, INPUT_H, tr.getResult(), SAMPLES )
 

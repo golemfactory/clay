@@ -39,7 +39,7 @@ class ThreadRenderWorkerPool:
         return None
 
     def activeCount( self ):
-        return active_count()
+        return active_count() - 1
 
     def joinAll( self ):
         for w in self.workers:
