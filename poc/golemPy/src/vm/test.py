@@ -68,31 +68,6 @@ def prepareTasks1( width, height ):
 
     return tasks
 
-class TaskPerformer( Thread ):
-    def __init__( self, perfIndex ):
-        super(TaskPerformer, self).__init__()
-        self.vm = PythonVM()
-        self.perfIndex = perfIndex
-        self.g_taskDistributor = g_taskDistributor
-   
-    def run( self ):
-        self.doWork()
-
-    def doWork( self ):
-        s = 0
-        while True:
-            t = self.g_taskDistributor.giveTask( self.perfIndex )
-            if t:
-                self.vm.runTask( t )
-                s = 0
-                self.g_taskDistributor.acceptTask( t )
-            else:
-                if s < 10:
-                    time.sleep( 0.5 )
-                else:
-                    return
-                s += 1
-
 
 def main():
 

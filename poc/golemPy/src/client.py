@@ -37,18 +37,11 @@ class Client:
         self.p2pserver = None
 
     ############################
-    #def connect(self, address, port):
-    #    if self.p2pserver:
-    #        self.p2pserver.connectNet(address, port)
-    #    else:
-    #        print "Trying to connect when server is not started yet"
-
-    ############################
     def __doWork(self):
         if self.p2pserver:
             if self.sendPings:
                 self.p2pserver.pingPeers( self.pingsInterval )
 
             self.p2pserver.syncNetwork()
-            #self.p2pserver.taskManager.runTasks()
+            self.p2pserver.taskManager.runTasks()
             

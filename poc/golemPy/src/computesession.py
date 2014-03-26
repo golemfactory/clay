@@ -31,8 +31,9 @@ class ComputeSession:
         print "{} at {}".format( msg.serialize(), timeString )
 
         if type == MessageWantToComputeTask.Type:
-            pass # TODO send back the massege with task
+            tmsg = self.server.taskManager.giveTask( msg.taskId, msg.perfIndex )
+            self.conn.sendMessage( tmsg )
         elif type == MessageTaskToCompute.Type:
-            pass # TODO intepret and start computing
+            self.server.taskManager.taskToComputeReceived( msg )
         else:
             assert False
