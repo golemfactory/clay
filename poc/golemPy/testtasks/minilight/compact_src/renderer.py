@@ -704,19 +704,12 @@ class RenderWorker:
 
         return self.renderingFinished( pixels )
 
-if __name__ == "__main__":
+def compute( output ):
 
     #FIXME: input data (extra data) - external
     #FIXME: scene data (scene) - external
 
     #FIXME: read from extra data
-    id = 0
-    x = 0
-    y = 0
-    w = 10
-    h = 10
-    num_pixels = w * h
-    num_samples = 100
 
     #FIXME: read scene from the node
     task_data = u'''
@@ -786,6 +779,12 @@ if __name__ == "__main__":
     
     #RETURN RESULT and write to proper stream
     data = result.getPixelData()
-    print len( data ) // 3
-    print data
-    print len( data ) // 3
+    #print len( data ) // 3
+    #print data
+    #print len( data ) // 3
+    for p in data:
+        output.append( p )
+
+output = []
+
+compute( output )

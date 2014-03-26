@@ -6,6 +6,7 @@ from threading import Thread
 from twisted.internet import reactor
 import random
 import time
+from img import Img
 
 class TaskManager:
     def __init__( self, server, maxTasksCount = 1 ):
@@ -13,10 +14,10 @@ class TaskManager:
         self.tasks = {} # TaskDescriptors
         self.maxTasksCount = maxTasksCount
         self.runningTasks = 0
-        self.performenceIndex = 10
+        self.performenceIndex = 1200.0
         self.myTasks = {}
         self.computeSession = None
-        self.waitingFotTask = None
+        self.waitingForTask = None
         self.currentlyComputedTask = None
         self.currentComputation = None
         self.dontAskTasks = {}
@@ -29,8 +30,8 @@ class TaskManager:
             self.myTasks[ task.desc.id ] = task
 
         else:
-            td = TaskDescriptor( u"231231231", 5, None, "127.0.0.1", self.server.computeListeningPort, 1000 )
-            t = RayTracingTask( 10, 10, td )
+            td = TaskDescriptor( u"231231231", 5, None, "127.0.0.1", self.server.computeListeningPort, 1000.0 )
+            t = VRayTracingTask( 100, 100, 100, td )
             self.myTasks[ t.desc.id ] = t
 
     def getTasks( self ):
@@ -39,9 +40,9 @@ class TaskManager:
         for mt in self.myTasks.values():
             if mt.needsComputation():
                 myTasksDesc.append( mt.desc )
-                print "MY TASK {}".format( mt.desc.id )
-                print mt.desc.extraData
-                print mt.desc.difficultyIndex
+                #print "MY TASK {}".format( mt.desc.id )
+                #print mt.desc.extraData
+                #print mt.desc.difficultyIndex
 
         return myTasksDesc + self.tasks.values()
 
@@ -84,9 +85,9 @@ class TaskManager:
     def taskToComputeReceived( self, taskMsg ):
         id = taskMsg.taskId
 
-        if self.waitingFotTask.id == id: # We can start computation
-            self.currentlyComputedTask = Task( self.waitingFotTask, [], taskMsg.sourceCode, 0 ) # TODO: resources and outputsize handling
-            self.waitingFotTask = None
+        if self.waitingForTask.id == id: # We can start computation
+            self.currentlyComputedTask = Task( self.waitingForTask, [], taskMsg.sourceCode, 0 ) # TODO: resources and outputsize handling
+            self.waitingForTask = None
             self.currentlyComputedTask.desc.extraData = taskMsg.extraData
             self.currentComputation = TaskPerformer( self.currentlyComputedTask, self )
             self.currentComputation.start()
@@ -110,19 +111,19 @@ class TaskManager:
             self.computeSession.sendComputedTask( task.desc.id, task.getExtra(), task.taskResult )
 
     def runTasks( self ):
-        if self.waitingFotTask and self.waitingFotTask.id in self.dontAskTasks.keys():
-            self.waitingFotTask = None
+        if self.waitingForTask and self.waitingForTask.id in self.dontAskTasks.keys():
+            self.waitingForTask = None
 
-        if not self.waitingFotTask and self.runningTasks < self.maxTasksCount:
-            self.waitingFotTask = self.chooseTaskWantToCompute()
-            if self.waitingFotTask:
+        if not self.waitingForTask and self.runningTasks < self.maxTasksCount:
+            self.waitingForTask = self.chooseTaskWantToCompute()
+            if self.waitingForTask:
                 if not self.computeSession:
-                    self.server.connectComputeSession( self.waitingFotTask.taskOwnerAddress, self.waitingFotTask.taskOwnerPort )
+                    self.server.connectComputeSession( self.waitingForTask.taskOwnerAddress, self.waitingForTask.taskOwnerPort )
                 self.runningTasks += 1
 
         if self.computeSession:
-            if self.waitingFotTask:
-                self.computeSession.askForTask( self.waitingFotTask.id, self.performenceIndex )
+            if self.waitingForTask:
+                self.computeSession.askForTask( self.waitingForTask.id, self.performenceIndex )
 
     def removeOldTasks( self ):
         for t in self.tasks.values():
@@ -132,7 +133,7 @@ class TaskManager:
             if t.ttl <= 0:
                 print "Task {} dies".format( t.id )
                 del self.tasks[ t.id ]
-                print self.tasks
+                #print self.tasks
 
         for k in self.dontAskTasks.keys():
             if time.time() - self.dontAskTasks[ k ][ "time" ] > 1000:
@@ -229,6 +230,67 @@ class RayTracingTask( Task ):
 
     def computationFinished( self, extraData, taskResult ):
         print "Receive cumputed task id:{} extraData:{} \n result:{}".format( self.desc.id, extraData, taskResult )
+
+
+from taskablerenderer import TaskableRenderer, RenderTaskResult, RenderTaskDesc
+
+TIMESLC  = 30.0
+TIMEOUT  = 3600.0
+
+class VRayTracingTask( Task ):
+    #######################
+    def __init__( self, width, height, num_samples, desc ):
+
+        self.taskableRenderer = TaskableRenderer( width, height, num_samples, None, TIMESLC, TIMEOUT )
+
+        self.w = width
+        self.h = height
+        self.num_samples = num_samples
+
+        srcFile = open( "../testtasks/minilight/compact_src/renderer.py", "r")
+        
+        coderes = PyCodeResource( srcFile.read() )
+        Task.__init__( self, desc, [], coderes, 0 )
+
+    def queryExtraData( self, perfIndex ):
+
+        taskDesc = self.taskableRenderer.getNextTaskDesc( perfIndex ) 
+
+        return {    "id" : taskDesc.getID(),
+                    "x" : taskDesc.getX(),
+                    "y" : taskDesc.getY(),
+                    "w" : taskDesc.getW(),
+                    "h" : taskDesc.getH(),
+                    "num_pixels" : taskDesc.getNumPixels(),
+                    "num_samples" : taskDesc.getNumSamples()
+                    }
+
+    def needsComputation( self ):
+        return self.taskableRenderer.hasMoreTasks()
+
+    def computationStarted( self, extraData ):
+        pass
+
+    def computationFinished( self, extraData, taskResult ):
+        dest = RenderTaskDesc( 0, extraData[ "x" ], extraData[ "y" ], extraData[ "w" ], extraData[ "h" ], extraData[ "num_pixels" ] ,extraData[ "num_samples" ])
+        res = RenderTaskResult( dest, taskResult )
+        self.taskableRenderer.taskFinished( res )
+        if self.taskableRenderer.isFinished():
+            VRayTracingTask.__save_image( "ladny.ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples )
+
+    @classmethod
+    def __save_image( cls, img_name, w, h, data, num_samples ):
+        if not data:
+            print "No data to write"
+            return False
+
+        img = Img( w, h )
+        img.copyPixels( data )
+
+        image_file = open( img_name, 'wb')
+        img.get_formatted(image_file, num_samples)
+        image_file.close()
+
 
 
 class TaskPerformer( Thread ):
