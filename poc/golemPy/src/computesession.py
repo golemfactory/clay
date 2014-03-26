@@ -29,9 +29,9 @@ class ComputeSession:
 
         type = msg.getType()
 
-        localtime   = time.localtime()
-        timeString  = time.strftime("%H:%M:%S", localtime)
-        print "{} at {}".format( msg.serialize(), timeString )
+        #localtime   = time.localtime()
+        #timeString  = time.strftime("%H:%M:%S", localtime)
+        #print "{} at {}".format( msg.serialize(), timeString )
 
         if type == MessageWantToComputeTask.Type:
             tmsg = self.server.taskManager.giveTask( msg.taskId, msg.perfIndex )

@@ -150,7 +150,7 @@ class P2PServer(P2PServerInterface):
     def sendMessageGetPeers( self ):
         while len( self.peers ) < self.idealPeerCount:
             if len( self.freePeers ) == 0:
-                if time.time() - self.lastGetPeersRequest > 10:
+                if time.time() - self.lastGetPeersRequest > 2:
                     self.lastGetPeersRequest = time.time()
                     for p in self.peers.values():
                         p.sendGetPeers()
@@ -158,12 +158,12 @@ class P2PServer(P2PServerInterface):
 
             x = int( time.time() ) % len( self.freePeers ) # get some random peer from freePeers
             self.incommingPeers[ self.freePeers[ x ] ][ "conn_trials" ] += 1 # increment connection trials
-            self.connect( self.incommingPeers[ self.freePeers[ x ] ][ "address" ], self.incommingPeers[ self.freePeers[ x ] ][ "port" ] )
+            self.connectNet( self.incommingPeers[ self.freePeers[ x ] ][ "address" ], self.incommingPeers[ self.freePeers[ x ] ][ "port" ] )
             self.freePeers.remove( self.freePeers[ x ] )
 
     #############################
     def sendMessageGetTasks( self ):
-        if time.time() - self.lastGetTasksRequest > 10:
+        if time.time() - self.lastGetTasksRequest > 2:
             self.lastGetTasksRequest = time.time()
             for p in self.peers.values():
                 p.sendGetTasks()
