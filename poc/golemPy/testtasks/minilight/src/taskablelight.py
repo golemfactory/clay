@@ -40,7 +40,7 @@ if __name__ == "__main__":
         if pool.activeCount() < MAX_CONCURRENT_WORKERS and tr.hasMoreTasks():
             pool.createNextWorker( tr )
 
-        time.sleep( 0.2 )
+        time.sleep( 0.2 ) #arbitrary sleep time
         
         if( time.time() - lastPrint > 2.0 ):
             lastPrint = time.time()
@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     tr.printStats()
 
-    print "All tasks finished gracefuly"
+    print "All tasks finished gracefully"
     print "Writing result image {}".format( IMG_NAME )
     save_image( IMG_NAME, INPUT_W, INPUT_H, tr.getResult(), SAMPLES )
 
