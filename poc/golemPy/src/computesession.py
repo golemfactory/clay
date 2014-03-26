@@ -32,8 +32,13 @@ class ComputeSession:
 
         if type == MessageWantToComputeTask.Type:
             tmsg = self.server.taskManager.giveTask( msg.taskId, msg.perfIndex )
-            self.conn.sendMessage( tmsg )
+            if tmsg:
+                self.conn.sendMessage( tmsg )
         elif type == MessageTaskToCompute.Type:
             self.server.taskManager.taskToComputeReceived( msg )
         else:
             assert False
+
+    def dropped( self ):
+        self.conn.close()
+        self.server.removeComputeSession( self )

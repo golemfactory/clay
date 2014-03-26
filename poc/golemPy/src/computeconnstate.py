@@ -1,9 +1,10 @@
+from message import Message
 from connectionstate import ConnectionState
 
 class ComputeConnState( ConnectionState ):
     ##########################
     def __init__(self, server):
-        super(ComputeConnState, self).__init__(server)
+        ConnectionState.__init__( self, server)
         self.computeSession = None
 
     ############################

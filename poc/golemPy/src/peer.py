@@ -111,19 +111,19 @@ class PeerSession(PeerSessionInterface):
                     self.server.freePeers.append( pi[ "id" ] )
                     print self.server.incommingPeers
 
-        elif type == MessageGetTasks:
+        elif type == MessageGetTasks.Type:
             tasks = self.server.taskManager.getTasks()
             self.sendTasks( tasks )
 
         elif type == MessageTasks.Type:
-            for t in msg.tasksInfo:
+            for t in msg.tasksArray:
                 if not self.server.taskManager.addTask( t ):
                     disconnect( PeerSession.DCRBadProtocol )
 
     # private
        
     def sendHello(self):
-        self.send(MessageHello(self.server.curPort, self.server.publicKey))
+        self.send(MessageHello(self.server.netListeningPort, self.server.publicKey))
 
     def sendPing(self):
         self.send(MessagePing())

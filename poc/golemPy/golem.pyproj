@@ -7,7 +7,7 @@
     <ProjectHome>.</ProjectHome>
     <StartupFile>test\main.py</StartupFile>
     <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm</SearchPath>
-    <WorkingDirectory>.</WorkingDirectory>
+    <WorkingDirectory>d:\src\golem\poc\golemPy\test\</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>golem</Name>
     <RootNamespace>golem</RootNamespace>
@@ -15,7 +15,8 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <CommandLineArguments>
     </CommandLineArguments>
-    <InterpreterPath />
+    <InterpreterPath>
+    </InterpreterPath>
     <InterpreterArguments />
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>

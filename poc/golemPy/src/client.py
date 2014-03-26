@@ -10,13 +10,14 @@ PING_INTERVAL = 1.0
 
 class Client:
     ############################
-    def __init__(self, publicKey, optimalNumPeers, startPort, endPort, sendPings, pingsInterval ):
+    def __init__(self, publicKey, optimalNumPeers, startPort, endPort, sendPings, pingsInterval, addTasks ):
 
         self.optNumPeers    = optimalNumPeers
         self.startPort      = startPort
         self.endPort        = endPort
         self.sendPings      = sendPings
         self.pingsInterval  = pingsInterval
+        self.addTasks       = addTasks
 
         self.lastPingTime = 0.0
         self.publicKey = publicKey
@@ -30,6 +31,8 @@ class Client:
     def startNetwork(self, seedHost, seedHostPort):
         print "Starting network ..."
         self.p2pserver = P2PServer(1, self.startPort, self.endPort, self.publicKey, seedHost, seedHostPort)
+        if self.addTasks:
+            self.p2pserver.taskManager.addMyTaskToCompute( None )
 
     ############################
     def stopNetwork(self):

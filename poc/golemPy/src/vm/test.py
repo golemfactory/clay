@@ -37,15 +37,6 @@ foo()
 output = IntResource( 1 )
 """
 
-testTaskScr2 = """ 
-from minilight import render_task
-from resource import ArrayResource
-
-res = render_task( "d:/src/golem/poc/golemPy/testtasks/minilight/cornellbox.ml.txt", startX, startY, width, height, img_width, img_height )
-
-output = ArrayResource( res )
-"""
-
 def prepareTasks():
     tasks = []
     n = 0

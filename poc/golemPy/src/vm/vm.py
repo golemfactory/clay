@@ -1,5 +1,5 @@
 from resource import IResource
-from task import Task
+from copy import copy
 
 class IGolemVM:
     #######################
@@ -23,16 +23,15 @@ class PythonVM( IGolemVM ):
         self.codeResource = None
         
     def runTask( self, task ):
-        assert isinstance( task, Task )
         self.resources = task.getResources()
         self.codeResource = task.getCode()
-        self.scope = task.getExtra()
+        self.scope = copy( task.getExtra() )
         task.setResult( self.interpret() )
 
     #######################
     def interpret( self ):
         res = self.resources
-        code = self.codeResource.read()
+        code = self.codeResource
         exec code in self.scope
         assert isinstance( self.scope[ "output" ], IResource )
         return self.scope[ "output" ]

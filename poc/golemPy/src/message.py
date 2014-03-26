@@ -225,7 +225,7 @@ class MessageTasks( Message ):
         self.tasksArray = tasksArray
 
         if dictRepr:
-            self.tasksArray = dictRepr[ MessageTasks.PEERS_STR ]
+            self.tasksArray = dictRepr[ MessageTasks.TASKS_STR ]
 
     def dictRepr(self):
         return { MessageTasks.TASKS_STR : self.tasksArray }

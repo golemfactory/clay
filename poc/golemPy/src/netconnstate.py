@@ -1,3 +1,4 @@
+from message import Message
 from connectionstate import ConnectionState
 
 class NetConnState( ConnectionState ):

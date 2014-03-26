@@ -17,7 +17,7 @@ class NetServerFactory(Factory):
     #############################
     def buildProtocol(self, addr):
         print "Protocol build for {}".format(addr)
-        return ConnectionState(self.p2pserver)
+        return NetConnState(self.p2pserver)
 
 class ComputeServerFactory(Factory):
     #############################
@@ -52,6 +52,7 @@ class P2PServer(P2PServerInterface):
         self.computeListeningPort = self.startPort
         self.idealPeerCount = 2
         self.peers = {}
+        self.computeSessions = []
         self.taskManager = TaskManager( self )
         self.seedHost = seedHost
         self.seedHostPort = seedHostPort
@@ -69,7 +70,7 @@ class P2PServer(P2PServerInterface):
         self.__runListenOnceNet()
 
         # only if we want to give tasks
-        #self.__runListenOnceCompute()
+        self.__runListenOnceCompute()
 
         if self.seedHost and self.seedHostPort:
             if self.seedHost != "127.0.0.1" or self.seedHostPort != self.netListeningPort: #FIXME workaround to test on one machine
@@ -92,6 +93,7 @@ class P2PServer(P2PServerInterface):
         pp = conn.transport.getPeer()
         print "newComputeConnection {} {}".format(pp.host, pp.port)
         computeSession = ComputeSession(conn, self, pp.host, pp.port)
+        self.computeSessions.append( computeSession )
         conn.setComputeSession(computeSession)
         computeSession.start()
      
@@ -117,6 +119,7 @@ class P2PServer(P2PServerInterface):
         pp = conn.transport.getPeer()
         print "newComputeConnection {} {}".format(pp.host, pp.port)
         computeSession = ComputeSession(conn, self, pp.host, pp.port)
+        self.computeSessions.append( computeSession )
         conn.setComputeSession(computeSession)
 
         self.taskManager.computeSessionEstablished( computeSession )
@@ -138,6 +141,10 @@ class P2PServer(P2PServerInterface):
         for p in self.peers.keys():
             if self.peers[p] == peerSession:
                 del self.peers[p]
+
+    #############################
+    def removeComputeSession( self, computeSession ):
+        self.computeSessions.remove( computeSession )
 
     #############################
     def sendMessageGetPeers( self ):
@@ -192,7 +199,7 @@ class P2PServer(P2PServerInterface):
     def __runListenOnceCompute( self ):
         ep = TCP4ServerEndpoint( reactor, self.computeListeningPort )
         
-        d = ep.listen( NetServerFactory( self ) )
+        d = ep.listen( ComputeServerFactory( self ) )
         
         d.addCallback( self.__computeListeningEstablished )
         d.addErrback( self.__computeListeningFailure )
@@ -210,7 +217,7 @@ class P2PServer(P2PServerInterface):
         self.netListeningPort = self.netListeningPort + 1
 
         if self.netListeningPort <= self.endPort:
-            self.__runListenOnce()
+            self.__runListenOnceNet()
         else:
             #FIXME: some graceful terminations should take place here
             sys.exit(0)
@@ -227,7 +234,7 @@ class P2PServer(P2PServerInterface):
         self.computeListeningPort = self.computeListeningPort + 1
 
         if self.computeListeningPort <= self.endPort:
-            self.__runListenOnce()
+            self.__runListenOnceCompute()
         else:
             #FIXME: some graceful terminations should take place here
             sys.exit(0)
