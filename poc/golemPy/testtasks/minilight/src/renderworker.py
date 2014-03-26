@@ -3,18 +3,22 @@ from rendertask import RenderTaskDesc, RenderTask, RenderTaskResult
 class RenderWorker:
 
     @classmethod
-    def createWorker( cls, renderTask ):
+    def createWorker( cls, renderTask, onFinishedCallback ):
         
         if not renderTask.isValid():
             return None
 
-        return RenderWorker( renderTask )
+        if not onFinishedCallback:
+            return None
+
+        return RenderWorker( renderTask, onFinishedCallback )
 
     def __init__( self, task ):
         assert isinstance( task, RenderTask )
 
         self.task = task
-        
+        self.ofcb = onFinishedCallback
+
         self.random     = Random()
         self.raytracer  = RayTracer( task.getScene() )
         self.progress   = 0.0
@@ -44,6 +48,16 @@ class RenderWorker:
     def getXY( self, idx ):
         return idx % self.w, idx // self.w
 
+    def renderingFinished( self, pixels ):
+        result = RenderTaskResult.createRenderTaskResult( self.task.getDesc(), pixels )
+
+        if result:
+            self.ofcb( result )
+        else:
+            print "Failed to acquire result"
+            
+        return result
+
     def render( self ):
         desc = self.task.getDesc()
         
@@ -66,4 +80,4 @@ class RenderWorker:
         
             progress = float( k + 1 ) / float( self.num_pixels )
 
-        return pixels
+        return renderingFinished( pixels )

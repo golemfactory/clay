@@ -12,118 +12,7 @@ from randommini import Random
 
 import task_data_0
 
-class RenderWorker:
-
-    @classmethod
-    def createWorker( cls, x, y, w, h, num_pixels, num_samples, scene_data ):
-        if x >= w or y >= h or num_samples < 1:
-            return None
-
-        totalPixels = w * h
-        leftOver = totalPixels - h * y + x
-
-        if leftOver < num_pixels < 1:
-            return None
-
-        data_stream = StringIO( scene_data )
-
-        camera  = Camera( data_stream )
-        scene   = Scene( data_stream, camera.view_position )
-
-        return RenderWorker( x, y, w, h, num_pixels, num_samples, camera, scene )
-
-    def __init__( self, x, y, w, h, num_pixels, num_samples, camera, scene ):
-        self.x = x
-        self.y = y
-        self.w = w
-        self.h = h
-        self.aspect = float( h ) / float( w )
-        
-        self.num_pixels = num_pixels
-        self.num_samples = num_samples
-
-        self.camera = camera
-        self.scene = scene
-        self.raytracer = RayTracer(scene)
-
-        self.random = Random()
-
-        self.progress = 0.0
-
-    def getProgress( self ):
-        return self.progress
-
-    def sample_radiance( self, x, y ):
-        acc_radiance = [ 0.0, 0.0, 0.0 ]
-
-        for i in range(self.num_samples):
-            x_coefficient = ((x + self.random.real64()) * 2.0 / self.w) - 1.0
-            y_coefficient = ((y + self.random.real64()) * 2.0 / self.h) - 1.0
-
-            offset = self.camera.right * x_coefficient + self.camera.up * (y_coefficient * self.aspect)
-
-            sample_direction = (self.camera.view_direction + (offset * tan(self.camera.view_angle * 0.5))).unitize()
-
-            radiance = self.raytracer.get_radiance(self.camera.view_position,sample_direction, self.random)
-
-            acc_radiance[ 0 ] += radiance[ 0 ]          
-            acc_radiance[ 1 ] += radiance[ 1 ]          
-            acc_radiance[ 2 ] += radiance[ 2 ]          				
-        
-        return Vector3f( acc_radiance[ 0 ], acc_radiance[ 1 ], acc_radiance[ 2 ] )
-
-    def getXY( self, idx ):
-        return idx % self.w, idx // self.w
-
-    def render( self ):
-        pixels = [0.0] * 3 * self.num_pixels
-        offset  = self .y * self.w + self.x
-
-        for k in range( self.num_pixels ):
-            x, y = self.getXY( k + offset )
-            radiance = self.sample_radiance( x, y )
-
-            pixels[ 3 * k + 0 ] = radiance[ 0 ]                
-            pixels[ 3 * k + 1 ] = radiance[ 1 ]                
-            pixels[ 3 * k + 2 ] = radiance[ 2 ]                
-        
-        return pixels
-
 if __name__ == "__main__":
-
-    import sys
-
-    rn = Random()
-    
-    print "Preallocating"
-
-    ilo = [0.0] * 1024 * 1024 * 10
-    rdn = []
-    
-    print "Pregenerating"
-
-    for k in range( 1024 // 32 ):
-        rdn.append( rn.real64() )
-
-    print "Starting adding"
-
-    z = 0
-    for k in range( 1024 // 32 ):
-        print "\rElt {}".format( k ),
-        for i in range( 1024 * 10 * 32 ):
-            ilo[ z ] = rdn[ k ]
-            z += 1
-
-    z = 0
-    print "Starting printing"
-    for k in range( 1024 // 32 ):
-        sum = 0.0
-        for i in range( 1024 * 10 * 32 ):
-            sum += ilo[ z ]
-            z += 1
-        print "\rPresummer {:02} {}".format( k, sum )
-
-    sys.exit( 0 )
 
     w = 20
     h = 20
@@ -138,6 +27,42 @@ if __name__ == "__main__":
     image_file = open( "temp_file.ppm", 'wb')
     img.get_formatted(image_file, num_samples)
     image_file.close()
+
+    def some_shit():
+        import sys
+
+        rn = Random()
+    
+        print "Preallocating"
+
+        ilo = [0.0] * 1024 * 1024 * 10
+        rdn = []
+    
+        print "Pregenerating"
+
+        for k in range( 1024 // 32 ):
+            rdn.append( rn.real64() )
+
+        print "Starting adding"
+
+        z = 0
+        for k in range( 1024 // 32 ):
+            print "\rElt {}".format( k ),
+            for i in range( 1024 * 10 * 32 ):
+                ilo[ z ] = rdn[ k ]
+                z += 1
+
+        z = 0
+        print "Starting printing"
+        for k in range( 1024 // 32 ):
+            sum = 0.0
+            for i in range( 1024 * 10 * 32 ):
+                sum += ilo[ z ]
+                z += 1
+            print "\rPresummer {:02} {}".format( k, sum )
+
+        sys.exit( 0 )
+
 #        return RenderWorker( x, y, w, h, num_pixels, num_samples, sce
 
 #    def __init__( self, x, y, w, h, 
