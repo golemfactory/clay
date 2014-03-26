@@ -96,10 +96,18 @@ class TaskManager:
         # We do not wait for this task id
         return False
 
+    def receivedComputedTask( self, id, extraData, taskResult ):
+        if id in self.myTasks:
+            self.myTasks[ id ].computationFinished( extraData, taskResult )
+        else:
+            print "Not my task received !!!"
+
+
     def taskComputed( self, task ):
         self.runningTasks -= 1
         if task.taskResult:
             print "Task {} computed".format( task.desc.id )
+            self.computeSession.sendComputedTask( task.desc.id, task.getExtra(), task.taskResult )
 
     def runTasks( self ):
         if self.waitingFotTask and self.waitingFotTask.id in self.dontAskTasks.keys():
@@ -179,14 +187,17 @@ class Task:
     def computationStarted( self, extraData ):
         assert False # Implement in derived class
 
+    def computationFinished( self, extraData, taskResult ):
+        assert False # Implement in derived class
 
 testTaskScr2 = """ 
 from minilight import render_task
 from resource import ArrayResource
+from base64 import encodestring
 
 res = render_task( "d:/src/golem/poc/golemPy/testtasks/minilight/cornellbox.ml.txt", startX, startY, width, height, img_width, img_height )
 
-output = ArrayResource( res )
+output = encodestring( res )
 """
 
 
@@ -208,7 +219,7 @@ class RayTracingTask( Task ):
                     "img_height" : self.height }
 
     def needsComputation( self ):
-        if self.splitIndex < 5:
+        if self.splitIndex < 1:
             return True
         else:
             return False
@@ -216,6 +227,8 @@ class RayTracingTask( Task ):
     def computationStarted( self, extraData ):
         self.splitIndex += 1
 
+    def computationFinished( self, extraData, taskResult ):
+        print "Receive cumputed task id:{} extraData:{} \n result:{}".format( self.desc.id, extraData, taskResult )
 
 class TaskPerformer( Thread ):
     def __init__( self, task, taskManager ):

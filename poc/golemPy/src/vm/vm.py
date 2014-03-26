@@ -33,6 +33,6 @@ class PythonVM( IGolemVM ):
         res = self.resources
         code = self.codeResource
         exec code in self.scope
-        assert isinstance( self.scope[ "output" ], IResource )
+        #assert isinstance( self.scope[ "output" ], IResource )
         return self.scope[ "output" ]
 
