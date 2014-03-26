@@ -52,14 +52,56 @@ class TaskableRenderer:
 
         return None
 
-    def __createTask( self, curPixel, numPixels ):
+    def __createTaskDesc( self, curPixel, numPixels ):
         x = curPixel % self.w
         y = curPixel // self.w
 
         desc = RenderTaskDesc.createRenderTaskDesc( self.totalTasks, x, y, self.w, self.h, numPixels, self.num_samples )
+
+        return desc
+
+    def __createTask( self, curPixel, numPixels ):
+        desc = self.__createTaskDesc( self, curPixel, numPixels )
         task = RenderTask.createRenderTask( desc, self.scene_data, self.taskFinished )
 
         return task
+
+    #estimated speed means rays per second
+    def getNextTaskDesc( self, estimatedSpeed ):
+        with self.lock:
+            timeLeft = self.timeoutTime - ( time() - self.startTime )
+        
+            timeSlice = self.preferredTaskTime
+            if timeLeft < self.preferredTaskTime:
+                timeSlice = timeLeft
+
+            if timeSlice <= 0.001:
+                print "Overtime - we're doomed, but we still want the calculation to progress"
+                timeSlice = self.preferredTaskTime
+
+            numPixels = int( estimatedSpeed / self.num_samples * timeSlice )
+            
+            if numPixels < 1:
+                numPixels = 1
+
+            if numPixels > self.pixelsLeft:
+                numPixels = self.pixelsLeft
+
+            if numPixels == 0:
+                print "All pixels have beend already dispatched"
+                return None
+
+            taskDesc = self.__createTaskDesc( self.nextPixel, numPixels )
+
+            self.nextPixel += numPixels
+            self.pixelsLeft -= numPixels
+            self.activeTasks += 1
+            self.totalTasks += 1
+
+            print "ASSIGNED Task {:5} with {:5} pixels at ({}, {}) at {} rays/s".format( taskDesc.getID(), taskDesc.getNumPixels(), taskDesc.getX(), taskDesc.getY(), estimatedSpeed )
+
+            return taskDesc
+
 
     #estimated speed means rays per second
     def getNextTask( self, estimatedSpeed ):

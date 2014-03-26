@@ -230,6 +230,7 @@ class RayTracingTask( Task ):
     def computationFinished( self, extraData, taskResult ):
         print "Receive cumputed task id:{} extraData:{} \n result:{}".format( self.desc.id, extraData, taskResult )
 
+
 class TaskPerformer( Thread ):
     def __init__( self, task, taskManager ):
         super( TaskPerformer, self ).__init__()
