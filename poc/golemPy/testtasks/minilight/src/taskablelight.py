@@ -41,7 +41,7 @@ if __name__ == "__main__":
             pool.createNextWorker( tr )
 
         time.sleep( 0.2 ) #arbitrary sleep time
-        
+
         if( time.time() - lastPrint > 2.0 ):
             lastPrint = time.time()
             print "Active worker count {}".format( pool.activeCount() )
