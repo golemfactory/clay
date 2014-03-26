@@ -83,7 +83,7 @@ class RenderTask:
         self.callback = callback
 
     def isValid( self ):
-        return desc.isValid()
+        return self.desc.isValid()
     
     def getDesc( self ):
         return self.desc
