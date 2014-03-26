@@ -1,5 +1,5 @@
 from computeconnstate import ComputeConnState
-from message import MessageWantToComputeTask, MessageTaskToCompute
+from message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask
 import time
 
 class ComputeSession:
@@ -32,12 +32,11 @@ class ComputeSession:
 
         if type == MessageWantToComputeTask.Type:
             tmsg = self.server.taskManager.giveTask( msg.taskId, msg.perfIndex )
-            if tmsg:
-                self.conn.sendMessage( tmsg )
+            self.conn.sendMessage( tmsg )
         elif type == MessageTaskToCompute.Type:
             self.server.taskManager.taskToComputeReceived( msg )
-        else:
-            assert False
+        elif type == MessageCannotAssignTask.Type:
+            self.server.taskManager.stopAsking( msg.id, msg.reason )
 
     def dropped( self ):
         self.conn.close()

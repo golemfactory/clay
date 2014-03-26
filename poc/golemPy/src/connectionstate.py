@@ -12,6 +12,7 @@ class ConnectionState(Protocol):
 
     def sendMessage(self, msg):
         if not self.opened:
+            print msg
             print "sendMessage failed - connection closed."
             return False
 
