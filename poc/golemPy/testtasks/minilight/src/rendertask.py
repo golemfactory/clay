@@ -61,10 +61,16 @@ class RenderTask:
         if not renderTaskDesc.isValid():
             return None
 
-        data_stream = StringIO( scene_data )
+        try:
+            data_stream = StringIO( scene_data )
+            camera  = Camera( data_stream )
+            scene   = Scene( data_stream, camera.view_position )
+        except Exception as ex:
+            print "Failed to read camera or scene from serialized data"
+            #if verbose -> dump all data
+            return None
 
-        camera  = Camera( data_stream )
-        scene   = Scene( data_stream, camera.view_position )
+        return RenderTask( renderTaskDesc, camera, scene )
 
     def __init__( self, desc, camera, scene ):
         self.desc = desc
