@@ -26,7 +26,6 @@ class RenderTaskDesc:
             print "Not enough pixels {} or samples {} specified".format( self.num_pixels, self.num_samples )
             return False
 
-
         totalPixels = self.w * self.h
         leftOver = totalPixels - self.h * self.y + self.x
 

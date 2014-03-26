@@ -1,15 +1,30 @@
 from taskablerenderer import TaskableRenderer
 from renderworker import RenderWorker
+from img import Img
 
 import task_data_0
 
 if __name__ == "__main__":
-    w   = 50
-    h   = 50
-    ns  = 10
+
+    def save_image( img_name, w, h, data, num_samples ):
+        if not data:
+            print "No data to write"
+            return False
+
+        img = Img( w, h )
+        img.copyPixels( data )
+
+        image_file = open( img_name, 'wb')
+        img.get_formatted(image_file, num_samples)
+        image_file.close()
+
+    w   = 30
+    h   = 30
+    ns  = 20
     sd  = task_data_0.deserialized_task
-    pts = 5.0
+    pts = 6.0
     timeout = 3600.0
+    img_name = "image_of_the_task.ppm"
 
     tr = TaskableRenderer( w, h, ns, sd, pts, timeout )
     tr.start()
@@ -17,9 +32,14 @@ if __name__ == "__main__":
     while not tr.isFinished():
         task = tr.getNextTask( 1620.0 )
         rw = RenderWorker( task )
+        #tr.printStats()
         rw.render()
+        #tr.printStats()
 
     tr.printStats()
+
+    print "Writing result image {}".format( img_name )
+    save_image( img_name, w, h, tr.getResult(), ns )
 
 #from sys import argv, stdout
 #from time import time

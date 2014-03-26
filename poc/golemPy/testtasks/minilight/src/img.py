@@ -24,8 +24,12 @@ class Img(object):
     def copyPixels(self, data):
         assert len( data ) == len( self.pixels )
 
-        for i in range( len( self.pixels ) ):
-            self.pixels[ i ] = data[ i ]
+        i = 0
+        for y in range(self.height):
+            offset = 3 *( self.width * ( self.height - 1 - y ) )
+            for x in range(3 * self.width):
+                self.pixels[ offset + x ] = data[ i ]
+                i += 1
 
     def add_to_pixel(self, x, y, radiance):
         if x >= 0 and x < self.width and y >= 0 and y < self.height:

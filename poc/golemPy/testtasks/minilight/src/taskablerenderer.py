@@ -44,8 +44,9 @@ class TaskableRenderer:
         return float( self.pixelsCalculated ) / float( self.w * self.h )
 
     def getResult( self ):
-        if isFinished():
-            return None
+        if self.isFinished():
+            return self.data
+
         return None
 
     def __createTask( self, curPixel, numPixels ):
@@ -89,7 +90,7 @@ class TaskableRenderer:
             self.activeTasks += 1
             self.totalTasks += 1
 
-            print "Task {:5} with {} pixels at ({}, {}) - ASSIGNED".format( task.desc.getID(), task.desc.getNumPixels(), task.desc.getX(), task.desc.getY() )
+            print "Task {:5} with {:5} pixels at ({}, {}) - ASSIGNED".format( task.desc.getID(), task.desc.getNumPixels(), task.desc.getX(), task.desc.getY() )
 
             return task
 
@@ -97,11 +98,12 @@ class TaskableRenderer:
         assert isinstance( result, RenderTaskResult )
         assert result.desc.getW() == self.w and result.desc.getH() == self.h
 
-        print "Task {:5} with {} pixels at ({}, {}) - FINISHED".format( result.desc.getID(), result.desc.getNumPixels(), result.desc.getX(), result.desc.getY() )
+        print "Task {:5} with {:5} pixels at ({}, {}) - FINISHED".format( result.desc.getID(), result.desc.getNumPixels(), result.desc.getX(), result.desc.getY() )
 
         desc    = result.getDesc()
         pixels  = result.getPixelData()
-        offset  = 3 * desc.getY() * desc.getW() + desc.getX()
+        x, y, w = desc.getX(), desc.getY(), desc.getW()
+        offset  = 3 * ( w * y + x )
 
         with self.lock:
             self.activeTasks -= 1

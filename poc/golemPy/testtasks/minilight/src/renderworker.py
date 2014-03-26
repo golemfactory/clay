@@ -67,9 +67,9 @@ class RenderWorker:
         
         x, y, w, h              =  desc.getX(), desc.getY(), desc.getW(), desc.getH()
         num_pixels, num_samples = desc.getNumPixels(), desc.getNumSamples()
-        
         aspect  = float( h ) / float( w )
         offset  = y * w + x
+        id = desc.getID()
 
         pixels  = [0.0] * 3 * num_pixels
 
@@ -78,6 +78,7 @@ class RenderWorker:
 
         for k in range( num_pixels ):
             x, y = self.getXY( k + offset, w )
+
             radiance = self.sample_radiance( x, y, w, h, aspect, cam, scn, num_samples )
 
             pixels[ 3 * k + 0 ] = radiance[ 0 ]                
