@@ -35,6 +35,7 @@
     <Folder Include="src\core\" />
     <Folder Include="src\vm\" />
     <Folder Include="testtasks\minilight\" />
+    <Folder Include="testtasks\minilight\compact_src\" />
     <Folder Include="testtasks\minilight\src\" />
     <Folder Include="test\" />
   </ItemGroup>
@@ -63,12 +64,12 @@
     <Compile Include="src\vm\test.py" />
     <Compile Include="src\vm\vm.py" />
     <Compile Include="src\__init__.py" />
+    <Compile Include="testtasks\minilight\compact_src\renderer.py" />
     <Compile Include="testtasks\minilight\src\camera.py" />
     <Compile Include="testtasks\minilight\src\image.py" />
     <Compile Include="testtasks\minilight\src\img.py" />
     <Compile Include="testtasks\minilight\src\maxilight.py" />
     <Compile Include="testtasks\minilight\src\minilight.py" />
-    <Compile Include="testtasks\minilight\src\mtrenderer.py" />
     <Compile Include="testtasks\minilight\src\randommini.py" />
     <Compile Include="testtasks\minilight\src\raytracer.py" />
     <Compile Include="testtasks\minilight\src\rendertask.py" />
