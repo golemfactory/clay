@@ -18,6 +18,7 @@ class TaskManager:
         self.myTasks = {}
         self.computeSession = None
         self.waitingForTask = None
+        self.choosenTaks = None
         self.currentlyComputedTask = None
         self.currentComputation = None
         self.dontAskTasks = {}
@@ -85,6 +86,10 @@ class TaskManager:
     def taskToComputeReceived( self, taskMsg ):
         id = taskMsg.taskId
 
+        if not self.waitingForTask:
+            print "We do not wait for task"
+            return False
+
         if self.waitingForTask.id == id: # We can start computation
             self.currentlyComputedTask = Task( self.waitingForTask, [], taskMsg.sourceCode, 0 ) # TODO: resources and outputsize handling
             self.waitingForTask = None
@@ -111,19 +116,18 @@ class TaskManager:
             self.computeSession.sendComputedTask( task.desc.id, task.getExtra(), task.taskResult )
 
     def runTasks( self ):
-        if self.waitingForTask and self.waitingForTask.id in self.dontAskTasks.keys():
-            self.waitingForTask = None
-
-        if not self.waitingForTask and self.runningTasks < self.maxTasksCount:
-            self.waitingForTask = self.chooseTaskWantToCompute()
-            if self.waitingForTask:
+        if not self.choosenTaks and self.runningTasks < self.maxTasksCount:
+            self.choosenTaks = self.chooseTaskWantToCompute()
+            if self.choosenTaks:
                 if not self.computeSession:
-                    self.server.connectComputeSession( self.waitingForTask.taskOwnerAddress, self.waitingForTask.taskOwnerPort )
+                    self.server.connectComputeSession( self.choosenTaks.taskOwnerAddress, self.choosenTaks.taskOwnerPort )
                 self.runningTasks += 1
 
         if self.computeSession:
-            if self.waitingForTask:
-                self.computeSession.askForTask( self.waitingForTask.id, self.performenceIndex )
+            if self.choosenTaks:
+                self.computeSession.askForTask( self.choosenTaks.id, self.performenceIndex )
+                self.waitingForTask = self.choosenTaks
+                self.choosenTaks = None
 
     def removeOldTasks( self ):
         for t in self.tasks.values():
