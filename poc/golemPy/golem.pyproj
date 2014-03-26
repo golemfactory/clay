@@ -62,6 +62,7 @@
     <Compile Include="src\vm\taskdistributor.py" />
     <Compile Include="src\vm\test.py" />
     <Compile Include="src\vm\vm.py" />
+    <Compile Include="src\vm\VTask.py" />
     <Compile Include="src\__init__.py" />
     <Compile Include="testtasks\minilight\src\camera.py" />
     <Compile Include="testtasks\minilight\src\image.py" />
