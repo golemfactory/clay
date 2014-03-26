@@ -244,12 +244,10 @@ def main():
                break
        image = Image(model_file)
        camera = Camera(model_file)
-       
-       print camera
-       return
        scene = Scene(model_file, camera.view_position)
        model_file.close()
         
+       return
        #render_orig( image, image_file_pathname, camera, scene, iterations )
        #numSamples, duration = render_taskable( image, image_file_pathname, camera, scene, iterations )
        #numSamples, duration = render_rect( Rect(0, 0, 50, 1), image.width, image.height, camera, scene, iterations )

@@ -17,7 +17,11 @@ MAX_TRIANGLES = 0x1000000
 class Scene(object):
 
     def __init__(self, in_stream, eye_position):
-        for line in in_stream:
+        for l in in_stream:
+            if type( l ) == type( u"" ):
+                line = l.encode('ascii','ignore')
+            else:
+                line = l
             if not line.isspace():
                 s, g = SEARCH(line).groups()
                 self.sky_emission = Vector3f(s).clamped(ZERO, MAX)
