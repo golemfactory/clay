@@ -1,3 +1,7 @@
+from io import StringIO
+from camera import Camera
+from scene import Scene
+
 class RenderTaskDesc:
 
     @classmethod
@@ -14,8 +18,8 @@ class RenderTaskDesc:
         self.num_samples = num_samples
 
     def isValid( self ):
-        if self.x <= 0 or self.y <= 0 or self.x >= self.w or self.y >= self.h:
-            print "Invalid dimensions loc( {}, {} ) ,size( {}, {} )".format( self.x, self.y, self.w, self.h )
+        if self.x < 0 or self.y < 0 or self.x >= self.w or self.y >= self.h:
+            print "Invalid dimensions loc( {}, {} ), size( {}, {} )".format( self.x, self.y, self.w, self.h )
             return False
         
         if self.num_samples < 1 or self.num_pixels < 1:
@@ -67,6 +71,7 @@ class RenderTask:
             scene   = Scene( data_stream, camera.view_position )
         except Exception as ex:
             print "Failed to read camera or scene from serialized data"
+            print ex
             #if verbose -> dump all data
             return None
 
@@ -92,7 +97,7 @@ class RenderTask:
 
 class RenderTaskResult:
 
-    @clasmethod
+    @classmethod
     def createRenderTaskResult( cls, renderTaskDesc, pixelData ):
         if not renderTaskDesc.isValid():
             return None

@@ -6,8 +6,8 @@ class TaskableRenderer:
 
     def __init__( self, w, h, num_samples, scene_data, preferredTaskTimeSlice, timeoutTime ):
         self.w = w
-        selg.h = h
-        self.num_samples = num_sampes
+        self.h = h
+        self.num_samples = num_samples
         self.scene_data = scene_data
 
         self.timeoutTime = timeoutTime
@@ -28,7 +28,7 @@ class TaskableRenderer:
 
     def printStats( self ):
         print "Total accepted tasks:     {}".format( self.totalTasks )
-        print "Active tasks:             {}".format( self.curActiveTasks )
+        print "Active tasks:             {}".format( self.activeTasks )
         print "Total pixels calculated : {}".format( self.pixelsCalculated )
         print "Active pixels (in tasks): {}".format( self.nextPixel - self.pixelsCalculated )
         print "Unallocated pixels:       {}".format( self.pixelsLeft )
@@ -60,7 +60,7 @@ class TaskableRenderer:
     #estimated speed means rays per second
     def getNextTask( self, estimatedSpeed ):
         with self.lock:
-            timeLeft = timeoutTime - ( time() - self.startTime )
+            timeLeft = self.timeoutTime - ( time() - self.startTime )
         
             timeSlice = self.preferredTaskTime
             if timeLeft < self.preferredTaskTime:
@@ -89,7 +89,7 @@ class TaskableRenderer:
             self.activeTasks += 1
             self.totalTasks += 1
 
-            print "Task {:6} with {} pixels assigned at x {} y {}".format( task.desc.getID(), task.desc.getNumPixels(), task.desc.getX(), task.desc.getY() )
+            print "Task {:5} with {} pixels at ({}, {}) - ASSIGNED".format( task.desc.getID(), task.desc.getNumPixels(), task.desc.getX(), task.desc.getY() )
 
             return task
 
@@ -97,7 +97,7 @@ class TaskableRenderer:
         assert isinstance( result, RenderTaskResult )
         assert result.desc.getW() == self.w and result.desc.getH() == self.h
 
-        print "Task {:6} with {} pixels at x {} y {}".format( result.desc.getID(), result.desc.getNumPixels(), result.desc.getX(), result.desc.getY() )
+        print "Task {:5} with {} pixels at ({}, {}) - FINISHED".format( result.desc.getID(), result.desc.getNumPixels(), result.desc.getX(), result.desc.getY() )
 
         desc    = result.getDesc()
         pixels  = result.getPixelData()
@@ -105,8 +105,7 @@ class TaskableRenderer:
 
         with self.lock:
             self.activeTasks -= 1
-            self.pixelsCalculated += taskResult.getDesc().getNumPixels()
+            self.pixelsCalculated += result.getDesc().getNumPixels()
 
         for k in range( 3 * desc.getNumPixels() ):
             self.data[ k + offset ] = pixels[ k ]
-

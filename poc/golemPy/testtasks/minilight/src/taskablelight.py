@@ -1,8 +1,25 @@
 from taskablerenderer import TaskableRenderer
+from renderworker import RenderWorker
+
 import task_data_0
 
 if __name__ == "__main__":
+    w   = 50
+    h   = 50
+    ns  = 10
+    sd  = task_data_0.deserialized_task
+    pts = 5.0
+    timeout = 3600.0
 
+    tr = TaskableRenderer( w, h, ns, sd, pts, timeout )
+    tr.start()
+
+    while not tr.isFinished():
+        task = tr.getNextTask( 1620.0 )
+        rw = RenderWorker( task )
+        rw.render()
+
+    tr.printStats()
 
 #from sys import argv, stdout
 #from time import time
