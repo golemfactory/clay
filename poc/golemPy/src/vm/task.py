@@ -31,8 +31,9 @@ class TaskManager:
             self.myTasks[ task.desc.id ] = task
 
         else:
-            td = TaskDescriptor( u"231231231", 5, None, "127.0.0.1", self.server.computeListeningPort, 1000.0 )
-            t = VRayTracingTask( 100, 100, 100, td )
+            hash = random.getrandbits(128)
+            td = TaskDescriptor( hash, 5, None, "10.30.10.203", self.server.computeListeningPort, 1000.0 )
+            t = VRayTracingTask( 100, 100, 10, td )
             self.myTasks[ t.desc.id ] = t
 
     def getTasks( self ):
@@ -96,7 +97,6 @@ class TaskManager:
             self.currentlyComputedTask.desc.extraData = taskMsg.extraData
             self.currentComputation = TaskPerformer( self.currentlyComputedTask, self )
             self.currentComputation.start()
-            self.currentComputation.join()
             return True
 
         # We do not wait for this task id
@@ -113,15 +113,24 @@ class TaskManager:
         self.runningTasks -= 1
         if task.taskResult:
             print "Task {} computed".format( task.desc.id )
-            self.computeSession.sendComputedTask( task.desc.id, task.getExtra(), task.taskResult )
+            if self.computeSession:
+                self.computeSession.sendComputedTask( task.desc.id, task.getExtra(), task.taskResult )
 
     def runTasks( self ):
+        if self.currentComputation and self.currentComputation.done:
+            self.currentComputation.join()
+            self.currentComputation = None
+
+        if self.currentComputation:
+            return
+
         if not self.choosenTaks and self.runningTasks < self.maxTasksCount:
             self.choosenTaks = self.chooseTaskWantToCompute()
             if self.choosenTaks:
                 if not self.computeSession:
                     self.server.connectComputeSession( self.choosenTaks.taskOwnerAddress, self.choosenTaks.taskOwnerPort )
-                self.runningTasks += 1
+                    self.runningTasks += 1
+                
 
         if self.computeSession:
             if self.choosenTaks:
@@ -145,6 +154,14 @@ class TaskManager:
 
     def stopAsking( self, id, reason ):
         if id not in self.dontAskTasks.keys():
+            if self.choosenTaks:
+                if self.choosenTaks.id == id:
+                    self.choosenTaks = None
+
+            if self.waitingForTask:
+                if self.waitingForTask.id == id:
+                    self.waitingForTask = None
+
             self.dontAskTasks[ id ] = { "time" : time.time(), "reason" : reason }
 
 
@@ -303,11 +320,13 @@ class TaskPerformer( Thread ):
         self.vm = PythonVM()
         self.task = task
         self.taskManager = taskManager
+        self.done = False
 
     def run( self ):
         print "RUNNING "
         self.doWork()
         self.taskManager.taskComputed( self.task )
+        self.done = True
 
     def doWork( self ):
         self.vm.runTask( self.task )

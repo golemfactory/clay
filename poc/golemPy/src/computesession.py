@@ -46,3 +46,5 @@ class ComputeSession:
     def dropped( self ):
         self.conn.close()
         self.server.removeComputeSession( self )
+        if self.server.taskManager.computeSession == self:
+            self.server.taskManager.computeSession = None
