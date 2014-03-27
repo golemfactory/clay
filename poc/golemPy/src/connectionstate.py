@@ -1,3 +1,5 @@
+import abc
+
 from twisted.internet.protocol import Protocol 
 from message import Message, MessageHello, MessagePing, MessagePong
 from databuffer import DataBuffer
@@ -22,16 +24,23 @@ class ConnectionState(Protocol):
         db.appendLenPrefixedString( serMsg )
         self.transport.getHandle()
         self.transport.write( db.readAll() )
+
         return True
 
+    @abc.abstractmethod
     def connectionMade(self):
-        assert False # Implement in derived class
+        """Called when new connection is successfully opened"""
+        return
 
+    @abc.abstractmethod
     def dataReceived(self, data):
-        assert False # Implement in derived class
+        """Called when additional chunk of data is received from another peer"""
+        return
 
+    @abc.abstractmethod
     def connectionLost(self, reason):
-        assert False # Implement in derived class
+        """Called when connection is lost (for whatever reason)"""
+        return
 
     def close(self):
         self.transport.loseConnection()

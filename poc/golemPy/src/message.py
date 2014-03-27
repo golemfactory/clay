@@ -7,7 +7,14 @@ from databuffer import DataBuffer
 
 class Message:
 
+    registeredMessageTypes = {}
+
     def __init__( self, type ):
+        print "In your message"
+        if type not in Message.registeredMessageTypes:
+            Message.registeredMessageTypes[ type ] = self.__class__
+            print Message.registeredMessageTypes
+
         self.type = type
         self.serializer = DataBuffer()
 
@@ -50,30 +57,8 @@ class Message:
         msgType = msgRepr[ 0 ]
         dRepr   = msgRepr[ 1 ]
 
-        if msgType == MessageHello.Type:
-            return MessageHello( dictRepr = dRepr )
-        elif msgType == MessagePing.Type:
-            return MessagePing( dictRepr = dRepr )
-        elif msgType == MessagePong.Type:
-            return MessagePong( dictRepr = dRepr )
-        elif msgType == MessageDisconnect.Type:
-            return MessageDisconnect( dictRepr = dRepr )
-        elif msgType == MessageGetPeers.Type:
-            return MessageGetPeers( dictRepr = dRepr )
-        elif msgType == MessagePeers.Type:
-            return MessagePeers( dictRepr = dRepr )
-        elif msgType == MessageGetTasks.Type:
-            return MessageGetTasks( dictRepr = dRepr )
-        elif msgType == MessageTasks.Type:
-            return MessageTasks( dictRepr = dRepr )
-        elif msgType == MessageWantToComputeTask.Type:
-            return MessageWantToComputeTask( dictRepr = dRepr )
-        elif msgType == MessageTaskToCompute.Type:
-            return MessageTaskToCompute( dictRepr = dRepr )
-        elif msgType == MessageCannotAssignTask.Type:
-            return MessageCannotAssignTask( dictRepr = dRepr )
-        elif msgType == MessageTaskComputed.Type:
-            return MessageTaskComputed( dictRepr = dRepr )
+        if msgType in cls.registeredMessageTypes:
+            return cls.registeredMessageTypes[ msgType ]( dictRepr = dRepr )
 
         return None
 
