@@ -92,5 +92,16 @@ class ManagerUiCustomizer:
         self.__updateExistingRow( self.tableData[ nodeUid ], nodeUid, nodeTimestamp, progressRemote, progressLocal )
 
     ########################
+    def __resetDetailedView( self ):
+        self.widget.labelDetailedNode.setText( "Node (none)" )
+        self.widget.labelDetailedRemoteTask.setText( "Active remote task (none)" )
+        self.widget.labelDetailedLocalTask.setText( "Active local task (none)" )
+        self.widget.remoteTaskProgressBar.setProperty("value", 0)
+        self.widget.localTaskProgressBar.setProperty("value", 0)
+
+    ########################
     def enableDetailedView( self, enableFlag ):
+        if not enableFlag:
+            self.__resetDetailedView()
+
         self.widget.frameDetailedNode.setEnabled( enableFlag )
