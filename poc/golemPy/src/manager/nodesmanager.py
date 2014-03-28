@@ -11,7 +11,7 @@ from nodestatesnapshot import NodeStateSnapshot
 
 GLOBAL_SHUTDOWN = [ False ]
 
-
+#FIXME: potencjalnie mozna tez spiac ze soba managery i wtedy kontrolowac zdalnie wszystkie koncowki i sobie odpalac nody w miare potrzeb, ale to nie na najblizsza prezentacje zabawa
 class NodesManager:
 
     def __init__( self ):
