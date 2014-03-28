@@ -27,35 +27,28 @@ class P2PServerInterface:
     def newConnection(self, connection):
         pass
 
-    def newComputeConnection(self, connection):
-        pass
-
 class P2PServer(P2PServerInterface):
     #############################
     def __init__(self, clientVerssion, startPort, endPort, publicKey, seedHost, seedHostPort):
         P2PServerInterface.__init__(self)
 
-        self.clientVersion = clientVerssion
-        self.startPort = startPort
-        self.endPort = endPort
-        self.netListeningPort = self.startPort
-        self.computeListeningPort = self.startPort
-        self.idealPeerCount = 2
-        self.peers = {}
-        self.computeSessions = {}
-        self.taskManager = TaskManager( self )
-        self.seedHost = seedHost
-        self.seedHostPort = seedHostPort
-        self.publicKey = publicKey
-        self.lastGetPeersRequest = time.time()
-        self.lastGetTasksRequest = time.time()
-        self.incommingPeers = {}
-        self.freePeers = []
+        self.clientVersion      = clientVerssion
+        self.startPort          = startPort
+        self.endPort            = endPort
+        self.curPort            = self.startPort
+        self.idealPeerCount     = 2
+        self.peers              = {}
+        self.seedHost           = seedHost
+        self.seedHostPort       = seedHostPort
+        self.publicKey          = publicKey
+        self.lastPeersRequest   = time.time()
+        self.incommingPeers     = {}
+        self.freePeers          = []
 
-        self.startAccepting()
+        self.__startAccepting()
 
     #############################
-    def startAccepting(self):
+    def __startAccepting(self):
         print "Enabling network accepting state"
 
         self.__runListenOnceNet()
@@ -65,23 +58,12 @@ class P2PServer(P2PServerInterface):
                 self.connectNet( self.seedHost, self.seedHostPort )
 
     #############################
-    def setIdealPeerCount(self, n):
-        self.idealPeerCount = n
-
-    #############################
     def newConnection(self, conn):
         pp = conn.transport.getPeer()
         print "newConnection {} {}".format(pp.host, pp.port)
         peer = PeerSession(conn, self, pp.host, pp.port)
         conn.setPeerSession(peer)
         peer.start()
-
-    #############################
-    def newComputeConnection(self, conn):
-        pp = conn.transport.getPeer()
-        print "newComputeConnection {} {}".format(pp.host, pp.port)
-        computeSession = TaskSession(conn, self, pp.host, pp.port)
-        self.computeSessions[ [ pp.host, pp.port ] ] = computeSession
      
     #############################   
     def connectNet(self, address, port):
@@ -123,8 +105,8 @@ class P2PServer(P2PServerInterface):
     def sendMessageGetPeers( self ):
         while len( self.peers ) < self.idealPeerCount:
             if len( self.freePeers ) == 0:
-                if time.time() - self.lastGetPeersRequest > 2:
-                    self.lastGetPeersRequest = time.time()
+                if time.time() - self.lastPeersRequest > 2:
+                    self.lastPeersRequest = time.time()
                     for p in self.peers.values():
                         p.sendGetPeers()
                 break

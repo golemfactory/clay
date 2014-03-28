@@ -4,7 +4,7 @@ from connectionstate import ConnectionState
 class TaskConnState( ConnectionState ):
     ##########################
     def __init__(self, server):
-        ConnectionState.__init__( self, server)
+        ConnectionState.__init__( self, server )
         self.computeSession = None
 
     ############################
@@ -14,7 +14,7 @@ class TaskConnState( ConnectionState ):
     ############################
     def connectionMade(self):
         self.opened = True
-        self.server.newComputeConnection(self)
+        self.server.newConnection(self)
 
     ############################
     def dataReceived(self, data):

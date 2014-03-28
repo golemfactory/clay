@@ -15,6 +15,7 @@ class TaskServer:
         self.taskManager        = TaskManager()
         self.taskComputer       = TaskComputer( self, clientPerformance, taskRequestFrequency )
         self.taskSeesions       = {}
+        self.taskSeesionsIncoming = []
 
         self.__startAccepting()
 
@@ -39,6 +40,13 @@ class TaskServer:
             return True
         else:
             return False
+
+    #############################
+    def newConnection(self, conn):
+        pp = conn.transport.getPeer()
+        print "newComputeConnection {} {}".format(pp.host, pp.port)
+        computeSession = TaskSession(conn, self, pp.host, pp.port)
+        self.computeSessions[ [ pp.host, pp.port ] ] = computeSession
 
     #############################
     # PRIVATE SECSSION
