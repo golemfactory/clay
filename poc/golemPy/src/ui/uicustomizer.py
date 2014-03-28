@@ -90,3 +90,7 @@ class ManagerUiCustomizer:
             self.__registerRowData( nodeUid, self.__createRow( nodeUid, nodeTimestamp ) )
 
         self.__updateExistingRow( self.tableData[ nodeUid ], nodeUid, nodeTimestamp, progressRemote, progressLocal )
+
+    ########################
+    def enableDetailedView( self, enableFlag ):
+        self.widget.frameDetailedNode.setEnabled( enableFlag )
