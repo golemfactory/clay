@@ -393,4 +393,3 @@ class Ui_NodesManagerWidget(object):
         self.label_16.setText(_translate("NodesManagerWidget", "Chunks left", None))
         self.stopNodePushButton.setText(_translate("NodesManagerWidget", "Stop node", None))
         self.fireNewPushButton.setText(_translate("NodesManagerWidget", "Run new local node", None))
-

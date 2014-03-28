@@ -6,6 +6,8 @@ from ui_nodemanager import Ui_NodesManagerWidget
 from uicustomizer import ManagerUiCustomizer
 from nodestatesnapshot import NodeStateSnapshot
 
+GLOBAL_SHUTDOWN = [ False ]
+
 class NodesManager:
 
     def __init__( self ):
@@ -15,6 +17,13 @@ class NodesManager:
         self.ui = Ui_NodesManagerWidget()
         self.ui.setupUi( self.window )
         self.uic = ManagerUiCustomizer(self.ui)
+
+        #FIXME: some shitty python magic
+        def closeEvent_(self_, event):
+            GLOBAL_SHUTDOWN[ 0 ] = True
+            event.accept()
+
+        setattr( self.window.__class__, 'closeEvent', closeEvent_ )
 
     def execute( self ):
         self.window.show()
@@ -27,13 +36,18 @@ if __name__ == "__main__":
 
     from threading import Thread
     import time
+    import random
+    from PyQt4 import QtCore
 
     class NodeSimulator(Thread):
 
+        updateRequest = QtCore.pyqtSignal( int )
+
         ########################
-        def __init__(self, uid, numLocalTasks, numRemoteTasks, localTaskDuration, remoteTaskDuration, innerUpdateDelay ):
+        def __init__(self, id, uid, numLocalTasks, numRemoteTasks, localTaskDuration, remoteTaskDuration, innerUpdateDelay ):
             super(NodeSimulator, self).__init__()
             
+            self.id = id
             self.uid = uid
             self.numLocalTasks = numLocalTasks
             self.numRemoteTasks = numRemoteTasks
@@ -44,6 +58,10 @@ if __name__ == "__main__":
 
             self.locProgress = 0.0
             self.remProgress = 0.0
+
+        ########################
+        def getId( self ):
+            return self.id
 
         ########################
         def getStateSnapshot( self ):
@@ -67,10 +85,15 @@ if __name__ == "__main__":
             remTask = 0
             remTaskStartTime = startTime
 
-            print "Starting node {}".format( self.uid )
+            print "Starting node '{}' local tasks: {} remote tasks: {}".format( self.uid, self.numLocalTasks, self.numRemoteTasks )
+            print "->local task duration: {} secs, remote task duration: {} secs".format( self.localTaskDuration, self.remoteTaskDuration )
 
             while( time.time() - startTime < totalDuration ):
                 
+                if( GLOBAL_SHUTDOWN[ 0 ] ):
+                    print "Global shutdown triggered - bailing out"
+                    break
+
                 time.sleep( self.innerUpdateDelay )
 
                 curTime = time.time()
@@ -95,23 +118,85 @@ if __name__ == "__main__":
                         remTask += 1
                         self.remProgress = 0.0
 
-                print "{:3} : {}   {:3} : {}".format( locTask, self.locProgress, remTask, self.remProgress )
+                #print "\r                                                                      ",
+                #print "\r{:3} : {}   {:3} : {}".format( locTask, self.locProgress, remTask, self.remProgress ),
 
-            print "Finished node {}".format( self.uid )
+            print "Finished node '{}'".format( self.uid )
+
+    class LocalNetworkSimulator(Thread):
+
+        ########################
+        def __init__(self, numNodes, maxLocalTasks, maxRemoteTasks, maxLocalTaskDuration, maxRemoteTaskDuration, maxInnerUpdateDelay, nodeSpawnDelay ):
+            super(LocalNetworkSimulator, self).__init__()
+
+            self.numNodes = numNodes
+            self.maxLocTasks = maxLocalTasks
+            self.maxRemTasks = maxRemoteTasks
+            self.maxLocTaskDura = maxLocalTaskDuration
+            self.maxRemTaskDura = maxRemoteTaskDuration
+            self.maxInnerUpdateDelay = maxInnerUpdateDelay
+            self.nodeSpawnDelay = nodeSpawnDelay
+
+            self.nodes = []
+
+        ########################
+        def getRandomizedUp( self, value, scl = 1.4 ):
+            return ( 0.1 +  scl * random.random() ) * value
+
+        ########################
+        def getRandomizedDown( self, value, scl = 0.7 ):
+            return ( 1.0 - random.random() * scl ) * value
+
+        ########################
+        def createNewNode( self, id ):
+            uid = "gen - uid - {}".format( id )
+                node = NodeSimulator( curNode, "uid {}".format( curNode ), 1, 1, 1, 1, 0.2 )
+
+        ########################
+        def run( self ):
+            curTime = time.time()
+
+            curNode = 0
+
+            while curNode < self.numNodes:
+
+                if GLOBAL_SHUTDOWN[ 0 ]:
+                    break
+                
+                self.nodes.append( node )
+                node.start()
+
+                time.sleep( self.getRandomizedUp( self.nodeSpawnDelay ) )
+
+                curNode += 1
+
+            print "Local network simulator finished running."
+            print "Waiting for nodes to finish"
+        
+            for node in self.nodes:
+                node.join()
+
+    numNodes = 30
+    maxLocalTasks = 15
+    maxRemoteTasks = 300
+    maxLocTaskDuration = 200.0
+    maxRemTaskDuration = 25.0
+    maxInnerUpdateDelay = 2.0
+    nodeSpawnDelay = 2.0
+    
+    simulator = LocalNetworkSimulator( numNodes, maxLocalTasks, maxRemoteTasks, maxLocTaskDuration, maxRemTaskDuration, maxInnerUpdateDelay, nodeSpawnDelay )
+    simulator.start()
 
     manager = NodesManager()
-
-    ns0 = NodeStateSnapshot( "some uiid 0", 0.2, 0.7 )
-    ns1 = NodeStateSnapshot( "some uiid 1", 0.2, 0.7 )
-    ns2 = NodeStateSnapshot( "some uiid 2", 0.2, 0.7 )
-    ns3 = NodeStateSnapshot( "some uiid 3", 0.2, 0.7 )
-
-    manager.UpdateNodeState( ns0 )
-    manager.UpdateNodeState( ns1 )
-    manager.UpdateNodeState( ns2 )
-    manager.UpdateNodeState( ns3 )
-
-    ns = NodeSimulator( "some juajdi", 2, 15, 5.0, 0.3, 0.2 )
-    ns.start()
-
     manager.execute()
+
+    #ns0 = NodeStateSnapshot( "some uiid 0", 0.2, 0.7 )
+    #ns1 = NodeStateSnapshot( "some uiid 1", 0.2, 0.7 )
+    #ns2 = NodeStateSnapshot( "some uiid 2", 0.2, 0.7 )
+    #ns3 = NodeStateSnapshot( "some uiid 3", 0.2, 0.7 )
+
+    #manager.UpdateNodeState( ns0 )
+    #manager.UpdateNodeState( ns1 )
+    #manager.UpdateNodeState( ns2 )
+    #manager.UpdateNodeState( ns3 )
+
