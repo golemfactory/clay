@@ -22,7 +22,7 @@ class TaskManager:
                 ed = task.queryExtraData( estimatedPerformance )
                 if ed:
                     #self.givenTasks[ taskId, ed ] = time.time()
-                    return taskId, task.codeRes, ed
+                    return taskId, task.srcCode, ed
             print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
             return 0, "", {}
         else:

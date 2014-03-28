@@ -58,9 +58,9 @@ class VRayTracingTask( Task ):
     def __init__( self, width, height, num_samples, header ):
 
         srcFile = open( "../testtasks/minilight/compact_src/renderer.py", "r")
-        coderes = srcFile.read()
+        srcCode = srcFile.read()
 
-        Task.__init__( self, header, [], coderes, 0 )
+        Task.__init__( self, header, srcCode )
 
         self.header.ttl = max( width * height * num_samples * 2 / 1200.0, TIMEOUT )
 

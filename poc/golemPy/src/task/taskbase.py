@@ -11,12 +11,9 @@ class TaskHeader:
 
 class Task:
     #######################
-    def __init__( self, header, resources, codeRes, outputSize ):
-        self.resources = resources
-        self.codeRes = codeRes
+    def __init__( self, header, srcCode ):
+        self.srcCode = srcCode
         self.header = header
-        self.taskResult = None
-        self.outputSize = outputSize
 
     #######################
     def queryExtraData( self, perfIndex ):
