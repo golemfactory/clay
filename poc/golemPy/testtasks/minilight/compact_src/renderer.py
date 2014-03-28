@@ -525,7 +525,7 @@ class RenderTaskDesc:
             return False
 
         totalPixels = self.w * self.h
-        leftOver = totalPixels - self.h * self.y + self.x
+        leftOver = totalPixels - self.w * self.y + self.x
 
         if leftOver < self.num_pixels:
             print "Too many pixels ({}) specified, for current descriptor at most {} pixels can be rendered".format( self.num_pixels, leftOver )
