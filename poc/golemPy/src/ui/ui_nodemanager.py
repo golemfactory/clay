@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'manager.ui'
 #
-# Created: Fri Mar 28 01:11:08 2014
+# Created: Fri Mar 28 02:04:03 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -53,7 +53,7 @@ class Ui_NodesManagerWidget(object):
         self.nodeTableWidget.setFrameShape(QtGui.QFrame.Box)
         self.nodeTableWidget.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
         self.nodeTableWidget.setShowGrid(True)
-        self.nodeTableWidget.setRowCount(1)
+        self.nodeTableWidget.setRowCount(0)
         self.nodeTableWidget.setColumnCount(4)
         self.nodeTableWidget.setObjectName(_fromUtf8("nodeTableWidget"))
         item = QtGui.QTableWidgetItem()
@@ -64,14 +64,6 @@ class Ui_NodesManagerWidget(object):
         self.nodeTableWidget.setHorizontalHeaderItem(2, item)
         item = QtGui.QTableWidgetItem()
         self.nodeTableWidget.setHorizontalHeaderItem(3, item)
-        item = QtGui.QTableWidgetItem()
-        self.nodeTableWidget.setItem(0, 0, item)
-        item = QtGui.QTableWidgetItem()
-        self.nodeTableWidget.setItem(0, 1, item)
-        item = QtGui.QTableWidgetItem()
-        self.nodeTableWidget.setItem(0, 2, item)
-        item = QtGui.QTableWidgetItem()
-        self.nodeTableWidget.setItem(0, 3, item)
         self.nodeTableWidget.horizontalHeader().setCascadingSectionResizes(False)
         self.nodeTableWidget.horizontalHeader().setDefaultSectionSize(166)
         self.nodeTableWidget.horizontalHeader().setMinimumSectionSize(27)
@@ -378,13 +370,6 @@ class Ui_NodesManagerWidget(object):
         item.setText(_translate("NodesManagerWidget", "Remote Task", None))
         item = self.nodeTableWidget.horizontalHeaderItem(3)
         item.setText(_translate("NodesManagerWidget", "Local task", None))
-        __sortingEnabled = self.nodeTableWidget.isSortingEnabled()
-        self.nodeTableWidget.setSortingEnabled(False)
-        item = self.nodeTableWidget.item(0, 0)
-        item.setText(_translate("NodesManagerWidget", "UID", None))
-        item = self.nodeTableWidget.item(0, 1)
-        item.setText(_translate("NodesManagerWidget", "00:00:00.00", None))
-        self.nodeTableWidget.setSortingEnabled(__sortingEnabled)
         self.label_5.setText(_translate("NodesManagerWidget", "Node (UID)", None))
         self.label_8.setText(_translate("NodesManagerWidget", "No. peers", None))
         self.label_7.setText(_translate("NodesManagerWidget", "Endpoint", None))

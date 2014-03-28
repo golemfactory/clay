@@ -7,11 +7,14 @@ except AttributeError:
     def _fromUtf8(s):
         return s
 
-class UICustomizationService:
+class ManagerUiCustomizer:
 
     def __init__( self, widget ):
         self.widget = widget
         self.table = widget.nodeTableWidget
+        
+        self.tableData = {}
+
 
     def __createWrappedProgressBar( self ):
 
@@ -27,20 +30,18 @@ class UICustomizationService:
     def addProgressBar( self, row, col ):
         self.table.setCellWidget( row, col, self.__createWrappedProgressBar() )
 
-def widgetToCell( row, col, table ):
+    def appendRow( self, nodeUid, nodeTime ):
+        nextRow = self.table.rowCount()
+        
+        self.table.insertRow( nextRow )
 
+        item = QtGui.QTableWidgetItem()
+        item.setText( nodeUid )
+        self.table.setItem( nextRow, 0, item )
 
-    widget = QtGui.QWidget()
-    widget.setFixedSize( 166, 22 )
+        item = QtGui.QTableWidgetItem()
+        item.setText( nodeTime )
+        self.table.setItem( nextRow, 1, item )
 
-    #layout = QtGui.QHBoxLayout()
-    #widget.setLayout( layout )
-
-    progressBar = QtGui.QProgressBar( widget )
-    progressBar.setGeometry(7, 2, 159, 16)
-    #progressBar.setEnabled( False )
-    progressBar.setProperty("value", 24)
-    progressBar.setObjectName(_fromUtf8("progressBarOfDarkness"))
-
-    table.setCellWidget( 0, 2, widget )
-     
+        self.addProgressBar( nextRow, 2 )
+        self.addProgressBar( nextRow, 3 )

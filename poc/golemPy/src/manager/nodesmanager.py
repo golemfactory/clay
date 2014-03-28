@@ -3,20 +3,22 @@ sys.path.append( '../ui' )
 
 from PyQt4.QtGui import QApplication, QDialog
 from ui_nodemanager import Ui_NodesManagerWidget
-from manager_customization import UICustomizationService
+from uicustomizer import ManagerUiCustomizer
 
 class NodesManager:
+
     def __init__( self ):
         
-        self.app = QApplication(sys.argv)
+        self.app = QApplication( sys.argv )
         self.window = QDialog()
         self.ui = Ui_NodesManagerWidget()
 
-        self.ui.setupUi(self.window)
+        self.ui.setupUi( self.window )
 
-        self.ucs = UICustomizationService( self.ui )
+        self.ucs = ManagerUiCustomizer( self.ui )
         self.ucs.addProgressBar( 0, 2 )
         self.ucs.addProgressBar( 0, 3 )
+        self.ucs.appendRow( "UID1", "timestamp1" )
 
     def execute( self ):
         self.window.show()

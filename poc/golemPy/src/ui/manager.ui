@@ -61,7 +61,7 @@
           <bool>true</bool>
          </property>
          <property name="rowCount">
-          <number>1</number>
+          <number>0</number>
          </property>
          <property name="columnCount">
           <number>4</number>
@@ -78,7 +78,6 @@
          <attribute name="verticalHeaderDefaultSectionSize">
           <number>22</number>
          </attribute>
-         <row/>
          <column>
           <property name="text">
            <string>Node</string>
@@ -99,26 +98,6 @@
            <string>Local task</string>
           </property>
          </column>
-         <item row="0" column="0">
-          <property name="text">
-           <string>UID</string>
-          </property>
-         </item>
-         <item row="0" column="1">
-          <property name="text">
-           <string>00:00:00.00</string>
-          </property>
-         </item>
-         <item row="0" column="2">
-          <property name="text">
-           <string/>
-          </property>
-         </item>
-         <item row="0" column="3">
-          <property name="text">
-           <string/>
-          </property>
-         </item>
         </widget>
        </item>
        <item>
