@@ -15,10 +15,6 @@ class TaskComputer:
         self.taskRequestFrequency   = taskRequestFrequency
 
     ######################
-    def askForTask( self ):
-        self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance )
-
-    ######################
     def taskGiven( self, taskId, srcCode, extraData ):
         if self.waitingForTask:
             self.__computeTask( taskId, srcCode, extraData )
@@ -51,7 +47,11 @@ class TaskComputer:
             if time.time() - self.lastTaskRequest > self.taskRequestFrequency:
                 if len( self.currentComputations ) == 0:
                     self.lastTaskRequest = time.time()
-                    self.askForTask()
+                    self.__askForTask()
+
+    ######################
+    def __askForTask( self ):
+        self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance )
 
     ######################
     def __computeTask( self, taskId, srcCode, extraData ):
@@ -76,12 +76,12 @@ class TaskThread( Thread ):
     ######################
     def run( self ):
         print "RUNNING "
-        self.doWork()
+        self.__doWork()
         self.taskComputer.taskComputed( self )
         self.done = True
 
     ######################
-    def doWork( self ):
+    def __doWork( self ):
         self.result = self.vm.runTask( self.srcCode, self.extraData )
 
 

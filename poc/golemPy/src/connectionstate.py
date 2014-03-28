@@ -5,13 +5,14 @@ from message import Message, MessageHello, MessagePing, MessagePong
 from databuffer import DataBuffer
 
 class ConnectionState(Protocol):
-
+    ############################
     def __init__(self, server):
         self.server = server
         self.peer = None
         self.db = DataBuffer()
         self.opened = False
 
+    ############################
     def sendMessage(self, msg):
         if not self.opened:
             print msg
@@ -27,23 +28,28 @@ class ConnectionState(Protocol):
 
         return True
 
+    ############################
     @abc.abstractmethod
     def connectionMade(self):
         """Called when new connection is successfully opened"""
         return
 
+    ############################
     @abc.abstractmethod
     def dataReceived(self, data):
         """Called when additional chunk of data is received from another peer"""
         return
 
+    ############################
     @abc.abstractmethod
     def connectionLost(self, reason):
         """Called when connection is lost (for whatever reason)"""
         return
 
+    ############################
     def close(self):
         self.transport.loseConnection()
 
+    ############################
     def isOpen(self):
         return self.opened

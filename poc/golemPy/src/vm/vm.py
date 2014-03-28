@@ -21,10 +21,10 @@ class PythonVM( IGolemVM ):
     def runTask( self, srcCode, extraData ):
         self.srcCode = srcCode
         self.scope = copy( extraData )
-        return self.interpret()
+        return self.__interpret()
 
     #######################
-    def interpret( self ):
+    def __interpret( self ):
         exec self.srcCode in self.scope
         return self.scope[ "output" ]
 

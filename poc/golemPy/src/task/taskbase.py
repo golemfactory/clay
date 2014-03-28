@@ -19,22 +19,6 @@ class Task:
         self.outputSize = outputSize
 
     #######################
-    def getResources( self ):
-        return self.resources
-
-    #######################
-    def getExtra( self ):
-        return self.taskHeader.extraData
-
-    #######################
-    def getCode( self ):
-        return self.codeRes
-
-    #######################
-    def setResult( self, resultRes ):
-        self.taskResult = resultRes
-
-    #######################
     def queryExtraData( self, perfIndex ):
         assert False # Implement in derived class
 
