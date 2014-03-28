@@ -10,7 +10,6 @@ class Message:
     registeredMessageTypes = {}
 
     def __init__( self, type ):
-        print "In your message"
         if type not in Message.registeredMessageTypes:
             Message.registeredMessageTypes[ type ] = self.__class__
             print Message.registeredMessageTypes
@@ -39,6 +38,7 @@ class Message:
         msg = db.readLenPrefixedString()
 
         while msg:
+            print msg
             m = cls.deserializeMessage( msg )
             
             if m is None:

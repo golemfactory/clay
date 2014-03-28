@@ -1,5 +1,4 @@
 from message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks
-from taskbase import TaskHeader
 import time
 
 class PeerSessionInterface:
@@ -117,7 +116,7 @@ class PeerSession(PeerSessionInterface):
 
         elif type == MessageTasks.Type:
             for t in msg.tasksArray:
-                if not self.server.taskServer.addTask( t ):
+                if not self.server.taskServer.addTaskHeader( t ):
                     disconnect( PeerSession.DCRBadProtocol )
 
     # private

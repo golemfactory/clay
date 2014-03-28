@@ -76,10 +76,10 @@ class TaskServer(  ):
             id = thDictRepr[ "id" ]
             if id not in self.tasks.keys() and id not in self.myTasks.keys():
                 print "Adding task {}".format( id )
-                self.tasks[ id ] = TaskDescriptor( id, thDictRepr[ "difficulty" ], thDictRepr[ "extra" ], thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr[ "ttl" ] )
+                self.tasks[ id ] = TasHeader( id, thDictRepr[ "difficulty" ], thDictRepr[ "extra" ], thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr[ "ttl" ] )
             return True
         except:
-            print "Wrong task received"
+            print "Wrong task header received"
             return False
 
     #############################
