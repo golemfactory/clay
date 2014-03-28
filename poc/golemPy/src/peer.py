@@ -56,6 +56,8 @@ class PeerSession(PeerSessionInterface):
     def interpret(self, msg):
         self.lastMessageTime = time.time()
 
+        print "Receiving from {}:{}: {}".format( self.address, self.port, msg )
+
         if msg is None:
             self.__disconnect( PeerSession.DCRBadProtocol )
 
@@ -158,6 +160,7 @@ class PeerSession(PeerSessionInterface):
 
     ##########################
     def __send(self, message):
+        print "Sending to {}:{}: {}".format( self.address, self.port, message )
         if not self.conn.sendMessage( message ):
             self.dropped()
             return

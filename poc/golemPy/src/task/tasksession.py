@@ -15,16 +15,18 @@ class TaskSession:
 
     ##########################
     def askForTask( self, taskId, performenceIndex ):
-        self.conn.sendMessage( MessageWantToComputeTask( taskId, performenceIndex ) )
+        self.__send( MessageWantToComputeTask( taskId, performenceIndex ) )
 
     ##########################
     def sendTaskResults( self, id, extraData, taskResult ):
-        self.conn.sendMessage( MessageTaskComputed( id, extraData, taskResult ) )
+        self.__send( MessageTaskComputed( id, extraData, taskResult ) )
 
     ##########################
     def interpret( self, msg ):
         if msg is None:
             pass #TODO
+
+        print "Receiving from {}:{}: {}".format( self.address, self.port, msg )
 
         type = msg.getType()
 
@@ -58,3 +60,7 @@ class TaskSession:
     def dropped( self ):
         self.conn.close()
         self.taskServer.removeTaskSession( self )
+
+    def __send( self, msg ):
+        print "Sending to {}:{}: {}".format( self.address, self.port, msg )
+        self.conn.sendMessage( msg )
