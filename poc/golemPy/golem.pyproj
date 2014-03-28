@@ -61,7 +61,7 @@
     <Compile Include="src\netconnstate.py" />
     <Compile Include="src\p2pserver.py" />
     <Compile Include="src\peer.py" />
-    <Compile Include="src\ui\manager_customization.py" />
+    <Compile Include="src\ui\uicustomizer.py" />
     <Compile Include="src\ui\progressbar.py" />
     <Compile Include="src\ui\pyuic.py" />
     <Compile Include="src\ui\ui_nodemanager.py" />
