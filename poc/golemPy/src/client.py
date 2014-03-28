@@ -2,11 +2,16 @@ from twisted.internet import task
 from twisted.internet import reactor
 
 from p2pserver import P2PServer
+from taskserver import TaskServer
+from taskmanager import TaskManager
+from taskcomputer import TaskComputer
 
 import sys
 import time
 
 PING_INTERVAL = 1.0
+TASK_REQUEST_FREQ = 1.0
+ESTIMATED_PERFORMANCE = 1200.0
 
 class Client:
     ############################
@@ -19,20 +24,25 @@ class Client:
         self.pingsInterval  = pingsInterval
         self.addTasks       = addTasks
 
-        self.lastPingTime = 0.0
-        self.publicKey = publicKey
-        self.p2pserver = None
+        self.lastPingTime   = 0.0
+        self.publicKey      = publicKey
+        self.p2pserver      = None
+        self.taskServer     = None 
+        self.taskManager    = None
+        self.taskComputer   = None
+        self.lastPingTime   = time.time()
 
-        self.doWorkTask = task.LoopingCall(self.__doWork)
+        self.doWorkTask     = task.LoopingCall(self.__doWork)
         self.doWorkTask.start(0.1, False)
-        self.lastPingTime = time.time()
+
 
     ############################
     def startNetwork(self, seedHost, seedHostPort):
         print "Starting network ..."
         self.p2pserver = P2PServer(1, self.startPort, self.endPort, self.publicKey, seedHost, seedHostPort)
+        self.taskServer = TaskServer( "", self.startPort, self.endPort, ESTIMATED_PERFORMANCE, TASK_REQUEST_FREQ )
         if self.addTasks:
-            self.p2pserver.taskManager.addMyTaskToCompute( None )
+            self.taskServer.taskManager.addNewTask( None )
 
     ############################
     def stopNetwork(self):

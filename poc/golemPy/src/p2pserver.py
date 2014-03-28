@@ -19,16 +19,6 @@ class NetServerFactory(Factory):
         print "Protocol build for {}".format(addr)
         return NetConnState(self.p2pserver)
 
-class ComputeServerFactory(Factory):
-    #############################
-    def __init__(self, p2pserver):
-        self.p2pserver = p2pserver
-
-    #############################
-    def buildProtocol(self, addr):
-        print "Protocol build for {}".format(addr)
-        return TaskConnState(self.p2pserver)
-
 
 class P2PServerInterface:
     def __init__(self):
@@ -56,21 +46,19 @@ class P2PServer(P2PServerInterface):
         self.taskManager = TaskManager( self )
         self.seedHost = seedHost
         self.seedHostPort = seedHostPort
-        self.startAccepting()
         self.publicKey = publicKey
         self.lastGetPeersRequest = time.time()
         self.lastGetTasksRequest = time.time()
         self.incommingPeers = {}
         self.freePeers = []
 
+        self.startAccepting()
+
     #############################
     def startAccepting(self):
         print "Enabling network accepting state"
 
         self.__runListenOnceNet()
-
-        # only if we want to give tasks
-        self.__runListenOnceCompute()
 
         if self.seedHost and self.seedHostPort:
             if self.seedHost != "127.0.0.1" or self.seedHostPort != self.netListeningPort: #FIXME workaround to test on one machine
@@ -183,15 +171,6 @@ class P2PServer(P2PServerInterface):
         d.addErrback( self.__netListeningFailure )
 
     #############################
-    def __runListenOnceCompute( self ):
-        ep = TCP4ServerEndpoint( reactor, self.computeListeningPort )
-        
-        d = ep.listen( ComputeServerFactory( self ) )
-        
-        d.addCallback( self.__computeListeningEstablished )
-        d.addErrback( self.__computeListeningFailure )
-
-    #############################
     def __netListeningEstablished(self, p):
         assert p.getHost().port == self.netListeningPort
         print "Port {} opened - listening".format(p.getHost().port)
@@ -205,23 +184,6 @@ class P2PServer(P2PServerInterface):
 
         if self.netListeningPort <= self.endPort:
             self.__runListenOnceNet()
-        else:
-            #FIXME: some graceful terminations should take place here
-            sys.exit(0)
-
-    #############################
-    def __computeListeningEstablished(self, p):
-        assert p.getHost().port == self.computeListeningPort
-        print "Port {} opened - listening".format(p.getHost().port)
-
-    #############################
-    def __computeListeningFailure(self, p):
-        print "Opening {} port for listetning failed, trying the next one".format( self.computeListeningPort )
-
-        self.computeListeningPort = self.computeListeningPort + 1
-
-        if self.computeListeningPort <= self.endPort:
-            self.__runListenOnceCompute()
         else:
             #FIXME: some graceful terminations should take place here
             sys.exit(0)

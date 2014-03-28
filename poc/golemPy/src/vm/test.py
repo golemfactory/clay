@@ -43,7 +43,7 @@ def prepareTasks():
     while n < 30: 
         td = TaskDescriptor( n, 5, { "g_start" : n * 100000, "g_end" : ( n + 1 ) * 100000 } )
 
-        tasks.append( Task( td, [], PyCodeResource( testTaskScr1 ), 0 ) )
+        tasks.append( Task( td, [], testTaskScr1, 0 ) )
         n += 1
 
     return tasks
@@ -54,7 +54,7 @@ def prepareTasks1( width, height ):
     for n in range(0, height): 
         td = TaskDescriptor( n, 5, { "startX" : 0 , "startY" : n, "width" : width, "height" : 1, "img_width" : width, "img_height" : height } )
 
-        tasks.append( Task( td, [], PyCodeResource( testTaskScr2 ), 0 ) )
+        tasks.append( Task( td, [], testTaskScr2, 0 ) )
         n += 1
 
     return tasks

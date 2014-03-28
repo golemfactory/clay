@@ -5,16 +5,20 @@ from task import TaskHeader
 import random
 
 class TaskServer:
-    ######################
-    def __init__( self, address, port, clientPerformance, taskRequestFrequency ):
+    #############################
+    def __init__( self, address, startPort, endPort, clientPerformance, taskRequestFrequency ):
         self.address            = address
-        self.port               = port
+        self.startPort          = startPort
+        self.endPort            = endPort
+        self.curPort            = startPort
         self.taskHeaders        = []
         self.taskManager        = TaskManager()
         self.taskComputer       = TaskComputer( self, clientPerformance, taskRequestFrequency )
         self.taskSeesions       = {}
 
-    ######################
+        self.__startAccepting()
+
+    #############################
     # This method chooses random task from the network to compute on our machine
     def requestTask( self, estimatedPerformance ):
 
@@ -26,6 +30,7 @@ class TaskServer:
 
         return theader.id
 
+    #############################
     def sendResults( self, taskId, extraData, results ):
         
         if taskId in self.taskHeaders:
@@ -34,6 +39,40 @@ class TaskServer:
             return True
         else:
             return False
+
+    #############################
+    # PRIVATE SECSSION
+
+    #############################
+    def __startAccepting(self):
+        print "Enabling tasks accepting state"
+        self.__runListenOnce()
+
+    #############################
+    def __runListenOnce( self ):
+        ep = TCP4ServerEndpoint( reactor, self.curPort )
+        
+        d = ep.listen( TaskServerFactory( self ) )
+        
+        d.addCallback( self.__listeningEstablished )
+        d.addErrback( self.__listeningFailure )
+
+    #############################
+    def __listeningEstablished(self, p):
+        assert p.getHost().port == self.curPort
+        print "Port {} opened - listening".format(p.getHost().port)
+
+    #############################
+    def __listeningFailure(self, p):
+        print "Opening {} port for listetning failed, trying the next one".format( self.curPort )
+
+        self.curPort = self.curPort + 1
+
+        if self.curPort <= self.endPort:
+            self.__runListenOnceCompute()
+        else:
+            #FIXME: some graceful terminations should take place here
+            sys.exit(0)
 
     #############################   
     def __connectAndSendTaskRequest( self, address, port, taskId, estimatedPerformance ):
@@ -103,3 +142,15 @@ class TaskServer:
                 
         if taskId in self.taskHeaders:
             del self.taskHeaders[ taskId ]
+
+
+
+class TaskServerFactory(Factory):
+    #############################
+    def __init__(self, p2pserver):
+        self.p2pserver = p2pserver
+
+    #############################
+    def buildProtocol(self, addr):
+        print "Protocol build for {}".format(addr)
+        return TaskConnState(self.p2pserver)
