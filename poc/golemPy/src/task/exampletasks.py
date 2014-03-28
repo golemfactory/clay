@@ -50,8 +50,8 @@ class RayTracingTask( Task ):
     def computationFinished( self, extraData, taskResult ):
         print "Receive cumputed task id:{} extraData:{} \n result:{}".format( self.taskHeader.id, extraData, taskResult )
 
-TIMESLC  = 10.0
-TIMEOUT  = 1000.0
+TIMESLC  = 100.0
+TIMEOUT  = 100000.0
 
 class VRayTracingTask( Task ):
     #######################

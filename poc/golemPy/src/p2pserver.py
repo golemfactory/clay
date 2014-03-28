@@ -19,7 +19,7 @@ class NetServerFactory( Factory ):
 
 class P2PServer( ServerInterface ):
     #############################
-    def __init__( self, clientVerssion, startPort, endPort, publicKey, seedHost, seedHostPort ):
+    def __init__( self, hostAddress, clientVerssion, startPort, endPort, publicKey, seedHost, seedHostPort ):
         ServerInterface.__init__( self )
 
         self.clientVersion          = clientVerssion
@@ -36,6 +36,7 @@ class P2PServer( ServerInterface ):
         self.incommingPeers         = {}
         self.freePeers              = []
         self.taskServer             = None
+        self.hostAddress            = hostAddress
 
         self.__startAccepting()
 

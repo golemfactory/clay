@@ -6,9 +6,12 @@ from taskserver import TaskServer
 from taskbase import TaskHeader
 from exampletasks import VRayTracingTask
 
+from hostaddress import getHostAddress
+
 import sys
 import time
 import random
+import socket
 
 TASK_REQUEST_FREQ = 5.0
 ESTIMATED_PERFORMANCE = 1200.0
@@ -30,18 +33,20 @@ class Client:
         self.taskServer     = None 
         self.lastPingTime   = time.time()
 
+        self.hostAddress    = getHostAddress()
+
         self.doWorkTask     = task.LoopingCall(self.__doWork)
         self.doWorkTask.start(0.1, False)
-
+       
 
     ############################
     def startNetwork(self, seedHost, seedHostPort):
         print "Starting network ..."
-        self.p2pserver = P2PServer(1, self.startPort, self.endPort, self.publicKey, seedHost, seedHostPort)
+        self.p2pserver = P2PServer(1, self.hostAddress, self.startPort, self.endPort, self.publicKey, seedHost, seedHostPort)
 
         time.sleep( 1.0 )
 
-        self.taskServer = TaskServer( "", self.startPort, self.endPort, ESTIMATED_PERFORMANCE, TASK_REQUEST_FREQ )
+        self.taskServer = TaskServer( self.hostAddress, self.startPort, self.endPort, ESTIMATED_PERFORMANCE, TASK_REQUEST_FREQ )
         if self.addTasks:
             hash = random.getrandbits(128)
             th = TaskHeader( hash, "10.30.10.203", self.taskServer.curPort )
