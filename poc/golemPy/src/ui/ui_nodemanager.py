@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'manager.ui'
 #
-# Created: Fri Mar 28 02:04:03 2014
+# Created: Fri Mar 28 22:06:29 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,7 +26,7 @@ except AttributeError:
 class Ui_NodesManagerWidget(object):
     def setupUi(self, NodesManagerWidget):
         NodesManagerWidget.setObjectName(_fromUtf8("NodesManagerWidget"))
-        NodesManagerWidget.resize(992, 637)
+        NodesManagerWidget.resize(992, 677)
         self.horizontalLayout_3 = QtGui.QHBoxLayout(NodesManagerWidget)
         self.horizontalLayout_3.setObjectName(_fromUtf8("horizontalLayout_3"))
         self.verticalLayout = QtGui.QVBoxLayout()
@@ -318,18 +318,27 @@ class Ui_NodesManagerWidget(object):
         self.chunksLeftInput.setObjectName(_fromUtf8("chunksLeftInput"))
         self.gridLayout_3.addWidget(self.chunksLeftInput, 4, 1, 1, 1)
         self.verticalLayout_2.addLayout(self.gridLayout_3)
+        self.horizontalLayout_7 = QtGui.QHBoxLayout()
+        self.horizontalLayout_7.setContentsMargins(-1, 10, -1, -1)
+        self.horizontalLayout_7.setObjectName(_fromUtf8("horizontalLayout_7"))
+        spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout_7.addItem(spacerItem)
+        self.enqueueTaskButton = QtGui.QPushButton(self.frame)
+        self.enqueueTaskButton.setObjectName(_fromUtf8("enqueueTaskButton"))
+        self.horizontalLayout_7.addWidget(self.enqueueTaskButton)
+        self.verticalLayout_2.addLayout(self.horizontalLayout_7)
         self.line_4 = QtGui.QFrame(self.frame)
         self.line_4.setFrameShape(QtGui.QFrame.HLine)
         self.line_4.setFrameShadow(QtGui.QFrame.Sunken)
         self.line_4.setObjectName(_fromUtf8("line_4"))
         self.verticalLayout_2.addWidget(self.line_4)
-        spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.MinimumExpanding)
-        self.verticalLayout_2.addItem(spacerItem)
+        spacerItem1 = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.MinimumExpanding)
+        self.verticalLayout_2.addItem(spacerItem1)
         self.horizontalLayout_5 = QtGui.QHBoxLayout()
         self.horizontalLayout_5.setContentsMargins(-1, 0, -1, -1)
         self.horizontalLayout_5.setObjectName(_fromUtf8("horizontalLayout_5"))
-        spacerItem1 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout_5.addItem(spacerItem1)
+        spacerItem2 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout_5.addItem(spacerItem2)
         self.stopNodePushButton = QtGui.QPushButton(self.frame)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -340,15 +349,15 @@ class Ui_NodesManagerWidget(object):
         self.stopNodePushButton.setObjectName(_fromUtf8("stopNodePushButton"))
         self.horizontalLayout_5.addWidget(self.stopNodePushButton)
         self.verticalLayout_2.addLayout(self.horizontalLayout_5)
-        spacerItem2 = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Preferred)
-        self.verticalLayout_2.addItem(spacerItem2)
+        spacerItem3 = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Preferred)
+        self.verticalLayout_2.addItem(spacerItem3)
         self.horizontalLayout_6.addLayout(self.verticalLayout_2)
         self.horizontalLayout_4.addWidget(self.frame)
         self.verticalLayout.addLayout(self.horizontalLayout_4)
         self.horizontalLayout_2 = QtGui.QHBoxLayout()
         self.horizontalLayout_2.setObjectName(_fromUtf8("horizontalLayout_2"))
-        spacerItem3 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout_2.addItem(spacerItem3)
+        spacerItem4 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout_2.addItem(spacerItem4)
         self.fireNewPushButton = QtGui.QPushButton(NodesManagerWidget)
         self.fireNewPushButton.setMinimumSize(QtCore.QSize(220, 0))
         self.fireNewPushButton.setObjectName(_fromUtf8("fireNewPushButton"))
@@ -391,5 +400,7 @@ class Ui_NodesManagerWidget(object):
         self.label_14.setText(_translate("NodesManagerWidget", "Active tasks", None))
         self.label_15.setText(_translate("NodesManagerWidget", "Active chunks", None))
         self.label_16.setText(_translate("NodesManagerWidget", "Chunks left", None))
+        self.enqueueTaskButton.setText(_translate("NodesManagerWidget", "Enqueue task", None))
         self.stopNodePushButton.setText(_translate("NodesManagerWidget", "Stop node", None))
         self.fireNewPushButton.setText(_translate("NodesManagerWidget", "Run new local node", None))
+
