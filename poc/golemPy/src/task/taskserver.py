@@ -72,8 +72,6 @@ class TaskServer( ServerInterface ):
 
         for th in ths:
             ret.append({    "id"            : th.id, 
-                            "difficulty"    : th.difficultyIndex,
-                            "extra"         : th.extraData,
                             "address"       : th.taskOwnerAddress,
                             "port"          : th.taskOwnerPort,
                             "ttl"           : th.ttl })
@@ -86,7 +84,7 @@ class TaskServer( ServerInterface ):
             if id not in self.taskHeaders.keys(): # dont have it
                 if id not in self.taskManager.tasks.keys(): # It is not my task id
                     print "Adding task {}".format( id )
-                    self.taskHeaders[ id ] = TaskHeader( id, thDictRepr[ "difficulty" ], thDictRepr[ "extra" ], thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr[ "ttl" ] )
+                    self.taskHeaders[ id ] = TaskHeader( id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr[ "ttl" ] )
             return True
         except:
             print "Wrong task header received"

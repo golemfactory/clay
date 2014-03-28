@@ -2,10 +2,8 @@ import time
 
 class TaskHeader:
     #######################
-    def __init__( self, id, difficultyIndex, extraData, taskOwnerAddress, taskOwnerPort, ttl ):
-        self.difficultyIndex = difficultyIndex
+    def __init__( self, id, taskOwnerAddress, taskOwnerPort, ttl = 0.0 ):
         self.id = id
-        self.extraData = extraData
         self.taskOwnerAddress = taskOwnerAddress
         self.taskOwnerPort = taskOwnerPort
         self.lastChecking = time.time()

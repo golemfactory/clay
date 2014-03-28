@@ -44,8 +44,8 @@ class Client:
         self.taskServer = TaskServer( "", self.startPort, self.endPort, ESTIMATED_PERFORMANCE, TASK_REQUEST_FREQ )
         if self.addTasks:
             hash = random.getrandbits(128)
-            th = TaskHeader( hash, 5, None, "10.30.10.203", self.taskServer.curPort, 25.0 )
-            self.taskServer.taskManager.addNewTask( VRayTracingTask( 10, 10, 100, th ) )
+            th = TaskHeader( hash, "10.30.10.203", self.taskServer.curPort )
+            self.taskServer.taskManager.addNewTask( VRayTracingTask( 10, 10, 10, th ) )
 
         self.p2pserver.setTaskServer( self.taskServer )
 

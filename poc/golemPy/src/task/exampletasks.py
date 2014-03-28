@@ -51,11 +51,14 @@ TIMEOUT  = 1000.0
 
 class VRayTracingTask( Task ):
     #######################
-    def __init__( self, width, height, num_samples, taskHeader ):
+    def __init__( self, width, height, num_samples, header ):
 
         srcFile = open( "../testtasks/minilight/compact_src/renderer.py", "r")
         coderes = srcFile.read()
-        Task.__init__( self, taskHeader, [], coderes, 0 )
+
+        Task.__init__( self, header, [], coderes, 0 )
+
+        self.header.ttl = max( width * height * num_samples * 2 / 1200.0, TIMEOUT )
 
         self.taskableRenderer = TaskableRenderer( width, height, num_samples, None, TIMESLC, TIMEOUT )
 

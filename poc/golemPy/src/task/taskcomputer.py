@@ -30,7 +30,7 @@ class TaskComputer:
     def taskRequestRejected( self, taskId, reason ):
         print "Task {} request rejected: {}".format( taskId, reason )
         assert self.waitingForTask
-        self.waitingForTask = False
+        self.waitingForTask = 0
 
     ######################
     def taskComputed( self, taskThread ):
@@ -48,8 +48,9 @@ class TaskComputer:
     def run( self ):
         if not self.waitingForTask:
             if time.time() - self.lastTaskRequest > self.taskRequestFrequency:
-                self.lastTaskRequest = time.time()
-                self.askForTask()
+                if len( self.currentComputations ) == 0:
+                    self.lastTaskRequest = time.time()
+                    self.askForTask()
 
     ######################
     def __computeTask( self, taskId, srcCode, extraData ):
