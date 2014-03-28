@@ -307,22 +307,3 @@ class VRayTracingTask( Task ):
         image_file = open( img_name, 'wb')
         img.get_formatted(image_file, num_samples)
         image_file.close()
-
-
-
-class TaskPerformer( Thread ):
-    def __init__( self, task, taskManager ):
-        super( TaskPerformer, self ).__init__()
-        self.vm = PythonVM()
-        self.task = task
-        self.taskManager = taskManager
-        self.done = False
-
-    def run( self ):
-        print "RUNNING "
-        self.doWork()
-        self.taskManager.taskComputed( self.task )
-        self.done = True
-
-    def doWork( self ):
-        self.vm.runTask( self.task )
