@@ -15,8 +15,6 @@ except AttributeError:
     def _fromUtf8(s):
         return s
 
-from manager_customization import widgetToCell
-
 try:
     _encoding = QtGui.QApplication.UnicodeUTF8
     def _translate(context, text, disambig):
@@ -365,8 +363,6 @@ class Ui_NodesManagerWidget(object):
         self.horizontalLayout_2.addWidget(self.fireNewPushButton)
         self.verticalLayout.addLayout(self.horizontalLayout_2)
         self.horizontalLayout_3.addLayout(self.verticalLayout)
-
-        widgetToCell(0,2,self.nodeTableWidget)
 
         self.retranslateUi(NodesManagerWidget)
         QtCore.QMetaObject.connectSlotsByName(NodesManagerWidget)
