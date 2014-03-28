@@ -81,8 +81,7 @@ class VRayTracingTask( Task ):
                     "w" : taskDesc.getW(),
                     "h" : taskDesc.getH(),
                     "num_pixels" : taskDesc.getNumPixels(),
-                    "num_samples" : taskDesc.getNumSamples(),
-                    "subTaskTimeout" : TIMESLC
+                    "num_samples" : taskDesc.getNumSamples()
                     }
 
     #######################
