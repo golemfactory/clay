@@ -3,8 +3,8 @@ import time
 
 class TaskComputer:
     ######################
-    def __init__( self, estimatedPerfformance, taskServer, taskRequestFrequency ):
-        self.estimatedPerfformance  = estimatedPerfformance
+    def __init__( self, estimatedPerformance, taskServer, taskRequestFrequency ):
+        self.estimatedPerfformance  = estimatedPerformance
         self.taskServer             = taskServer
         self.waitingForTask         = False
         self.currentComputations    = []
@@ -14,7 +14,7 @@ class TaskComputer:
 
     ######################
     def askForTask( self ):
-        self.waitingForTask = self.taskServer.giveTask( self.estimatedPerfformance )
+        self.waitingForTask = self.taskServer.giveTask( self.estimatedPerformance )
 
     ######################
     def taskGiven( self, task, extraData ):
