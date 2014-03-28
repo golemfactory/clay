@@ -160,7 +160,7 @@ class TaskManager:
             self.dontAskTasks[ id ] = { "time" : time.time(), "reason" : reason }
 
 
-class TaskDescriptor:
+class TaskHeader:
     #######################
     def __init__( self, id, difficultyIndex, extraData, taskOwnerAddress, taskOwnerPort, ttl ):
         self.difficultyIndex = difficultyIndex

@@ -3,8 +3,8 @@ from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
 
 from netconnstate import NetConnState
-from computeconnstate import ComputeConnState
-from computesession import ComputeSession
+from computeconnstate import TaskConnState
+from computesession import TaskSession
 from peer import PeerSession
 from task import TaskManager
 import time
@@ -27,7 +27,7 @@ class ComputeServerFactory(Factory):
     #############################
     def buildProtocol(self, addr):
         print "Protocol build for {}".format(addr)
-        return ComputeConnState(self.p2pserver)
+        return TaskConnState(self.p2pserver)
 
 
 class P2PServerInterface:
@@ -92,7 +92,7 @@ class P2PServer(P2PServerInterface):
     def newComputeConnection(self, conn):
         pp = conn.transport.getPeer()
         print "newComputeConnection {} {}".format(pp.host, pp.port)
-        computeSession = ComputeSession(conn, self, pp.host, pp.port)
+        computeSession = TaskSession(conn, self, pp.host, pp.port)
         self.computeSessions[ [ pp.host, pp.port ] ] = computeSession
      
     #############################   
@@ -102,22 +102,6 @@ class P2PServer(P2PServerInterface):
         connection = NetConnState(self);
         d = connectProtocol(endpoint, connection)
         d.addErrback(self.__connectionFailure)
-
-    #############################   
-    def connectComputeSession(self, address, port):
-        print "Connecting to host {} : {}".format(address ,port)
-        endpoint = TCP4ClientEndpoint(reactor, address, port)
-        connection = ComputeConnState(self);
-        d = connectProtocol(endpoint, connection)
-        d.addCallback( self.__connectionComputeSessionEstablished )
-        d.addErrback(self.__connectionFailure)
-
-    #############################
-    def __connectionComputeSessionEstablished( self, conn ):
-        pp = conn.transport.getPeer()
-        print "newComputeConnection {} {}".format(pp.host, pp.port)
-        computeSession = ComputeSession(conn, self, pp.host, pp.port)
-        self.computeSessions[ [ pp.host, pp.port ] ] = computeSession
 
     def isConnected( self, host, port ):
         if [ host, port ] in self.computeSessions:

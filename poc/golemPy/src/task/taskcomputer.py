@@ -3,7 +3,7 @@ import time
 
 class TaskComputer:
     ######################
-    def __init__( self, estimatedPerformance, taskServer, taskRequestFrequency ):
+    def __init__( self, taskServer, estimatedPerformance, taskRequestFrequency ):
         self.estimatedPerfformance  = estimatedPerformance
         self.taskServer             = taskServer
         self.waitingForTask         = False
@@ -14,7 +14,7 @@ class TaskComputer:
 
     ######################
     def askForTask( self ):
-        self.waitingForTask = self.taskServer.giveTask( self.estimatedPerformance )
+        self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance )
 
     ######################
     def taskGiven( self, task, extraData ):
@@ -25,7 +25,8 @@ class TaskComputer:
         else:
             return False
 
-    def taskRequestRejected( self ):
+    def taskRequestRejected( self, taskId, reason ):
+        print "Task {} request rejected: {}".format( taskId, reason )
         assert self.waitingForTask
         self.waitingForTask = False
 
@@ -39,7 +40,7 @@ class TaskComputer:
 
             if task.taskResult:
                 print "Task {} computed".format( task.desc.id )
-                self.taskServer.sendComputedTask( task.desc.id, extraData, task.taskResult )
+                self.taskServer.sendResults( task.desc.id, extraData, task.taskResult )
 
     ######################
     def doWork( self ):

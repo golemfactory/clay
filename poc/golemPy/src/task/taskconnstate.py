@@ -1,7 +1,7 @@
 from message import Message
 from connectionstate import ConnectionState
 
-class ComputeConnState( ConnectionState ):
+class TaskConnState( ConnectionState ):
     ##########################
     def __init__(self, server):
         ConnectionState.__init__( self, server)

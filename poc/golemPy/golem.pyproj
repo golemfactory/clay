@@ -6,7 +6,7 @@
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
     <StartupFile>test\main.py</StartupFile>
-    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm</SearchPath>
+    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task</SearchPath>
     <WorkingDirectory>d:\src\golem\poc\golemPy\test\</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>golem</Name>
@@ -30,6 +30,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="src\manager\" />
+    <Folder Include="src\task\" />
     <Folder Include="src\ui\" />
     <Folder Include="testtasks\" />
     <Folder Include="src\" />
@@ -43,8 +44,8 @@
   <ItemGroup>
     <Compile Include="src\client.py" />
     <Compile Include="src\appconfig.py" />
-    <Compile Include="src\computeconnstate.py" />
-    <Compile Include="src\computesession.py" />
+    <Compile Include="src\task\taskconnstate.py" />
+    <Compile Include="src\task\tasksession.py" />
     <Compile Include="src\connectionstate.py" />
     <Compile Include="src\core\databuffer.py" />
     <Compile Include="src\core\filelock.py" />
@@ -62,16 +63,18 @@
     <Compile Include="src\netconnstate.py" />
     <Compile Include="src\p2pserver.py" />
     <Compile Include="src\peer.py" />
+    <Compile Include="src\task\taskcomputer.py" />
+    <Compile Include="src\task\taskmanager.py" />
+    <Compile Include="src\task\taskserver.py" />
     <Compile Include="src\ui\uicustomizer.py" />
     <Compile Include="src\ui\progressbar.py" />
     <Compile Include="src\ui\pyuic.py" />
     <Compile Include="src\ui\ui_nodemanager.py" />
     <Compile Include="src\vm\resource.py" />
-    <Compile Include="src\vm\task.py" />
+    <Compile Include="src\task\task.py" />
     <Compile Include="src\vm\taskdistributor.py" />
     <Compile Include="src\vm\test.py" />
     <Compile Include="src\vm\vm.py" />
-    <Compile Include="src\vm\VTask.py" />
     <Compile Include="src\__init__.py" />
     <Compile Include="testtasks\minilight\compact_src\renderer.py" />
     <Compile Include="testtasks\minilight\src\camera.py" />

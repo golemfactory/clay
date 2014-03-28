@@ -14,22 +14,19 @@ class TaskManager:
         self.tasks[ task.desc.id ] = task
 
     #######################
-    def getNextTask( self, estimatedPerformance ):
-        tasks = self.tasks.values()
-        r = range( 0, len( self.tasks.values() ) )
-
-        while len( r ) > 0:
-            tn = random.choice( r )
-            task = tasks[ tn ]
+    def getNextSubTask( self, taskId, estimatedPerformance ):
+        if taskid in self.tasks:
+            task = self.tasks[ taskid ]
             ed = task.queryExtraData( estimatedPerformance )
             if ed:
                 self.givenTasks[ [ task, ed ] ] = time.time()
-                return task, ed
+                return taskId, task.codeRes, ed
             else:
-                r.remove( tn )
-
-        print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
-        return None
+                print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
+                return 0, "", {}
+        else:
+            print "Cannot find task {} in my tasks".format( taskId )
+            return 0, "", {}
 
     #######################
     def computedTaskReceived( self, taskId, extraData, result ):
