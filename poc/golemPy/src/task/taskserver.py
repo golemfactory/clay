@@ -78,6 +78,7 @@ class TaskServer( ServerInterface ):
 
         return ret
 
+    #############################
     def addTaskHeader( self, thDictRepr ):
         try:
             id = thDictRepr[ "id" ]

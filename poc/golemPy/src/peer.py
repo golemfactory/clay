@@ -16,6 +16,7 @@ class PeerSession(PeerSessionInterface):
     DCRBadProtocol      = "Bad protocol"
     DCRDuplicatePeers   = "Duplicate peers"
 
+    ##########################
     def __init__(self, conn, server, address, port):
         PeerSessionInterface.__init__(self)
         self.server = server
@@ -27,48 +28,36 @@ class PeerSession(PeerSessionInterface):
         self.conn = conn
         self.lastDisconnectTime = None
 
+    ##########################
     def __del__( self ):
         conn.close()
 
+    ##########################
     def __str__(self):
         return "{} : {}".format(self.address, self.port)
      
+    ##########################
     def start(self):
         print "Starting peer session {} : {}".format(self.address, self.port)
-        self.sendHello()
-        self.sendPing()        
+        self.__sendHello()
+        self.__sendPing()        
 
-    def disconnect(self, reason):
-        print "Disconnecting {} : {} reason: {}".format( self.address, self.port, reason )
-        if self.conn.isOpen():
-            if self.lastDisconnectTime:
-                self.dropped()
-            else:
-                self.sendDisconnect(reason)
-                self.lastDisconnectTime = time.time()
-
+    ##########################
     def dropped( self ):
         self.conn.close()
         self.server.removePeer( self )
 
+    ##########################
     def ping(self, interval):
         if time.time() - self.lastMessageTime > interval:
-            self.sendPing()
+            self.__sendPing()
 
-    def setConnecting(self):
-        self.state = PeerSession.StateConnecting
-
-    def setConnected(self):
-        self.state = PeerSession.StateConnected
-
-    def getState(self):
-        return self.state
-
+    ##########################
     def interpret(self, msg):
         self.lastMessageTime = time.time()
 
         if msg is None:
-            self.disconnect( PeerSession.DCRBadProtocol )
+            self.__disconnect( PeerSession.DCRBadProtocol )
 
         type = msg.getType()
 
@@ -77,7 +66,7 @@ class PeerSession(PeerSessionInterface):
         #print "{} at {}".format( msg.serialize(), timeString )
 
         if type == MessagePing.Type:
-            self.sendPong()
+            self.__sendPong()
         elif type == MessagePong.Type:
             pass
         elif type == MessageDisconnect.Type:
@@ -92,14 +81,14 @@ class PeerSession(PeerSessionInterface):
             p = self.server.findPeer( self.id )
 
             if p and p != self and p.conn.isOpen():
-                self.disconnect( PeerSession.DCRDuplicatePeers )
+                self.__disconnect( PeerSession.DCRDuplicatePeers )
 
             self.server.peers[self.id] = self
             print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)
-            self.sendPing()
+            self.__sendPing()
 
         elif type == MessageGetPeers.Type:
-            self.sendPeers()
+            self.__sendPeers()
 
         elif type == MessagePeers.Type:
             peersInfo = msg.peersArray
@@ -112,44 +101,65 @@ class PeerSession(PeerSessionInterface):
 
         elif type == MessageGetTasks.Type:
             tasks = self.server.taskServer.getTasksHeaders()
-            self.sendTasks( tasks )
+            self.__sendTasks( tasks )
 
         elif type == MessageTasks.Type:
             for t in msg.tasksArray:
                 if not self.server.taskServer.addTaskHeader( t ):
-                    self.disconnect( PeerSession.DCRBadProtocol )
+                    self.__disconnect( PeerSession.DCRBadProtocol )
 
-    # private
-       
-    def sendHello(self):
-        self.send(MessageHello(self.server.curPort, self.server.publicKey))
-
-    def sendPing(self):
-        self.send(MessagePing())
-
-    def sendPong(self):
-        self.send(MessagePong())
-
-    def sendDisconnect(self, reason):
-        self.send( MessageDisconnect( reason ) )
-
+    ##########################
     def sendGetPeers( self ):
-        self.send( MessageGetPeers() )
+        self.__send( MessageGetPeers() )
 
+    ##########################
     def sendGetTasks( self ):
-        self.send( MessageGetTasks() )
+        self.__send( MessageGetTasks() )
 
-    def sendPeers( self ):
+    ##########################
+    # PRIVATE SECSSION
+       
+    ##########################
+    def __disconnect(self, reason):
+        print "Disconnecting {} : {} reason: {}".format( self.address, self.port, reason )
+        if self.conn.isOpen():
+            if self.lastDisconnectTime:
+                self.dropped()
+            else:
+                self.__sendDisconnect(reason)
+                self.lastDisconnectTime = time.time()
+
+    ##########################
+    def __sendHello(self):
+        self.__send(MessageHello(self.server.curPort, self.server.publicKey))
+
+    ##########################
+    def __sendPing(self):
+        self.__send(MessagePing())
+
+    ##########################
+    def __sendPong(self):
+        self.__send(MessagePong())
+
+    ##########################
+    def __sendDisconnect(self, reason):
+        self.__send( MessageDisconnect( reason ) )
+
+    ##########################
+    def __sendPeers( self ):
         peersInfo = []
         for p in self.server.peers.values():
             peersInfo.append( { "address" : p.address, "port" : p.port, "id" : p.id } )
-        self.send( MessagePeers( peersInfo ) )
+        self.__send( MessagePeers( peersInfo ) )
 
-    def sendTasks( self, tasks ):
-        self.send( MessageTasks( tasks ) )
+    ##########################
+    def __sendTasks( self, tasks ):
+        self.__send( MessageTasks( tasks ) )
 
-    def send(self, message):
+    ##########################
+    def __send(self, message):
         if not self.conn.sendMessage( message ):
             self.dropped()
             return
         self.lastMessageTime = time.time()
+

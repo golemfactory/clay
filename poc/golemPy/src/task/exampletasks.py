@@ -26,6 +26,7 @@ class RayTracingTask( Task ):
         self.height = height
         self.splitIndex = 0
 
+    #######################
     def queryExtraData( self, perfIndex ):
         return {    "startX" : 0,
                     "startY" : 0,
@@ -34,15 +35,18 @@ class RayTracingTask( Task ):
                     "img_width" : self.width,
                     "img_height" : self.height }
 
+    #######################
     def needsComputation( self ):
         if self.splitIndex < 1:
             return True
         else:
             return False
 
+    #######################
     def computationStarted( self, extraData ):
         self.splitIndex += 1
 
+    #######################
     def computationFinished( self, extraData, taskResult ):
         print "Receive cumputed task id:{} extraData:{} \n result:{}".format( self.taskHeader.id, extraData, taskResult )
 
@@ -66,7 +70,7 @@ class VRayTracingTask( Task ):
         self.h = height
         self.num_samples = num_samples
 
-
+    #######################
     def queryExtraData( self, perfIndex ):
 
         taskDesc = self.taskableRenderer.getNextTaskDesc( perfIndex ) 
@@ -81,12 +85,15 @@ class VRayTracingTask( Task ):
                     "subTaskTimeout" : TIMESLC
                     }
 
+    #######################
     def needsComputation( self ):
         return self.taskableRenderer.hasMoreTasks()
 
+    #######################
     def computationStarted( self, extraData ):
         pass
 
+    #######################
     def computationFinished( self, extraData, taskResult ):
         dest = RenderTaskDesc( 0, extraData[ "x" ], extraData[ "y" ], extraData[ "w" ], extraData[ "h" ], extraData[ "num_pixels" ] ,extraData[ "num_samples" ])
         res = RenderTaskResult( dest, taskResult )
@@ -94,6 +101,7 @@ class VRayTracingTask( Task ):
         if self.taskableRenderer.isFinished():
             VRayTracingTask.__save_image( "ladny.ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples )
 
+    #######################
     @classmethod
     def __save_image( cls, img_name, w, h, data, num_samples ):
         if not data:

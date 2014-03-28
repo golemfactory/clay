@@ -16,7 +16,8 @@ class PythonVM( IGolemVM ):
         IGolemVM.__init__( self )
         self.srcCode = ""
         self.scope = {}
-        
+      
+    #######################  
     def runTask( self, srcCode, extraData ):
         self.srcCode = srcCode
         self.scope = copy( extraData )
@@ -25,6 +26,5 @@ class PythonVM( IGolemVM ):
     #######################
     def interpret( self ):
         exec self.srcCode in self.scope
-        #assert isinstance( self.scope[ "output" ], IResource )
         return self.scope[ "output" ]
 

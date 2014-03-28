@@ -54,6 +54,7 @@ class TaskSession:
             # Add message with confirmation that result is accepted
             self.dropped()
 
+    ##########################
     def dropped( self ):
         self.conn.close()
         self.taskServer.removeTaskSession( self )

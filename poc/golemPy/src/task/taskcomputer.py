@@ -27,6 +27,7 @@ class TaskComputer:
         else:
             return False
 
+    ######################
     def taskRequestRejected( self, taskId, reason ):
         print "Task {} request rejected: {}".format( taskId, reason )
         assert self.waitingForTask
