@@ -29,6 +29,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Folder Include="src\manager\" />
     <Folder Include="src\ui\" />
     <Folder Include="testtasks\" />
     <Folder Include="src\" />
@@ -53,11 +54,17 @@
     <Compile Include="src\core\simpleenv.py" />
     <Compile Include="src\core\simplehash.py" />
     <Compile Include="src\core\simpleserializer.py" />
+    <Compile Include="src\manager\managerconnection.py" />
+    <Compile Include="src\manager\managermessage.py" />
+    <Compile Include="src\manager\nodesmanager.py" />
     <Compile Include="src\message.py" />
     <Compile Include="src\netconnstate.py" />
     <Compile Include="src\p2pserver.py" />
     <Compile Include="src\peer.py" />
+    <Compile Include="src\ui\manager_customization.py" />
     <Compile Include="src\ui\progressbar.py" />
+    <Compile Include="src\ui\pyuic.py" />
+    <Compile Include="src\ui\ui_nodemanager.py" />
     <Compile Include="src\vm\resource.py" />
     <Compile Include="src\vm\task.py" />
     <Compile Include="src\vm\taskdistributor.py" />
@@ -88,6 +95,7 @@
     <Compile Include="test\__init__.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="src\ui\manager.ui" />
     <Content Include="testtasks\minilight\cornellbox.ml.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
