@@ -4,7 +4,7 @@ import time
 class TaskComputer:
     ######################
     def __init__( self, taskServer, estimatedPerformance, taskRequestFrequency ):
-        self.estimatedPerfformance  = estimatedPerformance
+        self.estimatedPerformance  = estimatedPerformance
         self.taskServer             = taskServer
         self.waitingForTask         = False
         self.currentComputations    = []
@@ -39,11 +39,11 @@ class TaskComputer:
             extraData   = taskThread.extraData
 
             if task.taskResult:
-                print "Task {} computed".format( task.desc.id )
-                self.taskServer.sendResults( task.desc.id, extraData, task.taskResult )
+                print "Task {} computed".format( task.taskHeader.id )
+                self.taskServer.sendResults( task.taskHeader.id, extraData, task.taskResult )
 
     ######################
-    def doWork( self ):
+    def run( self ):
         if not self.waitingForTask:
             if time.time() - self.lastTaskRequest > self.taskRequestFrequency:
                 self.askForTask()

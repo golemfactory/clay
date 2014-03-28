@@ -117,7 +117,7 @@ class PeerSession(PeerSessionInterface):
         elif type == MessageTasks.Type:
             for t in msg.tasksArray:
                 if not self.server.taskServer.addTaskHeader( t ):
-                    disconnect( PeerSession.DCRBadProtocol )
+                    self.disconnect( PeerSession.DCRBadProtocol )
 
     # private
        

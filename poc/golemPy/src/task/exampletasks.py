@@ -17,9 +17,9 @@ output = encodestring( res )
 
 class RayTracingTask( Task ):
     #######################
-    def __init__( self, width, height, desc ):
+    def __init__( self, width, height, taskHeader ):
         coderes = testTaskScr2
-        Task.__init__( self, desc, [], coderes, 0 )
+        Task.__init__( self, taskHeader, [], coderes, 0 )
         self.width = width
         self.height = height
         self.splitIndex = 0
@@ -42,7 +42,7 @@ class RayTracingTask( Task ):
         self.splitIndex += 1
 
     def computationFinished( self, extraData, taskResult ):
-        print "Receive cumputed task id:{} extraData:{} \n result:{}".format( self.desc.id, extraData, taskResult )
+        print "Receive cumputed task id:{} extraData:{} \n result:{}".format( self.taskHeader.id, extraData, taskResult )
 
 TIMESLC  = 10.0
 TIMEOUT  = 1000.0

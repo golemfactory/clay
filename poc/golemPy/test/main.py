@@ -10,9 +10,12 @@ from twisted.internet import reactor
 
 from appconfig import AppConfig
 from client import Client
+from message import initMessages
 
 
 def main():
+
+    initMessages()
 
     cfg = AppConfig.loadConfig()
 

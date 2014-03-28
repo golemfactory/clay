@@ -26,7 +26,7 @@ class Task:
 
     #######################
     def getExtra( self ):
-        return self.desc.extraData
+        return self.taskHeader.extraData
 
     #######################
     def getCode( self ):
@@ -66,25 +66,25 @@ class Task:
 #    def addMyTaskToCompute( self, task ):
 #        if task:
 #            assert isinstance( task, Task )
-#            assert task.desc.id not in self.myTasks.keys() # trying to add same task again
+#            assert task.taskHeader.id not in self.myTasks.keys() # trying to add same task again
 
-#            self.myTasks[ task.desc.id ] = task
+#            self.myTasks[ task.taskHeader.id ] = task
 
 #        else:
 #            hash = random.getrandbits(128)
 #            td = TaskDescriptor( hash, 5, None, "10.30.10.203", self.server.computeListeningPort, 100000.0 )
 #            t = VRayTracingTask( 100, 100, 100, td )
-#            self.myTasks[ t.desc.id ] = t
+#            self.myTasks[ t.taskHeader.id ] = t
 
 #    def getTasks( self ):
 #        myTasksDesc = []
 
 #        for mt in self.myTasks.values():
 #            if mt.needsComputation():
-#                myTasksDesc.append( mt.desc )
-#                #print "MY TASK {}".format( mt.desc.id )
-#                #print mt.desc.extraData
-#                #print mt.desc.difficultyIndex
+#                myTasksDesc.append( mt.taskHeader )
+#                #print "MY TASK {}".format( mt.taskHeader.id )
+#                #print mt.taskHeader.extraData
+#                #print mt.taskHeader.difficultyIndex
 
 #        return myTasksDesc + self.tasks.values()
 
@@ -134,7 +134,7 @@ class Task:
 #        if self.waitingForTask.id == id: # We can start computation
 #            self.currentlyComputedTask = Task( self.waitingForTask, [], taskMsg.sourceCode, 0 ) # TODO: resources and outputsize handling
 #            self.waitingForTask = None
-#            self.currentlyComputedTask.desc.extraData = taskMsg.extraData
+#            self.currentlyComputedTask.taskHeader.extraData = taskMsg.extraData
 #            self.currentComputation = TaskPerformer( self.currentlyComputedTask, self )
 #            self.currentComputation.start()
 #            return True
@@ -152,9 +152,9 @@ class Task:
 #    def taskComputed( self, task ):
 #        self.runningTasks -= 1
 #        if task.taskResult:
-#            print "Task {} computed".format( task.desc.id )
+#            print "Task {} computed".format( task.taskHeader.id )
 #            if self.computeSession:
-#                self.computeSession.sendComputedTask( task.desc.id, task.getExtra(), task.taskResult )
+#                self.computeSession.sendComputedTask( task.taskHeader.id, task.getExtra(), task.taskResult )
 
 #    def runTasks( self ):
 #        if self.currentComputation and self.currentComputation.done:

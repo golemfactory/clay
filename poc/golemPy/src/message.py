@@ -12,7 +12,6 @@ class Message:
     def __init__( self, type ):
         if type not in Message.registeredMessageTypes:
             Message.registeredMessageTypes[ type ] = self.__class__
-            print Message.registeredMessageTypes
 
         self.type = type
         self.serializer = DataBuffer()
@@ -38,7 +37,6 @@ class Message:
         msg = db.readLenPrefixedString()
 
         while msg:
-            print msg
             m = cls.deserializeMessage( msg )
             
             if m is None:
@@ -310,6 +308,21 @@ class MessageTaskComputed( Message ):
         return {    MessageTaskComputed.ID_STR : self.id,
                     MessageTaskComputed.EXTRA_DATA_STR: self.extraData,
                     MessageTaskComputed.RESULT_STR: self.result }
+
+def initMessages():
+    MessageHello()
+    MessagePing()
+    MessagePong()
+    MessageDisconnect()
+    MessageCannotAssignTask()
+    MessageGetPeers()
+    MessageGetTasks()
+    MessagePeers()
+    MessageTaskComputed()
+    MessageTasks()
+    MessageTaskToCompute()
+    MessageWantToComputeTask()
+
 
 if __name__ == "__main__":
 

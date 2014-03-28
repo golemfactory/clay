@@ -48,6 +48,8 @@ class Client:
             th = TaskHeader( hash, 5, None, "10.30.10.203", self.taskServer.curPort, 100000.0 )
             self.taskServer.taskManager.addNewTask( VRayTracingTask( 10, 10, 10, th ) )
 
+        self.p2pserver.setTaskServer( self.taskServer )
+
     ############################
     def stopNetwork(self):
         #FIXME: Pewnie cos tu trzeba jeszcze dodac. Zamykanie serwera i wysylanie DisconnectPackege
@@ -60,4 +62,4 @@ class Client:
                 self.p2pserver.pingPeers( self.pingsInterval )
 
             self.p2pserver.syncNetwork()
-            self.taskServer.syncNetwork()            
+            self.taskServer.syncNetwork()
