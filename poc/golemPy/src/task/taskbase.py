@@ -173,19 +173,6 @@ class Task:
 #                else:
 #                    self.server.connectComputeSession( self.choosenTaks.taskOwnerAddress, self.choosenTaks.taskOwnerPort )
                 
-#    def removeOldTasks( self ):
-#        for t in self.tasks.values():
-#            currTime = time.time()
-#            t.ttl = t.ttl - ( currTime - t.lastChecking )
-#            t.lastChecking = currTime
-#            if t.ttl <= 0:
-#                print "Task {} dies".format( t.id )
-#                del self.tasks[ t.id ]
-#                #print self.tasks
-
-#        for k in self.dontAskTasks.keys():
-#            if time.time() - self.dontAskTasks[ k ][ "time" ] > 1000:
-#                del self.dontAskTasks[ k ]
 
 #    def stopAsking( self, id, reason ):
 #        if id not in self.dontAskTasks.keys():

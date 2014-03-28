@@ -4,6 +4,8 @@ from taskablerenderer import TaskableRenderer, RenderTaskResult, RenderTaskDesc
 
 import random
 
+from img import Img
+
 testTaskScr2 = """ 
 from minilight import render_task
 from resource import ArrayResource
@@ -52,7 +54,7 @@ class VRayTracingTask( Task ):
     def __init__( self, width, height, num_samples, taskHeader ):
 
         srcFile = open( "../testtasks/minilight/compact_src/renderer.py", "r")
-        coderes = srcFile
+        coderes = srcFile.read()
         Task.__init__( self, taskHeader, [], coderes, 0 )
 
         self.taskableRenderer = TaskableRenderer( width, height, num_samples, None, TIMESLC, TIMEOUT )

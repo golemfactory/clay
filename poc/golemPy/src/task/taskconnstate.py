@@ -5,11 +5,11 @@ class TaskConnState( ConnectionState ):
     ##########################
     def __init__(self, server):
         ConnectionState.__init__( self, server )
-        self.computeSession = None
+        self.taskSesssion = None
 
     ############################
-    def setComputeSession( self, computeSesssion ):
-        self.computeSession = computeSesssion
+    def setTaskSession( self, taskSesssion ):
+        self.taskSesssion = taskSesssion
 
     ############################
     def connectionMade(self):
@@ -24,18 +24,18 @@ class TaskConnState( ConnectionState ):
         mess = Message.deserialize(self.db)
         if mess is None:
             print "Deserialization message failed"
-            self.computeSession.interpret(None)
+            self.taskSesssion.interpret(None)
 
-        if self.computeSession:
+        if self.taskSesssion:
             for m in mess:
-                self.computeSession.interpret(m)
+                self.taskSesssion.interpret(m)
         else:
-            print "Peer for connection is None"
+            print "Task session for connection is None"
             assert False
 
     ############################
     def connectionLost(self, reason):
         self.opened = False
 
-        if self.computeSession:
-            self.computeSession.dropped()
+        if self.taskSesssion:
+            self.taskSesssion.dropped()

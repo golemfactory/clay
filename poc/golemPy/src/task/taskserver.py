@@ -1,13 +1,15 @@
 from twisted.internet import reactor
 from twisted.internet.protocol import Factory
-from twisted.internet.endpoints import TCP4ServerEndpoint, connectProtocol
+from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
 
 from serverinterface import ServerInterface
 from taskmanager import TaskManager
 from taskcomputer import TaskComputer
 from tasksession import TaskSession
 from taskbase import TaskHeader
+from taskconnstate import TaskConnState
 import random
+import time
 
 class TaskServer( ServerInterface ):
     #############################
@@ -27,6 +29,7 @@ class TaskServer( ServerInterface ):
     #############################
     def syncNetwork( self ):
         self.taskComputer.run()
+        self.__removeOldTasks()
 
     #############################
     # This method chooses random task from the network to compute on our machine
@@ -35,7 +38,7 @@ class TaskServer( ServerInterface ):
         if len( self.taskHeaders.values() ) > 0:
             tn = random.randrange( 0, len( self.taskHeaders.values() ) )
 
-            theader = self.taskHeaders.values()[ tn ].taskHeader
+            theader = self.taskHeaders.values()[ tn ]
 
             self.__connectAndSendTaskRequest( theader.taskOwnerAddress, theader.taskOwnerPort, theader.id, estimatedPerformance )
 
@@ -57,7 +60,8 @@ class TaskServer( ServerInterface ):
     def newConnection(self, conn):
         pp = conn.transport.getPeer()
         print "newConnection {} {}".format(pp.host, pp.port)
-        tSession = TaskSession(conn, self, self.taskManager, self.taskComputer, pp.host, pp.port)
+        tSession = TaskSession(conn, self, pp.host, pp.port)
+        conn.setTaskSession( tSession )
         self.taskSeesionsIncoming.append( tSession )
 
     #############################
@@ -87,6 +91,12 @@ class TaskServer( ServerInterface ):
         except:
             print "Wrong task header received"
             return False
+
+    def removeTaskSession( self, taskSession ):
+        for tsk in self.taskSeesions.keys():
+            if self.taskSeesions[ tsk ] == taskSession:
+                del self.taskSeesions[ tsk ]
+
 
     #############################
     # PRIVATE SECSSION
@@ -142,7 +152,8 @@ class TaskServer( ServerInterface ):
         
         ts = TaskSession( conn, self, pp.host, pp.port )
         
-        self.taskSeesions[ taskId ] = computeSession     
+        conn.setTaskSession( ts )
+        self.taskSeesions[ taskId ] = ts     
         
         ts.askForTask( taskId, estimatedPerformance )
 
@@ -177,7 +188,7 @@ class TaskServer( ServerInterface ):
         
         ts = TaskSession( conn, self, pp.host, pp.port )
         
-        self.taskSeesions[ taskId ] = computeSession     
+        self.taskSeesions[ taskId ] = ts     
         
         ts.sendTaskResults( taskId, extraData, results )
 
@@ -190,8 +201,18 @@ class TaskServer( ServerInterface ):
                 
         if taskId in self.taskHeaders:
             del self.taskHeaders[ taskId ]
+    
+    #############################
+    def __removeOldTasks( self ):
+        for t in self.taskHeaders.values():
+            currTime = time.time()
+            t.ttl = t.ttl - ( currTime - t.lastChecking )
+            t.lastChecking = currTime
+            if t.ttl <= 0:
+                print "Task {} dies".format( t.id )
+                del self.taskHeaders[ t.id ]
 
-
+        self.taskManager.removeOldTasks()
 
 class TaskServerFactory(Factory):
     #############################

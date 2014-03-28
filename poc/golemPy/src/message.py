@@ -268,20 +268,20 @@ class MessageCannotAssignTask( Message ):
     Type = 10
 
     REASON_STR      = u"REASON"
-    ID_STR          = u"ID"
+    TASK_ID_STR     = u"ID"
 
-    def __init__( self, id = 0, reason = "", dictRepr = None ):
+    def __init__( self, taskId = 0, reason = "", dictRepr = None ):
         Message.__init__(self, MessageCannotAssignTask.Type)
 
-        self.id = id
+        self.taskId = taskId
         self.reason = reason
 
         if dictRepr:
-            self.id         = dictRepr[ MessageCannotAssignTask.ID_STR ]
+            self.taskId      = dictRepr[ MessageCannotAssignTask.TASK_ID_STR ]
             self.reason     = dictRepr[ MessageCannotAssignTask.REASON_STR ]
 
     def dictRepr(self):
-        return {    MessageCannotAssignTask.ID_STR : self.id,
+        return {    MessageCannotAssignTask.TASK_ID_STR : self.taskId,
                     MessageCannotAssignTask.REASON_STR: self.reason }
 
 class MessageTaskComputed( Message ):

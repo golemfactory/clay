@@ -5,11 +5,11 @@ import time
 class TaskSession:
 
     ##########################
-    def __init__( self, conn, taskServer, taskManager, taskComputer, address, port ):
+    def __init__( self, conn, taskServer, address, port ):
         self.conn           = conn
         self.taskServer     = taskServer
-        self.taskManager    = taskManager
-        self.taskComputer   = taskComputer
+        self.taskManager    = taskServer.taskManager
+        self.taskComputer   = taskServer.taskComputer
         self.address        = address
         self.port           = port
 
@@ -39,10 +39,10 @@ class TaskSession:
             if taskId != 0:
                 self.conn.sendMessage( MessageTaskToCompute( taskId, extraData, srcCode ) )
             else:
-                self.conn.sendMessage( MessageCannotAssignTask( taskId ) )
+                self.conn.sendMessage( MessageCannotAssignTask( taskId, "No more subtasks in {}".format( msg.taskId ) ) )
 
         elif type == MessageTaskToCompute.Type:
-            self.taskComputer.taskGiven( msg.taskId, msg.extraData, msg.sourceCode )
+            self.taskComputer.taskGiven( msg.taskId, msg.sourceCode, msg.extraData )
             self.dropped()
 
         elif type == MessageCannotAssignTask.Type:
@@ -50,10 +50,10 @@ class TaskSession:
             self.dropped()
 
         elif type == MessageTaskComputed.Type:
-            self.server.taskManager.receivedComputedTask( msg.id, msg.extraData, msg.result )
+            self.taskServer.taskManager.computedTaskReceived( msg.id, msg.extraData, msg.result )
             # Add message with confirmation that result is accepted
             self.dropped()
 
     def dropped( self ):
         self.conn.close()
-        self.server.removeComputeSession( self )
+        self.taskServer.removeTaskSession( self )

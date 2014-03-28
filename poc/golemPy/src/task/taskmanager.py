@@ -1,4 +1,5 @@
 import random
+import time
 
 from taskbase import Task
 
@@ -6,7 +7,7 @@ class TaskManager:
     #######################
     def __init__( self ):
         self.tasks = {}
-        self.givenTasks = {}
+        #self.givenTasks = {}
 
     #######################
     def addNewTask( self, task ):
@@ -15,15 +16,15 @@ class TaskManager:
 
     #######################
     def getNextSubTask( self, taskId, estimatedPerformance ):
-        if taskid in self.tasks:
-            task = self.tasks[ taskid ]
-            ed = task.queryExtraData( estimatedPerformance )
-            if ed:
-                self.givenTasks[ [ task, ed ] ] = time.time()
-                return taskId, task.codeRes, ed
-            else:
-                print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
-                return 0, "", {}
+        if taskId in self.tasks:
+            task = self.tasks[ taskId ]
+            if task.needsComputation():
+                ed = task.queryExtraData( estimatedPerformance )
+                if ed:
+                    #self.givenTasks[ taskId, ed ] = time.time()
+                    return taskId, task.codeRes, ed
+            print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
+            return 0, "", {}
         else:
             print "Cannot find task {} in my tasks".format( taskId )
             return 0, "", {}
@@ -44,3 +45,14 @@ class TaskManager:
         else:
             print "It is not my task id {}".format( taskId )
             return False
+
+    #######################
+    def removeOldTasks( self ):
+        for t in self.tasks.values():
+            th = t.header
+            currTime = time.time()
+            th.ttl = th.ttl - ( currTime - th.lastChecking )
+            th.lastChecking = currTime
+            if th.ttl <= 0:
+                print "Task {} dies".format( th.id )
+                del self.tasks[ th.id ]

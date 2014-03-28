@@ -1,13 +1,8 @@
-from resource import IResource
 from copy import copy
 
 class IGolemVM:
     #######################
     def __init__( self ):
-        pass
-
-    #######################
-    def addResource( self, resource ):
         pass
 
     #######################
@@ -19,20 +14,17 @@ class PythonVM( IGolemVM ):
     #######################
     def __init__( self ):
         IGolemVM.__init__( self )
-        self.resources = []
-        self.codeResource = None
+        self.srcCode = ""
+        self.scope = {}
         
-    def runTask( self, task ):
-        self.resources = task.getResources()
-        self.codeResource = task.getCode()
-        self.scope = copy( task.getExtra() )
-        task.setResult( self.interpret() )
+    def runTask( self, srcCode, extraData ):
+        self.srcCode = srcCode
+        self.scope = copy( extraData )
+        return self.interpret()
 
     #######################
     def interpret( self ):
-        res = self.resources
-        code = self.codeResource
-        exec code in self.scope
+        exec self.srcCode in self.scope
         #assert isinstance( self.scope[ "output" ], IResource )
         return self.scope[ "output" ]
 
