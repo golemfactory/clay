@@ -52,7 +52,7 @@ class P2PServer(P2PServerInterface):
         self.computeListeningPort = self.startPort
         self.idealPeerCount = 2
         self.peers = {}
-        self.computeSessions = []
+        self.computeSessions = {}
         self.taskManager = TaskManager( self )
         self.seedHost = seedHost
         self.seedHostPort = seedHostPort
@@ -93,9 +93,7 @@ class P2PServer(P2PServerInterface):
         pp = conn.transport.getPeer()
         print "newComputeConnection {} {}".format(pp.host, pp.port)
         computeSession = ComputeSession(conn, self, pp.host, pp.port)
-        self.computeSessions.append( computeSession )
-        conn.setComputeSession(computeSession)
-        computeSession.start()
+        self.computeSessions[ [ pp.host, pp.port ] ] = computeSession
      
     #############################   
     def connectNet(self, address, port):
@@ -119,10 +117,13 @@ class P2PServer(P2PServerInterface):
         pp = conn.transport.getPeer()
         print "newComputeConnection {} {}".format(pp.host, pp.port)
         computeSession = ComputeSession(conn, self, pp.host, pp.port)
-        self.computeSessions.append( computeSession )
-        conn.setComputeSession(computeSession)
+        self.computeSessions[ [ pp.host, pp.port ] ] = computeSession
 
-        self.taskManager.computeSessionEstablished( computeSession )
+    def isConnected( self, host, port ):
+        if [ host, port ] in self.computeSessions:
+            return self.computeSessions[ [ host, port ] ]
+        else:
+            return None
 
     #############################
     def pingPeers( self, interval ):
@@ -175,9 +176,13 @@ class P2PServer(P2PServerInterface):
         self.taskManager.removeOldTasks()
         self.sendMessageGetTasks()
 
+    #############################
+    def __computeConnectionFailure(self, conn):
+        p = conn.transport.getPeer()
+        print "Cannot connect to {} {}".format( p.getHost(), p.getPort() )
 
     #############################
-    def __connectionFailure(self, conn):
+    def __connectionFailure( self, conn ):
         #assert isinstance(conn, ConnectionState)
         #p = conn.transport.getPeer()
         print "Connection to peer failure. {}".format( conn )

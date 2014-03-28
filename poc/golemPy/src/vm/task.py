@@ -32,8 +32,8 @@ class TaskManager:
 
         else:
             hash = random.getrandbits(128)
-            td = TaskDescriptor( hash, 5, None, "10.30.10.203", self.server.computeListeningPort, 1000.0 )
-            t = VRayTracingTask( 100, 100, 10, td )
+            td = TaskDescriptor( hash, 5, None, "10.30.10.203", self.server.computeListeningPort, 100000.0 )
+            t = VRayTracingTask( 100, 100, 100, td )
             self.myTasks[ t.desc.id ] = t
 
     def getTasks( self ):
@@ -88,7 +88,7 @@ class TaskManager:
         id = taskMsg.taskId
 
         if not self.waitingForTask:
-            print "We do not wait for task"
+            print "We do not wait for any task"
             return False
 
         if self.waitingForTask.id == id: # We can start computation
@@ -124,20 +124,15 @@ class TaskManager:
         if self.currentComputation:
             return
 
-        if not self.choosenTaks and self.runningTasks < self.maxTasksCount:
+        if not self.choosenTaks:
             self.choosenTaks = self.chooseTaskWantToCompute()
             if self.choosenTaks:
-                if not self.computeSession:
+                computeSession = self.server.isConnected( self.choosenTaks.taskOwnerAddress, self.choosenTaks.taskOwnerPort )
+                if computeSession:
+                    self.computeSession.askForTask( self.choosenTaks.id, self.performenceIndex )
+                else:
                     self.server.connectComputeSession( self.choosenTaks.taskOwnerAddress, self.choosenTaks.taskOwnerPort )
-                    self.runningTasks += 1
                 
-
-        if self.computeSession:
-            if self.choosenTaks:
-                self.computeSession.askForTask( self.choosenTaks.id, self.performenceIndex )
-                self.waitingForTask = self.choosenTaks
-                self.choosenTaks = None
-
     def removeOldTasks( self ):
         for t in self.tasks.values():
             currTime = time.time()
@@ -255,8 +250,8 @@ class RayTracingTask( Task ):
 
 from taskablerenderer import TaskableRenderer, RenderTaskResult, RenderTaskDesc
 
-TIMESLC  = 30.0
-TIMEOUT  = 3600.0
+TIMESLC  = 10.0
+TIMEOUT  = 1000.0
 
 class VRayTracingTask( Task ):
     #######################
@@ -283,7 +278,8 @@ class VRayTracingTask( Task ):
                     "w" : taskDesc.getW(),
                     "h" : taskDesc.getH(),
                     "num_pixels" : taskDesc.getNumPixels(),
-                    "num_samples" : taskDesc.getNumSamples()
+                    "num_samples" : taskDesc.getNumSamples(),
+                    "subTaskTimeout" : TIMESLC
                     }
 
     def needsComputation( self ):
