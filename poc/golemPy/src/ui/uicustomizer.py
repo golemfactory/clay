@@ -36,7 +36,7 @@ class ManagerUiCustomizer:
         progressBar = QtGui.QProgressBar( widget )
         progressBar.setGeometry(7, 2, 159, 16)
         progressBar.setProperty("value", 0)
-
+        progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #3add36; width: 1px;}" )
         return widget, progressBar
 
     ########################

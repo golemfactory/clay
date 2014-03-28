@@ -85,7 +85,7 @@ if __name__ == "__main__":
 
         ########################
         def getStateSnapshot( self ):
-            return NodeStateSnapshot( self.uid, self.locProgress, self.remProgress )
+            return NodeStateSnapshot( self.uid, self.remProgress, self.locProgress )
 
         ########################
         def run( self ):
@@ -215,17 +215,19 @@ if __name__ == "__main__":
         
             #10 seconds should be just enough for each node to do its cleanup
             for node in self.nodes:
-                node.wait( 10000 )
+                node.wait()
+
+            print "Simulation finished"
 
     manager = NodesManager()
 
     numNodes = 30
-    maxLocalTasks = 15
-    maxRemoteTasks = 300
+    maxLocalTasks = 3
+    maxRemoteTasks = 30
     maxLocTaskDuration = 200.0
-    maxRemTaskDuration = 25.0
+    maxRemTaskDuration = 28.0
     maxInnerUpdateDelay = 2.0
-    nodeSpawnDelay = 2.0
+    nodeSpawnDelay = 1.0
     
     simulator = LocalNetworkSimulator( manager, numNodes, maxLocalTasks, maxRemoteTasks, maxLocTaskDuration, maxRemTaskDuration, maxInnerUpdateDelay, nodeSpawnDelay )
     simulator.start()
