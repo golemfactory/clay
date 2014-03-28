@@ -18,14 +18,20 @@ class TableRowDataEntry:
         self.remoteProgress = remoteProgressBar
         self.localProgress = localProgressBar
 
-class ManagerUiCustomizer:
+class ManagerUiCustomizer(QtCore.QObject):
 
     ########################
     def __init__( self, widget ):
         self.widget = widget
         self.table = widget.nodeTableWidget
         self.table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.tableData = {}
+
+        self.table.selectionModel().selectionChanged.connect( self.rowSelectionChanged )
+
+    def rowSelectionChanged( self, item1, item2 ):
+        print item1.indexes()[ 0 ].row()
 
     ########################
     def __createWrappedProgressBar( self, red ):
@@ -92,5 +98,16 @@ class ManagerUiCustomizer:
         self.__updateExistingRow( self.tableData[ nodeUid ], nodeUid, nodeTimestamp, progressRemote, progressLocal )
 
     ########################
+    def __resetDetailedView( self ):
+        self.widget.labelDetailedNode.setText( "Node (none)" )
+        self.widget.labelDetailedRemoteTask.setText( "Active remote task (none)" )
+        self.widget.labelDetailedLocalTask.setText( "Active local task (none)" )
+        self.widget.remoteTaskProgressBar.setProperty("value", 0)
+        self.widget.localTaskProgressBar.setProperty("value", 0)
+
+    ########################
     def enableDetailedView( self, enableFlag ):
+        if not enableFlag:
+            self.__resetDetailedView()
+
         self.widget.frameDetailedNode.setEnabled( enableFlag )
