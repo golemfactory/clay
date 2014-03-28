@@ -57,6 +57,7 @@
     <Compile Include="src\manager\managerconnection.py" />
     <Compile Include="src\manager\managermessage.py" />
     <Compile Include="src\manager\nodesmanager.py" />
+    <Compile Include="src\manager\nodestatesnapshot.py" />
     <Compile Include="src\message.py" />
     <Compile Include="src\netconnstate.py" />
     <Compile Include="src\p2pserver.py" />
