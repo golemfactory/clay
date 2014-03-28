@@ -2,6 +2,9 @@ import sys
 sys.path.append( '../ui' )
 
 from PyQt4.QtGui import QApplication, QDialog
+from PyQt4.QtCore import QTimer
+from threading import Lock
+
 from ui_nodemanager import Ui_NodesManagerWidget
 from uicustomizer import ManagerUiCustomizer
 from nodestatesnapshot import NodeStateSnapshot
@@ -11,13 +14,16 @@ GLOBAL_SHUTDOWN = [ False ]
 class NodesManager:
 
     def __init__( self ):
-        
         self.app = QApplication( sys.argv )
         self.window = QDialog()
         self.ui = Ui_NodesManagerWidget()
         self.ui.setupUi( self.window )
         self.uic = ManagerUiCustomizer(self.ui)
-
+        self.timer = QTimer()
+        self.timer.timeout.connect( self.polledUpdate )
+        self.lock = Lock()
+        self.statesBuffer = []
+        
         #FIXME: some shitty python magic
         def closeEvent_(self_, event):
             GLOBAL_SHUTDOWN[ 0 ] = True
@@ -25,8 +31,18 @@ class NodesManager:
 
         setattr( self.window.__class__, 'closeEvent', closeEvent_ )
 
+    
+    def appendStateUpdate( self, update ):
+        with self.lock:
+            self.statesBuffer.append( update )
+
+    def polledUpdate( self ):
+        with self.lock:
+            print "Pollsing"
+
     def execute( self ):
         self.window.show()
+        self.timer.start( 100 )
         sys.exit(self.app.exec_())
 
     def UpdateNodeState( self, ns ):
@@ -39,14 +55,15 @@ if __name__ == "__main__":
     import random
     from PyQt4 import QtCore
 
-    class NodeSimulator(Thread):
+    class NodeSimulator(QtCore.QThread):
 
-        updateRequest = QtCore.pyqtSignal( int )
+        updateRequest = QtCore.pyqtSignal()
 
         ########################
-        def __init__(self, id, uid, numLocalTasks, numRemoteTasks, localTaskDuration, remoteTaskDuration, innerUpdateDelay ):
+        def __init__(self, simulator, id, uid, numLocalTasks, numRemoteTasks, localTaskDuration, remoteTaskDuration, innerUpdateDelay ):
             super(NodeSimulator, self).__init__()
             
+            self.simulator = simulator
             self.id = id
             self.uid = uid
             self.numLocalTasks = numLocalTasks
@@ -86,7 +103,7 @@ if __name__ == "__main__":
             remTaskStartTime = startTime
 
             print "Starting node '{}' local tasks: {} remote tasks: {}".format( self.uid, self.numLocalTasks, self.numRemoteTasks )
-            print "->local task duration: {} secs, remote task duration: {} secs".format( self.localTaskDuration, self.remoteTaskDuration )
+            print "->local task dura: {} secs, remote task dura: {} secs".format( self.localTaskDuration, self.remoteTaskDuration )
 
             while( time.time() - startTime < totalDuration ):
                 
@@ -118,6 +135,9 @@ if __name__ == "__main__":
                         remTask += 1
                         self.remProgress = 0.0
 
+                simulator.updateRequested( self.id )
+                #self.updateRequest.emit()
+                #self.emit(QtCore.SIGNAL("Activated()"),self.dupa, QtCore.Qt.QueuedConnection)
                 #print "\r                                                                      ",
                 #print "\r{:3} : {}   {:3} : {}".format( locTask, self.locProgress, remTask, self.remProgress ),
 
@@ -140,6 +160,10 @@ if __name__ == "__main__":
             self.nodes = []
 
         ########################
+        def updateRequested( self, id ):
+            print self.nodes[ id ].getStateSnapshot()
+
+        ########################
         def getRandomizedUp( self, value, scl = 1.4 ):
             return ( 0.1 +  scl * random.random() ) * value
 
@@ -150,7 +174,13 @@ if __name__ == "__main__":
         ########################
         def createNewNode( self, id ):
             uid = "gen - uid - {}".format( id )
-                node = NodeSimulator( curNode, "uid {}".format( curNode ), 1, 1, 1, 1, 0.2 )
+            numLocTasks = int( self.getRandomizedDown( self.maxLocTasks ) )
+            numRemTasks = int( self.getRandomizedDown( self.maxRemTasks ) )
+            locTaskDura = self.getRandomizedDown( self.maxLocTaskDura )
+            remTaskDura = self.getRandomizedDown( self.maxRemTaskDura )
+            updateDelay = self.getRandomizedDown( self.maxInnerUpdateDelay )
+
+            return NodeSimulator( self, id, uid, numLocTasks, numRemTasks, locTaskDura, remTaskDura, updateDelay )
 
         ########################
         def run( self ):
@@ -158,11 +188,15 @@ if __name__ == "__main__":
 
             curNode = 0
 
+            print "Starting node simulator for {} nodes".format( self.numNodes )
+
             while curNode < self.numNodes:
 
                 if GLOBAL_SHUTDOWN[ 0 ]:
                     break
                 
+                node = self.createNewNode( curNode )
+                node.updateRequest.connect( self.updateRequested )
                 self.nodes.append( node )
                 node.start()
 
@@ -174,7 +208,9 @@ if __name__ == "__main__":
             print "Waiting for nodes to finish"
         
             for node in self.nodes:
-                node.join()
+                node.wait( 10000 )
+
+    manager = NodesManager()
 
     numNodes = 30
     maxLocalTasks = 15
@@ -187,7 +223,6 @@ if __name__ == "__main__":
     simulator = LocalNetworkSimulator( numNodes, maxLocalTasks, maxRemoteTasks, maxLocTaskDuration, maxRemTaskDuration, maxInnerUpdateDelay, nodeSpawnDelay )
     simulator.start()
 
-    manager = NodesManager()
     manager.execute()
 
     #ns0 = NodeStateSnapshot( "some uiid 0", 0.2, 0.7 )
