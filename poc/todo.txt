@@ -64,3 +64,4 @@ Config:
     ale co tam)
   - czasy oczekiwania na synchronizację
   - seed host/port
+  - powinna być lista hostów (seed)
