@@ -39,13 +39,17 @@ class Client:
         print "Starting network ..."
         self.p2pserver = P2PServer(1, self.startPort, self.endPort, self.publicKey, seedHost, seedHostPort)
 
-        time.sleep( 2.0 )
+        time.sleep( 1.0 )
 
         self.taskServer = TaskServer( "", self.startPort, self.endPort, ESTIMATED_PERFORMANCE, TASK_REQUEST_FREQ )
         if self.addTasks:
             hash = random.getrandbits(128)
             th = TaskHeader( hash, "10.30.10.203", self.taskServer.curPort )
-            self.taskServer.taskManager.addNewTask( VRayTracingTask( 10, 10, 10, th ) )
+            self.taskServer.taskManager.addNewTask( VRayTracingTask( 1000, 1000, 1000, th ) )
+            hash = random.getrandbits(128)
+            th = TaskHeader( hash, "10.30.10.203", self.taskServer.curPort )
+            self.taskServer.taskManager.addNewTask( VRayTracingTask( 100, 10000, 100, th ) )
+
 
         self.p2pserver.setTaskServer( self.taskServer )
 
@@ -53,6 +57,7 @@ class Client:
     def stopNetwork(self):
         #FIXME: Pewnie cos tu trzeba jeszcze dodac. Zamykanie serwera i wysylanie DisconnectPackege
         self.p2pserver = None
+        self.taskServer = None
 
     ############################
     def __doWork(self):

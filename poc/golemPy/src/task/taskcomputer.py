@@ -8,7 +8,7 @@ class TaskComputer:
     def __init__( self, taskServer, estimatedPerformance, taskRequestFrequency ):
         self.estimatedPerformance   = estimatedPerformance
         self.taskServer             = taskServer
-        self.waitingForTask         = False
+        self.waitingForTask         = 0
         self.currentComputations    = []
         self.lock                   = Lock()
         self.lastTaskRequest        = time.time()
@@ -18,7 +18,7 @@ class TaskComputer:
     def taskGiven( self, taskId, srcCode, extraData ):
         if self.waitingForTask:
             self.__computeTask( taskId, srcCode, extraData )
-            self.waitingForTask = False
+            self.waitingForTask = 0
             return True
         else:
             return False
