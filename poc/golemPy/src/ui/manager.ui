@@ -101,7 +101,10 @@
         </widget>
        </item>
        <item>
-        <widget class="QFrame" name="frame">
+        <widget class="QFrame" name="frameDetailedNode">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -143,7 +146,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="label_5">
+             <widget class="QLabel" name="labelDetailedNode">
               <property name="font">
                <font>
                 <weight>75</weight>
@@ -203,7 +206,7 @@
                    <enum>Qt::LeftToRight</enum>
                   </property>
                   <property name="text">
-                   <string>127.0.0.1 : 4067</string>
+                   <string/>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -222,7 +225,7 @@
                    </sizepolicy>
                   </property>
                   <property name="text">
-                   <string>0</string>
+                   <string/>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -241,7 +244,7 @@
                    </sizepolicy>
                   </property>
                   <property name="text">
-                   <string>0</string>
+                   <string/>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -274,7 +277,7 @@
                    </sizepolicy>
                   </property>
                   <property name="text">
-                   <string>None</string>
+                   <string/>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -296,7 +299,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="label_6">
+             <widget class="QLabel" name="labelDetailedRemoteTask">
               <property name="font">
                <font>
                 <weight>75</weight>
@@ -337,7 +340,7 @@
                    </sizepolicy>
                   </property>
                   <property name="text">
-                   <string>INF</string>
+                   <string/>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -369,7 +372,7 @@
                    </sizepolicy>
                   </property>
                   <property name="text">
-                   <string>0.0</string>
+                   <string/>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -401,7 +404,7 @@
                    </size>
                   </property>
                   <property name="value">
-                   <number>50</number>
+                   <number>0</number>
                   </property>
                  </widget>
                 </item>
@@ -417,7 +420,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="label_11">
+             <widget class="QLabel" name="labelDetailedLocalTask">
               <property name="font">
                <font>
                 <weight>75</weight>
@@ -481,7 +484,7 @@
                  </size>
                 </property>
                 <property name="value">
-                 <number>50</number>
+                 <number>0</number>
                 </property>
                </widget>
               </item>
