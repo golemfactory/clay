@@ -28,7 +28,7 @@ class ManagerUiCustomizer:
         self.tableData = {}
 
     ########################
-    def __createWrappedProgressBar( self ):
+    def __createWrappedProgressBar( self, red ):
 
         widget = QtGui.QWidget()
         widget.setFixedSize( 166, 22 )
@@ -36,12 +36,17 @@ class ManagerUiCustomizer:
         progressBar = QtGui.QProgressBar( widget )
         progressBar.setGeometry(7, 2, 159, 16)
         progressBar.setProperty("value", 0)
-        progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #3add36; width: 1px;}" )
+
+        if red:
+            progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #dd3a36; width: 1px;}" )
+        else:
+            progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #3add36; width: 1px;}" )
+
         return widget, progressBar
 
     ########################
-    def __addProgressBar( self, row, col ):
-        w, p = self.__createWrappedProgressBar()
+    def __addProgressBar( self, row, col, red = False ):
+        w, p = self.__createWrappedProgressBar( red )
         self.table.setCellWidget( row, col, w )
         return p
 
@@ -57,8 +62,8 @@ class ManagerUiCustomizer:
         self.table.setItem( nextRow, 0, item0 )
         self.table.setItem( nextRow, 1, item1 )
 
-        pRem = self.__addProgressBar( nextRow, 2 )
-        pLoc = self.__addProgressBar( nextRow, 3 )
+        pRem = self.__addProgressBar( nextRow, 2, False )
+        pLoc = self.__addProgressBar( nextRow, 3, True )
 
         assert nodeUid not in self.tableData
 
