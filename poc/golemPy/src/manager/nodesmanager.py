@@ -11,6 +11,7 @@ from nodestatesnapshot import NodeStateSnapshot
 
 GLOBAL_SHUTDOWN = [ False ]
 
+
 class NodesManager:
 
     def __init__( self ):
@@ -31,21 +32,23 @@ class NodesManager:
 
         setattr( self.window.__class__, 'closeEvent', closeEvent_ )
 
-    
     def appendStateUpdate( self, update ):
         with self.lock:
             self.statesBuffer.append( update )
 
     def polledUpdate( self ):
         with self.lock:
-            print "Pollsing"
+            for ns in self.statesBuffer:
+                self.updateNodeState( ns )
+
+            self.statesBuffer = []
 
     def execute( self ):
         self.window.show()
         self.timer.start( 100 )
         sys.exit(self.app.exec_())
 
-    def UpdateNodeState( self, ns ):
+    def updateNodeState( self, ns ):
         self.uic.UpdateRowsState( ns.getUID(), ns.getFormattedTimestamp(), ns.getRemoteProgress(), ns.getLocalProgress() )
 
 if __name__ == "__main__":
@@ -146,9 +149,10 @@ if __name__ == "__main__":
     class LocalNetworkSimulator(Thread):
 
         ########################
-        def __init__(self, numNodes, maxLocalTasks, maxRemoteTasks, maxLocalTaskDuration, maxRemoteTaskDuration, maxInnerUpdateDelay, nodeSpawnDelay ):
+        def __init__(self, manager, numNodes, maxLocalTasks, maxRemoteTasks, maxLocalTaskDuration, maxRemoteTaskDuration, maxInnerUpdateDelay, nodeSpawnDelay ):
             super(LocalNetworkSimulator, self).__init__()
 
+            self.manager = manager
             self.numNodes = numNodes
             self.maxLocTasks = maxLocalTasks
             self.maxRemTasks = maxRemoteTasks
@@ -161,7 +165,7 @@ if __name__ == "__main__":
 
         ########################
         def updateRequested( self, id ):
-            print self.nodes[ id ].getStateSnapshot()
+            self.manager.appendStateUpdate( self.nodes[ id ].getStateSnapshot() )
 
         ########################
         def getRandomizedUp( self, value, scl = 1.4 ):
@@ -184,6 +188,8 @@ if __name__ == "__main__":
 
         ########################
         def run( self ):
+            time.sleep( 1 ) #just out of decency
+
             curTime = time.time()
 
             curNode = 0
@@ -207,6 +213,7 @@ if __name__ == "__main__":
             print "Local network simulator finished running."
             print "Waiting for nodes to finish"
         
+            #10 seconds should be just enough for each node to do its cleanup
             for node in self.nodes:
                 node.wait( 10000 )
 
@@ -220,7 +227,7 @@ if __name__ == "__main__":
     maxInnerUpdateDelay = 2.0
     nodeSpawnDelay = 2.0
     
-    simulator = LocalNetworkSimulator( numNodes, maxLocalTasks, maxRemoteTasks, maxLocTaskDuration, maxRemTaskDuration, maxInnerUpdateDelay, nodeSpawnDelay )
+    simulator = LocalNetworkSimulator( manager, numNodes, maxLocalTasks, maxRemoteTasks, maxLocTaskDuration, maxRemTaskDuration, maxInnerUpdateDelay, nodeSpawnDelay )
     simulator.start()
 
     manager.execute()
@@ -230,8 +237,8 @@ if __name__ == "__main__":
     #ns2 = NodeStateSnapshot( "some uiid 2", 0.2, 0.7 )
     #ns3 = NodeStateSnapshot( "some uiid 3", 0.2, 0.7 )
 
-    #manager.UpdateNodeState( ns0 )
-    #manager.UpdateNodeState( ns1 )
-    #manager.UpdateNodeState( ns2 )
-    #manager.UpdateNodeState( ns3 )
+    #manager.updateNodeState( ns0 )
+    #manager.updateNodeState( ns1 )
+    #manager.updateNodeState( ns2 )
+    #manager.updateNodeState( ns3 )
 
