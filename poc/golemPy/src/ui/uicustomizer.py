@@ -7,6 +7,8 @@ except AttributeError:
     def _fromUtf8(s):
         return s
 
+#FIXME: add start local task button to manager (should trigger another local task for selected node)
+#FIXME: rething deleting nodes which seem to be inactive
 class TableRowDataEntry:
 
     ########################

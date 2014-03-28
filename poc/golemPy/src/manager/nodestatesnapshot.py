@@ -1,5 +1,6 @@
 from PyQt4 import QtCore
 
+#FIXME: REGISTER number of local and remote tasks processed by current node (and number of successes and failures as well) - and show it in this manager
 class NodeStateSnapshot:
 
     def __init__( self, uid, remoteProgress, localProgress ):

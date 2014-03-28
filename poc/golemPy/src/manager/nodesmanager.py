@@ -31,7 +31,7 @@ if __name__ == "__main__":
     class NodeSimulator(Thread):
 
         ########################
-        def __init__(self, uid, numLocalTasks, numRemoteTasks, localTaskDuration, remoteTaskDuration):
+        def __init__(self, uid, numLocalTasks, numRemoteTasks, localTaskDuration, remoteTaskDuration, innerUpdateDelay ):
             super(NodeSimulator, self).__init__()
             
             self.uid = uid
@@ -40,6 +40,7 @@ if __name__ == "__main__":
             self.localTaskDuration = localTaskDuration
             self.remoteTaskDuration = remoteTaskDuration
             self.startTime = time.time()
+            self.innerUpdateDelay = innerUpdateDelay
 
             self.locProgress = 0.0
             self.remProgress = 0.0
@@ -50,12 +51,53 @@ if __name__ == "__main__":
 
         ########################
         def run( self ):
-            self.startTime = time.time()
-            while( time.time() - self.startTime < 5.0 ):
-                print "Hej zoey"
-                time.sleep( 0.3 )
 
-            print "Finished"
+            startTime = time.time()
+
+            locTaskDuration = self.localTaskDuration
+            remTaskDuration = self.remoteTaskDuration
+
+            locTasksDuration = self.numLocalTasks * self.localTaskDuration
+            remTasksDuration = self.numRemoteTasks * self.remoteTaskDuration
+
+            totalDuration = max( locTasksDuration, remTasksDuration )
+
+            locTask = 0
+            locTaskStartTime = startTime
+            remTask = 0
+            remTaskStartTime = startTime
+
+            print "Starting node {}".format( self.uid )
+
+            while( time.time() - startTime < totalDuration ):
+                
+                time.sleep( self.innerUpdateDelay )
+
+                curTime = time.time()
+
+                if locTask < self.numLocalTasks:
+                    dt = curTime - locTaskStartTime
+
+                    if dt <= locTaskDuration:
+                        self.locProgress = dt / locTaskDuration
+                    else:
+                        locTaskStartTime = curTime
+                        locTask += 1
+                        self.locProgress = 0.0
+
+                if remTask < self.numRemoteTasks:
+                    dt = curTime - remTaskStartTime
+
+                    if dt <= remTaskDuration:
+                        self.remProgress = dt / remTaskDuration
+                    else:
+                        remTaskStartTime = curTime
+                        remTask += 1
+                        self.remProgress = 0.0
+
+                print "{:3} : {}   {:3} : {}".format( locTask, self.locProgress, remTask, self.remProgress )
+
+            print "Finished node {}".format( self.uid )
 
     manager = NodesManager()
 
@@ -69,7 +111,7 @@ if __name__ == "__main__":
     manager.UpdateNodeState( ns2 )
     manager.UpdateNodeState( ns3 )
 
-    ns = NodeSimulator()
+    ns = NodeSimulator( "some juajdi", 2, 15, 5.0, 0.3, 0.2 )
     ns.start()
 
     manager.execute()
