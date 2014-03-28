@@ -6,7 +6,6 @@ from connectionstate import ConnectionState
 class ManagerConnectionState(ConnectionState):
 
     def __init__( self ):
-        self.__class__.
         pass
 
     def dataReceived(self, data):

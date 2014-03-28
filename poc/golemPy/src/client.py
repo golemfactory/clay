@@ -1,13 +1,14 @@
 from twisted.internet import task
-from twisted.internet import reactor
 
 from p2pserver import P2PServer
 from taskserver import TaskServer
-from taskmanager import TaskManager
-from taskcomputer import TaskComputer
+
+from taskbase import TaskHeader
+from exampletasks import VRayTracingTask
 
 import sys
 import time
+import random
 
 PING_INTERVAL = 1.0
 TASK_REQUEST_FREQ = 1.0
@@ -28,8 +29,6 @@ class Client:
         self.publicKey      = publicKey
         self.p2pserver      = None
         self.taskServer     = None 
-        self.taskManager    = None
-        self.taskComputer   = None
         self.lastPingTime   = time.time()
 
         self.doWorkTask     = task.LoopingCall(self.__doWork)
@@ -40,9 +39,14 @@ class Client:
     def startNetwork(self, seedHost, seedHostPort):
         print "Starting network ..."
         self.p2pserver = P2PServer(1, self.startPort, self.endPort, self.publicKey, seedHost, seedHostPort)
+
+        time.sleep( 2.0 )
+
         self.taskServer = TaskServer( "", self.startPort, self.endPort, ESTIMATED_PERFORMANCE, TASK_REQUEST_FREQ )
         if self.addTasks:
-            self.taskServer.taskManager.addNewTask( None )
+            hash = random.getrandbits(128)
+            th = TaskHeader( hash, 5, None, "10.30.10.203", self.taskServer.curPort, 100000.0 )
+            self.taskServer.taskManager.addNewTask( VRayTracingTask( 10, 10, 10, th ) )
 
     ############################
     def stopNetwork(self):
@@ -56,5 +60,4 @@ class Client:
                 self.p2pserver.pingPeers( self.pingsInterval )
 
             self.p2pserver.syncNetwork()
-            self.p2pserver.taskManager.runTasks()
-            
+            self.taskServer.syncNetwork()            

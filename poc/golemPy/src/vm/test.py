@@ -2,7 +2,7 @@ import sys
 sys.path.append('../../testtasks/minilight/src/')
 
 from vm import PythonVM
-from task import Task, TaskDescriptor
+from taskbase import Task, TaskDescriptor
 from resource import PyCodeResource
 from twisted.internet import task
 from taskdistributor import g_taskDistributor

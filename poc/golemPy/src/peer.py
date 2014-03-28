@@ -1,5 +1,5 @@
 from message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks
-from task import TaskDescriptor
+from taskbase import TaskHeader
 import time
 
 class PeerSessionInterface:
@@ -112,18 +112,18 @@ class PeerSession(PeerSessionInterface):
                     print self.server.incommingPeers
 
         elif type == MessageGetTasks.Type:
-            tasks = self.server.taskManager.getTasks()
+            tasks = self.server.taskServer.getTasksHeaders()
             self.sendTasks( tasks )
 
         elif type == MessageTasks.Type:
             for t in msg.tasksArray:
-                if not self.server.taskManager.addTask( t ):
+                if not self.server.taskServer.addTask( t ):
                     disconnect( PeerSession.DCRBadProtocol )
 
     # private
        
     def sendHello(self):
-        self.send(MessageHello(self.server.netListeningPort, self.server.publicKey))
+        self.send(MessageHello(self.server.curPort, self.server.publicKey))
 
     def sendPing(self):
         self.send(MessagePing())
@@ -147,17 +147,7 @@ class PeerSession(PeerSessionInterface):
         self.send( MessagePeers( peersInfo ) )
 
     def sendTasks( self, tasks ):
-        tasksInfo = []
-        for t in tasks:
-            assert isinstance( t, TaskDescriptor )
-            tasksInfo.append( {"id" : t.id, 
-                               "difficulty" : t.difficultyIndex,
-                               "extra" : t.extraData,
-                               "address" : t.taskOwnerAddress,
-                               "port" : t.taskOwnerPort,
-                               "ttl" : t.ttl } )
-
-        self.send( MessageTasks( tasksInfo ) )
+        self.send( MessageTasks( tasks ) )
 
     def send(self, message):
         if not self.conn.sendMessage( message ):

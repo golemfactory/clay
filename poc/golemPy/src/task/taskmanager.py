@@ -1,6 +1,6 @@
 import random
 
-from task import Task
+from taskbase import Task
 
 class TaskManager:
     #######################
@@ -10,8 +10,8 @@ class TaskManager:
 
     #######################
     def addNewTask( self, task ):
-        assert task.desc.id not in self.tasks
-        self.tasks[ task.desc.id ] = task
+        assert task.header.id not in self.tasks
+        self.tasks[ task.header.id ] = task
 
     #######################
     def getNextSubTask( self, taskId, estimatedPerformance ):
@@ -27,6 +27,14 @@ class TaskManager:
         else:
             print "Cannot find task {} in my tasks".format( taskId )
             return 0, "", {}
+
+    #######################
+    def getTasksHeaders( self ):
+        ret = []
+        for t in self.tasks.values():
+            ret.append( t.header )
+
+        return ret
 
     #######################
     def computedTaskReceived( self, taskId, extraData, result ):

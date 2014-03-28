@@ -1,7 +1,4 @@
-from taskablerenderer import TaskableRenderer, RenderTaskResult, RenderTaskDesc
-
-from img import Img
-
+import time
 
 class TaskHeader:
     #######################
@@ -16,10 +13,10 @@ class TaskHeader:
 
 class Task:
     #######################
-    def __init__( self, desc, resources, codeRes, outputSize ):
+    def __init__( self, header, resources, codeRes, outputSize ):
         self.resources = resources
         self.codeRes = codeRes
-        self.desc = desc
+        self.header = header
         self.taskResult = None
         self.outputSize = outputSize
 
@@ -49,104 +46,6 @@ class Task:
 
     def computationFinished( self, extraData, taskResult ):
         assert False # Implement in derived class
-
-testTaskScr2 = """ 
-from minilight import render_task
-from resource import ArrayResource
-from base64 import encodestring
-
-res = render_task( "d:/src/golem/poc/golemPy/testtasks/minilight/cornellbox.ml.txt", startX, startY, width, height, img_width, img_height )
-
-output = encodestring( res )
-"""
-
-
-class RayTracingTask( Task ):
-    #######################
-    def __init__( self, width, height, desc ):
-        coderes = testTaskScr2
-        Task.__init__( self, desc, [], coderes, 0 )
-        self.width = width
-        self.height = height
-        self.splitIndex = 0
-
-    def queryExtraData( self, perfIndex ):
-        return {    "startX" : 0,
-                    "startY" : 0,
-                    "width" : self.width,
-                    "height" : self.height,
-                    "img_width" : self.width,
-                    "img_height" : self.height }
-
-    def needsComputation( self ):
-        if self.splitIndex < 1:
-            return True
-        else:
-            return False
-
-    def computationStarted( self, extraData ):
-        self.splitIndex += 1
-
-    def computationFinished( self, extraData, taskResult ):
-        print "Receive cumputed task id:{} extraData:{} \n result:{}".format( self.desc.id, extraData, taskResult )
-
-TIMESLC  = 10.0
-TIMEOUT  = 1000.0
-
-class VRayTracingTask( Task ):
-    #######################
-    def __init__( self, width, height, num_samples, desc ):
-
-        self.taskableRenderer = TaskableRenderer( width, height, num_samples, None, TIMESLC, TIMEOUT )
-
-        self.w = width
-        self.h = height
-        self.num_samples = num_samples
-
-        srcFile = open( "../testtasks/minilight/compact_src/renderer.py", "r")
-        
-        coderes = srcFile.read()
-        Task.__init__( self, desc, [], coderes, 0 )
-
-    def queryExtraData( self, perfIndex ):
-
-        taskDesc = self.taskableRenderer.getNextTaskDesc( perfIndex ) 
-
-        return {    "id" : taskDesc.getID(),
-                    "x" : taskDesc.getX(),
-                    "y" : taskDesc.getY(),
-                    "w" : taskDesc.getW(),
-                    "h" : taskDesc.getH(),
-                    "num_pixels" : taskDesc.getNumPixels(),
-                    "num_samples" : taskDesc.getNumSamples(),
-                    "subTaskTimeout" : TIMESLC
-                    }
-
-    def needsComputation( self ):
-        return self.taskableRenderer.hasMoreTasks()
-
-    def computationStarted( self, extraData ):
-        pass
-
-    def computationFinished( self, extraData, taskResult ):
-        dest = RenderTaskDesc( 0, extraData[ "x" ], extraData[ "y" ], extraData[ "w" ], extraData[ "h" ], extraData[ "num_pixels" ] ,extraData[ "num_samples" ])
-        res = RenderTaskResult( dest, taskResult )
-        self.taskableRenderer.taskFinished( res )
-        if self.taskableRenderer.isFinished():
-            VRayTracingTask.__save_image( "ladny.ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples )
-
-    @classmethod
-    def __save_image( cls, img_name, w, h, data, num_samples ):
-        if not data:
-            print "No data to write"
-            return False
-
-        img = Img( w, h )
-        img.copyPixels( data )
-
-        image_file = open( img_name, 'wb')
-        img.get_formatted(image_file, num_samples)
-        image_file.close()
 
 
 #class TaskManager:

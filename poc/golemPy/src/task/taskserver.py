@@ -1,10 +1,14 @@
+from twisted.internet import reactor
+from twisted.internet.protocol import Factory
+from twisted.internet.endpoints import TCP4ServerEndpoint, connectProtocol
+
+from serverinterface import ServerInterface
 from taskmanager import TaskManager
 from taskcomputer import TaskComputer
 from tasksession import TaskSession
-from task import TaskHeader
 import random
 
-class TaskServer:
+class TaskServer(  ):
     #############################
     def __init__( self, address, startPort, endPort, clientPerformance, taskRequestFrequency ):
         self.address            = address
@@ -18,6 +22,9 @@ class TaskServer:
         self.taskSeesionsIncoming = []
 
         self.__startAccepting()
+
+    def syncNetwork( self ):
+        pass
 
     #############################
     # This method chooses random task from the network to compute on our machine
@@ -44,9 +51,36 @@ class TaskServer:
     #############################
     def newConnection(self, conn):
         pp = conn.transport.getPeer()
-        print "newComputeConnection {} {}".format(pp.host, pp.port)
-        computeSession = TaskSession(conn, self, pp.host, pp.port)
-        self.computeSessions[ [ pp.host, pp.port ] ] = computeSession
+        print "newConnection {} {}".format(pp.host, pp.port)
+        tSession = TaskSession(conn, self, self.taskManager, self.taskComputer, pp.host, pp.port)
+        self.taskSeesionsIncoming.append( tSession )
+
+    #############################
+    def getTasksHeaders( self ):
+        ths =  self.taskHeaders + self.taskManager.getTasksHeaders()
+
+        ret = []
+
+        for th in ths:
+            ret.append({    "id" : t.id, 
+                            "difficulty" : t.difficultyIndex,
+                            "extra" : t.extraData,
+                            "address" : t.taskOwnerAddress,
+                            "port" : t.taskOwnerPort,
+                            "ttl" : t.ttl })
+
+        return ret
+
+    def addTaskHeader( self, thDictRepr ):
+        try:
+            id = thDictRepr[ "id" ]
+            if id not in self.tasks.keys() and id not in self.myTasks.keys():
+                print "Adding task {}".format( id )
+                self.tasks[ id ] = TaskDescriptor( id, thDictRepr[ "difficulty" ], thDictRepr[ "extra" ], thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr[ "ttl" ] )
+            return True
+        except:
+            print "Wrong task received"
+            return False
 
     #############################
     # PRIVATE SECSSION
@@ -77,7 +111,7 @@ class TaskServer:
         self.curPort = self.curPort + 1
 
         if self.curPort <= self.endPort:
-            self.__runListenOnceCompute()
+            self.__runListenOnce()
         else:
             #FIXME: some graceful terminations should take place here
             sys.exit(0)

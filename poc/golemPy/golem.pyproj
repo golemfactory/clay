@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>test\main.py</StartupFile>
+    <StartupFile>src\message.py</StartupFile>
     <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task</SearchPath>
     <WorkingDirectory>d:\src\golem\poc\golemPy\test\</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -44,6 +44,8 @@
   <ItemGroup>
     <Compile Include="src\client.py" />
     <Compile Include="src\appconfig.py" />
+    <Compile Include="src\serverinterface.py" />
+    <Compile Include="src\task\exampletasks.py" />
     <Compile Include="src\task\taskconnstate.py" />
     <Compile Include="src\task\tasksession.py" />
     <Compile Include="src\connectionstate.py" />
@@ -70,9 +72,7 @@
     <Compile Include="src\ui\progressbar.py" />
     <Compile Include="src\ui\pyuic.py" />
     <Compile Include="src\ui\ui_nodemanager.py" />
-    <Compile Include="src\vm\resource.py" />
-    <Compile Include="src\task\task.py" />
-    <Compile Include="src\vm\taskdistributor.py" />
+    <Compile Include="src\task\taskbase.py" />
     <Compile Include="src\vm\test.py" />
     <Compile Include="src\vm\vm.py" />
     <Compile Include="src\__init__.py" />

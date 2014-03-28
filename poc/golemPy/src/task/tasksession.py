@@ -1,4 +1,3 @@
-from computeconnstate import TaskConnState
 from message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageTaskComputed
 from taskcomputer import TaskComputer
 import time
