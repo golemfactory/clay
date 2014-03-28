@@ -18,14 +18,20 @@ class TableRowDataEntry:
         self.remoteProgress = remoteProgressBar
         self.localProgress = localProgressBar
 
-class ManagerUiCustomizer:
+class ManagerUiCustomizer(QtCore.QObject):
 
     ########################
     def __init__( self, widget ):
         self.widget = widget
         self.table = widget.nodeTableWidget
         self.table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.tableData = {}
+
+        self.table.selectionModel().selectionChanged.connect( self.rowSelectionChanged )
+
+    def rowSelectionChanged( self, item1, item2 ):
+        print item1.indexes()[ 0 ].row()
 
     ########################
     def __createWrappedProgressBar( self, red ):

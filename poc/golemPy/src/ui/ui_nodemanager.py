@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'manager.ui'
 #
-# Created: Fri Mar 28 22:37:55 2014
+# Created: Fri Mar 28 23:46:37 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,7 +26,12 @@ except AttributeError:
 class Ui_NodesManagerWidget(object):
     def setupUi(self, NodesManagerWidget):
         NodesManagerWidget.setObjectName(_fromUtf8("NodesManagerWidget"))
-        NodesManagerWidget.resize(992, 677)
+        NodesManagerWidget.resize(1021, 677)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(NodesManagerWidget.sizePolicy().hasHeightForWidth())
+        NodesManagerWidget.setSizePolicy(sizePolicy)
         self.horizontalLayout_3 = QtGui.QHBoxLayout(NodesManagerWidget)
         self.horizontalLayout_3.setObjectName(_fromUtf8("horizontalLayout_3"))
         self.verticalLayout = QtGui.QVBoxLayout()
@@ -49,7 +54,7 @@ class Ui_NodesManagerWidget(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.nodeTableWidget.sizePolicy().hasHeightForWidth())
         self.nodeTableWidget.setSizePolicy(sizePolicy)
-        self.nodeTableWidget.setMinimumSize(QtCore.QSize(681, 0))
+        self.nodeTableWidget.setMinimumSize(QtCore.QSize(710, 0))
         self.nodeTableWidget.setFrameShape(QtGui.QFrame.Box)
         self.nodeTableWidget.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
         self.nodeTableWidget.setShowGrid(True)
@@ -71,6 +76,11 @@ class Ui_NodesManagerWidget(object):
         self.horizontalLayout_4.addWidget(self.nodeTableWidget)
         self.frameDetailedNode = QtGui.QFrame(NodesManagerWidget)
         self.frameDetailedNode.setEnabled(True)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.frameDetailedNode.sizePolicy().hasHeightForWidth())
+        self.frameDetailedNode.setSizePolicy(sizePolicy)
         self.frameDetailedNode.setMinimumSize(QtCore.QSize(0, 0))
         self.frameDetailedNode.setFrameShape(QtGui.QFrame.StyledPanel)
         self.frameDetailedNode.setFrameShadow(QtGui.QFrame.Sunken)
@@ -328,7 +338,7 @@ class Ui_NodesManagerWidget(object):
         self.horizontalLayout_7 = QtGui.QHBoxLayout()
         self.horizontalLayout_7.setContentsMargins(-1, 10, -1, -1)
         self.horizontalLayout_7.setObjectName(_fromUtf8("horizontalLayout_7"))
-        spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_7.addItem(spacerItem)
         self.enqueueTaskButton = QtGui.QPushButton(self.frameDetailedNode)
         self.enqueueTaskButton.setObjectName(_fromUtf8("enqueueTaskButton"))
