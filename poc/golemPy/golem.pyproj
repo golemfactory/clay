@@ -6,7 +6,7 @@
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
     <StartupFile>src\manager\nodesmanager.py</StartupFile>
-    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui</SearchPath>
+    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network</SearchPath>
     <WorkingDirectory>d:\src\golem\poc\golemPy\test\</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>golem</Name>
@@ -30,6 +30,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="src\manager\" />
+    <Folder Include="src\network\" />
     <Folder Include="src\task\" />
     <Folder Include="src\ui\" />
     <Folder Include="testtasks\" />
@@ -64,9 +65,9 @@
     <Compile Include="src\manager\nodesmanager.py" />
     <Compile Include="src\manager\nodestatesnapshot.py" />
     <Compile Include="src\message.py" />
-    <Compile Include="src\netconnstate.py" />
-    <Compile Include="src\p2pserver.py" />
-    <Compile Include="src\peer.py" />
+    <Compile Include="src\network\netconnstate.py" />
+    <Compile Include="src\network\p2pserver.py" />
+    <Compile Include="src\network\peer.py" />
     <Compile Include="src\task\taskcomputer.py" />
     <Compile Include="src\task\taskmanager.py" />
     <Compile Include="src\task\taskserver.py" />
