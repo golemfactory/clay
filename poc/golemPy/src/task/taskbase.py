@@ -30,3 +30,7 @@ class Task:
     #######################
     def computationFinished( self, extraData, taskResult ):
         assert False # Implement in derived class
+
+    #######################
+    def getProgress( self ):
+        assert False # Implement in derived class

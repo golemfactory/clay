@@ -701,6 +701,7 @@ class RenderWorker:
             pixels[ 3 * k + 2 ] = radiance[ 2 ]                
 
             progress = float( k + 1 ) / float( num_pixels )
+            taskProgress.set( progress )
 
         return self.renderingFinished( pixels )
 

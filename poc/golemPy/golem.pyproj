@@ -5,8 +5,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>src\manager\nodesmanager.py</StartupFile>
-    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network</SearchPath>
+    <StartupFile>test\main.py</StartupFile>
+    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network;src\manager</SearchPath>
     <WorkingDirectory>d:\src\golem\poc\golemPy\test\</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>golem</Name>

@@ -24,6 +24,8 @@ class TaskServer( ServerInterface ):
         self.taskSeesions       = {}
         self.taskSeesionsIncoming = []
 
+        self.lastMessages       = []
+
         self.__startAccepting()
 
     #############################
@@ -91,10 +93,22 @@ class TaskServer( ServerInterface ):
             print "Wrong task header received"
             return False
 
+    #############################
     def removeTaskSession( self, taskSession ):
         for tsk in self.taskSeesions.keys():
             if self.taskSeesions[ tsk ] == taskSession:
                 del self.taskSeesions[ tsk ]
+
+    #############################
+    def setLastMessage( self, type, t, msg, address, port ):
+        if len( self.lastMessages ) >= 5:
+            self.lastMessages = self.lastMessages[ -4: ]
+
+        self.lastMessages.append( [ type, t, address, port, msg ] )
+
+    #############################
+    def getLastMessages( self ):
+        return self.lastMessages
 
 
     #############################

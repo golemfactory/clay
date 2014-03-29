@@ -101,6 +101,10 @@ class VRayTracingTask( Task ):
             VRayTracingTask.__save_image( "ladny.ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples )
 
     #######################
+    def getProgress( self ):
+        self.taskableRenderer.getProgress()
+
+    #######################
     @classmethod
     def __save_image( cls, img_name, w, h, data, num_samples ):
         if not data:

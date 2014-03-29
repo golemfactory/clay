@@ -1,4 +1,5 @@
 from copy import copy
+from threading import Lock
 
 class IGolemVM:
     #######################
@@ -6,8 +7,29 @@ class IGolemVM:
         pass
 
     #######################
+    def getProgress( self ):
+        assert False
+
+    #######################
     def interpret( self, codeResource ):
         pass
+
+
+class TaskProgress:
+    #######################
+    def __init__( self ):
+        self.lock = Lock()
+        self.progress = 0.0
+
+    #######################
+    def get( self ):
+        with lock:
+            return self.progress
+
+    #######################
+    def set( self, val ):
+        with lock:
+            self.progress = val
 
 
 class PythonVM( IGolemVM ):
@@ -16,11 +38,17 @@ class PythonVM( IGolemVM ):
         IGolemVM.__init__( self )
         self.srcCode = ""
         self.scope = {}
+        self.progress = TaskProgress()
+
+    #######################
+    def getProgress( self ):
+        return self.progress.get()
       
     #######################  
     def runTask( self, srcCode, extraData ):
         self.srcCode = srcCode
         self.scope = copy( extraData )
+        self.scope[ "taskProgress" ] = self.progress
         return self.__interpret()
 
     #######################

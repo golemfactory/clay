@@ -38,6 +38,8 @@ class P2PServer( ServerInterface ):
         self.taskServer             = None
         self.hostAddress            = hostAddress
 
+        self.lastMessages           = []
+
         self.__startAccepting()
 
     #############################
@@ -76,7 +78,18 @@ class P2PServer( ServerInterface ):
         for p in self.peers.keys():
             if self.peers[ p ] == peerSession:
                 del self.peers[ p ]
-                        
+    
+    #############################
+    def setLastMessage( self, type, t, msg, address, port ):
+        if len( self.lastMessages ) >= 5:
+            self.lastMessages = self.lastMessages[ -4: ]
+
+        self.lastMessages.append( [ type, t, address, port, msg ] )
+
+    #############################
+    def getLastMessages( self ):
+        return self.lastMessages
+                                    
     #############################
     def __startAccepting( self ):
         print "Enabling network accepting state"

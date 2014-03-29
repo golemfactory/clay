@@ -8,6 +8,8 @@ from exampletasks import VRayTracingTask
 
 from hostaddress import getHostAddress
 
+from nodestatesnapshot import NodeStateSnapshot
+
 import sys
 import time
 import random
@@ -33,12 +35,13 @@ class Client:
         self.taskServer     = None 
         self.lastPingTime   = time.time()
 
+        self.lastNodeStateSnapshot = None
+
         self.hostAddress    = getHostAddress()
 
         self.doWorkTask     = task.LoopingCall(self.__doWork)
         self.doWorkTask.start(0.1, False)
        
-
     ############################
     def startNetwork(self, seedHost, seedHostPort):
         print "Starting network ..."
@@ -72,3 +75,19 @@ class Client:
 
             self.p2pserver.syncNetwork()
             self.taskServer.syncNetwork()
+
+    ############################
+    def __makeNodeStateSnapshot( self ):
+
+        lastComunication = [  ]
+
+        peersNum        = len( self.p2pserver.peers )
+        tasks           = len( self.taskServer.taskHeaders )
+
+        remoteTasksProgresses   = self.taskServer.taskComputer.getProgress()
+        localTasksProgresses    = self.taskServer.taskManager.getProgresses()
+
+        lastNetworkMessages = self.p2pserver.getLastMessages()
+        lastTaskMessages    = self.taskServer.getLastMessages()
+
+        self.lastNodeStateSnapshot = NodeStateSnapshot( self.publicKey,  )

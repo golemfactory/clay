@@ -5,6 +5,7 @@ sys.path.append('../src/core')
 sys.path.append('../src/vm')
 sys.path.append('../src/task')
 sys.path.append('../src/network')
+sys.path.append('../src/manager')
 sys.path.append('../testtasks/minilight/src')
 
 from twisted.internet import reactor

@@ -56,3 +56,10 @@ class TaskManager:
             if th.ttl <= 0:
                 print "Task {} dies".format( th.id )
                 del self.tasks[ th.id ]
+
+    #######################
+    def getProgresses( self ):
+        tasksProgresses = {}
+
+        for t in self.tasks:
+            tasksProgresses[ t.taskHeader.id ] = t.getProgress()

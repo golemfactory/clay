@@ -61,6 +61,8 @@ class PeerSession(PeerSessionInterface):
         if msg is None:
             self.__disconnect( PeerSession.DCRBadProtocol )
 
+        self.server.setLastMessage( "<-", time.localtime(), msg, self.address, self.port )
+
         type = msg.getType()
 
         #localtime   = time.localtime()
@@ -165,4 +167,5 @@ class PeerSession(PeerSessionInterface):
             self.dropped()
             return
         self.lastMessageTime = time.time()
+        self.server.setLastMessage( "->", time.localtime(), message, self.address, self.port )
 
