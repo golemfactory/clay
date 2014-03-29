@@ -102,7 +102,7 @@ class VRayTracingTask( Task ):
 
     #######################
     def getProgress( self ):
-        self.taskableRenderer.getProgress()
+        return self.taskableRenderer.getProgress()
 
     #######################
     @classmethod

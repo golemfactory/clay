@@ -61,5 +61,7 @@ class TaskManager:
     def getProgresses( self ):
         tasksProgresses = {}
 
-        for t in self.tasks:
-            tasksProgresses[ t.taskHeader.id ] = t.getProgress()
+        for t in self.tasks.values():
+            tasksProgresses[ t.header.id ] = t.getProgress()
+
+        return tasksProgresses

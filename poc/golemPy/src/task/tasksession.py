@@ -26,9 +26,9 @@ class TaskSession:
         if msg is None:
             pass #TODO
 
-        print "Receiving from {}:{}: {}".format( self.address, self.port, msg )
+        #print "Receiving from {}:{}: {}".format( self.address, self.port, msg )
 
-        self.server.setLastMessage( "<-", time.localtime(), msg, self.address, self.port )
+        self.taskServer.setLastMessage( "<-", time.localtime(), msg, self.address, self.port )
 
         type = msg.getType()
 
@@ -64,6 +64,6 @@ class TaskSession:
         self.taskServer.removeTaskSession( self )
 
     def __send( self, msg ):
-        print "Sending to {}:{}: {}".format( self.address, self.port, msg )
+        #print "Sending to {}:{}: {}".format( self.address, self.port, msg )
         self.conn.sendMessage( msg )
         self.taskServer.setLastMessage( "->", time.localtime(), msg, self.address, self.port )

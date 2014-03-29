@@ -23,12 +23,12 @@ class TaskProgress:
 
     #######################
     def get( self ):
-        with lock:
+        with self.lock:
             return self.progress
 
     #######################
     def set( self, val ):
-        with lock:
+        with self.lock:
             self.progress = val
 
 

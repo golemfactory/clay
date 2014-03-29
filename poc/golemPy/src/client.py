@@ -34,6 +34,7 @@ class Client:
         self.p2pserver      = None
         self.taskServer     = None 
         self.lastPingTime   = time.time()
+        self.lastNSSTime    = time.time()
 
         self.lastNodeStateSnapshot = None
 
@@ -76,18 +77,23 @@ class Client:
             self.p2pserver.syncNetwork()
             self.taskServer.syncNetwork()
 
+            if not self.lastNodeStateSnapshot or time.time() - self.lastNSSTime > 5.0:
+                self.__makeNodeStateSnapshot()
+                self.lastNSSTime = time.time()
+
     ############################
     def __makeNodeStateSnapshot( self ):
 
-        lastComunication = [  ]
-
-        peersNum        = len( self.p2pserver.peers )
-        tasks           = len( self.taskServer.taskHeaders )
-
-        remoteTasksProgresses   = self.taskServer.taskComputer.getProgress()
-        localTasksProgresses    = self.taskServer.taskManager.getProgresses()
-
+        peersNum            = len( self.p2pserver.peers )
         lastNetworkMessages = self.p2pserver.getLastMessages()
-        lastTaskMessages    = self.taskServer.getLastMessages()
 
-        self.lastNodeStateSnapshot = NodeStateSnapshot( self.publicKey,  )
+        if self.taskServer:
+            tasksNum                = len( self.taskServer.taskHeaders )
+            remoteTasksProgresses   = self.taskServer.taskComputer.getProgresses()
+            localTasksProgresses    = self.taskServer.taskManager.getProgresses()
+            lastTaskMessages        = self.taskServer.getLastMessages()
+            self.lastNodeStateSnapshot = NodeStateSnapshot( self.publicKey, peersNum, tasksNum, remoteTasksProgresses, localTasksProgresses, lastNetworkMessages, lastTaskMessages  )
+        else:
+            self.lastNodeStateSnapshot = NodeStateSnapshot( self.publicKey, peersNum )
+
+        print self.lastNodeStateSnapshot

@@ -50,7 +50,7 @@ class TaskComputer:
                     self.__askForTask()
 
     ######################
-    def getProgress( self ):
+    def getProgresses( self ):
         ret = {}
         for c in self.currentComputations:
             ret[ c.taskId ] = c.getProgress()
@@ -83,7 +83,7 @@ class TaskThread( Thread ):
         self.lock           = Lock()
 
     def getProgress( self ):
-        with lock:
+        with self.lock:
             return self.vm.getProgress()
 
     ######################
