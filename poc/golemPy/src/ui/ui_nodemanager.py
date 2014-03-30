@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'manager.ui'
 #
-# Created: Sun Mar 30 23:20:57 2014
+# Created: Sun Mar 30 23:29:53 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,7 +26,7 @@ except AttributeError:
 class Ui_NodesManagerWidget(object):
     def setupUi(self, NodesManagerWidget):
         NodesManagerWidget.setObjectName(_fromUtf8("NodesManagerWidget"))
-        NodesManagerWidget.resize(1027, 696)
+        NodesManagerWidget.resize(1027, 700)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -45,6 +45,12 @@ class Ui_NodesManagerWidget(object):
         self.label.setFont(font)
         self.label.setObjectName(_fromUtf8("label"))
         self.horizontalLayout.addWidget(self.label)
+        spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout.addItem(spacerItem)
+        self.label_6 = QtGui.QLabel(NodesManagerWidget)
+        self.label_6.setText(_fromUtf8(""))
+        self.label_6.setObjectName(_fromUtf8("label_6"))
+        self.horizontalLayout.addWidget(self.label_6)
         self.verticalLayout.addLayout(self.horizontalLayout)
         self.horizontalLayout_4 = QtGui.QHBoxLayout()
         self.horizontalLayout_4.setObjectName(_fromUtf8("horizontalLayout_4"))
@@ -341,8 +347,8 @@ class Ui_NodesManagerWidget(object):
         self.horizontalLayout_7 = QtGui.QHBoxLayout()
         self.horizontalLayout_7.setContentsMargins(-1, 10, -1, -1)
         self.horizontalLayout_7.setObjectName(_fromUtf8("horizontalLayout_7"))
-        spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.MinimumExpanding, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout_7.addItem(spacerItem)
+        spacerItem1 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.MinimumExpanding, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout_7.addItem(spacerItem1)
         self.enqueueTaskButton = QtGui.QPushButton(self.frameDetailedNode)
         self.enqueueTaskButton.setMinimumSize(QtCore.QSize(120, 0))
         self.enqueueTaskButton.setMaximumSize(QtCore.QSize(120, 16777215))
@@ -411,8 +417,8 @@ class Ui_NodesManagerWidget(object):
         self.verticalLayout.addWidget(self.line_4)
         self.horizontalLayout_2 = QtGui.QHBoxLayout()
         self.horizontalLayout_2.setObjectName(_fromUtf8("horizontalLayout_2"))
-        spacerItem1 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout_2.addItem(spacerItem1)
+        spacerItem2 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout_2.addItem(spacerItem2)
         self.label_5 = QtGui.QLabel(NodesManagerWidget)
         font = QtGui.QFont()
         font.setItalic(True)
@@ -427,7 +433,7 @@ class Ui_NodesManagerWidget(object):
 
     def retranslateUi(self, NodesManagerWidget):
         NodesManagerWidget.setWindowTitle(_translate("NodesManagerWidget", "Node manager", None))
-        self.label.setText(_translate("NodesManagerWidget", "Local nodes", None))
+        self.label.setText(_translate("NodesManagerWidget", "List of nodes running locally", None))
         item = self.nodeTableWidget.horizontalHeaderItem(0)
         item.setText(_translate("NodesManagerWidget", "Node", None))
         item = self.nodeTableWidget.horizontalHeaderItem(1)

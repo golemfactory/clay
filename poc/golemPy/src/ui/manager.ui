@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1027</width>
-    <height>696</height>
+    <height>700</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -35,7 +35,27 @@
           </font>
          </property>
          <property name="text">
-          <string>Local nodes</string>
+          <string>List of nodes running locally</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string/>
          </property>
         </widget>
        </item>
