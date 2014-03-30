@@ -130,7 +130,7 @@ class P2PServer:
 
     #############################
     def __connectionFailure( self, conn ):
-        print "Connection to peer failure. {}".format( conn )
+        print "Connection to peer failure. {}: {}".format( conn.transport.getPeer().host, conn.transport.getPeer().port )
 
     #############################
     def __runListenOnce( self ):
