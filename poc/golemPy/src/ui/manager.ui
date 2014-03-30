@@ -344,7 +344,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>Active remote task (ID)</string>
+                 <string>Active task chunk (ID)</string>
                 </property>
                </widget>
               </item>
