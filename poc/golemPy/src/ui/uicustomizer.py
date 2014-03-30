@@ -21,15 +21,23 @@ class TableRowDataEntry:
 class ManagerUiCustomizer(QtCore.QObject):
 
     ########################
-    def __init__( self, widget ):
+    def __init__( self, widget, managerLogic ):
         self.widget = widget
         self.table = widget.nodeTableWidget
         self.table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.tableData = {}
+        self.logic = managerLogic
 
         self.table.selectionModel().selectionChanged.connect( self.rowSelectionChanged )
+        self.widget.runAdditionalNodesPushButton.clicked.connect( self.addNodesClicked )
 
+    ########################
+    def addNodesClicked( self ):
+        numNodes = self.widget.additionalNodesSpinBox.value()
+        self.logic.runAdditionalNodes( numNodes )
+
+    ########################
     def rowSelectionChanged( self, item1, item2 ):
         print item1.indexes()[ 0 ].row()
 

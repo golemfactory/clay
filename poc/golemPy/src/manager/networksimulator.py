@@ -1,4 +1,4 @@
-from threading import Thread
+from threading import Thread, Lock
 import time
 import random
 
@@ -11,7 +11,7 @@ GLOBAL_SHUTDOWN = [ False ]
 
 class NodeSimulator(QtCore.QThread):
 
-    updateRequest = QtCore.pyqtSignal()
+    #updateRequest = QtCore.pyqtSignal()
 
     ########################
     def __init__(self, simulator, id, uid, numLocalTasks, numRemoteTasks, localTaskDuration, remoteTaskDuration, innerUpdateDelay ):
@@ -26,9 +26,14 @@ class NodeSimulator(QtCore.QThread):
         self.remoteTaskDuration = remoteTaskDuration
         self.startTime = time.time()
         self.innerUpdateDelay = innerUpdateDelay
-
+        
         self.locProgress = 0.0
         self.remProgress = 0.0
+
+        self.localAddr = "127.0.0.1"
+        self.localPort = int( random.random() * 60000.0 + 1024.0 )
+        self.peersNum = 0
+        self.tasksNum = 0
 
     ########################
     def getId( self ):
@@ -36,7 +41,25 @@ class NodeSimulator(QtCore.QThread):
 
     ########################
     def getStateSnapshot( self ):
-        return NodeStateSnapshot( self.uid, self.remProgress, self.locProgress )
+        addPeers = 1 if random.random() >= 0.45 else -1
+
+        self.peersNum += addPeers
+
+        if self.peersNum < 0:
+            self.peersNum = 0
+        if self.peersNum > 10:
+            self.peersNum = 10
+
+        addTasks = 1 if random.random() >= 0.5 else -1
+
+        self.tasksNum += addTasks
+
+        if self.tasksNum < 0:
+            self.tasksNum = 0
+        if self.tasksNum > 200:
+            self.tasksNum = 200
+
+        return NodeStateSnapshot( self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message'], ['test message'] )
 
     ########################
     def run( self ):
@@ -111,8 +134,20 @@ class LocalNetworkSimulator(Thread):
         self.maxRemTaskDura = maxRemoteTaskDuration
         self.maxInnerUpdateDelay = maxInnerUpdateDelay
         self.nodeSpawnDelay = nodeSpawnDelay
+        self.curNode = 0
+        self.lock = Lock()
 
         self.nodes = []
+
+    ########################
+    def addNewNode( self ):
+        with self.lock:
+            self.numNodes += 1
+            node = self.createNewNode( self.curNode )
+            self.nodes.append( node )
+            node.start()
+            self.curNode += 1
+            #node.updateRequest.connect( self.updateRequested )
 
     ########################
     def updateRequested( self, id ):
@@ -143,27 +178,18 @@ class LocalNetworkSimulator(Thread):
 
         curTime = time.time()
 
-        curNode = 0
-
         print "Starting node simulator for {} nodes".format( self.numNodes )
 
-        while curNode < self.numNodes:
+        while not GLOBAL_SHUTDOWN[ 0 ]:
 
-            if GLOBAL_SHUTDOWN[ 0 ]:
-                break
-                
-            node = self.createNewNode( curNode )
-            node.updateRequest.connect( self.updateRequested )
-            self.nodes.append( node )
-            node.start()
+            if self.curNode < self.numNodes:
+                self.addNewNode()
 
             time.sleep( self.getRandomizedUp( self.nodeSpawnDelay ) )
 
-            curNode += 1
-
         print "Local network simulator finished running."
         print "Waiting for nodes to finish"
-        
+
         #10 seconds should be just enough for each node to do its cleanup
         for node in self.nodes:
             node.wait()

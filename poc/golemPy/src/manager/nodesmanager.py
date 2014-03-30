@@ -7,23 +7,26 @@ from threading import Lock
 
 from ui_nodemanager import Ui_NodesManagerWidget
 from uicustomizer import ManagerUiCustomizer
+from nodestatesnapshot import NodeStateSnapshot
 from networksimulator import GLOBAL_SHUTDOWN, LocalNetworkSimulator
+from nodesmanagerlogic import NodesManagerLogic
 
 #FIXME: potencjalnie mozna tez spiac ze soba managery i wtedy kontrolowac zdalnie wszystkie koncowki i sobie odpalac nody w miare potrzeb, ale to nie na najblizsza prezentacje zabawa
 class NodesManager:
 
     ########################
-    def __init__( self ):
+    def __init__( self, managerLogic = None ):
         self.app = QApplication( sys.argv )
         self.window = QDialog()
         self.ui = Ui_NodesManagerWidget()
         self.ui.setupUi( self.window )
-        self.uic = ManagerUiCustomizer(self.ui)
+        self.uic = ManagerUiCustomizer(self.ui, self)
         self.timer = QTimer()
         self.timer.timeout.connect( self.polledUpdate )
         self.lock = Lock()
         self.statesBuffer = []
-        
+        self.managerLogic = managerLogic
+
         self.uic.enableDetailedView( False )
 
         #FIXME: some shitty python magic
@@ -32,6 +35,10 @@ class NodesManager:
             event.accept()
 
         setattr( self.window.__class__, 'closeEvent', closeEvent_ )
+
+    ########################
+    def setManagerLogic( self, managerLogic ):
+        self.managerLogic = managerLogic
 
     ########################
     def curSelectedNode( self ):
@@ -58,7 +65,21 @@ class NodesManager:
 
     ########################
     def updateNodeState( self, ns ):
-        self.uic.UpdateRowsState( ns.getUID(), ns.getFormattedTimestamp(), ns.getRemoteProgress(), ns.getLocalProgress() )
+        taskProgress = 0.0
+        chunkProgress = 0.0
+        assert isinstance( ns, NodeStateSnapshot )
+        
+        if ns.getTaskChunkStateSnapshot():
+            chunkProgress = ns.getTaskChunkStateSnapshot().getProgress()
+
+        if ns.getLocalTaskStateSnapshot():
+            taskProgress = ns.getLocalTaskStateSnapshot().getProgress()
+
+        self.uic.UpdateRowsState( ns.getUID(), ns.getFormattedTimestamp(), chunkProgress, taskProgress )
+
+    ########################
+    def runAdditionalNodes( self, numNodes ):
+        self.managerLogic.runAdditionalNodes( numNodes )
 
 if __name__ == "__main__":
 
@@ -73,6 +94,7 @@ if __name__ == "__main__":
     nodeSpawnDelay = 1.0
 
     simulator = LocalNetworkSimulator( manager, numNodes, maxLocalTasks, maxRemoteTasks, maxLocTaskDuration, maxRemTaskDuration, maxInnerUpdateDelay, nodeSpawnDelay )
+    manager.setManagerLogic( NodesManagerLogicTest( simulator ) )
     simulator.start()
 
     manager.execute()

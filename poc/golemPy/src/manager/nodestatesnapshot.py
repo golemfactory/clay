@@ -48,7 +48,7 @@ class LocalTaskStateSnapshot:
 #FIXME: also add a boolean flag indicating whether there is any active local/rempote task being calculated
 class NodeStateSnapshot:
 
-    def __init__( self, uid = 0, peersNum = 0, tasksNum = 0, enpointAddr = "", endpointPort = "", lastNetowrkMessages = [], lastTaskMessages = [], tcss = None, ltss = None ):
+    def __init__( self, uid = 0, peersNum = 0, tasksNum = 0, endpointAddr = "", endpointPort = "", lastNetowrkMessages = [], lastTaskMessages = [], tcss = None, ltss = None ):
         self.uid                    = uid
         self.timestamp              = QtCore.QTime.currentTime()
         self.endpointAddr           = endpointAddr         
@@ -66,11 +66,11 @@ class NodeStateSnapshot:
     def getFormattedTimestamp( self ):
         return self.timestamp.toString( "hh:mm:ss.zzz" )
 
-    def getRemoteProgress( self ):
-        return self.remoteProgress
+    def getEndpointAddr( self ):
+        return self.endpointAddr
 
-    def getLocalProgress( self ):
-        return self.localProgress
+    def getEndpointPort( self ):
+        return self.endpointPort
 
     def getPeersNum( self ):
         return self.peersNum

@@ -48,6 +48,7 @@
     <Compile Include="src\core\configdescriptor.py" />
     <Compile Include="src\core\hostaddress.py" />
     <Compile Include="src\manager\networksimulator.py" />
+    <Compile Include="src\manager\nodesmanagerlogic.py" />
     <Compile Include="src\task\exampletasks.py" />
     <Compile Include="src\task\taskconnstate.py" />
     <Compile Include="src\task\tasksession.py" />

@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'manager.ui'
 #
-# Created: Mon Mar 31 00:03:46 2014
+# Created: Mon Mar 31 01:24:06 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -393,14 +393,14 @@ class Ui_NodesManagerWidget(object):
         self.verticalLayout_7.setObjectName(_fromUtf8("verticalLayout_7"))
         self.horizontalLayout_8 = QtGui.QHBoxLayout()
         self.horizontalLayout_8.setObjectName(_fromUtf8("horizontalLayout_8"))
-        self.fireNewPushButton = QtGui.QPushButton(self.frameGenericNodes)
-        self.fireNewPushButton.setMinimumSize(QtCore.QSize(220, 23))
-        self.fireNewPushButton.setObjectName(_fromUtf8("fireNewPushButton"))
-        self.horizontalLayout_8.addWidget(self.fireNewPushButton)
-        self.numNodesSpinBox = QtGui.QSpinBox(self.frameGenericNodes)
-        self.numNodesSpinBox.setProperty("value", 5)
-        self.numNodesSpinBox.setObjectName(_fromUtf8("numNodesSpinBox"))
-        self.horizontalLayout_8.addWidget(self.numNodesSpinBox)
+        self.runAdditionalNodesPushButton = QtGui.QPushButton(self.frameGenericNodes)
+        self.runAdditionalNodesPushButton.setMinimumSize(QtCore.QSize(220, 23))
+        self.runAdditionalNodesPushButton.setObjectName(_fromUtf8("runAdditionalNodesPushButton"))
+        self.horizontalLayout_8.addWidget(self.runAdditionalNodesPushButton)
+        self.additionalNodesSpinBox = QtGui.QSpinBox(self.frameGenericNodes)
+        self.additionalNodesSpinBox.setProperty("value", 5)
+        self.additionalNodesSpinBox.setObjectName(_fromUtf8("additionalNodesSpinBox"))
+        self.horizontalLayout_8.addWidget(self.additionalNodesSpinBox)
         self.verticalLayout_7.addLayout(self.horizontalLayout_8)
         self.terminateAllNodesPushButton = QtGui.QPushButton(self.frameGenericNodes)
         self.terminateAllNodesPushButton.setMinimumSize(QtCore.QSize(0, 23))
@@ -459,7 +459,7 @@ class Ui_NodesManagerWidget(object):
         self.label_16.setText(_translate("NodesManagerWidget", "Chunks left", None))
         self.enqueueTaskButton.setText(_translate("NodesManagerWidget", "Enqueue task", None))
         self.stopNodePushButton.setText(_translate("NodesManagerWidget", "Stop node", None))
-        self.fireNewPushButton.setText(_translate("NodesManagerWidget", "Run additional local nodes", None))
+        self.runAdditionalNodesPushButton.setText(_translate("NodesManagerWidget", "Run additional local nodes", None))
         self.terminateAllNodesPushButton.setText(_translate("NodesManagerWidget", "Terminate all local nodes", None))
         self.label_5.setText(_translate("NodesManagerWidget", "GoLEM POC manager", None))
 

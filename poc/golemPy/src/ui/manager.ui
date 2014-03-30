@@ -734,7 +734,7 @@
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_8">
                 <item>
-                 <widget class="QPushButton" name="fireNewPushButton">
+                 <widget class="QPushButton" name="runAdditionalNodesPushButton">
                   <property name="minimumSize">
                    <size>
                     <width>220</width>
@@ -747,7 +747,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QSpinBox" name="numNodesSpinBox">
+                 <widget class="QSpinBox" name="additionalNodesSpinBox">
                   <property name="value">
                    <number>5</number>
                   </property>
