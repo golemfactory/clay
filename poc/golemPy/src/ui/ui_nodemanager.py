@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'manager.ui'
 #
-# Created: Sun Mar 30 23:29:53 2014
+# Created: Mon Mar 31 00:03:46 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -447,7 +447,7 @@ class Ui_NodesManagerWidget(object):
         self.label_7.setText(_translate("NodesManagerWidget", "Endpoint", None))
         self.label_9.setText(_translate("NodesManagerWidget", "No. tasks", None))
         self.label_10.setText(_translate("NodesManagerWidget", "Last msg.", None))
-        self.labelDetailedRemoteTask.setText(_translate("NodesManagerWidget", "Active remote task (ID)", None))
+        self.labelDetailedRemoteTask.setText(_translate("NodesManagerWidget", "Active task chunk (ID)", None))
         self.label_4.setText(_translate("NodesManagerWidget", "Time left", None))
         self.label_2.setText(_translate("NodesManagerWidget", "CPU power", None))
         self.label_3.setText(_translate("NodesManagerWidget", "Progress", None))
