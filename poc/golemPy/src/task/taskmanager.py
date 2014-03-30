@@ -7,6 +7,7 @@ class TaskManager:
     #######################
     def __init__( self ):
         self.tasks = {}
+        self.tasksComputed = []
         #self.givenTasks = {}
 
     #######################
@@ -33,7 +34,8 @@ class TaskManager:
     def getTasksHeaders( self ):
         ret = []
         for t in self.tasks.values():
-            ret.append( t.header )
+            if t.needsComputation():
+                ret.append( t.header )
 
         return ret
 
