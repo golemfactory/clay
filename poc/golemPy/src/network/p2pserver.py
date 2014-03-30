@@ -95,7 +95,7 @@ class P2PServer:
         self.__runListenOnce()
 
         if self.seedHost and self.seedHostPort:
-            if self.seedHost != "127.0.0.1" or self.seedHostPort != self.curPort: #FIXME workaround to test on one machine
+            if self.seedHost != self.hostAddress or self.seedHostPort != self.curPort: #FIXME workaround to test on one machine
                 self.__connect( self.seedHost, self.seedHostPort )
 
     #############################   

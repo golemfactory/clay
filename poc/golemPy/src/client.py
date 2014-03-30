@@ -46,7 +46,7 @@ class Client:
     ############################
     def startNetwork(self, seedHost, seedHostPort):
         print "Starting network ..."
-        self.p2pserver = P2PServer(1, self.hostAddress, self.optNumPeers, self.startPort, self.endPort, self.publicKey, seedHost, seedHostPort)
+        self.p2pserver = P2PServer( self.hostAddress, self.optNumPeers, 1, self.startPort, self.endPort, self.publicKey, seedHost, seedHostPort )
 
         time.sleep( 1.0 )
 
