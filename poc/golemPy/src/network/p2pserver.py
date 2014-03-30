@@ -18,13 +18,13 @@ class NetServerFactory( Factory ):
 
 class P2PServer:
     #############################
-    def __init__( self, hostAddress, clientVerssion, startPort, endPort, publicKey, seedHost, seedHostPort ):
+    def __init__( self, hostAddress, optNumPeers, clientVerssion, startPort, endPort, publicKey, seedHost, seedHostPort ):
 
         self.clientVersion          = clientVerssion
         self.startPort              = startPort
         self.endPort                = endPort
         self.curPort                = self.startPort
-        self.idealPeerCount         = 2
+        self.optNumPeers            = optNumPeers
         self.peers                  = {}
         self.seedHost               = seedHost
         self.seedHostPort           = seedHostPort
@@ -108,7 +108,7 @@ class P2PServer:
 
     #############################
     def __sendMessageGetPeers( self ):
-        while len( self.peers ) < self.idealPeerCount:
+        while len( self.peers ) < self.optNumPeers:
             if len( self.freePeers ) == 0:
                 if time.time() - self.lastPeersRequest > 2:
                     self.lastPeersRequest = time.time()
