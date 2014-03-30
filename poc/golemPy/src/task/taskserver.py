@@ -94,6 +94,11 @@ class TaskServer:
             return False
 
     #############################
+    def removeTaskHeader( self, taskId ):
+        if taskId in self.taskHeaders:
+            del self.taskHeaders[ taskId ]
+
+    #############################
     def removeTaskSession( self, taskSession ):
         for tsk in self.taskSeesions.keys():
             if self.taskSeesions[ tsk ] == taskSession:
@@ -177,9 +182,7 @@ class TaskServer:
         
         self.taskComputer.taskRequestRejected( taskId, "Connection failed" )
         
-        if taskId in self.taskHeaders:
-            del self.taskHeaders[ taskId ]
-
+        self.removeTaskHeader( taskId )
 
     #############################   
     def __connectAndSendTaskResults( self, address, port, taskId, extraData, results ):
@@ -212,8 +215,7 @@ class TaskServer:
         print "Cannot connect to task {} owner".format( taskId )
         print "Removing task {} from task list".format( taskId )
                 
-        if taskId in self.taskHeaders:
-            del self.taskHeaders[ taskId ]
+        self.removeTaskHeader( taskId )
     
     #############################
     def __removeOldTasks( self ):
@@ -223,7 +225,7 @@ class TaskServer:
             t.lastChecking = currTime
             if t.ttl <= 0:
                 print "Task {} dies".format( t.id )
-                del self.taskHeaders[ t.id ]
+                self.removeTaskHeader( t.id )
 
         self.taskManager.removeOldTasks()
 

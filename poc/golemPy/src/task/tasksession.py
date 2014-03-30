@@ -43,7 +43,7 @@ class TaskSession:
             if taskId != 0:
                 self.conn.sendMessage( MessageTaskToCompute( taskId, extraData, srcCode ) )
             else:
-                self.conn.sendMessage( MessageCannotAssignTask( taskId, "No more subtasks in {}".format( msg.taskId ) ) )
+                self.conn.sendMessage( MessageCannotAssignTask( msg.taskId, "No more subtasks in {}".format( msg.taskId ) ) )
 
         elif type == MessageTaskToCompute.Type:
             self.taskComputer.taskGiven( msg.taskId, msg.sourceCode, msg.extraData )
@@ -51,6 +51,7 @@ class TaskSession:
 
         elif type == MessageCannotAssignTask.Type:
             self.taskComputer.taskRequestRejected( msg.taskId, msg.reason )
+            self.taskServer.removeTaskHeader( msg.taskId )
             self.dropped()
 
         elif type == MessageTaskComputed.Type:
