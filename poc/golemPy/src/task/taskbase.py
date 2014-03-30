@@ -32,5 +32,27 @@ class Task:
         assert False # Implement in derived class
 
     #######################
+    def getTotalTasks( self ):
+        assert False # Implement in derived class
+
+    #######################
+    def getTotalChunks( self ):
+        assert False # Implement in derived class
+
+    #######################
+    def getActiveTasks( self ):
+        assert False # Implement in derived class
+
+    #######################
+    def getActiveChunks( self ):
+        assert False # Implement in derived class
+
+    #######################
+    def getChunksLeft( self ):
+        assert False # Implement in derived class
+
+    #######################
     def getProgress( self ):
         assert False # Implement in derived class
+
+

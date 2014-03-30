@@ -2,6 +2,7 @@ import random
 import time
 
 from taskbase import Task
+from nodestatesnapshot import LocalTaskStateSnapshot
 
 class TaskManager:
     #######################
@@ -64,6 +65,7 @@ class TaskManager:
         tasksProgresses = {}
 
         for t in self.tasks.values():
-            tasksProgresses[ t.header.id ] = t.getProgress()
+            ltss = LocalTaskStateSnapshot( t.getTotalTasks(), t.getTotalChunks(), t.getActiveTasks(), t.getActiveChunks(), t.getChunksLeft(), t.getProgress() )
+            tasksProgresses[ t.header.id ] = ltss
 
         return tasksProgresses

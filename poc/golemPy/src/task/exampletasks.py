@@ -159,6 +159,26 @@ class VRayTracingTask( Task ):
             VRayTracingTask.__save_image( "ladny.ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples )
 
     #######################
+    def getTotalTasks( self ):
+        return self.taskableRenderer.totalTasks
+
+    #######################
+    def getTotalChunks( self ):
+        return self.taskableRenderer.pixelsCalculated
+
+    #######################
+    def getActiveTasks( self ):
+        return self.taskableRenderer.activeTasks
+
+    #######################
+    def getActiveChunks( self ):
+        return self.taskableRenderer.nextPixel - self.taskableRenderer.pixelsCalculated
+
+    #######################
+    def getChunksLeft( self ):
+        return self.taskableRenderer.pixelsLeft
+
+    #######################
     def getProgress( self ):
         return self.taskableRenderer.getProgress()
 
