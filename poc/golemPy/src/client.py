@@ -83,7 +83,15 @@ class Client:
             remoteTasksProgresses   = self.taskServer.taskComputer.getProgresses()
             localTasksProgresses    = self.taskServer.taskManager.getProgresses()
             lastTaskMessages        = self.taskServer.getLastMessages()
-            self.lastNodeStateSnapshot = NodeStateSnapshot( self.configDesc.clientUuid, peersNum, tasksNum, remoteTasksProgresses, localTasksProgresses, lastNetworkMessages, lastTaskMessages  )
+            self.lastNodeStateSnapshot = NodeStateSnapshot(     self.configDesc.clientUuid
+                                                           ,    peersNum
+                                                           ,    tasksNum
+                                                           ,    self.p2pserver.hostAddress
+                                                           ,    self.p2pserver.curPort
+                                                           ,    lastNetworkMessages
+                                                           ,    lastTaskMessages
+                                                           ,    remoteTasksProgresses  
+                                                           ,    localTasksProgresses )
         else:
             self.lastNodeStateSnapshot = NodeStateSnapshot( self.configDesc.clientUuid, peersNum )
 

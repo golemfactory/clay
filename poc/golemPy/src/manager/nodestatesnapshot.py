@@ -23,10 +23,10 @@ class TaskChunkStateSnapshot:
 class LocalTaskStateSnapshot:
 
     def __init__( self, totalTasks, totalChunks, activeTasks, activeChunks, chunksLeft, progress ):
-        self.totalTasks = totalTasks
+        self.totalTasks = totalTasks  
         self.totalChunks = totalChunks
         self.activeTasks = activeTasks
-        self.activeChunks = chunksLeft
+        self.chunksLeft = chunksLeft
         self.progress = progress
 
     def getTotalTasks( self ):
@@ -41,6 +41,9 @@ class LocalTaskStateSnapshot:
     def getActiveChunks( self ):
         return self.activeChunks
 
+    def getChunksLeft( self ):
+        return self.chunksLeft
+
     def getProgress( self ):
         return self.progress
 
@@ -48,10 +51,10 @@ class LocalTaskStateSnapshot:
 #FIXME: also add a boolean flag indicating whether there is any active local/rempote task being calculated
 class NodeStateSnapshot:
 
-    def __init__( self, uid = 0, peersNum = 0, tasksNum = 0, enpointAddr = "", endpointPort = "", lastNetowrkMessages = [], lastTaskMessages = [], tcss = None, ltss = None ):
+    def __init__( self, uid = 0, peersNum = 0, tasksNum = 0, endpointAddr = "", endpointPort = "", lastNetowrkMessages = [], lastTaskMessages = [], tcss = {}, ltss = {} ):
         self.uid                    = uid
         self.timestamp              = QtCore.QTime.currentTime()
-        self.endpointAddr           = endpointAddr         
+        self.endpointAddr           = endpointAddr
         self.endpointPort           = endpointPort
         self.peersNum               = peersNum
         self.tasksNum               = tasksNum
@@ -67,10 +70,10 @@ class NodeStateSnapshot:
         return self.timestamp.toString( "hh:mm:ss.zzz" )
 
     def getRemoteProgress( self ):
-        return self.remoteProgress
+        return self.taskChunkState
 
     def getLocalProgress( self ):
-        return self.localProgress
+        return self.localTaskState
 
     def getPeersNum( self ):
         return self.peersNum
