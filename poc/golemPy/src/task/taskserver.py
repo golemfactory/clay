@@ -2,7 +2,6 @@ from twisted.internet import reactor
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
 
-from serverinterface import ServerInterface
 from taskmanager import TaskManager
 from taskcomputer import TaskComputer
 from tasksession import TaskSession
@@ -11,7 +10,7 @@ from taskconnstate import TaskConnState
 import random
 import time
 
-class TaskServer( ServerInterface ):
+class TaskServer:
     #############################
     def __init__( self, address, startPort, endPort, clientPerformance, taskRequestFrequency ):
         self.address            = address
@@ -112,7 +111,7 @@ class TaskServer( ServerInterface ):
 
 
     #############################
-    # PRIVATE SECSSION
+    # PRIVATE SECTION
 
     #############################
     def __startAccepting(self):

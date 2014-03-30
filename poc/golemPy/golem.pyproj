@@ -47,7 +47,6 @@
     <Compile Include="src\appconfig.py" />
     <Compile Include="src\core\hostaddress.py" />
     <Compile Include="src\manager\networksimulator.py" />
-    <Compile Include="src\serverinterface.py" />
     <Compile Include="src\task\exampletasks.py" />
     <Compile Include="src\task\taskconnstate.py" />
     <Compile Include="src\task\tasksession.py" />

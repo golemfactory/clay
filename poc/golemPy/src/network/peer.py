@@ -121,7 +121,7 @@ class PeerSession(PeerSessionInterface):
         self.__send( MessageGetTasks() )
 
     ##########################
-    # PRIVATE SECSSION
+    # PRIVATE SECTION
        
     ##########################
     def __disconnect(self, reason):

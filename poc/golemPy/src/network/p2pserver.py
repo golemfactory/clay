@@ -2,7 +2,6 @@ from twisted.internet import reactor
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
 
-from serverinterface import ServerInterface
 from netconnstate import NetConnState
 from peer import PeerSession
 import time
@@ -17,10 +16,9 @@ class NetServerFactory( Factory ):
         print "Protocol build for {}".format( addr )
         return NetConnState( self.p2pserver )
 
-class P2PServer( ServerInterface ):
+class P2PServer:
     #############################
     def __init__( self, hostAddress, clientVerssion, startPort, endPort, publicKey, seedHost, seedHostPort ):
-        ServerInterface.__init__( self )
 
         self.clientVersion          = clientVerssion
         self.startPort              = startPort
