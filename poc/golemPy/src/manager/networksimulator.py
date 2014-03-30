@@ -59,7 +59,7 @@ class NodeSimulator(QtCore.QThread):
         if self.tasksNum > 200:
             self.tasksNum = 200
 
-        return NodeStateSnapshot( self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message'], ['test message'] )
+        return NodeStateSnapshot( self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message'], ['test message'], { '0' : self.remProgress }, { '0' : self.locProgress } )
 
     ########################
     def run( self ):

@@ -69,11 +69,15 @@ class NodesManager:
         chunkProgress = 0.0
         assert isinstance( ns, NodeStateSnapshot )
         
-        if ns.getTaskChunkStateSnapshot():
-            chunkProgress = ns.getTaskChunkStateSnapshot().getProgress()
+        tcss = ns.getTaskChunkStateSnapshot()
+        if len( tcss ) > 0:
+            sp = tcss.itervalues().next()
+            chunkProgress = sp.getProgress()
 
-        if ns.getLocalTaskStateSnapshot():
-            taskProgress = ns.getLocalTaskStateSnapshot().getProgress()
+        ltss = ns.getLocalTaskStateSnapshot()
+        if len( ltss ) > 0:
+            sp = ltss.itervalues().next()
+            taskProgress = sp.getProgress()
 
         self.uic.UpdateRowsState( ns.getUID(), ns.getFormattedTimestamp(), chunkProgress, taskProgress )
 
