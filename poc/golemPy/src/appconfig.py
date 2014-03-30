@@ -33,7 +33,11 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "send pings",          0,     self, "SendPings" )
         ConfigEntry.createProperty( self.section(), "pigns interval",      0,     self, "PingsInterval" )
         ConfigEntry.createProperty( self.section(), "client UUID",         u"",   self, "ClientUuid" )
-        ConfigEntry.createProperty( self.section(), "compute listen port", 30456, self, "computeListenPort" )
+        ConfigEntry.createProperty( self.section(), "getting peers interval",   4.0,   self, "GettingPeersInterval" )
+        ConfigEntry.createProperty( self.section(), "getting tasks interval",   4.0,   self, "GettingTasksInterval" )
+        ConfigEntry.createProperty( self.section(), "task request interval",    5.0,   self, "TaskRequestInterval" )
+        ConfigEntry.createProperty( self.section(), "estimated perfomance",  1200.0,  self, "EstimatedPerformance" )
+        ConfigEntry.createProperty( self.section(), "node snapshot interval",   4.0,  self, "NodeSnapshotInterval" )
         ConfigEntry.createProperty( self.section(), "add tasks",           0,     self, "AddTasks" )
 
     ##############################
@@ -101,8 +105,20 @@ class AppConfig:
     def getClientUuid( self ):
         return self._cfg.getNodeConfig().getClientUuid()
 
-    def getComputeListenPort( self ):
-        return self._cfg.getNodeConfig().getComputeListenPort()
+    def getGettingPeersInterval( self ):
+        return self._cfg.getNodeConfig().getGettingPeersInterval()
+
+    def getGettingTasksInterval( self ):
+        return self._cfg.getNodeConfig().getGettingTasksInterval()
+
+    def getTaskRequestInterval( self ):
+        return self._cfg.getNodeConfig().getTaskRequestInterval()
+
+    def getEstimatedPerformance( self ):
+        return self._cfg.getNodeConfig().getEstimatedPerformance()
+
+    def getNodeSnapshotInterval( self ):
+        return self._cfg.getNodeConfig().getNodeSnapshotInterval()
 
     def getAddTasks( self ):
         return self._cfg.getNodeConfig().getAddTasks()

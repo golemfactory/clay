@@ -13,7 +13,7 @@ from twisted.internet import reactor
 from appconfig import AppConfig
 from client import Client
 from message import initMessages
-
+from configdescriptor import ConfigDescriptor
 
 def main():
 
@@ -31,12 +31,39 @@ def main():
     clientUuid      = cfg.getClientUuid()
     addTasks        = cfg.getAddTasks()
 
+    gettingPeersInterval    = cfg.getGettingPeersInterval()
+    gettingTasksInterval    = cfg.getGettingTasksInterval()
+    taskRequestInterval     = cfg.getTaskRequestInterval()
+    estimatedPerformance    = cfg.getEstimatedPerformance()
+    nodeSnapshotInterval    = cfg.getNodeSnapshotInterval()
+
+    configDesc = ConfigDescriptor()
+
+    configDesc.clientUuid     = clientUuid
+    configDesc.startPort      = startPort
+    configDesc.endPort        = endPort
+    configDesc.optNumPeers    = optNumPeers
+    configDesc.sendPings      = sendPings
+    configDesc.pingsInterval  = pingsInterval
+    configDesc.addTasks       = addTasks
+    configDesc.clientVersion  = 1
+
+    configDesc.seedHost               = seedHost
+    configDesc.seedHostPort           = seedHostPort
+
+    configDesc.gettingPeersInterval   = gettingPeersInterval
+    configDesc.gettingTasksInterval   = gettingTasksInterval
+    configDesc.taskRequestInterval    = taskRequestInterval 
+    configDesc.estimatedPerformance   = estimatedPerformance
+    configDesc.nodeSnapshotInterval   = nodeSnapshotInterval
+
+
     print "Adding tasks {}".format( addTasks )
     print "Creating public client interface with uuid: {}".format( clientUuid )
-    c = Client( clientUuid, optNumPeers, startPort, endPort, sendPings, pingsInterval, addTasks ) 
+    c = Client( configDesc ) 
 
     print "Starting all asynchronous services"
-    c.startNetwork( seedHost, seedHostPort )
+    c.startNetwork( )
 
     reactor.run()
 

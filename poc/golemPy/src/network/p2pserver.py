@@ -18,17 +18,13 @@ class NetServerFactory( Factory ):
 
 class P2PServer:
     #############################
-    def __init__( self, hostAddress, optNumPeers, clientVerssion, startPort, endPort, publicKey, seedHost, seedHostPort ):
+    def __init__( self, hostAddress, configDesc ):
 
-        self.clientVersion          = clientVerssion
-        self.startPort              = startPort
-        self.endPort                = endPort
-        self.curPort                = self.startPort
-        self.optNumPeers            = optNumPeers
+        self.configDesc             = configDesc
+
+        self.curPort                = self.configDesc.startPort
         self.peers                  = {}
-        self.seedHost               = seedHost
-        self.seedHostPort           = seedHostPort
-        self.publicKey              = publicKey
+        self.clientUuid             = self.configDesc.clientUuid
         self.lastPeersRequest       = time.time()
         self.lastGetTasksRequest    = time.time()
         self.incommingPeers         = {}
@@ -94,9 +90,9 @@ class P2PServer:
 
         self.__runListenOnce()
 
-        if self.seedHost and self.seedHostPort:
-            if self.seedHost != self.hostAddress or self.seedHostPort != self.curPort: #FIXME workaround to test on one machine
-                self.__connect( self.seedHost, self.seedHostPort )
+        if self.configDesc.seedHost and self.configDesc.seedHostPort:
+            if self.configDesc.seedHost != self.hostAddress or self.configDesc.seedHostPort != self.curPort: #FIXME workaround to test on one machine
+                self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
 
     #############################   
     def __connect( self, address, port ):
@@ -108,7 +104,7 @@ class P2PServer:
 
     #############################
     def __sendMessageGetPeers( self ):
-        while len( self.peers ) < self.optNumPeers:
+        while len( self.peers ) < self.configDesc.optNumPeers:
             if len( self.freePeers ) == 0:
                 if time.time() - self.lastPeersRequest > 2:
                     self.lastPeersRequest = time.time()
@@ -153,7 +149,7 @@ class P2PServer:
 
         self.curPort = self.curPort + 1
 
-        if self.curPort <= self.endPort:
+        if self.curPort <= self.configDesc.endPort:
             self.__runListenOnce()
         else:
             #FIXME: some graceful terminations should take place here

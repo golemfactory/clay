@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="src\client.py" />
     <Compile Include="src\appconfig.py" />
+    <Compile Include="src\core\configdescriptor.py" />
     <Compile Include="src\core\hostaddress.py" />
     <Compile Include="src\manager\networksimulator.py" />
     <Compile Include="src\task\exampletasks.py" />

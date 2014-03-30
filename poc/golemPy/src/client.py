@@ -15,22 +15,13 @@ import time
 import random
 import socket
 
-TASK_REQUEST_FREQ = 5.0
-ESTIMATED_PERFORMANCE = 1200.0
-
 class Client:
     ############################
-    def __init__(self, publicKey, optimalNumPeers, startPort, endPort, sendPings, pingsInterval, addTasks ):
+    def __init__(self, configDesc ):
 
-        self.optNumPeers    = optimalNumPeers
-        self.startPort      = startPort
-        self.endPort        = endPort
-        self.sendPings      = sendPings
-        self.pingsInterval  = pingsInterval
-        self.addTasks       = addTasks
+        self.configDesc     = configDesc
 
         self.lastPingTime   = 0.0
-        self.publicKey      = publicKey
         self.p2pserver      = None
         self.taskServer     = None 
         self.lastPingTime   = time.time()
@@ -44,14 +35,14 @@ class Client:
         self.doWorkTask.start(0.1, False)
        
     ############################
-    def startNetwork(self, seedHost, seedHostPort):
+    def startNetwork(self ):
         print "Starting network ..."
-        self.p2pserver = P2PServer( self.hostAddress, self.optNumPeers, 1, self.startPort, self.endPort, self.publicKey, seedHost, seedHostPort )
+        self.p2pserver = P2PServer( self.hostAddress, self.configDesc )
 
         time.sleep( 1.0 )
 
-        self.taskServer = TaskServer( self.hostAddress, self.startPort, self.endPort, ESTIMATED_PERFORMANCE, TASK_REQUEST_FREQ )
-        if self.addTasks:
+        self.taskServer = TaskServer( self.hostAddress, self.configDesc )
+        if self.configDesc.addTasks:
             hash = random.getrandbits(128)
             th = TaskHeader( hash, "10.30.10.203", self.taskServer.curPort )
             self.taskServer.taskManager.addNewTask( VRayTracingTask( 1000, 1000, 1000, th ) )
@@ -71,13 +62,13 @@ class Client:
     ############################
     def __doWork(self):
         if self.p2pserver:
-            if self.sendPings:
+            if self.configDesc.sendPings:
                 self.p2pserver.pingPeers( self.pingsInterval )
 
             self.p2pserver.syncNetwork()
             self.taskServer.syncNetwork()
 
-            if not self.lastNodeStateSnapshot or time.time() - self.lastNSSTime > 5.0:
+            if not self.lastNodeStateSnapshot or time.time() - self.lastNSSTime > self.configDesc.nodeSnapshotInterval:
                 self.__makeNodeStateSnapshot()
                 self.lastNSSTime = time.time()
 
@@ -92,8 +83,8 @@ class Client:
             remoteTasksProgresses   = self.taskServer.taskComputer.getProgresses()
             localTasksProgresses    = self.taskServer.taskManager.getProgresses()
             lastTaskMessages        = self.taskServer.getLastMessages()
-            self.lastNodeStateSnapshot = NodeStateSnapshot( self.publicKey, peersNum, tasksNum, remoteTasksProgresses, localTasksProgresses, lastNetworkMessages, lastTaskMessages  )
+            self.lastNodeStateSnapshot = NodeStateSnapshot( self.configDesc.clientUuid, peersNum, tasksNum, remoteTasksProgresses, localTasksProgresses, lastNetworkMessages, lastTaskMessages  )
         else:
-            self.lastNodeStateSnapshot = NodeStateSnapshot( self.publicKey, peersNum )
+            self.lastNodeStateSnapshot = NodeStateSnapshot( self.configDesc.clientUuid, peersNum )
 
         print self.lastNodeStateSnapshot

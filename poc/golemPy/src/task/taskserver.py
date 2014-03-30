@@ -12,14 +12,15 @@ import time
 
 class TaskServer:
     #############################
-    def __init__( self, address, startPort, endPort, clientPerformance, taskRequestFrequency ):
+    def __init__( self, address, configDesc ):
+
+        self.configDesc         = configDesc
+
         self.address            = address
-        self.startPort          = startPort
-        self.endPort            = endPort
-        self.curPort            = startPort
+        self.curPort            = configDesc.startPort
         self.taskHeaders        = {}
         self.taskManager        = TaskManager()
-        self.taskComputer       = TaskComputer( self, clientPerformance, taskRequestFrequency )
+        self.taskComputer       = TaskComputer( self, self.configDesc.estimatedPerformance, self.configDesc.taskRequestInterval )
         self.taskSeesions       = {}
         self.taskSeesionsIncoming = []
 
@@ -138,7 +139,7 @@ class TaskServer:
 
         self.curPort = self.curPort + 1
 
-        if self.curPort <= self.endPort:
+        if self.curPort <= self.configDesc.endPort:
             self.__runListenOnce()
         else:
             #FIXME: some graceful terminations should take place here
