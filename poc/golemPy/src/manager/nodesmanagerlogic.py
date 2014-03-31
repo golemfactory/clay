@@ -27,7 +27,7 @@ import subprocess
 class EmptyManagerLogic:
 
     ########################
-    def __init__( self ):
+    def __init__( self, port ):
         pass
 
     ########################

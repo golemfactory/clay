@@ -51,6 +51,7 @@
     <Compile Include="src\manager\managersession.py" />
     <Compile Include="src\manager\networksimulator.py" />
     <Compile Include="src\manager\nodesmanagerlogic.py" />
+    <Compile Include="src\manager\tcpmanagerlogic.py" />
     <Compile Include="src\network\connectionstate.py" />
     <Compile Include="src\task\exampletasks.py" />
     <Compile Include="src\task\taskconnstate.py" />
