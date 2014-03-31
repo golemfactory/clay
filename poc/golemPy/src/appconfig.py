@@ -38,7 +38,7 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "getting peers interval",   4.0,   self, "GettingPeersInterval" )
         ConfigEntry.createProperty( self.section(), "getting tasks interval",   4.0,   self, "GettingTasksInterval" )
         ConfigEntry.createProperty( self.section(), "task request interval",    5.0,   self, "TaskRequestInterval" )
-        ConfigEntry.createProperty( self.section(), "estimated perfomance",  1200.0,  self, "EstimatedPerformance" )
+        ConfigEntry.createProperty( self.section(), "estimated perfomance",  2200.0,  self, "EstimatedPerformance" )
         ConfigEntry.createProperty( self.section(), "node snapshot interval",   4.0,  self, "NodeSnapshotInterval" )
         ConfigEntry.createProperty( self.section(), "add tasks",           0,     self, "AddTasks" )
 

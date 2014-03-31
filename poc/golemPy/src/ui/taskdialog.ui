@@ -92,7 +92,7 @@
             <number>25</number>
            </property>
            <property name="value">
-            <number>1</number>
+            <number>100</number>
            </property>
           </widget>
          </item>
@@ -128,7 +128,7 @@
             <number>25</number>
            </property>
            <property name="value">
-            <number>1</number>
+            <number>100</number>
            </property>
           </widget>
          </item>
@@ -162,6 +162,9 @@
            </property>
            <property name="singleStep">
             <number>10</number>
+           </property>
+           <property name="value">
+            <number>25</number>
            </property>
           </widget>
          </item>

@@ -68,7 +68,7 @@ class TaskManager:
 
         for t in self.tasks.values():
             if t.getProgress() < 1.0:
-                ltss = LocalTaskStateSnapshot( t.header.id, t.getTotalTasks(), t.getTotalChunks(), t.getActiveTasks(), t.getActiveChunks(), t.getChunksLeft(), t.getProgress(), t.shortExtraDataRepr( 1200.0 ) )
+                ltss = LocalTaskStateSnapshot( t.header.id, t.getTotalTasks(), t.getTotalChunks(), t.getActiveTasks(), t.getActiveChunks(), t.getChunksLeft(), t.getProgress(), t.shortExtraDataRepr( 2200.0 ) )
                 tasksProgresses[ t.header.id ] = ltss
 
         return tasksProgresses
