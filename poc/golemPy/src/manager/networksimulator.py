@@ -4,7 +4,7 @@ import random
 
 from PyQt4 import QtCore
 
-from nodestatesnapshot import NodeStateSnapshot
+from nodestatesnapshot import NodeStateSnapshot, LocalTaskStateSnapshot, TaskChunkStateSnapshot
 
 
 GLOBAL_SHUTDOWN = [ False ]
@@ -83,13 +83,10 @@ class NodeSimulator(QtCore.QThread):
 
         startTime = time.time()
 
-        locTaskDuration = self.localTaskDuration
-        remTaskDuration = self.remoteTaskDuration
-
         self.locTasksDuration = self.numLocalTasks * self.localTaskDuration
         self.remTasksDuration = self.numRemoteTasks * self.remoteTaskDuration
 
-        totalDuration = max( locTasksDuration, remTasksDuration )
+        totalDuration = max( self.locTasksDuration, self.remTasksDuration )
 
         locTask = 0
         self.locTaskStartTime = startTime
@@ -112,8 +109,8 @@ class NodeSimulator(QtCore.QThread):
             if locTask < self.numLocalTasks:
                 dt = curTime - self.locTaskStartTime
 
-                if dt <= self.locTaskDuration:
-                    self.locProgress = dt / self.locTaskDuration
+                if dt <= self.localTaskDuration:
+                    self.locProgress = dt / self.localTaskDuration
                 else:
                     self.locTaskStartTime = curTime
                     locTask += 1
@@ -122,8 +119,8 @@ class NodeSimulator(QtCore.QThread):
             if remTask < self.numRemoteTasks:
                 dt = curTime - self.remTaskStartTime
 
-                if dt <= self.remTaskDuration:
-                    self.remProgress = dt / self.remTaskDuration
+                if dt <= self.remoteTaskDuration:
+                    self.remProgress = dt / self.remoteTaskDuration
                 else:
                     self.remTaskStartTime = curTime
                     remTask += 1
