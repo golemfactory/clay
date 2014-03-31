@@ -36,6 +36,10 @@ class RayTracingTask( Task ):
                     "img_height" : self.height }
 
     #######################
+    def shortExtraDataRepr( self, perfIndex ):
+        return self.queryExtraData( perfIndex ).__str__()
+
+    #######################
     def needsComputation( self ):
         if self.splitIndex < 1:
             return True
@@ -48,7 +52,7 @@ class RayTracingTask( Task ):
 
     #######################
     def computationFinished( self, extraData, taskResult ):
-        print "Receive cumputed task id:{} extraData:{} \n result:{}".format( self.taskHeader.id, extraData, taskResult )
+        print "Receive computed task id:{} extraData:{} \n result:{}".format( self.taskHeader.id, extraData, taskResult )
 
 TIMESLC  = 100.0
 TIMEOUT  = 100000.0
@@ -127,12 +131,14 @@ class VRayTracingTask( Task ):
         self.h = height
         self.num_samples = num_samples
 
+        self.lastExtraData = ""
+
     #######################
     def queryExtraData( self, perfIndex ):
 
         taskDesc = self.taskableRenderer.getNextTaskDesc( perfIndex ) 
 
-        return {    "id" : taskDesc.getID(),
+        self.lastExtraData =  {    "id" : taskDesc.getID(),
                     "x" : taskDesc.getX(),
                     "y" : taskDesc.getY(),
                     "w" : taskDesc.getW(),
@@ -141,6 +147,16 @@ class VRayTracingTask( Task ):
                     "num_samples" : taskDesc.getNumSamples(),
                     "task_data" : task_data
                     }
+
+        return self.lastExtraData
+
+    #######################
+    def shortExtraDataRepr( self, perfIndex ):
+        if self.lastExtraData:
+            l = self.lastExtraData
+            return "x: {}, y: {}, w: {}, h: {}, num_pixels: {}, num_samples: {}".format( l["x"], l["y"], l["w"], l["h"], l["num_pixels"], l["num_samples"] )
+
+        return ""
 
     #######################
     def needsComputation( self ):
@@ -156,7 +172,7 @@ class VRayTracingTask( Task ):
         res = RenderTaskResult( dest, taskResult )
         self.taskableRenderer.taskFinished( res )
         if self.taskableRenderer.isFinished():
-            VRayTracingTask.__save_image( "ladny.ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples )
+            VRayTracingTask.__save_image( "ladny.ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples ) #FIXME: change file name here
 
     #######################
     def getTotalTasks( self ):

@@ -1,4 +1,5 @@
 import time
+import abc
 
 class TaskHeader:
     #######################
@@ -16,43 +17,56 @@ class Task:
         self.header = header
 
     #######################
+    @abc.abstractmethod
     def queryExtraData( self, perfIndex ):
-        assert False # Implement in derived class
+        return # Implement in derived class
 
     #######################
+    @abc.abstractmethod
+    def shortExtraDataRepr( self, perfIndex ):
+        return # Implement in derived class
+
+    #######################
+    @abc.abstractmethod
     def needsComputation( self ):
-        assert False # Implement in derived class
+        return # Implement in derived class
 
     #######################
+    @abc.abstractmethod
     def computationStarted( self, extraData ):
-        assert False # Implement in derived class
+        return # Implement in derived class
 
     #######################
+    @abc.abstractmethod
     def computationFinished( self, extraData, taskResult ):
-        assert False # Implement in derived class
+        return # Implement in derived class
 
     #######################
+    @abc.abstractmethod
     def getTotalTasks( self ):
-        assert False # Implement in derived class
+        return # Implement in derived class
 
     #######################
+    @abc.abstractmethod
     def getTotalChunks( self ):
-        assert False # Implement in derived class
+        return # Implement in derived class
 
     #######################
+    @abc.abstractmethod
     def getActiveTasks( self ):
-        assert False # Implement in derived class
+        return # Implement in derived class
 
     #######################
+    @abc.abstractmethod
     def getActiveChunks( self ):
-        assert False # Implement in derived class
+        return # Implement in derived class
 
     #######################
+    @abc.abstractmethod
     def getChunksLeft( self ):
-        assert False # Implement in derived class
+        return # Implement in derived class
 
     #######################
+    @abc.abstractmethod
     def getProgress( self ):
-        assert False # Implement in derived class
-
-
+        return # Implement in derived class

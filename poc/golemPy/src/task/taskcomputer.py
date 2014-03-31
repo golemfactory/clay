@@ -4,6 +4,7 @@ import time
 from vm import PythonVM
 
 class TaskComputer:
+
     ######################
     def __init__( self, taskServer, estimatedPerformance, taskRequestFrequency ):
         self.estimatedPerformance   = estimatedPerformance

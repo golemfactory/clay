@@ -2,11 +2,12 @@ from PyQt4 import QtCore
 
 class TaskChunkStateSnapshot:
     
-    def __init__( self, chunkId, cpuPower, estTimeLeft, progress ):
+    def __init__( self, chunkId, cpuPower, estTimeLeft, progress, chunkShortDescr ):
         self.chunkId = chunkId
         self.cpuPower = cpuPower
         self.estTimeLeft = estTimeLeft
         self.progress = progress
+        self.chunkShortDescr = chunkShortDescr
 
     def getChunkId( self ):
         return self.chunkId
@@ -20,9 +21,12 @@ class TaskChunkStateSnapshot:
     def getProgress( self ):
         return self.progress
 
+    def chunkShortDescr( self ):
+        return self.chunkShortDescr
+
 class LocalTaskStateSnapshot:
 
-    def __init__( self, taskId, totalTasks, totalChunks, activeTasks, activeChunks, chunksLeft, progress ):
+    def __init__( self, taskId, totalTasks, totalChunks, activeTasks, activeChunks, chunksLeft, progress, taskShortDescr ):
         self.taskId = taskId
         self.totalTasks = totalTasks 
         self.totalChunks = totalChunks
@@ -30,6 +34,7 @@ class LocalTaskStateSnapshot:
         self.activeChunks = activeChunks
         self.chunksLeft = chunksLeft
         self.progress = progress
+        self.taskShortDescr = taskShortDescr
 
     def getTaskId( self ):
         return self.taskId
@@ -51,6 +56,9 @@ class LocalTaskStateSnapshot:
 
     def getProgress( self ):
         return self.progress
+
+    def taskShortDescr( self ):
+        return self.taskShortDescr
 
 #FIXME: REGISTER number of local and remote tasks processed by current node (and number of successes and failures as well) - and show it in this manager
 #FIXME: also add a boolean flag indicating whether there is any active local/rempote task being calculated

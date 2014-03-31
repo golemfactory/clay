@@ -50,7 +50,6 @@ class Client:
             th = TaskHeader( hash, "10.30.10.203", self.taskServer.curPort )
             self.taskServer.taskManager.addNewTask( VRayTracingTask( 1, 1, 1, th ) )
 
-
         self.p2pserver.setTaskServer( self.taskServer )
 
     ############################
@@ -73,7 +72,7 @@ class Client:
                 self.lastNSSTime = time.time()
 
     ############################
-    def __makeNodeStateSnapshot( self ):
+    def __makeNodeStateSnapshot( self, isRunning = True ):
 
         peersNum            = len( self.p2pserver.peers )
         lastNetworkMessages = self.p2pserver.getLastMessages()
@@ -83,7 +82,8 @@ class Client:
             remoteTasksProgresses   = self.taskServer.taskComputer.getProgresses()
             localTasksProgresses    = self.taskServer.taskManager.getProgresses()
             lastTaskMessages        = self.taskServer.getLastMessages()
-            self.lastNodeStateSnapshot = NodeStateSnapshot(     self.configDesc.clientUuid
+            self.lastNodeStateSnapshot = NodeStateSnapshot(     isRunning
+                                                           ,    self.configDesc.clientUuid
                                                            ,    peersNum
                                                            ,    tasksNum
                                                            ,    self.p2pserver.hostAddress

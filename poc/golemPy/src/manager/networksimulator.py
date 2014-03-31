@@ -70,7 +70,7 @@ class NodeSimulator(QtCore.QThread):
 
         ctl = self.remoteTaskDuration - ( curTime - self.remTaskStartTime )
         ctl = max( 0.0, ctl )
-        tcss = TaskChunkStateSnapshot( '0xbaadf00d', 1600.0, ctl, self.remProgress )
+        tcss = TaskChunkStateSnapshot( '0xbaadf00d', 1600.0, ctl, self.remProgress, "chunk data: {}".format( self.remTask ) )
 
         allChunks = 1000 * 1000
 
@@ -81,7 +81,7 @@ class NodeSimulator(QtCore.QThread):
         activeTasks = int( activeRandom * totalTasks )
         activeChunks = int( activeRandom * totalChunks )
 
-        ltss = LocalTaskStateSnapshot( '0xcdcdcdcd', totalTasks, totalChunks, activeTasks, activeChunks, allChunks - totalChunks, self.locProgress ) 
+        ltss = LocalTaskStateSnapshot( '0xcdcdcdcd', totalTasks, totalChunks, activeTasks, activeChunks, allChunks - totalChunks, self.locProgress, "task data: {}".format( self.locTask ) ) 
 
         return NodeStateSnapshot( self.running, self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message {}'.format( random.randint(0,200) )], ['test message {}'.format( random.randint(10, 70) )], { '0' : tcss }, { '0xcdcdcd' : ltss } )
 
@@ -95,9 +95,9 @@ class NodeSimulator(QtCore.QThread):
 
         totalDuration = max( self.locTasksDuration, self.remTasksDuration )
 
-        locTask = 0
+        self.locTask = 0
         self.locTaskStartTime = startTime
-        remTask = 0
+        self.remTask = 0
         self.remTaskStartTime = startTime
 
         print "Starting node '{}' local tasks: {} remote tasks: {}".format( self.uid, self.numLocalTasks, self.numRemoteTasks )
@@ -117,24 +117,24 @@ class NodeSimulator(QtCore.QThread):
 
             curTime = time.time()
 
-            if locTask < self.numLocalTasks:
+            if self.locTask < self.numLocalTasks:
                 dt = curTime - self.locTaskStartTime
 
                 if dt <= self.localTaskDuration:
                     self.locProgress = dt / self.localTaskDuration
                 else:
                     self.locTaskStartTime = curTime
-                    locTask += 1
+                    self.locTask += 1
                     self.locProgress = 0.0
 
-            if remTask < self.numRemoteTasks:
+            if self.remTask < self.numRemoteTasks:
                 dt = curTime - self.remTaskStartTime
 
                 if dt <= self.remoteTaskDuration:
                     self.remProgress = dt / self.remoteTaskDuration
                 else:
                     self.remTaskStartTime = curTime
-                    remTask += 1
+                    self.remTask += 1
                     self.remProgress = 0.0
 
             self.simulator.updateRequested( self.id )
