@@ -145,7 +145,7 @@ class P2PServer:
     #############################
     #FIXME: tutaj trzeba zwiekszyc numer portu i odpalic ponownie endpoint listen - i tak az do momenty, kiedy sie uda lub skoncza sie porty - wtedy pad
     def __listeningFailure( self, p ):
-        print "Opening {} port for listetning failed, trying the next one".format( self.curPort )
+        print "Opening {} port for listening failed, trying the next one".format( self.curPort )
 
         self.curPort = self.curPort + 1
 
