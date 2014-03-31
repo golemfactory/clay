@@ -31,9 +31,11 @@ class EmptyManagerLogic:
         self.port = port
         self.reactor = None
 
+    ########################
     def setReactor( self, reactor ):
         self.reactor = reactor
 
+    ########################
     def getReactor( self ):
         return self.reactor
 

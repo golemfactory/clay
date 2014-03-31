@@ -39,5 +39,6 @@ def main():
     manager.execute( True )
 
     reactor.run()
+    sys.exit( 0 )
 
 main()
