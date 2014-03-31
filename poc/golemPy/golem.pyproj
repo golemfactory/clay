@@ -72,6 +72,7 @@
     <Compile Include="src\task\taskcomputer.py" />
     <Compile Include="src\task\taskmanager.py" />
     <Compile Include="src\task\taskserver.py" />
+    <Compile Include="src\ui\taskdialog.py" />
     <Compile Include="src\ui\uicustomizer.py" />
     <Compile Include="src\ui\progressbar.py" />
     <Compile Include="src\ui\pyuic.py" />
@@ -103,6 +104,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="src\ui\manager.ui" />
+    <Content Include="src\ui\taskdialog.ui" />
     <Content Include="testtasks\minilight\cornellbox.ml.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
