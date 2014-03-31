@@ -31,8 +31,11 @@ class NodesManager:
 
         #FIXME: some shitty python magic
         def closeEvent_(self_, event):
-            GLOBAL_SHUTDOWN[ 0 ] = True
-            event.accept()
+            try:
+                self.managerLogic.getReactor().stop()
+            finally:
+                GLOBAL_SHUTDOWN[ 0 ] = True
+                event.accept()
 
         setattr( self.window.__class__, 'closeEvent', closeEvent_ )
 
@@ -58,10 +61,11 @@ class NodesManager:
             self.statesBuffer = []
 
     ########################
-    def execute( self ):
+    def execute( self, usingqt4Reactor = False ):
         self.window.show()
         self.timer.start( 100 )
-        sys.exit(self.app.exec_())
+        if not usingqt4Reactor:
+            sys.exit(self.app.exec_())
 
     ########################
     def updateNodeState( self, ns ):
