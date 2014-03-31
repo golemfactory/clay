@@ -66,6 +66,7 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.widget.runAdditionalNodesPushButton.clicked.connect( self.addNodesClicked )
         self.widget.stopNodePushButton.clicked.connect( self.stopNodeClicked )
         self.widget.enqueueTaskButton.clicked.connect( self.enqueueTaskClicked )
+        self.widget.terminateAllNodesPushButton.clicked.connect( self.terminateAllNodesClicked )
 
     ########################
     def addNodesClicked( self ):
@@ -76,6 +77,10 @@ class ManagerUiCustomizer(QtCore.QObject):
     def stopNodeClicked( self ):
         if self.curActiveRowIdx is not None and self.curActiveRowUid is not None:
             self.logic.terminateNode( self.curActiveRowUid )
+
+    ########################
+    def terminateAllNodesClicked( self ):
+        self.logic.terminateAllNodes()
 
     ########################
     def enqueueTaskClicked( self ):
