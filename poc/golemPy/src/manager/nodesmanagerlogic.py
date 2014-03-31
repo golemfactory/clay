@@ -23,17 +23,19 @@ class NodesManagerLogicTest:
 
 
 import subprocess
+from managerserver import ManagerServer
 
 class EmptyManagerLogic:
 
     ########################
     def __init__( self, port ):
-        self.port = port
         self.reactor = None
+        self.server = ManagerServer( port, None )
 
     ########################
     def setReactor( self, reactor ):
         self.reactor = reactor
+        self.server.setReactor( reactor )
 
     ########################
     def getReactor( self ):
