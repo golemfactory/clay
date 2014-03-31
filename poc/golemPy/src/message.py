@@ -313,6 +313,31 @@ class MessageTaskComputed( Message ):
                     MessageTaskComputed.EXTRA_DATA_STR: self.extraData,
                     MessageTaskComputed.RESULT_STR: self.result }
 
+MANAGER_MSG_BASE = 1000
+
+class MessagePeerStatus( Message ):
+
+    Type = MANAGER_MSG_BASE + 1
+
+    ID_STR      = u"ID"
+    DATA_STR    = u"DATA"
+
+    def __init__( self, id = "", data = "", dictRepr = None ):
+        Message.__init__(self, MessagePeerStatus.Type)
+
+        self.id = id
+        self.data = data
+
+        if dictRepr:
+            self.id = dictRepr[ self.ID_STR ]
+            self.data = dictRepr[ self.DATA_STR ]
+
+    def dictRepr(self):
+        return { self.ID_STR : self.id, self.DATA_STR : self.data } 
+
+    def __str__( self ):
+        return "{} {}".format( self.id, self.data )
+
 def initMessages():
     MessageHello()
     MessagePing()
@@ -326,6 +351,7 @@ def initMessages():
     MessageTasks()
     MessageTaskToCompute()
     MessageWantToComputeTask()
+    MessagePeerStatus()
 
 
 if __name__ == "__main__":

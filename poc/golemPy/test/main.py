@@ -16,8 +16,11 @@ from appconfig import AppConfig
 from clientconfigdescriptor import ClientConfigDescriptor
 from nodesmanager import  NodesManager
 from nodesmanagerlogic import EmptyManagerLogic
+from message import initMessages
 
 def main():
+
+    initMessages()
 
     port = AppConfig.managerPort()
     logic = EmptyManagerLogic( port )

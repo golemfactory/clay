@@ -4,6 +4,7 @@ from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, c
 from managerconnection import ManagerConnectionState
 from managersession import ManagerSession
 
+import pickle
 
 class ManagerServerFactory(Factory):
     #############################
@@ -12,15 +13,18 @@ class ManagerServerFactory(Factory):
 
     #############################
     def buildProtocol( self, addr ):
-        print "Protocol build for {}".format(addr)
-        return ManagerConnectionState( self.server )
+        print "Protocol build for {} : {}".format( addr.host, addr.port )
+        cs = ManagerConnectionState( self.server )
+        return cs
 
 class ManagerServer:
 
     #############################
-    def __init__( self, port, reactor = None ):
-        self.port = port
-        self.reactor = reactor
+    def __init__( self, nodesManager, port, reactor = None ):
+        self.port           = port
+        self.managerSession = None
+        self.reactor        = reactor
+        self.nodesManager   = nodesManager
 
     #############################
     def setReactor( self, reactor ):
@@ -48,10 +52,17 @@ class ManagerServer:
 
     #############################
     def __listeningFailure(self, p):
+        print "DUPA"
         print "Opening {} port for listening failed - bailign out".format( self.port )
-        sys.exit( 0 )
 
     #############################
-    def newConnection(self, conn):
-        print "Gowno"
-        pass
+    def newNMConnection(self, conn):
+        pp = conn.transport.getPeer()
+        self.managerSession = ManagerSession( conn, self,  pp.host, pp.port )
+        conn.setSession( self.managerSession )
+
+    #############################
+    def nodeStateSnapshotReceived( self, nss ):
+        nssobj = pickle.loads( nss )
+        self.nodesManager.appendStateUpdate( nssobj )
+        

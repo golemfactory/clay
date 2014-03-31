@@ -3,6 +3,8 @@ from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
 
 from netconnstate import NetConnState
+from managerconnection import ManagerConnectionState
+from managersession import ManagerSession
 from peer import PeerSession
 import time
 
@@ -32,6 +34,8 @@ class P2PServer:
         self.taskServer             = None
         self.hostAddress            = hostAddress
 
+        self.managerSession         = None
+
         self.lastMessages           = []
 
         self.__startAccepting()
@@ -46,6 +50,21 @@ class P2PServer:
 
         if self.taskServer:
             self.__sendMessageGetTasks()
+
+    #############################
+    def sendClientStateSnapshot( self, snapshot ):
+        if self.managerSession:
+            self.managerSession.sendClientStateSnapshot( snapshot )
+
+        else:
+            print "Cannot sent snapshot !!! "
+
+    #############################
+    def newNMConnection( self, conn ):
+        pp = conn.transport.getPeer()
+        print "newNMConnection {} {}".format( pp.host, pp.port )
+        self.managerSession = ManagerSession( conn, self, pp.host, pp.port )
+        conn.setSession( self.managerSession )
 
     #############################
     def newConnection( self, conn ):
@@ -94,6 +113,17 @@ class P2PServer:
             if self.configDesc.seedHost != self.hostAddress or self.configDesc.seedHostPort != self.curPort: #FIXME workaround to test on one machine
                 self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
 
+        self.__connectNodesManager( "127.0.0.1", self.configDesc.managerPort )
+
+    #############################   
+    def __connectNodesManager( self, address, port ):
+        print "Connecting to nodes manager host {} : {}".format( address ,port )
+        endpoint = TCP4ClientEndpoint( reactor, address, port )
+        connection = ManagerConnectionState( self );
+        d = connectProtocol( endpoint, connection )
+        d.addErrback( self.__connectionNMFailure )
+        d.addCallback( self.__connectionNMEstablished )
+
     #############################   
     def __connect( self, address, port ):
         print "Connecting to host {} : {}".format( address ,port )
@@ -127,6 +157,14 @@ class P2PServer:
     #############################
     def __connectionFailure( self, conn ):
         print "Connection to peer failure. {}: {}".format( conn.transport.getPeer().host, conn.transport.getPeer().port )
+
+    #############################
+    def __connectionNMEstablished( self, conn ):
+        pp = conn.transport.getPeer()
+        print "__connectionNMEstablished {} {}".format( pp.host, pp.port )
+
+    def __connectionNMFailure( self, conn ):
+        print "Connection to nodes manager failure. {}: {}".format( conn.transport.getPeer().host, conn.transport.getPeer().port )
 
     #############################
     def __runListenOnce( self ):

@@ -10,7 +10,7 @@ from hostaddress import getHostAddress
 
 from managerserver import ManagerServer
 from nodestatesnapshot import NodeStateSnapshot
-from managermessage import MessagePeerStatus
+from message import MessagePeerStatus
 
 import sys
 import time
@@ -45,7 +45,6 @@ class Client:
         time.sleep( 1.0 )
 
         self.taskServer = TaskServer( self.hostAddress, self.configDesc )
-        self.managerServer = ManagerServer( self.configDesc.managerPort )
         if self.configDesc.addTasks:
             hash = random.getrandbits(128)
             th = TaskHeader( hash, "10.30.10.203", self.taskServer.curPort )
@@ -55,14 +54,12 @@ class Client:
             self.taskServer.taskManager.addNewTask( VRayTracingTask( 1, 1, 1, th ) )
 
         self.p2pserver.setTaskServer( self.taskServer )
-        self.managerServer.setReactor( reactor )
 
     ############################
     def stopNetwork(self):
         #FIXME: Pewnie cos tu trzeba jeszcze dodac. Zamykanie serwera i wysylanie DisconnectPackege
         self.p2pserver = None
         self.taskServer = None
-        self.managerServer = None
 
     ############################
     def __doWork(self):
@@ -73,11 +70,11 @@ class Client:
             self.p2pserver.syncNetwork()
             self.taskServer.syncNetwork()
 
-            if not self.lastNodeStateSnapshot or time.time() - self.lastNSSTime > self.configDesc.nodeSnapshotInterval:
+            if time.time() - self.lastNSSTime > self.configDesc.nodeSnapshotInterval:
                 self.__makeNodeStateSnapshot()
                 self.lastNSSTime = time.time()
 
-                self.managerServer.sendStateMessage( self.lastNodeStateSnapshot )
+                #self.managerServer.sendStateMessage( self.lastNodeStateSnapshot )
 
     ############################
     def __makeNodeStateSnapshot( self, isRunning = True ):
@@ -102,5 +99,8 @@ class Client:
                                                            ,    localTasksProgresses )
         else:
             self.lastNodeStateSnapshot = NodeStateSnapshot( self.configDesc.clientUuid, peersNum )
+
+        if self.p2pserver:
+            self.p2pserver.sendClientStateSnapshot( self.lastNodeStateSnapshot )
 
         #print self.lastNodeStateSnapshot
