@@ -5,11 +5,11 @@ class TaskConnState( ConnectionState ):
     ##########################
     def __init__(self, server):
         ConnectionState.__init__( self, server )
-        self.taskSesssion = None
+        self.taskSession = None
 
     ############################
-    def setTaskSession( self, taskSesssion ):
-        self.taskSesssion = taskSesssion
+    def setTaskSession( self, taskSession ):
+        self.taskSession = taskSession
 
     ############################
     def connectionMade(self):
@@ -28,7 +28,7 @@ class TaskConnState( ConnectionState ):
 
         if self.taskSesssion:
             for m in mess:
-                self.taskSesssion.interpret(m)
+                self.taskSession.interpret(m)
         else:
             print "Task session for connection is None"
             assert False
@@ -37,5 +37,5 @@ class TaskConnState( ConnectionState ):
     def connectionLost(self, reason):
         self.opened = False
 
-        if self.taskSesssion:
-            self.taskSesssion.dropped()
+        if self.taskSession:
+            self.taskSession.dropped()
