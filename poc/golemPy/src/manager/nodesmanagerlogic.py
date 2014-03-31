@@ -20,3 +20,29 @@ class NodesManagerLogicTest:
     ########################
     def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
         self.simulator.enqueueNodeTask( uid, w, h, numSamplesPerPixel, fileName )
+
+
+import subprocess
+
+class EmptyManagerLogic:
+
+    ########################
+    def __init__( self ):
+        pass
+
+    ########################
+    def runAdditionalNodes( self, numNodes ):
+        for i in range( numNodes ):
+            self.pc = subprocess.Popen( ["python", "clientmain.py"], creationflags = subprocess.CREATE_NEW_CONSOLE )
+
+    ########################
+    def terminateNode( self, uid ):
+        pass
+
+    ########################
+    def terminateAllNodes( self ):
+        pass
+
+    ########################
+    def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
+        pass

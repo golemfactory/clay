@@ -5,6 +5,7 @@ from simpleconfig import SimpleConfig, ConfigEntry
 from prochelper import ProcessService
 
 CONFIG_FILENAME = "app_cfg.ini"
+MANAGER_PORT = 20301
 
 class CommonConfig:
 
@@ -16,7 +17,7 @@ class CommonConfig:
         ConfigEntry.createProperty( section, "optimal peer num",    10,    self, "OptimalPeerNum" )
         ConfigEntry.createProperty( section, "start port",          40102, self, "StartPort" )
         ConfigEntry.createProperty( section, "end port",            60102, self, "EndPort" )
-        ConfigEntry.createProperty( section, "manager listen port", 20301, self, "ManagerListenPort" )
+        ConfigEntry.createProperty( section, "manager listen port", MANAGER_PORT, self, "ManagerListenPort" )
 
     ##############################
     def section( self ):
@@ -51,6 +52,11 @@ class NodeConfig:
 class AppConfig:
 
     CONFIG_LOADED = False
+
+    ##############################
+    @classmethod
+    def managerPort( cls ):
+        return MANAGER_PORT
 
     ##############################
     @classmethod
