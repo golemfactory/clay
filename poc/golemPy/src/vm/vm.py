@@ -55,4 +55,3 @@ class PythonVM( IGolemVM ):
     def __interpret( self ):
         exec self.srcCode in self.scope
         return self.scope[ "output" ]
-

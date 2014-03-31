@@ -13,7 +13,7 @@ from twisted.internet import reactor
 from appconfig import AppConfig
 from client import Client
 from message import initMessages
-from configdescriptor import ConfigDescriptor
+from clientconfigdescriptor import ClientConfigDescriptor
 
 def main():
 
@@ -38,7 +38,7 @@ def main():
     estimatedPerformance    = cfg.getEstimatedPerformance()
     nodeSnapshotInterval    = cfg.getNodeSnapshotInterval()
 
-    configDesc = ConfigDescriptor()
+    configDesc = ClientConfigDescriptor()
 
     configDesc.clientUuid     = clientUuid
     configDesc.startPort      = startPort

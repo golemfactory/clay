@@ -1,7 +1,11 @@
+import sys
+sys.path.append( '../manager')
+
 from threading import Thread, Lock
 import time
 
 from vm import PythonVM
+from nodestatesnapshot import TaskChunkStateSnapshot
 
 class TaskComputer:
 
@@ -16,9 +20,9 @@ class TaskComputer:
         self.taskRequestFrequency   = taskRequestFrequency
 
     ######################
-    def taskGiven( self, taskId, srcCode, extraData ):
+    def taskGiven( self, taskId, srcCode, extraData, shortDescr ):
         if self.waitingForTask:
-            self.__computeTask( taskId, srcCode, extraData )
+            self.__computeTask( taskId, srcCode, extraData, shortDescr )
             self.waitingForTask = 0
             return True
         else:
@@ -54,7 +58,8 @@ class TaskComputer:
     def getProgresses( self ):
         ret = {}
         for c in self.currentComputations:
-            ret[ c.taskId ] = c.getProgress()
+            tcss = TaskChunkStateSnapshot( c.getTaskId(), 0.0, 0.0, c.getProgress(), c.getTaskShortDescr()  ) #FIXME: cpu power and estimated time left
+            ret[ c.taskId ] = tcss
 
         return ret
 
@@ -63,15 +68,15 @@ class TaskComputer:
         self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance )
 
     ######################
-    def __computeTask( self, taskId, srcCode, extraData ):
-        tt = PyTaskThread( self, taskId, srcCode, extraData ) 
+    def __computeTask( self, taskId, srcCode, extraData, shortDescr ):
+        tt = PyTaskThread( self, taskId, srcCode, extraData, shortDescr ) 
         self.currentComputations.append( tt )
         tt.start()
 
 
 class TaskThread( Thread ):
     ######################
-    def __init__( self, taskComputer, taskId, srcCode, extraData ):
+    def __init__( self, taskComputer, taskId, srcCode, extraData, shortDescr ):
         super( TaskThread, self ).__init__()
 
         self.taskComputer   = taskComputer
@@ -79,10 +84,20 @@ class TaskThread( Thread ):
         self.taskId         = taskId
         self.srcCode        = srcCode
         self.extraData      = extraData
+        self.shortDescr     = shortDescr
         self.result         = None
         self.done           = False
         self.lock           = Lock()
 
+    ######################
+    def getTaskId( self ):
+        return self.taskId
+
+    ######################
+    def getTaskShortDescr( self ):
+        return self.shortDescr
+
+    ######################
     def getProgress( self ):
         with self.lock:
             return self.vm.getProgress()
@@ -101,6 +116,6 @@ class TaskThread( Thread ):
 
 class PyTaskThread( TaskThread ):
     ######################
-    def __init__( self, taskComputer, taskId, srcCode, extraData ):
-        super( PyTaskThread, self ).__init__( taskComputer, taskId, srcCode, extraData )
+    def __init__( self, taskComputer, taskId, srcCode, extraData, shortDescr ):
+        super( PyTaskThread, self ).__init__( taskComputer, taskId, srcCode, extraData, shortDescr )
         self.vm = PythonVM()

@@ -244,23 +244,27 @@ class MessageTaskToCompute( Message ):
 
     TASK_ID_STR     = u"TASK_ID"
     EXTRA_DATA_STR  = u"EXTRA_DATA"
+    SHORT_DESCR_STR  = u"SHORT_DESCR"
     SOURCE_CODE_STR = u"SOURCE_CODE"
 
-    def __init__( self, taskId = 0, extraData = {}, sourceCode = "", dictRepr = None ):
+    def __init__( self, taskId = 0, extraData = {}, shortDescr = "", sourceCode = "", dictRepr = None ):
         Message.__init__(self, MessageTaskToCompute.Type)
 
         self.taskId = taskId
         self.extraData = extraData
+        self.shortDescr = shortDescr
         self.sourceCode = sourceCode
 
         if dictRepr:
             self.taskId     = dictRepr[ MessageTaskToCompute.TASK_ID_STR ]
             self.extraData  = dictRepr[ MessageTaskToCompute.EXTRA_DATA_STR ]
+            self.shortDescr = dictRepr[ MessageTaskToCompute.SHORT_DESCR_STR ]
             self.sourceCode = dictRepr[ MessageTaskToCompute.SOURCE_CODE_STR ]
 
     def dictRepr(self):
         return {    MessageTaskToCompute.TASK_ID_STR : self.taskId,
                     MessageTaskToCompute.EXTRA_DATA_STR: self.extraData,
+                    MessageTaskToCompute.SHORT_DESCR_STR : self.shortDescr,
                     MessageTaskToCompute.SOURCE_CODE_STR: self.sourceCode }
 
 class MessageCannotAssignTask( Message ):

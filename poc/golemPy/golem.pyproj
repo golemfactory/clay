@@ -45,14 +45,14 @@
   <ItemGroup>
     <Compile Include="src\client.py" />
     <Compile Include="src\appconfig.py" />
-    <Compile Include="src\core\configdescriptor.py" />
+    <Compile Include="src\clientconfigdescriptor.py" />
     <Compile Include="src\core\hostaddress.py" />
     <Compile Include="src\manager\networksimulator.py" />
     <Compile Include="src\manager\nodesmanagerlogic.py" />
+    <Compile Include="src\network\connectionstate.py" />
     <Compile Include="src\task\exampletasks.py" />
     <Compile Include="src\task\taskconnstate.py" />
     <Compile Include="src\task\tasksession.py" />
-    <Compile Include="src\connectionstate.py" />
     <Compile Include="src\core\databuffer.py" />
     <Compile Include="src\core\filelock.py" />
     <Compile Include="src\core\prochelper.py" />
