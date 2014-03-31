@@ -16,6 +16,7 @@ class CommonConfig:
         ConfigEntry.createProperty( section, "optimal peer num",    10,    self, "OptimalPeerNum" )
         ConfigEntry.createProperty( section, "start port",          40102, self, "StartPort" )
         ConfigEntry.createProperty( section, "end port",            60102, self, "EndPort" )
+        ConfigEntry.createProperty( section, "manager listen port", 20301, self, "ManagerListenPort" )
 
     ##############################
     def section( self ):
@@ -89,6 +90,9 @@ class AppConfig:
 
     def getEndPort( self ):
         return self._cfg.getCommonConfig().getEndPort()
+
+    def getManagerListenPort( self ):
+        return self._cfg.getCommonConfig().getManagerListenPort()
 
     def getSeedHost( self ):
         return self._cfg.getNodeConfig().getSeedHost()

@@ -95,4 +95,4 @@ class Client:
         else:
             self.lastNodeStateSnapshot = NodeStateSnapshot( self.configDesc.clientUuid, peersNum )
 
-        print self.lastNodeStateSnapshot
+        #print self.lastNodeStateSnapshot

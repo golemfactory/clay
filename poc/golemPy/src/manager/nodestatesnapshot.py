@@ -111,11 +111,12 @@ class NodeStateSnapshot:
         return self.localTaskState
 
     def __str__( self ):
-        ret = str( self.getUID() )+ " ----- \n" + "peers count: " + str( self.getPeersNum() ) + "\n" + "tasks count: " + str( self.getTasksNum() ) + "\n"
-        ret += "remote progress: " + str( self.getRemoteProgress() ) + "\n" + "lockal progress: " + str( self.getLocalProgress() ) + "\n"
-        ret += "last net comunication: " + str( self.getLastNetworkMessages() ) + "\n"
-        ret += "last task comunication: " + str( self.getLastTaskMessages() )
-        return ret
+        return "Nothing here"
+        #ret = str( self.getUID() )+ " ----- \n" + "peers count: " + str( self.getPeersNum() ) + "\n" + "tasks count: " + str( self.getTasksNum() ) + "\n"
+        #ret += "remote progress: " + str( self.getRemoteProgress() ) + "\n" + "lockal progress: " + str( self.getLocalProgress() ) + "\n"
+        #ret += "last net comunication: " + str( self.getLastNetworkMessages() ) + "\n"
+        #ret += "last task comunication: " + str( self.getLastTaskMessages() )
+        #return ret
 
 if __name__ == "__main__":
 

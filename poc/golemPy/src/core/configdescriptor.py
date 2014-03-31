@@ -6,6 +6,7 @@ class ConfigDescriptor:
         self.clientUuid     = 0
         self.startPort      = 0
         self.endPort        = 0
+        self.managerPort    = 0
         self.optNumPeers    = 0
         self.sendPings      = 0
         self.pingsInterval  = 0.0

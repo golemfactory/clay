@@ -22,6 +22,7 @@ def main():
     cfg = AppConfig.loadConfig()
 
     optNumPeers     = cfg.getOptimalPeerNum()
+    managerPort     = cfg.getManagerListenPort()
     startPort       = cfg.getStartPort()
     endPort         = cfg.getEndPort()
     seedHost        = cfg.getSeedHost()
@@ -42,6 +43,7 @@ def main():
     configDesc.clientUuid     = clientUuid
     configDesc.startPort      = startPort
     configDesc.endPort        = endPort
+    configDesc.managerPort    = managerPort
     configDesc.optNumPeers    = optNumPeers
     configDesc.sendPings      = sendPings
     configDesc.pingsInterval  = pingsInterval
@@ -56,7 +58,6 @@ def main():
     configDesc.taskRequestInterval    = taskRequestInterval 
     configDesc.estimatedPerformance   = estimatedPerformance
     configDesc.nodeSnapshotInterval   = nodeSnapshotInterval
-
 
     print "Adding tasks {}".format( addTasks )
     print "Creating public client interface with uuid: {}".format( clientUuid )
