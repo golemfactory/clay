@@ -59,6 +59,7 @@ class Client:
         #FIXME: Pewnie cos tu trzeba jeszcze dodac. Zamykanie serwera i wysylanie DisconnectPackege
         self.p2pserver = None
         self.taskServer = None
+        self.managerServer = None
 
     ############################
     def __doWork(self):

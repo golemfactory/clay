@@ -47,6 +47,7 @@
     <Compile Include="src\appconfig.py" />
     <Compile Include="src\clientconfigdescriptor.py" />
     <Compile Include="src\core\hostaddress.py" />
+    <Compile Include="src\manager\managerserver.py" />
     <Compile Include="src\manager\managersession.py" />
     <Compile Include="src\manager\networksimulator.py" />
     <Compile Include="src\manager\nodesmanagerlogic.py" />
