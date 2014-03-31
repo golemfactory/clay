@@ -44,6 +44,8 @@ class ManagerUiCustomizer(QtCore.QObject):
 
     ########################
     def __init__( self, widget, managerLogic ):
+        super(ManagerUiCustomizer, self).__init__()
+
         self.widget = widget
         self.table = widget.nodeTableWidget
         self.table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
@@ -72,7 +74,7 @@ class ManagerUiCustomizer(QtCore.QObject):
 
         idx = item1.indexes()[ 0 ].row()
 
-        uid = self.nodeDataStates[ idx ].uid.text()
+        uid = self.nodeDataStates[ idx ].uid
         self.curActiveRowIdx = idx
         self.curActiveRowUid = uid
 
@@ -133,13 +135,13 @@ class ManagerUiCustomizer(QtCore.QObject):
             
             self.widget.labelDetailedNode.setText( "Node ({})".format( nodeDataState.uid[:15] ) )
             
-            if self.chunkId and len( self.chunkId ) > 0:
+            if nodeDataState.chunkId and len( nodeDataState.chunkId ) > 0:
                 self.widget.labelDetailedRemoteTask.setText( "Active remote task ({})".format( nodeDataState.chunkId[:15]) )
             else:
                 self.widget.labelDetailedRemoteTask.setText( "Active remote task (none)" )
 
-            if self.locTaskId and len( self.locTaskId ) > 0:
-                self.widget.labelDetailedLocalTask.setText( "Active local task ({})" ).format( nodeDataState.locTaskId[:15])
+            if nodeDataState.locTaskId and len( nodeDataState.locTaskId ) > 0:
+                self.widget.labelDetailedLocalTask.setText( "Active local task ({})".format( nodeDataState.locTaskId[:15] ) )
             else:
                 self.widget.labelDetailedLocalTask.setText( "Active local task (none)" )
 
@@ -164,7 +166,7 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.widget.labelDetailedNode.setText( "Node (none)" )
         self.widget.labelDetailedRemoteTask.setText( "Active remote task (none)" )
         self.widget.labelDetailedLocalTask.setText( "Active local task (none)" )
-        self.widget.remoteTaskProgressBar.setProperty("value", 0)
+        self.widget.activeChunkProgressBar.setProperty("value", 0)
         self.widget.localTaskProgressBar.setProperty("value", 0)
 
     ########################
@@ -185,16 +187,15 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.widget.frameDetailedNode.setEnabled( enableFlag )
 
     ########################
-    def UpdateNodeState( self, nodeDataState ):
+    def UpdateNodePresentationState( self, nodeDataState ):
         #prerequisites
         if not self.isRegistered( nodeDataState.uid ):
-            self.__registerRowData( nodeUid, self.__createRow( nodeDataState.uid, nodeDataState.timestamp ), nodeDataState )
+            self.__registerRowData( nodeDataState.uid, self.__createRow( nodeDataState.uid, nodeDataState.timestamp ), nodeDataState )
 
         #update model
         idx = self.uidRowMapping[ nodeDataState.uid ]
         self.nodeDataStates[ idx ] = nodeDataState
 
         #update view
-        self.__updateExistingRowView( self.tableData[ nodeDataState.uid ], nodeDataState.uid, nodeDataState.timestamp, self.chunkProgress, self.locTaskProgress )        
+        self.__updateExistingRowView( self.tableData[ nodeDataState.uid ], nodeDataState.uid, nodeDataState.timestamp, nodeDataState.chunkProgress, nodeDataState.locTaskProgress )        
         self.__updateDetailedNodeView( idx, nodeDataState )
-

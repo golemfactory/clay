@@ -87,6 +87,7 @@ class NodesManager:
         activeTasks = ""
         activeChunks = ""
         chunksLeft = ""
+
         ltss = ns.getLocalTaskStateSnapshot()
         if len( ltss ) > 0:
             sp = ltss.itervalues().next()
@@ -100,13 +101,15 @@ class NodesManager:
 
         ep = "{}:{}".format( ns.endpointAddr, ns.endpointPort )
         ts = ns.getFormattedTimestamp()
-        pn = ns.getPeersNum()
-        tn = ns.getTasksNum()
-        lm = ns.getLastNetworkMessages()[-1]
+        pn = "{}".format( ns.getPeersNum() )
+        tn = "{}".format( ns.getTasksNum() )
+        lm = ""
+        if len( ns.getLastNetworkMessages() ) > 0:
+            lm = ns.getLastNetworkMessages()[-1]
 
         nodeDataState = NodeDataState( ns.uid, ts, ep, pn, tn, lm, chunkId, cpuPower, timeLeft, chunkProgress, taskId, allocTasks, allocChunks, activeTasks, activeChunks, chunksLeft, taskProgress )
 
-        self.uic.UpdateRowsState( nodeDataState )
+        self.uic.UpdateNodePresentationState( nodeDataState )
 
     ########################
     def runAdditionalNodes( self, numNodes ):

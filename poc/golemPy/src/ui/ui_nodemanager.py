@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'manager.ui'
 #
-# Created: Mon Mar 31 04:09:53 2014
+# Created: Mon Mar 31 04:32:14 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!

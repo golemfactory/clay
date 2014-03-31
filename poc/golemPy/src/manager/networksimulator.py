@@ -70,7 +70,7 @@ class NodeSimulator(QtCore.QThread):
 
         ctl = self.remoteTaskDuration - ( curTime - self.remTaskStartTime )
         ctl = max( 0.0, ctl )
-        tcss = TaskChunkStateSnapshot( '0', 1600.0, ctl, self.remProgress )
+        tcss = TaskChunkStateSnapshot( '0xbaadf00d', 1600.0, ctl, self.remProgress )
 
         allChunks = 1000 * 1000
 
@@ -81,7 +81,7 @@ class NodeSimulator(QtCore.QThread):
         activeTasks = int( activeRandom * totalTasks )
         activeChunks = int( activeRandom * totalChunks )
 
-        ltss = LocalTaskStateSnapshot( totalTasks, totalChunks, activeTasks, activeChunks, allChunks - totalChunks, self.locProgress ) 
+        ltss = LocalTaskStateSnapshot( '0xcdcdcdcd', totalTasks, totalChunks, activeTasks, activeChunks, allChunks - totalChunks, self.locProgress ) 
 
         return NodeStateSnapshot( self.running, self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message {}'.format( random.randint(0,200) )], ['test message {}'.format( random.randint(10, 70) )], { '0' : tcss }, { '0xcdcdcd' : ltss } )
 

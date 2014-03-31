@@ -23,10 +23,11 @@ class TaskChunkStateSnapshot:
 class LocalTaskStateSnapshot:
 
     def __init__( self, taskId, totalTasks, totalChunks, activeTasks, activeChunks, chunksLeft, progress ):
-        self.taskId = id
+        self.taskId = taskId
         self.totalTasks = totalTasks 
         self.totalChunks = totalChunks
         self.activeTasks = activeTasks
+        self.activeChunks = activeChunks
         self.chunksLeft = chunksLeft
         self.progress = progress
 
