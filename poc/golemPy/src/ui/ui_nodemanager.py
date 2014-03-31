@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'manager.ui'
 #
-# Created: Mon Mar 31 08:27:02 2014
+# Created: Mon Mar 31 17:35:34 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -256,7 +256,7 @@ class Ui_NodesManagerWidget(object):
         sizePolicy.setHeightForWidth(self.chunkShortDescrInput.sizePolicy().hasHeightForWidth())
         self.chunkShortDescrInput.setSizePolicy(sizePolicy)
         font = QtGui.QFont()
-        font.setPointSize(6)
+        font.setPointSize(7)
         self.chunkShortDescrInput.setFont(font)
         self.chunkShortDescrInput.setReadOnly(True)
         self.chunkShortDescrInput.setObjectName(_fromUtf8("chunkShortDescrInput"))
@@ -368,7 +368,7 @@ class Ui_NodesManagerWidget(object):
         sizePolicy.setHeightForWidth(self.locTaskShortDescrInput.sizePolicy().hasHeightForWidth())
         self.locTaskShortDescrInput.setSizePolicy(sizePolicy)
         font = QtGui.QFont()
-        font.setPointSize(6)
+        font.setPointSize(7)
         self.locTaskShortDescrInput.setFont(font)
         self.locTaskShortDescrInput.setObjectName(_fromUtf8("locTaskShortDescrInput"))
         self.gridLayout_3.addWidget(self.locTaskShortDescrInput, 0, 1, 1, 1)
@@ -427,7 +427,7 @@ class Ui_NodesManagerWidget(object):
         self.runAdditionalNodesPushButton.setObjectName(_fromUtf8("runAdditionalNodesPushButton"))
         self.horizontalLayout_8.addWidget(self.runAdditionalNodesPushButton)
         self.additionalNodesSpinBox = QtGui.QSpinBox(self.frameGenericNodes)
-        self.additionalNodesSpinBox.setProperty("value", 5)
+        self.additionalNodesSpinBox.setProperty("value", 4)
         self.additionalNodesSpinBox.setObjectName(_fromUtf8("additionalNodesSpinBox"))
         self.horizontalLayout_8.addWidget(self.additionalNodesSpinBox)
         self.verticalLayout_7.addLayout(self.horizontalLayout_8)

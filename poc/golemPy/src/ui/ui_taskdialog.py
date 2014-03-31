@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'taskdialog.ui'
 #
-# Created: Mon Mar 31 07:32:33 2014
+# Created: Mon Mar 31 17:35:38 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -59,7 +59,7 @@ class Ui_TaskSpecDialog(object):
         self.widthSpinBox.setMinimum(1)
         self.widthSpinBox.setMaximum(10000)
         self.widthSpinBox.setSingleStep(25)
-        self.widthSpinBox.setProperty("value", 1)
+        self.widthSpinBox.setProperty("value", 100)
         self.widthSpinBox.setObjectName(_fromUtf8("widthSpinBox"))
         self.horizontalLayout.addWidget(self.widthSpinBox)
         self.gridLayout.addLayout(self.horizontalLayout, 1, 1, 1, 1)
@@ -71,7 +71,7 @@ class Ui_TaskSpecDialog(object):
         self.heightSpinBox.setMinimum(1)
         self.heightSpinBox.setMaximum(10000)
         self.heightSpinBox.setSingleStep(25)
-        self.heightSpinBox.setProperty("value", 1)
+        self.heightSpinBox.setProperty("value", 100)
         self.heightSpinBox.setObjectName(_fromUtf8("heightSpinBox"))
         self.horizontalLayout_2.addWidget(self.heightSpinBox)
         self.gridLayout.addLayout(self.horizontalLayout_2, 2, 1, 1, 1)
@@ -83,6 +83,7 @@ class Ui_TaskSpecDialog(object):
         self.samplesPerPixelSpinBox.setMinimum(1)
         self.samplesPerPixelSpinBox.setMaximum(100000)
         self.samplesPerPixelSpinBox.setSingleStep(10)
+        self.samplesPerPixelSpinBox.setProperty("value", 25)
         self.samplesPerPixelSpinBox.setObjectName(_fromUtf8("samplesPerPixelSpinBox"))
         self.horizontalLayout_3.addWidget(self.samplesPerPixelSpinBox)
         self.gridLayout.addLayout(self.horizontalLayout_3, 3, 1, 1, 1)

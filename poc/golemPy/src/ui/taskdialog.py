@@ -17,8 +17,24 @@ class TaskSpecDialog(QtGui.QDialog):
         self.ui = Ui_TaskSpecDialog()
         self.ui.setupUi(self)
 
+        self.recreateFileName()
+
+        QtCore.QObject.connect(self.ui.widthSpinBox, QtCore.SIGNAL("valueChanged(int)"), self.recreateFileName )
+        QtCore.QObject.connect(self.ui.heightSpinBox, QtCore.SIGNAL("valueChanged(int)"), self.recreateFileName )
+        QtCore.QObject.connect(self.ui.samplesPerPixelSpinBox, QtCore.SIGNAL("valueChanged(int)"), self.recreateFileName )
+
         QtCore.QObject.connect(self.ui.buttonBox, QtCore.SIGNAL("accepted()"), self.accept)
         QtCore.QObject.connect(self.ui.buttonBox, QtCore.SIGNAL("rejected()"), self.reject)
+
+    ########################
+    def recreateFileName( self ):
+        w = self.getWidth()
+        h = self.getHeight()
+        spp = self.getNumSamplesPerPixel()
+
+        fn = "default_{}_{}_{}".format( w, h, spp )
+
+        self.ui.imgNameInput.setText( fn )
 
     ########################
     def getWidth( self ):

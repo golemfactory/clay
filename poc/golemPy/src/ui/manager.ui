@@ -796,7 +796,7 @@
                 <item>
                  <widget class="QSpinBox" name="additionalNodesSpinBox">
                   <property name="value">
-                   <number>5</number>
+                   <number>4</number>
                   </property>
                  </widget>
                 </item>

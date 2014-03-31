@@ -54,7 +54,7 @@ class RayTracingTask( Task ):
     def computationFinished( self, extraData, taskResult ):
         print "Receive computed task id:{} extraData:{} \n result:{}".format( self.taskHeader.id, extraData, taskResult )
 
-TIMESLC  = 30.0
+TIMESLC  = 45.0
 TIMEOUT  = 100000.0
 
 task_data = u'''
@@ -123,7 +123,7 @@ class VRayTracingTask( Task ):
 
         Task.__init__( self, header, srcCode )
 
-        self.header.ttl = max( width * height * num_samples * 2 / 1200.0, TIMEOUT )
+        self.header.ttl = max( width * height * num_samples * 2 / 2200.0, TIMEOUT )
 
         self.taskableRenderer = None
 
