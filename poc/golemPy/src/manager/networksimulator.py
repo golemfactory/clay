@@ -37,10 +37,23 @@ class NodeSimulator(QtCore.QThread):
         self.peersNum = 0
         self.tasksNum = 0
         self.running = True
+        
+        self.addedTasks = []
+
+        for i in range( numLocalTasks ):
+            self.addedTasks.append( "Uninteresting taks desc {}".format( i ) )
 
     ########################
     def terminate( self ):
         self.forcedQuit = True
+
+    ########################
+    def enqueueTask( self, w, h, numSamplesPerPixel, fileName ):
+        self.numLocalTasks += 1
+        self.totalDuration += self.localTaskDuration
+        extraData = "w: {}, h: {}, spp: {}, file: {}".format( w, h, numSamplesPerPixel, fileName )
+
+        self.addedTasks.append( extraData )
 
     ########################
     def getId( self ):
@@ -85,7 +98,7 @@ class NodeSimulator(QtCore.QThread):
         activeTasks = int( activeRandom * totalTasks )
         activeChunks = int( activeRandom * totalChunks )
 
-        ltss = LocalTaskStateSnapshot( '0xcdcdcdcd', totalTasks, totalChunks, activeTasks, activeChunks, allChunks - totalChunks, self.locProgress, "task data: {}".format( self.locTask ) ) 
+        ltss = LocalTaskStateSnapshot( '0xcdcdcdcd', totalTasks, totalChunks, activeTasks, activeChunks, allChunks - totalChunks, self.locProgress, self.addedTasks[ self.locTask ] ) 
 
         return NodeStateSnapshot( self.running, self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message {}'.format( random.randint(0,200) )], ['test message {}'.format( random.randint(10, 70) )], { '0' : tcss }, { '0xcdcdcd' : ltss } )
 
@@ -96,7 +109,7 @@ class NodeSimulator(QtCore.QThread):
         self.locTasksDuration = self.numLocalTasks * self.localTaskDuration
         self.remTasksDuration = self.numRemoteTasks * self.remoteTaskDuration
 
-        totalDuration = max( self.locTasksDuration, self.remTasksDuration )
+        self.totalDuration = max( self.locTasksDuration, self.remTasksDuration )
 
         self.locTask = 0
         self.locTaskStartTime = startTime
@@ -106,7 +119,7 @@ class NodeSimulator(QtCore.QThread):
         print "Starting node '{}' local tasks: {} remote tasks: {}".format( self.uid, self.numLocalTasks, self.numRemoteTasks )
         print "->local task dura: {} secs, remote task dura: {} secs".format( self.localTaskDuration, self.remoteTaskDuration )
 
-        while( time.time() - startTime < totalDuration ):
+        while( time.time() - startTime < self.totalDuration ):
                 
             if GLOBAL_SHUTDOWN[ 0 ]:
                 print "{}: Global shutdown triggered - bailing out".format( self.uid )
@@ -185,6 +198,13 @@ class LocalNetworkSimulator(Thread):
                     node.terminate()
                     #self.nodes.pop( i )
                     break
+
+    ########################
+    def enqueueNodeTask( self, uid, w, h, numSamplesPerPixel, fileName ):
+        with self.lock:
+            for node in self.nodes:
+                if node.getUid() == uid:
+                    node.enqueueTask( w, h, numSamplesPerPixel, fileName )
 
     ########################
     def addNewNode( self ):

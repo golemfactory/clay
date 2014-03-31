@@ -125,11 +125,19 @@ class NodesManager:
     def terminateNode( self, uid ):
         self.managerLogic.terminateNode( uid )
 
+    ########################
+    def terminateAllNodes( self ):
+        self.managerLogic.terminateAllNodes()
+
+    ########################
+    def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
+        self.managerLogic.enqueueNewTask( uid, w, h, numSamplesPerPixel, fileName );
+
 if __name__ == "__main__":
 
     manager = NodesManager()
 
-    numNodes = 30
+    numNodes = 1
     maxLocalTasks = 3
     maxRemoteTasks = 30
     maxLocTaskDuration = 200.0

@@ -10,9 +10,13 @@ class NodesManagerLogicTest:
             self.simulator.addNewNode()
 
     ########################
+    def terminateNode( self, uid ):
+        self.simulator.terminateNode( uid )
+
+    ########################
     def terminateAllNodes( self ):
         self.simulator.terminateAllNodes()
 
     ########################
-    def terminateNode( self, uid ):
-        self.simulator.terminateNode( uid )
+    def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
+        self.simulator.enqueueNodeTask( uid, w, h, numSamplesPerPixel, fileName )

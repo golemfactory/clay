@@ -1,5 +1,6 @@
 from PyQt4 import QtCore, QtGui
 from ui_nodemanager import Ui_NodesManagerWidget
+from taskdialog import TaskSpecDialog
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
@@ -64,6 +65,7 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.table.selectionModel().selectionChanged.connect( self.rowSelectionChanged )
         self.widget.runAdditionalNodesPushButton.clicked.connect( self.addNodesClicked )
         self.widget.stopNodePushButton.clicked.connect( self.stopNodeClicked )
+        self.widget.enqueueTaskButton.clicked.connect( self.enqueueTaskClicked )
 
     ########################
     def addNodesClicked( self ):
@@ -74,6 +76,17 @@ class ManagerUiCustomizer(QtCore.QObject):
     def stopNodeClicked( self ):
         if self.curActiveRowIdx is not None and self.curActiveRowUid is not None:
             self.logic.terminateNode( self.curActiveRowUid )
+
+    ########################
+    def enqueueTaskClicked( self ):
+        dialog = TaskSpecDialog( self.table )
+        if dialog.exec_():
+            w = dialog.getWidth()
+            h = dialog.getHeight()
+            n = dialog.getNumSamplesPerPixel()
+            p = dialog.getFileName()
+
+            self.logic.enqueueNewTask( self.curActiveRowUid, w, h, n, p )
 
     ########################
     def rowSelectionChanged( self, item1, item2 ):

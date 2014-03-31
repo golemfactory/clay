@@ -78,6 +78,7 @@
     <Compile Include="src\ui\pyuic.py" />
     <Compile Include="src\ui\ui_nodemanager.py" />
     <Compile Include="src\task\taskbase.py" />
+    <Compile Include="src\ui\ui_taskdialog.py" />
     <Compile Include="src\vm\vm.py" />
     <Compile Include="src\__init__.py" />
     <Compile Include="testtasks\minilight\compact_src\renderer.py" />
