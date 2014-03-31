@@ -10,7 +10,8 @@ except AttributeError:
 class NodeDataState:
 
     ########################
-    def __init__( self, uid, timestamp, endpoint, numPeers, numTasks, lastMsg, chunkId, cpuPower, timeLeft, chunkProgress, chunkShortDescr, locTaskId, allocatedTasks, allocatedChunks, activeTasks, activeChunks, chunksLeft, locTaskProgress, locTaskShortDescr ):
+    def __init__( self, running, uid, timestamp, endpoint, numPeers, numTasks, lastMsg, chunkId, cpuPower, timeLeft, chunkProgress, chunkShortDescr, locTaskId, allocatedTasks, allocatedChunks, activeTasks, activeChunks, chunksLeft, locTaskProgress, locTaskShortDescr ):
+        self.isRunning = running
         self.uid = uid
         self.timestamp = timestamp
         self.endpoint = endpoint
@@ -71,12 +72,8 @@ class ManagerUiCustomizer(QtCore.QObject):
 
     ########################
     def stopNodeClicked( self ):
-        print self.curActiveRowIdx
-        print self.curActiveRowUid
         if self.curActiveRowIdx is not None and self.curActiveRowUid is not None:
             self.logic.terminateNode( self.curActiveRowUid )
-            #self.curActiveRowIdx = None
-            #self.curActiveRowUid = None
 
     ########################
     def rowSelectionChanged( self, item1, item2 ):
@@ -211,5 +208,6 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.nodeDataStates[ idx ] = nodeDataState
 
         #update view
+        if nodeDataState
         self.__updateExistingRowView( self.tableData[ nodeDataState.uid ], nodeDataState.uid, nodeDataState.timestamp, nodeDataState.chunkProgress, nodeDataState.locTaskProgress )        
         self.__updateDetailedNodeView( idx, nodeDataState )

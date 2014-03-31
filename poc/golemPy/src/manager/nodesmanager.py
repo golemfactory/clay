@@ -111,7 +111,9 @@ class NodesManager:
         if len( ns.getLastNetworkMessages() ) > 0:
             lm = ns.getLastNetworkMessages()[-1]
 
-        nodeDataState = NodeDataState( ns.uid, ts, ep, pn, tn, lm, chunkId, cpuPower, timeLeft, chunkProgress, cshd, taskId, allocTasks, allocChunks, activeTasks, activeChunks, chunksLeft, taskProgress, ltshd )
+        ir = ns.isRunning()
+
+        nodeDataState = NodeDataState( ir, ns.uid, ts, ep, pn, tn, lm, chunkId, cpuPower, timeLeft, chunkProgress, cshd, taskId, allocTasks, allocChunks, activeTasks, activeChunks, chunksLeft, taskProgress, ltshd )
 
         self.uic.UpdateNodePresentationState( nodeDataState )
 
