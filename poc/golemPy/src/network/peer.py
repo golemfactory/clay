@@ -1,3 +1,6 @@
+import sys
+sys.path.append( '../manager')
+
 from message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks
 import time
 
@@ -18,6 +21,7 @@ class PeerSession(PeerSessionInterface):
 
     ##########################
     def __init__(self, conn, server, address, port):
+
         PeerSessionInterface.__init__(self)
         self.server = server
         self.address = address
@@ -135,7 +139,7 @@ class PeerSession(PeerSessionInterface):
 
     ##########################
     def __sendHello(self):
-        self.__send(MessageHello(self.server.curPort, self.server.configDesc.clientUuid))
+        self.__send(MessageHello(self.server.curPort, self.server.configDesc.clientUuid)) #FIXME: self.server.configDesc.clientUuid (naprawde trzeba az tak???)
 
     ##########################
     def __sendPing(self):

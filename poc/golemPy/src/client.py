@@ -9,6 +9,7 @@ from exampletasks import VRayTracingTask
 from hostaddress import getHostAddress
 
 from nodestatesnapshot import NodeStateSnapshot
+from managermessage import MessagePeerStatus
 
 import sys
 import time
@@ -16,6 +17,7 @@ import random
 import socket
 
 class Client:
+
     ############################
     def __init__(self, configDesc ):
 
