@@ -30,10 +30,17 @@ class NodeSimulator(QtCore.QThread):
         self.locProgress = 0.0
         self.remProgress = 0.0
 
+        self.forcedQuit = False
+
         self.localAddr = "127.0.0.1"
         self.localPort = int( random.random() * 60000.0 + 1024.0 )
         self.peersNum = 0
         self.tasksNum = 0
+        self.running = True
+
+    ########################
+    def terminate( self ):
+        self.forcedQuit = True
 
     ########################
     def getId( self ):
@@ -76,7 +83,7 @@ class NodeSimulator(QtCore.QThread):
 
         ltss = LocalTaskStateSnapshot( totalTasks, totalChunks, activeTasks, activeChunks, allChunks - totalChunks, self.locProgress ) 
 
-        return NodeStateSnapshot( self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message'], ['test message'], { '0' : tcss }, { '0xcdcdcd' : ltss } )
+        return NodeStateSnapshot( self.running, self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message'], ['test message'], { '0' : tcss }, { '0xcdcdcd' : ltss } )
 
     ########################
     def run( self ):
@@ -98,8 +105,12 @@ class NodeSimulator(QtCore.QThread):
 
         while( time.time() - startTime < totalDuration ):
                 
-            if( GLOBAL_SHUTDOWN[ 0 ] ):
-                print "Global shutdown triggered - bailing out"
+            if GLOBAL_SHUTDOWN[ 0 ]:
+                print "{}: Global shutdown triggered - bailing out".format( self.uid )
+                break
+
+            if self.forcedQuit:
+                print "{}: Forced quit triggered - bailing out".format( self.uid )
                 break
 
             time.sleep( self.innerUpdateDelay )
@@ -134,6 +145,8 @@ class NodeSimulator(QtCore.QThread):
 
         print "Finished node '{}'".format( self.uid )
 
+        self.running = False
+
 class LocalNetworkSimulator(Thread):
 
     ########################
@@ -154,6 +167,21 @@ class LocalNetworkSimulator(Thread):
         self.nodes = []
 
     ########################
+    def terminateAllNodes( self ):
+        with self.lock:
+            for node in self.nodes:
+                node.terminate()
+
+    ########################
+    def terminateNode( self, uid ):
+        with self.lock:
+            for i, node in enumerate( self.nodes ):
+                if node.getId() == uid:
+                    node.terminate()
+                    #self.nodes.pop( i )
+                    break
+
+    ########################
     def addNewNode( self ):
         with self.lock:
             self.numNodes += 1
@@ -162,6 +190,9 @@ class LocalNetworkSimulator(Thread):
             node.start()
             self.curNode += 1
             #node.updateRequest.connect( self.updateRequested )
+
+    ########################
+    def terminateNode( self, uid ):
 
     ########################
     def updateRequested( self, id ):
