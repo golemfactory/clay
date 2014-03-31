@@ -9,8 +9,6 @@ sys.path.append('../src/network')
 sys.path.append('../src/manager')
 sys.path.append('../testtasks/minilight/src')
 
-import subprocess
-
 from twisted.internet import reactor
 from threading import Thread
 from appconfig import AppConfig

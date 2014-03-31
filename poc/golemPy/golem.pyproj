@@ -100,6 +100,7 @@
     <Compile Include="testtasks\minilight\src\task_data_0.py" />
     <Compile Include="testtasks\minilight\src\triangle.py" />
     <Compile Include="testtasks\minilight\src\vector3f.py" />
+    <Compile Include="test\clientmain.py" />
     <Compile Include="test\main.py" />
     <Compile Include="test\__init__.py" />
   </ItemGroup>
