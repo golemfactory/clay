@@ -54,7 +54,7 @@ class RayTracingTask( Task ):
     def computationFinished( self, extraData, taskResult ):
         print "Receive computed task id:{} extraData:{} \n result:{}".format( self.taskHeader.id, extraData, taskResult )
 
-TIMESLC  = 10.0
+TIMESLC  = 30.0
 TIMEOUT  = 100000.0
 
 task_data = u'''

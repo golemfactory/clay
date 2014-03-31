@@ -22,6 +22,7 @@ class PeerSession(PeerSessionInterface):
     ##########################
     def __init__(self, conn, server, address, port):
 
+        print "CREATING PEER SESSION {} {}".format( address, port )
         PeerSessionInterface.__init__(self)
         self.server = server
         self.address = address
