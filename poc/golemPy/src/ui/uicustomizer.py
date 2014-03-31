@@ -7,6 +7,28 @@ except AttributeError:
     def _fromUtf8(s):
         return s
 
+class NodeDataState:
+
+    ########################
+    def __init__( self, uid, timestamp, endpoint, numPeers, numTasks, lastMsg, chunkId, cpuPower, timeLeft, chunkProgress, locTaskId, allocatedTasks, allocatedChunks, activeTasks, activeChunks, chunksLeft, locTaskProgress ):
+        self.uid = uid
+        self.timestamp = timestamp
+        self.endpoint = endpoint
+        self.numPeers = numPeers
+        self.numTasks = numTasks
+        self.lastMsg = lastMsg
+        self.chunkId = chunkId
+        self.cpuPower = cpuPower
+        self.timeLeft = timeLeft
+        self.chunkProgress = chunkProgress
+        self.locTaskId = locTaskId
+        self.allocatedTasks = allocatedTasks
+        self.allocatedChunks = allocatedChunks
+        self.activeTasks = activeTasks
+        self.activeChunks = activeChunks
+        self.chunksLeft = chunksLeft
+        self.locTaskProgress = locTaskProgress
+
 #FIXME: add start local task button to manager (should trigger another local task for selected node)
 #FIXME: rething deleting nodes which seem to be inactive
 class TableRowDataEntry:
@@ -112,6 +134,21 @@ class ManagerUiCustomizer(QtCore.QObject):
             self.__registerRowData( nodeUid, self.__createRow( nodeUid, nodeTimestamp ) )
 
         self.__updateExistingRow( self.tableData[ nodeUid ], nodeUid, nodeTimestamp, progressRemote, progressLocal )
+
+    ########################
+    def UpdateDetailedNodeState( self, nodeUid, numPeers, numTasks, lastMsg ):
+        if self.detailedViewEnabled:
+            pass
+
+    ########################
+    def UpdateDetailedChunkState( self, id, cpuPower, timeLeft, progress ):
+        if self.detailedViewEnabled:
+            pass
+    
+    ########################
+    def UpdateDetailedLocalTaskState( self, allocatedTasks, allocatedChunks, activeTasks, activeChunks, chunksLeft ):
+        if self.detailedViewEnabled:
+            pass
 
     ########################
     def __resetDetailedView( self ):
