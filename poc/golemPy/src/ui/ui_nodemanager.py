@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'manager.ui'
 #
-# Created: Mon Mar 31 05:55:55 2014
+# Created: Mon Mar 31 08:27:02 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -255,6 +255,9 @@ class Ui_NodesManagerWidget(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.chunkShortDescrInput.sizePolicy().hasHeightForWidth())
         self.chunkShortDescrInput.setSizePolicy(sizePolicy)
+        font = QtGui.QFont()
+        font.setPointSize(6)
+        self.chunkShortDescrInput.setFont(font)
         self.chunkShortDescrInput.setReadOnly(True)
         self.chunkShortDescrInput.setObjectName(_fromUtf8("chunkShortDescrInput"))
         self.gridLayout.addWidget(self.chunkShortDescrInput, 0, 1, 1, 1)
@@ -364,6 +367,9 @@ class Ui_NodesManagerWidget(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.locTaskShortDescrInput.sizePolicy().hasHeightForWidth())
         self.locTaskShortDescrInput.setSizePolicy(sizePolicy)
+        font = QtGui.QFont()
+        font.setPointSize(6)
+        self.locTaskShortDescrInput.setFont(font)
         self.locTaskShortDescrInput.setObjectName(_fromUtf8("locTaskShortDescrInput"))
         self.gridLayout_3.addWidget(self.locTaskShortDescrInput, 0, 1, 1, 1)
         self.verticalLayout_2.addLayout(self.gridLayout_3)

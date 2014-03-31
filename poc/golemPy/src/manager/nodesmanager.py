@@ -138,9 +138,9 @@ if __name__ == "__main__":
     manager = NodesManager()
 
     numNodes = 1
-    maxLocalTasks = 3
+    maxLocalTasks = 2
     maxRemoteTasks = 30
-    maxLocTaskDuration = 200.0
+    maxLocTaskDuration = 10.0
     maxRemTaskDuration = 28.0
     maxInnerUpdateDelay = 2.0
     nodeSpawnDelay = 1.0
