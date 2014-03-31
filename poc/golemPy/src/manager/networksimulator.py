@@ -47,6 +47,10 @@ class NodeSimulator(QtCore.QThread):
         return self.id
 
     ########################
+    def getUid( self ):
+        return self.uid
+
+    ########################
     def getStateSnapshot( self ):
         addPeers = 1 if random.random() >= 0.45 else -1
 
@@ -89,7 +93,6 @@ class NodeSimulator(QtCore.QThread):
     def run( self ):
 
         startTime = time.time()
-
         self.locTasksDuration = self.numLocalTasks * self.localTaskDuration
         self.remTasksDuration = self.numRemoteTasks * self.remoteTaskDuration
 
@@ -144,8 +147,10 @@ class NodeSimulator(QtCore.QThread):
             #print "\r{:3} : {}   {:3} : {}".format( locTask, self.locProgress, remTask, self.remProgress ),
 
         print "Finished node '{}'".format( self.uid )
-
-        self.running = False
+        
+        if self.running:
+            self.running = False
+            self.simulator.updateRequested( self.id )
 
 class LocalNetworkSimulator(Thread):
 
@@ -176,7 +181,7 @@ class LocalNetworkSimulator(Thread):
     def terminateNode( self, uid ):
         with self.lock:
             for i, node in enumerate( self.nodes ):
-                if node.getId() == uid:
+                if node.getUid() == uid:
                     node.terminate()
                     #self.nodes.pop( i )
                     break

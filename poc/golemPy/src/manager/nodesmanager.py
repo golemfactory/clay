@@ -119,6 +119,10 @@ class NodesManager:
     def runAdditionalNodes( self, numNodes ):
         self.managerLogic.runAdditionalNodes( numNodes )
 
+    ########################
+    def terminateNode( self, uid ):
+        self.managerLogic.terminateNode( uid )
+
 if __name__ == "__main__":
 
     manager = NodesManager()

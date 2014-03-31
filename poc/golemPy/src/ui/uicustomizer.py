@@ -62,11 +62,21 @@ class ManagerUiCustomizer(QtCore.QObject):
 
         self.table.selectionModel().selectionChanged.connect( self.rowSelectionChanged )
         self.widget.runAdditionalNodesPushButton.clicked.connect( self.addNodesClicked )
+        self.widget.stopNodePushButton.clicked.connect( self.stopNodeClicked )
 
     ########################
     def addNodesClicked( self ):
         numNodes = self.widget.additionalNodesSpinBox.value()
         self.logic.runAdditionalNodes( numNodes )
+
+    ########################
+    def stopNodeClicked( self ):
+        print self.curActiveRowIdx
+        print self.curActiveRowUid
+        if self.curActiveRowIdx is not None and self.curActiveRowUid is not None:
+            self.logic.terminateNode( self.curActiveRowUid )
+            #self.curActiveRowIdx = None
+            #self.curActiveRowUid = None
 
     ########################
     def rowSelectionChanged( self, item1, item2 ):

@@ -9,7 +9,6 @@ class NodesManagerLogicTest:
         for i in range( numNodes ):
             self.simulator.addNewNode()
 
-
     ########################
     def terminateAllNodes( self ):
         self.simulator.terminateAllNodes()
