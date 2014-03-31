@@ -6,7 +6,7 @@ from PyQt4.QtCore import QTimer
 from threading import Lock
 
 from ui_nodemanager import Ui_NodesManagerWidget
-from uicustomizer import ManagerUiCustomizer
+from uicustomizer import ManagerUiCustomizer, NodeDataState
 from nodestatesnapshot import NodeStateSnapshot
 from networksimulator import GLOBAL_SHUTDOWN, LocalNetworkSimulator
 from nodesmanagerlogic import NodesManagerLogicTest
@@ -65,19 +65,37 @@ class NodesManager:
 
     ########################
     def updateNodeState( self, ns ):
-        taskProgress = 0.0
-        chunkProgress = 0.0
         assert isinstance( ns, NodeStateSnapshot )
-        
+
+        chunkId = None
+        chunkProgress = 0.0
+        cpuPower = ""
+        timeLeft = ""
+
         tcss = ns.getTaskChunkStateSnapshot()
         if len( tcss ) > 0:
             sp = tcss.itervalues().next()
+            chunkId = sp.getChunkId()
             chunkProgress = sp.getProgress()
+            cpuPower = sp.getCpuPower()
+            timeLeft = sp.getEstimatedTimeLeft()
+
+        taskId = None
+        taskProgress = 0.0
 
         ltss = ns.getLocalTaskStateSnapshot()
         if len( ltss ) > 0:
             sp = ltss.itervalues().next()
             taskProgress = sp.getProgress()
+
+        ep = "{}:{}".format( ns.endpointAddr, ns.endpointPort )
+        ts = ns.getFormattedTimestamp()
+        pn = ns.getPeersNum()
+        tn = ns.getTasksNum()
+        lm = ns.getLastNetworkMessages()[-1]
+
+        nodeDataState = NodeDataState( ns.uid, ts, ep, pn, tn, lm, chunkId, cpuPower )
+            def __init__( self, uid, timestamp, endpoint, numPeers, numTasks, lastMsg, chunkId, cpuPower, timeLeft, chunkProgress, locTaskId, allocatedTasks, allocatedChunks, activeTasks, activeChunks, chunksLeft, locTaskProgress ):
 
         self.uic.UpdateRowsState( ns.getUID(), ns.getFormattedTimestamp(), chunkProgress, taskProgress )
 

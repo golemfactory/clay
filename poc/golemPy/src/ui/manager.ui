@@ -273,7 +273,7 @@
                    </widget>
                   </item>
                   <item row="2" column="1">
-                   <widget class="QLineEdit" name="noTasks">
+                   <widget class="QLineEdit" name="noTasksInput">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                       <horstretch>0</horstretch>
@@ -427,7 +427,7 @@
                    </widget>
                   </item>
                   <item row="2" column="1">
-                   <widget class="QProgressBar" name="remoteTaskProgressBar">
+                   <widget class="QProgressBar" name="activeChunkProgressBar">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                       <horstretch>0</horstretch>

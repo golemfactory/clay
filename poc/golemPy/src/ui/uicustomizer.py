@@ -49,9 +49,12 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.tableData = {}
-        self.tableRows = []
+        self.nodeDataStates = []
+        self.uidRowMapping = {}
         self.logic = managerLogic
         self.detailedViewEnabled = False
+        self.curActiveRowIdx = None
+        self.curActiveRowUid = None
 
         self.table.selectionModel().selectionChanged.connect( self.rowSelectionChanged )
         self.widget.runAdditionalNodesPushButton.clicked.connect( self.addNodesClicked )
@@ -65,10 +68,15 @@ class ManagerUiCustomizer(QtCore.QObject):
     def rowSelectionChanged( self, item1, item2 ):
         if not self.detailedViewEnabled:
             self.detailedViewEnabled = True
+            self.enableDetailedView( True )
 
-        self.enableDetailedView( True )
+        idx = item1.indexes()[ 0 ].row()
 
-        print item1.indexes()[ 0 ].row()
+        uid = self.nodeDataStates[ idx ].uid.text()
+        self.curActiveRowIdx = idx
+        self.curActiveRowUid = uid
+
+        self.__updateDetailedNodeView( idx, self.nodeDataStates[ idx ] )
 
     ########################
     def __createWrappedProgressBar( self, red ):
@@ -113,42 +121,43 @@ class ManagerUiCustomizer(QtCore.QObject):
         return TableRowDataEntry( item0, item1, pRem, pLoc )
 
     ########################
-    def __updateExistingRow( self, rowData, nodeUid, nodeTimestamp, progressRemote, progressLoc ):
+    def __updateExistingRowView( self, rowData, nodeUid, nodeTimestamp, progressRemote, progressLoc ):
         rowData.uid.setText( nodeUid )
         rowData.timestamp.setText( nodeTimestamp )
         rowData.remoteProgress.setProperty("value", int( 100.0 * progressRemote ) )
         rowData.localProgress.setProperty("value", int( 100.0 * progressLoc ) )
 
     ########################
-    def __registerRowData( self, nodeUid, rowDataEntry ):
-        self.tableData[ nodeUid ] = rowDataEntry
-        self.tableRows.append( rowDataEntry )
+    def __updateDetailedNodeView( self, idx, nodeDataState ):
+        if self.detailedViewEnabled and self.curActiveRowIdx == idx:
+            
+            self.widget.labelDetailedNode.setText( "Node ({})".format( nodeDataState.uid[:15] ) )
+            
+            if self.chunkId and len( self.chunkId ) > 0:
+                self.widget.labelDetailedRemoteTask.setText( "Active remote task ({})".format( nodeDataState.chunkId[:15]) )
+            else:
+                self.widget.labelDetailedRemoteTask.setText( "Active remote task (none)" )
 
-    ########################
-    def isRegistered( self, nodeUid ):
-        return nodeUid in self.tableData
+            if self.locTaskId and len( self.locTaskId ) > 0:
+                self.widget.labelDetailedLocalTask.setText( "Active local task ({})" ).format( nodeDataState.locTaskId[:15])
+            else:
+                self.widget.labelDetailedLocalTask.setText( "Active local task (none)" )
 
-    ########################
-    def UpdateRowsState( self, nodeUid, nodeTimestamp, progressRemote, progressLocal ):
-        if not self.isRegistered( nodeUid ):
-            self.__registerRowData( nodeUid, self.__createRow( nodeUid, nodeTimestamp ) )
+            self.widget.endpointInput.setText( nodeDataState.endpoint )
+            self.widget.noPeersInput.setText( "{}".format( nodeDataState.numPeers ) )
+            self.widget.noTasksInput.setText( "{}".format( nodeDataState.numTasks ) )
+            self.widget.lastMsgInput.setText( nodeDataState.lastMsg )
 
-        self.__updateExistingRow( self.tableData[ nodeUid ], nodeUid, nodeTimestamp, progressRemote, progressLocal )
+            self.widget.cpuPowerInput.setText( "{}".format( nodeDataState.cpuPower ) )
+            self.widget.timeLeftInput.setText( nodeDataState.timeLeft )
+            self.widget.activeChunkProgressBar.setProperty("value", int( 100.0 * nodeDataState.chunkProgress ) )
 
-    ########################
-    def UpdateDetailedNodeState( self, nodeUid, numPeers, numTasks, lastMsg ):
-        if self.detailedViewEnabled:
-            pass
-
-    ########################
-    def UpdateDetailedChunkState( self, id, cpuPower, timeLeft, progress ):
-        if self.detailedViewEnabled:
-            pass
-    
-    ########################
-    def UpdateDetailedLocalTaskState( self, allocatedTasks, allocatedChunks, activeTasks, activeChunks, chunksLeft ):
-        if self.detailedViewEnabled:
-            pass
+            self.widget.allocatedTasksInput.setText( "{}".format( nodeDataState.allocatedTasks ) )
+            self.widget.allocatedChunksInput.setText( "{}".format( nodeDataState.allocatedChunks ) )
+            self.widget.activeTasksInput.setText( "{}".format( nodeDataState.activeTasks ) )
+            self.widget.activeChunksInput.setText( "{}".format( nodeDataState.activeChunks ) )
+            self.widget.chunksLeftInput.setText( "{}".format( nodeDataState.chunksLeft ) )
+            self.widget.localTaskProgressBar.setProperty("value", int( 100.0 * nodeDataState.locTaskProgress ) )
 
     ########################
     def __resetDetailedView( self ):
@@ -159,8 +168,33 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.widget.localTaskProgressBar.setProperty("value", 0)
 
     ########################
+    def __registerRowData( self, nodeUid, rowDataEntry, nodeDataState ):
+        self.tableData[ nodeUid ] = rowDataEntry
+        self.uidRowMapping[ nodeUid ] = len( self.nodeDataStates )
+        self.nodeDataStates.append( nodeDataState )
+
+    ########################
+    def isRegistered( self, nodeUid ):
+        return nodeUid in self.tableData
+
+    ########################
     def enableDetailedView( self, enableFlag ):
         if not enableFlag:
             self.__resetDetailedView()
 
         self.widget.frameDetailedNode.setEnabled( enableFlag )
+
+    ########################
+    def UpdateNodeState( self, nodeDataState ):
+        #prerequisites
+        if not self.isRegistered( nodeDataState.uid ):
+            self.__registerRowData( nodeUid, self.__createRow( nodeDataState.uid, nodeDataState.timestamp ), nodeDataState )
+
+        #update model
+        idx = self.uidRowMapping[ nodeDataState.uid ]
+        self.nodeDataStates[ idx ] = nodeDataState
+
+        #update view
+        self.__updateExistingRowView( self.tableData[ nodeDataState.uid ], nodeDataState.uid, nodeDataState.timestamp, self.chunkProgress, self.locTaskProgress )        
+        self.__updateDetailedNodeView( idx, nodeDataState )
+

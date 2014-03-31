@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'manager.ui'
 #
-# Created: Mon Mar 31 03:12:52 2014
+# Created: Mon Mar 31 04:09:53 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -148,17 +148,17 @@ class Ui_NodesManagerWidget(object):
         self.noPeersInput.setReadOnly(True)
         self.noPeersInput.setObjectName(_fromUtf8("noPeersInput"))
         self.gridLayout_2.addWidget(self.noPeersInput, 1, 1, 1, 1)
-        self.noTasks = QtGui.QLineEdit(self.frameDetailedNode)
+        self.noTasksInput = QtGui.QLineEdit(self.frameDetailedNode)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.noTasks.sizePolicy().hasHeightForWidth())
-        self.noTasks.setSizePolicy(sizePolicy)
-        self.noTasks.setText(_fromUtf8(""))
-        self.noTasks.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
-        self.noTasks.setReadOnly(True)
-        self.noTasks.setObjectName(_fromUtf8("noTasks"))
-        self.gridLayout_2.addWidget(self.noTasks, 2, 1, 1, 1)
+        sizePolicy.setHeightForWidth(self.noTasksInput.sizePolicy().hasHeightForWidth())
+        self.noTasksInput.setSizePolicy(sizePolicy)
+        self.noTasksInput.setText(_fromUtf8(""))
+        self.noTasksInput.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.noTasksInput.setReadOnly(True)
+        self.noTasksInput.setObjectName(_fromUtf8("noTasksInput"))
+        self.gridLayout_2.addWidget(self.noTasksInput, 2, 1, 1, 1)
         self.label_9 = QtGui.QLabel(self.frameDetailedNode)
         self.label_9.setObjectName(_fromUtf8("label_9"))
         self.gridLayout_2.addWidget(self.label_9, 2, 0, 1, 1)
@@ -236,16 +236,16 @@ class Ui_NodesManagerWidget(object):
         self.label_3 = QtGui.QLabel(self.frameDetailedNode)
         self.label_3.setObjectName(_fromUtf8("label_3"))
         self.gridLayout.addWidget(self.label_3, 2, 0, 1, 1)
-        self.remoteTaskProgressBar = QtGui.QProgressBar(self.frameDetailedNode)
+        self.activeChunkProgressBar = QtGui.QProgressBar(self.frameDetailedNode)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.remoteTaskProgressBar.sizePolicy().hasHeightForWidth())
-        self.remoteTaskProgressBar.setSizePolicy(sizePolicy)
-        self.remoteTaskProgressBar.setMinimumSize(QtCore.QSize(160, 0))
-        self.remoteTaskProgressBar.setProperty("value", 0)
-        self.remoteTaskProgressBar.setObjectName(_fromUtf8("remoteTaskProgressBar"))
-        self.gridLayout.addWidget(self.remoteTaskProgressBar, 2, 1, 1, 1)
+        sizePolicy.setHeightForWidth(self.activeChunkProgressBar.sizePolicy().hasHeightForWidth())
+        self.activeChunkProgressBar.setSizePolicy(sizePolicy)
+        self.activeChunkProgressBar.setMinimumSize(QtCore.QSize(160, 0))
+        self.activeChunkProgressBar.setProperty("value", 0)
+        self.activeChunkProgressBar.setObjectName(_fromUtf8("activeChunkProgressBar"))
+        self.gridLayout.addWidget(self.activeChunkProgressBar, 2, 1, 1, 1)
         self.verticalLayout_4.addLayout(self.gridLayout)
         self.verticalLayout_2.addLayout(self.verticalLayout_4)
         self.line_3 = QtGui.QFrame(self.frameDetailedNode)
