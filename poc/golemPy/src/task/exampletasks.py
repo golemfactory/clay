@@ -116,7 +116,7 @@ task_data = u'''
 
 class VRayTracingTask( Task ):
     #######################
-    def __init__( self, width, height, num_samples, header ):
+    def __init__( self, width, height, num_samples, header, fileName ):
 
         srcFile = open( "../testtasks/minilight/compact_src/renderer.py", "r")
         srcCode = srcFile.read()
@@ -132,6 +132,7 @@ class VRayTracingTask( Task ):
         self.num_samples = num_samples
 
         self.lastExtraData = ""
+        self.fileName = fileName
 
     #######################
     def __initRenderer( self ):
@@ -179,7 +180,7 @@ class VRayTracingTask( Task ):
         res = RenderTaskResult( dest, taskResult )
         self.taskableRenderer.taskFinished( res )
         if self.taskableRenderer.isFinished():
-            VRayTracingTask.__save_image( "ladny.ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples ) #FIXME: change file name here
+            VRayTracingTask.__save_image( self.fileName + ".ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples ) #FIXME: change file name here
 
     #######################
     def getTotalTasks( self ):

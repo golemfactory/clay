@@ -69,4 +69,4 @@ class EmptyManagerLogic:
     def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
         hash = random.getrandbits(128)
         th = TaskHeader( str( hash ), "", 0 )    
-        self.managerServer.sendNewTask( uid, VRayTracingTask( w, h, numSamplesPerPixel, th ) )
+        self.managerServer.sendNewTask( uid, VRayTracingTask( w, h, numSamplesPerPixel, th, fileName ) )
