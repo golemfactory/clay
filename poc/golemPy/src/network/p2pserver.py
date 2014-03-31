@@ -57,7 +57,7 @@ class P2PServer:
             self.managerSession.sendClientStateSnapshot( snapshot )
 
         else:
-            print "Cannot sent snapshot !!! "
+            print "Cannot send snapshot !!! "
 
     #############################
     def newNMConnection( self, conn ):
@@ -102,7 +102,11 @@ class P2PServer:
     #############################
     def getLastMessages( self ):
         return self.lastMessages
-                                    
+    
+    ############################# 
+    def managerSessionDisconnected( self, uid ):
+        self.managerSession = None
+                                   
     #############################
     def __startAccepting( self ):
         print "Enabling network accepting state"

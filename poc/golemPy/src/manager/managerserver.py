@@ -3,8 +3,7 @@ from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, c
 
 from managerconnection import ManagerConnectionState
 from managersession import ManagerSession
-
-import pickle
+from nodestatesnapshot import NodeStateSnapshot
 
 class ManagerServerFactory(Factory):
     #############################
@@ -37,7 +36,6 @@ class ManagerServer:
 
     #############################
     def __runListenOnce( self ):
-        print self.reactor
         ep = TCP4ServerEndpoint( self.reactor, self.port )
 
         d = ep.listen( ManagerServerFactory( self ) )
@@ -52,7 +50,6 @@ class ManagerServer:
 
     #############################
     def __listeningFailure(self, p):
-        print "DUPA"
         print "Opening {} port for listening failed - bailign out".format( self.port )
 
     #############################
@@ -63,6 +60,8 @@ class ManagerServer:
 
     #############################
     def nodeStateSnapshotReceived( self, nss ):
-        nssobj = pickle.loads( nss )
-        self.nodesManager.appendStateUpdate( nssobj )
+        self.nodesManager.appendStateUpdate( nss )
         
+    #############################
+    def managerSessionDisconnected( self, uid ):
+        self.nodesManager.appendStateUpdate( NodeStateSnapshot( False, uid ) )

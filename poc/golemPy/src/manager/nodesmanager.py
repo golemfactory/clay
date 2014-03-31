@@ -34,12 +34,12 @@ class NodesManager:
         self.uic.enableDetailedView( False )
 
         self.managerServer = ManagerServer( self, 20301 )
-        #self.managerServer.setReactor( self.managerLogic.getReactor() )
 
         #FIXME: some shitty python magic
         def closeEvent_(self_, event):
             try:
                 self.managerLogic.getReactor().stop()
+                self.managerLogic.terminateAllNodes()
             except Exception as ex:
                 pass
             finally:
@@ -122,7 +122,8 @@ class NodesManager:
         tn = "{}".format( ns.getTasksNum() )
         lm = ""
         if len( ns.getLastNetworkMessages() ) > 0:
-            lm = ns.getLastNetworkMessages()[-1]
+            lm = ns.getLastNetworkMessages()[-1][ 0 ] + str( ns.getLastNetworkMessages()[-1][ 4 ] )
+            
 
         ir = ns.isRunning()
 

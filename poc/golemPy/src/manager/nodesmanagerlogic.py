@@ -24,18 +24,20 @@ class NodesManagerLogicTest:
 
 import subprocess
 from managerserver import ManagerServer
+import time
 
 class EmptyManagerLogic:
 
     ########################
-    def __init__( self, port ):
+    def __init__( self, port, managerServer ):
         self.reactor = None
-        self.server = ManagerServer( port, None )
+        self.managerServer = managerServer
+        self.activeNodes = []
 
     ########################
     def setReactor( self, reactor ):
         self.reactor = reactor
-        self.server.setReactor( reactor )
+        self.managerServer.setReactor( reactor )
 
     ########################
     def getReactor( self ):
@@ -44,7 +46,9 @@ class EmptyManagerLogic:
     ########################
     def runAdditionalNodes( self, numNodes ):
         for i in range( numNodes ):
-            self.pc = subprocess.Popen( ["python", "clientmain.py"], creationflags = subprocess.CREATE_NEW_CONSOLE )
+            time.sleep( 0.1 )
+            pc = subprocess.Popen( ["python", "clientmain.py"], creationflags = subprocess.CREATE_NEW_CONSOLE )
+            self.activeNodes.append( pc )
 
     ########################
     def terminateNode( self, uid ):
@@ -52,7 +56,8 @@ class EmptyManagerLogic:
 
     ########################
     def terminateAllNodes( self ):
-        pass
+        for i in self.activeNodes:
+            i.kill()        
 
     ########################
     def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):

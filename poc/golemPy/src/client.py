@@ -47,11 +47,8 @@ class Client:
         self.taskServer = TaskServer( self.hostAddress, self.configDesc )
         if self.configDesc.addTasks:
             hash = random.getrandbits(128)
-            th = TaskHeader( hash, "10.30.10.203", self.taskServer.curPort )
-            self.taskServer.taskManager.addNewTask( VRayTracingTask( 1, 1, 1, th ) )
-            hash = random.getrandbits(128)
-            th = TaskHeader( hash, "10.30.10.203", self.taskServer.curPort )
-            self.taskServer.taskManager.addNewTask( VRayTracingTask( 1, 1, 1, th ) )
+            th = TaskHeader( str( hash ), "10.30.10.203", self.taskServer.curPort )
+            self.taskServer.taskManager.addNewTask( VRayTracingTask( 100, 100, 10, th ) )
 
         self.p2pserver.setTaskServer( self.taskServer )
 
@@ -102,5 +99,3 @@ class Client:
 
         if self.p2pserver:
             self.p2pserver.sendClientStateSnapshot( self.lastNodeStateSnapshot )
-
-        #print self.lastNodeStateSnapshot

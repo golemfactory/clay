@@ -26,7 +26,7 @@ class TaskConnState( ConnectionState ):
             print "Deserialization message failed"
             self.taskSesssion.interpret(None)
 
-        if self.taskSesssion:
+        if self.taskSession:
             for m in mess:
                 self.taskSession.interpret(m)
         else:

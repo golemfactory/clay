@@ -23,7 +23,7 @@ class TaskManager:
             if task.needsComputation():
                 ed = task.queryExtraData( estimatedPerformance )
                 if ed:
-                    sd = task.shortExtraDataRepr( extimatedPerformance )
+                    sd = task.shortExtraDataRepr( estimatedPerformance )
                     #self.givenTasks[ taskId, ed ] = time.time()
                     return taskId, task.srcCode, ed, sd
             print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
@@ -66,7 +66,7 @@ class TaskManager:
         tasksProgresses = {}
 
         for t in self.tasks.values():
-            ltss = LocalTaskStateSnapshot( t.header.id, t.getTotalTasks(), t.getTotalChunks(), t.getActiveTasks(), t.getActiveChunks(), t.getChunksLeft(), t.getProgress(), t.shortExtraDataRepr() )
+            ltss = LocalTaskStateSnapshot( t.header.id, t.getTotalTasks(), t.getTotalChunks(), t.getActiveTasks(), t.getActiveChunks(), t.getChunksLeft(), t.getProgress(), t.shortExtraDataRepr( 1200.0 ) )
             tasksProgresses[ t.header.id ] = ltss
 
         return tasksProgresses

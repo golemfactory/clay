@@ -25,7 +25,6 @@ class ManagerConnectionState( ConnectionState ):
     def dataReceived(self, data):
         assert self.opened
 
-        print data
         self.db.appendString(data)
         mess = Message.deserialize( self.db )
         if mess is None:

@@ -23,8 +23,9 @@ def main():
     initMessages()
 
     port = AppConfig.managerPort()
-    logic = EmptyManagerLogic( port )
-    manager = NodesManager( logic )
+    manager = NodesManager( None )
+    logic = EmptyManagerLogic( port, manager.managerServer )
+    manager.setManagerLogic( logic )
 
     try:
         import qt4reactor

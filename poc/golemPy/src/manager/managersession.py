@@ -9,11 +9,13 @@ class ManagerSession:
         self.server     = server
         self.address    = address
         self.port       = port
+        self.uid        = None
 
     ##########################
     def dropped( self ):
         self.conn.close()
-        del self.server.managerSession
+        self.server.managerSession = None
+        self.server.managerSessionDisconnected( self.uid )
 
     ##########################
     def interpret( self, msg ):
@@ -21,7 +23,9 @@ class ManagerSession:
         type = msg.getType()
 
         if type == MessagePeerStatus.Type:
-            self.server.nodeStateSnapshotReceived( msg.data )
+            nss = pickle.loads( msg.data )
+            self.uid = nss.getUID()
+            self.server.nodeStateSnapshotReceived( nss )
         else:
             print "Wrong message received {}".format( msg )
 
