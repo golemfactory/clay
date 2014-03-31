@@ -21,7 +21,7 @@ class TaskChunkStateSnapshot:
     def getProgress( self ):
         return self.progress
 
-    def chunkShortDescr( self ):
+    def getChunkShortDescr( self ):
         return self.chunkShortDescr
 
 class LocalTaskStateSnapshot:
@@ -57,7 +57,7 @@ class LocalTaskStateSnapshot:
     def getProgress( self ):
         return self.progress
 
-    def taskShortDescr( self ):
+    def getTaskShortDescr( self ):
         return self.taskShortDescr
 
 #FIXME: REGISTER number of local and remote tasks processed by current node (and number of successes and failures as well) - and show it in this manager

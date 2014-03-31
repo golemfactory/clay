@@ -71,6 +71,7 @@ class NodesManager:
         chunkProgress = 0.0
         cpuPower = ""
         timeLeft = ""
+        cshd = ""
 
         tcss = ns.getTaskChunkStateSnapshot()
         if len( tcss ) > 0:
@@ -79,6 +80,7 @@ class NodesManager:
             chunkProgress = sp.getProgress()
             cpuPower = "{}".format( sp.getCpuPower() )
             timeLeft = "{}".format( sp.getEstimatedTimeLeft() )
+            cshd = sp.getChunkShortDescr()
 
         taskId = None
         taskProgress = 0.0
@@ -87,6 +89,7 @@ class NodesManager:
         activeTasks = ""
         activeChunks = ""
         chunksLeft = ""
+        ltshd = ""
 
         ltss = ns.getLocalTaskStateSnapshot()
         if len( ltss ) > 0:
@@ -98,6 +101,7 @@ class NodesManager:
             activeTasks = "{}".format( sp.getActiveTasks() )
             activeChunks = "{}".format( sp.getActiveChunks() )
             chunksLeft = "{}".format( sp.getChunksLeft() )
+            ltshd = sp.getTaskShortDescr()
 
         ep = "{}:{}".format( ns.endpointAddr, ns.endpointPort )
         ts = ns.getFormattedTimestamp()
@@ -107,7 +111,7 @@ class NodesManager:
         if len( ns.getLastNetworkMessages() ) > 0:
             lm = ns.getLastNetworkMessages()[-1]
 
-        nodeDataState = NodeDataState( ns.uid, ts, ep, pn, tn, lm, chunkId, cpuPower, timeLeft, chunkProgress, taskId, allocTasks, allocChunks, activeTasks, activeChunks, chunksLeft, taskProgress )
+        nodeDataState = NodeDataState( ns.uid, ts, ep, pn, tn, lm, chunkId, cpuPower, timeLeft, chunkProgress, cshd, taskId, allocTasks, allocChunks, activeTasks, activeChunks, chunksLeft, taskProgress, ltshd )
 
         self.uic.UpdateNodePresentationState( nodeDataState )
 

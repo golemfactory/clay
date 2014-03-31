@@ -10,7 +10,7 @@ except AttributeError:
 class NodeDataState:
 
     ########################
-    def __init__( self, uid, timestamp, endpoint, numPeers, numTasks, lastMsg, chunkId, cpuPower, timeLeft, chunkProgress, locTaskId, allocatedTasks, allocatedChunks, activeTasks, activeChunks, chunksLeft, locTaskProgress ):
+    def __init__( self, uid, timestamp, endpoint, numPeers, numTasks, lastMsg, chunkId, cpuPower, timeLeft, chunkProgress, chunkShortDescr, locTaskId, allocatedTasks, allocatedChunks, activeTasks, activeChunks, chunksLeft, locTaskProgress, locTaskShortDescr ):
         self.uid = uid
         self.timestamp = timestamp
         self.endpoint = endpoint
@@ -21,6 +21,7 @@ class NodeDataState:
         self.cpuPower = cpuPower
         self.timeLeft = timeLeft
         self.chunkProgress = chunkProgress
+        self.chunkShortDescr = chunkShortDescr
         self.locTaskId = locTaskId
         self.allocatedTasks = allocatedTasks
         self.allocatedChunks = allocatedChunks
@@ -28,6 +29,7 @@ class NodeDataState:
         self.activeChunks = activeChunks
         self.chunksLeft = chunksLeft
         self.locTaskProgress = locTaskProgress
+        self.locTaskShortDescr = locTaskShortDescr
 
 #FIXME: add start local task button to manager (should trigger another local task for selected node)
 #FIXME: rething deleting nodes which seem to be inactive
@@ -150,10 +152,12 @@ class ManagerUiCustomizer(QtCore.QObject):
             self.widget.noTasksInput.setText( nodeDataState.numTasks )
             self.widget.lastMsgInput.setText( nodeDataState.lastMsg )
 
+            self.widget.chunkShortDescrInput.setText( nodeDataState.chunkShortDescr )
             self.widget.cpuPowerInput.setText( nodeDataState.cpuPower )
             self.widget.timeLeftInput.setText( nodeDataState.timeLeft )
             self.widget.activeChunkProgressBar.setProperty( "value", int( 100.0 * nodeDataState.chunkProgress ) )
 
+            self.widget.locTaskShortDescrInput.setText( nodeDataState.locTaskShortDescr )
             self.widget.allocatedTasksInput.setText( nodeDataState.allocatedTasks )
             self.widget.allocatedChunksInput.setText( nodeDataState.allocatedChunks )
             self.widget.activeTasksInput.setText( nodeDataState.activeTasks )
