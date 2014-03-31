@@ -184,15 +184,11 @@ class LocalNetworkSimulator(Thread):
     ########################
     def addNewNode( self ):
         with self.lock:
-            self.numNodes += 1
             node = self.createNewNode( self.curNode )
             self.nodes.append( node )
             node.start()
             self.curNode += 1
             #node.updateRequest.connect( self.updateRequested )
-
-    ########################
-    def terminateNode( self, uid ):
 
     ########################
     def updateRequested( self, id ):

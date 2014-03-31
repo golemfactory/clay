@@ -27,7 +27,9 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.tableData = {}
+        self.tableRows = []
         self.logic = managerLogic
+        self.detailedViewEnabled = False
 
         self.table.selectionModel().selectionChanged.connect( self.rowSelectionChanged )
         self.widget.runAdditionalNodesPushButton.clicked.connect( self.addNodesClicked )
@@ -39,6 +41,11 @@ class ManagerUiCustomizer(QtCore.QObject):
 
     ########################
     def rowSelectionChanged( self, item1, item2 ):
+        if not self.detailedViewEnabled:
+            self.detailedViewEnabled = True
+
+        self.enableDetailedView( True )
+
         print item1.indexes()[ 0 ].row()
 
     ########################
@@ -93,6 +100,7 @@ class ManagerUiCustomizer(QtCore.QObject):
     ########################
     def __registerRowData( self, nodeUid, rowDataEntry ):
         self.tableData[ nodeUid ] = rowDataEntry
+        self.tableRows.append( rowDataEntry )
 
     ########################
     def isRegistered( self, nodeUid ):
