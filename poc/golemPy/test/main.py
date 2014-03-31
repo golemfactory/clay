@@ -19,9 +19,7 @@ from nodesmanagerlogic import EmptyManagerLogic
 
 def main():
 
-    #initMessages()
     port = AppConfig.managerPort()
-
     logic = EmptyManagerLogic( port )
     manager = NodesManager( logic )
 
@@ -31,11 +29,9 @@ def main():
         # Maybe qt4reactor is placed inside twisted.internet in site-packages?
         from twisted.internet import qt4reactor
     qt4reactor.install()
-
     from twisted.internet import reactor
 
     logic.setReactor( reactor )
-
     manager.execute( True )
 
     reactor.run()
