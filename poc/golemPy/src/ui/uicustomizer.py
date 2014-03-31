@@ -144,20 +144,20 @@ class ManagerUiCustomizer(QtCore.QObject):
                 self.widget.labelDetailedLocalTask.setText( "Active local task (none)" )
 
             self.widget.endpointInput.setText( nodeDataState.endpoint )
-            self.widget.noPeersInput.setText( "{}".format( nodeDataState.numPeers ) )
-            self.widget.noTasksInput.setText( "{}".format( nodeDataState.numTasks ) )
+            self.widget.noPeersInput.setText( nodeDataState.numPeers )
+            self.widget.noTasksInput.setText( nodeDataState.numTasks )
             self.widget.lastMsgInput.setText( nodeDataState.lastMsg )
 
-            self.widget.cpuPowerInput.setText( "{}".format( nodeDataState.cpuPower ) )
+            self.widget.cpuPowerInput.setText( nodeDataState.cpuPower )
             self.widget.timeLeftInput.setText( nodeDataState.timeLeft )
-            self.widget.activeChunkProgressBar.setProperty("value", int( 100.0 * nodeDataState.chunkProgress ) )
+            self.widget.activeChunkProgressBar.setProperty( "value", int( 100.0 * nodeDataState.chunkProgress ) )
 
-            self.widget.allocatedTasksInput.setText( "{}".format( nodeDataState.allocatedTasks ) )
-            self.widget.allocatedChunksInput.setText( "{}".format( nodeDataState.allocatedChunks ) )
-            self.widget.activeTasksInput.setText( "{}".format( nodeDataState.activeTasks ) )
-            self.widget.activeChunksInput.setText( "{}".format( nodeDataState.activeChunks ) )
-            self.widget.chunksLeftInput.setText( "{}".format( nodeDataState.chunksLeft ) )
-            self.widget.localTaskProgressBar.setProperty("value", int( 100.0 * nodeDataState.locTaskProgress ) )
+            self.widget.allocatedTasksInput.setText( nodeDataState.allocatedTasks )
+            self.widget.allocatedChunksInput.setText( nodeDataState.allocatedChunks )
+            self.widget.activeTasksInput.setText( nodeDataState.activeTasks )
+            self.widget.activeChunksInput.setText( nodeDataState.activeChunks )
+            self.widget.chunksLeftInput.setText( nodeDataState.chunksLeft )
+            self.widget.localTaskProgressBar.setProperty( "value", int( 100.0 * nodeDataState.locTaskProgress ) )
 
     ########################
     def __resetDetailedView( self ):

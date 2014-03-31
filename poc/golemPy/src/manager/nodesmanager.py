@@ -77,16 +77,26 @@ class NodesManager:
             sp = tcss.itervalues().next()
             chunkId = sp.getChunkId()
             chunkProgress = sp.getProgress()
-            cpuPower = sp.getCpuPower()
-            timeLeft = sp.getEstimatedTimeLeft()
+            cpuPower = "{}".format( sp.getCpuPower() )
+            timeLeft = "{}".format( sp.getEstimatedTimeLeft() )
 
         taskId = None
         taskProgress = 0.0
-
+        allocTasks = ""
+        allocChunks = ""
+        activeTasks = ""
+        activeChunks = ""
+        chunksLeft = ""
         ltss = ns.getLocalTaskStateSnapshot()
         if len( ltss ) > 0:
             sp = ltss.itervalues().next()
+            taskId = sp.getTaskId()
             taskProgress = sp.getProgress()
+            allocTasks = "{}".format( sp.getTotalTasks() )
+            allocChunks = "{}".format( sp.getTotalChunks() )
+            activeTasks = "{}".format( sp.getActiveTasks() )
+            activeChunks = "{}".format( sp.getActiveChunks() )
+            chunksLeft = "{}".format( sp.getChunksLeft() )
 
         ep = "{}:{}".format( ns.endpointAddr, ns.endpointPort )
         ts = ns.getFormattedTimestamp()
@@ -94,10 +104,9 @@ class NodesManager:
         tn = ns.getTasksNum()
         lm = ns.getLastNetworkMessages()[-1]
 
-        nodeDataState = NodeDataState( ns.uid, ts, ep, pn, tn, lm, chunkId, cpuPower )
-            def __init__( self, uid, timestamp, endpoint, numPeers, numTasks, lastMsg, chunkId, cpuPower, timeLeft, chunkProgress, locTaskId, allocatedTasks, allocatedChunks, activeTasks, activeChunks, chunksLeft, locTaskProgress ):
+        nodeDataState = NodeDataState( ns.uid, ts, ep, pn, tn, lm, chunkId, cpuPower, timeLeft, chunkProgress, taskId, allocTasks, allocChunks, activeTasks, activeChunks, chunksLeft, taskProgress )
 
-        self.uic.UpdateRowsState( ns.getUID(), ns.getFormattedTimestamp(), chunkProgress, taskProgress )
+        self.uic.UpdateRowsState( nodeDataState )
 
     ########################
     def runAdditionalNodes( self, numNodes ):
