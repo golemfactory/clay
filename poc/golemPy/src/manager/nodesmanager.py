@@ -9,7 +9,7 @@ from ui_nodemanager import Ui_NodesManagerWidget
 from uicustomizer import ManagerUiCustomizer
 from nodestatesnapshot import NodeStateSnapshot
 from networksimulator import GLOBAL_SHUTDOWN, LocalNetworkSimulator
-from nodesmanagerlogic import NodesManagerLogic
+from nodesmanagerlogic import NodesManagerLogicTest
 
 #FIXME: potencjalnie mozna tez spiac ze soba managery i wtedy kontrolowac zdalnie wszystkie koncowki i sobie odpalac nody w miare potrzeb, ale to nie na najblizsza prezentacje zabawa
 class NodesManager:

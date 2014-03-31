@@ -59,7 +59,24 @@ class NodeSimulator(QtCore.QThread):
         if self.tasksNum > 200:
             self.tasksNum = 200
 
-        return NodeStateSnapshot( self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message'], ['test message'], { '0' : self.remProgress }, { '0' : self.locProgress } )
+        curTime = time.time()
+
+        ctl = self.remoteTaskDuration - ( curTime - self.remTaskStartTime )
+        ctl = max( 0.0, ctl )
+        tcss = TaskChunkStateSnapshot( '0', 1600.0, ctl, self.remProgress )
+
+        allChunks = 1000 * 1000
+
+        totalTasks = int( 1000.0 * self.locProgress )
+        totalChunks = 1000 * totalTasks
+        
+        activeRandom = random.random()
+        activeTasks = int( activeRandom * totalTasks )
+        activeChunks = int( activeRandom * totalChunks )
+
+        ltss = LocalTaskStateSnapshot( totalTasks, totalChunks, activeTasks, activeChunks, allChunks - totalChunks, self.locProgress ) 
+
+        return NodeStateSnapshot( self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message'], ['test message'], { '0' : tcss }, { '0xcdcdcd' : ltss } )
 
     ########################
     def run( self ):
@@ -69,15 +86,15 @@ class NodeSimulator(QtCore.QThread):
         locTaskDuration = self.localTaskDuration
         remTaskDuration = self.remoteTaskDuration
 
-        locTasksDuration = self.numLocalTasks * self.localTaskDuration
-        remTasksDuration = self.numRemoteTasks * self.remoteTaskDuration
+        self.locTasksDuration = self.numLocalTasks * self.localTaskDuration
+        self.remTasksDuration = self.numRemoteTasks * self.remoteTaskDuration
 
         totalDuration = max( locTasksDuration, remTasksDuration )
 
         locTask = 0
-        locTaskStartTime = startTime
+        self.locTaskStartTime = startTime
         remTask = 0
-        remTaskStartTime = startTime
+        self.remTaskStartTime = startTime
 
         print "Starting node '{}' local tasks: {} remote tasks: {}".format( self.uid, self.numLocalTasks, self.numRemoteTasks )
         print "->local task dura: {} secs, remote task dura: {} secs".format( self.localTaskDuration, self.remoteTaskDuration )
@@ -93,22 +110,22 @@ class NodeSimulator(QtCore.QThread):
             curTime = time.time()
 
             if locTask < self.numLocalTasks:
-                dt = curTime - locTaskStartTime
+                dt = curTime - self.locTaskStartTime
 
-                if dt <= locTaskDuration:
-                    self.locProgress = dt / locTaskDuration
+                if dt <= self.locTaskDuration:
+                    self.locProgress = dt / self.locTaskDuration
                 else:
-                    locTaskStartTime = curTime
+                    self.locTaskStartTime = curTime
                     locTask += 1
                     self.locProgress = 0.0
 
             if remTask < self.numRemoteTasks:
-                dt = curTime - remTaskStartTime
+                dt = curTime - self.remTaskStartTime
 
-                if dt <= remTaskDuration:
-                    self.remProgress = dt / remTaskDuration
+                if dt <= self.remTaskDuration:
+                    self.remProgress = dt / self.remTaskDuration
                 else:
-                    remTaskStartTime = curTime
+                    self.remTaskStartTime = curTime
                     remTask += 1
                     self.remProgress = 0.0
 
