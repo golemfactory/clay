@@ -25,6 +25,9 @@ class NodesManagerLogicTest:
 import subprocess
 from managerserver import ManagerServer
 import time
+import random
+from taskbase import TaskHeader
+from exampletasks import VRayTracingTask
 
 class EmptyManagerLogic:
 
@@ -52,13 +55,18 @@ class EmptyManagerLogic:
 
     ########################
     def terminateNode( self, uid ):
-        pass
+        self.managerServer.sendTerminate( uid )
 
     ########################
     def terminateAllNodes( self ):
         for i in self.activeNodes:
-            i.kill()        
+            try:
+                i.kill()
+            except:
+                pass
 
     ########################
     def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
-        pass
+        hash = random.getrandbits(128)
+        th = TaskHeader( str( hash ), "", 0 )    
+        self.managerServer.sendNewTask( uid, VRayTracingTask( w, h, numSamplesPerPixel, th ) )

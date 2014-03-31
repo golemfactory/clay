@@ -18,6 +18,11 @@ class Task:
 
     #######################
     @abc.abstractmethod
+    def initialize( self ):
+        return # Implement in derived class
+
+    #######################
+    @abc.abstractmethod
     def queryExtraData( self, perfIndex ):
         return # Implement in derived class
 

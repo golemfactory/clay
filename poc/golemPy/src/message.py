@@ -338,6 +338,39 @@ class MessagePeerStatus( Message ):
     def __str__( self ):
         return "{} {}".format( self.id, self.data )
 
+class MessageNewTask( Message ):
+    Type = MANAGER_MSG_BASE + 2
+
+    DATA_STR    = u"DATA"
+
+    def __init__( self, data = "", dictRepr = None ):
+        Message.__init__(self, MessageNewTask.Type)
+
+        self.data = data
+
+        if dictRepr:
+            self.data = dictRepr[ self.DATA_STR ]
+
+    def dictRepr(self):
+        return { self.DATA_STR : self.data } 
+
+    def __str__( self ):
+        return "{}".format( self.data )
+
+class MessageKillNode( Message ):
+    Type = MANAGER_MSG_BASE + 3
+
+    KILL_STR    = u"KILL"
+
+    def __init__( self, dictRepr = None ):
+        Message.__init__(self, MessageKillNode.Type)
+
+        if dictRepr:
+            assert dictRepr[ 0 ] == MessageKillNode.KILL_STR
+
+    def dictRepr(self):
+        return [ MessageKillNode.KILL_STR ]
+
 def initMessages():
     MessageHello()
     MessagePing()
@@ -352,6 +385,8 @@ def initMessages():
     MessageTaskToCompute()
     MessageWantToComputeTask()
     MessagePeerStatus()
+    MessageNewTask()
+    MessageKillNode()
 
 
 if __name__ == "__main__":

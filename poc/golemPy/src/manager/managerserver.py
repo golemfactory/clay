@@ -20,10 +20,10 @@ class ManagerServer:
 
     #############################
     def __init__( self, nodesManager, port, reactor = None ):
-        self.port           = port
-        self.managerSession = None
-        self.reactor        = reactor
-        self.nodesManager   = nodesManager
+        self.port               = port
+        self.managerSessions    = []
+        self.reactor            = reactor
+        self.nodesManager       = nodesManager
 
     #############################
     def setReactor( self, reactor ):
@@ -55,8 +55,9 @@ class ManagerServer:
     #############################
     def newNMConnection(self, conn):
         pp = conn.transport.getPeer()
-        self.managerSession = ManagerSession( conn, self,  pp.host, pp.port )
-        conn.setSession( self.managerSession )
+        ms = ManagerSession( conn, self,  pp.host, pp.port )
+        conn.setSession( ms )
+        self.managerSessions.append( ms )
 
     #############################
     def nodeStateSnapshotReceived( self, nss ):
@@ -65,3 +66,15 @@ class ManagerServer:
     #############################
     def managerSessionDisconnected( self, uid ):
         self.nodesManager.appendStateUpdate( NodeStateSnapshot( False, uid ) )
+
+    #############################
+    def sendTerminate( self, uid ):
+        for ms in self.managerSessions:
+            if ms.uid == uid:
+                ms.sendKillNode()
+
+    #############################
+    def sendNewTask( self, uid, task ):
+        for ms in self.managerSessions:
+            if ms.uid == uid:
+                ms.sendNewTask( task )

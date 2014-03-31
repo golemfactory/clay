@@ -164,11 +164,12 @@ class P2PServer:
 
     #############################
     def __connectionNMEstablished( self, conn ):
-        pp = conn.transport.getPeer()
-        print "__connectionNMEstablished {} {}".format( pp.host, pp.port )
+        if conn:
+            pp = conn.transport.getPeer()
+            print "__connectionNMEstablished {} {}".format( pp.host, pp.port )
 
     def __connectionNMFailure( self, conn ):
-        print "Connection to nodes manager failure. {}: {}".format( conn.transport.getPeer().host, conn.transport.getPeer().port )
+        print "Connection to nodes manager failure."
 
     #############################
     def __runListenOnce( self ):

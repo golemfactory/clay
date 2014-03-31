@@ -125,13 +125,20 @@ class VRayTracingTask( Task ):
 
         self.header.ttl = max( width * height * num_samples * 2 / 1200.0, TIMEOUT )
 
-        self.taskableRenderer = TaskableRenderer( width, height, num_samples, None, TIMESLC, TIMEOUT )
+        self.taskableRenderer = None
 
         self.w = width
         self.h = height
         self.num_samples = num_samples
 
         self.lastExtraData = ""
+
+    #######################
+    def __initRenderer( self ):
+        self.taskableRenderer = TaskableRenderer( self.w, self.h, self.num_samples, None, TIMESLC, TIMEOUT )
+
+    def initialize( self ):
+        self.__initRenderer()
 
     #######################
     def queryExtraData( self, perfIndex ):

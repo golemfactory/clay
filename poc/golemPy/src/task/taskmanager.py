@@ -14,6 +14,7 @@ class TaskManager:
     #######################
     def addNewTask( self, task ):
         assert task.header.id not in self.tasks
+        task.initialize()
         self.tasks[ task.header.id ] = task
 
     #######################
@@ -66,7 +67,8 @@ class TaskManager:
         tasksProgresses = {}
 
         for t in self.tasks.values():
-            ltss = LocalTaskStateSnapshot( t.header.id, t.getTotalTasks(), t.getTotalChunks(), t.getActiveTasks(), t.getActiveChunks(), t.getChunksLeft(), t.getProgress(), t.shortExtraDataRepr( 1200.0 ) )
-            tasksProgresses[ t.header.id ] = ltss
+            if t.getProgress() < 1.0:
+                ltss = LocalTaskStateSnapshot( t.header.id, t.getTotalTasks(), t.getTotalChunks(), t.getActiveTasks(), t.getActiveChunks(), t.getChunksLeft(), t.getProgress(), t.shortExtraDataRepr( 1200.0 ) )
+                tasksProgresses[ t.header.id ] = ltss
 
         return tasksProgresses
