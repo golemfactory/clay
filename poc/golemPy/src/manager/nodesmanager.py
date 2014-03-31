@@ -130,6 +130,7 @@ if __name__ == "__main__":
     manager = NodesManager()
 
     numNodes = 30
+    numNodes = 3
     maxLocalTasks = 3
     maxRemoteTasks = 30
     maxLocTaskDuration = 200.0

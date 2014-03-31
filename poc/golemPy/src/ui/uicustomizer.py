@@ -81,13 +81,23 @@ class ManagerUiCustomizer(QtCore.QObject):
             self.detailedViewEnabled = True
             self.enableDetailedView( True )
 
-        idx = item1.indexes()[ 0 ].row()
+        indices = item1.indexes()
 
-        uid = self.nodeDataStates[ idx ].uid
-        self.curActiveRowIdx = idx
-        self.curActiveRowUid = uid
+        if len( indices ) > 0 and len( self.nodeDataStates ) > 0:
+            idx = indices[ 0 ].row()
+            
+            if idx >= len( self.nodeDataStates ):
+                idx = len( self.nodeDataStates ) - 1
 
-        self.__updateDetailedNodeView( idx, self.nodeDataStates[ idx ] )
+            uid = self.nodeDataStates[ idx ].uid
+            self.curActiveRowIdx = idx
+            self.curActiveRowUid = uid
+
+            self.__updateDetailedNodeView( idx, self.nodeDataStates[ idx ] )
+        else:
+            self.detailedViewEnabled = False
+            self.__resetDetailedView()
+            self.enableDetailedView( False )
 
     ########################
     def __createWrappedProgressBar( self, red ):
@@ -179,12 +189,42 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.widget.labelDetailedLocalTask.setText( "Active local task (none)" )
         self.widget.activeChunkProgressBar.setProperty("value", 0)
         self.widget.localTaskProgressBar.setProperty("value", 0)
+        self.widget.endpointInput.setText( "" )
+        self.widget.noPeersInput.setText( "" )
+        self.widget.noTasksInput.setText( "" )
+        self.widget.lastMsgInput.setText( "" )
+        self.widget.chunkShortDescrInput.setText( "" )
+        self.widget.cpuPowerInput.setText( "" )
+        self.widget.timeLeftInput.setText( "" )
+        self.widget.locTaskShortDescrInput.setText( "" )
+        self.widget.allocatedTasksInput.setText( "" )
+        self.widget.allocatedChunksInput.setText( "" )
+        self.widget.activeTasksInput.setText( "" )
+        self.widget.activeChunksInput.setText( "" )
+        self.widget.chunksLeftInput.setText( "" )
 
     ########################
     def __registerRowData( self, nodeUid, rowDataEntry, nodeDataState ):
         self.tableData[ nodeUid ] = rowDataEntry
         self.uidRowMapping[ nodeUid ] = len( self.nodeDataStates )
         self.nodeDataStates.append( nodeDataState )
+
+    ########################
+    def __removeRowAndDetailedData( self, idx, uid ):
+        print "Removing {} idx from {} total at {} uid".format( idx, len( self.tableData ), uid )
+        self.nodeDataStates.pop( idx )
+        del self.tableData[ uid ]
+        self.table.removeRow( idx )
+
+        self.uidRowMapping = {}
+        for i, nds in enumerate( self.nodeDataStates ):
+            self.uidRowMapping[ nds.uid ] = i
+
+        curRow = self.table.currentRow()
+
+        if curRow is not None and curRow >= 0:
+            self.curActiveRowIdx = curRow
+            self.curActiveRowUid = self.nodeDataStates[ curRow ].uid
 
     ########################
     def isRegistered( self, nodeUid ):
@@ -208,6 +248,8 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.nodeDataStates[ idx ] = nodeDataState
 
         #update view
-        if nodeDataState
-        self.__updateExistingRowView( self.tableData[ nodeDataState.uid ], nodeDataState.uid, nodeDataState.timestamp, nodeDataState.chunkProgress, nodeDataState.locTaskProgress )        
-        self.__updateDetailedNodeView( idx, nodeDataState )
+        if nodeDataState.isRunning:
+            self.__updateExistingRowView( self.tableData[ nodeDataState.uid ], nodeDataState.uid, nodeDataState.timestamp, nodeDataState.chunkProgress, nodeDataState.locTaskProgress )        
+            self.__updateDetailedNodeView( idx, nodeDataState )
+        else:
+            self.__removeRowAndDetailedData( idx, nodeDataState.uid )

@@ -75,7 +75,7 @@ class NodeStateSnapshot:
         self.lastTaskMessages       = lastTaskMessages
         self.taskChunkState         = tcss
         self.localTaskState         = ltss
-        self.running                = True
+        self.running                = running
 
     def isRunning( self ):
         return self.running
