@@ -23,13 +23,14 @@ class TaskManager:
             if task.needsComputation():
                 ed = task.queryExtraData( estimatedPerformance )
                 if ed:
+                    sd = task.shortExtraDataRepr( extimatedPerformance )
                     #self.givenTasks[ taskId, ed ] = time.time()
-                    return taskId, task.srcCode, ed
+                    return taskId, task.srcCode, ed, sd
             print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
-            return 0, "", {}
+            return 0, "", {}, ""
         else:
             print "Cannot find task {} in my tasks".format( taskId )
-            return 0, "", {}
+            return 0, "", {}, ""
 
     #######################
     def getTasksHeaders( self ):

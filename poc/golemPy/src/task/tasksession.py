@@ -38,10 +38,10 @@ class TaskSession:
 
         if type == MessageWantToComputeTask.Type:
 
-            taskId, srcCode, extraData = self.taskManager.getNextSubTask( msg.taskId, msg.perfIndex )
+            taskId, srcCode, extraData, shortDescr = self.taskManager.getNextSubTask( msg.taskId, msg.perfIndex )
 
             if taskId != 0:
-                self.conn.sendMessage( MessageTaskToCompute( taskId, extraData, srcCode ) )
+                self.conn.sendMessage( MessageTaskToCompute( taskId, extraData, shortDescr, srcCode ) )
             else:
                 self.conn.sendMessage( MessageCannotAssignTask( msg.taskId, "No more subtasks in {}".format( msg.taskId ) ) )
 
