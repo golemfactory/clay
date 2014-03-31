@@ -18,7 +18,7 @@ class ManagerServerFactory(Factory):
 class ManagerServer:
 
     #############################
-    def __init__( self, port, reactor ):
+    def __init__( self, port, reactor = None ):
         self.port = port
         self.reactor = reactor
 
@@ -35,7 +35,7 @@ class ManagerServer:
     def __runListenOnce( self ):
         print self.reactor
         ep = TCP4ServerEndpoint( self.reactor, self.port )
-        
+
         d = ep.listen( ManagerServerFactory( self ) )
         
         d.addCallback( self.__listeningEstablished )

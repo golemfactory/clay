@@ -1,4 +1,4 @@
-from twisted.internet import task
+from twisted.internet import task, reactor
 
 from p2pserver import P2PServer
 from taskserver import TaskServer
@@ -8,6 +8,7 @@ from exampletasks import VRayTracingTask
 
 from hostaddress import getHostAddress
 
+from managerserver import ManagerServer
 from nodestatesnapshot import NodeStateSnapshot
 from managermessage import MessagePeerStatus
 
@@ -44,6 +45,7 @@ class Client:
         time.sleep( 1.0 )
 
         self.taskServer = TaskServer( self.hostAddress, self.configDesc )
+        self.managerServer = ManagerServer( self.configDesc.managerPort )
         if self.configDesc.addTasks:
             hash = random.getrandbits(128)
             th = TaskHeader( hash, "10.30.10.203", self.taskServer.curPort )
@@ -53,6 +55,7 @@ class Client:
             self.taskServer.taskManager.addNewTask( VRayTracingTask( 1, 1, 1, th ) )
 
         self.p2pserver.setTaskServer( self.taskServer )
+        self.managerServer.setReactor( reactor )
 
     ############################
     def stopNetwork(self):
@@ -73,6 +76,8 @@ class Client:
             if not self.lastNodeStateSnapshot or time.time() - self.lastNSSTime > self.configDesc.nodeSnapshotInterval:
                 self.__makeNodeStateSnapshot()
                 self.lastNSSTime = time.time()
+
+                self.managerServer.sendStateMessage( self.lastNodeStateSnapshot )
 
     ############################
     def __makeNodeStateSnapshot( self, isRunning = True ):

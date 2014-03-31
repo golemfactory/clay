@@ -1,5 +1,8 @@
 import sys
 sys.path.append( '../ui' )
+sys.path.append( '../' )
+sys.path.append( '../core' )
+sys.path.append( '../network' )
 
 from PyQt4.QtGui import QApplication, QDialog
 from PyQt4.QtCore import QTimer
@@ -33,6 +36,8 @@ class NodesManager:
         def closeEvent_(self_, event):
             try:
                 self.managerLogic.getReactor().stop()
+            except Exception as ex:
+                pass
             finally:
                 GLOBAL_SHUTDOWN[ 0 ] = True
                 event.accept()
