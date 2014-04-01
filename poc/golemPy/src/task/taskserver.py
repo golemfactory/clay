@@ -56,12 +56,13 @@ class TaskServer:
             return False
 
     #############################
-    def newConnection(self, conn):
-        pp = conn.transport.getPeer()
-        print "newConnection {} {}".format(pp.host, pp.port)
-        tSession = TaskSession(conn, self, pp.host, pp.port)
-        conn.setTaskSession( tSession )
-        self.taskSeesionsIncoming.append( tSession )
+    def newConnection(self, session):
+
+        session.taskServer = self
+        session.taskServer.taskComputer = self.taskComputer
+        session.taskServer.taskManager = self.taskManager
+
+        self.taskSeesionsIncoming.append( session )
 
     #############################
     def getTasksHeaders( self ):
@@ -149,6 +150,9 @@ class TaskServer:
     #############################
     def __connectionForTaskRequestEstablished( self, session, taskId, estimatedPerformance ):
 
+        session.taskServer = self
+        session.taskServer.taskComputer = self.taskComputer
+        session.taskServer.taskManager = self.taskManager
         self.taskSeesions[ taskId ] = session            
         ts.askForTask( taskId, estimatedPerformance )
 
@@ -169,6 +173,10 @@ class TaskServer:
 
     #############################
     def __connectionForTaskResultEstablished( self, session, taskId, extraData, results ):
+
+        session.taskServer = self
+        session.taskServer.taskComputer = self.taskComputer
+        session.taskServer.taskManager = self.taskManager
 
         self.taskSeesions[ taskId ] = session
         

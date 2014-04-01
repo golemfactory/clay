@@ -4,7 +4,7 @@ class Network:
 
     ######################
     @classmethod
-    def connect( self, address, port, SessionType, establishedCallback = None, failureCallback = None, *args, **kwargs ):
+    def connect( self, address, port, SessionType, establishedCallback = None, failureCallback = None, *args ):
         print "Connecting to host {} : {}".format( address, port )
         from twisted.internet import reactor
         endpoint    = TCP4ClientEndpoint( reactor, address, port )
@@ -39,7 +39,7 @@ class Network:
 
     ######################
     @classmethod
-    def __connectionEstablished( self, conn, SessionType, establishedCallback, *args, **kwargs ):
+    def __connectionEstablished( self, conn, SessionType, establishedCallback, *args ):
         if conn:
             session = SessionType( conn )
             conn.setSession( session )
@@ -48,20 +48,20 @@ class Network:
             print "__connectionEstablished {} {}".format( pp.host, pp.port )
 
             if establishedCallback:
-                if len( kwargs ) == 0:
+                if len(args[0]) == 0:
                     establishedCallback( session )
                 else:
-                    establishedCallback( session, args )
+                    establishedCallback( session, args[ 0 ] )
 
     ######################
     @classmethod
-    def __connectionFailure( self, conn, failureCallback, *args, **kwargs ):
+    def __connectionFailure( self, conn, failureCallback, *args ):
         print "Connection failure."
         if failureCallback:
-            if len( kwargs ) == 0:
+            if len(args[0]) == 0:
                 failureCallback()
             else:
-                failureCallback( args )
+                failureCallback( args[ 0 ] )
         
 
     ######################

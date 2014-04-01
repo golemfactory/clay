@@ -1,17 +1,20 @@
 from message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageTaskComputed
 from taskcomputer import TaskComputer
+from taskconnstate import TaskConnState
 import time
 
 class TaskSession:
 
+    ConnectionStateType = TaskConnState
+
     ##########################
-    def __init__( self, conn, taskServer, address, port ):
+    def __init__( self, conn ):
         self.conn           = conn
-        self.taskServer     = taskServer
-        self.taskManager    = taskServer.taskManager
-        self.taskComputer   = taskServer.taskComputer
-        self.address        = address
-        self.port           = port
+        self.taskServer     = None
+        self.taskManager    = None
+        self.taskComputer   = None
+        self.address        = self.conn.transport.getPeer().host
+        self.port           = self.conn.transport.getPeer().port
 
     ##########################
     def askForTask( self, taskId, performenceIndex ):

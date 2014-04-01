@@ -3,19 +3,24 @@ from connectionstate import ConnectionState
 
 class TaskConnState( ConnectionState ):
     ##########################
-    def __init__(self, server):
+    def __init__( self, server = None):
         ConnectionState.__init__( self )
         self.taskSession = None
         self.server = server
 
     ############################
-    def setTaskSession( self, taskSession ):
+    def setSession( self, taskSession ):
         self.taskSession = taskSession
 
     ############################
     def connectionMade(self):
         self.opened = True
-        self.server.newConnection(self)
+
+        if self.server:
+            from tasksession import TaskSession
+            pp = self.transport.getPeer()
+            self.taskSession = TaskSession( self )
+            self.server.newConnection( self.taskSession )
 
     ############################
     def dataReceived(self, data):
