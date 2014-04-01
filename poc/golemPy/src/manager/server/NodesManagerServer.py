@@ -25,7 +25,7 @@ class NodesManagerServer:
         print "Manager server - port {} opened, listening".format( port )
 
     #############################
-    def __listeningFailure( self, p ):
+    def __listeningFailure( self ):
         print "Opening {} port for listening failed - bailign out".format( self.port )
 
     #############################

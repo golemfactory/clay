@@ -1,0 +1,116 @@
+from p2pserver import P2PServer
+from network import Network
+from peer import PeerSession
+import time
+
+class P2PService:
+    ########################
+    def __init__( self, hostAddress, configDesc ):
+
+        self.p2pServer              = P2PServer( hostAddress, configDesc, self )
+
+        self.configDesc             = configDesc
+
+        self.curPort                = self.configDesc.startPort
+        self.peers                  = {}
+        self.allPeers               = []
+        self.clientUuid             = self.configDesc.clientUuid
+        self.lastPeersRequest       = time.time()
+        self.lastGetTasksRequest    = time.time()
+        self.incommingPeers         = {}
+        self.freePeers              = []
+        self.taskServer             = None
+        self.hostAddress            = hostAddress
+
+        self.lastMessages           = []
+
+        self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
+
+    #############################
+    def setTaskServer( self, taskServer ):
+        self.taskServer = taskServer
+
+    #############################
+    def syncNetwork( self ):
+
+        self.__sendMessageGetPeers()
+
+        if self.taskServer:
+            self.__sendMessageGetTasks()
+
+    #############################
+    def newSession( self, session ):
+        self.allPeers.append( session )
+        session.start()
+ 
+    #############################
+    def pingPeers( self, interval ):
+        for p in self.peers.values():
+            p.ping( interval )
+    
+    #############################
+    def findPeer( self, peerID ):
+        if peerID in self.peers:
+            return self.peers[ peerID ]
+        else:
+            return None
+
+    #############################
+    def removePeer( self, peerSession ):
+
+        self.allPeers.remove( peerSession )
+
+        for p in self.peers.keys():
+            if self.peers[ p ] == peerSession:
+                del self.peers[ p ]
+    
+    #############################
+    def setLastMessage( self, type, t, msg, address, port ):
+        if len( self.lastMessages ) >= 5:
+            self.lastMessages = self.lastMessages[ -4: ]
+
+        self.lastMessages.append( [ type, t, address, port, msg ] )
+
+    #############################
+    def getLastMessages( self ):
+        return self.lastMessages
+    
+    ############################# 
+    def managerSessionDisconnected( self, uid ):
+        self.managerSession = None
+
+    #############################   
+    def __connect( self, address, port ):
+
+        Network.connect( address, port, PeerSession, self.__connectionEstablished, self.__connectionFailure )
+
+    #############################
+    def __sendMessageGetPeers( self ):
+        while len( self.peers ) < self.configDesc.optNumPeers:
+            if len( self.freePeers ) == 0:
+                if time.time() - self.lastPeersRequest > 2:
+                    self.lastPeersRequest = time.time()
+                    for p in self.peers.values():
+                        p.sendGetPeers()
+                break
+
+            x = int( time.time() ) % len( self.freePeers ) # get some random peer from freePeers
+            self.incommingPeers[ self.freePeers[ x ] ][ "conn_trials" ] += 1 # increment connection trials
+            self.__connect( self.incommingPeers[ self.freePeers[ x ] ][ "address" ], self.incommingPeers[ self.freePeers[ x ] ][ "port" ] )
+            self.freePeers.remove( self.freePeers[ x ] )
+
+    #############################
+    def __sendMessageGetTasks( self ):
+        if time.time() - self.lastGetTasksRequest > 2:
+            self.lastGetTasksRequest = time.time()
+            for p in self.peers.values():
+                p.sendGetTasks()
+
+    #############################
+    def __connectionEstablished( self, session ):
+        session.p2pService = self
+        print "Connection to peer failure. {}: {}".format( session.conn.transport.getPeer().host, session.conn.transport.getPeer().port )
+
+    #############################
+    def __connectionFailure( self ):
+        print "Connection to peer failure."

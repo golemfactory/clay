@@ -1,6 +1,6 @@
 from twisted.internet import task, reactor
 
-from p2pserver import P2PServer
+from P2PService import P2PService
 from taskserver import TaskServer
 
 from taskbase import TaskHeader
@@ -25,7 +25,7 @@ class Client:
         self.configDesc     = configDesc
 
         self.lastPingTime   = 0.0
-        self.p2pserver      = None
+        self.p2service      = None
         self.taskServer     = None
         self.lastPingTime   = time.time()
         self.lastNSSTime    = time.time()
@@ -43,14 +43,14 @@ class Client:
     def startNetwork(self ):
         print "Starting network ..."
         print "Starting p2p server ..."
-        self.p2pserver = P2PServer( self.hostAddress, self.configDesc )
+        self.p2pservice = P2PService( self.hostAddress, self.configDesc )
 
         time.sleep( 1.0 )
 
         print "Starting task server ..."
         self.taskServer = TaskServer( self.hostAddress, self.configDesc )
 
-        self.p2pserver.setTaskServer( self.taskServer )
+        self.p2pservice.setTaskServer( self.taskServer )
 
         time.sleep( 0.5 )
 
@@ -61,17 +61,17 @@ class Client:
     ############################
     def stopNetwork(self):
         #FIXME: Pewnie cos tu trzeba jeszcze dodac. Zamykanie serwera i wysylanie DisconnectPackege
-        self.p2pserver          = None
+        self.p2pservice          = None
         self.taskServer         = None
         self.nodesManagerClient = None
 
     ############################
     def __doWork(self):
-        if self.p2pserver:
+        if self.p2pservice:
             if self.configDesc.sendPings:
-                self.p2pserver.pingPeers( self.pingsInterval )
+                self.p2pservice.pingPeers( self.pingsInterval )
 
-            self.p2pserver.syncNetwork()
+            self.p2pservice.syncNetwork()
             self.taskServer.syncNetwork()
 
             if time.time() - self.lastNSSTime > self.configDesc.nodeSnapshotInterval:
@@ -83,8 +83,8 @@ class Client:
     ############################
     def __makeNodeStateSnapshot( self, isRunning = True ):
 
-        peersNum            = len( self.p2pserver.peers )
-        lastNetworkMessages = self.p2pserver.getLastMessages()
+        peersNum            = len( self.p2pservice.peers )
+        lastNetworkMessages = self.p2pservice.getLastMessages()
 
         if self.taskServer:
             tasksNum                = len( self.taskServer.taskHeaders )
@@ -95,8 +95,8 @@ class Client:
                                                            ,    self.configDesc.clientUuid
                                                            ,    peersNum
                                                            ,    tasksNum
-                                                           ,    self.p2pserver.hostAddress
-                                                           ,    self.p2pserver.curPort
+                                                           ,    self.p2pservice.hostAddress
+                                                           ,    self.p2pservice.p2pServer.curPort
                                                            ,    lastNetworkMessages
                                                            ,    lastTaskMessages
                                                            ,    remoteTasksProgresses  

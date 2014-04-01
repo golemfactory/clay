@@ -4,7 +4,7 @@ class Network:
 
     ######################
     @classmethod
-    def connect( self, address, port, SessionType, establishedCallback = None, failureCallback = None ):
+    def connect( self, address, port, SessionType, establishedCallback = None, failureCallback = None, *args, **kwargs ):
         print "Connecting to host {} : {}".format( address, port )
         from twisted.internet import reactor
         endpoint    = TCP4ClientEndpoint( reactor, address, port )
@@ -12,8 +12,8 @@ class Network:
 
         d = connectProtocol( endpoint, connection )
 
-        d.addCallback( Network.__connectionEstablished, SessionType, establishedCallback )
-        d.addErrback( Network.__connectionFailure, failureCallback )
+        d.addCallback( Network.__connectionEstablished, SessionType, establishedCallback, args )
+        d.addErrback( Network.__connectionFailure, failureCallback, args )
 
     ######################
     @classmethod
@@ -39,23 +39,29 @@ class Network:
 
     ######################
     @classmethod
-    def __connectionEstablished( self, conn, SessionType, establishedCallback ):
+    def __connectionEstablished( self, conn, SessionType, establishedCallback, *args, **kwargs ):
         if conn:
-            session = SessionType( conn, self )
+            session = SessionType( conn )
             conn.setSession( session )
 
             pp = conn.transport.getPeer()
             print "__connectionNMEstablished {} {}".format( pp.host, pp.port )
 
             if establishedCallback:
-                establishedCallback( session )
+                if len( kwargs ) == 0:
+                    establishedCallback( session )
+                else:
+                    establishedCallback( session, args )
 
     ######################
     @classmethod
-    def __connectionFailure( self, failureCallback ):
+    def __connectionFailure( self, conn, failureCallback, *args, **kwargs ):
         print "Connection failure."
         if failureCallback:
-            failureCallback()
+            if len( kwargs ) == 0:
+                failureCallback()
+            else:
+                failureCallback( args )
         
 
     ######################

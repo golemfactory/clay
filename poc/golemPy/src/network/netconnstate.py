@@ -3,19 +3,24 @@ from connectionstate import ConnectionState
 
 class NetConnState( ConnectionState ):
     ############################
-    def __init__( self, server ):
+    def __init__( self, server = None ):
         ConnectionState.__init__( self )
         self.peer = None
         self.server = server
     
     ############################
+    def setSession( self, session ):
+        self.peer = session
+
+    ############################
     def connectionMade(self):
         self.opened = True
 
-        pp = self.transport.getPeer()
-        self.peer = PeerSession( self, self.server, pp.host, pp.port )
-
-        self.server.newConnection(self)
+        if self.server:
+            from peer import PeerSession
+            pp = self.transport.getPeer()
+            self.peer = PeerSession( self, self.server.p2pService, pp.host, pp.port )
+            self.server.newConnection( self.peer )
 
     ############################
     def dataReceived(self, data):

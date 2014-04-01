@@ -1,153 +1,38 @@
-from twisted.internet import reactor
-from twisted.internet.protocol import Factory
-from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
-
 from network import Network
-from peer import PeerSession
 import time
 
 class P2PServer:
     #############################
-    def __init__( self, hostAddress, configDesc ):
+    def __init__( self, hostAddress, configDesc, p2pService ):
 
         self.configDesc             = configDesc
-
-        self.curPort                = self.configDesc.startPort
-        self.peers                  = {}
-        self.clientUuid             = self.configDesc.clientUuid
-        self.lastPeersRequest       = time.time()
-        self.lastGetTasksRequest    = time.time()
-        self.incommingPeers         = {}
-        self.freePeers              = []
-        self.taskServer             = None
-        self.hostAddress            = hostAddress
-
-        self.lastMessages           = []
+        self.p2pService             = p2pService
+        self.curPort                = 0
 
         self.__startAccepting()
 
     #############################
-    def setTaskServer( self, taskServer ):
-        self.taskServer = taskServer
-
-    #############################
-    def syncNetwork( self ):
-        self.__sendMessageGetPeers()
-
-        if self.taskServer:
-            self.__sendMessageGetTasks()
-
-    #############################
     def newConnection( self, session ):
-        session.start()
- 
-    #############################
-    def pingPeers( self, interval ):
-        for p in self.peers.values():
-            p.ping( interval )
-    
-    #############################
-    def findPeer( self, peerID ):
-        if peerID in self.peers:
-            return self.peers[ peerID ]
-        else:
-            return None
-
-    #############################
-    def removePeer( self, peerSession ):
-        for p in self.peers.keys():
-            if self.peers[ p ] == peerSession:
-                del self.peers[ p ]
-    
-    #############################
-    def setLastMessage( self, type, t, msg, address, port ):
-        if len( self.lastMessages ) >= 5:
-            self.lastMessages = self.lastMessages[ -4: ]
-
-        self.lastMessages.append( [ type, t, address, port, msg ] )
-
-    #############################
-    def getLastMessages( self ):
-        return self.lastMessages
-    
-    ############################# 
-    def managerSessionDisconnected( self, uid ):
-        self.managerSession = None
+        self.p2pService.newSession( session )
                                    
     #############################
     def __startAccepting( self ):
         print "Enabling network accepting state"
 
-        self.__runListenOnce()
-
-        if self.configDesc.seedHost and self.configDesc.seedHostPort:
-            if self.configDesc.seedHost != self.hostAddress or self.configDesc.seedHostPort != self.curPort: #FIXME workaround to test on one machine
-                self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
-
-    #############################   
-    def __connect( self, address, port ):
-
-        Network.connect( address, port, PeerSession, None, self.__connectionFailure )
-
-        print "Connecting to host {} : {}".format( address ,port )
-        endpoint = TCP4ClientEndpoint( reactor, address, port )
-        connection = NetConnState( self );
-        d = connectProtocol( endpoint, connection )
-        d.addErrback( self.__connectionFailure )
+        Network.listen( self.configDesc.startPort, self.configDesc.endPort, NetServerFactory( self ), None, self.__listeningEstablished, self.__listeningFailure )
 
     #############################
-    def __sendMessageGetPeers( self ):
-        while len( self.peers ) < self.configDesc.optNumPeers:
-            if len( self.freePeers ) == 0:
-                if time.time() - self.lastPeersRequest > 2:
-                    self.lastPeersRequest = time.time()
-                    for p in self.peers.values():
-                        p.sendGetPeers()
-                break
-
-            x = int( time.time() ) % len( self.freePeers ) # get some random peer from freePeers
-            self.incommingPeers[ self.freePeers[ x ] ][ "conn_trials" ] += 1 # increment connection trials
-            self.__connect( self.incommingPeers[ self.freePeers[ x ] ][ "address" ], self.incommingPeers[ self.freePeers[ x ] ][ "port" ] )
-            self.freePeers.remove( self.freePeers[ x ] )
+    def __listeningEstablished( self, port ):
+        self.curPort = port
+        print "Port {} opened - listening".format( port )
 
     #############################
-    def __sendMessageGetTasks( self ):
-        if time.time() - self.lastGetTasksRequest > 2:
-            self.lastGetTasksRequest = time.time()
-            for p in self.peers.values():
-                p.sendGetTasks()
+    def __listeningFailure( self ):
+        print "Listening on ports {} to {} failure".format( self.configDesc.startPort, self.configDesc.endPort )
 
-    #############################
-    def __connectionFailure( self, conn ):
-        print "Connection to peer failure. {}: {}".format( conn.transport.getPeer().host, conn.transport.getPeer().port )
 
-    #############################
-    def __runListenOnce( self ):
-        ep = TCP4ServerEndpoint( reactor, self.curPort )
-        
-        d = ep.listen( NetServerFactory( self ) )
-        
-        d.addCallback( self.__listeningEstablished )
-        d.addErrback( self.__listeningFailure )
 
-    #############################
-    def __listeningEstablished( self, p ):
-        assert p.getHost().port == self.curPort
-        print "Port {} opened - listening".format( p.getHost().port )
-
-    #############################
-    #FIXME: tutaj trzeba zwiekszyc numer portu i odpalic ponownie endpoint listen - i tak az do momenty, kiedy sie uda lub skoncza sie porty - wtedy pad
-    def __listeningFailure( self, p ):
-        print "Opening {} port for listening failed, trying the next one".format( self.curPort )
-
-        self.curPort = self.curPort + 1
-
-        if self.curPort <= self.configDesc.endPort:
-            self.__runListenOnce()
-        else:
-            #FIXME: some graceful terminations should take place here
-            sys.exit( 0 )
-
+from twisted.internet.protocol import Factory
 from netconnstate import NetConnState
 
 class NetServerFactory( Factory ):

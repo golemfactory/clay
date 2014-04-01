@@ -22,22 +22,24 @@ class PeerSession(PeerSessionInterface):
     DCRDuplicatePeers   = "Duplicate peers"
 
     ##########################
-    def __init__(self, conn, server, address, port):
+    def __init__(self, conn ):
 
-        print "CREATING PEER SESSION {} {}".format( address, port )
+        #print "CREATING PEER SESSION {} {}".format( address, port )
         PeerSessionInterface.__init__(self)
-        self.server = server
-        self.address = address
+        self.p2pService = None
+        self.conn = conn
+        pp = conn.transport.getPeer()
+        self.address = pp.host
         self.id = 0
-        self.port = port
+        self.port = pp.port
         self.state = PeerSession.StateInitialize
         self.lastMessageTime = 0.0
-        self.conn = conn
+
         self.lastDisconnectTime = None
 
     ##########################
     def __del__( self ):
-        conn.close()
+        self.conn.close()
 
     ##########################
     def __str__(self):
@@ -52,7 +54,7 @@ class PeerSession(PeerSessionInterface):
     ##########################
     def dropped( self ):
         self.conn.close()
-        self.server.removePeer( self )
+        self.p2pService.removePeer( self )
 
     ##########################
     def ping(self, interval):
@@ -68,7 +70,7 @@ class PeerSession(PeerSessionInterface):
         if msg is None:
             self.__disconnect( PeerSession.DCRBadProtocol )
 
-        self.server.setLastMessage( "<-", time.localtime(), msg, self.address, self.port )
+        self.p2pService.setLastMessage( "<-", time.localtime(), msg, self.address, self.port )
 
         type = msg.getType()
 
@@ -89,12 +91,12 @@ class PeerSession(PeerSessionInterface):
             self.port = msg.port
             self.id = msg.clientUID
 
-            p = self.server.findPeer( self.id )
+            p = self.p2pService.findPeer( self.id )
 
             if p and p != self and p.conn.isOpen():
                 self.__disconnect( PeerSession.DCRDuplicatePeers )
 
-            self.server.peers[self.id] = self
+            self.p2pService.peers[self.id] = self
             print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)
             self.__sendPing()
 
@@ -104,19 +106,19 @@ class PeerSession(PeerSessionInterface):
         elif type == MessagePeers.Type:
             peersInfo = msg.peersArray
             for pi in peersInfo:
-                if pi[ "id" ] not in self.server.incommingPeers and pi[ "id" ] not in self.server.peers and pi[ "id" ] != self.server.configDesc.clientUuid:
+                if pi[ "id" ] not in self.p2pService.incommingPeers and pi[ "id" ] not in self.p2pService.peers and pi[ "id" ] != self.p2pService.configDesc.clientUuid:
                     print "add peer to incoming {} {} {}".format( pi[ "id" ], pi[ "address" ], pi[ "port" ] )
-                    self.server.incommingPeers[ pi[ "id" ] ] = { "address" : pi[ "address" ], "port" : pi[ "port" ], "conn_trials" : 0 }
-                    self.server.freePeers.append( pi[ "id" ] )
-                    print self.server.incommingPeers
+                    self.p2pService.incommingPeers[ pi[ "id" ] ] = { "address" : pi[ "address" ], "port" : pi[ "port" ], "conn_trials" : 0 }
+                    self.p2pService.freePeers.append( pi[ "id" ] )
+                    print self.p2pService.incommingPeers
 
         elif type == MessageGetTasks.Type:
-            tasks = self.server.taskServer.getTasksHeaders()
+            tasks = self.p2pService.taskServer.getTasksHeaders()
             self.__sendTasks( tasks )
 
         elif type == MessageTasks.Type:
             for t in msg.tasksArray:
-                if not self.server.taskServer.addTaskHeader( t ):
+                if not self.p2pService.taskServer.addTaskHeader( t ):
                     self.__disconnect( PeerSession.DCRBadProtocol )
 
     ##########################
@@ -142,7 +144,7 @@ class PeerSession(PeerSessionInterface):
 
     ##########################
     def __sendHello(self):
-        self.__send(MessageHello(self.server.curPort, self.server.configDesc.clientUuid)) #FIXME: self.server.configDesc.clientUuid (naprawde trzeba az tak???)
+        self.__send(MessageHello(self.p2pService.curPort, self.p2pService.configDesc.clientUuid)) #FIXME: self.p2pService.configDesc.clientUuid (naprawde trzeba az tak???)
 
     ##########################
     def __sendPing(self):
@@ -159,7 +161,7 @@ class PeerSession(PeerSessionInterface):
     ##########################
     def __sendPeers( self ):
         peersInfo = []
-        for p in self.server.peers.values():
+        for p in self.p2pService.peers.values():
             peersInfo.append( { "address" : p.address, "port" : p.port, "id" : p.id } )
         self.__send( MessagePeers( peersInfo ) )
 
@@ -174,5 +176,5 @@ class PeerSession(PeerSessionInterface):
             self.dropped()
             return
         self.lastMessageTime = time.time()
-        self.server.setLastMessage( "->", time.localtime(), message, self.address, self.port )
+        self.p2pService.setLastMessage( "->", time.localtime(), message, self.address, self.port )
 

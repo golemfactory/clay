@@ -1,7 +1,4 @@
-from twisted.internet import reactor
-from twisted.internet.protocol import Factory
-from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
-
+from network import Network
 from taskmanager import TaskManager
 from taskcomputer import TaskComputer
 from tasksession import TaskSession
@@ -122,23 +119,14 @@ class TaskServer:
     #############################
     def __startAccepting(self):
         print "Enabling tasks accepting state"
-        self.__runListenOnce()
+        Network.listen( self.configDesc.startPort, self.configDesc.endPort, TaskServerFactory( self ), None, self.__listeningEstablished, self.__listeningFailure  )
 
     #############################
-    def __runListenOnce( self ):
-        ep = TCP4ServerEndpoint( reactor, self.curPort )
-        
-        d = ep.listen( TaskServerFactory( self ) )
-        
-        d.addCallback( self.__listeningEstablished )
-        d.addErrback( self.__listeningFailure )
-
-    #############################
-    def __listeningEstablished(self, p):
-        assert p.getHost().port == self.curPort
-        print "Port {} opened - listening".format(p.getHost().port)
+    def __listeningEstablished( self, port ):
+        self.curPort = port
+        print "Port {} opened - listening".format( port )
         self.taskManager.listenAddress = self.address
-        self.taskManager.listenPort = p.getHost().port
+        self.taskManager.listenPort = self.curPort
 
     #############################
     def __listeningFailure(self, p):
@@ -156,29 +144,16 @@ class TaskServer:
     def __connectAndSendTaskRequest( self, address, port, taskId, estimatedPerformance ):
         print "Connecting to host {} : {}".format( address ,port )
         
-        endpoint = TCP4ClientEndpoint( reactor, address, port )
-        connection = TaskConnState( self );
-        
-        d = connectProtocol( endpoint, connection )
-        
-        d.addCallback( self.__connectionForTaskRequestEstablished, taskId, estimatedPerformance )
-        d.addErrback( self.__connectionForTaskRequestFailure, taskId, estimatedPerformance )
+        Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, taskId, estimatedPerformance )
 
     #############################
-    def __connectionForTaskRequestEstablished( self, conn, taskId, estimatedPerformance ):
-        pp = conn.transport.getPeer()
-        
-        print "new task connection established {} {}".format( pp.host, pp.port )
-        
-        ts = TaskSession( conn, self, pp.host, pp.port )
-        
-        conn.setTaskSession( ts )
-        self.taskSeesions[ taskId ] = ts     
-        
+    def __connectionForTaskRequestEstablished( self, session, taskId, estimatedPerformance ):
+
+        self.taskSeesions[ taskId ] = session            
         ts.askForTask( taskId, estimatedPerformance )
 
     #############################
-    def __connectionForTaskRequestFailure( self, conn, taskId, estimatedPerformance ):
+    def __connectionForTaskRequestFailure( self, session, taskId, estimatedPerformance ):
         print "Cannot connect to task {} owner".format( taskId )
         print "Removing task {} from task list".format( taskId )
         
@@ -190,30 +165,19 @@ class TaskServer:
     def __connectAndSendTaskResults( self, address, port, taskId, extraData, results ):
         print "Connecting to host {} : {}".format( address ,port )
         
-        endpoint = TCP4ClientEndpoint( reactor, address, port )
-        connection = TaskConnState( self );
-        
-        d = connectProtocol( endpoint, connection )
-        
-        d.addCallback( self.__connectionForTaskResultEstablished, taskId, extraData, results )
-        d.addErrback( self.__connectionForTaskResultFailure, taskId, extraData, results )
+        Network.connect( address, port, TaskSession, self.__connectionForTaskResultEstablished, self.__connectionForTaskResultFailure, taskId, extraData, results )
 
     #############################
-    def __connectionForTaskResultEstablished( self, conn, taskId, extraData, results ):
-        pp = conn.transport.getPeer()
-        
-        print "new task connection established {} {}".format( pp.host, pp.port )
-        
-        ts = TaskSession( conn, self, pp.host, pp.port )
-        
-        self.taskSeesions[ taskId ] = ts     
+    def __connectionForTaskResultEstablished( self, session, taskId, extraData, results ):
+
+        self.taskSeesions[ taskId ] = session
         
         ts.sendTaskResults( taskId, extraData, results )
 
         ts.dropped()
 
     #############################
-    def __connectionForTaskResultFailure( self, conn, taskId, extraData, results ):
+    def __connectionForTaskResultFailure( self, taskId, extraData, results ):
         print "Cannot connect to task {} owner".format( taskId )
         print "Removing task {} from task list".format( taskId )
                 
@@ -231,12 +195,16 @@ class TaskServer:
 
         self.taskManager.removeOldTasks()
 
+
+from twisted.internet.protocol import Factory
+from taskconnstate import TaskConnState
+
 class TaskServerFactory(Factory):
     #############################
-    def __init__(self, p2pserver):
-        self.p2pserver = p2pserver
+    def __init__( self, server ):
+        self.server = server
 
     #############################
     def buildProtocol(self, addr):
-        print "Protocol build for {}".format(addr)
-        return TaskConnState(self.p2pserver)
+        print "Protocol build for {}".format( addr )
+        return TaskConnState( self.server )
