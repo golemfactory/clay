@@ -1,10 +1,14 @@
 from message import MessagePeerStatus, MessageKillNode, MessageNewTask
+from ClientManagerConnState import ClientManagerConnState
 
 import pickle
 import time
 import sys
 
 class ClientManagerSession:
+
+    ConnectionStateType = ClientManagerConnState
+
     ##########################
     def __init__( self, conn, client ):
         self.conn       = conn

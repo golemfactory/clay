@@ -7,7 +7,7 @@ import sys
 class ServerManagerSession:
 
     ##########################
-    def __init__( self, conn, server, address, port ):
+    def __init__( self, conn, address, port, server ):
         self.conn       = conn
         self.server     = server
         self.address    = address

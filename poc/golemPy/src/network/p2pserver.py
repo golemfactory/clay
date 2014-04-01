@@ -2,19 +2,9 @@ from twisted.internet import reactor
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
 
-from netconnstate import NetConnState
+from network import Network
 from peer import PeerSession
 import time
-
-class NetServerFactory( Factory ):
-    #############################
-    def __init__( self, p2pserver ):
-        self.p2pserver = p2pserver
-
-    #############################
-    def buildProtocol( self, addr ):
-        print "Protocol build for {}".format( addr )
-        return NetConnState( self.p2pserver )
 
 class P2PServer:
     #############################
@@ -48,12 +38,8 @@ class P2PServer:
             self.__sendMessageGetTasks()
 
     #############################
-    def newConnection( self, conn ):
-        pp = conn.transport.getPeer()
-        print "newConnection {} {}".format( pp.host, pp.port )
-        peer = PeerSession( conn, self, pp.host, pp.port )
-        conn.setPeerSession( peer )
-        peer.start()
+    def newConnection( self, session ):
+        session.start()
  
     #############################
     def pingPeers( self, interval ):
@@ -100,6 +86,9 @@ class P2PServer:
 
     #############################   
     def __connect( self, address, port ):
+
+        Network.connect( address, port, PeerSession, None, self.__connectionFailure )
+
         print "Connecting to host {} : {}".format( address ,port )
         endpoint = TCP4ClientEndpoint( reactor, address, port )
         connection = NetConnState( self );
@@ -159,4 +148,15 @@ class P2PServer:
             #FIXME: some graceful terminations should take place here
             sys.exit( 0 )
 
+from netconnstate import NetConnState
+
+class NetServerFactory( Factory ):
+    #############################
+    def __init__( self, p2pserver ):
+        self.p2pserver = p2pserver
+
+    #############################
+    def buildProtocol( self, addr ):
+        print "Protocol build for {}".format( addr )
+        return NetConnState( self.p2pserver )
 

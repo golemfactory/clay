@@ -49,6 +49,8 @@
     <Compile Include="src\appconfig.py" />
     <Compile Include="src\clientconfigdescriptor.py" />
     <Compile Include="src\core\hostaddress.py" />
+    <Compile Include="src\core\network.py" />
+    <Compile Include="src\core\SessionInterface.py" />
     <Compile Include="src\manager\client\ClientManagerConnState.py" />
     <Compile Include="src\manager\client\ClientManagerSession.py" />
     <Compile Include="src\manager\server\NodesManagerServer.py" />

@@ -1,5 +1,4 @@
-import sys
-sys.path.append( '../manager')
+from netconnstate import NetConnState
 
 from message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks
 import time
@@ -12,6 +11,9 @@ class PeerSessionInterface:
         pass
 
 class PeerSession(PeerSessionInterface):
+
+    ConnectionStateType = NetConnState
+
     StateInitialize = 0
     StateConnecting = 1
     StateConnected  = 2 

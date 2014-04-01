@@ -1,8 +1,6 @@
 from ClientManagerSession import ClientManagerSession
 from ClientManagerConnState import ClientManagerConnState
-
-from twisted.internet.endpoints import TCP4ClientEndpoint, connectProtocol
-from twisted.internet import reactor
+from network import Network
 
 class NodesManagerClient:
 
@@ -34,22 +32,12 @@ class NodesManagerClient:
 
         assert not self.clientManagerSession # connection already established
 
-        print "Connecting to nodes manager host {} : {}".format( self.mangerServerAddress, self.mangerServerPort )
-        endpoint    = TCP4ClientEndpoint( reactor, self.mangerServerAddress, self.mangerServerPort )
-        connection  = ClientManagerConnState();
+        Network.connect( self.mangerServerAddress, self.mangerServerPort, ClientManagerSession, self.__connectionEstablished, self.__connectionFailure )
 
-        d = connectProtocol( endpoint, connection )
-
-        d.addCallback( self.__connectionEstablished )
-        d.addErrback( self.__connectionFailure )
 
     #############################
-    def __connectionEstablished( self, conn ):
-        if conn:
-            self.clientManagerSession = ClientManagerSession( conn, self )
-            conn.setSession( self.clientManagerSession )
-            pp = conn.transport.getPeer()
-            print "__connectionNMEstablished {} {}".format( pp.host, pp.port )
+    def __connectionEstablished( self, session ):
+        self.clientManagerSession = session
 
     def __connectionFailure( self, conn ):
         print "Connection to nodes manager failure."

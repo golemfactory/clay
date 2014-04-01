@@ -9,12 +9,12 @@ class NetConnState( ConnectionState ):
         self.server = server
     
     ############################
-    def setPeerSession(self, peerSession):
-        self.peer = peerSession
-
-    ############################
     def connectionMade(self):
         self.opened = True
+
+        pp = self.transport.getPeer()
+        self.peer = PeerSession( self, self.server, pp.host, pp.port )
+
         self.server.newConnection(self)
 
     ############################

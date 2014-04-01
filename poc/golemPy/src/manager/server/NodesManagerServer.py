@@ -1,8 +1,4 @@
-from twisted.internet.protocol import Factory
-from twisted.internet.endpoints import TCP4ServerEndpoint, connectProtocol
-
-from ServerManagerSession import ServerManagerSession
-from ServerManagerConnState import ServerManagerConnState
+from network import Network
 from nodestatesnapshot import NodeStateSnapshot
 
 class NodesManagerServer:
@@ -21,32 +17,20 @@ class NodesManagerServer:
 
     #############################
     def __startAccepting( self ):
-        self.__runListenOnce()
+        Network.listen( self.port, self.port, ManagerServerFactory( self ), self.reactor, self.__listeningEstablished, self.__listeningFailure )
 
     #############################
-    def __runListenOnce( self ):
-        ep = TCP4ServerEndpoint( self.reactor, self.port )
-
-        d = ep.listen( ManagerServerFactory( self ) )
-        
-        d.addCallback( self.__listeningEstablished )
-        d.addErrback( self.__listeningFailure )
+    def __listeningEstablished( self, port ):
+        assert port == self.port
+        print "Manager server - port {} opened, listening".format( port )
 
     #############################
-    def __listeningEstablished( self, p ):
-        assert p.getHost().port == self.port
-        print "Manager server - port {} opened, listening".format( p.getHost().port )
-
-    #############################
-    def __listeningFailure(self, p):
+    def __listeningFailure( self, p ):
         print "Opening {} port for listening failed - bailign out".format( self.port )
 
     #############################
-    def newNMConnection(self, conn):
-        pp = conn.transport.getPeer()
-        ms = ServerManagerSession( conn, self,  pp.host, pp.port )
-        conn.setSession( ms )
-        self.managerSessions.append( ms )
+    def newConnection( self, session ):
+        self.managerSessions.append( session )
 
     #############################
     def nodeStateSnapshotReceived( self, nss ):
@@ -68,6 +52,9 @@ class NodesManagerServer:
             if ms.uid == uid:
                 ms.sendNewTask( task )
 
+
+from twisted.internet.protocol import Factory
+from ServerManagerConnState import ServerManagerConnState
 
 class ManagerServerFactory(Factory):
     #############################

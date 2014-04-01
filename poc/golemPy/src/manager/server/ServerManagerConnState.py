@@ -1,13 +1,13 @@
 from message import Message
 from connectionstate import ConnectionState
-
+from ServerManagerSession import ServerManagerSession
 
 class ServerManagerConnState( ConnectionState ):
 
     ############################
     def __init__( self, server ):
         ConnectionState.__init__( self )
-        self.server = server
+        self.server         = server
         self.managerSession = None
 
     ############################
@@ -17,7 +17,9 @@ class ServerManagerConnState( ConnectionState ):
     ############################
     def connectionMade( self ):
         self.opened = True
-        self.server.newNMConnection( self )
+        pp = self.transport.getPeer()
+        self.managerSession = ServerManagerSession( self, pp.host, pp.port, self.server )
+        self.server.newConnection( self.managerSession )
 
     ############################
     def dataReceived(self, data):
