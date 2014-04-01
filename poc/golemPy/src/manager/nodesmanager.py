@@ -13,7 +13,7 @@ from uicustomizer import ManagerUiCustomizer, NodeDataState
 from nodestatesnapshot import NodeStateSnapshot
 from networksimulator import GLOBAL_SHUTDOWN, LocalNetworkSimulator
 from nodesmanagerlogic import NodesManagerLogicTest
-from managerserver import ManagerServer
+from NodesManagerServer import NodesManagerServer
 
 #FIXME: potencjalnie mozna tez spiac ze soba managery i wtedy kontrolowac zdalnie wszystkie koncowki i sobie odpalac nody w miare potrzeb, ale to nie na najblizsza prezentacje zabawa
 class NodesManager:
@@ -33,7 +33,7 @@ class NodesManager:
 
         self.uic.enableDetailedView( False )
 
-        self.managerServer = ManagerServer( self, 20301 )
+        self.managerServer = NodesManagerServer( self, 20301 )
 
         #FIXME: some shitty python magic
         def closeEvent_(self_, event):

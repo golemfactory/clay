@@ -1,13 +1,18 @@
-from managersession import ClientManagerSession
+from ClientManagerSession import ClientManagerSession
+from ClientManagerConnState import ClientManagerConnState
+
+from twisted.internet.endpoints import TCP4ClientEndpoint, connectProtocol
+from twisted.internet import reactor
 
 class NodesManagerClient:
 
     ######################
-    def __init__( self, clientUid, mangerServerAddress, mangerServerPort ):
+    def __init__( self, clientUid, mangerServerAddress, mangerServerPort, taskManager ):
         self.clientUid              = clientUid
         self.mangerServerAddress    = mangerServerAddress
         self.mangerServerPort       = mangerServerPort
         self.clientManagerSession   = None
+        self.taskManager            = taskManager
     
     ######################
     def start( self ):
@@ -21,13 +26,17 @@ class NodesManagerClient:
             print "Cannot send snapshot !!! No connection with manager"
 
     ######################
+    def addNewTask( self, task ):
+        self.taskManager.addNewTask( task )
+
+    ######################
     def __connectNodesManager( self ):
 
         assert not self.clientManagerSession # connection already established
 
-        print "Connecting to nodes manager host {} : {}".format( address ,port )
-        endpoint    = TCP4ClientEndpoint( reactor, self.mangerServerAddress, self.configDesc.managerPort )
-        connection  = ManagerConnectionState( self );
+        print "Connecting to nodes manager host {} : {}".format( self.mangerServerAddress, self.mangerServerPort )
+        endpoint    = TCP4ClientEndpoint( reactor, self.mangerServerAddress, self.mangerServerPort )
+        connection  = ClientManagerConnState();
 
         d = connectProtocol( endpoint, connection )
 
@@ -38,6 +47,7 @@ class NodesManagerClient:
     def __connectionEstablished( self, conn ):
         if conn:
             self.clientManagerSession = ClientManagerSession( conn, self )
+            conn.setSession( self.clientManagerSession )
             pp = conn.transport.getPeer()
             print "__connectionNMEstablished {} {}".format( pp.host, pp.port )
 

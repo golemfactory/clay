@@ -6,7 +6,7 @@ class ServerManagerConnState( ConnectionState ):
 
     ############################
     def __init__( self, server ):
-        ConnectionState.__init__( self, server )
+        ConnectionState.__init__( self )
         self.server = server
         self.managerSession = None
 

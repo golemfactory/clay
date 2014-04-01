@@ -4,8 +4,9 @@ from connectionstate import ConnectionState
 class NetConnState( ConnectionState ):
     ############################
     def __init__( self, server ):
-        ConnectionState.__init__( self, server )
+        ConnectionState.__init__( self )
         self.peer = None
+        self.server = server
     
     ############################
     def setPeerSession(self, peerSession):

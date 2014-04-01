@@ -1,8 +1,8 @@
 from twisted.internet.protocol import Factory
-from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
+from twisted.internet.endpoints import TCP4ServerEndpoint, connectProtocol
 
-from managerconnection import ManagerConnectionState
-from managersession import ManagerSession
+from ServerManagerSession import ServerManagerSession
+from ServerManagerConnState import ServerManagerConnState
 from nodestatesnapshot import NodeStateSnapshot
 
 class NodesManagerServer:
@@ -44,7 +44,7 @@ class NodesManagerServer:
     #############################
     def newNMConnection(self, conn):
         pp = conn.transport.getPeer()
-        ms = ManagerSession( conn, self,  pp.host, pp.port )
+        ms = ServerManagerSession( conn, self,  pp.host, pp.port )
         conn.setSession( ms )
         self.managerSessions.append( ms )
 
@@ -77,5 +77,5 @@ class ManagerServerFactory(Factory):
     #############################
     def buildProtocol( self, addr ):
         print "Protocol build for {} : {}".format( addr.host, addr.port )
-        cs = ManagerConnectionState( self.server )
+        cs = ServerManagerConnState( self.server )
         return cs

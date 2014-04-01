@@ -1,3 +1,6 @@
+from message import MessagePeerStatus, MessageKillNode, MessageNewTask
+
+import pickle
 import time
 import sys
 
@@ -18,9 +21,7 @@ class ClientManagerSession:
 
         if type == MessageNewTask.Type:
             task = pickle.loads( msg.data )
-            task.header.taskOwnerAddress = self.server.taskServer.address
-            task.header.taskOwnerPort = self.server.taskServer.curPort
-            self.server.taskServer.taskManager.addNewTask( task )
+            self.client.addNewTask( task )
 
         elif type == MessageKillNode.Type:
             self.dropped()

@@ -26,7 +26,7 @@ class ClientManagerConnState( ConnectionState ):
             print "Deserialization message failed"
             self.clientManagerSession.interpret( None )
 
-        if self.managerSession:
+        if self.clientManagerSession:
             for m in mess:
                 self.clientManagerSession.interpret(m)
         else:

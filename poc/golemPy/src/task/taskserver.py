@@ -137,6 +137,8 @@ class TaskServer:
     def __listeningEstablished(self, p):
         assert p.getHost().port == self.curPort
         print "Port {} opened - listening".format(p.getHost().port)
+        self.taskManager.listenAddress = self.address
+        self.taskManager.listenPort = p.getHost().port
 
     #############################
     def __listeningFailure(self, p):

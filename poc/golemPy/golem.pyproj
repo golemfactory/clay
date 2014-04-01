@@ -6,7 +6,7 @@
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
     <StartupFile>test\main.py</StartupFile>
-    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network;src\manager</SearchPath>
+    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network;src\manager;src\manager\client;src\manager\server</SearchPath>
     <WorkingDirectory>d:\src\golem\poc\golemPy\test\</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>golem</Name>
@@ -70,7 +70,6 @@
     <Compile Include="src\core\simplehash.py" />
     <Compile Include="src\core\simpleserializer.py" />
     <Compile Include="src\manager\server\ServerManagerConnState.py" />
-    <Compile Include="src\manager\managermessage.py" />
     <Compile Include="src\manager\nodesmanager.py" />
     <Compile Include="src\manager\nodestatesnapshot.py" />
     <Compile Include="src\message.py" />

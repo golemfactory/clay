@@ -3,8 +3,6 @@ from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
 
 from netconnstate import NetConnState
-from managerconnection import ManagerConnectionState
-from managersession import ManagerSession
 from peer import PeerSession
 import time
 

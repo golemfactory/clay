@@ -8,7 +8,6 @@ from exampletasks import VRayTracingTask
 
 from hostaddress import getHostAddress
 
-from managerserver import ManagerServer
 from nodestatesnapshot import NodeStateSnapshot
 from message import MessagePeerStatus
 from NodesManagerCient import NodesManagerClient
@@ -46,7 +45,7 @@ class Client:
         print "Starting p2p server ..."
         self.p2pserver = P2PServer( self.hostAddress, self.configDesc )
 
-        time.sleep( 0.5 )
+        time.sleep( 1.0 )
 
         print "Starting task server ..."
         self.taskServer = TaskServer( self.hostAddress, self.configDesc )
@@ -56,7 +55,7 @@ class Client:
         time.sleep( 0.5 )
 
         print "Starting nodes manager client ..."
-        self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUuid, "127.0.0.1", self.configDesc.managerPort )
+        self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUuid, "127.0.0.1", self.configDesc.managerPort, self.taskServer.taskManager )
         self.nodesManagerClient.start()
 
     ############################
@@ -105,5 +104,5 @@ class Client:
         else:
             self.lastNodeStateSnapshot = NodeStateSnapshot( self.configDesc.clientUuid, peersNum )
 
-        if self.p2pserver:
-            self.p2pserver.sendClientStateSnapshot( self.lastNodeStateSnapshot )
+        if self.nodesManagerClient:
+            self.nodesManagerClient.sendClientStateSnapshot( self.lastNodeStateSnapshot )

@@ -4,8 +4,9 @@ from connectionstate import ConnectionState
 class TaskConnState( ConnectionState ):
     ##########################
     def __init__(self, server):
-        ConnectionState.__init__( self, server )
+        ConnectionState.__init__( self )
         self.taskSession = None
+        self.server = server
 
     ############################
     def setTaskSession( self, taskSession ):

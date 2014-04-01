@@ -6,14 +6,19 @@ from nodestatesnapshot import LocalTaskStateSnapshot
 
 class TaskManager:
     #######################
-    def __init__( self ):
-        self.tasks = {}
-        self.tasksComputed = []
-        #self.givenTasks = {}
+    def __init__( self, listenAddress = "", listenPort = 0 ):
+        self.tasks          = {}
+        self.tasksComputed  = []
+        self.listenAddress  = listenAddress
+        self.listenPort     = listenPort
 
     #######################
-    def addNewTask( self, task ):
+    def addNewTask( self, task):
         assert task.header.id not in self.tasks
+
+        task.header.taskOwnerAddress = self.listenAddress
+        task.header.taskOwnerPort = self.listenPort
+
         task.initialize()
         self.tasks[ task.header.id ] = task
 
@@ -25,7 +30,6 @@ class TaskManager:
                 ed = task.queryExtraData( estimatedPerformance )
                 if ed:
                     sd = task.shortExtraDataRepr( estimatedPerformance )
-                    #self.givenTasks[ taskId, ed ] = time.time()
                     return taskId, task.srcCode, ed, sd
             print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
             return 0, "", {}, ""

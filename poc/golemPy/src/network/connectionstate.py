@@ -6,8 +6,7 @@ from databuffer import DataBuffer
 
 class ConnectionState(Protocol):
     ############################
-    def __init__(self, server):
-        self.server = server
+    def __init__(self ):
         self.peer = None
         self.db = DataBuffer()
         self.opened = False

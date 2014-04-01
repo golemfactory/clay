@@ -23,7 +23,6 @@ class NodesManagerLogicTest:
 
 
 import subprocess
-from managerserver import ManagerServer
 import time
 import random
 from taskbase import TaskHeader
