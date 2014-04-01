@@ -19,7 +19,7 @@ class NetConnState( ConnectionState ):
         if self.server:
             from peer import PeerSession
             pp = self.transport.getPeer()
-            self.peer = PeerSession( self, self.server.p2pService, pp.host, pp.port )
+            self.peer = PeerSession( self )
             self.server.newConnection( self.peer )
 
     ############################

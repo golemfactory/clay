@@ -45,7 +45,7 @@ class Network:
             conn.setSession( session )
 
             pp = conn.transport.getPeer()
-            print "__connectionNMEstablished {} {}".format( pp.host, pp.port )
+            print "__connectionEstablished {} {}".format( pp.host, pp.port )
 
             if establishedCallback:
                 if len( kwargs ) == 0:

@@ -20,8 +20,6 @@ class NodesManagerClient:
     def sendClientStateSnapshot( self, snapshot ):
         if self.clientManagerSession:
             self.clientManagerSession.sendClientStateSnapshot( snapshot )
-        else:
-            print "Cannot send snapshot !!! No connection with manager"
 
     ######################
     def addNewTask( self, task ):
@@ -37,7 +35,8 @@ class NodesManagerClient:
 
     #############################
     def __connectionEstablished( self, session ):
+        session.client = self
         self.clientManagerSession = session
 
-    def __connectionFailure( self, conn ):
+    def __connectionFailure( self ):
         print "Connection to nodes manager failure."

@@ -11,7 +11,6 @@ class P2PService:
 
         self.configDesc             = configDesc
 
-        self.curPort                = self.configDesc.startPort
         self.peers                  = {}
         self.allPeers               = []
         self.clientUuid             = self.configDesc.clientUuid
@@ -24,7 +23,8 @@ class P2PService:
 
         self.lastMessages           = []
 
-        self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
+        if len( self.configDesc.seedHost ) > 0:
+            self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
 
     #############################
     def setTaskServer( self, taskServer ):
@@ -40,6 +40,7 @@ class P2PService:
 
     #############################
     def newSession( self, session ):
+        session.p2pService = self
         self.allPeers.append( session )
         session.start()
  
@@ -58,7 +59,8 @@ class P2PService:
     #############################
     def removePeer( self, peerSession ):
 
-        self.allPeers.remove( peerSession )
+        if peerSession in self.allPeers:
+            self.allPeers.remove( peerSession )
 
         for p in self.peers.keys():
             if self.peers[ p ] == peerSession:
@@ -109,7 +111,8 @@ class P2PService:
     #############################
     def __connectionEstablished( self, session ):
         session.p2pService = self
-        print "Connection to peer failure. {}: {}".format( session.conn.transport.getPeer().host, session.conn.transport.getPeer().port )
+        self.allPeers.append( session )
+        print "Connection to peer established. {}: {}".format( session.conn.transport.getPeer().host, session.conn.transport.getPeer().port )
 
     #############################
     def __connectionFailure( self ):

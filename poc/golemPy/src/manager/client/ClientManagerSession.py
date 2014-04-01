@@ -10,9 +10,9 @@ class ClientManagerSession:
     ConnectionStateType = ClientManagerConnState
 
     ##########################
-    def __init__( self, conn, client ):
+    def __init__( self, conn ):
         self.conn       = conn
-        self.client     = client
+        self.client     = None
 
     ##########################
     def dropped( self ):
@@ -20,6 +20,8 @@ class ClientManagerSession:
 
     ##########################
     def interpret( self, msg ):
+
+        assert self.client
 
         type = msg.getType()
 
