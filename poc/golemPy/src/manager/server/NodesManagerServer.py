@@ -5,18 +5,7 @@ from managerconnection import ManagerConnectionState
 from managersession import ManagerSession
 from nodestatesnapshot import NodeStateSnapshot
 
-class ManagerServerFactory(Factory):
-    #############################
-    def __init__( self, server ):
-        self.server = server
-
-    #############################
-    def buildProtocol( self, addr ):
-        print "Protocol build for {} : {}".format( addr.host, addr.port )
-        cs = ManagerConnectionState( self.server )
-        return cs
-
-class ManagerServer:
+class NodesManagerServer:
 
     #############################
     def __init__( self, nodesManager, port, reactor = None ):
@@ -78,3 +67,15 @@ class ManagerServer:
         for ms in self.managerSessions:
             if ms.uid == uid:
                 ms.sendNewTask( task )
+
+
+class ManagerServerFactory(Factory):
+    #############################
+    def __init__( self, server ):
+        self.server = server
+
+    #############################
+    def buildProtocol( self, addr ):
+        print "Protocol build for {} : {}".format( addr.host, addr.port )
+        cs = ManagerConnectionState( self.server )
+        return cs

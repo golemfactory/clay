@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>test\clientmain.py</StartupFile>
+    <StartupFile>test\main.py</StartupFile>
     <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network;src\manager</SearchPath>
     <WorkingDirectory>d:\src\golem\poc\golemPy\test\</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -30,6 +30,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="src\manager\" />
+    <Folder Include="src\manager\client\" />
+    <Folder Include="src\manager\server\" />
     <Folder Include="src\network\" />
     <Folder Include="src\task\" />
     <Folder Include="src\ui\" />
@@ -47,9 +49,12 @@
     <Compile Include="src\appconfig.py" />
     <Compile Include="src\clientconfigdescriptor.py" />
     <Compile Include="src\core\hostaddress.py" />
-    <Compile Include="src\manager\managerserver.py" />
-    <Compile Include="src\manager\managersession.py" />
+    <Compile Include="src\manager\client\ClientManagerConnState.py" />
+    <Compile Include="src\manager\client\ClientManagerSession.py" />
+    <Compile Include="src\manager\server\NodesManagerServer.py" />
+    <Compile Include="src\manager\server\ServerManagerSession.py" />
     <Compile Include="src\manager\networksimulator.py" />
+    <Compile Include="src\manager\client\NodesManagerCient.py" />
     <Compile Include="src\manager\nodesmanagerlogic.py" />
     <Compile Include="src\manager\tcpmanagerlogic.py" />
     <Compile Include="src\network\connectionstate.py" />
@@ -64,7 +69,7 @@
     <Compile Include="src\core\simpleenv.py" />
     <Compile Include="src\core\simplehash.py" />
     <Compile Include="src\core\simpleserializer.py" />
-    <Compile Include="src\manager\managerconnection.py" />
+    <Compile Include="src\manager\server\ServerManagerConnState.py" />
     <Compile Include="src\manager\managermessage.py" />
     <Compile Include="src\manager\nodesmanager.py" />
     <Compile Include="src\manager\nodestatesnapshot.py" />

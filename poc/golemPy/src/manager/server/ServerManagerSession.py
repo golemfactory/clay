@@ -4,7 +4,7 @@ import pickle
 import time
 import sys
 
-class ManagerSession:
+class ServerManagerSession:
 
     ##########################
     def __init__( self, conn, server, address, port ):
@@ -29,18 +29,6 @@ class ManagerSession:
             nss = pickle.loads( msg.data )
             self.uid = nss.getUID()
             self.server.nodeStateSnapshotReceived( nss )
-
-        elif type == MessageNewTask.Type:
-            task = pickle.loads( msg.data )
-            task.header.taskOwnerAddress = self.server.taskServer.address
-            task.header.taskOwnerPort = self.server.taskServer.curPort
-            self.server.taskServer.taskManager.addNewTask( task )
-
-        elif type == MessageKillNode.Type:
-            self.dropped()
-            time.sleep( 0.5 )
-
-            os.system( "taskkill /PID {} /F".format( os.getpid() ) )
 
         else:
             print "Wrong message received {}".format( msg )

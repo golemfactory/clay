@@ -11,6 +11,7 @@ from hostaddress import getHostAddress
 from managerserver import ManagerServer
 from nodestatesnapshot import NodeStateSnapshot
 from message import MessagePeerStatus
+from NodesManagerCient import NodesManagerClient
 
 import sys
 import time
@@ -26,7 +27,7 @@ class Client:
 
         self.lastPingTime   = 0.0
         self.p2pserver      = None
-        self.taskServer     = None 
+        self.taskServer     = None
         self.lastPingTime   = time.time()
         self.lastNSSTime    = time.time()
 
@@ -34,30 +35,36 @@ class Client:
 
         self.hostAddress    = getHostAddress()
 
+        self.nodesManagerClient = None
+
         self.doWorkTask     = task.LoopingCall(self.__doWork)
         self.doWorkTask.start(0.1, False)
        
     ############################
     def startNetwork(self ):
         print "Starting network ..."
+        print "Starting p2p server ..."
         self.p2pserver = P2PServer( self.hostAddress, self.configDesc )
 
-        time.sleep( 1.0 )
+        time.sleep( 0.5 )
 
+        print "Starting task server ..."
         self.taskServer = TaskServer( self.hostAddress, self.configDesc )
-        #if self.configDesc.addTasks:
-        #    hash = random.getrandbits(128)
-        #    th = TaskHeader( str( hash ), "10.30.10.203", self.taskServer.curPort )
-        #    t = VRayTracingTask( 100, 100, 10, th )
-        #    self.taskServer.taskManager.addNewTask( t )
 
         self.p2pserver.setTaskServer( self.taskServer )
+
+        time.sleep( 0.5 )
+
+        print "Starting nodes manager client ..."
+        self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUuid, "127.0.0.1", self.configDesc.managerPort )
+        self.nodesManagerClient.start()
 
     ############################
     def stopNetwork(self):
         #FIXME: Pewnie cos tu trzeba jeszcze dodac. Zamykanie serwera i wysylanie DisconnectPackege
-        self.p2pserver = None
-        self.taskServer = None
+        self.p2pserver          = None
+        self.taskServer         = None
+        self.nodesManagerClient = None
 
     ############################
     def __doWork(self):

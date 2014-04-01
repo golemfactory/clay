@@ -1,25 +1,20 @@
-import sys
-sys.path.append( '/..')
-
 from message import Message
 from connectionstate import ConnectionState
 
-class ManagerConnectionState( ConnectionState ):
+class ClientManagerConnState( ConnectionState ):
 
     ############################
-    def __init__( self, server ):
-        ConnectionState.__init__( self, server )
-        self.server = server
-        self.managerSession = None
+    def __init__( self ):
+        ConnectionState.__init__( self )
+        self.clientManagerSession = None
 
     ############################
     def setSession( self, session ):
-        self.managerSession = session
+        self.clientManagerSession = session
 
     ############################
     def connectionMade( self ):
         self.opened = True
-        self.server.newNMConnection( self )
 
     ############################
     def dataReceived(self, data):
@@ -29,11 +24,11 @@ class ManagerConnectionState( ConnectionState ):
         mess = Message.deserialize( self.db )
         if mess is None:
             print "Deserialization message failed"
-            self.managerSession.interpret( None )
+            self.clientManagerSession.interpret( None )
 
         if self.managerSession:
             for m in mess:
-                self.managerSession.interpret(m)
+                self.clientManagerSession.interpret(m)
         else:
             print "manager session for connection is None"
             assert False
@@ -41,4 +36,4 @@ class ManagerConnectionState( ConnectionState ):
     ############################
     def connectionLost(self, reason):
         self.opened = False
-        self.managerSession.dropped()
+        self.clientManagerSession.dropped()
