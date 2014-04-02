@@ -61,7 +61,7 @@ class Client:
     ############################
     def stopNetwork(self):
         #FIXME: Pewnie cos tu trzeba jeszcze dodac. Zamykanie serwera i wysylanie DisconnectPackege
-        self.p2pservice          = None
+        self.p2pservice         = None
         self.taskServer         = None
         self.nodesManagerClient = None
 

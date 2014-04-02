@@ -24,7 +24,6 @@ class PeerSession(PeerSessionInterface):
     ##########################
     def __init__(self, conn ):
 
-        #print "CREATING PEER SESSION {} {}".format( address, port )
         PeerSessionInterface.__init__(self)
         self.p2pService = None
         self.conn = conn
@@ -34,6 +33,8 @@ class PeerSession(PeerSessionInterface):
         self.port = pp.port
         self.state = PeerSession.StateInitialize
         self.lastMessageTime = 0.0
+
+        print "CREATING PEER SESSION {} {}".format( self.address, self.port )
 
         self.lastDisconnectTime = None
 
@@ -90,6 +91,8 @@ class PeerSession(PeerSessionInterface):
             p = self.p2pService.findPeer( self.id )
 
             if p and p != self and p.conn.isOpen():
+                print "PEER DUPLICATED: {} {} : {}".format( p.id, p.address, p.port )
+                print "AND {} : {}".format( msg.clientUID, msg.port )
                 self.__disconnect( PeerSession.DCRDuplicatePeers )
 
             if not p:

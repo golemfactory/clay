@@ -98,6 +98,7 @@ class P2PService:
 
             x = int( time.time() ) % len( self.freePeers ) # get some random peer from freePeers
             self.incommingPeers[ self.freePeers[ x ] ][ "conn_trials" ] += 1 # increment connection trials
+            print "Connecting to peer {}".format( self.freePeers[ x ] )
             self.__connect( self.incommingPeers[ self.freePeers[ x ] ][ "address" ], self.incommingPeers[ self.freePeers[ x ] ][ "port" ] )
             self.freePeers.remove( self.freePeers[ x ] )
 
