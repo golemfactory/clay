@@ -12,8 +12,8 @@ class Network:
 
         d = connectProtocol( endpoint, connection )
 
-        d.addCallback( Network.__connectionEstablished, SessionType, establishedCallback, args )
-        d.addErrback( Network.__connectionFailure, failureCallback, args )
+        d.addCallback( Network.__connectionEstablished, SessionType, establishedCallback, *args )
+        d.addErrback( Network.__connectionFailure, failureCallback, *args )
 
     ######################
     @classmethod
@@ -48,20 +48,20 @@ class Network:
             print "__connectionEstablished {} {}".format( pp.host, pp.port )
 
             if establishedCallback:
-                if len(args[0]) == 0:
+                if len( args ) == 0:
                     establishedCallback( session )
                 else:
-                    establishedCallback( session, args[ 0 ] )
+                    establishedCallback( session, *args )
 
     ######################
     @classmethod
     def __connectionFailure( self, conn, failureCallback, *args ):
-        print "Connection failure."
+        print "Connection failure. {}".format( conn )
         if failureCallback:
-            if len(args[0]) == 0:
+            if len( args ) == 0:
                 failureCallback()
             else:
-                failureCallback( args[ 0 ] )
+                failureCallback( *args )
         
 
     ######################

@@ -59,8 +59,8 @@ class TaskServer:
     def newConnection(self, session):
 
         session.taskServer = self
-        session.taskServer.taskComputer = self.taskComputer
-        session.taskServer.taskManager = self.taskManager
+        session.taskComputer = self.taskComputer
+        session.taskManager = self.taskManager
 
         self.taskSeesionsIncoming.append( session )
 
@@ -151,10 +151,10 @@ class TaskServer:
     def __connectionForTaskRequestEstablished( self, session, taskId, estimatedPerformance ):
 
         session.taskServer = self
-        session.taskServer.taskComputer = self.taskComputer
-        session.taskServer.taskManager = self.taskManager
+        session.taskComputer = self.taskComputer
+        session.taskManager = self.taskManager
         self.taskSeesions[ taskId ] = session            
-        ts.askForTask( taskId, estimatedPerformance )
+        session.askForTask( taskId, estimatedPerformance )
 
     #############################
     def __connectionForTaskRequestFailure( self, session, taskId, estimatedPerformance ):
@@ -175,14 +175,14 @@ class TaskServer:
     def __connectionForTaskResultEstablished( self, session, taskId, extraData, results ):
 
         session.taskServer = self
-        session.taskServer.taskComputer = self.taskComputer
-        session.taskServer.taskManager = self.taskManager
+        session.taskComputer = self.taskComputer
+        session.taskManager = self.taskManager
 
         self.taskSeesions[ taskId ] = session
         
-        ts.sendTaskResults( taskId, extraData, results )
+        session.sendTaskResults( taskId, extraData, results )
 
-        ts.dropped()
+        session.dropped()
 
     #############################
     def __connectionForTaskResultFailure( self, taskId, extraData, results ):
