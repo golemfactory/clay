@@ -1,7 +1,7 @@
 import abc
 
 from twisted.internet.protocol import Protocol 
-from message import Message, MessageHello, MessagePing, MessagePong
+from Message import Message, MessageHello, MessagePing, MessagePong
 from databuffer import DataBuffer
 
 class ConnectionState(Protocol):

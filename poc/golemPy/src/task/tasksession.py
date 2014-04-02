@@ -1,4 +1,4 @@
-from message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageTaskComputed
+from Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageTaskComputed
 from TaskComputer import TaskComputer
 from TaskConnState import TaskConnState
 import time

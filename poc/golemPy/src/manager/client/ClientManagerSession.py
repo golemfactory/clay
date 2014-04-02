@@ -1,4 +1,4 @@
-from message import MessagePeerStatus, MessageKillNode, MessageNewTask
+from Message import MessagePeerStatus, MessageKillNode, MessageNewTask
 from ClientManagerConnState import ClientManagerConnState
 
 import pickle

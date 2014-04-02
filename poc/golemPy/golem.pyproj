@@ -45,7 +45,7 @@
     <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src\client.py" />
+    <Compile Include="src\Client.py" />
     <Compile Include="src\AppConfig.py" />
     <Compile Include="src\ClientConfigDescriptor.py" />
     <Compile Include="src\core\hostaddress.py" />
@@ -72,9 +72,9 @@
     <Compile Include="src\core\simplehash.py" />
     <Compile Include="src\core\simpleserializer.py" />
     <Compile Include="src\manager\server\ServerManagerConnState.py" />
-    <Compile Include="src\manager\NodesNanager.py" />
+    <Compile Include="src\manager\NodesManager.py" />
     <Compile Include="src\manager\NodeStateSnapshot.py" />
-    <Compile Include="src\message.py" />
+    <Compile Include="src\Message.py" />
     <Compile Include="src\network\NetConnState.py" />
     <Compile Include="src\network\P2PServer.py" />
     <Compile Include="src\network\PeerSession.py" />

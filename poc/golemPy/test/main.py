@@ -17,7 +17,7 @@ from AppConfig import AppConfig
 from ClientConfigDescriptor import ClientConfigDescriptor
 from NodesManager import  NodesManager
 from NodesManagerLogic import EmptyManagerLogic
-from message import initMessages
+from Message import initMessages
 
 def main():
 

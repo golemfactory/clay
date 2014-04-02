@@ -1,4 +1,4 @@
-from message import Message
+from Message import Message
 from ConnectionState import ConnectionState
 
 class TaskConnState( ConnectionState ):

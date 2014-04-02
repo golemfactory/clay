@@ -13,8 +13,8 @@ sys.path.append('../testtasks/minilight/src')
 from twisted.internet import reactor
 
 from AppConfig import AppConfig
-from client import Client
-from message import initMessages
+from Client import Client
+from Message import initMessages
 from ClientConfigDescriptor import ClientConfigDescriptor
 
 def main():

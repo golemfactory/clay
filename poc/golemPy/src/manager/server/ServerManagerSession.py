@@ -1,4 +1,4 @@
-from message import MessagePeerStatus, MessageNewTask, MessageKillNode
+from Message import MessagePeerStatus, MessageNewTask, MessageKillNode
 import os
 import pickle
 import time

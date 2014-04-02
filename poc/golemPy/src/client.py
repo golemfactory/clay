@@ -9,7 +9,7 @@ from ExampleTasks import VRayTracingTask
 from hostaddress import getHostAddress
 
 from NodeStateSnapshot import NodeStateSnapshot
-from message import MessagePeerStatus
+from Message import MessagePeerStatus
 from NodesManagerCient import NodesManagerClient
 
 import sys

@@ -1,6 +1,6 @@
 from NetConnState import NetConnState
 
-from message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks
+from Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks
 import time
 
 class PeerSessionInterface:
