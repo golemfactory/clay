@@ -80,41 +80,30 @@ class NodesManager:
     def updateNodeState( self, ns ):
         assert isinstance( ns, NodeStateSnapshot )
 
-        chunkId = None
-        chunkProgress = 0.0
-        cpuPower = ""
-        timeLeft = ""
-        cshd = ""
-
         tcss = ns.getTaskChunkStateSnapshot()
-        if len( tcss ) > 0:
-            sp = tcss.itervalues().next()
-            chunkId = sp.getChunkId()
-            chunkProgress = sp.getProgress()
-            cpuPower = "{}".format( sp.getCpuPower() )
-            timeLeft = "{}".format( sp.getEstimatedTimeLeft() )
-            cshd = sp.getChunkShortDescr()
 
-        taskId = None
-        taskProgress = 0.0
-        allocTasks = ""
-        allocChunks = ""
-        activeTasks = ""
-        activeChunks = ""
-        chunksLeft = ""
-        ltshd = ""
+        ndslt = []
+        for sp in tcss.values():
+            ndslt.append( { "chunkId" : sp.getChunkId(),
+                            "chunkProgress" : sp.getProgress(),
+                            "cpuPower" : "{}".format( sp.getCpuPower() ),
+                            "timeLeft" : "{}".format( sp.getEstimatedTimeLeft() ),
+                            "cshd" : sp.getChunkShortDescr()
+                           } )
+
+        ndscs = []
 
         ltss = ns.getLocalTaskStateSnapshot()
-        if len( ltss ) > 0:
-            sp = ltss.itervalues().next()
-            taskId = sp.getTaskId()
-            taskProgress = sp.getProgress()
-            allocTasks = "{}".format( sp.getTotalTasks() )
-            allocChunks = "{}".format( sp.getTotalChunks() )
-            activeTasks = "{}".format( sp.getActiveTasks() )
-            activeChunks = "{}".format( sp.getActiveChunks() )
-            chunksLeft = "{}".format( sp.getChunksLeft() )
-            ltshd = sp.getTaskShortDescr()
+        for sp in ltss.values():
+            ndscs.append( { "taskId" : sp.getTaskId(),
+                            "taskProgress" : sp.getProgress(),
+                            "allocTasks" : "{}".format( sp.getTotalTasks() ),
+                            "allocChunks" : "{}".format( sp.getTotalChunks() ),
+                            "activeTasks" : "{}".format( sp.getActiveTasks() ),
+                            "activeChunks" : "{}".format( sp.getActiveChunks() ),
+                            "chunksLeft" : "{}".format( sp.getChunksLeft() ),
+                            "ltshd" : sp.getTaskShortDescr()
+                           } )
 
         ep = "{}:{}".format( ns.endpointAddr, ns.endpointPort )
         ts = ns.getFormattedTimestamp()
@@ -127,7 +116,7 @@ class NodesManager:
 
         ir = ns.isRunning()
 
-        nodeDataState = NodeDataState( ir, ns.uid, ts, ep, pn, tn, lm, chunkId, cpuPower, timeLeft, chunkProgress, cshd, taskId, allocTasks, allocChunks, activeTasks, activeChunks, chunksLeft, taskProgress, ltshd )
+        nodeDataState = NodeDataState( ir, ns.uid, ts, ep, pn, tn, lm, ndscs, ndslt )
 
         self.uic.UpdateNodePresentationState( nodeDataState )
 

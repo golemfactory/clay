@@ -1,7 +1,7 @@
 from PyQt4 import QtCore, QtGui
 from ui_nodemanager import Ui_NodesManagerWidget
 from taskdialog import TaskSpecDialog
-
+from NodeTasksSpec import NodeTasksWidget
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
@@ -11,7 +11,7 @@ except AttributeError:
 class NodeDataState:
 
     ########################
-    def __init__( self, running, uid, timestamp, endpoint, numPeers, numTasks, lastMsg, chunkId, cpuPower, timeLeft, chunkProgress, chunkShortDescr, locTaskId, allocatedTasks, allocatedChunks, activeTasks, activeChunks, chunksLeft, locTaskProgress, locTaskShortDescr ):
+    def __init__( self, running, uid, timestamp, endpoint, numPeers, numTasks, lastMsg, ltsd, rcsd ):
         self.isRunning = running
         self.uid = uid
         self.timestamp = timestamp
@@ -19,19 +19,8 @@ class NodeDataState:
         self.numPeers = numPeers
         self.numTasks = numTasks
         self.lastMsg = lastMsg
-        self.chunkId = chunkId
-        self.cpuPower = cpuPower
-        self.timeLeft = timeLeft
-        self.chunkProgress = chunkProgress
-        self.chunkShortDescr = chunkShortDescr
-        self.locTaskId = locTaskId
-        self.allocatedTasks = allocatedTasks
-        self.allocatedChunks = allocatedChunks
-        self.activeTasks = activeTasks
-        self.activeChunks = activeChunks
-        self.chunksLeft = chunksLeft
-        self.locTaskProgress = locTaskProgress
-        self.locTaskShortDescr = locTaskShortDescr
+        self.localTasksStateData = ltsd
+        self.remoteChunksStateData = rcsd
 
 #FIXME: add start local task button to manager (should trigger another local task for selected node)
 #FIXME: rething deleting nodes which seem to be inactive
@@ -67,6 +56,9 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.widget.stopNodePushButton.clicked.connect( self.stopNodeClicked )
         self.widget.enqueueTaskButton.clicked.connect( self.enqueueTaskClicked )
         self.widget.terminateAllNodesPushButton.clicked.connect( self.terminateAllNodesClicked )
+        self.table.cellDoubleClicked.connect( self.cellDoubleClicked )
+
+        self.nodeTaskWidgets = {}
 
     ########################
     def addNodesClicked( self ):
@@ -111,11 +103,18 @@ class ManagerUiCustomizer(QtCore.QObject):
             self.curActiveRowIdx = idx
             self.curActiveRowUid = uid
 
-            self.__updateDetailedNodeView( idx, self.nodeDataStates[ idx ] )
+            #self.__updateDetailedNodeView( idx, self.nodeDataStates[ idx ] )
         else:
             self.detailedViewEnabled = False
             self.__resetDetailedView()
             self.enableDetailedView( False )
+
+    def cellDoubleClicked( self, row, column ):
+
+        w = NodeTasksWidget( None )
+        w.setNodeUid( "Node UID: {}".format( self.curActiveRowUid ) )
+        self.nodeTaskWidgets[ self.curActiveRowUid ] = w
+        w.show()
 
     ########################
     def __createWrappedProgressBar( self, red ):
@@ -267,7 +266,10 @@ class ManagerUiCustomizer(QtCore.QObject):
 
         #update view
         if nodeDataState.isRunning:
-            self.__updateExistingRowView( self.tableData[ nodeDataState.uid ], nodeDataState.uid, nodeDataState.timestamp, nodeDataState.chunkProgress, nodeDataState.locTaskProgress )        
-            self.__updateDetailedNodeView( idx, nodeDataState )
+            self.__updateExistingRowView( self.tableData[ nodeDataState.uid ], nodeDataState.uid, nodeDataState.timestamp, 0.5, 0.5 )        
+            #self.__updateDetailedNodeView( idx, nodeDataState )
         else:
             self.__removeRowAndDetailedData( idx, nodeDataState.uid )
+
+        if nodeDataState.uid in self.nodeTaskWidgets:
+            self.nodeTaskWidgets[ nodeDataState.uid ].updateNodeViewData( nodeDataState )

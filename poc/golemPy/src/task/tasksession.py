@@ -17,7 +17,7 @@ class TaskSession:
         self.port           = self.conn.transport.getPeer().port
 
     ##########################
-    def askForTask( self, taskId, performenceIndex ):
+    def requestTask( self, taskId, performenceIndex ):
         self.__send( MessageWantToComputeTask( taskId, performenceIndex ) )
 
     ##########################

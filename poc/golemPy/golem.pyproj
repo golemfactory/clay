@@ -81,12 +81,14 @@
     <Compile Include="src\task\TaskComputer.py" />
     <Compile Include="src\task\TaskManager.py" />
     <Compile Include="src\task\TaskServer.py" />
+    <Compile Include="src\ui\NodeTasksSpec.py" />
     <Compile Include="src\ui\taskdialog.py" />
     <Compile Include="src\ui\uicustomizer.py" />
     <Compile Include="src\ui\progressbar.py" />
     <Compile Include="src\ui\pyuic.py" />
     <Compile Include="src\ui\ui_nodemanager.py" />
     <Compile Include="src\task\TaskBase.py" />
+    <Compile Include="src\ui\ui_nodetasks.py" />
     <Compile Include="src\ui\ui_taskdialog.py" />
     <Compile Include="src\vm\vm.py" />
     <Compile Include="src\__init__.py" />

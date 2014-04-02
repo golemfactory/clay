@@ -154,7 +154,7 @@ class TaskServer:
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
         self.taskSeesions[ taskId ] = session            
-        session.askForTask( taskId, estimatedPerformance )
+        session.requestTask( taskId, estimatedPerformance )
 
     #############################
     def __connectionForTaskRequestFailure( self, session, taskId, estimatedPerformance ):
