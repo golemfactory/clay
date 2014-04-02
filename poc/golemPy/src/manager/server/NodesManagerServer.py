@@ -1,5 +1,5 @@
 from network import Network
-from nodestatesnapshot import NodeStateSnapshot
+from NodeStateSnapshot import NodeStateSnapshot
 
 class NodesManagerServer:
 

@@ -1,4 +1,4 @@
-from netconnstate import NetConnState
+from NetConnState import NetConnState
 
 from message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks
 import time

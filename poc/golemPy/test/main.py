@@ -13,10 +13,10 @@ sys.path.append('../testtasks/minilight/src')
 from twisted.internet.protocol import Protocol, Factory
 
 from threading import Thread
-from appconfig import AppConfig
-from clientconfigdescriptor import ClientConfigDescriptor
-from nodesmanager import  NodesManager
-from nodesmanagerlogic import EmptyManagerLogic
+from AppConfig import AppConfig
+from ClientConfigDescriptor import ClientConfigDescriptor
+from NodesManager import  NodesManager
+from NodesManagerLogic import EmptyManagerLogic
 from message import initMessages
 
 def main():

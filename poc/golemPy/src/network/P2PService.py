@@ -1,6 +1,6 @@
-from p2pserver import P2PServer
+from P2PServer import P2PServer
 from network import Network
-from peer import PeerSession
+from PeerSession import PeerSession
 import time
 
 class P2PService:

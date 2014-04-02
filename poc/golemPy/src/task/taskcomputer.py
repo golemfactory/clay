@@ -5,7 +5,7 @@ from threading import Thread, Lock
 import time
 
 from vm import PythonVM
-from nodestatesnapshot import TaskChunkStateSnapshot
+from NodeStateSnapshot import TaskChunkStateSnapshot
 
 class TaskComputer:
 

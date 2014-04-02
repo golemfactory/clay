@@ -1,14 +1,14 @@
 from twisted.internet import task, reactor
 
 from P2PService import P2PService
-from taskserver import TaskServer
+from TaskServer import TaskServer
 
-from taskbase import TaskHeader
-from exampletasks import VRayTracingTask
+from TaskBase import TaskHeader
+from ExampleTasks import VRayTracingTask
 
 from hostaddress import getHostAddress
 
-from nodestatesnapshot import NodeStateSnapshot
+from NodeStateSnapshot import NodeStateSnapshot
 from message import MessagePeerStatus
 from NodesManagerCient import NodesManagerClient
 

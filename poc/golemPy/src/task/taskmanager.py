@@ -1,8 +1,8 @@
 import random
 import time
 
-from taskbase import Task
-from nodestatesnapshot import LocalTaskStateSnapshot
+from TaskBase import Task
+from NodeStateSnapshot import LocalTaskStateSnapshot
 
 class TaskManager:
     #######################

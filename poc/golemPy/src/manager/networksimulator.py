@@ -4,7 +4,7 @@ import random
 
 from PyQt4 import QtCore
 
-from nodestatesnapshot import NodeStateSnapshot, LocalTaskStateSnapshot, TaskChunkStateSnapshot
+from NodeStateSnapshot import NodeStateSnapshot, LocalTaskStateSnapshot, TaskChunkStateSnapshot
 
 
 GLOBAL_SHUTDOWN = [ False ]

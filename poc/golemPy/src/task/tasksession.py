@@ -1,6 +1,6 @@
 from message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageTaskComputed
-from taskcomputer import TaskComputer
-from taskconnstate import TaskConnState
+from TaskComputer import TaskComputer
+from TaskConnState import TaskConnState
 import time
 
 class TaskSession:

@@ -1,5 +1,5 @@
 from message import Message
-from connectionstate import ConnectionState
+from ConnectionState import ConnectionState
 
 class ClientManagerConnState( ConnectionState ):
 

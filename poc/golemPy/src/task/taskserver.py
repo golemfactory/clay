@@ -1,9 +1,9 @@
 from network import Network
-from taskmanager import TaskManager
-from taskcomputer import TaskComputer
-from tasksession import TaskSession
-from taskbase import TaskHeader
-from taskconnstate import TaskConnState
+from TaskManager import TaskManager
+from TaskComputer import TaskComputer
+from TaskSession import TaskSession
+from TaskBase import TaskHeader
+from TaskConnState import TaskConnState
 import random
 import time
 
@@ -205,7 +205,7 @@ class TaskServer:
 
 
 from twisted.internet.protocol import Factory
-from taskconnstate import TaskConnState
+from TaskConnState import TaskConnState
 
 class TaskServerFactory(Factory):
     #############################

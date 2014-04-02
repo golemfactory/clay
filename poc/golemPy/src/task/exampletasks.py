@@ -1,4 +1,4 @@
-from taskbase import Task, TaskHeader
+from TaskBase import Task, TaskHeader
 
 from taskablerenderer import TaskableRenderer, RenderTaskResult, RenderTaskDesc
 

@@ -1,5 +1,5 @@
 from message import Message
-from connectionstate import ConnectionState
+from ConnectionState import ConnectionState
 
 class NetConnState( ConnectionState ):
     ############################
@@ -17,7 +17,7 @@ class NetConnState( ConnectionState ):
         self.opened = True
 
         if self.server:
-            from peer import PeerSession
+            from PeerSession import PeerSession
             pp = self.transport.getPeer()
             self.peer = PeerSession( self )
             self.server.newConnection( self.peer )

@@ -25,8 +25,8 @@ class NodesManagerLogicTest:
 import subprocess
 import time
 import random
-from taskbase import TaskHeader
-from exampletasks import VRayTracingTask
+from TaskBase import TaskHeader
+from ExampleTasks import VRayTracingTask
 
 class EmptyManagerLogic:
 

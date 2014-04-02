@@ -1,5 +1,5 @@
 from message import Message
-from connectionstate import ConnectionState
+from ConnectionState import ConnectionState
 
 class TaskConnState( ConnectionState ):
     ##########################
@@ -17,7 +17,7 @@ class TaskConnState( ConnectionState ):
         self.opened = True
 
         if self.server:
-            from tasksession import TaskSession
+            from TaskSession import TaskSession
             pp = self.transport.getPeer()
             self.taskSession = TaskSession( self )
             self.server.newConnection( self.taskSession )

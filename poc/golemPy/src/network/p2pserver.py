@@ -33,7 +33,7 @@ class P2PServer:
 
 
 from twisted.internet.protocol import Factory
-from netconnstate import NetConnState
+from NetConnState import NetConnState
 
 class NetServerFactory( Factory ):
     #############################
