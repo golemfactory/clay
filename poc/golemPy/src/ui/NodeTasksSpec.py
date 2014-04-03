@@ -1,3 +1,4 @@
+
 from PyQt4 import QtCore, QtGui
 from ui_nodetasks import Ui_NodeTasksWidget
 from progressbar import createWrappedProgressBar

@@ -1,4 +1,5 @@
 
+
 class ClientConfigDescriptor:
 
     def __init__( self ):
