@@ -106,11 +106,15 @@ def test_it():
 
     out.save("result.png", "PNG")
 
-    
+#klasa powinna miec add task (ktore otwiera i liczy min/max oraz update na tej podstawie swojego stanu) oraz dodaje chunk do listy i tyle - potem usuwa
+#finalize - czyli po ostatnim chunku konwertuje na bazie min/max po kolei wszystkie chunki (ale nie otwiera wszystkich, bo na to jest za malo miejsca)
+#kazdy skonwertowany dodaje od razu do final image i tylko ten final jest trzymany w pamieci - troche wolniej bedzie, ale za to nie zabraknie RAMU
+#teraz obrazek fullhd podzielony na 1000-2000 chunkow wywali manager pamieci
+
 ############################
 if __name__ == "__main__":
     
-    files = get_exr_files( "test_input" )
+    files = get_exr_files( "test_input_1" )
 
     print "Compositing {} input files".format( len( files ) )
 
