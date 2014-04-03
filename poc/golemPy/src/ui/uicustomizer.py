@@ -2,6 +2,8 @@ from PyQt4 import QtCore, QtGui
 from ui_nodemanager import Ui_NodesManagerWidget
 from taskdialog import TaskSpecDialog
 from NodeTasksSpec import NodeTasksWidget
+from progressbar import createWrappedProgressBar
+
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
@@ -117,25 +119,8 @@ class ManagerUiCustomizer(QtCore.QObject):
         w.show()
 
     ########################
-    def __createWrappedProgressBar( self, red ):
-
-        widget = QtGui.QWidget()
-        widget.setFixedSize( 166, 22 )
-
-        progressBar = QtGui.QProgressBar( widget )
-        progressBar.setGeometry(7, 2, 159, 16)
-        progressBar.setProperty("value", 0)
-
-        if red:
-            progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #dd3a36; width: 1px;}" )
-        else:
-            progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #3add36; width: 1px;}" )
-
-        return widget, progressBar
-
-    ########################
     def __addProgressBar( self, row, col, red = False ):
-        w, p = self.__createWrappedProgressBar( red )
+        w, p = createWrappedProgressBar( red )
         self.table.setCellWidget( row, col, w )
         return p
 

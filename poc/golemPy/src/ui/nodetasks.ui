@@ -29,7 +29,7 @@
     </widget>
    </item>
    <item row="1" column="1">
-    <widget class="QTableWidget" name="tableRemoteTasks">
+    <widget class="QTableWidget" name="tableRemoteChunks">
      <column>
       <property name="text">
        <string>Task ID</string>
@@ -37,7 +37,7 @@
      </column>
      <column>
       <property name="text">
-       <string>Remote Tasks</string>
+       <string>Remote Chunks</string>
       </property>
      </column>
     </widget>

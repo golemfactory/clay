@@ -2,6 +2,25 @@ import sys
 from PyQt4 import QtGui, QtCore
 
 
+########################
+def createWrappedProgressBar( red ):
+
+    widget = QtGui.QWidget()
+    widget.setFixedSize( 166, 22 )
+
+    progressBar = QtGui.QProgressBar( widget )
+    progressBar.setGeometry(7, 2, 159, 16)
+    progressBar.setProperty("value", 0)
+
+    if red:
+        progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #dd3a36; width: 1px;}" )
+    else:
+        progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #3add36; width: 1px;}" )
+
+    return widget, progressBar
+
+
+
 class Communicate(QtCore.QObject):
     
     updateBW = QtCore.pyqtSignal(int)

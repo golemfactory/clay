@@ -82,28 +82,26 @@ class NodesManager:
 
         tcss = ns.getTaskChunkStateSnapshot()
 
-        ndslt = []
+        ndslt = {}
         for sp in tcss.values():
-            ndslt.append( { "chunkId" : sp.getChunkId(),
-                            "chunkProgress" : sp.getProgress(),
-                            "cpuPower" : "{}".format( sp.getCpuPower() ),
-                            "timeLeft" : "{}".format( sp.getEstimatedTimeLeft() ),
-                            "cshd" : sp.getChunkShortDescr()
-                           } )
+            ndslt[ sp.getChunkId() ] = {    "chunkProgress" : sp.getProgress(),
+                                            "cpuPower" : "{}".format( sp.getCpuPower() ),
+                                            "timeLeft" : "{}".format( sp.getEstimatedTimeLeft() ),
+                                            "cshd" : sp.getChunkShortDescr()
+                                        }
 
-        ndscs = []
+        ndscs = {}
 
         ltss = ns.getLocalTaskStateSnapshot()
         for sp in ltss.values():
-            ndscs.append( { "taskId" : sp.getTaskId(),
-                            "taskProgress" : sp.getProgress(),
-                            "allocTasks" : "{}".format( sp.getTotalTasks() ),
-                            "allocChunks" : "{}".format( sp.getTotalChunks() ),
-                            "activeTasks" : "{}".format( sp.getActiveTasks() ),
-                            "activeChunks" : "{}".format( sp.getActiveChunks() ),
-                            "chunksLeft" : "{}".format( sp.getChunksLeft() ),
-                            "ltshd" : sp.getTaskShortDescr()
-                           } )
+            ndscs[ sp.getTaskId() ] = {   "taskProgress" : sp.getProgress(),
+                                            "allocTasks" : "{}".format( sp.getTotalTasks() ),
+                                            "allocChunks" : "{}".format( sp.getTotalChunks() ),
+                                            "activeTasks" : "{}".format( sp.getActiveTasks() ),
+                                            "activeChunks" : "{}".format( sp.getActiveChunks() ),
+                                            "chunksLeft" : "{}".format( sp.getChunksLeft() ),
+                                            "ltshd" : sp.getTaskShortDescr()
+                                       }
 
         ep = "{}:{}".format( ns.endpointAddr, ns.endpointPort )
         ts = ns.getFormattedTimestamp()

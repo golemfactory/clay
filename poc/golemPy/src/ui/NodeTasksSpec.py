@@ -1,5 +1,6 @@
 from PyQt4 import QtCore, QtGui
 from ui_nodetasks import Ui_NodeTasksWidget
+from progressbar import createWrappedProgressBar
 
 class NodeTasksWidget(QtGui.QWidget):
     
@@ -10,10 +11,15 @@ class NodeTasksWidget(QtGui.QWidget):
         # Set up the user interface from Designer.
         self.ui = Ui_NodeTasksWidget()
         self.ui.setupUi(self)
-        self.remoteTaskTable = self.ui.tableRemoteTasks
-        self.localTaskTable = self.ui.tableLocalTasks
-        self.remoteTasksTableData = {}
-        self.localTasksTableData = {}
+        self.remoteChunksTable = self.ui.tableRemoteChunks
+        self.localTasksTable = self.ui.tableLocalTasks
+        self.remoteChunksTableData = []
+        self.localTasksTableData = []
+
+        self.chunkIdToRowNumMapping = {}
+        self.taskIdToRowNumMapping = {}
+
+        self.currNodeDataState = None
 
     ########################
     def setNodeUid( self, uid ):
@@ -21,25 +27,48 @@ class NodeTasksWidget(QtGui.QWidget):
 
     ########################
     def updateNodeViewData( self, nodeDataState ):
+
+        self.currNodeDataState = nodeDataState
+
+        # remove old tasks and chunks
+        for t in self.taskIdToRowNumMapping:
+            if t not in nodeDataState.localTasksStateData:
+                rowToRemove = self.taskIdToRowNumMapping[ t ]
+                del self.taskIdToRowNumMapping[ t ]
+                del self.localTasksTableData[ rowToRemove ]
+                self.localTasksTable.removeRow( rowToRemove )
+
+        for t in self.chunkIdToRowNumMapping:
+            if t not in nodeDataState.remoteChunksStateData:
+                rowToRemove = self.chunkIdToRowNumMapping[ t ]
+                del self.chunkIdToRowNumMapping[ t ]
+                del self.remoteChunksTableData[ rowToRemove ]
+                self.remoteChunksTable.removeRow( rowToRemove )
+
+        # register new rows
+
         for t in nodeDataState.localTasksStateData:
-            if t[ "taskId" ] not in self.localTasksTableData:
-                self.__registerRowData( t[ "taskId" ], self.__createRow( t[ "taskId" ], self.localTaskTable ), self.localTasksTableData )
+            if t not in self.taskIdToRowNumMapping:
+                self.taskIdToRowNumMapping[ t ] = self.localTasksTable.rowCount()
+                self.localTasksTableData.append( self.__createRow( t, self.localTasksTable, True ) )
 
         for t in nodeDataState.remoteChunksStateData:
-            if t[ "chunkId" ] not in self.remoteTasksTableData:
-                self.__registerRowData( t[ "chunkId" ], self.__createRow( t[ "chunkId" ], self.remoteTaskTable ), self.remoteTasksTableData )
+            if t not in self.chunkIdToRowNumMapping:
+                self.chunkIdToRowNumMapping[ t ] = self.remoteChunksTable.rowCount()
+                self.remoteChunksTableData.append( self.__createRow( t, self.remoteChunksTable, False ) )
 
 
+        # update view
         for t in nodeDataState.localTasksStateData:
-            self.__updateExistingRowView( self.localTasksTableData[ t[ "taskId" ] ], t[ "taskId" ], t[ "taskProgress" ] )
+            self.__updateExistingRowView( self.localTasksTableData[ self.taskIdToRowNumMapping[ t ] ], t, nodeDataState.localTasksStateData[ t ][ "taskProgress" ] )
 
         for t in nodeDataState.remoteChunksStateData:
-            self.__updateExistingRowView( self.remoteTasksTableData[ t[ "chunkId" ] ], t[ "chunkId" ], t[ "chunkProgress" ] )
+            self.__updateExistingRowView( self.remoteChunksTableData[ self.chunkIdToRowNumMapping[ t ] ], t, nodeDataState.remoteChunksStateData[ t ][ "chunkProgress" ] )
 
         
 
     ########################
-    def __createRow( self, taskUid, table ):
+    def __createRow( self, uid, table, red = False ):
         nextRow = table.rowCount()
         
         table.insertRow( nextRow )
@@ -48,36 +77,15 @@ class NodeTasksWidget(QtGui.QWidget):
 
         table.setItem( nextRow, 0, item0 )
 
-        progress = self.__addProgressBar( table, nextRow, 1, True )
+        progress = self.__addProgressBar( table, nextRow, 1, red )
 
         return TableRowDataEntry( item0, progress )
 
     ########################
     def __addProgressBar( self, table, row, col, red = False ):
-        w, p = self.__createWrappedProgressBar( red )
+        w, p = createWrappedProgressBar( red )
         table.setCellWidget( row, col, w )
         return p
-
-    ########################
-    def __createWrappedProgressBar( self, red ):
-
-        widget = QtGui.QWidget()
-        widget.setFixedSize( 166, 22 )
-
-        progressBar = QtGui.QProgressBar( widget )
-        progressBar.setGeometry(7, 2, 159, 16)
-        progressBar.setProperty("value", 0)
-
-        if red:
-            progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #dd3a36; width: 1px;}" )
-        else:
-            progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #3add36; width: 1px;}" )
-
-        return widget, progressBar
-
-    ########################
-    def __registerRowData( self, taskUid, rowDataEntry, taskTableData ):
-        taskTableData[ taskUid ] = rowDataEntry
 
     ########################
     def __updateExistingRowView( self, rowData, taskId, progress ):

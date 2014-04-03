@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'nodetasks.ui'
 #
-# Created: Wed Apr 02 16:28:42 2014
+# Created: Thu Apr 03 11:38:05 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -38,15 +38,15 @@ class Ui_NodeTasksWidget(object):
         item = QtGui.QTableWidgetItem()
         self.tableLocalTasks.setHorizontalHeaderItem(1, item)
         self.gridLayout.addWidget(self.tableLocalTasks, 1, 0, 1, 1)
-        self.tableRemoteTasks = QtGui.QTableWidget(NodeTasksWidget)
-        self.tableRemoteTasks.setObjectName(_fromUtf8("tableRemoteTasks"))
-        self.tableRemoteTasks.setColumnCount(2)
-        self.tableRemoteTasks.setRowCount(0)
+        self.tableRemoteChunks = QtGui.QTableWidget(NodeTasksWidget)
+        self.tableRemoteChunks.setObjectName(_fromUtf8("tableRemoteChunks"))
+        self.tableRemoteChunks.setColumnCount(2)
+        self.tableRemoteChunks.setRowCount(0)
         item = QtGui.QTableWidgetItem()
-        self.tableRemoteTasks.setHorizontalHeaderItem(0, item)
+        self.tableRemoteChunks.setHorizontalHeaderItem(0, item)
         item = QtGui.QTableWidgetItem()
-        self.tableRemoteTasks.setHorizontalHeaderItem(1, item)
-        self.gridLayout.addWidget(self.tableRemoteTasks, 1, 1, 1, 1)
+        self.tableRemoteChunks.setHorizontalHeaderItem(1, item)
+        self.gridLayout.addWidget(self.tableRemoteChunks, 1, 1, 1, 1)
         self.nodeUidLabel = QtGui.QLabel(NodeTasksWidget)
         self.nodeUidLabel.setObjectName(_fromUtf8("nodeUidLabel"))
         self.gridLayout.addWidget(self.nodeUidLabel, 0, 0, 1, 2)
@@ -60,9 +60,9 @@ class Ui_NodeTasksWidget(object):
         item.setText(_translate("NodeTasksWidget", "Task ID", None))
         item = self.tableLocalTasks.horizontalHeaderItem(1)
         item.setText(_translate("NodeTasksWidget", "Local Tasks", None))
-        item = self.tableRemoteTasks.horizontalHeaderItem(0)
+        item = self.tableRemoteChunks.horizontalHeaderItem(0)
         item.setText(_translate("NodeTasksWidget", "Task ID", None))
-        item = self.tableRemoteTasks.horizontalHeaderItem(1)
-        item.setText(_translate("NodeTasksWidget", "Remote Tasks", None))
+        item = self.tableRemoteChunks.horizontalHeaderItem(1)
+        item.setText(_translate("NodeTasksWidget", "Remote Chunks", None))
         self.nodeUidLabel.setText(_translate("NodeTasksWidget", "TextLabel", None))
 
