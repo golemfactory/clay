@@ -21,6 +21,15 @@ class NodeTasksWidget(QtGui.QWidget):
 
         self.currNodeDataState = None
 
+        self.localTasksTable.selectionModel().selectionChanged.connect( self.localTaskRowSelectionChanged )
+        self.remoteChunksTable.selectionModel().selectionChanged.connect( self.remoteChunkRowSelectionChanged )
+
+        self.localTasksActiveRow = -1
+        self.remoteChunkActiveRow = -1
+
+        self.__resetDetailedTaskView()
+        self.__resetDetailedChunkView()
+
     ########################
     def setNodeUid( self, uid ):
         self.ui.nodeUidLabel.setText( uid )
@@ -34,28 +43,30 @@ class NodeTasksWidget(QtGui.QWidget):
         for t in self.taskIdToRowNumMapping:
             if t not in nodeDataState.localTasksStateData:
                 rowToRemove = self.taskIdToRowNumMapping[ t ]
-                del self.taskIdToRowNumMapping[ t ]
                 del self.localTasksTableData[ rowToRemove ]
                 self.localTasksTable.removeRow( rowToRemove )
+                
+        self.__remapTaskIdRowMapping()
 
         for t in self.chunkIdToRowNumMapping:
             if t not in nodeDataState.remoteChunksStateData:
                 rowToRemove = self.chunkIdToRowNumMapping[ t ]
-                del self.chunkIdToRowNumMapping[ t ]
                 del self.remoteChunksTableData[ rowToRemove ]
                 self.remoteChunksTable.removeRow( rowToRemove )
+            
+        self.__remapChunkIdRowMapping()    
 
         # register new rows
 
         for t in nodeDataState.localTasksStateData:
             if t not in self.taskIdToRowNumMapping:
-                self.taskIdToRowNumMapping[ t ] = self.localTasksTable.rowCount()
                 self.localTasksTableData.append( self.__createRow( t, self.localTasksTable, True ) )
+                self.__remapTaskIdRowMapping()
 
         for t in nodeDataState.remoteChunksStateData:
             if t not in self.chunkIdToRowNumMapping:
-                self.chunkIdToRowNumMapping[ t ] = self.remoteChunksTable.rowCount()
                 self.remoteChunksTableData.append( self.__createRow( t, self.remoteChunksTable, False ) )
+                self.__remapChunkIdRowMapping()
 
 
         # update view
@@ -65,7 +76,70 @@ class NodeTasksWidget(QtGui.QWidget):
         for t in nodeDataState.remoteChunksStateData:
             self.__updateExistingRowView( self.remoteChunksTableData[ self.chunkIdToRowNumMapping[ t ] ], t, nodeDataState.remoteChunksStateData[ t ][ "chunkProgress" ] )
 
+        self.__resetDetailedTaskView()
+        self.__resetDetailedChunkView()
+
         
+        self.__updateDetailedTaksView( self.localTasksActiveRow )
+
+        self.__updateDetailedChunkView( self.remoteChunkActiveRow )
+
+
+    ######################## 
+    def localTaskRowSelectionChanged( self, item1, item2 ):
+
+        indices = item1.indexes()
+
+        if len( indices ) > 0:
+            idx = indices[ 0 ].row()
+
+            self.localTasksActiveRow = idx
+
+            self.__updateDetailedTaksView( idx )
+        else:
+            self.localTasksActiveRow = -1
+
+        print "Local Task Acctive Row is {}".format( self.localTasksActiveRow )
+
+    ######################## 
+    def remoteChunkRowSelectionChanged( self, item1, item2 ):
+
+        indices = item1.indexes()
+
+        if len( indices ) > 0:
+            idx = indices[ 0 ].row()
+
+            self.remoteChunkActiveRow = idx
+
+            self.__updateDetailedChunkView( idx )
+        else:
+            self.remoteChunkActiveRow = -1
+
+        print "Remote Chunk Acctive Row is {}".format( self.remoteChunkActiveRow )
+
+
+    ########################
+    def __remapTaskIdRowMapping( self ):
+
+        self.taskIdToRowNumMapping.clear()
+
+        idx = 0
+        for lttData in self.localTasksTableData:
+            uid = str( lttData.uid.text() )
+            self.taskIdToRowNumMapping[ uid ] = idx
+            idx += 1
+
+    ########################
+    def __remapChunkIdRowMapping( self ):
+
+        self.chunkIdToRowNumMapping.clear()
+
+        idx = 0
+        for rctData in self.remoteChunksTableData:
+            uid = str( rctData.uid.text() )
+            self.chunkIdToRowNumMapping[ uid ] = idx
+            idx += 1
+
 
     ########################
     def __createRow( self, uid, table, red = False ):
@@ -74,6 +148,8 @@ class NodeTasksWidget(QtGui.QWidget):
         table.insertRow( nextRow )
 
         item0 = QtGui.QTableWidgetItem()
+
+        item0.setText( uid )
 
         table.setItem( nextRow, 0, item0 )
 
@@ -91,6 +167,56 @@ class NodeTasksWidget(QtGui.QWidget):
     def __updateExistingRowView( self, rowData, taskId, progress ):
         rowData.uid.setText( taskId )
         rowData.progressBar.setProperty("value", int( 100.0 * progress ) )
+
+    def __updateDetailedTaksView( self, idx ):
+
+        if idx >= 0 and idx < len( self.localTasksTableData ):
+
+            uid = str( self.localTasksTableData[ idx ].uid.text() )
+
+            localTaskState = self.currNodeDataState.localTasksStateData[ uid ]
+
+            self.ui.labelDetailedLocalTask.setText( "{}".format( uid ) )
+            self.ui.locTaskShortDescrInput.setText( localTaskState[ "ltshd" ] )
+            self.ui.allocatedTasksInput.setText( localTaskState[ "allocTasks" ] )
+            self.ui.allocatedChunksInput.setText( localTaskState[ "allocChunks" ] )
+            self.ui.activeTasksInput.setText( localTaskState[ "activeTasks" ] )
+            self.ui.activeChunksInput.setText( localTaskState[ "activeChunks" ] )
+            self.ui.chunksLeftInput.setText( localTaskState[ "chunksLeft" ] )
+            self.ui.localTaskProgressBar.setProperty( "value", int( 100.0 * localTaskState[ "taskProgress" ] ) )
+
+    def __updateDetailedChunkView( self, idx ):
+
+        if idx >= 0 and idx < len( self.remoteChunksTableData ):
+
+            uid = str( self.remoteChunksTableData[ idx ].uid.text() )
+
+            remoteChunkState = self.currNodeDataState.remoteChunksStateData[ uid ]
+
+            self.ui.labelDetailedRemoteTask.setText( "{}".format( uid ) )
+            self.ui.chunkShortDescrInput.setText( remoteChunkState[ "cshd" ] )
+            self.ui.cpuPowerInput.setText( remoteChunkState[ "cpuPower" ] )
+            self.ui.timeLeftInput.setText( remoteChunkState[ "timeLeft" ] )
+            self.ui.activeChunkProgressBar.setProperty( "value", int( 100.0 * remoteChunkState[ "chunkProgress" ] ) )
+
+    ########################
+    def __resetDetailedTaskView( self ):
+        self.ui.labelDetailedLocalTask.setText( "none" )
+        self.ui.locTaskShortDescrInput.setText( "" )
+        self.ui.allocatedTasksInput.setText( "" )
+        self.ui.allocatedChunksInput.setText( "" )
+        self.ui.activeTasksInput.setText( "" )
+        self.ui.activeChunksInput.setText( "" )
+        self.ui.chunksLeftInput.setText( "" )
+        self.ui.localTaskProgressBar.setProperty( "value", 0 )
+
+    ########################
+    def __resetDetailedChunkView( self ):
+        self.ui.labelDetailedRemoteTask.setText( "none" )
+        self.ui.chunkShortDescrInput.setText( "" )
+        self.ui.cpuPowerInput.setText( "" )
+        self.ui.timeLeftInput.setText( "" )
+        self.ui.activeChunkProgressBar.setProperty( "value", 0 )
 
 class TableRowDataEntry:
 
