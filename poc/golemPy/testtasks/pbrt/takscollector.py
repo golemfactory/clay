@@ -111,5 +111,8 @@ def test_it():
 if __name__ == "__main__":
     
     files = get_exr_files( "test_input" )
+
+    print "Compositing {} input files".format( len( files ) )
+
     fin   = compose_final_image( files )
     fin.save( "result.png", "PNG" )
