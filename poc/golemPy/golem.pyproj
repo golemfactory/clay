@@ -42,6 +42,7 @@
     <Folder Include="testtasks\minilight\" />
     <Folder Include="testtasks\minilight\compact_src\" />
     <Folder Include="testtasks\minilight\src\" />
+    <Folder Include="testtasks\pbrt\" />
     <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>
@@ -111,6 +112,7 @@
     <Compile Include="testtasks\minilight\src\task_data_0.py" />
     <Compile Include="testtasks\minilight\src\triangle.py" />
     <Compile Include="testtasks\minilight\src\vector3f.py" />
+    <Compile Include="testtasks\pbrt\takscollector.py" />
     <Compile Include="test\ClientMain.py" />
     <Compile Include="test\main.py" />
     <Compile Include="test\__init__.py" />
