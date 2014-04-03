@@ -1,8 +1,11 @@
+import glob
+
 import OpenEXR, Imath
 from PIL import Image, ImageChops
 
-t0 = 'test/test_chunk_00000.exr'
-t1 = 'test/test_chunk_00001.exr'
+############################
+def print_progress( i, total ):
+    print "\rProgress: {} %       ".format( 100.0 * float( i + 1 ) / total ),
 
 ############################
 def open_exr_as_rgbf_images( exr_file ):
@@ -20,7 +23,7 @@ def convert_rgbf_images_to_rgb8_image( rgbf, lighest, darkest ):
     scale = 255 / (lighest - darkest)
     
     def normalize_0_255( val ):
-        return (v * scale) + darkest
+        return (val * scale) + darkest
     
     rgb8 = [im.point(normalize_0_255).convert("L") for im in rgbf]
     
@@ -44,11 +47,52 @@ def get_list_rgbf_extrema( rgbf_list ):
     
     for i in range( 1, len( rgbf_list ) ):
         d, l = get_single_rgbf_extrema( rgbf_list[ i ] )
-        
+          
         darkest = min( d, darkest ) 
         lighest = max( l, lighest )
 
+        print_progress( i, len( rgbf_list ) )
+    
+    print ""
+
     return darkest, lighest
+
+############################
+def compose_final_image( open_exr_files ):
+    rgbfs = []
+
+    print "Reading input files"
+    for i, open_exr_im_file in enumerate( open_exr_files ):
+        rgbf = open_exr_as_rgbf_images( open_exr_im_file )
+        rgbfs.append( rgbf )
+
+        print_progress( i, len( open_exr_files ) )
+
+    print "\nFinding extremas for all chunks"
+    darkest, lighest = get_list_rgbf_extrema( rgbfs )
+   
+    rgb8_images = []
+
+    print "Converting chunks to rgb8 images"
+    for i, rgbf in enumerate( rgbfs ):
+        rgb8_im = convert_rgbf_images_to_rgb8_image( rgbf, lighest, darkest )
+        rgb8_images.append( rgb8_im )
+
+        print_progress( i, len( rgbfs ) )
+
+    final_img = rgb8_images[ 0 ]
+
+    print "\nCompositing the final image"
+    for i in range( 1, len( rgb8_images ) ):
+        final_img = ImageChops.add( final_img, rgb8_images[ i ] )
+
+        print_progress( i, len( rgb8_images ) )
+
+    return final_img
+
+############################
+def get_exr_files( path ):
+    return glob.glob( path + "/*.exr" )
 
 ############################
 def test_it():
@@ -65,9 +109,7 @@ def test_it():
     
 ############################
 if __name__ == "__main__":
-    ir0, ig0, ib0 = get_bands( t0 )
-    ir1, ig1, ib1 = get_bands( t1 )
     
-    out_r = ImageChops.add( ir0, ir1 )
-    out_g = ImageChops.add( ig0, ig1 )
-    out_b = ImageChops.add( ib0, ib1 )
+    files = get_exr_files( "test_input" )
+    fin   = compose_final_image( files )
+    fin.save( "result.png", "PNG" )
