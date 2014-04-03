@@ -29,11 +29,11 @@ class NodeDataState:
 class TableRowDataEntry:
 
     ########################
-    def __init__( self, uidItem, timestampItem, remoteProgressBar, localProgressBar ):
+    def __init__( self, uidItem, timestampItem, remoteChunksCount, localTasksCount ):
         self.uid = uidItem
         self.timestamp = timestampItem
-        self.remoteProgress = remoteProgressBar
-        self.localProgress = localProgressBar
+        self.remoteChunksCount = remoteChunksCount
+        self.localTasksCount = localTasksCount
 
 class ManagerUiCustomizer(QtCore.QObject):
 
@@ -119,12 +119,6 @@ class ManagerUiCustomizer(QtCore.QObject):
         w.show()
 
     ########################
-    def __addProgressBar( self, row, col, red = False ):
-        w, p = createWrappedProgressBar( red )
-        self.table.setCellWidget( row, col, w )
-        return p
-
-    ########################
     def __createRow( self, nodeUid, nodeTime ):
         nextRow = self.table.rowCount()
         
@@ -136,74 +130,38 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.table.setItem( nextRow, 0, item0 )
         self.table.setItem( nextRow, 1, item1 )
 
-        pRem = self.__addProgressBar( nextRow, 2, False )
-        pLoc = self.__addProgressBar( nextRow, 3, True )
+        item2 = QtGui.QTableWidgetItem()
+        item3 = QtGui.QTableWidgetItem()
+
+        self.table.setItem( nextRow, 2, item2 )
+        self.table.setItem( nextRow, 3, item3 )
 
         assert nodeUid not in self.tableData
 
-        return TableRowDataEntry( item0, item1, pRem, pLoc )
+        return TableRowDataEntry( item0, item1, item2, item3 )
 
     ########################
-    def __updateExistingRowView( self, rowData, nodeUid, nodeTimestamp, progressRemote, progressLoc ):
+    def __updateExistingRowView( self, rowData, nodeUid, nodeTimestamp, remoteChunksCount, localTasksCount ):
         rowData.uid.setText( nodeUid )
         rowData.timestamp.setText( nodeTimestamp )
-        rowData.remoteProgress.setProperty("value", int( 100.0 * progressRemote ) )
-        rowData.localProgress.setProperty("value", int( 100.0 * progressLoc ) )
+        rowData.remoteChunksCount.setText( str( remoteChunksCount ) )
+        rowData.localTasksCount.setText( str( localTasksCount ) )
 
     ########################
     def __updateDetailedNodeView( self, idx, nodeDataState ):
         if self.detailedViewEnabled and self.curActiveRowIdx == idx:
-            
-            self.widget.labelDetailedNode.setText( "Node ({})".format( nodeDataState.uid[:15] ) )
-            
-            if nodeDataState.chunkId and len( nodeDataState.chunkId ) > 0:
-                self.widget.labelDetailedRemoteTask.setText( "Active remote task ({})".format( nodeDataState.chunkId[:15]) )
-            else:
-                self.widget.labelDetailedRemoteTask.setText( "Active remote task (none)" )
-
-            if nodeDataState.locTaskId and len( nodeDataState.locTaskId ) > 0:
-                self.widget.labelDetailedLocalTask.setText( "Active local task ({})".format( nodeDataState.locTaskId[:15] ) )
-            else:
-                self.widget.labelDetailedLocalTask.setText( "Active local task (none)" )
 
             self.widget.endpointInput.setText( nodeDataState.endpoint )
             self.widget.noPeersInput.setText( nodeDataState.numPeers )
             self.widget.noTasksInput.setText( nodeDataState.numTasks )
             self.widget.lastMsgInput.setText( nodeDataState.lastMsg )
 
-            self.widget.chunkShortDescrInput.setText( nodeDataState.chunkShortDescr )
-            self.widget.cpuPowerInput.setText( nodeDataState.cpuPower )
-            self.widget.timeLeftInput.setText( nodeDataState.timeLeft )
-            self.widget.activeChunkProgressBar.setProperty( "value", int( 100.0 * nodeDataState.chunkProgress ) )
-
-            self.widget.locTaskShortDescrInput.setText( nodeDataState.locTaskShortDescr )
-            self.widget.allocatedTasksInput.setText( nodeDataState.allocatedTasks )
-            self.widget.allocatedChunksInput.setText( nodeDataState.allocatedChunks )
-            self.widget.activeTasksInput.setText( nodeDataState.activeTasks )
-            self.widget.activeChunksInput.setText( nodeDataState.activeChunks )
-            self.widget.chunksLeftInput.setText( nodeDataState.chunksLeft )
-            self.widget.localTaskProgressBar.setProperty( "value", int( 100.0 * nodeDataState.locTaskProgress ) )
-
     ########################
     def __resetDetailedView( self ):
-        self.widget.labelDetailedNode.setText( "Node (none)" )
-        self.widget.labelDetailedRemoteTask.setText( "Active remote task (none)" )
-        self.widget.labelDetailedLocalTask.setText( "Active local task (none)" )
-        self.widget.activeChunkProgressBar.setProperty("value", 0)
-        self.widget.localTaskProgressBar.setProperty("value", 0)
         self.widget.endpointInput.setText( "" )
         self.widget.noPeersInput.setText( "" )
         self.widget.noTasksInput.setText( "" )
         self.widget.lastMsgInput.setText( "" )
-        self.widget.chunkShortDescrInput.setText( "" )
-        self.widget.cpuPowerInput.setText( "" )
-        self.widget.timeLeftInput.setText( "" )
-        self.widget.locTaskShortDescrInput.setText( "" )
-        self.widget.allocatedTasksInput.setText( "" )
-        self.widget.allocatedChunksInput.setText( "" )
-        self.widget.activeTasksInput.setText( "" )
-        self.widget.activeChunksInput.setText( "" )
-        self.widget.chunksLeftInput.setText( "" )
 
     ########################
     def __registerRowData( self, nodeUid, rowDataEntry, nodeDataState ):
@@ -251,8 +209,8 @@ class ManagerUiCustomizer(QtCore.QObject):
 
         #update view
         if nodeDataState.isRunning:
-            self.__updateExistingRowView( self.tableData[ nodeDataState.uid ], nodeDataState.uid, nodeDataState.timestamp, 0.5, 0.5 )        
-            #self.__updateDetailedNodeView( idx, nodeDataState )
+            self.__updateExistingRowView( self.tableData[ nodeDataState.uid ], nodeDataState.uid, nodeDataState.timestamp, len( nodeDataState.remoteChunksStateData ), len( nodeDataState.localTasksStateData ) )        
+            self.__updateDetailedNodeView( idx, nodeDataState )
         else:
             self.__removeRowAndDetailedData( idx, nodeDataState.uid )
 
