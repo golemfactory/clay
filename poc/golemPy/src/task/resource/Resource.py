@@ -10,54 +10,59 @@ class TaskResourceHeader:
 
     ####################
     @classmethod
-    def build( cls, relativeRoot, absoluteRoot ):
+    def build( cls, root ):
+        return cls.__build( root, root )
+
+    ####################
+    @classmethod
+    def __build( cls, relativeRoot, absoluteRoot ):
         curTh = TaskResourceHeader( relativeRoot, absoluteRoot )
 
         dirs  = [ ( name, os.path.join( absoluteRoot, name ) ) for name in os.listdir( absoluteRoot ) if os.path.isdir( os.path.join( absoluteRoot, name ) ) ]
         files = [ name for name in os.listdir( absoluteRoot ) if os.path.isfile( os.path.join( absoluteRoot, name ) ) ]
 
+        filesData = []
         for f in files:
+            hsh = SimpleHash.hash_file_base64( os.path.join( absoluteRoot, f ) )
+            filesData.append( ( f, hsh ) )
 
-        print dirs
-        print files
+        #print "{}, {}, {}".format( relativeRoot, absoluteRoot, filesData )
 
-        return None
+        curTh.filesData = filesData
+
+        subDirHeaders = []
+        for d in dirs:
+            childSubDirHeader = cls.__build( d[ 0 ], d[ 1 ] )
+            subDirHeaders.append( childSubDirHeader )
+
+        curTh.subDirHeaders = subDirHeaders
+        #print "{} {} {}\n".format( absoluteRoot, len( subDirHeaders ), len( filesData ) )
+
+        return curTh
 
     ####################
     def __init__( self, relativePath, absolutePath ):
-        self.dirs   = []
-        self.files  = []
-        self.relativePath = relativePath
-        self.absolutePath = absolutePath
-
-    ####################
-    def __buildResourceHeader( self, path ):
-
-        dirs = [ name for name in os.listdir( path ) if os.path.isdir( os.path.join( path, name ) ) ]
-
-        for d in dirs:
-            self.dirs.append( [ d, TaskResourceHeader( os.path.join( path, d ) ) ] )
-         
-         
-        files = [ name for name in os.listdir( path ) if os.path.isfile( os.path.join( path, name ) ) ]  
-             
-        for f in files:
-            fh = open( os.path.join( path, f ), "r" )
-            self.files.append( [ f, SimpleHash.hash_base64( fh.read() ) ] )
+        self.subDirHeaders  = []
+        self.filesData      = []
+        self.relativePath   = relativePath
+        self.absolutePath   = absolutePath
 
     ####################
     def toString( self ):
-        out = "\nROOT {} \n".format( self.path )
-        out += "DIRS \n"
-        for d in self.dirs:
-            out += "{}\n".format( d[ 0 ] )
+        out = "\nROOT '{}' \n".format( self.absolutePath )
 
-        out += "FILES \n"
-        for f in self.files:
-            out += "{} \n".format( f )
+        if len( self.subDirHeaders ) > 0:
+            out += "DIRS \n"
+            for d in self.subDirHeaders:
+                out += "    {}\n".format( d.relativePath )
 
-        for d in self.dirs:
-            out += d[ 1 ].toString()
+        if len( self.filesData ) > 0:
+            out += "FILES \n"
+            for f in self.filesData:
+                out += "    {} {}".format( f[ 0 ], f[ 1 ] )
+
+        for d in self.subDirHeaders:
+            out += d.toString()
 
         return out
 
@@ -82,6 +87,7 @@ if __name__ == "__main__":
         print t
         t = 0
 
-    th = TaskResourceHeader.build( "test", "test" )
+    th = TaskResourceHeader.build( "test" )
+    print th
     #walk_test( "." )
     #main()
