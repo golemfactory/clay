@@ -7,12 +7,28 @@ import os
 from os.path import join, isdir, isfile
 
 class TaskResourceHeader:
+
     ####################
-    def __init__( self, path ):
+    @classmethod
+    def build( cls, relativeRoot, absoluteRoot ):
+        curTh = TaskResourceHeader( relativeRoot, absoluteRoot )
+
+        dirs  = [ ( name, os.path.join( absoluteRoot, name ) ) for name in os.listdir( absoluteRoot ) if os.path.isdir( os.path.join( absoluteRoot, name ) ) ]
+        files = [ name for name in os.listdir( absoluteRoot ) if os.path.isfile( os.path.join( absoluteRoot, name ) ) ]
+
+        for f in files:
+
+        print dirs
+        print files
+
+        return None
+
+    ####################
+    def __init__( self, relativePath, absolutePath ):
         self.dirs   = []
         self.files  = []
-        self.path = path
-        self.__buildResourceHeader( path )
+        self.relativePath = relativePath
+        self.absolutePath = absolutePath
 
     ####################
     def __buildResourceHeader( self, path ):
@@ -50,10 +66,22 @@ class TaskResourceHeader:
     def __str__( self ):
         return self.toString()
 
-def main():
-    t = TaskResourceHeader( "test" )
-    print t
-    t = 0
 
+if __name__ == "__main__":
 
-main()
+    def walk_test( root ):
+        for root, dirs, files in os.walk(root, topdown=True):
+            for name in dirs:
+                #print("D", os.path.join(root, name))
+                print("D", root, name)
+            #for name in files:
+            #    print("F", os.path.join(root, name))
+    
+    def main():
+        t = TaskResourceHeader( "test" )
+        print t
+        t = 0
+
+    th = TaskResourceHeader.build( "test", "test" )
+    #walk_test( "." )
+    #main()

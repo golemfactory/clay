@@ -25,6 +25,19 @@ class SimpleHash:
     def hash_base64( cls, data ):
         return cls.base64_encode( cls.hash( data ) )
 
+    @classmethod
+    def hash_file_base64( cls, filename, block_size = 2 ** 20 ):
+        with open( filename, "r" ) as f:
+            sha = hashlib.sha1()
+
+            while True:
+                data = f.read( block_size )
+                if not data:
+                    break
+                sha.update( data )
+
+            return cls.base64_encode( sha.digest() )
+
 if __name__ == "__main__":
     val = "Exceptional string"
 
