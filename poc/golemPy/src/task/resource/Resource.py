@@ -75,6 +75,39 @@ class TaskResource:
 
     ####################
     @classmethod
+    def build( cls, root ):
+        return cls.__build( root, root )
+
+    ####################
+    @classmethod
+    def __build( cls, relativeRoot, absoluteRoot ):
+        curTh = TaskResource( relativeRoot, absoluteRoot )
+
+        dirs  = [ ( name, os.path.join( absoluteRoot, name ) ) for name in os.listdir( absoluteRoot ) if os.path.isdir( os.path.join( absoluteRoot, name ) ) ]
+        files = [ name for name in os.listdir( absoluteRoot ) if os.path.isfile( os.path.join( absoluteRoot, name ) ) ]
+
+        filesData = []
+        for f in files:
+            fileData = cls.readFile( os.path.join( absoluteRoot, f ) )
+            hsh = SimpleHash.hash_base64( fileData )
+            filesData.append( ( f, hsh, fileData ) )
+
+        #print "{}, {}, {}".format( relativeRoot, absoluteRoot, filesData )
+
+        curTh.filesData = filesData
+
+        subDirHeaders = []
+        for d in dirs:
+            childSubDirHeader = cls.__build( d[ 0 ], d[ 1 ] )
+            subDirHeaders.append( childSubDirHeader )
+
+        curTh.subDirHeaders = subDirHeaders
+        #print "{} {} {}\n".format( absoluteRoot, len( subDirHeaders ), len( filesData ) )
+
+        return curTh
+
+    ####################
+    @classmethod
     def readFile( cls, fileName ):
         try:
             f = open( fileName, "rb" )
@@ -142,12 +175,38 @@ class TaskResource:
     ####################
     # Dodaje tylko te pola, ktorych nie ma w headerze (i/lub nie zgadzaj? si? hasze)
     @classmethod
-    def buildDeltaFromHeader( cls, header ):
+    def buildDeltaFromHeader( cls, header, absoluteRoot ):
         assert isinstance(header, TaskResourceHeader)
+
+        curTr = TaskResource( header.relativePath, header.absolutePath )
+
+        dirs  = [ ( name, os.path.join( absoluteRoot, name ) ) for name in os.listdir( absoluteRoot ) if os.path.isdir( os.path.join( absoluteRoot, name ) ) ]
+        files = [ name for name in os.listdir( absoluteRoot ) if os.path.isfile( os.path.join( absoluteRoot, name ) ) ]
+
+        for d in dirs:
+            if d in [ (sdh.relativePath, sdh.absolutePath) for sdh in header.subDirHeaders ]:
+                idx = [ (sdh.relativePath, sdh.absolutePath) for sdh in header.subDirHeaders ].index( d )
+                curTr.subDirResources.append( cls.buildDeltaFromHeader( header.subDirHeaders[ idx ], d[ 1 ] ) )
+            else:
+                curTr.subDirResources.append( cls.build( d[ 1 ] ) )
+
+        for f in files:
+            if f in [ file[ 0 ] for file in header.filesData ]:
+                idx = [ file[ 0 ] for file in header.filesData ].index( f )
+                if SimpleHash.hash_file_base64( os.path.join( absoluteRoot, f ) ) == header.filesData[ idx ][ 1 ]:
+                    continue
+
+            fdata = cls.readFile( os.path.join( absoluteRoot, f ) )
+            
+            if fdata is None:
+                return None
+
+            curTr.filesData.append( ( f, SimpleHash.hash_base64( fdata ), fdata ) )
+
+        return curTr
 
         #TODO: implement
         #TODO: serializacje calej klaski warto zrobic tym: http://code.activestate.com/recipes/189972-zip-and-pickle/ (tylko cPickle, a nie pickle)
-        pass
 
     ####################
     def __init__( self, relativePath, absolutePath ):
@@ -205,6 +264,13 @@ if __name__ == "__main__":
     else:
         tr = TaskResource.buildFromHeader( th )
         print tr
+
+        trd = TaskResource.buildDeltaFromHeader( th, "test" )
+
+
+
+        print trd
+        
 
     #walk_test( "." )
     #main()

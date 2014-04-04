@@ -7,7 +7,7 @@
     <ProjectHome>.</ProjectHome>
     <StartupFile>src\task\resource\Resource.py</StartupFile>
     <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network;src\manager;src\manager\client;src\manager\server;src\task\resource</SearchPath>
-    <WorkingDirectory>d:\src\golem\poc\golemPy\test\</WorkingDirectory>
+    <WorkingDirectory>d:\src\golem\poc\golemPy\src\task\resource\</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>golem</Name>
     <RootNamespace>golem</RootNamespace>
