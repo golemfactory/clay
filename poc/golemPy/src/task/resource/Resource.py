@@ -77,10 +77,10 @@ class TaskResource:
     @classmethod
     def readFile( cls, fileName ):
         try:
-            f = open( filename, "rb" )
+            f = open( fileName, "rb" )
             data = f.read()
         except Exception as ex:
-            print "ex"
+            print ex
             return None
 
         return data
@@ -96,7 +96,7 @@ class TaskResource:
             if not os.path.exists( fname ):
                 return False, "File {} does not exist".format( fname )
 
-            if os.path.isfile( fname ):
+            if not os.path.isfile( fname ):
                 return False, "Entry {} is not a file".format( fname )
 
         for dh in header.subDirHeaders:
@@ -140,6 +140,15 @@ class TaskResource:
         return curTr        
 
     ####################
+    # Dodaje tylko te pola, ktorych nie ma w headerze (i/lub nie zgadzaj? si? hasze)
+    @classmethod
+    def buildDeltaFromHeader( cls, header ):
+        assert isinstance(header, TaskResourceHeader)
+
+        #TODO: implement
+        pass
+
+    ####################
     def __init__( self, relativePath, absolutePath ):
         self.filesData          = []
         self.subDirResources    = []
@@ -150,17 +159,17 @@ class TaskResource:
     def toString( self ):
         out = "\nROOT '{}' \n".format( self.absolutePath )
 
-        if len( self.subDirHeaders ) > 0:
+        if len( self.subDirResources ) > 0:
             out += "DIRS \n"
-            for d in self.subDirHeaders:
+            for d in self.subDirResources:
                 out += "    {}\n".format( d.relativePath )
 
         if len( self.filesData ) > 0:
             out += "FILES \n"
             for f in self.filesData:
-                out += "    {} {}".format( f[ 0 ], f[ 1 ] )
+                out += "    {:10} {} {}".format( len( f[ 2 ] ), f[ 0 ], f[ 1 ] )
 
-        for d in self.subDirHeaders:
+        for d in self.subDirResources:
             out += d.toString()
 
         return out
@@ -186,8 +195,15 @@ if __name__ == "__main__":
 
     th = TaskResourceHeader.build( "test" )
     print th
+    
+    print "Entering task testing zone"
+    v, m = TaskResource.validateHeader( th )
+
+    if not v:
+        print m
+    else:
+        tr = TaskResource.buildFromHeader( th )
+        print tr
+
     #walk_test( "." )
     #main()
-
-    tc = TaskResource()
-    tc.a()
