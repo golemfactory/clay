@@ -114,7 +114,7 @@ def test_it():
 ############################
 if __name__ == "__main__":
     
-    files = get_exr_files( "test_input_1" )
+    files = get_exr_files( "test_input_0" )
 
     print "Compositing {} input files".format( len( files ) )
 
