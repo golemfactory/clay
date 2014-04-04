@@ -146,6 +146,7 @@ class TaskResource:
         assert isinstance(header, TaskResourceHeader)
 
         #TODO: implement
+        #TODO: serializacje calej klaski warto zrobic tym: http://code.activestate.com/recipes/189972-zip-and-pickle/ (tylko cPickle, a nie pickle)
         pass
 
     ####################
