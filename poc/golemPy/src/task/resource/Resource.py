@@ -120,6 +120,15 @@ class TaskResource:
 
     ####################
     @classmethod
+    def writeFile( cls, fileName, data ):
+        try:
+            f = open( fileName, "w" )
+            f.write( data )
+        except Exception as ex:
+            print ex
+
+    ####################
+    @classmethod
     def validateHeader( cls, header ):
         assert isinstance(header, TaskResourceHeader)
 
@@ -205,8 +214,17 @@ class TaskResource:
 
         return curTr
 
-        #TODO: implement
-        #TODO: serializacje calej klaski warto zrobic tym: http://code.activestate.com/recipes/189972-zip-and-pickle/ (tylko cPickle, a nie pickle)
+    ####################
+    def extract( self, toPath ):
+        for dir in self.subDirResources:
+            if not os.path.exists( os.path.join( toPath, dir.absolutePath ) ):
+                os.makedirs( os.path.join( toPath, dir.absolutePath ) )
+
+            dir.extract( os.path.join( toPath, dir.absolutePath ) )
+
+        for f in self.filesData:
+            if not os.path.exists( os.path.join( toPath, f[ 0 ] ) ) or SimpleHash.hash_file_base64( os.path.join( toPath, f[ 0 ] ) ) != f[ 1 ]:
+                self.writeFile( os.path.join( toPath, f[ 0 ] ), f[ 2 ] )
 
     ####################
     def __init__( self, relativePath, absolutePath ):
@@ -290,8 +308,10 @@ if __name__ == "__main__":
         save( trd, "trd.zip" )
 
         loadedTrd = load( "trd.zip" )
-
         print trd
+
+        loadedTrd.extract( "out" )
+
         
 
     #walk_test( "." )
