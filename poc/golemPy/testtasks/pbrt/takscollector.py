@@ -106,6 +106,52 @@ def test_it():
 
     out.save("result.png", "PNG")
 
+
+class PbrtTaksCollector:
+
+    ############################
+    def __init__( self ):
+        self.darkest = None
+        self.lighest = None
+        self.acceptedExrFiles = []
+
+    ############################
+    def acceptTask( self, exrFile ):
+        rgbf = open_exr_as_rgbf_images( exrFile )
+
+        d, l = get_single_rgbf_extrema( rgbf )
+
+        if self.darkest == None:
+            self.darkest = d
+            self.lighest = l
+
+        self.darkest = min( d, self.darkest )
+        self.lighest = max( l, self.lighest )
+
+        self.acceptedExrFiles.append( exrFile )
+
+    ############################
+    def finalize( self, showProgress = False ):
+        if len( self.acceptedExrFiles ) == 0:
+            return None
+
+        if showProgress:
+            print "Adding all accepted chunks to the final image"
+
+        if self.lighest == self.darkest:
+            self.lighest = self.darkest + 0.1
+
+        finalImg = convert_rgbf_images_to_rgb8_image( open_exr_as_rgbf_images( self.acceptedExrFiles[ 0 ] ), self.lighest, self.darkest )
+        
+        for i in range( 1, len( self.acceptedExrFiles ) ):
+            rgb8_im = convert_rgbf_images_to_rgb8_image( open_exr_as_rgbf_images( self.acceptedExrFiles[ i ] ), self.lighest, self.darkest )
+            finalImg = ImageChops.add( finalImg, rgb8_im )
+
+            if showProgress:
+                print_progress( i, len( self.acceptedExrFiles ) )
+
+        return finalImg
+
 #klasa powinna miec add task (ktore otwiera i liczy min/max oraz update na tej podstawie swojego stanu) oraz dodaje chunk do listy i tyle - potem usuwa
 #finalize - czyli po ostatnim chunku konwertuje na bazie min/max po kolei wszystkie chunki (ale nie otwiera wszystkich, bo na to jest za malo miejsca)
 #kazdy skonwertowany dodaje od razu do final image i tylko ten final jest trzymany w pamieci - troche wolniej bedzie, ale za to nie zabraknie RAMU
@@ -114,9 +160,24 @@ def test_it():
 ############################
 if __name__ == "__main__":
     
-    files = get_exr_files( "test_input_0" )
+    def test_task_collector( path, resultName ):
+        files = get_exr_files( path )
 
-    print "Compositing {} input files".format( len( files ) )
+        if len( files ) == 0:
+            print "No test data provided"
+            return
 
-    fin   = compose_final_image( files )
-    fin.save( "result.png", "PNG" )
+        ptc = PbrtTaksCollector()
+
+        print "Accepting incoming tasks"
+        for i, f in enumerate( files ):
+            ptc.acceptTask( f )
+            print_progress( i, len( files ) )
+
+        print ""
+
+        im = ptc.finalize( True )
+
+        im.save( "{}.png".format( resultName ), "PNG" )
+
+    test_task_collector( "input_1600", "result_1600" )
