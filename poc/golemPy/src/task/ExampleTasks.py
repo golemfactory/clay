@@ -220,3 +220,91 @@ class VRayTracingTask( Task ):
         image_file = open( img_name, 'wb')
         img.get_formatted(image_file, num_samples)
         image_file.close()
+
+
+from takscollector import PbrtTaksCollector
+
+class PbrtRenderTask( Task ):
+
+    #######################
+    def __init__( self, header, pathRoot, totalTasks, numSubtasks, numCores, outfilebasename, sceneFile ):
+
+        srcFile = open( "../testtasks/pbrt/pbrt_compact_.py", "r")
+        srcCode = srcFile.read()
+
+        Task.__init__( self, header, srcCode )
+
+        self.header.ttl = max( width * height * num_samples * 2 / 2200.0, TIMEOUT )
+
+        self.pathRoot           = pathRoot
+        self.lastTask           = startTask
+        self.totalTasks         = totalTasks
+        self.numSubtasks        = numSubtasks
+        self.numCores           = numCores
+        self.outfilebasename    = outfilebasename
+        self.sceneFile          = sceneFile
+
+        self.collector          = PbrtTaksCollector()
+
+    def initialize( self ):
+        pass
+
+    #######################
+    def queryExtraData( self, perfIndex ):
+
+        self.lastExtraData =  {     "pathRoot" : self.pathRoot,
+                                    "startTask" : self.lastTask,
+                                    "endTask" : self.lastTask + 1,
+                                    "totalTasks" : self.totalTasks,
+                                    "numSubtasks" : self.numSubtasks,
+                                    "numCores" : self.numCores,
+                                    "outfilebasename" : self.outfilebasename,
+                                    "sceneFile" : self.sceneFile
+                                }
+
+        self.lastTask += 1 # TODO: Should depends on performance
+        return self.lastExtraData
+
+    #######################
+    def shortExtraDataRepr( self, perfIndex ):
+        if self.lastExtraData:
+            l = self.lastExtraData
+            return "x: {}, y: {}, w: {}, h: {}, num_pixels: {}, num_samples: {}".format( l["x"], l["y"], l["w"], l["h"], l["num_pixels"], l["num_samples"] )
+
+        return ""
+
+    #######################
+    def needsComputation( self ):
+        return self.lastTask != self.totalTasks
+
+    #######################
+    def computationStarted( self, extraData ):
+        pass
+
+    #######################
+    def computationFinished( self, extraData, taskResult ):
+        self.collector.acceptTask( taskResult ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
+
+    #######################
+    def getTotalTasks( self ):
+        return self.totalTasks
+
+    #######################
+    def getTotalChunks( self ):
+        return self.totalTasks
+
+    #######################
+    def getActiveTasks( self ):
+        return self.lastTask
+
+    #######################
+    def getActiveChunks( self ):
+        return self.lastTask
+
+    #######################
+    def getChunksLeft( self ):
+        return self.totalTasks - self.lastTask
+
+    #######################
+    def getProgress( self ):
+        return float( self.lastTask ) / self.totalTasks

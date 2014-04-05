@@ -267,6 +267,13 @@ def save(object, filename, protocol = -1):
     cPickle.dump(object, file, protocol)
     file.close()
 
+def compress( object, protocol = -1 ):
+    file = gzip.GzipFile()
+    cPickle.dump(object, file, protocol)
+    file.close()
+    return file.read()
+
+
 def load(filename):
     """Loads a compressed object from disk
     """

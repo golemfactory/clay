@@ -2,7 +2,9 @@
 from Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageTaskComputed, MessageGetResource, MessageResource
 from TaskComputer import TaskComputer
 from TaskConnState import TaskConnState
+from Resource import compress
 import time
+import pickle
 
 class TaskSession:
 
@@ -23,7 +25,7 @@ class TaskSession:
 
     ##########################
     def requestResource( self, taskId, resourceHeader ):
-        self.__send( MessageGetResource( taskId, resourceHeader ) )
+        self.__send( MessageGetResource( taskId, pickle.dumps( resourceHeader ) ) )
 
     ##########################
     def sendTaskResults( self, id, extraData, taskResult ):
@@ -69,10 +71,11 @@ class TaskSession:
 
         elif type == MessageGetResource.Type:
             res = self.taskManager.getResource( msg.taskId, msg.resourceHeader )
-            self.conn.sendMessage( MessageResource( msg.taskId, res ) )
+            resDump = pickle.dumps( res )
+            self.conn.sendMessage( MessageResource( msg.taskId, resDump ) )
             self.dropped()
         elif type == MessageResource.Type:
-            self.taskComputer.resourceGiven( msg.taskId, msg.resource )
+            self.taskComputer.resourceGiven( msg.taskId, pickle.loads( msg.resource ) )
             self.dropped()
 
     ##########################

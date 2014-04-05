@@ -7,6 +7,7 @@ import time
 
 from vm import PythonVM
 from NodeStateSnapshot import TaskChunkStateSnapshot
+from ResourcesManager import ResourcesManager
 
 class TaskComputer:
 
@@ -19,11 +20,19 @@ class TaskComputer:
         self.lock                   = Lock()
         self.lastTaskRequest        = time.time()
         self.taskRequestFrequency   = taskRequestFrequency
+        self.resourceManager        = ResourcesManager( "ComputerRes" )
+
+        self.curSrcCode             = ""
+        self.curExtraData           = None
+        self.curShortDescr          = None
 
     ######################
     def taskGiven( self, taskId, srcCode, extraData, shortDescr ):
         if self.waitingForTask:
-            self.__requestResource( taskId, resourceHeader )
+            self.__requestResource( taskId, self.resourceManager.getResourceHeader( taskId ) )
+            self.curSrcCode             = srcCode
+            self.curExtraData           = extraData
+            self.curShortDescr          = shortDescr
             return True
         else:
             return False
@@ -31,8 +40,8 @@ class TaskComputer:
     ######################
     def resourceGiven( self, taskId, resource ):
         if self.waitingForTask:
-            self.__extractResource( taskId, resource )
-            self.__computeTask( taskId, srcCode, extraData, shortDescr )
+            self.resourceManager.updateResource( taskId, resource )
+            self.__computeTask( taskId, self.curSrcCode, self.curExtraData, self.curShortDescr )
             self.waitingForTask = 0
             return True
         else:

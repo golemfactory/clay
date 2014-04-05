@@ -52,9 +52,10 @@ class TaskServer:
         if taskId in self.taskHeaders:
             theader = self.taskHeaders[ taskId ]
 
-            return self.__connectAndSendResourceRequest( theader.taskOwnerAddress, theader.taskOwnerPort, theader.id, resourceHeader )
+            self.__connectAndSendResourceRequest( theader.taskOwnerAddress, theader.taskOwnerPort, theader.id, resourceHeader )
+            return theader.id
         else:
-            return False
+            return 0
 
     #############################
     def sendResults( self, taskId, extraData, results ):
@@ -159,10 +160,10 @@ class TaskServer:
         Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, taskId, estimatedPerformance )
 
     #############################   
-    def __connectAndSendResourceRequest( address ,port, taskId, resourceHeader ):
+    def __connectAndSendResourceRequest( self, address ,port, taskId, resourceHeader ):
         print "Connecting to host {} : {}".format( address ,port )
         
-        Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, taskId, estimatedPerformance )
+        Network.connect( address, port, TaskSession, self.__connectionForResourceRequestEstablished, self.__connectionForResourceRequestFailure, taskId, resourceHeader )
 
 
     #############################

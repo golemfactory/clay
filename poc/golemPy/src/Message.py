@@ -347,15 +347,15 @@ class MessageResource( Message ):
         Message.__init__(self, MessageResource.Type)
 
         self.taskId         = taskId
-        self.resourceHeader = resource
+        self.resource       = resource
 
         if dictRepr:
             self.taskId         = dictRepr[ MessageResource.TASK_ID_STR ]
-            self.resourceHeader = dictRepr[ MessageResource.RESOURCE_STR ]
+            self.resource       = dictRepr[ MessageResource.RESOURCE_STR ]
 
     def dictRepr(self):
         return {    MessageResource.TASK_ID_STR : self.taskId,
-                    MessageResource.RESOURCE_HEADER_STR: self.resource
+                    MessageResource.RESOURCE_STR: self.resource
                }
 
 
