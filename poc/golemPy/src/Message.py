@@ -314,6 +314,29 @@ class MessageTaskComputed( Message ):
                     MessageTaskComputed.EXTRA_DATA_STR: self.extraData,
                     MessageTaskComputed.RESULT_STR: self.result }
 
+class MessegeGetResource( Message ):
+
+    TYPE = 12
+
+    TASK_ID_STR         = u"TASK_ID"
+    RESOURCE_HEADER_STR = u"RESOURCE_HEADER"
+
+    def __init__( self, taskId = 0, resourceHeader = None , dictRepr = None ):
+        Message.__init__(self, MessegeGetResource.Type)
+
+        self.taskId         = taskId
+        self.resourceHeader = resourceHeader
+
+        if dictRepr:
+            self.taskId     = dictRepr[ MessageTaskComputed.ID_STR ]
+            self.extraData  = dictRepr[ MessageTaskComputed.EXTRA_DATA_STR ]
+            self.result     = dictRepr[ MessageTaskComputed.RESULT_STR ]
+
+    def dictRepr(self):
+        return {    MessageTaskComputed.ID_STR : self.id,
+                    MessageTaskComputed.EXTRA_DATA_STR: self.extraData,
+                    MessageTaskComputed.RESULT_STR: self.result }
+
 MANAGER_MSG_BASE = 1000
 
 class MessagePeerStatus( Message ):
