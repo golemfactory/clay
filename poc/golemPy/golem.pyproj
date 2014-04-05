@@ -115,6 +115,7 @@
     <Compile Include="testtasks\minilight\src\triangle.py" />
     <Compile Include="testtasks\minilight\src\vector3f.py" />
     <Compile Include="testtasks\pbrt\takscollector.py" />
+    <Compile Include="testtasks\pbrt\test_render_run.py" />
     <Compile Include="test\ClientMain.py" />
     <Compile Include="test\main.py" />
     <Compile Include="test\__init__.py" />
