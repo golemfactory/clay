@@ -180,4 +180,4 @@ if __name__ == "__main__":
 
         im.save( "{}.png".format( resultName ), "PNG" )
 
-    test_task_collector( "input_1600", "result_1600" )
+    test_task_collector( "output", "result_1600" )

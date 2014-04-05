@@ -47,6 +47,16 @@ class TaskServer:
             return 0
 
     #############################
+    def requestResource( self, taskId, resourceHeader ):
+        
+        if taskId in self.taskHeaders:
+            theader = self.taskHeaders[ taskId ]
+
+            return self.__connectAndSendResourceRequest( theader.taskOwnerAddress, theader.taskOwnerPort, theader.id, resourceHeader )
+        else:
+            return False
+
+    #############################
     def sendResults( self, taskId, extraData, results ):
         
         if taskId in self.taskHeaders:
@@ -148,6 +158,13 @@ class TaskServer:
         
         Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, taskId, estimatedPerformance )
 
+    #############################   
+    def __connectAndSendResourceRequest( address ,port, taskId, resourceHeader ):
+        print "Connecting to host {} : {}".format( address ,port )
+        
+        Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, taskId, estimatedPerformance )
+
+
     #############################
     def __connectionForTaskRequestEstablished( self, session, taskId, estimatedPerformance ):
 
@@ -191,7 +208,25 @@ class TaskServer:
         print "Removing task {} from task list".format( taskId )
                 
         self.removeTaskHeader( taskId )
-    
+   
+    #############################
+    def __connectionForResourceRequestEstablished( self, session, taskId, resourceHeader ):
+
+        session.taskServer = self
+        session.taskComputer = self.taskComputer
+        session.taskManager = self.taskManager
+        self.taskSeesions[ taskId ] = session            
+        session.requestResource( taskId, resourceHeader )
+
+    #############################
+    def __connectionForResourceRequestFailure( self, session, taskId, resourceHeader ):
+        print "Cannot connect to task {} owner".format( taskId )
+        print "Removing task {} from task list".format( taskId )
+        
+        self.taskComputer.resourceRequestRejected( taskId, "Connection failed" )
+        
+        self.removeTaskHeader( taskId )
+         
     #############################
     def __removeOldTasks( self ):
         for t in self.taskHeaders.values():

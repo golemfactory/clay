@@ -23,6 +23,15 @@ class TaskComputer:
     ######################
     def taskGiven( self, taskId, srcCode, extraData, shortDescr ):
         if self.waitingForTask:
+            self.__requestResource( taskId, resourceHeader )
+            return True
+        else:
+            return False
+
+    ######################
+    def resourceGiven( self, taskId, resource ):
+        if self.waitingForTask:
+            self.__extractResource( taskId, resource )
             self.__computeTask( taskId, srcCode, extraData, shortDescr )
             self.waitingForTask = 0
             return True
@@ -32,6 +41,12 @@ class TaskComputer:
     ######################
     def taskRequestRejected( self, taskId, reason ):
         print "Task {} request rejected: {}".format( taskId, reason )
+        assert self.waitingForTask
+        self.waitingForTask = 0
+
+    ######################
+    def resourceRequestRejected( self, taskId, reason ):
+        print "Task {} resource request rejected: {}".format( taskId, reason )
         assert self.waitingForTask
         self.waitingForTask = 0
 
@@ -53,7 +68,7 @@ class TaskComputer:
             if time.time() - self.lastTaskRequest > self.taskRequestFrequency:
                 if len( self.currentComputations ) == 0:
                     self.lastTaskRequest = time.time()
-                    self.__askForTask()
+                    self.__requestTask()
 
     ######################
     def getProgresses( self ):
@@ -65,14 +80,19 @@ class TaskComputer:
         return ret
 
     ######################
-    def __askForTask( self ):
+    def __requestTask( self ):
         self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance )
+
+    ######################
+    def __requestResource( self, taskId, resourceHeader ):
+        self.waitingForTask = self.taskServer.requestResource( taskId, resourceHeader )
 
     ######################
     def __computeTask( self, taskId, srcCode, extraData, shortDescr ):
         tt = PyTaskThread( self, taskId, srcCode, extraData, shortDescr ) 
         self.currentComputations.append( tt )
         tt.start()
+
 
 
 class TaskThread( Thread ):

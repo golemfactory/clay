@@ -50,7 +50,7 @@ class EmptyManagerLogic:
     def runAdditionalNodes( self, numNodes ):
         for i in range( numNodes ):
             time.sleep( 0.1 )
-            pc = subprocess.Popen( ["python", "clientmain.py"], creationflags = subprocess.CREATE_NEW_CONSOLE )
+            pc = subprocess.Popen( ["python", "ClientMain.py"], creationflags = subprocess.CREATE_NEW_CONSOLE )
             self.activeNodes.append( pc )
 
     ########################

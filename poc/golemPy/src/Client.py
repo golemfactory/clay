@@ -58,6 +58,8 @@ class Client:
         self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUuid, "127.0.0.1", self.configDesc.managerPort, self.taskServer.taskManager )
         self.nodesManagerClient.start()
 
+        #self.taskServer.taskManager.addNewTask( )
+
     ############################
     def stopNetwork(self):
         #FIXME: Pewnie cos tu trzeba jeszcze dodac. Zamykanie serwera i wysylanie DisconnectPackege

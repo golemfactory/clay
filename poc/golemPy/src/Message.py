@@ -314,28 +314,51 @@ class MessageTaskComputed( Message ):
                     MessageTaskComputed.EXTRA_DATA_STR: self.extraData,
                     MessageTaskComputed.RESULT_STR: self.result }
 
-class MessegeGetResource( Message ):
+class MessageGetResource( Message ):
 
-    TYPE = 12
+    Type = 12
 
     TASK_ID_STR         = u"TASK_ID"
     RESOURCE_HEADER_STR = u"RESOURCE_HEADER"
 
     def __init__( self, taskId = 0, resourceHeader = None , dictRepr = None ):
-        Message.__init__(self, MessegeGetResource.Type)
+        Message.__init__(self, MessageGetResource.Type)
 
         self.taskId         = taskId
         self.resourceHeader = resourceHeader
 
         if dictRepr:
-            self.taskId     = dictRepr[ MessageTaskComputed.ID_STR ]
-            self.extraData  = dictRepr[ MessageTaskComputed.EXTRA_DATA_STR ]
-            self.result     = dictRepr[ MessageTaskComputed.RESULT_STR ]
+            self.taskId         = dictRepr[ MessageGetResource.TASK_ID_STR ]
+            self.resourceHeader = dictRepr[ MessageGetResource.RESOURCE_HEADER_STR ]
 
     def dictRepr(self):
-        return {    MessageTaskComputed.ID_STR : self.id,
-                    MessageTaskComputed.EXTRA_DATA_STR: self.extraData,
-                    MessageTaskComputed.RESULT_STR: self.result }
+        return {    MessageGetResource.TASK_ID_STR : self.taskId,
+                    MessageGetResource.RESOURCE_HEADER_STR: self.resourceHeader
+               }
+
+class MessageResource( Message ):
+
+    Type = 13
+
+    TASK_ID_STR     = u"TASK_ID"
+    RESOURCE_STR    = u"RESOURCE"
+
+    def __init__( self, taskId = 0, resource = None , dictRepr = None ):
+        Message.__init__(self, MessageResource.Type)
+
+        self.taskId         = taskId
+        self.resourceHeader = resource
+
+        if dictRepr:
+            self.taskId         = dictRepr[ MessageResource.TASK_ID_STR ]
+            self.resourceHeader = dictRepr[ MessageResource.RESOURCE_STR ]
+
+    def dictRepr(self):
+        return {    MessageResource.TASK_ID_STR : self.taskId,
+                    MessageResource.RESOURCE_HEADER_STR: self.resource
+               }
+
+
 
 MANAGER_MSG_BASE = 1000
 
@@ -411,6 +434,8 @@ def initMessages():
     MessagePeerStatus()
     MessageNewTask()
     MessageKillNode()
+    MessageGetResource()
+    MessageResource()
 
 
 if __name__ == "__main__":

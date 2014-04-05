@@ -4,6 +4,7 @@ import time
 
 from TaskBase import Task
 from NodeStateSnapshot import LocalTaskStateSnapshot
+from ResourcesManager import ResourcesManager
 
 class TaskManager:
     #######################
@@ -12,6 +13,7 @@ class TaskManager:
         self.tasksComputed  = []
         self.listenAddress  = listenAddress
         self.listenPort     = listenPort
+        self.resourceManager = ResourcesManager( "res" )
 
     #######################
     def addNewTask( self, task):
@@ -77,3 +79,7 @@ class TaskManager:
                 tasksProgresses[ t.header.id ] = ltss
 
         return tasksProgresses
+
+    #######################
+    def getResource( self, taskId, resourceHeader ):
+        return self.resourceManager.getResourceDelta( taskId, resourceHeader )

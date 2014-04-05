@@ -1,5 +1,5 @@
 
-from Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageTaskComputed
+from Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageTaskComputed, MessageGetResource, MessageResource
 from TaskComputer import TaskComputer
 from TaskConnState import TaskConnState
 import time
@@ -20,6 +20,10 @@ class TaskSession:
     ##########################
     def requestTask( self, taskId, performenceIndex ):
         self.__send( MessageWantToComputeTask( taskId, performenceIndex ) )
+
+    ##########################
+    def requestResource( self, taskId, resourceHeader ):
+        self.__send( MessageGetResource( taskId, resourceHeader ) )
 
     ##########################
     def sendTaskResults( self, id, extraData, taskResult ):
@@ -61,6 +65,14 @@ class TaskSession:
         elif type == MessageTaskComputed.Type:
             self.taskServer.taskManager.computedTaskReceived( msg.id, msg.extraData, msg.result )
             # Add message with confirmation that result is accepted
+            self.dropped()
+
+        elif type == MessageGetResource.Type:
+            res = self.taskManager.getResource( msg.taskId, msg.resourceHeader )
+            self.conn.sendMessage( MessageResource( msg.taskId, res ) )
+            self.dropped()
+        elif type == MessageResource.Type:
+            self.taskComputer.resourceGiven( msg.taskId, msg.resource )
             self.dropped()
 
     ##########################
