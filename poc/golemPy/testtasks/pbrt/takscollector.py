@@ -180,4 +180,26 @@ if __name__ == "__main__":
 
         im.save( "{}.png".format( resultName ), "PNG" )
 
-    test_task_collector( "output", "result_1600" )
+    def sys_test():
+        import sys
+        for e in sys.path:
+            print e
+
+
+    def module_finder_test():
+        from modulefinder import ModuleFinder
+
+        finder = ModuleFinder()
+        finder.run_script('dummy_subtask.py')
+
+        print 'Loaded modules:'
+        for name, mod in finder.modules.iteritems():
+            print '%s: ' % name,
+            print ','.join(mod.globalnames.keys()[:3])
+
+        print '-'*50
+        print 'Modules not imported:'
+        print '\n'.join(finder.badmodules.iterkeys())
+
+    module_finder_test()
+    #test_task_collector( "input_1600", "result_1600" )
