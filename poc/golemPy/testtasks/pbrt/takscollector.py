@@ -180,4 +180,9 @@ if __name__ == "__main__":
 
         im.save( "{}.png".format( resultName ), "PNG" )
 
-    test_task_collector( "output", "result_1600" )
+    def sys_test():
+        import sys
+        for e in sys.path:
+            print e
+
+    test_task_collector( "input_64", "result_64" )
