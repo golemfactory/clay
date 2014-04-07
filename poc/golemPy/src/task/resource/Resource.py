@@ -122,7 +122,7 @@ class TaskResource:
     @classmethod
     def writeFile( cls, fileName, data ):
         try:
-            f = open( fileName, "w" )
+            f = open( fileName, "wb" )
             f.write( data )
         except Exception as ex:
             print ex
@@ -217,10 +217,10 @@ class TaskResource:
     ####################
     def extract( self, toPath ):
         for dir in self.subDirResources:
-            if not os.path.exists( os.path.join( toPath, dir.absolutePath ) ):
-                os.makedirs( os.path.join( toPath, dir.absolutePath ) )
+            if not os.path.exists( dir.absolutePath ):
+                os.makedirs( dir.absolutePath )
 
-            dir.extract( os.path.join( toPath, dir.absolutePath ) )
+            dir.extract( dir.absolutePath )
 
         for f in self.filesData:
             if not os.path.exists( os.path.join( toPath, f[ 0 ] ) ) or SimpleHash.hash_file_base64( os.path.join( toPath, f[ 0 ] ) ) != f[ 1 ]:

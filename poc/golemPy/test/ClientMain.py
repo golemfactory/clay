@@ -10,6 +10,7 @@ sys.path.append('../src/manager')
 sys.path.append('../src/manager/server')
 sys.path.append('../src/manager/client')
 sys.path.append('../testtasks/minilight/src')
+sys.path.append('../testtasks/pbrt')
 
 from twisted.internet import reactor
 

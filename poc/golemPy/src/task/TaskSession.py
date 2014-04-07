@@ -70,7 +70,7 @@ class TaskSession:
             self.dropped()
 
         elif type == MessageGetResource.Type:
-            res = self.taskManager.getResource( msg.taskId, msg.resourceHeader )
+            res = self.taskManager.getResource( msg.taskId, pickle.loads( msg.resourceHeader ) )
             resDump = pickle.dumps( res )
             self.conn.sendMessage( MessageResource( msg.taskId, resDump ) )
             self.dropped()

@@ -62,6 +62,7 @@
     <Compile Include="src\manager\tcpmanagerlogic.py" />
     <Compile Include="src\network\ConnectionState.py" />
     <Compile Include="src\network\P2PService.py" />
+    <Compile Include="src\task\Environment.py" />
     <Compile Include="src\task\ExampleTasks.py" />
     <Compile Include="src\task\resource\Resource.py" />
     <Compile Include="src\task\resource\ResourcesManager.py" />

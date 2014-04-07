@@ -229,20 +229,22 @@ class PbrtRenderTask( Task ):
     #######################
     def __init__( self, header, pathRoot, totalTasks, numSubtasks, numCores, outfilebasename, sceneFile ):
 
-        srcFile = open( "../testtasks/pbrt/pbrt_compact_.py", "r")
+        srcFile = open( "../testtasks/pbrt/pbrt_compact.py", "r")
         srcCode = srcFile.read()
 
         Task.__init__( self, header, srcCode )
 
-        self.header.ttl = max( width * height * num_samples * 2 / 2200.0, TIMEOUT )
+        self.header.ttl = max( 2200.0, TIMEOUT )
 
         self.pathRoot           = pathRoot
-        self.lastTask           = startTask
+        self.lastTask           = 0
         self.totalTasks         = totalTasks
         self.numSubtasks        = numSubtasks
         self.numCores           = numCores
         self.outfilebasename    = outfilebasename
         self.sceneFile          = sceneFile
+
+        self.lastExtraData      = None
 
         self.collector          = PbrtTaksCollector()
 
@@ -262,14 +264,14 @@ class PbrtRenderTask( Task ):
                                     "sceneFile" : self.sceneFile
                                 }
 
-        self.lastTask += 1 # TODO: Should depends on performance
+        self.lastTask += 1 # TODO: Should depend on performance
         return self.lastExtraData
 
     #######################
     def shortExtraDataRepr( self, perfIndex ):
         if self.lastExtraData:
             l = self.lastExtraData
-            return "x: {}, y: {}, w: {}, h: {}, num_pixels: {}, num_samples: {}".format( l["x"], l["y"], l["w"], l["h"], l["num_pixels"], l["num_samples"] )
+            return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFile"] )
 
         return ""
 
@@ -283,6 +285,8 @@ class PbrtRenderTask( Task ):
 
     #######################
     def computationFinished( self, extraData, taskResult ):
+
+        os.makedirs( dir.absolutePath )
         self.collector.acceptTask( taskResult ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
 
     #######################

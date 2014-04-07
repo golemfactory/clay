@@ -4,6 +4,7 @@ sys.path.append( '../manager')
 
 from threading import Thread, Lock
 import time
+import os
 
 from vm import PythonVM
 from NodeStateSnapshot import TaskChunkStateSnapshot
@@ -98,6 +99,8 @@ class TaskComputer:
 
     ######################
     def __computeTask( self, taskId, srcCode, extraData, shortDescr ):
+        extraData[ "resourcePath" ] = os.path.join( self.resourceManager.resourcesDir, taskId )
+        extraData[ "outputPath" ] = os.path.join( "output", taskId )
         tt = PyTaskThread( self, taskId, srcCode, extraData, shortDescr ) 
         self.currentComputations.append( tt )
         tt.start()

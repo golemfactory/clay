@@ -5,6 +5,7 @@ import time
 from TaskBase import Task
 from NodeStateSnapshot import LocalTaskStateSnapshot
 from ResourcesManager import ResourcesManager
+from Environment import TaskManagetEnvironment
 
 class TaskManager:
     #######################
@@ -13,7 +14,8 @@ class TaskManager:
         self.tasksComputed  = []
         self.listenAddress  = listenAddress
         self.listenPort     = listenPort
-        self.resourceManager = ResourcesManager( "res" )
+
+        self.resourceManager = ResourcesManager( TaskManagerEnvironment( "res" ) )
 
     #######################
     def addNewTask( self, task):

@@ -27,7 +27,7 @@ import subprocess
 import time
 import random
 from TaskBase import TaskHeader
-from ExampleTasks import VRayTracingTask
+from ExampleTasks import VRayTracingTask, PbrtRenderTask
 
 class EmptyManagerLogic:
 
@@ -68,5 +68,6 @@ class EmptyManagerLogic:
     ########################
     def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
         hash = random.getrandbits(128)
-        th = TaskHeader( str( hash ), "", 0 )    
-        self.managerServer.sendNewTask( uid, VRayTracingTask( w, h, numSamplesPerPixel, th, fileName ) )
+        th = TaskHeader( "111111", "", 0 )    
+        self.managerServer.sendNewTask( uid, PbrtRenderTask( th, "", 16, 32, 3, "test_chunk_", "resources/scene.pbrt" ) )
+        #self.managerServer.sendNewTask( uid, VRayTracingTask( w, h, numSamplesPerPixel, th, fileName ) )
