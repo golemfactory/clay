@@ -9,11 +9,13 @@ import os
 from vm import PythonVM
 from NodeStateSnapshot import TaskChunkStateSnapshot
 from ResourcesManager import ResourcesManager
+from Environment import TaskComputerEnvironment
 
 class TaskComputer:
 
     ######################
-    def __init__( self, taskServer, estimatedPerformance, taskRequestFrequency ):
+    def __init__( self, clientUid, taskServer, estimatedPerformance, taskRequestFrequency ):
+        self.clientUid              = clientUid
         self.estimatedPerformance   = estimatedPerformance
         self.taskServer             = taskServer
         self.waitingForTask         = 0
@@ -21,7 +23,7 @@ class TaskComputer:
         self.lock                   = Lock()
         self.lastTaskRequest        = time.time()
         self.taskRequestFrequency   = taskRequestFrequency
-        self.resourceManager        = ResourcesManager( "ComputerRes" )
+        self.resourceManager        = ResourcesManager( TaskComputerEnvironment( "ComputerRes", self.clientUid ) )
 
         self.curSrcCode             = ""
         self.curExtraData           = None
@@ -99,8 +101,8 @@ class TaskComputer:
 
     ######################
     def __computeTask( self, taskId, srcCode, extraData, shortDescr ):
-        extraData[ "resourcePath" ] = os.path.join( self.resourceManager.resourcesDir, taskId )
-        extraData[ "outputPath" ] = os.path.join( "output", taskId )
+        extraData[ "resourcePath" ] = self.resourceManager.getResourceDir()
+        extraData[ "outputPath" ] = self.resourceManager.getOutputDir()
         tt = PyTaskThread( self, taskId, srcCode, extraData, shortDescr ) 
         self.currentComputations.append( tt )
         tt.start()

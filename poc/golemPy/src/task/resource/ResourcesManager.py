@@ -14,7 +14,7 @@ class ResourcesManager:
 
         taskResHeader = None
 
-        dirName = self.taskEnvironment.getResourceDir( taskId )
+        dirName = self.getResourceDir( taskId )
 
         if os.path.exists( dirName ):
             taskResHeader = TaskResourceHeader.build( dirName )
@@ -26,11 +26,7 @@ class ResourcesManager:
     ###################
     def getResourceDelta( self, taskId, resourceHeader ):
 
-        curDir = os.getcwd()
-
-        dirName = taskId
-
-        os.chdir( self.resourcesDir )
+        dirName = self.getResourceDir( taskId )
 
         taskResHeader = None
 
@@ -39,19 +35,23 @@ class ResourcesManager:
         else:
             taskResHeader = TaskResource( dirName, dirName )
 
-        os.chdir( curDir )
-
         return taskResHeader
 
     ###################
     def updateResource( self, taskId, resource ):
 
-        curDir = os.getcwd()
-
-        dirName = taskId
-
-        os.chdir( self.resourcesDir )
+        dirName = self.getResourceDir( taskId )
 
         resource.extract( dirName )
 
-        os.chdir( curDir )
+    ###################
+    def getResourceDir( self, taskId ):
+        return self.taskEnvironment.getResourceDir( taskId )
+
+    ###################
+    def getTemporatyDir( self, taskId ):
+        return self.taskEnvironment.getTemporatyDir( taskId )
+
+    ###################
+    def getOutputDir( self, taskId ):
+        return self.taskEnvironment.getOutput( taskId )

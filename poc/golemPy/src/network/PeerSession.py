@@ -109,7 +109,7 @@ class PeerSession(PeerSessionInterface):
         elif type == MessagePeers.Type:
             peersInfo = msg.peersArray
             for pi in peersInfo:
-                if pi[ "id" ] not in self.p2pService.incommingPeers and pi[ "id" ] not in self.p2pService.peers and pi[ "id" ] != self.p2pService.configDesc.clientUuid:
+                if pi[ "id" ] not in self.p2pService.incommingPeers and pi[ "id" ] not in self.p2pService.peers and pi[ "id" ] != self.p2pService.configDesc.clientUid:
                     print "add peer to incoming {} {} {}".format( pi[ "id" ], pi[ "address" ], pi[ "port" ] )
                     self.p2pService.incommingPeers[ pi[ "id" ] ] = { "address" : pi[ "address" ], "port" : pi[ "port" ], "conn_trials" : 0 }
                     self.p2pService.freePeers.append( pi[ "id" ] )
@@ -147,7 +147,7 @@ class PeerSession(PeerSessionInterface):
 
     ##########################
     def __sendHello(self):
-        self.__send(MessageHello(self.p2pService.p2pServer.curPort, self.p2pService.configDesc.clientUuid)) #FIXME: self.p2pService.configDesc.clientUuid (naprawde trzeba az tak???)
+        self.__send(MessageHello(self.p2pService.p2pServer.curPort, self.p2pService.configDesc.clientUid)) #FIXME: self.p2pService.configDesc.clientUid (naprawde trzeba az tak???)
 
     ##########################
     def __sendPing(self):

@@ -17,8 +17,8 @@ class TaskServer:
         self.address            = address
         self.curPort            = configDesc.startPort
         self.taskHeaders        = {}
-        self.taskManager        = TaskManager()
-        self.taskComputer       = TaskComputer( self, self.configDesc.estimatedPerformance, self.configDesc.taskRequestInterval )
+        self.taskManager        = TaskManager( configDesc.clientUid )
+        self.taskComputer       = TaskComputer( configDesc.clientUid, self, self.configDesc.estimatedPerformance, self.configDesc.taskRequestInterval )
         self.taskSeesions       = {}
         self.taskSeesionsIncoming = []
 

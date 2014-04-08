@@ -35,7 +35,7 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "seed host port",      0,     self, "SeedHostPort")
         ConfigEntry.createProperty( self.section(), "send pings",          0,     self, "SendPings" )
         ConfigEntry.createProperty( self.section(), "pigns interval",      0,     self, "PingsInterval" )
-        ConfigEntry.createProperty( self.section(), "client UUID",         u"",   self, "ClientUuid" )
+        ConfigEntry.createProperty( self.section(), "client UUID",         u"",   self, "ClientUid" )
         ConfigEntry.createProperty( self.section(), "getting peers interval",   4.0,   self, "GettingPeersInterval" )
         ConfigEntry.createProperty( self.section(), "getting tasks interval",   4.0,   self, "GettingTasksInterval" )
         ConfigEntry.createProperty( self.section(), "task request interval",    5.0,   self, "TaskRequestInterval" )
@@ -113,8 +113,8 @@ class AppConfig:
     def getPingsInterval( self ):
         return self._cfg.getNodeConfig().getPingsInterval()
 
-    def getClientUuid( self ):
-        return self._cfg.getNodeConfig().getClientUuid()
+    def getClientUid( self ):
+        return self._cfg.getNodeConfig().getClientUid()
 
     def getGettingPeersInterval( self ):
         return self._cfg.getNodeConfig().getGettingPeersInterval()

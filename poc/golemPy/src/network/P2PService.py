@@ -14,7 +14,7 @@ class P2PService:
 
         self.peers                  = {}
         self.allPeers               = []
-        self.clientUuid             = self.configDesc.clientUuid
+        self.clientUid              = self.configDesc.clientUid
         self.lastPeersRequest       = time.time()
         self.lastGetTasksRequest    = time.time()
         self.incommingPeers         = {}

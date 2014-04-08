@@ -55,7 +55,7 @@ class Client:
         time.sleep( 0.5 )
 
         print "Starting nodes manager client ..."
-        self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUuid, "127.0.0.1", self.configDesc.managerPort, self.taskServer.taskManager )
+        self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUid, "127.0.0.1", self.configDesc.managerPort, self.taskServer.taskManager )
         self.nodesManagerClient.start()
 
         #self.taskServer.taskManager.addNewTask( )
@@ -94,7 +94,7 @@ class Client:
             localTasksProgresses    = self.taskServer.taskManager.getProgresses()
             lastTaskMessages        = self.taskServer.getLastMessages()
             self.lastNodeStateSnapshot = NodeStateSnapshot(     isRunning
-                                                           ,    self.configDesc.clientUuid
+                                                           ,    self.configDesc.clientUid
                                                            ,    peersNum
                                                            ,    tasksNum
                                                            ,    self.p2pservice.hostAddress
@@ -104,7 +104,7 @@ class Client:
                                                            ,    remoteTasksProgresses  
                                                            ,    localTasksProgresses )
         else:
-            self.lastNodeStateSnapshot = NodeStateSnapshot( self.configDesc.clientUuid, peersNum )
+            self.lastNodeStateSnapshot = NodeStateSnapshot( self.configDesc.clientUid, peersNum )
 
         if self.nodesManagerClient:
             self.nodesManagerClient.sendClientStateSnapshot( self.lastNodeStateSnapshot )

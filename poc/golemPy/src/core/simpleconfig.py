@@ -89,7 +89,7 @@ class SimpleConfig:
                 if self._nodeConfig.section() in cfg.sections():
                     self.__readOptions( cfg )
 
-                    if len( self._nodeConfig.getClientUuid() ) > 0:
+                    if len( self._nodeConfig.getClientUid() ) > 0:
                         writeConfig = False
                 else:
                     cfg.add_section( self._nodeConfig.section() )

@@ -33,7 +33,7 @@ def main():
     seedHostPort    = cfg.getSeedHostPort()
     sendPings       = cfg.getSendPings()
     pingsInterval   = cfg.getPingsInterval()
-    clientUuid      = cfg.getClientUuid()
+    clientUid       = cfg.getClientUid()
     addTasks        = cfg.getAddTasks()
 
     gettingPeersInterval    = cfg.getGettingPeersInterval()
@@ -44,7 +44,7 @@ def main():
 
     configDesc = ClientConfigDescriptor()
 
-    configDesc.clientUuid     = clientUuid
+    configDesc.clientUid      = clientUid
     configDesc.startPort      = startPort
     configDesc.endPort        = endPort
     configDesc.managerPort    = managerPort
@@ -64,7 +64,7 @@ def main():
     configDesc.nodeSnapshotInterval   = nodeSnapshotInterval
 
     print "Adding tasks {}".format( addTasks )
-    print "Creating public client interface with uuid: {}".format( clientUuid )
+    print "Creating public client interface with uuid: {}".format( clientUid )
     c = Client( configDesc ) 
 
     print "Starting all asynchronous services"
