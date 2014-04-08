@@ -10,7 +10,7 @@ def format_pbrt_cmd( renderer, startTask, endTask, totalTasks, numSubtasks, numC
 def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneFile ):
     pbrt = os.path.join( resourcePath, "pbrt.exe" )
 
-    outputFiles = os.path.join( outputPath, outfilebasename )
+    outputFiles = os.path.join( tmpPath, outfilebasename )
 
     files = glob.glob( outputFiles + "*.exr" )
 
@@ -34,7 +34,7 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     for f in files:
         fh = open( f, "rb" )
         fileData = fh.read()
-        res.append( pickle.dumps( ( f, fileData ) ) )
+        res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
         fh.close()
 
     return res

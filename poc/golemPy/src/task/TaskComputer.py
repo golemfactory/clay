@@ -101,8 +101,8 @@ class TaskComputer:
 
     ######################
     def __computeTask( self, taskId, srcCode, extraData, shortDescr ):
-        extraData[ "resourcePath" ] = self.resourceManager.getResourceDir()
-        extraData[ "outputPath" ] = self.resourceManager.getOutputDir()
+        extraData[ "resourcePath" ] = self.resourceManager.getResourceDir( taskId )
+        extraData[ "tmpPath" ] = self.resourceManager.getTemporatyDir( taskId )
         tt = PyTaskThread( self, taskId, srcCode, extraData, shortDescr ) 
         self.currentComputations.append( tt )
         tt.start()

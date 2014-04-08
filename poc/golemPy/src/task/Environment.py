@@ -16,7 +16,7 @@ class TaskComputerEnvironment:
         return self.__createTempraryDir( taskId )
 
     ######################
-    def getTaskResourceDir( self, taksId ):
+    def getTaskResourceDir( self, taskId ):
         return self.__createResourceDir( taskId )
 
     ######################
@@ -31,10 +31,10 @@ class TaskComputerEnvironment:
 
     ######################
     def __createResourceDir( self, taskId ):
-        fullPath = os.path.join( self.rootDir, taskId, "resources" )
+        fullPath = os.path.join( self.rootDir, self.nodeId, taskId, "resources" )
 
         if os.path.exists( fullPath ) and os.path.isdir( fullPath ):
-            return
+            return fullPath
 
         if os.path.exists( fullPath ):
             os.remove( fullPath )
@@ -45,10 +45,10 @@ class TaskComputerEnvironment:
 
     ######################
     def __createTempraryDir( self, taskId ):
-        fullPath = os.path.join( self.rootDir, taskId, "tmp" )
+        fullPath = os.path.join( self.rootDir, self.nodeId, taskId, "tmp" )
 
         if os.path.exists( fullPath ) and os.path.isdir( fullPath ):
-            return
+            return fullPath
 
         if os.path.exists( fullPath ):
             os.remove( fullPath )
@@ -69,38 +69,41 @@ class TaskManagerEnvironment:
         return self.__createTempraryDir( taskId )
 
     ######################
-    def getTaskResourceDir( self, taksId ):
+    def getTaskResourceDir( self, taskId ):
 
-        fullPath = os.path.join( self.rootDir, taskId, "resources" )
-
-        if os.path.exists( fullPath ) and os.path.isdir( fullPath ):
-            print "resource dir does not exist"
-            return ""
-
-        return fullPath
-
-    ######################
-    def getTaskOutputDir( self, taksId ):
-
-        fullPath = os.path.join( self.rootDir, taskId, "output" )
+        fullPath = os.path.join( self.rootDir, self.nodeId, taskId, "resources" )
 
         if os.path.exists( fullPath ) and os.path.isdir( fullPath ):
-            print "output dir does not exist"
-            return ""
+            return fullPath
 
-        return fullPath
+        print "resource dir does not exist"
+        return ""
 
     ######################
-    def clearTemporary( self, taksId ):
-        for i in os.listdir( self.getTaskTemporaryDir( taskId ) ):
-            os.remove( i )
+    def getTaskOutputDir( self, taskId ):
+
+        fullPath = os.path.join( self.rootDir, self.nodeId, taskId, "output" )
+
+        if os.path.exists( fullPath ) and os.path.isdir( fullPath ):
+            return fullPath
+
+        print "output dir does not exist"
+        return ""
+
+    ######################
+    def clearTemporary( self, taskId ):
+
+        tmpDir = self.getTaskTemporaryDir( taskId )
+
+        for i in os.listdir( tmpDir ):
+            os.remove( os.path.join( tmpDir, i ) )
 
     ######################
     def __createTempraryDir( self, taskId ):
-        fullPath = os.path.join( self.rootDir, taskId, "tmp" )
+        fullPath = os.path.join( self.rootDir, self.nodeId, taskId, "tmp" )
 
         if os.path.exists( fullPath ) and os.path.isdir( fullPath ):
-            return
+            return fullPath
 
         if os.path.exists( fullPath ):
             os.remove( fullPath )

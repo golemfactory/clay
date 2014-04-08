@@ -10,13 +10,13 @@ class TaskResourceHeader:
 
     ####################
     @classmethod
-    def build( cls, root ):
-        return cls.__build( root, root )
+    def build( cls, relativeRoot, absoluteRoot ):
+        return cls.__build( relativeRoot, absoluteRoot )
 
     ####################
     @classmethod
     def __build( cls, relativeRoot, absoluteRoot ):
-        curTh = TaskResourceHeader( relativeRoot, absoluteRoot )
+        curTh = TaskResourceHeader( relativeRoot )
 
         dirs  = [ ( name, os.path.join( absoluteRoot, name ) ) for name in os.listdir( absoluteRoot ) if os.path.isdir( os.path.join( absoluteRoot, name ) ) ]
         files = [ name for name in os.listdir( absoluteRoot ) if os.path.isfile( os.path.join( absoluteRoot, name ) ) ]
@@ -41,20 +41,19 @@ class TaskResourceHeader:
         return curTh
 
     ####################
-    def __init__( self, relativePath, absolutePath ):
+    def __init__( self, dirName ):
         self.subDirHeaders  = []
         self.filesData      = []
-        self.relativePath   = relativePath
-        self.absolutePath   = absolutePath
+        self.dirName        = dirName
 
     ####################
     def toString( self ):
-        out = "\nROOT '{}' \n".format( self.absolutePath )
+        out = "\nROOT '{}' \n".format( self.dirName )
 
         if len( self.subDirHeaders ) > 0:
             out += "DIRS \n"
             for d in self.subDirHeaders:
-                out += "    {}\n".format( d.relativePath )
+                out += "    {}\n".format( d.dirName )
 
         if len( self.filesData ) > 0:
             out += "FILES \n"
@@ -75,13 +74,8 @@ class TaskResource:
 
     ####################
     @classmethod
-    def build( cls, root ):
-        return cls.__build( root, root )
-
-    ####################
-    @classmethod
-    def __build( cls, relativeRoot, absoluteRoot ):
-        curTh = TaskResource( relativeRoot, absoluteRoot )
+    def __build( cls, dirName, absoluteRoot ):
+        curTh = TaskResource( dirName )
 
         dirs  = [ ( name, os.path.join( absoluteRoot, name ) ) for name in os.listdir( absoluteRoot ) if os.path.isdir( os.path.join( absoluteRoot, name ) ) ]
         files = [ name for name in os.listdir( absoluteRoot ) if os.path.isfile( os.path.join( absoluteRoot, name ) ) ]
@@ -129,11 +123,11 @@ class TaskResource:
 
     ####################
     @classmethod
-    def validateHeader( cls, header ):
+    def validateHeader( cls, header, absoluteRoot ):
         assert isinstance(header, TaskResourceHeader)
 
         for f in header.filesData:
-            fname = os.path.join( header.absolutePath, f[ 0 ] ) 
+            fname = os.path.join( absoluteRoot, f[ 0 ] ) 
 
             if not os.path.exists( fname ):
                 return False, "File {} does not exist".format( fname )
@@ -142,7 +136,7 @@ class TaskResource:
                 return False, "Entry {} is not a file".format( fname )
 
         for dh in header.subDirHeaders:
-            validated, msg = cls.validateHeader( dh )
+            validated, msg = cls.validateHeader( dh, os.path.join( absoluteRoot, dh.dirName ) )
 
             if not validated:
                 return validated, msg
@@ -151,14 +145,14 @@ class TaskResource:
 
     ####################
     @classmethod
-    def buildFromHeader( cls, header ):
+    def buildFromHeader( cls, header, absoluteRoot ):
         assert isinstance(header, TaskResourceHeader)
 
-        curTr = TaskResource( header.relativePath, header.absolutePath )
+        curTr = TaskResource( header.dirName )
 
         filesData = []
         for f in header.filesData:
-            fname = os.path.join( header.absolutePath, f[ 0 ] ) 
+            fname = os.path.join( absoluteRoot, f[ 0 ] ) 
             fdata = cls.readFile( fname )
             
             if fdata is None:
@@ -170,7 +164,7 @@ class TaskResource:
 
         subDirResources = []
         for sdh in header.subDirHeaders:
-            subDirRes = cls.buildFromHeader( sdh )
+            subDirRes = cls.buildFromHeader( sdh, os.path.join( absoluteRoot, sdh.dirName ) )
 
             if subDirRes is None:
                 return None
@@ -187,17 +181,17 @@ class TaskResource:
     def buildDeltaFromHeader( cls, header, absoluteRoot ):
         assert isinstance(header, TaskResourceHeader)
 
-        curTr = TaskResource( header.relativePath, header.absolutePath )
+        curTr = TaskResource( header.dirName )
 
-        dirs  = [ ( name, os.path.join( absoluteRoot, name ) ) for name in os.listdir( absoluteRoot ) if os.path.isdir( os.path.join( absoluteRoot, name ) ) ]
+        dirs  = [ name for name in os.listdir( absoluteRoot ) if os.path.isdir( os.path.join( absoluteRoot, name ) ) ]
         files = [ name for name in os.listdir( absoluteRoot ) if os.path.isfile( os.path.join( absoluteRoot, name ) ) ]
 
         for d in dirs:
-            if d in [ (sdh.relativePath, sdh.absolutePath) for sdh in header.subDirHeaders ]:
-                idx = [ (sdh.relativePath, sdh.absolutePath) for sdh in header.subDirHeaders ].index( d )
-                curTr.subDirResources.append( cls.buildDeltaFromHeader( header.subDirHeaders[ idx ], d[ 1 ] ) )
+            if d in [ sdh.dirName for sdh in header.subDirHeaders ]:
+                idx = [ sdh.dirName for sdh in header.subDirHeaders ].index( d )
+                curTr.subDirResources.append( cls.buildDeltaFromHeader( header.subDirHeaders[ idx ], os.path.join( absoluteRoot, d ) ) )
             else:
-                curTr.subDirResources.append( cls.build( d[ 1 ] ) )
+                curTr.subDirResources.append( cls.__build( d, os.path.join( absoluteRoot, d ) ) )
 
         for f in files:
             if f in [ file[ 0 ] for file in header.filesData ]:
@@ -217,30 +211,29 @@ class TaskResource:
     ####################
     def extract( self, toPath ):
         for dir in self.subDirResources:
-            if not os.path.exists( dir.absolutePath ):
-                os.makedirs( dir.absolutePath )
+            if not os.path.exists( os.path.join( toPath, dir.dirName ) ):
+                os.makedirs( os.path.join( toPath, dir.dirName ) )
 
-            dir.extract( dir.absolutePath )
+            dir.extract( os.path.join( toPath, dir.dirName ) )
 
         for f in self.filesData:
             if not os.path.exists( os.path.join( toPath, f[ 0 ] ) ) or SimpleHash.hash_file_base64( os.path.join( toPath, f[ 0 ] ) ) != f[ 1 ]:
                 self.writeFile( os.path.join( toPath, f[ 0 ] ), f[ 2 ] )
 
     ####################
-    def __init__( self, relativePath, absolutePath ):
+    def __init__( self, dirName ):
         self.filesData          = []
         self.subDirResources    = []
-        self.relativePath       = relativePath
-        self.absolutePath       = absolutePath
+        self.dirName            = dirName
 
     ####################
     def toString( self ):
-        out = "\nROOT '{}' \n".format( self.absolutePath )
+        out = "\nROOT '{}' \n".format( self.dirName )
 
         if len( self.subDirResources ) > 0:
             out += "DIRS \n"
             for d in self.subDirResources:
-                out += "    {}\n".format( d.relativePath )
+                out += "    {}\n".format( d.dirName )
 
         if len( self.filesData ) > 0:
             out += "FILES \n"
@@ -294,23 +287,23 @@ if __name__ == "__main__":
             #    print("F", os.path.join(root, name))
     
     def main():
-        t = TaskResourceHeader( "test" )
+        t = TaskResourceHeader( "test", "resource_test_dir\\test" )
         print t
         t = 0
 
-    th = TaskResourceHeader.build( "test" )
+    th = TaskResourceHeader.build( "test", "resource_test_dir\\test" )
     print th
     
     print "Entering task testing zone"
-    v, m = TaskResource.validateHeader( th )
+    v, m = TaskResource.validateHeader( th, "resource_test_dir\\test"  )
 
     if not v:
         print m
     else:
-        tr = TaskResource.buildFromHeader( th )
+        tr = TaskResource.buildFromHeader( th, "resource_test_dir\\test" )
         print tr
 
-        trd = TaskResource.buildDeltaFromHeader( th, "test" )
+        trd = TaskResource.buildDeltaFromHeader( th, "resource_test_dir\\test" )
 
         save( trd, "trd.zip" )
 

@@ -17,9 +17,9 @@ class ResourcesManager:
         dirName = self.getResourceDir( taskId )
 
         if os.path.exists( dirName ):
-            taskResHeader = TaskResourceHeader.build( dirName )
+            taskResHeader = TaskResourceHeader.build( "resources", dirName )
         else:
-            taskResHeader = TaskResourceHeader( dirName, dirName )
+            taskResHeader = TaskResourceHeader( "resources", "resources" )
 
         return taskResHeader
 
@@ -46,12 +46,12 @@ class ResourcesManager:
 
     ###################
     def getResourceDir( self, taskId ):
-        return self.taskEnvironment.getResourceDir( taskId )
+        return self.taskEnvironment.getTaskResourceDir( taskId )
 
     ###################
     def getTemporatyDir( self, taskId ):
-        return self.taskEnvironment.getTemporatyDir( taskId )
+        return self.taskEnvironment.getTaskTemporaryDir( taskId )
 
     ###################
     def getOutputDir( self, taskId ):
-        return self.taskEnvironment.getOutput( taskId )
+        return self.taskEnvironment.getTaskOutputDir( taskId )

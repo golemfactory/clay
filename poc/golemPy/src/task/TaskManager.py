@@ -16,7 +16,9 @@ class TaskManager:
         self.listenAddress  = listenAddress
         self.listenPort     = listenPort
 
-        self.resourceManager = ResourcesManager( TaskManagerEnvironment( "res", self.clientUid ) )
+        self.env            = TaskManagerEnvironment( "res", self.clientUid )
+
+        self.resourceManager = ResourcesManager( self.env )
 
     #######################
     def addNewTask( self, task):
@@ -27,6 +29,8 @@ class TaskManager:
 
         task.initialize()
         self.tasks[ task.header.id ] = task
+
+        self.env.clearTemporary( task.header.id )
 
     #######################
     def getNextSubTask( self, taskId, estimatedPerformance ):
@@ -55,7 +59,7 @@ class TaskManager:
     #######################
     def computedTaskReceived( self, taskId, extraData, result ):
         if taskId in self.tasks:
-            self.tasks[ taskId ].computationFinished( extraData, result )
+            self.tasks[ taskId ].computationFinished( extraData, result, self.env )
             return True
         else:
             print "It is not my task id {}".format( taskId )

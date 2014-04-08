@@ -44,7 +44,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def computationFinished( self, extraData, taskResult ):
+    def computationFinished( self, extraData, taskResult, env = None ):
         return # Implement in derived class
 
     #######################

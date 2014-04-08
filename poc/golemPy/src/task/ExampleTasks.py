@@ -52,7 +52,7 @@ class RayTracingTask( Task ):
         self.splitIndex += 1
 
     #######################
-    def computationFinished( self, extraData, taskResult ):
+    def computationFinished( self, extraData, taskResult, env = None ):
         print "Receive computed task id:{} extraData:{} \n result:{}".format( self.taskHeader.id, extraData, taskResult )
 
 TIMESLC  = 45.0
@@ -176,7 +176,7 @@ class VRayTracingTask( Task ):
         pass
 
     #######################
-    def computationFinished( self, extraData, taskResult ):
+    def computationFinished( self, extraData, taskResult, env = None ):
         dest = RenderTaskDesc( 0, extraData[ "x" ], extraData[ "y" ], extraData[ "w" ], extraData[ "h" ], extraData[ "num_pixels" ] ,extraData[ "num_samples" ])
         res = RenderTaskResult( dest, taskResult )
         self.taskableRenderer.taskFinished( res )
@@ -223,6 +223,8 @@ class VRayTracingTask( Task ):
 
 
 from takscollector import PbrtTaksCollector
+import os
+import pickle
 
 class PbrtRenderTask( Task ):
 
@@ -256,7 +258,7 @@ class PbrtRenderTask( Task ):
 
         self.lastExtraData =  {     "pathRoot" : self.pathRoot,
                                     "startTask" : self.lastTask,
-                                    "endTask" : self.lastTask + 1,
+                                    "endTask" : self.lastTask + 2,
                                     "totalTasks" : self.totalTasks,
                                     "numSubtasks" : self.numSubtasks,
                                     "numCores" : self.numCores,
@@ -264,7 +266,7 @@ class PbrtRenderTask( Task ):
                                     "sceneFile" : self.sceneFile
                                 }
 
-        self.lastTask += 1 # TODO: Should depend on performance
+        self.lastTask += 2 # TODO: Should depend on performance
         return self.lastExtraData
 
     #######################
@@ -284,10 +286,19 @@ class PbrtRenderTask( Task ):
         pass
 
     #######################
-    def computationFinished( self, extraData, taskResult ):
+    def computationFinished( self, extraData, taskResult, env = None ):
 
-        os.makedirs( dir.absolutePath )
-        self.collector.acceptTask( taskResult ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
+        tmpDir = env.getTaskTemporaryDir( self.header.id )
+
+        if len( taskResult ) > 0:
+            for trp in taskResult:
+                tr = pickle.loads( trp )
+                fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
+                fh.write( tr[ 1 ] )
+                fh.close()
+        
+                self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
+                self.collector.finalize().save( "{}.png".format( os.path.join( tmpDir, "test" ) ), "PNG" )
 
     #######################
     def getTotalTasks( self ):
