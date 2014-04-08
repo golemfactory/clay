@@ -23,7 +23,10 @@ class TaskComputer:
         self.lock                   = Lock()
         self.lastTaskRequest        = time.time()
         self.taskRequestFrequency   = taskRequestFrequency
-        self.resourceManager        = ResourcesManager( TaskComputerEnvironment( "ComputerRes", self.clientUid ) )
+
+        self.env                    = TaskComputerEnvironment( "ComputerRes", self.clientUid )
+
+        self.resourceManager        = ResourcesManager( self.env )
 
         self.curSrcCode             = ""
         self.curExtraData           = None
@@ -101,6 +104,7 @@ class TaskComputer:
 
     ######################
     def __computeTask( self, taskId, srcCode, extraData, shortDescr ):
+        self.env.clearTemporary( taskId )
         extraData[ "resourcePath" ] = self.resourceManager.getResourceDir( taskId )
         extraData[ "tmpPath" ] = self.resourceManager.getTemporatyDir( taskId )
         tt = PyTaskThread( self, taskId, srcCode, extraData, shortDescr ) 

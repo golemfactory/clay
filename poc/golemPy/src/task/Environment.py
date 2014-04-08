@@ -20,14 +20,18 @@ class TaskComputerEnvironment:
         return self.__createResourceDir( taskId )
 
     ######################
-    def clearTemporary( self, taksId ):
-        for i in os.listdir( self.getTaskTemporaryDir( taskId ) ):
-            os.remove( i )
+    def clearTemporary( self, taskId ):
+        tmpDir = self.getTaskTemporaryDir( taskId )
+
+        for i in os.listdir( tmpDir ):
+            os.remove( os.path.join( tmpDir, i ) )
 
     ######################
     def clearResource( self, taskId ):
-        for i in os.listdir( self.getTaskResourceDir( taskId ) ):
-            os.remove( i )
+        resDir = self.getTaskResourceDir( taskId )
+
+        for i in os.listdir( resDir ):
+            os.remove( os.path.join( resDir, i ) )
 
     ######################
     def __createResourceDir( self, taskId ):

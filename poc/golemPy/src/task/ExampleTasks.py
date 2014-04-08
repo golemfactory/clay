@@ -298,7 +298,7 @@ class PbrtRenderTask( Task ):
                 fh.close()
         
                 self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
-                self.collector.finalize().save( "{}.png".format( os.path.join( tmpDir, "test" ) ), "PNG" )
+                self.collector.finalize().save( "{}.png".format( os.path.join( env.getTaskOutputDir( self.header.id ), "test" ) ), "PNG" )
 
     #######################
     def getTotalTasks( self ):
