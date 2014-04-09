@@ -2,7 +2,6 @@
 from Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageTaskComputed, MessageGetResource, MessageResource
 from TaskComputer import TaskComputer
 from TaskConnState import TaskConnState
-from Resource import compress
 import time
 import pickle
 

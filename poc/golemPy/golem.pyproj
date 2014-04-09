@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>test\ClientMain.py</StartupFile>
+    <StartupFile>src\core\Compress.py</StartupFile>
     <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network;src\manager;src\manager\client;src\manager\server;src\task\resource;testtasks\pbrt</SearchPath>
     <WorkingDirectory>d:\src\golem\poc\golemPy\test\</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -50,6 +50,7 @@
     <Compile Include="src\Client.py" />
     <Compile Include="src\AppConfig.py" />
     <Compile Include="src\ClientConfigDescriptor.py" />
+    <Compile Include="src\core\Compress.py" />
     <Compile Include="src\core\hostaddress.py" />
     <Compile Include="src\core\network.py" />
     <Compile Include="src\manager\client\ClientManagerConnState.py" />

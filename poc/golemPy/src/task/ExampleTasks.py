@@ -3,6 +3,10 @@ from TaskBase import Task, TaskHeader
 
 from taskablerenderer import TaskableRenderer, RenderTaskResult, RenderTaskDesc
 
+from takscollector import PbrtTaksCollector
+import os
+import pickle
+
 import random
 
 from img import Img
@@ -220,11 +224,6 @@ class VRayTracingTask( Task ):
         image_file = open( img_name, 'wb')
         img.get_formatted(image_file, num_samples)
         image_file.close()
-
-
-from takscollector import PbrtTaksCollector
-import os
-import pickle
 
 class PbrtRenderTask( Task ):
 
