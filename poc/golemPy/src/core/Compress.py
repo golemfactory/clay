@@ -1,6 +1,4 @@
-from gzip import GzipFile
 import cPickle
-import StringIO
 import zlib
 
 def save(object, filename, protocol = -1):
@@ -22,15 +20,10 @@ def load(filename):
     return object
 
 def compress( data ):
-    outStream = StringIO.StringIO()
-    gz = GzipFile( fileobj = outStream, mode='wb'  )
-    gz.write( data )
-    return outStream.getvalue()
+    return zlib.compress( data )
     
 def decompress( data ):
-    f = StringIO.StringIO( data )
-    data = GzipFile(fileobj = f, mode = 'rb')
-    return data.read()
+    return zlib.decompress( data )
 
 if __name__ == "__main__":
     def main():

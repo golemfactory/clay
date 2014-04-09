@@ -225,6 +225,9 @@ class VRayTracingTask( Task ):
         img.get_formatted(image_file, num_samples)
         image_file.close()
 
+
+from Compress import decompress
+
 class PbrtRenderTask( Task ):
 
     #######################
@@ -248,6 +251,7 @@ class PbrtRenderTask( Task ):
         self.lastExtraData      = None
 
         self.collector          = PbrtTaksCollector()
+        self.numTasksReceived   = 0
 
     def initialize( self ):
         pass
@@ -255,9 +259,11 @@ class PbrtRenderTask( Task ):
     #######################
     def queryExtraData( self, perfIndex ):
 
+        endTask = min( self.lastTask + 8, self.totalTasks )
+
         self.lastExtraData =  {     "pathRoot" : self.pathRoot,
                                     "startTask" : self.lastTask,
-                                    "endTask" : self.lastTask + 2,
+                                    "endTask" : endTask,
                                     "totalTasks" : self.totalTasks,
                                     "numSubtasks" : self.numSubtasks,
                                     "numCores" : self.numCores,
@@ -265,7 +271,7 @@ class PbrtRenderTask( Task ):
                                     "sceneFile" : self.sceneFile
                                 }
 
-        self.lastTask += 2 # TODO: Should depend on performance
+        self.lastTask = endTask # TODO: Should depend on performance
         return self.lastExtraData
 
     #######################
@@ -293,11 +299,15 @@ class PbrtRenderTask( Task ):
             for trp in taskResult:
                 tr = pickle.loads( trp )
                 fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
-                fh.write( tr[ 1 ] )
+                fh.write( decompress( tr[ 1 ] ) )
                 fh.close()
         
                 self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
-                self.collector.finalize().save( "{}.png".format( os.path.join( env.getTaskOutputDir( self.header.id ), "test" ) ), "PNG" )
+                self.numTasksReceived += 1
+                
+
+        if self.numTasksReceived == self.totalTasks:
+            self.collector.finalize().save( "{}.png".format( os.path.join( env.getTaskOutputDir( self.header.id ), "test" ) ), "PNG" )
 
     #######################
     def getTotalTasks( self ):

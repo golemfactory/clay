@@ -1,7 +1,7 @@
 import os
 import glob
 import pickle
-
+import zlib
 
 ############################
 def format_pbrt_cmd( renderer, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, scenefile ):
@@ -35,6 +35,7 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     for f in files:
         fh = open( f, "rb" )
         fileData = fh.read()
+        fileData = zlib.compress( fileData )
         res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
         fh.close()
 
