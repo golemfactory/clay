@@ -17,7 +17,7 @@ class SimpleSerializerRelease:
 
     @classmethod
     def dumps( cls, obj ):
-        return pickle.dumps( obj, pickle.HIGHEST_PROTOCOL )
+        return pickle.dumps( obj )
 
     @classmethod
     def loads( cls, data ):
