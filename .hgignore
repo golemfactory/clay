@@ -5,3 +5,12 @@ syntax: glob
 *.orig
 *.bak
 *.ppm
+*.exr
+*.exe
+*.pbrt
+*.tga
+*.gz
+*.txt
+*.png
+*.zip
+*.ctl
