@@ -1,7 +1,7 @@
 import json   #debug version
 import cPickle as pickle #release version
 
-IS_DEBUG = True
+IS_DEBUG = False
 
 class SimpleSerializerDebug:
 

@@ -2,7 +2,7 @@
 from Message import MessagePeerStatus, MessageKillNode, MessageNewTask
 from ClientManagerConnState import ClientManagerConnState
 
-import pickle
+import cPickle as pickle
 import time
 import os
 

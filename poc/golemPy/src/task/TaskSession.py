@@ -3,7 +3,8 @@ from Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCanno
 from TaskComputer import TaskComputer
 from TaskConnState import TaskConnState
 import time
-import pickle
+import cPickle as pickle
+import Compress
 
 class TaskSession:
 
@@ -70,11 +71,18 @@ class TaskSession:
 
         elif type == MessageGetResource.Type:
             res = self.taskManager.getResource( msg.taskId, pickle.loads( msg.resourceHeader ) )
+            print "Start pickling"
             resDump = pickle.dumps( res )
+            print "End pickling"
+            print "Start compressing"
+            resDump = Compress.compress( resDump )
+            print "End compressing"
             self.conn.sendMessage( MessageResource( msg.taskId, resDump ) )
             self.dropped()
         elif type == MessageResource.Type:
-            self.taskComputer.resourceGiven( msg.taskId, pickle.loads( msg.resource ) )
+            res = Compress.decompress( msg.resource )
+            res = pickle.loads( res )
+            self.taskComputer.resourceGiven( msg.taskId, res )
             self.dropped()
 
     ##########################

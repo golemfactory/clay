@@ -5,7 +5,7 @@ from taskablerenderer import TaskableRenderer, RenderTaskResult, RenderTaskDesc
 
 from takscollector import PbrtTaksCollector
 import os
-import pickle
+import cPickle as pickle
 
 import random
 

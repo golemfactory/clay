@@ -1,6 +1,6 @@
 import os
 import glob
-import pickle
+import cPickle as pickle
 import zlib
 
 ############################

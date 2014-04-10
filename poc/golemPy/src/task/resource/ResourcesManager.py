@@ -19,7 +19,7 @@ class ResourcesManager:
         if os.path.exists( dirName ):
             taskResHeader = TaskResourceHeader.build( "resources", dirName )
         else:
-            taskResHeader = TaskResourceHeader( "resources", "resources" )
+            taskResHeader = TaskResourceHeader( "resources" )
 
         return taskResHeader
 
@@ -30,11 +30,14 @@ class ResourcesManager:
 
         taskResHeader = None
 
+        print "Getting resource for delta dir: {} header:{}".format( dirName, resourceHeader )
+
         if os.path.exists( dirName ):
             taskResHeader = TaskResource.buildDeltaFromHeader( resourceHeader, dirName )
         else:
-            taskResHeader = TaskResource( dirName, dirName )
+            taskResHeader = TaskResource( "resources" )
 
+        print  "Getting resource for delta dir: {} header:{} FINISHED".format( dirName, resourceHeader )
         return taskResHeader
 
     ###################

@@ -1,7 +1,7 @@
 
 from Message import MessagePeerStatus, MessageNewTask, MessageKillNode
 import os
-import pickle
+import cPickle as pickle
 import time
 import sys
 
@@ -50,3 +50,16 @@ class ServerManagerSession:
         if self.conn and self.conn.isOpen():
             tp = pickle.dumps( task )
             self.conn.sendMessage( MessageNewTask( tp ) )
+
+if __name__ == "__main__":
+
+    def main():
+        from NodeStateSnapshot import NodeStateSnapshot
+
+        snapshot  = NodeStateSnapshot( "some uiid", 0.2, 0.7 )
+        d = pickle.dumps( snapshot )
+        ud = pickle.loads( d )
+        t = 0
+
+
+    main()
