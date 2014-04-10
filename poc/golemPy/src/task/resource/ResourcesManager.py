@@ -99,5 +99,5 @@ class ResourcesManager:
             self.fh.close()
             self.fh = None
             decompressDir( self.getResourceDir( taskId ), os.path.join( self.getTemporaryDir( taskId ),  "res" + taskId) )
-            owner.resourceGiven( taskId )
+            self.owner.resourceGiven( taskId )
             
