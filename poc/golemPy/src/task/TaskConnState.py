@@ -48,7 +48,7 @@ class TaskConnState( ConnectionState ):
     def fileDataReceived( self, data ):
         assert len( data ) >= 4
 
-        self.taskSession.taskComputer.resourceManager.fileDataReceived( self.taskSession.taskId, data )            
+        self.taskSession.taskComputer.resourceManager.fileDataReceived( self.taskSession.taskId, data, self )            
 
     ############################
     def connectionLost(self, reason):

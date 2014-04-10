@@ -75,7 +75,7 @@ class ResourcesManager:
         return self.taskEnvironment.getTaskOutputDir( taskId )
 
 
-    def fileDataReceived( self, taskId, data ):
+    def fileDataReceived( self, taskId, data, conn ):
 
         print "\rFile data receving {}%                              ".format( 100 * self.recvSize / float( self.fileSize ) ),
 
@@ -95,7 +95,7 @@ class ResourcesManager:
         self.recvSize += len( locData )
 
         if self.recvSize == self.fileSize:
-            self.fileMode = False
+            conn.fileMode = False
             self.fh.close()
             self.fh = None
             decompressDir( self.getResourceDir( taskId ), os.path.join( self.getTemporaryDir( taskId ),  "res" + taskId) )
