@@ -292,7 +292,7 @@ def compressDir( rootPath, header ):
 
     outputFile = header.hash().strip() + ".zip"
 
-    zipf = zipfile.ZipFile( outputFile, 'w' )
+    zipf = zipfile.ZipFile( outputFile, 'w', compression = zipfile.ZIP_DEFLATED )
 
     compressDirImpl( rootPath, header, zipf )
 
