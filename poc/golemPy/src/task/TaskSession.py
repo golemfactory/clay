@@ -82,14 +82,14 @@ class TaskSession:
 
             print "Sendig file size:{}".format( size )
 
-            fh = open( resFilePath )
+            fh = open( resFilePath, 'rb' )
             self.conn.transport.write( struct.pack( "!L", size ) )
-            data = fh.read( 1024 )
+            data = fh.read( 4096 * 1024 )
             while data:
                 self.conn.transport.write( data )
                 self.conn.transport.doWrite()
                 print "\rSending progress {}                        ".format( float( fh.tell() ) / size ),
-                data = fh.read( 1024 )
+                data = fh.read( 4096 * 1024 )
                 
             print "CHUJA"
             #self.conn.sendMessage( MessageResource( msg.taskId, resDump ) )
