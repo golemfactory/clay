@@ -8,6 +8,7 @@ class TaskConnState( ConnectionState ):
         ConnectionState.__init__( self )
         self.taskSession = None
         self.server = server
+        self.fileMode = False
 
     ############################
     def setSession( self, taskSession ):
@@ -27,6 +28,9 @@ class TaskConnState( ConnectionState ):
     def dataReceived(self, data):
         assert self.opened
 
+        if self.fileMode:
+            self.fileDataReceived( data )
+
         self.db.appendString(data)
         mess = Message.deserialize(self.db)
         if mess is None:
@@ -39,6 +43,12 @@ class TaskConnState( ConnectionState ):
         else:
             print "Task session for connection is None"
             assert False
+
+    ############################
+    def fileDataReceived( self, data ):
+        assert len( data ) >= 4
+
+        self.taskSession.taskComputer.resourceManager.fileDataReceived( self.taskSession.taskId, data )            
 
     ############################
     def connectionLost(self, reason):

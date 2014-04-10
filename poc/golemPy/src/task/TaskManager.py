@@ -18,7 +18,7 @@ class TaskManager:
 
         self.env            = TaskManagerEnvironment( "res", self.clientUid )
 
-        self.resourceManager = ResourcesManager( self.env )
+        self.resourceManager = ResourcesManager( self.env, self )
 
     #######################
     def addNewTask( self, task):
@@ -90,3 +90,7 @@ class TaskManager:
     #######################
     def getResource( self, taskId, resourceHeader ):
         return self.resourceManager.getResourceDelta( taskId, resourceHeader )
+
+    #######################
+    def prepareResource( self, taskId, resourceHeader ):
+        return self.resourceManager.prepareResourceDelta( taskId, resourceHeader )

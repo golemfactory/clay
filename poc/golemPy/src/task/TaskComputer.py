@@ -26,7 +26,7 @@ class TaskComputer:
 
         self.env                    = TaskComputerEnvironment( "ComputerRes", self.clientUid )
 
-        self.resourceManager        = ResourcesManager( self.env )
+        self.resourceManager        = ResourcesManager( self.env, self )
 
         self.curSrcCode             = ""
         self.curExtraData           = None
@@ -44,9 +44,9 @@ class TaskComputer:
             return False
 
     ######################
-    def resourceGiven( self, taskId, resource ):
+    def resourceGiven( self, taskId ):
         if self.waitingForTask:
-            self.resourceManager.updateResource( taskId, resource )
+            #self.resourceManager.updateResource( taskId, resource )
             self.__computeTask( taskId, self.curSrcCode, self.curExtraData, self.curShortDescr )
             self.waitingForTask = 0
             return True
@@ -106,7 +106,7 @@ class TaskComputer:
     def __computeTask( self, taskId, srcCode, extraData, shortDescr ):
         self.env.clearTemporary( taskId )
         extraData[ "resourcePath" ] = self.resourceManager.getResourceDir( taskId )
-        extraData[ "tmpPath" ] = self.resourceManager.getTemporatyDir( taskId )
+        extraData[ "tmpPath" ] = self.resourceManager.getTemporaryDir( taskId )
         tt = PyTaskThread( self, taskId, srcCode, extraData, shortDescr ) 
         self.currentComputations.append( tt )
         tt.start()

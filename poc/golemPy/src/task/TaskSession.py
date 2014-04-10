@@ -5,6 +5,8 @@ from TaskConnState import TaskConnState
 import time
 import cPickle as pickle
 import Compress
+import os
+import struct
 
 class TaskSession:
 
@@ -18,6 +20,7 @@ class TaskSession:
         self.taskComputer   = None
         self.address        = self.conn.transport.getPeer().host
         self.port           = self.conn.transport.getPeer().port
+        self.taskId         = 0
 
     ##########################
     def requestTask( self, taskId, performenceIndex ):
@@ -26,6 +29,8 @@ class TaskSession:
     ##########################
     def requestResource( self, taskId, resourceHeader ):
         self.__send( MessageGetResource( taskId, pickle.dumps( resourceHeader ) ) )
+        self.taskId = taskId
+        self.conn.fileMode = True
 
     ##########################
     def sendTaskResults( self, id, extraData, taskResult ):
@@ -70,19 +75,29 @@ class TaskSession:
             self.dropped()
 
         elif type == MessageGetResource.Type:
-            res = self.taskManager.getResource( msg.taskId, pickle.loads( msg.resourceHeader ) )
-            print "Start pickling"
-            resDump = pickle.dumps( res )
-            print "End pickling"
-            print "Start compressing"
-            resDump = Compress.compress( resDump )
-            print "End compressing"
-            self.conn.sendMessage( MessageResource( msg.taskId, resDump ) )
+            resFilePath = self.taskManager.prepareResource( msg.taskId, pickle.loads( msg.resourceHeader ) )
+            #resFilePath  = "d:/src/golem/poc/golemPy/test/res2222221"
+
+            size = os.path.getsize( resFilePath )
+
+            print "Sendig file size:{}".format( size )
+
+            fh = open( resFilePath )
+            self.conn.transport.write( struct.pack( "!L", size ) )
+            data = fh.read( 1024 )
+            while data:
+                self.conn.transport.write( data )
+                self.conn.transport.doWrite()
+                print "\rSending progress {}                        ".format( float( fh.tell() ) / size ),
+                data = fh.read( 1024 )
+                
+            print "CHUJA"
+            #self.conn.sendMessage( MessageResource( msg.taskId, resDump ) )
             self.dropped()
         elif type == MessageResource.Type:
             res = Compress.decompress( msg.resource )
             res = pickle.loads( res )
-            self.taskComputer.resourceGiven( msg.taskId, res )
+            self.taskComputer.resourceGiven( self.taskId, res )
             self.dropped()
 
     ##########################
