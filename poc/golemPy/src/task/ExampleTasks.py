@@ -259,7 +259,7 @@ class PbrtRenderTask( Task ):
     #######################
     def queryExtraData( self, perfIndex ):
 
-        endTask = min( self.lastTask + 8, self.totalTasks )
+        endTask = min( self.lastTask + 1, self.totalTasks )
 
         self.lastExtraData =  {     "pathRoot" : self.pathRoot,
                                     "startTask" : self.lastTask,

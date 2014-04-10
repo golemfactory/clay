@@ -77,7 +77,7 @@ class TaskResource:
     def __build( cls, dirName, absoluteRoot ):
         curTh = TaskResource( dirName )
 
-        dirs  = [ ( name, os.path.join( absoluteRoot, name ) ) for name in os.listdir( absoluteRoot ) if os.path.isdir( os.path.join( absoluteRoot, name ) ) ]
+        dirs  = [ name for name in os.listdir( absoluteRoot ) if os.path.isdir( os.path.join( absoluteRoot, name ) ) ]
         files = [ name for name in os.listdir( absoluteRoot ) if os.path.isfile( os.path.join( absoluteRoot, name ) ) ]
 
         filesData = []
@@ -90,12 +90,12 @@ class TaskResource:
 
         curTh.filesData = filesData
 
-        subDirHeaders = []
+        subDirResources = []
         for d in dirs:
-            childSubDirHeader = cls.__build( d[ 0 ], d[ 1 ] )
-            subDirHeaders.append( childSubDirHeader )
+            childSubDirHeader = cls.__build( d, os.path.join( absoluteRoot, d ) )
+            subDirResources.append( childSubDirHeader )
 
-        curTh.subDirHeaders = subDirHeaders
+        curTh.subDirResources = subDirResources
         #print "{} {} {}\n".format( absoluteRoot, len( subDirHeaders ), len( filesData ) )
 
         return curTh
@@ -278,6 +278,8 @@ if __name__ == "__main__":
         print tr
 
         trd = TaskResource.buildDeltaFromHeader( th, "resource_test_dir\\test" )
+
+        trd.extract( "out" )
 
         save( trd, "trd.zip" )
 
