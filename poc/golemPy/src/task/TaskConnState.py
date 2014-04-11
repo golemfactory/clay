@@ -30,12 +30,21 @@ class TaskConnState( ConnectionState ):
 
         if self.fileMode:
             self.fileDataReceived( data )
+            return
 
         self.db.appendString(data)
-        mess = Message.deserialize(self.db)
+
+        mess = None
+
+        try:
+            mess = Message.deserialize(self.db)
+        except:
+            print "Cannot deserialize message len: {} : {}".format( len(data), data )
+
         if mess is None:
             print "Deserialization message failed"
-            self.taskSesssion.interpret(None)
+            self.taskSession.interpret(None)
+            return
 
         if self.taskSession:
             for m in mess:

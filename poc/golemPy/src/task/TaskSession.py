@@ -39,7 +39,7 @@ class TaskSession:
     ##########################
     def interpret( self, msg ):
         if msg is None:
-            pass #TODO
+            return
 
         #print "Receiving from {}:{}: {}".format( self.address, self.port, msg )
 
@@ -83,16 +83,13 @@ class TaskSession:
             print "Sendig file size:{}".format( size )
 
             fh = open( resFilePath, 'rb' )
-            self.conn.transport.write( struct.pack( "!L", size ) )
-            data = fh.read( 4096 * 1024 )
+            data = struct.pack( "!L", size ) + fh.read( 4096 * 1024 )
             while data:
                 self.conn.transport.write( data )
-                self.conn.transport.doWrite()
+                #self.conn.transport.doWrite()
                 print "\rSending progress {}                        ".format( float( fh.tell() ) / size ),
                 data = fh.read( 4096 * 1024 )
                 
-            print "CHUJA"
-            #self.conn.sendMessage( MessageResource( msg.taskId, resDump ) )
             self.dropped()
         elif type == MessageResource.Type:
             res = Compress.decompress( msg.resource )

@@ -287,16 +287,33 @@ class TaskResource:
     def __str__( self ):
         return self.toString()
 
-####################
-def compressDir( rootPath, header ):
+import unicodedata
+import string
 
-    outputFile = header.hash().strip() + ".zip"
+validFilenameChars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+
+def removeDisallowedFilenameChars(filename):
+    cleanedFilename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore')
+    return ''.join(c for c in cleanedFilename if c in validFilenameChars)
+
+####################
+def compressDir( rootPath, header, outputDir ):
+
+    outputFile = removeDisallowedFilenameChars( header.hash().strip().decode( 'unicode-escape' ) + ".zip" )
+
+    outputFile = os.path.join( outputDir, outputFile )
 
     zipf = zipfile.ZipFile( outputFile, 'w', compression = zipfile.ZIP_DEFLATED )
 
-    compressDirImpl( rootPath, header, zipf )
+    currWorkingDir = os.getcwd()
+    os.chdir( rootPath )
 
-    zipf.close()
+    try:
+        compressDirImpl( "", header, zipf )
+
+        zipf.close()
+    finally:
+        os.chdir( currWorkingDir )
 
     return outputFile
 
@@ -317,10 +334,10 @@ def compressDirImpl( rootPath, header, zipf ):
         zipf.write( os.path.join( rootPath, fdata[ 0 ] ) )
 
 ####################
-def prepareDeltaZip( rootDir, header ):
+def prepareDeltaZip( rootDir, header, outputDir ):
     deltaHeader = TaskResourceHeader.buildHeaderDeltaFromHeader( header, rootDir )
 
-    return compressDir( rootDir, deltaHeader )
+    return compressDir( rootDir, deltaHeader, outputDir )
 
 
 if __name__ == "__main__":

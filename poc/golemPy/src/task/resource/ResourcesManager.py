@@ -51,7 +51,7 @@ class ResourcesManager:
         dirName = self.getResourceDir( taskId )
 
         if os.path.exists( dirName ):
-            return prepareDeltaZip( dirName, resourceHeader )
+            return prepareDeltaZip( dirName, resourceHeader, self.getTemporaryDir( taskId ) )
         else:
             return ""
 
@@ -100,4 +100,6 @@ class ResourcesManager:
             self.fh = None
             decompressDir( self.getResourceDir( taskId ), os.path.join( self.getTemporaryDir( taskId ),  "res" + taskId) )
             self.owner.resourceGiven( taskId )
+            self.fileSize = -1
+            self.recvSize = 0
             
