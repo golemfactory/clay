@@ -35,7 +35,8 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     for f in files:
         fh = open( f, "rb" )
         fileData = fh.read()
-        fileData = zlib.compress( fileData )
+        fileData = zlib.compress( fileData, 9 )
+        #fileData = u"11111111111111111"
         res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
         fh.close()
 
