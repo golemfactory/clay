@@ -88,10 +88,6 @@ class Client:
         peersNum            = len( self.p2pservice.peers )
         lastNetworkMessages = self.p2pservice.getLastMessages()
 
-        from guppy import hpy
-        h = hpy()
-        print h.heap()
-
         if self.taskServer:
             tasksNum                = len( self.taskServer.taskHeaders )
             remoteTasksProgresses   = self.taskServer.taskComputer.getProgresses()

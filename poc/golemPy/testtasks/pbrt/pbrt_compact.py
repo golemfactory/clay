@@ -2,6 +2,9 @@ import os
 import glob
 import cPickle as pickle
 import zlib
+import subprocess
+import platform, psutil
+import win32api, win32process
 
 ############################
 def format_pbrt_cmd( renderer, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, scenefile ):
@@ -22,7 +25,11 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     
     print cmd
    
-    os.system( cmd )
+    pc = subprocess.Popen( cmd )
+
+    win32process.SetPriorityClass( pc._handle, win32process.IDLE_PRIORITY_CLASS )
+
+    pc.wait()
 
     print outputFiles
 
