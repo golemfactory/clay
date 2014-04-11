@@ -307,8 +307,7 @@ class PbrtRenderTask( Task ):
                 
 
         if self.numTasksReceived == self.totalTasks:
-            pass
-            #self.collector.finalize().save( "{}.png".format( os.path.join( env.getTaskOutputDir( self.header.id ), "test" ) ), "PNG" )
+            self.collector.finalize().save( "{}.png".format( os.path.join( env.getTaskOutputDir( self.header.id ), "test" ) ), "PNG" )
 
     #######################
     def getTotalTasks( self ):
