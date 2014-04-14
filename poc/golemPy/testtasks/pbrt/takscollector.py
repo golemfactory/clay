@@ -185,4 +185,4 @@ if __name__ == "__main__":
         for e in sys.path:
             print e
 
-    test_task_collector( "input_64", "result_64" )
+    test_task_collector( "test_run1", "result_64" )

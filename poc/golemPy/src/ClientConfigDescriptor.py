@@ -22,3 +22,4 @@ class ClientConfigDescriptor:
         self.taskRequestInterval    = 0.0
         self.estimatedPerformance   = 0.0
         self.nodeSnapshotInterval   = 0.0
+        self.maxResultsSendingDelay = 0.0

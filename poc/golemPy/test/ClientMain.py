@@ -62,6 +62,7 @@ def main():
     configDesc.taskRequestInterval    = taskRequestInterval 
     configDesc.estimatedPerformance   = estimatedPerformance
     configDesc.nodeSnapshotInterval   = nodeSnapshotInterval
+    configDesc.maxResultsSendignDelay = cfg.getMaxResultsSendingDelay()
 
     print "Adding tasks {}".format( addTasks )
     print "Creating public client interface with uuid: {}".format( clientUid )

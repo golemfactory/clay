@@ -42,6 +42,7 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "estimated perfomance",  2200.0,  self, "EstimatedPerformance" )
         ConfigEntry.createProperty( self.section(), "node snapshot interval",   4.0,  self, "NodeSnapshotInterval" )
         ConfigEntry.createProperty( self.section(), "add tasks",           0,     self, "AddTasks" )
+        ConfigEntry.createProperty( self.section(), "maximum delay for sending task results",           3600,  self, "MaxResultsSendingDelay" )
 
     ##############################
     def section( self ):
@@ -133,6 +134,9 @@ class AppConfig:
 
     def getAddTasks( self ):
         return self._cfg.getNodeConfig().getAddTasks()
+
+    def getMaxResultsSendingDelay( self ):
+        return self._cfg.getNodeConfig().getMaxResultsSendingDelay()
 
     def __str__( self ):
         return str( self._cfg )

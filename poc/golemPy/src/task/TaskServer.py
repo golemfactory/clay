@@ -24,12 +24,15 @@ class TaskServer:
 
         self.lastMessages       = []
 
+        self.resultsWaitingForSending = {}
+
         self.__startAccepting()
 
     #############################
     def syncNetwork( self ):
         self.taskComputer.run()
         self.__removeOldTasks()
+        self.__sendWaitingResults()
 
     #############################
     # This method chooses random task from the network to compute on our machine
@@ -207,9 +210,14 @@ class TaskServer:
     def __connectionForTaskResultFailure( self, taskId, extraData, results ):
         print "Cannot connect to task {} owner".format( taskId )
         print "Removing task {} from task list".format( taskId )
-                
-        self.removeTaskHeader( taskId )
-   
+        
+        if ( taskId, extraData ) not in self.resultsWaitingForSending:
+            self.resultsWaitingForSending[ ( taskId, extraData ) ] = ( results, time.time() )             
+        else:
+            if time.time() - self.resultsWaitingForSending[ ( taskId, extraData ) ][ 1 ] > self.configDesc.maxmaxResultsSendignDelay:
+                self.removeTaskHeader( taskId )
+                del self.resultsWaitingForSending[ ( taskId, extraData ) ]
+
     #############################
     def __connectionForResourceRequestEstablished( self, session, taskId, resourceHeader ):
 
@@ -239,6 +247,10 @@ class TaskServer:
                 self.removeTaskHeader( t.id )
 
         self.taskManager.removeOldTasks()
+
+    def __sendWaitingResults( self ):
+        for wr in self.resultsWaitingForSending:
+            self.sendResults( wr[ 0 ], wr[ 1 ], self.resultsWaitingForSending[ wr ][ 0 ] )
 
 
 from twisted.internet.protocol import Factory
