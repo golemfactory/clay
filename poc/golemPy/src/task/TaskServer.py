@@ -132,7 +132,7 @@ class TaskServer:
             return None
 
     #############################
-    def taskResultSent( self, taskId ):
+    def taskResultSent( self, subTaskId ):
         if subTaskId in self.resultsToSend:
             del self.resultsToSend[ subTaskId ]
         else:

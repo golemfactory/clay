@@ -69,14 +69,17 @@ class TaskSession:
             self.dropped()
 
         elif type == MessageReportComputedTask.Type:
-            delay = self.taskManager.acceptResultsDelay( msg.subTaskId )
+            if msg.subTaskId in self.taskManager.subTask2TaskMapping:
+                delay = self.taskManager.acceptResultsDelay( self.taskManager.subTask2TaskMapping[ msg.subTaskId ] )
 
-            if delay == -1.0:
-                self.dropped()
-            elif delay == 0.0:
-                self.conn.sendMessage( MessageGetTaskResult( msg.subTaskId, delay ) )
+                if delay == -1.0:
+                    self.dropped()
+                elif delay == 0.0:
+                    self.conn.sendMessage( MessageGetTaskResult( msg.subTaskId, delay ) )
+                else:
+                    self.conn.sendMessage( MessageGetTaskResult( msg.subTaskId, delay ) )
+                    self.dropped()
             else:
-                self.conn.sendMessage( MessageGetTaskResult( msg.subTaskId, delay ) )
                 self.dropped()
 
         elif type == MessageGetTaskResult.Type:

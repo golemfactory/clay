@@ -30,6 +30,7 @@ class TaskComputer:
         self.resourceManager        = ResourcesManager( self.env, self )
 
         self.assignedSubTasks       = {}
+        self.maxAssignedTasks       = 1
         self.curSrcCode             = ""
         self.curExtraData           = None
         self.curShortDescr          = None
@@ -48,16 +49,19 @@ class TaskComputer:
     def resourceGiven( self, subTaskId ):
         if subTaskId in self.assignedSubTasks:
             self.__computeTask( subTaskId, self.assignedSubTasks[ subTaskId ].srcCode, self.assignedSubTasks[ subTaskId ].extraData, self.assignedSubTasks[ subTaskId ].shortDescr )
+            self.waitingForTask = None
             return True
         else:
             return False
 
     ######################
     def taskRequestRejected( self, taskId, reason ):
+        self.waitingForTask = None
         print "Task {} request rejected: {}".format( taskId, reason )
 
     ######################
     def resourceRequestRejected( self, subTaskId, reason ):
+        self.waitingForTask = None
         print "Task {} resource request rejected: {}".format( subTaskId, reason )
         del self.assignedSubTasks[ subTaskId ]
 
@@ -72,6 +76,7 @@ class TaskComputer:
                 print "Task {} computed".format( subTaskId )
                 if subTaskId in self.assignedSubTasks:
                     self.taskServer.sendResults( subTaskId, taskThread.result, self.assignedSubTasks[ subTaskId ].ownerAddress, self.assignedSubTasks[ subTaskId ].ownerPort )
+                    del self.assignedSubTasks[ subTaskId ]
 
     ######################
     def run( self ):
