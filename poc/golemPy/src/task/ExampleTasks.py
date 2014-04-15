@@ -282,8 +282,8 @@ class PbrtRenderTask( Task ):
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFile" : self.sceneFile
                                 }
-        
-        hash = "subtask"
+
+        hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = self.lastExtraData
         self.lastTask = endTask # TODO: Should depend on performance
         return self.lastExtraData, hash, self.returnAddress, self.returnPort
