@@ -318,20 +318,24 @@ class MessageGetTaskResult( Message ):
 
     ID_STR          = u"ID"
     EXTRA_DATA_STR  = u"EXTRA_DATA"
+    DELAY_STR       = u"DELAY"
 
-    def __init__( self, id = 0, extraData = {}, dictRepr = None ):
+    def __init__( self, id = 0, extraData = {}, delay = 0.0, dictRepr = None ):
         Message.__init__(self, MessageGetTaskResult.Type)
 
         self.id = id
         self.extraData = extraData
+        self.delay = delay
 
         if dictRepr:
             self.id         = dictRepr[ MessageGetTaskResult.ID_STR ]
             self.extraData  = dictRepr[ MessageGetTaskResult.EXTRA_DATA_STR ]
+            self.delay      = dictRepr[ MessageGetTaskResult.DELAY_STR ]
 
     def dictRepr(self):
         return {    MessageGetTaskResult.ID_STR : self.id,
-                    MessageGetTaskResult.EXTRA_DATA_STR: self.extraData  }
+                    MessageGetTaskResult.EXTRA_DATA_STR: self.extraData,
+                    MessageGetTaskResult.DELAY_STR: self.delay  }
 
 class MessageTaskResult( Message ):
 
@@ -356,31 +360,6 @@ class MessageTaskResult( Message ):
         return {    MessageTaskResult.ID_STR : self.id,
                     MessageTaskResult.EXTRA_DATA_STR: self.extraData,
                     MessageTaskResult.RESULT_STR: self.result }
-
-class MessageTaskComputed( Message ):
-
-    Type = TASK_MSG_BASE + 7
-
-    ID_STR          = u"ID"
-    EXTRA_DATA_STR  = u"EXTRA_DATA"
-    RESULT_STR      = u"RESULT"
-
-    def __init__( self, id = 0, extraData = {}, result = None, dictRepr = None ):
-        Message.__init__(self, MessageTaskComputed.Type)
-
-        self.id = id
-        self.extraData = extraData
-        self.result = result
-
-        if dictRepr:
-            self.id         = dictRepr[ MessageTaskComputed.ID_STR ]
-            self.extraData  = dictRepr[ MessageTaskComputed.EXTRA_DATA_STR ]
-            self.result     = dictRepr[ MessageTaskComputed.RESULT_STR ]
-
-    def dictRepr(self):
-        return {    MessageTaskComputed.ID_STR : self.id,
-                    MessageTaskComputed.EXTRA_DATA_STR: self.extraData,
-                    MessageTaskComputed.RESULT_STR: self.result }
 
 class MessageGetResource( Message ):
 
@@ -495,7 +474,6 @@ def initMessages():
     MessageGetPeers()
     MessageGetTasks()
     MessagePeers()
-    MessageTaskComputed()
     MessageTasks()
     MessageTaskToCompute()
     MessageWantToComputeTask()
@@ -504,6 +482,9 @@ def initMessages():
     MessageKillNode()
     MessageGetResource()
     MessageResource()
+    MessageReportComputedTask()
+    MessageTaskResult()
+    MessageGetTaskResult()
 
 
 if __name__ == "__main__":

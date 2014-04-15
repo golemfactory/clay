@@ -76,3 +76,8 @@ class Task:
     @abc.abstractmethod
     def getProgress( self ):
         return # Implement in derived class
+
+    #######################
+    @abc.abstractmethod
+    def acceptResultsDelay( self ):
+        return 0.0

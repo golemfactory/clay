@@ -18,6 +18,8 @@ class TaskManager:
 
         self.env            = TaskManagerEnvironment( "res", self.clientUid )
 
+        self.waitingResukts = []
+
         self.resourceManager = ResourcesManager( self.env, self )
 
     #######################
@@ -94,3 +96,10 @@ class TaskManager:
     #######################
     def prepareResource( self, taskId, resourceHeader ):
         return self.resourceManager.prepareResourceDelta( taskId, resourceHeader )
+
+    #######################
+    def acceptResultsDelay( self, taskId ):
+        if taskId in self.tasks:
+            return self.tasks[ taskId ].acceptResultsDelay()
+        else:
+            return -1.0

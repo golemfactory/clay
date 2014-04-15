@@ -1,5 +1,5 @@
 
-from Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageTaskComputed, MessageGetResource, MessageResource
+from Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult
 from TaskComputer import TaskComputer
 from TaskConnState import TaskConnState
 import time
@@ -33,8 +33,8 @@ class TaskSession:
         self.conn.fileMode = True
 
     ##########################
-    def sendTaskResults( self, id, extraData, taskResult ):
-        self.__send( MessageTaskComputed( id, extraData, taskResult ) )
+    def sendReportComputedTask( taskId, extraData ):
+        self.__send( MessageReportComputedTask( taskId, extraData ) )
 
     ##########################
     def interpret( self, msg ):
@@ -68,6 +68,28 @@ class TaskSession:
             self.taskComputer.taskRequestRejected( msg.taskId, msg.reason )
             self.taskServer.removeTaskHeader( msg.taskId )
             self.dropped()
+
+        elif type == MessageReportComputedTask.Type:
+            delay = self.taskManager.acceptResultsDelay( msg.taskId )
+
+            if delay == -1.0:
+                self.dropped()
+            elif delay == 0.0:
+                self.conn.sendMessage( MessageGetTaskResult( delay ) )
+            else:
+                self.conn.sendMessage( MessageGetTaskResult( delay ) )
+                self.dropped()
+
+        elif type == MessageGetTaskResult.Type:
+            res = self.taskServer.getWaitingTaskResult( msg.taskId, msg.extraData )
+            if res:
+                if msg.delay == 0.0:
+                    self.__send( MessageTaskResult( res.taskId, res.extraData, res.result ) )
+                    self.taskServer.taskResultSent( res.taskId, res.extraData )
+                else:
+                    res.lastSendingTrial = time()
+                    res.delayTime = msg.delay
+                    self.dropped()
 
         elif type == MessageTaskComputed.Type:
             self.taskServer.taskManager.computedTaskReceived( msg.id, msg.extraData, msg.result )

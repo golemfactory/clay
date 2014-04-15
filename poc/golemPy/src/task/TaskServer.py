@@ -24,7 +24,7 @@ class TaskServer:
 
         self.lastMessages       = []
 
-        self.resultsWaitingForSending = {}
+        self.resultsToSend      = {}
 
         self.__startAccepting()
 
@@ -65,7 +65,11 @@ class TaskServer:
         
         if taskId in self.taskHeaders:
             theader = self.taskHeaders[ taskId ]
-            self.__connectAndSendTaskResults( theader.taskOwnerAddress, theader.taskOwnerPort, taskId, extraData, results )
+            if ( taskId, extraData ) not in self.resultsToSend:
+                self.resultsToSend[ ( taskId, extraData ) ] = WaitingTaskResult( taskId, extraData, result, 0.0, 0.0 )
+            else:
+                assert False
+
             return True
         else:
             return False
@@ -128,6 +132,19 @@ class TaskServer:
     def getLastMessages( self ):
         return self.lastMessages
 
+    #############################
+    def getWaitingTaskResult( self, taskId, extraData ):
+        if ( taskId, extraData ) in self.resultsToSend:
+            return self.resultsToSend[ ( taskId, extraData ) ]
+        else:
+            return None
+
+    #############################
+    def taskResultSent( self, taskId, extraData ):
+        if ( taskId, extraData ) in self.resultsToSend:
+            del self.resultsToSend[ ( taskId, extraData ) ]
+        else:
+            assert False
 
     #############################
     # PRIVATE SECTION
@@ -188,35 +205,29 @@ class TaskServer:
         self.removeTaskHeader( taskId )
 
     #############################   
-    def __connectAndSendTaskResults( self, address, port, taskId, extraData, results ):
+    def __connectAndSendTaskResults( self, address, port, waitingTaskResult ):
         print "Connecting to host {} : {}".format( address ,port )
         
-        Network.connect( address, port, TaskSession, self.__connectionForTaskResultEstablished, self.__connectionForTaskResultFailure, taskId, extraData, results )
+        Network.connect( address, port, TaskSession, self.__connectionForTaskResultEstablished, self.__connectionForTaskResultFailure, waitingTaskResult )
 
     #############################
-    def __connectionForTaskResultEstablished( self, session, taskId, extraData, results ):
+    def __connectionForTaskResultEstablished( self, session, waitingTaskResult ):
 
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
 
-        self.taskSeesions[ taskId ] = session
+        self.taskSeesions[ waitingTaskResult.taskId ] = session
         
-        session.sendTaskResults( taskId, extraData, results )
-
-        session.dropped()
+        session.sendReportComputedTask( waitingTaskResult.taskId, waitingTaskResult.extraData )
 
     #############################
-    def __connectionForTaskResultFailure( self, taskId, extraData, results ):
-        print "Cannot connect to task {} owner".format( taskId )
-        print "Removing task {} from task list".format( taskId )
+    def __connectionForTaskResultFailure( self, waitingTaskResult ):
+        print "Cannot connect to task {} owner".format( waitingTaskResult.taskId )
+        print "Removing task {} from task list".format( waitingTaskResult.taskId )
         
-        if ( taskId, extraData ) not in self.resultsWaitingForSending:
-            self.resultsWaitingForSending[ ( taskId, extraData ) ] = ( results, time.time() )             
-        else:
-            if time.time() - self.resultsWaitingForSending[ ( taskId, extraData ) ][ 1 ] > self.configDesc.maxmaxResultsSendignDelay:
-                self.removeTaskHeader( taskId )
-                del self.resultsWaitingForSending[ ( taskId, extraData ) ]
+        waitingTaskResult.lastSendingTrial  = time.time()
+        waitingTaskResult.delayTime         = self.configDesc.maxResultsSendignDelay
 
     #############################
     def __connectionForResourceRequestEstablished( self, session, taskId, resourceHeader ):
@@ -249,9 +260,21 @@ class TaskServer:
         self.taskManager.removeOldTasks()
 
     def __sendWaitingResults( self ):
-        for wr in self.resultsWaitingForSending:
-            self.sendResults( wr[ 0 ], wr[ 1 ], self.resultsWaitingForSending[ wr ][ 0 ] )
+        for wtr in self.resultsToSend:
+            taskId = self.resultsToSend[ wtr ].taskId
 
+            if taskId in self.taskHeaders:
+                theader = self.taskHeaders[ taskId ]
+                self.__connectAndSendTaskResults( theader.taskOwnerAddress, theader.taskOwnerPort, self.resultsToSend[ wtr ] )
+
+class WaitingTaskResult:
+    #############################
+    def __init__( self, taskId, extraData, result, lastSendingTrial, delayTime ):
+        self.taskId             = taskId
+        self.extraData          = extraData
+        self.result             = result
+        self.lastSendingTrial   = lastSendingTrial
+        self.delayTime          = delayTime
 
 from twisted.internet.protocol import Factory
 from TaskConnState import TaskConnState
