@@ -129,7 +129,7 @@ class SimpleConfig:
         print "Generating fresh UUID for {} ->".format( self.getNodeConfig().section() ), 
         uajdi = SimpleAuth.generateUUID()
         print " {}".format( uajdi.get_hex() )
-        self.getNodeConfig().setClientUuid( uajdi.get_hex() )
+        self.getNodeConfig().setClientUid( uajdi.get_hex() )
 
         self.__writeOptions( cfg )
    

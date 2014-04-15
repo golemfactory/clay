@@ -33,7 +33,7 @@ class TaskSession:
         self.conn.fileMode = True
 
     ##########################
-    def sendReportComputedTask( taskId, extraData ):
+    def sendReportComputedTask( self, taskId, extraData ):
         self.__send( MessageReportComputedTask( taskId, extraData ) )
 
     ##########################
@@ -87,14 +87,10 @@ class TaskSession:
                     self.__send( MessageTaskResult( res.taskId, res.extraData, res.result ) )
                     self.taskServer.taskResultSent( res.taskId, res.extraData )
                 else:
-                    res.lastSendingTrial = time()
-                    res.delayTime = msg.delay
+                    res.lastSendingTrial    = time()
+                    res.delayTime           = msg.delay
+                    res.alreadySending      = False
                     self.dropped()
-
-        elif type == MessageTaskComputed.Type:
-            self.taskServer.taskManager.computedTaskReceived( msg.id, msg.extraData, msg.result )
-            # Add message with confirmation that result is accepted
-            self.dropped()
 
         elif type == MessageGetResource.Type:
             resFilePath = self.taskManager.prepareResource( msg.taskId, pickle.loads( msg.resourceHeader ) )
