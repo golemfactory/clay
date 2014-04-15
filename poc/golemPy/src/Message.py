@@ -341,25 +341,26 @@ class MessageTaskResult( Message ):
 
     Type = TASK_MSG_BASE + 6
 
-    ID_STR          = u"ID"
+    TASK_ID_STR     = u"TASK_ID"
     EXTRA_DATA_STR  = u"EXTRA_DATA"
     RESULT_STR      = u"RESULT"
 
-    def __init__( self, id = 0, extraData = {}, dictRepr = None ):
+    def __init__( self, taskId = 0, extraData = {}, result = None, dictRepr = None ):
         Message.__init__(self, MessageTaskResult.Type)
 
-        self.id = id
-        self.extraData = extraData
+        self.taskId     = taskId
+        self.extraData  = extraData
+        self.result     = result
 
         if dictRepr:
-            self.id         = dictRepr[ MessageTaskResult.ID_STR ]
+            self.taskId     = dictRepr[ MessageTaskResult.TASK_ID_STR ]
             self.extraData  = dictRepr[ MessageTaskResult.EXTRA_DATA_STR ]
             self.result     = dictRepr[ MessageTaskResult.RESULT_STR ]
 
     def dictRepr(self):
-        return {    MessageTaskResult.ID_STR : self.id,
-                    MessageTaskResult.EXTRA_DATA_STR: self.extraData,
-                    MessageTaskResult.RESULT_STR: self.result }
+        return {    MessageTaskResult.TASK_ID_STR       : self.taskId,
+                    MessageTaskResult.EXTRA_DATA_STR    : self.extraData,
+                    MessageTaskResult.RESULT_STR        : self.result }
 
 class MessageGetResource( Message ):
 

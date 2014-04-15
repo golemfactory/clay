@@ -75,9 +75,9 @@ class TaskSession:
             if delay == -1.0:
                 self.dropped()
             elif delay == 0.0:
-                self.conn.sendMessage( MessageGetTaskResult( delay ) )
+                self.conn.sendMessage( MessageGetTaskResult( msg.taskId, msg.extraData, delay ) )
             else:
-                self.conn.sendMessage( MessageGetTaskResult( delay ) )
+                self.conn.sendMessage( MessageGetTaskResult( msg.taskId, msg.extraData, delay ) )
                 self.dropped()
 
         elif type == MessageGetTaskResult.Type:
@@ -91,6 +91,10 @@ class TaskSession:
                     res.delayTime           = msg.delay
                     res.alreadySending      = False
                     self.dropped()
+
+        elif type == MessageTaskResult.Type:
+            self.taskManager.computedTaskReceived( msg.taskId, msg.extraData, msg.result )
+            self.dropped()
 
         elif type == MessageGetResource.Type:
             resFilePath = self.taskManager.prepareResource( msg.taskId, pickle.loads( msg.resourceHeader ) )
