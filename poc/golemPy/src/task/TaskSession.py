@@ -32,8 +32,8 @@ class TaskSession:
         self.conn.fileMode = True
 
     ##########################
-    def sendReportComputedTask( self, taskId, extraData ):
-        self.__send( MessageReportComputedTask( taskId, extraData ) )
+    def sendReportComputedTask( self, subTaskId ):
+        self.__send( MessageReportComputedTask( subTaskId ) )
 
     ##########################
     def interpret( self, msg ):
@@ -60,7 +60,7 @@ class TaskSession:
                 self.conn.sendMessage( MessageCannotAssignTask( msg.taskId, "No more subtasks in {}".format( msg.taskId ) ) )
 
         elif type == MessageTaskToCompute.Type:
-            self.taskComputer.taskGiven(  msg.subTaskId, msg.sourceCode, msg.extraData, msg.shortDescr )
+            self.taskComputer.taskGiven(  msg.subTaskId, msg.sourceCode, msg.extraData, msg.shortDescr, msg.returnAddress, msg.returnPort )
             self.dropped()
 
         elif type == MessageCannotAssignTask.Type:
@@ -74,17 +74,17 @@ class TaskSession:
             if delay == -1.0:
                 self.dropped()
             elif delay == 0.0:
-                self.conn.sendMessage( MessageGetTaskResult( msg.subTaskId, msg.extraData, delay ) )
+                self.conn.sendMessage( MessageGetTaskResult( msg.subTaskId, delay ) )
             else:
-                self.conn.sendMessage( MessageGetTaskResult( msg.subTaskId, msg.extraData, delay ) )
+                self.conn.sendMessage( MessageGetTaskResult( msg.subTaskId, delay ) )
                 self.dropped()
 
         elif type == MessageGetTaskResult.Type:
             res = self.taskServer.getWaitingTaskResult( msg.subTaskId )
             if res:
                 if msg.delay == 0.0:
-                    self.__send( MessageTaskResult( res.subTaskId, res.extraData, res.result ) )
-                    self.taskServer.taskResultSent( res.subTaskId, res.extraData )
+                    self.__send( MessageTaskResult( res.subTaskId, res.result ) )
+                    self.taskServer.taskResultSent( res.subTaskId )
                 else:
                     res.lastSendingTrial    = time()
                     res.delayTime           = msg.delay
@@ -92,7 +92,7 @@ class TaskSession:
                     self.dropped()
 
         elif type == MessageTaskResult.Type:
-            self.taskManager.computedTaskReceived( msg.subTaskId, msg.extraData, msg.result )
+            self.taskManager.computedTaskReceived( msg.subTaskId, msg.result )
             self.dropped()
 
         elif type == MessageGetResource.Type:
@@ -103,6 +103,7 @@ class TaskSession:
                 print "Task {} has no resource".format( msg.subTaskId )
                 self.conn.transport.write( struct.pack( "!L", 0 ) )
                 self.dropped()
+                return
 
             size = os.path.getsize( resFilePath )
 

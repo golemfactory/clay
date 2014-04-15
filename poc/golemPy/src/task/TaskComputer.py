@@ -35,11 +35,11 @@ class TaskComputer:
         self.curShortDescr          = None
 
     ######################
-    def taskGiven( self, subTaskId, srcCode, extraData, shortDescr ):
+    def taskGiven( self, subTaskId, srcCode, extraData, shortDescr, returnAddress, returnPort ):
         if subTaskId not in self.assignedSubTasks:
-            self.assignedSubTasks[ subTaskId ] = AssignedSubTask( srcCode, extraData, shortDescr, ownerAddress, ownerPort )
+            self.assignedSubTasks[ subTaskId ] = AssignedSubTask( srcCode, extraData, shortDescr, returnAddress, returnPort )
 
-            self.__requestResource( subTaskId, self.resourceManager.getResourceHeader( subTaskId ) )
+            self.__requestResource( subTaskId, self.resourceManager.getResourceHeader( subTaskId ), returnAddress, returnPort )
             return True
         else:
             return False
@@ -85,8 +85,8 @@ class TaskComputer:
     def getProgresses( self ):
         ret = {}
         for c in self.currentComputations:
-            tcss = TaskChunkStateSnapshot( c.getTaskId(), 0.0, 0.0, c.getProgress(), c.getTaskShortDescr()  ) #FIXME: cpu power and estimated time left
-            ret[ c.taskId ] = tcss
+            tcss = TaskChunkStateSnapshot( c.getSubTaskId(), 0.0, 0.0, c.getProgress(), c.getTaskShortDescr()  ) #FIXME: cpu power and estimated time left
+            ret[ c.subTaskId ] = tcss
 
         return ret
 
@@ -95,8 +95,8 @@ class TaskComputer:
         self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance )
 
     ######################
-    def __requestResource( self, subTaskId, resourceHeader ):
-        self.waitingForTask = self.taskServer.requestResource( subTaskId, resourceHeader )
+    def __requestResource( self, subTaskId, resourceHeader, returnAddress, returnPort ):
+        self.waitingForTask = self.taskServer.requestResource( subTaskId, resourceHeader, returnAddress, returnPort )
 
     ######################
     def __computeTask( self, subTaskId, srcCode, extraData, shortDescr ):
@@ -117,12 +117,12 @@ class AssignedSubTask:
 
 class TaskThread( Thread ):
     ######################
-    def __init__( self, taskComputer, taskId, srcCode, extraData, shortDescr, resPath, tmpPath ):
+    def __init__( self, taskComputer, subTaskId, srcCode, extraData, shortDescr, resPath, tmpPath ):
         super( TaskThread, self ).__init__()
 
         self.taskComputer   = taskComputer
         self.vm             = None
-        self.taskId         = taskId
+        self.subTaskId      = subTaskId
         self.srcCode        = srcCode
         self.extraData      = extraData
         self.shortDescr     = shortDescr
@@ -133,8 +133,8 @@ class TaskThread( Thread ):
         self.lock           = Lock()
 
     ######################
-    def getTaskId( self ):
-        return self.taskId
+    def getSubTaskId( self ):
+        return self.subTaskId
 
     ######################
     def getTaskShortDescr( self ):
@@ -162,6 +162,6 @@ class TaskThread( Thread ):
 
 class PyTaskThread( TaskThread ):
     ######################
-    def __init__( self, taskComputer, taskId, srcCode, extraData, shortDescr, resPath, tmpPath ):
-        super( PyTaskThread, self ).__init__( taskComputer, taskId, srcCode, extraData, shortDescr, resPath, tmpPath )
+    def __init__( self, taskComputer, subTaskId, srcCode, extraData, shortDescr, resPath, tmpPath ):
+        super( PyTaskThread, self ).__init__( taskComputer, subTaskId, srcCode, extraData, shortDescr, resPath, tmpPath )
         self.vm = PythonVM()

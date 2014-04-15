@@ -68,6 +68,6 @@ class EmptyManagerLogic:
     ########################
     def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
         hash = random.getrandbits(128)
-        th = TaskHeader( "222222", "", 0 )    
+        th = TaskHeader( uid, "222222", "", 0 )    
         self.managerServer.sendNewTask( uid, PbrtRenderTask( th, "", 32, 16, 2, "test_chunk_", "resources/city-env.pbrt" ) )
         #self.managerServer.sendNewTask( uid, VRayTracingTask( w, h, numSamplesPerPixel, th, fileName ) )

@@ -44,28 +44,22 @@ class TaskServer:
 
             theader = self.taskHeaders.values()[ tn ]
 
-            self.__connectAndSendTaskRequest( theader.taskOwnerAddress, theader.taskOwnerPort, theader.id, estimatedPerformance )
+            self.__connectAndSendTaskRequest( theader.taskOwnerAddress, theader.taskOwnerPort, theader.taskId, estimatedPerformance )
 
-            return theader.id
+            return theader.taskId
         else:
             return 0
 
     #############################
-    def requestResource( self, taskId, subTaskId, resourceHeader ):
-        
-        if taskId in self.taskHeaders:
-            theader = self.taskHeaders[ taskId ]
-
-            self.__connectAndSendResourceRequest( theader.taskOwnerAddress, theader.taskOwnerPort, theader.id, subTaskId, resourceHeader )
-            return theader.id
-        else:
-            return 0
+    def requestResource( self, subTaskId, resourceHeader, address, port ):
+        self.__connectAndSendResourceRequest( address, port, subTaskId, resourceHeader )
+        return subTaskId
 
     #############################
     def sendResults( self, subTaskId, result, ownerAddress, ownerPort ):
         
         if subTaskId not in self.resultsToSend:
-            self.resultsToSend[ hash ] = WaitingTaskResult( subTaskId, result, 0.0, 0.0, ownerAddress, ownerPort )
+            self.resultsToSend[ subTaskId ] = WaitingTaskResult( subTaskId, result, 0.0, 0.0, ownerAddress, ownerPort )
         else:
             assert False
 
@@ -87,10 +81,11 @@ class TaskServer:
         ret = []
 
         for th in ths:
-            ret.append({    "id"            : th.id, 
+            ret.append({    "id"            : th.taskId, 
                             "address"       : th.taskOwnerAddress,
                             "port"          : th.taskOwnerPort,
-                            "ttl"           : th.ttl })
+                            "ttl"           : th.ttl,
+                            "clientId"      : th.clientId })
 
         return ret
 
@@ -101,7 +96,7 @@ class TaskServer:
             if id not in self.taskHeaders.keys(): # dont have it
                 if id not in self.taskManager.tasks.keys(): # It is not my task id
                     print "Adding task {}".format( id )
-                    self.taskHeaders[ id ] = TaskHeader( id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr[ "ttl" ] )
+                    self.taskHeaders[ id ] = TaskHeader( thDictRepr[ "clientId" ], id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr[ "ttl" ]  )
             return True
         except:
             print "Wrong task header received"
@@ -137,7 +132,7 @@ class TaskServer:
             return None
 
     #############################
-    def taskResultSent( self, taskId, extraData ):
+    def taskResultSent( self, taskId ):
         if subTaskId in self.resultsToSend:
             del self.resultsToSend[ subTaskId ]
         else:
@@ -175,8 +170,8 @@ class TaskServer:
         Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, taskId, estimatedPerformance )
 
     #############################   
-    def __connectAndSendResourceRequest( self, address ,port, taskId, resourceHeader ):
-        Network.connect( address, port, TaskSession, self.__connectionForResourceRequestEstablished, self.__connectionForResourceRequestFailure, taskId, resourceHeader )
+    def __connectAndSendResourceRequest( self, address ,port, subTaskId, resourceHeader ):
+        Network.connect( address, port, TaskSession, self.__connectionForResourceRequestEstablished, self.__connectionForResourceRequestFailure, subTaskId, resourceHeader )
 
 
     #############################
@@ -208,36 +203,37 @@ class TaskServer:
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
 
-        self.taskSeesions[ waitingTaskResult.taskId ] = session
+        self.taskSeesions[ waitingTaskResult.subTaskId ] = session
         
-        session.sendReportComputedTask( waitingTaskResult.taskId, waitingTaskResult.extraData )
+        session.sendReportComputedTask( waitingTaskResult.subTaskId )
 
     #############################
     def __connectionForTaskResultFailure( self, waitingTaskResult ):
-        print "Cannot connect to task {} owner".format( waitingTaskResult.taskId )
-        print "Removing task {} from task list".format( waitingTaskResult.taskId )
+        print "Cannot connect to task {} owner".format( waitingTaskResult.subTaskId )
+        print "Removing task {} from task list".format( waitingTaskResult.subTaskId )
         
         waitingTaskResult.lastSendingTrial  = time.time()
         waitingTaskResult.delayTime         = self.configDesc.maxResultsSendignDelay
         waitingTaskResult.alreadySending    = False
 
     #############################
-    def __connectionForResourceRequestEstablished( self, session, taskId, resourceHeader ):
+    def __connectionForResourceRequestEstablished( self, session, subTaskId, resourceHeader ):
 
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
-        self.taskSeesions[ taskId ] = session            
-        session.requestResource( taskId, resourceHeader )
+        self.taskSeesions[ subTaskId ] = session
+        session.taskId = subTaskId
+        session.requestResource( subTaskId, resourceHeader )
 
     #############################
-    def __connectionForResourceRequestFailure( self, session, taskId, resourceHeader ):
-        print "Cannot connect to task {} owner".format( taskId )
-        print "Removing task {} from task list".format( taskId )
+    def __connectionForResourceRequestFailure( self, session, subTaskId, resourceHeader ):
+        print "Cannot connect to task {} owner".format( subTaskId )
+        print "Removing task {} from task list".format( subTaskId )
         
-        self.taskComputer.resourceRequestRejected( taskId, "Connection failed" )
+        self.taskComputer.resourceRequestRejected( subTaskId, "Connection failed" )
         
-        self.removeTaskHeader( taskId )
+        self.removeTaskHeader( subTaskId )
          
     #############################
     def __removeOldTasks( self ):
@@ -257,19 +253,15 @@ class TaskServer:
 
             if not waitingTaskResult.alreadySending:
                 if time.time() - waitingTaskResult.lastSendingTrial > waitingTaskResult.delayTime:
-                    taskId = waitingTaskResult.taskId
+                    subTaskId = waitingTaskResult.subTaskId
 
-                    if taskId in self.taskHeaders:
-                        theader = self.taskHeaders[ taskId ]
-                        waitingTaskResult.alreadySending = True
-                        self.__connectAndSendTaskResults( theader.taskOwnerAddress, theader.taskOwnerPort, waitingTaskResult )
+                    waitingTaskResult.alreadySending = True
+                    self.__connectAndSendTaskResults( waitingTaskResult.ownerAddress, waitingTaskResult.ownerPort, waitingTaskResult )
 
 class WaitingTaskResult:
     #############################
-    def __init__( self, taskId, subTaskId, extraData, result, lastSendingTrial, delayTime, ownerAddress, ownerPort  ):
-        self.taskId             = taskId
+    def __init__( self, subTaskId, result, lastSendingTrial, delayTime, ownerAddress, ownerPort  ):
         self.subTaskId          = subTaskId
-        self.extraData          = extraData
         self.result             = result
         self.lastSendingTrial   = lastSendingTrial
         self.delayTime          = delayTime

@@ -4,7 +4,6 @@ import time
 
 from TaskBase import Task
 from NodeStateSnapshot import LocalTaskStateSnapshot
-from ResourcesManager import ResourcesManager
 from Environment import TaskManagerEnvironment
 
 class TaskManager:
@@ -20,19 +19,17 @@ class TaskManager:
 
         self.subTask2TaskMapping = {}
 
-        self.resourceManager = ResourcesManager( self.env, self )
-
     #######################
     def addNewTask( self, task):
-        assert task.header.id not in self.tasks
+        assert task.header.taskId not in self.tasks
 
         task.header.taskOwnerAddress = self.listenAddress
         task.header.taskOwnerPort = self.listenPort
 
         task.initialize()
-        self.tasks[ task.header.id ] = task
+        self.tasks[ task.header.taskId ] = task
 
-        self.env.clearTemporary( task.header.id )
+        self.env.clearTemporary( task.header.taskId )
 
     #######################
     def getNextSubTask( self, taskId, estimatedPerformance ):
@@ -60,9 +57,9 @@ class TaskManager:
         return ret
 
     #######################
-    def computedTaskReceived( self, subTaskId, extraData, result ):
+    def computedTaskReceived( self, subTaskId, result ):
         if subTaskId in self.subTask2TaskMapping:
-            self.tasks[ self.subTask2TaskMapping[ subTaskId ] ].computationFinished( subTaskId, extraData, result, self.env )
+            self.tasks[ self.subTask2TaskMapping[ subTaskId ] ].computationFinished( subTaskId, result, self.env )
             return True
         else:
             print "It is not my task id {}".format( subTaskId )
@@ -85,8 +82,8 @@ class TaskManager:
 
         for t in self.tasks.values():
             if t.getProgress() < 1.0:
-                ltss = LocalTaskStateSnapshot( t.header.id, t.getTotalTasks(), t.getTotalChunks(), t.getActiveTasks(), t.getActiveChunks(), t.getChunksLeft(), t.getProgress(), t.shortExtraDataRepr( 2200.0 ) )
-                tasksProgresses[ t.header.id ] = ltss
+                ltss = LocalTaskStateSnapshot( t.header.taskId, t.getTotalTasks(), t.getTotalChunks(), t.getActiveTasks(), t.getActiveChunks(), t.getChunksLeft(), t.getProgress(), t.shortExtraDataRepr( 2200.0 ) )
+                tasksProgresses[ t.header.taskId ] = ltss
 
         return tasksProgresses
 

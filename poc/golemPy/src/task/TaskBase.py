@@ -4,12 +4,13 @@ import abc
 
 class TaskHeader:
     #######################
-    def __init__( self, id, taskOwnerAddress, taskOwnerPort, ttl = 0.0 ):
-        self.id = id
+    def __init__( self, clientId, taskId, taskOwnerAddress, taskOwnerPort, ttl = 0.0 ):
+        self.taskId = taskId
         self.taskOwnerAddress = taskOwnerAddress
         self.taskOwnerPort = taskOwnerPort
         self.lastChecking = time.time()
         self.ttl = ttl
+        self.clientId = clientId
 
 class Task:
     #######################
@@ -44,7 +45,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def computationFinished( self, subTaskId, extraData, taskResult, env = None ):
+    def computationFinished( self, subTaskId, taskResult, env = None ):
         return # Implement in derived class
 
     #######################
@@ -84,5 +85,5 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def prepareResourceDelta( subTaskId, resourceHeader ):
+    def prepareResourceDelta( self, subTaskId, resourceHeader ):
         return None

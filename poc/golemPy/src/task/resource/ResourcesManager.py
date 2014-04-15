@@ -46,12 +46,12 @@ class ResourcesManager:
         return taskResHeader
 
     ###################
-    def prepareResourceDelta( self, taskId, resourceHeader ):
+    def prepareResourceDelta( self, subTaskId, resourceHeader ):
 
-        dirName = self.getResourceDir( taskId )
+        dirName = self.getResourceDir( subTaskId )
 
         if os.path.exists( dirName ):
-            return prepareDeltaZip( dirName, resourceHeader, self.getTemporaryDir( taskId ) )
+            return prepareDeltaZip( dirName, resourceHeader, self.getTemporaryDir( subTaskId ) )
         else:
             return ""
 

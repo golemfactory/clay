@@ -2,6 +2,7 @@
 from TaskBase import Task, TaskHeader
 
 from taskablerenderer import TaskableRenderer, RenderTaskResult, RenderTaskDesc
+from Resource import prepareDeltaZip
 
 from takscollector import PbrtTaksCollector
 import os
@@ -31,17 +32,17 @@ class RayTracingTask( Task ):
         self.height = height
         self.splitIndex = 0
         self.returnAddress = returnAddress
-        self.port = returnPort
+        self.returnPort = returnPort
 
     #######################
     def queryExtraData( self, perfIndex ):
-        hash = random.getrandbits(128)
+        hash = "{}".format( random.getrandbits(128) )
         return {    "startX" : 0,
                     "startY" : 0,
                     "width" : self.width,
                     "height" : self.height,
                     "img_width" : self.width,
-                    "img_height" : self.height }, hash, self.returnAddress, self.port
+                    "img_height" : self.height }, hash, self.returnAddress, self.returnPort
 
     #######################
     def shortExtraDataRepr( self, perfIndex ):
@@ -59,8 +60,8 @@ class RayTracingTask( Task ):
         self.splitIndex += 1
 
     #######################
-    def computationFinished( self, subTaskId, extraData, taskResult, env = None ):
-        print "Receive computed task id:{} extraData:{} \n result:{}".format( self.taskHeader.id, extraData, taskResult )
+    def computationFinished( self, subTaskId, taskResult, env = None ):
+        print "Receive computed task id:{} \n result:{}".format( self.taskHeader.taskId, taskResult )
 
 TIMESLC  = 45.0
 TIMEOUT  = 100000.0
@@ -142,7 +143,7 @@ class VRayTracingTask( Task ):
         self.lastExtraData = ""
         self.fileName = fileName
         self.returnAddress = returnAddress
-        self.port = returnPort
+        self.returnPort = returnPort
 
     #######################
     def __initRenderer( self ):
@@ -166,8 +167,8 @@ class VRayTracingTask( Task ):
                     "task_data" : task_data
                     }
 
-        hash = random.getrandbits(128)
-        return self.lastExtraData, hash, self.returnAddress, self.port
+        hash = "{}".format( random.getrandbits(128) )
+        return self.lastExtraData, hash, self.returnAddress, self.returnPort
 
     #######################
     def shortExtraDataRepr( self, perfIndex ):
@@ -186,12 +187,13 @@ class VRayTracingTask( Task ):
         pass
 
     #######################
-    def computationFinished( self, subTaskId, extraData, taskResult, env = None ):
-        dest = RenderTaskDesc( 0, extraData[ "x" ], extraData[ "y" ], extraData[ "w" ], extraData[ "h" ], extraData[ "num_pixels" ] ,extraData[ "num_samples" ])
-        res = RenderTaskResult( dest, taskResult )
-        self.taskableRenderer.taskFinished( res )
-        if self.taskableRenderer.isFinished():
-            VRayTracingTask.__save_image( self.fileName + ".ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples ) #FIXME: change file name here
+    def computationFinished( self, subTaskId, taskResult, env = None ):
+        #dest = RenderTaskDesc( 0, extraData[ "x" ], extraData[ "y" ], extraData[ "w" ], extraData[ "h" ], extraData[ "num_pixels" ] ,extraData[ "num_samples" ])
+        #res = RenderTaskResult( dest, taskResult )
+        #self.taskableRenderer.taskFinished( res )
+        #if self.taskableRenderer.isFinished():
+        #    VRayTracingTask.__save_image( self.fileName + ".ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples ) #FIXME: change file name here
+        pass
 
     #######################
     def getTotalTasks( self ):
@@ -258,9 +260,9 @@ class PbrtRenderTask( Task ):
 
         self.collector          = PbrtTaksCollector()
         self.numTasksReceived   = 0
-        self.returnAddress = returnAddress
-        self.port = returnPort
-
+        self.returnAddress      = returnAddress
+        self.returnPort         = returnPort
+        self.subTasksGiven      = {}
 
     def initialize( self ):
         pass
@@ -280,9 +282,10 @@ class PbrtRenderTask( Task ):
                                     "sceneFile" : self.sceneFile
                                 }
 
-        hash = random.getrandbits(128)
+        hash = "{}".format( random.getrandbits(128) )
+        self.subTasksGiven[ hash ] = self.lastExtraData
         self.lastTask = endTask # TODO: Should depend on performance
-        return self.lastExtraData, hash, self.returnAddress, self.port
+        return self.lastExtraData, hash, self.returnAddress, self.returnPort
 
     #######################
     def shortExtraDataRepr( self, perfIndex ):
@@ -301,9 +304,9 @@ class PbrtRenderTask( Task ):
         pass
 
     #######################
-    def computationFinished( self, subTaskId, extraData, taskResult, env = None ):
+    def computationFinished( self, subTaskId, taskResult, env = None ):
 
-        tmpDir = env.getTaskTemporaryDir( self.header.id )
+        tmpDir = env.getTaskTemporaryDir( self.header.taskId )
 
         if len( taskResult ) > 0:
             for trp in taskResult:
@@ -317,7 +320,7 @@ class PbrtRenderTask( Task ):
                 
 
         if self.numTasksReceived == self.totalTasks:
-            self.collector.finalize().save( "{}.png".format( os.path.join( env.getTaskOutputDir( self.header.id ), "test" ) ), "PNG" )
+            self.collector.finalize().save( "{}.png".format( os.path.join( env.getTaskOutputDir( self.header.taskId ), "test" ) ), "PNG" )
 
     #######################
     def getTotalTasks( self ):
@@ -342,3 +345,16 @@ class PbrtRenderTask( Task ):
     #######################
     def getProgress( self ):
         return float( self.lastTask ) / self.totalTasks
+
+    #######################
+    def prepareResourceDelta( self, subTaskId, resourceHeader ):
+        if subTaskId in self.subTasksGiven:
+            dirName = os.path.join( "res", self.header.clientId, self.header.taskId, "resources" )
+            tmpDir = os.path.join( "res", self.header.clientId, self.header.taskId, "tmp" )
+
+            if os.path.exists( dirName ):
+                return prepareDeltaZip( dirName, resourceHeader, tmpDir )
+            else:
+                return None
+        else:
+            return None

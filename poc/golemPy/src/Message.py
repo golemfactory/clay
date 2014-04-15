@@ -304,45 +304,37 @@ class MessageReportComputedTask( Message ):
     Type = TASK_MSG_BASE + 4
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    EXTRA_DATA_STR  = u"EXTRA_DATA"
 
-    def __init__( self, subTaskId = 0, extraData = {}, dictRepr = None ):
+    def __init__( self, subTaskId = 0, dictRepr = None ):
         Message.__init__(self, MessageReportComputedTask.Type)
 
         self.subTaskId  = subTaskId
-        self.extraData  = extraData
 
         if dictRepr:
             self.subTaskId  = dictRepr[ MessageReportComputedTask.SUB_TASK_ID_STR ]
-            self.extraData  = dictRepr[ MessageReportComputedTask.EXTRA_DATA_STR ]
 
     def dictRepr(self):
-        return {    MessageReportComputedTask.SUB_TASK_ID_STR : self.subTaskId,
-                    MessageReportComputedTask.EXTRA_DATA_STR: self.extraData  }
+        return {    MessageReportComputedTask.SUB_TASK_ID_STR : self.subTaskId }
 
 class MessageGetTaskResult( Message ):
 
     Type = TASK_MSG_BASE + 5
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    EXTRA_DATA_STR  = u"EXTRA_DATA"
     DELAY_STR       = u"DELAY"
 
-    def __init__( self, subTaskId = 0, extraData = {}, delay = 0.0, dictRepr = None ):
+    def __init__( self, subTaskId = 0, delay = 0.0, dictRepr = None ):
         Message.__init__(self, MessageGetTaskResult.Type)
 
         self.subTaskId  = subTaskId
-        self.extraData  = extraData
         self.delay      = delay
 
         if dictRepr:
             self.subTaskId  = dictRepr[ MessageGetTaskResult.SUB_TASK_ID_STR ]
-            self.extraData  = dictRepr[ MessageGetTaskResult.EXTRA_DATA_STR ]
             self.delay      = dictRepr[ MessageGetTaskResult.DELAY_STR ]
 
     def dictRepr(self):
         return {    MessageGetTaskResult.SUB_TASK_ID_STR : self.subTaskId,
-                    MessageGetTaskResult.EXTRA_DATA_STR: self.extraData,
                     MessageGetTaskResult.DELAY_STR: self.delay  }
 
 class MessageTaskResult( Message ):
@@ -350,24 +342,20 @@ class MessageTaskResult( Message ):
     Type = TASK_MSG_BASE + 6
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    EXTRA_DATA_STR  = u"EXTRA_DATA"
     RESULT_STR      = u"RESULT"
 
-    def __init__( self, subTaskId = 0, extraData = {}, result = None, dictRepr = None ):
+    def __init__( self, subTaskId = 0, result = None, dictRepr = None ):
         Message.__init__(self, MessageTaskResult.Type)
 
         self.subTaskId  = subTaskId
-        self.extraData  = extraData
         self.result     = result
 
         if dictRepr:
             self.subTaskId  = dictRepr[ MessageTaskResult.SUB_TASK_ID_STR ]
-            self.extraData  = dictRepr[ MessageTaskResult.EXTRA_DATA_STR ]
             self.result     = dictRepr[ MessageTaskResult.RESULT_STR ]
 
     def dictRepr(self):
         return {    MessageTaskResult.SUB_TASK_ID_STR   : self.subTaskId,
-                    MessageTaskResult.EXTRA_DATA_STR    : self.extraData,
                     MessageTaskResult.RESULT_STR        : self.result }
 
 class MessageGetResource( Message ):
