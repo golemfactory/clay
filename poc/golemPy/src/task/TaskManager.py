@@ -18,7 +18,7 @@ class TaskManager:
 
         self.env            = TaskManagerEnvironment( "res", self.clientUid )
 
-        self.waitingResukts = []
+        self.subTask2TaskMapping = {}
 
         self.resourceManager = ResourcesManager( self.env, self )
 
@@ -39,15 +39,16 @@ class TaskManager:
         if taskId in self.tasks:
             task = self.tasks[ taskId ]
             if task.needsComputation():
-                ed = task.queryExtraData( estimatedPerformance )
+                ed, subTaskId, returnAddress, returnPort  = task.queryExtraData( estimatedPerformance )
                 if ed:
                     sd = task.shortExtraDataRepr( estimatedPerformance )
-                    return taskId, task.srcCode, ed, sd
+                    self.subTask2TaskMapping[ subTaskId ] = taskId
+                    return subTaskId, task.srcCode, ed, sd, returnAddress, returnPort
             print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
-            return 0, "", {}, ""
+            return 0, "", 0, {}, ""
         else:
             print "Cannot find task {} in my tasks".format( taskId )
-            return 0, "", {}, ""
+            return 0, "", 0, {}, ""
 
     #######################
     def getTasksHeaders( self ):
@@ -59,12 +60,12 @@ class TaskManager:
         return ret
 
     #######################
-    def computedTaskReceived( self, taskId, extraData, result ):
-        if taskId in self.tasks:
-            self.tasks[ taskId ].computationFinished( extraData, result, self.env )
+    def computedTaskReceived( self, subTaskId, extraData, result ):
+        if subTaskId in self.subTask2TaskMapping:
+            self.tasks[ self.subTask2TaskMapping[ subTaskId ] ].computationFinished( subTaskId, extraData, result, self.env )
             return True
         else:
-            print "It is not my task id {}".format( taskId )
+            print "It is not my task id {}".format( subTaskId )
             return False
 
     #######################
@@ -90,12 +91,10 @@ class TaskManager:
         return tasksProgresses
 
     #######################
-    def getResource( self, taskId, resourceHeader ):
-        return self.resourceManager.getResourceDelta( taskId, resourceHeader )
-
-    #######################
-    def prepareResource( self, taskId, resourceHeader ):
-        return self.resourceManager.prepareResourceDelta( taskId, resourceHeader )
+    def prepareResource( self, subTaskId, resourceHeader ):
+        if subTaskId in self.subTask2TaskMapping:
+            task = self.tasks[ self.subTask2TaskMapping[ subTaskId ] ]
+            return task.prepareResourceDelta( subTaskId, resourceHeader )
 
     #######################
     def acceptResultsDelay( self, taskId ):

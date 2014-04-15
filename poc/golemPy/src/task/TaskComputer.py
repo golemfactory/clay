@@ -5,6 +5,7 @@ sys.path.append( '../manager')
 from threading import Thread, Lock
 import time
 import os
+from copy import copy
 
 from vm import PythonVM
 from NodeStateSnapshot import TaskChunkStateSnapshot
@@ -28,27 +29,25 @@ class TaskComputer:
 
         self.resourceManager        = ResourcesManager( self.env, self )
 
+        self.assignedSubTasks       = {}
         self.curSrcCode             = ""
         self.curExtraData           = None
         self.curShortDescr          = None
 
     ######################
-    def taskGiven( self, taskId, srcCode, extraData, shortDescr ):
-        if self.waitingForTask:
-            self.__requestResource( taskId, self.resourceManager.getResourceHeader( taskId ) )
-            self.curSrcCode             = srcCode
-            self.curExtraData           = extraData
-            self.curShortDescr          = shortDescr
+    def taskGiven( self, subTaskId, srcCode, extraData, shortDescr ):
+        if subTaskId not in self.assignedSubTasks:
+            self.assignedSubTasks[ subTaskId ] = AssignedSubTask( srcCode, extraData, shortDescr, ownerAddress, ownerPort )
+
+            self.__requestResource( subTaskId, self.resourceManager.getResourceHeader( subTaskId ) )
             return True
         else:
             return False
 
     ######################
-    def resourceGiven( self, taskId ):
-        if self.waitingForTask:
-            #self.resourceManager.updateResource( taskId, resource )
-            self.__computeTask( taskId, self.curSrcCode, self.curExtraData, self.curShortDescr )
-            self.waitingForTask = 0
+    def resourceGiven( self, subTaskId ):
+        if subTaskId in self.assignedSubTasks:
+            self.__computeTask( subTaskId, self.assignedSubTasks[ subTaskId ].srcCode, self.assignedSubTasks[ subTaskId ].extraData, self.assignedSubTasks[ subTaskId ].shortDescr )
             return True
         else:
             return False
@@ -56,26 +55,23 @@ class TaskComputer:
     ######################
     def taskRequestRejected( self, taskId, reason ):
         print "Task {} request rejected: {}".format( taskId, reason )
-        assert self.waitingForTask
-        self.waitingForTask = 0
 
     ######################
-    def resourceRequestRejected( self, taskId, reason ):
-        print "Task {} resource request rejected: {}".format( taskId, reason )
-        assert self.waitingForTask
-        self.waitingForTask = 0
+    def resourceRequestRejected( self, subTaskId, reason ):
+        print "Task {} resource request rejected: {}".format( subTaskId, reason )
+        del self.assignedSubTasks[ subTaskId ]
 
     ######################
     def taskComputed( self, taskThread ):
         with self.lock:
             self.currentComputations.remove( taskThread )
 
-            taskId      = taskThread.taskId
-            extraData   = taskThread.extraData
+            subTaskId   = taskThread.subTaskId
 
             if taskThread.result:
-                print "Task {} computed".format( taskId )
-                self.taskServer.sendResults( taskId, extraData, taskThread.result )
+                print "Task {} computed".format( subTaskId )
+                if subTaskId in self.assignedSubTasks:
+                    self.taskServer.sendResults( subTaskId, taskThread.result, self.assignedSubTasks[ subTaskId ].ownerAddress, self.assignedSubTasks[ subTaskId ].ownerPort )
 
     ######################
     def run( self ):
@@ -99,23 +95,29 @@ class TaskComputer:
         self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance )
 
     ######################
-    def __requestResource( self, taskId, resourceHeader ):
-        self.waitingForTask = self.taskServer.requestResource( taskId, resourceHeader )
+    def __requestResource( self, subTaskId, resourceHeader ):
+        self.waitingForTask = self.taskServer.requestResource( subTaskId, resourceHeader )
 
     ######################
-    def __computeTask( self, taskId, srcCode, extraData, shortDescr ):
-        self.env.clearTemporary( taskId )
-        extraData[ "resourcePath" ] = self.resourceManager.getResourceDir( taskId )
-        extraData[ "tmpPath" ] = self.resourceManager.getTemporaryDir( taskId )
-        tt = PyTaskThread( self, taskId, srcCode, extraData, shortDescr ) 
+    def __computeTask( self, subTaskId, srcCode, extraData, shortDescr ):
+        self.env.clearTemporary( subTaskId )
+        tt = PyTaskThread( self, subTaskId, srcCode, extraData, shortDescr, self.resourceManager.getResourceDir( subTaskId ), self.resourceManager.getTemporaryDir( subTaskId ) ) 
         self.currentComputations.append( tt )
         tt.start()
 
+class AssignedSubTask:
+    ######################
+    def __init__( self, srcCode, extraData, shortDescr, ownerAddress, ownerPort ):
+        self.srcCode        = srcCode
+        self.extraData      = extraData
+        self.shortDescr     = shortDescr
+        self.ownerAddress   = ownerAddress
+        self.ownerPort      = ownerPort
 
 
 class TaskThread( Thread ):
     ######################
-    def __init__( self, taskComputer, taskId, srcCode, extraData, shortDescr ):
+    def __init__( self, taskComputer, taskId, srcCode, extraData, shortDescr, resPath, tmpPath ):
         super( TaskThread, self ).__init__()
 
         self.taskComputer   = taskComputer
@@ -126,6 +128,8 @@ class TaskThread( Thread ):
         self.shortDescr     = shortDescr
         self.result         = None
         self.done           = False
+        self.resPath        = resPath
+        self.tmpPath        = tmpPath
         self.lock           = Lock()
 
     ######################
@@ -150,11 +154,14 @@ class TaskThread( Thread ):
 
     ######################
     def __doWork( self ):
-        self.result = self.vm.runTask( self.srcCode, self.extraData )
+        extraData = copy( self.extraData )
+        extraData[ "resourcePath" ] = self.resPath
+        extraData[ "tmpPath" ] = self.tmpPath
+        self.result = self.vm.runTask( self.srcCode, extraData )
 
 
 class PyTaskThread( TaskThread ):
     ######################
-    def __init__( self, taskComputer, taskId, srcCode, extraData, shortDescr ):
-        super( PyTaskThread, self ).__init__( taskComputer, taskId, srcCode, extraData, shortDescr )
+    def __init__( self, taskComputer, taskId, srcCode, extraData, shortDescr, resPath, tmpPath ):
+        super( PyTaskThread, self ).__init__( taskComputer, taskId, srcCode, extraData, shortDescr, resPath, tmpPath )
         self.vm = PythonVM()

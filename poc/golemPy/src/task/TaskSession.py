@@ -29,7 +29,6 @@ class TaskSession:
     ##########################
     def requestResource( self, taskId, resourceHeader ):
         self.__send( MessageGetResource( taskId, pickle.dumps( resourceHeader ) ) )
-        self.taskId = taskId
         self.conn.fileMode = True
 
     ##########################
@@ -53,15 +52,15 @@ class TaskSession:
 
         if type == MessageWantToComputeTask.Type:
 
-            taskId, srcCode, extraData, shortDescr = self.taskManager.getNextSubTask( msg.taskId, msg.perfIndex )
+            subTaskId, srcCode, extraData, shortDescr, returnAddress, returnPort = self.taskManager.getNextSubTask( msg.taskId, msg.perfIndex )
 
-            if taskId != 0:
-                self.conn.sendMessage( MessageTaskToCompute( taskId, extraData, shortDescr, srcCode ) )
+            if subTaskId != 0:
+                self.conn.sendMessage( MessageTaskToCompute( subTaskId, extraData, shortDescr, srcCode, returnAddress, returnPort ) )
             else:
                 self.conn.sendMessage( MessageCannotAssignTask( msg.taskId, "No more subtasks in {}".format( msg.taskId ) ) )
 
         elif type == MessageTaskToCompute.Type:
-            self.taskComputer.taskGiven( msg.taskId, msg.sourceCode, msg.extraData, msg.shortDescr )
+            self.taskComputer.taskGiven(  msg.subTaskId, msg.sourceCode, msg.extraData, msg.shortDescr )
             self.dropped()
 
         elif type == MessageCannotAssignTask.Type:
@@ -70,22 +69,22 @@ class TaskSession:
             self.dropped()
 
         elif type == MessageReportComputedTask.Type:
-            delay = self.taskManager.acceptResultsDelay( msg.taskId )
+            delay = self.taskManager.acceptResultsDelay( msg.subTaskId )
 
             if delay == -1.0:
                 self.dropped()
             elif delay == 0.0:
-                self.conn.sendMessage( MessageGetTaskResult( msg.taskId, msg.extraData, delay ) )
+                self.conn.sendMessage( MessageGetTaskResult( msg.subTaskId, msg.extraData, delay ) )
             else:
-                self.conn.sendMessage( MessageGetTaskResult( msg.taskId, msg.extraData, delay ) )
+                self.conn.sendMessage( MessageGetTaskResult( msg.subTaskId, msg.extraData, delay ) )
                 self.dropped()
 
         elif type == MessageGetTaskResult.Type:
-            res = self.taskServer.getWaitingTaskResult( msg.taskId, msg.extraData )
+            res = self.taskServer.getWaitingTaskResult( msg.subTaskId )
             if res:
                 if msg.delay == 0.0:
-                    self.__send( MessageTaskResult( res.taskId, res.extraData, res.result ) )
-                    self.taskServer.taskResultSent( res.taskId, res.extraData )
+                    self.__send( MessageTaskResult( res.subTaskId, res.extraData, res.result ) )
+                    self.taskServer.taskResultSent( res.subTaskId, res.extraData )
                 else:
                     res.lastSendingTrial    = time()
                     res.delayTime           = msg.delay
@@ -93,12 +92,17 @@ class TaskSession:
                     self.dropped()
 
         elif type == MessageTaskResult.Type:
-            self.taskManager.computedTaskReceived( msg.taskId, msg.extraData, msg.result )
+            self.taskManager.computedTaskReceived( msg.subTaskId, msg.extraData, msg.result )
             self.dropped()
 
         elif type == MessageGetResource.Type:
-            resFilePath = self.taskManager.prepareResource( msg.taskId, pickle.loads( msg.resourceHeader ) )
+            resFilePath = self.taskManager.prepareResource( msg.subTaskId, pickle.loads( msg.resourceHeader ) )
             #resFilePath  = "d:/src/golem/poc/golemPy/test/res2222221"
+
+            if not resFilePath:
+                print "Task {} has no resource".format( msg.subTaskId )
+                self.conn.transport.write( struct.pack( "!L", 0 ) )
+                self.dropped()
 
             size = os.path.getsize( resFilePath )
 
@@ -114,9 +118,7 @@ class TaskSession:
                 
             self.dropped()
         elif type == MessageResource.Type:
-            res = Compress.decompress( msg.resource )
-            res = pickle.loads( res )
-            self.taskComputer.resourceGiven( self.taskId, res )
+            self.taskComputer.resourceGiven( msg.subTaskId )
             self.dropped()
 
     ##########################

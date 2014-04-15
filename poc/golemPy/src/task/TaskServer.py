@@ -51,29 +51,25 @@ class TaskServer:
             return 0
 
     #############################
-    def requestResource( self, taskId, resourceHeader ):
+    def requestResource( self, taskId, subTaskId, resourceHeader ):
         
         if taskId in self.taskHeaders:
             theader = self.taskHeaders[ taskId ]
 
-            self.__connectAndSendResourceRequest( theader.taskOwnerAddress, theader.taskOwnerPort, theader.id, resourceHeader )
+            self.__connectAndSendResourceRequest( theader.taskOwnerAddress, theader.taskOwnerPort, theader.id, subTaskId, resourceHeader )
             return theader.id
         else:
             return 0
 
     #############################
-    def sendResults( self, taskId, extraData, result ):
+    def sendResults( self, subTaskId, result, ownerAddress, ownerPort ):
         
-        if taskId in self.taskHeaders:
-            theader = self.taskHeaders[ taskId ]
-            if ( taskId, cPickle.dumps( extraData ) ) not in self.resultsToSend:
-                self.resultsToSend[ ( taskId, cPickle.dumps( extraData ) ) ] = WaitingTaskResult( taskId, extraData, result, 0.0, 0.0 )
-            else:
-                assert False
-
-            return True
+        if subTaskId not in self.resultsToSend:
+            self.resultsToSend[ hash ] = WaitingTaskResult( subTaskId, result, 0.0, 0.0, ownerAddress, ownerPort )
         else:
-            return False
+            assert False
+
+        return True
 
     #############################
     def newConnection(self, session):
@@ -134,16 +130,16 @@ class TaskServer:
         return self.lastMessages
 
     #############################
-    def getWaitingTaskResult( self, taskId, extraData ):
-        if ( taskId, cPickle.dumps( extraData ) ) in self.resultsToSend:
-            return self.resultsToSend[ ( taskId, cPickle.dumps( extraData ) ) ]
+    def getWaitingTaskResult( self, subTaskId ):
+        if subTaskId in self.resultsToSend:
+            return self.resultsToSend[ subTaskId ]
         else:
             return None
 
     #############################
     def taskResultSent( self, taskId, extraData ):
-        if ( taskId, cPickle.dumps( extraData ) ) in self.resultsToSend:
-            del self.resultsToSend[ ( taskId, cPickle.dumps( extraData ) ) ]
+        if subTaskId in self.resultsToSend:
+            del self.resultsToSend[ subTaskId ]
         else:
             assert False
 
@@ -270,12 +266,15 @@ class TaskServer:
 
 class WaitingTaskResult:
     #############################
-    def __init__( self, taskId, extraData, result, lastSendingTrial, delayTime ):
+    def __init__( self, taskId, subTaskId, extraData, result, lastSendingTrial, delayTime, ownerAddress, ownerPort  ):
         self.taskId             = taskId
+        self.subTaskId          = subTaskId
         self.extraData          = extraData
         self.result             = result
         self.lastSendingTrial   = lastSendingTrial
         self.delayTime          = delayTime
+        self.ownerAddress       = ownerAddress
+        self.ownerPort          = ownerPort
         self.alreadySending     = False
 
 from twisted.internet.protocol import Factory

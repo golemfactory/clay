@@ -44,7 +44,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def computationFinished( self, extraData, taskResult, env = None ):
+    def computationFinished( self, subTaskId, extraData, taskResult, env = None ):
         return # Implement in derived class
 
     #######################
@@ -81,3 +81,8 @@ class Task:
     @abc.abstractmethod
     def acceptResultsDelay( self ):
         return 0.0
+
+    #######################
+    @abc.abstractmethod
+    def prepareResourceDelta( subTaskId, resourceHeader ):
+        return None

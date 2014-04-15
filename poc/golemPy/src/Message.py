@@ -245,37 +245,45 @@ class MessageTaskToCompute( Message ):
 
     Type = TASK_MSG_BASE + 2
 
-    TASK_ID_STR     = u"TASK_ID"
+    SUB_TASK_ID_STR = u"SUB_TASK_ID"
     EXTRA_DATA_STR  = u"EXTRA_DATA"
     SHORT_DESCR_STR  = u"SHORT_DESCR"
     SOURCE_CODE_STR = u"SOURCE_CODE"
+    RETURN_ADDRESS_STR = u"RETURN_ADDRESS"
+    RETURN_PORT_STR = u"RETURN_PORT"
 
-    def __init__( self, taskId = 0, extraData = {}, shortDescr = "", sourceCode = "", dictRepr = None ):
+    def __init__( self, subTaskId = 0, extraData = {}, shortDescr = "", sourceCode = "", returnAddress = "", returnPort = "", dictRepr = None ):
         Message.__init__(self, MessageTaskToCompute.Type)
 
-        self.taskId = taskId
+        self.subTaskId = subTaskId
         self.extraData = extraData
         self.shortDescr = shortDescr
         self.sourceCode = sourceCode
+        self.returnAddress = returnAddress
+        self.returnPort = returnPort
 
         if dictRepr:
-            self.taskId     = dictRepr[ MessageTaskToCompute.TASK_ID_STR ]
+            self.subTaskId  = dictRepr[ MessageTaskToCompute.SUB_TASK_ID_STR ]
             self.extraData  = dictRepr[ MessageTaskToCompute.EXTRA_DATA_STR ]
             self.shortDescr = dictRepr[ MessageTaskToCompute.SHORT_DESCR_STR ]
             self.sourceCode = dictRepr[ MessageTaskToCompute.SOURCE_CODE_STR ]
+            self.returnAddress = dictRepr[ MessageTaskToCompute.RETURN_ADDRESS_STR ]
+            self.returnPort = dictRepr[ MessageTaskToCompute.RETURN_PORT_STR ]
 
     def dictRepr(self):
-        return {    MessageTaskToCompute.TASK_ID_STR : self.taskId,
+        return {    MessageTaskToCompute.SUB_TASK_ID_STR: self.subTaskId,
                     MessageTaskToCompute.EXTRA_DATA_STR: self.extraData,
                     MessageTaskToCompute.SHORT_DESCR_STR : self.shortDescr,
-                    MessageTaskToCompute.SOURCE_CODE_STR: self.sourceCode }
+                    MessageTaskToCompute.SOURCE_CODE_STR: self.sourceCode,
+                    MessageTaskToCompute.RETURN_ADDRESS_STR: self.returnAddress,
+                    MessageTaskToCompute.RETURN_PORT_STR: self.returnPort }
 
 class MessageCannotAssignTask( Message ):
     
     Type = TASK_MSG_BASE + 3
 
     REASON_STR      = u"REASON"
-    TASK_ID_STR     = u"ID"
+    TASK_ID_STR     = u"TASK_ID"
 
     def __init__( self, taskId = 0, reason = "", dictRepr = None ):
         Message.__init__(self, MessageCannotAssignTask.Type)
@@ -295,45 +303,45 @@ class MessageReportComputedTask( Message ):
 
     Type = TASK_MSG_BASE + 4
 
-    TASK_ID_STR     = u"TASK_ID"
+    SUB_TASK_ID_STR = u"SUB_TASK_ID"
     EXTRA_DATA_STR  = u"EXTRA_DATA"
 
-    def __init__( self, taskId = 0, extraData = {}, dictRepr = None ):
+    def __init__( self, subTaskId = 0, extraData = {}, dictRepr = None ):
         Message.__init__(self, MessageReportComputedTask.Type)
 
-        self.taskId     = taskId
+        self.subTaskId  = subTaskId
         self.extraData  = extraData
 
         if dictRepr:
-            self.taskId     = dictRepr[ MessageReportComputedTask.TASK_ID_STR ]
+            self.subTaskId  = dictRepr[ MessageReportComputedTask.SUB_TASK_ID_STR ]
             self.extraData  = dictRepr[ MessageReportComputedTask.EXTRA_DATA_STR ]
 
     def dictRepr(self):
-        return {    MessageReportComputedTask.TASK_ID_STR : self.taskId,
+        return {    MessageReportComputedTask.SUB_TASK_ID_STR : self.subTaskId,
                     MessageReportComputedTask.EXTRA_DATA_STR: self.extraData  }
 
 class MessageGetTaskResult( Message ):
 
     Type = TASK_MSG_BASE + 5
 
-    TASK_ID_STR     = u"TASK_ID"
+    SUB_TASK_ID_STR = u"SUB_TASK_ID"
     EXTRA_DATA_STR  = u"EXTRA_DATA"
     DELAY_STR       = u"DELAY"
 
-    def __init__( self, taskId = 0, extraData = {}, delay = 0.0, dictRepr = None ):
+    def __init__( self, subTaskId = 0, extraData = {}, delay = 0.0, dictRepr = None ):
         Message.__init__(self, MessageGetTaskResult.Type)
 
-        self.taskId     = taskId
+        self.subTaskId  = subTaskId
         self.extraData  = extraData
         self.delay      = delay
 
         if dictRepr:
-            self.taskId     = dictRepr[ MessageGetTaskResult.TASK_ID_STR ]
+            self.subTaskId  = dictRepr[ MessageGetTaskResult.SUB_TASK_ID_STR ]
             self.extraData  = dictRepr[ MessageGetTaskResult.EXTRA_DATA_STR ]
             self.delay      = dictRepr[ MessageGetTaskResult.DELAY_STR ]
 
     def dictRepr(self):
-        return {    MessageGetTaskResult.TASK_ID_STR : self.taskId,
+        return {    MessageGetTaskResult.SUB_TASK_ID_STR : self.subTaskId,
                     MessageGetTaskResult.EXTRA_DATA_STR: self.extraData,
                     MessageGetTaskResult.DELAY_STR: self.delay  }
 
@@ -341,24 +349,24 @@ class MessageTaskResult( Message ):
 
     Type = TASK_MSG_BASE + 6
 
-    TASK_ID_STR     = u"TASK_ID"
+    SUB_TASK_ID_STR = u"SUB_TASK_ID"
     EXTRA_DATA_STR  = u"EXTRA_DATA"
     RESULT_STR      = u"RESULT"
 
-    def __init__( self, taskId = 0, extraData = {}, result = None, dictRepr = None ):
+    def __init__( self, subTaskId = 0, extraData = {}, result = None, dictRepr = None ):
         Message.__init__(self, MessageTaskResult.Type)
 
-        self.taskId     = taskId
+        self.subTaskId  = subTaskId
         self.extraData  = extraData
         self.result     = result
 
         if dictRepr:
-            self.taskId     = dictRepr[ MessageTaskResult.TASK_ID_STR ]
+            self.subTaskId  = dictRepr[ MessageTaskResult.SUB_TASK_ID_STR ]
             self.extraData  = dictRepr[ MessageTaskResult.EXTRA_DATA_STR ]
             self.result     = dictRepr[ MessageTaskResult.RESULT_STR ]
 
     def dictRepr(self):
-        return {    MessageTaskResult.TASK_ID_STR       : self.taskId,
+        return {    MessageTaskResult.SUB_TASK_ID_STR   : self.subTaskId,
                     MessageTaskResult.EXTRA_DATA_STR    : self.extraData,
                     MessageTaskResult.RESULT_STR        : self.result }
 
@@ -366,21 +374,21 @@ class MessageGetResource( Message ):
 
     Type = TASK_MSG_BASE + 8
 
-    TASK_ID_STR         = u"TASK_ID"
+    SUB_TASK_ID_STR     = u"SUB_TASK_ID"
     RESOURCE_HEADER_STR = u"RESOURCE_HEADER"
 
-    def __init__( self, taskId = 0, resourceHeader = None , dictRepr = None ):
+    def __init__( self, subTaskId = 0, resourceHeader = None , dictRepr = None ):
         Message.__init__(self, MessageGetResource.Type)
 
-        self.taskId         = taskId
+        self.subTaskId      = subTaskId
         self.resourceHeader = resourceHeader
 
         if dictRepr:
-            self.taskId         = dictRepr[ MessageGetResource.TASK_ID_STR ]
+            self.subTaskId      = dictRepr[ MessageGetResource.SUB_TASK_ID_STR ]
             self.resourceHeader = dictRepr[ MessageGetResource.RESOURCE_HEADER_STR ]
 
     def dictRepr(self):
-        return {    MessageGetResource.TASK_ID_STR : self.taskId,
+        return {    MessageGetResource.SUB_TASK_ID_STR : self.subTaskId,
                     MessageGetResource.RESOURCE_HEADER_STR: self.resourceHeader
                }
 
@@ -388,21 +396,21 @@ class MessageResource( Message ):
 
     Type = TASK_MSG_BASE + 9
 
-    TASK_ID_STR     = u"TASK_ID"
+    SUB_TASK_ID_STR = u"SUB_TASK_ID"
     RESOURCE_STR    = u"RESOURCE"
 
-    def __init__( self, taskId = 0, resource = None , dictRepr = None ):
+    def __init__( self, subTaskId = 0, resource = None , dictRepr = None ):
         Message.__init__(self, MessageResource.Type)
 
-        self.taskId         = taskId
+        self.subTaskId      = subTaskId
         self.resource       = resource
 
         if dictRepr:
-            self.taskId         = dictRepr[ MessageResource.TASK_ID_STR ]
+            self.subTaskId      = dictRepr[ MessageResource.SUB_TASK_ID_STR ]
             self.resource       = dictRepr[ MessageResource.RESOURCE_STR ]
 
     def dictRepr(self):
-        return {    MessageResource.TASK_ID_STR : self.taskId,
+        return {    MessageResource.SUB_TASK_ID_STR : self.subTaskId,
                     MessageResource.RESOURCE_STR: self.resource
                }
 

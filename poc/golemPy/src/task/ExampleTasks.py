@@ -24,21 +24,24 @@ output = encodestring( res )
 
 class RayTracingTask( Task ):
     #######################
-    def __init__( self, width, height, taskHeader ):
+    def __init__( self, width, height, taskHeader, returnAddress = "", returnPort = 0 ):
         coderes = testTaskScr2
         Task.__init__( self, taskHeader, [], coderes, 0 )
         self.width = width
         self.height = height
         self.splitIndex = 0
+        self.returnAddress = returnAddress
+        self.port = returnPort
 
     #######################
     def queryExtraData( self, perfIndex ):
+        hash = random.getrandbits(128)
         return {    "startX" : 0,
                     "startY" : 0,
                     "width" : self.width,
                     "height" : self.height,
                     "img_width" : self.width,
-                    "img_height" : self.height }
+                    "img_height" : self.height }, hash, self.returnAddress, self.port
 
     #######################
     def shortExtraDataRepr( self, perfIndex ):
@@ -56,7 +59,7 @@ class RayTracingTask( Task ):
         self.splitIndex += 1
 
     #######################
-    def computationFinished( self, extraData, taskResult, env = None ):
+    def computationFinished( self, subTaskId, extraData, taskResult, env = None ):
         print "Receive computed task id:{} extraData:{} \n result:{}".format( self.taskHeader.id, extraData, taskResult )
 
 TIMESLC  = 45.0
@@ -121,7 +124,7 @@ task_data = u'''
 
 class VRayTracingTask( Task ):
     #######################
-    def __init__( self, width, height, num_samples, header, fileName ):
+    def __init__( self, width, height, num_samples, header, fileName, returnAddress = "", returnPort = 0 ):
 
         srcFile = open( "../testtasks/minilight/compact_src/renderer.py", "r")
         srcCode = srcFile.read()
@@ -138,6 +141,8 @@ class VRayTracingTask( Task ):
 
         self.lastExtraData = ""
         self.fileName = fileName
+        self.returnAddress = returnAddress
+        self.port = returnPort
 
     #######################
     def __initRenderer( self ):
@@ -161,7 +166,8 @@ class VRayTracingTask( Task ):
                     "task_data" : task_data
                     }
 
-        return self.lastExtraData
+        hash = random.getrandbits(128)
+        return self.lastExtraData, hash, self.returnAddress, self.port
 
     #######################
     def shortExtraDataRepr( self, perfIndex ):
@@ -180,7 +186,7 @@ class VRayTracingTask( Task ):
         pass
 
     #######################
-    def computationFinished( self, extraData, taskResult, env = None ):
+    def computationFinished( self, subTaskId, extraData, taskResult, env = None ):
         dest = RenderTaskDesc( 0, extraData[ "x" ], extraData[ "y" ], extraData[ "w" ], extraData[ "h" ], extraData[ "num_pixels" ] ,extraData[ "num_samples" ])
         res = RenderTaskResult( dest, taskResult )
         self.taskableRenderer.taskFinished( res )
@@ -231,7 +237,7 @@ from Compress import decompress
 class PbrtRenderTask( Task ):
 
     #######################
-    def __init__( self, header, pathRoot, totalTasks, numSubtasks, numCores, outfilebasename, sceneFile ):
+    def __init__( self, header, pathRoot, totalTasks, numSubtasks, numCores, outfilebasename, sceneFile, returnAddress = "", returnPort = 0 ):
 
         srcFile = open( "../testtasks/pbrt/pbrt_compact.py", "r")
         srcCode = srcFile.read()
@@ -252,6 +258,9 @@ class PbrtRenderTask( Task ):
 
         self.collector          = PbrtTaksCollector()
         self.numTasksReceived   = 0
+        self.returnAddress = returnAddress
+        self.port = returnPort
+
 
     def initialize( self ):
         pass
@@ -271,8 +280,9 @@ class PbrtRenderTask( Task ):
                                     "sceneFile" : self.sceneFile
                                 }
 
+        hash = random.getrandbits(128)
         self.lastTask = endTask # TODO: Should depend on performance
-        return self.lastExtraData
+        return self.lastExtraData, hash, self.returnAddress, self.port
 
     #######################
     def shortExtraDataRepr( self, perfIndex ):
@@ -291,7 +301,7 @@ class PbrtRenderTask( Task ):
         pass
 
     #######################
-    def computationFinished( self, extraData, taskResult, env = None ):
+    def computationFinished( self, subTaskId, extraData, taskResult, env = None ):
 
         tmpDir = env.getTaskTemporaryDir( self.header.id )
 

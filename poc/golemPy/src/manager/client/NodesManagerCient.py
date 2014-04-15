@@ -24,6 +24,8 @@ class NodesManagerClient:
 
     ######################
     def addNewTask( self, task ):
+        task.returnAddress = taskManager.listenAddress
+        task.returnPort = taskManager.listenPort
         self.taskManager.addNewTask( task )
 
     ######################

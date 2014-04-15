@@ -1,4 +1,3 @@
-from copy import copy
 from threading import Lock
 
 class IGolemVM:
@@ -47,7 +46,7 @@ class PythonVM( IGolemVM ):
     #######################  
     def runTask( self, srcCode, extraData ):
         self.srcCode = srcCode
-        self.scope = copy( extraData )
+        self.scope = extraData
         self.scope[ "taskProgress" ] = self.progress
         return self.__interpret()
 
