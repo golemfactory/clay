@@ -19,7 +19,12 @@ from Client import Client
 from Message import initMessages
 from ClientConfigDescriptor import ClientConfigDescriptor
 
+
+
+
 def main():
+
+    
 
     initMessages()
 

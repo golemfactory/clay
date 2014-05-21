@@ -12,6 +12,10 @@ sys.path.append('../src/manager/server')
 sys.path.append('../testtasks/minilight/src')
 sys.path.append('../testtasks/pbrt')
 
+from UiGen import genUiFiles
+
+genUiFiles()
+
 from twisted.internet.protocol import Protocol, Factory
 
 from threading import Thread

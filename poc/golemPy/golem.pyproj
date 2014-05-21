@@ -92,7 +92,7 @@
     <Compile Include="src\ui\uicustomizer.py" />
     <Compile Include="src\ui\progressbar.py" />
     <Compile Include="src\ui\pyuic.py" />
-    <Compile Include="src\ui\ui_nodemanager.py" />
+    <Compile Include="src\ui\ui_manager.py" />
     <Compile Include="src\task\TaskBase.py" />
     <Compile Include="src\ui\ui_nodetasks.py" />
     <Compile Include="src\ui\ui_taskdialog.py" />
@@ -123,11 +123,15 @@
     <Compile Include="testtasks\pbrt\test_render_run.py" />
     <Compile Include="test\ClientMain.py" />
     <Compile Include="test\main.py" />
+    <Compile Include="test\UiGen.py" />
     <Compile Include="test\__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="src\ui\manager.ui" />
-    <Content Include="src\ui\taskdialog.ui" />
+    <Content Include="src\ui\nodetasks.ui" />
+    <Content Include="src\ui\taskdialog.ui">
+      <Publish>False</Publish>
+    </Content>
     <Content Include="testtasks\minilight\cornellbox.ml.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
