@@ -14,3 +14,4 @@ syntax: glob
 *.png
 *.zip
 *.ctl
+ui_*.py
