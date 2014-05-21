@@ -9,7 +9,7 @@ from PyQt4.QtGui import QApplication, QDialog
 from PyQt4.QtCore import QTimer
 from threading import Lock
 
-from ui_nodemanager import Ui_NodesManagerWidget
+from ui_manager import Ui_NodesManagerWidget
 from uicustomizer import ManagerUiCustomizer, NodeDataState
 from NodeStateSnapshot import NodeStateSnapshot
 from networksimulator import GLOBAL_SHUTDOWN, LocalNetworkSimulator

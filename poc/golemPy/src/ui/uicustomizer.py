@@ -1,5 +1,5 @@
 from PyQt4 import QtCore, QtGui
-from ui_nodemanager import Ui_NodesManagerWidget
+from ui_manager import Ui_NodesManagerWidget
 from taskdialog import TaskSpecDialog
 from NodeTasksSpec import NodeTasksWidget
 from progressbar import createWrappedProgressBar

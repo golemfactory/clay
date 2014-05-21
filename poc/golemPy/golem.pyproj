@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>test\ClientMain.py</StartupFile>
+    <StartupFile>test\main.py</StartupFile>
     <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network;src\manager;src\manager\client;src\manager\server;src\task\resource;testtasks\pbrt</SearchPath>
     <WorkingDirectory>d:\src\golem\poc\golemPy\test\</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -92,10 +92,7 @@
     <Compile Include="src\ui\uicustomizer.py" />
     <Compile Include="src\ui\progressbar.py" />
     <Compile Include="src\ui\pyuic.py" />
-    <Compile Include="src\ui\ui_manager.py" />
     <Compile Include="src\task\TaskBase.py" />
-    <Compile Include="src\ui\ui_nodetasks.py" />
-    <Compile Include="src\ui\ui_taskdialog.py" />
     <Compile Include="src\vm\vm.py" />
     <Compile Include="src\__init__.py" />
     <Compile Include="testtasks\minilight\compact_src\renderer.py" />
