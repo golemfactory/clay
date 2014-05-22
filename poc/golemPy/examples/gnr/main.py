@@ -18,6 +18,7 @@ from Application import GNRGui
 
 def main():
     app = GNRGui()
+    #app.registerNewTask( "123123123123", "Non-Started" )
     app.execute()
 
 main()
