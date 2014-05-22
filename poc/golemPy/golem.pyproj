@@ -5,8 +5,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>test\main.py</StartupFile>
-    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network;src\manager;src\manager\client;src\manager\server;src\task\resource;testtasks\pbrt</SearchPath>
+    <StartupFile>examples\gnr\main.py</StartupFile>
+    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network;src\manager;src\manager\client;src\manager\server;src\task\resource;testtasks\pbrt;tools;examples\gnr;examples\gnr\ui</SearchPath>
     <WorkingDirectory>d:\src\golem\poc\golemPy\test\</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>golem</Name>
@@ -29,6 +29,10 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Folder Include="examples\" />
+    <Folder Include="examples\gnr\" />
+    <Folder Include="examples\gnr\ui\" />
+    <Folder Include="tools\" />
     <Folder Include="src\manager\" />
     <Folder Include="src\manager\client\" />
     <Folder Include="src\manager\server\" />
@@ -47,6 +51,7 @@
     <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="examples\gnr\main.py" />
     <Compile Include="src\Client.py" />
     <Compile Include="src\AppConfig.py" />
     <Compile Include="src\ClientConfigDescriptor.py" />
@@ -120,7 +125,7 @@
     <Compile Include="testtasks\pbrt\test_render_run.py" />
     <Compile Include="test\ClientMain.py" />
     <Compile Include="test\main.py" />
-    <Compile Include="test\UiGen.py" />
+    <Compile Include="tools\UiGen.py" />
     <Compile Include="test\__init__.py" />
   </ItemGroup>
   <ItemGroup>

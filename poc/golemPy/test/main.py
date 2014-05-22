@@ -14,7 +14,7 @@ sys.path.append('../testtasks/pbrt')
 
 from UiGen import genUiFiles
 
-genUiFiles()
+genUiFiles( "./../src" )
 
 from twisted.internet.protocol import Protocol, Factory
 
