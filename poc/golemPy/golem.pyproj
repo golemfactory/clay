@@ -52,9 +52,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="examples\gnr\Application.py" />
+    <Compile Include="examples\gnr\CheckableDirModel.py" />
     <Compile Include="examples\gnr\GNREventHandler.py" />
     <Compile Include="examples\gnr\main.py" />
+    <Compile Include="examples\gnr\ui\ui_AddTaskResourcesDialog.py" />
     <Compile Include="examples\gnr\ui\ui_MainWindow.py" />
+    <Compile Include="examples\gnr\ui\ui_NewTaskDialog.py" />
     <Compile Include="src\Client.py" />
     <Compile Include="src\AppConfig.py" />
     <Compile Include="src\ClientConfigDescriptor.py" />

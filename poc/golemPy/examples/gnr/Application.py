@@ -1,8 +1,12 @@
 
 import sys
-from PyQt4.QtGui import QApplication, QMainWindow, QWidget, QTableWidget, QTableWidgetItem, QProgressBar, QVBoxLayout, QPixmap
+from PyQt4 import QtCore
+from PyQt4.QtGui import QApplication, QMainWindow, QWidget, QTableWidget, QTableWidgetItem, QProgressBar, QVBoxLayout, QPixmap, QDialog
 from ui_MainWindow import Ui_MainWindow
+from ui_NewTaskDialog import Ui_NewTaskDialog
+from ui_AddTaskResourcesDialog import Ui_AddTaskResourcesDialog
 from GNREventHandler import GNREventHandler
+from CheckableDirModel import CheckableDirModel
 
 class GNRGui:
     ############################
@@ -21,6 +25,27 @@ class GNRGui:
     def execute( self ):
         self.window.show()
         sys.exit( self.app.exec_() )
+
+    ############################
+    def showNewTaskDialog( self ):
+        self.newTaskDialogWindow = QDialog( self.window )
+        self.newTaskDialog = Ui_NewTaskDialog()
+        self.newTaskDialog.setupUi( self.newTaskDialogWindow )
+        QtCore.QObject.connect( self.newTaskDialog.addResourceButton, QtCore.SIGNAL( "clicked()" ), self.showAddResourcesDialog )
+        self.newTaskDialogWindow.show()
+
+    ############################
+    def showAddResourcesDialog( self ):
+        self.addTaskResourceDialogWindow = QDialog( self.newTaskDialogWindow )
+        self.addTaskResourceDialog = Ui_AddTaskResourcesDialog()
+        self.addTaskResourceDialog.setupUi( self.addTaskResourceDialogWindow )
+
+        fsModel = CheckableDirModel()
+
+        self.addTaskResourceDialog.folderTreeView.setModel( fsModel )
+        self.addTaskResourceDialog.folderTreeView.setSelectionModel
+
+        self.addTaskResourceDialogWindow.show()
 
     ############################
     def registerNewTask( self, id, status ):

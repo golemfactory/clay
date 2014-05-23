@@ -22,7 +22,7 @@ class GNREventHandler:
 
     ##########################
     def newTaskClicked( self ):
-        print "newTaskClicked"
+        self.app.showNewTaskDialog()
 
     ##########################
     def taskTableRowClicked( self, row, column ):
