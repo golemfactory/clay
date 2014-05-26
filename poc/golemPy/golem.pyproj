@@ -6,7 +6,7 @@
     <ProjectGuid>789d2354-e38a-4f32-a9ac-10b35fe45f26</ProjectGuid>
     <ProjectHome>.</ProjectHome>
     <StartupFile>examples\gnr\main.py</StartupFile>
-    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network;src\manager;src\manager\client;src\manager\server;src\task\resource;testtasks\pbrt;tools;examples\gnr;examples\gnr\ui;examples\gnr\ui\gen</SearchPath>
+    <SearchPath>src;testtasks;testtasks\minilight\src;src\core;src\vm;src\task;src\ui;src\network;src\manager;src\manager\client;src\manager\server;src\task\resource;testtasks\pbrt;tools;examples\gnr;examples\gnr\ui;examples\gnr\ui\gen;examples\gnr\logic</SearchPath>
     <WorkingDirectory>d:\src\golem\poc\golemPy\test\</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>golem</Name>
@@ -31,6 +31,7 @@
   <ItemGroup>
     <Folder Include="examples\" />
     <Folder Include="examples\gnr\" />
+    <Folder Include="examples\gnr\logic\" />
     <Folder Include="examples\gnr\ui\" />
     <Folder Include="examples\gnr\ui\gen\" />
     <Folder Include="tools\" />
@@ -52,6 +53,10 @@
     <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="examples\gnr\logic\GNRApplicationLogic.py" />
+    <Compile Include="examples\gnr\TaskStatus.py" />
+    <Compile Include="examples\gnr\UiCustomizer.py" />
+    <Compile Include="examples\gnr\UiNewTaskInfo.py" />
     <Compile Include="examples\gnr\ui\AddTaskResourcesDialog.py" />
     <Compile Include="examples\gnr\Application.py" />
     <Compile Include="examples\gnr\ui\CheckableDirModel.py" />

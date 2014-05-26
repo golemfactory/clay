@@ -3,12 +3,12 @@ from PyQt4.QtGui import QMainWindow, QPixmap
 
 from ui_MainWindow import Ui_MainWindow
 
-from TaskTableElem import TaskTableElem
 from NewTaskDialog import NewTaskDialog
 
-class GNRMainWindow:
+class GNRMainWindow( QtCore.QObject ):
     ##########################
     def __init__( self ):
+        QtCore.QObject.__init__( self )
         self.window     = QMainWindow()
         self.ui         = Ui_MainWindow()
 
@@ -29,17 +29,6 @@ class GNRMainWindow:
         QtCore.QObject.connect( self.ui.renderTaskTableWidget, QtCore.SIGNAL( "customContextMenuRequested( const QPoint& )" ), self.__contexMenuRequested )
 
     ############################
-    def registerNewTask( self, id, status ):
-        currentRowCount = self.ui.renderTaskTableWidget.rowCount()
-        self.ui.renderTaskTableWidget.insertRow( currentRowCount )
-
-        taskTableElem = TaskTableElem( id, status )
-
-        for col in range( 0, 2 ): self.ui.renderTaskTableWidget.setItem( currentRowCount, col, taskTableElem.getColumnItem( col ) )
-
-        self.ui.renderTaskTableWidget.setCellWidget( currentRowCount, 2, taskTableElem.progressBarInBoxLayoutWidget )
-
-    ############################
     def showNewTaskDialog( self ):
         self.newTaskDialog = NewTaskDialog( self.window )
         self.newTaskDialog.show()
@@ -47,7 +36,7 @@ class GNRMainWindow:
     # SLOTS
     ##########################
     def __showResourceClicked( self ):
-        self.registerNewTask( "12231231", "dupa" )
+        print "showResourceClicked"
 
     ##########################
     def __newTaskClicked( self ):
@@ -55,6 +44,7 @@ class GNRMainWindow:
 
     ##########################
     def __taskTableRowClicked( self, row, column ):
+        self.emit( QtCore.SIGNAL("taskTableRowClicked(int)"), row)
         print "taskTableRowClicked {}".format( row )
 
     ##########################

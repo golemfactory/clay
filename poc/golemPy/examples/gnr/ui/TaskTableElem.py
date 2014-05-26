@@ -18,7 +18,6 @@ class TaskTableElem:
         self.idItem = QTableWidgetItem()
         self.idItem.setText( self.id )
 
-
         self.progressBar = QProgressBar()
         self.progressBar.geometry().setHeight( 20 )
         self.progressBar.setProperty( "value", 50 )
