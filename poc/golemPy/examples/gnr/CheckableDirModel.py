@@ -9,18 +9,19 @@ def are_parent_and_child(parent, child):
     return False
 
 
-class CheckableDirModel(QtGui.QDirModel):
+class CheckableDirModel(QtGui.QFileSystemModel):
     def __init__(self, parent=None):
-        QtGui.QDirModel.__init__(self, None)
+        QtGui.QFileSystemModel.__init__(self, None)
         self.checks = {}
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
         if role == QtCore.Qt.CheckStateRole and index.column() == 0:
             return self.checkState(index)
-        return QtGui.QDirModel.data(self, index, role)
+        return QtGui.QFileSystemModel.data(self, index, role)
 
     def flags(self, index):
-        return QtGui.QDirModel.flags(self, index) | QtCore.Qt.ItemIsUserCheckable
+        #return QtGui.QFileSystemModel.flags(self, index)
+        return QtGui.QFileSystemModel.flags(self, index) | QtCore.Qt.ItemIsUserCheckable
 
     def checkState(self, index):
         while index.isValid():
@@ -39,7 +40,7 @@ class CheckableDirModel(QtGui.QDirModel):
             self.layoutChanged.emit()
             return True 
 
-        return QtGui.QDirModel.setData(self, index, value, role)
+        return QtGui.QFileSystemModel.setData(self, index, value, role)
 
     def exportChecked(self, acceptedSuffix=['jpg', 'png', 'bmp']):
         selection=set()
