@@ -10,7 +10,7 @@ def regenerateUIFiles( rootPath ):
 
     for file in files:
         if file.endswith( ".ui" ):
-            outFile = "ui_" + file[0:-3] + ".py"
+            outFile = os.path.join( "gen", "ui_" + file[0:-3] + ".py" )
 
             if os.path.exists( os.path.join( rootPath, outFile ) ) and not os.path.isdir( os.path.join( rootPath, outFile ) ):
                 if os.path.getmtime( os.path.join( rootPath, outFile ) ) > os.path.getmtime(  os.path.join( rootPath, file ) ):

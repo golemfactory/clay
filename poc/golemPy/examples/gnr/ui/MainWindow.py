@@ -3,7 +3,6 @@ from PyQt4.QtGui import QMainWindow, QPixmap
 
 from ui_MainWindow import Ui_MainWindow
 
-from GNREventHandler import GNREventHandler
 from TaskTableElem import TaskTableElem
 from NewTaskDialog import NewTaskDialog
 
