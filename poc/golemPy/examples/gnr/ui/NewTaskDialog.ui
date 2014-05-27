@@ -353,13 +353,6 @@
                  </property>
                 </widget>
                </item>
-               <item>
-                <widget class="QPushButton" name="showResourceButton">
-                 <property name="text">
-                  <string>Show Resources</string>
-                 </property>
-                </widget>
-               </item>
               </layout>
              </item>
              <item row="2" column="0">

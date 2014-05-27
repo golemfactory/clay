@@ -1,9 +1,11 @@
 import os
+import datetime
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
 
 from MainWindow import GNRMainWindow
 from NewTaskDialog import NewTaskDialog
+from ShowTaskResourcesDialog import ShowTaskResourcesDialog
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
 
 from TaskTableElem import TaskTableElem
@@ -19,11 +21,13 @@ class MainWindowCustomizer:
         self.logic  = logic
 
         self.__setupConnections()
+        self.currentTaskHighlighted = None
 
     #############################
     def __setupConnections( self ):
         QtCore.QObject.connect( self.gui.ui.actionNew, QtCore.SIGNAL( "triggered()" ), self.__showNewTaskDialogClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
+        self.gui.ui.showResourceButton.clicked.connect( self.__showTaskResourcesClicked )
 
     ############################
     # Add new task to golem client
@@ -48,26 +52,26 @@ class MainWindowCustomizer:
     ############################
     # Add task information in gui
     def addTask( self, task ):
-        self.__addTask( task.id, task.status )
+        self.__addTask( task.definition.id, task.status )
 
     ############################
-    def updateTaskAdditionalInfo( self, id ):
-        t = self.logic.getTask( id )
-        from TaskStatus import TaskStatus
-        assert isinstance( t, TaskStatus )
+    def updateTaskAdditionalInfo( self, t ):
+        from TaskState import TaskState
+        assert isinstance( t, TaskState )
 
-        self.gui.ui.minNodePower.setText( "{} ray per pixel".format( t.minPower ) )
-        self.gui.ui.minSubtask.setText( "{} pixels".format( t.minSubtask ) )
-        self.gui.ui.maxSubtask.setText( "{} pixels".format( t.maxSubtask ) )
-        self.gui.ui.subtaskTimeout.setText( "{} minutes".format( int( t.subtaskTimeout / 60.0 ) ) )
-        self.gui.ui.resolution.setText( "{} x {}".format( t.resolution[ 0 ], t.resolution[ 1 ] ) )
-        self.gui.ui.renderer.setText( "{}".format( t.renderer ) )
-        self.gui.ui.algorithmType.setText( "{}".format( t.algorithmType ) )
-        self.gui.ui.pixelFilter.setText( "{}".format( t.pixelFilter ) )
-        self.gui.ui.samplesPerPixel.setText( "{}".format( t.samplesPerPixelCount ) )
-        self.gui.ui.outputFile.setText( "{}".format( t.outputFile ) )
-        self.gui.ui.fullTaskTimeout.setText( "{}".format( t.fullTaskTimeout ) )
+        self.gui.ui.minNodePower.setText( "{} ray per pixel".format( t.definition.minPower ) )
+        self.gui.ui.minSubtask.setText( "{} pixels".format( t.definition.minSubtask ) )
+        self.gui.ui.maxSubtask.setText( "{} pixels".format( t.definition.maxSubtask ) )
+        self.gui.ui.subtaskTimeout.setText( "{} minutes".format( int( t.definition.subtaskTimeout / 60.0 ) ) )
+        self.gui.ui.resolution.setText( "{} x {}".format( t.definition.resolution[ 0 ], t.definition.resolution[ 1 ] ) )
+        self.gui.ui.renderer.setText( "{}".format( t.definition.renderer ) )
+        self.gui.ui.algorithmType.setText( "{}".format( t.definition.algorithmType ) )
+        self.gui.ui.pixelFilter.setText( "{}".format( t.definition.pixelFilter ) )
+        self.gui.ui.samplesPerPixel.setText( "{}".format( t.definition.samplesPerPixelCount ) )
+        self.gui.ui.outputFile.setText( "{}".format( t.definition.outputFile ) )
+        self.gui.ui.fullTaskTimeout.setText( str( datetime.timedelta( seconds = t.definition.fullTaskTimeout ) ) )
         self.gui.ui.timeStarted.setText( "{}".format( t.timeStarted ) )
+        self.currentTaskHighlighted = t
 
     ############################
     def __addTask( self, id, status ):
@@ -80,7 +84,7 @@ class MainWindowCustomizer:
 
         self.gui.ui.renderTaskTableWidget.setCellWidget( currentRowCount, 2, taskTableElem.progressBarInBoxLayoutWidget )
 
-        self.updateTaskAdditionalInfo( id )
+        self.updateTaskAdditionalInfo( self.logic.getTask( id ) )
 
 
     # SLOTS
@@ -89,7 +93,8 @@ class MainWindowCustomizer:
         if row < self.gui.ui.renderTaskTableWidget.rowCount():
             taskId = self.gui.ui.renderTaskTableWidget.item( row, 0 ).text()
             taskId = "{}".format( taskId )
-            self.updateTaskAdditionalInfo( taskId )
+            t = self.logic.getTask( taskId )
+            self.updateTaskAdditionalInfo( t )
 
     #############################
     def __showNewTaskDialogClicked( self ):
@@ -99,6 +104,19 @@ class MainWindowCustomizer:
 
         self.newTaskDialog.show()
 
+    #############################
+    def __showTaskResourcesClicked( self ):
+
+        sortedRes = list( self.currentTaskHighlighted.definition.resources )
+
+        sortedRes.sort()
+
+        print sortedRes
+
+
+        self.showTaskResourcesDialog = ShowTaskResourcesDialog( self.gui.window )
+
+        self.showTaskResourcesDialog.show()
 
 
 

@@ -57,7 +57,7 @@
     <Compile Include="examples\gnr\customizers\AddResourcesDialogCustomizer.py" />
     <Compile Include="examples\gnr\customizers\NewTaskDialogCustomizer.py" />
     <Compile Include="examples\gnr\logic\GNRApplicationLogic.py" />
-    <Compile Include="examples\gnr\TaskStatus.py" />
+    <Compile Include="examples\gnr\TaskState.py" />
     <Compile Include="examples\gnr\customizers\MainWindowCustomizer.py" />
     <Compile Include="examples\gnr\UiNewTaskInfo.py" />
     <Compile Include="examples\gnr\ui\AddTaskResourcesDialog.py" />

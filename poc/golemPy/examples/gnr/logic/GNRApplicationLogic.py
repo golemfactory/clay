@@ -41,11 +41,11 @@ class GNRApplicationLogic:
             return
 
         for t in tasks:
-            if t.id not in self.tasks:
-                self.tasks[ t.id ] = t
+            if t.definition.id not in self.tasks:
+                self.tasks[ t.definition.id ] = t
                 self.customizer.addTask( t )
             else:
-                self.tasks[ t.id ] = t
+                self.tasks[ t.definition.id ] = t
 
         self.customizer.updateTasks( self.tasks )
 

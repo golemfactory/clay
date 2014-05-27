@@ -20,11 +20,12 @@ class ShowTaskResourcesDialog:
     ###################
     def __initFolderTreeView( self ):
 
-        fsModel = QFileSystemModel()
-        fsModel.setRootPath("")
-        fsModel.setFilter( QtCore.QDir.AllDirs | QtCore.QDir.Files | QtCore.QDir.NoDotAndDotDot )
+        pass
+        #fsModel = QFileSystemModel()
+        #fsModel.setRootPath("")
+        #fsModel.setFilter( QtCore.QDir.AllDirs | QtCore.QDir.Files | QtCore.QDir.NoDotAndDotDot )
 
-        self.ui.folderTreeView.setModel( fsModel )
+        #self.ui.folderTreeView.setModel( fsModel )
 
     ###################
     def __setupConnections( self ):

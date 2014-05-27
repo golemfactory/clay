@@ -35,20 +35,15 @@ class TestTaskInfo:
         self.name           = name
         # TODO
 
-class TaskStatus:
+class TaskDefinition:
     #########################
     def __init__( self ):
-        self.id             = ""
-        self.status         = ""
-        self.progress       = 0.0
-        self.computers      = {}
-        self.remainingTime  = 0
-        self.elapsedTime    = 0
-        self.minPower       = 0
-        self.minSubtask     = 0
-        self.maxSubtask     = 0
-        self.subtaskTimeout = 0
-
+        self.id                 = ""
+        self.minPower           = 0
+        self.minSubtask         = 0
+        self.maxSubtask         = 0
+        self.subtaskTimeout     = 0
+        self.minSubtaskTime     = 0
         self.resolution         = [ 0, 0 ]
         self.renderer           = None
         self.algorithmType      = ""
@@ -56,5 +51,19 @@ class TaskStatus:
         self.samplesPerPixelCount = 0
         self.outputFile         = ""
         self.taskResources      = []
-        self.fullTaskTimeout    = 0
-        self.timeStarted        = 0
+        self.fullTaskTimeout    = 0    
+        self.mainProgramFile    = ""
+        self.outputFormat       = ""
+        self.resources          = []
+
+class TaskState:
+    #########################
+    def __init__( self ):
+        self.definition     = TaskDefinition()
+
+        self.status         = ""
+        self.progress       = 0.0
+        self.computers      = {}
+        self.remainingTime  = 0
+        self.elapsedTime    = 0
+        self.timeStarted    = 0

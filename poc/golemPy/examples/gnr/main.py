@@ -17,7 +17,7 @@ genUiFiles( "./../examples/gnr/ui" )
 from Application import GNRGui
 from GNRApplicationLogic import GNRApplicationLogic
 
-from TaskStatus import TaskStatus, RendereInfo, TestTaskInfo, RendererDefaults
+from TaskState import TaskState, RendereInfo, TestTaskInfo, RendererDefaults
 
 def buidPBRTRendererInfo():
     defaults = RendererDefaults()
@@ -47,23 +47,6 @@ def main():
     logic.registerNewRendererType( buidPBRTRendererInfo() )
 
     logic.registerNewTestTaskType( TestTaskInfo( "CornellBox" ) )
-
-    #####
-    tasks = []
-    ts1 = TaskStatus()
-    ts2 = TaskStatus()
-    ts1.id = "321"
-    ts1.maxSubtask = 20000
-    ts1.minSubtask = 2000
-    ts1.progress = 0.34
-    ts1.status = "Computing"
-    ts2.id = "123"
-    ts2.progress = 0.97
-    ts2.status = "Computing"
-    tasks.append( ts1 )
-    tasks.append( ts2 )
-
-    logic.addTasks( tasks )
 
     app.execute()
 
