@@ -17,7 +17,25 @@ genUiFiles( "./../examples/gnr/ui" )
 from Application import GNRGui
 from GNRApplicationLogic import GNRApplicationLogic
 
-from TaskStatus import TaskStatus, RendereInfo, TestTaskInfo
+from TaskStatus import TaskStatus, RendereInfo, TestTaskInfo, RendererDefaults
+
+def buidPBRTRendererInfo():
+    defaults = RendererDefaults()
+    defaults.fullTaskTimeout    = 4 * 3600
+    defaults.minSubtaskTime     = 60
+    defaults.subtaskTimeout     = 20 * 60
+    defaults.samplesPerPixel    = 200
+    defaults.outputFormat       = "EXR"
+    defaults.mainProgramFile    = "./../testtasks/pbrt/pbrt_compact.py"
+    
+
+    renderer = RendereInfo( "PBRT", defaults )
+    renderer.filters = ["box", "gaussian", "mitchell", "sinc", "triange" ]
+    renderer.pathTracers = ["aggregatetest", "createprobes", "metropolis", "sampler", "surfacepoints"]
+    renderer.outputFormats = [ "PFM", "TGA", "EXR" ]
+    
+    return renderer
+
 
 def main():
 
@@ -26,11 +44,7 @@ def main():
 
     logic.registerGui( app.getMainWindow() )
 
-    renderer = RendereInfo( "PBRT" )
-    renderer.filters = ["box", "gaussian", "mitchell", "sinc", "triange" ]
-    renderer.pathTracers = ["aggregatetest", "createprobes", "metropolis", "sampler", "surfacepoints"]
-    renderer.outputFormats = [ "PFM", "TGA", "EXR" ]
-    logic.registerNewRendererType( renderer )
+    logic.registerNewRendererType( buidPBRTRendererInfo() )
 
     logic.registerNewTestTaskType( TestTaskInfo( "CornellBox" ) )
 

@@ -24,26 +24,12 @@ class GNRMainWindow( QtCore.QObject ):
     ##########################
     def __setupConnections( self ):
         QtCore.QObject.connect( self.ui.showResourceButton, QtCore.SIGNAL( "clicked()" ), self.__showResourceClicked )
-        QtCore.QObject.connect( self.ui.actionNew, QtCore.SIGNAL( "triggered()" ), self.__newTaskClicked )
-        QtCore.QObject.connect( self.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
         QtCore.QObject.connect( self.ui.renderTaskTableWidget, QtCore.SIGNAL( "customContextMenuRequested( const QPoint& )" ), self.__contexMenuRequested )
-
-    ############################
-    def showNewTaskDialog( self ):
-        self.newTaskDialog = NewTaskDialog( self.window )
-
-        self.emit( QtCore.SIGNAL( "showNewTaskDialogClicked()" ) )
-
-        self.newTaskDialog.show()
 
     # SLOTS
     ##########################
     def __showResourceClicked( self ):
         print "showResourceClicked"
-
-    ##########################
-    def __newTaskClicked( self ):
-        self.showNewTaskDialog()
 
     ##########################
     def __taskTableRowClicked( self, row, column ):

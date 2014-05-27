@@ -1,26 +1,36 @@
+import os
 from PyQt4 import QtCore
+from PyQt4.QtGui import QFileDialog
 
 from MainWindow import GNRMainWindow
+from NewTaskDialog import NewTaskDialog
+from NewTaskDialogCustomizer import NewTaskDialogCustomizer
 
 from TaskTableElem import TaskTableElem
 
-class UiCustomizer:
-    ####################
+
+class MainWindowCustomizer:
+    ############################
     def __init__( self, gui, logic ):
 
         assert isinstance( gui, GNRMainWindow )
 
         self.gui    = gui
         self.logic  = logic
-        QtCore.QObject.connect( self.gui, QtCore.SIGNAL( "taskTableRowClicked(int)" ), self.__taskTableRowClicked )
-        QtCore.QObject.connect( self.gui, QtCore.SIGNAL( "showNewTaskDialogClicked()" ), self.__showNewTaskDialogClicked )
 
-    ####################
+        self.__setupConnections()
+
+    #############################
+    def __setupConnections( self ):
+        QtCore.QObject.connect( self.gui.ui.actionNew, QtCore.SIGNAL( "triggered()" ), self.__showNewTaskDialogClicked )
+        QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
+
+    ############################
     # Add new task to golem client
     def enqueueNewTask( self, uiNewTaskInfo ):
         self.logic.enqueueNewTask( uiNewTaskInfo )
 
-    ####################
+    ############################
     # Updates tasks information in gui
     def updateTasks( self, tasks ):
         for i in range( self.gui.ui.renderTaskTableWidget.rowCount() ):
@@ -35,12 +45,12 @@ class UiCustomizer:
             else:
                 assert False, "Trying to update not added task."
         
-    ####################
+    ############################
     # Add task information in gui
     def addTask( self, task ):
         self.__addTask( task.id, task.status )
 
-    ####################
+    ############################
     def updateTaskAdditionalInfo( self, id ):
         t = self.logic.getTask( id )
         from TaskStatus import TaskStatus
@@ -73,22 +83,9 @@ class UiCustomizer:
         self.updateTaskAdditionalInfo( id )
 
 
-    def __updateRendererOptions( self, name ):
-        r = self.logic.getRenderer( name )
-
-        self.gui.newTaskDialog.ui.pixelFilterComboBox.clear()
-        self.gui.newTaskDialog.ui.pixelFilterComboBox.addItems( r.filters )
-
-        self.gui.newTaskDialog.ui.pathTracerComboBox.clear()
-        self.gui.newTaskDialog.ui.pathTracerComboBox.addItems( r.pathTracers )
-
-        self.gui.newTaskDialog.ui.outputFormatsComboBox.clear()
-        self.gui.newTaskDialog.ui.outputFormatsComboBox.addItems( r.outputFormats )
-
-
     # SLOTS
     #############################
-    def __taskTableRowClicked( self, row ):
+    def __taskTableRowClicked( self, row, col ):
         if row < self.gui.ui.renderTaskTableWidget.rowCount():
             taskId = self.gui.ui.renderTaskTableWidget.item( row, 0 ).text()
             taskId = "{}".format( taskId )
@@ -96,31 +93,12 @@ class UiCustomizer:
 
     #############################
     def __showNewTaskDialogClicked( self ):
-        renderers = self.logic.getRenderers()
+        self.newTaskDialog = NewTaskDialog( self.gui.window )
 
-        if self.gui.newTaskDialog:
-            QtCore.QObject.connect( self.gui.newTaskDialog.ui.rendereComboBox, QtCore.SIGNAL( "currentIndexChanged( const QString )" ), self.__rendererComboBoxValueChanged )
-        
+        self.newTaskDialogCustomizer = NewTaskDialogCustomizer( self.newTaskDialog, self.logic )
 
-            self.gui.newTaskDialog.ui.taskIdLabel.setText( self.__generateNewTaskUID() )
+        self.newTaskDialog.show()
 
-            for k in renderers:
-                r = renderers[ k ]
-                self.gui.newTaskDialog.ui.rendereComboBox.addItem( r.name )
-
-            testTasks = self.logic.getTestTasks()
-            for k in testTasks:
-                tt = testTasks[ k ]
-                self.gui.newTaskDialog.ui.testTaskComboBox.addItem( tt.name )
-
-    #############################
-    def __rendererComboBoxValueChanged( self, name ):
-        self.__updateRendererOptions( "{}".format( name ) )
-
-    #############################
-    def __generateNewTaskUID( self ):
-        import uuid
-        return "{}".format( uuid.uuid4() )
 
 
 

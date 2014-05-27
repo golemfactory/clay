@@ -1,16 +1,17 @@
-from UiCustomizer import UiCustomizer
+from MainWindowCustomizer import MainWindowCustomizer
 
 class GNRApplicationLogic:
     ######################
     def __init__( self ):
-        self.tasks      = {}
-        self.renderers  = {}
-        self.testTasks  = {}
-        self.customizer = None
+        self.tasks              = {}
+        self.renderers          = {}
+        self.testTasks          = {}
+        self.customizer         = None
+        self.currentRenderer    = None
 
     ######################
     def registerGui( self, gui ):
-        self.customizer = UiCustomizer( gui, self )
+        self.customizer = MainWindowCustomizer( gui, self )
 
     ######################
     def getTask( self, id ):
@@ -61,3 +62,14 @@ class GNRApplicationLogic:
             self.testTasks[ testTaskInfo.name ] = testTaskInfo
         else:
             assert False, "Test task {} already registered".format( testTaskInfo.name )
+
+    ######################
+    def setCurrentRenderer( self, rname ):
+        if rname in self.renderers:
+            self.currentRenderer = self.renderers[ rname ]
+        else:
+            assert False, "Unreachable"
+
+    ######################
+    def getCurrentRenderer( self ):
+        return self.currentRenderer

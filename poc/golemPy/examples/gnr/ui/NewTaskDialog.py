@@ -1,5 +1,5 @@
 from PyQt4 import QtCore
-from PyQt4.QtGui import QDialog, QFileDialog
+from PyQt4.QtGui import QDialog
 from ui_NewTaskDialog import Ui_NewTaskDialog
 
 from AddTaskResourcesDialog import AddTaskResourcesDialog
@@ -13,7 +13,6 @@ class NewTaskDialog:
         self.ui.setupUi( self.window )
         QtCore.QObject.connect( self.ui.addResourceButton, QtCore.SIGNAL( "clicked()" ), self.__showAddResourcesDialog )
         QtCore.QObject.connect( self.ui.showResourceButton, QtCore.SIGNAL( "clicked()" ), self.__showShowResourcesDialog )
-        QtCore.QObject.connect( self.ui.chooseOutputFileButton, QtCore.SIGNAL( "clicked()" ), self.__chooseOutputFileButtonClicked )
 
     ###################
     def show( self ):
@@ -29,9 +28,3 @@ class NewTaskDialog:
     def __showShowResourcesDialog( self ):
         self.addTaskResourceDialog = ShowTaskResourcesDialog( self.window )
         self.addTaskResourceDialog.show()
-
-    ############################
-    def __chooseOutputFileButtonClicked( self ):
-        fileName = QFileDialog.getSaveFileName( self.window,
-            "Choose output file", "", "All (*.*)")
-        print fileName
