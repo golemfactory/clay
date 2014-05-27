@@ -3,6 +3,8 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
 
 from NewTaskDialog import NewTaskDialog
+from AddTaskResourcesDialog import AddTaskResourcesDialog
+from ShowTaskResourcesDialog import ShowTaskResourcesDialog
 
 from TaskTableElem import TaskTableElem
 
@@ -25,6 +27,8 @@ class NewTaskDialogCustomizer:
         QtCore.QObject.connect( self.gui.ui.rendereComboBox, QtCore.SIGNAL( "currentIndexChanged( const QString )" ), self.__rendererComboBoxValueChanged )
         self.gui.ui.chooseOutputFileButton.clicked.connect( self.__chooseOutputFileButtonClicked ) 
         self.gui.ui.chooseMainProgramFileButton.clicked.connect( self.__choosMainProgramFileButtonClicked )
+        self.gui.ui.addResourceButton.clicked.connect( self.__showAddResourcesDialog )
+        self.gui.ui.showResourceButton.clicked.connect( self.__showShowResourcesDialog )
 
     #############################
     def __updateRendererOptions( self, name ):
@@ -85,7 +89,6 @@ class NewTaskDialogCustomizer:
     def __rendererComboBoxValueChanged( self, name ):
         self.__updateRendererOptions( "{}".format( name ) )
 
-
     #############################
     def __chooseOutputFileButtonClicked( self ):
 
@@ -101,7 +104,6 @@ class NewTaskDialogCustomizer:
 
         self.gui.ui.outputFileLineEdit.setText( fileName )
 
-
     #############################
     def __choosMainProgramFileButtonClicked( self ):
 
@@ -111,6 +113,25 @@ class NewTaskDialogCustomizer:
             "Choose main program file", dir, "Python (*.py)")
 
         self.gui.ui.outputFileLineEdit.setText( fileName )
+
+    ############################
+    def __showAddResourcesDialog( self ):
+        self.addTaskResourceDialog = AddTaskResourcesDialog( self.gui.window )
+        self.addTaskResourceDialog.ui.okButton.clicked.connect( self.__addResourcesDialogOKButtonClicked )
+        self.addTaskResourceDialog.show()
+
+    ############################
+    def __addResourcesDialogOKButtonClicked( self ):
+        checkes = self.addTaskResourceDialog.ui.folderTreeView.model().exportChecked()
+        self.addTaskResourceDialog.window.close()
+        self.addTaskResourceDialog = None
+        print checkes
+
+    ############################
+    def __showShowResourcesDialog( self ):
+        self.addTaskResourceDialog = ShowTaskResourcesDialog( self.gui.window )
+        self.addTaskResourceDialog.show()
+
 
     #############################
     def __generateNewTaskUID( self ):

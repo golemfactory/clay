@@ -1,3 +1,4 @@
+import os
 from collections import deque
 from PyQt4 import QtGui, QtCore
 
@@ -42,16 +43,16 @@ class CheckableDirModel(QtGui.QFileSystemModel):
 
         return QtGui.QFileSystemModel.setData(self, index, value, role)
 
-    def exportChecked(self, acceptedSuffix=['jpg', 'png', 'bmp']):
+    def exportChecked(self ):
         selection=set()
         for index in self.checks.keys():
             if self.checks[index] == QtCore.Qt.Checked:
                 for path, dirs, files in os.walk(unicode(self.filePath(index))):
                     for filename in files:
-                        if QtCore.QFileInfo(filename).completeSuffix().toLower() in acceptedSuffix:
-                            if self.checkState(self.index(os.path.join(path, filename))) == QtCore.Qt.Checked:
-                                try:
-                                    selection.add(os.path.join(path, filename))
-                                except:
-                                    pass
+                        #if QtCore.QFileInfo(filename).completeSuffix().toLower() in acceptedSuffix:
+                        if self.checkState(self.index(os.path.join(path, filename))) == QtCore.Qt.Checked:
+                            try:
+                                selection.add(os.path.join(path, filename))
+                            except:
+                                pass
         return selection
