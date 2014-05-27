@@ -10,6 +10,20 @@ class TaskComputerInfo:
         self.power          = 0
         self.subtaskDef     = ""
 
+class RendereInfo:
+    #########################
+    def __init__( self, name ):
+        self.name           = name
+        self.filters        = []
+        self.pathTracers    = []
+        self.outputFormats  = []
+
+class TestTaskInfo:
+    #########################
+    def __init__( self, name ):
+        self.name           = name
+        # TODO
+
 class TaskStatus:
     #########################
     def __init__( self ):
@@ -25,7 +39,7 @@ class TaskStatus:
         self.subtaskTimeout = 0
 
         self.resolution         = [ 0, 0 ]
-        self.renderer           = ""
+        self.renderer           = None
         self.algorithmType      = ""
         self.pixelFilter        = ""
         self.samplesPerPixelCount = 0

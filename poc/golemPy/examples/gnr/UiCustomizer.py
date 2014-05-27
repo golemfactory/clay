@@ -12,7 +12,8 @@ class UiCustomizer:
 
         self.gui    = gui
         self.logic  = logic
-        QtCore.QObject.connect( self.gui, QtCore.SIGNAL("taskTableRowClicked(int)"), self.__taskTableRowClicked )
+        QtCore.QObject.connect( self.gui, QtCore.SIGNAL( "taskTableRowClicked(int)" ), self.__taskTableRowClicked )
+        QtCore.QObject.connect( self.gui, QtCore.SIGNAL( "showNewTaskDialogClicked()" ), self.__showNewTaskDialogClicked )
 
     ####################
     # Add new task to golem client
@@ -48,10 +49,10 @@ class UiCustomizer:
         self.gui.ui.minNodePower.setText( "{} ray per pixel".format( t.minPower ) )
         self.gui.ui.minSubtask.setText( "{} pixels".format( t.minSubtask ) )
         self.gui.ui.maxSubtask.setText( "{} pixels".format( t.maxSubtask ) )
-        self.gui.ui.subtaskTimeout.setText( "{} minutes".format( int( t.minSubtask / 60.0 ) ) )
+        self.gui.ui.subtaskTimeout.setText( "{} minutes".format( int( t.subtaskTimeout / 60.0 ) ) )
         self.gui.ui.resolution.setText( "{} x {}".format( t.resolution[ 0 ], t.resolution[ 1 ] ) )
         self.gui.ui.renderer.setText( "{}".format( t.renderer ) )
-        self.gui.ui.algorithType.setText( "{}".format( t.algorithmType ) )
+        self.gui.ui.algorithmType.setText( "{}".format( t.algorithmType ) )
         self.gui.ui.pixelFilter.setText( "{}".format( t.pixelFilter ) )
         self.gui.ui.samplesPerPixel.setText( "{}".format( t.samplesPerPixelCount ) )
         self.gui.ui.outputFile.setText( "{}".format( t.outputFile ) )
@@ -69,6 +70,21 @@ class UiCustomizer:
 
         self.gui.ui.renderTaskTableWidget.setCellWidget( currentRowCount, 2, taskTableElem.progressBarInBoxLayoutWidget )
 
+        self.updateTaskAdditionalInfo( id )
+
+
+    def __updateRendererOptions( self, name ):
+        r = self.logic.getRenderer( name )
+
+        self.gui.newTaskDialog.ui.pixelFilterComboBox.clear()
+        self.gui.newTaskDialog.ui.pixelFilterComboBox.addItems( r.filters )
+
+        self.gui.newTaskDialog.ui.pathTracerComboBox.clear()
+        self.gui.newTaskDialog.ui.pathTracerComboBox.addItems( r.pathTracers )
+
+        self.gui.newTaskDialog.ui.outputFormatsComboBox.clear()
+        self.gui.newTaskDialog.ui.outputFormatsComboBox.addItems( r.outputFormats )
+
 
     # SLOTS
 
@@ -78,4 +94,35 @@ class UiCustomizer:
             taskId = self.gui.ui.renderTaskTableWidget.item( row, 0 ).text()
             taskId = "{}".format( taskId )
             self.updateTaskAdditionalInfo( taskId )
+
+    #############################
+    def __showNewTaskDialogClicked( self ):
+        renderers = self.logic.getRenderers()
+
+        if self.gui.newTaskDialog:
+            QtCore.QObject.connect( self.gui.newTaskDialog.ui.rendereComboBox, QtCore.SIGNAL( "currentIndexChanged( const QString )" ), self.__rendererComboBoxValueChanged )
+        
+
+            self.gui.newTaskDialog.ui.taskIdLabel.setText( self.__generateNewTaskUID() )
+
+            for k in renderers:
+                r = renderers[ k ]
+                self.gui.newTaskDialog.ui.rendereComboBox.addItem( r.name )
+
+            testTasks = self.logic.getTestTasks()
+            for k in testTasks:
+                tt = testTasks[ k ]
+                self.gui.newTaskDialog.ui.testTaskComboBox.addItem( tt.name )
+
+    #############################
+    def __rendererComboBoxValueChanged( self, name ):
+        self.__updateRendererOptions( "{}".format( name ) )
+
+    #############################
+    def __generateNewTaskUID( self ):
+        import uuid
+        return "{}".format( uuid.uuid1() )
+
+
+
 

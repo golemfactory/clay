@@ -17,7 +17,7 @@ genUiFiles( "./../examples/gnr/ui" )
 from Application import GNRGui
 from GNRApplicationLogic import GNRApplicationLogic
 
-from TaskStatus import TaskStatus
+from TaskStatus import TaskStatus, RendereInfo, TestTaskInfo
 
 def main():
 
@@ -26,13 +26,21 @@ def main():
 
     logic.registerGui( app.getMainWindow() )
 
+    renderer = RendereInfo( "PBRT" )
+    renderer.filters = ["box", "gaussian", "mitchell", "sinc", "triange" ]
+    renderer.pathTracers = ["aggregatetest", "createprobes", "metropolis", "sampler", "surfacepoints"]
+    renderer.outputFormats = [ "PFM", "TGA", "EXR" ]
+    logic.registerNewRendererType( renderer )
 
+    logic.registerNewTestTaskType( TestTaskInfo( "CornellBox" ) )
 
     #####
     tasks = []
     ts1 = TaskStatus()
     ts2 = TaskStatus()
     ts1.id = "321"
+    ts1.maxSubtask = 20000
+    ts1.minSubtask = 2000
     ts1.progress = 0.34
     ts1.status = "Computing"
     ts2.id = "123"

@@ -31,6 +31,9 @@ class GNRMainWindow( QtCore.QObject ):
     ############################
     def showNewTaskDialog( self ):
         self.newTaskDialog = NewTaskDialog( self.window )
+
+        self.emit( QtCore.SIGNAL( "showNewTaskDialogClicked()" ) )
+
         self.newTaskDialog.show()
 
     # SLOTS
@@ -44,10 +47,10 @@ class GNRMainWindow( QtCore.QObject ):
 
     ##########################
     def __taskTableRowClicked( self, row, column ):
-        self.emit( QtCore.SIGNAL("taskTableRowClicked(int)"), row)
+        self.emit( QtCore.SIGNAL( "taskTableRowClicked(int)" ), row)
         print "taskTableRowClicked {}".format( row )
 
     ##########################
     def __contexMenuRequested( self, p ):
         item = self.ui.renderTaskTableWidget.itemAt( p )
-        print "contexMenuRequested at row {}".format( item.row() ) 
+        print "contexMenuRequested at row {}".format( item.row() )
