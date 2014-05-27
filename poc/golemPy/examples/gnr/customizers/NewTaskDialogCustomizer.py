@@ -6,6 +6,8 @@ from NewTaskDialog import NewTaskDialog
 from AddTaskResourcesDialog import AddTaskResourcesDialog
 from ShowTaskResourcesDialog import ShowTaskResourcesDialog
 
+from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
+
 from TaskTableElem import TaskTableElem
 
 
@@ -22,6 +24,10 @@ class NewTaskDialogCustomizer:
 
         self.__init()
 
+        self.resources                  = set()
+        self.addTaskResourceDialog      = None
+        self.taskState                  = None
+
     #############################
     def __setupConnections( self ):
         QtCore.QObject.connect( self.gui.ui.rendereComboBox, QtCore.SIGNAL( "currentIndexChanged( const QString )" ), self.__rendererComboBoxValueChanged )
@@ -29,6 +35,8 @@ class NewTaskDialogCustomizer:
         self.gui.ui.chooseMainProgramFileButton.clicked.connect( self.__choosMainProgramFileButtonClicked )
         self.gui.ui.addResourceButton.clicked.connect( self.__showAddResourcesDialog )
         self.gui.ui.showResourceButton.clicked.connect( self.__showShowResourcesDialog )
+        self.gui.ui.testTaskButton.clicked.connect( self.__testTaskButtonClicked )
+        self.gui.ui.finishBatton.clicked.connect( self.__finishButtonClicked )
 
     #############################
     def __updateRendererOptions( self, name ):
@@ -116,22 +124,30 @@ class NewTaskDialogCustomizer:
 
     ############################
     def __showAddResourcesDialog( self ):
-        self.addTaskResourceDialog = AddTaskResourcesDialog( self.gui.window )
-        self.addTaskResourceDialog.ui.okButton.clicked.connect( self.__addResourcesDialogOKButtonClicked )
-        self.addTaskResourceDialog.show()
+        if not self.addTaskResourceDialog:
+            self.addTaskResourceDialog = AddTaskResourcesDialog( self.gui.window )
+            self.addTaskResourcesDialogCustomizer = AddResourcesDialogCustomizer( self.addTaskResourceDialog, self.logic )
 
-    ############################
-    def __addResourcesDialogOKButtonClicked( self ):
-        checkes = self.addTaskResourceDialog.ui.folderTreeView.model().exportChecked()
-        self.addTaskResourceDialog.window.close()
-        self.addTaskResourceDialog = None
-        print checkes
+        self.addTaskResourceDialog.show()
 
     ############################
     def __showShowResourcesDialog( self ):
         self.addTaskResourceDialog = ShowTaskResourcesDialog( self.gui.window )
         self.addTaskResourceDialog.show()
 
+    ############################
+    def __testTaskButtonClicked( self ):
+        self.taskState = self.__queryTaskState()
+        if self.logic.runTestTask( self.taskState ):
+            self.gui.ui.finishBatton.setEnabled( True )
+            self.gui.ui.testTaskButton.setEnabled( False )
+        else:
+            print "Task not tested properly"
+
+    #############################
+    def __finishButtonClicked( self ):
+        self.logic.addTasks( [ self.taskState ] )
+        self.gui.window.close()
 
     #############################
     def __generateNewTaskUID( self ):
@@ -152,6 +168,12 @@ class NewTaskDialogCustomizer:
         for k in testTasks:
             tt = testTasks[ k ]
             self.gui.ui.testTaskComboBox.addItem( tt.name )
+
+    #############################
+    def __queryTaskState( self ):
+        self.taskState = Task
+        pass
+
 
 
 

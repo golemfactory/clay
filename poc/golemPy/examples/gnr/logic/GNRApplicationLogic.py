@@ -73,3 +73,7 @@ class GNRApplicationLogic:
     ######################
     def getCurrentRenderer( self ):
         return self.currentRenderer
+
+    ######################
+    def runTestTask( self, taskState ):
+        return True

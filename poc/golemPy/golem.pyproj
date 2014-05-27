@@ -54,6 +54,7 @@
     <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="examples\gnr\customizers\AddResourcesDialogCustomizer.py" />
     <Compile Include="examples\gnr\customizers\NewTaskDialogCustomizer.py" />
     <Compile Include="examples\gnr\logic\GNRApplicationLogic.py" />
     <Compile Include="examples\gnr\TaskStatus.py" />
