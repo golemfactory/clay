@@ -87,7 +87,6 @@ class UiCustomizer:
 
 
     # SLOTS
-
     #############################
     def __taskTableRowClicked( self, row ):
         if row < self.gui.ui.renderTaskTableWidget.rowCount():
@@ -121,7 +120,7 @@ class UiCustomizer:
     #############################
     def __generateNewTaskUID( self ):
         import uuid
-        return "{}".format( uuid.uuid1() )
+        return "{}".format( uuid.uuid4() )
 
 
 

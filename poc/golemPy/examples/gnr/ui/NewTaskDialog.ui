@@ -13,6 +13,12 @@
     <height>337</height>
    </rect>
   </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
   <property name="windowTitle">
    <string>Define New Task</string>
   </property>
@@ -104,14 +110,7 @@
           </widget>
          </item>
          <item row="3" column="1">
-          <widget class="QLineEdit" name="samplesPerPixelLineEdit">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
+          <widget class="QSpinBox" name="samplesPerPixelSpinBox"/>
          </item>
         </layout>
        </widget>
@@ -158,36 +157,6 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
-          <widget class="QLineEdit" name="fullTaskTimeoutLineEdit">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QLineEdit" name="minSubtaskTimeLineEdit">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QLineEdit" name="subtaskTimeoutLineEdit">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
-         </item>
          <item row="3" column="1">
           <widget class="QComboBox" name="testTaskComboBox">
            <property name="sizePolicy">
@@ -197,6 +166,15 @@
             </sizepolicy>
            </property>
           </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QTimeEdit" name="fullTaskTimeoutTimeEdit"/>
+         </item>
+         <item row="1" column="1">
+          <widget class="QTimeEdit" name="minSubtaskTimeTimeEdit"/>
+         </item>
+         <item row="2" column="1">
+          <widget class="QTimeEdit" name="subtaskTimeoutTimeEdit"/>
          </item>
         </layout>
        </widget>
@@ -241,14 +219,7 @@
              <item row="0" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_2">
                <item>
-                <widget class="QLineEdit" name="outputResXLineEdit">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                </widget>
+                <widget class="QSpinBox" name="outputResXSpinBox"/>
                </item>
                <item>
                 <widget class="QLabel" name="label_13">
@@ -258,14 +229,7 @@
                 </widget>
                </item>
                <item>
-                <widget class="QLineEdit" name="outputResYLineEdit">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                </widget>
+                <widget class="QSpinBox" name="outputResYSpinBox"/>
                </item>
                <item>
                 <spacer name="horizontalSpacer_2">
@@ -526,8 +490,8 @@
     <rect>
      <x>10</x>
      <y>10</y>
-     <width>141</width>
-     <height>21</height>
+     <width>341</width>
+     <height>22</height>
     </rect>
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout_6">
@@ -540,10 +504,29 @@
     </item>
     <item>
      <widget class="QLabel" name="taskIdLabel">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="text">
-       <string>3124432412341234</string>
+       <string/>
       </property>
      </widget>
+    </item>
+    <item>
+     <spacer name="horizontalSpacer_6">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>40</width>
+        <height>20</height>
+       </size>
+      </property>
+     </spacer>
     </item>
    </layout>
   </widget>
