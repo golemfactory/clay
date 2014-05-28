@@ -1,7 +1,7 @@
 import os
 import datetime
 from PyQt4 import QtCore
-from PyQt4.QtGui import QFileDialog
+from PyQt4.QtGui import QFileDialog, QTreeWidgetItem
 
 from MainWindow import GNRMainWindow
 from NewTaskDialog import NewTaskDialog
@@ -107,17 +107,43 @@ class MainWindowCustomizer:
     #############################
     def __showTaskResourcesClicked( self ):
 
-        sortedRes = list( self.currentTaskHighlighted.definition.resources )
+        if self.currentTaskHighlighted:
 
-        sortedRes.sort()
+            res = list( self.currentTaskHighlighted.definition.resources )
 
-        print sortedRes
+            for i in range( len( res ) ):
+                res[ i ] = os.path.abspath( res[ i ] )
 
+            res.sort()
 
-        self.showTaskResourcesDialog = ShowTaskResourcesDialog( self.gui.window )
+            self.showTaskResourcesDialog = ShowTaskResourcesDialog( self.gui.window )
+
+            item = QTreeWidgetItem( ["Resources"] )
+            self.showTaskResourcesDialog.ui.folderTreeWidget.insertTopLevelItem( 0, item )
+
+            for r in res:
+                splited = r.split("\\")
+
+                insertItem( item, splited )
+
+            self.showTaskResourcesDialog.ui.folderTreeWidget.expandAll()
 
         self.showTaskResourcesDialog.show()
 
 
 
 
+def insertItem( root, pathTable ):
+    assert isinstance( root, QTreeWidgetItem )
+
+    found = False
+
+    if len( pathTable ) > 0:
+        for i in range( root.childCount() ):
+            if pathTable[ 0 ] == "{}".format( root.child( i ).text( 0 ) ):
+                insertItem( root.child( i ), pathTable[ 1: ] )
+                return
+
+        newChild = QTreeWidgetItem( [ pathTable[ 0 ] ] )
+        root.addChild( newChild )
+        insertItem( newChild, pathTable[ 1: ] )

@@ -84,7 +84,7 @@
      </widget>
     </item>
     <item>
-     <widget class="QTreeView" name="folderTreeView">
+     <widget class="QTreeWidget" name="folderTreeWidget">
       <property name="autoExpandDelay">
        <number>-1</number>
       </property>
@@ -94,12 +94,20 @@
       <property name="wordWrap">
        <bool>false</bool>
       </property>
-      <attribute name="headerCascadingSectionResizes">
+      <property name="topLevelItemCount" stdset="0">
+       <number>0</number>
+      </property>
+      <attribute name="headerVisible">
        <bool>false</bool>
       </attribute>
-      <attribute name="headerStretchLastSection">
-       <bool>false</bool>
+      <attribute name="headerMinimumSectionSize">
+       <number>0</number>
       </attribute>
+      <column>
+       <property name="text">
+        <string notr="true">1</string>
+       </property>
+      </column>
      </widget>
     </item>
     <item>

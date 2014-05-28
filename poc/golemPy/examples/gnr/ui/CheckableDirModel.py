@@ -21,7 +21,6 @@ class CheckableDirModel(QtGui.QFileSystemModel):
         return QtGui.QFileSystemModel.data(self, index, role)
 
     def flags(self, index):
-        #return QtGui.QFileSystemModel.flags(self, index)
         return QtGui.QFileSystemModel.flags(self, index) | QtCore.Qt.ItemIsUserCheckable
 
     def checkState(self, index):
@@ -44,15 +43,14 @@ class CheckableDirModel(QtGui.QFileSystemModel):
         return QtGui.QFileSystemModel.setData(self, index, value, role)
 
     def exportChecked(self ):
-        selection=set()
+        selection = []
         for index in self.checks.keys():
             if self.checks[index] == QtCore.Qt.Checked:
                 for path, dirs, files in os.walk(unicode(self.filePath(index))):
                     for filename in files:
-                        #if QtCore.QFileInfo(filename).completeSuffix().toLower() in acceptedSuffix:
                         if self.checkState(self.index(os.path.join(path, filename))) == QtCore.Qt.Checked:
                             try:
-                                selection.add(os.path.join(path, filename))
+                                selection.append(os.path.join(path, filename))
                             except:
                                 pass
         return selection

@@ -29,19 +29,19 @@ class ShowTaskResourcesDialog:
 
     ###################
     def __setupConnections( self ):
-        QtCore.QObject.connect( self.ui.folderTreeView
+        QtCore.QObject.connect( self.ui.folderTreeWidget
                         , QtCore.SIGNAL( "expanded ( const QModelIndex )")
                         , self.__treeViewExpanded )
 
-        QtCore.QObject.connect( self.ui.folderTreeView
+        QtCore.QObject.connect( self.ui.folderTreeWidget
                         , QtCore.SIGNAL( "collapsed ( const QModelIndex )")
                         , self.__treeViewCollapsed )
 
     # SLOTS
     ############################
     def __treeViewExpanded( self, index ):
-        self.ui.folderTreeView.resizeColumnToContents(0)
+        self.ui.folderTreeWidget.resizeColumnToContents(0)
 
     ############################
     def __treeViewCollapsed( self, index ):
-        self.ui.folderTreeView.resizeColumnToContents(0)
+        self.ui.folderTreeWidget.resizeColumnToContents(0)
