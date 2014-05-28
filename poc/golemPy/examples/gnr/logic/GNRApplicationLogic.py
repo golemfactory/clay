@@ -1,5 +1,7 @@
 from MainWindowCustomizer import MainWindowCustomizer
 
+import os
+
 class GNRApplicationLogic:
     ######################
     def __init__( self ):
@@ -76,4 +78,35 @@ class GNRApplicationLogic:
 
     ######################
     def runTestTask( self, taskState ):
+        if self.__validateTaskState( taskState ):
+            return True
+        else:
+            return False
+
+    ######################
+    def __showErrorWindow( self, text ):
+        from PyQt4.QtGui import QMessageBox
+        msBox = QMessageBox( QMessageBox.Critical, "Error", text )
+        msBox.exec_()
+        msBox.show()
+
+    ######################
+    def __validateTaskState( self, taskState ):
+
+        td = taskState.definition
+        if td.renderer in self.renderers:
+            r = self.renderers[ td.renderer ]
+
+            if not os.path.exists( td.mainProgramFile ):
+                self.__showErrorWindow( "Main program file does not exist: {}".format( td.mainProgramFile ) )
+                return False
+
+            if len( td.outputFile ) == 0: # FIXME
+                self.__showErrorWindow( "Output file is not set" )
+                return False
+
+        else:
+            return False
+
         return True
+

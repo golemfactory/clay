@@ -25,6 +25,7 @@ class NewTaskDialogCustomizer:
 
         self.addTaskResourceDialog      = None
         self.taskState                  = None
+        self.addTaskResourcesDialogCustomizer = None
 
     #############################
     def __setupConnections( self ):
@@ -130,6 +131,7 @@ class NewTaskDialogCustomizer:
     ############################
     def __testTaskButtonClicked( self ):
         self.taskState = self.__queryTaskState()
+        
         if self.logic.runTestTask( self.taskState ):
             self.gui.ui.finishBatton.setEnabled( True )
             self.gui.ui.testTaskButton.setEnabled( False )
@@ -163,20 +165,21 @@ class NewTaskDialogCustomizer:
 
     #############################
     def __queryTaskState( self ):
-        ts = TaskState()
-        ts.definition.algorithmType    = "{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )
-        time                = QtCore.QTime()
-        ts.definition.fullTaskTimeout  = time.secsTo( self.gui.ui.fullTaskTimeoutTimeEdit.time() )
-        ts.definition.id               = "{}".format( self.gui.ui.taskIdLabel.text() )
-        ts.definition.subtaskTimeout   = time.secsTo( self.gui.ui.subtaskTimeoutTimeEdit.time() )
-        ts.definition.minSubtaskTime   = time.secsTo( self.gui.ui.minSubtaskTimeTimeEdit.time() )
-        ts.definition.renderer         = self.logic.getRenderer( "{}".format( self.gui.ui.rendereComboBox.itemText( self.gui.ui.rendereComboBox.currentIndex() ) ) ).name
-        ts.definition.pixelFilter      = "{}".format( self.gui.ui.pixelFilterComboBox.itemText( self.gui.ui.pixelFilterComboBox.currentIndex() ) )
+        time    = QtCore.QTime()
+        ts      = TaskState()
+
+        ts.definition.algorithmType     = "{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )     
+        ts.definition.fullTaskTimeout   = time.secsTo( self.gui.ui.fullTaskTimeoutTimeEdit.time() )
+        ts.definition.id                = "{}".format( self.gui.ui.taskIdLabel.text() )
+        ts.definition.subtaskTimeout    = time.secsTo( self.gui.ui.subtaskTimeoutTimeEdit.time() )
+        ts.definition.minSubtaskTime    = time.secsTo( self.gui.ui.minSubtaskTimeTimeEdit.time() )
+        ts.definition.renderer          = self.logic.getRenderer( "{}".format( self.gui.ui.rendereComboBox.itemText( self.gui.ui.rendereComboBox.currentIndex() ) ) ).name
+        ts.definition.pixelFilter       = "{}".format( self.gui.ui.pixelFilterComboBox.itemText( self.gui.ui.pixelFilterComboBox.currentIndex() ) )
         ts.definition.samplesPerPixelCount = self.gui.ui.samplesPerPixelSpinBox.value()
-        ts.definition.resolution       = [ self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value() ]
-        ts.definition.outputFile       = "{}".format( self.gui.ui.outputFileLineEdit.text() )
-        ts.definition.mainProgramFile  = "{}".format( self.gui.ui.mainProgramFileLineEdit.text() )
-        ts.definition.mainProgramFile  = "{}".format( self.gui.ui.outputFormatsComboBox.itemText( self.gui.ui.outputFormatsComboBox.currentIndex() ) )
+        ts.definition.resolution        = [ self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value() ]
+        ts.definition.outputFile        = "{}".format( self.gui.ui.outputFileLineEdit.text() )
+        ts.definition.mainProgramFile   = "{}".format( self.gui.ui.mainProgramFileLineEdit.text() )
+        ts.definition.outputFormat      = "{}".format( self.gui.ui.outputFormatsComboBox.itemText( self.gui.ui.outputFormatsComboBox.currentIndex() ) )
         ts.status                       = "Not started"
 
         if self.addTaskResourcesDialogCustomizer:
