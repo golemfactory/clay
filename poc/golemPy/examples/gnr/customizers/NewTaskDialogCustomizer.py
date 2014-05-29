@@ -35,6 +35,8 @@ class NewTaskDialogCustomizer:
         self.gui.ui.addResourceButton.clicked.connect( self.__showAddResourcesDialog )
         self.gui.ui.testTaskButton.clicked.connect( self.__testTaskButtonClicked )
         self.gui.ui.finishBatton.clicked.connect( self.__finishButtonClicked )
+        self.gui.ui.cancelBatton.clicked.connect( self.__cancelButtonClicked )
+        self.gui.ui.resetToDefaultButton.clicked.connect( self.__resetToDefaultButtonClicked )
 
     #############################
     def __updateRendererOptions( self, name ):
@@ -62,9 +64,46 @@ class NewTaskDialogCustomizer:
             self.gui.ui.subtaskTimeoutTimeEdit.setTime( time.addSecs( r.defaults.subtaskTimeout ) )
             self.gui.ui.minSubtaskTimeTimeEdit.setTime( time.addSecs( r.defaults.minSubtaskTime ) )
 
+            self.gui.ui.samplesPerPixelSpinBox.setValue( r.defaults.samplesPerPixel )
+
         else:
             assert False, "Unreachable"
 
+    #############################
+    def __resetToDefaults( self ):
+        dr = self.logic.getDefaultRenderer()
+
+        self.logic.setCurrentRenderer( dr.name )
+        self.gui.ui.pixelFilterComboBox.clear()
+        self.gui.ui.pixelFilterComboBox.addItems( dr.filters )
+
+        self.gui.ui.pathTracerComboBox.clear()
+        self.gui.ui.pathTracerComboBox.addItems( dr.pathTracers )
+
+        self.gui.ui.outputFormatsComboBox.clear()
+        self.gui.ui.outputFormatsComboBox.addItems( dr.outputFormats )
+
+        for i in range( len( dr.outputFormats ) ):
+            if dr.outputFormats[ i ] == dr.defaults.outputFormat:
+                self.gui.ui.outputFormatsComboBox.setCurrentIndex( i )
+
+        self.gui.ui.mainProgramFileLineEdit.setText( dr.defaults.mainProgramFile )
+
+        time = QtCore.QTime()
+        self.gui.ui.fullTaskTimeoutTimeEdit.setTime( time.addSecs( dr.defaults.fullTaskTimeout ) )
+        self.gui.ui.subtaskTimeoutTimeEdit.setTime( time.addSecs( dr.defaults.subtaskTimeout ) )
+        self.gui.ui.minSubtaskTimeTimeEdit.setTime( time.addSecs( dr.defaults.minSubtaskTime ) )
+
+        self.gui.ui.outputFileLineEdit.clear()
+
+        self.gui.ui.samplesPerPixelSpinBox.setValue( dr.defaults.samplesPerPixel )
+
+        self.gui.ui.outputResXSpinBox.setValue( dr.defaults.outputResX )
+        self.gui.ui.outputResYSpinBox.setValue( dr.defaults.outputResY )
+
+        if self.addTaskResourceDialog:
+            self.addTaskResourcesDialogCustomizer.resources = []
+            self.addTaskResourceDialog.ui.folderTreeView.model().checks = {}
 
     # SLOTS
     #############################
@@ -142,6 +181,14 @@ class NewTaskDialogCustomizer:
     def __finishButtonClicked( self ):
         self.logic.addTasks( [ self.taskState ] )
         self.gui.window.close()
+
+    #############################
+    def __cancelButtonClicked( self ):
+        self.__resetToDefaults()
+        self.gui.window.close()
+
+    def __resetToDefaultButtonClicked( self ):
+        self.__resetToDefaults()
 
     #############################
     def __generateNewTaskUID( self ):

@@ -22,12 +22,14 @@ class RendereInfo:
 class RendererDefaults:
     #########################
     def __init__( self ):
-        self.samplesPerPixel = 0
-        self.outputFormat    = ""
-        self.mainProgramFile = ""
-        self.fullTaskTimeout = 0
-        self.minSubtaskTime  = 0
-        self.subtaskTimeout  = 0
+        self.samplesPerPixel    = 0
+        self.outputFormat       = ""
+        self.mainProgramFile    = ""
+        self.fullTaskTimeout    = 0
+        self.minSubtaskTime     = 0
+        self.subtaskTimeout     = 0
+        self.outputResX         = 800
+        self.outputResY         = 600
 
 class TestTaskInfo:
     #########################

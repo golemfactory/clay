@@ -10,7 +10,7 @@ class AddResourcesDialogCustomizer:
         self.gui        = gui
         self.logic      = logic
 
-        self.resources  = set()
+        self.resources  = []
 
         self.__setupConnections()
 

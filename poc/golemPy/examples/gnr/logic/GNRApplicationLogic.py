@@ -10,6 +10,7 @@ class GNRApplicationLogic:
         self.testTasks          = {}
         self.customizer         = None
         self.currentRenderer    = None
+        self.defaultRenderer    = None
 
     ######################
     def registerGui( self, gui ):
@@ -31,6 +32,10 @@ class GNRApplicationLogic:
             return self.renderers[ name ]
         else:
             assert False, "Renderer {} not registered".format( name )
+
+    ######################
+    def getDefaultRenderer( self ):
+        return self.defaultRenderer
 
     ######################
     def getTestTasks( self ):
@@ -55,6 +60,8 @@ class GNRApplicationLogic:
     def registerNewRendererType( self, renderer ):
         if renderer.name not in self.renderers:
             self.renderers[ renderer.name ] = renderer
+            if len( self.renderers ) == 1:
+                self.defaultRenderer = renderer
         else:
             assert False, "Renderer {} already registered".format( renderer.name )
 
