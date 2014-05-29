@@ -8,6 +8,8 @@ from NewTaskDialog import NewTaskDialog
 from ShowTaskResourcesDialog import ShowTaskResourcesDialog
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from TaskContexMenuCustomizer import TaskContextMenuCustomizer
+from TaskDetailsDialog import TaskDetailsDialog
+from TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
 
 from TaskTableElem import TaskTableElem
 
@@ -23,11 +25,13 @@ class MainWindowCustomizer:
 
         self.__setupConnections()
         self.currentTaskHighlighted = None
+        self.taskDetailsDialog      = None
 
     #############################
     def __setupConnections( self ):
-        QtCore.QObject.connect( self.gui.ui.actionNew, QtCore.SIGNAL( "triggered()" ), self.__showNewTaskDialogClicked )
+        self.gui.ui.actionNew.triggered.connect( self.__showNewTaskDialogClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
+        QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "doubleClicked(const QModelIndex)" ), self.__taskTableRowDoubleClicked )
         self.gui.ui.showResourceButton.clicked.connect( self.__showTaskResourcesClicked )
         self.gui.ui.renderTaskTableWidget.customContextMenuRequested.connect( self.__contexMenuRequested )
 
@@ -106,13 +110,6 @@ class MainWindowCustomizer:
         menu.popup( self.gui.ui.renderTaskTableWidget.viewport().mapToGlobal( p ) )
         menu.exec_()
 
-    ############################
-    def __createContextMenuForTask( self, taskState ):
-        menu = QMenu()
-
-
-        return menu
-
     # SLOTS
     #############################
     def __taskTableRowClicked( self, row, col ):
@@ -121,6 +118,15 @@ class MainWindowCustomizer:
             taskId = "{}".format( taskId )
             t = self.logic.getTask( taskId )
             self.updateTaskAdditionalInfo( t )
+
+    #############################
+    def __taskTableRowDoubleClicked( self, m ):
+        row = m.row()
+        taskId = "{}".format( self.gui.ui.renderTaskTableWidget.item( row, 0 ).text() )
+        ts = self.logic.getTask( taskId )
+        self.taskDetailsDialog = TaskDetailsDialog( self.gui.window )
+        self.taskDetailsDialogCustomizer = TaskDetailsDialogCustomizer( self.taskDetailsDialog, self.logic, ts )
+        self.taskDetailsDialog.show()
 
     #############################
     def __showNewTaskDialogClicked( self ):

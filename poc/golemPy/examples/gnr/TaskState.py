@@ -70,6 +70,24 @@ class TaskState:
         self.elapsedTime    = 0
         self.timeStarted    = 0
 
+class ComputerState:
+    #########################
+    def __init__( self ):
+        self.nodeId             = ""
+        self.performance        = 0
+        self.ipAddress          = ""
+        self.subtaskState       = SubtaskState()
+
+class SubtaskState:
+    #########################
+    def __init__( self ):
+        self.subtaskDefinition  = ""
+        self.subtaskId          = ""
+        self.subtaskProgress    = 0.0
+        self.subtaskRemTime     = 0
+        self.subtaskStatus      = ""
+
+
 class TaskStatus:
     notStarted  = "Not started"
     waiting     = "Waiting"

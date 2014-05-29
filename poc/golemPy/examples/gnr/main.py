@@ -17,7 +17,7 @@ genUiFiles( "./../examples/gnr/ui" )
 from Application import GNRGui
 from GNRApplicationLogic import GNRApplicationLogic
 
-from TaskState import TaskState, RendereInfo, TestTaskInfo, RendererDefaults
+from TaskState import TaskState, RendereInfo, TestTaskInfo, RendererDefaults, ComputerState, SubtaskState, TaskStatus
 
 def buidPBRTRendererInfo():
     defaults = RendererDefaults()
@@ -42,7 +42,24 @@ def main():
     logic   = GNRApplicationLogic()
     app     = GNRGui( logic )
 
+    task = TaskState()
+    computer = ComputerState()
+    computer.subtaskState.subtaskDefinition = "sdasuncbnasocbno \n duiasidun uia\n diausndianu \n"
+    computer.subtaskState.subtaskId = "5675128936189263"
+    computer.subtaskState.subtaskProgress = 0.43
+    computer.subtaskState.subtaskRemTime = 3200
+    computer.subtaskState.subtaskStatus = TaskStatus.computing
+    computer.ipAddress = "123.53.23.11"
+    computer.performance = 20000
+    computer.nodeId = "jsajcnas89090casdc"
+
+    task.computers[ computer.nodeId ] = computer
+
+    task.definition.id = "asiomxcasoncd90jscsnpac"
+
     logic.registerGui( app.getMainWindow() )
+
+    app.appLogic.addTasks( [ task ] )
 
     logic.registerNewRendererType( buidPBRTRendererInfo() )
 
