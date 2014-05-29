@@ -14,7 +14,7 @@ class TaskContextMenuCustomizer:
     ##########################
     def __buildContextMenu( self ):
 
-        enabledActions = self.__getEnagledActions( self.taskState.status ) 
+        enabledActions = self.__getEnabledActions( self.taskState.status ) 
 
         self.__buildAndConnectAction( "Abort Task",      self.__abortTaskTriggered,         enabledActions )
         self.__buildAndConnectAction( "Restart",         self.__restartTaskTriggered,       enabledActions )
@@ -74,7 +74,7 @@ class TaskContextMenuCustomizer:
 
     # ######################
     ##########################
-    def __getEnagledActions( self, taskStatus ):
+    def __getEnabledActions( self, taskStatus ):
 
         enabled = {}
 

@@ -63,7 +63,7 @@ class TaskState:
     def __init__( self ):
         self.definition     = TaskDefinition()
 
-        self.status         = ""
+        self.status         = TaskStatus.notStarted
         self.progress       = 0.0
         self.computers      = {}
         self.remainingTime  = 0
