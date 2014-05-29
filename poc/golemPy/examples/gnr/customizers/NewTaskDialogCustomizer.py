@@ -7,7 +7,7 @@ from AddTaskResourcesDialog import AddTaskResourcesDialog
 from ShowTaskResourcesDialog import ShowTaskResourcesDialog
 
 from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
-from TaskState import TaskState
+from TaskState import TaskState, TaskStatus
 
 
 class NewTaskDialogCustomizer:
@@ -227,7 +227,7 @@ class NewTaskDialogCustomizer:
         ts.definition.outputFile        = "{}".format( self.gui.ui.outputFileLineEdit.text() )
         ts.definition.mainProgramFile   = "{}".format( self.gui.ui.mainProgramFileLineEdit.text() )
         ts.definition.outputFormat      = "{}".format( self.gui.ui.outputFormatsComboBox.itemText( self.gui.ui.outputFormatsComboBox.currentIndex() ) )
-        ts.status                       = "Not started"
+        ts.status                       = TaskStatus.notStarted
 
         if self.addTaskResourcesDialogCustomizer:
             ts.definition.resources = self.addTaskResourcesDialogCustomizer.resources

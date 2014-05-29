@@ -1,5 +1,7 @@
 from PyQt4.QtGui import QAction
 
+from TaskState import TaskStatus
+
 class TaskContextMenuCustomizer:
     ##########################
     def __init__( self, ui, logic, ts ):
@@ -31,10 +33,7 @@ class TaskContextMenuCustomizer:
 
         action.triggered.connect( triggeredFunc )
         self.ui.addAction( action )
-        return action
-    
-
-        
+        return action        
 
     # SLOTS
     ###########################
@@ -83,56 +82,56 @@ class TaskContextMenuCustomizer:
         enabled[ "Show Details" ]   = True
         enabled[ "Delete" ]         = True
 
-        if taskStatus == "Not started":
+        if taskStatus == TaskStatus.notStarted:
             enabled[ "Abort Task"]      = True
             enabled[ "Restart"]         = False         
             enabled[ "Start Task" ]     = True
             enabled[ "Pause" ]          = False
             enabled[ "Resume"]          = False
 
-        if taskStatus == "Waiting":
+        if taskStatus == TaskStatus.waiting:
             enabled[ "Abort Task"]      = True
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False
             enabled[ "Pause" ]          = False
             enabled[ "Resume"]          = False
 
-        if taskStatus == "Starting":
+        if taskStatus == TaskStatus.starting:
             enabled[ "Abort Task"]      = True
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False
             enabled[ "Pause" ]          = True
             enabled[ "Resume"]          = False
 
-        if taskStatus == "Computing":
+        if taskStatus == TaskStatus.computing:
             enabled[ "Abort Task"]      = True
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False
             enabled[ "Pause" ]          = True
             enabled[ "Resume"]          = False
             
-        if taskStatus == "Finished":
+        if taskStatus == TaskStatus.finished:
             enabled[ "Abort Task"]      = False
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False
             enabled[ "Pause" ]          = False
             enabled[ "Resume"]          = False
 
-        if taskStatus == "Aborted":
+        if taskStatus == TaskStatus.aborted:
             enabled[ "Abort Task"]      = False
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False
             enabled[ "Pause" ]          = False
             enabled[ "Resume"]          = False
 
-        if taskStatus == "Failure":
+        if taskStatus == TaskStatus.failure:
             enabled[ "Abort Task"]      = False
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False
             enabled[ "Pause" ]          = False
             enabled[ "Resume"]          = False
 
-        if taskStatus == "Paused":
+        if taskStatus == TaskStatus.paused:
             enabled[ "Abort Task"]      = True
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False

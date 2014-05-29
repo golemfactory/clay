@@ -69,3 +69,14 @@ class TaskState:
         self.remainingTime  = 0
         self.elapsedTime    = 0
         self.timeStarted    = 0
+
+class TaskStatus:
+    notStarted  = "Not started"
+    waiting     = "Waiting"
+    starting    = "Starting"
+    computing   = "Computing"
+    finished    = "Finished"
+    aborted     = "Aborted"
+    failure     = "Failure"
+    paused      = "Paused"
+
