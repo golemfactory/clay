@@ -1,0 +1,144 @@
+from PyQt4.QtGui import QAction
+
+class TaskContextMenuCustomizer:
+    ##########################
+    def __init__( self, ui, logic, ts ):
+        self.ui         = ui
+        self.logic      = logic
+        self.taskState  = ts
+
+        self.__buildContextMenu()
+
+    ##########################
+    def __buildContextMenu( self ):
+
+        enabledActions = self.__getEnagledActions( self.taskState.status ) 
+
+        self.__buildAndConnectAction( "Abort Task",      self.__abortTaskTriggered,         enabledActions )
+        self.__buildAndConnectAction( "Restart",         self.__restartTaskTriggered,       enabledActions )
+        self.__buildAndConnectAction( "Delete",          self.__deleteTaskTriggered,        enabledActions )
+        self.__buildAndConnectAction( "New Task",        self.__newTaskTriggered,           enabledActions )
+        self.__buildAndConnectAction( "Start Task",      self.__startTaskTriggered,         enabledActions )
+        self.__buildAndConnectAction( "Pause",           self.__pauseTaskTriggered,         enabledActions )
+        self.__buildAndConnectAction( "Resume",          self.__resumeTaskTriggered,        enabledActions )
+        self.__buildAndConnectAction( "Show Details",    self.__showTaskDetailsTriggered,   enabledActions )
+
+    ##########################
+    def __buildAndConnectAction( self, name, triggeredFunc, enabledActions ):
+        action = QAction( name, self.ui )
+
+        action.setEnabled( enabledActions[ name ] )
+
+        action.triggered.connect( triggeredFunc )
+        self.ui.addAction( action )
+        return action
+    
+
+        
+
+    # SLOTS
+    ###########################
+    def __abortTaskTriggered( self ):
+        pass
+
+    ###########################
+    def __abortTaskTriggered( self ):
+        pass
+
+    ###########################
+    def __restartTaskTriggered( self ):
+        pass
+
+    ###########################
+    def __deleteTaskTriggered( self ):
+        pass
+
+    ###########################
+    def __newTaskTriggered( self ):
+        pass
+
+    ###########################
+    def __startTaskTriggered( self ):
+        pass
+
+    ###########################
+    def __pauseTaskTriggered( self ):
+        pass
+
+    ###########################
+    def __resumeTaskTriggered( self ):
+        pass
+
+    ###########################
+    def __showTaskDetailsTriggered( self ):
+        pass
+
+    # ######################
+    ##########################
+    def __getEnagledActions( self, taskStatus ):
+
+        enabled = {}
+
+        enabled[ "New Task" ]       = True
+        enabled[ "Show Details" ]   = True
+        enabled[ "Delete" ]         = True
+
+        if taskStatus == "Not started":
+            enabled[ "Abort Task"]      = True
+            enabled[ "Restart"]         = False         
+            enabled[ "Start Task" ]     = True
+            enabled[ "Pause" ]          = False
+            enabled[ "Resume"]          = False
+
+        if taskStatus == "Waiting":
+            enabled[ "Abort Task"]      = True
+            enabled[ "Restart"]         = True
+            enabled[ "Start Task" ]     = False
+            enabled[ "Pause" ]          = False
+            enabled[ "Resume"]          = False
+
+        if taskStatus == "Starting":
+            enabled[ "Abort Task"]      = True
+            enabled[ "Restart"]         = True
+            enabled[ "Start Task" ]     = False
+            enabled[ "Pause" ]          = True
+            enabled[ "Resume"]          = False
+
+        if taskStatus == "Computing":
+            enabled[ "Abort Task"]      = True
+            enabled[ "Restart"]         = True
+            enabled[ "Start Task" ]     = False
+            enabled[ "Pause" ]          = True
+            enabled[ "Resume"]          = False
+            
+        if taskStatus == "Finished":
+            enabled[ "Abort Task"]      = False
+            enabled[ "Restart"]         = True
+            enabled[ "Start Task" ]     = False
+            enabled[ "Pause" ]          = False
+            enabled[ "Resume"]          = False
+
+        if taskStatus == "Aborted":
+            enabled[ "Abort Task"]      = False
+            enabled[ "Restart"]         = True
+            enabled[ "Start Task" ]     = False
+            enabled[ "Pause" ]          = False
+            enabled[ "Resume"]          = False
+
+        if taskStatus == "Failure":
+            enabled[ "Abort Task"]      = False
+            enabled[ "Restart"]         = True
+            enabled[ "Start Task" ]     = False
+            enabled[ "Pause" ]          = False
+            enabled[ "Resume"]          = False
+
+        if taskStatus == "Paused":
+            enabled[ "Abort Task"]      = True
+            enabled[ "Restart"]         = True
+            enabled[ "Start Task" ]     = False
+            enabled[ "Pause" ]          = False
+            enabled[ "Resume"]          = True
+
+        assert len( enabled ) == 8
+
+        return enabled

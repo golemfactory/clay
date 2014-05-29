@@ -7,6 +7,7 @@ from MainWindow import GNRMainWindow
 from NewTaskDialog import NewTaskDialog
 from ShowTaskResourcesDialog import ShowTaskResourcesDialog
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
+from TaskContexMenuCustomizer import TaskContextMenuCustomizer
 
 from TaskTableElem import TaskTableElem
 
@@ -98,16 +99,17 @@ class MainWindowCustomizer:
 
         ts = self.logic.getTask( taskId )
 
-        menu = self.__createContextMenuForTask( ts )
+        menu = QMenu()
+
+        self.taskContextMenuCustomizer =  TaskContextMenuCustomizer( menu, self.logic, ts )
+
         menu.popup( self.gui.ui.renderTaskTableWidget.viewport().mapToGlobal( p ) )
         menu.exec_()
 
     ############################
     def __createContextMenuForTask( self, taskState ):
         menu = QMenu()
-        menu.addAction( QAction("Action 1", menu.window() ) )
-        menu.addAction( QAction("Action 2", menu.window() ) )
-        menu.addAction( QAction("Action 3", menu.window() ) )
+
 
         return menu
 
