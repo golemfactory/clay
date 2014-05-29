@@ -1,7 +1,7 @@
 import os
 import datetime
 from PyQt4 import QtCore
-from PyQt4.QtGui import QFileDialog, QTreeWidgetItem
+from PyQt4.QtGui import QFileDialog, QTreeWidgetItem, QMenu, QAction
 
 from MainWindow import GNRMainWindow
 from NewTaskDialog import NewTaskDialog
@@ -28,6 +28,7 @@ class MainWindowCustomizer:
         QtCore.QObject.connect( self.gui.ui.actionNew, QtCore.SIGNAL( "triggered()" ), self.__showNewTaskDialogClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
         self.gui.ui.showResourceButton.clicked.connect( self.__showTaskResourcesClicked )
+        self.gui.ui.renderTaskTableWidget.customContextMenuRequested.connect( self.__contexMenuRequested )
 
     ############################
     # Add new task to golem client
@@ -86,6 +87,29 @@ class MainWindowCustomizer:
 
         self.updateTaskAdditionalInfo( self.logic.getTask( id ) )
 
+    ############################
+    def __showTaskContextMenu( self, p ):
+ 
+        row = self.gui.ui.renderTaskTableWidget.itemAt( p ).row()
+
+        idItem = self.gui.ui.renderTaskTableWidget.itemAt( row, 0 )
+
+        taskId = "{}".format( idItem.text() )
+
+        ts = self.logic.getTask( taskId )
+
+        menu = self.__createContextMenuForTask( ts )
+        menu.popup( self.gui.ui.renderTaskTableWidget.viewport().mapToGlobal( p ) )
+        menu.exec_()
+
+    ############################
+    def __createContextMenuForTask( self, taskState ):
+        menu = QMenu()
+        menu.addAction( QAction("Action 1", menu.window() ) )
+        menu.addAction( QAction("Action 2", menu.window() ) )
+        menu.addAction( QAction("Action 3", menu.window() ) )
+
+        return menu
 
     # SLOTS
     #############################
@@ -128,11 +152,15 @@ class MainWindowCustomizer:
 
             self.showTaskResourcesDialog.ui.folderTreeWidget.expandAll()
 
-        self.showTaskResourcesDialog.show()
+            self.showTaskResourcesDialog.show()
+
+    ##########################
+    def __contexMenuRequested( self, p ):
+        self.__showTaskContextMenu( p )
 
 
 
-
+#######################################################################################
 def insertItem( root, pathTable ):
     assert isinstance( root, QTreeWidgetItem )
 
@@ -147,3 +175,4 @@ def insertItem( root, pathTable ):
         newChild = QTreeWidgetItem( [ pathTable[ 0 ] ] )
         root.addChild( newChild )
         insertItem( newChild, pathTable[ 1: ] )
+
