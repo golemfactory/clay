@@ -55,7 +55,7 @@
        </spacer>
       </item>
       <item>
-       <widget class="QLabel" name="label_2">
+       <widget class="QLabel" name="mainSceneFileLabel">
         <property name="text">
          <string>Main scene file path</string>
         </property>

@@ -10,22 +10,11 @@ class ShowTaskResourcesDialog:
         self.ui = Ui_ShowTaskResourceDialog()
         self.ui.setupUi( self.window )
 
-        self.__initFolderTreeView()
         self.__setupConnections()
 
     ###################
     def show( self ):
         self.window.show()
-
-    ###################
-    def __initFolderTreeView( self ):
-
-        pass
-        #fsModel = QFileSystemModel()
-        #fsModel.setRootPath("")
-        #fsModel.setFilter( QtCore.QDir.AllDirs | QtCore.QDir.Files | QtCore.QDir.NoDotAndDotDot )
-
-        #self.ui.folderTreeView.setModel( fsModel )
 
     ###################
     def __setupConnections( self ):

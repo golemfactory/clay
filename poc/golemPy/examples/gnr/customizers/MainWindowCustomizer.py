@@ -153,14 +153,21 @@ class MainWindowCustomizer:
             item = QTreeWidgetItem( ["Resources"] )
             self.showTaskResourcesDialog.ui.folderTreeWidget.insertTopLevelItem( 0, item )
 
+            self.showTaskResourcesDialog.ui.closeButton.clicked.connect( self.__showTaskResCloseButtonClicked )
+
             for r in res:
                 splited = r.split("\\")
 
                 insertItem( item, splited )
 
+            self.showTaskResourcesDialog.ui.mainSceneFileLabel.setText( self.currentTaskHighlighted.definition.mainSceneFile )
             self.showTaskResourcesDialog.ui.folderTreeWidget.expandAll()
 
             self.showTaskResourcesDialog.show()
+
+    #############################
+    def __showTaskResCloseButtonClicked( self ):
+        self.showTaskResourcesDialog.window.close()
 
     ##########################
     def __contexMenuRequested( self, p ):

@@ -45,7 +45,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="mainSceneButtonLabel"/>
+       <widget class="QLineEdit" name="mainSceneLabel"/>
       </item>
       <item>
        <widget class="QPushButton" name="chooseMainSceneFileButton">

@@ -17,6 +17,7 @@ class RendereInfo:
         self.filters        = []
         self.pathTracers    = []
         self.outputFormats  = []
+        self.sceneFileExt   = "pbrt"
         self.defaults       = defaults
 
 class RendererDefaults:
@@ -55,6 +56,7 @@ class TaskDefinition:
         self.taskResources      = []
         self.fullTaskTimeout    = 0    
         self.mainProgramFile    = ""
+        self.mainSceneFile      = ""
         self.outputFormat       = ""
         self.resources          = []
 

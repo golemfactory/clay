@@ -230,7 +230,9 @@ class NewTaskDialogCustomizer:
         ts.status                       = TaskStatus.notStarted
 
         if self.addTaskResourcesDialogCustomizer:
-            ts.definition.resources = self.addTaskResourcesDialogCustomizer.resources
+            ts.definition.resources         = self.addTaskResourcesDialogCustomizer.resources
+            ts.definition.mainSceneFile     = "{}".format( self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.text() )
+
         
 
         return ts
