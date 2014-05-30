@@ -31,5 +31,18 @@ class TestEngine:
 
         assert taskState.status == TaskStatus.notStarted # TODO:
 
+        assert taskState.definition.id not in self.tasks
 
+        self.tasks[ taskState.definition.id ] = taskState
         
+    #####################
+    def __randomTaskStatusUpdate( self ):
+        pass
+
+    #####################
+    def __randomTaskComputerAdd( self ):
+
+        pass
+
+
+
