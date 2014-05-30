@@ -58,7 +58,7 @@ class TaskContextMenuCustomizer:
 
     ###########################
     def __startTaskTriggered( self ):
-        pass
+        self.logic.startTask( self.taskState.definition.id )
 
     ###########################
     def __pauseTaskTriggered( self ):

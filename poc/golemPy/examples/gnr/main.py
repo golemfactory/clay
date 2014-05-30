@@ -10,6 +10,9 @@ sys.path.append('../testtasks/minilight/src')
 sys.path.append('../testtasks/pbrt')
 sys.path.append('../tools/')
 sys.path.append('./../examples/gnr/ui')
+sys.path.append('./../examples/gnr/ui/gen')
+sys.path.append('./../examples/gnr/logic')
+sys.path.append('./../examples/gnr/customizers')
 
 from UiGen import genUiFiles
 genUiFiles( "./../examples/gnr/ui" )
@@ -18,6 +21,7 @@ from Application import GNRGui
 from GNRApplicationLogic import GNRApplicationLogic
 
 from TaskState import TaskState, RendereInfo, TestTaskInfo, RendererDefaults, ComputerState, SubtaskState, TaskStatus
+from TestEngine import TestEngine
 
 def buidPBRTRendererInfo():
     defaults = RendererDefaults()
@@ -64,6 +68,8 @@ def main():
     logic.registerNewRendererType( buidPBRTRendererInfo() )
 
     logic.registerNewTestTaskType( TestTaskInfo( "CornellBox" ) )
+
+    te = TestEngine( logic )
 
     app.execute()
 

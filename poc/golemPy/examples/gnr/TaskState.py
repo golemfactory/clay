@@ -1,3 +1,4 @@
+from PyQt4 import QtCore
 
 class TaskComputerInfo:
     #########################
@@ -60,9 +61,10 @@ class TaskDefinition:
         self.outputFormat       = ""
         self.resources          = []
 
-class TaskState:
+class TaskState( QtCore.QObject ):
     #########################
     def __init__( self ):
+        QtCore.QObject.__init__( self )
         self.definition     = TaskDefinition()
 
         self.status         = TaskStatus.notStarted

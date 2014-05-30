@@ -2,9 +2,13 @@ from MainWindowCustomizer import MainWindowCustomizer
 
 import os
 
-class GNRApplicationLogic:
+from TaskState import TaskStatus
+from PyQt4 import QtCore
+
+class GNRApplicationLogic( QtCore.QObject ):
     ######################
     def __init__( self ):
+        QtCore.QObject.__init__( self )
         self.tasks              = {}
         self.renderers          = {}
         self.testTasks          = {}
@@ -32,6 +36,14 @@ class GNRApplicationLogic:
             return self.renderers[ name ]
         else:
             assert False, "Renderer {} not registered".format( name )
+
+    ######################
+    def startTask( self, taskId ):
+        ts = self.getTask( taskId )
+
+        assert ts.status == TaskStatus.notStarted # TODO:
+
+        self.emit( QtCore.SIGNAL( "taskStartingRequested(QObject)" ), ts )
 
     ######################
     def getDefaultRenderer( self ):

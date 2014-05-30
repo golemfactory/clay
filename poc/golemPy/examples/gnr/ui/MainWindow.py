@@ -5,10 +5,9 @@ from ui_MainWindow import Ui_MainWindow
 
 from NewTaskDialog import NewTaskDialog
 
-class GNRMainWindow( QtCore.QObject ):
+class GNRMainWindow:
     ##########################
     def __init__( self ):
-        QtCore.QObject.__init__( self )
         self.window     = QMainWindow()
         self.ui         = Ui_MainWindow()
 
