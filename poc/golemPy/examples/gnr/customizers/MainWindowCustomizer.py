@@ -3,15 +3,17 @@ import datetime
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog, QTreeWidgetItem, QMenu, QAction
 
-from MainWindow import GNRMainWindow
-from NewTaskDialog import NewTaskDialog
-from ShowTaskResourcesDialog import ShowTaskResourcesDialog
+from ui.MainWindow import GNRMainWindow
+from ui.NewTaskDialog import NewTaskDialog
+from ui.ShowTaskResourcesDialog import ShowTaskResourcesDialog
+from ui.TaskDetailsDialog import TaskDetailsDialog
+from ui.TaskTableElem import TaskTableElem
+
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from TaskContexMenuCustomizer import TaskContextMenuCustomizer
-from TaskDetailsDialog import TaskDetailsDialog
 from TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
 
-from TaskTableElem import TaskTableElem
+
 
 
 class MainWindowCustomizer:

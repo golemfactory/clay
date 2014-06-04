@@ -1,7 +1,7 @@
 from PyQt4 import QtCore
 from PyQt4.QtGui import QDialog
 
-from ui_AddTaskResourcesDialog import Ui_AddTaskResourcesDialog
+from gen.ui_AddTaskResourcesDialog import Ui_AddTaskResourcesDialog
 
 from CheckableDirModel import CheckableDirModel
 

@@ -1,7 +1,7 @@
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMainWindow, QPixmap
 
-from ui_MainWindow import Ui_MainWindow
+from gen.ui_MainWindow import Ui_MainWindow
 
 from NewTaskDialog import NewTaskDialog
 
@@ -12,7 +12,7 @@ class GNRMainWindow:
         self.ui         = Ui_MainWindow()
 
         self.ui.setupUi( self.window )
-        self.ui.previewLabel.setPixmap( QPixmap( "./../examples/gnr/ui/nopreview.jpg" ) )
+        self.ui.previewLabel.setPixmap( QPixmap( "ui/nopreview.jpg" ) )
 
     ##########################
     def show( self ):

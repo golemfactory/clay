@@ -1,26 +1,15 @@
-
 import sys
 
-sys.path.append('../src/')
-sys.path.append('../src/core')
-sys.path.append('../src/vm')
-sys.path.append('../src/task')
-sys.path.append('../src/task/resource')
-sys.path.append('../testtasks/minilight/src')
-sys.path.append('../testtasks/pbrt')
-sys.path.append('../tools/')
-sys.path.append('./../examples/gnr/ui')
-sys.path.append('./../examples/gnr/ui/gen')
-sys.path.append('./../examples/gnr/logic')
-sys.path.append('./../examples/gnr/customizers')
+sys.path.append('./../../')
 
-from UiGen import genUiFiles
-genUiFiles( "./../examples/gnr/ui" )
-
-from Application import GNRGui
 from GNRApplicationLogic import GNRApplicationLogic
 
-from TaskState import TaskState, RendereInfo, TestTaskInfo, RendererDefaults, ComputerState, SubtaskState, TaskStatus
+from tools.UiGen import genUiFiles
+genUiFiles( "ui" )
+
+from Application import GNRGui
+
+from TaskState import TaskState, RendereInfo, TestTaskInfo, RendererDefaults, ComputerState, TaskStatus
 from TestEngine import TestEngine
 
 def buidPBRTRendererInfo():
@@ -30,7 +19,7 @@ def buidPBRTRendererInfo():
     defaults.subtaskTimeout     = 20 * 60
     defaults.samplesPerPixel    = 200
     defaults.outputFormat       = "EXR"
-    defaults.mainProgramFile    = "./../testtasks/pbrt/pbrt_compact.py"
+    defaults.mainProgramFile    = "./../../testtasks/pbrt/pbrt_compact.py"
     
 
     renderer = RendereInfo( "PBRT", defaults )

@@ -1,5 +1,4 @@
 import os
-from collections import deque
 from PyQt4 import QtGui, QtCore
 
 def are_parent_and_child(parent, child):

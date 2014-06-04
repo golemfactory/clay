@@ -4,7 +4,7 @@ from PyQt4 import QtCore
 
 from TaskState import TaskState, ComputerState
 
-from SubtaskTableEntry import SubtaskTableElem
+from ui.SubtaskTableEntry import SubtaskTableElem
 
 class TaskDetailsDialogCustomizer:
     ###########################

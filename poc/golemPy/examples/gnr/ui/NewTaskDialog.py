@@ -1,6 +1,6 @@
 from PyQt4 import QtCore
 from PyQt4.QtGui import QDialog
-from ui_NewTaskDialog import Ui_NewTaskDialog
+from gen.ui_NewTaskDialog import Ui_NewTaskDialog
 
 from AddTaskResourcesDialog import AddTaskResourcesDialog
 from ShowTaskResourcesDialog import ShowTaskResourcesDialog

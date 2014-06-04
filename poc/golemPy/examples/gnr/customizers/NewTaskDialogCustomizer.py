@@ -2,9 +2,8 @@ import os
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
 
-from NewTaskDialog import NewTaskDialog
-from AddTaskResourcesDialog import AddTaskResourcesDialog
-from ShowTaskResourcesDialog import ShowTaskResourcesDialog
+from ui.NewTaskDialog import NewTaskDialog
+from ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 
 from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
 from TaskState import TaskState, TaskStatus

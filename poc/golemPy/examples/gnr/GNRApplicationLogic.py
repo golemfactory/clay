@@ -1,4 +1,4 @@
-from MainWindowCustomizer import MainWindowCustomizer
+from customizers.MainWindowCustomizer import MainWindowCustomizer
 
 import os
 

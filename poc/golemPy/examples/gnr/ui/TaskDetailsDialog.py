@@ -1,7 +1,7 @@
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QDialog
-from ui_TaskDetailsDialog import Ui_TaskDetailsDialog
+from gen.ui_TaskDetailsDialog import Ui_TaskDetailsDialog
 
 class TaskDetailsDialog:
     ###################

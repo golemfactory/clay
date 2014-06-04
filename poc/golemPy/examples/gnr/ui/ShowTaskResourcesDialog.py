@@ -1,7 +1,7 @@
 from PyQt4 import QtCore
 from PyQt4.QtGui import QDialog, QFileSystemModel
 
-from ui_ShowTaskResourcesDialog import Ui_ShowTaskResourceDialog
+from gen.ui_ShowTaskResourcesDialog import Ui_ShowTaskResourceDialog
 
 class ShowTaskResourcesDialog:
     #######################

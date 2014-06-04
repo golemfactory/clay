@@ -1,6 +1,6 @@
 import sys
 from PyQt4.QtGui import QApplication
-from MainWindow import GNRMainWindow
+from ui.MainWindow import GNRMainWindow
 
 class GNRGui:
     ############################
