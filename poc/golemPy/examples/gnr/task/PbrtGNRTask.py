@@ -2,12 +2,14 @@ import os
 import random
 import cPickle as pickle
 
-
-from GNRTask import GNRTask
 from golem.task.TaskBase import TaskBuilder
-from testtasks.pbrt.takscollector import PbrtTaksCollector
 from golem.core.Compress import decompress
 from golem.task.resource.Resource import prepareDeltaZip
+
+from GNRTask import GNRTask
+from testtasks.pbrt.takscollector import PbrtTaksCollector
+
+
 
 class PbrtTaskBuilder( TaskBuilder ):
     #######################
