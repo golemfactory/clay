@@ -28,13 +28,14 @@ class PbrtTaskBuilder( TaskBuilder ):
                                    1,
                                    "temp",
                                    self.taskDefinition.mainSceneFile,
-                                   self.taskDefinition.fullTaskTimeout )
+                                   self.taskDefinition.fullTaskTimeout,
+                                   self.taskDefinition.resources )
 
 
 class PbrtRenderTask( GNRTask ):
 
     #######################
-    def __init__( self, clientId, taskId, pathRoot, totalTasks, numSubtasks, numCores, outfilebasename, sceneFile, fullTaskTimeout, returnAddress = "", returnPort = 0 ):
+    def __init__( self, clientId, taskId, pathRoot, totalTasks, numSubtasks, numCores, outfilebasename, sceneFile, fullTaskTimeout, taskResources, returnAddress = "", returnPort = 0 ):
 
         srcFile = open( "../testtasks/pbrt/pbrt_compact.py", "r")
         srcCode = srcFile.read()
@@ -50,7 +51,7 @@ class PbrtRenderTask( GNRTask ):
         self.numCores           = numCores
         self.outfilebasename    = outfilebasename
         self.sceneFile          = sceneFile
-
+        self.taskResources      = taskResources
         self.lastExtraData      = None
 
         self.collector          = PbrtTaksCollector()
@@ -58,6 +59,7 @@ class PbrtRenderTask( GNRTask ):
         self.returnAddress      = returnAddress
         self.returnPort         = returnPort
         self.subTasksGiven      = {}
+
 
     def initialize( self ):
         pass
