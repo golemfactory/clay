@@ -12,6 +12,16 @@ class TaskHeader:
         self.ttl = ttl
         self.clientId = clientId
 
+class TaskBuilder:
+    #######################
+    def __init__( self, taskDefinition ):
+        self.taskDefinition = taskDefinition
+
+    #######################
+    @abc.abstractmethod
+    def build( self ):
+        return
+
 class Task:
     #######################
     def __init__( self, header, srcCode ):
@@ -87,3 +97,10 @@ class Task:
     @abc.abstractmethod
     def prepareResourceDelta( self, subTaskId, resourceHeader ):
         return None
+
+    #######################
+    @classmethod
+    def buildTask( cls, taskBuilder ):
+        assert isinstance( taskBuilder, TaskBuilder )
+        return taskBuilder.build()
+

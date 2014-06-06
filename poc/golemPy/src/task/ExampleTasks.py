@@ -235,7 +235,7 @@ class VRayTracingTask( Task ):
         image_file.close()
 
 
-from Compress import decompress
+from src.core.Compress import decompress
 
 class PbrtRenderTask( Task ):
 
