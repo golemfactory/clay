@@ -99,11 +99,15 @@ class MainWindowCustomizer:
  
         row = self.gui.ui.renderTaskTableWidget.itemAt( p ).row()
 
-        idItem = self.gui.ui.renderTaskTableWidget.itemAt( row, 0 )
+        print "{}".format( row )
+
+        idItem = self.gui.ui.renderTaskTableWidget.item( row, 0 )
 
         taskId = "{}".format( idItem.text() )
 
         ts = self.logic.getTask( taskId )
+
+        print "{}".format( taskId )
 
         menu = QMenu()
 

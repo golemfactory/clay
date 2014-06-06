@@ -11,15 +11,16 @@ class TaskComputerInfo:
         self.power          = 0
         self.subtaskDef     = ""
 
-class RendereInfo:
+class RendererInfo:
     #########################
-    def __init__( self, name, defaults ):
+    def __init__( self, name, defaults, taskBuilderType ):
         self.name           = name
         self.filters        = []
         self.pathTracers    = []
         self.outputFormats  = []
         self.sceneFileExt   = "pbrt"
         self.defaults       = defaults
+        self.taskBuilderType = taskBuilderType
 
 class RendererDefaults:
     #########################

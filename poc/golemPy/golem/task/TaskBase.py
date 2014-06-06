@@ -14,8 +14,8 @@ class TaskHeader:
 
 class TaskBuilder:
     #######################
-    def __init__( self, taskDefinition ):
-        self.taskDefinition = taskDefinition
+    def __init__( self ):
+        pass
 
     #######################
     @abc.abstractmethod

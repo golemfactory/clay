@@ -9,8 +9,9 @@ genUiFiles( "ui" )
 
 from Application import GNRGui
 
-from TaskState import TaskState, RendereInfo, TestTaskInfo, RendererDefaults, ComputerState, TaskStatus
+from TaskState import TaskState, RendererInfo, TestTaskInfo, RendererDefaults, ComputerState, TaskStatus
 from TestEngine import TestEngine
+from task.PbrtGNRTask import PbrtTaskBuilder
 
 def buidPBRTRendererInfo():
     defaults = RendererDefaults()
@@ -22,11 +23,11 @@ def buidPBRTRendererInfo():
     defaults.mainProgramFile    = "./../../testtasks/pbrt/pbrt_compact.py"
     
 
-    renderer = RendereInfo( "PBRT", defaults )
-    renderer.filters = ["box", "gaussian", "mitchell", "sinc", "triange" ]
-    renderer.pathTracers = ["aggregatetest", "createprobes", "metropolis", "sampler", "surfacepoints"]
-    renderer.outputFormats = [ "PFM", "TGA", "EXR" ]
-    
+    renderer                = RendererInfo( "PBRT", defaults, PbrtTaskBuilder )
+    renderer.filters        = ["box", "gaussian", "mitchell", "sinc", "triange" ]
+    renderer.pathTracers    = ["aggregatetest", "createprobes", "metropolis", "sampler", "surfacepoints"]
+    renderer.outputFormats  = [ "PFM", "TGA", "EXR" ]
+
     return renderer
 
 

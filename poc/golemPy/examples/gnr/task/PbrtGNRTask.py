@@ -6,6 +6,7 @@ from golem.task.TaskBase import TaskBuilder
 from golem.core.Compress import decompress
 from golem.task.resource.Resource import prepareDeltaZip
 
+
 from GNRTask import GNRTask
 from testtasks.pbrt.takscollector import PbrtTaksCollector
 
@@ -26,23 +27,40 @@ class PbrtTaskBuilder( TaskBuilder ):
         pbrtTask = PbrtRenderTask( self.clientId,
                                    self.taskDefinition.id,
                                    mainSceneDir,
+                                   self.taskDefinition.mainProgramFile,
                                    10,
+                                   45,
                                    1,
                                    "temp",
                                    self.taskDefinition.mainSceneFile,
                                    self.taskDefinition.fullTaskTimeout,
                                    self.taskDefinition.resources )
 
+        return pbrtTask
+
 
 class PbrtRenderTask( GNRTask ):
 
     #######################
-    def __init__( self, clientId, taskId, pathRoot, totalTasks, numSubtasks, numCores, outfilebasename, sceneFile, fullTaskTimeout, taskResources, returnAddress = "", returnPort = 0 ):
+    def __init__( self,
+                  clientId,
+                  taskId,
+                  pathRoot,
+                  mainProgramFile,
+                  totalTasks,
+                  numSubtasks,
+                  numCores,
+                  outfilebasename,
+                  sceneFile,
+                  fullTaskTimeout,
+                  taskResources,
+                  returnAddress = "",
+                  returnPort = 0 ):
 
-        srcFile = open( "../testtasks/pbrt/pbrt_compact.py", "r")
+        srcFile = open( mainProgramFile, "r")
         srcCode = srcFile.read()
 
-        GNRTask.__init__( self, srcFile, clientId, taskId, returnAddress, returnPort, fullTaskTimeout )
+        GNRTask.__init__( self, srcCode, clientId, taskId, returnAddress, returnPort, fullTaskTimeout )
 
         self.header.ttl = max( 2200.0, fullTaskTimeout )
 

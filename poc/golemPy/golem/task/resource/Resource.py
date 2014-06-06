@@ -1,7 +1,7 @@
 import sys
 sys.path.append('../../core/')
 
-from simplehash import SimpleHash
+from golem.core.simplehash import SimpleHash
 
 import os
 from os.path import join, isdir, isfile

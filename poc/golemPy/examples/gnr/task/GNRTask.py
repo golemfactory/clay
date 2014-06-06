@@ -4,6 +4,6 @@ from golem.task.TaskBase import ( Task,
 class GNRTask( Task ):
     # ####################
     def __init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, ttl ):
-        Task.__init__( TaskHeader( clientId, taskId, ownerAddress, ownerPort, ttl ), srcCode )
+        Task.__init__( self, TaskHeader( clientId, taskId, ownerAddress, ownerPort, ttl ), srcCode )
 
 
