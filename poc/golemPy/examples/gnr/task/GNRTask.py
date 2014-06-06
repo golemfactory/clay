@@ -1,4 +1,4 @@
-from src.task.TaskBase import ( Task,
+from golem.task.TaskBase import ( Task,
                                 TaskHeader )
 
 class GNRTask( Task ):

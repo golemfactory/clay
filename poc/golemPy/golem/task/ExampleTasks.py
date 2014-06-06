@@ -235,7 +235,7 @@ class VRayTracingTask( Task ):
         image_file.close()
 
 
-from src.core.Compress import decompress
+from golem.core.Compress import decompress
 
 class PbrtRenderTask( Task ):
 

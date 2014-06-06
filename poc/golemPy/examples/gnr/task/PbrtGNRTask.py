@@ -4,10 +4,10 @@ import cPickle as pickle
 
 
 from GNRTask import GNRTask
-from src.task.TaskBase import TaskBuilder
+from golem.task.TaskBase import TaskBuilder
 from testtasks.pbrt.takscollector import PbrtTaksCollector
-from src.core.Compress import decompress
-from src.task.resource.Resource import prepareDeltaZip
+from golem.core.Compress import decompress
+from golem.task.resource.Resource import prepareDeltaZip
 
 class PbrtTaskBuilder( TaskBuilder ):
     #######################
