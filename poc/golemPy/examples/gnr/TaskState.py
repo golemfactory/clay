@@ -74,6 +74,7 @@ class TaskState( QtCore.QObject ):
         self.remainingTime  = 0
         self.elapsedTime    = 0
         self.timeStarted    = 0
+        self.resultPreview  = None
 
 class ComputerState:
     #########################

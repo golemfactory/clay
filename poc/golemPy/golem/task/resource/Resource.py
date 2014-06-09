@@ -367,7 +367,7 @@ if __name__ == "__main__":
     files = glob.glob( os.path.join( "input_64", "*.exr" ) )
 
     print files
-    from databuffer import DataBuffer
+    from golem.databuffer import DataBuffer
 
     db = DataBuffer()
     import gc
@@ -376,7 +376,7 @@ if __name__ == "__main__":
             if True:
                 import cPickle
                 import Compress
-                from Message import MessageTaskComputed, Message
+                from golem.Message import MessageTaskComputed, Message
                 fh = open( f, 'rb' )
                 printAndPause(0)
                 fileData = Compress.compress( fh.read() )

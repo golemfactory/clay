@@ -1,6 +1,6 @@
 
-from Message import Message
-from ConnectionState import ConnectionState
+from golem.Message import Message
+from golem.network.ConnectionState import ConnectionState
 
 class TaskConnState( ConnectionState ):
     ##########################

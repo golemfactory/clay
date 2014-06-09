@@ -1,9 +1,6 @@
 
-from Message import MessagePeerStatus, MessageNewTask, MessageKillNode
-import os
+from golem.Message import MessagePeerStatus, MessageNewTask, MessageKillNode
 import cPickle as pickle
-import time
-import sys
 
 class ServerManagerSession:
 

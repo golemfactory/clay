@@ -1,7 +1,7 @@
 
 from NetConnState import NetConnState
 
-from Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks
+from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks
 import time
 
 class PeerSessionInterface:

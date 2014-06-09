@@ -1,7 +1,6 @@
 
 from ClientManagerSession import ClientManagerSession
-from ClientManagerConnState import ClientManagerConnState
-from network import Network
+from golem.core.network import Network
 
 class NodesManagerClient:
 

@@ -1,13 +1,11 @@
 
-from network import Network
+from golem.core.network import Network
 from TaskManager import TaskManager
 from TaskComputer import TaskComputer
 from TaskSession import TaskSession
 from TaskBase import TaskHeader
-from TaskConnState import TaskConnState
 import random
 import time
-import cPickle
 
 class TaskServer:
     #############################

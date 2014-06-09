@@ -1,9 +1,6 @@
-
-import random
 import time
 
-from TaskBase import Task
-from NodeStateSnapshot import LocalTaskStateSnapshot
+from golem.manager.NodeStateSnapshot import LocalTaskStateSnapshot
 from Environment import TaskManagerEnvironment
 
 class TaskManager:

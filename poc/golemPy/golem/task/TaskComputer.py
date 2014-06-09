@@ -4,12 +4,11 @@ sys.path.append( '../manager')
 
 from threading import Thread, Lock
 import time
-import os
 from copy import copy
 
-from vm import PythonVM
-from NodeStateSnapshot import TaskChunkStateSnapshot
-from ResourcesManager import ResourcesManager
+from golem.vm.vm import PythonVM
+from golem.manager.NodeStateSnapshot import TaskChunkStateSnapshot
+from golem.task.resource.ResourcesManager import ResourcesManager
 from Environment import TaskComputerEnvironment
 
 class TaskComputer:

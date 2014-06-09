@@ -1,6 +1,5 @@
 
-from network import Network
-import time
+from golem.core.network import Network
 
 class P2PServer:
     #############################

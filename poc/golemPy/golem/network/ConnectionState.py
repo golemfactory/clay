@@ -1,9 +1,8 @@
 
 import abc
 
-from twisted.internet.protocol import Protocol 
-from Message import Message, MessageHello, MessagePing, MessagePong
-from databuffer import DataBuffer
+from twisted.internet.protocol import Protocol
+from golem.core.databuffer import DataBuffer
 
 class ConnectionState(Protocol):
     ############################

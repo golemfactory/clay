@@ -2,8 +2,8 @@
 import sys
 sys.path.append('core')
 
-from simpleconfig import SimpleConfig, ConfigEntry
-from prochelper import ProcessService
+from golem.core.simpleconfig import SimpleConfig, ConfigEntry
+from golem.core.prochelper import ProcessService
 
 CONFIG_FILENAME = "app_cfg.ini"
 MANAGER_PORT = 20301

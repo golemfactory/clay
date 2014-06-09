@@ -3,8 +3,8 @@ import sys
 sys.path.append('core')
 
 import abc
-from simpleserializer import SimpleSerializer
-from databuffer import DataBuffer
+from golem.core.simpleserializer import SimpleSerializer
+from golem.core.databuffer import DataBuffer
 
 class Message:
 

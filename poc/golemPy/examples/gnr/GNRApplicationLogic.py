@@ -4,7 +4,6 @@ import os
 
 from TaskState import TaskStatus
 from PyQt4 import QtCore
-from golem.task.TaskBase import Task
 
 class GNRApplicationLogic( QtCore.QObject ):
     ######################
@@ -43,10 +42,6 @@ class GNRApplicationLogic( QtCore.QObject ):
         ts = self.getTask( taskId )
 
         assert ts.status == TaskStatus.notStarted # TODO:
-
-        tb = self.renderers[ ts.definition.renderer ].taskBuilderType( "client id here", ts.definition )
-
-        t = Task.buildTask( tb )
 
         self.emit( QtCore.SIGNAL( "taskStartingRequested(QObject)" ), ts )
 

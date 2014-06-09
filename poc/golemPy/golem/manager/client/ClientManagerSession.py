@@ -1,5 +1,5 @@
 
-from Message import MessagePeerStatus, MessageKillNode, MessageNewTask
+from golem.Message import MessagePeerStatus, MessageKillNode, MessageNewTask
 from ClientManagerConnState import ClientManagerConnState
 
 import cPickle as pickle

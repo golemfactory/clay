@@ -1,6 +1,6 @@
 
-from network import Network
-from NodeStateSnapshot import NodeStateSnapshot
+from golem.core.network import Network
+from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 
 class NodesManagerServer:
 

@@ -1,5 +1,5 @@
 
-from Message import Message
+from golem.Message import Message
 from ConnectionState import ConnectionState
 
 class NetConnState( ConnectionState ):

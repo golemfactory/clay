@@ -14,12 +14,10 @@ sys.path.append('../testtasks/pbrt')
 
 from twisted.internet import reactor
 
-from AppConfig import AppConfig
-from Client import Client
-from Message import initMessages
-from ClientConfigDescriptor import ClientConfigDescriptor
-
-
+from golem.AppConfig import AppConfig
+from golem.Client import Client
+from golem.Message import initMessages
+from golem.ClientConfigDescriptor import ClientConfigDescriptor
 
 
 def main():

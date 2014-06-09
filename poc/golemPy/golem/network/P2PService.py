@@ -1,6 +1,6 @@
 
 from P2PServer import P2PServer
-from network import Network
+from golem.core.network import Network
 from PeerSession import PeerSession
 import time
 

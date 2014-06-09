@@ -1,10 +1,8 @@
 
-from Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult
-from TaskComputer import TaskComputer
+from golem.Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult
 from TaskConnState import TaskConnState
 import time
 import cPickle as pickle
-import Compress
 import os
 import struct
 

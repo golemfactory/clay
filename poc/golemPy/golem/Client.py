@@ -1,21 +1,14 @@
 from twisted.internet import task, reactor
 
-from P2PService import P2PService
-from TaskServer import TaskServer
+from golem.network.P2PService import P2PService
+from golem.task.TaskServer import TaskServer
 
-from TaskBase import TaskHeader
-from ExampleTasks import VRayTracingTask
+from golem.core.hostaddress import getHostAddress
 
-from hostaddress import getHostAddress
+from golem.manager.NodeStateSnapshot import NodeStateSnapshot
+from golem.manager.client.NodesManagerClient import NodesManagerClient
 
-from NodeStateSnapshot import NodeStateSnapshot
-from Message import MessagePeerStatus
-from NodesManagerCient import NodesManagerClient
-
-import sys
 import time
-import random
-import socket
 
 class Client:
 

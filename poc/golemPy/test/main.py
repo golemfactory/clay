@@ -12,18 +12,14 @@ sys.path.append('../src/manager/server')
 sys.path.append('../testtasks/minilight/src')
 sys.path.append('../testtasks/pbrt')
 
-from UiGen import genUiFiles
+from tools.UiGen import genUiFiles
 
 genUiFiles( "./../src" )
 
-from twisted.internet.protocol import Protocol, Factory
-
-from threading import Thread
-from AppConfig import AppConfig
-from ClientConfigDescriptor import ClientConfigDescriptor
-from NodesManager import  NodesManager
-from NodesManagerLogic import EmptyManagerLogic
-from Message import initMessages
+from golem.AppConfig import AppConfig
+from golem.manager.NodesManager import  NodesManager
+from golem.manager.NodesManagerLogic import EmptyManagerLogic
+from golem.Message import initMessages
 
 def main():
 
