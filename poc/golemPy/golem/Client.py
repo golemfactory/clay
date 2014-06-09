@@ -1,4 +1,4 @@
-from twisted.internet import task, reactor
+from twisted.internet import task
 
 from golem.network.P2PService import P2PService
 from golem.task.TaskServer import TaskServer
@@ -9,6 +9,63 @@ from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 from golem.manager.client.NodesManagerClient import NodesManagerClient
 
 import time
+
+from golem.AppConfig import AppConfig
+from golem.Message import initMessages
+from golem.ClientConfigDescriptor import ClientConfigDescriptor
+
+def startClient( ):
+    initMessages()
+
+    cfg = AppConfig.loadConfig()
+
+    optNumPeers     = cfg.getOptimalPeerNum()
+    managerPort     = cfg.getManagerListenPort()
+    startPort       = cfg.getStartPort()
+    endPort         = cfg.getEndPort()
+    seedHost        = cfg.getSeedHost()
+    seedHostPort    = cfg.getSeedHostPort()
+    sendPings       = cfg.getSendPings()
+    pingsInterval   = cfg.getPingsInterval()
+    clientUid       = cfg.getClientUid()
+    addTasks        = cfg.getAddTasks()
+
+    gettingPeersInterval    = cfg.getGettingPeersInterval()
+    gettingTasksInterval    = cfg.getGettingTasksInterval()
+    taskRequestInterval     = cfg.getTaskRequestInterval()
+    estimatedPerformance    = cfg.getEstimatedPerformance()
+    nodeSnapshotInterval    = cfg.getNodeSnapshotInterval()
+
+    configDesc = ClientConfigDescriptor()
+
+    configDesc.clientUid      = clientUid
+    configDesc.startPort      = startPort
+    configDesc.endPort        = endPort
+    configDesc.managerPort    = managerPort
+    configDesc.optNumPeers    = optNumPeers
+    configDesc.sendPings      = sendPings
+    configDesc.pingsInterval  = pingsInterval
+    configDesc.addTasks       = addTasks
+    configDesc.clientVersion  = 1
+
+    configDesc.seedHost               = seedHost
+    configDesc.seedHostPort           = seedHostPort
+
+    configDesc.gettingPeersInterval   = gettingPeersInterval
+    configDesc.gettingTasksInterval   = gettingTasksInterval
+    configDesc.taskRequestInterval    = taskRequestInterval
+    configDesc.estimatedPerformance   = estimatedPerformance
+    configDesc.nodeSnapshotInterval   = nodeSnapshotInterval
+    configDesc.maxResultsSendignDelay = cfg.getMaxResultsSendingDelay()
+
+    print "Adding tasks {}".format( addTasks )
+    print "Creating public client interface with uuid: {}".format( clientUid )
+    c = Client( configDesc )
+
+    print "Starting all asynchronous services"
+    c.startNetwork( )
+
+    return c
 
 class Client:
 
@@ -33,7 +90,7 @@ class Client:
         self.doWorkTask.start(0.1, False)
        
     ############################
-    def startNetwork(self ):
+    def startNetwork( self ):
         print "Starting network ..."
         print "Starting p2p server ..."
         self.p2pservice = P2PService( self.hostAddress, self.configDesc )
@@ -59,6 +116,10 @@ class Client:
         self.p2pservice         = None
         self.taskServer         = None
         self.nodesManagerClient = None
+
+    ############################
+    def enqueueNewTask( self, task ):
+        self.taskServer.taskManager.addNewTask( task )
 
     ############################
     def __doWork(self):

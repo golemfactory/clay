@@ -58,7 +58,7 @@ class TestEngine( QtCore.QObject ):
 
 
 #######################
-def runTask( srcCode, extraData, progress ):
+def runTask( self, srcCode, extraData, progress ):
     extraData = copy( extraData )
     scope = extraData
     scope[ "taskProgress" ] = progress

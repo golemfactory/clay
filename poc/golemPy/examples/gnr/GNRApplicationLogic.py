@@ -1,9 +1,11 @@
-from customizers.MainWindowCustomizer import MainWindowCustomizer
-
 import os
 
-from TaskState import TaskStatus
 from PyQt4 import QtCore
+
+from TaskState import TaskStatus
+from golem.task.TaskBase import Task
+from customizers.MainWindowCustomizer import MainWindowCustomizer
+
 
 class GNRApplicationLogic( QtCore.QObject ):
     ######################
@@ -19,6 +21,9 @@ class GNRApplicationLogic( QtCore.QObject ):
     ######################
     def registerGui( self, gui ):
         self.customizer = MainWindowCustomizer( gui, self )
+
+    def registerClient( self, client ):
+        self.client = client
 
     ######################
     def getTask( self, id ):
@@ -43,7 +48,11 @@ class GNRApplicationLogic( QtCore.QObject ):
 
         assert ts.status == TaskStatus.notStarted # TODO:
 
-        self.emit( QtCore.SIGNAL( "taskStartingRequested(QObject)" ), ts )
+        tb = self.renderers[ ts.definition.renderer ].taskBuilderType( "client id here", ts.definition )
+
+        t = Task.buildTask( tb )
+
+        self.client.enqueueNewTask( t )
 
     ######################
     def getDefaultRenderer( self ):
