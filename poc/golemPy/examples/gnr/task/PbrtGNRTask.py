@@ -76,8 +76,6 @@ class PbrtRenderTask( GNRTask ):
 
         self.collector          = PbrtTaksCollector()
         self.numTasksReceived   = 0
-        self.returnAddress      = returnAddress
-        self.returnPort         = returnPort
         self.subTasksGiven      = {}
 
 
@@ -102,7 +100,7 @@ class PbrtRenderTask( GNRTask ):
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = self.lastExtraData
         self.lastTask = endTask # TODO: Should depend on performance
-        return self.lastExtraData, hash, self.returnAddress, self.returnPort
+        return self.lastExtraData, self.header.taskId, self.header.taskOwnerAddress, self.header.taskOwnerPort
 
     #######################
     def shortExtraDataRepr( self, perfIndex ):
@@ -164,8 +162,8 @@ class PbrtRenderTask( GNRTask ):
         return float( self.lastTask ) / self.totalTasks
 
     #######################
-    def prepareResourceDelta( self, subTaskId, resourceHeader ):
-        if subTaskId in self.subTasksGiven:
+    def prepareResourceDelta( self, subTaskId, taskId, resourceHeader ):
+        if taskId == self.header.taskId:
             dirName = os.path.join( "res", self.header.clientId, self.header.taskId, "resources" )
             tmpDir = os.path.join( "res", self.header.clientId, self.header.taskId, "tmp" )
 

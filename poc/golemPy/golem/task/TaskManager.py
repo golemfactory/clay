@@ -87,8 +87,9 @@ class TaskManager:
     #######################
     def prepareResource( self, subTaskId, resourceHeader ):
         if subTaskId in self.subTask2TaskMapping:
-            task = self.tasks[ self.subTask2TaskMapping[ subTaskId ] ]
-            return task.prepareResourceDelta( subTaskId, resourceHeader )
+            taskId = self.subTask2TaskMapping[ subTaskId ]
+            task = self.tasks[ taskId ]
+            return task.prepareResourceDelta( subTaskId, taskId, resourceHeader )
 
     #######################
     def acceptResultsDelay( self, taskId ):

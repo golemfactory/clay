@@ -348,7 +348,7 @@ class PbrtRenderTask( Task ):
         return float( self.lastTask ) / self.totalTasks
 
     #######################
-    def prepareResourceDelta( self, subTaskId, resourceHeader ):
+    def prepareResourceDelta( self, subTaskId, taskId, resourceHeader ):
         if subTaskId in self.subTasksGiven:
             dirName = os.path.join( "res", self.header.clientId, self.header.taskId, "resources" )
             tmpDir = os.path.join( "res", self.header.clientId, self.header.taskId, "tmp" )

@@ -46,7 +46,7 @@ class ResourcesManager:
         return taskResHeader
 
     ###################
-    def prepareResourceDelta( self, subTaskId, resourceHeader ):
+    def prepareResourceDelta( self, subTaskId, taskId, resourceHeader ):
 
         dirName = self.getResourceDir( subTaskId )
 

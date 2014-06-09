@@ -23,79 +23,45 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
+      <file leaf-file-name="GNRTask.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/examples/gnr/task/GNRTask.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="255">
+              <caret line="6" column="33" selection-start-line="6" selection-start-column="33" selection-end-line="6" selection-end-column="33" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="PbrtGNRTask.py" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/examples/gnr/task/PbrtGNRTask.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.5805921" vertical-offset="2486" max-vertical-offset="3094">
+              <caret line="167" column="0" selection-start-line="167" selection-start-column="0" selection-end-line="167" selection-end-column="0" />
+              <folding>
+                <element signature="e#0#9#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="ExampleTasks.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/golem/task/ExampleTasks.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.0" vertical-offset="5445" max-vertical-offset="6018">
+              <caret line="350" column="54" selection-start-line="350" selection-start-column="54" selection-end-line="350" selection-end-column="54" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
       <file leaf-file-name="TaskManager.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/golem/task/TaskManager.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="911" max-vertical-offset="1751">
-              <caret line="66" column="0" selection-start-line="66" selection-start-column="0" selection-end-line="66" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="1135" max-vertical-offset="1768">
+              <caret line="91" column="0" selection-start-line="91" selection-start-column="0" selection-end-line="91" selection-end-column="0" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="P2PServer.py" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/golem/network/P2PServer.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="510" max-vertical-offset="901">
-              <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="P2PService.py" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/golem/network/P2PService.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="-9.64" vertical-offset="235" max-vertical-offset="2159">
-              <caret line="28" column="0" selection-start-line="28" selection-start-column="0" selection-end-line="28" selection-end-column="0" />
-              <folding>
-                <element signature="e#1#32#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Client.py" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/golem/Client.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="108" max-vertical-offset="2873">
-              <caret line="19" column="0" selection-start-line="19" selection-start-column="0" selection-end-line="19" selection-end-column="0" />
-              <folding>
-                <element signature="e#0#33#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="AppConfig.py" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/golem/AppConfig.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="1060" max-vertical-offset="2669">
-              <caret line="75" column="0" selection-start-line="75" selection-start-column="0" selection-end-line="75" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="prochelper.py" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/golem/core/prochelper.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.25386998" vertical-offset="1519" max-vertical-offset="2448">
-              <caret line="106" column="33" selection-start-line="106" selection-start-column="33" selection-end-line="106" selection-end-column="33" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="TaskServer.py" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/golem/task/TaskServer.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="312" max-vertical-offset="4862">
-              <caret line="31" column="0" selection-start-line="31" selection-start-column="0" selection-end-line="31" selection-end-column="0" />
-              <folding>
-                <element signature="e#1#39#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -104,8 +70,8 @@
       <file leaf-file-name="TaskSession.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/golem/task/TaskSession.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="1489" max-vertical-offset="2363">
-              <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="1472" max-vertical-offset="2363">
+              <caret line="99" column="0" selection-start-line="99" selection-start-column="0" selection-end-line="99" selection-end-column="0" />
               <folding>
                 <element signature="e#1#203#0" expanded="true" />
               </folding>
@@ -113,23 +79,55 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="PeerSession.py" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/golem/network/PeerSession.py">
+      <file leaf-file-name="ResourcesManager.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/golem/task/resource/ResourcesManager.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="1808" max-vertical-offset="3213">
-              <caret line="131" column="8" selection-start-line="131" selection-start-column="8" selection-end-line="131" selection-end-column="8" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="1233" max-vertical-offset="1819">
+              <caret line="48" column="54" selection-start-line="48" selection-start-column="54" selection-end-line="48" selection-end-column="54" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="TaskBase.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/golem/task/TaskBase.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.0" vertical-offset="1301" max-vertical-offset="1887">
+              <caret line="97" column="54" selection-start-line="97" selection-start-column="54" selection-end-line="97" selection-end-column="54" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="GNRApplicationLogic.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/examples/gnr/GNRApplicationLogic.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.0" vertical-offset="391" max-vertical-offset="2482">
+              <caret line="54" column="22" selection-start-line="54" selection-start-column="22" selection-end-line="54" selection-end-column="22" />
               <folding>
-                <element signature="e#1#38#0" expanded="true" />
+                <element signature="e#0#9#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="TaskComputer.py" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/golem/task/TaskComputer.py">
+      <file leaf-file-name="Client.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/golem/Client.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="1230" max-vertical-offset="2992">
-              <caret line="85" column="0" selection-start-line="85" selection-start-column="0" selection-end-line="85" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="1845" max-vertical-offset="2873">
+              <caret line="121" column="39" selection-start-line="121" selection-start-column="39" selection-end-line="121" selection-end-column="39" />
+              <folding>
+                <element signature="e#0#33#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="NodesManagerClient.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/golem/manager/client/NodesManagerClient.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="1.0" vertical-offset="212" max-vertical-offset="833">
+              <caret line="12" column="0" selection-start-line="12" selection-start-column="0" selection-end-line="12" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -158,10 +156,7 @@
         <option value="$PROJECT_DIR$/examples/gnr/ui/MainWindow.py" />
         <option value="$PROJECT_DIR$/src/task/ExampleTasks.py" />
         <option value="$PROJECT_DIR$/src/task/TaskBase.py" />
-        <option value="$PROJECT_DIR$/golem/task/ExampleTasks.py" />
-        <option value="$PROJECT_DIR$/golem/task/TaskBase.py" />
         <option value="$PROJECT_DIR$/examples/gnr/customizers/MainWindowCustomizer.py" />
-        <option value="$PROJECT_DIR$/examples/gnr/task/PbrtGNRTask.py" />
         <option value="$PROJECT_DIR$/examples/gnr/task/GNRTask.py" />
         <option value="$PROJECT_DIR$/examples/gnr/TaskState.py" />
         <option value="$PROJECT_DIR$/golem/AppConfig.py" />
@@ -175,7 +170,6 @@
         <option value="$PROJECT_DIR$/golem/task/TaskConnState.py" />
         <option value="$PROJECT_DIR$/golem/Message.py" />
         <option value="$PROJECT_DIR$/golem/network/PeerSession.py" />
-        <option value="$PROJECT_DIR$/golem/task/TaskManager.py" />
         <option value="$PROJECT_DIR$/golem/task/TaskComputer.py" />
         <option value="$PROJECT_DIR$/golem/task/TaskSession.py" />
         <option value="$PROJECT_DIR$/golem/manager/client/ClientManagerSession.py" />
@@ -187,9 +181,14 @@
         <option value="$PROJECT_DIR$/examples/gnr/Application.py" />
         <option value="$PROJECT_DIR$/golem/network/P2PService.py" />
         <option value="$PROJECT_DIR$/examples/gnr/main.py" />
-        <option value="$PROJECT_DIR$/examples/gnr/GNRApplicationLogic.py" />
         <option value="$PROJECT_DIR$/golem/Client.py" />
         <option value="$PROJECT_DIR$/test/ClientMain.py" />
+        <option value="$PROJECT_DIR$/examples/gnr/GNRApplicationLogic.py" />
+        <option value="$PROJECT_DIR$/golem/task/TaskManager.py" />
+        <option value="$PROJECT_DIR$/golem/task/ExampleTasks.py" />
+        <option value="$PROJECT_DIR$/golem/task/TaskBase.py" />
+        <option value="$PROJECT_DIR$/golem/task/resource/ResourcesManager.py" />
+        <option value="$PROJECT_DIR$/examples/gnr/task/PbrtGNRTask.py" />
       </list>
     </option>
   </component>
@@ -283,6 +282,24 @@
               <option name="myItemId" value="" />
               <option name="myItemType" value="" />
             </PATH_ELEMENT>
+            <PATH_ELEMENT USER_OBJECT="test">
+              <option name="myItemId" value="" />
+              <option name="myItemType" value="" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT USER_OBJECT="ComputerRes/09b8d740cf544c3fa5c628ec0ccf4d59">
+              <option name="myItemId" value="" />
+              <option name="myItemType" value="" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT USER_OBJECT="Root">
+              <option name="myItemId" value="" />
+              <option name="myItemType" value="" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT USER_OBJECT="golemPy">
+              <option name="myItemId" value="" />
+              <option name="myItemType" value="" />
+            </PATH_ELEMENT>
             <PATH_ELEMENT USER_OBJECT="golem">
               <option name="myItemId" value="" />
               <option name="myItemType" value="" />
@@ -352,6 +369,28 @@
               <option name="myItemType" value="" />
             </PATH_ELEMENT>
             <PATH_ELEMENT USER_OBJECT="gnr">
+              <option name="myItemId" value="" />
+              <option name="myItemType" value="" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT USER_OBJECT="Root">
+              <option name="myItemId" value="" />
+              <option name="myItemType" value="" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT USER_OBJECT="golemPy">
+              <option name="myItemId" value="" />
+              <option name="myItemType" value="" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT USER_OBJECT="examples">
+              <option name="myItemId" value="" />
+              <option name="myItemType" value="" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT USER_OBJECT="gnr">
+              <option name="myItemId" value="" />
+              <option name="myItemType" value="" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT USER_OBJECT="task">
               <option name="myItemId" value="" />
               <option name="myItemType" value="" />
             </PATH_ELEMENT>
@@ -619,7 +658,7 @@
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32968238" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32968238" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.24960506" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.25171143" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2538178" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.26396495" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
@@ -677,119 +716,25 @@
           <option name="timeStamp" value="21" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="python-line">
-          <url>file://$PROJECT_DIR$/golem/Client.py</url>
-          <line>121</line>
-          <option name="timeStamp" value="30" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="python-line">
-          <url>file://$PROJECT_DIR$/examples/gnr/GNRApplicationLogic.py</url>
-          <line>54</line>
-          <option name="timeStamp" value="32" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="python-line">
-          <url>file://$PROJECT_DIR$/golem/task/TaskManager.py</url>
-          <line>48</line>
-          <option name="timeStamp" value="33" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="python-line">
-          <url>file://$PROJECT_DIR$/golem/network/PeerSession.py</url>
-          <line>132</line>
-          <option name="timeStamp" value="41" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="python-line">
           <url>file://$PROJECT_DIR$/golem/network/P2PService.py</url>
           <line>87</line>
           <option name="timeStamp" value="44" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="python-line">
-          <url>file://$PROJECT_DIR$/golem/network/P2PService.py</url>
-          <line>26</line>
-          <option name="timeStamp" value="45" />
+          <url>file://$PROJECT_DIR$/golem/manager/client/NodesManagerClient.py</url>
+          <line>25</line>
+          <option name="timeStamp" value="50" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="python-line">
-          <url>file://$PROJECT_DIR$/golem/Client.py</url>
-          <line>41</line>
-          <option name="timeStamp" value="46" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="python-line">
-          <url>file://$PROJECT_DIR$/golem/Client.py</url>
-          <line>19</line>
-          <option name="timeStamp" value="47" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="python-line">
-          <url>file://$PROJECT_DIR$/golem/AppConfig.py</url>
-          <line>75</line>
-          <option name="timeStamp" value="48" />
+          <url>file://$PROJECT_DIR$/golem/task/TaskSession.py</url>
+          <line>99</line>
+          <option name="timeStamp" value="57" />
         </line-breakpoint>
       </breakpoints>
-      <option name="time" value="49" />
+      <option name="time" value="58" />
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/examples/gnr/customizers/TaskContexMenuCustomizer.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="883" max-vertical-offset="2516">
-          <caret line="60" column="0" selection-start-line="60" selection-start-column="0" selection-end-line="60" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/gnr/TaskState.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="1000" max-vertical-offset="1904">
-          <caret line="76" column="34" selection-start-line="76" selection-start-column="34" selection-end-line="76" selection-end-column="34" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/testtasks/pbrt/takscollector.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="1850" max-vertical-offset="3247">
-          <caret line="118" column="8" selection-start-line="118" selection-start-column="8" selection-end-line="118" selection-end-column="8" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/golem/task/ExampleTasks.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-7.28" vertical-offset="260" max-vertical-offset="6018">
-          <caret line="38" column="39" selection-start-line="38" selection-start-column="30" selection-end-line="38" selection-end-column="39" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/golem/task/TaskBase.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="1476" max-vertical-offset="1887">
-          <caret line="104" column="0" selection-start-line="104" selection-start-column="0" selection-end-line="104" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/gnr/customizers/MainWindowCustomizer.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="162" max-vertical-offset="3264">
-          <caret line="34" column="137" selection-start-line="34" selection-start-column="8" selection-end-line="34" selection-end-column="137" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/gnr/task/GNRTask.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="255">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/golem/network/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="647">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/golem/manager/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="586">
@@ -910,16 +855,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/golem/manager/client/NodesManagerClient.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-19.04" vertical-offset="0" max-vertical-offset="850">
-          <caret line="28" column="24" selection-start-line="28" selection-start-column="13" selection-end-line="28" selection-end-column="24" />
-          <folding>
-            <element signature="e#1#54#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/golem/manager/client/ClientManagerSession.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0" vertical-offset="268" max-vertical-offset="833">
@@ -1022,39 +957,11 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/gnr/main.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="832" max-vertical-offset="1479">
-          <caret line="74" column="0" selection-start-line="74" selection-start-column="0" selection-end-line="74" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/gnr/task/PbrtGNRTask.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="1217" max-vertical-offset="3128">
-          <caret line="84" column="0" selection-start-line="84" selection-start-column="0" selection-end-line="84" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#9#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/golem/task/Environment.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0" vertical-offset="1444" max-vertical-offset="2091">
           <caret line="101" column="0" selection-start-line="101" selection-start-column="0" selection-end-line="101" selection-end-column="0" />
           <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/gnr/GNRApplicationLogic.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="703" max-vertical-offset="2482">
-          <caret line="56" column="26" selection-start-line="56" selection-start-column="26" selection-end-line="56" selection-end-column="26" />
-          <folding>
-            <element signature="e#0#9#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -1090,26 +997,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/golem/task/TaskManager.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="911" max-vertical-offset="1751">
-          <caret line="66" column="0" selection-start-line="66" selection-start-column="0" selection-end-line="66" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#11#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/golem/task/TaskSession.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="1489" max-vertical-offset="2363">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding>
-            <element signature="e#1#203#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/golem/task/TaskServer.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0" vertical-offset="312" max-vertical-offset="4862">
@@ -1120,33 +1007,27 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/golem/network/PeerSession.py">
+    <entry file="file://$PROJECT_DIR$/golem/core/prochelper.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="1808" max-vertical-offset="3213">
-          <caret line="131" column="8" selection-start-line="131" selection-start-column="8" selection-end-line="131" selection-end-column="8" />
-          <folding>
-            <element signature="e#1#38#0" expanded="true" />
-          </folding>
+        <state vertical-scroll-proportion="0.0" vertical-offset="1060" max-vertical-offset="2448">
+          <caret line="123" column="22" selection-start-line="123" selection-start-column="22" selection-end-line="123" selection-end-column="22" />
+          <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/golem/network/P2PService.py">
+    <entry file="file://$PROJECT_DIR$/golem/core/simpleenv.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-9.64" vertical-offset="235" max-vertical-offset="2159">
-          <caret line="28" column="0" selection-start-line="28" selection-start-column="0" selection-end-line="28" selection-end-column="0" />
-          <folding>
-            <element signature="e#1#32#0" expanded="true" />
-          </folding>
+        <state vertical-scroll-proportion="0.0" vertical-offset="9" max-vertical-offset="595">
+          <caret line="12" column="8" selection-start-line="12" selection-start-column="8" selection-end-line="12" selection-end-column="8" />
+          <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/golem/Client.py">
+    <entry file="file://$PROJECT_DIR$/golem/core/simpleconfig.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="108" max-vertical-offset="2873">
-          <caret line="19" column="0" selection-start-line="19" selection-start-column="0" selection-end-line="19" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#33#0" expanded="true" />
-          </folding>
+        <state vertical-scroll-proportion="0.0" vertical-offset="1012" max-vertical-offset="3315">
+          <caret line="78" column="35" selection-start-line="78" selection-start-column="35" selection-end-line="78" selection-end-column="35" />
+          <folding />
         </state>
       </provider>
     </entry>
@@ -1158,11 +1039,137 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/golem/core/prochelper.py">
+    <entry file="file://$PROJECT_DIR$/golem/network/P2PService.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.25386998" vertical-offset="1519" max-vertical-offset="2448">
-          <caret line="106" column="33" selection-start-line="106" selection-start-column="33" selection-end-line="106" selection-end-column="33" />
+        <state vertical-scroll-proportion="-8.28" vertical-offset="235" max-vertical-offset="2159">
+          <caret line="26" column="0" selection-start-line="26" selection-start-column="0" selection-end-line="26" selection-end-column="0" />
+          <folding>
+            <element signature="e#1#32#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/golem/network/PeerSession.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="2029" max-vertical-offset="3213">
+          <caret line="132" column="0" selection-start-line="132" selection-start-column="0" selection-end-line="132" selection-end-column="0" />
+          <folding>
+            <element signature="e#1#38#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/gnr/main.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="162" max-vertical-offset="1479">
+          <caret line="27" column="36" selection-start-line="27" selection-start-column="36" selection-end-line="27" selection-end-column="36" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/gnr/TaskState.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="60" max-vertical-offset="1904">
+          <caret line="22" column="46" selection-start-line="22" selection-start-column="31" selection-end-line="22" selection-end-column="46" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/gnr/customizers/MainWindowCustomizer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="281" max-vertical-offset="3264">
+          <caret line="41" column="8" selection-start-line="41" selection-start-column="8" selection-end-line="41" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/gnr/GNRApplicationLogic.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="391" max-vertical-offset="2482">
+          <caret line="54" column="22" selection-start-line="54" selection-start-column="22" selection-end-line="54" selection-end-column="22" />
+          <folding>
+            <element signature="e#0#9#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/golem/manager/client/NodesManagerClient.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="1.0" vertical-offset="212" max-vertical-offset="833">
+          <caret line="12" column="0" selection-start-line="12" selection-start-column="0" selection-end-line="12" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/golem/Client.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="1845" max-vertical-offset="2873">
+          <caret line="121" column="39" selection-start-line="121" selection-start-column="39" selection-end-line="121" selection-end-column="39" />
+          <folding>
+            <element signature="e#0#33#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/gnr/task/GNRTask.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="255">
+          <caret line="6" column="33" selection-start-line="6" selection-start-column="33" selection-end-line="6" selection-end-column="33" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/golem/task/ExampleTasks.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="5445" max-vertical-offset="6018">
+          <caret line="350" column="54" selection-start-line="350" selection-start-column="54" selection-end-line="350" selection-end-column="54" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/golem/task/TaskBase.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="1301" max-vertical-offset="1887">
+          <caret line="97" column="54" selection-start-line="97" selection-start-column="54" selection-end-line="97" selection-end-column="54" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/golem/task/resource/ResourcesManager.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="1233" max-vertical-offset="1819">
+          <caret line="48" column="54" selection-start-line="48" selection-start-column="54" selection-end-line="48" selection-end-column="54" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/golem/task/TaskSession.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="1472" max-vertical-offset="2363">
+          <caret line="99" column="0" selection-start-line="99" selection-start-column="0" selection-end-line="99" selection-end-column="0" />
+          <folding>
+            <element signature="e#1#203#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/golem/task/TaskManager.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="1135" max-vertical-offset="1768">
+          <caret line="91" column="0" selection-start-line="91" selection-start-column="0" selection-end-line="91" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/gnr/task/PbrtGNRTask.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.5805921" vertical-offset="2486" max-vertical-offset="3094">
+          <caret line="167" column="0" selection-start-line="167" selection-start-column="0" selection-end-line="167" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#9#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

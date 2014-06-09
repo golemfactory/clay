@@ -95,7 +95,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def prepareResourceDelta( self, subTaskId, resourceHeader ):
+    def prepareResourceDelta( self, subTaskId, taskId, resourceHeader ):
         return None
 
     #######################
