@@ -289,12 +289,10 @@ class PbrtRenderTask( Task ):
         return self.lastExtraData, hash, self.returnAddress, self.returnPort
 
     #######################
-    def shortExtraDataRepr( self, perfIndex ):
-        if self.lastExtraData:
-            l = self.lastExtraData
-            return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFile"] )
+    def __shortExtraDataRepr( self, perfIndex, extraData ):
+        l = extraData
+        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFile"] )
 
-        return ""
 
     #######################
     def needsComputation( self ):

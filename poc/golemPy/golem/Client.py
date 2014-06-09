@@ -122,6 +122,10 @@ class Client:
         self.taskServer.taskManager.addNewTask( task )
 
     ############################
+    def getId( self ):
+        return self.configDesc.clientUid
+
+    ############################
     def __doWork(self):
         if self.p2pservice:
             if self.configDesc.sendPings:

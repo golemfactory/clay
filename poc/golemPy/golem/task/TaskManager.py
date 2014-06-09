@@ -33,16 +33,14 @@ class TaskManager:
         if taskId in self.tasks:
             task = self.tasks[ taskId ]
             if task.needsComputation():
-                ed, subTaskId, returnAddress, returnPort  = task.queryExtraData( estimatedPerformance )
-                if ed:
-                    sd = task.shortExtraDataRepr( estimatedPerformance )
-                    self.subTask2TaskMapping[ subTaskId ] = taskId
-                    return subTaskId, task.srcCode, ed, sd, returnAddress, returnPort
+                ctd  = task.queryExtraData( estimatedPerformance )
+                self.subTask2TaskMapping[ ctd.subTaskId ] = taskId
+                return ctd
             print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
-            return 0, "", 0, {}, ""
+            return None
         else:
             print "Cannot find task {} in my tasks".format( taskId )
-            return 0, "", 0, {}, ""
+            return None
 
     #######################
     def getTasksHeaders( self ):

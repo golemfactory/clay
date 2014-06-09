@@ -50,15 +50,15 @@ class TaskSession:
 
         if type == MessageWantToComputeTask.Type:
 
-            subTaskId, srcCode, extraData, shortDescr, returnAddress, returnPort = self.taskManager.getNextSubTask( msg.taskId, msg.perfIndex )
+            ctd = self.taskManager.getNextSubTask( msg.taskId, msg.perfIndex )
 
-            if subTaskId != 0:
-                self.conn.sendMessage( MessageTaskToCompute( subTaskId, extraData, shortDescr, srcCode, returnAddress, returnPort ) )
+            if ctd:
+                self.conn.sendMessage( MessageTaskToCompute( ctd ) )
             else:
                 self.conn.sendMessage( MessageCannotAssignTask( msg.taskId, "No more subtasks in {}".format( msg.taskId ) ) )
 
         elif type == MessageTaskToCompute.Type:
-            self.taskComputer.taskGiven(  msg.subTaskId, msg.sourceCode, msg.extraData, msg.shortDescr, msg.returnAddress, msg.returnPort )
+            self.taskComputer.taskGiven(  msg.ctd )
             self.dropped()
 
         elif type == MessageCannotAssignTask.Type:

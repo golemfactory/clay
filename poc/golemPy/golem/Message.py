@@ -245,38 +245,18 @@ class MessageTaskToCompute( Message ):
 
     Type = TASK_MSG_BASE + 2
 
-    SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    EXTRA_DATA_STR  = u"EXTRA_DATA"
-    SHORT_DESCR_STR  = u"SHORT_DESCR"
-    SOURCE_CODE_STR = u"SOURCE_CODE"
-    RETURN_ADDRESS_STR = u"RETURN_ADDRESS"
-    RETURN_PORT_STR = u"RETURN_PORT"
+    COMPUTE_TASK_DEF_STR = u"COMPUTE_TASK_DEF"
 
-    def __init__( self, subTaskId = 0, extraData = {}, shortDescr = "", sourceCode = "", returnAddress = "", returnPort = "", dictRepr = None ):
-        Message.__init__(self, MessageTaskToCompute.Type)
+    def __init__( self, ctd = None, dictRepr = None ):
+        Message.__init__( self, MessageTaskToCompute.Type )
 
-        self.subTaskId = subTaskId
-        self.extraData = extraData
-        self.shortDescr = shortDescr
-        self.sourceCode = sourceCode
-        self.returnAddress = returnAddress
-        self.returnPort = returnPort
+        self.ctd = ctd
 
         if dictRepr:
-            self.subTaskId  = dictRepr[ MessageTaskToCompute.SUB_TASK_ID_STR ]
-            self.extraData  = dictRepr[ MessageTaskToCompute.EXTRA_DATA_STR ]
-            self.shortDescr = dictRepr[ MessageTaskToCompute.SHORT_DESCR_STR ]
-            self.sourceCode = dictRepr[ MessageTaskToCompute.SOURCE_CODE_STR ]
-            self.returnAddress = dictRepr[ MessageTaskToCompute.RETURN_ADDRESS_STR ]
-            self.returnPort = dictRepr[ MessageTaskToCompute.RETURN_PORT_STR ]
+            self.ctd  = dictRepr[ MessageTaskToCompute.COMPUTE_TASK_DEF_STR ]
 
-    def dictRepr(self):
-        return {    MessageTaskToCompute.SUB_TASK_ID_STR: self.subTaskId,
-                    MessageTaskToCompute.EXTRA_DATA_STR: self.extraData,
-                    MessageTaskToCompute.SHORT_DESCR_STR : self.shortDescr,
-                    MessageTaskToCompute.SOURCE_CODE_STR: self.sourceCode,
-                    MessageTaskToCompute.RETURN_ADDRESS_STR: self.returnAddress,
-                    MessageTaskToCompute.RETURN_PORT_STR: self.returnPort }
+    def dictRepr( self ):
+        return { MessageTaskToCompute.COMPUTE_TASK_DEF_STR : self.ctd }
 
 class MessageCannotAssignTask( Message ):
     

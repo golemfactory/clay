@@ -98,7 +98,8 @@ class ResourcesManager:
             conn.fileMode = False
             self.fh.close()
             self.fh = None
-            decompressDir( self.getResourceDir( taskId ), os.path.join( self.getTemporaryDir( taskId ),  "res" + taskId) )
+            if self.fileSize > 0:
+                decompressDir( self.getResourceDir( taskId ), os.path.join( self.getTemporaryDir( taskId ),  "res" + taskId) )
             self.owner.resourceGiven( taskId )
             self.fileSize = -1
             self.recvSize = 0

@@ -48,7 +48,7 @@ class GNRApplicationLogic( QtCore.QObject ):
 
         assert ts.status == TaskStatus.notStarted # TODO:
 
-        tb = self.renderers[ ts.definition.renderer ].taskBuilderType( "client id here", ts.definition )
+        tb = self.renderers[ ts.definition.renderer ].taskBuilderType( self.client.getId(), ts.definition )
 
         t = Task.buildTask( tb )
 

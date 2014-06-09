@@ -22,6 +22,17 @@ class TaskBuilder:
     def build( self ):
         return
 
+class ComputeTaskDef:
+    #######################
+    def __init__( self ):
+        self.taskId             = ""
+        self.subTaskId          = ""
+        self.srcCode            = ""
+        self.extraData          = {}
+        self.shortDescription   = ""
+        self.returnAddress      = ""
+        self.returnPort         = 0
+
 class Task:
     #######################
     def __init__( self, header, srcCode ):

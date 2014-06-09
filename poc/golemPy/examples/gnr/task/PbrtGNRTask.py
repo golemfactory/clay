@@ -2,7 +2,7 @@ import os
 import random
 import cPickle as pickle
 
-from golem.task.TaskBase import TaskBuilder
+from golem.task.TaskBase import TaskBuilder, ComputeTaskDef
 from golem.core.Compress import decompress
 from golem.task.resource.Resource import prepareDeltaZip
 
@@ -72,7 +72,6 @@ class PbrtRenderTask( GNRTask ):
         self.outfilebasename    = outfilebasename
         self.sceneFile          = sceneFile
         self.taskResources      = taskResources
-        self.lastExtraData      = None
 
         self.collector          = PbrtTaksCollector()
         self.numTasksReceived   = 0
@@ -87,7 +86,7 @@ class PbrtRenderTask( GNRTask ):
 
         endTask = min( self.lastTask + 1, self.totalTasks )
 
-        self.lastExtraData =  {     "pathRoot" : self.pathRoot,
+        extraData =          {      "pathRoot" : self.pathRoot,
                                     "startTask" : self.lastTask,
                                     "endTask" : endTask,
                                     "totalTasks" : self.totalTasks,
@@ -98,17 +97,23 @@ class PbrtRenderTask( GNRTask ):
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
-        self.subTasksGiven[ hash ] = self.lastExtraData
+        self.subTasksGiven[ hash ] = extraData
         self.lastTask = endTask # TODO: Should depend on performance
-        return self.lastExtraData, self.header.taskId, self.header.taskOwnerAddress, self.header.taskOwnerPort
+
+        ctd = ComputeTaskDef()
+        ctd.taskId              = self.header.taskId
+        ctd.subTaskId           = hash
+        ctd.extraData           = extraData
+        ctd.returnAddress       = self.header.taskOwnerAddress
+        ctd.returnPort          = self.header.taskOwnerPort
+        ctd.shortDescription    = self.__shortExtraDataRepr( perfIndex, extraData )
+
+        return ctd
 
     #######################
-    def shortExtraDataRepr( self, perfIndex ):
-        if self.lastExtraData:
-            l = self.lastExtraData
-            return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFile"] )
-
-        return ""
+    def __shortExtraDataRepr( self, perfIndex, extraData ):
+        l = extraData
+        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFile"] )
 
     #######################
     def needsComputation( self ):

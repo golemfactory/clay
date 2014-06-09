@@ -29,29 +29,32 @@ class TaskComputer:
         self.resourceManager        = ResourcesManager( self.env, self )
 
         self.assignedSubTasks       = {}
+        self.taskToSubTaskMapping   = {}
         self.maxAssignedTasks       = 1
         self.curSrcCode             = ""
         self.curExtraData           = None
         self.curShortDescr          = None
 
     ######################
-    def taskGiven( self, subTaskId, srcCode, extraData, shortDescr, returnAddress, returnPort ):
-        if subTaskId not in self.assignedSubTasks:
-            self.assignedSubTasks[ subTaskId ] = AssignedSubTask( srcCode, extraData, shortDescr, returnAddress, returnPort )
-
-            self.__requestResource( subTaskId, self.resourceManager.getResourceHeader( subTaskId ), returnAddress, returnPort )
+    def taskGiven( self, ctd ):
+        if ctd.subTaskId not in self.assignedSubTasks:
+            self.assignedSubTasks[ ctd.subTaskId ] = ctd
+            self.taskToSubTaskMapping[ ctd.taskId ] = ctd.subTaskId
+            self.__requestResource( ctd.taskId, self.resourceManager.getResourceHeader( ctd.taskId ), ctd.returnAddress, ctd.returnPort )
             return True
         else:
             return False
 
     ######################
-    def resourceGiven( self, subTaskId ):
-        if subTaskId in self.assignedSubTasks:
-            self.__computeTask( subTaskId, self.assignedSubTasks[ subTaskId ].srcCode, self.assignedSubTasks[ subTaskId ].extraData, self.assignedSubTasks[ subTaskId ].shortDescr )
-            self.waitingForTask = None
-            return True
-        else:
-            return False
+    def resourceGiven( self, taskId ):
+        if taskId in self.taskToSubTaskMapping:
+            subtaskId = self.taskToSubTaskMapping[ taskId ]
+            if subtaskId in self.assignedSubTasks:
+                self.__computeTask( subtaskId, self.assignedSubTasks[ subtaskId ].srcCode, self.assignedSubTasks[ subtaskId ].extraData, self.assignedSubTasks[ subtaskId ].shortDescription )
+                self.waitingForTask = None
+                return True
+            else:
+                return False
 
     ######################
     def taskRequestRejected( self, taskId, reason ):
@@ -74,7 +77,7 @@ class TaskComputer:
             if taskThread.result:
                 print "Task {} computed".format( subTaskId )
                 if subTaskId in self.assignedSubTasks:
-                    self.taskServer.sendResults( subTaskId, taskThread.result, self.assignedSubTasks[ subTaskId ].ownerAddress, self.assignedSubTasks[ subTaskId ].ownerPort )
+                    self.taskServer.sendResults( subTaskId, taskThread.result, self.assignedSubTasks[ subTaskId ].returnAddress, self.assignedSubTasks[ subTaskId ].returnPort )
                     del self.assignedSubTasks[ subTaskId ]
 
     ######################
@@ -99,13 +102,14 @@ class TaskComputer:
         self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance )
 
     ######################
-    def __requestResource( self, subTaskId, resourceHeader, returnAddress, returnPort ):
-        self.waitingForTask = self.taskServer.requestResource( subTaskId, resourceHeader, returnAddress, returnPort )
+    def __requestResource( self, taskId, resourceHeader, returnAddress, returnPort ):
+        self.waitingForTask = self.taskServer.requestResource( taskId, resourceHeader, returnAddress, returnPort )
 
     ######################
-    def __computeTask( self, subTaskId, srcCode, extraData, shortDescr ):
-        self.env.clearTemporary( subTaskId )
-        tt = PyTaskThread( self, subTaskId, srcCode, extraData, shortDescr, self.resourceManager.getResourceDir( subTaskId ), self.resourceManager.getTemporaryDir( subTaskId ) ) 
+    def __computeTask( self, subtaskId, srcCode, extraData, shortDescr ):
+        taskId = self.assignedSubTasks[ subtaskId ].taskId
+        self.env.clearTemporary( taskId )
+        tt = PyTaskThread( self, subtaskId, srcCode, extraData, shortDescr, self.resourceManager.getResourceDir( taskId ), self.resourceManager.getTemporaryDir( taskId ) )
         self.currentComputations.append( tt )
         tt.start()
 
