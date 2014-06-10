@@ -4,7 +4,7 @@ class TaskState:
 
         self.status         = TaskStatus.notStarted
         self.progress       = 0.0
-        self.computers      = {}
+        self.computers      = []
         self.remainingTime  = 0
         self.elapsedTime    = 0
         self.timeStarted    = 0

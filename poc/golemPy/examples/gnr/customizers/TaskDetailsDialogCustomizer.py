@@ -3,13 +3,14 @@ import datetime
 from PyQt4 import QtCore
 
 from golem.task.TaskState import TaskState, ComputerState
+from examples.gnr.TaskState import GNRTaskState
 
 from ui.SubtaskTableEntry import SubtaskTableElem
 
 class TaskDetailsDialogCustomizer:
     ###########################
     def __init__( self, gui, logic, taskState ):
-        assert isinstance( taskState, TaskState )
+        assert isinstance( taskState, GNRTaskState )
         self.gui        = gui
         self.logic      = logic
         self.taskState  = taskState
@@ -25,15 +26,22 @@ class TaskDetailsDialogCustomizer:
 
     ###########################
     def __initializeData( self ):
-        self.gui.ui.totalTaskProgressBar.setProperty( "value", int( self.taskState.progress * 100 ) )
-        self.gui.ui.estimatedRemainingTimeLabel.setText( str( datetime.timedelta( seconds = self.taskState.remainingTime ) ) )
-        self.gui.ui.elapsedTimeLabel.setText( str( datetime.timedelta( seconds = self.taskState.elapsedTime ) ) )
-        for ck in self.taskState.computers:
-            self.__addNode( self.taskState.computers[ ck ].nodeId, self.taskState.computers[ ck ].subtaskState.subtaskId,  self.taskState.computers[ ck ].subtaskState.subtaskStatus )
+        self.gui.ui.totalTaskProgressBar.setProperty( "value", int( self.taskState.taskState.progress * 100 ) )
+        self.gui.ui.estimatedRemainingTimeLabel.setText( str( datetime.timedelta( seconds = self.taskState.taskState.remainingTime ) ) )
+        self.gui.ui.elapsedTimeLabel.setText( str( datetime.timedelta( seconds = self.taskState.taskState.elapsedTime ) ) )
+        for ck in self.taskState.taskState.computers:
+            self.__addNode( ck.nodeId, ck.subtaskState.subtaskId, ck.subtaskState.subtaskStatus )
 
     ###########################
-    def __updateNodeAdditionalInfo( self, nodeId ):
-        comp = self.taskState.computers[ nodeId ]
+    def __updateNodeAdditionalInfo( self, nodeId, subtaskId ):
+        comp = None
+        for c in self.taskState.taskState.computers:
+            if c.nodeId == nodeId and c.subtaskState.subtaskId == subtaskId:
+                comp = c
+                break
+
+        if not comp:
+            comp = self.taskState.taskState.computers[ 0 ]
 
         assert isinstance( comp, ComputerState )
 
@@ -53,14 +61,15 @@ class TaskDetailsDialogCustomizer:
 
         self.gui.ui.nodesTableWidget.setCellWidget( currentRowCount, 4, subtaskTableElem.progressBarInBoxLayoutWidget )
 
-        self.__updateNodeAdditionalInfo( nodeId )
+        self.__updateNodeAdditionalInfo( nodeId, subtaskId )
 
     # SLOTS
     ###########################
     def __nodesTabelRowClicked( self, r, c ):
 
         nodeId = "{}".format( self.gui.ui.nodesTableWidget.itemAt( r, 0 ).text() )
-        self.__updateNodeAdditionalInfo( nodeId )
+        subTaskId = "{}".format( self.gui.ui.nodesTableWidget.itemAt( r, 1 ).text() )
+        self.__updateNodeAdditionalInfo( nodeId, subTaskId )
 
     ###########################
     def __closeButtonClicked( self ):

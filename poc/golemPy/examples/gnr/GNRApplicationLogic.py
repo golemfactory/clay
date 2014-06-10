@@ -3,7 +3,9 @@ import os
 from PyQt4 import QtCore
 
 from golem.task.TaskState import TaskStatus
+from examples.gnr.TaskState import GNRTaskState
 from golem.task.TaskBase import Task
+from golem.task.TaskState import TaskState
 from golem.Client import GolemClientEventListener
 from customizers.MainWindowCustomizer import MainWindowCustomizer
 
@@ -81,6 +83,8 @@ class GNRApplicationLogic( QtCore.QObject ):
             return
 
         for t in tasks:
+            print t.__class__
+            assert isinstance( t, GNRTaskState )
             if t.definition.id not in self.tasks:
                 self.tasks[ t.definition.id ] = t
                 self.customizer.addTask( t )
@@ -128,10 +132,8 @@ class GNRApplicationLogic( QtCore.QObject ):
 
         if taskId in self.tasks:
             t = self.tasks[ taskId ]
-            from TaskState import GNRTaskState
             assert isinstance( t, GNRTaskState )
             ts = self.client.quarryTaskState( taskId )
-            from golem.task.TaskBase import TaskState
             assert isinstance( ts, TaskState )
             t.taskState = ts
             self.customizer.updateTasks( self.tasks )

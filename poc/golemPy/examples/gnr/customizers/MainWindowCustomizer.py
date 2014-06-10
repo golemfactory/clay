@@ -64,8 +64,8 @@ class MainWindowCustomizer:
 
     ############################
     def updateTaskAdditionalInfo( self, t ):
-        from TaskState import TaskState
-        assert isinstance( t, TaskState )
+        from examples.gnr.TaskState import GNRTaskState
+        assert isinstance( t, GNRTaskState )
 
         self.gui.ui.minNodePower.setText( "{} ray per pixel".format( t.definition.minPower ) )
         self.gui.ui.minSubtask.setText( "{} pixels".format( t.definition.minSubtask ) )
@@ -78,7 +78,7 @@ class MainWindowCustomizer:
         self.gui.ui.samplesPerPixel.setText( "{}".format( t.definition.samplesPerPixelCount ) )
         self.gui.ui.outputFile.setText( "{}".format( t.definition.outputFile ) )
         self.gui.ui.fullTaskTimeout.setText( str( datetime.timedelta( seconds = t.definition.fullTaskTimeout ) ) )
-        self.gui.ui.timeStarted.setText( "{}".format( t.timeStarted ) )
+        self.gui.ui.timeStarted.setText( "{}".format( t.taskState.timeStarted ) )
         self.currentTaskHighlighted = t
 
     ############################

@@ -59,6 +59,7 @@ class TaskManager:
         self.env.clearTemporary( task.header.taskId )
 
         task.taskStatus = TaskStatus.waiting
+        self.__noticeTaskUpdated( task.header.taskId )
 
     #######################
     def getNextSubTask( self, clientId, taskId, estimatedPerformance ):
@@ -68,7 +69,10 @@ class TaskManager:
                 ctd  = task.queryExtraData( estimatedPerformance )
                 self.subTask2TaskMapping[ ctd.subTaskId ] = taskId
                 self.__appendTaskComputer( taskId, clientId, ctd )
-                task.taskStatus = TaskStatus.starting
+
+                if taskId not in self.taskComputers:
+                    task.taskStatus = TaskStatus.starting
+                    self.__noticeTaskUpdated( taskId )
                 return ctd
             print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
             return None
@@ -90,8 +94,13 @@ class TaskManager:
         if subTaskId in self.subTask2TaskMapping:
             taskId = self.subTask2TaskMapping[ subTaskId ]
             self.tasks[ taskId ].computationFinished( subTaskId, result, self.env )
-            self.tasks[ taskId ].taskStatus = TaskStatus.computing
+
+            if self.tasks[ taskId ].needsComputation():
+                self.tasks[ taskId ].taskStatus = TaskStatus.computing
+            else:
+                self.tasks[ taskId ].taskStatus = TaskStatus.finished
             self.__noticeTaskUpdated( taskId )
+
             return True
         else:
             print "It is not my task id {}".format( subTaskId )
@@ -150,7 +159,10 @@ class TaskManager:
 
             ret.timeStarted = t.timeStarted
             ret.elapsedTime = time.time() - ret.timeStarted
-            ret.remainingTime =  ret.elapsedTime / ret.progress
+            if ret.progress > 0.0:
+                ret.remainingTime =  ret.elapsedTime / ret.progress
+            else:
+                ret.remainingTime = -0.0
 
             if hasattr( t, "getPreviewFilePath" ): # bardzo brzydkie
                 ret.resultPreview = t.getPreviewFilePath()
@@ -165,7 +177,7 @@ class TaskManager:
             self.taskComputers[ taskId ]        = [ ( clientId, ctd ) ]
             self.tasks[ taskId ].timeStarted    = time.time()
         else:
-            self.taskComputers[ taskId ].append( clientId, ctd )
+            self.taskComputers[ taskId ].append( ( clientId, ctd ) )
 
     #######################
     def __noticeTaskUpdated( self, taskId ):
