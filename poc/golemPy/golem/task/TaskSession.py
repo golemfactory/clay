@@ -21,8 +21,8 @@ class TaskSession:
         self.taskId         = 0
 
     ##########################
-    def requestTask( self, taskId, performenceIndex ):
-        self.__send( MessageWantToComputeTask( taskId, performenceIndex ) )
+    def requestTask( self, clientId, taskId, performenceIndex ):
+        self.__send( MessageWantToComputeTask( clientId, taskId, performenceIndex ) )
 
     ##########################
     def requestResource( self, taskId, resourceHeader ):
@@ -50,7 +50,7 @@ class TaskSession:
 
         if type == MessageWantToComputeTask.Type:
 
-            ctd = self.taskManager.getNextSubTask( msg.taskId, msg.perfIndex )
+            ctd = self.taskManager.getNextSubTask( msg.clientId, msg.taskId, msg.perfIndex )
 
             if ctd:
                 self.conn.sendMessage( MessageTaskToCompute( ctd ) )

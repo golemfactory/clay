@@ -2,6 +2,7 @@ from twisted.internet import task
 
 from golem.network.P2PService import P2PService
 from golem.task.TaskServer import TaskServer
+from golem.task.TaskManager import TaskManagerEventListener
 
 from golem.core.hostaddress import getHostAddress
 
@@ -67,6 +68,26 @@ def startClient( ):
 
     return c
 
+class GolemClientEventListener:
+    ############################
+    def __init__( self ):
+        pass
+
+    ############################
+    def  taskUpdated( self, taskId ):
+        pass
+
+
+class ClientTaskManagerEventListener( TaskManagerEventListener ):
+    #############################
+    def __init__( self, client ):
+        self.client = client
+
+    #######################
+    def taskStatusUpdated( self, taskId ):
+        for l in self.client.listeners:
+            l.taskUpdated( taskId )
+
 class Client:
 
     ############################
@@ -88,6 +109,8 @@ class Client:
 
         self.doWorkTask     = task.LoopingCall(self.__doWork)
         self.doWorkTask.start(0.1, False)
+
+        self.listeners      = []
        
     ############################
     def startNetwork( self ):
@@ -103,7 +126,7 @@ class Client:
         self.p2pservice.setTaskServer( self.taskServer )
 
         time.sleep( 0.5 )
-
+        self.taskServer.taskManager.registerListener( ClientTaskManagerEventListener( self ) )
         print "Starting nodes manager client ..."
         self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUid, "127.0.0.1", self.configDesc.managerPort, self.taskServer.taskManager )
         self.nodesManagerClient.start()
@@ -124,6 +147,23 @@ class Client:
     ############################
     def getId( self ):
         return self.configDesc.clientUid
+
+    ############################
+    def registerListener( self, listener ):
+        assert isinstance( listener, GolemClientEventListener )
+        self.listeners.append( listener )
+
+    ############################
+    def unregisterListener( self, listener ):
+        assert isinstance( listener, GolemClientEventListener )
+        for i in range( len( self.listeners ) ):
+            if self.listeners[ i ] is listener:
+                del self.listeners[ i ]
+                return
+        print "listener {} not registered".format( listener )
+
+    def quarryTaskState( self, taskId ):
+        return self.taskServer.taskManager.quarryTaskState( taskId )
 
     ############################
     def __doWork(self):

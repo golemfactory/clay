@@ -3,6 +3,7 @@ import random
 import cPickle as pickle
 
 from golem.task.TaskBase import TaskBuilder, ComputeTaskDef
+from golem.task.TaskState import TaskStatus
 from golem.core.Compress import decompress
 from golem.task.resource.Resource import prepareDeltaZip
 
@@ -84,6 +85,8 @@ class PbrtRenderTask( GNRTask ):
         self.numTasksReceived   = 0
         self.subTasksGiven      = {}
 
+        self.previewFilePath    = None
+
 
     def initialize( self ):
         pass
@@ -118,7 +121,7 @@ class PbrtRenderTask( GNRTask ):
         ctd.returnPort          = self.header.taskOwnerPort
         ctd.shortDescription    = self.__shortExtraDataRepr( perfIndex, extraData )
         ctd.srcCode             = self.srcCode
-
+        ctd.performance         = perfIndex
 
         ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
         ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
@@ -153,9 +156,13 @@ class PbrtRenderTask( GNRTask ):
                 self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
                 self.numTasksReceived += 1
 
+            self.__updatePreview()
 
         if self.numTasksReceived == self.totalTasks:
-            self.collector.finalize().save( "{}.{}".format( self.outputFile, self.outputFormat ), self.outputFormat )
+            self.taskStatus = TaskStatus.finished
+            outputFileName = "{}.{}".format( self.outputFile, self.outputFormat )
+            self.collector.finalize().save( outputFileName, self.outputFormat )
+            self.previewFilePath = outputFileName
 
     #######################
     def getTotalTasks( self ):
@@ -196,3 +203,15 @@ class PbrtRenderTask( GNRTask ):
         else:
             return None
 
+    #######################
+    def __updatePreview( self ):
+
+        tmpDir = os.path.join( "res", self.header.clientId, self.header.taskId, "tmp" )
+
+        self.previewFilePath = "{}.{}".format( os.path.join( tmpDir, "current_preview") , "BMP" )
+
+        self.collector.finalize().save( self.previewFilePath, "BMP" )
+
+    #######################
+    def getPreviewFilePath( self ):
+        return self.previewFilePath

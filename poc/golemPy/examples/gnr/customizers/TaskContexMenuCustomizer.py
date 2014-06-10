@@ -1,6 +1,6 @@
 from PyQt4.QtGui import QAction
 
-from TaskState import TaskStatus
+from golem.task.TaskState import TaskStatus
 
 class TaskContextMenuCustomizer:
     ##########################

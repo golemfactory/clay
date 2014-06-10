@@ -49,11 +49,11 @@ class MainWindowCustomizer:
             taskID = self.gui.ui.renderTaskTableWidget.item( i, 0 ).text()
             taskID = "{}".format( taskID )
             if taskID in tasks:
-                self.gui.ui.renderTaskTableWidget.item( i, 1 ).setText( tasks[ taskID ].status )
+                self.gui.ui.renderTaskTableWidget.item( i, 1 ).setText( tasks[ taskID ].taskState.status )
                 progressBarInBoxLayout = self.gui.ui.renderTaskTableWidget.cellWidget( i, 2 )
                 layout = progressBarInBoxLayout.layout()
                 pb = layout.itemAt( 0 ).widget()
-                pb.setProperty( "value", int( tasks[ taskID ].progress * 100.0 ) )
+                pb.setProperty( "value", int( tasks[ taskID ].taskState.progress * 100.0 ) )
             else:
                 assert False, "Trying to update not added task."
         

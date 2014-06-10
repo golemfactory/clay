@@ -9,8 +9,7 @@ genUiFiles( "ui" )
 
 from Application import GNRGui
 
-from TaskState import TaskState, RendererInfo, TestTaskInfo, RendererDefaults, ComputerState, TaskStatus
-from TestEngine import TestEngine
+from TaskState import RendererDefaults, RendererInfo, TestTaskInfo
 from task.PbrtGNRTask import PbrtTaskBuilder
 
 from golem.Client import startClient

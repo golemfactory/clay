@@ -224,21 +224,25 @@ class MessageWantToComputeTask( Message ):
 
     Type = TASK_MSG_BASE + 1
 
+    CLIENT_ID_STR   = u"CLIENT_ID"
     TASK_ID_STR     = u"TASK_ID"
     PERF_INDEX_STR  = u"PERF_INDEX"
 
-    def __init__( self, taskId = 0, perfIndex = 0, dictRepr = None ):
+    def __init__( self, clientId = 0, taskId = 0, perfIndex = 0, dictRepr = None ):
         Message.__init__(self, MessageWantToComputeTask.Type)
 
-        self.taskId = taskId
-        self.perfIndex = perfIndex
+        self.clientId   = clientId
+        self.taskId     = taskId
+        self.perfIndex  = perfIndex
 
         if dictRepr:
+            self.clientId   = dictRepr[ MessageWantToComputeTask.CLIENT_ID_STR ]
             self.taskId     = dictRepr[ MessageWantToComputeTask.TASK_ID_STR ]
             self.perfIndex  = dictRepr[ MessageWantToComputeTask.PERF_INDEX_STR ]
 
     def dictRepr(self):
-        return {    MessageWantToComputeTask.TASK_ID_STR : self.taskId,
+        return {    MessageWantToComputeTask.CLIENT_ID_STR : self.clientId,
+                    MessageWantToComputeTask.TASK_ID_STR : self.taskId,
                     MessageWantToComputeTask.PERF_INDEX_STR: self.perfIndex }
 
 class MessageTaskToCompute( Message ):

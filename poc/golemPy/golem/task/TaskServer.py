@@ -6,6 +6,7 @@ from TaskSession import TaskSession
 from TaskBase import TaskHeader
 import random
 import time
+import sys
 
 class TaskServer:
     #############################
@@ -42,7 +43,7 @@ class TaskServer:
 
             theader = self.taskHeaders.values()[ tn ]
 
-            self.__connectAndSendTaskRequest( theader.taskOwnerAddress, theader.taskOwnerPort, theader.taskId, estimatedPerformance )
+            self.__connectAndSendTaskRequest( self.configDesc.clientUid, theader.taskOwnerAddress, theader.taskOwnerPort, theader.taskId, estimatedPerformance )
 
             return theader.taskId
         else:
@@ -164,8 +165,8 @@ class TaskServer:
             sys.exit(0)
 
     #############################   
-    def __connectAndSendTaskRequest( self, address, port, taskId, estimatedPerformance ):    
-        Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, taskId, estimatedPerformance )
+    def __connectAndSendTaskRequest( self, clientId, address, port, taskId, estimatedPerformance ):
+        Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, clientId, taskId, estimatedPerformance )
 
     #############################   
     def __connectAndSendResourceRequest( self, address ,port, subTaskId, resourceHeader ):
@@ -173,16 +174,16 @@ class TaskServer:
 
 
     #############################
-    def __connectionForTaskRequestEstablished( self, session, taskId, estimatedPerformance ):
+    def __connectionForTaskRequestEstablished( self, session, clientId, taskId, estimatedPerformance ):
 
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
         self.taskSeesions[ taskId ] = session            
-        session.requestTask( taskId, estimatedPerformance )
+        session.requestTask( clientId, taskId, estimatedPerformance )
 
     #############################
-    def __connectionForTaskRequestFailure( self, session, taskId, estimatedPerformance ):
+    def __connectionForTaskRequestFailure( self, session, clientId, taskId, estimatedPerformance ):
         print "Cannot connect to task {} owner".format( taskId )
         print "Removing task {} from task list".format( taskId )
         

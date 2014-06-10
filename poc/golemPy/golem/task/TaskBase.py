@@ -1,6 +1,6 @@
-
 import time
 import abc
+from TaskState import TaskStatus
 
 class TaskHeader:
     #######################
@@ -33,12 +33,15 @@ class ComputeTaskDef:
         self.returnAddress      = ""
         self.returnPort         = 0
         self.workingDirectory   = ""
+        self.performance        = 0.0
 
 class Task:
     #######################
     def __init__( self, header, srcCode ):
-        self.srcCode = srcCode
-        self.header = header
+        self.srcCode    = srcCode
+        self.header     = header
+        self.taskStatus = TaskStatus.notStarted
+        self.timeStarted = 0
 
     #######################
     @abc.abstractmethod

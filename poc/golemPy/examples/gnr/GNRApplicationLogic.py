@@ -2,10 +2,20 @@ import os
 
 from PyQt4 import QtCore
 
-from TaskState import TaskStatus
+from golem.task.TaskState import TaskStatus
 from golem.task.TaskBase import Task
+from golem.Client import GolemClientEventListener
 from customizers.MainWindowCustomizer import MainWindowCustomizer
 
+class GNRClientEventListener( GolemClientEventListener ):
+    #####################
+    def __init__( self, logic ):
+        self.logic = logic
+        GolemClientEventListener.__init__( self )
+
+    #####################
+    def taskUpdated( self, taskId ):
+        self.logic.taskStatusChanged( taskId )
 
 class GNRApplicationLogic( QtCore.QObject ):
     ######################
@@ -22,8 +32,10 @@ class GNRApplicationLogic( QtCore.QObject ):
     def registerGui( self, gui ):
         self.customizer = MainWindowCustomizer( gui, self )
 
+    ######################
     def registerClient( self, client ):
         self.client = client
+        self.client.registerListener( GNRClientEventListener( self ) )
 
     ######################
     def getTask( self, id ):
@@ -110,6 +122,25 @@ class GNRApplicationLogic( QtCore.QObject ):
             return True
         else:
             return False
+
+    ######################
+    def taskStatusChanged( self, taskId ):
+
+        if taskId in self.tasks:
+            t = self.tasks[ taskId ]
+            from TaskState import GNRTaskState
+            assert isinstance( t, GNRTaskState )
+            ts = self.client.quarryTaskState( taskId )
+            from golem.task.TaskBase import TaskState
+            assert isinstance( ts, TaskState )
+            t.taskState = ts
+            self.customizer.updateTasks( self.tasks )
+        else:
+            assert False, "Should never be here!"
+
+
+        if self.customizer.currentTaskHighlighted.definition.id == taskId:
+            self.customizer.updateTaskAdditionalInfo( self.tasks[ taskId ] )
 
     ######################
     def __showErrorWindow( self, text ):

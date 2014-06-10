@@ -6,7 +6,8 @@ from ui.NewTaskDialog import NewTaskDialog
 from ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 
 from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
-from TaskState import TaskState, TaskStatus
+from examples.gnr.TaskState import GNRTaskState
+from golem.task.TaskState import TaskStatus
 
 
 class NewTaskDialogCustomizer:
@@ -212,7 +213,7 @@ class NewTaskDialogCustomizer:
     #############################
     def __queryTaskState( self ):
         time    = QtCore.QTime()
-        ts      = TaskState()
+        ts      = GNRTaskState()
 
         ts.definition.algorithmType     = "{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )     
         ts.definition.fullTaskTimeout   = time.secsTo( self.gui.ui.fullTaskTimeoutTimeEdit.time() )

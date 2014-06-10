@@ -2,7 +2,7 @@ import datetime
 
 from PyQt4 import QtCore
 
-from TaskState import TaskState, ComputerState
+from golem.task.TaskState import TaskState, ComputerState
 
 from ui.SubtaskTableEntry import SubtaskTableElem
 
