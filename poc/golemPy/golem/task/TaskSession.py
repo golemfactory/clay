@@ -97,7 +97,7 @@ class TaskSession:
             self.dropped()
 
         elif type == MessageGetResource.Type:
-            resFilePath = self.taskManager.prepareResource( msg.subTaskId, pickle.loads( msg.resourceHeader ) )
+            resFilePath = self.taskManager.prepareResource( msg.taskId, pickle.loads( msg.resourceHeader ) )
             #resFilePath  = "d:/src/golem/poc/golemPy/test/res2222221"
 
             if not resFilePath:

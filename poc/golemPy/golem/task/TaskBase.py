@@ -32,6 +32,7 @@ class ComputeTaskDef:
         self.shortDescription   = ""
         self.returnAddress      = ""
         self.returnPort         = 0
+        self.workingDirectory   = ""
 
 class Task:
     #######################
@@ -106,7 +107,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def prepareResourceDelta( self, subTaskId, taskId, resourceHeader ):
+    def prepareResourceDelta( self, taskId, resourceHeader ):
         return None
 
     #######################

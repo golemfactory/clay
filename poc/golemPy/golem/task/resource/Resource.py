@@ -44,7 +44,7 @@ class TaskResourceHeader:
     ####################
     # Dodaje tylko te pola, ktorych nie ma w headerze (i/lub nie zgadzaj? si? hasze)
     @classmethod
-    def buildHeaderDeltaFromHeader( cls, header, absoluteRoot ):
+    def buildHeaderDeltaFromHeader( cls, header, absoluteRoot, choosenFiles ):
         assert isinstance(header, TaskResourceHeader)
 
         curTr = TaskResourceHeader( header.dirName )
@@ -55,7 +55,7 @@ class TaskResourceHeader:
         for d in dirs:
             if d in [ sdh.dirName for sdh in header.subDirHeaders ]:
                 idx = [ sdh.dirName for sdh in header.subDirHeaders ].index( d )
-                curTr.subDirHeaders.append( cls.buildHeaderDeltaFromHeader( header.subDirHeaders[ idx ], os.path.join( absoluteRoot, d ) ) )
+                curTr.subDirHeaders.append( cls.buildHeaderDeltaFromHeader( header.subDirHeaders[ idx ], os.path.join( absoluteRoot, d ), choosenFiles ) )
             else:
                 curTr.subDirHeaders.append( cls.__build( d, os.path.join( absoluteRoot, d ) ) )
 
@@ -64,6 +64,10 @@ class TaskResourceHeader:
             if f in [ file[ 0 ] for file in header.filesData ]:
                 idx = [ file[ 0 ] for file in header.filesData ].index( f )
                 fileHash = SimpleHash.hash_file_base64( os.path.join( absoluteRoot, f ) )
+
+                if choosenFiles and os.path.abspath( f ) not in  choosenFiles:
+                    continue
+
                 if fileHash == header.filesData[ idx ][ 1 ]:
                     continue
 
@@ -334,8 +338,8 @@ def compressDirImpl( rootPath, header, zipf ):
         zipf.write( os.path.join( rootPath, fdata[ 0 ] ) )
 
 ####################
-def prepareDeltaZip( rootDir, header, outputDir ):
-    deltaHeader = TaskResourceHeader.buildHeaderDeltaFromHeader( header, rootDir )
+def prepareDeltaZip( rootDir, header, outputDir, choosenFiles = None ):
+    deltaHeader = TaskResourceHeader.buildHeaderDeltaFromHeader( header, rootDir, choosenFiles )
 
     return compressDir( rootDir, deltaHeader, outputDir )
 

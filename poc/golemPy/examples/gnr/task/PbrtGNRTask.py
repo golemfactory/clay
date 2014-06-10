@@ -34,7 +34,9 @@ class PbrtTaskBuilder( TaskBuilder ):
                                    "temp",
                                    self.taskDefinition.mainSceneFile,
                                    self.taskDefinition.fullTaskTimeout,
-                                   self.taskDefinition.resources )
+                                   self.taskDefinition.resources,
+                                   self.taskDefinition.outputFile,
+                                   self.taskDefinition.outputFormat )
 
         return pbrtTask
 
@@ -54,6 +56,8 @@ class PbrtRenderTask( GNRTask ):
                   sceneFile,
                   fullTaskTimeout,
                   taskResources,
+                  outputFile,
+                  outputFormat,
                   returnAddress = "",
                   returnPort = 0 ):
 
@@ -72,6 +76,9 @@ class PbrtRenderTask( GNRTask ):
         self.outfilebasename    = outfilebasename
         self.sceneFile          = sceneFile
         self.taskResources      = taskResources
+        self.mainProgramFile    = mainProgramFile
+        self.outputFile         = outputFile
+        self.outputFormat       = outputFormat
 
         self.collector          = PbrtTaksCollector()
         self.numTasksReceived   = 0
@@ -86,6 +93,9 @@ class PbrtRenderTask( GNRTask ):
 
         endTask = min( self.lastTask + 1, self.totalTasks )
 
+        commonPathPrefix = os.path.commonprefix( self.taskResources )
+        commonPathPrefix = os.path.dirname( commonPathPrefix )
+
         extraData =          {      "pathRoot" : self.pathRoot,
                                     "startTask" : self.lastTask,
                                     "endTask" : endTask,
@@ -93,7 +103,7 @@ class PbrtRenderTask( GNRTask ):
                                     "numSubtasks" : self.numSubtasks,
                                     "numCores" : self.numCores,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFile" : self.sceneFile
+                                    "sceneFile" : os.path.relpath( self.sceneFile, commonPathPrefix )
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -107,6 +117,11 @@ class PbrtRenderTask( GNRTask ):
         ctd.returnAddress       = self.header.taskOwnerAddress
         ctd.returnPort          = self.header.taskOwnerPort
         ctd.shortDescription    = self.__shortExtraDataRepr( perfIndex, extraData )
+        ctd.srcCode             = self.srcCode
+
+
+        ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
+        ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
 
         return ctd
 
@@ -140,7 +155,7 @@ class PbrtRenderTask( GNRTask ):
 
 
         if self.numTasksReceived == self.totalTasks:
-            self.collector.finalize().save( "{}.png".format( os.path.join( env.getTaskOutputDir( self.header.taskId ), "test" ) ), "PNG" )
+            self.collector.finalize().save( "{}.{}".format( self.outputFile, self.outputFormat ), self.outputFormat )
 
     #######################
     def getTotalTasks( self ):
@@ -167,13 +182,15 @@ class PbrtRenderTask( GNRTask ):
         return float( self.lastTask ) / self.totalTasks
 
     #######################
-    def prepareResourceDelta( self, subTaskId, taskId, resourceHeader ):
+    def prepareResourceDelta( self, taskId, resourceHeader ):
         if taskId == self.header.taskId:
-            dirName = os.path.join( "res", self.header.clientId, self.header.taskId, "resources" )
+            commonPathPrefix = os.path.commonprefix( self.taskResources )
+            commonPathPrefix = os.path.dirname( commonPathPrefix )
+            dirName = commonPathPrefix #os.path.join( "res", self.header.clientId, self.header.taskId, "resources" )
             tmpDir = os.path.join( "res", self.header.clientId, self.header.taskId, "tmp" )
 
             if os.path.exists( dirName ):
-                return prepareDeltaZip( dirName, resourceHeader, tmpDir )
+                return prepareDeltaZip( dirName, resourceHeader, tmpDir, self.taskResources )
             else:
                 return None
         else:

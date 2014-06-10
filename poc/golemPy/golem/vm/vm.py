@@ -1,4 +1,5 @@
 from threading import Lock
+import os
 
 class IGolemVM:
     #######################
@@ -48,6 +49,7 @@ class PythonVM( IGolemVM ):
         self.srcCode = srcCode
         self.scope = extraData
         self.scope[ "taskProgress" ] = self.progress
+
         return self.__interpret()
 
     #######################

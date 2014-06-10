@@ -342,21 +342,21 @@ class MessageGetResource( Message ):
 
     Type = TASK_MSG_BASE + 8
 
-    SUB_TASK_ID_STR     = u"SUB_TASK_ID"
+    TASK_ID_STR         = u"SUB_TASK_ID"
     RESOURCE_HEADER_STR = u"RESOURCE_HEADER"
 
-    def __init__( self, subTaskId = 0, resourceHeader = None , dictRepr = None ):
+    def __init__( self, taskId = "", resourceHeader = None , dictRepr = None ):
         Message.__init__(self, MessageGetResource.Type)
 
-        self.subTaskId      = subTaskId
+        self.taskId         = taskId
         self.resourceHeader = resourceHeader
 
         if dictRepr:
-            self.subTaskId      = dictRepr[ MessageGetResource.SUB_TASK_ID_STR ]
+            self.taskId         = dictRepr[ MessageGetResource.TASK_ID_STR ]
             self.resourceHeader = dictRepr[ MessageGetResource.RESOURCE_HEADER_STR ]
 
     def dictRepr(self):
-        return {    MessageGetResource.SUB_TASK_ID_STR : self.subTaskId,
+        return {    MessageGetResource.TASK_ID_STR : self.taskId,
                     MessageGetResource.RESOURCE_HEADER_STR: self.resourceHeader
                }
 

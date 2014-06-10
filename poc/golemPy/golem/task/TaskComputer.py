@@ -10,6 +10,7 @@ from golem.vm.vm import PythonVM
 from golem.manager.NodeStateSnapshot import TaskChunkStateSnapshot
 from golem.task.resource.ResourcesManager import ResourcesManager
 from Environment import TaskComputerEnvironment
+import os
 
 class TaskComputer:
 
@@ -108,8 +109,9 @@ class TaskComputer:
     ######################
     def __computeTask( self, subtaskId, srcCode, extraData, shortDescr ):
         taskId = self.assignedSubTasks[ subtaskId ].taskId
+        workingDirectory = self.assignedSubTasks[ subtaskId ].workingDirectory
         self.env.clearTemporary( taskId )
-        tt = PyTaskThread( self, subtaskId, srcCode, extraData, shortDescr, self.resourceManager.getResourceDir( taskId ), self.resourceManager.getTemporaryDir( taskId ) )
+        tt = PyTaskThread( self, subtaskId, workingDirectory, srcCode, extraData, shortDescr, self.resourceManager.getResourceDir( taskId ), self.resourceManager.getTemporaryDir( taskId ) )
         self.currentComputations.append( tt )
         tt.start()
 
@@ -125,7 +127,7 @@ class AssignedSubTask:
 
 class TaskThread( Thread ):
     ######################
-    def __init__( self, taskComputer, subTaskId, srcCode, extraData, shortDescr, resPath, tmpPath ):
+    def __init__( self, taskComputer, subTaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath ):
         super( TaskThread, self ).__init__()
 
         self.taskComputer   = taskComputer
@@ -138,6 +140,8 @@ class TaskThread( Thread ):
         self.done           = False
         self.resPath        = resPath
         self.tmpPath        = tmpPath
+        self.workingDirectory = workingDirectory
+        self.prevWorkingDirectory = ""
         self.lock           = Lock()
 
     ######################
@@ -163,13 +167,25 @@ class TaskThread( Thread ):
     ######################
     def __doWork( self ):
         extraData = copy( self.extraData )
-        extraData[ "resourcePath" ] = self.resPath
-        extraData[ "tmpPath" ] = self.tmpPath
-        self.result = self.vm.runTask( self.srcCode, extraData )
+
+        absResPath = os.path.abspath( self.resPath )
+        absTmpPath = os.path.abspath( self.tmpPath )
+
+        self.prevWorkingDirectory = os.getcwd()
+        os.chdir( os.path.join( absResPath, self.workingDirectory ) )
+        try:
+            extraData[ "resourcePath" ] = absResPath
+            extraData[ "tmpPath" ] = absTmpPath
+
+            self.result = self.vm.runTask( self.srcCode, extraData )
+        finally:
+            os.chdir( self.prevWorkingDirectory )
+
+
 
 
 class PyTaskThread( TaskThread ):
     ######################
-    def __init__( self, taskComputer, subTaskId, srcCode, extraData, shortDescr, resPath, tmpPath ):
-        super( PyTaskThread, self ).__init__( taskComputer, subTaskId, srcCode, extraData, shortDescr, resPath, tmpPath )
+    def __init__( self, taskComputer, subTaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath ):
+        super( PyTaskThread, self ).__init__( taskComputer, subTaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath )
         self.vm = PythonVM()
