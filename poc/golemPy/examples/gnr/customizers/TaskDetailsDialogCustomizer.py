@@ -5,19 +5,43 @@ from PyQt4 import QtCore
 from golem.task.TaskState import TaskState, ComputerState
 from examples.gnr.TaskState import GNRTaskState
 
-from ui.SubtaskTableEntry import SubtaskTableElem
+from examples.gnr.ui.SubtaskTableEntry import SubtaskTableElem
 
 class TaskDetailsDialogCustomizer:
     ###########################
-    def __init__( self, gui, logic, taskState ):
-        assert isinstance( taskState, GNRTaskState )
-        self.gui        = gui
-        self.logic      = logic
-        self.taskState  = taskState
+    def __init__( self, gui, logic, gnrTaskState ):
+        assert isinstance( gnrTaskState, GNRTaskState )
+        self.gui            = gui
+        self.logic          = logic
+        self.gnrTaskState   = gnrTaskState
+
+        self.subtaskTableElements = {}
 
         self.__setupConnections()
 
         self.__initializeData() 
+
+    ###########################
+    def updateView( self, taskState ):
+        self.gnrTaskState.taskState = taskState
+        self.__updateData()
+
+    ###########################
+    def __updateData( self ):
+        self.gui.ui.totalTaskProgressBar.setProperty( "value", int( self.gnrTaskState.taskState.progress * 100 ) )
+        self.gui.ui.estimatedRemainingTimeLabel.setText( str( datetime.timedelta( seconds = self.gnrTaskState.taskState.remainingTime ) ) )
+        self.gui.ui.elapsedTimeLabel.setText( str( datetime.timedelta( seconds = self.gnrTaskState.taskState.elapsedTime ) ) )
+
+        rowCount = self.gui.ui.nodesTableWidget.rowCount()
+
+        if rowCount < len( self.gnrTaskState.taskState.computers ):
+            for ck in self.gnrTaskState.taskState.computers[ rowCount: ]:
+                self.__addNode( ck.nodeId, ck.subtaskState.subtaskId, ck.subtaskState.subtaskStatus )
+
+        for c in self.gnrTaskState.taskState.computers:
+            elem = self.subtaskTableElements[ ( c.nodeId, c.subtaskState.subtaskId ) ]
+            assert isinstance( elem, SubtaskTableElem )
+            elem.update( c.subtaskState.subtaskProgress, c.subtaskState.subtaskStatus, c.subtaskState.subtaskRemTime )
 
     ###########################
     def __setupConnections( self ):
@@ -26,22 +50,22 @@ class TaskDetailsDialogCustomizer:
 
     ###########################
     def __initializeData( self ):
-        self.gui.ui.totalTaskProgressBar.setProperty( "value", int( self.taskState.taskState.progress * 100 ) )
-        self.gui.ui.estimatedRemainingTimeLabel.setText( str( datetime.timedelta( seconds = self.taskState.taskState.remainingTime ) ) )
-        self.gui.ui.elapsedTimeLabel.setText( str( datetime.timedelta( seconds = self.taskState.taskState.elapsedTime ) ) )
-        for ck in self.taskState.taskState.computers:
+        self.gui.ui.totalTaskProgressBar.setProperty( "value", int( self.gnrTaskState.taskState.progress * 100 ) )
+        self.gui.ui.estimatedRemainingTimeLabel.setText( str( datetime.timedelta( seconds = self.gnrTaskState.taskState.remainingTime ) ) )
+        self.gui.ui.elapsedTimeLabel.setText( str( datetime.timedelta( seconds = self.gnrTaskState.taskState.elapsedTime ) ) )
+        for ck in self.gnrTaskState.taskState.computers:
             self.__addNode( ck.nodeId, ck.subtaskState.subtaskId, ck.subtaskState.subtaskStatus )
 
     ###########################
     def __updateNodeAdditionalInfo( self, nodeId, subtaskId ):
         comp = None
-        for c in self.taskState.taskState.computers:
+        for c in self.gnrTaskState.taskState.computers:
             if c.nodeId == nodeId and c.subtaskState.subtaskId == subtaskId:
                 comp = c
                 break
 
         if not comp:
-            comp = self.taskState.taskState.computers[ 0 ]
+            comp = self.gnrTaskState.taskState.computers[ 0 ]
 
         assert isinstance( comp, ComputerState )
 
@@ -60,6 +84,10 @@ class TaskDetailsDialogCustomizer:
         for col in range( 0, 4 ): self.gui.ui.nodesTableWidget.setItem( currentRowCount, col, subtaskTableElem.getColumnItem( col ) )
 
         self.gui.ui.nodesTableWidget.setCellWidget( currentRowCount, 4, subtaskTableElem.progressBarInBoxLayoutWidget )
+
+        self.subtaskTableElements[ ( nodeId, subtaskId ) ] = subtaskTableElem
+
+        subtaskTableElem.update( 0.0, "", 0.0 )
 
         self.__updateNodeAdditionalInfo( nodeId, subtaskId )
 

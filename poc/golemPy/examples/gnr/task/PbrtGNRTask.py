@@ -159,7 +159,6 @@ class PbrtRenderTask( GNRTask ):
             self.__updatePreview()
 
         if self.numTasksReceived == self.totalTasks:
-            self.taskStatus = TaskStatus.finished
             outputFileName = "{}.{}".format( self.outputFile, self.outputFormat )
             self.collector.finalize().save( outputFileName, self.outputFormat )
             self.previewFilePath = outputFileName

@@ -13,13 +13,19 @@ class TaskManagerEventListener:
     def taskStatusUpdated( self, taskId ):
         pass
 
+    #######################
+    def subtaskStatusUpdated( self, subtaskId ):
+        pass
+
+
 class TaskManager:
     #######################
     def __init__( self, clientUid, listenAddress = "", listenPort = 0 ):
         self.clientUid      = clientUid
+
         self.tasks          = {}
-        self.subtaskCurrentlyComputed  = {}
-        self.taskComputers  = {}
+        self.tasksStates    = {}
+
         self.listenAddress  = listenAddress
         self.listenPort     = listenPort
 
@@ -59,6 +65,12 @@ class TaskManager:
         self.env.clearTemporary( task.header.taskId )
 
         task.taskStatus = TaskStatus.waiting
+
+        ts = TaskState()
+        ts.status = TaskStatus.waiting
+
+        self.tasksStates[ task.header.taskId ] = ts
+
         self.__noticeTaskUpdated( task.header.taskId )
 
     #######################
@@ -68,11 +80,7 @@ class TaskManager:
             if task.needsComputation():
                 ctd  = task.queryExtraData( estimatedPerformance )
                 self.subTask2TaskMapping[ ctd.subTaskId ] = taskId
-                self.__appendTaskComputer( taskId, clientId, ctd )
-
-                if taskId not in self.taskComputers:
-                    task.taskStatus = TaskStatus.starting
-                    self.__noticeTaskUpdated( taskId )
+                self.__addSubtaskToTasksStates( clientId, ctd )
                 return ctd
             print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
             return None
@@ -94,11 +102,15 @@ class TaskManager:
         if subTaskId in self.subTask2TaskMapping:
             taskId = self.subTask2TaskMapping[ subTaskId ]
             self.tasks[ taskId ].computationFinished( subTaskId, result, self.env )
+            ss = self.tasksStates[ taskId ].subtaskStates[ subTaskId ]
+            ss.subtaskProgress  = 1.0
+            ss.subtaskRemTime   = 0.0
+            ss.subtaskStatus    = TaskStatus.finished
 
             if self.tasks[ taskId ].needsComputation():
-                self.tasks[ taskId ].taskStatus = TaskStatus.computing
+                self.tasksStates[ taskId ].status = TaskStatus.computing
             else:
-                self.tasks[ taskId ].taskStatus = TaskStatus.finished
+                self.tasksStates[ taskId ].status = TaskStatus.finished
             self.__noticeTaskUpdated( taskId )
 
             return True
@@ -143,41 +155,54 @@ class TaskManager:
 
     #######################
     def quarryTaskState( self, taskId ):
-        if taskId in self.tasks:
-            t = self.tasks[ taskId ]
-            ret = TaskState()
-            ret.status      = t.taskStatus
-            ret.progress    = t.getProgress()
-            if taskId in self.taskComputers:
-                for c in self.taskComputers[ taskId ]:
-                    cs = ComputerState()
-                    cs.nodeId = c[ 0 ]
-                    cs.performance = c[ 1 ].performance
-                    cs.subtaskState.subtaskId = c[ 1 ].subTaskId
-                    cs.subtaskState.subtaskDefinition = c[ 1 ].shortDescription
-                    ret.computers.append( cs )
+        if taskId in self.tasksStates and taskId in self.task:
+            ts  = self.tasksStates[ taskId ]
+            t   = self.tasks[ taskId ]
 
-            ret.timeStarted = t.timeStarted
-            ret.elapsedTime = time.time() - ret.timeStarted
-            if ret.progress > 0.0:
-                ret.remainingTime =  ret.elapsedTime / ret.progress
+            ts.elapsedTime = time.time() - ts.timeStarted
+
+            if ts.progress > 0.0:
+                ts.remainingTime =  ( ts.elapsedTime / ts.progress ) - ts.elapsedTime
             else:
-                ret.remainingTime = -0.0
+                ts.remainingTime = -0.0
 
             if hasattr( t, "getPreviewFilePath" ): # bardzo brzydkie
-                ret.resultPreview = t.getPreviewFilePath()
-            return ret
+                ts.resultPreview = t.getPreviewFilePath()
+
+            return ts
         else:
             assert False, "Should never be here!"
             return None
 
     #######################
-    def __appendTaskComputer( self, taskId, clientId, ctd ):
-        if taskId not in self.taskComputers:
-            self.taskComputers[ taskId ]        = [ ( clientId, ctd ) ]
-            self.tasks[ taskId ].timeStarted    = time.time()
+    def __addSubtaskToTasksStates( self, clientId, ctd ):
+
+        if ctd.taskId not in self.tasksStates:
+            ts = TaskState()
+            ts.status           = TaskStatus.starting
+            ts.timeStarted      = time.time()
+
+            ss                      = SubtaskState()
+            ss.computer.nodeId      = clientId
+            ss.computer.performance = ctd.performance
+            # TODO: read node ip address
+            ss.subtaskDefinition    = ctd.shortDescription
+            ss.subtaskId            = ctd.subTaskId
+            ss.subtaskStatus        = TaskStatus.starting
+
+            ts.subtaskStates[ ctd.subTaskId ] = ss
         else:
-            self.taskComputers[ taskId ].append( ( clientId, ctd ) )
+            ts = self.tasksStates[ ctd.taskId ]
+
+            ss                      = SubtaskState()
+            ss.computer.nodeId      = clientId
+            ss.computer.performance = ctd.performance
+            # TODO: read node ip address
+            ss.subtaskDefinition    = ctd.shortDescription
+            ss.subtaskId            = ctd.subTaskId
+            ss.subtaskStatus        = TaskStatus.starting
+
+            ts.subtaskStates[ ctd.subTaskId ] = ss
 
     #######################
     def __noticeTaskUpdated( self, taskId ):

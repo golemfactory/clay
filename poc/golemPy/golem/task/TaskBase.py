@@ -40,8 +40,6 @@ class Task:
     def __init__( self, header, srcCode ):
         self.srcCode    = srcCode
         self.header     = header
-        self.taskStatus = TaskStatus.notStarted
-        self.timeStarted = 0
 
     #######################
     @abc.abstractmethod

@@ -26,8 +26,9 @@ class MainWindowCustomizer:
         self.logic  = logic
 
         self.__setupConnections()
-        self.currentTaskHighlighted = None
-        self.taskDetailsDialog      = None
+        self.currentTaskHighlighted         = None
+        self.taskDetailsDialog              = None
+        self.taskDetailsDialogCustomizer    = None
 
     #############################
     def __setupConnections( self ):
@@ -54,6 +55,9 @@ class MainWindowCustomizer:
                 layout = progressBarInBoxLayout.layout()
                 pb = layout.itemAt( 0 ).widget()
                 pb.setProperty( "value", int( tasks[ taskID ].taskState.progress * 100.0 ) )
+                if self.taskDetailsDialogCustomizer:
+                    if self.taskDetailsDialogCustomizer.gnrTaskState.definition.id == taskID:
+                        self.taskDetailsDialogCustomizer.updateView( tasks[ taskID ].taskState )
             else:
                 assert False, "Trying to update not added task."
         
