@@ -66,8 +66,9 @@ class TaskManager:
 
         task.taskStatus = TaskStatus.waiting
 
-        ts = TaskState()
-        ts.status = TaskStatus.waiting
+        ts              = TaskState()
+        ts.status       = TaskStatus.waiting
+        ts.timeStarted  = time.time()
 
         self.tasksStates[ task.header.taskId ] = ts
 
@@ -81,6 +82,7 @@ class TaskManager:
                 ctd  = task.queryExtraData( estimatedPerformance )
                 self.subTask2TaskMapping[ ctd.subTaskId ] = taskId
                 self.__addSubtaskToTasksStates( clientId, ctd )
+                self.__noticeTaskUpdated( taskId )
                 return ctd
             print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
             return None
@@ -155,10 +157,11 @@ class TaskManager:
 
     #######################
     def quarryTaskState( self, taskId ):
-        if taskId in self.tasksStates and taskId in self.task:
+        if taskId in self.tasksStates and taskId in self.tasks:
             ts  = self.tasksStates[ taskId ]
             t   = self.tasks[ taskId ]
 
+            ts.progress = t.getProgress()
             ts.elapsedTime = time.time() - ts.timeStarted
 
             if ts.progress > 0.0:
@@ -178,19 +181,7 @@ class TaskManager:
     def __addSubtaskToTasksStates( self, clientId, ctd ):
 
         if ctd.taskId not in self.tasksStates:
-            ts = TaskState()
-            ts.status           = TaskStatus.starting
-            ts.timeStarted      = time.time()
-
-            ss                      = SubtaskState()
-            ss.computer.nodeId      = clientId
-            ss.computer.performance = ctd.performance
-            # TODO: read node ip address
-            ss.subtaskDefinition    = ctd.shortDescription
-            ss.subtaskId            = ctd.subTaskId
-            ss.subtaskStatus        = TaskStatus.starting
-
-            ts.subtaskStates[ ctd.subTaskId ] = ss
+            assert False, "Should never be here!"
         else:
             ts = self.tasksStates[ ctd.taskId ]
 

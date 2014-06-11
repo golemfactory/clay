@@ -1,4 +1,5 @@
 import os
+import time
 import datetime
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog, QTreeWidgetItem, QMenu, QAction
@@ -12,7 +13,7 @@ from ui.TaskTableElem import TaskTableElem
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from TaskContexMenuCustomizer import TaskContextMenuCustomizer
 from TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
-
+import time
 
 
 
@@ -82,7 +83,10 @@ class MainWindowCustomizer:
         self.gui.ui.samplesPerPixel.setText( "{}".format( t.definition.samplesPerPixelCount ) )
         self.gui.ui.outputFile.setText( "{}".format( t.definition.outputFile ) )
         self.gui.ui.fullTaskTimeout.setText( str( datetime.timedelta( seconds = t.definition.fullTaskTimeout ) ) )
-        self.gui.ui.timeStarted.setText( "{}".format( t.taskState.timeStarted ) )
+        if t.taskState.timeStarted != 0.0:
+            lt = time.localtime( t.taskState.timeStarted )
+            timeString  = time.strftime( "%Y.%m.%d  %H:%M:%S", lt )
+            self.gui.ui.timeStarted.setText( timeString )
         self.currentTaskHighlighted = t
 
     ############################
