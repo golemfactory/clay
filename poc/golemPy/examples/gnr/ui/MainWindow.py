@@ -1,9 +1,6 @@
-from PyQt4 import QtCore
 from PyQt4.QtGui import QMainWindow, QPixmap
 
 from gen.ui_MainWindow import Ui_MainWindow
-
-from NewTaskDialog import NewTaskDialog
 
 class GNRMainWindow:
     ##########################

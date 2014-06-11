@@ -2,8 +2,8 @@ import os
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
 
-from ui.NewTaskDialog import NewTaskDialog
-from ui.AddTaskResourcesDialog import AddTaskResourcesDialog
+from examples.gnr.ui.NewTaskDialog import NewTaskDialog
+from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 
 from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
 from examples.gnr.TaskState import GNRTaskState

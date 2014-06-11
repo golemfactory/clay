@@ -2,13 +2,13 @@ import os
 import time
 import datetime
 from PyQt4 import QtCore
-from PyQt4.QtGui import QFileDialog, QTreeWidgetItem, QMenu, QAction
+from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QMenu, QAction
 
-from ui.MainWindow import GNRMainWindow
-from ui.NewTaskDialog import NewTaskDialog
-from ui.ShowTaskResourcesDialog import ShowTaskResourcesDialog
-from ui.TaskDetailsDialog import TaskDetailsDialog
-from ui.TaskTableElem import TaskTableElem
+from examples.gnr.ui.MainWindow import GNRMainWindow
+from examples.gnr.ui.NewTaskDialog import NewTaskDialog
+from examples.gnr.ui.ShowTaskResourcesDialog import ShowTaskResourcesDialog
+from examples.gnr.ui.TaskDetailsDialog import TaskDetailsDialog
+from examples.gnr.ui.TaskTableElem import TaskTableElem
 
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from TaskContexMenuCustomizer import TaskContextMenuCustomizer
@@ -87,6 +87,14 @@ class MainWindowCustomizer:
             lt = time.localtime( t.taskState.timeStarted )
             timeString  = time.strftime( "%Y.%m.%d  %H:%M:%S", lt )
             self.gui.ui.timeStarted.setText( timeString )
+
+        if t.taskState.resultPreview:
+            filePath = os.path.abspath( t.taskState.resultPreview )
+            if os.path.exists( filePath ):
+                self.gui.ui.previewLabel.setPixmap( QPixmap( filePath ) )
+        else:
+            self.gui.ui.previewLabel.setPixmap( QPixmap( "ui/nopreview.jpg" ) )
+
         self.currentTaskHighlighted = t
 
     ############################

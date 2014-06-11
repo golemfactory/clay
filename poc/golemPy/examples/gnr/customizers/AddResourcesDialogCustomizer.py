@@ -1,6 +1,6 @@
 from PyQt4.QtGui import QFileDialog
 
-from ui.AddTaskResourcesDialog import AddTaskResourcesDialog
+from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 
 class AddResourcesDialogCustomizer:
     ############################
