@@ -26,8 +26,8 @@
       <file leaf-file-name="PbrtGNRTask.py" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/examples/gnr/task/PbrtGNRTask.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.054924242" vertical-offset="4408" max-vertical-offset="4981">
-              <caret line="261" column="58" selection-start-line="261" selection-start-column="58" selection-end-line="261" selection-end-column="58" />
+            <state vertical-scroll-proportion="0.8276515" vertical-offset="4408" max-vertical-offset="4981">
+              <caret line="285" column="36" selection-start-line="285" selection-start-column="36" selection-end-line="285" selection-end-column="36" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -1143,8 +1143,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/examples/gnr/task/PbrtGNRTask.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.054924242" vertical-offset="4408" max-vertical-offset="4981">
-          <caret line="261" column="58" selection-start-line="261" selection-start-column="58" selection-end-line="261" selection-end-column="58" />
+        <state vertical-scroll-proportion="0.8276515" vertical-offset="4408" max-vertical-offset="4981">
+          <caret line="285" column="36" selection-start-line="285" selection-start-column="36" selection-end-line="285" selection-end-column="36" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
