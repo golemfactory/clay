@@ -128,6 +128,40 @@ class PbrtRenderTask( GNRTask ):
 
         return ctd
 
+
+    #######################
+    def queryExtraDataForTestTask( self ):
+
+        commonPathPrefix = os.path.commonprefix( self.taskResources )
+        commonPathPrefix = os.path.dirname( commonPathPrefix )
+
+        extraData =          {      "pathRoot" : self.pathRoot,
+                                    "startTask" : 0,
+                                    "endTask" : 1,
+                                    "totalTasks" : self.totalTasks,
+                                    "numSubtasks" : self.numSubtasks,
+                                    "numCores" : self.numCores,
+                                    "outfilebasename" : self.outfilebasename,
+                                    "sceneFile" : os.path.relpath( self.sceneFile, commonPathPrefix )
+                                }
+
+        hash = "{}".format( random.getrandbits(128) )
+
+        ctd = ComputeTaskDef()
+        ctd.taskId              = self.header.taskId
+        ctd.subTaskId           = hash
+        ctd.extraData           = extraData
+        ctd.returnAddress       = self.header.taskOwnerAddress
+        ctd.returnPort          = self.header.taskOwnerPort
+        ctd.shortDescription    = self.__shortExtraDataRepr( 0, extraData )
+        ctd.srcCode             = self.srcCode
+        ctd.performance         = 0
+
+        ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
+        ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
+
+        return ctd
+
     #######################
     def __shortExtraDataRepr( self, perfIndex, extraData ):
         l = extraData
@@ -214,3 +248,5 @@ class PbrtRenderTask( GNRTask ):
     #######################
     def getPreviewFilePath( self ):
         return self.previewFilePath
+
+

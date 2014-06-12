@@ -112,6 +112,11 @@ class Task:
         return None
 
     #######################
+    @abc.abstractmethod
+    def testTask( self ):
+        return False
+
+    #######################
     @classmethod
     def buildTask( cls, taskBuilder ):
         assert isinstance( taskBuilder, TaskBuilder )
