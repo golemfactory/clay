@@ -43,12 +43,16 @@ class TaskTester:
 
         except Exception as exc:
             print "Task not tested properly: {}".format( exc )
-            self.success = False
+            self.finishedCallback( False )
 
     #########################
     def getProgress( self ):
         if self.tt:
             with self.lock:
+                if self.tt.getError():
+                    print "Task not tested properly"
+                    self.finishedCallback( False )
+                    return 0
                 return self.tt.getProgress()
         return None
 

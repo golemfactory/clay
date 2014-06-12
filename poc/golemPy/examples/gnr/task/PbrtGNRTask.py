@@ -11,7 +11,8 @@ from golem.task.resource.Resource import prepareDeltaZip
 from GNRTask import GNRTask
 from testtasks.pbrt.takscollector import PbrtTaksCollector
 
-
+import OpenEXR, Imath
+from PIL import Image, ImageChops
 
 class PbrtTaskBuilder( TaskBuilder ):
     #######################
@@ -29,8 +30,8 @@ class PbrtTaskBuilder( TaskBuilder ):
                                    self.taskDefinition.id,
                                    mainSceneDir,
                                    self.taskDefinition.mainProgramFile,
-                                   10,
-                                   45,
+                                   100,
+                                   32,
                                    1,
                                    "temp",
                                    self.taskDefinition.mainSceneFile,
@@ -194,7 +195,7 @@ class PbrtRenderTask( GNRTask ):
                 self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
                 self.numTasksReceived += 1
 
-            self.__updatePreview()
+                self.__updatePreview( os.path.join( tmpDir, tr[ 0 ] ) )
 
         if self.numTasksReceived == self.totalTasks:
             outputFileName = "{}".format( self.outputFile, self.outputFormat )
@@ -244,16 +245,43 @@ class PbrtRenderTask( GNRTask ):
             return None
 
     #######################
-    def __updatePreview( self ):
+    def __updatePreview( self, newChunkFilePath ):
+
+        if newChunkFilePath.endswith(".exr"):
+            img = exr_to_pil( newChunkFilePath )
+        else:
+            img = Image.open( newChunkFilePath )
 
         tmpDir = os.path.join( "res", self.header.clientId, self.header.taskId, "tmp" )
 
-        self.previewFilePath = "{}.{}".format( os.path.join( tmpDir, "current_preview") , "BMP" )
+        self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
 
-        self.collector.finalize().save( self.previewFilePath, "BMP" )
+        if os.path.exists( self.previewFilePath ):
+            imgCurrent = Image.open( self.previewFilePath )
+            imgCurrent = ImageChops.add( imgCurrent, img )
+            imgCurrent.save( self.previewFilePath, "BMP" )
+        else:
+            img.save( self.previewFilePath, "BMP" )
 
     #######################
     def getPreviewFilePath( self ):
         return self.previewFilePath
 
 
+def exr_to_pil( exrFile ):
+
+    file = OpenEXR.InputFile( exrFile )
+    pt = Imath.PixelType( Imath.PixelType.FLOAT )
+    dw = file.header()['dataWindow']
+    size = ( dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1 )
+
+    rgbf = [Image.fromstring("F", size, file.channel(c, pt)) for c in "RGB"]
+
+    extrema = [im.getextrema() for im in rgbf]
+    darkest = min([lo for (lo,hi) in extrema])
+    lighest = max([hi for (lo,hi) in extrema])
+    scale = 255 / (lighest - darkest)
+    def normalize_0_255(v):
+        return (v * scale) + darkest
+    rgb8 = [im.point(normalize_0_255).convert("L") for im in rgbf]
+    return Image.merge("RGB", rgb8)

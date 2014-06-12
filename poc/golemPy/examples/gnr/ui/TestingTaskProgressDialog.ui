@@ -22,6 +22,9 @@
   <property name="windowTitle">
    <string>Testing...</string>
   </property>
+  <property name="sizeGripEnabled">
+   <bool>false</bool>
+  </property>
   <property name="modal">
    <bool>true</bool>
   </property>

@@ -143,6 +143,7 @@ class TaskThread( Thread ):
         self.workingDirectory = workingDirectory
         self.prevWorkingDirectory = ""
         self.lock           = Lock()
+        self.error          = False
 
     ######################
     def getSubTaskId( self ):
@@ -158,11 +159,21 @@ class TaskThread( Thread ):
             return self.vm.getProgress()
 
     ######################
+    def getError( self ):
+        with self.lock:
+            return self.error
+
+    ######################
     def run( self ):
         print "RUNNING "
-        self.__doWork()
-        self.taskComputer.taskComputed( self )
-        self.done = True
+        try:
+            self.__doWork()
+            self.taskComputer.taskComputed( self )
+        except Exception as exc:
+            print "Task computing error: {}".format( exc )
+            self.error = True
+            self.done = True
+
 
     ######################
     def __doWork( self ):

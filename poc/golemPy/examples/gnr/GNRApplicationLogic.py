@@ -148,7 +148,9 @@ class GNRApplicationLogic( QtCore.QObject ):
     def __testTaskComputationFinished( self, success ):
         self.progressDialog.setProgress( 100 )
         self.progressDialog.close()
-        self.customizer.testTaskComputationFinished( success )
+        self.progressDialog = None
+        if self.customizer.newTaskDialogCustomizer:
+            self.customizer.newTaskDialogCustomizer.testTaskComputationFinished( success )
 
     ######################
     def taskStatusChanged( self, taskId ):
