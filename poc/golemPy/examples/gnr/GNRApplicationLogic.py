@@ -163,8 +163,13 @@ class GNRApplicationLogic( QtCore.QObject ):
                 return False
 
             if len( td.outputFile ) == 0: # FIXME
-                self.__showErrorWindow( "Output file is not set" )
+                self.__showErrorWindow( "Output file is not properly set" )
                 return False
+
+            if not os.path.exists( td.mainSceneFile ):
+                self.__showErrorWindow( "Main scene file is not properly set" )
+                return False
+
 
         else:
             return False
