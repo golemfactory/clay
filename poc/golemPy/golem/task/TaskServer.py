@@ -50,15 +50,15 @@ class TaskServer:
             return 0
 
     #############################
-    def requestResource( self, subTaskId, resourceHeader, address, port ):
-        self.__connectAndSendResourceRequest( address, port, subTaskId, resourceHeader )
-        return subTaskId
+    def requestResource( self, subtaskId, resourceHeader, address, port ):
+        self.__connectAndSendResourceRequest( address, port, subtaskId, resourceHeader )
+        return subtaskId
 
     #############################
-    def sendResults( self, subTaskId, result, ownerAddress, ownerPort ):
+    def sendResults( self, subtaskId, result, ownerAddress, ownerPort ):
         
-        if subTaskId not in self.resultsToSend:
-            self.resultsToSend[ subTaskId ] = WaitingTaskResult( subTaskId, result, 0.0, 0.0, ownerAddress, ownerPort )
+        if subtaskId not in self.resultsToSend:
+            self.resultsToSend[ subtaskId ] = WaitingTaskResult( subtaskId, result, 0.0, 0.0, ownerAddress, ownerPort )
         else:
             assert False
 
@@ -124,16 +124,16 @@ class TaskServer:
         return self.lastMessages
 
     #############################
-    def getWaitingTaskResult( self, subTaskId ):
-        if subTaskId in self.resultsToSend:
-            return self.resultsToSend[ subTaskId ]
+    def getWaitingTaskResult( self, subtaskId ):
+        if subtaskId in self.resultsToSend:
+            return self.resultsToSend[ subtaskId ]
         else:
             return None
 
     #############################
-    def taskResultSent( self, subTaskId ):
-        if subTaskId in self.resultsToSend:
-            del self.resultsToSend[ subTaskId ]
+    def taskResultSent( self, subtaskId ):
+        if subtaskId in self.resultsToSend:
+            del self.resultsToSend[ subtaskId ]
         else:
             assert False
 
@@ -169,8 +169,8 @@ class TaskServer:
         Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, clientId, taskId, estimatedPerformance )
 
     #############################   
-    def __connectAndSendResourceRequest( self, address ,port, subTaskId, resourceHeader ):
-        Network.connect( address, port, TaskSession, self.__connectionForResourceRequestEstablished, self.__connectionForResourceRequestFailure, subTaskId, resourceHeader )
+    def __connectAndSendResourceRequest( self, address ,port, subtaskId, resourceHeader ):
+        Network.connect( address, port, TaskSession, self.__connectionForResourceRequestEstablished, self.__connectionForResourceRequestFailure, subtaskId, resourceHeader )
 
 
     #############################
@@ -202,37 +202,37 @@ class TaskServer:
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
 
-        self.taskSeesions[ waitingTaskResult.subTaskId ] = session
+        self.taskSeesions[ waitingTaskResult.subtaskId ] = session
         
-        session.sendReportComputedTask( waitingTaskResult.subTaskId )
+        session.sendReportComputedTask( waitingTaskResult.subtaskId )
 
     #############################
     def __connectionForTaskResultFailure( self, waitingTaskResult ):
-        print "Cannot connect to task {} owner".format( waitingTaskResult.subTaskId )
-        print "Removing task {} from task list".format( waitingTaskResult.subTaskId )
+        print "Cannot connect to task {} owner".format( waitingTaskResult.subtaskId )
+        print "Removing task {} from task list".format( waitingTaskResult.subtaskId )
         
         waitingTaskResult.lastSendingTrial  = time.time()
         waitingTaskResult.delayTime         = self.configDesc.maxResultsSendignDelay
         waitingTaskResult.alreadySending    = False
 
     #############################
-    def __connectionForResourceRequestEstablished( self, session, subTaskId, resourceHeader ):
+    def __connectionForResourceRequestEstablished( self, session, subtaskId, resourceHeader ):
 
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
-        self.taskSeesions[ subTaskId ] = session
-        session.taskId = subTaskId
-        session.requestResource( subTaskId, resourceHeader )
+        self.taskSeesions[ subtaskId ] = session
+        session.taskId = subtaskId
+        session.requestResource( subtaskId, resourceHeader )
 
     #############################
-    def __connectionForResourceRequestFailure( self, session, subTaskId, resourceHeader ):
-        print "Cannot connect to task {} owner".format( subTaskId )
-        print "Removing task {} from task list".format( subTaskId )
+    def __connectionForResourceRequestFailure( self, session, subtaskId, resourceHeader ):
+        print "Cannot connect to task {} owner".format( subtaskId )
+        print "Removing task {} from task list".format( subtaskId )
         
-        self.taskComputer.resourceRequestRejected( subTaskId, "Connection failed" )
+        self.taskComputer.resourceRequestRejected( subtaskId, "Connection failed" )
         
-        self.removeTaskHeader( subTaskId )
+        self.removeTaskHeader( subtaskId )
          
     #############################
     def __removeOldTasks( self ):
@@ -252,15 +252,15 @@ class TaskServer:
 
             if not waitingTaskResult.alreadySending:
                 if time.time() - waitingTaskResult.lastSendingTrial > waitingTaskResult.delayTime:
-                    subTaskId = waitingTaskResult.subTaskId
+                    subtaskId = waitingTaskResult.subtaskId
 
                     waitingTaskResult.alreadySending = True
                     self.__connectAndSendTaskResults( waitingTaskResult.ownerAddress, waitingTaskResult.ownerPort, waitingTaskResult )
 
 class WaitingTaskResult:
     #############################
-    def __init__( self, subTaskId, result, lastSendingTrial, delayTime, ownerAddress, ownerPort  ):
-        self.subTaskId          = subTaskId
+    def __init__( self, subtaskId, result, lastSendingTrial, delayTime, ownerAddress, ownerPort  ):
+        self.subtaskId          = subtaskId
         self.result             = result
         self.lastSendingTrial   = lastSendingTrial
         self.delayTime          = delayTime

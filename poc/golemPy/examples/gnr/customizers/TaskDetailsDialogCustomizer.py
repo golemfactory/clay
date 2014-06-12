@@ -93,8 +93,8 @@ class TaskDetailsDialogCustomizer:
     def __nodesTabelRowClicked( self, r, c ):
 
         nodeId = "{}".format( self.gui.ui.nodesTableWidget.item( r, 0 ).text() )
-        subTaskId = "{}".format( self.gui.ui.nodesTableWidget.item( r, 1 ).text() )
-        self.__updateNodeAdditionalInfo( nodeId, subTaskId )
+        subtaskId = "{}".format( self.gui.ui.nodesTableWidget.item( r, 1 ).text() )
+        self.__updateNodeAdditionalInfo( nodeId, subtaskId )
 
     ###########################
     def __closeButtonClicked( self ):

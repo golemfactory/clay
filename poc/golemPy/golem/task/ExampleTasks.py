@@ -61,7 +61,7 @@ class RayTracingTask( Task ):
         self.splitIndex += 1
 
     #######################
-    def computationFinished( self, subTaskId, taskResult, env = None ):
+    def computationFinished( self, subtaskId, taskResult, env = None ):
         print "Receive computed task id:{} \n result:{}".format( self.taskHeader.taskId, taskResult )
 
 TIMESLC  = 45.0
@@ -188,7 +188,7 @@ class VRayTracingTask( Task ):
         pass
 
     #######################
-    def computationFinished( self, subTaskId, taskResult, env = None ):
+    def computationFinished( self, subtaskId, taskResult, env = None ):
         #dest = RenderTaskDesc( 0, extraData[ "x" ], extraData[ "y" ], extraData[ "w" ], extraData[ "h" ], extraData[ "num_pixels" ] ,extraData[ "num_samples" ])
         #res = RenderTaskResult( dest, taskResult )
         #self.taskableRenderer.taskFinished( res )
@@ -303,7 +303,7 @@ class PbrtRenderTask( Task ):
         pass
 
     #######################
-    def computationFinished( self, subTaskId, taskResult, env = None ):
+    def computationFinished( self, subtaskId, taskResult, env = None ):
 
         tmpDir = env.getTaskTemporaryDir( self.header.taskId )
 
@@ -346,8 +346,8 @@ class PbrtRenderTask( Task ):
         return float( self.lastTask ) / self.totalTasks
 
     #######################
-    def prepareResourceDelta( self, subTaskId, taskId, resourceHeader ):
-        if subTaskId in self.subTasksGiven:
+    def prepareResourceDelta( self, subtaskId, taskId, resourceHeader ):
+        if subtaskId in self.subTasksGiven:
             dirName = os.path.join( "res", self.header.clientId, self.header.taskId, "resources" )
             tmpDir = os.path.join( "res", self.header.clientId, self.header.taskId, "tmp" )
 

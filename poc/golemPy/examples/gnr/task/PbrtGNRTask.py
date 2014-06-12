@@ -115,7 +115,7 @@ class PbrtRenderTask( GNRTask ):
 
         ctd = ComputeTaskDef()
         ctd.taskId              = self.header.taskId
-        ctd.subTaskId           = hash
+        ctd.subtaskId           = hash
         ctd.extraData           = extraData
         ctd.returnAddress       = self.header.taskOwnerAddress
         ctd.returnPort          = self.header.taskOwnerPort
@@ -149,7 +149,7 @@ class PbrtRenderTask( GNRTask ):
 
         ctd = ComputeTaskDef()
         ctd.taskId              = self.header.taskId
-        ctd.subTaskId           = hash
+        ctd.subtaskId           = hash
         ctd.extraData           = extraData
         ctd.returnAddress       = self.header.taskOwnerAddress
         ctd.returnPort          = self.header.taskOwnerPort
@@ -157,7 +157,11 @@ class PbrtRenderTask( GNRTask ):
         ctd.srcCode             = self.srcCode
         ctd.performance         = 0
 
-        ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
+        if os.path.exists( commonPathPrefix ):
+            ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
+        else:
+            ctd.workingDirectory    = ""
+
         ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
 
         return ctd
@@ -176,7 +180,7 @@ class PbrtRenderTask( GNRTask ):
         pass
 
     #######################
-    def computationFinished( self, subTaskId, taskResult, env = None ):
+    def computationFinished( self, subtaskId, taskResult, env = None ):
 
         tmpDir = env.getTaskTemporaryDir( self.header.taskId )
 
@@ -228,6 +232,9 @@ class PbrtRenderTask( GNRTask ):
             commonPathPrefix = os.path.dirname( commonPathPrefix )
             dirName = commonPathPrefix #os.path.join( "res", self.header.clientId, self.header.taskId, "resources" )
             tmpDir = os.path.join( "res", self.header.clientId, self.header.taskId, "tmp" )
+
+            if not os.path.exists( tmpDir ):
+                os.makedirs( tmpDir )
 
             if os.path.exists( dirName ):
                 return prepareDeltaZip( dirName, resourceHeader, tmpDir, self.taskResources )

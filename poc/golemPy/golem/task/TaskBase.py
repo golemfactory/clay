@@ -26,7 +26,7 @@ class ComputeTaskDef:
     #######################
     def __init__( self ):
         self.taskId             = ""
-        self.subTaskId          = ""
+        self.subtaskId          = ""
         self.srcCode            = ""
         self.extraData          = {}
         self.shortDescription   = ""
@@ -68,7 +68,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def computationFinished( self, subTaskId, taskResult, env = None ):
+    def computationFinished( self, subtaskId, taskResult, env = None ):
         return # Implement in derived class
 
     #######################

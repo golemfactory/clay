@@ -1,39 +1,56 @@
 import os
+from threading import Thread, Lock
+import shutil
+
 from golem.task.TaskBase import Task
 from golem.task.resource.Resource import TaskResourceHeader, decompressDir
 from golem.task.TaskComputer import PyTaskThread
 
+
 class TaskTester:
     #########################
-    def __init__( self, task ):
+    def __init__( self, task, finishedCallback ):
         assert isinstance( task, Task )
         self.task               = task
         self.testTaskResPath    = None
         self.tmpDir             = None
         self.success            = False
-
-    def run( self ):
-        success = self.__prepareResources()
-
-        if not success:
-            return False
-
-        ctd = self.task.queryExtraDataForTestTask()
-
-
-        tt = PyTaskThread( self,
-                           ctd.subtaskId,
-                           ctd.workingDirectory,
-                           ctd.srcCode,
-                           ctd.extraData,
-                           ctd.shortDescr,
-                           self.testTaskResPath,
-                           self.tmpDir )
-        tt.start()
+        self.lock               = Lock()
+        self.tt                 = None
+        self.finishedCallback   = finishedCallback
 
     #########################
-    def getSuccess( self ):
-        return self.success
+    def run( self ):
+        try:
+            success = self.__prepareResources()
+            self.__prepareTmpDir()
+
+            if not success:
+                return False
+
+            ctd = self.task.queryExtraDataForTestTask()
+
+
+            self.tt = PyTaskThread(  self,
+                                ctd.subtaskId,
+                                ctd.workingDirectory,
+                                ctd.srcCode,
+                                ctd.extraData,
+                                ctd.shortDescription,
+                                self.testTaskResPath,
+                                self.tmpDir )
+            self.tt.start()
+
+        except Exception as exc:
+            print "Task not tested properly: {}".format( exc )
+            self.success = False
+
+    #########################
+    def getProgress( self ):
+        if self.tt:
+            with self.lock:
+                return self.tt.getProgress()
+        return None
 
     #########################
     def __prepareResources( self ):
@@ -43,7 +60,7 @@ class TaskTester:
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
         else:
-            os.removedirs( self.testTaskResPath )
+            shutil.rmtree( self.testTaskResPath, True )
             os.makedirs( self.testTaskResPath )
 
         rh = TaskResourceHeader( "testing_task_resources" )
@@ -51,9 +68,8 @@ class TaskTester:
 
         if resFile:
             decompressDir( self.testTaskResPath, resFile )
-        else:
-            return False
 
+        return True
     #########################
     def __prepareTmpDir( self ):
         self.tmpDir = "testing_task_tmp"
@@ -61,15 +77,14 @@ class TaskTester:
         if not os.path.exists( self.tmpDir ):
             os.makedirs( self.tmpDir )
         else:
-            os.removedirs( self.tmpDir )
+            shutil.rmtree( self.tmpDir, True )
             os.makedirs( self.tmpDir )
-
 
     ###########################
     def taskComputed( self, taskThread ):
         if taskThread.result:
             print "Test task computation success !"
-            self.success =  True
+            self.finishedCallback( True )
         else:
             print "Test task computation failed !!!"
-            self.success = False
+            self.finishedCallback( False )

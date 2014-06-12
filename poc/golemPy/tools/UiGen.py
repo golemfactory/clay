@@ -16,7 +16,7 @@ def regenerateUIFiles( rootPath ):
                 if os.path.getmtime( os.path.join( rootPath, outFile ) ) > os.path.getmtime(  os.path.join( rootPath, file ) ):
                     continue
             print "Generating " + outFile
-            os.system( "python ./../src/ui/pyuic.py " + os.path.join( rootPath, file ) + " > " + os.path.join( rootPath, outFile )  )
+            os.system( "python ./../../golem/ui/pyuic.py " + os.path.join( rootPath, file ) + " > " + os.path.join( rootPath, outFile )  )
 
 def genUiFiles( path ):
     if os.path.exists( path ):

@@ -30,8 +30,8 @@ class TaskSession:
         self.conn.fileMode = True
 
     ##########################
-    def sendReportComputedTask( self, subTaskId ):
-        self.__send( MessageReportComputedTask( subTaskId ) )
+    def sendReportComputedTask( self, subtaskId ):
+        self.__send( MessageReportComputedTask( subtaskId ) )
 
     ##########################
     def interpret( self, msg ):
@@ -67,25 +67,25 @@ class TaskSession:
             self.dropped()
 
         elif type == MessageReportComputedTask.Type:
-            if msg.subTaskId in self.taskManager.subTask2TaskMapping:
-                delay = self.taskManager.acceptResultsDelay( self.taskManager.subTask2TaskMapping[ msg.subTaskId ] )
+            if msg.subtaskId in self.taskManager.subTask2TaskMapping:
+                delay = self.taskManager.acceptResultsDelay( self.taskManager.subTask2TaskMapping[ msg.subtaskId ] )
 
                 if delay == -1.0:
                     self.dropped()
                 elif delay == 0.0:
-                    self.conn.sendMessage( MessageGetTaskResult( msg.subTaskId, delay ) )
+                    self.conn.sendMessage( MessageGetTaskResult( msg.subtaskId, delay ) )
                 else:
-                    self.conn.sendMessage( MessageGetTaskResult( msg.subTaskId, delay ) )
+                    self.conn.sendMessage( MessageGetTaskResult( msg.subtaskId, delay ) )
                     self.dropped()
             else:
                 self.dropped()
 
         elif type == MessageGetTaskResult.Type:
-            res = self.taskServer.getWaitingTaskResult( msg.subTaskId )
+            res = self.taskServer.getWaitingTaskResult( msg.subtaskId )
             if res:
                 if msg.delay == 0.0:
-                    self.__send( MessageTaskResult( res.subTaskId, res.result ) )
-                    self.taskServer.taskResultSent( res.subTaskId )
+                    self.__send( MessageTaskResult( res.subtaskId, res.result ) )
+                    self.taskServer.taskResultSent( res.subtaskId )
                 else:
                     res.lastSendingTrial    = time()
                     res.delayTime           = msg.delay
@@ -93,7 +93,7 @@ class TaskSession:
                     self.dropped()
 
         elif type == MessageTaskResult.Type:
-            self.taskManager.computedTaskReceived( msg.subTaskId, msg.result )
+            self.taskManager.computedTaskReceived( msg.subtaskId, msg.result )
             self.dropped()
 
         elif type == MessageGetResource.Type:
@@ -101,7 +101,7 @@ class TaskSession:
             #resFilePath  = "d:/src/golem/poc/golemPy/test/res2222221"
 
             if not resFilePath:
-                print "Task {} has no resource".format( msg.subTaskId )
+                print "Task {} has no resource".format( msg.subtaskId )
                 self.conn.transport.write( struct.pack( "!L", 0 ) )
                 self.dropped()
                 return
@@ -120,7 +120,7 @@ class TaskSession:
                 
             self.dropped()
         elif type == MessageResource.Type:
-            self.taskComputer.resourceGiven( msg.subTaskId )
+            self.taskComputer.resourceGiven( msg.subtaskId )
             self.dropped()
 
     ##########################

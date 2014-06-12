@@ -171,11 +171,13 @@ class NewTaskDialogCustomizer:
     def __testTaskButtonClicked( self ):
         self.taskState = self.__queryTaskState()
         
-        if self.logic.runTestTask( self.taskState ):
+        if not self.logic.runTestTask( self.taskState ):
+            print "Task not tested properly"
+
+    def testTaskComputationFinished( self, success ):
+        if success:
             self.gui.ui.finishBatton.setEnabled( True )
             self.gui.ui.testTaskButton.setEnabled( False )
-        else:
-            print "Task not tested properly"
 
     #############################
     def __finishButtonClicked( self ):

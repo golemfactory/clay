@@ -80,7 +80,7 @@ class TaskManager:
             task = self.tasks[ taskId ]
             if task.needsComputation():
                 ctd  = task.queryExtraData( estimatedPerformance )
-                self.subTask2TaskMapping[ ctd.subTaskId ] = taskId
+                self.subTask2TaskMapping[ ctd.subtaskId ] = taskId
                 self.__addSubtaskToTasksStates( clientId, ctd )
                 self.__noticeTaskUpdated( taskId )
                 return ctd
@@ -100,11 +100,11 @@ class TaskManager:
         return ret
 
     #######################
-    def computedTaskReceived( self, subTaskId, result ):
-        if subTaskId in self.subTask2TaskMapping:
-            taskId = self.subTask2TaskMapping[ subTaskId ]
-            self.tasks[ taskId ].computationFinished( subTaskId, result, self.env )
-            ss = self.tasksStates[ taskId ].subtaskStates[ subTaskId ]
+    def computedTaskReceived( self, subtaskId, result ):
+        if subtaskId in self.subTask2TaskMapping:
+            taskId = self.subTask2TaskMapping[ subtaskId ]
+            self.tasks[ taskId ].computationFinished( subtaskId, result, self.env )
+            ss = self.tasksStates[ taskId ].subtaskStates[ subtaskId ]
             ss.subtaskProgress  = 1.0
             ss.subtaskRemTime   = 0.0
             ss.subtaskStatus    = TaskStatus.finished
@@ -117,7 +117,7 @@ class TaskManager:
 
             return True
         else:
-            print "It is not my task id {}".format( subTaskId )
+            print "It is not my task id {}".format( subtaskId )
             return False
 
     #######################
@@ -190,10 +190,10 @@ class TaskManager:
             ss.computer.performance = ctd.performance
             # TODO: read node ip address
             ss.subtaskDefinition    = ctd.shortDescription
-            ss.subtaskId            = ctd.subTaskId
+            ss.subtaskId            = ctd.subtaskId
             ss.subtaskStatus        = TaskStatus.starting
 
-            ts.subtaskStates[ ctd.subTaskId ] = ss
+            ts.subtaskStates[ ctd.subtaskId ] = ss
 
     #######################
     def __noticeTaskUpdated( self, taskId ):

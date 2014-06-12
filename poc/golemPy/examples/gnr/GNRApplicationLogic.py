@@ -2,12 +2,15 @@ import os
 
 from PyQt4 import QtCore
 
+from examples.gnr.ui.TestingTaskProgressDialog import TestingTaskProgressDialog
 from golem.task.TaskState import TaskStatus
 from examples.gnr.TaskState import GNRTaskState
+from examples.gnr.task.TaskTester import TaskTester
 from golem.task.TaskBase import Task
 from golem.task.TaskState import TaskState
 from golem.Client import GolemClientEventListener
 from customizers.MainWindowCustomizer import MainWindowCustomizer
+
 
 class GNRClientEventListener( GolemClientEventListener ):
     #####################
@@ -18,6 +21,7 @@ class GNRClientEventListener( GolemClientEventListener ):
     #####################
     def taskUpdated( self, taskId ):
         self.logic.taskStatusChanged( taskId )
+
 
 class GNRApplicationLogic( QtCore.QObject ):
     ######################
@@ -123,9 +127,28 @@ class GNRApplicationLogic( QtCore.QObject ):
     ######################
     def runTestTask( self, taskState ):
         if self.__validateTaskState( taskState ):
+
+            tb = self.renderers[ taskState.definition.renderer ].taskBuilderType( self.client.getId(), taskState.definition )
+
+            t = Task.buildTask( tb )
+
+            self.tt = TaskTester( t, self.__testTaskComputationFinished )
+
+            self.progressDialog = TestingTaskProgressDialog( None, self.tt )
+
+            self.progressDialog.show()
+
+            self.tt.run()
+
             return True
         else:
             return False
+
+    ######################
+    def __testTaskComputationFinished( self, success ):
+        self.progressDialog.setProgress( 100 )
+        self.progressDialog.close()
+        self.customizer.testTaskComputationFinished( success )
 
     ######################
     def taskStatusChanged( self, taskId ):
