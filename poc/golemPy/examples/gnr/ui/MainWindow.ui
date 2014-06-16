@@ -568,7 +568,6 @@
     </property>
     <addaction name="actionNew"/>
     <addaction name="actionLoadTask"/>
-    <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuProperties">
     <property name="title">

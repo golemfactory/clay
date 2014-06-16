@@ -183,7 +183,7 @@ class TaskServer:
         session.requestTask( clientId, taskId, estimatedPerformance )
 
     #############################
-    def __connectionForTaskRequestFailure( self, session, clientId, taskId, estimatedPerformance ):
+    def __connectionForTaskRequestFailure( self, clientId, taskId, estimatedPerformance ):
         print "Cannot connect to task {} owner".format( taskId )
         print "Removing task {} from task list".format( taskId )
         
