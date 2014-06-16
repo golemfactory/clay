@@ -7,6 +7,7 @@ from golem.task.TaskState import TaskStatus
 from golem.core.Compress import decompress
 from golem.task.resource.Resource import prepareDeltaZip
 
+from examples.gnr.task.SceneFileEditor import renegerateFile
 
 from GNRTask import GNRTask
 from testtasks.pbrt.takscollector import PbrtTaksCollector
@@ -33,6 +34,11 @@ class PbrtTaskBuilder( TaskBuilder ):
                                    100,
                                    32,
                                    1,
+                                   self.taskDefinition.resolution[ 0 ],
+                                   self.taskDefinition.resolution[ 1 ],
+                                   self.taskDefinition.pixelFilter,
+                                   self.taskDefinition.algorithmType,
+                                   self.taskDefinition.samplesPerPixelCount,
                                    "temp",
                                    self.taskDefinition.mainSceneFile,
                                    self.taskDefinition.fullTaskTimeout,
@@ -54,6 +60,11 @@ class PbrtRenderTask( GNRTask ):
                   totalTasks,
                   numSubtasks,
                   numCores,
+                  resX,
+                  resY,
+                  pixelFilter,
+                  sampler,
+                  samplesPerPixel,
                   outfilebasename,
                   sceneFile,
                   fullTaskTimeout,
@@ -76,11 +87,16 @@ class PbrtRenderTask( GNRTask ):
         self.numSubtasks        = numSubtasks
         self.numCores           = numCores
         self.outfilebasename    = outfilebasename
-        self.sceneFile          = sceneFile
+        self.sceneFileSrc       = open(sceneFile).read()
         self.taskResources      = taskResources
         self.mainProgramFile    = mainProgramFile
         self.outputFile         = outputFile
         self.outputFormat       = outputFormat
+        self.resX               = resX
+        self.resY               = resY
+        self.pixelFilter        = pixelFilter
+        self.sampler            = sampler
+        self.samplesPerPixel    = samplesPerPixel
 
         self.collector          = PbrtTaksCollector()
         self.numTasksReceived   = 0
@@ -100,6 +116,8 @@ class PbrtRenderTask( GNRTask ):
         commonPathPrefix = os.path.commonprefix( self.taskResources )
         commonPathPrefix = os.path.dirname( commonPathPrefix )
 
+        sceneSrc = renegerateFile( self.sceneFileSrc, self.resX, self.resY, self.pixelFilter, self.sampler, self.samplesPerPixel )
+
         extraData =          {      "pathRoot" : self.pathRoot,
                                     "startTask" : self.lastTask,
                                     "endTask" : endTask,
@@ -107,8 +125,10 @@ class PbrtRenderTask( GNRTask ):
                                     "numSubtasks" : self.numSubtasks,
                                     "numCores" : self.numCores,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFile" : os.path.relpath( self.sceneFile, commonPathPrefix )
+                                    "sceneFileSrc" : sceneSrc
                                 }
+
+
 
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
@@ -136,6 +156,8 @@ class PbrtRenderTask( GNRTask ):
         commonPathPrefix = os.path.commonprefix( self.taskResources )
         commonPathPrefix = os.path.dirname( commonPathPrefix )
 
+        sceneSrc = renegerateFile( self.sceneFileSrc, 5, 5, self.pixelFilter, self.sampler, self.samplesPerPixel )
+
         extraData =          {      "pathRoot" : self.pathRoot,
                                     "startTask" : 0,
                                     "endTask" : 1,
@@ -143,7 +165,7 @@ class PbrtRenderTask( GNRTask ):
                                     "numSubtasks" : self.numSubtasks,
                                     "numCores" : self.numCores,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFile" : os.path.relpath( self.sceneFile, commonPathPrefix )
+                                    "sceneFileSrc" : sceneSrc
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -170,7 +192,7 @@ class PbrtRenderTask( GNRTask ):
     #######################
     def __shortExtraDataRepr( self, perfIndex, extraData ):
         l = extraData
-        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFile"] )
+        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFileSrc: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFileSrc"] )
 
     #######################
     def needsComputation( self ):
