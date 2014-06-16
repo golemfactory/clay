@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>460</width>
+    <width>443</width>
     <height>337</height>
    </rect>
   </property>
@@ -27,7 +27,7 @@
     <rect>
      <x>10</x>
      <y>50</y>
-     <width>361</width>
+     <width>420</width>
      <height>281</height>
     </rect>
    </property>
@@ -46,36 +46,18 @@
          <rect>
           <x>10</x>
           <y>10</y>
-          <width>311</width>
+          <width>391</width>
           <height>171</height>
          </rect>
         </property>
         <layout class="QFormLayout" name="formLayout">
+         <property name="fieldGrowthPolicy">
+          <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+         </property>
          <item row="0" column="0">
           <widget class="QLabel" name="label">
            <property name="text">
             <string>Renderer</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="0">
-          <widget class="QLabel" name="label_4">
-           <property name="text">
-            <string>Pixel Filter Type</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="0">
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>Path Tracer Type</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="0">
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>Samples Per Pixel</string>
            </property>
           </widget>
          </item>
@@ -89,6 +71,13 @@
            </property>
           </widget>
          </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>Pixel Filter Type</string>
+           </property>
+          </widget>
+         </item>
          <item row="1" column="1">
           <widget class="QComboBox" name="pixelFilterComboBox">
            <property name="sizePolicy">
@@ -99,6 +88,13 @@
            </property>
           </widget>
          </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Path Tracer Type</string>
+           </property>
+          </widget>
+         </item>
          <item row="2" column="1">
           <widget class="QComboBox" name="pathTracerComboBox">
            <property name="sizePolicy">
@@ -106,6 +102,13 @@
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Samples Per Pixel</string>
            </property>
           </widget>
          </item>
@@ -521,6 +524,13 @@
         </property>
         <property name="text">
          <string>Finish</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="saveButton">
+        <property name="text">
+         <string>Save</string>
         </property>
        </widget>
       </item>

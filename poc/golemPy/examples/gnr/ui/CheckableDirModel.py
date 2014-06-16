@@ -52,4 +52,4 @@ class CheckableDirModel(QtGui.QFileSystemModel):
                                 selection.append(os.path.join(path, filename))
                             except:
                                 pass
-        return selection
+        return list( set( selection ) )

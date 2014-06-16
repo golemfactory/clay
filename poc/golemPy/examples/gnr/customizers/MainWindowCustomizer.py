@@ -1,8 +1,8 @@
 import os
-import time
+import cPickle as pickle
 import datetime
 from PyQt4 import QtCore
-from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QMenu, QAction
+from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QMenu, QFileDialog
 
 from examples.gnr.ui.MainWindow import GNRMainWindow
 from examples.gnr.ui.NewTaskDialog import NewTaskDialog
@@ -34,6 +34,7 @@ class MainWindowCustomizer:
     #############################
     def __setupConnections( self ):
         self.gui.ui.actionNew.triggered.connect( self.__showNewTaskDialogClicked )
+        self.gui.ui.actionLoadTask.triggered.connect( self.__loadTaskButtonClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "doubleClicked(const QModelIndex)" ), self.__taskTableRowDoubleClicked )
         self.gui.ui.showResourceButton.clicked.connect( self.__showTaskResourcesClicked )
@@ -109,6 +110,29 @@ class MainWindowCustomizer:
         self.gui.ui.renderTaskTableWidget.setCellWidget( currentRowCount, 2, taskTableElem.progressBarInBoxLayoutWidget )
 
         self.updateTaskAdditionalInfo( self.logic.getTask( id ) )
+
+    ############################
+    def __loadTaskButtonClicked( self ):
+        fileName = QFileDialog.getOpenFileName( self.gui.window,
+            "Choose task file", "", "Golem Task (*.gt)")
+        if os.path.exists( fileName ):
+            self.__loadTask( fileName )
+
+    ############################
+    def __loadTask( self, filePath ):
+        f = open( filePath, 'r' )
+
+        definition = pickle.loads( f.read() )
+
+        f.close()
+
+        self.newTaskDialog = NewTaskDialog( self.gui.window )
+
+        self.newTaskDialogCustomizer = NewTaskDialogCustomizer( self.newTaskDialog, self.logic )
+
+        self.newTaskDialogCustomizer.loadTaskDefinition( definition )
+
+        self.newTaskDialog.show()
 
     ############################
     def __showTaskContextMenu( self, p ):

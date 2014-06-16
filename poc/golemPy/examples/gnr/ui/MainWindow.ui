@@ -567,6 +567,7 @@
      <string>Task</string>
     </property>
     <addaction name="actionNew"/>
+    <addaction name="actionLoadTask"/>
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuProperties">
@@ -598,6 +599,14 @@
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionLoadTask">
+   <property name="text">
+    <string>Load Task</string>
+   </property>
+   <property name="toolTip">
+    <string>Load task</string>
    </property>
   </action>
  </widget>

@@ -63,9 +63,8 @@ class TaskDefinition:
         self.outputFormat       = ""
         self.resources          = []
 
-class GNRTaskState( QtCore.QObject ):
+class GNRTaskState:
     #########################
     def __init__( self ):
-        QtCore.QObject.__init__( self )
         self.definition     = TaskDefinition()
         self.taskState      = TaskState()

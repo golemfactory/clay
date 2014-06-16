@@ -1,5 +1,5 @@
 import os
-
+import cPickle as pickle
 from PyQt4 import QtCore
 
 from examples.gnr.ui.TestingTaskProgressDialog import TestingTaskProgressDialog
@@ -87,7 +87,6 @@ class GNRApplicationLogic( QtCore.QObject ):
             return
 
         for t in tasks:
-            print t.__class__
             assert isinstance( t, GNRTaskState )
             if t.definition.id not in self.tasks:
                 self.tasks[ t.definition.id ] = t
@@ -123,6 +122,15 @@ class GNRApplicationLogic( QtCore.QObject ):
     ######################
     def getCurrentRenderer( self ):
         return self.currentRenderer
+
+    def saveTask( self, taskState, filePath ):
+        f = open( filePath, "wb" )
+
+        tspickled = pickle.dumps( taskState )
+
+        f.write( tspickled )
+        f.close()
+
 
     ######################
     def runTestTask( self, taskState ):
