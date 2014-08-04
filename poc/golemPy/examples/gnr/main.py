@@ -7,6 +7,8 @@ genUiFiles( "ui" )
 
 from GNRApplicationLogic import GNRApplicationLogic
 
+from GNRApplicationLogic import GNRApplicationLogic
+
 from Application import GNRGui
 
 from TaskState import RendererDefaults, RendererInfo, TestTaskInfo

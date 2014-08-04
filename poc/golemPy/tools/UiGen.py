@@ -4,6 +4,7 @@ def regenerateUIFiles( rootPath ):
     
     dirs  = [ name for name in os.listdir( rootPath ) if os.path.isdir( os.path.join( rootPath, name ) ) ]
     files = [ name for name in os.listdir( rootPath ) if os.path.isfile( os.path.join( rootPath, name ) ) ]
+    pyuicPath = './../src/ui/pyuic.py'
     
     for dir in dirs:
         regenerateUIFiles( os.path.join( rootPath, dir ) )
@@ -15,8 +16,11 @@ def regenerateUIFiles( rootPath ):
             if os.path.exists( os.path.join( rootPath, outFile ) ) and not os.path.isdir( os.path.join( rootPath, outFile ) ):
                 if os.path.getmtime( os.path.join( rootPath, outFile ) ) > os.path.getmtime(  os.path.join( rootPath, file ) ):
                     continue
+
+            assert os.path.exists(pyuicPath), "Can't open file " + pyuicPath
+
             print "Generating " + outFile
-            os.system( "python ./../../golem/ui/pyuic.py " + os.path.join( rootPath, file ) + " > " + os.path.join( rootPath, outFile )  )
+            os.system( "python " + pyuicPath + " " + os.path.join( rootPath, file ) + " > " + os.path.join( rootPath, outFile )  )
 
 def genUiFiles( path ):
     if os.path.exists( path ):
