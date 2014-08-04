@@ -1,6 +1,7 @@
 from PyQt4.QtGui import QFileDialog
 
 from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
+import os
 
 class AddResourcesDialogCustomizer:
     ############################
@@ -18,7 +19,7 @@ class AddResourcesDialogCustomizer:
     #############################
     def __setupConnections( self ):
         self.gui.ui.okButton.clicked.connect( self.__okButtonClicked )
-        self.gui.ui.chooseMainSceneFileButton.clicked.connect( self.__chooseMainSceneFileButtonCliced )
+        self.gui.ui.chooseMainSceneFileButton.clicked.connect( self.__chooseMainSceneFileButtonClicked )
 
     #############################
     def __okButtonClicked( self ):
@@ -26,14 +27,16 @@ class AddResourcesDialogCustomizer:
         self.gui.window.close()
 
     #############################
-    def __chooseMainSceneFileButtonCliced( self ):
+    def __chooseMainSceneFileButtonClicked( self ):
         sceneFileExt = self.logic.getCurrentRenderer().sceneFileExt
 
         outputFileType = "{}".format( sceneFileExt )
         filter = "{} (*.{})".format( outputFileType, outputFileType )
 
+        dir = os.path.dirname( "{}".format( self.gui.ui.mainSceneLabel.text() )  )
+
         fileName = "{}".format( QFileDialog.getOpenFileName( self.gui.window,
-            "Choose main scene file", "", filter ) )
+            "Choose main scene file", dir, filter ) )
         
         self.gui.ui.mainSceneLabel.setText( fileName )
 
