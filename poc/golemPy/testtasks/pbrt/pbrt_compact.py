@@ -22,12 +22,20 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     for f in files:
         os.remove(f)
 
-    tmpSceneFile = tempfile.TemporaryFile( suffix = ".pbrt", dir = resourcePath )
-    tmpSceneFile.write( sceneSrc )
+    tmpSceneFile = tempfile.TemporaryFile( suffix = ".pbrt", dir = os.path.join( resourcePath, "resources" ) )
     tmpSceneFile.close()
-
-    cmd = format_pbrt_cmd( pbrt, startTask, endTask, totalTasks, numSubtasks, numCores, outputFiles, tmpSceneFile.name )
+    print sceneSrc
+    f = open(tmpSceneFile.name, 'w')
+    f.write( sceneSrc )
+    f.close()
     
+    print tmpSceneFile.name
+
+    if os.path.exists( tmpSceneFile.name ):
+        cmd = format_pbrt_cmd( pbrt, startTask, endTask, totalTasks, numSubtasks, numCores, outputFiles, tmpSceneFile.name )
+    else:
+        print "Scene file does not exist"
+        
     print cmd
    
     pc = subprocess.Popen( cmd )
@@ -51,7 +59,7 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
         res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
         fh.close()
 
-    os.remove( tmpSceneFile.name )
+    #os.remove( tmpSceneFile.name )
 
     return res
 
