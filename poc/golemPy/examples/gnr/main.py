@@ -2,10 +2,10 @@ import sys
 
 sys.path.append('./../../')
 
-from GNRApplicationLogic import GNRApplicationLogic
-
 from tools.UiGen import genUiFiles
 genUiFiles( "ui" )
+
+from GNRApplicationLogic import GNRApplicationLogic
 
 from Application import GNRGui
 
