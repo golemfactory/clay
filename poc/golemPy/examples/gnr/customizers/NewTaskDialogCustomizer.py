@@ -158,7 +158,7 @@ class NewTaskDialogCustomizer:
         fileName = QFileDialog.getOpenFileName( self.gui.window,
             "Choose main program file", dir, "Python (*.py)")
 
-        self.gui.ui.outputFileLineEdit.setText( fileName )
+        self.gui.ui.mainProgramFileLineEdit.setText( fileName )
 
     ############################
     def __showAddResourcesDialog( self ):
