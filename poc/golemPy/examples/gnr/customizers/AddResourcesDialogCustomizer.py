@@ -37,6 +37,7 @@ class AddResourcesDialogCustomizer:
 
         fileName = "{}".format( QFileDialog.getOpenFileName( self.gui.window,
             "Choose main scene file", dir, filter ) )
-        
-        self.gui.ui.mainSceneLabel.setText( fileName )
+
+        if fileName != '':
+            self.gui.ui.mainSceneLabel.setText( fileName )
 

@@ -148,17 +148,19 @@ class NewTaskDialogCustomizer:
         fileName = "{}".format( QFileDialog.getSaveFileName( self.gui.window,
             "Choose output file", dir, filter ) )
 
-        self.gui.ui.outputFileLineEdit.setText( fileName )
+        if fileName != '':
+            self.gui.ui.outputFileLineEdit.setText( fileName )
 
     #############################
     def __choosMainProgramFileButtonClicked( self ):
 
         dir = os.path.dirname( "{}".format( self.gui.ui.mainProgramFileLineEdit.text() )  )
 
-        fileName = QFileDialog.getOpenFileName( self.gui.window,
-            "Choose main program file", dir, "Python (*.py)")
+        fileName = "{}".format( QFileDialog.getOpenFileName( self.gui.window,
+            "Choose main program file", dir, "Python (*.py)") )
 
-        self.gui.ui.mainProgramFileLineEdit.setText( fileName )
+        if fileName != '':
+            self.gui.ui.mainProgramFileLineEdit.setText( fileName )
 
     ############################
     def __showAddResourcesDialog( self ):
@@ -172,7 +174,9 @@ class NewTaskDialogCustomizer:
     def __saveTaskButtonClicked( self ):
         fileName = QFileDialog.getSaveFileName( self.gui.window,
             "Choose save file", "", "Golem Task (*.gt)")
-        self.__saveTask( fileName )
+
+        if fileName != '':
+            self.__saveTask( fileName )
 
     ############################
     def __saveTask( self, filePath ):
