@@ -235,8 +235,20 @@ class NewTaskDialogCustomizer:
         self.addTaskResourcesDialogCustomizer = AddResourcesDialogCustomizer( self.addTaskResourceDialog, self.logic )
         self.addTaskResourcesDialogCustomizer.resources = definition.resources
         self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.setText( definition.mainSceneFile )
+
+        model = self.addTaskResourcesDialogCustomizer.gui.ui.folderTreeView.model()
+
+        commonPrefix = os.path.commonprefix(definition.resources)
+        self.addTaskResourcesDialogCustomizer.gui.ui.folderTreeView.setExpanded(model.index(commonPrefix), True)
+
         for res in definition.resources:
-            model = self.addTaskResourcesDialogCustomizer.gui.ui.folderTreeView.model()
+            pathHead, pathTail = os.path.split(res)
+            while pathHead != '' and pathTail != '':
+                self.addTaskResourcesDialogCustomizer.gui.ui.folderTreeView.setExpanded(model.index(pathHead), True)
+                pathHead, pathTail = os.path.split(pathHead)
+
+        self.addTaskResourcesDialogCustomizer.gui.ui.folderTreeView.model().addStartFiles(definition.resources)
+        for res in definition.resources:
             model.setData( model.index( res ), QtCore.Qt.Checked, QtCore.Qt.CheckStateRole )
 
 
