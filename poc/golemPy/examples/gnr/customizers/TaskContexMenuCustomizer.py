@@ -41,10 +41,6 @@ class TaskContextMenuCustomizer:
         pass
 
     ###########################
-    def __abortTaskTriggered( self ):
-        pass
-
-    ###########################
     def __restartTaskTriggered( self ):
         pass
 
@@ -70,7 +66,7 @@ class TaskContextMenuCustomizer:
 
     ###########################
     def __showTaskDetailsTriggered( self ):
-        pass
+        self.logic.showTaskDetails( self.gnrTaskState.definition.id )
 
     # ######################
     ##########################

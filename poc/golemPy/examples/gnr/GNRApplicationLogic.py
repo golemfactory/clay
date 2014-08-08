@@ -73,6 +73,10 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.client.enqueueNewTask( t )
 
     ######################
+    def showTaskDetails( self, taskId ):
+        self.customizer.showDetailsDialog(taskId)
+
+    ######################
     def getDefaultRenderer( self ):
         return self.defaultRenderer
 

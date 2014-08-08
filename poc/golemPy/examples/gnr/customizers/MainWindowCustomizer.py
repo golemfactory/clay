@@ -162,13 +162,18 @@ class MainWindowCustomizer:
             self.updateTaskAdditionalInfo( t )
 
     #############################
-    def __taskTableRowDoubleClicked( self, m ):
-        row = m.row()
-        taskId = "{}".format( self.gui.ui.renderTaskTableWidget.item( row, 0 ).text() )
+    def showDetailsDialog(self, taskId):
         ts = self.logic.getTask( taskId )
         self.taskDetailsDialog = TaskDetailsDialog( self.gui.window )
         self.taskDetailsDialogCustomizer = TaskDetailsDialogCustomizer( self.taskDetailsDialog, self.logic, ts )
         self.taskDetailsDialog.show()
+
+
+    def __taskTableRowDoubleClicked( self, m ):
+        row = m.row()
+        taskId = "{}".format( self.gui.ui.renderTaskTableWidget.item( row, 0 ).text() )
+        self.showDetailsDialog(taskId)
+
 
     #############################
     def __showNewTaskDialogClicked( self ):
@@ -232,4 +237,3 @@ def insertItem( root, pathTable ):
         newChild = QTreeWidgetItem( [ pathTable[ 0 ] ] )
         root.addChild( newChild )
         insertItem( newChild, pathTable[ 1: ] )
-
