@@ -104,7 +104,12 @@ class NewTaskDialogCustomizer:
 
         if self.addTaskResourceDialog:
             self.addTaskResourcesDialogCustomizer.resources = []
+            self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.clear()
+            self.addTaskResourceDialog.ui.folderTreeView.model().addStartFiles([])
             self.addTaskResourceDialog.ui.folderTreeView.model().checks = {}
+
+        self.gui.ui.finishButton.setEnabled( False )
+        self.gui.ui.testTaskButton.setEnabled( True )
 
     # SLOTS
     #############################
