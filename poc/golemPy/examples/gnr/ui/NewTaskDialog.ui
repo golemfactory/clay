@@ -518,7 +518,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="finishBatton">
+       <widget class="QPushButton" name="finishButton">
         <property name="enabled">
          <bool>false</bool>
         </property>
@@ -535,7 +535,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="cancelBatton">
+       <widget class="QPushButton" name="cancelButton">
         <property name="text">
          <string>Cancel</string>
         </property>

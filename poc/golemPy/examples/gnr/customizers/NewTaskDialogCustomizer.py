@@ -35,8 +35,8 @@ class NewTaskDialogCustomizer:
         self.gui.ui.chooseMainProgramFileButton.clicked.connect( self.__choosMainProgramFileButtonClicked )
         self.gui.ui.addResourceButton.clicked.connect( self.__showAddResourcesDialog )
         self.gui.ui.testTaskButton.clicked.connect( self.__testTaskButtonClicked )
-        self.gui.ui.finishBatton.clicked.connect( self.__finishButtonClicked )
-        self.gui.ui.cancelBatton.clicked.connect( self.__cancelButtonClicked )
+        self.gui.ui.finishButton.clicked.connect( self.__finishButtonClicked )
+        self.gui.ui.cancelButton.clicked.connect( self.__cancelButtonClicked )
         self.gui.ui.resetToDefaultButton.clicked.connect( self.__resetToDefaultButtonClicked )
 
     #############################
@@ -161,7 +161,7 @@ class NewTaskDialogCustomizer:
 
         if fileName != '':
             self.gui.ui.mainProgramFileLineEdit.setText( fileName )
-            self.gui.ui.finishBatton.setEnabled( False )
+            self.gui.ui.finishButton.setEnabled( False )
             self.gui.ui.testTaskButton.setEnabled( True )
 
     ############################
@@ -171,7 +171,7 @@ class NewTaskDialogCustomizer:
             self.addTaskResourcesDialogCustomizer = AddResourcesDialogCustomizer( self.addTaskResourceDialog, self.logic )
 
         self.addTaskResourceDialog.show()
-        self.gui.ui.finishBatton.setEnabled( False )
+        self.gui.ui.finishButton.setEnabled( False )
         self.gui.ui.testTaskButton.setEnabled( True )
 
     ############################
@@ -267,7 +267,7 @@ class NewTaskDialogCustomizer:
 
     def testTaskComputationFinished( self, success ):
         if success:
-            self.gui.ui.finishBatton.setEnabled( True )
+            self.gui.ui.finishButton.setEnabled( True )
             self.gui.ui.testTaskButton.setEnabled( False )
 
     #############################
