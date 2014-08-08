@@ -161,6 +161,8 @@ class NewTaskDialogCustomizer:
 
         if fileName != '':
             self.gui.ui.mainProgramFileLineEdit.setText( fileName )
+            self.gui.ui.finishBatton.setEnabled( False )
+            self.gui.ui.testTaskButton.setEnabled( True )
 
     ############################
     def __showAddResourcesDialog( self ):
@@ -169,6 +171,8 @@ class NewTaskDialogCustomizer:
             self.addTaskResourcesDialogCustomizer = AddResourcesDialogCustomizer( self.addTaskResourceDialog, self.logic )
 
         self.addTaskResourceDialog.show()
+        self.gui.ui.finishBatton.setEnabled( False )
+        self.gui.ui.testTaskButton.setEnabled( True )
 
     ############################
     def __saveTaskButtonClicked( self ):
