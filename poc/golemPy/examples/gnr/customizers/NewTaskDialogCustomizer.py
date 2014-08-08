@@ -39,6 +39,17 @@ class NewTaskDialogCustomizer:
         self.gui.ui.cancelButton.clicked.connect( self.__cancelButtonClicked )
         self.gui.ui.resetToDefaultButton.clicked.connect( self.__resetToDefaultButtonClicked )
 
+        QtCore.QObject.connect(self.gui.ui.pixelFilterComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.pathTracerComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.samplesPerPixelSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutTimeEdit, QtCore.SIGNAL("timeChanged( const QTime )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.minSubtaskTimeTimeEdit, QtCore.SIGNAL("timeChanged( const QTime )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.subtaskTimeoutTimeEdit, QtCore.SIGNAL("timeChanged( const QTime )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.testTaskComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.outputFormatsComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
+
     #############################
     def __updateRendererOptions( self, name ):
         r = self.logic.getRenderer( name )
@@ -140,6 +151,10 @@ class NewTaskDialogCustomizer:
     def __rendererComboBoxValueChanged( self, name ):
         self.__updateRendererOptions( "{}".format( name ) )
 
+    def __taskSettingsChanged( self, name ):
+        self.gui.ui.finishButton.setEnabled( False )
+        self.gui.ui.testTaskButton.setEnabled( True )
+
     #############################
     def __chooseOutputFileButtonClicked( self ):
 
@@ -155,6 +170,8 @@ class NewTaskDialogCustomizer:
 
         if fileName != '':
             self.gui.ui.outputFileLineEdit.setText( fileName )
+            self.gui.ui.finishButton.setEnabled( False )
+            self.gui.ui.testTaskButton.setEnabled( True )
 
     #############################
     def __choosMainProgramFileButtonClicked( self ):
