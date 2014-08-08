@@ -139,19 +139,15 @@ class MainWindowCustomizer:
  
         row = self.gui.ui.renderTaskTableWidget.itemAt( p ).row()
 
-        print "{}".format( row )
-
         idItem = self.gui.ui.renderTaskTableWidget.item( row, 0 )
 
         taskId = "{}".format( idItem.text() )
 
-        ts = self.logic.getTask( taskId )
-
-        print "{}".format( taskId )
+        gnrTaskState = self.logic.getTask( taskId )
 
         menu = QMenu()
 
-        self.taskContextMenuCustomizer =  TaskContextMenuCustomizer( menu, self.logic, ts )
+        self.taskContextMenuCustomizer =  TaskContextMenuCustomizer( menu, self.logic, gnrTaskState )
 
         menu.popup( self.gui.ui.renderTaskTableWidget.viewport().mapToGlobal( p ) )
         menu.exec_()

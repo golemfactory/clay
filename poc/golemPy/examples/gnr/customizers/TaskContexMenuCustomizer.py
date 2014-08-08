@@ -7,14 +7,14 @@ class TaskContextMenuCustomizer:
     def __init__( self, ui, logic, ts ):
         self.ui         = ui
         self.logic      = logic
-        self.taskState  = ts
+        self.gnrTaskState  = ts
 
         self.__buildContextMenu()
 
     ##########################
     def __buildContextMenu( self ):
 
-        enabledActions = self.__getEnabledActions( self.taskState.status ) 
+        enabledActions = self.__getEnabledActions( self.gnrTaskState.taskState.status )
 
         self.__buildAndConnectAction( "Abort Task",      self.__abortTaskTriggered,         enabledActions )
         self.__buildAndConnectAction( "Restart",         self.__restartTaskTriggered,       enabledActions )
@@ -58,7 +58,7 @@ class TaskContextMenuCustomizer:
 
     ###########################
     def __startTaskTriggered( self ):
-        self.logic.startTask( self.taskState.definition.id )
+        self.logic.startTask( self.gnrTaskState.definition.id )
 
     ###########################
     def __pauseTaskTriggered( self ):

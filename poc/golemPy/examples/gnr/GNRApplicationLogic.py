@@ -64,7 +64,7 @@ class GNRApplicationLogic( QtCore.QObject ):
     def startTask( self, taskId ):
         ts = self.getTask( taskId )
 
-        assert ts.status == TaskStatus.notStarted # TODO:
+        assert ts.taskState.status == TaskStatus.notStarted # TODO:
 
         tb = self.renderers[ ts.definition.renderer ].taskBuilderType( self.client.getId(), ts.definition )
 
@@ -164,11 +164,10 @@ class GNRApplicationLogic( QtCore.QObject ):
     def taskStatusChanged( self, taskId ):
 
         if taskId in self.tasks:
-            t = self.tasks[ taskId ]
-            assert isinstance( t, GNRTaskState )
+            assert isinstance( self.tasks[ taskId ], GNRTaskState )
             ts = self.client.quarryTaskState( taskId )
             assert isinstance( ts, TaskState )
-            t.taskState = ts
+            self.tasks[taskId].taskState = ts
             self.customizer.updateTasks( self.tasks )
         else:
             assert False, "Should never be here!"
