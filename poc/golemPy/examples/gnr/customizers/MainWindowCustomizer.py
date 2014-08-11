@@ -176,6 +176,13 @@ class MainWindowCustomizer:
 
 
     #############################
+    def showNewTaskDialog(self, taskId):
+        ts = self.logic.getTask( taskId )
+        self.newTaskDialog = NewTaskDialog( self.gui.window )
+        self.newTaskDialogCustomizer = NewTaskDialogCustomizer ( self.newTaskDialog, self.logic )
+        self.newTaskDialogCustomizer.loadTaskDefinition(ts.definition)
+        self.newTaskDialog.show()
+
     def __showNewTaskDialogClicked( self ):
         self.newTaskDialog = NewTaskDialog( self.gui.window )
 

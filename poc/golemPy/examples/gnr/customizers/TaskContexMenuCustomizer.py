@@ -50,7 +50,7 @@ class TaskContextMenuCustomizer:
 
     ###########################
     def __newTaskTriggered( self ):
-        pass
+        self.logic.showNewTaskDialog( self.gnrTaskState.definition.id )
 
     ###########################
     def __startTaskTriggered( self ):

@@ -77,6 +77,10 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.customizer.showDetailsDialog(taskId)
 
     ######################
+    def showNewTaskDialog ( self, taskId ):
+        self.customizer.showNewTaskDialog(taskId)
+
+    ######################
     def getDefaultRenderer( self ):
         return self.defaultRenderer
 
