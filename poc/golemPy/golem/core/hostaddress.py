@@ -1,13 +1,12 @@
 import socket
 
 def ip4_addresses():
-    return [i[4][0] for i in socket.getaddrinfo(socket.gethostname(), None) if ':' not in i[4][0]]
+    return [i[4][0] for i in socket.getaddrinfo(socket.gethostname(), 0, socket.AF_INET)]
     
 
 def getHostAddress():
     ips = ip4_addresses()
     for ip in ips:
-        if ip.startswith("10."):
+        if not ip.startswith("127."):
             return ip
-
-    return ""
+    return ips[0]
