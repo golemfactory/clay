@@ -12,10 +12,12 @@ def regenerateUIFiles( rootPath ):
     for file in files:
         if file.endswith( ".ui" ):
             outFile = os.path.join( "gen", "ui_" + file[0:-3] + ".py" )
+            outFilePath = os.path.join( rootPath, outFile )
 
-            if os.path.exists( os.path.join( rootPath, outFile ) ) and not os.path.isdir( os.path.join( rootPath, outFile ) ):
-                if os.path.getmtime( os.path.join( rootPath, outFile ) ) > os.path.getmtime(  os.path.join( rootPath, file ) ):
-                    continue
+            if os.path.exists( outFilePath ) and not os.path.isdir( outFilePath ):
+                if os.path.getmtime( outFilePath ) > os.path.getmtime(  os.path.join( rootPath, file ) ):
+                    if os.path.getsize( outFilePath ) > 0:
+                        continue
 
             assert os.path.exists(pyuicPath), "Can't open file " + pyuicPath
 
