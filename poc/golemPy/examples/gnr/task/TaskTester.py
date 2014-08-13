@@ -6,6 +6,7 @@ from golem.task.TaskBase import Task
 from golem.task.resource.Resource import TaskResourceHeader, decompressDir
 from golem.task.TaskComputer import PyTaskThread
 
+from GNREnv import GNREnv
 
 class TaskTester:
     #########################
@@ -59,15 +60,15 @@ class TaskTester:
     #########################
     def __prepareResources( self ):
 
-        self.testTaskResPath = "testing_task_resources"
-        self.testTaskResPath = os.path.abspath( self.testTaskResPath )
+        self.testTaskResDir = GNREnv.getTestTaskDirectory()
+        self.testTaskResPath = os.path.abspath( self.testTaskResDir )
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
         else:
             shutil.rmtree( self.testTaskResPath, True )
             os.makedirs( self.testTaskResPath )
 
-        rh = TaskResourceHeader( "testing_task_resources" )
+        rh = TaskResourceHeader( self.testTaskResDir )
         resFile = self.task.prepareResourceDelta( self.task.header.taskId, rh )
 
         if resFile:

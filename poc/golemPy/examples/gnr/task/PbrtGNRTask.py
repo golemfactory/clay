@@ -11,6 +11,7 @@ from examples.gnr.task.SceneFileEditor import renegerateFile
 
 from GNRTask import GNRTask
 from testtasks.pbrt.takscollector import PbrtTaksCollector
+from GNREnv import GNREnv
 
 import OpenEXR, Imath
 from PIL import Image, ImageChops
@@ -113,8 +114,8 @@ class PbrtRenderTask( GNRTask ):
 
         endTask = min( self.lastTask + 1, self.totalTasks )
 
-        commonPathPrefix = os.path.commonprefix( self.taskResources )
-        commonPathPrefix = os.path.dirname( commonPathPrefix )
+        # commonPathPrefix = os.path.commonprefix( self.taskResources )
+        # commonPathPrefix = os.path.dirname( commonPathPrefix )
 
         sceneSrc = renegerateFile( self.sceneFileSrc, self.resX, self.resY, self.pixelFilter, self.sampler, self.samplesPerPixel )
 
@@ -144,17 +145,17 @@ class PbrtRenderTask( GNRTask ):
         ctd.srcCode             = self.srcCode
         ctd.performance         = perfIndex
 
-        ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
-        ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
+        # ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
+        # ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
+
+        ctd.workingDirectory = ""
+
 
         return ctd
 
 
     #######################
     def queryExtraDataForTestTask( self ):
-
-        commonPathPrefix = os.path.commonprefix( self.taskResources )
-        commonPathPrefix = os.path.dirname( commonPathPrefix )
 
         sceneSrc = renegerateFile( self.sceneFileSrc, 5, 5, self.pixelFilter, self.sampler, self.samplesPerPixel )
 
@@ -180,11 +181,12 @@ class PbrtRenderTask( GNRTask ):
         ctd.srcCode             = self.srcCode
         ctd.performance         = 0
 
-        if os.path.exists( commonPathPrefix ):
-            ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
-        else:
-            ctd.workingDirectory    = ""
+        self.testTaskResPath = GNREnv.getTestTaskDirectory()
+        self.testTaskResPath = os.path.abspath( self.testTaskResPath )
+        if not os.path.exists( self.testTaskResPath ):
+            os.makedirs( self.testTaskResPath )
 
+        ctd.workingDirectory = os.path.relpath( self.mainProgramFile, self.testTaskResPath)
         ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
 
         return ctd
