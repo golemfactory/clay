@@ -1,12 +1,16 @@
 
 import sys
 sys.path.append('core')
+import os
 
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
+from golem.core.simpleenv import SimpleEnv
 from golem.core.prochelper import ProcessService
 
 CONFIG_FILENAME = "app_cfg.ini"
+ESTM_FILENAME = "minilight.ini"
 MANAGER_PORT = 20301
+ESTIMATED_DEFAULT = 2220.0
 
 class CommonConfig:
 
@@ -27,9 +31,26 @@ class CommonConfig:
 
 class NodeConfig:
 
+    @classmethod
+    def readEstimatedPerformance(cls):
+        estmFile = SimpleEnv.envFileName(ESTM_FILENAME)
+        res = 0
+        if os.path.isfile(estmFile):
+            try:
+                file = open(estmFile, 'r')
+                res = "{0:.1f}".format(float(file.read()))
+                file.close()
+            except:
+                return 0
+        return res
+
     ##############################
     def __init__( self, nodeId ):
         self._section = "Node {}".format( nodeId )
+
+        estimated = NodeConfig.readEstimatedPerformance()
+        if estimated == 0:
+            estimated = ESTIMATED_DEFAULT
 
         ConfigEntry.createProperty( self.section(), "seed host",           "",    self, "SeedHost" )
         ConfigEntry.createProperty( self.section(), "seed host port",      0,     self, "SeedHostPort")
@@ -39,7 +60,7 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "getting peers interval",   4.0,   self, "GettingPeersInterval" )
         ConfigEntry.createProperty( self.section(), "getting tasks interval",   4.0,   self, "GettingTasksInterval" )
         ConfigEntry.createProperty( self.section(), "task request interval",    5.0,   self, "TaskRequestInterval" )
-        ConfigEntry.createProperty( self.section(), "estimated perfomance",  2200.0,  self, "EstimatedPerformance" )
+        ConfigEntry.createProperty( self.section(), "estimated perfomance",  estimated,  self, "EstimatedPerformance" )
         ConfigEntry.createProperty( self.section(), "node snapshot interval",   4.0,  self, "NodeSnapshotInterval" )
         ConfigEntry.createProperty( self.section(), "add tasks",           0,     self, "AddTasks" )
         ConfigEntry.createProperty( self.section(), "maximum delay for sending task results",           3600,  self, "MaxResultsSendingDelay" )
