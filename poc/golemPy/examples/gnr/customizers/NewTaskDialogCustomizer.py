@@ -273,9 +273,10 @@ class NewTaskDialogCustomizer:
                 self.addTaskResourcesDialogCustomizer.gui.ui.folderTreeView.setExpanded(model.index(pathHead), True)
                 pathHead, pathTail = os.path.split(pathHead)
 
+        # TODO
         self.addTaskResourcesDialogCustomizer.gui.ui.folderTreeView.model().addStartFiles(definition.resources)
-        for res in definition.resources:
-            model.setData( model.index( res ), QtCore.Qt.Checked, QtCore.Qt.CheckStateRole )
+        # for res in definition.resources:
+        #     model.setData( model.index( res ), QtCore.Qt.Checked, QtCore.Qt.CheckStateRole )
 
 
     ############################
