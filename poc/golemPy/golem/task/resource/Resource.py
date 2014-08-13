@@ -16,7 +16,7 @@ class TaskResourceHeader:
 
     ####################
     @classmethod
-    def __build( cls, dirName, absoluteRoot ):
+    def __build( cls, dirName, absoluteRoot, choosenFiles = None ):
         curTh = TaskResourceHeader( dirName )
 
         dirs  = [ name for name in os.listdir( absoluteRoot ) if os.path.isdir( os.path.join( absoluteRoot, name ) ) ]
@@ -25,6 +25,9 @@ class TaskResourceHeader:
         filesData = []
         for f in files:
             hsh = SimpleHash.hash_file_base64( os.path.join( absoluteRoot, f ) )
+            if choosenFiles and os.path.join( absoluteRoot, f ) not in  choosenFiles:
+                continue
+
             filesData.append( ( f, hsh ) )
 
         #print "{}, {}, {}".format( relativeRoot, absoluteRoot, filesData )
@@ -33,7 +36,7 @@ class TaskResourceHeader:
 
         subDirHeaders = []
         for d in dirs:
-            childSubDirHeader = cls.__build( d, os.path.join( absoluteRoot, d ) )
+            childSubDirHeader = cls.__build( d, os.path.join( absoluteRoot, d ), choosenFiles)
             subDirHeaders.append( childSubDirHeader )
 
         curTh.subDirHeaders = subDirHeaders
@@ -57,7 +60,7 @@ class TaskResourceHeader:
                 idx = [ sdh.dirName for sdh in header.subDirHeaders ].index( d )
                 curTr.subDirHeaders.append( cls.buildHeaderDeltaFromHeader( header.subDirHeaders[ idx ], os.path.join( absoluteRoot, d ), choosenFiles ) )
             else:
-                curTr.subDirHeaders.append( cls.__build( d, os.path.join( absoluteRoot, d ) ) )
+                curTr.subDirHeaders.append( cls.__build( d, os.path.join( absoluteRoot, d ), choosenFiles ) )
 
         for f in files:
             fileHash = 0
@@ -65,11 +68,11 @@ class TaskResourceHeader:
                 idx = [ file[ 0 ] for file in header.filesData ].index( f )
                 fileHash = SimpleHash.hash_file_base64( os.path.join( absoluteRoot, f ) )
 
-                if choosenFiles and os.path.abspath( f ) not in  choosenFiles:
-                    continue
-
                 if fileHash == header.filesData[ idx ][ 1 ]:
                     continue
+
+            if choosenFiles and os.path.join( absoluteRoot, f ) not in  choosenFiles:
+                continue
 
             if not fileHash:
                 fileHash = SimpleHash.hash_file_base64( os.path.join( absoluteRoot, f ) )
@@ -340,7 +343,6 @@ def compressDirImpl( rootPath, header, zipf ):
 ####################
 def prepareDeltaZip( rootDir, header, outputDir, choosenFiles = None ):
     deltaHeader = TaskResourceHeader.buildHeaderDeltaFromHeader( header, rootDir, choosenFiles )
-
     return compressDir( rootDir, deltaHeader, outputDir )
 
 
