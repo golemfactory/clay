@@ -39,18 +39,18 @@
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QProgressBar" name="progressBar">
-      <property name="value">
-       <number>0</number>
-      </property>
-     </widget>
-    </item>
-    <item>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <widget class="QPushButton" name="cancelButton">
+       <widget class="QPushButton" name="okButton">
         <property name="text">
-         <string>Cancel</string>
+         <string>OK</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="message">
+        <property name="text">
+         <string>Testing...</string>
         </property>
        </widget>
       </item>

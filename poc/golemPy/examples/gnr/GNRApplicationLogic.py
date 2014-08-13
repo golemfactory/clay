@@ -150,21 +150,22 @@ class GNRApplicationLogic( QtCore.QObject ):
 
             self.tt = TaskTester( t, self.__testTaskComputationFinished )
 
-            self.progressDialog = TestingTaskProgressDialog( None, self.tt )
-
+            self.progressDialog = TestingTaskProgressDialog( None )
             self.progressDialog.show()
 
             self.tt.run()
 
             return True
         else:
+            self.progressDialog.showMessage("Task test computation failure... Check resources.")
             return False
 
     ######################
     def __testTaskComputationFinished( self, success ):
-        self.progressDialog.setProgress( 1.0 )
-        self.progressDialog.close()
-        self.progressDialog = None
+        if success:
+            self.progressDialog.showMessage("Test task computation success!")
+        else:
+            self.progressDialog.showMessage("Task test computation failure... Check resources.")
         if self.customizer.newTaskDialogCustomizer:
             self.customizer.newTaskDialogCustomizer.testTaskComputationFinished( success )
 
