@@ -156,7 +156,7 @@ class TaskManager:
             return -1.0
 
     #######################
-    def quarryTaskState( self, taskId ):
+    def querryTaskState( self, taskId ):
         if taskId in self.tasksStates and taskId in self.tasks:
             ts  = self.tasksStates[ taskId ]
             t   = self.tasks[ taskId ]

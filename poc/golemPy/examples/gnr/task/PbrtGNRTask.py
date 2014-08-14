@@ -7,7 +7,7 @@ from golem.task.TaskState import TaskStatus
 from golem.core.Compress import decompress
 from golem.task.resource.Resource import prepareDeltaZip
 
-from examples.gnr.task.SceneFileEditor import renegerateFile
+from examples.gnr.task.SceneFileEditor import regenerateFile
 
 from GNRTask import GNRTask
 from testtasks.pbrt.takscollector import PbrtTaksCollector
@@ -117,7 +117,7 @@ class PbrtRenderTask( GNRTask ):
         # commonPathPrefix = os.path.commonprefix( self.taskResources )
         # commonPathPrefix = os.path.dirname( commonPathPrefix )
 
-        sceneSrc = renegerateFile( self.sceneFileSrc, self.resX, self.resY, self.pixelFilter, self.sampler, self.samplesPerPixel )
+        sceneSrc = regenerateFile( self.sceneFileSrc, self.resX, self.resY, self.pixelFilter, self.sampler, self.samplesPerPixel )
 
         extraData =          {      "pathRoot" : self.pathRoot,
                                     "startTask" : self.lastTask,
@@ -157,7 +157,7 @@ class PbrtRenderTask( GNRTask ):
     #######################
     def queryExtraDataForTestTask( self ):
 
-        sceneSrc = renegerateFile( self.sceneFileSrc, 5, 5, self.pixelFilter, self.sampler, self.samplesPerPixel )
+        sceneSrc = regenerateFile( self.sceneFileSrc, 5, 5, self.pixelFilter, self.sampler, self.samplesPerPixel )
 
         extraData =          {      "pathRoot" : self.pathRoot,
                                     "startTask" : 0,

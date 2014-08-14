@@ -162,8 +162,8 @@ class Client:
                 return
         print "listener {} not registered".format( listener )
 
-    def quarryTaskState( self, taskId ):
-        return self.taskServer.taskManager.quarryTaskState( taskId )
+    def querryTaskState( self, taskId ):
+        return self.taskServer.taskManager.querryTaskState( taskId )
 
     ############################
     def __doWork(self):

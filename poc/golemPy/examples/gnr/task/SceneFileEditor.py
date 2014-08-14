@@ -1,6 +1,6 @@
 import re
 
-def renegerateFile( sceneFileSrc, xres, yres, pixelFilter, sampler, samplesPerPixel ):
+def regenerateFile( sceneFileSrc, xres, yres, pixelFilter, sampler, samplesPerPixel ):
     out = ""
 
     for l in sceneFileSrc.splitlines():
@@ -16,4 +16,4 @@ def renegerateFile( sceneFileSrc, xres, yres, pixelFilter, sampler, samplesPerPi
 
 if __name__ == "__main__":
 
-    print renegerateFile( open( "d:/test_run/resources/scene.pbrt" ).read(), 3,2,"michell", "dupa22", 60 )
+    print regenerateFile( open( "d:/test_run/resources/scene.pbrt" ).read(), 3,2,"michell", "dupa22", 60 )

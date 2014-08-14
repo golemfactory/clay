@@ -174,7 +174,7 @@ class GNRApplicationLogic( QtCore.QObject ):
 
         if taskId in self.tasks:
             assert isinstance( self.tasks[ taskId ], GNRTaskState )
-            ts = self.client.quarryTaskState( taskId )
+            ts = self.client.querryTaskState( taskId )
             assert isinstance( ts, TaskState )
             self.tasks[taskId].taskState = ts
             self.customizer.updateTasks( self.tasks )
