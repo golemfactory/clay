@@ -157,7 +157,6 @@ class GNRApplicationLogic( QtCore.QObject ):
 
             return True
         else:
-            self.progressDialog.showMessage("Task test computation failure... Check resources.")
             return False
 
     ######################
@@ -193,6 +192,24 @@ class GNRApplicationLogic( QtCore.QObject ):
         msBox.show()
 
     ######################
+    def __checkOutputFile(self, outputFile):
+        try:
+            if os.path.exists( outputFile ):
+                f = open( outputFile , 'a')
+                f.close()
+            else:
+                f = open( outputFile , 'w')
+                f.close()
+                os.remove(outputFile)
+            return True
+        except IOError:
+            self.__showErrorWindow("Cannot open " + outputFile)
+            return False
+        except:
+            self.__showErrorWindow( "Output file is not properly set" )
+            return False
+
+    ######################
     def __validateTaskState( self, taskState ):
 
         td = taskState.definition
@@ -203,8 +220,7 @@ class GNRApplicationLogic( QtCore.QObject ):
                 self.__showErrorWindow( "Main program file does not exist: {}".format( td.mainProgramFile ) )
                 return False
 
-            if len( td.outputFile ) == 0: # FIXME
-                self.__showErrorWindow( "Output file is not properly set" )
+            if not self.__checkOutputFile(td.outputFile):
                 return False
 
             if not os.path.exists( td.mainSceneFile ):
