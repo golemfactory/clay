@@ -8,6 +8,7 @@ from camera import Camera
 from image import Image
 from scene import Scene
 from random import Random
+import multiprocessing
 
 from sys import argv, stdout
 from time import time
@@ -152,7 +153,9 @@ if __name__ == '__main__':
             print "    giving an average speed of {} rays/s".format( float( numSamples ) / duration )
             # cfg_file = open('minilight.ini', 'w')
             cfg_file = open('..\\..\\examples\\gnr\\node_data\\minilight.ini', 'w')
-            cfg_file.write("{0:.1f}".format(float(numSamples / duration)))
+            average = float(numSamples) / duration
+            average = average * multiprocessing.cpu_count()
+            cfg_file.write("{0:.1f}".format(average))
             cfg_file.close()
 
     main()
