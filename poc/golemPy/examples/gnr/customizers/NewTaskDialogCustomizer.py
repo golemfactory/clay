@@ -46,9 +46,12 @@ class NewTaskDialogCustomizer:
         QtCore.QObject.connect(self.gui.ui.minSubtaskTimeTimeEdit, QtCore.SIGNAL("timeChanged( const QTime )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.subtaskTimeoutTimeEdit, QtCore.SIGNAL("timeChanged( const QTime )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.testTaskComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.mainProgramFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputFormatsComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.outputFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
+
 
     #############################
     def __updateRendererOptions( self, name ):
