@@ -203,7 +203,7 @@ class GNRApplicationLogic( QtCore.QObject ):
                 os.remove(outputFile)
             return True
         except IOError:
-            self.__showErrorWindow("Cannot open " + outputFile)
+            self.__showErrorWindow( "Cannot open file: {}".format( outputFile ))
             return False
         except:
             self.__showErrorWindow( "Output file is not properly set" )
