@@ -136,7 +136,9 @@ class MainWindowCustomizer:
 
     ############################
     def __showTaskContextMenu( self, p ):
- 
+
+        if self.gui.ui.renderTaskTableWidget.itemAt( p ) is None:
+            return
         row = self.gui.ui.renderTaskTableWidget.itemAt( p ).row()
 
         idItem = self.gui.ui.renderTaskTableWidget.item( row, 0 )
