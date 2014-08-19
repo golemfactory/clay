@@ -241,8 +241,8 @@ class TaskServer:
             t.ttl = t.ttl - ( currTime - t.lastChecking )
             t.lastChecking = currTime
             if t.ttl <= 0:
-                print "Task {} dies".format( t.id )
-                self.removeTaskHeader( t.id )
+                print "Task {} dies".format( t.taskId )
+                self.removeTaskHeader( t.taskId )
 
         self.taskManager.removeOldTasks()
 
