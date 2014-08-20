@@ -34,7 +34,7 @@ class PbrtTaskBuilder( TaskBuilder ):
                                    self.taskDefinition.mainProgramFile,
                                    100,
                                    32,
-                                   1,
+                                   4,
                                    self.taskDefinition.resolution[ 0 ],
                                    self.taskDefinition.resolution[ 1 ],
                                    self.taskDefinition.pixelFilter,
@@ -112,10 +112,11 @@ class PbrtRenderTask( GNRTask ):
     #######################
     def queryExtraData( self, perfIndex ):
 
-        endTask = min( self.lastTask + 1, self.totalTasks )
+        perf = max( int( float( perfIndex ) / 500 ), 1)
+        endTask = min( self.lastTask + perf, self.totalTasks )
 
-        # commonPathPrefix = os.path.commonprefix( self.taskResources )
-        # commonPathPrefix = os.path.dirname( commonPathPrefix )
+        commonPathPrefix = os.path.commonprefix( self.taskResources )
+        commonPathPrefix = os.path.dirname( commonPathPrefix )
 
         sceneSrc = regenerateFile( self.sceneFileSrc, self.resX, self.resY, self.pixelFilter, self.sampler, self.samplesPerPixel )
 
@@ -145,10 +146,11 @@ class PbrtRenderTask( GNRTask ):
         ctd.srcCode             = self.srcCode
         ctd.performance         = perfIndex
 
-        # ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
-        # ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
+        ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
+        ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
+        print ctd.workingDirectory
 
-        ctd.workingDirectory = ""
+        # ctd.workingDirectory = ""
 
 
         return ctd
@@ -182,7 +184,8 @@ class PbrtRenderTask( GNRTask ):
         ctd.performance         = 0
 
         self.testTaskResPath = GNREnv.getTestTaskDirectory()
-        self.testTaskResPath = os.path.abspath( self.testTaskResPath )
+        self.testTaskResPath = unicode( os.path.abspath( self.testTaskResPath ) )
+        print self.testTaskResPath
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
 
@@ -222,7 +225,7 @@ class PbrtRenderTask( GNRTask ):
                 self.__updatePreview( os.path.join( tmpDir, tr[ 0 ] ) )
 
         if self.numTasksReceived == self.totalTasks:
-            outputFileName = "{}".format( self.outputFile, self.outputFormat )
+            outputFileName = u"{}".format( self.outputFile, self.outputFormat )
             self.collector.finalize().save( outputFileName, self.outputFormat )
             self.previewFilePath = outputFileName
 

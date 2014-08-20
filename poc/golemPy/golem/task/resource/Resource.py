@@ -89,17 +89,17 @@ class TaskResourceHeader:
 
     ####################
     def toString( self ):
-        out = "\nROOT '{}' \n".format( self.dirName )
+        out = u"\nROOT '{}' \n".format( self.dirName )
 
         if len( self.subDirHeaders ) > 0:
-            out += "DIRS \n"
+            out += u"DIRS \n"
             for d in self.subDirHeaders:
-                out += "    {}\n".format( d.dirName )
+                out += u"    {}\n".format( d.dirName )
 
         if len( self.filesData ) > 0:
-            out += "FILES \n"
+            out += u"FILES \n"
             for f in self.filesData:
-                out += "    {} {}".format( f[ 0 ], f[ 1 ] )
+                out += u"    {} {}".format( f[ 0 ], f[ 1 ] )
 
         for d in self.subDirHeaders:
             out += d.toString()
@@ -113,7 +113,7 @@ class TaskResourceHeader:
 
     ####################
     def hash( self ):
-        return SimpleHash.hash_base64( self.toString() )
+        return SimpleHash.hash_base64( self.toString().encode('utf-8') )
 
 class TaskResource:
 

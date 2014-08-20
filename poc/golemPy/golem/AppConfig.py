@@ -148,7 +148,10 @@ class AppConfig:
         return self._cfg.getNodeConfig().getTaskRequestInterval()
 
     def getEstimatedPerformance( self ):
-        return self._cfg.getNodeConfig().getEstimatedPerformance()
+        try:
+            return float( self._cfg.getNodeConfig().getEstimatedPerformance() )
+        except:
+            return float( ESTIMATED_DEFAULT )
 
     def getNodeSnapshotInterval( self ):
         return self._cfg.getNodeConfig().getNodeSnapshotInterval()

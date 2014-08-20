@@ -30,12 +30,12 @@ class AddResourcesDialogCustomizer:
     def __chooseMainSceneFileButtonClicked( self ):
         sceneFileExt = self.logic.getCurrentRenderer().sceneFileExt
 
-        outputFileType = "{}".format( sceneFileExt )
-        filter = "{} (*.{})".format( outputFileType, outputFileType )
+        outputFileType = u"{}".format( sceneFileExt )
+        filter = u"{} (*.{})".format( outputFileType, outputFileType )
 
-        dir = os.path.dirname( "{}".format( self.gui.ui.mainSceneLabel.text() )  )
+        dir = os.path.dirname( u"{}".format( self.gui.ui.mainSceneLabel.text() )  )
 
-        fileName = "{}".format( QFileDialog.getOpenFileName( self.gui.window,
+        fileName = u"{}".format( QFileDialog.getOpenFileName( self.gui.window,
             "Choose main scene file", dir, filter ) )
 
         if fileName != '':

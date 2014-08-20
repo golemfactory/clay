@@ -163,12 +163,12 @@ class NewTaskDialogCustomizer:
 
         cr = self.logic.getCurrentRenderer()
 
-        outputFileType = "{}".format( self.gui.ui.outputFormatsComboBox.currentText() )
-        filter = "{} (*.{})".format( outputFileType, outputFileType )
+        outputFileType = u"{}".format( self.gui.ui.outputFormatsComboBox.currentText() )
+        filter = u"{} (*.{})".format( outputFileType, outputFileType )
 
-        dir = os.path.dirname( "{}".format( self.gui.ui.outputFileLineEdit.text() )  )
+        dir = os.path.dirname( u"{}".format( self.gui.ui.outputFileLineEdit.text() )  )
 
-        fileName = "{}".format( QFileDialog.getSaveFileName( self.gui.window,
+        fileName = u"{}".format( QFileDialog.getSaveFileName( self.gui.window,
             "Choose output file", dir, filter ) )
 
         if fileName != '':
@@ -179,9 +179,9 @@ class NewTaskDialogCustomizer:
     #############################
     def __choosMainProgramFileButtonClicked( self ):
 
-        dir = os.path.dirname( "{}".format( self.gui.ui.mainProgramFileLineEdit.text() )  )
+        dir = os.path.dirname( u"{}".format( self.gui.ui.mainProgramFileLineEdit.text() ) )
 
-        fileName = "{}".format( QFileDialog.getOpenFileName( self.gui.window,
+        fileName = u"{}".format( QFileDialog.getOpenFileName( self.gui.window,
             "Choose main program file", dir, "Python (*.py)") )
 
         if fileName != '':
@@ -334,22 +334,22 @@ class NewTaskDialogCustomizer:
         time            = QtCore.QTime()
         definition      = TaskDefinition()
 
-        definition.algorithmType     = "{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )
+        definition.algorithmType     = u"{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )
         definition.fullTaskTimeout   = time.secsTo( self.gui.ui.fullTaskTimeoutTimeEdit.time() )
-        definition.id                = "{}".format( self.gui.ui.taskIdLabel.text() )
+        definition.id                = u"{}".format( self.gui.ui.taskIdLabel.text() )
         definition.subtaskTimeout    = time.secsTo( self.gui.ui.subtaskTimeoutTimeEdit.time() )
         definition.minSubtaskTime    = time.secsTo( self.gui.ui.minSubtaskTimeTimeEdit.time() )
         definition.renderer          = self.logic.getRenderer( "{}".format( self.gui.ui.rendereComboBox.itemText( self.gui.ui.rendereComboBox.currentIndex() ) ) ).name
-        definition.pixelFilter       = "{}".format( self.gui.ui.pixelFilterComboBox.itemText( self.gui.ui.pixelFilterComboBox.currentIndex() ) )
+        definition.pixelFilter       = u"{}".format( self.gui.ui.pixelFilterComboBox.itemText( self.gui.ui.pixelFilterComboBox.currentIndex() ) )
         definition.samplesPerPixelCount = self.gui.ui.samplesPerPixelSpinBox.value()
         definition.resolution        = [ self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value() ]
-        definition.outputFile        = "{}".format( self.gui.ui.outputFileLineEdit.text() )
-        definition.mainProgramFile   = "{}".format( self.gui.ui.mainProgramFileLineEdit.text() )
-        definition.outputFormat      = "{}".format( self.gui.ui.outputFormatsComboBox.itemText( self.gui.ui.outputFormatsComboBox.currentIndex() ) )
+        definition.outputFile        = u"{}".format( self.gui.ui.outputFileLineEdit.text() )
+        definition.mainProgramFile   = u"{}".format( self.gui.ui.mainProgramFileLineEdit.text() )
+        definition.outputFormat      = u"{}".format( self.gui.ui.outputFormatsComboBox.itemText( self.gui.ui.outputFormatsComboBox.currentIndex() ) )
 
         if self.addTaskResourcesDialogCustomizer:
             definition.resources         = self.addTaskResourcesDialogCustomizer.resources
-            definition.mainSceneFile     = "{}".format( self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.text() )
+            definition.mainSceneFile     = u"{}".format( self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.text() )
 
         
 

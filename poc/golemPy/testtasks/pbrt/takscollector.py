@@ -19,10 +19,12 @@ def open_exr_as_rgbf_images( exr_file ):
     return rgbf
 
 ############################
-def convert_rgbf_images_to_rgb8_image( rgbf, lighest, darkest ):    
+def convert_rgbf_images_to_rgb8_image( rgbf, lighest, darkest ):
     scale = 255 / (lighest - darkest)
-    
+
     def normalize_0_255( val ):
+        scale = 255.0
+        darkest = 0.0
         return (val * scale) + darkest
     
     rgb8 = [im.point(normalize_0_255).convert("L") for im in rgbf]
