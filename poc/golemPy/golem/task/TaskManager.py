@@ -1,4 +1,5 @@
 import time
+import logging
 
 from golem.manager.NodeStateSnapshot import LocalTaskStateSnapshot
 from golem.task.TaskState import TaskState, TaskStatus, SubtaskState, ComputerState
@@ -20,7 +21,7 @@ class TaskManagerEventListener:
 
 class TaskManager:
     #######################
-    def __init__( self, clientUid, listenAddress = "", listenPort = 0 ):
+    def __init__( self, clientUid, listenAddress = "", listenPort = 0, rootPath = "res" ):
         self.clientUid      = clientUid
 
         self.tasks          = {}
@@ -29,7 +30,7 @@ class TaskManager:
         self.listenAddress  = listenAddress
         self.listenPort     = listenPort
 
-        self.env            = TaskManagerEnvironment( "res", self.clientUid )
+        self.env            = TaskManagerEnvironment( rootPath, self.clientUid )
 
         self.subTask2TaskMapping = {}
 
@@ -40,7 +41,7 @@ class TaskManager:
         assert isinstance( listener, TaskManagerEventListener )
 
         if listener in self.listeners:
-            print "listener {} already registered ".format( listener )
+            logging.error( "listener {} already registered ".format( listener ) )
             return
 
         self.listeners.append( listener )
@@ -84,10 +85,10 @@ class TaskManager:
                 self.__addSubtaskToTasksStates( clientId, ctd )
                 self.__noticeTaskUpdated( taskId )
                 return ctd
-            print "Cannot get next task for estimated performence {}".format( estimatedPerformance )
+            logging.info( "Cannot get next task for estimated performence {}".format( estimatedPerformance ) )
             return None
         else:
-            print "Cannot find task {} in my tasks".format( taskId )
+            logging.info( "Cannot find task {} in my tasks".format( taskId ) )
             return None
 
     #######################
@@ -117,7 +118,7 @@ class TaskManager:
 
             return True
         else:
-            print "It is not my task id {}".format( subtaskId )
+            logger.error( "It is not my task id {}".format( subtaskId ) )
             return False
 
     #######################
@@ -128,8 +129,8 @@ class TaskManager:
             th.ttl = th.ttl - ( currTime - th.lastChecking )
             th.lastChecking = currTime
             if th.ttl <= 0:
-                print "Task {} dies".format( th.id )
-                del self.tasks[ th.id ]
+                logger.info( "Task {} dies".format( th.taskId ) )
+                del self.tasks[ th.taskId ]
 
     #######################
     def getProgresses( self ):

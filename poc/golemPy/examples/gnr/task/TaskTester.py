@@ -1,6 +1,7 @@
 import os
 from threading import Thread, Lock
 import shutil
+import logging
 
 from golem.task.TaskBase import Task
 from golem.task.resource.Resource import TaskResourceHeader, decompressDir
@@ -43,7 +44,7 @@ class TaskTester:
             self.tt.start()
 
         except Exception as exc:
-            print "Task not tested properly: {}".format( exc )
+            logging.info( "Task not tested properly: {}".format( exc ) )
             self.finishedCallback( False )
 
     #########################
@@ -51,7 +52,7 @@ class TaskTester:
         if self.tt:
             with self.lock:
                 if self.tt.getError():
-                    print "Task not tested properly"
+                    logging.info( "Task not tested properly" )
                     self.finishedCallback( False )
                     return 0
                 return self.tt.getProgress()
@@ -88,8 +89,8 @@ class TaskTester:
     ###########################
     def taskComputed( self, taskThread ):
         if taskThread.result:
-            print "Test task computation success !"
+            logging.info( "Test task computation success !" )
             self.finishedCallback( True )
         else:
-            print "Test task computation failed !!!"
+            logging.info( "Test task computation failed !!!" )
             self.finishedCallback( False )

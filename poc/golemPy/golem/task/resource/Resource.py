@@ -1,4 +1,5 @@
 import sys
+import logging
 sys.path.append('../../core/')
 
 from golem.core.simplehash import SimpleHash
@@ -314,6 +315,7 @@ def compressDir( rootPath, header, outputDir ):
 
     currWorkingDir = os.getcwd()
     os.chdir( rootPath )
+    logging.info("Working directory {}".format(os.getcwd()))
 
     try:
         compressDirImpl( "", header, zipf )
@@ -321,6 +323,7 @@ def compressDir( rootPath, header, outputDir ):
         zipf.close()
     finally:
         os.chdir( currWorkingDir )
+        logging.info("Return to prev working directory {}".format(os.getcwd()))
 
     return outputFile
 

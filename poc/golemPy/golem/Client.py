@@ -30,6 +30,7 @@ def startClient( ):
     pingsInterval   = cfg.getPingsInterval()
     clientUid       = cfg.getClientUid()
     addTasks        = cfg.getAddTasks()
+    rootPath        = cfg.getRootPath()
 
     gettingPeersInterval    = cfg.getGettingPeersInterval()
     gettingTasksInterval    = cfg.getGettingTasksInterval()
@@ -48,6 +49,7 @@ def startClient( ):
     configDesc.pingsInterval  = pingsInterval
     configDesc.addTasks       = addTasks
     configDesc.clientVersion  = 1
+    configDesc.rootPath       = rootPath
 
     configDesc.seedHost               = seedHost
     configDesc.seedHostPort           = seedHostPort
@@ -91,7 +93,7 @@ class ClientTaskManagerEventListener( TaskManagerEventListener ):
 class Client:
 
     ############################
-    def __init__(self, configDesc ):
+    def __init__(self, configDesc, rootPath = "" ):
 
         self.configDesc     = configDesc
 
@@ -111,6 +113,8 @@ class Client:
         self.doWorkTask.start(0.1, False)
 
         self.listeners      = []
+
+        self.rootPath = rootPath
        
     ############################
     def startNetwork( self ):

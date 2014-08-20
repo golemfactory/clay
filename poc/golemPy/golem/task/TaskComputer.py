@@ -15,7 +15,7 @@ import os
 class TaskComputer:
 
     ######################
-    def __init__( self, clientUid, taskServer, estimatedPerformance, taskRequestFrequency ):
+    def __init__( self, clientUid, taskServer, estimatedPerformance, taskRequestFrequency, rootPath="ComputerRes" ):
         self.clientUid              = clientUid
         self.estimatedPerformance   = estimatedPerformance
         self.taskServer             = taskServer
@@ -25,7 +25,7 @@ class TaskComputer:
         self.lastTaskRequest        = time.time()
         self.taskRequestFrequency   = taskRequestFrequency
 
-        self.env                    = TaskComputerEnvironment( "ComputerRes", self.clientUid )
+        self.env                    = TaskComputerEnvironment( rootPath, self.clientUid )
 
         self.resourceManager        = ResourcesManager( self.env, self )
 

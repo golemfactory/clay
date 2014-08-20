@@ -23,6 +23,7 @@ class CommonConfig:
         ConfigEntry.createProperty( section, "start port",          40102, self, "StartPort" )
         ConfigEntry.createProperty( section, "end port",            60102, self, "EndPort" )
         ConfigEntry.createProperty( section, "manager listen port", MANAGER_PORT, self, "ManagerListenPort" )
+        ConfigEntry.createProperty( section, "resource root path", "C:\\Sources\\golem\\poc\\golemPy\\examples\\gnr", self, "RootPath")
 
     ##############################
     def section( self ):
@@ -111,6 +112,9 @@ class AppConfig:
         self._cfg = cfg
 
     ##############################
+    def getRootPath( self ):
+        return self._cfg.getCommonConfig().getRootPath()
+
     def getOptimalPeerNum( self ):
         return self._cfg.getCommonConfig().getOptimalPeerNum()
 

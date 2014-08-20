@@ -7,6 +7,7 @@ from TaskBase import TaskHeader
 import random
 import time
 import sys
+import os
 
 class TaskServer:
     #############################
@@ -17,8 +18,12 @@ class TaskServer:
         self.address            = address
         self.curPort            = configDesc.startPort
         self.taskHeaders        = {}
-        self.taskManager        = TaskManager( configDesc.clientUid )
-        self.taskComputer       = TaskComputer( configDesc.clientUid, self, self.configDesc.estimatedPerformance, self.configDesc.taskRequestInterval )
+        self.taskManager        = TaskManager( configDesc.clientUid, rootPath = os.path.join(configDesc.rootPath, "res") )
+        self.taskComputer       = TaskComputer( configDesc.clientUid,
+                                                self,
+                                                self.configDesc.estimatedPerformance,
+                                                self.configDesc.taskRequestInterval,
+                                                os.path.join(configDesc.rootPath, "ComputerRes"))
         self.taskSeesions       = {}
         self.taskSeesionsIncoming = []
 

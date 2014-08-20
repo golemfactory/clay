@@ -1,5 +1,6 @@
 import sys
 import os
+import logging
 
 sys.path.append('./../../')
 
@@ -35,6 +36,8 @@ def buidPBRTRendererInfo():
 
 
 def main():
+
+    logging.basicConfig(level=logging.DEBUG)
 
     env = GNREnv(os.getcwd())
 
