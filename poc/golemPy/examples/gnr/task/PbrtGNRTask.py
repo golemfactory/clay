@@ -1,6 +1,7 @@
 import os
 import random
 import cPickle as pickle
+import logging
 
 from golem.task.TaskBase import TaskBuilder, ComputeTaskDef
 from golem.task.TaskState import TaskStatus
@@ -18,9 +19,10 @@ from PIL import Image, ImageChops
 
 class PbrtTaskBuilder( TaskBuilder ):
     #######################
-    def __init__( self, clientId, taskDefinition ):
+    def __init__( self, clientId, taskDefinition, env ):
         self.taskDefinition = taskDefinition
         self.clientId       = clientId
+        self.env = env
 
     #######################
     def build( self ):
@@ -45,7 +47,9 @@ class PbrtTaskBuilder( TaskBuilder ):
                                    self.taskDefinition.fullTaskTimeout,
                                    self.taskDefinition.resources,
                                    self.taskDefinition.outputFile,
-                                   self.taskDefinition.outputFormat )
+                                   self.taskDefinition.outputFormat,
+                                   self.env
+                                  )
 
         return pbrtTask
 
@@ -72,8 +76,10 @@ class PbrtRenderTask( GNRTask ):
                   taskResources,
                   outputFile,
                   outputFormat,
+                  env,
                   returnAddress = "",
-                  returnPort = 0 ):
+                  returnPort = 0
+                  ):
 
         srcFile = open( mainProgramFile, "r")
         srcCode = srcFile.read()
@@ -104,6 +110,7 @@ class PbrtRenderTask( GNRTask ):
         self.subTasksGiven      = {}
 
         self.previewFilePath    = None
+        self.env = env
 
 
     def initialize( self ):
@@ -279,9 +286,10 @@ class PbrtRenderTask( GNRTask ):
         else:
             img = Image.open( newChunkFilePath )
 
-        tmpDir = os.path.join( "res", self.header.clientId, self.header.taskId, "tmp" )
+        tmpDir = self.env.getPreviewPath( self.header.clientId, self.header.taskId )
 
         self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
+        logging.debug("previewFilePath", self.previewFilePath)
 
         if os.path.exists( self.previewFilePath ):
             imgCurrent = Image.open( self.previewFilePath )

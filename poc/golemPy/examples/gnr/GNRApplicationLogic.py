@@ -10,6 +10,7 @@ from golem.task.TaskBase import Task
 from golem.task.TaskState import TaskState
 from golem.Client import GolemClientEventListener
 from customizers.MainWindowCustomizer import MainWindowCustomizer
+from GNREnv import GNREnv
 
 
 class GNRClientEventListener( GolemClientEventListener ):
@@ -33,6 +34,11 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.customizer         = None
         self.currentRenderer    = None
         self.defaultRenderer    = None
+        self.env                = None
+
+    ######################
+    def registerEnv( self, env ):
+        self.env = env
 
     ######################
     def registerGui( self, gui ):
@@ -66,7 +72,7 @@ class GNRApplicationLogic( QtCore.QObject ):
 
         assert ts.taskState.status == TaskStatus.notStarted # TODO:
 
-        tb = self.renderers[ ts.definition.renderer ].taskBuilderType( self.client.getId(), ts.definition )
+        tb = self.renderers[ ts.definition.renderer ].taskBuilderType( self.client.getId(), ts.definition, self.env )
 
         t = Task.buildTask( tb )
 
@@ -144,7 +150,7 @@ class GNRApplicationLogic( QtCore.QObject ):
     def runTestTask( self, taskState ):
         if self.__validateTaskState( taskState ):
 
-            tb = self.renderers[ taskState.definition.renderer ].taskBuilderType( self.client.getId(), taskState.definition )
+            tb = self.renderers[ taskState.definition.renderer ].taskBuilderType( self.client.getId(), taskState.definition, self.env )
 
             t = Task.buildTask( tb )
 

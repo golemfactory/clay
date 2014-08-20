@@ -1,4 +1,5 @@
 import sys
+import os
 
 sys.path.append('./../../')
 
@@ -11,6 +12,7 @@ from Application import GNRGui
 
 from TaskState import RendererDefaults, RendererInfo, TestTaskInfo
 from task.PbrtGNRTask import PbrtTaskBuilder
+from GNREnv import GNREnv
 
 from golem.Client import startClient
 
@@ -33,6 +35,8 @@ def buidPBRTRendererInfo():
 
 
 def main():
+
+    env = GNREnv(os.getcwd())
 
     logic   = GNRApplicationLogic()
     app     = GNRGui( logic )
@@ -62,6 +66,7 @@ def main():
 
     logic.registerGui( app.getMainWindow() )
 
+    logic.registerEnv(env)
     #app.appLogic.addTasks( [ task ] )
 
     logic.registerNewRendererType( buidPBRTRendererInfo() )
