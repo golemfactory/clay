@@ -1,6 +1,7 @@
 import sys
 import os
 import logging
+import logging.config
 
 sys.path.append('./../../')
 
@@ -37,7 +38,7 @@ def buidPBRTRendererInfo():
 
 def main():
 
-    logging.basicConfig(level=logging.DEBUG)
+    logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
 
     env = GNREnv(os.getcwd())
 
@@ -76,11 +77,9 @@ def main():
 
     logic.registerNewTestTaskType( TestTaskInfo( "CornellBox" ) )
 
-
     client = startClient( )
 
     logic.registerClient( client )
-
 
     app.execute( False )
 
