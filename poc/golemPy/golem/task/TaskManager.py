@@ -104,13 +104,19 @@ class TaskManager:
     def computedTaskReceived( self, subtaskId, result ):
         if subtaskId in self.subTask2TaskMapping:
             taskId = self.subTask2TaskMapping[ subtaskId ]
+
+            subtaskStatus = self.tasksStates[ taskId ].subtaskStates[ subtaskId ].subtaskStatus
+            if  subtaskStatus != TaskStatus.starting:
+                logging.warning("Result for subtask {} when subtask state is {}".format( subtaskId, subtaskStatus ))
+                return False
+
             self.tasks[ taskId ].computationFinished( subtaskId, result, self.env )
             ss = self.tasksStates[ taskId ].subtaskStates[ subtaskId ]
             ss.subtaskProgress  = 1.0
             ss.subtaskRemTime   = 0.0
             ss.subtaskStatus    = TaskStatus.finished
 
-            if self.tasks[ taskId ].needsComputation():
+            if not self.tasks[ taskId ].finishedComputation():
                 self.tasksStates[ taskId ].status = TaskStatus.computing
             else:
                 self.tasksStates[ taskId ].status = TaskStatus.finished
@@ -118,7 +124,7 @@ class TaskManager:
 
             return True
         else:
-            logger.error( "It is not my task id {}".format( subtaskId ) )
+            logging.error( "It is not my task id {}".format( subtaskId ) )
             return False
 
     #######################
@@ -129,8 +135,21 @@ class TaskManager:
             th.ttl = th.ttl - ( currTime - th.lastChecking )
             th.lastChecking = currTime
             if th.ttl <= 0:
-                logger.info( "Task {} dies".format( th.taskId ) )
+                logging.info( "Task {} dies".format( th.taskId ) )
                 del self.tasks[ th.taskId ]
+                continue
+            ts = self.tasksStates[th.taskId]
+            for s in ts.subtaskStates.values():
+                if s.subtaskStatus in [ TaskStatus.starting, TaskStatus.computing ]:
+                    s.ttl = s.ttl - (currTime - s.lastChecking)
+                    s.lastChecking = currTime
+                    if s.ttl <= 0:
+                        logging.info( "Subtask {} dies".format(  s.subtaskId ) )
+                        s.subtaskStatus        = TaskStatus.failure
+                        t.subtaskFailed( s.subtaskId, s.startChunk, s.endChunk )
+                        self.__noticeTaskUpdated( th.taskId )
+
+
 
     #######################
     def getProgresses( self ):
@@ -189,9 +208,13 @@ class TaskManager:
             ss                      = SubtaskState()
             ss.computer.nodeId      = clientId
             ss.computer.performance = ctd.performance
+            ss.timeStarted      = time.time()
+            ss.ttl              = self.tasks[ ctd.taskId ].header.subtaskTimeout
             # TODO: read node ip address
             ss.subtaskDefinition    = ctd.shortDescription
             ss.subtaskId            = ctd.subtaskId
+            ss.startChunk           = ctd.extraData["startTask"]
+            ss.endChunk             = ctd.extraData["endTask"]
             ss.subtaskStatus        = TaskStatus.starting
 
             ts.subtaskStates[ ctd.subtaskId ] = ss

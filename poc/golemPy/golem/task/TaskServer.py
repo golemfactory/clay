@@ -89,6 +89,7 @@ class TaskServer:
                             "address"       : th.taskOwnerAddress,
                             "port"          : th.taskOwnerPort,
                             "ttl"           : th.ttl,
+                            "subtaskTimeout": th.subtaskTimeout,
                             "clientId"      : th.clientId })
 
         return ret
@@ -100,7 +101,7 @@ class TaskServer:
             if id not in self.taskHeaders.keys(): # dont have it
                 if id not in self.taskManager.tasks.keys(): # It is not my task id
                     print "Adding task {}".format( id )
-                    self.taskHeaders[ id ] = TaskHeader( thDictRepr[ "clientId" ], id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr[ "ttl" ]  )
+                    self.taskHeaders[ id ] = TaskHeader( thDictRepr[ "clientId" ], id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"] )
             return True
         except:
             print "Wrong task header received"

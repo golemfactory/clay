@@ -4,12 +4,13 @@ from TaskState import TaskStatus
 
 class TaskHeader:
     #######################
-    def __init__( self, clientId, taskId, taskOwnerAddress, taskOwnerPort, ttl = 0.0 ):
+    def __init__( self, clientId, taskId, taskOwnerAddress, taskOwnerPort, ttl = 0.0, subtaskTimeout = 0.0 ):
         self.taskId = taskId
         self.taskOwnerAddress = taskOwnerAddress
         self.taskOwnerPort = taskOwnerPort
         self.lastChecking = time.time()
         self.ttl = ttl
+        self.subtaskTimeout = subtaskTimeout
         self.clientId = clientId
 
 class TaskBuilder:

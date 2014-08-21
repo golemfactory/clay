@@ -17,6 +17,12 @@ from GNREnv import GNREnv
 import OpenEXR, Imath
 from PIL import Image, ImageChops
 
+class PbrtSubtask():
+    def __init__(self, subtaskId, startChunk, endChunk):
+        self.subtaskId = subtaskId
+        self.startChunk = startChunk
+        self.endChunk = endChunk
+
 class PbrtTaskBuilder( TaskBuilder ):
     #######################
     def __init__( self, clientId, taskDefinition, env ):
@@ -45,6 +51,7 @@ class PbrtTaskBuilder( TaskBuilder ):
                                    "temp",
                                    self.taskDefinition.mainSceneFile,
                                    self.taskDefinition.fullTaskTimeout,
+                                   self.taskDefinition.subtaskTimeout,
                                    self.taskDefinition.resources,
                                    self.taskDefinition.outputFile,
                                    self.taskDefinition.outputFormat,
@@ -52,7 +59,6 @@ class PbrtTaskBuilder( TaskBuilder ):
                                   )
 
         return pbrtTask
-
 
 class PbrtRenderTask( GNRTask ):
 
@@ -73,6 +79,7 @@ class PbrtRenderTask( GNRTask ):
                   outfilebasename,
                   sceneFile,
                   fullTaskTimeout,
+                  subtaskTimeout,
                   taskResources,
                   outputFile,
                   outputFormat,
@@ -84,9 +91,10 @@ class PbrtRenderTask( GNRTask ):
         srcFile = open( mainProgramFile, "r")
         srcCode = srcFile.read()
 
-        GNRTask.__init__( self, srcCode, clientId, taskId, returnAddress, returnPort, fullTaskTimeout )
+        GNRTask.__init__( self, srcCode, clientId, taskId, returnAddress, returnPort, fullTaskTimeout, subtaskTimeout )
 
         self.header.ttl = max( 2200.0, fullTaskTimeout )
+        self.header.subtaskTimeout = max( 22.0, subtaskTimeout )
 
         self.pathRoot           = pathRoot
         self.lastTask           = 0
@@ -105,6 +113,9 @@ class PbrtRenderTask( GNRTask ):
         self.sampler            = sampler
         self.samplesPerPixel    = samplesPerPixel
 
+        self.numFailedSubtasks  = 0
+        self.failedSubtasks     = set()
+
         self.collector          = PbrtTaksCollector()
         self.numTasksReceived   = 0
         self.subTasksGiven      = {}
@@ -119,8 +130,16 @@ class PbrtRenderTask( GNRTask ):
     #######################
     def queryExtraData( self, perfIndex ):
 
-        perf = max( int( float( perfIndex ) / 500 ), 1)
-        endTask = min( self.lastTask + perf, self.totalTasks )
+        if ( self.lastTask != self.totalTasks ):
+            perf = max( int( float( perfIndex ) / 500 ), 1)
+            endTask = min( self.lastTask + perf, self.totalTasks )
+            startTask = self.lastTask
+            self.lastTask = endTask
+        else:
+            subtask = self.failedSubtasks.pop()
+            self.numFailedSubtasks -= 1
+            endTask = subtask.endChunk
+            startTask = subtask.startChunk
 
         commonPathPrefix = os.path.commonprefix( self.taskResources )
         commonPathPrefix = os.path.dirname( commonPathPrefix )
@@ -128,7 +147,7 @@ class PbrtRenderTask( GNRTask ):
         sceneSrc = regenerateFile( self.sceneFileSrc, self.resX, self.resY, self.pixelFilter, self.sampler, self.samplesPerPixel )
 
         extraData =          {      "pathRoot" : self.pathRoot,
-                                    "startTask" : self.lastTask,
+                                    "startTask" : startTask,
                                     "endTask" : endTask,
                                     "totalTasks" : self.totalTasks,
                                     "numSubtasks" : self.numSubtasks,
@@ -141,7 +160,6 @@ class PbrtRenderTask( GNRTask ):
 
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
-        self.lastTask = endTask # TODO: Should depend on performance
 
         ctd = ComputeTaskDef()
         ctd.taskId              = self.header.taskId
@@ -196,7 +214,7 @@ class PbrtRenderTask( GNRTask ):
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
 
-        ctd.workingDirectory = os.path.relpath( self.mainProgramFile, self.testTaskResPath)
+        ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, self.testTaskResPath)
         ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
 
         return ctd
@@ -208,7 +226,11 @@ class PbrtRenderTask( GNRTask ):
 
     #######################
     def needsComputation( self ):
-        return self.lastTask != self.totalTasks
+        return (self.lastTask != self.totalTasks) or (self.numFailedSubtasks > 0)
+
+    #######################
+    def finishedComputation( self ):
+        return self.numTasksReceived == self.totalTasks
 
     #######################
     def computationStarted( self, extraData ):
@@ -237,6 +259,11 @@ class PbrtRenderTask( GNRTask ):
             self.previewFilePath = outputFileName
 
     #######################
+    def subtaskFailed( self, subtaskId, startChunk, endChunk ):
+        self.numFailedSubtasks += 1
+        self.failedSubtasks.add( PbrtSubtask( subtaskId, startChunk, endChunk ) )
+
+    #######################
     def getTotalTasks( self ):
         return self.totalTasks
 
@@ -254,7 +281,7 @@ class PbrtRenderTask( GNRTask ):
 
     #######################
     def getChunksLeft( self ):
-        return self.totalTasks - self.lastTask
+        return (self.totalTasks - self.lastTask) + self.numFailedSubtasks
 
     #######################
     def getProgress( self ):

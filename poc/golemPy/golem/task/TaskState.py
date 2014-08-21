@@ -1,3 +1,5 @@
+import time
+
 class TaskState:
     #########################
     def __init__( self ):
@@ -42,6 +44,11 @@ class SubtaskState:
         self.subtaskDefinition  = ""
         self.subtaskId          = ""
         self.subtaskProgress    = 0.0
+        self.timeStarted        = 0
+        self.ttl                = 0
+        self.lastChecking       = time.time()
+        self.startChunk         = 0
+        self.endChunk           = 0
         self.subtaskRemTime     = 0
         self.subtaskStatus      = ""
 
