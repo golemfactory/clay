@@ -573,6 +573,7 @@
     <property name="title">
      <string>Properties</string>
     </property>
+    <addaction name="actionEdit"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -606,6 +607,11 @@
    </property>
    <property name="toolTip">
     <string>Load task</string>
+   </property>
+  </action>
+  <action name="actionEdit">
+   <property name="text">
+    <string>Edit</string>
    </property>
   </action>
  </widget>

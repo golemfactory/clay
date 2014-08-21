@@ -9,10 +9,12 @@ from examples.gnr.ui.NewTaskDialog import NewTaskDialog
 from examples.gnr.ui.ShowTaskResourcesDialog import ShowTaskResourcesDialog
 from examples.gnr.ui.TaskDetailsDialog import TaskDetailsDialog
 from examples.gnr.ui.TaskTableElem import TaskTableElem
+from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from TaskContexMenuCustomizer import TaskContextMenuCustomizer
 from TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
+from ConfigurationDialogCustomizer import ConfigurationDialogCustomizer
 import time
 
 
@@ -35,6 +37,7 @@ class MainWindowCustomizer:
     def __setupConnections( self ):
         self.gui.ui.actionNew.triggered.connect( self.__showNewTaskDialogClicked )
         self.gui.ui.actionLoadTask.triggered.connect( self.__loadTaskButtonClicked )
+        self.gui.ui.actionEdit.triggered.connect( self.__showConfigurationDialogClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "doubleClicked(const QModelIndex)" ), self.__taskTableRowDoubleClicked )
         self.gui.ui.showResourceButton.clicked.connect( self.__showTaskResourcesClicked )
@@ -229,7 +232,12 @@ class MainWindowCustomizer:
     def __contexMenuRequested( self, p ):
         self.__showTaskContextMenu( p )
 
-
+    #############################
+    def __showConfigurationDialogClicked( self ):
+        self.configurationDialog = ConfigurationDialog( self.gui.window )
+        self.configurationDialogCustomizer = ConfigurationDialogCustomizer( self.configurationDialog, self.logic )
+        self.configurationDialogCustomizer.loadConfig()
+        self.configurationDialog.show()
 
 #######################################################################################
 def insertItem( root, pathTable ):
@@ -246,3 +254,7 @@ def insertItem( root, pathTable ):
         newChild = QTreeWidgetItem( [ pathTable[ 0 ] ] )
         root.addChild( newChild )
         insertItem( newChild, pathTable[ 1: ] )
+
+
+
+

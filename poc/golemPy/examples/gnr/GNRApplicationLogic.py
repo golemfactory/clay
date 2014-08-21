@@ -60,6 +60,10 @@ class GNRApplicationLogic( QtCore.QObject ):
         return self.renderers
 
     ######################
+    def getConfig( self ):
+        return self.client.configDesc
+
+    ######################
     def getRenderer( self, name ):
         if name in self.renderers:
             return self.renderers[ name ]
