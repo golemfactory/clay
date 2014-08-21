@@ -8,6 +8,8 @@ import os
 from os.path import join, isdir, isfile
 import zipfile
 
+logger = logging.getLogger(__name__)
+
 class TaskResourceHeader:
 
     ####################
@@ -315,7 +317,7 @@ def compressDir( rootPath, header, outputDir ):
 
     currWorkingDir = os.getcwd()
     os.chdir( rootPath )
-    logging.info("Working directory {}".format(os.getcwd()))
+    logger.debug("Working directory {}".format(os.getcwd()))
 
     try:
         compressDirImpl( "", header, zipf )
@@ -323,7 +325,7 @@ def compressDir( rootPath, header, outputDir ):
         zipf.close()
     finally:
         os.chdir( currWorkingDir )
-        logging.info("Return to prev working directory {}".format(os.getcwd()))
+        logger.debug("Return to prev working directory {}".format(os.getcwd()))
 
     return outputFile
 

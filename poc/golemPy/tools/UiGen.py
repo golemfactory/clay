@@ -1,4 +1,7 @@
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 def regenerateUIFiles( rootPath ):
     
@@ -21,7 +24,7 @@ def regenerateUIFiles( rootPath ):
 
             assert os.path.exists(pyuicPath), "Can't open file " + pyuicPath
 
-            print "Generating " + outFile
+            logger.info("Generating " + outFile)
             os.system( "python " + pyuicPath + " " + os.path.join( rootPath, file ) + " > " + os.path.join( rootPath, outFile )  )
 
 def genUiFiles( path ):

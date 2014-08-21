@@ -5,6 +5,8 @@ from golem.manager.NodeStateSnapshot import LocalTaskStateSnapshot
 from golem.task.TaskState import TaskState, TaskStatus, SubtaskState, ComputerState
 from Environment import TaskManagerEnvironment
 
+logger = logging.getLogger(__name__)
+
 class TaskManagerEventListener:
     #######################
     def __init__( self ):
@@ -41,7 +43,7 @@ class TaskManager:
         assert isinstance( listener, TaskManagerEventListener )
 
         if listener in self.listeners:
-            logging.error( "listener {} already registered ".format( listener ) )
+            logger.error( "listener {} already registered ".format( listener ) )
             return
 
         self.listeners.append( listener )
@@ -85,10 +87,10 @@ class TaskManager:
                 self.__addSubtaskToTasksStates( clientId, ctd )
                 self.__noticeTaskUpdated( taskId )
                 return ctd
-            logging.info( "Cannot get next task for estimated performence {}".format( estimatedPerformance ) )
+            logger.info( "Cannot get next task for estimated performence {}".format( estimatedPerformance ) )
             return None
         else:
-            logging.info( "Cannot find task {} in my tasks".format( taskId ) )
+            logger.info( "Cannot find task {} in my tasks".format( taskId ) )
             return None
 
     #######################
@@ -107,7 +109,7 @@ class TaskManager:
 
             subtaskStatus = self.tasksStates[ taskId ].subtaskStates[ subtaskId ].subtaskStatus
             if  subtaskStatus != TaskStatus.starting:
-                logging.warning("Result for subtask {} when subtask state is {}".format( subtaskId, subtaskStatus ))
+                logger.warning("Result for subtask {} when subtask state is {}".format( subtaskId, subtaskStatus ))
                 return False
 
             self.tasks[ taskId ].computationFinished( subtaskId, result, self.env )
@@ -124,7 +126,7 @@ class TaskManager:
 
             return True
         else:
-            logging.error( "It is not my task id {}".format( subtaskId ) )
+            logger.error( "It is not my task id {}".format( subtaskId ) )
             return False
 
     #######################
@@ -135,7 +137,7 @@ class TaskManager:
             th.ttl = th.ttl - ( currTime - th.lastChecking )
             th.lastChecking = currTime
             if th.ttl <= 0:
-                logging.info( "Task {} dies".format( th.taskId ) )
+                logger.info( "Task {} dies".format( th.taskId ) )
                 del self.tasks[ th.taskId ]
                 continue
             ts = self.tasksStates[th.taskId]
@@ -144,7 +146,7 @@ class TaskManager:
                     s.ttl = s.ttl - (currTime - s.lastChecking)
                     s.lastChecking = currTime
                     if s.ttl <= 0:
-                        logging.info( "Subtask {} dies".format(  s.subtaskId ) )
+                        logger.info( "Subtask {} dies".format(  s.subtaskId ) )
                         s.subtaskStatus        = TaskStatus.failure
                         t.subtaskFailed( s.subtaskId, s.startChunk, s.endChunk )
                         self.__noticeTaskUpdated( th.taskId )

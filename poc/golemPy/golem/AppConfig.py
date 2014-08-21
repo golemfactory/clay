@@ -1,7 +1,7 @@
-
 import sys
 sys.path.append('core')
 import os
+import logging
 
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 from golem.core.simpleenv import SimpleEnv
@@ -86,19 +86,22 @@ class AppConfig:
     @classmethod
     def loadConfig( cls, cfgFile = CONFIG_FILENAME ):
 
-        if cls.CONFIG_LOADED:
-            print "Application already configured"
-            return None
-        
-        print "Starting generic process service..."
-        ps = ProcessService()
-        print "Generic process service started\n"
+        logger = logging.getLogger(__name__)
 
-        print "Trying to register current process"
+        if cls.CONFIG_LOADED:
+            logger.warning("Application already configured")
+            return None
+
+
+        logger.info("Starting generic process service...")
+        ps = ProcessService()
+        logger.info("Generic process service started")
+
+        logger.info("Trying to register current process")
         localId = ps.registerSelf()
 
         if( localId < 0 ):
-            print "Failed to register current process - bailing out"
+            logger.error("Failed to register current process - bailing out")
             return None
 
         cfg  = SimpleConfig( CommonConfig(), NodeConfig( localId ), cfgFile )

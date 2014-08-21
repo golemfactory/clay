@@ -17,6 +17,8 @@ from GNREnv import GNREnv
 import OpenEXR, Imath
 from PIL import Image, ImageChops
 
+logger = logging.getLogger(__name__)
+
 class PbrtSubtask():
     def __init__(self, subtaskId, startChunk, endChunk):
         self.subtaskId = subtaskId
@@ -173,7 +175,8 @@ class PbrtRenderTask( GNRTask ):
 
         ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
         ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
-        print ctd.workingDirectory
+
+        logger.debug(ctd.workingDirectory)
 
         # ctd.workingDirectory = ""
 

@@ -9,6 +9,8 @@ from golem.task.TaskComputer import PyTaskThread
 
 from GNREnv import GNREnv
 
+logger = logging.getLogger(__name__)
+
 class TaskTester:
     #########################
     def __init__( self, task, finishedCallback ):
@@ -44,7 +46,7 @@ class TaskTester:
             self.tt.start()
 
         except Exception as exc:
-            logging.info( "Task not tested properly: {}".format( exc ) )
+            logger.warning( "Task not tested properly: {}".format( exc ) )
             self.finishedCallback( False )
 
     #########################
@@ -52,7 +54,7 @@ class TaskTester:
         if self.tt:
             with self.lock:
                 if self.tt.getError():
-                    logging.info( "Task not tested properly" )
+                    logger.warning( "Task not tested properly" )
                     self.finishedCallback( False )
                     return 0
                 return self.tt.getProgress()
@@ -89,8 +91,8 @@ class TaskTester:
     ###########################
     def taskComputed( self, taskThread ):
         if taskThread.result:
-            logging.info( "Test task computation success !" )
+            logger.info( "Test task computation success !" )
             self.finishedCallback( True )
         else:
-            logging.info( "Test task computation failed !!!" )
+            logger.warning( "Test task computation failed !!!" )
             self.finishedCallback( False )

@@ -5,6 +5,9 @@ import time
 import cPickle as pickle
 import os
 import struct
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TaskSession:
 
@@ -108,14 +111,14 @@ class TaskSession:
 
             size = os.path.getsize( resFilePath )
 
-            print "Sendig file size:{}".format( size )
+            logger.info( "Sendig file size:{}".format( size ) )
 
             fh = open( resFilePath, 'rb' )
             data = struct.pack( "!L", size ) + fh.read( 4096 * 1024 )
             while data:
                 self.conn.transport.write( data )
                 #self.conn.transport.doWrite()
-                print "\rSending progress {}                        ".format( float( fh.tell() ) / size ),
+                logger.info( "\rSending progress {}                        ".format( float( fh.tell() ) / size ) ),
                 data = fh.read( 4096 * 1024 )
                 
             self.dropped()
