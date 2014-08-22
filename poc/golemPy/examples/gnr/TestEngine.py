@@ -46,8 +46,6 @@ class TestEngine( QtCore.QObject ):
         p.start()
         p.join()
 
-        print res
-
     def __taskStartingRequested( self, ts ):
 
         tb = self.logic.renderers[ ts.definition.renderer ].taskBuilderType( "client id here", ts.definition )

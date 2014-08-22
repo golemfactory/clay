@@ -1,6 +1,6 @@
 import os
 from PyQt4 import QtCore
-from PyQt4.QtGui import QFileDialog
+from PyQt4.QtGui import QFileDialog, QMessageBox
 
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 
@@ -27,5 +27,17 @@ class ConfigurationDialogCustomizer:
 
     #############################
     def __setupConnections( self ):
-        pass
+         self.gui.ui.buttonBox.accepted.connect ( self.__changeConfig )
+
+    #############################
+    def __changeConfig (self ):
+        hostAddress =  u"{}".format( self.gui.ui.hostAddressLineEdit.text() )
+        hostPort    =  u"{}".format ( self.gui.ui.hostIPLineEdit.text() )
+        workingDirectory = u"{}".format( self.gui.ui.workingDirectoryLineEdit.text() )
+        managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
+        self.logic.changeConfig ( hostAddress, hostPort, workingDirectory, managerPort )
+        msgBox = QMessageBox()
+        msgBox.setText( "Restart application to make configuration changes" )
+        msgBox.exec_()
+
 

@@ -59,11 +59,11 @@ def startClient( ):
     configDesc.taskRequestInterval    = taskRequestInterval
     configDesc.estimatedPerformance   = estimatedPerformance
     configDesc.nodeSnapshotInterval   = nodeSnapshotInterval
-    configDesc.maxResultsSendignDelay = cfg.getMaxResultsSendingDelay()
+    configDesc.maxResultsSendingDelay = cfg.getMaxResultsSendingDelay()
 
     print "Adding tasks {}".format( addTasks )
     print "Creating public client interface with uuid: {}".format( clientUid )
-    c = Client( configDesc )
+    c = Client( configDesc, config = cfg )
 
     print "Starting all asynchronous services"
     c.startNetwork( )
@@ -93,7 +93,7 @@ class ClientTaskManagerEventListener( TaskManagerEventListener ):
 class Client:
 
     ############################
-    def __init__(self, configDesc, rootPath = "" ):
+    def __init__(self, configDesc, rootPath = "", config = "" ):
 
         self.configDesc     = configDesc
 
@@ -115,6 +115,7 @@ class Client:
         self.listeners      = []
 
         self.rootPath = rootPath
+        self.cfg = config
        
     ############################
     def startNetwork( self ):
@@ -156,6 +157,10 @@ class Client:
     def registerListener( self, listener ):
         assert isinstance( listener, GolemClientEventListener )
         self.listeners.append( listener )
+
+    ############################
+    def changeConfig( self, hostAddress, hostPort, workingDirectory, managerPort ):
+        self.cfg.saveConfig( hostAddress, hostPort, workingDirectory, managerPort  )
 
     ############################
     def unregisterListener( self, listener ):

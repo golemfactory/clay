@@ -12,7 +12,6 @@ class GNREnv:
 
     def __init__(self, rootDir):
         self.rootDir = rootDir
-        print rootDir
 
     def getTmpPath( self, clientId, taskId):
         return os.path.join( self.rootDir, RES_DIRECTORY, clientId, taskId, "tmp" )

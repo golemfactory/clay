@@ -11,19 +11,29 @@ CONFIG_FILENAME = "app_cfg.ini"
 ESTM_FILENAME = "minilight.ini"
 MANAGER_PORT = 20301
 ESTIMATED_DEFAULT = 2220.0
+START_PORT = 40102
+END_PORT = 60102
+OPTIMAL_PEER_NUM = 10
+DEFAULT_ROOT_PATH = "C:\\Sources\\golem\\poc\\golemPy\\examples\\gnr"
 
 class CommonConfig:
 
     ##############################
-    def __init__( self, section = "Common" ):
+    def __init__( self,
+                  section = "Common",
+                  rootPath = DEFAULT_ROOT_PATH,
+                  managerPort = MANAGER_PORT,
+                  startPort = START_PORT,
+                  endPort = END_PORT,
+                  optimalPeerNum = OPTIMAL_PEER_NUM):
 
         self._section = section
 
-        ConfigEntry.createProperty( section, "optimal peer num",    10,    self, "OptimalPeerNum" )
-        ConfigEntry.createProperty( section, "start port",          40102, self, "StartPort" )
-        ConfigEntry.createProperty( section, "end port",            60102, self, "EndPort" )
-        ConfigEntry.createProperty( section, "manager listen port", MANAGER_PORT, self, "ManagerListenPort" )
-        ConfigEntry.createProperty( section, "resource root path", "C:\\Sources\\golem\\poc\\golemPy\\examples\\gnr", self, "RootPath")
+        ConfigEntry.createProperty( section, "optimal peer num",    optimalPeerNum,    self, "OptimalPeerNum" )
+        ConfigEntry.createProperty( section, "start port",          startPort, self, "StartPort" )
+        ConfigEntry.createProperty( section, "end port",            endPort, self, "EndPort" )
+        ConfigEntry.createProperty( section, "manager listen port", managerPort, self, "ManagerListenPort" )
+        ConfigEntry.createProperty( section, "resource root path", rootPath, self, "RootPath")
 
     ##############################
     def section( self ):
@@ -46,15 +56,15 @@ class NodeConfig:
         return res
 
     ##############################
-    def __init__( self, nodeId ):
+    def __init__( self, nodeId, seedhost="", seedport=0 ):
         self._section = "Node {}".format( nodeId )
 
         estimated = NodeConfig.readEstimatedPerformance()
         if estimated == 0:
             estimated = ESTIMATED_DEFAULT
 
-        ConfigEntry.createProperty( self.section(), "seed host",           "",    self, "SeedHost" )
-        ConfigEntry.createProperty( self.section(), "seed host port",      0,     self, "SeedHostPort")
+        ConfigEntry.createProperty( self.section(), "seed host",           seedhost,    self, "SeedHost" )
+        ConfigEntry.createProperty( self.section(), "seed host port",      seedport,     self, "SeedHostPort")
         ConfigEntry.createProperty( self.section(), "send pings",          0,     self, "SendPings" )
         ConfigEntry.createProperty( self.section(), "pigns interval",      0,     self, "PingsInterval" )
         ConfigEntry.createProperty( self.section(), "client UUID",         u"",   self, "ClientUid" )
@@ -168,6 +178,14 @@ class AppConfig:
 
     def getMaxResultsSendingDelay( self ):
         return self._cfg.getNodeConfig().getMaxResultsSendingDelay()
+
+    ##############################
+    def changeConfig( self, seedHost, seedPort, rootPath, managerPort, cfgFile = CONFIG_FILENAME, ):
+        self._cfg.getNodeConfig().setSeedHost( seedHost )
+        self._cfg.getNodeConfig().setSeedHostPort( seedPort )
+        self._cfg.getCommonConfig().setRootPath( rootPath )
+        self._cfg.getCommonConfig().setManagerListenPort( managerPort )
+        SimpleConfig( self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile, True )
 
     def __str__( self ):
         return str( self._cfg )

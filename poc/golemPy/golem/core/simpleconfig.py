@@ -4,11 +4,15 @@ import os
 import shutil
 import types
 import inspect
+import logging
 
 from simpleauth import SimpleAuth
 from simpleenv import SimpleEnv
 
 ##############################
+##############################
+logger = logging.getLogger(__name__)
+
 ##############################
 class ConfigEntry:
 
@@ -71,41 +75,46 @@ class ConfigEntry:
 class SimpleConfig:
 
     ##############################
-    def __init__(self, commonConfig, nodeConfig, cfgFile):
+    def __init__(self, commonConfig, nodeConfig, cfgFile, refresh = False ):
 
         self._commonConfig  = commonConfig
         self._nodeConfig    = nodeConfig
 
         cfgFile = SimpleEnv.envFileName( cfgFile )
 
-        print "Reading config from file {}".format( cfgFile ),
+        loggerMsg = "Reading config from file {}".format( cfgFile )
 
         try:
             writeConfig = True
             cfg = ConfigParser.ConfigParser()
             files = cfg.read( cfgFile )
 
+
             if len( files ) == 1 and self._commonConfig.section() in cfg.sections():
                 if self._nodeConfig.section() in cfg.sections():
-                    self.__readOptions( cfg )
+                    if refresh:
+                        cfg.remove_section(self._nodeConfig.section())
+                        cfg.add_section(self._nodeConfig.section())
+                    else:
+                        self.__readOptions( cfg )
 
-                    if len( self._nodeConfig.getClientUid() ) > 0:
-                        writeConfig = False
+                        if len( self._nodeConfig.getClientUid() ) > 0:
+                            writeConfig = False
                 else:
                     cfg.add_section( self._nodeConfig.section() )
 
-                print "... successfully"
+                logger.info( "{} ... successfully".format( loggerMsg ) )
             else:
-                print "... failed"
+                logger.info( "{} ... failed".format( loggerMsg ) )
                 cfg = self.__createFreshConfig()
 
             if writeConfig:
-                print "Writing {}'s configuration to {}".format( self.getNodeConfig().section(), cfgFile )
+                logger.info( "Writing {}'s configuration to {}".format( self.getNodeConfig().section(), cfgFile ) )
                 self.__writeConfig( cfg, cfgFile )
         except Exception as ex:
-            print "... failed with an exception"
+            logger.warning( "{} ... failed with an exception".format( loggerMsg ))
             #no additional try catch because this cannot fail (if it fails then the program shouldn't start anyway)
-            print "Failed to write configuration file. Creating fresh config."
+            logger.info( "Failed to write configuration file. Creating fresh config." )
             self.__writeConfig( self.__createFreshConfig(), cfgFile )
 
     ##############################
@@ -126,16 +135,16 @@ class SimpleConfig:
 
     ##############################
     def __writeConfig( self, cfg, cfgFile ):
-        print "Generating fresh UUID for {} ->".format( self.getNodeConfig().section() ), 
+        loggerMsg = "Generating fresh UUID for {} ->".format( self.getNodeConfig().section() )
         uajdi = SimpleAuth.generateUUID()
-        print " {}".format( uajdi.get_hex() )
+        logger.info( "{} {}".format( loggerMsg, uajdi.get_hex() ) )
         self.getNodeConfig().setClientUid( uajdi.get_hex() )
 
         self.__writeOptions( cfg )
    
         if os.path.exists( cfgFile ):
             backupFileName = "{}.bak".format( cfgFile )
-            print "Creating backup configuration file {}".format( backupFileName )
+            logger.info( "Creating backup configuration file {}".format( backupFileName ) )
             shutil.copy( cfgFile, backupFileName )
 
         f = open( cfgFile, 'w' )

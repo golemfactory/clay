@@ -64,6 +64,10 @@ class GNRApplicationLogic( QtCore.QObject ):
         return self.client.configDesc
 
     ######################
+    def changeConfig ( self, hostAddress, hostPort, workingDirectory, managerPort ):
+        self.client.changeConfig( hostAddress, hostPort, workingDirectory, managerPort )
+
+    ######################
     def getRenderer( self, name ):
         if name in self.renderers:
             return self.renderers[ name ]
