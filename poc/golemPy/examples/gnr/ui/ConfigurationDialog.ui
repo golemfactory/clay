@@ -116,12 +116,31 @@
     <item row="4" column="0">
      <widget class="QLabel" name="label_7">
       <property name="text">
-       <string>Max number of cores:</string>
+       <string>Number of cores:</string>
       </property>
      </widget>
     </item>
     <item row="4" column="1">
-     <widget class="QLineEdit" name="numCoresLineEdit"/>
+     <widget class="QSlider" name="numCoresSlider">
+      <property name="minimum">
+       <number>1</number>
+      </property>
+      <property name="maximum">
+       <number>4</number>
+      </property>
+      <property name="pageStep">
+       <number>1</number>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="tickPosition">
+       <enum>QSlider::TicksBelow</enum>
+      </property>
+      <property name="tickInterval">
+       <number>1</number>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>

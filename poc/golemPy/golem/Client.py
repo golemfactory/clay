@@ -31,6 +31,7 @@ def startClient( ):
     clientUid       = cfg.getClientUid()
     addTasks        = cfg.getAddTasks()
     rootPath        = cfg.getRootPath()
+    numCores        = cfg.getNumCores()
 
     gettingPeersInterval    = cfg.getGettingPeersInterval()
     gettingTasksInterval    = cfg.getGettingTasksInterval()
@@ -50,6 +51,7 @@ def startClient( ):
     configDesc.addTasks       = addTasks
     configDesc.clientVersion  = 1
     configDesc.rootPath       = rootPath
+    configDesc.numCores       = numCores
 
     configDesc.seedHost               = seedHost
     configDesc.seedHostPort           = seedHostPort
@@ -159,8 +161,8 @@ class Client:
         self.listeners.append( listener )
 
     ############################
-    def changeConfig( self, hostAddress, hostPort, workingDirectory, managerPort ):
-        self.cfg.saveConfig( hostAddress, hostPort, workingDirectory, managerPort  )
+    def changeConfig( self, hostAddress, hostPort, workingDirectory, managerPort, numCores ):
+        self.cfg.changeConfig( hostAddress, hostPort, workingDirectory, managerPort, numCores  )
 
     ############################
     def unregisterListener( self, listener ):

@@ -56,15 +56,15 @@ class NodeConfig:
         return res
 
     ##############################
-    def __init__( self, nodeId, seedhost="", seedport=0 ):
+    def __init__( self, nodeId, seedHost = "", seedPort = 0, numCores = 4 ):
         self._section = "Node {}".format( nodeId )
 
         estimated = NodeConfig.readEstimatedPerformance()
         if estimated == 0:
             estimated = ESTIMATED_DEFAULT
 
-        ConfigEntry.createProperty( self.section(), "seed host",           seedhost,    self, "SeedHost" )
-        ConfigEntry.createProperty( self.section(), "seed host port",      seedport,     self, "SeedHostPort")
+        ConfigEntry.createProperty( self.section(), "seed host",           seedHost,    self, "SeedHost" )
+        ConfigEntry.createProperty( self.section(), "seed host port",      seedPort,     self, "SeedHostPort")
         ConfigEntry.createProperty( self.section(), "send pings",          0,     self, "SendPings" )
         ConfigEntry.createProperty( self.section(), "pigns interval",      0,     self, "PingsInterval" )
         ConfigEntry.createProperty( self.section(), "client UUID",         u"",   self, "ClientUid" )
@@ -75,6 +75,7 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "node snapshot interval",   4.0,  self, "NodeSnapshotInterval" )
         ConfigEntry.createProperty( self.section(), "add tasks",           0,     self, "AddTasks" )
         ConfigEntry.createProperty( self.section(), "maximum delay for sending task results",           3600,  self, "MaxResultsSendingDelay" )
+        ConfigEntry.createProperty( self.section(), "number of cores", numCores, self, "NumCores")
 
     ##############################
     def section( self ):
@@ -179,10 +180,14 @@ class AppConfig:
     def getMaxResultsSendingDelay( self ):
         return self._cfg.getNodeConfig().getMaxResultsSendingDelay()
 
+    def getNumCores ( self ):
+        return self._cfg.getNodeConfig().getNumCores()
+
     ##############################
-    def changeConfig( self, seedHost, seedPort, rootPath, managerPort, cfgFile = CONFIG_FILENAME, ):
+    def changeConfig( self, seedHost, seedPort, rootPath, managerPort, numCores, cfgFile = CONFIG_FILENAME, ):
         self._cfg.getNodeConfig().setSeedHost( seedHost )
         self._cfg.getNodeConfig().setSeedHostPort( seedPort )
+        self._cfg.getNodeConfig().setNumCores( numCores )
         self._cfg.getCommonConfig().setRootPath( rootPath )
         self._cfg.getCommonConfig().setManagerListenPort( managerPort )
         SimpleConfig( self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile, True )

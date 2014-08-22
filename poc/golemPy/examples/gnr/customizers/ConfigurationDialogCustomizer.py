@@ -1,4 +1,5 @@
 import os
+import multiprocessing
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog, QMessageBox
 
@@ -23,11 +24,12 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.workingDirectoryLineEdit.setText( u"{}".format( configDesc.rootPath ) )
         self.gui.ui.managerPortLineEdit.setText( u"{}".format( configDesc.managerPort ) )
         self.gui.ui.performanceLabel.setText( u"{}".format( configDesc.estimatedPerformance ) )
-
+        self.gui.ui.numCoresSlider.setMaximum( multiprocessing.cpu_count() )
 
     #############################
     def __setupConnections( self ):
-         self.gui.ui.buttonBox.accepted.connect ( self.__changeConfig )
+        self.gui.ui.recountButton.clicked.connect( self.__recountPerformance )
+        self.gui.ui.buttonBox.accepted.connect ( self.__changeConfig )
 
     #############################
     def __changeConfig (self ):
@@ -35,9 +37,17 @@ class ConfigurationDialogCustomizer:
         hostPort    =  u"{}".format ( self.gui.ui.hostIPLineEdit.text() )
         workingDirectory = u"{}".format( self.gui.ui.workingDirectoryLineEdit.text() )
         managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
-        self.logic.changeConfig ( hostAddress, hostPort, workingDirectory, managerPort )
+        numCores = u"{}".format( self.gui.ui.numCoresSlider.value() )
+        self.logic.changeConfig ( hostAddress, hostPort, workingDirectory, managerPort, numCores )
         msgBox = QMessageBox()
         msgBox.setText( "Restart application to make configuration changes" )
         msgBox.exec_()
 
+    #############################
+    def __recountPerformance( self ):
+        try:
+            numCores = int(self.gui.ui.numCoresSlider.value() )
+        except:
+            numCores = 1
+        self.logic.recountPerformance( numCores )
 

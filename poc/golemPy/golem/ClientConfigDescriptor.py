@@ -24,3 +24,4 @@ class ClientConfigDescriptor:
         self.nodeSnapshotInterval   = 0.0
         self.maxResultsSendingDelay = 0.0
         self.rootPath               = u""
+        self.numCores               = 0
