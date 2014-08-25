@@ -227,23 +227,27 @@ class MessageWantToComputeTask( Message ):
     CLIENT_ID_STR   = u"CLIENT_ID"
     TASK_ID_STR     = u"TASK_ID"
     PERF_INDEX_STR  = u"PERF_INDEX"
+    NUM_CORES       = u"NUM_CORES"
 
-    def __init__( self, clientId = 0, taskId = 0, perfIndex = 0, dictRepr = None ):
+    def __init__( self, clientId = 0, taskId = 0, perfIndex = 0, numCores = 0, dictRepr = None ):
         Message.__init__(self, MessageWantToComputeTask.Type)
 
         self.clientId   = clientId
         self.taskId     = taskId
         self.perfIndex  = perfIndex
+        self.numCores   = numCores
 
         if dictRepr:
             self.clientId   = dictRepr[ MessageWantToComputeTask.CLIENT_ID_STR ]
             self.taskId     = dictRepr[ MessageWantToComputeTask.TASK_ID_STR ]
             self.perfIndex  = dictRepr[ MessageWantToComputeTask.PERF_INDEX_STR ]
+            self.numCores   = dictRepr[ MessageWantToComputeTask.NUM_CORES ]
 
     def dictRepr(self):
         return {    MessageWantToComputeTask.CLIENT_ID_STR : self.clientId,
                     MessageWantToComputeTask.TASK_ID_STR : self.taskId,
-                    MessageWantToComputeTask.PERF_INDEX_STR: self.perfIndex }
+                    MessageWantToComputeTask.PERF_INDEX_STR: self.perfIndex,
+                    MessageWantToComputeTask.NUM_CORES: self.numCores }
 
 class MessageTaskToCompute( Message ):
 

@@ -23,7 +23,8 @@ class TaskServer:
                                                 self,
                                                 self.configDesc.estimatedPerformance,
                                                 self.configDesc.taskRequestInterval,
-                                                os.path.join(configDesc.rootPath, "ComputerRes"))
+                                                os.path.join(configDesc.rootPath, "ComputerRes"),
+                                                self.configDesc.numCores )
         self.taskSeesions       = {}
         self.taskSeesionsIncoming = []
 
@@ -41,14 +42,14 @@ class TaskServer:
 
     #############################
     # This method chooses random task from the network to compute on our machine
-    def requestTask( self, estimatedPerformance ):
+    def requestTask( self, estimatedPerformance, numCores ):
 
         if len( self.taskHeaders.values() ) > 0:
             tn = random.randrange( 0, len( self.taskHeaders.values() ) )
 
             theader = self.taskHeaders.values()[ tn ]
 
-            self.__connectAndSendTaskRequest( self.configDesc.clientUid, theader.taskOwnerAddress, theader.taskOwnerPort, theader.taskId, estimatedPerformance )
+            self.__connectAndSendTaskRequest( self.configDesc.clientUid, theader.taskOwnerAddress, theader.taskOwnerPort, theader.taskId, estimatedPerformance, numCores )
 
             return theader.taskId
         else:
@@ -171,8 +172,8 @@ class TaskServer:
             sys.exit(0)
 
     #############################   
-    def __connectAndSendTaskRequest( self, clientId, address, port, taskId, estimatedPerformance ):
-        Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, clientId, taskId, estimatedPerformance )
+    def __connectAndSendTaskRequest( self, clientId, address, port, taskId, estimatedPerformance, numCores ):
+        Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, clientId, taskId, estimatedPerformance, numCores )
 
     #############################   
     def __connectAndSendResourceRequest( self, address ,port, subtaskId, resourceHeader ):
@@ -180,13 +181,13 @@ class TaskServer:
 
 
     #############################
-    def __connectionForTaskRequestEstablished( self, session, clientId, taskId, estimatedPerformance ):
+    def __connectionForTaskRequestEstablished( self, session, clientId, taskId, estimatedPerformance, numCores ):
 
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
         self.taskSeesions[ taskId ] = session            
-        session.requestTask( clientId, taskId, estimatedPerformance )
+        session.requestTask( clientId, taskId, estimatedPerformance, numCores )
 
     #############################
     def __connectionForTaskRequestFailure( self, clientId, taskId, estimatedPerformance ):

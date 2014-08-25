@@ -15,9 +15,10 @@ import os
 class TaskComputer:
 
     ######################
-    def __init__( self, clientUid, taskServer, estimatedPerformance, taskRequestFrequency, rootPath="ComputerRes" ):
+    def __init__( self, clientUid, taskServer, estimatedPerformance, taskRequestFrequency, rootPath="ComputerRes", numCores=0 ):
         self.clientUid              = clientUid
         self.estimatedPerformance   = estimatedPerformance
+        self.numCores               = numCores
         self.taskServer             = taskServer
         self.waitingForTask         = 0
         self.currentComputations    = []
@@ -100,7 +101,7 @@ class TaskComputer:
 
     ######################
     def __requestTask( self ):
-        self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance )
+        self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance, self.numCores )
 
     ######################
     def __requestResource( self, taskId, resourceHeader, returnAddress, returnPort ):

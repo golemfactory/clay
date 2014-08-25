@@ -1,9 +1,12 @@
 import os
 import multiprocessing
+import logging
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog, QMessageBox
 
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
+
+logger = logging.getLogger(__name__)
 
 class ConfigurationDialogCustomizer:
     #############################
@@ -24,7 +27,18 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.workingDirectoryLineEdit.setText( u"{}".format( configDesc.rootPath ) )
         self.gui.ui.managerPortLineEdit.setText( u"{}".format( configDesc.managerPort ) )
         self.gui.ui.performanceLabel.setText( u"{}".format( configDesc.estimatedPerformance ) )
-        self.gui.ui.numCoresSlider.setMaximum( multiprocessing.cpu_count() )
+
+        # maxNumCores = multiprocessing.cpu_count()
+        maxNumCores = 10
+        self.gui.ui.numCoresSlider.setMaximum(  maxNumCores )
+        self.gui.ui.coresMaxLabel.setText( u"{}".format( maxNumCores ) )
+
+        try:
+            numCores = int ( configDesc.numCores )
+        except Exception, e:
+            numCores = 1
+            logger.error( "Wrong value for number of cores: {}".format( str( e ) )  )
+        self.gui.ui.numCoresSlider.setValue( numCores )
 
     #############################
     def __setupConnections( self ):

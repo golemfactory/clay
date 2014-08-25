@@ -130,7 +130,7 @@ class PbrtRenderTask( GNRTask ):
         pass
 
     #######################
-    def queryExtraData( self, perfIndex ):
+    def queryExtraData( self, perfIndex, numCores = 0 ):
 
         if ( self.lastTask != self.totalTasks ):
             perf = max( int( float( perfIndex ) / 500 ), 1)
@@ -143,6 +143,9 @@ class PbrtRenderTask( GNRTask ):
             endTask = subtask.endChunk
             startTask = subtask.startChunk
 
+        if numCores == 0:
+            numCores = self.numCores
+
         commonPathPrefix = os.path.commonprefix( self.taskResources )
         commonPathPrefix = os.path.dirname( commonPathPrefix )
 
@@ -153,7 +156,7 @@ class PbrtRenderTask( GNRTask ):
                                     "endTask" : endTask,
                                     "totalTasks" : self.totalTasks,
                                     "numSubtasks" : self.numSubtasks,
-                                    "numCores" : self.numCores,
+                                    "numCores" : numCores,
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFileSrc" : sceneSrc
                                 }
