@@ -165,8 +165,8 @@ class Client:
         self.listeners.append( listener )
 
     ############################
-    def changeConfig( self, hostAddress, hostPort, workingDirectory, managerPort, numCores ):
-        self.cfg.changeConfig( hostAddress, hostPort, workingDirectory, managerPort, numCores  )
+    def changeConfig( self, hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance ):
+        self.cfg.changeConfig( hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance  )
 
     ############################
     def unregisterListener( self, listener ):

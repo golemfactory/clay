@@ -28,8 +28,7 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.managerPortLineEdit.setText( u"{}".format( configDesc.managerPort ) )
         self.gui.ui.performanceLabel.setText( u"{}".format( configDesc.estimatedPerformance ) )
 
-        # maxNumCores = multiprocessing.cpu_count()
-        maxNumCores = 10
+        maxNumCores = multiprocessing.cpu_count()
         self.gui.ui.numCoresSlider.setMaximum(  maxNumCores )
         self.gui.ui.coresMaxLabel.setText( u"{}".format( maxNumCores ) )
 
@@ -45,6 +44,9 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.recountButton.clicked.connect( self.__recountPerformance )
         self.gui.ui.buttonBox.accepted.connect ( self.__changeConfig )
 
+        QtCore.QObject.connect( self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged( const int )"), self.__recountPerformance )
+
+
     #############################
     def __changeConfig (self ):
         hostAddress =  u"{}".format( self.gui.ui.hostAddressLineEdit.text() )
@@ -52,7 +54,8 @@ class ConfigurationDialogCustomizer:
         workingDirectory = u"{}".format( self.gui.ui.workingDirectoryLineEdit.text() )
         managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
         numCores = u"{}".format( self.gui.ui.numCoresSlider.value() )
-        self.logic.changeConfig ( hostAddress, hostPort, workingDirectory, managerPort, numCores )
+        estimatedPerformance = u"{}".format( self.gui.ui.performanceLabel.text() )
+        self.logic.changeConfig ( hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance )
         msgBox = QMessageBox()
         msgBox.setText( "Restart application to make configuration changes" )
         msgBox.exec_()
@@ -60,8 +63,8 @@ class ConfigurationDialogCustomizer:
     #############################
     def __recountPerformance( self ):
         try:
-            numCores = int(self.gui.ui.numCoresSlider.value() )
+            numCores = int( self.gui.ui.numCoresSlider.value() )
         except:
             numCores = 1
-        self.logic.recountPerformance( numCores )
+        self.gui.ui.performanceLabel.setText( str( self.logic.recountPerformance( numCores ) ) )
 

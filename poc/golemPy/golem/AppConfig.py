@@ -184,10 +184,11 @@ class AppConfig:
         return self._cfg.getNodeConfig().getNumCores()
 
     ##############################
-    def changeConfig( self, seedHost, seedPort, rootPath, managerPort, numCores, cfgFile = CONFIG_FILENAME, ):
+    def changeConfig( self, seedHost, seedPort, rootPath, managerPort, numCores, estimatedPerformance, cfgFile = CONFIG_FILENAME, ):
         self._cfg.getNodeConfig().setSeedHost( seedHost )
         self._cfg.getNodeConfig().setSeedHostPort( seedPort )
         self._cfg.getNodeConfig().setNumCores( numCores )
+        self._cfg.getNodeConfig().setEstimatedPerformance( estimatedPerformance )
         self._cfg.getCommonConfig().setRootPath( rootPath )
         self._cfg.getCommonConfig().setManagerListenPort( managerPort )
         SimpleConfig( self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile, True )

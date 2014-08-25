@@ -4,15 +4,17 @@
 #  http://www.hxa.name/minilight
 
 
+import multiprocessing
+from sys import argv, stdout
+from time import time
+import sys
+
+sys.path.append("src")
 from camera import Camera
 from image import Image
 from scene import Scene
 from randommini import Random
-from vector3f import Vector3f
-from math import log10
 
-from sys import argv, stdout
-from time import time
 
 BANNER = '''
   MiniLight 1.6 Python - http://www.hxa.name/minilight
@@ -62,16 +64,9 @@ with a newline. E.g.:
 '''
 MODEL_FORMAT_ID = '#MiniLight'
 
-class Rect:
-	def __init__( self, x, y, width, height ):
-		self.x 		= x
-		self.y 		= y
-		self.width 	= width
-		self.height = height
-
-def render_task( sceneFile, x, y, width, height, img_width, img_height ):
-    print BANNER
-    model_file_pathname = sceneFile
+def makePerfTest( filename, cfgFilename, numCores ):
+    model_file_pathname = filename
+    image_file_pathname = model_file_pathname + '.ppm'
     model_file = open(model_file_pathname, 'r')
     if model_file.next().strip() != MODEL_FORMAT_ID:
         raise 'invalid model file'
@@ -79,21 +74,24 @@ def render_task( sceneFile, x, y, width, height, img_width, img_height ):
         if not line.isspace():
             iterations = int(line)
             break
-    #image = Image(model_file)
+    image = Image(model_file)
     camera = Camera(model_file)
     scene = Scene(model_file, camera.view_position)
     model_file.close()
-    
-    res = render_rect( Rect(x, y, width, height), img_width, img_height, camera, scene, iterations )
-    # totalSamples = image.width * image.height * iterations
-    # avgSpeed = float( numSamples ) / duration
-    # expectedTime = totalSamples / avgSpeed
 
-    # print "\nSummary:"
-    # print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
-    # print "    giving an average speed of {} rays/s".format( avgSpeed )
-    # print "    estimated time for the whole scene is {} seconds".format( expectedTime )
-    return res
+    #render_orig( image, image_file_pathname, camera, scene, iterations )
+    duration = render_taskable( image, image_file_pathname, camera, scene, iterations )
+
+    numSamples = image.width * image.height * iterations
+    print "\nSummary:"
+    print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
+    print "    giving an average speed of {} rays/s".format( float( numSamples ) / duration )
+    cfg_file = open(cfgFilename, 'w')
+    average = float(numSamples) / duration
+    average = average * numCores
+    cfg_file.write("{0:.1f}".format(average))
+    cfg_file.close()
+    return average
 
 def timedafunc( function ):
 
@@ -102,11 +100,11 @@ def timedafunc( function ):
         result = function ( *args, **kwargs )
         t1 = time()
 
-        return result, t1 - t0
-        
+        return t1 - t0
+
     return timedExecution
 
-def render_orig( image, image_file_pathname, camera, scene, iterations ): 
+def render_orig( image, image_file_pathname, camera, scene, iterations ):
     random = Random()
 
     try:
@@ -126,139 +124,68 @@ def render_orig( image, image_file_pathname, camera, scene, iterations ):
 def render_taskable( image, image_file_pathname, camera, scene, num_samples ):
     random = Random()
     aspect = float(image.height) / float(image.width)
-    samplesPerUpdate = 2000
-    
-    print camera
+    samplesPerUpdate = 200
 
-    curPass = 0
     try:
         totalPasses = float( image.height * image.width )
+        curPass = 0
         passUpdateDelta = samplesPerUpdate // num_samples if  num_samples < samplesPerUpdate else 1
-        
+
         for y in range(image.height):
             for x in range(image.width):
-                #separated tasks which should be added to the final image when they are ready (even better simple pixel values can be accumulated simply via additions and num iterations just 
+                #separated tasks which should be added to the final image when they are ready (even better simple pixel values can be accumulated simply via additions and num iterations just
                 #has to be passed to tone mapper)
-                r = camera.pixel_accumulated_radiance(scene, random, image, x, y, aspect, num_samples)
-                
-                #accumulation of stored values (can be easily moved to a separate loop over x and y (and the results from radiance calculations) 
+                r = camera.pixel_accumulated_radiance(scene, random, image.width, image.height, x, y, aspect, num_samples)
+
+                #accumulation of stored values (can be easily moved to a separate loop over x and y (and the results from radiance calculations)
                 image.add_to_pixel( x, y, r )
-                
+
                 curPass += 1
 
                 if curPass % passUpdateDelta == 0:
                     stdout.write('\r                                          ')
                     stdout.write('\rProgress: {} %'.format( float( curPass ) * 100.0 / totalPasses ) )
                     stdout.flush()
-                    
-        image_file = open(image_file_pathname, 'wb')
-        image.get_formatted(image_file, num_samples)
-        image_file.close()
+
+        # image_file = open(image_file_pathname, 'wb')
+        # image.get_formatted(image_file, num_samples)
+        # image_file.close()
 
         print '\nfinished'
     except KeyboardInterrupt:
         print '\ninterrupted'
-    
-    return curPass * num_samples
 
 
-def render_rect( rect, img_width, img_height, camera, scene, num_samples ):
-    assert isinstance( rect, Rect )
-    aspect = float(img_height) / float(img_width)
-    random = Random()
-    samplesPerUpdate = 2000
-    
-    out = [ 0.0 ] * rect.width * rect.height * 3
-    
-    curPass = 0
-    try:
-        totalPasses = float( rect.width * rect.height )
-        passUpdateDelta = samplesPerUpdate // num_samples if  num_samples < samplesPerUpdate else 1
-        
-        for y in range(rect.y, rect.y + rect.height):
-            for x in range(rect.x, rect.x + rect.width):
-                radiance = camera.pixel_accumulated_radiance(scene, random, img_width, img_height, x, y, aspect, num_samples)
-                  
-                absX = x - rect.x             
-                absY = y - rect.y             
-                if absX >= 0 and absX < rect.width and absY >= 0 and absY < rect.height:
-                    index = (absX + ((rect.height - 1 - absY) * rect.width)) * 3
-                    for a in radiance:
-                        out[index] += a
-                        index += 1
-                
-                curPass += 1
-
-                if curPass:
-                    #stdout.write('\r                                          ')
-                    stdout.write('\rProgress: {} % \n'.format( float( curPass ) * 100.0 / totalPasses ) )
-                    stdout.flush()
-        print '\nfinished'
-    except KeyboardInterrupt:
-        print '\ninterrupted'  
-
-    print out
-    return get_formatted( out, num_samples )
-   
-IMAGE_DIM_MAX = 4000
-PPM_ID = 'P6'
-MINILIGHT_URI = 'http://www.hxa.name/minilight'
-DISPLAY_LUMINANCE_MAX = 200.0
-RGB_LUMINANCE = Vector3f(0.2126, 0.7152, 0.0722)
-GAMMA_ENCODE = 0.45
-
-def get_formatted(pixels, iteration):
-    divider = 1.0 / (iteration if iteration >= 1 else 1)
-    tonemap_scaling = calculate_tone_mapping(pixels, divider)
-    out = bytearray()
-    for channel in pixels:
-        mapped = channel * divider * tonemap_scaling
-        gammaed = (mapped if mapped > 0.0 else 0.0) ** GAMMA_ENCODE
-        out.append(chr(min(int((gammaed * 255.0) + 0.5), 255)))
-
-    return out
-
-def calculate_tone_mapping(pixels, divider):
-    sum_of_logs = 0.0
-    for i in range(len(pixels) / 3):
-        y = Vector3f(pixels[i * 3: i * 3 + 3]).dot(RGB_LUMINANCE) * divider
-        sum_of_logs += log10(y if y > 1e-4 else 1e-4)
-    adapt_luminance = 10.0 ** (sum_of_logs / (len(pixels) / 3))
-    a = 1.219 + (DISPLAY_LUMINANCE_MAX * 0.25) ** 0.4
-    b = 1.219 + adapt_luminance ** 0.4
-    return ((a / b) ** 2.5) / DISPLAY_LUMINANCE_MAX  
 
 def main():
-   if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
-       print HELP
-   else:
-       print BANNER
-       model_file_pathname = argv[1]
-       image_file_pathname = model_file_pathname + '.ppm'
-       model_file = open(model_file_pathname, 'r')
-       if model_file.next().strip() != MODEL_FORMAT_ID:
-           raise 'invalid model file'
-       for line in model_file:
-           if not line.isspace():
-               iterations = int(line)
-               break
-       image = Image(model_file)
-       camera = Camera(model_file)
-       scene = Scene(model_file, camera.view_position)
-       model_file.close()
-        
-       return
-       #render_orig( image, image_file_pathname, camera, scene, iterations )
-       #numSamples, duration = render_taskable( image, image_file_pathname, camera, scene, iterations )
-       #numSamples, duration = render_rect( Rect(0, 0, 50, 1), image.width, image.height, camera, scene, iterations )
-       numSamples, duration = render_rect( Rect(0, 0, image.width, image.height), image.width, image.height, camera, scene, iterations )
-       totalSamples = image.width * image.height * iterations
-       avgSpeed = float( numSamples ) / duration
-       expectedTime = totalSamples / avgSpeed
+    if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
+        print HELP
+    else:
+        print BANNER
+        model_file_pathname = argv[1]
+        image_file_pathname = model_file_pathname + '.ppm'
+        model_file = open(model_file_pathname, 'r')
+        if model_file.next().strip() != MODEL_FORMAT_ID:
+            raise 'invalid model file'
+        for line in model_file:
+            if not line.isspace():
+                iterations = int(line)
+                break
+        image = Image(model_file)
+        camera = Camera(model_file)
+        scene = Scene(model_file, camera.view_position)
+        model_file.close()
 
-       print "\nSummary:"
-       print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
-       print "    giving an average speed of {} rays/s".format( avgSpeed )
-       print "    estimated time for the whole scene is {} seconds".format( expectedTime )
-        
-main()
+        #render_orig( image, image_file_pathname, camera, scene, iterations )
+        duration = render_taskable( image, image_file_pathname, camera, scene, iterations )
+
+        numSamples = image.width * image.height * iterations
+        print "\nSummary:"
+        print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
+        print "    giving an average speed of {} rays/s".format( float( numSamples ) / duration )
+        # cfg_file = open('minilight.ini', 'w')
+        cfg_file = open('..\\..\\..\\examples\\gnr\\node_data\\minilight.ini', 'w')
+        average = float(numSamples) / duration
+        average = average * multiprocessing.cpu_count()
+        cfg_file.write("{0:.1f}".format(average))
+        cfg_file.close()

@@ -10,7 +10,8 @@ from golem.task.TaskBase import Task
 from golem.task.TaskState import TaskState
 from golem.Client import GolemClientEventListener
 from customizers.MainWindowCustomizer import MainWindowCustomizer
-from GNREnv import GNREnv
+
+from testtasks.minilight.src.minilight import makePerfTest
 
 
 class GNRClientEventListener( GolemClientEventListener ):
@@ -64,8 +65,8 @@ class GNRApplicationLogic( QtCore.QObject ):
         return self.client.configDesc
 
     ######################
-    def changeConfig ( self, hostAddress, hostPort, workingDirectory, managerPort, numCores ):
-        self.client.changeConfig( hostAddress, hostPort, workingDirectory, managerPort, numCores )
+    def changeConfig ( self, hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance ):
+        self.client.changeConfig( hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance )
 
     ######################
     def getRenderer( self, name ):
@@ -152,6 +153,13 @@ class GNRApplicationLogic( QtCore.QObject ):
 
         f.write( tspickled )
         f.close()
+
+    ######################
+    def recountPerformance( self, numCores ):
+        testFile =  os.path.abspath( os.path.join( self.client.configDesc.rootPath, "..\\..\\testtasks\\minilight\\cornellbox.ml.txt"))
+        resultFile = os.path.abspath( os.path.join( self.client.configDesc.rootPath, "node_data\\minilight.ini" ))
+        estimatedPerf =  makePerfTest(testFile, resultFile, numCores)
+        return estimatedPerf
 
 
     ######################
