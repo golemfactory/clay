@@ -2,6 +2,10 @@
 from ClientManagerSession import ClientManagerSession
 from golem.core.network import Network
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 class NodesManagerClient:
 
     ######################
@@ -42,4 +46,4 @@ class NodesManagerClient:
         self.clientManagerSession = session
 
     def __connectionFailure( self ):
-        print "Connection to nodes manager failure."
+        logger.error( "Connection to nodes manager failure." )

@@ -15,6 +15,10 @@ from golem.AppConfig import AppConfig
 from golem.Message import initMessages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 def startClient( ):
     initMessages()
 
@@ -63,11 +67,11 @@ def startClient( ):
     configDesc.nodeSnapshotInterval   = nodeSnapshotInterval
     configDesc.maxResultsSendingDelay = cfg.getMaxResultsSendingDelay()
 
-    print "Adding tasks {}".format( addTasks )
-    print "Creating public client interface with uuid: {}".format( clientUid )
+    logger.info( "Adding tasks {}".format( addTasks ) )
+    logger.info( "Creating public client interface with uuid: {}".format( clientUid ) )
     c = Client( configDesc, config = cfg )
 
-    print "Starting all asynchronous services"
+    logger.info( "Starting all asynchronous services" )
     c.startNetwork( )
 
     return c
@@ -121,20 +125,20 @@ class Client:
        
     ############################
     def startNetwork( self ):
-        print "Starting network ..."
-        print "Starting p2p server ..."
+        logger.info( "Starting network ..." )
+        logger.info( "Starting p2p server ..." )
         self.p2pservice = P2PService( self.hostAddress, self.configDesc )
 
         time.sleep( 1.0 )
 
-        print "Starting task server ..."
+        logger.info( "Starting task server ..." )
         self.taskServer = TaskServer( self.hostAddress, self.configDesc )
 
         self.p2pservice.setTaskServer( self.taskServer )
 
         time.sleep( 0.5 )
         self.taskServer.taskManager.registerListener( ClientTaskManagerEventListener( self ) )
-        print "Starting nodes manager client ..."
+        logger.info( "Starting nodes manager client ..." )
         self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUid, "127.0.0.1", self.configDesc.managerPort, self.taskServer.taskManager )
         self.nodesManagerClient.start()
 
@@ -171,7 +175,7 @@ class Client:
             if self.listeners[ i ] is listener:
                 del self.listeners[ i ]
                 return
-        print "listener {} not registered".format( listener )
+        logger.info( "listener {} not registered".format( listener ) )
 
     def querryTaskState( self, taskId ):
         return self.taskServer.taskManager.querryTaskState( taskId )

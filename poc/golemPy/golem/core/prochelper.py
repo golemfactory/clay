@@ -3,12 +3,14 @@ import psutil
 import fnmatch
 import filelock
 import time
+import logging
 
 from simpleserializer import SimpleSerializer
 from simpleenv import SimpleEnv
 
 DEFAULT_PROC_FILE = "node_processes.ctl"
 
+logger = logging.getLogger(__name__)
 
 class ProcessService:
 
@@ -90,7 +92,7 @@ class ProcessService:
                 updatedState[ p ] = self.state[ p ]
                 ids.append( self.state[ p ][ 1 ] ) #localId    
             else:
-                print "Process PID {} is inactive - removing".format( p )
+                logger.info( "Process PID {} is inactive - removing".format( p ) )
 
         self.state = updatedState
 
@@ -111,7 +113,7 @@ class ProcessService:
             id = self.__updateState()
             self.state[ spid ] = [ timestamp, id, extraData ]
             self.unlockState()
-            print "Registering new process - PID {} at time {} at location {}".format( spid, timestamp, id )
+            logger.info( "Registering new process - PID {} at time {} at location {}".format( spid, timestamp, id ) )
 
             return id
 

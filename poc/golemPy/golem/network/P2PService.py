@@ -3,6 +3,9 @@ from P2PServer import P2PServer
 from golem.core.network import Network
 from PeerSession import PeerSession
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 class P2PService:
     ########################
@@ -99,7 +102,7 @@ class P2PService:
 
             x = int( time.time() ) % len( self.freePeers ) # get some random peer from freePeers
             self.incommingPeers[ self.freePeers[ x ] ][ "conn_trials" ] += 1 # increment connection trials
-            print "Connecting to peer {}".format( self.freePeers[ x ] )
+            logger.info( "Connecting to peer {}".format( self.freePeers[ x ] ) )
             self.__connect( self.incommingPeers[ self.freePeers[ x ] ][ "address" ], self.incommingPeers[ self.freePeers[ x ] ][ "port" ] )
             self.freePeers.remove( self.freePeers[ x ] )
 
@@ -114,8 +117,8 @@ class P2PService:
     def __connectionEstablished( self, session ):
         session.p2pService = self
         self.allPeers.append( session )
-        print "Connection to peer established. {}: {}".format( session.conn.transport.getPeer().host, session.conn.transport.getPeer().port )
+        logger.info( "Connection to peer established. {}: {}".format( session.conn.transport.getPeer().host, session.conn.transport.getPeer().port ) )
 
     #############################
     def __connectionFailure( self ):
-        print "Connection to peer failure."
+        logger.error( "Connection to peer failure." )

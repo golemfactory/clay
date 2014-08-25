@@ -216,7 +216,7 @@ class PbrtRenderTask( GNRTask ):
 
         self.testTaskResPath = GNREnv.getTestTaskDirectory()
         self.testTaskResPath = unicode( os.path.abspath( self.testTaskResPath ) )
-        print self.testTaskResPath
+        logger.debug( self.testTaskResPath )
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
 

@@ -2,7 +2,7 @@ import os
 import cPickle as pickle
 import datetime
 from PyQt4 import QtCore
-from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QMenu, QFileDialog
+from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QMenu, QFileDialog, QMessageBox
 
 from examples.gnr.ui.MainWindow import GNRMainWindow
 from examples.gnr.ui.NewTaskDialog import NewTaskDialog
@@ -16,8 +16,9 @@ from TaskContexMenuCustomizer import TaskContextMenuCustomizer
 from TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
 from ConfigurationDialogCustomizer import ConfigurationDialogCustomizer
 import time
+import logging
 
-
+logger = logging.getLogger(__name__)
 
 class MainWindowCustomizer:
     ############################
@@ -125,17 +126,23 @@ class MainWindowCustomizer:
     def __loadTask( self, filePath ):
         f = open( filePath, 'r' )
 
-        definition = pickle.loads( f.read() )
+        try:
+            definition = pickle.loads( f.read() )
+        except Exception, e:
+            definition = None
+            logger.error("Can't unpickle the file {}: {}".format( filePath, str( e ) ) )
+            QMessageBox().critical(None, "Error", "This is not a proper gt file")
+        finally:
+            f.close()
 
-        f.close()
+        if definition:
+            self.newTaskDialog = NewTaskDialog( self.gui.window )
 
-        self.newTaskDialog = NewTaskDialog( self.gui.window )
+            self.newTaskDialogCustomizer = NewTaskDialogCustomizer( self.newTaskDialog, self.logic )
 
-        self.newTaskDialogCustomizer = NewTaskDialogCustomizer( self.newTaskDialog, self.logic )
+            self.newTaskDialogCustomizer.loadTaskDefinition( definition )
 
-        self.newTaskDialogCustomizer.loadTaskDefinition( definition )
-
-        self.newTaskDialog.show()
+            self.newTaskDialog.show()
 
     ############################
     def __showTaskContextMenu( self, p ):

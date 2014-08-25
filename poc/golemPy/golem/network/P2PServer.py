@@ -1,5 +1,8 @@
 
 from golem.core.network import Network
+import logging
+
+logger = logging.getLogger(__name__)
 
 class P2PServer:
     #############################
@@ -17,18 +20,18 @@ class P2PServer:
                                    
     #############################
     def __startAccepting( self ):
-        print "Enabling network accepting state"
+        logger.info( "Enabling network accepting state" )
 
         Network.listen( self.configDesc.startPort, self.configDesc.endPort, NetServerFactory( self ), None, self.__listeningEstablished, self.__listeningFailure )
 
     #############################
     def __listeningEstablished( self, port ):
         self.curPort = port
-        print "Port {} opened - listening".format( port )
+        logger.info( "Port {} opened - listening".format( port ) )
 
     #############################
     def __listeningFailure( self ):
-        print "Listening on ports {} to {} failure".format( self.configDesc.startPort, self.configDesc.endPort )
+        logger.error( "Listening on ports {} to {} failure".format( self.configDesc.startPort, self.configDesc.endPort ) )
 
 
 
@@ -42,6 +45,6 @@ class NetServerFactory( Factory ):
 
     #############################
     def buildProtocol( self, addr ):
-        print "Protocol build for {}".format( addr )
+        logger.info( "Protocol build for {}".format( addr ) )
         return NetConnState( self.p2pserver )
 

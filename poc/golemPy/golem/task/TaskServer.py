@@ -8,6 +8,9 @@ import random
 import time
 import sys
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TaskServer:
     #############################
@@ -101,11 +104,11 @@ class TaskServer:
             id = thDictRepr[ "id" ]
             if id not in self.taskHeaders.keys(): # dont have it
                 if id not in self.taskManager.tasks.keys(): # It is not my task id
-                    print "Adding task {}".format( id )
+                    logger.info( "Adding task {}".format( id ) )
                     self.taskHeaders[ id ] = TaskHeader( thDictRepr[ "clientId" ], id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"] )
             return True
         except:
-            print "Wrong task header received"
+            logger.error( "Wrong task header received" )
             return False
 
     #############################
@@ -149,19 +152,19 @@ class TaskServer:
 
     #############################
     def __startAccepting(self):
-        print "Enabling tasks accepting state"
+        logger.info( "Enabling tasks accepting state" )
         Network.listen( self.configDesc.startPort, self.configDesc.endPort, TaskServerFactory( self ), None, self.__listeningEstablished, self.__listeningFailure  )
 
     #############################
     def __listeningEstablished( self, port ):
         self.curPort = port
-        print "Port {} opened - listening".format( port )
+        logger.info( "Port {} opened - listening".format( port ) )
         self.taskManager.listenAddress = self.address
         self.taskManager.listenPort = self.curPort
 
     #############################
     def __listeningFailure(self, p):
-        print "Opening {} port for listening failed, trying the next one".format( self.curPort )
+        logger.warning( "Opening {} port for listening failed, trying the next one".format( self.curPort ) )
 
         self.curPort = self.curPort + 1
 
@@ -191,8 +194,8 @@ class TaskServer:
 
     #############################
     def __connectionForTaskRequestFailure( self, clientId, taskId, estimatedPerformance ):
-        print "Cannot connect to task {} owner".format( taskId )
-        print "Removing task {} from task list".format( taskId )
+        logger.warning( "Cannot connect to task {} owner".format( taskId ) )
+        logger.warning( "Removing task {} from task list".format( taskId ) )
         
         self.taskComputer.taskRequestRejected( taskId, "Connection failed" )
         
@@ -215,8 +218,8 @@ class TaskServer:
 
     #############################
     def __connectionForTaskResultFailure( self, waitingTaskResult ):
-        print "Cannot connect to task {} owner".format( waitingTaskResult.subtaskId )
-        print "Removing task {} from task list".format( waitingTaskResult.subtaskId )
+        logger.warning( "Cannot connect to task {} owner".format( waitingTaskResult.subtaskId ) )
+        logger.warning( "Removing task {} from task list".format( waitingTaskResult.subtaskId ) )
         
         waitingTaskResult.lastSendingTrial  = time.time()
         waitingTaskResult.delayTime         = self.configDesc.maxResultsSendignDelay
@@ -234,8 +237,8 @@ class TaskServer:
 
     #############################
     def __connectionForResourceRequestFailure( self, session, subtaskId, resourceHeader ):
-        print "Cannot connect to task {} owner".format( subtaskId )
-        print "Removing task {} from task list".format( subtaskId )
+        logger.warning( "Cannot connect to task {} owner".format( subtaskId ) )
+        logger.warning( "Removing task {} from task list".format( subtaskId ) )
         
         self.taskComputer.resourceRequestRejected( subtaskId, "Connection failed" )
         
@@ -248,7 +251,7 @@ class TaskServer:
             t.ttl = t.ttl - ( currTime - t.lastChecking )
             t.lastChecking = currTime
             if t.ttl <= 0:
-                print "Task {} dies".format( t.taskId )
+                logger.warning( "Task {} dies".format( t.taskId ) )
                 self.removeTaskHeader( t.taskId )
 
         self.taskManager.removeOldTasks()
@@ -285,5 +288,5 @@ class TaskServerFactory(Factory):
 
     #############################
     def buildProtocol(self, addr):
-        print "Protocol build for {}".format( addr )
+        logger.info( "Protocol build for {}".format( addr ) )
         return TaskConnState( self.server )

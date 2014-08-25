@@ -1,11 +1,14 @@
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Network:
 
     ######################
     @classmethod
     def connect( self, address, port, SessionType, establishedCallback = None, failureCallback = None, *args ):
-        print "Connecting to host {} : {}".format( address, port )
+        logger.info( "Connecting to host {} : {}".format( address, port ) )
         from twisted.internet import reactor
         endpoint    = TCP4ClientEndpoint( reactor, address, port )
         connection  = SessionType.ConnectionStateType();
@@ -45,7 +48,7 @@ class Network:
             conn.setSession( session )
 
             pp = conn.transport.getPeer()
-            print "__connectionEstablished {} {}".format( pp.host, pp.port )
+            logger.info( "__connectionEstablished {} {}".format( pp.host, pp.port ) )
 
             if establishedCallback:
                 if len( args ) == 0:
@@ -56,7 +59,7 @@ class Network:
     ######################
     @classmethod
     def __connectionFailure( self, conn, failureCallback, *args ):
-        print "Connection failure. {}".format( conn )
+        logger.info( "Connection failure. {}".format( conn ) )
         if failureCallback:
             if len( args ) == 0:
                 failureCallback()
