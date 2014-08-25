@@ -3,6 +3,9 @@ from ui_manager import Ui_NodesManagerWidget
 from taskdialog import TaskSpecDialog
 from NodeTasksSpec import NodeTasksWidget
 from progressbar import createWrappedProgressBar
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
@@ -171,7 +174,7 @@ class ManagerUiCustomizer(QtCore.QObject):
 
     ########################
     def __removeRowAndDetailedData( self, idx, uid ):
-        print "Removing {} idx from {} total at {} uid".format( idx, len( self.tableData ), uid )
+        logger.debug( "Removing {} idx from {} total at {} uid".format( idx, len( self.tableData ), uid ) )
         self.nodeDataStates.pop( idx )
         del self.tableData[ uid ]
         self.table.removeRow( idx )

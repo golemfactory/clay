@@ -1,11 +1,13 @@
 from threading import Thread, Lock
 import time
 import random
+import logging
 
 from PyQt4 import QtCore
 
 from NodeStateSnapshot import NodeStateSnapshot, LocalTaskStateSnapshot, TaskChunkStateSnapshot
 
+logger = logging.getLogger(__name__)
 
 GLOBAL_SHUTDOWN = [ False ]
 
@@ -122,17 +124,17 @@ class NodeSimulator(QtCore.QThread):
         self.remTask = 0
         self.remTaskStartTime = startTime
 
-        print "Starting node '{}' local tasks: {} remote tasks: {}".format( self.uid, self.numLocalTasks, self.numRemoteTasks )
-        print "->local task dura: {} secs, remote task dura: {} secs".format( self.localTaskDuration, self.remoteTaskDuration )
+        loggerMsg = "Starting node '{}' local tasks: {} remote tasks: {}".format( self.uid, self.numLocalTasks, self.numRemoteTasks )
+        logger.info( "{} ->local task dura: {} secs, remote task dura: {} secs".format( loggerMsg, self.localTaskDuration, self.remoteTaskDuration ) )
 
         while( time.time() - startTime < self.totalDuration ):
                 
             if GLOBAL_SHUTDOWN[ 0 ]:
-                print "{}: Global shutdown triggered - bailing out".format( self.uid )
+                logger.warning( "{}: Global shutdown triggered - bailing out".format( self.uid ) )
                 break
 
             if self.forcedQuit:
-                print "{}: Forced quit triggered - bailing out".format( self.uid )
+                logger.warning( "{}: Forced quit triggered - bailing out".format( self.uid ) )
                 break
 
             time.sleep( self.innerUpdateDelay )
@@ -165,7 +167,7 @@ class NodeSimulator(QtCore.QThread):
             #print "\r                                                                      ",
             #print "\r{:3} : {}   {:3} : {}".format( locTask, self.locProgress, remTask, self.remProgress ),
 
-        print "Finished node '{}'".format( self.uid )
+        logger.info( "Finished node '{}'".format( self.uid ) )
         
         if self.running:
             self.running = False
@@ -250,7 +252,7 @@ class LocalNetworkSimulator(Thread):
 
         curTime = time.time()
 
-        print "Starting node simulator for {} nodes".format( self.numNodes )
+        logger.info( "Starting node simulator for {} nodes".format( self.numNodes ) )
 
         while not GLOBAL_SHUTDOWN[ 0 ]:
 
@@ -259,11 +261,11 @@ class LocalNetworkSimulator(Thread):
 
             time.sleep( self.getRandomizedUp( self.nodeSpawnDelay ) )
 
-        print "Local network simulator finished running."
-        print "Waiting for nodes to finish"
+        logger.info( "Local network simulator finished running." )
+        logger.info( "Waiting for nodes to finish" )
 
         #10 seconds should be just enough for each node to do its cleanup
         for node in self.nodes:
             node.wait()
 
-        print "Simulation finished"
+        logger.info( "Simulation finished" )

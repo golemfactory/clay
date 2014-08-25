@@ -3,6 +3,9 @@ from NetConnState import NetConnState
 
 from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 class PeerSessionInterface:
     def __init__(self):
@@ -35,7 +38,7 @@ class PeerSession(PeerSessionInterface):
         self.state = PeerSession.StateInitialize
         self.lastMessageTime = 0.0
 
-        print "CREATING PEER SESSION {} {}".format( self.address, self.port )
+        logger.info( "CREATING PEER SESSION {} {}".format( self.address, self.port ) )
 
         self.lastDisconnectTime = None
 
@@ -45,7 +48,7 @@ class PeerSession(PeerSessionInterface):
      
     ##########################
     def start(self):
-        print "Starting peer session {} : {}".format(self.address, self.port)
+        logger.info( "Starting peer session {} : {}".format(self.address, self.port) )
         self.__sendHello()
         self.__sendPing()        
 
@@ -81,8 +84,8 @@ class PeerSession(PeerSessionInterface):
         elif type == MessagePong.Type:
             pass
         elif type == MessageDisconnect.Type:
-            print "Disconnect reason: {}".format(msg.reason)
-            print "Closing {} : {}".format( self.address, self.port )
+            logger.info( "Disconnect reason: {}".format(msg.reason) )
+            logger.info( "Closing {} : {}".format( self.address, self.port ) )
             self.dropped()
 
         elif type == MessageHello.Type:
@@ -92,8 +95,8 @@ class PeerSession(PeerSessionInterface):
             p = self.p2pService.findPeer( self.id )
 
             if p and p != self and p.conn.isOpen():
-                print "PEER DUPLICATED: {} {} : {}".format( p.id, p.address, p.port )
-                print "AND {} : {}".format( msg.clientUID, msg.port )
+                loggerMsg = "PEER DUPLICATED: {} {} : {}".format( p.id, p.address, p.port )
+                logger.warning( "{} AND {} : {}".format( loggerMsg, msg.clientUID, msg.port ) )
                 self.__disconnect( PeerSession.DCRDuplicatePeers )
 
             if not p:
@@ -110,10 +113,10 @@ class PeerSession(PeerSessionInterface):
             peersInfo = msg.peersArray
             for pi in peersInfo:
                 if pi[ "id" ] not in self.p2pService.incommingPeers and pi[ "id" ] not in self.p2pService.peers and pi[ "id" ] != self.p2pService.configDesc.clientUid:
-                    print "add peer to incoming {} {} {}".format( pi[ "id" ], pi[ "address" ], pi[ "port" ] )
+                    logger.info( "add peer to incoming {} {} {}".format( pi[ "id" ], pi[ "address" ], pi[ "port" ] ) )
                     self.p2pService.incommingPeers[ pi[ "id" ] ] = { "address" : pi[ "address" ], "port" : pi[ "port" ], "conn_trials" : 0 }
                     self.p2pService.freePeers.append( pi[ "id" ] )
-                    print self.p2pService.incommingPeers
+                    logger.debug( self.p2pService.incommingPeers )
 
         elif type == MessageGetTasks.Type:
             tasks = self.p2pService.taskServer.getTasksHeaders()
@@ -137,7 +140,7 @@ class PeerSession(PeerSessionInterface):
        
     ##########################
     def __disconnect(self, reason):
-        print "Disconnecting {} : {} reason: {}".format( self.address, self.port, reason )
+        logger.info( "Disconnecting {} : {} reason: {}".format( self.address, self.port, reason ) )
         if self.conn.isOpen():
             if self.lastDisconnectTime:
                 self.dropped()

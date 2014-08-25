@@ -1,6 +1,9 @@
 
 from golem.Message import Message
 from golem.network.ConnectionState import ConnectionState
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ClientManagerConnState( ConnectionState ):
 
@@ -24,14 +27,14 @@ class ClientManagerConnState( ConnectionState ):
         self.db.appendString(data)
         mess = Message.deserialize( self.db )
         if mess is None:
-            print "Deserialization message failed"
+            logger.error( "Deserialization message failed" )
             self.clientManagerSession.interpret( None )
 
         if self.clientManagerSession:
             for m in mess:
                 self.clientManagerSession.interpret(m)
         else:
-            print "manager session for connection is None"
+            logger.error( "manager session for connection is None" )
             assert False
 
     ############################

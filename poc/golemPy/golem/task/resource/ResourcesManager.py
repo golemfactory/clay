@@ -3,6 +3,9 @@ from Resource import TaskResource, TaskResourceHeader, prepareDeltaZip, decompre
 import os
 from os.path import join, isdir, isfile
 import struct
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ResourcesManager:
     ###################
@@ -35,14 +38,14 @@ class ResourcesManager:
 
         taskResHeader = None
 
-        print "Getting resource for delta dir: {} header:{}".format( dirName, resourceHeader )
+        logger.info( "Getting resource for delta dir: {} header:{}".format( dirName, resourceHeader ) )
 
         if os.path.exists( dirName ):
             taskResHeader = TaskResource.buildDeltaFromHeader( resourceHeader, dirName )
         else:
             taskResHeader = TaskResource( "resources" )
 
-        print  "Getting resource for delta dir: {} header:{} FINISHED".format( dirName, resourceHeader )
+        logger.info( "Getting resource for delta dir: {} header:{} FINISHED".format( dirName, resourceHeader ) )
         return taskResHeader
 
     ###################
@@ -83,7 +86,7 @@ class ResourcesManager:
         if self.fileSize == -1:
             # First chunk
             ( self.fileSize, ) = struct.unpack( "!L", data[0:4] )
-            print "File size {}".format( self.fileSize )
+            logger.info( "File size {}".format( self.fileSize ) )
             locData = data[ 4: ]
             assert self.fh is None
 

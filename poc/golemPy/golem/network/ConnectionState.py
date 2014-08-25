@@ -4,6 +4,10 @@ import abc
 from twisted.internet.protocol import Protocol
 from golem.core.databuffer import DataBuffer
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 class ConnectionState(Protocol):
     ############################
     def __init__(self ):
@@ -14,8 +18,8 @@ class ConnectionState(Protocol):
     ############################
     def sendMessage(self, msg):
         if not self.opened:
-            print msg
-            print "sendMessage failed - connection closed."
+            logger.error( msg )
+            logger.error( "sendMessage failed - connection closed." )
             return False
 
         serMsg = msg.serialize()

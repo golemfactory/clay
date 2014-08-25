@@ -155,7 +155,7 @@ class TaskResource:
             f = open( fileName, "rb" )
             data = f.read()
         except Exception as ex:
-            print ex
+            logger.error( str( ex ) )
             return None
 
         return data
@@ -167,7 +167,7 @@ class TaskResource:
             f = open( fileName, "wb" )
             f.write( data )
         except Exception as ex:
-            print ex
+            logger.error( str( ex ) )
 
     ####################
     @classmethod

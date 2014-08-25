@@ -40,7 +40,7 @@ class ProcessService:
 
             return True
         except Exception as ex:
-            print "Failed to acquire lock due to {}".format( ex )
+            logger.error( "Failed to acquire lock due to {}".format( ex ) )
             return False
 
     #################################

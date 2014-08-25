@@ -1,4 +1,7 @@
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TaskComputerEnvironment:
     ######################
@@ -80,7 +83,7 @@ class TaskManagerEnvironment:
         if os.path.exists( fullPath ) and os.path.isdir( fullPath ):
             return fullPath
 
-        print "resource dir does not exist"
+        logger.error( "resource dir does not exist" )
         return ""
 
     ######################
@@ -91,7 +94,7 @@ class TaskManagerEnvironment:
         if os.path.exists( fullPath ) and os.path.isdir( fullPath ):
             return fullPath
 
-        print "output dir does not exist"
+        logger.error( "output dir does not exist" )
         return ""
 
     ######################

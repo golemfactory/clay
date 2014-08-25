@@ -1,6 +1,9 @@
 
 from golem.core.network import Network
 from golem.manager.NodeStateSnapshot import NodeStateSnapshot
+import logging
+
+logger = logging.getLogger(__name__)
 
 class NodesManagerServer:
 
@@ -23,11 +26,11 @@ class NodesManagerServer:
     #############################
     def __listeningEstablished( self, port ):
         assert port == self.port
-        print "Manager server - port {} opened, listening".format( port )
+        logger.info( "Manager server - port {} opened, listening".format( port ) )
 
     #############################
     def __listeningFailure( self ):
-        print "Opening {} port for listening failed - bailign out".format( self.port )
+        logger.error( "Opening {} port for listening failed - bailign out".format( self.port ) )
 
     #############################
     def newConnection( self, session ):
@@ -64,6 +67,6 @@ class ManagerServerFactory(Factory):
 
     #############################
     def buildProtocol( self, addr ):
-        print "Protocol build for {} : {}".format( addr.host, addr.port )
+        logger.info( "Protocol build for {} : {}".format( addr.host, addr.port ) )
         cs = ServerManagerConnState( self.server )
         return cs

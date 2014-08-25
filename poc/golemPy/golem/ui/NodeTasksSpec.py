@@ -2,6 +2,9 @@
 from PyQt4 import QtCore, QtGui
 from ui_nodetasks import Ui_NodeTasksWidget
 from progressbar import createWrappedProgressBar
+import logging
+
+logger = logging.getLogger(__name__)
 
 class NodeTasksWidget(QtGui.QWidget):
     
@@ -100,7 +103,7 @@ class NodeTasksWidget(QtGui.QWidget):
         else:
             self.localTasksActiveRow = -1
 
-        print "Local Task Acctive Row is {}".format( self.localTasksActiveRow )
+        logger.debug( "Local Task Acctive Row is {}".format( self.localTasksActiveRow ) )
 
     ######################## 
     def remoteChunkRowSelectionChanged( self, item1, item2 ):
@@ -116,7 +119,7 @@ class NodeTasksWidget(QtGui.QWidget):
         else:
             self.remoteChunkActiveRow = -1
 
-        print "Remote Chunk Acctive Row is {}".format( self.remoteChunkActiveRow )
+        logger.debug( "Remote Chunk Acctive Row is {}".format( self.remoteChunkActiveRow ) )
 
 
     ########################

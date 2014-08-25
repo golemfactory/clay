@@ -5,6 +5,9 @@ sys.path.append('core')
 import abc
 from golem.core.simpleserializer import SimpleSerializer
 from golem.core.databuffer import DataBuffer
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Message:
 
@@ -41,7 +44,7 @@ class Message:
             m = cls.deserializeMessage( msg )
             
             if m is None:
-                print "Failed to deserialize message {}".format( msg )
+                logger.error( "Failed to deserialize message {}".format( msg ) )
                 assert False
  
             messages.append( m )

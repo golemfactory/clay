@@ -1,6 +1,9 @@
 
 from golem.Message import MessagePeerStatus, MessageNewTask, MessageKillNode
 import cPickle as pickle
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ServerManagerSession:
 
@@ -29,7 +32,7 @@ class ServerManagerSession:
             self.server.nodeStateSnapshotReceived( nss )
 
         else:
-            print "Wrong message received {}".format( msg )
+            logger.error( "Wrong message received {}".format( msg ) )
 
     ##########################
     def sendClientStateSnapshot( self, snapshot ):

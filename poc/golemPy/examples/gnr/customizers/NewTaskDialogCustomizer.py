@@ -9,6 +9,9 @@ from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
 from examples.gnr.TaskState import GNRTaskState, TaskDefinition
 from golem.task.TaskState import TaskStatus
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class NewTaskDialogCustomizer:
     #############################
@@ -221,7 +224,7 @@ class NewTaskDialogCustomizer:
         if rendererItem >= 0:
             self.gui.ui.rendereComboBox.setCurrentIndex( rendererItem )
         else:
-            print "Cannot load task"
+            logger.error( "Cannot load task, wrong renderer" )
             return
 
         algItem = self.gui.ui.pathTracerComboBox.findText( definition.algorithmType )
@@ -229,7 +232,7 @@ class NewTaskDialogCustomizer:
         if algItem >= 0:
             self.gui.ui.pathTracerComboBox.setCurrentIndex( algItem )
         else:
-            print "Cannot load task"
+            logger.error( "Cannot load task, wrong algorithm " )
             return
 
         time            = QtCore.QTime()
@@ -243,7 +246,7 @@ class NewTaskDialogCustomizer:
         if pixelFilterItem >= 0:
             self.gui.ui.pixelFilterComboBox.setCurrentIndex( pixelFilterItem )
         else:
-            print "Cannot load task"
+            logger.error( "Cannot load task, wrong  pixel filter" )
             return
 
         self.gui.ui.samplesPerPixelSpinBox.setValue( definition.samplesPerPixelCount )
@@ -257,7 +260,7 @@ class NewTaskDialogCustomizer:
         if outputFormatItem >= 0:
             self.gui.ui.outputFormatsComboBox.setCurrentIndex( outputFormatItem )
         else:
-            print "Cannot load task"
+            logger.error( "Cannot load task, wrong output format" )
             return
 
         self.addTaskResourceDialog = AddTaskResourcesDialog( self.gui.window )
@@ -289,7 +292,7 @@ class NewTaskDialogCustomizer:
         self.taskState.definition = self.__queryTaskDefinition()
         
         if not self.logic.runTestTask( self.taskState ):
-            print "Task not tested properly"
+            logger.error( "Task not tested properly" )
 
     def testTaskComputationFinished( self, success ):
         if success:

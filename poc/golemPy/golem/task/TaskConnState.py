@@ -1,6 +1,9 @@
 
 from golem.Message import Message
 from golem.network.ConnectionState import ConnectionState
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TaskConnState( ConnectionState ):
     ##########################
@@ -39,10 +42,10 @@ class TaskConnState( ConnectionState ):
         try:
             mess = Message.deserialize(self.db)
         except:
-            print "Cannot deserialize message len: {} : {}".format( len(data), data )
+            logger.error( "Cannot deserialize message len: {} : {}".format( len(data), data ) )
 
         if mess is None:
-            print "Deserialization message failed"
+            logger.error( "Deserialization message failed" )
             self.taskSession.interpret(None)
             return
 
@@ -50,7 +53,7 @@ class TaskConnState( ConnectionState ):
             for m in mess:
                 self.taskSession.interpret(m)
         else:
-            print "Task session for connection is None"
+            logger.error( "Task session for connection is None" )
             assert False
 
     ############################

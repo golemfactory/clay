@@ -1,6 +1,9 @@
 
 from golem.Message import Message
 from ConnectionState import ConnectionState
+import logging
+
+logger = logging.getLogger(__name__)
 
 class NetConnState( ConnectionState ):
     ############################
@@ -30,14 +33,14 @@ class NetConnState( ConnectionState ):
         self.db.appendString(data)
         mess = Message.deserialize(self.db)
         if mess is None:
-            print "Deserialization message failed"
+            logger.error( "Deserialization message failed" )
             self.peer.interpret(None)
 
         if self.peer:
             for m in mess:
                 self.peer.interpret(m)
         else:
-            print "Peer for connection is None"
+            logger.error( "Peer for connection is None" )
             assert False
 
     ############################

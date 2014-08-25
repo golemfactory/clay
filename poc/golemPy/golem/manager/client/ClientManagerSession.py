@@ -5,6 +5,9 @@ from ClientManagerConnState import ClientManagerConnState
 import cPickle as pickle
 import time
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ClientManagerSession:
 
@@ -36,7 +39,7 @@ class ClientManagerSession:
 
             os.system( "taskkill /PID {} /F".format( os.getpid() ) )
         else:
-            print "Wrong message received {}".format( msg )
+            logger.error( "Wrong message received {}".format( msg ) )
 
     ##########################
     def sendClientStateSnapshot( self, snapshot ):

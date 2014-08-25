@@ -11,6 +11,9 @@ from golem.manager.NodeStateSnapshot import TaskChunkStateSnapshot
 from golem.task.resource.ResourcesManager import ResourcesManager
 from Environment import TaskComputerEnvironment
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TaskComputer:
 
@@ -61,12 +64,12 @@ class TaskComputer:
     ######################
     def taskRequestRejected( self, taskId, reason ):
         self.waitingForTask = None
-        print "Task {} request rejected: {}".format( taskId, reason )
+        logger.warning( "Task {} request rejected: {}".format( taskId, reason ) )
 
     ######################
     def resourceRequestRejected( self, subtaskId, reason ):
         self.waitingForTask = None
-        print "Task {} resource request rejected: {}".format( subtaskId, reason )
+        logger.warning( "Task {} resource request rejected: {}".format( subtaskId, reason ) )
         del self.assignedSubTasks[ subtaskId ]
 
     ######################
@@ -77,7 +80,7 @@ class TaskComputer:
             subtaskId   = taskThread.subtaskId
 
             if taskThread.result:
-                print "Task {} computed".format( subtaskId )
+                logger.info ( "Task {} computed".format( subtaskId ) )
                 if subtaskId in self.assignedSubTasks:
                     self.taskServer.sendResults( subtaskId, taskThread.result, self.assignedSubTasks[ subtaskId ].returnAddress, self.assignedSubTasks[ subtaskId ].returnPort )
                     del self.assignedSubTasks[ subtaskId ]
@@ -166,12 +169,12 @@ class TaskThread( Thread ):
 
     ######################
     def run( self ):
-        print "RUNNING "
+        logger.info( "RUNNING " )
         try:
             self.__doWork()
             self.taskComputer.taskComputed( self )
         except Exception as exc:
-            print "Task computing error: {}".format( exc )
+            logger.error( "Task computing error: {}".format( exc ) )
             self.error = True
             self.done = True
 
