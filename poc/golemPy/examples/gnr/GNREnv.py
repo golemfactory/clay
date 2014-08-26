@@ -1,6 +1,7 @@
 import os
 
 TEST_RES_DIRECTORY = "testing_task_resources"
+TEST_TMP_DIRECTORY = "testing_task_tmp"
 RES_DIRECTORY = "res"
 
 class GNREnv:
@@ -9,9 +10,14 @@ class GNREnv:
     def getTestTaskDirectory( cls ):
         return TEST_RES_DIRECTORY
 
+    @classmethod
+    def getTestTaskPath( cls, rootPath ):
+        return os.path.join(rootPath, TEST_RES_DIRECTORY)
 
-    def __init__(self, rootDir):
-        self.rootDir = rootDir
+    @classmethod
+    def getTestTaskTmpPath( cls, rootPath ):
+        return os.path.join( rootPath, TEST_TMP_DIRECTORY)
 
-    def getTmpPath( self, clientId, taskId):
-        return os.path.join( self.rootDir, RES_DIRECTORY, clientId, taskId, "tmp" )
+    @classmethod
+    def getTmpPath( cls, clientId, taskId, rootPath):
+        return os.path.join( rootPath, RES_DIRECTORY, clientId, taskId, "tmp" )

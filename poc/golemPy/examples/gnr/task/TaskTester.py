@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class TaskTester:
     #########################
-    def __init__( self, task, finishedCallback ):
+    def __init__( self, task, rootPath, finishedCallback ):
         assert isinstance( task, Task )
         self.task               = task
         self.testTaskResPath    = None
@@ -21,6 +21,7 @@ class TaskTester:
         self.success            = False
         self.lock               = Lock()
         self.tt                 = None
+        self.rootPath           = rootPath
         self.finishedCallback   = finishedCallback
 
     #########################
@@ -63,14 +64,14 @@ class TaskTester:
     #########################
     def __prepareResources( self ):
 
-        self.testTaskResDir = GNREnv.getTestTaskDirectory()
-        self.testTaskResPath = os.path.abspath( self.testTaskResDir )
+        self.testTaskResPath = GNREnv.getTestTaskPath( self.rootPath )
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
         else:
             shutil.rmtree( self.testTaskResPath, True )
             os.makedirs( self.testTaskResPath )
 
+        self.testTaskResDir = GNREnv.getTestTaskDirectory( )
         rh = TaskResourceHeader( self.testTaskResDir )
         resFile = self.task.prepareResourceDelta( self.task.header.taskId, rh )
 
@@ -80,8 +81,8 @@ class TaskTester:
         return True
     #########################
     def __prepareTmpDir( self ):
-        self.tmpDir = "testing_task_tmp"
-        self.tmpDir = os.path.abspath( self.tmpDir )
+
+        self.tmpDir = GNREnv.getTestTaskTmpPath( self.rootPath )
         if not os.path.exists( self.tmpDir ):
             os.makedirs( self.tmpDir )
         else:

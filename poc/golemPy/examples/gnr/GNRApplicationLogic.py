@@ -35,11 +35,6 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.customizer         = None
         self.currentRenderer    = None
         self.defaultRenderer    = None
-        self.env                = None
-
-    ######################
-    def registerEnv( self, env ):
-        self.env = env
 
     ######################
     def registerGui( self, gui ):
@@ -81,7 +76,7 @@ class GNRApplicationLogic( QtCore.QObject ):
 
         assert ts.taskState.status == TaskStatus.notStarted # TODO:
 
-        tb = self.renderers[ ts.definition.renderer ].taskBuilderType( self.client.getId(), ts.definition, self.env )
+        tb = self.renderers[ ts.definition.renderer ].taskBuilderType( self.client.getId(), ts.definition, self.client.getRootPath( ) )
 
         t = Task.buildTask( tb )
 
@@ -146,6 +141,7 @@ class GNRApplicationLogic( QtCore.QObject ):
     def getCurrentRenderer( self ):
         return self.currentRenderer
 
+    ######################
     def saveTask( self, taskState, filePath ):
         f = open( filePath, "wb" )
 
@@ -156,8 +152,8 @@ class GNRApplicationLogic( QtCore.QObject ):
 
     ######################
     def recountPerformance( self, numCores ):
-        testFile =  os.path.abspath( os.path.join( self.client.configDesc.rootPath, "..\\..\\testtasks\\minilight\\cornellbox.ml.txt"))
-        resultFile = os.path.abspath( os.path.join( self.client.configDesc.rootPath, "node_data\\minilight.ini" ))
+        testFile =  os.path.abspath( os.path.join( os.getcwd(), "..\\..\\testtasks\\minilight\\cornellbox.ml.txt"))
+        resultFile = os.path.abspath( os.path.join( os.getcwd(), "node_data\\minilight.ini" ))
         estimatedPerf =  makePerfTest(testFile, resultFile, numCores)
         return estimatedPerf
 
@@ -166,11 +162,11 @@ class GNRApplicationLogic( QtCore.QObject ):
     def runTestTask( self, taskState ):
         if self.__validateTaskState( taskState ):
 
-            tb = self.renderers[ taskState.definition.renderer ].taskBuilderType( self.client.getId(), taskState.definition, self.env )
+            tb = self.renderers[ taskState.definition.renderer ].taskBuilderType( self.client.getId(), taskState.definition, self.client.getRootPath() )
 
             t = Task.buildTask( tb )
 
-            self.tt = TaskTester( t, self.__testTaskComputationFinished )
+            self.tt = TaskTester( t, self.client.getRootPath(), self.__testTaskComputationFinished )
 
             self.progressDialog = TestingTaskProgressDialog( None )
             self.progressDialog.show()

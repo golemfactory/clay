@@ -160,6 +160,10 @@ class Client:
         return self.configDesc.clientUid
 
     ############################
+    def getRootPath( self ):
+        return self.configDesc.rootPath
+
+    ############################
     def registerListener( self, listener ):
         assert isinstance( listener, GolemClientEventListener )
         self.listeners.append( listener )

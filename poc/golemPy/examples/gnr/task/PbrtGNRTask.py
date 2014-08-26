@@ -27,10 +27,10 @@ class PbrtSubtask():
 
 class PbrtTaskBuilder( TaskBuilder ):
     #######################
-    def __init__( self, clientId, taskDefinition, env ):
+    def __init__( self, clientId, taskDefinition, rootPath ):
         self.taskDefinition = taskDefinition
         self.clientId       = clientId
-        self.env = env
+        self.rootPath       = rootPath
 
     #######################
     def build( self ):
@@ -57,7 +57,7 @@ class PbrtTaskBuilder( TaskBuilder ):
                                    self.taskDefinition.resources,
                                    self.taskDefinition.outputFile,
                                    self.taskDefinition.outputFormat,
-                                   self.env
+                                   self.rootPath
                                   )
 
         return pbrtTask
@@ -85,7 +85,7 @@ class PbrtRenderTask( GNRTask ):
                   taskResources,
                   outputFile,
                   outputFormat,
-                  env,
+                  rootPath,
                   returnAddress = "",
                   returnPort = 0
                   ):
@@ -123,7 +123,7 @@ class PbrtRenderTask( GNRTask ):
         self.subTasksGiven      = {}
 
         self.previewFilePath    = None
-        self.env = env
+        self.rootPath           = rootPath
 
 
     def initialize( self ):
@@ -214,8 +214,7 @@ class PbrtRenderTask( GNRTask ):
         ctd.srcCode             = self.srcCode
         ctd.performance         = 0
 
-        self.testTaskResPath = GNREnv.getTestTaskDirectory()
-        self.testTaskResPath = unicode( os.path.abspath( self.testTaskResPath ) )
+        self.testTaskResPath = GNREnv.getTestTaskPath( self.rootPath )
         logger.debug( self.testTaskResPath )
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
@@ -299,7 +298,8 @@ class PbrtRenderTask( GNRTask ):
             commonPathPrefix = os.path.commonprefix( self.taskResources )
             commonPathPrefix = os.path.dirname( commonPathPrefix )
             dirName = commonPathPrefix #os.path.join( "res", self.header.clientId, self.header.taskId, "resources" )
-            tmpDir = self.env.getTmpPath(self.header.clientId, self.header.taskId)
+            tmpDir = GNREnv.getTmpPath(self.header.clientId, self.header.taskId, self.rootPath)
+
 
             if not os.path.exists( tmpDir ):
                 os.makedirs( tmpDir )
@@ -319,7 +319,7 @@ class PbrtRenderTask( GNRTask ):
         else:
             img = Image.open( newChunkFilePath )
 
-        tmpDir = self.env.getTmpPath( self.header.clientId, self.header.taskId )
+        tmpDir = GNREnv.getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
 
         self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
 
