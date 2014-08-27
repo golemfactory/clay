@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 class P2PServer:
     #############################
-    def __init__( self, hostAddress, configDesc, p2pService ):
+    def __init__( self, configDesc, p2pService ):
 
         self.configDesc             = configDesc
         self.p2pService             = p2pService

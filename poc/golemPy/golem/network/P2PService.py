@@ -11,7 +11,7 @@ class P2PService:
     ########################
     def __init__( self, hostAddress, configDesc ):
 
-        self.p2pServer              = P2PServer( hostAddress, configDesc, self )
+        self.p2pServer              = P2PServer( configDesc, self )
 
         self.configDesc             = configDesc
 

@@ -11,7 +11,7 @@ class PeerSessionInterface:
     def __init__(self):
         pass
 
-    def inretpret(self, msg):
+    def interpret(self, msg):
         pass
 
 class PeerSession(PeerSessionInterface):
