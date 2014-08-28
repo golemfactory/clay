@@ -10,11 +10,14 @@ from examples.gnr.ui.ShowTaskResourcesDialog import ShowTaskResourcesDialog
 from examples.gnr.ui.TaskDetailsDialog import TaskDetailsDialog
 from examples.gnr.ui.TaskTableElem import TaskTableElem
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
+from examples.gnr.ui.StatusWindow import StatusWindow
 
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from TaskContexMenuCustomizer import TaskContextMenuCustomizer
 from TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
 from ConfigurationDialogCustomizer import ConfigurationDialogCustomizer
+from StatusWindowCustomizer import StatusWindowCustomizer
+
 import time
 import logging
 
@@ -39,6 +42,7 @@ class MainWindowCustomizer:
         self.gui.ui.actionNew.triggered.connect( self.__showNewTaskDialogClicked )
         self.gui.ui.actionLoadTask.triggered.connect( self.__loadTaskButtonClicked )
         self.gui.ui.actionEdit.triggered.connect( self.__showConfigurationDialogClicked )
+        self.gui.ui.actionStatus.triggered.connect( self.__showStatusClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "doubleClicked(const QModelIndex)" ), self.__taskTableRowDoubleClicked )
         self.gui.ui.showResourceButton.clicked.connect( self.__showTaskResourcesClicked )
@@ -199,8 +203,15 @@ class MainWindowCustomizer:
         self.newTaskDialog = NewTaskDialog( self.gui.window )
 
         self.newTaskDialogCustomizer = NewTaskDialogCustomizer( self.newTaskDialog, self.logic )
-
         self.newTaskDialog.show()
+
+    #############################
+    def __showStatusClicked( self ):
+        self.statusWindow = StatusWindow( self.gui.window )
+
+        self.statusWindowCustomizer = StatusWindowCustomizer( self.statusWindow, self.logic )
+        self.statusWindowCustomizer.getStatus()
+        self.statusWindow.show()
 
     #############################
     def __showTaskResourcesClicked( self ):

@@ -579,6 +579,7 @@
     <property name="title">
      <string>View</string>
     </property>
+    <addaction name="actionStatus"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
@@ -612,6 +613,11 @@
   <action name="actionEdit">
    <property name="text">
     <string>Edit</string>
+   </property>
+  </action>
+  <action name="actionStatus">
+   <property name="text">
+    <string>Status</string>
    </property>
   </action>
  </widget>

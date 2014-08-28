@@ -225,3 +225,12 @@ class Client:
 
         if self.nodesManagerClient:
             self.nodesManagerClient.sendClientStateSnapshot( self.lastNodeStateSnapshot )
+
+    def getStatus(self):
+        progress = self.taskServer.taskComputer.getProgresses()
+        if len( progress ) > 0:
+            msg =  "Counting {} subtask(s):".format(len(progress))
+            for k, v in progress.iteritems():
+                msg = "{} \n {} ({}%) ".format( msg, k, v.getProgress() * 100 )
+            return msg
+        return "Waiting for tasks..."
