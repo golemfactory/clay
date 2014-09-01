@@ -19,8 +19,8 @@ def open_exr_as_rgbf_images( exr_file ):
     return rgbf
 
 ############################
-def convert_rgbf_images_to_rgb8_image( rgbf, lighest, darkest ):
-    scale = 255 / (lighest - darkest)
+def convert_rgbf_images_to_rgb8_image( rgbf, lightest, darkest ):
+    scale = 255 / (lightest - darkest)
 
     def normalize_0_255( val ):
         scale = 255.0
@@ -37,27 +37,27 @@ def convert_rgbf_images_to_rgb8_image( rgbf, lighest, darkest ):
 def get_single_rgbf_extrema( rgbf ):
     extrema = [im.getextrema() for im in rgbf]
     darkest = min([lo for (lo,hi) in extrema])
-    lighest = max([hi for (lo,hi) in extrema])
+    lightest = max([hi for (lo,hi) in extrema])
 
-    return darkest, lighest
+    return darkest, lightest
 
 ############################
 def get_list_rgbf_extrema( rgbf_list ):
     assert len( rgbf_list ) > 0
 
-    darkest, lighest = get_single_rgbf_extrema( rgbf_list[ 0 ] )
+    darkest, lightest = get_single_rgbf_extrema( rgbf_list[ 0 ] )
     
     for i in range( 1, len( rgbf_list ) ):
         d, l = get_single_rgbf_extrema( rgbf_list[ i ] )
           
         darkest = min( d, darkest ) 
-        lighest = max( l, lighest )
+        lightest = max( l, lightest )
 
         print_progress( i, len( rgbf_list ) )
     
     print ""
 
-    return darkest, lighest
+    return darkest, lightest
 
 ############################
 def compose_final_image( open_exr_files ):
@@ -71,13 +71,13 @@ def compose_final_image( open_exr_files ):
         print_progress( i, len( open_exr_files ) )
 
     print "\nFinding extremas for all chunks"
-    darkest, lighest = get_list_rgbf_extrema( rgbfs )
+    darkest, lightest = get_list_rgbf_extrema( rgbfs )
    
     rgb8_images = []
 
     print "Converting chunks to rgb8 images"
     for i, rgbf in enumerate( rgbfs ):
-        rgb8_im = convert_rgbf_images_to_rgb8_image( rgbf, lighest, darkest )
+        rgb8_im = convert_rgbf_images_to_rgb8_image( rgbf, lightest, darkest )
         rgb8_images.append( rgb8_im )
 
         print_progress( i, len( rgbfs ) )
@@ -114,7 +114,7 @@ class PbrtTaksCollector:
     ############################
     def __init__( self ):
         self.darkest = None
-        self.lighest = None
+        self.lightest = None
         self.acceptedExrFiles = []
 
     ############################
@@ -125,10 +125,10 @@ class PbrtTaksCollector:
 
         if self.darkest == None:
             self.darkest = d
-            self.lighest = l
+            self.lightest = l
 
         self.darkest = min( d, self.darkest )
-        self.lighest = max( l, self.lighest )
+        self.lightest = max( l, self.lightest )
 
         self.acceptedExrFiles.append( exrFile )
 
@@ -140,13 +140,13 @@ class PbrtTaksCollector:
         if showProgress:
             print "Adding all accepted chunks to the final image"
 
-        if self.lighest == self.darkest:
-            self.lighest = self.darkest + 0.1
+        if self.lightest == self.darkest:
+            self.lightest = self.darkest + 0.1
 
-        finalImg = convert_rgbf_images_to_rgb8_image( open_exr_as_rgbf_images( self.acceptedExrFiles[ 0 ] ), self.lighest, self.darkest )
+        finalImg = convert_rgbf_images_to_rgb8_image( open_exr_as_rgbf_images( self.acceptedExrFiles[ 0 ] ), self.lightest, self.darkest )
         
         for i in range( 1, len( self.acceptedExrFiles ) ):
-            rgb8_im = convert_rgbf_images_to_rgb8_image( open_exr_as_rgbf_images( self.acceptedExrFiles[ i ] ), self.lighest, self.darkest )
+            rgb8_im = convert_rgbf_images_to_rgb8_image( open_exr_as_rgbf_images( self.acceptedExrFiles[ i ] ), self.lightest, self.darkest )
             finalImg = ImageChops.add( finalImg, rgb8_im )
 
             if showProgress:

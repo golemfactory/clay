@@ -370,7 +370,7 @@ def exr_to_pil( exrFile ):
 
     #extrema = [im.getextrema() for im in rgbf]
     #darkest = min([lo for (lo,hi) in extrema])
-    #lighest = max([hi for (lo,hi) in extrema])
+    #lightest = max([hi for (lo,hi) in extrema])
     scale = 255.0
     def normalize_0_255(v):
         return (v * scale)

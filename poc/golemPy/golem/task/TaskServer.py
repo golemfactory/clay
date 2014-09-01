@@ -222,7 +222,7 @@ class TaskServer:
         logger.warning( "Removing task {} from task list".format( waitingTaskResult.subtaskId ) )
         
         waitingTaskResult.lastSendingTrial  = time.time()
-        waitingTaskResult.delayTime         = self.configDesc.maxResultsSendignDelay
+        waitingTaskResult.delayTime         = self.configDesc.maxResultsSendingDelay
         waitingTaskResult.alreadySending    = False
 
     #############################
