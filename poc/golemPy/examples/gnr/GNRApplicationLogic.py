@@ -88,6 +88,27 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.client.enqueueNewTask( t )
 
     ######################
+    def restartTask( self, taskId ):
+        self.client.restartTask( taskId )
+
+    ######################
+    def abortTask( self, taskId ):
+        self.client.abortTask( taskId )
+
+    ######################
+    def pauseTask( self, taskId ):
+        self.client.pauseTask( taskId )
+
+    ######################
+    def resumeTask( self, taskId ):
+        self.client.resumeTask( taskId )
+
+    ######################
+    def deleteTask( self, taskId ):
+        self.client.deleteTask( taskId )
+        self.customizer.removeTask( taskId )
+
+    ######################
     def showTaskDetails( self, taskId ):
         self.customizer.showDetailsDialog(taskId)
 

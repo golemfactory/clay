@@ -120,6 +120,14 @@ class MainWindowCustomizer:
         self.updateTaskAdditionalInfo( self.logic.getTask( id ) )
 
     ############################
+    def removeTask( self, id ):
+
+        for row in range(0, self.gui.ui.renderTaskTableWidget.rowCount()):
+            if self.gui.ui.renderTaskTableWidget.item(row, 0).text() == id:
+                self.gui.ui.renderTaskTableWidget.removeRow( row )
+                return
+
+    ############################
     def __loadTaskButtonClicked( self ):
         fileName = QFileDialog.getOpenFileName( self.gui.window,
             "Choose task file", "", "Golem Task (*.gt)")

@@ -37,6 +37,7 @@ class TaskManager:
         self.subTask2TaskMapping = {}
 
         self.listeners      = []
+        self.activeStatus = [ TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting ]
 
     #######################
     def registerListener( self, listener ):
@@ -81,7 +82,8 @@ class TaskManager:
     def getNextSubTask( self, clientId, taskId, estimatedPerformance, numCores = 0 ):
         if taskId in self.tasks:
             task = self.tasks[ taskId ]
-            if task.needsComputation():
+            ts = self.tasksStates[ taskId ]
+            if (ts.status in self.activeStatus) and task.needsComputation():
                 ctd  = task.queryExtraData( estimatedPerformance, numCores )
                 self.subTask2TaskMapping[ ctd.subtaskId ] = taskId
                 self.__addSubtaskToTasksStates( clientId, ctd )
@@ -118,10 +120,11 @@ class TaskManager:
             ss.subtaskRemTime   = 0.0
             ss.subtaskStatus    = TaskStatus.finished
 
-            if not self.tasks[ taskId ].finishedComputation():
-                self.tasksStates[ taskId ].status = TaskStatus.computing
-            else:
-                self.tasksStates[ taskId ].status = TaskStatus.finished
+            if self.tasksStates[ taskId ].status in self.activeStatus:
+                if not self.tasks[ taskId ].finishedComputation():
+                    self.tasksStates[ taskId ].status = TaskStatus.computing
+                else:
+                    self.tasksStates[ taskId ].status = TaskStatus.finished
             self.__noticeTaskUpdated( taskId )
 
             return True
@@ -133,6 +136,8 @@ class TaskManager:
     def removeOldTasks( self ):
         for t in self.tasks.values():
             th = t.header
+            if self.tasksStates[th.taskId].status not in self.activeStatus:
+                continue
             currTime = time.time()
             th.ttl = th.ttl - ( currTime - th.lastChecking )
             th.lastChecking = currTime
@@ -176,6 +181,75 @@ class TaskManager:
             return self.tasks[ taskId ].acceptResultsDelay()
         else:
             return -1.0
+
+    #######################
+    def restartTask( self, taskId ):
+        if taskId in self.tasks:
+            logger.info("restarting task")
+            self.env.clearTemporary( taskId )
+
+            self.tasks[ taskId ].restart()
+            self.tasks[ taskId ].taskStatus = TaskStatus.waiting
+            self.tasksStates[ taskId ].status = TaskStatus.waiting
+            self.tasksStates[ taskId ].timeStarted = time.time()
+
+            for sub in self.tasksStates[ taskId ].subtaskStates.values():
+                del self.subTask2TaskMapping[ sub.subtaskId ]
+            self.tasksStates[ taskId ].subtaskStates.clear()
+
+            self.__noticeTaskUpdated( taskId )
+        else:
+            logger.error( "Task {} not in the active tasks queue ".format( taskId ) )
+
+    #######################
+    def abortTask( self, taskId ):
+        if taskId in self.tasks:
+            self.tasks[ taskId ].abort()
+            self.tasks[ taskId ].taskStatus = TaskStatus.aborted
+            self.tasksStates[ taskId ].status = TaskStatus.aborted
+            for sub in self.tasksStates[ taskId ].subtaskStates.values():
+                del self.subTask2TaskMapping[ sub.subtaskId ]
+            self.tasksStates[ taskId ].subtaskStates.clear()
+
+            self.__noticeTaskUpdated( taskId )
+        else:
+            logger.error( "Task {} not in the active tasks queue ".format( taskId ) )
+
+    #######################
+    def pauseTask( self, taskId ):
+        if taskId in self.tasks:
+            self.tasks[ taskId ].taskStatus = TaskStatus.paused
+            self.tasksStates[ taskId ].status = TaskStatus.paused
+
+            self.__noticeTaskUpdated( taskId )
+        else:
+            logger.error( "Task {} not in the active tasks queue ".format( taskId ) )
+
+
+    #######################
+    def resumeTask( self, taskId ):
+        if taskId in self.tasks:
+            self.tasks[ taskId ].taskStatus = TaskStatus.starting
+            self.tasksStates[ taskId ].status = TaskStatus.starting
+
+            self.__noticeTaskUpdated( taskId )
+        else:
+            logger.error( "Task {} not in the active tasks queue ".format( taskId ) )
+
+    #######################
+    def deleteTask( self, taskId ):
+        if taskId in self.tasks:
+
+            for sub in self.tasksStates[ taskId ].subtaskStates.values():
+                del self.subTask2TaskMapping[ sub.subtaskId ]
+            self.tasksStates[taskId].subtaskStates.clear()
+
+            del self.tasks[ taskId ]
+            del self.tasksStates[ taskId ]
+
+            self.env.clearTemporary( taskId )
+        else:
+            logger.error( "Task {} not in the active tasks queue ".format( taskId ) )
 
     #######################
     def querryTaskState( self, taskId ):

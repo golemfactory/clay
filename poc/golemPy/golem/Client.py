@@ -156,6 +156,27 @@ class Client:
         self.taskServer.taskManager.addNewTask( task )
 
     ############################
+    def abortTask( self, taskId ):
+        self.taskServer.taskManager.abortTask( taskId )
+
+    ############################
+    def restartTask( self, taskId ):
+        self.taskServer.taskManager.restartTask( taskId )
+
+    ############################
+    def pauseTask( self, taskId ):
+        self.taskServer.taskManager.pauseTask( taskId )
+
+    ############################
+    def resumeTask( self, taskId ):
+        self.taskServer.taskManager.resumeTask( taskId )
+
+    ############################
+    def deleteTask( self, taskId ):
+        self.taskServer.removeTaskHeader( taskId )
+        self.taskServer.taskManager.deleteTask( taskId )
+
+    ############################
     def getId( self ):
         return self.configDesc.clientUid
 

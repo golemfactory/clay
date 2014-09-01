@@ -38,15 +38,15 @@ class TaskContextMenuCustomizer:
     # SLOTS
     ###########################
     def __abortTaskTriggered( self ):
-        pass
+        self.logic.abortTask( self.gnrTaskState.definition.id )
 
     ###########################
     def __restartTaskTriggered( self ):
-        pass
+        self.logic.restartTask( self.gnrTaskState.definition.id )
 
     ###########################
     def __deleteTaskTriggered( self ):
-        pass
+        self.logic.deleteTask( self.gnrTaskState.definition.id )
 
     ###########################
     def __newTaskTriggered( self ):
@@ -58,11 +58,11 @@ class TaskContextMenuCustomizer:
 
     ###########################
     def __pauseTaskTriggered( self ):
-        pass
+        self.logic.pauseTask( self.gnrTaskState.definition.id )
 
     ###########################
     def __resumeTaskTriggered( self ):
-        pass
+        self.logic.resumeTask( self.gnrTaskState.definition.id )
 
     ###########################
     def __showTaskDetailsTriggered( self ):

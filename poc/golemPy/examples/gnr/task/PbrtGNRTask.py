@@ -2,6 +2,7 @@ import os
 import random
 import cPickle as pickle
 import logging
+import time
 
 from golem.task.TaskBase import TaskBuilder, ComputeTaskDef
 from golem.task.TaskState import TaskStatus
@@ -42,7 +43,7 @@ class PbrtTaskBuilder( TaskBuilder ):
                                    self.taskDefinition.id,
                                    mainSceneDir,
                                    self.taskDefinition.mainProgramFile,
-                                   100,
+                                   60,
                                    32,
                                    4,
                                    self.taskDefinition.resolution[ 0 ],
@@ -95,8 +96,10 @@ class PbrtRenderTask( GNRTask ):
 
         GNRTask.__init__( self, srcCode, clientId, taskId, returnAddress, returnPort, fullTaskTimeout, subtaskTimeout )
 
-        self.header.ttl = max( 2200.0, fullTaskTimeout )
-        self.header.subtaskTimeout = max( 22.0, subtaskTimeout )
+        self.fullTaskTimeout = max( 2200.0, fullTaskTimeout )
+        self.header.ttl = self.fullTaskTimeout
+        self.header.subtaskTimeout = max( 220.0, subtaskTimeout )
+
 
         self.pathRoot           = pathRoot
         self.lastTask           = 0
@@ -130,10 +133,31 @@ class PbrtRenderTask( GNRTask ):
         pass
 
     #######################
+    def restart ( self ):
+        self.numTasksReceived = 0
+        self.lastTask = 0
+        self.subTasksGiven.clear()
+
+        self.numFailedSubtasks = 0
+        self.failedSubtasks.clear()
+        self.header.lastChecking = time.time()
+        self.header.ttl = self.fullTaskTimeout
+
+        del self.collector
+        self.collector = PbrtTaksCollector()
+
+        self.previewFilePath = None
+
+    #######################
+    def abort ( self ):
+        pass
+
+
+    #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
 
         if ( self.lastTask != self.totalTasks ):
-            perf = max( int( float( perfIndex ) / 500 ), 1)
+            perf = max( int( float( perfIndex ) / 1500 ), 1)
             endTask = min( self.lastTask + perf, self.totalTasks )
             startTask = self.lastTask
             self.lastTask = endTask
@@ -190,7 +214,7 @@ class PbrtRenderTask( GNRTask ):
     #######################
     def queryExtraDataForTestTask( self ):
 
-        sceneSrc = regenerateFile( self.sceneFileSrc, 5, 5, self.pixelFilter, self.sampler, self.samplesPerPixel )
+        sceneSrc = regenerateFile( self.sceneFileSrc, 1, 1, self.pixelFilter, self.sampler, self.samplesPerPixel )
 
         extraData =          {      "pathRoot" : self.pathRoot,
                                     "startTask" : 0,
