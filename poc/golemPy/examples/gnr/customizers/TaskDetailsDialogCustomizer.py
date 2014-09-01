@@ -45,6 +45,7 @@ class TaskDetailsDialogCustomizer:
     ###########################
     def __setupConnections( self ):
         QtCore.QObject.connect( self.gui.ui.nodesTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__nodesTabelRowClicked )
+        QtCore.QObject.connect( self.gui.ui.nodesTableWidget, QtCore.SIGNAL( "itemSelectionChanged()" ), self.__nodesTabelRowSelected )
         self.gui.ui.closeButton.clicked.connect( self.__closeButtonClicked )
 
     # ###########################
@@ -95,6 +96,14 @@ class TaskDetailsDialogCustomizer:
         nodeId = "{}".format( self.gui.ui.nodesTableWidget.item( r, 0 ).text() )
         subtaskId = "{}".format( self.gui.ui.nodesTableWidget.item( r, 1 ).text() )
         self.__updateNodeAdditionalInfo( nodeId, subtaskId )
+
+    ###########################
+    def __nodesTabelRowSelected ( self ):
+        if self.gui.ui.nodesTableWidget.selectedItems():
+            row = self.gui.ui.nodesTableWidget.selectedItems()[0].row()
+            nodeId = "{}".format( self.gui.ui.nodesTableWidget.item( row, 0 ).text() )
+            subtaskId = "{}".format( self.gui.ui.nodesTableWidget.item( row, 1 ).text() )
+            self.__updateNodeAdditionalInfo( nodeId, subtaskId )
 
     ###########################
     def __closeButtonClicked( self ):
