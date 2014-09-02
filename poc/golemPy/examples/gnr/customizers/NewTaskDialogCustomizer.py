@@ -45,15 +45,42 @@ class NewTaskDialogCustomizer:
         QtCore.QObject.connect(self.gui.ui.pixelFilterComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.pathTracerComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.samplesPerPixelSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
-        QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutTimeEdit, QtCore.SIGNAL("timeChanged( const QTime )"), self.__taskSettingsChanged)
-        QtCore.QObject.connect(self.gui.ui.minSubtaskTimeTimeEdit, QtCore.SIGNAL("timeChanged( const QTime )"), self.__taskSettingsChanged)
-        QtCore.QObject.connect(self.gui.ui.subtaskTimeoutTimeEdit, QtCore.SIGNAL("timeChanged( const QTime )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutHourSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutMinSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutSecSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.minSubtaskTimeHourSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.minSubtaskTimeMinSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.minSubtaskTimeSecSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.subtaskTimeoutHourSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.subtaskTimeoutMinSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.subtaskTimeoutSecSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.testTaskComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.mainProgramFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputFormatsComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
+
+
+    def __countTime( self, timeout ):
+        hours = timeout / 3600
+        minutes = (timeout % 3600) / 60
+        seconds = timeout % 60
+        return hours, minutes, seconds
+
+    def __setTimeSpinBoxes( self, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
+        hours, minutes, seconds = self.__countTime( fullTaskTimeout )
+        self.gui.ui.fullTaskTimeoutHourSpinBox.setValue( hours )
+        self.gui.ui.fullTaskTimeoutMinSpinBox.setValue( minutes )
+        self.gui.ui.fullTaskTimeoutSecSpinBox.setValue( seconds )
+        hours, minutes, seconds = self.__countTime( subtaskTimeout )
+        self.gui.ui.subtaskTimeoutHourSpinBox.setValue( hours )
+        self.gui.ui.subtaskTimeoutMinSpinBox.setValue( minutes )
+        self.gui.ui.subtaskTimeoutSecSpinBox.setValue( seconds )
+        hours, minutes, seconds = self.__countTime( minSubtaskTime )
+        self.gui.ui.minSubtaskTimeHourSpinBox.setValue( hours )
+        self.gui.ui.minSubtaskTimeMinSpinBox.setValue( minutes )
+        self.gui.ui.minSubtaskTimeSecSpinBox.setValue( seconds )
 
 
     #############################
@@ -77,10 +104,7 @@ class NewTaskDialogCustomizer:
 
             self.gui.ui.mainProgramFileLineEdit.setText( r.defaults.mainProgramFile )
 
-            time = QtCore.QTime()
-            self.gui.ui.fullTaskTimeoutTimeEdit.setTime( time.addSecs( r.defaults.fullTaskTimeout ) )
-            self.gui.ui.subtaskTimeoutTimeEdit.setTime( time.addSecs( r.defaults.subtaskTimeout ) )
-            self.gui.ui.minSubtaskTimeTimeEdit.setTime( time.addSecs( r.defaults.minSubtaskTime ) )
+            self.__setTimeSpinBoxes( r.defaults.fullTaskTimeout, r.defaults.subtaskTimeout, r.defaults.minSubtaskTime )
 
             self.gui.ui.samplesPerPixelSpinBox.setValue( r.defaults.samplesPerPixel )
 
@@ -107,10 +131,7 @@ class NewTaskDialogCustomizer:
 
         self.gui.ui.mainProgramFileLineEdit.setText( dr.defaults.mainProgramFile )
 
-        time = QtCore.QTime()
-        self.gui.ui.fullTaskTimeoutTimeEdit.setTime( time.addSecs( dr.defaults.fullTaskTimeout ) )
-        self.gui.ui.subtaskTimeoutTimeEdit.setTime( time.addSecs( dr.defaults.subtaskTimeout ) )
-        self.gui.ui.minSubtaskTimeTimeEdit.setTime( time.addSecs( dr.defaults.minSubtaskTime ) )
+        self.__setTimeSpinBoxes( dr.defaults.fullTaskTimeout, dr.defaults.subtaskTimeout, dr.defaults.minSubtaskTime )
 
         self.gui.ui.outputFileLineEdit.clear()
 
@@ -237,9 +258,8 @@ class NewTaskDialogCustomizer:
 
         time            = QtCore.QTime()
         self.gui.ui.taskIdLabel.setText( self.__generateNewTaskUID() )
-        self.gui.ui.fullTaskTimeoutTimeEdit.setTime( time.addMSecs( definition.fullTaskTimeout ) )
-        self.gui.ui.subtaskTimeoutTimeEdit.setTime( time.addMSecs( definition.subtaskTimeout ) )
-        self.gui.ui.minSubtaskTimeTimeEdit.setTime( time.addMSecs( definition.minSubtaskTime ) )
+
+        self.__setTimeSpinBoxes( definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime )
 
         pixelFilterItem = self.gui.ui.pixelFilterComboBox.findText( definition.pixelFilter )
 
@@ -338,10 +358,9 @@ class NewTaskDialogCustomizer:
         definition      = TaskDefinition()
 
         definition.algorithmType     = u"{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )
-        definition.fullTaskTimeout   = time.secsTo( self.gui.ui.fullTaskTimeoutTimeEdit.time() )
-        definition.id                = u"{}".format( self.gui.ui.taskIdLabel.text() )
-        definition.subtaskTimeout    = time.secsTo( self.gui.ui.subtaskTimeoutTimeEdit.time() )
-        definition.minSubtaskTime    = time.secsTo( self.gui.ui.minSubtaskTimeTimeEdit.time() )
+        definition.fullTaskTimeout   = self.gui.ui.fullTaskTimeoutHourSpinBox.value() * 3600 + self.gui.ui.fullTaskTimeoutMinSpinBox.value() * 60 + self.gui.ui.fullTaskTimeoutSecSpinBox.value()
+        definition.subtaskTimeout   = self.gui.ui.subtaskTimeoutHourSpinBox.value() * 3600 + self.gui.ui.subtaskTimeoutMinSpinBox.value() * 60 + self.gui.ui.subtaskTimeoutSecSpinBox.value()
+        definition.minSubtaskTime   = self.gui.ui.minSubtaskTimeHourSpinBox.value() * 3600 + self.gui.ui.minSubtaskTimeMinSpinBox.value() * 60 + self.gui.ui.minSubtaskTimeSecSpinBox.value()
         definition.renderer          = self.logic.getRenderer( "{}".format( self.gui.ui.rendereComboBox.itemText( self.gui.ui.rendereComboBox.currentIndex() ) ) ).name
         definition.pixelFilter       = u"{}".format( self.gui.ui.pixelFilterComboBox.itemText( self.gui.ui.pixelFilterComboBox.currentIndex() ) )
         definition.samplesPerPixelCount = self.gui.ui.samplesPerPixelSpinBox.value()
