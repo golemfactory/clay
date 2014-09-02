@@ -273,6 +273,9 @@ class TaskManager:
             assert False, "Should never be here!"
             return None
 
+    def changeConfig( self, rootPath ):
+        self.env = TaskManagerEnvironment( rootPath, self.clientUid )
+
     #######################
     def __addSubtaskToTasksStates( self, clientId, ctd ):
 

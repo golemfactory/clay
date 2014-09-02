@@ -192,6 +192,27 @@ class Client:
     ############################
     def changeConfig( self, hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance ):
         self.cfg.changeConfig( hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance  )
+        self.configDesc.seedHost = hostAddress
+        try:
+            self.configDesc.seedHostPort = int( hostPort )
+        except:
+            logger.warning( "{} is not a proper port number".format( hostPort ) )
+            self.configDesc.seedHostPort = ""
+        self.configDesc.rootPath = workingDirectory
+        try:
+            self.configDesc.managerPort = int( managerPort )
+        except:
+            logger.warning( "{} is not a proper port number".format( hostPort ) )
+            self.configDesc.managerPort = ""
+        self.configDesc.numCores = numCores
+        self.configDesc.estimatedPerformance = estimatedPerformance
+
+        self.p2pservice.changeConfig( self.configDesc )
+        self.taskServer.changeConfig( self.configDesc )
+
+        del self.nodesManagerClient
+        self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUid, "127.0.0.1", self.configDesc.managerPort, self.taskServer.taskManager )
+        self.nodesManagerClient.start()
 
     ############################
     def unregisterListener( self, listener ):

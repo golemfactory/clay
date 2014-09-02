@@ -21,12 +21,12 @@ class TaskServer:
         self.address            = address
         self.curPort            = configDesc.startPort
         self.taskHeaders        = {}
-        self.taskManager        = TaskManager( configDesc.clientUid, rootPath = os.path.join(configDesc.rootPath, "res") )
+        self.taskManager        = TaskManager( configDesc.clientUid, rootPath = self.__getTaskManagerRoot( configDesc ) )
         self.taskComputer       = TaskComputer( configDesc.clientUid,
                                                 self,
                                                 self.configDesc.estimatedPerformance,
                                                 self.configDesc.taskRequestInterval,
-                                                os.path.join(configDesc.rootPath, "ComputerRes"),
+                                                self.__getTaskComputerRoot( configDesc ),
                                                 self.configDesc.numCores )
         self.taskSeesions       = {}
         self.taskSeesionsIncoming = []
@@ -148,6 +148,13 @@ class TaskServer:
             assert False
 
     #############################
+    def changeConfig( self, configDesc ):
+        self.configDesc = configDesc
+        self.taskManager.changeConfig( self.__getTaskManagerRoot( configDesc ) )
+        self.taskComputer.changeConfig( configDesc, self.__getTaskComputerRoot( configDesc ) )
+
+
+    #############################
     # PRIVATE SECTION
 
     #############################
@@ -266,6 +273,12 @@ class TaskServer:
 
                     waitingTaskResult.alreadySending = True
                     self.__connectAndSendTaskResults( waitingTaskResult.ownerAddress, waitingTaskResult.ownerPort, waitingTaskResult )
+
+    def __getTaskManagerRoot( self, configDesc ):
+        return os.path.join( configDesc.rootPath, "res" )
+
+    def __getTaskComputerRoot( self, configDesc ):
+        return os.path.join( configDesc.rootPath, "ComputerRes")
 
 class WaitingTaskResult:
     #############################

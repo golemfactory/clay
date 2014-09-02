@@ -354,9 +354,9 @@ class NewTaskDialogCustomizer:
 
     #############################
     def __queryTaskDefinition( self ):
-        time            = QtCore.QTime()
         definition      = TaskDefinition()
 
+        definition.id                = u"{}".format( self.gui.ui.taskIdLabel.text() )
         definition.algorithmType     = u"{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )
         definition.fullTaskTimeout   = self.gui.ui.fullTaskTimeoutHourSpinBox.value() * 3600 + self.gui.ui.fullTaskTimeoutMinSpinBox.value() * 60 + self.gui.ui.fullTaskTimeoutSecSpinBox.value()
         definition.subtaskTimeout   = self.gui.ui.subtaskTimeoutHourSpinBox.value() * 3600 + self.gui.ui.subtaskTimeoutMinSpinBox.value() * 60 + self.gui.ui.subtaskTimeoutSecSpinBox.value()

@@ -103,6 +103,13 @@ class TaskComputer:
         return ret
 
     ######################
+    def changeConfig( self, configDesc, rootPath ):
+        self.estimatedPerformance = configDesc.estimatedPerformance
+        self.numCores = configDesc.numCores
+        self.env = TaskComputerEnvironment( rootPath, self.clientUid )
+        self.resourceManager = ResourcesManager( self.env, self )
+
+    ######################
     def __requestTask( self ):
         self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance, self.numCores )
 

@@ -1,8 +1,6 @@
-import os
 import multiprocessing
 import logging
 from PyQt4 import QtCore
-from PyQt4.QtGui import QFileDialog, QMessageBox
 
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 
@@ -56,9 +54,6 @@ class ConfigurationDialogCustomizer:
         numCores = u"{}".format( self.gui.ui.numCoresSlider.value() )
         estimatedPerformance = u"{}".format( self.gui.ui.performanceLabel.text() )
         self.logic.changeConfig ( hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance )
-        msgBox = QMessageBox()
-        msgBox.setText( "Restart application to make configuration changes" )
-        msgBox.exec_()
 
     #############################
     def __recountPerformance( self ):
