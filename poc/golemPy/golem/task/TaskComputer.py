@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class TaskComputer:
 
     ######################
-    def __init__( self, clientUid, taskServer, estimatedPerformance, taskRequestFrequency, rootPath="ComputerRes", numCores=0 ):
+    def __init__( self, clientUid, taskServer, estimatedPerformance, taskRequestFrequency, rootPath="ComputerRes", maxResourceSize = 0, numCores=0 ):
         self.clientUid              = clientUid
         self.estimatedPerformance   = estimatedPerformance
         self.numCores               = numCores
@@ -28,6 +28,7 @@ class TaskComputer:
         self.lock                   = Lock()
         self.lastTaskRequest        = time.time()
         self.taskRequestFrequency   = taskRequestFrequency
+        self.maxResourceSize        = long( maxResourceSize )
 
         self.env                    = TaskComputerEnvironment( rootPath, self.clientUid )
 
@@ -106,12 +107,13 @@ class TaskComputer:
     def changeConfig( self, configDesc, rootPath ):
         self.estimatedPerformance = configDesc.estimatedPerformance
         self.numCores = configDesc.numCores
+        self.maxResourceSize = configDesc.maxResourceSize
         self.env = TaskComputerEnvironment( rootPath, self.clientUid )
         self.resourceManager = ResourcesManager( self.env, self )
 
     ######################
     def __requestTask( self ):
-        self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance, self.numCores )
+        self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance, self.maxResourceSize, self.numCores )
 
     ######################
     def __requestResource( self, taskId, resourceHeader, returnAddress, returnPort ):

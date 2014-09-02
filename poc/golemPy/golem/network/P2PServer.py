@@ -17,7 +17,11 @@ class P2PServer:
     #############################
     def newConnection( self, session ):
         self.p2pService.newSession( session )
-                                   
+
+    #############################
+    def changeConfig( self, configDesc ):
+        self.configDesc = configDesc
+
     #############################
     def __startAccepting( self ):
         logger.info( "Enabling network accepting state" )

@@ -94,7 +94,11 @@ class PbrtRenderTask( GNRTask ):
         srcFile = open( mainProgramFile, "r")
         srcCode = srcFile.read()
 
-        GNRTask.__init__( self, srcCode, clientId, taskId, returnAddress, returnPort, fullTaskTimeout, subtaskTimeout )
+        resourceSize = 0
+        for resource in taskResources:
+            resourceSize += os.stat(resource).st_size
+
+        GNRTask.__init__( self, srcCode, clientId, taskId, returnAddress, returnPort, fullTaskTimeout, subtaskTimeout, resourceSize )
 
         self.fullTaskTimeout = max( 2200.0, fullTaskTimeout )
         self.header.ttl = self.fullTaskTimeout
@@ -109,6 +113,7 @@ class PbrtRenderTask( GNRTask ):
         self.outfilebasename    = outfilebasename
         self.sceneFileSrc       = open(sceneFile).read()
         self.taskResources      = taskResources
+        self.resourceSize       = resourceSize
         self.mainProgramFile    = mainProgramFile
         self.outputFile         = outputFile
         self.outputFormat       = outputFormat

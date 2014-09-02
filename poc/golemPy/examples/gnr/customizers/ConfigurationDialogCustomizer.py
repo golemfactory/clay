@@ -37,6 +37,31 @@ class ConfigurationDialogCustomizer:
             logger.error( "Wrong value for number of cores: {}".format( str( e ) )  )
         self.gui.ui.numCoresSlider.setValue( numCores )
 
+        self.gui.ui.maxResourceSizeComboBox.addItems(["kB","MB", "GB"])
+        try:
+            maxResourceSize = long( configDesc.maxResourceSize )
+        except Exception, e:
+            maxResourceSize = 250 * 1024
+            logger.error( "Wrong value for maximum resource size: {}".format( str( e ) ) )
+
+        maxResourceSize, index = self.__resourceSizeToDisplay( maxResourceSize )
+
+        self.gui.ui.maxResourceSizeComboBox.setCurrentIndex( index )
+        self.gui.ui.maxResourceSizeSpinBox.setValue( maxResourceSize )
+
+
+    #############################
+    def __resourceSizeToDisplay( self, maxResourceSize ):
+        if maxResourceSize / ( 1024 * 1024 ) > 0:
+            maxResourceSize /= ( 1024 * 1024 )
+            index = 2
+        elif maxResourceSize / 1024 > 0:
+            maxResourceSize /= 1024
+            index = 1
+        else:
+            index = 0
+        return maxResourceSize, index
+
     #############################
     def __setupConnections( self ):
         self.gui.ui.recountButton.clicked.connect( self.__recountPerformance )
@@ -44,16 +69,32 @@ class ConfigurationDialogCustomizer:
 
         QtCore.QObject.connect( self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged( const int )"), self.__recountPerformance )
 
+    #############################
+    def __countMaxResourceSize( self ):
+        maxResourceSize = int( self.gui.ui.maxResourceSizeSpinBox.value() )
+        index = self.gui.ui.maxResourceSizeComboBox.currentIndex()
+        if index == 1:
+            maxResourceSize *= 1024
+        if index == 2:
+            maxResourceSize *= 1024 * 1024
+        return maxResourceSize
 
     #############################
-    def __changeConfig (self ):
+    def __changeConfig ( self ):
         hostAddress =  u"{}".format( self.gui.ui.hostAddressLineEdit.text() )
         hostPort    =  u"{}".format ( self.gui.ui.hostIPLineEdit.text() )
         workingDirectory = u"{}".format( self.gui.ui.workingDirectoryLineEdit.text() )
         managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
         numCores = u"{}".format( self.gui.ui.numCoresSlider.value() )
         estimatedPerformance = u"{}".format( self.gui.ui.performanceLabel.text() )
-        self.logic.changeConfig ( hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance )
+        maxResourceSize = u"{}".format( self.__countMaxResourceSize() )
+        self.logic.changeConfig (   hostAddress,
+                                    hostPort,
+                                    workingDirectory,
+                                    managerPort,
+                                    numCores,
+                                    estimatedPerformance,
+                                    maxResourceSize )
 
     #############################
     def __recountPerformance( self ):

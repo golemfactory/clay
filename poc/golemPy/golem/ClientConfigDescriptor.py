@@ -25,3 +25,4 @@ class ClientConfigDescriptor:
         self.maxResultsSendingDelay = 0.0
         self.rootPath               = u""
         self.numCores               = 0
+        self.maxResourceSize        = 0

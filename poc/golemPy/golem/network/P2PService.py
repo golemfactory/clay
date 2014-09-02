@@ -85,6 +85,18 @@ class P2PService:
     def managerSessionDisconnected( self, uid ):
         self.managerSession = None
 
+    #############################
+    def changeConfig( self, configDesc ):
+        self.configDesc = configDesc
+        self.p2pServer.changeConfig( configDesc )
+
+        for peer in self.peers.values():
+            if (peer.port == self.configDesc.seedHostPort) and (peer.address == self.configDesc.seedHostPort):
+                return
+
+        if len( self.configDesc.seedHost ) > 0:
+            self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
+
     #############################   
     def __connect( self, address, port ):
 

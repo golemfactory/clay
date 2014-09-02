@@ -79,11 +79,12 @@ class TaskManager:
         self.__noticeTaskUpdated( task.header.taskId )
 
     #######################
-    def getNextSubTask( self, clientId, taskId, estimatedPerformance, numCores = 0 ):
+    def getNextSubTask( self, clientId, taskId, estimatedPerformance, maxResourceSize, numCores = 0  ):
         if taskId in self.tasks:
             task = self.tasks[ taskId ]
             ts = self.tasksStates[ taskId ]
-            if (ts.status in self.activeStatus) and task.needsComputation():
+            th = task.header
+            if (ts.status in self.activeStatus) and task.needsComputation() and (th.resourceSize <= (long(maxResourceSize) * 1024)) :
                 ctd  = task.queryExtraData( estimatedPerformance, numCores )
                 self.subTask2TaskMapping[ ctd.subtaskId ] = taskId
                 self.__addSubtaskToTasksStates( clientId, ctd )
