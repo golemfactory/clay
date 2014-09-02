@@ -5,7 +5,6 @@ from gen.ui_MainWindow import Ui_MainWindow
 class MainWindow( QMainWindow ):
 
     def closeEvent( self, event ):
-        print("event")
         reply = QMessageBox.question(self, 'Golem Message',
             "Are you sure you want to quit?", QMessageBox.Yes, QMessageBox.No)
 
