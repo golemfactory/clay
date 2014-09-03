@@ -37,6 +37,7 @@ def startClient( ):
     rootPath        = cfg.getRootPath()
     numCores        = cfg.getNumCores()
     maxResourceSize = cfg.getMaxResourceSize()
+    maxMemorySize   = cfg.getMaxMemorySize()
 
     gettingPeersInterval    = cfg.getGettingPeersInterval()
     gettingTasksInterval    = cfg.getGettingTasksInterval()
@@ -58,6 +59,7 @@ def startClient( ):
     configDesc.rootPath         = rootPath
     configDesc.numCores         = numCores
     configDesc.maxResourceSize  = maxResourceSize
+    configDesc.maxMemorySize    = maxMemorySize
 
     configDesc.seedHost               = seedHost
     configDesc.seedHostPort           = seedHostPort
@@ -192,8 +194,8 @@ class Client:
         self.listeners.append( listener )
 
     ############################
-    def changeConfig( self, hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance, maxResourceSize ):
-        self.cfg.changeConfig( hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance, maxResourceSize  )
+    def changeConfig( self, hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance, maxResourceSize, maxMemorySize ):
+        self.cfg.changeConfig( hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance, maxResourceSize, maxMemorySize  )
         self.configDesc.seedHost = hostAddress
         try:
             self.configDesc.seedHostPort = int( hostPort )
@@ -209,6 +211,7 @@ class Client:
         self.configDesc.numCores = numCores
         self.configDesc.estimatedPerformance = estimatedPerformance
         self.configDesc.maxResourceSize = maxResourceSize
+        self.configDesc.maxMemorySize   = maxMemorySize
 
         self.p2pservice.changeConfig( self.configDesc )
         self.taskServer.changeConfig( self.configDesc )

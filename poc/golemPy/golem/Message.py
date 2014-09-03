@@ -231,15 +231,17 @@ class MessageWantToComputeTask( Message ):
     TASK_ID_STR     = u"TASK_ID"
     PERF_INDEX_STR  = u"PERF_INDEX"
     MAX_RES_STR     = u"MAX_RES"
+    MAX_MEM_STR     = u"MAX_MEM"
     NUM_CORES_STR   = u"NUM_CORES"
 
-    def __init__( self, clientId = 0, taskId = 0, perfIndex = 0, maxResourceSize = 0, numCores = 0, dictRepr = None ):
+    def __init__( self, clientId = 0, taskId = 0, perfIndex = 0, maxResourceSize = 0, maxMemorySize = 0, numCores = 0, dictRepr = None ):
         Message.__init__(self, MessageWantToComputeTask.Type)
 
         self.clientId           = clientId
         self.taskId             = taskId
         self.perfIndex          = perfIndex
         self.maxResourceSize    = maxResourceSize
+        self.maxMemorySize      = maxMemorySize
         self.numCores           = numCores
 
         if dictRepr:
@@ -247,6 +249,7 @@ class MessageWantToComputeTask( Message ):
             self.taskId             = dictRepr[ MessageWantToComputeTask.TASK_ID_STR ]
             self.perfIndex          = dictRepr[ MessageWantToComputeTask.PERF_INDEX_STR ]
             self.maxResourceSize    = dictRepr[ MessageWantToComputeTask.MAX_RES_STR ]
+            self.maxMemorySize      = dictRepr[ MessageWantToComputeTask.MAX_MEM_STR ]
             self.numCores           = dictRepr[ MessageWantToComputeTask.NUM_CORES_STR ]
 
     def dictRepr(self):
@@ -254,6 +257,7 @@ class MessageWantToComputeTask( Message ):
                     MessageWantToComputeTask.TASK_ID_STR : self.taskId,
                     MessageWantToComputeTask.PERF_INDEX_STR: self.perfIndex,
                     MessageWantToComputeTask.MAX_RES_STR: self.maxResourceSize,
+                    MessageWantToComputeTask.MAX_MEM_STR: self.maxMemorySize,
                     MessageWantToComputeTask.NUM_CORES_STR: self.numCores }
 
 class MessageTaskToCompute( Message ):

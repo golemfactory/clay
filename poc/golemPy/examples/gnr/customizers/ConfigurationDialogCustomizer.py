@@ -37,17 +37,28 @@ class ConfigurationDialogCustomizer:
             logger.error( "Wrong value for number of cores: {}".format( str( e ) )  )
         self.gui.ui.numCoresSlider.setValue( numCores )
 
-        self.gui.ui.maxResourceSizeComboBox.addItems(["kB","MB", "GB"])
+        memTab = ["kB","MB", "GB"]
+        self.gui.ui.maxResourceSizeComboBox.addItems(memTab)
+        self.gui.ui.maxMemoryUsageComboBox.addItems(memTab)
         try:
             maxResourceSize = long( configDesc.maxResourceSize )
         except Exception, e:
             maxResourceSize = 250 * 1024
             logger.error( "Wrong value for maximum resource size: {}".format( str( e ) ) )
 
-        maxResourceSize, index = self.__resourceSizeToDisplay( maxResourceSize )
+        try:
+            maxMemorySize = long( configDesc.maxMemorySize )
+        except Exception, e:
+            maxMemorySize = 250 * 1024
+            logger.error( "Wrong value for maximum memory usage: {}".format( str( e ) ) )
 
+        maxResourceSize, index = self.__resourceSizeToDisplay( maxResourceSize )
         self.gui.ui.maxResourceSizeComboBox.setCurrentIndex( index )
         self.gui.ui.maxResourceSizeSpinBox.setValue( maxResourceSize )
+
+        maxMemorySize, index = self.__resourceSizeToDisplay( maxMemorySize )
+        self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex( index )
+        self.gui.ui.maxMemoryUsageSpinBox.setValue( maxMemorySize )
 
 
     #############################
@@ -70,14 +81,12 @@ class ConfigurationDialogCustomizer:
         QtCore.QObject.connect( self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged( const int )"), self.__recountPerformance )
 
     #############################
-    def __countMaxResourceSize( self ):
-        maxResourceSize = int( self.gui.ui.maxResourceSizeSpinBox.value() )
-        index = self.gui.ui.maxResourceSizeComboBox.currentIndex()
+    def __countResourceSize( self, size, index ):
         if index == 1:
-            maxResourceSize *= 1024
+            size *= 1024
         if index == 2:
-            maxResourceSize *= 1024 * 1024
-        return maxResourceSize
+            size *= 1024 * 1024
+        return size
 
     #############################
     def __changeConfig ( self ):
@@ -87,14 +96,20 @@ class ConfigurationDialogCustomizer:
         managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
         numCores = u"{}".format( self.gui.ui.numCoresSlider.value() )
         estimatedPerformance = u"{}".format( self.gui.ui.performanceLabel.text() )
-        maxResourceSize = u"{}".format( self.__countMaxResourceSize() )
+        maxResourceSize = int( self.gui.ui.maxResourceSizeSpinBox.value() )
+        index = self.gui.ui.maxResourceSizeComboBox.currentIndex()
+        maxResourceSize = u"{}".format( self.__countResourceSize( maxResourceSize, index ) )
+        maxMemorySize = int( self.gui.ui.maxMemoryUsageSpinBox.value() )
+        index = self.gui.ui.maxMemoryUsageComboBox.currentIndex()
+        maxMemorySize = u"{}".format( self.__countResourceSize( maxMemorySize, index ) )
         self.logic.changeConfig (   hostAddress,
                                     hostPort,
                                     workingDirectory,
                                     managerPort,
                                     numCores,
                                     estimatedPerformance,
-                                    maxResourceSize )
+                                    maxResourceSize,
+                                    maxMemorySize )
 
     #############################
     def __recountPerformance( self ):

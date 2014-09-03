@@ -58,6 +58,7 @@ class PbrtTaskBuilder( TaskBuilder ):
                                    self.taskDefinition.resources,
                                    self.taskDefinition.outputFile,
                                    self.taskDefinition.outputFormat,
+                                   self.taskDefinition.estimatedMemory,
                                    self.rootPath
                                   )
 
@@ -86,6 +87,7 @@ class PbrtRenderTask( GNRTask ):
                   taskResources,
                   outputFile,
                   outputFormat,
+                  estimatedMemory,
                   rootPath,
                   returnAddress = "",
                   returnPort = 0
@@ -122,6 +124,7 @@ class PbrtRenderTask( GNRTask ):
         self.pixelFilter        = pixelFilter
         self.sampler            = sampler
         self.samplesPerPixel    = samplesPerPixel
+        self.estimatedMemory    = estimatedMemory
 
         self.numFailedSubtasks  = 0
         self.failedSubtasks     = set()

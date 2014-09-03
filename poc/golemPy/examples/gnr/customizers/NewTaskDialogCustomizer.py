@@ -178,6 +178,7 @@ class NewTaskDialogCustomizer:
     def __rendererComboBoxValueChanged( self, name ):
         self.__updateRendererOptions( "{}".format( name ) )
 
+    #############################
     def __taskSettingsChanged( self, name ):
         self.gui.ui.finishButton.setEnabled( False )
         self.gui.ui.testTaskButton.setEnabled( True )
@@ -314,8 +315,9 @@ class NewTaskDialogCustomizer:
         if not self.logic.runTestTask( self.taskState ):
             logger.error( "Task not tested properly" )
 
-    def testTaskComputationFinished( self, success ):
+    def testTaskComputationFinished( self, success, estMem ):
         if success:
+            self.taskState.definition.estimatedMemory  = estMem
             self.gui.ui.finishButton.setEnabled( True )
             self.gui.ui.testTaskButton.setEnabled( False )
 

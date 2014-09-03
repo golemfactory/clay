@@ -78,13 +78,25 @@ class TaskManager:
 
         self.__noticeTaskUpdated( task.header.taskId )
 
+    def __hasSubtasks(self, taskState, task, maxResourceSize, maxMemorySize):
+        if taskState.status not in self.activeStatus:
+            return False
+        if not task.needsComputation():
+            return False
+        if task.header.resourceSize > ( long( maxResourceSize ) * 1024 ):
+            return False
+        if task.estimatedMemory > ( long( maxMemorySize ) * 1024 ):
+            return False
+        return True
+
+
     #######################
-    def getNextSubTask( self, clientId, taskId, estimatedPerformance, maxResourceSize, numCores = 0  ):
+    def getNextSubTask( self, clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores = 0  ):
         if taskId in self.tasks:
             task = self.tasks[ taskId ]
             ts = self.tasksStates[ taskId ]
             th = task.header
-            if (ts.status in self.activeStatus) and task.needsComputation() and (th.resourceSize <= (long(maxResourceSize) * 1024)) :
+            if self.__hasSubtasks(ts, task, maxResourceSize, maxMemorySize):
                 ctd  = task.queryExtraData( estimatedPerformance, numCores )
                 self.subTask2TaskMapping[ ctd.subtaskId ] = taskId
                 self.__addSubtaskToTasksStates( clientId, ctd )

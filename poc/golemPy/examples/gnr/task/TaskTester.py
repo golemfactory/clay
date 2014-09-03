@@ -5,7 +5,7 @@ import logging
 
 from golem.task.TaskBase import Task
 from golem.task.resource.Resource import TaskResourceHeader, decompressDir
-from golem.task.TaskComputer import PyTaskThread
+from golem.task.TaskComputer import PyTestTaskThread
 
 from GNREnv import GNREnv
 
@@ -36,7 +36,7 @@ class TaskTester:
             ctd = self.task.queryExtraDataForTestTask()
 
 
-            self.tt = PyTaskThread(  self,
+            self.tt = PyTestTaskThread(  self,
                                 ctd.subtaskId,
                                 ctd.workingDirectory,
                                 ctd.srcCode,
@@ -91,9 +91,10 @@ class TaskTester:
 
     ###########################
     def taskComputed( self, taskThread ):
-        if taskThread.result:
+        res, estMem = taskThread.result
+        if res:
             logger.info( "Test task computation success !" )
-            self.finishedCallback( True )
+            self.finishedCallback( True, estMem )
         else:
             logger.warning( "Test task computation failed !!!" )
             self.finishedCallback( False )

@@ -28,6 +28,7 @@ class TaskServer:
                                                 self.configDesc.taskRequestInterval,
                                                 self.__getTaskComputerRoot( configDesc ),
                                                 self.configDesc.maxResourceSize,
+                                                self.configDesc.maxMemorySize,
                                                 self.configDesc.numCores )
         self.taskSeesions       = {}
         self.taskSeesionsIncoming = []
@@ -46,14 +47,14 @@ class TaskServer:
 
     #############################
     # This method chooses random task from the network to compute on our machine
-    def requestTask( self, estimatedPerformance, maxResourceSize, numCores ):
+    def requestTask( self, estimatedPerformance, maxResourceSize, maxMemorySize, numCores ):
 
         if len( self.taskHeaders.values() ) > 0:
             tn = random.randrange( 0, len( self.taskHeaders.values() ) )
 
             theader = self.taskHeaders.values()[ tn ]
 
-            self.__connectAndSendTaskRequest( self.configDesc.clientUid, theader.taskOwnerAddress, theader.taskOwnerPort, theader.taskId, estimatedPerformance, maxResourceSize, numCores )
+            self.__connectAndSendTaskRequest( self.configDesc.clientUid, theader.taskOwnerAddress, theader.taskOwnerPort, theader.taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores )
 
             return theader.taskId
         else:
@@ -183,8 +184,8 @@ class TaskServer:
             sys.exit(0)
 
     #############################   
-    def __connectAndSendTaskRequest( self, clientId, address, port, taskId, estimatedPerformance, maxResourceSize, numCores ):
-        Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, clientId, taskId, estimatedPerformance, maxResourceSize, numCores )
+    def __connectAndSendTaskRequest( self, clientId, address, port, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores ):
+        Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores )
 
     #############################   
     def __connectAndSendResourceRequest( self, address ,port, subtaskId, resourceHeader ):
@@ -192,13 +193,13 @@ class TaskServer:
 
 
     #############################
-    def __connectionForTaskRequestEstablished( self, session, clientId, taskId, estimatedPerformance, maxResourceSize, numCores ):
+    def __connectionForTaskRequestEstablished( self, session, clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores ):
 
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
         self.taskSeesions[ taskId ] = session            
-        session.requestTask( clientId, taskId, estimatedPerformance, maxResourceSize, numCores )
+        session.requestTask( clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores )
 
     #############################
     def __connectionForTaskRequestFailure( self, clientId, taskId, estimatedPerformance ):

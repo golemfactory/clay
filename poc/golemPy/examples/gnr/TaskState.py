@@ -62,6 +62,7 @@ class TaskDefinition:
         self.mainSceneFile      = ""
         self.outputFormat       = ""
         self.resources          = []
+        self.estimatedMemory    = 0
 
 class GNRTaskState:
     #########################

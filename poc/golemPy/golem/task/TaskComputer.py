@@ -6,7 +6,7 @@ from threading import Thread, Lock
 import time
 from copy import copy
 
-from golem.vm.vm import PythonVM
+from golem.vm.vm import PythonVM, PythonTestVM
 from golem.manager.NodeStateSnapshot import TaskChunkStateSnapshot
 from golem.task.resource.ResourcesManager import ResourcesManager
 from Environment import TaskComputerEnvironment
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class TaskComputer:
 
     ######################
-    def __init__( self, clientUid, taskServer, estimatedPerformance, taskRequestFrequency, rootPath="ComputerRes", maxResourceSize = 0, numCores=0 ):
+    def __init__( self, clientUid, taskServer, estimatedPerformance, taskRequestFrequency, rootPath="ComputerRes", maxResourceSize = 0, maxMemorySize = 0, numCores=0 ):
         self.clientUid              = clientUid
         self.estimatedPerformance   = estimatedPerformance
         self.numCores               = numCores
@@ -29,6 +29,7 @@ class TaskComputer:
         self.lastTaskRequest        = time.time()
         self.taskRequestFrequency   = taskRequestFrequency
         self.maxResourceSize        = long( maxResourceSize )
+        self.maxMemorySize          = long( maxMemorySize )
 
         self.env                    = TaskComputerEnvironment( rootPath, self.clientUid )
 
@@ -108,12 +109,13 @@ class TaskComputer:
         self.estimatedPerformance = configDesc.estimatedPerformance
         self.numCores = configDesc.numCores
         self.maxResourceSize = configDesc.maxResourceSize
+        self.maxMemorySize = configDesc.maxMemorySize
         self.env = TaskComputerEnvironment( rootPath, self.clientUid )
         self.resourceManager = ResourcesManager( self.env, self )
 
     ######################
     def __requestTask( self ):
-        self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance, self.maxResourceSize, self.numCores )
+        self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance, self.maxResourceSize, self.maxMemorySize, self.numCores )
 
     ######################
     def __requestResource( self, taskId, resourceHeader, returnAddress, returnPort ):
@@ -213,3 +215,10 @@ class PyTaskThread( TaskThread ):
     def __init__( self, taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath ):
         super( PyTaskThread, self ).__init__( taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath )
         self.vm = PythonVM()
+
+
+class PyTestTaskThread( PyTaskThread ):
+    ######################
+    def __init__( self, taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath ):
+        super( PyTestTaskThread, self ).__init__( taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath )
+        self.vm = PythonTestVM()

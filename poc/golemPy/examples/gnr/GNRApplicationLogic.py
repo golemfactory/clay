@@ -65,8 +65,8 @@ class GNRApplicationLogic( QtCore.QObject ):
         return self.client.configDesc
 
     ######################
-    def changeConfig (  self, hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance, maxResourceSize ):
-        self.client.changeConfig( hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance, maxResourceSize )
+    def changeConfig (  self, hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance, maxResourceSize, maxMemorySize ):
+        self.client.changeConfig( hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance, maxResourceSize, maxMemorySize )
 
     ######################
     def getRenderer( self, name ):
@@ -204,13 +204,13 @@ class GNRApplicationLogic( QtCore.QObject ):
             return False
 
     ######################
-    def __testTaskComputationFinished( self, success ):
+    def __testTaskComputationFinished( self, success, estMem = 0 ):
         if success:
             self.progressDialog.showMessage("Test task computation success!")
         else:
             self.progressDialog.showMessage("Task test computation failure... Check resources.")
         if self.customizer.newTaskDialogCustomizer:
-            self.customizer.newTaskDialogCustomizer.testTaskComputationFinished( success )
+            self.customizer.newTaskDialogCustomizer.testTaskComputationFinished( success, estMem )
 
     ######################
     def taskStatusChanged( self, taskId ):
