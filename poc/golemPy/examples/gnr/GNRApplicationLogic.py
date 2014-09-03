@@ -35,6 +35,7 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.customizer         = None
         self.currentRenderer    = None
         self.defaultRenderer    = None
+        self.rootPath           = os.getcwd()
 
     ######################
     def registerGui( self, gui ):
@@ -178,8 +179,8 @@ class GNRApplicationLogic( QtCore.QObject ):
 
     ######################
     def recountPerformance( self, numCores ):
-        testFile =  os.path.abspath( os.path.join( os.getcwd(), "..\\..\\testtasks\\minilight\\cornellbox.ml.txt"))
-        resultFile = os.path.abspath( os.path.join( os.getcwd(), "node_data\\minilight.ini" ))
+        testFile =  os.path.abspath( os.path.join( self.rootPath, "..\\..\\testtasks\\minilight\\cornellbox.ml.txt"))
+        resultFile = os.path.abspath( os.path.join( self.rootPath, "node_data\\minilight.ini" ))
         estimatedPerf =  makePerfTest(testFile, resultFile, numCores)
         return estimatedPerf
 
