@@ -27,8 +27,22 @@ class P2PService:
 
         self.lastMessages           = []
 
-        if len( self.configDesc.seedHost ) > 0:
+        if not self.wrongSeedData():
             self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
+
+    #############################
+    def wrongSeedData( self ):
+        try:
+            if (int( self.configDesc.seedHostPort ) < 1) or ( int( self.configDesc.seedHostPort ) > 65535 ):
+                logger.warning( u"Seed port number out of range [1, 65535]: {}".format( self.configDesc.seedHostPort ) )
+                return True
+        except Exception, e:
+            logger.error( u"Wrong seed port number {}: {}".format( self.configDesc.seedHostPort, str( e ) ) )
+            return True
+
+        if len( self.configDesc.seedHost ) <= 0 :
+            return True
+        return False
 
     #############################
     def setTaskServer( self, taskServer ):
@@ -97,7 +111,7 @@ class P2PService:
             if (peer.port == self.configDesc.seedHostPort) and (peer.address == self.configDesc.seedHostPort):
                 return
 
-        if len( self.configDesc.seedHost ) > 0:
+        if not self.wrongSeedData():
             self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
 
     #############################   
