@@ -60,6 +60,9 @@ class P2PService:
         else:
             return None
 
+    def getPeers( self ):
+        return self.peers
+
     #############################
     def removePeer( self, peerSession ):
 

@@ -279,6 +279,11 @@ class Client:
         if len( progress ) > 0:
             msg =  "Counting {} subtask(s):".format(len(progress))
             for k, v in progress.iteritems():
-                msg = "{} \n {} ({}%) ".format( msg, k, v.getProgress() * 100 )
-            return msg
-        return "Waiting for tasks..."
+                msg = "{} \n {} ({}%)\n".format( msg, k, v.getProgress() * 100 )
+        else:
+            msg = "Waiting for tasks...\n"
+
+        peers = self.p2pservice.getPeers();
+
+        msg += "Active peers in network: {}".format(len(peers))
+        return msg;
