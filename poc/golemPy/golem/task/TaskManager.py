@@ -290,6 +290,26 @@ class TaskManager:
         self.env = TaskManagerEnvironment( rootPath, self.clientUid )
 
     #######################
+    def changeTimeouts( self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
+        if taskId in self.tasks:
+            task = self.tasks[taskId]
+            task.header.ttl = fullTaskTimeout
+            task.header.subtaskTimeout = subtaskTimeout
+            task.subtaskTimeout = subtaskTimeout
+            task.minSubtaskTime = minSubtaskTime
+            task.fullTaskTimeout = fullTaskTimeout
+            task.header.lastChecking = time.time()
+            ts = self.tasksStates[ taskId ]
+            for s in ts.subtaskStates.values():
+                s.ttl = subtaskTimeout
+                s.lastChecking = time.time()
+            return True
+        else:
+            logger.info( "Cannot find task {} in my tasks".format( taskId ) )
+            return False
+
+
+    #######################
     def __addSubtaskToTasksStates( self, clientId, ctd ):
 
         if ctd.taskId not in self.tasksStates:

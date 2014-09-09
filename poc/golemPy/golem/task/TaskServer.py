@@ -155,6 +155,10 @@ class TaskServer:
         self.taskManager.changeConfig( self.__getTaskManagerRoot( configDesc ) )
         self.taskComputer.changeConfig( configDesc, self.__getTaskComputerRoot( configDesc ) )
 
+    ############################
+    def changeTimeouts( self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
+        self.taskManager.changeTimeouts( taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime )
+
 
     #############################
     # PRIVATE SECTION

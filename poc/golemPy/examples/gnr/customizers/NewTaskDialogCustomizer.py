@@ -8,6 +8,7 @@ from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
 from examples.gnr.TaskState import GNRTaskState, TaskDefinition
 from golem.task.TaskState import TaskStatus
+from TimeHelper import setTimeSpinBoxes, getTimeValues
 
 import logging
 
@@ -62,27 +63,6 @@ class NewTaskDialogCustomizer:
         QtCore.QObject.connect(self.gui.ui.outputFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
 
 
-    def __countTime( self, timeout ):
-        hours = timeout / 3600
-        minutes = (timeout % 3600) / 60
-        seconds = timeout % 60
-        return hours, minutes, seconds
-
-    def __setTimeSpinBoxes( self, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
-        hours, minutes, seconds = self.__countTime( fullTaskTimeout )
-        self.gui.ui.fullTaskTimeoutHourSpinBox.setValue( hours )
-        self.gui.ui.fullTaskTimeoutMinSpinBox.setValue( minutes )
-        self.gui.ui.fullTaskTimeoutSecSpinBox.setValue( seconds )
-        hours, minutes, seconds = self.__countTime( subtaskTimeout )
-        self.gui.ui.subtaskTimeoutHourSpinBox.setValue( hours )
-        self.gui.ui.subtaskTimeoutMinSpinBox.setValue( minutes )
-        self.gui.ui.subtaskTimeoutSecSpinBox.setValue( seconds )
-        hours, minutes, seconds = self.__countTime( minSubtaskTime )
-        self.gui.ui.minSubtaskTimeHourSpinBox.setValue( hours )
-        self.gui.ui.minSubtaskTimeMinSpinBox.setValue( minutes )
-        self.gui.ui.minSubtaskTimeSecSpinBox.setValue( seconds )
-
-
     #############################
     def __updateRendererOptions( self, name ):
         r = self.logic.getRenderer( name )
@@ -104,7 +84,7 @@ class NewTaskDialogCustomizer:
 
             self.gui.ui.mainProgramFileLineEdit.setText( r.defaults.mainProgramFile )
 
-            self.__setTimeSpinBoxes( r.defaults.fullTaskTimeout, r.defaults.subtaskTimeout, r.defaults.minSubtaskTime )
+            setTimeSpinBoxes( self.gui, r.defaults.fullTaskTimeout, r.defaults.subtaskTimeout, r.defaults.minSubtaskTime )
 
             self.gui.ui.samplesPerPixelSpinBox.setValue( r.defaults.samplesPerPixel )
 
@@ -131,7 +111,7 @@ class NewTaskDialogCustomizer:
 
         self.gui.ui.mainProgramFileLineEdit.setText( dr.defaults.mainProgramFile )
 
-        self.__setTimeSpinBoxes( dr.defaults.fullTaskTimeout, dr.defaults.subtaskTimeout, dr.defaults.minSubtaskTime )
+        setTimeSpinBoxes( self.gui, dr.defaults.fullTaskTimeout, dr.defaults.subtaskTimeout, dr.defaults.minSubtaskTime )
 
         self.gui.ui.outputFileLineEdit.clear()
 
@@ -260,7 +240,7 @@ class NewTaskDialogCustomizer:
         time            = QtCore.QTime()
         self.gui.ui.taskIdLabel.setText( self.__generateNewTaskUID() )
 
-        self.__setTimeSpinBoxes( definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime )
+        setTimeSpinBoxes( self.gui, definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime )
 
         pixelFilterItem = self.gui.ui.pixelFilterComboBox.findText( definition.pixelFilter )
 
@@ -360,9 +340,7 @@ class NewTaskDialogCustomizer:
 
         definition.id                = u"{}".format( self.gui.ui.taskIdLabel.text() )
         definition.algorithmType     = u"{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )
-        definition.fullTaskTimeout   = self.gui.ui.fullTaskTimeoutHourSpinBox.value() * 3600 + self.gui.ui.fullTaskTimeoutMinSpinBox.value() * 60 + self.gui.ui.fullTaskTimeoutSecSpinBox.value()
-        definition.subtaskTimeout   = self.gui.ui.subtaskTimeoutHourSpinBox.value() * 3600 + self.gui.ui.subtaskTimeoutMinSpinBox.value() * 60 + self.gui.ui.subtaskTimeoutSecSpinBox.value()
-        definition.minSubtaskTime   = self.gui.ui.minSubtaskTimeHourSpinBox.value() * 3600 + self.gui.ui.minSubtaskTimeMinSpinBox.value() * 60 + self.gui.ui.minSubtaskTimeSecSpinBox.value()
+        definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime = getTimeValues( self.gui )
         definition.renderer          = self.logic.getRenderer( "{}".format( self.gui.ui.rendereComboBox.itemText( self.gui.ui.rendereComboBox.currentIndex() ) ) ).name
         definition.pixelFilter       = u"{}".format( self.gui.ui.pixelFilterComboBox.itemText( self.gui.ui.pixelFilterComboBox.currentIndex() ) )
         definition.samplesPerPixelCount = self.gui.ui.samplesPerPixelSpinBox.value()

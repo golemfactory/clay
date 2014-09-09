@@ -11,12 +11,14 @@ from examples.gnr.ui.TaskDetailsDialog import TaskDetailsDialog
 from examples.gnr.ui.TaskTableElem import TaskTableElem
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 from examples.gnr.ui.StatusWindow import StatusWindow
+from examples.gnr.ui.ChangeTaskDialog import ChangeTaskDialog
 
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from TaskContexMenuCustomizer import TaskContextMenuCustomizer
 from TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
 from ConfigurationDialogCustomizer import ConfigurationDialogCustomizer
 from StatusWindowCustomizer import StatusWindowCustomizer
+from ChangeTaskDialogCustomizer import ChangeTaskDialogCustomizer
 
 import time
 import logging
@@ -212,6 +214,15 @@ class MainWindowCustomizer:
 
         self.newTaskDialogCustomizer = NewTaskDialogCustomizer( self.newTaskDialog, self.logic )
         self.newTaskDialog.show()
+
+    #############################
+    def showChangeTaskDialog(self, taskId ):
+
+        self.changeTaskDialog = ChangeTaskDialog( self.gui.window )
+        self.changeTaskDialogCustomizer = ChangeTaskDialogCustomizer( self.changeTaskDialog, self.logic )
+        ts = self.logic.getTask( taskId )
+        self.changeTaskDialogCustomizer.loadTaskDefinition( ts.definition )
+        self.changeTaskDialog.show()
 
     #############################
     def __showStatusClicked( self ):

@@ -221,6 +221,10 @@ class Client:
         self.nodesManagerClient.start()
 
     ############################
+    def changeTimeouts(self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
+        self.taskServer.changeTimeouts( taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime )
+
+    ############################
     def unregisterListener( self, listener ):
         assert isinstance( listener, GolemClientEventListener )
         for i in range( len( self.listeners ) ):
