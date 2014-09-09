@@ -3,6 +3,7 @@ import random
 import cPickle as pickle
 import logging
 import time
+import subprocess
 
 from golem.task.TaskBase import TaskBuilder, ComputeTaskDef
 from golem.task.TaskState import TaskStatus
@@ -130,6 +131,7 @@ class PbrtRenderTask( GNRTask ):
         self.failedSubtasks     = set()
 
         self.collector          = PbrtTaksCollector()
+        self.collectedFileNames = []
         self.numTasksReceived   = 0
         self.subTasksGiven      = {}
 
@@ -153,6 +155,7 @@ class PbrtRenderTask( GNRTask ):
 
         del self.collector
         self.collector = PbrtTaksCollector()
+        self.collectedFileNames = []
 
         self.previewFilePath = None
 
@@ -285,15 +288,27 @@ class PbrtRenderTask( GNRTask ):
                 fh.write( decompress( tr[ 1 ] ) )
                 fh.close()
 
-                self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
+                if (self.outputFormat != "EXR"):
+                    self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
+                else:
+                    self.collectedFileNames.append( os.path.join(tmpDir, tr[0] ) )
                 self.numTasksReceived += 1
 
                 self.__updatePreview( os.path.join( tmpDir, tr[ 0 ] ) )
 
         if self.numTasksReceived == self.totalTasks:
             outputFileName = u"{}".format( self.outputFile, self.outputFormat )
-            self.collector.finalize().save( outputFileName, self.outputFormat )
-            self.previewFilePath = outputFileName
+            if (self.outputFormat != "EXR"):
+                self.collector.finalize().save( outputFileName, self.outputFormat )
+                self.previewFilePath = outputFileName
+            else:
+                taskCollectorPath = os.path.join(self.rootPath, "..\..\\tools\\taskcollector\Release\\taskcollector.exe")
+                files = ""
+                for file in self.collectedFileNames:
+                    files += file + " "
+                cmd = u"{} {} {}".format(taskCollectorPath, outputFileName, files )
+                pc = subprocess.Popen( cmd )
+                pc.wait()
 
     #######################
     def subtaskFailed( self, subtaskId, startChunk, endChunk ):

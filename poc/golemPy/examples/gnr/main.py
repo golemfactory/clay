@@ -30,7 +30,7 @@ def buidPBRTRendererInfo():
     renderer                = RendererInfo( "PBRT", defaults, PbrtTaskBuilder )
     renderer.filters        = ["box", "gaussian", "mitchell", "sinc", "triangle" ]
     renderer.pathTracers    = ["adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified"]
-    renderer.outputFormats  = [ "BMP", "DCX", "EPS", "GIF", "IM", "IM", "JPEG", "PCD", "PCX", "PDF", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
+    renderer.outputFormats  = [ "BMP", "DCX", "EPS", "EXR", "GIF", "IM", "IM", "JPEG", "PCD", "PCX", "PDF", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
 
     return renderer
 
