@@ -194,24 +194,24 @@ class Client:
         self.listeners.append( listener )
 
     ############################
-    def changeConfig( self, hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance, maxResourceSize, maxMemorySize ):
-        self.cfg.changeConfig( hostAddress, hostPort, workingDirectory, managerPort, numCores, estimatedPerformance, maxResourceSize, maxMemorySize  )
-        self.configDesc.seedHost = hostAddress
+    def changeConfig( self, newConfigDesc ):
+        self.cfg.changeConfig( newConfigDesc )
+        self.configDesc.seedHost = newConfigDesc.seedHost
         try:
-            self.configDesc.seedHostPort = int( hostPort )
+            self.configDesc.seedHostPort = int( newConfigDesc.seedHostPort )
         except:
-            logger.warning( "{} is not a proper port number".format( hostPort ) )
+            logger.warning( "{} is not a proper port number".format( newConfigDesc.seedHostPort ) )
             self.configDesc.seedHostPort = ""
-        self.configDesc.rootPath = workingDirectory
+        self.configDesc.rootPath = newConfigDesc.rootPath
         try:
-            self.configDesc.managerPort = int( managerPort )
+            self.configDesc.managerPort = int( newConfigDesc.managerPort )
         except:
-            logger.warning( "{} is not a proper port number".format( hostPort ) )
+            logger.warning( "{} is not a proper port number".format( newConfigDesc.managerPort ) )
             self.configDesc.managerPort = ""
-        self.configDesc.numCores = numCores
-        self.configDesc.estimatedPerformance = estimatedPerformance
-        self.configDesc.maxResourceSize = maxResourceSize
-        self.configDesc.maxMemorySize   = maxMemorySize
+        self.configDesc.numCores = newConfigDesc.numCores
+        self.configDesc.estimatedPerformance = newConfigDesc.estimatedPerformance
+        self.configDesc.maxResourceSize = newConfigDesc.maxResourceSize
+        self.configDesc.maxMemorySize   = newConfigDesc.maxMemorySize
 
         self.p2pservice.changeConfig( self.configDesc )
         self.taskServer.changeConfig( self.configDesc )

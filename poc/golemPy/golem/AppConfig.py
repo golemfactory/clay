@@ -6,6 +6,7 @@ import logging
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 from golem.core.simpleenv import SimpleEnv
 from golem.core.prochelper import ProcessService
+from ClientConfigDescriptor import  ClientConfigDescriptor
 
 CONFIG_FILENAME = "app_cfg.ini"
 ESTM_FILENAME = "minilight.ini"
@@ -85,7 +86,6 @@ class NodeConfig:
     ##############################
     def section( self ):
         return self._section
-
 
 ##############################
 ##############################
@@ -195,15 +195,17 @@ class AppConfig:
         return self._cfg.getNodeConfig().getMaxMemorySize()
 
     ##############################
-    def changeConfig( self, seedHost, seedPort, rootPath, managerPort, numCores, estimatedPerformance, maxResourceSize, maxMemorySize, cfgFile = CONFIG_FILENAME, ):
-        self._cfg.getNodeConfig().setSeedHost( seedHost )
-        self._cfg.getNodeConfig().setSeedHostPort( seedPort )
-        self._cfg.getNodeConfig().setNumCores( numCores )
-        self._cfg.getNodeConfig().setEstimatedPerformance( estimatedPerformance )
-        self._cfg.getNodeConfig().setMaxResourceSize( maxResourceSize )
-        self._cfg.getNodeConfig().setMaxMemorySize( maxMemorySize )
-        self._cfg.getCommonConfig().setRootPath( rootPath )
-        self._cfg.getCommonConfig().setManagerListenPort( managerPort )
+    def changeConfig( self, cfgDesc , cfgFile = CONFIG_FILENAME, ):
+        assert isinstance( cfgDesc, ClientConfigDescriptor )
+
+        self._cfg.getNodeConfig().setSeedHost( cfgDesc.seedHost )
+        self._cfg.getNodeConfig().setSeedHostPort( cfgDesc.seedHostPort )
+        self._cfg.getNodeConfig().setNumCores( cfgDesc.numCores )
+        self._cfg.getNodeConfig().setEstimatedPerformance( cfgDesc.estimatedPerformance )
+        self._cfg.getNodeConfig().setMaxResourceSize( cfgDesc.maxResourceSize )
+        self._cfg.getNodeConfig().setMaxMemorySize( cfgDesc.maxMemorySize )
+        self._cfg.getCommonConfig().setRootPath( cfgDesc.rootPath )
+        self._cfg.getCommonConfig().setManagerListenPort( cfgDesc.managerPort )
         SimpleConfig( self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile, True )
 
     def __str__( self ):

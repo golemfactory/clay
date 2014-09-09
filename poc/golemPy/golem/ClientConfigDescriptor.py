@@ -26,3 +26,5 @@ class ClientConfigDescriptor:
         self.rootPath               = u""
         self.numCores               = 0
         self.maxResourceSize        = 0
+        self.maxMemorySize          = 0
+

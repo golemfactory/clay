@@ -3,6 +3,7 @@ import logging
 from PyQt4 import QtCore
 
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
+from golem.ClientConfigDescriptor import ClientConfigDescriptor
 
 logger = logging.getLogger(__name__)
 
@@ -90,26 +91,20 @@ class ConfigurationDialogCustomizer:
 
     #############################
     def __changeConfig ( self ):
-        hostAddress =  u"{}".format( self.gui.ui.hostAddressLineEdit.text() )
-        hostPort    =  u"{}".format ( self.gui.ui.hostIPLineEdit.text() )
-        workingDirectory = u"{}".format( self.gui.ui.workingDirectoryLineEdit.text() )
-        managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
-        numCores = u"{}".format( self.gui.ui.numCoresSlider.value() )
-        estimatedPerformance = u"{}".format( self.gui.ui.performanceLabel.text() )
+        cfgDesc = ClientConfigDescriptor()
+        cfgDesc.seedHost =  u"{}".format( self.gui.ui.hostAddressLineEdit.text() )
+        cfgDesc.seedHostPort    =  u"{}".format ( self.gui.ui.hostIPLineEdit.text() )
+        cfgDesc.rootPath = u"{}".format( self.gui.ui.workingDirectoryLineEdit.text() )
+        cfgDesc.managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
+        cfgDesc.numCores = u"{}".format( self.gui.ui.numCoresSlider.value() )
+        cfgDesc.estimatedPerformance = u"{}".format( self.gui.ui.performanceLabel.text() )
         maxResourceSize = int( self.gui.ui.maxResourceSizeSpinBox.value() )
         index = self.gui.ui.maxResourceSizeComboBox.currentIndex()
-        maxResourceSize = u"{}".format( self.__countResourceSize( maxResourceSize, index ) )
+        cfgDesc.maxResourceSize = u"{}".format( self.__countResourceSize( maxResourceSize, index ) )
         maxMemorySize = int( self.gui.ui.maxMemoryUsageSpinBox.value() )
         index = self.gui.ui.maxMemoryUsageComboBox.currentIndex()
-        maxMemorySize = u"{}".format( self.__countResourceSize( maxMemorySize, index ) )
-        self.logic.changeConfig (   hostAddress,
-                                    hostPort,
-                                    workingDirectory,
-                                    managerPort,
-                                    numCores,
-                                    estimatedPerformance,
-                                    maxResourceSize,
-                                    maxMemorySize )
+        cfgDesc.maxMemorySize = u"{}".format( self.__countResourceSize( maxMemorySize, index ) )
+        self.logic.changeConfig ( cfgDesc )
 
     #############################
     def __recountPerformance( self ):
