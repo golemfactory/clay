@@ -89,7 +89,6 @@ class SimpleConfig:
             cfg = ConfigParser.ConfigParser()
             files = cfg.read( cfgFile )
 
-
             if len( files ) == 1 and self._commonConfig.section() in cfg.sections():
                 if self._nodeConfig.section() in cfg.sections():
                     if refresh:

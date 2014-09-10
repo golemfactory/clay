@@ -1,4 +1,3 @@
-
 from golem.Message import Message
 from golem.network.ConnectionState import ConnectionState
 import logging

@@ -1,4 +1,3 @@
-
 from PyQt4 import QtCore
 
 class TaskChunkStateSnapshot:
@@ -65,14 +64,14 @@ class LocalTaskStateSnapshot:
 #FIXME: also add a boolean flag indicating whether there is any active local/rempote task being calculated
 class NodeStateSnapshot:
 
-    def __init__( self, running = True, uid = 0, peersNum = 0, tasksNum = 0, endpointAddr = "", endpointPort = "", lastNetowrkMessages = [], lastTaskMessages = [], tcss = {}, ltss = {} ):
+    def __init__( self, running = True, uid = 0, peersNum = 0, tasksNum = 0, endpointAddr = "", endpointPort = "", lastNetworkMessages = [], lastTaskMessages = [], tcss = {}, ltss = {} ):
         self.uid                    = uid
         self.timestamp              = QtCore.QTime.currentTime()
         self.endpointAddr           = endpointAddr
         self.endpointPort           = endpointPort
         self.peersNum               = peersNum
         self.tasksNum               = tasksNum
-        self.lastNetowrkMessages    = lastNetowrkMessages
+        self.lastNetworkMessages    = lastNetworkMessages
         self.lastTaskMessages       = lastTaskMessages
         self.taskChunkState         = tcss
         self.localTaskState         = ltss
@@ -100,7 +99,7 @@ class NodeStateSnapshot:
         return self.tasksNum
 
     def getLastNetworkMessages( self ):
-        return self.lastNetowrkMessages
+        return self.lastNetworkMessages
 
     def getLastTaskMessages( self ):
         return self.lastTaskMessages

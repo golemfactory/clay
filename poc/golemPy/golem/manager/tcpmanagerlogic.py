@@ -1,4 +1,3 @@
-import sys
 import subprocess
 
 from PyQt4.QtCore import *

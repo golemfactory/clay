@@ -7,10 +7,13 @@ def regenerateUIFiles( rootPath ):
     
     dirs  = [ name for name in os.listdir( rootPath ) if os.path.isdir( os.path.join( rootPath, name ) ) ]
     files = [ name for name in os.listdir( rootPath ) if os.path.isfile( os.path.join( rootPath, name ) ) ]
-    pyuicPath = './../src/ui/pyuic.py'
+    pyuicPath = 'pyuic.py'
     
     for dir in dirs:
         regenerateUIFiles( os.path.join( rootPath, dir ) )
+
+    pth, filename =  os.path.split(os.path.realpath(__file__))
+    pyuicPath = os.path.join(pth, pyuicPath)
 
     for file in files:
         if file.endswith( ".ui" ):

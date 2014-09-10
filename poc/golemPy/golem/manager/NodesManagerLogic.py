@@ -1,3 +1,10 @@
+import sys
+sys.path.append("../")
+
+import subprocess
+import time
+import random
+from task.TaskBase import TaskHeader
 
 class NodesManagerLogicTest:
 
@@ -21,13 +28,6 @@ class NodesManagerLogicTest:
     ########################
     def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
         self.simulator.enqueueNodeTask( uid, w, h, numSamplesPerPixel, fileName )
-
-
-import subprocess
-import time
-import random
-from TaskBase import TaskHeader
-from ExampleTasks import VRayTracingTask, PbrtRenderTask
 
 class EmptyManagerLogic:
 

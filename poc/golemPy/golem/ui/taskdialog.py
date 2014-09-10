@@ -1,5 +1,5 @@
 from PyQt4 import QtCore, QtGui
-from ui_taskdialog import Ui_TaskSpecDialog
+from gen.ui_taskdialog import Ui_TaskSpecDialog
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8

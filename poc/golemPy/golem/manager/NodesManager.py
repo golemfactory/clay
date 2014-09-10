@@ -1,20 +1,22 @@
-
 import sys
-sys.path.append( '../ui' )
-sys.path.append( '../' )
-sys.path.append( '../core' )
-sys.path.append( '../network' )
+sys.path.append('./../../')
+# sys.path.append( '../' )
+# sys.path.append( '../core' )
+# sys.path.append( '../network' )
 
 from PyQt4.QtGui import QApplication, QDialog
 from PyQt4.QtCore import QTimer
 from threading import Lock
 
-from ui_manager import Ui_NodesManagerWidget
-from uicustomizer import ManagerUiCustomizer, NodeDataState
+from tools.UiGen import genUiFiles
+genUiFiles( "../ui" )
+
+from golem.ui.gen.ui_manager import Ui_NodesManagerWidget
+from golem.ui.uicustomizer import ManagerUiCustomizer, NodeDataState
 from NodeStateSnapshot import NodeStateSnapshot
 from networksimulator import GLOBAL_SHUTDOWN, LocalNetworkSimulator
 from NodesManagerLogic import NodesManagerLogicTest
-from NodesManagerServer import NodesManagerServer
+from server.NodesManagerServer import NodesManagerServer
 
 #FIXME: potencjalnie mozna tez spiac ze soba managery i wtedy kontrolowac zdalnie wszystkie koncowki i sobie odpalac nody w miare potrzeb, ale to nie na najblizsza prezentacje zabawa
 class NodesManager:
@@ -36,20 +38,20 @@ class NodesManager:
 
         self.managerServer = NodesManagerServer( self, 20301 )
 
-        #FIXME: some shitty python magic
-        def closeEvent_(self_, event):
-            try:
-                self.managerLogic.getReactor().stop()
-                self.managerLogic.terminateAllNodes()
-            except Exception as ex:
-                pass
-            finally:
-                GLOBAL_SHUTDOWN[ 0 ] = True
-                event.accept()
+         #FIXME: some shitty python magic
+    def closeEvent_(self, event):
+        try:
+            self.managerLogic.getReactor().stop()
+            self.managerLogic.terminateAllNodes()
+        except Exception as ex:
+            pass
+        finally:
+            GLOBAL_SHUTDOWN[ 0 ] = True
+            event.accept()
 
         setattr( self.window.__class__, 'closeEvent', closeEvent_ )
 
-    ########################
+     ########################
     def setManagerLogic( self, managerLogic ):
         self.managerLogic = managerLogic
 
@@ -111,7 +113,7 @@ class NodesManager:
         lm = ""
         if len( ns.getLastNetworkMessages() ) > 0:
             lm = ns.getLastNetworkMessages()[-1][ 0 ] + str( ns.getLastNetworkMessages()[-1][ 4 ] )
-            
+
 
         ir = ns.isRunning()
 
