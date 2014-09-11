@@ -18,20 +18,15 @@ logger = logging.getLogger(__name__)
 class TaskComputer:
 
     ######################
-    def __init__( self, clientUid, taskServer, estimatedPerformance, taskRequestFrequency, rootPath="ComputerRes", maxResourceSize = 0, maxMemorySize = 0, numCores=0 ):
+    def __init__( self, clientUid, taskServer ):
         self.clientUid              = clientUid
-        self.estimatedPerformance   = estimatedPerformance
-        self.numCores               = numCores
         self.taskServer             = taskServer
         self.waitingForTask         = 0
         self.currentComputations    = []
         self.lock                   = Lock()
         self.lastTaskRequest        = time.time()
-        self.taskRequestFrequency   = taskRequestFrequency
-        self.maxResourceSize        = long( maxResourceSize )
-        self.maxMemorySize          = long( maxMemorySize )
-
-        self.env                    = TaskComputerEnvironment( rootPath, self.clientUid )
+        self.taskRequestFrequency   = taskServer.configDesc.taskRequestInterval
+        self.env                    = TaskComputerEnvironment( taskServer.getTaskComputerRoot(), self.clientUid )
 
         self.resourceManager        = ResourcesManager( self.env, self )
 
@@ -105,17 +100,13 @@ class TaskComputer:
         return ret
 
     ######################
-    def changeConfig( self, configDesc, rootPath ):
-        self.estimatedPerformance = configDesc.estimatedPerformance
-        self.numCores = configDesc.numCores
-        self.maxResourceSize = configDesc.maxResourceSize
-        self.maxMemorySize = configDesc.maxMemorySize
-        self.env = TaskComputerEnvironment( rootPath, self.clientUid )
+    def changeConfig( self ):
+        self.env = TaskComputerEnvironment( self.taskServer.getTaskComputerRoot(), self.clientUid )
         self.resourceManager = ResourcesManager( self.env, self )
 
     ######################
     def __requestTask( self ):
-        self.waitingForTask = self.taskServer.requestTask( self.estimatedPerformance, self.maxResourceSize, self.maxMemorySize, self.numCores )
+        self.waitingForTask = self.taskServer.requestTask( )
 
     ######################
     def __requestResource( self, taskId, resourceHeader, returnAddress, returnPort ):

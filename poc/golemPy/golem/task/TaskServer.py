@@ -22,16 +22,9 @@ class TaskServer:
         self.curPort            = configDesc.startPort
         self.taskHeaders        = {}
         self.taskManager        = TaskManager( configDesc.clientUid, rootPath = self.__getTaskManagerRoot( configDesc ) )
-        self.taskComputer       = TaskComputer( configDesc.clientUid,
-                                                self,
-                                                self.configDesc.estimatedPerformance,
-                                                self.configDesc.taskRequestInterval,
-                                                self.__getTaskComputerRoot( configDesc ),
-                                                self.configDesc.maxResourceSize,
-                                                self.configDesc.maxMemorySize,
-                                                self.configDesc.numCores )
-        self.taskSeesions       = {}
-        self.taskSeesionsIncoming = []
+        self.taskComputer       = TaskComputer( configDesc.clientUid, self )
+        self.taskSessions       = {}
+        self.taskSessionsIncoming = []
 
         self.lastMessages       = []
 
@@ -47,14 +40,21 @@ class TaskServer:
 
     #############################
     # This method chooses random task from the network to compute on our machine
-    def requestTask( self, estimatedPerformance, maxResourceSize, maxMemorySize, numCores ):
+    def requestTask( self ):
 
         if len( self.taskHeaders.values() ) > 0:
             tn = random.randrange( 0, len( self.taskHeaders.values() ) )
 
             theader = self.taskHeaders.values()[ tn ]
 
-            self.__connectAndSendTaskRequest( self.configDesc.clientUid, theader.taskOwnerAddress, theader.taskOwnerPort, theader.taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores )
+            self.__connectAndSendTaskRequest( self.configDesc.clientUid,
+                                              theader.taskOwnerAddress,
+                                              theader.taskOwnerPort,
+                                              theader.taskId,
+                                              self.configDesc.estimatedPerformance,
+                                              self.configDesc.maxResourceSize,
+                                              self.configDesc.maxMemorySize,
+                                              self.configDesc.numCores )
 
             return theader.taskId
         else:
@@ -82,7 +82,7 @@ class TaskServer:
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
 
-        self.taskSeesionsIncoming.append( session )
+        self.taskSessionsIncoming.append( session )
 
     #############################
     def getTasksHeaders( self ):
@@ -120,9 +120,9 @@ class TaskServer:
 
     #############################
     def removeTaskSession( self, taskSession ):
-        for tsk in self.taskSeesions.keys():
-            if self.taskSeesions[ tsk ] == taskSession:
-                del self.taskSeesions[ tsk ]
+        for tsk in self.taskSessions.keys():
+            if self.taskSessions[ tsk ] == taskSession:
+                del self.taskSessions[ tsk ]
 
     #############################
     def setLastMessage( self, type, t, msg, address, port ):
@@ -153,11 +153,14 @@ class TaskServer:
     def changeConfig( self, configDesc ):
         self.configDesc = configDesc
         self.taskManager.changeConfig( self.__getTaskManagerRoot( configDesc ) )
-        self.taskComputer.changeConfig( configDesc, self.__getTaskComputerRoot( configDesc ) )
+        self.taskComputer.changeConfig( )
 
     ############################
     def changeTimeouts( self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
         self.taskManager.changeTimeouts( taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime )
+
+    def getTaskComputerRoot( self ):
+        return os.path.join( self.configDesc.rootPath, "ComputerRes")
 
 
     #############################
@@ -202,7 +205,7 @@ class TaskServer:
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
-        self.taskSeesions[ taskId ] = session            
+        self.taskSessions[ taskId ] = session
         session.requestTask( clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores )
 
     #############################
@@ -225,7 +228,7 @@ class TaskServer:
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
 
-        self.taskSeesions[ waitingTaskResult.subtaskId ] = session
+        self.taskSessions[ waitingTaskResult.subtaskId ] = session
         
         session.sendReportComputedTask( waitingTaskResult.subtaskId )
 
@@ -244,7 +247,7 @@ class TaskServer:
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
-        self.taskSeesions[ subtaskId ] = session
+        self.taskSessions[ subtaskId ] = session
         session.taskId = subtaskId
         session.requestResource( subtaskId, resourceHeader )
 
@@ -282,9 +285,6 @@ class TaskServer:
 
     def __getTaskManagerRoot( self, configDesc ):
         return os.path.join( configDesc.rootPath, "res" )
-
-    def __getTaskComputerRoot( self, configDesc ):
-        return os.path.join( configDesc.rootPath, "ComputerRes")
 
 class WaitingTaskResult:
     #############################
