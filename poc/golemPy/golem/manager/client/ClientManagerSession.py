@@ -1,6 +1,6 @@
 
 from golem.Message import MessagePeerStatus, MessageKillNode, MessageNewTask
-from ClientManagerConnState import ClientManagerConnState
+from golem.manager.ManagerConnState import ManagerConnState
 
 import cPickle as pickle
 import time
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class ClientManagerSession:
 
-    ConnectionStateType = ClientManagerConnState
+    ConnectionStateType = ManagerConnState
 
     ##########################
     def __init__( self, conn ):

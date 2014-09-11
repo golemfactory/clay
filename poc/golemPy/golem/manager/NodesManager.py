@@ -1,21 +1,14 @@
 import sys
-sys.path.append('./../../')
-# sys.path.append( '../' )
-# sys.path.append( '../core' )
-# sys.path.append( '../network' )
 
 from PyQt4.QtGui import QApplication, QDialog
 from PyQt4.QtCore import QTimer
 from threading import Lock
 
-from tools.UiGen import genUiFiles
-genUiFiles( "../ui" )
-
 from golem.ui.gen.ui_manager import Ui_NodesManagerWidget
 from golem.ui.uicustomizer import ManagerUiCustomizer, NodeDataState
 from NodeStateSnapshot import NodeStateSnapshot
 from networksimulator import GLOBAL_SHUTDOWN, LocalNetworkSimulator
-from NodesManagerLogic import NodesManagerLogicTest
+from NodesManagerLogic import NodesManagerLogicTest, EmptyManagerLogic
 from server.NodesManagerServer import NodesManagerServer
 
 #FIXME: potencjalnie mozna tez spiac ze soba managery i wtedy kontrolowac zdalnie wszystkie koncowki i sobie odpalac nody w miare potrzeb, ale to nie na najblizsza prezentacje zabawa
@@ -135,7 +128,7 @@ class NodesManager:
 
     ########################
     def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
-        self.managerLogic.enqueueNewTask( uid, w, h, numSamplesPerPixel, fileName );
+        self.managerLogic.enqueueNewTask( uid, w, h, numSamplesPerPixel, fileName )
 
 if __name__ == "__main__":
 

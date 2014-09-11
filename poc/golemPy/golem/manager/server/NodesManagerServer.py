@@ -1,4 +1,3 @@
-
 from golem.core.network import Network
 from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 import logging
@@ -14,14 +13,16 @@ class NodesManagerServer:
         self.reactor            = reactor
         self.nodesManager       = nodesManager
 
+        self.__startAccepting()
+
     #############################
     def setReactor( self, reactor ):
         self.reactor = reactor
-        self.__startAccepting()
 
     #############################
     def __startAccepting( self ):
         Network.listen( self.port, self.port, ManagerServerFactory( self ), self.reactor, self.__listeningEstablished, self.__listeningFailure )
+
 
     #############################
     def __listeningEstablished( self, port ):
@@ -56,9 +57,8 @@ class NodesManagerServer:
             if ms.uid == uid:
                 ms.sendNewTask( task )
 
-
 from twisted.internet.protocol import Factory
-from ServerManagerConnState import ServerManagerConnState
+from golem.manager.ManagerConnState import ManagerConnState
 
 class ManagerServerFactory(Factory):
     #############################
@@ -67,6 +67,5 @@ class ManagerServerFactory(Factory):
 
     #############################
     def buildProtocol( self, addr ):
-        logger.info( "Protocol build for {} : {}".format( addr.host, addr.port ) )
-        cs = ServerManagerConnState( self.server )
-        return cs
+        return ManagerConnState( self.server )
+

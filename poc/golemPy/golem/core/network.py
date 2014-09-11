@@ -11,7 +11,7 @@ class Network:
         logger.info( "Connecting to host {} : {}".format( address, port ) )
         from twisted.internet import reactor
         endpoint    = TCP4ClientEndpoint( reactor, address, port )
-        connection  = SessionType.ConnectionStateType();
+        connection  = SessionType.ConnectionStateType()
 
         d = connectProtocol( endpoint, connection )
 

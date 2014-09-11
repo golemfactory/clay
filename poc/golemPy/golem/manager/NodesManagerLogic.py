@@ -1,10 +1,8 @@
-import sys
-sys.path.append("../")
 
 import subprocess
 import time
 import random
-from task.TaskBase import TaskHeader
+from golem.task.TaskBase import TaskHeader
 
 class NodesManagerLogicTest:
 
@@ -32,7 +30,7 @@ class NodesManagerLogicTest:
 class EmptyManagerLogic:
 
     ########################
-    def __init__( self, port, managerServer ):
+    def __init__( self, managerServer ):
         self.reactor = None
         self.managerServer = managerServer
         self.activeNodes = []
@@ -50,7 +48,7 @@ class EmptyManagerLogic:
     def runAdditionalNodes( self, numNodes ):
         for i in range( numNodes ):
             time.sleep( 0.1 )
-            pc = subprocess.Popen( ["python", "ClientMain.py"], creationflags = subprocess.CREATE_NEW_CONSOLE )
+            pc = subprocess.Popen( ["python", "main.py"], creationflags = subprocess.CREATE_NEW_CONSOLE )
             self.activeNodes.append( pc )
 
     ########################
@@ -59,11 +57,11 @@ class EmptyManagerLogic:
 
     ########################
     def terminateAllNodes( self ):
-        for i in self.activeNodes:
+        for node in self.managerServer.managerSessions:
             try:
-                i.kill()
+                self.managerServer.sendTerminate( node.uid )
             except:
-                pass
+                logger.warning("Can't send terminate signal to node {}".format( node.uid ))
 
     ########################
     def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
