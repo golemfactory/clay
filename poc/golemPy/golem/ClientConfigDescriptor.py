@@ -7,6 +7,7 @@ class ClientConfigDescriptor:
         self.clientUid      = 0
         self.startPort      = 0
         self.endPort        = 0
+        self.managerAddress = ""
         self.managerPort    = 0
         self.optNumPeers    = 0
         self.sendPings      = 0

@@ -24,6 +24,7 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.hostAddressLineEdit.setText( u"{}".format( configDesc.seedHost ) )
         self.gui.ui.hostIPLineEdit.setText( u"{}".format( configDesc.seedHostPort ) )
         self.gui.ui.workingDirectoryLineEdit.setText( u"{}".format( configDesc.rootPath ) )
+        self.gui.ui.managerAddressLineEdit.setText( u"{}".format( configDesc.managerAddress ) )
         self.gui.ui.managerPortLineEdit.setText( u"{}".format( configDesc.managerPort ) )
         self.gui.ui.performanceLabel.setText( u"{}".format( configDesc.estimatedPerformance ) )
 
@@ -95,6 +96,7 @@ class ConfigurationDialogCustomizer:
         cfgDesc.seedHost =  u"{}".format( self.gui.ui.hostAddressLineEdit.text() )
         cfgDesc.seedHostPort    =  u"{}".format ( self.gui.ui.hostIPLineEdit.text() )
         cfgDesc.rootPath = u"{}".format( self.gui.ui.workingDirectoryLineEdit.text() )
+        cfgDesc.managerAddress = u"{}".format( self.gui.ui.managerAddressLineEdit.text() )
         cfgDesc.managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
         cfgDesc.numCores = u"{}".format( self.gui.ui.numCoresSlider.value() )
         cfgDesc.estimatedPerformance = u"{}".format( self.gui.ui.performanceLabel.text() )

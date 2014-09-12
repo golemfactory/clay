@@ -7,14 +7,14 @@ genUiFiles( "./../../golem/ui" )
 from golem.AppConfig import AppConfig
 from golem.manager.NodesManager import  NodesManager
 from GNRManagerLogic import GNRManagerLogic
-from golem.Message import initMessages
+from golem.Message import initManagerMessages
 import logging.config
 
 
 def main():
 
     logging.config.fileConfig('../gnr/logging.ini', disable_existing_loggers=False)
-    initMessages()
+    initManagerMessages()
 
     try:
          import qt4reactor

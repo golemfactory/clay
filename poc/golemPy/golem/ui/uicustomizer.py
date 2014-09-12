@@ -16,7 +16,7 @@ except AttributeError:
 class NodeDataState:
 
     ########################
-    def __init__( self, running, uid, timestamp, endpoint, numPeers, numTasks, lastMsg, ltsd, rcsd ):
+    def __init__( self, running, uid, timestamp, endpoint, numPeers, numTasks, lastMsg, ltsd, rcsd):
         self.isRunning = running
         self.uid = uid
         self.timestamp = timestamp
@@ -26,14 +26,16 @@ class NodeDataState:
         self.lastMsg = lastMsg
         self.localTasksStateData = ltsd
         self.remoteChunksStateData = rcsd
+        self.addr = ''
 
 #FIXME: add start local task button to manager (should trigger another local task for selected node)
 #FIXME: rething deleting nodes which seem to be inactive
 class TableRowDataEntry:
 
     ########################
-    def __init__( self, uidItem, timestampItem, remoteChunksCount, localTasksCount ):
+    def __init__( self, uidItem, address, remoteChunksCount, localTasksCount, timestampItem, ):
         self.uid = uidItem
+        self.endpoint  = address
         self.timestamp = timestampItem
         self.remoteChunksCount = remoteChunksCount
         self.localTasksCount = localTasksCount
@@ -139,16 +141,22 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.table.setItem( nextRow, 2, item2 )
         self.table.setItem( nextRow, 3, item3 )
 
+        item4 = QtGui.QTableWidgetItem()
+
+        self.table.setItem( nextRow, 4, item4 )
+
         assert nodeUid not in self.tableData
 
-        return TableRowDataEntry( item0, item1, item2, item3 )
+        return TableRowDataEntry( item0, item1, item2, item3, item4 )
 
     ########################
-    def __updateExistingRowView( self, rowData, nodeUid, nodeTimestamp, remoteChunksCount, localTasksCount ):
+    def __updateExistingRowView( self, rowData, nodeUid, nodeTimestamp, remoteChunksCount, localTasksCount, endpoint ):
         rowData.uid.setText( nodeUid )
+        rowData.endpoint.setText( endpoint )
         rowData.timestamp.setText( nodeTimestamp )
         rowData.remoteChunksCount.setText( str( remoteChunksCount ) )
         rowData.localTasksCount.setText( str( localTasksCount ) )
+
 
     ########################
     def __updateDetailedNodeView( self, idx, nodeDataState ):
@@ -212,7 +220,12 @@ class ManagerUiCustomizer(QtCore.QObject):
 
         #update view
         if nodeDataState.isRunning:
-            self.__updateExistingRowView( self.tableData[ nodeDataState.uid ], nodeDataState.uid, nodeDataState.timestamp, len( nodeDataState.remoteChunksStateData ), len( nodeDataState.localTasksStateData ) )        
+            self.__updateExistingRowView( self.tableData[ nodeDataState.uid ],
+                                          nodeDataState.uid,
+                                          nodeDataState.timestamp,
+                                          len( nodeDataState.remoteChunksStateData ),
+                                          len( nodeDataState.localTasksStateData ),
+                                          nodeDataState.endpoint )
             self.__updateDetailedNodeView( idx, nodeDataState )
         else:
             self.__removeRowAndDetailedData( idx, nodeDataState.uid )

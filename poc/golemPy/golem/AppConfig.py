@@ -11,6 +11,7 @@ from ClientConfigDescriptor import  ClientConfigDescriptor
 CONFIG_FILENAME = "app_cfg.ini"
 ESTM_FILENAME = "minilight.ini"
 MANAGER_PORT = 20301
+MANAGER_ADDRESS = "127.0.0.1"
 ESTIMATED_DEFAULT = 2220.0
 START_PORT = 40102
 END_PORT = 60102
@@ -25,6 +26,7 @@ class CommonConfig:
     def __init__( self,
                   section = "Common",
                   rootPath = DEFAULT_ROOT_PATH,
+                  managerAddress = MANAGER_ADDRESS,
                   managerPort = MANAGER_PORT,
                   startPort = START_PORT,
                   endPort = END_PORT,
@@ -35,6 +37,7 @@ class CommonConfig:
         ConfigEntry.createProperty( section, "optimal peer num",    optimalPeerNum,    self, "OptimalPeerNum" )
         ConfigEntry.createProperty( section, "start port",          startPort, self, "StartPort" )
         ConfigEntry.createProperty( section, "end port",            endPort, self, "EndPort" )
+        ConfigEntry.createProperty( section, "manager address", managerAddress, self, "ManagerAddress" )
         ConfigEntry.createProperty( section, "manager listen port", managerPort, self, "ManagerListenPort" )
         ConfigEntry.createProperty( section, "resource root path", rootPath, self, "RootPath")
 
@@ -143,6 +146,9 @@ class AppConfig:
     def getEndPort( self ):
         return self._cfg.getCommonConfig().getEndPort()
 
+    def getManagerAddress( self ):
+        return self._cfg.getCommonConfig().getManagerAddress()
+
     def getManagerListenPort( self ):
         return self._cfg.getCommonConfig().getManagerListenPort()
 
@@ -205,6 +211,7 @@ class AppConfig:
         self._cfg.getNodeConfig().setMaxResourceSize( cfgDesc.maxResourceSize )
         self._cfg.getNodeConfig().setMaxMemorySize( cfgDesc.maxMemorySize )
         self._cfg.getCommonConfig().setRootPath( cfgDesc.rootPath )
+        self._cfg.getCommonConfig().setManagerAddress( cfgDesc.managerAddress )
         self._cfg.getCommonConfig().setManagerListenPort( cfgDesc.managerPort )
         SimpleConfig( self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile, True )
 

@@ -25,6 +25,7 @@ def startClient( ):
     cfg = AppConfig.loadConfig()
 
     optNumPeers     = cfg.getOptimalPeerNum()
+    managerAddress  = cfg.getManagerAddress()
     managerPort     = cfg.getManagerListenPort()
     startPort       = cfg.getStartPort()
     endPort         = cfg.getEndPort()
@@ -50,6 +51,7 @@ def startClient( ):
     configDesc.clientUid        = clientUid
     configDesc.startPort        = startPort
     configDesc.endPort          = endPort
+    configDesc.managerAddress   = managerAddress
     configDesc.managerPort      = managerPort
     configDesc.optNumPeers      = optNumPeers
     configDesc.sendPings        = sendPings
@@ -143,7 +145,10 @@ class Client:
         time.sleep( 0.5 )
         self.taskServer.taskManager.registerListener( ClientTaskManagerEventListener( self ) )
         logger.info( "Starting nodes manager client ..." )
-        self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUid, "127.0.0.1", self.configDesc.managerPort, self.taskServer.taskManager )
+        self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUid,
+                                                      self.configDesc.managerAddress,
+                                                      self.configDesc.managerPort,
+                                                      self.taskServer.taskManager )
         self.nodesManagerClient.start()
 
         #self.taskServer.taskManager.addNewTask( )
@@ -217,7 +222,10 @@ class Client:
         self.taskServer.changeConfig( self.configDesc )
 
         del self.nodesManagerClient
-        self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUid, "127.0.0.1", self.configDesc.managerPort, self.taskServer.taskManager )
+        self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUid,
+                                                      self.configDesc.managerAddress,
+                                                      self.configDesc.managerPort,
+                                                      self.taskServer.taskManager )
         self.nodesManagerClient.start()
 
     ############################

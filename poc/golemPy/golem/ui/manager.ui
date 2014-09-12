@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1032</width>
-    <height>381</height>
+    <width>1152</width>
+    <height>441</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -83,7 +83,7 @@
       <number>0</number>
      </property>
      <property name="columnCount">
-      <number>4</number>
+      <number>5</number>
      </property>
      <attribute name="horizontalHeaderCascadingSectionResizes">
       <bool>false</bool>
@@ -104,7 +104,7 @@
      </column>
      <column>
       <property name="text">
-       <string>Last seen</string>
+       <string>Endpoint</string>
       </property>
      </column>
      <column>
@@ -115,6 +115,11 @@
      <column>
       <property name="text">
        <string>Local task</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Last seen</string>
       </property>
      </column>
     </widget>

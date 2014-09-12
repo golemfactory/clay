@@ -456,10 +456,26 @@ class MessageKillNode( Message ):
         Message.__init__(self, MessageKillNode.Type)
 
         if dictRepr:
-            assert dictRepr[ 0 ] == MessageKillNode.KILL_STR
+            dictRepr[ 0 ] == MessageKillNode.KILL_STR
 
     def dictRepr(self):
         return [ MessageKillNode.KILL_STR ]
+
+class MessageNewNodes( Message ):
+    Type = MANAGER_MSG_BASE + 4
+
+    NUM_STR = u"NUM"
+
+    def __init__( self, num = 0, dictRepr = None ):
+        Message.__init__( self, MessageNewNodes.Type )
+
+        self.num = num
+
+        if dictRepr:
+            self.num = dictRepr[ self.NUM_STR ]
+
+    def dictRepr( self ):
+        return { MessageNewNodes.NUM_STR : self.num }
 
 def initMessages():
     MessageHello()
@@ -481,6 +497,13 @@ def initMessages():
     MessageReportComputedTask()
     MessageTaskResult()
     MessageGetTaskResult()
+
+def initManagerMessages():
+    MessagePeerStatus()
+    MessageKillNode()
+    MessageNewTask()
+    MessageNewNodes()
+
 
 
 if __name__ == "__main__":
