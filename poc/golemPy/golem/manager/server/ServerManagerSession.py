@@ -1,5 +1,5 @@
 
-from golem.Message import MessagePeerStatus, MessageNewTask, MessageKillNode, MessageKillAllNodes
+from golem.Message import MessagePeerStatus, MessageNewTask, MessageKillNode, MessageKillAllNodes, MessageNewNodes
 import cPickle as pickle
 from golem.manager.ManagerConnState import ManagerConnState
 
@@ -58,6 +58,10 @@ class ServerManagerSession:
         if self.conn and self.conn.isOpen():
             tp = pickle.dumps( task )
             self.conn.sendMessage( MessageNewTask( tp ) )
+
+    def sendNewNodes( self, numNodes ):
+        if self.conn and self.conn.isOpen():
+            self.conn.sendMessage( MessageNewNodes( numNodes ) )
 
 if __name__ == "__main__":
 

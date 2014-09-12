@@ -9,12 +9,13 @@ logger = logging.getLogger(__name__)
 class NodesManagerClient:
 
     ######################
-    def __init__( self, clientUid, managerServerAddress, managerServerPort, taskManager ):
+    def __init__( self, clientUid, managerServerAddress, managerServerPort, taskManager, runNodesFunction ):
         self.clientUid              = clientUid
         self.managerServerAddress    = managerServerAddress
         self.managerServerPort       = managerServerPort
         self.clientManagerSession   = None
         self.taskManager            = taskManager
+        self.runNodesFunction       = runNodesFunction
     
     ######################
     def start( self ):
@@ -39,6 +40,11 @@ class NodesManagerClient:
         task.returnPort     = self.taskManager.listenPort
 
         self.taskManager.addNewTask( task )
+
+    ######################
+    def runNewNodes( self, num ):
+        self.runNodesFunction( num )
+
 
     ######################
     def __connectNodesManager( self ):

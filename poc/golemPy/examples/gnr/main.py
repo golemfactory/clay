@@ -17,6 +17,8 @@ from task.PbrtGNRTask import PbrtTaskBuilder
 
 from golem.Client import startClient
 
+from examples.manager.GNRManagerLogic import runAdditionalNodes
+
 def buidPBRTRendererInfo():
     defaults = RendererDefaults()
     defaults.fullTaskTimeout    = 4 * 3600
@@ -33,7 +35,6 @@ def buidPBRTRendererInfo():
     renderer.outputFormats  = [ "BMP", "DCX", "EPS", "EXR", "GIF", "IM", "IM", "JPEG", "PCD", "PCX", "PDF", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
 
     return renderer
-
 
 def main():
 
@@ -73,7 +74,12 @@ def main():
 
     logic.registerNewTestTaskType( TestTaskInfo( "CornellBox" ) )
 
-    client = startClient( )
+    path = os.getcwd()
+    def runGNRNodes( numNodes ):
+        runAdditionalNodes( path, numNodes )
+
+
+    client = startClient( runGNRNodes )
 
     logic.registerClient( client )
 

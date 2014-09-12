@@ -66,6 +66,14 @@ class NodesManagerServer:
             if ms.uid == uid:
                 ms.sendNewTask( task )
 
+
+    #############################
+    def sendNewNodes( self, uid, numNodes ):
+        for ms in self.managerSessions:
+            if ms.uid == uid:
+                ms.sendNewNodes( numNodes )
+
+
 from twisted.internet.protocol import Factory
 from golem.manager.ManagerConnState import ManagerConnState
 

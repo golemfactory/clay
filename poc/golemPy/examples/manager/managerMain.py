@@ -25,8 +25,8 @@ def main():
     from twisted.internet import reactor
 
     port = AppConfig.managerPort()
-    manager = NodesManager( None )
-    logic = GNRManagerLogic(  manager.managerServer )
+    manager = NodesManager( None, port )
+    logic = GNRManagerLogic(  manager.managerServer, "../gnr" )
     manager.setManagerLogic( logic )
 
 

@@ -64,6 +64,7 @@ class ManagerUiCustomizer(QtCore.QObject):
     def __setupConnections ( self ):
         self.table.selectionModel().selectionChanged.connect( self.rowSelectionChanged )
         self.widget.runAdditionalNodesPushButton.clicked.connect( self.addNodesClicked )
+        self.widget.runAdditionalLocalNodesPushButton.clicked.connect( self.addLocalNodesClicked )
         self.widget.stopNodePushButton.clicked.connect( self.stopNodeClicked )
         self.widget.enqueueTaskButton.clicked.connect( self.enqueueTaskClicked )
         self.widget.terminateAllNodesPushButton.clicked.connect( self.terminateAllNodesClicked )
@@ -74,6 +75,12 @@ class ManagerUiCustomizer(QtCore.QObject):
     def addNodesClicked( self ):
         numNodes = self.widget.additionalNodesSpinBox.value()
         self.logic.runAdditionalNodes( numNodes )
+
+    ########################
+    def addLocalNodesClicked( self ):
+        if self.curActiveRowIdx is not None and self.curActiveRowUid is not None:
+            numNodes = self.widget.additionalLocalNodesSpinBox.value()
+            self.logic.runAdditionalLocalNodes( self.curActiveRowUid, numNodes )
 
     ########################
     def stopNodeClicked( self ):

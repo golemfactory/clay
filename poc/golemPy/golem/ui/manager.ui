@@ -135,7 +135,7 @@
         <bool>true</bool>
        </property>
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+        <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -391,6 +391,36 @@
             </property>
            </widget>
           </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <item>
+             <widget class="QPushButton" name="runAdditionalLocalNodesPushButton">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>Run additional local nodes</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="additionalLocalNodesSpinBox">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="value">
+               <number>4</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
          </layout>
         </item>
        </layout>
@@ -399,7 +429,7 @@
      <item>
       <widget class="QFrame" name="frameGenericNodes">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+        <sizepolicy hsizetype="Fixed" vsizetype="Maximum">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -418,48 +448,41 @@
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_6">
         <item>
-         <layout class="QVBoxLayout" name="verticalLayout_7">
-          <property name="topMargin">
-           <number>0</number>
-          </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_8">
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_8">
-            <item>
-             <widget class="QPushButton" name="runAdditionalNodesPushButton">
-              <property name="minimumSize">
-               <size>
-                <width>220</width>
-                <height>23</height>
-               </size>
-              </property>
-              <property name="text">
-               <string>Run additional local nodes</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QSpinBox" name="additionalNodesSpinBox">
-              <property name="value">
-               <number>4</number>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <widget class="QPushButton" name="terminateAllNodesPushButton">
+           <widget class="QPushButton" name="runAdditionalNodesPushButton">
             <property name="minimumSize">
              <size>
-              <width>0</width>
+              <width>220</width>
               <height>23</height>
              </size>
             </property>
             <property name="text">
-             <string>Terminate all nodes</string>
+             <string>Run additional nodes</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="additionalNodesSpinBox">
+            <property name="value">
+             <number>4</number>
             </property>
            </widget>
           </item>
          </layout>
+        </item>
+        <item>
+         <widget class="QPushButton" name="terminateAllNodesPushButton">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>23</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Terminate all nodes</string>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>

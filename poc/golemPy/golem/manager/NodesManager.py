@@ -15,7 +15,7 @@ from server.NodesManagerServer import NodesManagerServer
 class NodesManager:
 
     ########################
-    def __init__( self, managerLogic = None ):
+    def __init__( self, managerLogic = None, port = 20301 ):
         self.app = QApplication( sys.argv )
         self.window = QDialog()
         self.ui = Ui_NodesManagerWidget()
@@ -29,7 +29,7 @@ class NodesManager:
 
         self.uic.enableDetailedView( False )
 
-        self.managerServer = NodesManagerServer( self, 20301 )
+        self.managerServer = NodesManagerServer( self, port )
 
          #FIXME: some shitty python magic
     def closeEvent_(self, event):
@@ -117,6 +117,10 @@ class NodesManager:
     ########################
     def runAdditionalNodes( self, numNodes ):
         self.managerLogic.runAdditionalNodes( numNodes )
+
+    ########################
+    def runAdditionalLocalNodes( self, uid, numNodes ):
+        self.managerLogic.runAdditionalLocalNodes( uid, numNodes )
 
     ########################
     def terminateNode( self, uid ):

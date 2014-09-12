@@ -1,5 +1,5 @@
 
-from golem.Message import MessagePeerStatus, MessageKillNode, MessageNewTask, MessageKillAllNodes
+from golem.Message import MessagePeerStatus, MessageKillNode, MessageNewTask, MessageKillAllNodes, MessageNewNodes
 from golem.manager.ManagerConnState import ManagerConnState
 from golem.core.prochelper import ProcessService
 
@@ -54,6 +54,12 @@ class ClientManagerSession:
             for pid in pids:
                 os.system( "taskkill /PID {} /F".format( pid ) )
             os.system( "taskkill /PID {} /F".format( curPid ) )
+
+        elif type == MessageNewNodes.Type:
+            num = msg.num
+            self.client.runNewNodes( num )
+
+
         else:
             logger.error( "Wrong message received {}".format( msg ) )
 

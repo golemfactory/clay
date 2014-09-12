@@ -19,7 +19,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def startClient( ):
+def emptyAddNodes( *args ):
+    pass
+
+def startClient( addNodesFunction = emptyAddNodes ):
     initMessages()
 
     cfg = AppConfig.loadConfig()
@@ -75,7 +78,7 @@ def startClient( ):
 
     logger.info( "Adding tasks {}".format( addTasks ) )
     logger.info( "Creating public client interface with uuid: {}".format( clientUid ) )
-    c = Client( configDesc, config = cfg )
+    c = Client( configDesc, config = cfg, addNodesFunction = addNodesFunction )
 
     logger.info( "Starting all asynchronous services" )
     c.startNetwork( )
@@ -105,7 +108,7 @@ class ClientTaskManagerEventListener( TaskManagerEventListener ):
 class Client:
 
     ############################
-    def __init__(self, configDesc, rootPath = "", config = "" ):
+    def __init__(self, configDesc, addNodesFunction, rootPath = "", config = "" ):
 
         self.configDesc     = configDesc
 
@@ -128,6 +131,7 @@ class Client:
 
         self.rootPath = rootPath
         self.cfg = config
+        self.addNodesFunction = addNodesFunction
        
     ############################
     def startNetwork( self ):
@@ -148,7 +152,8 @@ class Client:
         self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUid,
                                                       self.configDesc.managerAddress,
                                                       self.configDesc.managerPort,
-                                                      self.taskServer.taskManager )
+                                                      self.taskServer.taskManager,
+                                                      self.addNodesFunction )
         self.nodesManagerClient.start()
 
         #self.taskServer.taskManager.addNewTask( )
@@ -225,7 +230,9 @@ class Client:
         self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUid,
                                                       self.configDesc.managerAddress,
                                                       self.configDesc.managerPort,
-                                                      self.taskServer.taskManager )
+                                                      self.taskServer.taskManager,
+                                                      self.addNodesFunction )
+
         self.nodesManagerClient.start()
 
     ############################

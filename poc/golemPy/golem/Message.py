@@ -513,6 +513,7 @@ def initMessages():
     MessageReportComputedTask()
     MessageTaskResult()
     MessageGetTaskResult()
+    MessageNewNodes()
 
 def initManagerMessages():
     MessagePeerStatus()
