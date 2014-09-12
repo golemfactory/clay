@@ -1,6 +1,7 @@
 
-from golem.Message import MessagePeerStatus, MessageKillNode, MessageNewTask
+from golem.Message import MessagePeerStatus, MessageKillNode, MessageNewTask, MessageKillAllNodes
 from golem.manager.ManagerConnState import ManagerConnState
+from golem.core.prochelper import ProcessService
 
 import cPickle as pickle
 import time
@@ -36,8 +37,23 @@ class ClientManagerSession:
         elif type == MessageKillNode.Type:
             self.dropped()
             time.sleep( 0.5 )
-
             os.system( "taskkill /PID {} /F".format( os.getpid() ) )
+
+        elif type == MessageKillAllNodes.Type:
+            processService = ProcessService()
+            if processService.lockState():
+                pids = processService.state.keys()
+                logger.debug("Active processes with pids: {}".format( pids ) )
+                processService.unlockState()
+
+            curPid = os.getpid()
+            if curPid in pids:
+                pids.remove( curPid )
+
+            logger.debug("Killing processes with pids: {}".format( pids ) )
+            for pid in pids:
+                os.system( "taskkill /PID {} /F".format( pid ) )
+            os.system( "taskkill /PID {} /F".format( curPid ) )
         else:
             logger.error( "Wrong message received {}".format( msg ) )
 

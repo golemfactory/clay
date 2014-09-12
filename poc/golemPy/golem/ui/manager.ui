@@ -384,6 +384,13 @@
             </item>
            </layout>
           </item>
+          <item>
+           <widget class="QPushButton" name="terminateAllLocalNodesButton">
+            <property name="text">
+             <string>Terminate all local nodes</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
        </layout>
@@ -448,7 +455,7 @@
              </size>
             </property>
             <property name="text">
-             <string>Terminate all local nodes</string>
+             <string>Terminate all nodes</string>
             </property>
            </widget>
           </item>

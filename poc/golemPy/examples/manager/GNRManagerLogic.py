@@ -16,3 +16,6 @@ class GNRManagerLogic( EmptyManagerLogic ):
     def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
         pass
 
+    def terminateAllLocalNodes( self, uid ):
+        self.managerServer.sendTerminateAll( uid )
+

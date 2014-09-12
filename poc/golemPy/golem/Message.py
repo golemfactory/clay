@@ -461,8 +461,23 @@ class MessageKillNode( Message ):
     def dictRepr(self):
         return [ MessageKillNode.KILL_STR ]
 
-class MessageNewNodes( Message ):
+class MessageKillAllNodes( Message ):
     Type = MANAGER_MSG_BASE + 4
+
+    KILLALL_STR = u"KILLALL"
+
+    def __init__( self, dictRepr = None ):
+        Message.__init__(self, MessageKillAllNodes.Type)
+
+        if dictRepr:
+            dictRepr[ 0 ] == MessageKillAllNodes.KILLALL_STR
+
+    def dictRepr(self):
+        return [ MessageKillAllNodes.KILLALL_STR ]
+
+
+class MessageNewNodes( Message ):
+    Type = MANAGER_MSG_BASE + 5
 
     NUM_STR = u"NUM"
 
@@ -492,6 +507,7 @@ def initMessages():
     MessagePeerStatus()
     MessageNewTask()
     MessageKillNode()
+    MessageKillAllNodes()
     MessageGetResource()
     MessageResource()
     MessageReportComputedTask()
@@ -501,6 +517,7 @@ def initMessages():
 def initManagerMessages():
     MessagePeerStatus()
     MessageKillNode()
+    MessageKillAllNodes()
     MessageNewTask()
     MessageNewNodes()
 

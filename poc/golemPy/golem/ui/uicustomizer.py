@@ -57,15 +57,18 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.detailedViewEnabled = False
         self.curActiveRowIdx = None
         self.curActiveRowUid = None
+        self.nodeTaskWidgets = {}
 
+        self.__setupConnections()
+
+    def __setupConnections ( self ):
         self.table.selectionModel().selectionChanged.connect( self.rowSelectionChanged )
         self.widget.runAdditionalNodesPushButton.clicked.connect( self.addNodesClicked )
         self.widget.stopNodePushButton.clicked.connect( self.stopNodeClicked )
         self.widget.enqueueTaskButton.clicked.connect( self.enqueueTaskClicked )
         self.widget.terminateAllNodesPushButton.clicked.connect( self.terminateAllNodesClicked )
+        self.widget.terminateAllLocalNodesButton.clicked.connect( self.terminateAllLocalNodesClicked )
         self.table.cellDoubleClicked.connect( self.cellDoubleClicked )
-
-        self.nodeTaskWidgets = {}
 
     ########################
     def addNodesClicked( self ):
@@ -80,6 +83,11 @@ class ManagerUiCustomizer(QtCore.QObject):
     ########################
     def terminateAllNodesClicked( self ):
         self.logic.terminateAllNodes()
+
+    ########################
+    def terminateAllLocalNodesClicked( self ):
+        if self.curActiveRowIdx is not None and self.curActiveRowUid is not None:
+            self.logic.terminateAllLocalNodes( self.curActiveRowUid )
 
     ########################
     def enqueueTaskClicked( self ):
