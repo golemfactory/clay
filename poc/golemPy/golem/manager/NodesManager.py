@@ -135,6 +135,10 @@ class NodesManager:
         self.managerLogic.terminateAllLocalNodes( uid )
 
     ########################
+    def loadTask( self, uid, filePath ):
+        self.managerLogic.loadTask( uid, filePath )
+
+    ########################
     def enqueueNewTask( self, uid, w, h, numSamplesPerPixel, fileName ):
         self.managerLogic.enqueueNewTask( uid, w, h, numSamplesPerPixel, fileName )
 

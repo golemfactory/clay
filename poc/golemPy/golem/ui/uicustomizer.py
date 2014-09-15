@@ -1,9 +1,11 @@
 from PyQt4 import QtCore, QtGui
+from PyQt4.QtGui import QFileDialog
 #from ui_manager import Ui_NodesManagerWidget
 from taskdialog import TaskSpecDialog
 from NodeTasksSpec import NodeTasksWidget
 from progressbar import createWrappedProgressBar
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,7 @@ class ManagerUiCustomizer(QtCore.QObject):
     def __init__( self, widget, managerLogic ):
         super(ManagerUiCustomizer, self).__init__()
 
+        self.window = managerLogic.window
         self.widget = widget
         self.table = widget.nodeTableWidget
         self.table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
@@ -98,14 +101,19 @@ class ManagerUiCustomizer(QtCore.QObject):
 
     ########################
     def enqueueTaskClicked( self ):
-        dialog = TaskSpecDialog( self.table )
-        if dialog.exec_():
-            w = dialog.getWidth()
-            h = dialog.getHeight()
-            n = dialog.getNumSamplesPerPixel()
-            p = dialog.getFileName()
+        if self.curActiveRowIdx is not None and self.curActiveRowUid is not None:
+            uid = self.curActiveRowUid
+            filePath = QFileDialog.getOpenFileName( self.window, "Choose task file", "", "Golem Task (*.gt)")
+            if os.path.exists( filePath ):
+                self.logic.loadTask( uid, filePath )
+#        dialog = TaskSpecDialog( self.table )
+#        if dialog.exec_():
+#            w = dialog.getWidth()
+#            h = dialog.getHeight()
+#            n = dialog.getNumSamplesPerPixel()
+#            p = dialog.getFileName()
 
-            self.logic.enqueueNewTask( self.curActiveRowUid, w, h, n, p )
+ #           self.logic.enqueueNewTask( self.curActiveRowUid, w, h, n, p )
 
     ########################
     def rowSelectionChanged( self, item1, item2 ):

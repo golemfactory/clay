@@ -59,6 +59,7 @@ class ServerManagerSession:
             tp = pickle.dumps( task )
             self.conn.sendMessage( MessageNewTask( tp ) )
 
+    ##########################
     def sendNewNodes( self, numNodes ):
         if self.conn and self.conn.isOpen():
             self.conn.sendMessage( MessageNewNodes( numNodes ) )

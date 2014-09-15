@@ -78,10 +78,12 @@ def main():
     def runGNRNodes( numNodes ):
         runAdditionalNodes( path, numNodes )
 
+    logic.registerStartNewNodeFunction( runGNRNodes )
 
-    client = startClient( runGNRNodes )
+    client = startClient( )
 
     logic.registerClient( client )
+    logic.startNodesManagerClient()
 
     app.execute( False )
 

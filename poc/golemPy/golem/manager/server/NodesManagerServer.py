@@ -1,6 +1,5 @@
 from golem.core.network import Network
 from golem.manager.NodeStateSnapshot import NodeStateSnapshot
-#from golem.manager.ManagerClient import ManagerClient
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,8 +12,6 @@ class NodesManagerServer:
         self.managerSessions    = []
         self.reactor            = reactor
         self.nodesManager       = nodesManager
-     #   self.managerClient = ManagerClient( globalManagerAddr, globalManagerPort, self )
-    #  self.managerClient.start()
 
         self.__startAccepting()
 
@@ -43,7 +40,6 @@ class NodesManagerServer:
     #############################
     def nodeStateSnapshotReceived( self, nss ):
         self.nodesManager.appendStateUpdate( nss )
- #       self.managerClient.sendClientStateSnapshot( nss )
         
     #############################
     def managerSessionDisconnected( self, uid ):

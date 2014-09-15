@@ -1,4 +1,5 @@
 import os
+import logging
 import cPickle as pickle
 from PyQt4 import QtCore
 
@@ -9,10 +10,12 @@ from examples.gnr.task.TaskTester import TaskTester
 from golem.task.TaskBase import Task
 from golem.task.TaskState import TaskState
 from golem.Client import GolemClientEventListener
+from golem.manager.client.NodesManagerClient import NodesManagerClient
 from customizers.MainWindowCustomizer import MainWindowCustomizer
 
 from testtasks.minilight.src.minilight import makePerfTest
 
+logger = logging.getLogger(__name__)
 
 class GNRClientEventListener( GolemClientEventListener ):
     #####################
@@ -36,6 +39,8 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.currentRenderer    = None
         self.defaultRenderer    = None
         self.rootPath           = os.getcwd()
+        self.nodesManagerClient = None
+        self.addNewNodesFunction = lambda x: None
 
     ######################
     def registerGui( self, gui ):
@@ -45,6 +50,24 @@ class GNRApplicationLogic( QtCore.QObject ):
     def registerClient( self, client ):
         self.client = client
         self.client.registerListener( GNRClientEventListener( self ) )
+
+    ######################
+    def registerStartNewNodeFunction(self, func ):
+        self.addNewNodesFunction = func
+
+    ######################
+    def startNodesManagerClient( self):
+        if self.client:
+            configDesc = self.client.configDesc
+            self.nodesManagerClient = NodesManagerClient ( configDesc.clientUid,
+                                                           configDesc.managerAddress,
+                                                           configDesc.managerPort,
+                                                           None,
+                                                           self)
+            self.nodesManagerClient.start()
+            self.client.registerNodesManagerClient( self.nodesManagerClient )
+        else:
+            logger.error("Can't register nodes manager client. No client instance.")
 
     ######################
     def getTask( self, id ):
@@ -67,6 +90,15 @@ class GNRApplicationLogic( QtCore.QObject ):
 
     ######################
     def changeConfig (  self, cfgDesc ):
+        del self.nodesManagerClient
+        self.nodesManagerClient = NodesManagerClient( cfgDesc.clientUid,
+                                                      cfgDesc.managerAddress,
+                                                      cfgDesc.managerPort,
+                                                      None,
+                                                      self )
+
+        self.nodesManagerClient.start()
+        self.client.registerNodesManagerClient( self.nodesManagerClient )
         self.client.changeConfig( cfgDesc )
 
     ######################
@@ -140,6 +172,16 @@ class GNRApplicationLogic( QtCore.QObject ):
     ######################
     def getTestTasks( self ):
         return self.testTasks
+
+    ######################
+    def addTaskFromDefinition ( self, definition ):
+        taskState = GNRTaskState()
+        taskState.status = TaskStatus.notStarted
+
+        taskState.definition = definition
+
+        self.addTasks( [taskState] )
+
 
     ######################
     def addTasks( self, tasks ):

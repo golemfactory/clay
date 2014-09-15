@@ -9,14 +9,14 @@ logger = logging.getLogger(__name__)
 class NodesManagerClient:
 
     ######################
-    def __init__( self, clientUid, managerServerAddress, managerServerPort, taskManager, runNodesFunction ):
+    def __init__( self, clientUid, managerServerAddress, managerServerPort, taskManager, logic = None ):
         self.clientUid              = clientUid
         self.managerServerAddress    = managerServerAddress
         self.managerServerPort       = managerServerPort
         self.clientManagerSession   = None
+        self.logic                  = logic
         self.taskManager            = taskManager
-        self.runNodesFunction       = runNodesFunction
-    
+
     ######################
     def start( self ):
         try:
@@ -36,14 +36,18 @@ class NodesManagerClient:
 
     ######################
     def addNewTask( self, task ):
-        task.returnAddress  = self.taskManager.listenAddress
-        task.returnPort     = self.taskManager.listenPort
-
-        self.taskManager.addNewTask( task )
+        if self.logic:
+            self.logic.addTaskFromDefinition( task )
+        elif self.taskManager:
+            task.returnAddress  = self.taskManager.listenAddress
+            task.returnPort     = self.taskManager.listenPort
+            self.taskManager.addNewTask( task )
+        else:
+            logger.error("No logic and no taskManager defined.")
 
     ######################
     def runNewNodes( self, num ):
-        self.runNodesFunction( num )
+        self.logic.addNewNodesFunction( num )
 
 
     ######################

@@ -7,7 +7,6 @@ from golem.task.TaskManager import TaskManagerEventListener
 from golem.core.hostaddress import getHostAddress
 
 from golem.manager.NodeStateSnapshot import NodeStateSnapshot
-from golem.manager.client.NodesManagerClient import NodesManagerClient
 
 import time
 
@@ -22,7 +21,7 @@ logger = logging.getLogger(__name__)
 def emptyAddNodes( *args ):
     pass
 
-def startClient( addNodesFunction = emptyAddNodes ):
+def startClient():
     initMessages()
 
     cfg = AppConfig.loadConfig()
@@ -78,7 +77,7 @@ def startClient( addNodesFunction = emptyAddNodes ):
 
     logger.info( "Adding tasks {}".format( addTasks ) )
     logger.info( "Creating public client interface with uuid: {}".format( clientUid ) )
-    c = Client( configDesc, config = cfg, addNodesFunction = addNodesFunction )
+    c = Client( configDesc, config = cfg )
 
     logger.info( "Starting all asynchronous services" )
     c.startNetwork( )
@@ -108,7 +107,7 @@ class ClientTaskManagerEventListener( TaskManagerEventListener ):
 class Client:
 
     ############################
-    def __init__(self, configDesc, addNodesFunction, rootPath = "", config = "" ):
+    def __init__(self, configDesc, rootPath = "", config = "" ):
 
         self.configDesc     = configDesc
 
@@ -131,7 +130,6 @@ class Client:
 
         self.rootPath = rootPath
         self.cfg = config
-        self.addNodesFunction = addNodesFunction
        
     ############################
     def startNetwork( self ):
@@ -149,12 +147,6 @@ class Client:
         time.sleep( 0.5 )
         self.taskServer.taskManager.registerListener( ClientTaskManagerEventListener( self ) )
         logger.info( "Starting nodes manager client ..." )
-        self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUid,
-                                                      self.configDesc.managerAddress,
-                                                      self.configDesc.managerPort,
-                                                      self.taskServer.taskManager,
-                                                      self.addNodesFunction )
-        self.nodesManagerClient.start()
 
         #self.taskServer.taskManager.addNewTask( )
 
@@ -226,14 +218,9 @@ class Client:
         self.p2pservice.changeConfig( self.configDesc )
         self.taskServer.changeConfig( self.configDesc )
 
-        del self.nodesManagerClient
-        self.nodesManagerClient = NodesManagerClient( self.configDesc.clientUid,
-                                                      self.configDesc.managerAddress,
-                                                      self.configDesc.managerPort,
-                                                      self.taskServer.taskManager,
-                                                      self.addNodesFunction )
-
-        self.nodesManagerClient.start()
+    ############################
+    def registerNodesManagerClient( self, nodesManagerClient ):
+        self.nodesManagerClient = nodesManagerClient
 
     ############################
     def changeTimeouts(self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
