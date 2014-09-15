@@ -49,6 +49,10 @@ class NodesManagerClient:
     def runNewNodes( self, num ):
         self.logic.addNewNodesFunction( num )
 
+    def dropConnection( self ):
+        if  self.clientManagerSession:
+            self.clientManagerSession.dropped()
+
 
     ######################
     def __connectNodesManager( self ):

@@ -90,16 +90,19 @@ class GNRApplicationLogic( QtCore.QObject ):
 
     ######################
     def changeConfig (  self, cfgDesc ):
-        del self.nodesManagerClient
-        self.nodesManagerClient = NodesManagerClient( cfgDesc.clientUid,
-                                                      cfgDesc.managerAddress,
-                                                      cfgDesc.managerPort,
-                                                      None,
-                                                      self )
+        oldCfgDesc = self.client.configDesc
+        if ( oldCfgDesc.managerAddress != cfgDesc.managerAddress ) or ( oldCfgDesc.managerPort != cfgDesc.managerPort ):
+            self.nodesManagerClient.dropConnection()
+            del self.nodesManagerClient
+            self.nodesManagerClient = NodesManagerClient( cfgDesc.clientUid,
+                                                          cfgDesc.managerAddress,
+                                                          cfgDesc.managerPort,
+                                                          None,
+                                                          self )
 
-        self.nodesManagerClient.start()
-        self.client.registerNodesManagerClient( self.nodesManagerClient )
-        self.client.changeConfig( cfgDesc )
+            self.nodesManagerClient.start()
+            self.client.registerNodesManagerClient( self.nodesManagerClient )
+            self.client.changeConfig( cfgDesc )
 
     ######################
     def getRenderer( self, name ):

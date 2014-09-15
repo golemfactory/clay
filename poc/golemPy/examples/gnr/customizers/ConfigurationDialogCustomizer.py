@@ -94,10 +94,16 @@ class ConfigurationDialogCustomizer:
     def __changeConfig ( self ):
         cfgDesc = ClientConfigDescriptor()
         cfgDesc.seedHost =  u"{}".format( self.gui.ui.hostAddressLineEdit.text() )
-        cfgDesc.seedHostPort    =  u"{}".format ( self.gui.ui.hostIPLineEdit.text() )
+        try:
+            cfgDesc.seedHostPort = int( self.gui.ui.hostIPLineEdit.text() )
+        except:
+            cfgDesc.seedHostPort    =  u"{}".format ( self.gui.ui.hostIPLineEdit.text() )
         cfgDesc.rootPath = u"{}".format( self.gui.ui.workingDirectoryLineEdit.text() )
         cfgDesc.managerAddress = u"{}".format( self.gui.ui.managerAddressLineEdit.text() )
-        cfgDesc.managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
+        try:
+            cfgDesc.managerPort = int( self.gui.ui.managerPortLineEdit.text() )
+        except:
+            cfgDesc.managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
         cfgDesc.numCores = u"{}".format( self.gui.ui.numCoresSlider.value() )
         cfgDesc.estimatedPerformance = u"{}".format( self.gui.ui.performanceLabel.text() )
         maxResourceSize = int( self.gui.ui.maxResourceSizeSpinBox.value() )
