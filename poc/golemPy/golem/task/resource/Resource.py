@@ -27,9 +27,9 @@ class TaskResourceHeader:
 
         filesData = []
         for f in files:
-            hsh = SimpleHash.hash_file_base64( os.path.join( absoluteRoot, f ) )
             if choosenFiles and os.path.join( absoluteRoot, f ) not in  choosenFiles:
                 continue
+            hsh = SimpleHash.hash_file_base64( os.path.join( absoluteRoot, f ) )
 
             filesData.append( ( f, hsh ) )
 
@@ -66,6 +66,9 @@ class TaskResourceHeader:
                 curTr.subDirHeaders.append( cls.__build( d, os.path.join( absoluteRoot, d ), choosenFiles ) )
 
         for f in files:
+            if choosenFiles and os.path.join( absoluteRoot, f ) not in  choosenFiles:
+                continue
+
             fileHash = 0
             if f in [ file[ 0 ] for file in header.filesData ]:
                 idx = [ file[ 0 ] for file in header.filesData ].index( f )
@@ -73,9 +76,6 @@ class TaskResourceHeader:
 
                 if fileHash == header.filesData[ idx ][ 1 ]:
                     continue
-
-            if choosenFiles and os.path.join( absoluteRoot, f ) not in  choosenFiles:
-                continue
 
             if not fileHash:
                 fileHash = SimpleHash.hash_file_base64( os.path.join( absoluteRoot, f ) )

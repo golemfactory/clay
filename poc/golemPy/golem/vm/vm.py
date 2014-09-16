@@ -1,5 +1,4 @@
-from threading import Lock, Thread
-import time
+from threading import Lock
 import logging
 import abc
 
