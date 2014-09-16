@@ -12,6 +12,7 @@ from examples.gnr.ui.TaskTableElem import TaskTableElem
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 from examples.gnr.ui.StatusWindow import StatusWindow
 from examples.gnr.ui.ChangeTaskDialog import ChangeTaskDialog
+from examples.gnr.GNREnv import GNREnv
 
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from TaskContexMenuCustomizer import TaskContextMenuCustomizer
@@ -38,6 +39,7 @@ class MainWindowCustomizer:
         self.currentTaskHighlighted         = None
         self.taskDetailsDialog              = None
         self.taskDetailsDialogCustomizer    = None
+        self.previewPath = os.path.join( os.getcwd(), GNREnv.getPreviewFile() )
 
     #############################
     def __setupConnections( self ):
@@ -104,7 +106,7 @@ class MainWindowCustomizer:
             if os.path.exists( filePath ):
                 self.gui.ui.previewLabel.setPixmap( QPixmap( filePath ) )
         else:
-            self.gui.ui.previewLabel.setPixmap( QPixmap( "ui/nopreview.jpg" ) )
+            self.gui.ui.previewLabel.setPixmap( QPixmap( self.previewPath ) )
 
         self.currentTaskHighlighted = t
 
