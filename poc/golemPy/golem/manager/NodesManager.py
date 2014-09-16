@@ -4,7 +4,7 @@ from PyQt4.QtGui import QApplication, QDialog
 from PyQt4.QtCore import QTimer
 from threading import Lock
 
-from golem.ui.gen.ui_manager import Ui_NodesManagerWidget
+from golem.ui.manager import NodesManagerWidget
 from golem.ui.uicustomizer import ManagerUiCustomizer, NodeDataState
 from NodeStateSnapshot import NodeStateSnapshot
 from networksimulator import GLOBAL_SHUTDOWN, LocalNetworkSimulator
@@ -17,10 +17,8 @@ class NodesManager:
     ########################
     def __init__( self, managerLogic = None, port = 20301 ):
         self.app = QApplication( sys.argv )
-        self.window = QDialog()
-        self.ui = Ui_NodesManagerWidget()
-        self.ui.setupUi( self.window )
-        self.uic = ManagerUiCustomizer(self.ui, self)
+        self.mainWindow = NodesManagerWidget( None )
+        self.uic = ManagerUiCustomizer(self.mainWindow, self)
         self.timer = QTimer()
         self.timer.timeout.connect( self.polledUpdate )
         self.lock = Lock()
@@ -42,7 +40,7 @@ class NodesManager:
             GLOBAL_SHUTDOWN[ 0 ] = True
             event.accept()
 
-        setattr( self.window.__class__, 'closeEvent', closeEvent_ )
+        setattr( self.mainWindow.window.__class__, 'closeEvent', closeEvent_ )
 
      ########################
     def setManagerLogic( self, managerLogic ):
@@ -67,7 +65,7 @@ class NodesManager:
 
     ########################
     def execute( self, usingqt4Reactor = False ):
-        self.window.show()
+        self.mainWindow.show()
         self.timer.start( 100 )
         if not usingqt4Reactor:
             sys.exit(self.app.exec_())

@@ -1,9 +1,6 @@
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtGui import QFileDialog
-#from ui_manager import Ui_NodesManagerWidget
-from taskdialog import TaskSpecDialog
 from NodeTasksSpec import NodeTasksWidget
-from progressbar import createWrappedProgressBar
 import logging
 import os
 
@@ -48,9 +45,9 @@ class ManagerUiCustomizer(QtCore.QObject):
     def __init__( self, widget, managerLogic ):
         super(ManagerUiCustomizer, self).__init__()
 
-        self.window = managerLogic.window
-        self.widget = widget
-        self.table = widget.nodeTableWidget
+        self.window = widget.window
+        self.ui = widget.ui
+        self.table = self.ui.nodeTableWidget
         self.table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.tableData = {}
@@ -66,23 +63,23 @@ class ManagerUiCustomizer(QtCore.QObject):
 
     def __setupConnections ( self ):
         self.table.selectionModel().selectionChanged.connect( self.rowSelectionChanged )
-        self.widget.runAdditionalNodesPushButton.clicked.connect( self.addNodesClicked )
-        self.widget.runAdditionalLocalNodesPushButton.clicked.connect( self.addLocalNodesClicked )
-        self.widget.stopNodePushButton.clicked.connect( self.stopNodeClicked )
-        self.widget.enqueueTaskButton.clicked.connect( self.enqueueTaskClicked )
-        self.widget.terminateAllNodesPushButton.clicked.connect( self.terminateAllNodesClicked )
-        self.widget.terminateAllLocalNodesButton.clicked.connect( self.terminateAllLocalNodesClicked )
+        self.ui.runAdditionalNodesPushButton.clicked.connect( self.addNodesClicked )
+        self.ui.runAdditionalLocalNodesPushButton.clicked.connect( self.addLocalNodesClicked )
+        self.ui.stopNodePushButton.clicked.connect( self.stopNodeClicked )
+        self.ui.enqueueTaskButton.clicked.connect( self.enqueueTaskClicked )
+        self.ui.terminateAllNodesPushButton.clicked.connect( self.terminateAllNodesClicked )
+        self.ui.terminateAllLocalNodesButton.clicked.connect( self.terminateAllLocalNodesClicked )
         self.table.cellDoubleClicked.connect( self.cellDoubleClicked )
 
     ########################
     def addNodesClicked( self ):
-        numNodes = self.widget.additionalNodesSpinBox.value()
+        numNodes = self.ui.additionalNodesSpinBox.value()
         self.logic.runAdditionalNodes( numNodes )
 
     ########################
     def addLocalNodesClicked( self ):
         if self.curActiveRowIdx is not None and self.curActiveRowUid is not None:
-            numNodes = self.widget.additionalLocalNodesSpinBox.value()
+            numNodes = self.ui.additionalLocalNodesSpinBox.value()
             self.logic.runAdditionalLocalNodes( self.curActiveRowUid, numNodes )
 
     ########################
@@ -185,17 +182,17 @@ class ManagerUiCustomizer(QtCore.QObject):
     def __updateDetailedNodeView( self, idx, nodeDataState ):
         if self.detailedViewEnabled and self.curActiveRowIdx == idx:
 
-            self.widget.endpointInput.setText( nodeDataState.endpoint )
-            self.widget.noPeersInput.setText( nodeDataState.numPeers )
-            self.widget.noTasksInput.setText( nodeDataState.numTasks )
-            self.widget.lastMsgInput.setText( nodeDataState.lastMsg )
+            self.ui.endpointInput.setText( nodeDataState.endpoint )
+            self.ui.noPeersInput.setText( nodeDataState.numPeers )
+            self.ui.noTasksInput.setText( nodeDataState.numTasks )
+            self.ui.lastMsgInput.setText( nodeDataState.lastMsg )
 
     ########################
     def __resetDetailedView( self ):
-        self.widget.endpointInput.setText( "" )
-        self.widget.noPeersInput.setText( "" )
-        self.widget.noTasksInput.setText( "" )
-        self.widget.lastMsgInput.setText( "" )
+        self.ui.endpointInput.setText( "" )
+        self.ui.noPeersInput.setText( "" )
+        self.ui.noTasksInput.setText( "" )
+        self.ui.lastMsgInput.setText( "" )
 
     ########################
     def __registerRowData( self, nodeUid, rowDataEntry, nodeDataState ):
@@ -229,7 +226,7 @@ class ManagerUiCustomizer(QtCore.QObject):
         if not enableFlag:
             self.__resetDetailedView()
 
-        self.widget.frameDetailedNode.setEnabled( enableFlag )
+        self.ui.frameDetailedNode.setEnabled( enableFlag )
 
     ########################
     def UpdateNodePresentationState( self, nodeDataState ):

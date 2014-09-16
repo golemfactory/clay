@@ -4,7 +4,7 @@ from gen.ui_manager import Ui_NodesManagerWidget
 class NodesManagerWidget:
     def __init__( self, parent ):
         self.window = QDialog( parent )
-        self.ui = Ui_StatusWindow()
+        self.ui = Ui_NodesManagerWidget()
         self.ui.setupUi( self.window )
 
     ###################
