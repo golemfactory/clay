@@ -102,7 +102,7 @@ class GNRApplicationLogic( QtCore.QObject ):
 
             self.nodesManagerClient.start()
             self.client.registerNodesManagerClient( self.nodesManagerClient )
-            self.client.changeConfig( cfgDesc )
+        self.client.changeConfig( cfgDesc )
 
     ######################
     def getRenderer( self, name ):
