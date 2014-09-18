@@ -6,7 +6,6 @@ import time
 import subprocess
 
 from golem.task.TaskBase import TaskBuilder, ComputeTaskDef
-from golem.task.TaskState import TaskStatus
 from golem.core.Compress import decompress
 from golem.task.resource.Resource import prepareDeltaZip
 
@@ -302,7 +301,10 @@ class PbrtRenderTask( GNRTask ):
                 self.collector.finalize().save( outputFileName, self.outputFormat )
                 self.previewFilePath = outputFileName
             else:
-                taskCollectorPath = os.path.join(self.rootPath, "..\..\\tools\\taskcollector\Release\\taskcollector.exe")
+
+                pth, filename =  os.path.split(os.path.realpath(__file__))
+                taskCollectorPath = os.path.join(pth, "..\..\..\\tools\\taskcollector\Release\\taskcollector.exe")
+                logger.debug( "taskCollector path: {}".format( taskCollectorPath ) )
                 files = ""
                 for file in self.collectedFileNames:
                     files += file + " "
