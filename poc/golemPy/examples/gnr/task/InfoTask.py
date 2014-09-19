@@ -11,13 +11,16 @@ import random
 
 class InfoTaskBuilder( TaskBuilder ):
     #######################
-    def __init__( self, clientId, filePath, managerAddress, managerPort):
+    def __init__( self, clientId, filePath, managerAddress, managerPort, iterations, fullTaskTimeout, subtaskTimeout ):
         self.clientId = clientId
         self.filePath = filePath
         self.srcFile = open( filePath, "r" )
         self.srcCode = self.srcFile.read()
         self.managerAddress = managerAddress
         self.managerPort = managerPort
+        self.iterations = iterations
+        self.fullTaskTimeout = fullTaskTimeout
+        self.subtaskTimeout = subtaskTimeout
 
     def build( self ):
         resSize = os.stat(self.filePath)
@@ -28,12 +31,14 @@ class InfoTaskBuilder( TaskBuilder ):
                             "{}".format( SimpleAuth.generateUUID() ),
                             "",
                             0,
-                            2200,
-                            2200,
+                            self.fullTaskTimeout,
+                            self.subtaskTimeout,
                             resSize,
                             resources,
                             self.managerAddress,
-                            self.managerPort )
+                            self.managerPort,
+                            self.iterations
+                           )
 
 
 class InfoTask( GNRTask ):
@@ -49,7 +54,8 @@ class InfoTask( GNRTask ):
                   resourceSize,
                   resources,
                   nodesManagerAddress,
-                  nodesManagerPort ):
+                  nodesManagerPort,
+                  iterations ):
 
         GNRTask.__init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, ttl, subtaskTtl, resourceSize )
 
@@ -57,7 +63,7 @@ class InfoTask( GNRTask ):
         self.taskResources = resources
         self.rootPath = os.getcwd()
         self.lastTask = 0
-        self.totalTasks = 100
+        self.totalTasks = iterations
 
         self.nodesManagerClient = NodesManagerClient( nodesManagerAddress, int( nodesManagerPort ) )
         self.nodesManagerClient.start()

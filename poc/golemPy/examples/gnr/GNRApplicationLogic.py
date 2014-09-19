@@ -121,11 +121,14 @@ class GNRApplicationLogic( QtCore.QObject ):
 
     ######################
     #FIXME: task definiton jest skoncentrowany na taskach PBRT, trzeba zrobic tu jakis innych mechanizm definiowania definicji taskow
-    def sendInfoTask( self ):
+    def sendInfoTask( self, iterations, fullTaskTimeout, subtaskTimeout ):
         taskBuilder = InfoTaskBuilder( self.client.getId(),
                                           "sendSnapshot.py",
                                           self.client.configDesc.managerAddress,
-                                          self.client.configDesc.managerPort )
+                                          self.client.configDesc.managerPort,
+                                          iterations,
+                                          fullTaskTimeout,
+                                          subtaskTimeout)
         task = Task.buildTask(  taskBuilder )
         taskDefinition = TaskDefinition()
         taskDefinition.id = task.header.taskId
