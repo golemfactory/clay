@@ -26,13 +26,12 @@ class ClientManagerSession:
     ##########################
     def interpret( self, msg ):
 
-        assert self.client
-
         type = msg.getType()
 
         if type == MessageNewTask.Type:
             task = pickle.loads( msg.data )
-            self.client.addNewTask( task )
+            if self.client:
+                self.client.addNewTask( task )
 
         elif type == MessageKillNode.Type:
             self.dropped()
@@ -57,7 +56,8 @@ class ClientManagerSession:
 
         elif type == MessageNewNodes.Type:
             num = msg.num
-            self.client.runNewNodes( num )
+            if self.client:
+                self.client.runNewNodes( num )
 
 
         else:

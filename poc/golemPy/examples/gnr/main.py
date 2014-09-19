@@ -11,13 +11,14 @@ genUiFiles( "ui" )
 from GNRApplicationLogic import GNRApplicationLogic
 
 from Application import GNRGui
+from InfoServer import InfoServer
 
 from TaskState import RendererDefaults, RendererInfo, TestTaskInfo
 from task.PbrtGNRTask import PbrtTaskBuilder
 
 from golem.Client import startClient
 
-from examples.manager.GNRManagerLogic import runAdditionalNodes
+from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
 
 def buidPBRTRendererInfo():
     defaults = RendererDefaults()
@@ -35,6 +36,9 @@ def buidPBRTRendererInfo():
     renderer.outputFormats  = [ "BMP", "DCX", "EPS", "EXR", "GIF", "IM", "IM", "JPEG", "PCD", "PCX", "PDF", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
 
     return renderer
+
+
+
 
 def main():
 
@@ -78,12 +82,19 @@ def main():
     def runGNRNodes( numNodes ):
         runAdditionalNodes( path, numNodes )
 
+    nmPath = os.path.join(path, "..\\manager\\" )
+    def runGNRManager( ):
+        runManager( nmPath )
+
     logic.registerStartNewNodeFunction( runGNRNodes )
+    logic.registerStartNodesManagerFunction( runGNRManager )
 
     client = startClient( )
 
     logic.registerClient( client )
-    logic.startNodesManagerClient()
+  #  logic.startNodesManagerClient()
+    infoServer = InfoServer( client, 55555, 55556, 59999 )
+    infoServer.start()
 
     app.execute( False )
 

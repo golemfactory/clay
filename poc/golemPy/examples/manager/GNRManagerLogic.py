@@ -18,6 +18,14 @@ def runAdditionalNodes( path,  numNodes ):
         pc = subprocess.Popen( ["python", "main.py"], creationflags = subprocess.CREATE_NEW_CONSOLE )
         os.chdir( prevPath )
 
+def runManager( path ):
+    prevPath = os.getcwd()
+    os.chdir( path )
+    pc = subprocess.Popen( [ "python", "managerMain.py" ], creationflags = subprocess.CREATE_NEW_CONSOLE )
+    os.chdir( prevPath )
+
+
+
 class GNRManagerLogic( EmptyManagerLogic ):
 
     def __init__(self, managerServer, nodePath ):
