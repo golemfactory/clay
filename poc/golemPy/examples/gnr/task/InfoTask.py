@@ -8,6 +8,9 @@ import cPickle as pickle
 
 import os
 import random
+import logging
+
+logger = logging.getLogger(__name__)
 
 class InfoTaskBuilder( TaskBuilder ):
     #######################
