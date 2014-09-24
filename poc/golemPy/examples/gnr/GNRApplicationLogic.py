@@ -3,14 +3,15 @@ import logging
 import cPickle as pickle
 from PyQt4 import QtCore
 
+from examples.gnr.task.InfoTask import InfoTaskBuilder
 from examples.gnr.ui.TestingTaskProgressDialog import TestingTaskProgressDialog
 from golem.task.TaskState import TaskStatus
-from examples.gnr.TaskState import GNRTaskState
+from examples.gnr.TaskState import GNRTaskState, TaskDefinition
 from examples.gnr.task.TaskTester import TaskTester
 from golem.task.TaskBase import Task
 from golem.task.TaskState import TaskState
 from golem.Client import GolemClientEventListener
-from golem.manager.client.NodesManagerClient import NodesManagerClient
+from golem.manager.client.NodesManagerClient import NodesManagerUidClient
 from customizers.MainWindowCustomizer import MainWindowCustomizer
 
 from testtasks.minilight.src.minilight import makePerfTest
@@ -41,6 +42,7 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.rootPath           = os.getcwd()
         self.nodesManagerClient = None
         self.addNewNodesFunction = lambda x: None
+        self.startNodesManagerFunction = lambda: None
 
     ######################
     def registerGui( self, gui ):
@@ -52,14 +54,20 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.client.registerListener( GNRClientEventListener( self ) )
 
     ######################
-    def registerStartNewNodeFunction(self, func ):
+    def registerStartNewNodeFunction( self, func ):
         self.addNewNodesFunction = func
+
+    def registerStartNodesManagerFunction( self, func ):
+        self.startNodesManagerFunction = func
+
+    def startNodesManagerServer( self ):
+        self.startNodesManagerFunction()
 
     ######################
     def startNodesManagerClient( self):
         if self.client:
             configDesc = self.client.configDesc
-            self.nodesManagerClient = NodesManagerClient ( configDesc.clientUid,
+            self.nodesManagerClient = NodesManagerUidClient ( configDesc.clientUid,
                                                            configDesc.managerAddress,
                                                            configDesc.managerPort,
                                                            None,
@@ -110,6 +118,23 @@ class GNRApplicationLogic( QtCore.QObject ):
             return self.renderers[ name ]
         else:
             assert False, "Renderer {} not registered".format( name )
+
+    ######################
+    #FIXME: task definiton jest skoncentrowany na taskach PBRT, trzeba zrobic tu jakis innych mechanizm definiowania definicji taskow
+    def sendInfoTask( self, iterations, fullTaskTimeout, subtaskTimeout ):
+        taskBuilder = InfoTaskBuilder( self.client.getId(),
+                                          "sendSnapshot.py",
+                                          self.client.configDesc.managerAddress,
+                                          self.client.configDesc.managerPort,
+                                          iterations,
+                                          fullTaskTimeout,
+                                          subtaskTimeout)
+        task = Task.buildTask(  taskBuilder )
+        taskDefinition = TaskDefinition()
+        taskDefinition.id = task.header.taskId
+        taskDefinition.taskResources = task.taskResources
+        self.addTaskFromDefinition( taskDefinition )
+        self.client.enqueueNewTask( task )
 
     ######################
     def startTask( self, taskId ):

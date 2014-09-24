@@ -9,13 +9,10 @@ logger = logging.getLogger(__name__)
 class NodesManagerClient:
 
     ######################
-    def __init__( self, clientUid, managerServerAddress, managerServerPort, taskManager, logic = None ):
-        self.clientUid              = clientUid
+    def __init__( self, managerServerAddress, managerServerPort ):
         self.managerServerAddress    = managerServerAddress
         self.managerServerPort       = managerServerPort
         self.clientManagerSession   = None
-        self.logic                  = logic
-        self.taskManager            = taskManager
 
     ######################
     def start( self ):
@@ -27,12 +24,51 @@ class NodesManagerClient:
             logger.error( u"Wrong seed port number {}: {}".format( self.managerServerPort, str( e ) ) )
             return True
 
-        self.__connectNodesManager()
+        if not self.clientManagerSession:
+            self.__connectNodesManager()
 
     #############################
     def sendClientStateSnapshot( self, snapshot ):
         if self.clientManagerSession:
             self.clientManagerSession.sendClientStateSnapshot( snapshot )
+        else:
+            logger.error("No clientManagerSession defined")
+
+    ######################
+    def dropConnection( self ):
+        if  self.clientManagerSession:
+            self.clientManagerSession.dropped()
+
+    #############################
+    def addNewTask( self, task ):
+        pass
+
+    ######################
+    def runNewNodes( self, num ):
+        pass
+
+    ######################
+    def __connectNodesManager( self ):
+
+        assert not self.clientManagerSession # connection already established
+
+        Network.connect( self.managerServerAddress, self.managerServerPort, ClientManagerSession, self.__connectionEstablished, self.__connectionFailure )
+
+    #############################
+    def __connectionEstablished( self, session ):
+        session.client = self
+        self.clientManagerSession = session
+
+    def __connectionFailure( self ):
+        logger.error( "Connection to nodes manager failure." )
+
+class NodesManagerUidClient ( NodesManagerClient ):
+    ######################
+    def __init__( self, clientUid, managerServerAddress, managerServerPort, taskManager, logic = None ):
+        NodesManagerClient.__init__( self, managerServerAddress, managerServerPort )
+        self.clientUid              = clientUid
+        self.logic                  = logic
+        self.taskManager            = taskManager
 
     ######################
     def addNewTask( self, task ):
@@ -48,24 +84,3 @@ class NodesManagerClient:
     ######################
     def runNewNodes( self, num ):
         self.logic.addNewNodesFunction( num )
-
-    def dropConnection( self ):
-        if  self.clientManagerSession:
-            self.clientManagerSession.dropped()
-
-
-    ######################
-    def __connectNodesManager( self ):
-
-        assert not self.clientManagerSession # connection already established
-
-        Network.connect( self.managerServerAddress, self.managerServerPort, ClientManagerSession, self.__connectionEstablished, self.__connectionFailure )
-
-
-    #############################
-    def __connectionEstablished( self, session ):
-        session.client = self
-        self.clientManagerSession = session
-
-    def __connectionFailure( self ):
-        logger.error( "Connection to nodes manager failure." )

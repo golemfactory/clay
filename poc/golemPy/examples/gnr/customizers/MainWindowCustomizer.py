@@ -12,6 +12,7 @@ from examples.gnr.ui.TaskTableElem import TaskTableElem
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 from examples.gnr.ui.StatusWindow import StatusWindow
 from examples.gnr.ui.ChangeTaskDialog import ChangeTaskDialog
+from examples.gnr.ui.InfoTaskDialog import InfoTaskDialog
 from examples.gnr.GNREnv import GNREnv
 
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
@@ -20,6 +21,7 @@ from TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
 from ConfigurationDialogCustomizer import ConfigurationDialogCustomizer
 from StatusWindowCustomizer import StatusWindowCustomizer
 from ChangeTaskDialogCustomizer import ChangeTaskDialogCustomizer
+from InfoTaskDialogCustomizer import InfoTaskDialogCustomizer
 
 import time
 import logging
@@ -47,6 +49,8 @@ class MainWindowCustomizer:
         self.gui.ui.actionLoadTask.triggered.connect( self.__loadTaskButtonClicked )
         self.gui.ui.actionEdit.triggered.connect( self.__showConfigurationDialogClicked )
         self.gui.ui.actionStatus.triggered.connect( self.__showStatusClicked )
+        self.gui.ui.actionStartNodesManager.triggered.connect( self.__startNodesManager )
+        self.gui.ui.actionSendInfoTask.triggered.connect( self.__showInfoTaskDialog )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "doubleClicked(const QModelIndex)" ), self.__taskTableRowDoubleClicked )
         self.gui.ui.showResourceButton.clicked.connect( self.__showTaskResourcesClicked )
@@ -139,6 +143,15 @@ class MainWindowCustomizer:
             self.__loadTask( fileName )
 
     ############################
+    def __startNodesManager( self ):
+        self.logic.startNodesManagerServer()
+
+    ############################
+    def __sendInfoTask( self ):
+        self.logic.sendInfoTask()
+
+
+    ############################
     def __loadTask( self, filePath ):
         f = open( filePath, 'r' )
 
@@ -216,6 +229,13 @@ class MainWindowCustomizer:
 
         self.newTaskDialogCustomizer = NewTaskDialogCustomizer( self.newTaskDialog, self.logic )
         self.newTaskDialog.show()
+
+    #############################
+    def __showInfoTaskDialog( self ):
+        self.infoTaskDialog = InfoTaskDialog( self.gui.window )
+        self.infoTaskDialogCustomizer = InfoTaskDialogCustomizer( self.infoTaskDialog, self.logic )
+     #   self.infoTaskDialogCustomizer.loadDefaults()
+        self.infoTaskDialog.show()
 
     #############################
     def showChangeTaskDialog(self, taskId ):

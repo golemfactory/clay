@@ -1,4 +1,5 @@
 from twisted.internet import task
+from threading import Lock
 
 from golem.network.P2PService import P2PService
 from golem.task.TaskServer import TaskServer
@@ -130,6 +131,8 @@ class Client:
 
         self.rootPath = rootPath
         self.cfg = config
+        self.sendSnapshot = False
+        self.snapshotLock = Lock()
        
     ############################
     def startNetwork( self ):
@@ -146,7 +149,7 @@ class Client:
 
         time.sleep( 0.5 )
         self.taskServer.taskManager.registerListener( ClientTaskManagerEventListener( self ) )
-        logger.info( "Starting nodes manager client ..." )
+        #logger.info( "Starting nodes manager client ..." )
 
         #self.taskServer.taskManager.addNewTask( )
 
@@ -247,11 +250,15 @@ class Client:
             self.p2pservice.syncNetwork()
             self.taskServer.syncNetwork()
 
+
             if time.time() - self.lastNSSTime > self.configDesc.nodeSnapshotInterval:
-                self.__makeNodeStateSnapshot()
+                with self.snapshotLock:
+                    self.__makeNodeStateSnapshot()
                 self.lastNSSTime = time.time()
 
                 #self.managerServer.sendStateMessage( self.lastNodeStateSnapshot )
+
+
 
     ############################
     def __makeNodeStateSnapshot( self, isRunning = True ):
@@ -276,6 +283,7 @@ class Client:
                                                            ,    localTasksProgresses )
         else:
             self.lastNodeStateSnapshot = NodeStateSnapshot( self.configDesc.clientUid, peersNum )
+
 
         if self.nodesManagerClient:
             self.nodesManagerClient.sendClientStateSnapshot( self.lastNodeStateSnapshot )

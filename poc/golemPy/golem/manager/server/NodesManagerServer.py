@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 class NodesManagerServer:
 
     #############################
-    def __init__( self, nodesManager, port, reactor = None, globalManagerAddr = "127.0.0.1", globalManagerPort = 20302 ):
+    def __init__( self, nodesManager, port, reactor = None ):
         self.port               = port
         self.managerSessions    = []
         self.reactor            = reactor
