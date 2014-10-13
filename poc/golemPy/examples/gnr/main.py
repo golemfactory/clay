@@ -15,12 +15,13 @@ from InfoServer import InfoServer
 
 from TaskState import RendererDefaults, RendererInfo, TestTaskInfo
 from task.PbrtGNRTask import PbrtTaskBuilder
+from task.MR3dsMaxTask import MentalRayTaskBuilder
 
 from golem.Client import startClient
 
 from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
 
-def buidPBRTRendererInfo():
+def buildPBRTRendererInfo():
     defaults = RendererDefaults()
     defaults.fullTaskTimeout    = 4 * 3600
     defaults.minSubtaskTime     = 60
@@ -38,7 +39,23 @@ def buidPBRTRendererInfo():
     return renderer
 
 
+def buildMentalRayRendererInfo():
+    defaults = RendererDefaults()
+    defaults.fullTaskTimeout    = 4 * 3600
+    defaults.minSubtaskTime     = 60
+    defaults.subtaskTimeout     = 20 * 60
+    defaults.samplesPerPixel    = 200
+    defaults.outputFormat       = "EXR"
+    defaults.mainProgramFile    = "d:/test_run/pbrt_compact.py"
 
+
+    renderer                = RendererInfo( "MentalRay", defaults, MentalRayTaskBuilder )
+    renderer.filters        = ["box", "gaussian", "mitchell", "sinc", "triangle" ]
+    renderer.pathTracers    = ["adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified"]
+    renderer.outputFormats  = [ "BMP", "DCX", "EPS", "EXR", "GIF", "IM", "IM", "JPEG", "PCD", "PCX", "PDF", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
+    renderer.sceneFileExt = "max"
+
+    return renderer
 
 def main():
 
@@ -74,8 +91,8 @@ def main():
 
     #app.appLogic.addTasks( [ task ] )
 
-    logic.registerNewRendererType( buidPBRTRendererInfo() )
-
+    logic.registerNewRendererType( buildPBRTRendererInfo() )
+    logic.registerNewRendererType( buildMentalRayRendererInfo() )
     logic.registerNewTestTaskType( TestTaskInfo( "CornellBox" ) )
 
     path = os.getcwd()
@@ -92,7 +109,7 @@ def main():
     client = startClient( )
 
     logic.registerClient( client )
-  #  logic.startNodesManagerClient()
+    #logic.startNodesManagerClient()
     infoServer = InfoServer( client, 55555, 55556, 59999 )
     infoServer.start()
 

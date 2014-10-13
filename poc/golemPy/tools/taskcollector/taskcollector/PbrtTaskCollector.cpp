@@ -1,6 +1,7 @@
 #include "FreeImage.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <list>
 
 
@@ -78,15 +79,12 @@ void FreeImageErrorHandler(FREE_IMAGE_FORMAT fif, const char *message) {
 
 // ----------------------------------------------------------
 
-class PbrtTaskCollector {
+class TaskCollector {
 
-private:
-	std::list<FIBITMAP *> chunks;
-	int darkest;
-	int lightest;
+protected:
+		std::list<FIBITMAP *> chunks;
 
 public:
-	PbrtTaskCollector() : darkest(NULL), lightest(NULL) {};
 	bool acceptTask(const char* pathName, int flag = 0)  {
 		FIBITMAP *img = GenericLoader(pathName, flag);
 		if (img == NULL) 
@@ -94,6 +92,26 @@ public:
 		chunks.push_back(img);
 		return true;
 	};
+
+	virtual FIBITMAP* finalize(bool showProgress = false) = 0;
+
+	bool finalizeAndSave(const char* outputPath) {
+		printf("finalize & safe %s\n", outputPath);
+		FIBITMAP *img = finalize();
+		return 	GenericWriter(img, outputPath, 0);
+	}
+
+
+};
+
+class PbrtTaskCollector: public TaskCollector {
+
+private:
+	int darkest;
+	int lightest;
+
+public:
+	PbrtTaskCollector() : darkest(NULL), lightest(NULL) {};
 	FIBITMAP* finalize(bool showProgress = false) {
 		if (chunks.empty()) {
 			return NULL;
@@ -160,12 +178,52 @@ public:
 		
 		return finalImage;
 	}
-	bool finalizeAndSave(const char* outputPath) {
-		FIBITMAP *img = finalize();
-		return 	GenericWriter(img, outputPath, 0);
+};
+
+
+class MentalRayTaskCollector: public TaskCollector {
+
+public:
+
+	FIBITMAP* finalize(bool showProgress = true) {
+		if (chunks.empty()) {
+			return NULL;
+		}
+		if (showProgress) {
+			printf("Adding all accepted chunks to the final image\n");
+		}
+		std::list<FIBITMAP*>::iterator it = chunks.begin();
+		unsigned int width = FreeImage_GetWidth(*it);		
+		unsigned int chunkHeight = FreeImage_GetHeight(*it);
+		unsigned int height =  chunkHeight * chunks.size() ;
+		unsigned int currentHeight = height - chunkHeight;
+
+
+		FREE_IMAGE_TYPE type = FreeImage_GetImageType(*it);
+		int bpp = FreeImage_GetBPP(*it);
+		FIBITMAP *finalImage = FreeImage_AllocateT(type, width, height, bpp);
+
+
+		for (; it != chunks.end(); it++) {
+		
+			for(unsigned int y = 0 ; y < chunkHeight ; y++) {
+				FIRGBAF *srcbits = (FIRGBAF *) FreeImage_GetScanLine(*it, y);
+				FIRGBAF *dstbits = (FIRGBAF *) FreeImage_GetScanLine(finalImage, y + currentHeight);
+				for(unsigned int x = 0 ; x < width  ; x++) {
+					dstbits[x].red = srcbits[x].red;
+					dstbits[x].blue = srcbits[x].blue;
+					dstbits[x].green = srcbits[x].green;
+					dstbits[x].alpha = srcbits[x].alpha;
+				}
+			}
+			currentHeight -= chunkHeight;
+		}
+		
+		return finalImage;
 	}
 
 };
+
 
 int 
 main(int argc, char *argv[]) {
@@ -186,15 +244,27 @@ main(int argc, char *argv[]) {
 	printf(FreeImage_GetCopyrightMessage());
 	printf("\n");
 
-	PbrtTaskCollector pbrtTC = PbrtTaskCollector();
+	
 
-	if (argc < 3)  {
-		printf("Usage: taskcollector.exe <outputfile> <inputfile1> [<input file2> ...]\n");
+	if (argc < 4)  {
+		printf("Usage: taskcollector.exe <type> <outputfile> <inputfile1> [<input file2> ...]\n");
 		return -1;
 	}
 
-	for (int i = 2; i < argc; i++) {
-		if (! pbrtTC.acceptTask(argv[i]) ) {
+	TaskCollector *taskCollector;
+
+	if (strcmp(argv[1], "pbrt") == 0) {
+		taskCollector = &(PbrtTaskCollector());
+	} else if ( strcmp( argv[1], "mr") == 0) {
+		taskCollector = &(MentalRayTaskCollector());
+	} else {
+		printf("Possible types: 'mr', 'pbrt'\n");
+		return -1;
+	}
+
+
+	for (int i = 3; i < argc; i++) {
+		if (! taskCollector->acceptTask(argv[i]) ) {
 			printf("Can't add file: %s\n", argv[i]);
 		}
 	}
@@ -217,8 +287,8 @@ main(int argc, char *argv[]) {
 	}
 	*/
 
-	FIBITMAP *finalImage = pbrtTC.finalize();
-	pbrtTC.finalizeAndSave(argv[1]);
+	FIBITMAP *finalImage = taskCollector->finalize();
+	taskCollector->finalizeAndSave(argv[2]); 
 
 	
 	// call this ONLY when linking with FreeImage as a static library

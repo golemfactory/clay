@@ -108,6 +108,23 @@ def test_it():
 
     out.save("result.png", "PNG")
 
+def exr_to_pil( exrFile ):
+
+    file = OpenEXR.InputFile( exrFile )
+    pt = Imath.PixelType( Imath.PixelType.FLOAT )
+    dw = file.header()['dataWindow']
+    size = ( dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1 )
+
+    rgbf = [Image.fromstring("F", size, file.channel(c, pt)) for c in "RGB"]
+
+    #extrema = [im.getextrema() for im in rgbf]
+    #darkest = min([lo for (lo,hi) in extrema])
+    #lightest = max([hi for (lo,hi) in extrema])
+    scale = 255.0
+    def normalize_0_255(v):
+        return (v * scale)
+    rgb8 = [im.point(normalize_0_255).convert("L") for im in rgbf]
+    return Image.merge("RGB", rgb8)
 
 class PbrtTaksCollector:
 

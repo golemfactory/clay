@@ -1,139 +1,95 @@
-import os
-import random
-import cPickle as pickle
 import logging
-import time
+import random
+import os
 import subprocess
+import pickle
 
+
+from GNRTask import GNRTaskBuilder, GNRTask
+from GNREnv import GNREnv
 from golem.task.TaskBase import ComputeTaskDef
 from golem.core.Compress import decompress
-from golem.task.resource.Resource import prepareDeltaZip
-
-from examples.gnr.task.SceneFileEditor import regenerateFile
-
-from GNRTask import GNRTask, GNRSubtask, GNRTaskBuilder
 from testtasks.pbrt.takscollector import PbrtTaksCollector, exr_to_pil
-from GNREnv import GNREnv
 
 import OpenEXR, Imath
 from PIL import Image, ImageChops
 
+
 logger = logging.getLogger(__name__)
 
-class PbrtTaskBuilder( GNRTaskBuilder ):
-    #######################
+class MentalRayTaskBuilder( GNRTaskBuilder ):
+
     def build( self ):
         mainSceneDir = os.path.dirname( self.taskDefinition.mainSceneFile )
 
-        # TODO: Calculate total task
-
-        pbrtTask = PbrtRenderTask( self.clientId,
-                                   self.taskDefinition.id,
+        mentalRayTask = MentalRayTask(self.clientId,
+                                   self.taskDefinition,
                                    mainSceneDir,
-                                   self.taskDefinition.mainProgramFile,
-                                   60,
+                                   6,
                                    32,
                                    4,
-                                   self.taskDefinition.resolution[ 0 ],
-                                   self.taskDefinition.resolution[ 1 ],
-                                   self.taskDefinition.pixelFilter,
-                                   self.taskDefinition.algorithmType,
-                                   self.taskDefinition.samplesPerPixelCount,
                                    "temp",
-                                   self.taskDefinition.mainSceneFile,
-                                   self.taskDefinition.fullTaskTimeout,
-                                   self.taskDefinition.subtaskTimeout,
-                                   self.taskDefinition.resources,
-                                   self.taskDefinition.outputFile,
-                                   self.taskDefinition.outputFormat,
-                                   self.taskDefinition.estimatedMemory,
                                    self.rootPath
-                                  )
+                                   )
+        return mentalRayTask
 
-        return pbrtTask
+class MentalRayTask( GNRTask ):
 
-class PbrtRenderTask( GNRTask ):
+    def __init__( self, clientId, taskDefinition, mainSceneDir, totalTasks, numSubtasks, numCores,
+                  outfilebasename, rootPath, returnAddress = "", returnPort = 0 ):
 
-    #######################
-    def __init__( self,
-                  clientId,
-                  taskId,
-                  pathRoot,
-                  mainProgramFile,
-                  totalTasks,
-                  numSubtasks,
-                  numCores,
-                  resX,
-                  resY,
-                  pixelFilter,
-                  sampler,
-                  samplesPerPixel,
-                  outfilebasename,
-                  sceneFile,
-                  fullTaskTimeout,
-                  subtaskTimeout,
-                  taskResources,
-                  outputFile,
-                  outputFormat,
-                  estimatedMemory,
-                  rootPath,
-                  returnAddress = "",
-                  returnPort = 0
-                  ):
+        self.taskDefinition = taskDefinition
 
-        srcFile = open( mainProgramFile, "r")
+        srcFile = open( self.taskDefinition.mainProgramFile, "r")
         srcCode = srcFile.read()
 
+
         resourceSize = 0
-        for resource in taskResources:
+        for resource in self.taskDefinition.resources:
             resourceSize += os.stat(resource).st_size
 
-        GNRTask.__init__( self, srcCode, clientId, taskId, returnAddress, returnPort, fullTaskTimeout, subtaskTimeout, resourceSize )
+        GNRTask.__init__( self,
+                          srcCode,
+                          clientId,
+                          self.taskDefinition.id,
+                          returnAddress,
+                          returnPort,
+                          self.taskDefinition.fullTaskTimeout,
+                          self.taskDefinition.subtaskTimeout,
+                          resourceSize )
 
-        self.fullTaskTimeout = max( 2200.0, fullTaskTimeout )
-        self.header.ttl = self.fullTaskTimeout
-        self.header.subtaskTimeout = max( 220.0, subtaskTimeout )
+        self.taskResources = self.taskDefinition.resources
+        self.estimatedMemory = self.taskDefinition.estimatedMemory
+        self.outputFormat = self.taskDefinition.outputFormat
+        self.outputFile = self.taskDefinition.outputFile
+        self.mainSceneDir = mainSceneDir
+        self.mainProgramFile = self.taskDefinition.mainProgramFile
+        self.outfilebasename = outfilebasename
 
-
-        self.pathRoot           = pathRoot
-        self.lastTask           = 0
-        self.totalTasks         = totalTasks
-        self.numSubtasks        = numSubtasks
-        self.numCores           = numCores
-        self.outfilebasename    = outfilebasename
-        self.sceneFileSrc       = open(sceneFile).read()
-        self.taskResources      = taskResources
-        self.resourceSize       = resourceSize
-        self.mainProgramFile    = mainProgramFile
-        self.outputFile         = outputFile
-        self.outputFormat       = outputFormat
-        self.resX               = resX
-        self.resY               = resY
-        self.pixelFilter        = pixelFilter
-        self.sampler            = sampler
-        self.samplesPerPixel    = samplesPerPixel
-        self.estimatedMemory    = estimatedMemory
-
-        self.numFailedSubtasks  = 0
+        self.rootPath = rootPath
+        self.numCores = numCores
+        self.totalTasks = totalTasks
+        self.lastTask = 0
+        self.numFailedSubtasks = 0
         self.failedSubtasks     = set()
+        self.numSubtasks = numSubtasks
+        self.sceneFileSrc = ""
+        self.previewFilePath    = None
 
         self.collector          = PbrtTaksCollector()
         self.collectedFileNames = []
-        self.numTasksReceived   = 0
         self.subTasksGiven      = {}
+        self.numTasksReceived = 0
 
-        self.previewFilePath    = None
-        self.rootPath           = rootPath
-
+        self.tmpCnt = 0;
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
 
         if ( self.lastTask != self.totalTasks ):
-            perf = max( int( float( perfIndex ) / 1500 ), 1)
-            endTask = min( self.lastTask + perf, self.totalTasks )
+            self.lastTask += 1
             startTask = self.lastTask
-            self.lastTask = endTask
+            endTask = self.lastTask
         else:
             subtask = self.failedSubtasks.pop()
             self.numFailedSubtasks -= 1
@@ -146,16 +102,17 @@ class PbrtRenderTask( GNRTask ):
         commonPathPrefix = os.path.commonprefix( self.taskResources )
         commonPathPrefix = os.path.dirname( commonPathPrefix )
 
-        sceneSrc = regenerateFile( self.sceneFileSrc, self.resX, self.resY, self.pixelFilter, self.sampler, self.samplesPerPixel )
-
-        extraData =          {      "pathRoot" : self.pathRoot,
+        extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
                                     "endTask" : endTask,
                                     "totalTasks" : self.totalTasks,
                                     "numSubtasks" : self.numSubtasks,
                                     "numCores" : numCores,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFileSrc" : sceneSrc
+                                    "sceneFile" : self.taskDefinition.mainSceneFile,
+                                    "sceneFileSrc" : self.sceneFileSrc,
+                                    "width" : self.taskDefinition.resolution[0],
+                                    "height": self.taskDefinition.resolution[1]
                                 }
 
 
@@ -180,23 +137,21 @@ class PbrtRenderTask( GNRTask ):
 
         # ctd.workingDirectory = ""
 
-
         return ctd
-
 
     #######################
     def queryExtraDataForTestTask( self ):
-
-        sceneSrc = regenerateFile( self.sceneFileSrc, 1, 1, self.pixelFilter, self.sampler, self.samplesPerPixel )
-
-        extraData =          {      "pathRoot" : self.pathRoot,
+        extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : 0,
                                     "endTask" : 1,
                                     "totalTasks" : self.totalTasks,
                                     "numSubtasks" : self.numSubtasks,
                                     "numCores" : self.numCores,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFileSrc" : sceneSrc
+                                    "sceneFile" : self.taskDefinition.mainSceneFile,
+                                    "sceneFileSrc": self.sceneFileSrc,
+                                    "width" : self.taskDefinition.resolution[0],
+                                    "height": self.taskDefinition.resolution[1]
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -221,12 +176,12 @@ class PbrtRenderTask( GNRTask ):
 
         return ctd
 
-    #######################
+     #######################
     def __shortExtraDataRepr( self, perfIndex, extraData ):
         l = extraData
-        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFileSrc: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFileSrc"] )
+        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFile"] )
 
-    #######################
+  #######################
     def computationFinished( self, subtaskId, taskResult, env = None ):
 
         tmpDir = env.getTaskTemporaryDir( self.header.taskId )
@@ -248,22 +203,20 @@ class PbrtRenderTask( GNRTask ):
 
         if self.numTasksReceived == self.totalTasks:
             outputFileName = u"{}".format( self.outputFile, self.outputFormat )
-            if (self.outputFormat != "EXR"):
-                self.collector.finalize().save( outputFileName, self.outputFormat )
-                self.previewFilePath = outputFileName
-            else:
 
-                pth, filename =  os.path.split(os.path.realpath(__file__))
-                taskCollectorPath = os.path.join(pth, "..\..\..\\tools\\taskcollector\Release\\taskcollector.exe")
-                logger.debug( "taskCollector path: {}".format( taskCollectorPath ) )
-                files = ""
-                for file in self.collectedFileNames:
-                    files += file + " "
-                cmd = u"{} pbrt {} {}".format(taskCollectorPath, outputFileName, files )
-                pc = subprocess.Popen( cmd )
-                pc.wait()
+            pth, filename =  os.path.split(os.path.realpath(__file__))
+            taskCollectorPath = os.path.join(pth, "..\..\..\\tools\\taskcollector\Release\\taskcollector.exe")
+            logger.debug( "taskCollector path: {}".format( taskCollectorPath ) )
+            files = ""
+            for file in self.collectedFileNames:
+                files += file + " "
+            cmd = u"{} mr {} {}".format(taskCollectorPath, outputFileName, files )
+            logger.debug("cmd = {}".format( cmd ) )
+            pc = subprocess.Popen( cmd )
+            pc.wait()
 
-    #######################
+
+   #######################
     def __updatePreview( self, newChunkFilePath ):
 
         if newChunkFilePath.endswith(".exr"):
@@ -271,13 +224,23 @@ class PbrtRenderTask( GNRTask ):
         else:
             img = Image.open( newChunkFilePath )
 
+        imgOffset = Image.new("RGB", (self.taskDefinition.resolution[0], self.taskDefinition.resolution[1]))
+        try:
+            imgOffset.paste(img, (0, self.tmpCnt * (self.taskDefinition.resolution[1]) / self.totalTasks ) )
+        except Exception, err:
+            logger.error("Can't generate preview {}".format( str(err) ))
+
+        self.tmpCnt += 1
+
         tmpDir = GNREnv.getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
 
         self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
 
         if os.path.exists( self.previewFilePath ):
             imgCurrent = Image.open( self.previewFilePath )
-            imgCurrent = ImageChops.add( imgCurrent, img )
+            imgCurrent = ImageChops.add( imgCurrent, imgOffset )
             imgCurrent.save( self.previewFilePath, "BMP" )
         else:
-            img.save( self.previewFilePath, "BMP" )
+            imgOffset.save( self.previewFilePath, "BMP" )
+
+
