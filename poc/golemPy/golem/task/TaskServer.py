@@ -1,5 +1,5 @@
 
-from golem.core.network import Network
+from golem.network.transport.Tcp import Network
 from TaskManager import TaskManager
 from TaskComputer import TaskComputer
 from TaskSession import TaskSession
@@ -48,6 +48,7 @@ class TaskServer:
             theader = self.taskHeaders.values()[ tn ]
 
             self.__connectAndSendTaskRequest( self.configDesc.clientUid,
+                                              theader.clientId,
                                               theader.taskOwnerAddress,
                                               theader.taskOwnerPort,
                                               theader.taskId,
@@ -191,7 +192,7 @@ class TaskServer:
             sys.exit(0)
 
     #############################   
-    def __connectAndSendTaskRequest( self, clientId, address, port, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores ):
+    def __connectAndSendTaskRequest( self, clientId, taskClientId, address, port, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores ):
         Network.connect( address, port, TaskSession, self.__connectionForTaskRequestEstablished, self.__connectionForTaskRequestFailure, clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores )
 
     #############################   

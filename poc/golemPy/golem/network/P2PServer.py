@@ -1,6 +1,8 @@
-
-from golem.core.network import Network
 import logging
+
+from golem.network.transport.Tcp import Network
+from poc.golemPy.golem.network.p2p.NetConnState import NetConnState
+
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +42,7 @@ class P2PServer:
 
 
 from twisted.internet.protocol import Factory
-from NetConnState import NetConnState
+
 
 class NetServerFactory( Factory ):
     #############################

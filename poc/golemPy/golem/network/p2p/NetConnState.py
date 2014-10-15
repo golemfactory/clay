@@ -1,7 +1,9 @@
+import logging
 
 from golem.Message import Message
-from ConnectionState import ConnectionState
-import logging
+from golem.network.p2p.ConnectionState import ConnectionState
+from golem.core.databuffer import DataBuffer
+
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +13,7 @@ class NetConnState( ConnectionState ):
         ConnectionState.__init__( self )
         self.peer = None
         self.server = server
+        self.db = None
     
     ############################
     def setSession( self, session ):
@@ -21,7 +24,7 @@ class NetConnState( ConnectionState ):
         self.opened = True
 
         if self.server:
-            from PeerSession import PeerSession
+            from golem.network.PeerSession import PeerSession
             pp = self.transport.getPeer()
             self.peer = PeerSession( self )
             self.server.newConnection( self.peer )
@@ -29,17 +32,21 @@ class NetConnState( ConnectionState ):
     ############################
     def dataReceived(self, data):
         assert self.opened
+        assert isinstance(self.db, DataBuffer)
 
-        self.db.appendString(data)
-        mess = Message.deserialize(self.db)
-        if mess is None:
-            logger.error( "Deserialization message failed" )
-            self.peer.interpret(None)
 
         if self.peer:
+            self.db.appendString(data)
+            mess = Message.deserialize(self.db)
+            if mess is None or len(mess) == 0:
+                self.db.clearBuffer()
+                logger.error( "Deserialization message failed" )
+                return None
+
             for m in mess:
                 self.peer.interpret(m)
         else:
+            self.opened = False
             logger.error( "Peer for connection is None" )
             assert False
 

@@ -1,6 +1,6 @@
 
 import logging
-from golem.network.ConnectionState import ConnectionState
+from golem.network.p2p.ConnectionState import ConnectionState
 from golem.Message import Message
 from golem.core.databuffer import DataBuffer
 

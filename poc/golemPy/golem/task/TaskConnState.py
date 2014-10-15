@@ -1,6 +1,6 @@
 
 from golem.Message import Message
-from golem.network.ConnectionState import ConnectionState
+from golem.network.p2p.ConnectionState import ConnectionState
 import logging
 
 logger = logging.getLogger(__name__)

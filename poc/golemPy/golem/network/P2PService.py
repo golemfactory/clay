@@ -1,6 +1,6 @@
 
 from P2PServer import P2PServer
-from golem.core.network import Network
+from golem.network.transport.Tcp import Network
 from PeerSession import PeerSession
 import time
 import logging

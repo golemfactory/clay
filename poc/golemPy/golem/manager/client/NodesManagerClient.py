@@ -1,6 +1,6 @@
 
 from ClientManagerSession import ClientManagerSession
-from golem.core.network import Network
+import golem.network.transport.Tcp import Network
 
 import logging
 

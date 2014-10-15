@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class ConnectionState(Protocol):
     ############################
-    def __init__(self ):
+    def __init__( self ):
         self.peer = None
         self.db = DataBuffer()
         self.opened = False
@@ -32,6 +32,14 @@ class ConnectionState(Protocol):
         return True
 
     ############################
+    def close(self):
+        self.transport.loseConnection()
+
+    ############################
+    def isOpen(self):
+        return self.opened
+
+    ############################
     @abc.abstractmethod
     def connectionMade(self):
         """Called when new connection is successfully opened"""
@@ -48,11 +56,3 @@ class ConnectionState(Protocol):
     def connectionLost(self, reason):
         """Called when connection is lost (for whatever reason)"""
         return
-
-    ############################
-    def close(self):
-        self.transport.loseConnection()
-
-    ############################
-    def isOpen(self):
-        return self.opened
