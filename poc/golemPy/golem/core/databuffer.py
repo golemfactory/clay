@@ -59,6 +59,9 @@ class DataBuffer:
         self.appendUInt( len( data ) )
         self.appendString( data )
 
+    def clearBuffer( self ):
+        self.bufferedData = ""
+
 if __name__ == "__main__":
 
     db = DataBuffer()
