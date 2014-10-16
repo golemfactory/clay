@@ -1,5 +1,6 @@
 import cPickle
 import zlib
+from gzip import GzipFile
 
 def save(object, filename, protocol = -1):
     """Save an object to a compressed disk file.
