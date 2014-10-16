@@ -25,7 +25,8 @@ class NodesManagerServer:
 
 
     #############################
-    def __listeningEstablished( self, port ):
+    def __listeningEstablished( self, iListeningPort ):
+        port = iListeningPort.getHost().port
         assert port == self.port
         logger.info( "Manager server - port {} opened, listening".format( port ) )
 

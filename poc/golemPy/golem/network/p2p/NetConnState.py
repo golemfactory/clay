@@ -13,7 +13,6 @@ class NetConnState( ConnectionState ):
         ConnectionState.__init__( self )
         self.peer = None
         self.server = server
-        self.db = None
     
     ############################
     def setSession( self, session ):
@@ -34,7 +33,6 @@ class NetConnState( ConnectionState ):
         assert self.opened
         assert isinstance(self.db, DataBuffer)
 
-
         if self.peer:
             self.db.appendString(data)
             mess = Message.deserialize(self.db)
@@ -45,10 +43,12 @@ class NetConnState( ConnectionState ):
 
             for m in mess:
                 self.peer.interpret(m)
-        else:
+        elif self.server:
             self.opened = False
             logger.error( "Peer for connection is None" )
             assert False
+        else:
+            pass
 
     ############################
     def connectionLost(self, reason):

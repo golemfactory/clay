@@ -173,7 +173,8 @@ class TaskServer:
         Network.listen( self.configDesc.startPort, self.configDesc.endPort, TaskServerFactory( self ), None, self.__listeningEstablished, self.__listeningFailure  )
 
     #############################
-    def __listeningEstablished( self, port ):
+    def __listeningEstablished( self, iListeningPort ):
+        port = iListeningPort.getHost().port
         self.curPort = port
         logger.info( "Port {} opened - listening".format( port ) )
         self.taskManager.listenAddress = self.address

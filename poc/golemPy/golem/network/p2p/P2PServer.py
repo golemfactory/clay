@@ -1,7 +1,7 @@
 import logging
 
 from golem.network.transport.Tcp import Network
-from poc.golemPy.golem.network.p2p.NetConnState import NetConnState
+from golem.network.p2p.NetConnState import NetConnState
 
 
 logger = logging.getLogger(__name__)
@@ -13,6 +13,7 @@ class P2PServer:
         self.configDesc             = configDesc
         self.p2pService             = p2pService
         self.curPort                = 0
+        self.iListeningPort         = None
 
         self.__startAccepting()
 
@@ -22,7 +23,12 @@ class P2PServer:
 
     #############################
     def changeConfig( self, configDesc ):
+
         self.configDesc = configDesc
+
+        if self.iListeningPort and (configDesc.startPort > self.curPort or configDesc.endPort < self.curPort):
+            self.iListeningPort.stopListening()
+            self.__startAccepting()
 
     #############################
     def __startAccepting( self ):
@@ -31,9 +37,10 @@ class P2PServer:
         Network.listen( self.configDesc.startPort, self.configDesc.endPort, NetServerFactory( self ), None, self.__listeningEstablished, self.__listeningFailure )
 
     #############################
-    def __listeningEstablished( self, port ):
-        self.curPort = port
-        logger.info( "Port {} opened - listening".format( port ) )
+    def __listeningEstablished( self, iListeningPort ):
+        self.curPort = iListeningPort.getHost().port
+        self.iListeningPort = iListeningPort
+        logger.info( "Port {} opened - listening".format( self.curPort ) )
 
     #############################
     def __listeningFailure( self ):

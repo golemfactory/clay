@@ -1,9 +1,10 @@
-
-from P2PServer import P2PServer
-from golem.network.transport.Tcp import Network
-from PeerSession import PeerSession
 import time
 import logging
+
+from golem.network.transport.Tcp import Network
+from PeerSession import PeerSession
+from poc.golemPy.golem.network.p2p.P2PServer import P2PServer
+
 
 logger = logging.getLogger(__name__)
 
