@@ -69,9 +69,9 @@ class Network:
 
     ######################
     @classmethod
-    def __listeningEstablished( cls, p, establishedCallback ):
+    def __listeningEstablished( cls, iListeningPort, establishedCallback ):
         if establishedCallback:
-            establishedCallback( p.getHost().port )
+            establishedCallback( iListeningPort )
 
 
     @classmethod
