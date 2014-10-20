@@ -2,7 +2,7 @@ import time
 import logging
 
 from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks
-from poc.golemPy.golem.network.p2p.NetConnState import NetConnState
+from golem.network.p2p.NetConnState import NetConnState
 
 
 logger = logging.getLogger(__name__)

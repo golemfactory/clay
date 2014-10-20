@@ -3,7 +3,7 @@ import logging
 
 from golem.network.transport.Tcp import Network
 from PeerSession import PeerSession
-from poc.golemPy.golem.network.p2p.P2PServer import P2PServer
+from golem.network.p2p.P2PServer import P2PServer
 
 
 logger = logging.getLogger(__name__)
@@ -114,6 +114,18 @@ class P2PService:
 
         if not self.wrongSeedData():
             self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
+
+    #############################
+    def changeAddress( self, thDictRepr ):
+        try:
+            id = thDictRepr[ "clientId" ]
+
+            if self.peers[ id ]:
+                thDictRepr [ "address" ] = self.peers[ id ].address
+                thDictRepr [ "port" ] = self.peers[ id ].port
+        except Exception, err:
+            logger.error( "Wrong task representation: {}".format( str( err ) ) )
+
 
     #############################   
     def __connect( self, address, port ):

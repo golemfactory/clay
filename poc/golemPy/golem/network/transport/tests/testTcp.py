@@ -57,7 +57,7 @@ class TestNetwork(unittest.TestCase):
         th.deamon = True
         th.start()
         Network.connect('127.0.0.1', 8889, QOTDClientSession, self.__connectSuccess, self.__connectFailure )
-        sleep(1)
+        sleep(5)
         reactor.stop()
         self.assertTrue(self.connectSuccess)
 

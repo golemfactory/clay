@@ -11,7 +11,7 @@ genUiFiles( "ui" )
 from GNRApplicationLogic import GNRApplicationLogic
 
 from Application import GNRGui
-from InfoServer import InfoServer
+#from InfoServer import InfoServer
 
 from TaskState import RendererDefaults, RendererInfo, TestTaskInfo
 from task.PbrtGNRTask import PbrtTaskBuilder
@@ -110,8 +110,8 @@ def main():
 
     logic.registerClient( client )
     #logic.startNodesManagerClient()
-    infoServer = InfoServer( client, 55555, 55556, 59999 )
-    infoServer.start()
+#    infoServer = InfoServer( client, 55555, 55556, 59999 )
+#    infoServer.start()
 
     app.execute( False )
 

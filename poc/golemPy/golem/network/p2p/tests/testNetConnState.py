@@ -66,25 +66,18 @@ class TestConnectionState( unittest.TestCase ):
         netConnState = NetConnState()
         peer = Peer()
         netConnState.peer = peer
-        db = DataBuffer()
-        netConnState.db = db
         with self.assertRaises(AssertionError):
             netConnState.dataReceived( 'data' )
         netConnState.opened = True
-
-        netConnState.peer = None
-        with self.assertRaises(AssertionError):
-            netConnState.dataReceived( 'data' )
-        netConnState.opened = True
-        netConnState.peer = peer
 
         netConnState.db = None
         with self.assertRaises(AssertionError):
             netConnState.dataReceived( 'data' )
-        netConnState.db = db
+        netConnState.db = DataBuffer()
         netConnState.opened = True
 
         self.assertIsNone( netConnState.dataReceived( 'data' ) )
+        netConnState.db = DataBuffer()
 
         msg = MessageHello()
         db2 = DataBuffer()

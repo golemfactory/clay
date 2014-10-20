@@ -211,7 +211,7 @@ class TaskServer:
         session.requestTask( clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores )
 
     #############################
-    def __connectionForTaskRequestFailure( self, clientId, taskId, estimatedPerformance ):
+    def __connectionForTaskRequestFailure( self, clientId, taskId, estimatedPerformance, *args ):
         logger.warning( "Cannot connect to task {} owner".format( taskId ) )
         logger.warning( "Removing task {} from task list".format( taskId ) )
         

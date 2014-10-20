@@ -37,7 +37,6 @@ class NetConnState( ConnectionState ):
             self.db.appendString(data)
             mess = Message.deserialize(self.db)
             if mess is None or len(mess) == 0:
-                self.db.clearBuffer()
                 logger.error( "Deserialization message failed" )
                 return None
 

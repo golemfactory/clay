@@ -13,6 +13,7 @@ from testtasks.pbrt.takscollector import PbrtTaksCollector, exr_to_pil
 
 import OpenEXR, Imath
 from PIL import Image, ImageChops
+from collections import OrderedDict
 
 
 logger = logging.getLogger(__name__)
@@ -77,11 +78,12 @@ class MentalRayTask( GNRTask ):
         self.previewFilePath    = None
 
         self.collector          = PbrtTaksCollector()
-        self.collectedFileNames = []
+        self.collectedFileNames = {}
         self.subTasksGiven      = {}
         self.numTasksReceived = 0
 
         self.tmpCnt = 0;
+
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
@@ -192,14 +194,11 @@ class MentalRayTask( GNRTask ):
                 fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
                 fh.write( decompress( tr[ 1 ] ) )
                 fh.close()
-
-                if (self.outputFormat != "EXR"):
-                    self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
-                else:
-                    self.collectedFileNames.append( os.path.join(tmpDir, tr[0] ) )
+                num = self.subTasksGiven[ subtaskId ][ 'startTask' ]
+                self.collectedFileNames[ num ] = os.path.join(tmpDir, tr[0] )
                 self.numTasksReceived += 1
 
-                self.__updatePreview( os.path.join( tmpDir, tr[ 0 ] ) )
+                self.__updatePreview( os.path.join( tmpDir, tr[ 0 ] ), num )
 
         if self.numTasksReceived == self.totalTasks:
             outputFileName = u"{}".format( self.outputFile, self.outputFormat )
@@ -207,9 +206,9 @@ class MentalRayTask( GNRTask ):
             pth, filename =  os.path.split(os.path.realpath(__file__))
             taskCollectorPath = os.path.join(pth, "..\..\..\\tools\\taskcollector\Release\\taskcollector.exe")
             logger.debug( "taskCollector path: {}".format( taskCollectorPath ) )
-            files = ""
-            for file in self.collectedFileNames:
-                files += file + " "
+
+            self.collectedFileNames = OrderedDict( sorted( self.collectedFileNames.items() ) )
+            files = " ".join( self.collectedFileNames.values() )
             cmd = u"{} mr {} {}".format(taskCollectorPath, outputFileName, files )
             logger.debug("cmd = {}".format( cmd ) )
             pc = subprocess.Popen( cmd )
@@ -217,7 +216,7 @@ class MentalRayTask( GNRTask ):
 
 
    #######################
-    def __updatePreview( self, newChunkFilePath ):
+    def __updatePreview( self, newChunkFilePath, chunkNum ):
 
         if newChunkFilePath.endswith(".exr"):
             img = exr_to_pil( newChunkFilePath )
@@ -226,11 +225,10 @@ class MentalRayTask( GNRTask ):
 
         imgOffset = Image.new("RGB", (self.taskDefinition.resolution[0], self.taskDefinition.resolution[1]))
         try:
-            imgOffset.paste(img, (0, self.tmpCnt * (self.taskDefinition.resolution[1]) / self.totalTasks ) )
+            imgOffset.paste(img, (0, (chunkNum - 1) * (self.taskDefinition.resolution[1]) / self.totalTasks ) )
         except Exception, err:
             logger.error("Can't generate preview {}".format( str(err) ))
 
-        self.tmpCnt += 1
 
         tmpDir = GNREnv.getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
 
