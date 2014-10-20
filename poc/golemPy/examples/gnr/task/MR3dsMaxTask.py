@@ -104,6 +104,8 @@ class MentalRayTask( GNRTask ):
         commonPathPrefix = os.path.commonprefix( self.taskResources )
         commonPathPrefix = os.path.dirname( commonPathPrefix )
 
+        sceneFile = os.path.basename( self.taskDefinition.mainSceneFile )
+
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
                                     "endTask" : endTask,
@@ -111,7 +113,7 @@ class MentalRayTask( GNRTask ):
                                     "numSubtasks" : self.numSubtasks,
                                     "numCores" : numCores,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFile" : self.taskDefinition.mainSceneFile,
+                                    "sceneFile" : sceneFile,
                                     "sceneFileSrc" : self.sceneFileSrc,
                                     "width" : self.taskDefinition.resolution[0],
                                     "height": self.taskDefinition.resolution[1]
