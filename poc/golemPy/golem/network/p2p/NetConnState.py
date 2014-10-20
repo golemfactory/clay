@@ -23,7 +23,7 @@ class NetConnState( ConnectionState ):
         self.opened = True
 
         if self.server:
-            from golem.network.PeerSession import PeerSession
+            from golem.network.p2p.PeerSession import PeerSession
             pp = self.transport.getPeer()
             self.peer = PeerSession( self )
             self.server.newConnection( self.peer )

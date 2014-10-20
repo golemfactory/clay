@@ -2,7 +2,7 @@ import time
 import logging
 
 from golem.network.transport.Tcp import Network
-from PeerSession import PeerSession
+from golem.network.p2p.PeerSession import PeerSession
 from golem.network.p2p.P2PServer import P2PServer
 
 
@@ -75,8 +75,26 @@ class P2PService:
         else:
             return None
 
+    #############################
     def getPeers( self ):
         return self.peers
+
+    #############################
+    def addPeer( self, id, peer ):
+        self.peers[ id ] = peer
+
+    #############################
+    def tryToAddPeer( self, peerInfo ):
+        if self.__isNewPeer( peerInfo[ "id" ] ):
+            logger.info( "add peer to incoming {} {} {}".format( peerInfo[ "id" ],
+                                                             peerInfo[ "address" ],
+                                                             peerInfo[ "port" ] ) )
+            self.incommingPeers[ peerInfo[ "id" ] ] = { "address" : peerInfo[ "address" ],
+                                                    "port" : peerInfo[ "port" ],
+                                                    "conn_trials" : 0 }
+            self.freePeers.append( peerInfo[ "id" ] )
+            logger.debug( self.incommingPeers )
+
 
     #############################
     def removePeer( self, peerSession ):
@@ -126,6 +144,17 @@ class P2PService:
         except Exception, err:
             logger.error( "Wrong task representation: {}".format( str( err ) ) )
 
+    ############################
+    def getListenParams( self ):
+        return self.p2pServer.curPort, self.configDesc.clientUid
+
+    ############################
+    def getTasksHeaders( self ):
+        return self.taskServer.getTasksHeaders()
+
+    ############################
+    def addTaskHeader( self, thDictRepr ):
+        return self.taskServer.addTaskHeader( thDictRepr)
 
     #############################   
     def __connect( self, address, port ):
@@ -164,3 +193,11 @@ class P2PService:
     #############################
     def __connectionFailure( self ):
         logger.error( "Connection to peer failure." )
+
+    #############################
+    def __isNewPeer (self, id ):
+        if id in self.incommingPeers or id in self.peers or id == self.configDesc.clientUid:
+            return False
+        else:
+            return True
+

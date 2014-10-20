@@ -1,7 +1,7 @@
 from twisted.internet import task
 from threading import Lock
 
-from golem.network.P2PService import P2PService
+from golem.network.p2p.P2PService import P2PService
 from golem.task.TaskServer import TaskServer
 from golem.task.TaskManager import TaskManagerEventListener
 

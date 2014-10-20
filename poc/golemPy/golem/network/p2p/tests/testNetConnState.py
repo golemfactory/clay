@@ -5,7 +5,7 @@ import sys
 sys.path.append('./../../../../')
 
 from golem.network.p2p.NetConnState import NetConnState
-from golem.network.PeerSession import PeerSession
+from golem.network.p2p.PeerSession import PeerSession
 from golem.core.databuffer import DataBuffer
 from golem.Message import Message, MessageHello
 
