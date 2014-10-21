@@ -28,6 +28,7 @@ class GNRClientEventListener( GolemClientEventListener ):
     def taskUpdated( self, taskId ):
         self.logic.taskStatusChanged( taskId )
 
+taskToRemoveStatus = [ TaskStatus.aborted, TaskStatus.failure, TaskStatus.finished, TaskStatus.paused ]
 
 class GNRApplicationLogic( QtCore.QObject ):
     ######################
@@ -308,6 +309,9 @@ class GNRApplicationLogic( QtCore.QObject ):
             assert isinstance( ts, TaskState )
             self.tasks[taskId].taskState = ts
             self.customizer.updateTasks( self.tasks )
+            if ts.status in taskToRemoveStatus:
+                self.client.taskServer.removeTaskHeader( taskId )
+                self.client.p2pservice.removeTask( taskId )
         else:
             assert False, "Should never be here!"
 

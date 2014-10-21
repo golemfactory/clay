@@ -221,6 +221,23 @@ class MessageTasks( Message ):
     def dictRepr(self):
         return { MessageTasks.TASKS_STR : self.tasksArray }
 
+class MessageRemoveTask( Message ):
+
+    Type = 8
+
+    REMOVE_TASK_STR = u"REMOVE_TASK"
+
+    def __init__( self, taskId = None, dictRepr = None ):
+        Message.__init__( self, MessageRemoveTask.Type )
+
+        self.taskId = taskId
+
+        if dictRepr:
+            self.taskId = dictRepr[ MessageRemoveTask.REMOVE_TASK_STR ]
+
+    def dictRepr( self ):
+        return { MessageRemoveTask.REMOVE_TASK_STR : self.taskId }
+
 TASK_MSG_BASE = 2000
 
 class MessageWantToComputeTask( Message ):
@@ -502,6 +519,7 @@ def initMessages():
     MessageGetTasks()
     MessagePeers()
     MessageTasks()
+    MessageRemoveTask()
     MessageTaskToCompute()
     MessageWantToComputeTask()
     MessagePeerStatus()

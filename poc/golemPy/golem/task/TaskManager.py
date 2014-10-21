@@ -112,7 +112,7 @@ class TaskManager:
     def getTasksHeaders( self ):
         ret = []
         for t in self.tasks.values():
-            if t.needsComputation():
+            if t.needsComputation() and t.taskStatus in self.activeStatus:
                 ret.append( t.header )
 
         return ret

@@ -156,6 +156,13 @@ class P2PService:
     def addTaskHeader( self, thDictRepr ):
         return self.taskServer.addTaskHeader( thDictRepr)
 
+    def removeTaskHeader( self, taskId ):
+        return self.taskServer.removeTaskHeader( taskId )
+
+    def removeTask( self, taskId ):
+        for p in self.peers.values():
+            p.sendRemoveTask( taskId )
+
     #############################   
     def __connect( self, address, port ):
 

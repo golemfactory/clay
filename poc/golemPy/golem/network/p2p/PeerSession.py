@@ -1,7 +1,9 @@
 import time
 import logging
 
-from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks
+from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, \
+                          MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks, \
+                          MessageRemoveTask
 from golem.network.p2p.NetConnState import NetConnState
 
 
@@ -125,6 +127,9 @@ class PeerSession(PeerSessionInterface):
                 if not self.p2pService.addTaskHeader( t ):
                     self.__disconnect( PeerSession.DCRBadProtocol )
 
+        elif type == MessageRemoveTask.Type:
+            self.p2pService.removeTaskHeader( msg.taskId )
+
         else:
             self.__disconnect( PeerSession.DCRBadProtocol )
 
@@ -135,6 +140,10 @@ class PeerSession(PeerSessionInterface):
     ##########################
     def sendGetTasks( self ):
         self.__send( MessageGetTasks() )
+
+    ##########################
+    def sendRemoveTask( self, taskId ):
+        self.__send( MessageRemoveTask( taskId ) )
 
     ##########################
     # PRIVATE SECTION
