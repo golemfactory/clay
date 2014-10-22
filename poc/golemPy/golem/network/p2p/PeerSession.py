@@ -192,6 +192,5 @@ class PeerSession(PeerSessionInterface):
         if not self.conn.sendMessage( message ):
             self.dropped()
             return
-        self.lastMessageTime = time.time()
         self.p2pService.setLastMessage( "->", time.localtime(), message, self.address, self.port )
 

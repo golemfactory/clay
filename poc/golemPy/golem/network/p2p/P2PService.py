@@ -25,6 +25,7 @@ class P2PService:
         self.freePeers              = []
         self.taskServer             = None
         self.hostAddress            = hostAddress
+        self.lastMessageTimeThreshold = 180
 
         self.lastMessages           = []
 
@@ -56,6 +57,8 @@ class P2PService:
 
         if self.taskServer:
             self.__sendMessageGetTasks()
+
+        self.__removeOldPeers()
 
     #############################
     def newSession( self, session ):
@@ -105,6 +108,14 @@ class P2PService:
         for p in self.peers.keys():
             if self.peers[ p ] == peerSession:
                 del self.peers[ p ]
+
+    #############################
+    def removePeerById( self, peerId ):
+        if peerId not in self.peers:
+            return
+        if self.peers[ peerId ] in self.allPeers:
+            self.allPeers.remove( self.peers[ peerId ] )
+        del self.peers[ peerId ]
     
     #############################
     def setLastMessage( self, type, t, msg, address, port ):
@@ -210,3 +221,9 @@ class P2PService:
         else:
             return True
 
+    #############################
+    def __removeOldPeers( self ):
+        curTime = time.time()
+        for peerId in self.peers.keys():
+            if curTime - self.peers[peerId].lastMessageTime > self.lastMessageTimeThreshold:
+                self.removePeerById( peerId )
