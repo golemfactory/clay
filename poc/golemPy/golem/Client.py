@@ -245,7 +245,7 @@ class Client:
     def __doWork(self):
         if self.p2pservice:
             if self.configDesc.sendPings:
-                self.p2pservice.pingPeers( self.pingsInterval )
+                self.p2pservice.pingPeers( self.configDesc.pingsInterval )
 
             self.p2pservice.syncNetwork()
             self.taskServer.syncNetwork()
