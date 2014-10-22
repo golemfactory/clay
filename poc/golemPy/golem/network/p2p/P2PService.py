@@ -146,7 +146,7 @@ class P2PService:
 
     ############################
     def getListenParams( self ):
-        return self.p2pServer.curPort, self.configDesc.clientUid
+        return (self.p2pServer.curPort, self.configDesc.clientUid)
 
     ############################
     def getTasksHeaders( self ):

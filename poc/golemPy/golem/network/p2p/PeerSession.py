@@ -160,7 +160,8 @@ class PeerSession(PeerSessionInterface):
 
     ##########################
     def __sendHello(self):
-        self.__send( MessageHello( self.p2pService.getListenParams() ) )
+        listenParams = self.p2pService.getListenParams()
+        self.__send( MessageHello( *listenParams ) )
 
     ##########################
     def __sendPing(self):
