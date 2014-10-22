@@ -43,7 +43,7 @@ class NodesManagerServer:
         self.nodesManager.appendStateUpdate( nss )
         
     #############################
-    def managerSessionDisconnected( self, uid ):
+    def managerSessionDisconnect( self, uid ):
         self.nodesManager.appendStateUpdate( NodeStateSnapshot( False, uid ) )
 
     #############################

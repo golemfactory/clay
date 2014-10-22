@@ -9,7 +9,7 @@ from golem.network.p2p.PeerSession import PeerSession
 from golem.network.p2p.NetConnState import NetConnState
 from golem.Message import MessageHello, MessagePing, MessageGetTasks, MessageGetPeers, \
                           MessagePing, MessageDisconnect, MessagePong, MessagePeers, \
-                          MessageTasks, MessageWantToComputeTask
+                          MessageTasks, MessageRemoveTask, MessageWantToComputeTask
 
 class Conn():
     def __init__( self ):
@@ -44,6 +44,7 @@ class P2PService():
         self.peers = {}
         self.tasksHeaders = []
         self.peersToAdd = set()
+        self.taskHeaderToRemove = None
 
     def getListenParams( self ):
         return 12345, 'ABC'
@@ -69,6 +70,9 @@ class P2PService():
 
     def tryToAddPeer( self, peer ):
         self.peersToAdd.add( peer[ "id" ] )
+
+    def removeTaskHeader( self, taskId ):
+        self.taskHeaderToRemove = taskId
 
 class TestPeerSession( unittest.TestCase ):
     def setUp( self ):
@@ -129,6 +133,9 @@ class TestPeerSession( unittest.TestCase ):
 
         self.peerSession.interpret( MessageWantToComputeTask() )
         self.assertIsInstance( self.conn.messages[6], MessageDisconnect )
+
+        self.peerSession.interpret( MessageRemoveTask('12345') )
+        self.assertEqual( self.peerSession.p2pService.taskHeaderToRemove, '12345' )
 
         self.peerSession.interpret( MessageDisconnect() )
         self.assertEquals( self.conn.closedCalled, True )

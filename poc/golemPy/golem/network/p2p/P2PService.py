@@ -118,7 +118,7 @@ class P2PService:
         return self.lastMessages
     
     ############################# 
-    def managerSessionDisconnected( self, uid ):
+    def managerSessionDisconnect( self, uid ):
         self.managerSession = None
 
     #############################
@@ -156,9 +156,11 @@ class P2PService:
     def addTaskHeader( self, thDictRepr ):
         return self.taskServer.addTaskHeader( thDictRepr)
 
+    ############################
     def removeTaskHeader( self, taskId ):
         return self.taskServer.removeTaskHeader( taskId )
 
+    ############################
     def removeTask( self, taskId ):
         for p in self.peers.values():
             p.sendRemoveTask( taskId )
