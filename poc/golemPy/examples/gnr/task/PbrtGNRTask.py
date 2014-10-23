@@ -20,6 +20,12 @@ from PIL import Image, ImageChops
 
 logger = logging.getLogger(__name__)
 
+class PbrtRenderOptions:
+    def __init__( self ):
+        self.pixelFilter = "mitchell"
+        self.samplesPerPixelCount = 32
+        self.algorithmType = "lowdiscrepancy"
+
 class PbrtTaskBuilder( GNRTaskBuilder ):
     #######################
     def build( self ):
@@ -36,9 +42,9 @@ class PbrtTaskBuilder( GNRTaskBuilder ):
                                    4,
                                    self.taskDefinition.resolution[ 0 ],
                                    self.taskDefinition.resolution[ 1 ],
-                                   self.taskDefinition.pixelFilter,
-                                   self.taskDefinition.algorithmType,
-                                   self.taskDefinition.samplesPerPixelCount,
+                                   self.taskDefinition.rendererOptions.pixelFilter,
+                                   self.taskDefinition.rendererOptions.algorithmType,
+                                   self.taskDefinition.rendererOptions.samplesPerPixelCount,
                                    "temp",
                                    self.taskDefinition.mainSceneFile,
                                    self.taskDefinition.fullTaskTimeout,

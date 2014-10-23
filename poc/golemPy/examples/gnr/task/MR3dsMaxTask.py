@@ -18,6 +18,10 @@ from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
 
+class MentalRayRendererOptions:
+    def __init__( self ):
+        self.preset = ""
+
 class MentalRayTaskBuilder( GNRTaskBuilder ):
 
     def build( self ):

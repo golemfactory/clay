@@ -95,9 +95,20 @@ class MainWindowCustomizer:
         self.gui.ui.subtaskTimeout.setText( "{} minutes".format( int( t.definition.subtaskTimeout / 60.0 ) ) )
         self.gui.ui.resolution.setText( "{} x {}".format( t.definition.resolution[ 0 ], t.definition.resolution[ 1 ] ) )
         self.gui.ui.renderer.setText( "{}".format( t.definition.renderer ) )
-        self.gui.ui.algorithmType.setText( "{}".format( t.definition.algorithmType ) )
-        self.gui.ui.pixelFilter.setText( "{}".format( t.definition.pixelFilter ) )
-        self.gui.ui.samplesPerPixel.setText( "{}".format( t.definition.samplesPerPixelCount ) )
+        if t.definition.renderer == u"PBRT":
+            self.gui.ui.algorithmType.setText( "{}".format( t.definition.rendererOptions.algorithmType ) )
+            self.gui.ui.algorithmTypeLabel.setVisible( True )
+            self.gui.ui.pixelFilter.setText( "{}".format( t.definition.rendererOptions.pixelFilter ) )
+            self.gui.ui.pixelFilterLabel.setVisible( True )
+            self.gui.ui.samplesPerPixel.setText( "{}".format( t.definition.rendererOptions.samplesPerPixelCount ) )
+            self.gui.ui.samplesPerPixelLabel.setVisible( True )
+        else:
+            self.gui.ui.algorithmType.setText( "" )
+            self.gui.ui.algorithmTypeLabel.setVisible( False )
+            self.gui.ui.pixelFilter.setText( "" )
+            self.gui.ui.pixelFilterLabel.setVisible( False )
+            self.gui.ui.samplesPerPixel.setText( "" )
+            self.gui.ui.samplesPerPixelLabel.setVisible( False )
         self.gui.ui.outputFile.setText( u"{}".format( t.definition.outputFile ) )
         self.gui.ui.fullTaskTimeout.setText( str( datetime.timedelta( seconds = t.definition.fullTaskTimeout ) ) )
         if t.taskState.timeStarted != 0.0:

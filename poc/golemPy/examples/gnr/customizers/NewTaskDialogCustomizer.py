@@ -33,7 +33,7 @@ class NewTaskDialogCustomizer:
 
     #############################
     def __setupConnections( self ):
-        QtCore.QObject.connect( self.gui.ui.rendereComboBox, QtCore.SIGNAL( "currentIndexChanged( const QString )" ), self.__rendererComboBoxValueChanged )
+        QtCore.QObject.connect( self.gui.ui.rendererComboBox, QtCore.SIGNAL( "currentIndexChanged( const QString )" ), self.__rendererComboBoxValueChanged )
         self.gui.ui.chooseOutputFileButton.clicked.connect( self.__chooseOutputFileButtonClicked )
         self.gui.ui.saveButton.clicked.connect( self.__saveTaskButtonClicked )
         self.gui.ui.chooseMainProgramFileButton.clicked.connect( self.__choosMainProgramFileButtonClicked )
@@ -42,10 +42,8 @@ class NewTaskDialogCustomizer:
         self.gui.ui.finishButton.clicked.connect( self.__finishButtonClicked )
         self.gui.ui.cancelButton.clicked.connect( self.__cancelButtonClicked )
         self.gui.ui.resetToDefaultButton.clicked.connect( self.__resetToDefaultButtonClicked )
+        self.gui.ui.rendererOptionsButton.clicked.connect( self.__openRendererOptions )
 
-        QtCore.QObject.connect(self.gui.ui.pixelFilterComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
-        QtCore.QObject.connect(self.gui.ui.pathTracerComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
-        QtCore.QObject.connect(self.gui.ui.samplesPerPixelSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutHourSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutMinSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutSecSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
@@ -69,11 +67,7 @@ class NewTaskDialogCustomizer:
 
         if r:
             self.logic.setCurrentRenderer( name )
-            self.gui.ui.pixelFilterComboBox.clear()
-            self.gui.ui.pixelFilterComboBox.addItems( r.filters )
-
-            self.gui.ui.pathTracerComboBox.clear()
-            self.gui.ui.pathTracerComboBox.addItems( r.pathTracers )
+            self.rendererOptions = r.rendererOptions()
 
             self.gui.ui.outputFormatsComboBox.clear()
             self.gui.ui.outputFormatsComboBox.addItems( r.outputFormats )
@@ -86,8 +80,6 @@ class NewTaskDialogCustomizer:
 
             setTimeSpinBoxes( self.gui, r.defaults.fullTaskTimeout, r.defaults.subtaskTimeout, r.defaults.minSubtaskTime )
 
-            self.gui.ui.samplesPerPixelSpinBox.setValue( r.defaults.samplesPerPixel )
-
         else:
             assert False, "Unreachable"
 
@@ -95,12 +87,9 @@ class NewTaskDialogCustomizer:
     def __resetToDefaults( self ):
         dr = self.logic.getDefaultRenderer()
 
-        self.logic.setCurrentRenderer( dr.name )
-        self.gui.ui.pixelFilterComboBox.clear()
-        self.gui.ui.pixelFilterComboBox.addItems( dr.filters )
 
-        self.gui.ui.pathTracerComboBox.clear()
-        self.gui.ui.pathTracerComboBox.addItems( dr.pathTracers )
+        self.rendererOptions = dr.rendererOptions()
+        self.logic.setCurrentRenderer( dr.name )
 
         self.gui.ui.outputFormatsComboBox.clear()
         self.gui.ui.outputFormatsComboBox.addItems( dr.outputFormats )
@@ -114,8 +103,6 @@ class NewTaskDialogCustomizer:
         setTimeSpinBoxes( self.gui, dr.defaults.fullTaskTimeout, dr.defaults.subtaskTimeout, dr.defaults.minSubtaskTime )
 
         self.gui.ui.outputFileLineEdit.clear()
-
-        self.gui.ui.samplesPerPixelSpinBox.setValue( dr.defaults.samplesPerPixel )
 
         self.gui.ui.outputResXSpinBox.setValue( dr.defaults.outputResX )
         self.gui.ui.outputResYSpinBox.setValue( dr.defaults.outputResY )
@@ -147,7 +134,7 @@ class NewTaskDialogCustomizer:
 
         for k in renderers:
             r = renderers[ k ]
-            self.gui.ui.rendereComboBox.addItem( r.name )
+            self.gui.ui.rendererComboBox.addItem( r.name )
 
         testTasks = self.logic.getTestTasks()
         for k in testTasks:
@@ -221,36 +208,21 @@ class NewTaskDialogCustomizer:
     ############################
     def loadTaskDefinition( self, definition ):
         assert isinstance( definition, TaskDefinition )
-        rendererItem = self.gui.ui.rendereComboBox.findText( definition.renderer )
+        rendererItem = self.gui.ui.rendererComboBox.findText( definition.renderer )
 
         if rendererItem >= 0:
-            self.gui.ui.rendereComboBox.setCurrentIndex( rendererItem )
+            self.gui.ui.rendererComboBox.setCurrentIndex( rendererItem )
         else:
             logger.error( "Cannot load task, wrong renderer" )
             return
 
-        algItem = self.gui.ui.pathTracerComboBox.findText( definition.algorithmType )
-
-        if algItem >= 0:
-            self.gui.ui.pathTracerComboBox.setCurrentIndex( algItem )
-        else:
-            logger.error( "Cannot load task, wrong algorithm " )
-            return
+        self.rendererOptions = definition.rendererOptions
 
         time            = QtCore.QTime()
         self.gui.ui.taskIdLabel.setText( self.__generateNewTaskUID() )
 
         setTimeSpinBoxes( self.gui, definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime )
 
-        pixelFilterItem = self.gui.ui.pixelFilterComboBox.findText( definition.pixelFilter )
-
-        if pixelFilterItem >= 0:
-            self.gui.ui.pixelFilterComboBox.setCurrentIndex( pixelFilterItem )
-        else:
-            logger.error( "Cannot load task, wrong  pixel filter" )
-            return
-
-        self.gui.ui.samplesPerPixelSpinBox.setValue( definition.samplesPerPixelCount )
         self.gui.ui.outputResXSpinBox.setValue( definition.resolution[ 0 ] )
         self.gui.ui.outputResYSpinBox.setValue( definition.resolution[ 1 ] )
         self.gui.ui.outputFileLineEdit.setText( definition.outputFile )
@@ -327,7 +299,7 @@ class NewTaskDialogCustomizer:
 
         for k in renderers:
             r = renderers[ k ]
-            self.gui.ui.rendereComboBox.addItem( r.name )
+            self.gui.ui.rendererComboBox.addItem( r.name )
 
         testTasks = self.logic.getTestTasks()
         for k in testTasks:
@@ -339,11 +311,9 @@ class NewTaskDialogCustomizer:
         definition      = TaskDefinition()
 
         definition.id                = u"{}".format( self.gui.ui.taskIdLabel.text() )
-        definition.algorithmType     = u"{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )
         definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime = getTimeValues( self.gui )
-        definition.renderer          = self.logic.getRenderer( "{}".format( self.gui.ui.rendereComboBox.itemText( self.gui.ui.rendereComboBox.currentIndex() ) ) ).name
-        definition.pixelFilter       = u"{}".format( self.gui.ui.pixelFilterComboBox.itemText( self.gui.ui.pixelFilterComboBox.currentIndex() ) )
-        definition.samplesPerPixelCount = self.gui.ui.samplesPerPixelSpinBox.value()
+        definition.renderer          = self.logic.getRenderer( "{}".format( self.gui.ui.rendererComboBox.itemText( self.gui.ui.rendererComboBox.currentIndex() ) ) ).name
+        definition.rendererOptions = self.rendererOptions
         definition.resolution        = [ self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value() ]
         definition.outputFile        = u"{}".format( self.gui.ui.outputFileLineEdit.text() )
         definition.mainProgramFile   = u"{}".format( self.gui.ui.mainProgramFileLineEdit.text() )
@@ -357,7 +327,19 @@ class NewTaskDialogCustomizer:
 
         return definition
 
+    #############################
+    def __openRendererOptions( self ):
+         rendererName = self.gui.ui.rendererComboBox.itemText( self.gui.ui.rendererComboBox.currentIndex() )
+         renderer = self.logic.getRenderer( u"{}".format( rendererName ) )
+         dialog = renderer.dialog
+         dialogCustomizer = renderer.dialogCustomizer
+         rendererDialog = dialog( self.gui.window )
+         rendererDialogCustomizer = dialogCustomizer( rendererDialog, self.logic, self )
+         rendererDialog.show()
 
+    def setRendererOptions( self, options ):
+        self.rendererOptions = options
 
-
+    def getRendererOptions( self ):
+        return self.rendererOptions
 

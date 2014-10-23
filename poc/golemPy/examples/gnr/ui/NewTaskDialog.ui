@@ -35,7 +35,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="rendererSettingsTab">
        <attribute name="title">
@@ -45,7 +45,7 @@
         <property name="geometry">
          <rect>
           <x>10</x>
-          <y>10</y>
+          <y>30</y>
           <width>391</width>
           <height>171</height>
          </rect>
@@ -62,70 +62,32 @@
           </widget>
          </item>
          <item row="0" column="1">
-          <widget class="QComboBox" name="rendereComboBox">
+          <widget class="QComboBox" name="rendererComboBox">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="0">
-          <widget class="QLabel" name="label_4">
-           <property name="text">
-            <string>Pixel Filter Type</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QComboBox" name="pixelFilterComboBox">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="0">
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>Path Tracer Type</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QComboBox" name="pathTracerComboBox">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="0">
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>Samples Per Pixel</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="1">
-          <widget class="QSpinBox" name="samplesPerPixelSpinBox">
-           <property name="minimum">
-            <number>1</number>
-           </property>
-           <property name="maximum">
-            <number>16777215</number>
-           </property>
-           <property name="value">
-            <number>100</number>
            </property>
           </widget>
          </item>
         </layout>
+       </widget>
+       <widget class="QPushButton" name="rendererOptionsButton">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>200</y>
+          <width>389</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>RendererOptions</string>
+        </property>
+        <property name="autoDefault">
+         <bool>false</bool>
+        </property>
        </widget>
       </widget>
       <widget class="QWidget" name="taskSettingsTab">

@@ -14,7 +14,7 @@ class TaskComputerInfo:
 
 class RendererInfo:
     #########################
-    def __init__( self, name, defaults, taskBuilderType ):
+    def __init__( self, name, defaults, taskBuilderType, dialog, dialogCustomizer, rendererOptions):
         self.name           = name
         self.filters        = []
         self.pathTracers    = []
@@ -22,6 +22,9 @@ class RendererInfo:
         self.sceneFileExt   = "pbrt"
         self.defaults       = defaults
         self.taskBuilderType = taskBuilderType
+        self.dialog = dialog
+        self.dialogCustomizer = dialogCustomizer
+        self.rendererOptions = rendererOptions
 
 class RendererDefaults:
     #########################
@@ -52,9 +55,6 @@ class TaskDefinition:
         self.minSubtaskTime     = 0
         self.resolution         = [ 0, 0 ]
         self.renderer           = None
-        self.algorithmType      = ""
-        self.pixelFilter        = ""
-        self.samplesPerPixelCount = 0
         self.outputFile         = ""
         self.taskResources      = []
         self.fullTaskTimeout    = 0    
@@ -63,6 +63,7 @@ class TaskDefinition:
         self.outputFormat       = ""
         self.resources          = []
         self.estimatedMemory    = 0
+        self.renderOptions = None
 
 class GNRTaskState:
     #########################
