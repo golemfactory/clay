@@ -45,9 +45,8 @@ class PbrtDialogCustomizer:
 
     #############################
     def __changeRendererOptions( self ):
-        rendererOptions = PbrtRenderOptions()
-        rendererOptions.pixelFilter = u"{}".format( self.gui.ui.pixelFilterComboBox.itemText( self.gui.ui.pixelFilterComboBox.currentIndex() ) )
-        rendererOptions.samplesPerPixelCount = self.gui.ui.samplesPerPixelSpinBox.value()
-        rendererOptions.algorithmType = u"{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )
-        self.newTaskDialog.setRendererOptions( rendererOptions )
+        self.rendererOptions.pixelFilter = u"{}".format( self.gui.ui.pixelFilterComboBox.itemText( self.gui.ui.pixelFilterComboBox.currentIndex() ) )
+        self.rendererOptions.samplesPerPixelCount = self.gui.ui.samplesPerPixelSpinBox.value()
+        self.rendererOptions.algorithmType = u"{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )
+        self.newTaskDialog.setRendererOptions( self.rendererOptions )
         self.gui.window.close()

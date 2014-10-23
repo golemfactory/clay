@@ -20,7 +20,12 @@ logger = logging.getLogger(__name__)
 
 class MentalRayRendererOptions:
     def __init__( self ):
-        self.preset = ""
+        try:
+            dsmaxpath = os.environ.get('ADSK_3DSMAX_x64_2015')
+            presetFile = os.path.join( dsmaxpath,  'renderpresets\mental.ray.daylighting.high.rps')
+            self.preset = presetFile
+        except:
+            self.preset = ""
 
 class MentalRayTaskBuilder( GNRTaskBuilder ):
 
@@ -64,6 +69,7 @@ class MentalRayTask( GNRTask ):
                           resourceSize )
 
         self.taskResources = self.taskDefinition.resources
+     #   self.taskResources.append( os.path.normpath( self.taskDefinition.rendererOptions.preset ) )
         self.estimatedMemory = self.taskDefinition.estimatedMemory
         self.outputFormat = self.taskDefinition.outputFormat
         self.outputFile = self.taskDefinition.outputFile
@@ -109,6 +115,7 @@ class MentalRayTask( GNRTask ):
         commonPathPrefix = os.path.dirname( commonPathPrefix )
 
         sceneFile = os.path.basename( self.taskDefinition.mainSceneFile )
+        presetFile = os.path.basename( self.taskDefinition.rendererOptions.preset)
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
@@ -120,7 +127,8 @@ class MentalRayTask( GNRTask ):
                                     "sceneFile" : sceneFile,
                                     "sceneFileSrc" : self.sceneFileSrc,
                                     "width" : self.taskDefinition.resolution[0],
-                                    "height": self.taskDefinition.resolution[1]
+                                    "height": self.taskDefinition.resolution[1],
+                                    "presetFile": presetFile
                                 }
 
 
@@ -159,7 +167,8 @@ class MentalRayTask( GNRTask ):
                                     "sceneFile" : self.taskDefinition.mainSceneFile,
                                     "sceneFileSrc": self.sceneFileSrc,
                                     "width" : self.taskDefinition.resolution[0],
-                                    "height": self.taskDefinition.resolution[1]
+                                    "height": self.taskDefinition.resolution[1],
+                                    "presetFile": self.taskDefinition.rendererOptions.preset
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
