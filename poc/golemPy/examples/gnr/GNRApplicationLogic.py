@@ -282,7 +282,7 @@ class GNRApplicationLogic( QtCore.QObject ):
 
             self.tt = TaskTester( t, self.client.getRootPath(), self.__testTaskComputationFinished )
 
-            self.progressDialog = TestingTaskProgressDialog( None )
+            self.progressDialog = TestingTaskProgressDialog( self.customizer.gui.window  )
             self.progressDialog.show()
 
             self.tt.run()
