@@ -11,3 +11,5 @@ class EnvironmentsManager:
     def supported( self, envId ):
         return envId in self.supportedEnvironments
 
+    def getEnvironments( self ):
+        return self.environments

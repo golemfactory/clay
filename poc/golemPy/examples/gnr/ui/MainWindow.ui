@@ -269,7 +269,7 @@
             <item>
              <widget class="QPushButton" name="showResourceButton">
               <property name="text">
-               <string>Show Resource</string>
+               <string>Show Resources</string>
               </property>
              </widget>
             </item>
@@ -576,6 +576,7 @@
      <string>Properties</string>
     </property>
     <addaction name="actionEdit"/>
+    <addaction name="actionEnvironments"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -631,6 +632,11 @@
   <action name="actionSendInfoTask">
    <property name="text">
     <string>Send Info Task</string>
+   </property>
+  </action>
+  <action name="actionEnvironments">
+   <property name="text">
+    <string>Environments</string>
    </property>
   </action>
  </widget>

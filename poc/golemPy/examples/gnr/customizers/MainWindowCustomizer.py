@@ -13,6 +13,7 @@ from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 from examples.gnr.ui.StatusWindow import StatusWindow
 from examples.gnr.ui.ChangeTaskDialog import ChangeTaskDialog
 from examples.gnr.ui.InfoTaskDialog import InfoTaskDialog
+from examples.gnr.ui.EnvironmentsDialog import EnvironmentsDialog
 from examples.gnr.GNREnv import GNREnv
 
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
@@ -22,6 +23,7 @@ from ConfigurationDialogCustomizer import ConfigurationDialogCustomizer
 from StatusWindowCustomizer import StatusWindowCustomizer
 from ChangeTaskDialogCustomizer import ChangeTaskDialogCustomizer
 from InfoTaskDialogCustomizer import InfoTaskDialogCustomizer
+from EnvironmentsDialogCustomizer import EnvironmentsDialogCustomizer
 
 import time
 import logging
@@ -51,6 +53,7 @@ class MainWindowCustomizer:
         self.gui.ui.actionStatus.triggered.connect( self.__showStatusClicked )
         self.gui.ui.actionStartNodesManager.triggered.connect( self.__startNodesManager )
         self.gui.ui.actionSendInfoTask.triggered.connect( self.__showInfoTaskDialog )
+        self.gui.ui.actionEnvironments.triggered.connect( self.__showEnvironments )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "doubleClicked(const QModelIndex)" ), self.__taskTableRowDoubleClicked )
         self.gui.ui.showResourceButton.clicked.connect( self.__showTaskResourcesClicked )
@@ -308,6 +311,14 @@ class MainWindowCustomizer:
         self.configurationDialogCustomizer = ConfigurationDialogCustomizer( self.configurationDialog, self.logic )
         self.configurationDialogCustomizer.loadConfig()
         self.configurationDialog.show()
+
+    #############################
+    def __showEnvironments ( self ):
+        self.environmentsDialog = EnvironmentsDialog( self.gui.window )
+
+        self.environmentsDialogCustomizer = EnvironmentsDialogCustomizer( self.environmentsDialog, self.logic )
+        self.environmentsDialog.show()
+
 
 #######################################################################################
 def insertItem( root, pathTable ):

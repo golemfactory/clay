@@ -250,6 +250,10 @@ class Client:
         return self.environmentsManager.supported( envId )
 
     ############################
+    def getEnvironments( self ):
+        return self.environmentsManager.getEnvironments()
+
+    ############################
     def __doWork(self):
         if self.p2pservice:
             if self.configDesc.sendPings:

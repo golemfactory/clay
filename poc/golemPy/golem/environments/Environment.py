@@ -14,5 +14,5 @@ class Environment:
         return True
 
     def supported( self ):
-        return False
+        return True
 
