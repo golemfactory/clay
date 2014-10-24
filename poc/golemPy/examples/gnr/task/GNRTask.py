@@ -1,5 +1,5 @@
 from golem.task.TaskBase import Task, TaskHeader, TaskBuilder
-from golem.task.resource.Resource import prepareDeltaZip
+from golem.resource.Resource import prepareDeltaZip
 from golem.core.Compress import decompress
 
 import OpenEXR, Imath
@@ -33,8 +33,8 @@ class GNRSubtask():
 
 class GNRTask( Task ):
     #####################
-    def __init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, ttl, subtaskTtl, resourceSize ):
-        Task.__init__( self, TaskHeader( clientId, taskId, ownerAddress, ownerPort, ttl, subtaskTtl, resourceSize ), srcCode )
+    def __init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, environment, ttl, subtaskTtl, resourceSize ):
+        Task.__init__( self, TaskHeader( clientId, taskId, ownerAddress, ownerPort, environment, ttl, subtaskTtl, resourceSize ), srcCode )
 
     #######################
     def initialize( self ):

@@ -14,13 +14,15 @@ logger = logging.getLogger(__name__)
 
 class TaskServer:
     #############################
-    def __init__( self, address, configDesc ):
+    def __init__( self, address, configDesc, client ):
+        self.client             = client
 
         self.configDesc         = configDesc
 
         self.address            = address
         self.curPort            = configDesc.startPort
         self.taskHeaders        = {}
+        self.supportedTasks     = []
         self.taskManager        = TaskManager( configDesc.clientUid, rootPath = self.__getTaskManagerRoot( configDesc ) )
         self.taskComputer       = TaskComputer( configDesc.clientUid, self )
         self.taskSessions       = {}
@@ -42,10 +44,9 @@ class TaskServer:
     # This method chooses random task from the network to compute on our machine
     def requestTask( self ):
 
-        if len( self.taskHeaders.values() ) > 0:
-            tn = random.randrange( 0, len( self.taskHeaders.values() ) )
-
-            theader = self.taskHeaders.values()[ tn ]
+        if  len ( self.supportedTasks ) > 0:
+            tn = random.randrange( 0, len( self.supportedTasks ) )
+            theader = self.taskHeaders[ self.supportedTasks[ tn ] ]
 
             self.__connectAndSendTaskRequest( self.configDesc.clientUid,
                                               theader.clientId,
@@ -97,7 +98,8 @@ class TaskServer:
                             "port"          : th.taskOwnerPort,
                             "ttl"           : th.ttl,
                             "subtaskTimeout": th.subtaskTimeout,
-                            "clientId"      : th.clientId })
+                            "clientId"      : th.clientId,
+                            "environment"   : th.environment })
 
         return ret
 
@@ -108,7 +110,9 @@ class TaskServer:
             if id not in self.taskHeaders.keys(): # dont have it
                 if id not in self.taskManager.tasks.keys(): # It is not my task id
                     logger.info( "Adding task {}".format( id ) )
-                    self.taskHeaders[ id ] = TaskHeader( thDictRepr[ "clientId" ], id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"] )
+                    self.taskHeaders[ id ] = TaskHeader( thDictRepr[ "clientId" ], id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr["environment"], thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"] )
+                    if self.client.supportedTask( thDictRepr["environment"] ):
+                        self.supportedTasks.append( id )
             return True
         except:
             logger.error( "Wrong task header received" )
@@ -118,6 +122,8 @@ class TaskServer:
     def removeTaskHeader( self, taskId ):
         if taskId in self.taskHeaders:
             del self.taskHeaders[ taskId ]
+        if taskId in self.supportedTasks:
+           self.supportedTasks.remove( taskId )
 
     #############################
     def removeTaskSession( self, taskSession ):

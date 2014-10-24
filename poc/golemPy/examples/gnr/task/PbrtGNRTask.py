@@ -7,7 +7,8 @@ import subprocess
 
 from golem.task.TaskBase import ComputeTaskDef
 from golem.core.Compress import decompress
-from golem.task.resource.Resource import prepareDeltaZip
+from golem.resource.Resource import prepareDeltaZip
+from golem.environments.Environment import Environment
 
 from examples.gnr.task.SceneFileEditor import regenerateFile
 
@@ -25,6 +26,9 @@ class PbrtRenderOptions:
         self.pixelFilter = "mitchell"
         self.samplesPerPixelCount = 32
         self.algorithmType = "lowdiscrepancy"
+
+    def addToResources( self , resources ):
+        return resources
 
 class PbrtTaskBuilder( GNRTaskBuilder ):
     #######################
@@ -94,7 +98,7 @@ class PbrtRenderTask( GNRTask ):
         for resource in taskResources:
             resourceSize += os.stat(resource).st_size
 
-        GNRTask.__init__( self, srcCode, clientId, taskId, returnAddress, returnPort, fullTaskTimeout, subtaskTimeout, resourceSize )
+        GNRTask.__init__( self, srcCode, clientId, taskId, returnAddress, returnPort, Environment.getId(), fullTaskTimeout, subtaskTimeout, resourceSize )
 
         self.fullTaskTimeout = max( 2200.0, fullTaskTimeout )
         self.header.ttl = self.fullTaskTimeout

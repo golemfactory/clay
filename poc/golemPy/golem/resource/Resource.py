@@ -1,6 +1,6 @@
 import sys
 import logging
-sys.path.append('../../core/')
+#sys.path.append('../../core/')
 
 from golem.core.simplehash import SimpleHash
 
@@ -66,7 +66,7 @@ class TaskResourceHeader:
                 curTr.subDirHeaders.append( cls.__build( d, os.path.join( absoluteRoot, d ), choosenFiles ) )
 
         for f in files:
-            if choosenFiles and os.path.join( absoluteRoot, f ) not in  choosenFiles:
+            if choosenFiles and os.path.join( absoluteRoot, f ) not in choosenFiles:
                 continue
 
             fileHash = 0
@@ -221,9 +221,7 @@ class TaskResource:
 
         curTr.subDirResources = subDirResources
 
-        return curTr        
-
-    ####################
+        return curTr         ####################
     # Dodaje tylko te pola, ktorych nie ma w headerze (i/lub nie zgadzaj? si? hasze)
     @classmethod
     def buildDeltaFromHeader( cls, header, absoluteRoot ):

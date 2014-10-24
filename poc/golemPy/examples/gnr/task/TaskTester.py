@@ -4,7 +4,7 @@ import shutil
 import logging
 
 from golem.task.TaskBase import Task
-from golem.task.resource.Resource import TaskResourceHeader, decompressDir
+from golem.resource.Resource import TaskResourceHeader, decompressDir
 from golem.task.TaskComputer import PyTestTaskThread
 
 from GNREnv import GNREnv

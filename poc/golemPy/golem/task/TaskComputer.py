@@ -8,7 +8,7 @@ from copy import copy
 
 from golem.vm.vm import PythonVM, PythonTestVM
 from golem.manager.NodeStateSnapshot import TaskChunkStateSnapshot
-from golem.task.resource.ResourcesManager import ResourcesManager
+from golem.resource.ResourcesManager import ResourcesManager
 from Environment import TaskComputerEnvironment
 import os
 import logging

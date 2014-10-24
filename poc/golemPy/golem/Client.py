@@ -14,6 +14,7 @@ import time
 from golem.AppConfig import AppConfig
 from golem.Message import initMessages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
+from golem.environments.EnvironmentsManager import EnvironmentsManager
 
 import logging
 
@@ -133,6 +134,8 @@ class Client:
         self.cfg = config
         self.sendSnapshot = False
         self.snapshotLock = Lock()
+
+        self.environmentsManager = EnvironmentsManager()
        
     ############################
     def startNetwork( self ):
@@ -143,7 +146,7 @@ class Client:
         time.sleep( 1.0 )
 
         logger.info( "Starting task server ..." )
-        self.taskServer = TaskServer( self.hostAddress, self.configDesc )
+        self.taskServer = TaskServer( self.hostAddress, self.configDesc, self )
 
         self.p2pservice.setTaskServer( self.taskServer )
 
@@ -238,8 +241,13 @@ class Client:
                 return
         logger.info( "listener {} not registered".format( listener ) )
 
+    ############################
     def querryTaskState( self, taskId ):
         return self.taskServer.taskManager.querryTaskState( taskId )
+
+    ############################
+    def supportedTask( self, envId ):
+        return self.environmentsManager.supported( envId )
 
     ############################
     def __doWork(self):

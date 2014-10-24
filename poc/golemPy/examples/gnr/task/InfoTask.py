@@ -2,7 +2,7 @@ from GNRTask import GNRTask
 from GNREnv import GNREnv
 from golem.task.TaskBase import ComputeTaskDef, TaskBuilder
 from golem.core.simpleauth import SimpleAuth
-from golem.task.resource.Resource import prepareDeltaZip
+from golem.resource.Resource import prepareDeltaZip
 from golem.manager.client.NodesManagerClient import NodesManagerClient
 import cPickle as pickle
 

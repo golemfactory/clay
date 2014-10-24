@@ -4,7 +4,7 @@ from TaskState import TaskStatus
 
 class TaskHeader:
     #######################
-    def __init__( self, clientId, taskId, taskOwnerAddress, taskOwnerPort, ttl = 0.0, subtaskTimeout = 0.0, resourceSize = 0 ):
+    def __init__( self, clientId, taskId, taskOwnerAddress, taskOwnerPort, environment, ttl = 0.0, subtaskTimeout = 0.0, resourceSize = 0):
         self.taskId = taskId
         self.taskOwnerAddress = taskOwnerAddress
         self.taskOwnerPort = taskOwnerPort
@@ -13,6 +13,7 @@ class TaskHeader:
         self.subtaskTimeout = subtaskTimeout
         self.clientId = clientId
         self.resourceSize = resourceSize
+        self.environment = environment
 
 class TaskBuilder:
     #######################
@@ -36,6 +37,7 @@ class ComputeTaskDef:
         self.returnPort         = 0
         self.workingDirectory   = ""
         self.performance        = 0.0
+        self.environment        = ""
 
 class Task:
     #######################

@@ -10,6 +10,7 @@ from GNREnv import GNREnv
 from golem.task.TaskBase import ComputeTaskDef
 from golem.core.Compress import decompress
 from testtasks.pbrt.takscollector import PbrtTaksCollector, exr_to_pil
+from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
 
 import OpenEXR, Imath
 from PIL import Image, ImageChops
@@ -26,6 +27,11 @@ class MentalRayRendererOptions:
             self.preset = presetFile
         except:
             self.preset = ""
+
+    def addToResources( self, resources ):
+        if os.path.isfile( self.preset ):
+            resources.append( os.path.normpath( self.preset ) )
+        return resources
 
 class MentalRayTaskBuilder( GNRTaskBuilder ):
 
@@ -64,6 +70,7 @@ class MentalRayTask( GNRTask ):
                           self.taskDefinition.id,
                           returnAddress,
                           returnPort,
+                          ThreeDSMaxEnvironment.getId(),
                           self.taskDefinition.fullTaskTimeout,
                           self.taskDefinition.subtaskTimeout,
                           resourceSize )

@@ -20,8 +20,10 @@ from examples.gnr.ui.PbrtDialog import PbrtDialog
 from examples.gnr.ui.MentalRayDialog import MentalRayDialog
 from examples.gnr.customizers.PbrtDialogCustomizer import PbrtDialogCustomizer
 from examples.gnr.customizers.MentalRayDialogCustomizer import MentalRayDialogCustomizer
+from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
 
 from golem.Client import startClient
+from golem.environments.Environment import Environment
 
 from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
 
@@ -110,8 +112,12 @@ def main():
     logic.registerStartNewNodeFunction( runGNRNodes )
     logic.registerStartNodesManagerFunction( runGNRManager )
 
+    environments = [Environment(), ThreeDSMaxEnvironment()]
+
     client = startClient( )
 
+    for env in environments:
+        client.environmentsManager.addEnvironment( env )
     logic.registerClient( client )
     #logic.startNodesManagerClient()
 #    infoServer = InfoServer( client, 55555, 55556, 59999 )

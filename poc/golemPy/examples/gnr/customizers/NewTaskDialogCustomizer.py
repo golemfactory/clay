@@ -320,7 +320,7 @@ class NewTaskDialogCustomizer:
         definition.outputFormat      = u"{}".format( self.gui.ui.outputFormatsComboBox.itemText( self.gui.ui.outputFormatsComboBox.currentIndex() ) )
 
         if self.addTaskResourcesDialogCustomizer:
-            definition.resources         = self.addTaskResourcesDialogCustomizer.resources
+            definition.resources         = self.rendererOptions.addToResources( self.addTaskResourcesDialogCustomizer.resources )
             definition.mainSceneFile     = u"{}".format( self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.text() )
 
         
