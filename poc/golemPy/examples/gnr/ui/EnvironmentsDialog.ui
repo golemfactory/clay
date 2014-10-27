@@ -50,18 +50,23 @@
       </layout>
      </item>
      <item row="1" column="0">
-      <widget class="QTextBrowser" name="textBrowser"/>
+      <widget class="QTextBrowser" name="envTextBrowser"/>
      </item>
      <item row="0" column="0">
       <widget class="QTableWidget" name="tableWidget">
        <column>
         <property name="text">
-         <string>Id</string>
+         <string>Name</string>
         </property>
        </column>
        <column>
         <property name="text">
          <string>Status</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Description</string>
         </property>
        </column>
       </widget>
