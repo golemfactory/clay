@@ -15,13 +15,13 @@ class MentalRayDialogCustomizer:
         self.logic = logic
         self.newTaskDialog = newTaskDialog
 
-        self.rendererOptions = newTaskDialog.getRendererOptions()
         self.__init()
         self.__setupConnections()
 
     #############################
     def __init( self ):
         renderer = self.logic.getRenderer( u"MentalRay" )
+        self.rendererOptions = renderer.options
         self.gui.ui.presetLineEdit.setText( self.rendererOptions.preset )
 
     #############################

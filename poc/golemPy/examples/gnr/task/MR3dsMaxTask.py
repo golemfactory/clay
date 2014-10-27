@@ -21,12 +21,9 @@ logger = logging.getLogger(__name__)
 
 class MentalRayRendererOptions:
     def __init__( self ):
-        try:
-            dsmaxpath = os.environ.get('ADSK_3DSMAX_x64_2015')
-            presetFile = os.path.join( dsmaxpath,  'renderpresets\mental.ray.daylighting.high.rps')
-            self.preset = presetFile
-        except:
-            self.preset = ""
+        self.environment = ThreeDSMaxEnvironment()
+        self.preset = self.environment.getDefaultPreset()
+        self.cmd = self.environment.get3dsmaxcmdPath()
 
     def addToResources( self, resources ):
         if os.path.isfile( self.preset ):
@@ -123,6 +120,7 @@ class MentalRayTask( GNRTask ):
 
         sceneFile = os.path.basename( self.taskDefinition.mainSceneFile )
         presetFile = os.path.basename( self.taskDefinition.rendererOptions.preset)
+        cmdFile = os.path.basename( self.taskDefinition.rendererOptions.cmd )
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
@@ -135,7 +133,8 @@ class MentalRayTask( GNRTask ):
                                     "sceneFileSrc" : self.sceneFileSrc,
                                     "width" : self.taskDefinition.resolution[0],
                                     "height": self.taskDefinition.resolution[1],
-                                    "presetFile": presetFile
+                                    "presetFile": presetFile,
+                                    "cmdFile": cmdFile
                                 }
 
 
@@ -175,7 +174,8 @@ class MentalRayTask( GNRTask ):
                                     "sceneFileSrc": self.sceneFileSrc,
                                     "width" : self.taskDefinition.resolution[0],
                                     "height": self.taskDefinition.resolution[1],
-                                    "presetFile": self.taskDefinition.rendererOptions.preset
+                                    "presetFile": self.taskDefinition.rendererOptions.preset,
+                                    "cmdFile": self.taskDefinition.rendererOptions.cmd
                                 }
 
         hash = "{}".format( random.getrandbits(128) )

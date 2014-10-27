@@ -10,19 +10,14 @@ import win32api, win32process
 import tempfile
 
 
-def format3dsMaxCmd( dsmaxcmd, startTask, endTask, totalTasks, numSubtaks, numCores, outfilebasename, scenefile, width, height, presetFile ):
-    cmd = '{} -outputName:{}\\chunk{}.exr -strip:{},0,{} {} -rfw:0 -width={} -height={} -rps:"{}"'.format(dsmaxcmd, outfilebasename, startTask, totalTasks, startTask, scenefile, width, height, presetFile )
+def format3dsMaxCmd( cmdFile, startTask, endTask, totalTasks, numSubtaks, numCores, outfilebasename, scenefile, width, height, presetFile ):
+    cmd = '{} -outputName:{}\\chunk{}.exr -strip:{},0,{} {} -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile, outfilebasename, startTask, totalTasks, startTask, scenefile, width, height, presetFile )
     print cmd
     return cmd
 
 ############################f =
-def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneSrc, sceneFile, width, height, preset ):
+def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneSrc, sceneFile, width, height, preset, cmdFile ):
     print 'run3dsMaxTask'
-    dsmaxpath = os.environ.get('ADSK_3DSMAX_x64_2015')
-    dsmaxcmd = os.path.join( dsmaxpath, '3dsmaxcmd.exe')
-
-    print dsmaxpath
-    print dsmaxcmd
     outputFiles = tmpPath
 
     files = glob.glob( outputFiles + "*.exr" )
@@ -40,7 +35,7 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
 
 
     if os.path.exists( sceneFile ):
-        cmd = format3dsMaxCmd( dsmaxcmd, startTask, endTask, totalTasks, numSubtasks, numCores, outputFiles, sceneFile, width, height, presetFile )
+        cmd = format3dsMaxCmd( cmdFile, startTask, endTask, totalTasks, numSubtasks, numCores, outputFiles, sceneFile, width, height, presetFile )
     else:
         print "Scene file does not exist"
 
@@ -71,4 +66,4 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     return res
 
 
-output = run3dsMaxTask ( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneFileSrc, sceneFile, width, height, presetFile )
+output = run3dsMaxTask ( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneFileSrc, sceneFile, width, height, presetFile, cmdFile )

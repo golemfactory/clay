@@ -67,7 +67,7 @@ class NewTaskDialogCustomizer:
 
         if r:
             self.logic.setCurrentRenderer( name )
-            self.rendererOptions = r.rendererOptions()
+            self.rendererOptions = r.options
 
             self.gui.ui.outputFormatsComboBox.clear()
             self.gui.ui.outputFormatsComboBox.addItems( r.outputFormats )
@@ -88,7 +88,7 @@ class NewTaskDialogCustomizer:
         dr = self.logic.getDefaultRenderer()
 
 
-        self.rendererOptions = dr.rendererOptions()
+        self.rendererOptions = dr.options
         self.logic.setCurrentRenderer( dr.name )
 
         self.gui.ui.outputFormatsComboBox.clear()
@@ -294,6 +294,8 @@ class NewTaskDialogCustomizer:
     #############################
     def __init( self ):
         renderers = self.logic.getRenderers()
+        dr = self.logic.getDefaultRenderer()
+        self.rendererOptions = dr.options
 
         self.gui.ui.taskIdLabel.setText( self.__generateNewTaskUID() )
 
