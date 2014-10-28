@@ -21,7 +21,7 @@ from PIL import Image, ImageChops
 
 logger = logging.getLogger(__name__)
 
-class PbrtRenderOptions:
+class PbrtRendererOptions:
     def __init__( self ):
         self.pixelFilter = "mitchell"
         self.samplesPerPixelCount = 32
@@ -64,7 +64,7 @@ class PbrtTaskBuilder( GNRTaskBuilder ):
         return pbrtTask
     #######################
     def __calculateTotal( self, definition ):
-        options = PbrtRenderOptions()
+        options = PbrtRendererOptions()
 
         if (not definition.optimizeTotal) and (options.minSubtasks <= definition.totalSubtasks <= options.maxSubtasks):
             return definition.totalSubtasks

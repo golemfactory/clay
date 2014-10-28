@@ -63,7 +63,7 @@ class TaskDefinition:
         self.outputFormat       = ""
         self.resources          = []
         self.estimatedMemory    = 0
-        self.renderOptions      = None
+        self.rendererOptions      = None
         self.totalSubtasks      = 0
         self.optimizeTotal      = False
 

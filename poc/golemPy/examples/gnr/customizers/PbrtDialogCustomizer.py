@@ -1,7 +1,7 @@
 import logging
 
 from examples.gnr.ui.PbrtDialog import PbrtDialog
-from examples.gnr.task.PbrtGNRTask import PbrtRenderOptions
+from examples.gnr.task.PbrtGNRTask import PbrtRendererOptions
 
 logger = logging.getLogger(__name__)
 

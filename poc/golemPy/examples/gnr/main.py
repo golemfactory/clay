@@ -14,7 +14,7 @@ from Application import GNRGui
 #from InfoServer import InfoServer
 
 from TaskState import RendererDefaults, RendererInfo, TestTaskInfo
-from task.PbrtGNRTask import PbrtTaskBuilder, PbrtRenderOptions
+from task.PbrtGNRTask import PbrtTaskBuilder, PbrtRendererOptions
 from task.MR3dsMaxTask import MentalRayTaskBuilder, MentalRayRendererOptions
 from examples.gnr.ui.PbrtDialog import PbrtDialog
 from examples.gnr.ui.MentalRayDialog import MentalRayDialog
@@ -36,7 +36,7 @@ def buildPBRTRendererInfo():
     defaults.mainProgramFile    = "d:/test_run/pbrt_compact.py"
     
 
-    renderer                = RendererInfo( "PBRT", defaults, PbrtTaskBuilder, PbrtDialog, PbrtDialogCustomizer, PbrtRenderOptions )
+    renderer                = RendererInfo( "PBRT", defaults, PbrtTaskBuilder, PbrtDialog, PbrtDialogCustomizer, PbrtRendererOptions )
     renderer.filters        = ["box", "gaussian", "mitchell", "sinc", "triangle" ]
     renderer.pathTracers    = ["adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified"]
     renderer.outputFormats  = [ "BMP", "DCX", "EPS", "EXR", "GIF", "IM", "IM", "JPEG", "PCD", "PCX", "PDF", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
