@@ -27,6 +27,7 @@ class AddTaskResourcesDialog:
         fsModel.setFilter( QtCore.QDir.AllDirs | QtCore.QDir.Files | QtCore.QDir.NoDotAndDotDot )
 
         self.ui.folderTreeView.setModel( fsModel )
+        self.ui.folderTreeView.setColumnWidth( 0, self.ui.folderTreeView.columnWidth(0) * 2 )
 
     ###################
     def __setupConnections( self ):
