@@ -35,13 +35,11 @@ class PbrtTaskBuilder( GNRTaskBuilder ):
     def build( self ):
         mainSceneDir = os.path.dirname( self.taskDefinition.mainSceneFile )
 
-        # TODO: Calculate total task
-
         pbrtTask = PbrtRenderTask( self.clientId,
                                    self.taskDefinition.id,
                                    mainSceneDir,
                                    self.taskDefinition.mainProgramFile,
-                                   60,
+                                   self.__calculateTotal( self.taskDefinition ),
                                    32,
                                    4,
                                    self.taskDefinition.resolution[ 0 ],
@@ -61,6 +59,13 @@ class PbrtTaskBuilder( GNRTaskBuilder ):
                                   )
 
         return pbrtTask
+    #######################
+    def __calculateTotal( self, definition ):
+        maxTotalTasks = 200
+        minTotalTasks = 4
+        taskBase = 10000000
+        allOp = definition.resolution[0] * definition.resolution[1] * definition.rendererOptions.samplesPerPixelCount
+        return max( minTotalTasks, min( maxTotalTasks, allOp / taskBase ) )
 
 class PbrtRenderTask( GNRTask ):
 
