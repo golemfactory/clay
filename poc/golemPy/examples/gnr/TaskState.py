@@ -24,7 +24,7 @@ class RendererInfo:
         self.taskBuilderType = taskBuilderType
         self.dialog = dialog
         self.dialogCustomizer = dialogCustomizer
-        self.options = rendererOptions()
+        self.options = rendererOptions
 
 class RendererDefaults:
     #########################

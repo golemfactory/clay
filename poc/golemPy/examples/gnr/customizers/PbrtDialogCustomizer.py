@@ -14,6 +14,7 @@ class PbrtDialogCustomizer:
         self.gui = gui
         self.logic = logic
         self.newTaskDialog = newTaskDialog
+        self.rendererOptions = newTaskDialog.rendererOptions
 
         self.__init()
         self.__setupConnections()
@@ -21,7 +22,7 @@ class PbrtDialogCustomizer:
     #############################
     def __init( self ):
         renderer = self.logic.getRenderer( u"PBRT" )
-        self.rendererOptions = renderer.options
+
         self.gui.ui.pixelFilterComboBox.clear()
         self.gui.ui.pixelFilterComboBox.addItems( renderer.filters )
         pixelFilterItem = self.gui.ui.pixelFilterComboBox.findText( self.rendererOptions.pixelFilter )

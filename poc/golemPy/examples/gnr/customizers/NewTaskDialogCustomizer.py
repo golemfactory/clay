@@ -60,14 +60,13 @@ class NewTaskDialogCustomizer:
         QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
 
-
     #############################
     def __updateRendererOptions( self, name ):
         r = self.logic.getRenderer( name )
 
         if r:
             self.logic.setCurrentRenderer( name )
-            self.rendererOptions = r.options
+            self.rendererOptions = r.options()
 
             self.gui.ui.outputFormatsComboBox.clear()
             self.gui.ui.outputFormatsComboBox.addItems( r.outputFormats )
@@ -85,10 +84,10 @@ class NewTaskDialogCustomizer:
 
     #############################
     def __resetToDefaults( self ):
-        dr = self.logic.getDefaultRenderer()
+        dr = self.__getCurrentRenderer()
 
 
-        self.rendererOptions = dr.options
+        self.rendererOptions = dr.options()
         self.logic.setCurrentRenderer( dr.name )
 
         self.gui.ui.outputFormatsComboBox.clear()
@@ -146,7 +145,7 @@ class NewTaskDialogCustomizer:
         self.__updateRendererOptions( "{}".format( name ) )
 
     #############################
-    def __taskSettingsChanged( self, name ):
+    def __taskSettingsChanged( self, name = None ):
         self.gui.ui.finishButton.setEnabled( False )
         self.gui.ui.testTaskButton.setEnabled( True )
 
@@ -295,7 +294,7 @@ class NewTaskDialogCustomizer:
     def __init( self ):
         renderers = self.logic.getRenderers()
         dr = self.logic.getDefaultRenderer()
-        self.rendererOptions = dr.options
+        self.rendererOptions = dr.options()
 
         self.gui.ui.taskIdLabel.setText( self.__generateNewTaskUID() )
 
@@ -309,12 +308,18 @@ class NewTaskDialogCustomizer:
             self.gui.ui.testTaskComboBox.addItem( tt.name )
 
     #############################
+    def __getCurrentRenderer( self ):
+        index = self.gui.ui.rendererComboBox.currentIndex()
+        rendererName = self.gui.ui.rendererComboBox.itemText( index )
+        return self.logic.getRenderer( u"{}".format( rendererName ) )
+
+    #############################
     def __queryTaskDefinition( self ):
         definition      = TaskDefinition()
 
         definition.id                = u"{}".format( self.gui.ui.taskIdLabel.text() )
         definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime = getTimeValues( self.gui )
-        definition.renderer          = self.logic.getRenderer( "{}".format( self.gui.ui.rendererComboBox.itemText( self.gui.ui.rendererComboBox.currentIndex() ) ) ).name
+        definition.renderer          = self.__getCurrentRenderer().name
         definition.rendererOptions = self.rendererOptions
         definition.resolution        = [ self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value() ]
         definition.outputFile        = u"{}".format( self.gui.ui.outputFileLineEdit.text() )
@@ -341,6 +346,7 @@ class NewTaskDialogCustomizer:
 
     def setRendererOptions( self, options ):
         self.rendererOptions = options
+        self.__taskSettingsChanged()
 
     def getRendererOptions( self ):
         return self.rendererOptions
