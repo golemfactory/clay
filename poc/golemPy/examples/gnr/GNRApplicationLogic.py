@@ -141,7 +141,11 @@ class GNRApplicationLogic( QtCore.QObject ):
     def startTask( self, taskId ):
         ts = self.getTask( taskId )
 
-        assert ts.taskState.status == TaskStatus.notStarted # TODO:
+        if (ts.taskState.status != TaskStatus.notStarted):
+            errorMsg = "Task already started"
+            self.__showErrorWindow( errorMsg )
+            logger.error( errorMsg )
+            return
 
         tb = self.renderers[ ts.definition.renderer ].taskBuilderType( self.client.getId(), ts.definition, self.client.getRootPath( ) )
 
