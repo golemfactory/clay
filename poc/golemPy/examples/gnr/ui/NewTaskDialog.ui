@@ -35,7 +35,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="rendererSettingsTab">
        <attribute name="title">
@@ -359,17 +359,7 @@
          <item row="3" column="0">
           <widget class="QLabel" name="label_8">
            <property name="text">
-            <string>Performance Test Task</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="1">
-          <widget class="QComboBox" name="testTaskComboBox">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
+            <string>Total subtasks</string>
            </property>
           </widget>
          </item>
@@ -461,6 +451,26 @@
             <widget class="QPushButton" name="addResourceButton">
              <property name="text">
               <string>Add Resources</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="3" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout_10">
+           <item>
+            <widget class="QSpinBox" name="totalSpinBox"/>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="totalDefaultCheckBox">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>default</string>
              </property>
             </widget>
            </item>

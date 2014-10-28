@@ -63,7 +63,7 @@ class PbrtTaskBuilder( GNRTaskBuilder ):
     def __calculateTotal( self, definition ):
         maxTotalTasks = 200
         minTotalTasks = 4
-        taskBase = 10000000
+        taskBase = 1000000
         allOp = definition.resolution[0] * definition.resolution[1] * definition.rendererOptions.samplesPerPixelCount
         return max( minTotalTasks, min( maxTotalTasks, allOp / taskBase ) )
 

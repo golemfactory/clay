@@ -53,7 +53,6 @@ class NewTaskDialogCustomizer:
         QtCore.QObject.connect(self.gui.ui.subtaskTimeoutHourSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.subtaskTimeoutMinSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.subtaskTimeoutSecSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
-        QtCore.QObject.connect(self.gui.ui.testTaskComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.mainProgramFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputFormatsComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
@@ -134,11 +133,6 @@ class NewTaskDialogCustomizer:
         for k in renderers:
             r = renderers[ k ]
             self.gui.ui.rendererComboBox.addItem( r.name )
-
-        testTasks = self.logic.getTestTasks()
-        for k in testTasks:
-            tt = testTasks[ k ]
-            self.gui.ui.testTaskComboBox.addItem( tt.name )
 
     #############################
     def __rendererComboBoxValueChanged( self, name ):
@@ -301,11 +295,6 @@ class NewTaskDialogCustomizer:
         for k in renderers:
             r = renderers[ k ]
             self.gui.ui.rendererComboBox.addItem( r.name )
-
-        testTasks = self.logic.getTestTasks()
-        for k in testTasks:
-            tt = testTasks[ k ]
-            self.gui.ui.testTaskComboBox.addItem( tt.name )
 
     #############################
     def __getCurrentRenderer( self ):
