@@ -3,7 +3,7 @@ import os
 import logging
 import logging.config
 
-sys.path.append('./../../')
+sys.path.append( os.environ.get( 'GOLEM' ) )
 
 from tools.UiGen import genUiFiles
 genUiFiles( "ui" )

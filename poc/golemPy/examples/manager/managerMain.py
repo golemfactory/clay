@@ -1,5 +1,6 @@
 import sys
-sys.path.append('../../')
+import os
+sys.path.append( os.environ.get( 'GOLEM' ) )
 
 from tools.UiGen import genUiFiles
 genUiFiles( "./../../golem/ui" )

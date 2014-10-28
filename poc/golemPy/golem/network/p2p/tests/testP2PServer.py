@@ -1,9 +1,10 @@
 import unittest
 import logging
 import sys
+import os
 import time
 
-sys.path.append('./../../../../')
+sys.path.append( os.environ.get( 'GOLEM' ) )
 
 from golem.network.p2p.P2PServer import P2PServer, NetServerFactory
 from golem.network.p2p.NetConnState import NetConnState

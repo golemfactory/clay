@@ -1,4 +1,4 @@
-import golem.network.transport.Tcp import Network
+from golem.network.transport.Tcp import Network
 from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 import logging
 

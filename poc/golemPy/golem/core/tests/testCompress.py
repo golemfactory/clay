@@ -3,7 +3,7 @@ import logging
 import sys
 import os
 
-sys.path.append('./../../../')
+sys.path.append( os.environ.get( 'GOLEM' ) )
 
 from golem.core.Compress import compress, decompress, load, save
 

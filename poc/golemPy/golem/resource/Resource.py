@@ -1,11 +1,9 @@
-import sys
+
 import logging
-#sys.path.append('../../core/')
 
 from golem.core.simplehash import SimpleHash
 
 import os
-from os.path import join, isdir, isfile
 import zipfile
 
 logger = logging.getLogger(__name__)

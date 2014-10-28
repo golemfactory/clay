@@ -2,8 +2,9 @@ import unittest
 import logging
 import sys
 import time
+import os
 
-sys.path.append('./../../../../')
+sys.path.append( os.environ.get( 'GOLEM' ) )
 
 from golem.network.p2p.PeerSession import PeerSession
 from golem.network.p2p.NetConnState import NetConnState

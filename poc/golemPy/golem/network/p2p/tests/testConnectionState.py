@@ -1,8 +1,9 @@
 import unittest
 import logging
 import sys
+import os
 
-sys.path.append('./../../../../')
+sys.path.append( os.environ.get( 'GOLEM' ) )
 
 from golem.network.p2p.ConnectionState import ConnectionState
 from golem.Message import Message, MessageHello

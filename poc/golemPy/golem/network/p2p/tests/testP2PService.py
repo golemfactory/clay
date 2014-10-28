@@ -1,10 +1,11 @@
 import unittest
 import logging
 import sys
+import os
 import time
 from testfixtures import LogCapture
 
-sys.path.append('./../../../../')
+sys.path.append( os.environ.get( 'GOLEM' ) )
 
 from golem.network.p2p.P2PService import P2PService
 
@@ -24,6 +25,7 @@ class Peer:
         self.port = None
         self.interval = None
         self.sendGetPeersCalledCnt = 0
+        self.lastMessageTime = time.time()
 
     def sendRemoveTask( self, taskId ):
         self.taskToRemove = taskId

@@ -1,11 +1,12 @@
 import sys
+import os
 import unittest
 import logging
 from twisted.internet.protocol import Factory, Protocol
 from threading import Thread
 from time import sleep
 
-sys.path.append('./../../../../')
+sys.path.append( os.environ.get( 'GOLEM' ) )
 
 from golem.network.transport.Tcp import Network
 
@@ -51,7 +52,6 @@ class TestNetwork(unittest.TestCase):
         self.assertTrue(self.listenSuccess)
 
     def testConnect( self ):
-
         from twisted.internet import reactor
         th = Thread(target=reactor.run, args=(False,))
         th.deamon = True
