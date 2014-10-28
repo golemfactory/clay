@@ -26,6 +26,9 @@ class PbrtRenderOptions:
         self.pixelFilter = "mitchell"
         self.samplesPerPixelCount = 32
         self.algorithmType = "lowdiscrepancy"
+        self.minSubtasks = 4
+        self.maxSubtasks = 200
+        self.defaultSubtasks = 60
 
     def addToResources( self , resources ):
         return resources
@@ -61,11 +64,14 @@ class PbrtTaskBuilder( GNRTaskBuilder ):
         return pbrtTask
     #######################
     def __calculateTotal( self, definition ):
-        maxTotalTasks = 200
-        minTotalTasks = 4
+        options = PbrtRenderOptions()
+
+        if (not definition.optimizeTotal) and (options.minSubtasks <= definition.totalSubtasks <= options.maxSubtasks):
+            return definition.totalSubtasks
+
         taskBase = 1000000
         allOp = definition.resolution[0] * definition.resolution[1] * definition.rendererOptions.samplesPerPixelCount
-        return max( minTotalTasks, min( maxTotalTasks, allOp / taskBase ) )
+        return max( options.minSubtasks, min( options.maxSubtasks, allOp / taskBase ) )
 
 class PbrtRenderTask( GNRTask ):
 

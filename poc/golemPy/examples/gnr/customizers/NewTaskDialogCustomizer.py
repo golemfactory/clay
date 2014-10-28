@@ -44,6 +44,8 @@ class NewTaskDialogCustomizer:
         self.gui.ui.resetToDefaultButton.clicked.connect( self.__resetToDefaultButtonClicked )
         self.gui.ui.rendererOptionsButton.clicked.connect( self.__openRendererOptions )
 
+        QtCore.QObject.connect( self.gui.ui.optimizeTotalCheckBox, QtCore.SIGNAL( "stateChanged( int ) "), self.__optimizeTotalCheckBoxChanged )
+
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutHourSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutMinSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutSecSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
@@ -58,6 +60,7 @@ class NewTaskDialogCustomizer:
         QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.totalSpinBox, QtCore.SIGNAL( "valueChanged( const QString )" ), self.__taskSettingsChanged )
 
     #############################
     def __updateRendererOptions( self, name ):
@@ -77,6 +80,8 @@ class NewTaskDialogCustomizer:
             self.gui.ui.mainProgramFileLineEdit.setText( r.defaults.mainProgramFile )
 
             setTimeSpinBoxes( self.gui, r.defaults.fullTaskTimeout, r.defaults.subtaskTimeout, r.defaults.minSubtaskTime )
+
+            self.gui.ui.totalSpinBox.setRange( self.rendererOptions.minSubtasks, self.rendererOptions.maxSubtasks )
 
         else:
             assert False, "Unreachable"
@@ -113,6 +118,11 @@ class NewTaskDialogCustomizer:
 
         self.gui.ui.finishButton.setEnabled( False )
         self.gui.ui.testTaskButton.setEnabled( True )
+
+        self.gui.ui.totalSpinBox.setRange( self.rendererOptions.minSubtasks, self.rendererOptions.maxSubtasks )
+        self.gui.ui.totalSpinBox.setValue( self.rendererOptions.defaultSubtasks )
+        self.gui.ui.totalSpinBox.setEnabled( True )
+        self.gui.ui.optimizeTotalCheckBox.setChecked( False )
 
     # SLOTS
     #############################
@@ -229,6 +239,12 @@ class NewTaskDialogCustomizer:
             logger.error( "Cannot load task, wrong output format" )
             return
 
+        self.gui.ui.totalSpinBox.setRange( self.rendererOptions.minSubtasks, self.rendererOptions.maxSubtasks )
+        self.gui.ui.totalSpinBox.setValue( definition.totalSubtasks )
+        self.gui.ui.totalSpinBox.setEnabled( not definition.optimizeTotal )
+        self.gui.ui.optimizeTotalCheckBox.setChecked( definition.optimizeTotal )
+
+
         self.addTaskResourceDialog = AddTaskResourcesDialog( self.gui.window )
         self.addTaskResourcesDialogCustomizer = AddResourcesDialogCustomizer( self.addTaskResourceDialog, self.logic )
         self.addTaskResourcesDialogCustomizer.resources = definition.resources
@@ -296,6 +312,9 @@ class NewTaskDialogCustomizer:
             r = renderers[ k ]
             self.gui.ui.rendererComboBox.addItem( r.name )
 
+        self.gui.ui.totalSpinBox.setRange( self.rendererOptions.minSubtasks, self.rendererOptions.maxSubtasks )
+        self.gui.ui.totalSpinBox.setValue( self.rendererOptions.defaultSubtasks )
+
     #############################
     def __getCurrentRenderer( self ):
         index = self.gui.ui.rendererComboBox.currentIndex()
@@ -314,14 +333,21 @@ class NewTaskDialogCustomizer:
         definition.outputFile        = u"{}".format( self.gui.ui.outputFileLineEdit.text() )
         definition.mainProgramFile   = u"{}".format( self.gui.ui.mainProgramFileLineEdit.text() )
         definition.outputFormat      = u"{}".format( self.gui.ui.outputFormatsComboBox.itemText( self.gui.ui.outputFormatsComboBox.currentIndex() ) )
+        definition.optimizeTotal     = self.gui.ui.optimizeTotalCheckBox.isChecked()
+        if definition.optimizeTotal:
+            definition.totalSubtasks = 0
+        else:
+            definition.totalSubtasks = self.gui.ui.totalSpinBox.value()
 
         if self.addTaskResourcesDialogCustomizer:
             definition.resources         = self.rendererOptions.addToResources( self.addTaskResourcesDialogCustomizer.resources )
             definition.mainSceneFile     = u"{}".format( self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.text() )
 
-        
-
         return definition
+
+    def __optimizeTotalCheckBoxChanged( self ):
+        self.gui.ui.totalSpinBox.setEnabled( not self.gui.ui.optimizeTotalCheckBox.isChecked() )
+        self.__taskSettingsChanged()
 
     #############################
     def __openRendererOptions( self ):

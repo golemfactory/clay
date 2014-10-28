@@ -24,6 +24,9 @@ class MentalRayRendererOptions:
         self.environment = ThreeDSMaxEnvironment()
         self.preset = self.environment.getDefaultPreset()
         self.cmd = self.environment.get3dsmaxcmdPath()
+        self.minSubtasks = 1
+        self.defaultSubtasks = 6
+        self.maxSubtasks = 100
 
     def addToResources( self, resources ):
         if os.path.isfile( self.preset ):
@@ -38,13 +41,24 @@ class MentalRayTaskBuilder( GNRTaskBuilder ):
         mentalRayTask = MentalRayTask(self.clientId,
                                    self.taskDefinition,
                                    mainSceneDir,
-                                   6,
+                                   self.__calculateTotal( self.taskDefinition ),
                                    32,
                                    4,
                                    "temp",
                                    self.rootPath
                                    )
         return mentalRayTask
+
+    def __calculateTotal(self, definition ):
+        options = MentalRayRendererOptions()
+
+        if definition.optimizeTotal:
+            return options.defaultSubtasks
+
+        if options.minSubtasks <= definition.totalSubtasks <= options.maxSubtasks:
+            return definition.totalSubtasks
+        else :
+            return options.defaultSubtasks
 
 class MentalRayTask( GNRTask ):
 

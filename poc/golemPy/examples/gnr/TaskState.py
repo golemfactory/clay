@@ -63,7 +63,9 @@ class TaskDefinition:
         self.outputFormat       = ""
         self.resources          = []
         self.estimatedMemory    = 0
-        self.renderOptions = None
+        self.renderOptions      = None
+        self.totalSubtasks      = 0
+        self.optimizeTotal      = False
 
 class GNRTaskState:
     #########################

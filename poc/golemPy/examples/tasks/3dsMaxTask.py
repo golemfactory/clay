@@ -41,6 +41,7 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
         os.remove(f)
 
     sceneFile = os.path.join( resourcePath, sceneFile )
+    print sceneFile
 
     if preset:
         print preset
@@ -54,12 +55,14 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
         cmd = format3dsMaxCmd( cmdFile, startTask, endTask, totalTasks, numSubtasks, numCores, outputFiles, sceneFile, width, height, presetFile )
     else:
         print "Scene file does not exist"
+        return []
 
     print cmd
 
     pc = subprocess.Popen( cmd )
 
     win32process.SetPriorityClass( pc._handle, win32process.IDLE_PRIORITY_CLASS )
+
 
     pc.wait()
 

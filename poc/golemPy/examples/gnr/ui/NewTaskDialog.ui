@@ -35,7 +35,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="rendererSettingsTab">
        <attribute name="title">
@@ -462,7 +462,7 @@
             <widget class="QSpinBox" name="totalSpinBox"/>
            </item>
            <item>
-            <widget class="QCheckBox" name="totalDefaultCheckBox">
+            <widget class="QCheckBox" name="optimizeTotalCheckBox">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -470,7 +470,7 @@
               </sizepolicy>
              </property>
              <property name="text">
-              <string>default</string>
+              <string>optimize</string>
              </property>
             </widget>
            </item>
