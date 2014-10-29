@@ -342,6 +342,7 @@ class NewTaskDialogCustomizer:
         if self.addTaskResourcesDialogCustomizer:
             definition.resources         = self.rendererOptions.addToResources( self.addTaskResourcesDialogCustomizer.resources )
             definition.mainSceneFile     = u"{}".format( self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.text() )
+            definition.resources.append( os.path.normpath( definition.mainSceneFile ) )
 
         return definition
 

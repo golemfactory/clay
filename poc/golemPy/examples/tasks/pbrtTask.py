@@ -22,7 +22,7 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     for f in files:
         os.remove(f)
 
-    tmpSceneFile = tempfile.TemporaryFile( suffix = ".pbrt", dir = os.path.join( resourcePath, "resources" ) )
+    tmpSceneFile = tempfile.TemporaryFile( suffix = ".pbrt", dir = resourcePath )
     tmpSceneFile.close()
     print sceneSrc
     f = open(tmpSceneFile.name, 'w')
