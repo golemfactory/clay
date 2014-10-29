@@ -72,7 +72,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def computationFinished( self, subtaskId, taskResult, env = None ):
+    def computationFinished( self, subtaskId, taskResult, dirManager = None ):
         return # Implement in derived class
 
     #######################

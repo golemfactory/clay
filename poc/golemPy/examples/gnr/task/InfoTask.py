@@ -111,7 +111,7 @@ class InfoTask( GNRTask ):
         pass
 
     #######################
-    def computationFinished( self, subtaskId, taskResult, env = None ):
+    def computationFinished( self, subtaskId, taskResult, dirManager = None):
         try:
             msgs = pickle.loads( taskResult )
             for msg in msgs:

@@ -248,9 +248,9 @@ class PbrtRenderTask( GNRTask ):
         return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFileSrc: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFileSrc"] )
 
     #######################
-    def computationFinished( self, subtaskId, taskResult, env = None ):
+    def computationFinished( self, subtaskId, taskResult, dirManager = None ):
 
-        tmpDir = env.getTaskTemporaryDir( self.header.taskId )
+        tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
 
         if len( taskResult ) > 0:
             for trp in taskResult:

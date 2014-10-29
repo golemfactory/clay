@@ -9,7 +9,7 @@ from copy import copy
 from golem.vm.vm import PythonVM, PythonTestVM
 from golem.manager.NodeStateSnapshot import TaskChunkStateSnapshot
 from golem.resource.ResourcesManager import ResourcesManager
-from Environment import TaskComputerEnvironment
+from golem.resource.DirManager import DirManager
 import os
 import logging
 
@@ -26,9 +26,9 @@ class TaskComputer:
         self.lock                   = Lock()
         self.lastTaskRequest        = time.time()
         self.taskRequestFrequency   = taskServer.configDesc.taskRequestInterval
-        self.env                    = TaskComputerEnvironment( taskServer.getTaskComputerRoot(), self.clientUid )
+        self.dirManager             = DirManager ( taskServer.getTaskComputerRoot(), self.clientUid )
 
-        self.resourceManager        = ResourcesManager( self.env, self )
+        self.resourceManager        = ResourcesManager( self.dirManager, self )
 
         self.assignedSubTasks       = {}
         self.taskToSubTaskMapping   = {}
@@ -101,8 +101,8 @@ class TaskComputer:
 
     ######################
     def changeConfig( self ):
-        self.env = TaskComputerEnvironment( self.taskServer.getTaskComputerRoot(), self.clientUid )
-        self.resourceManager = ResourcesManager( self.env, self )
+        self.dirManager = DirManager( self.taskServer.getTaskComputerRoot(), self.clientUid )
+        self.resourceManager = ResourcesManager( self.dirManager, self )
 
     ######################
     def __requestTask( self ):
@@ -116,7 +116,7 @@ class TaskComputer:
     def __computeTask( self, subtaskId, srcCode, extraData, shortDescr ):
         taskId = self.assignedSubTasks[ subtaskId ].taskId
         workingDirectory = self.assignedSubTasks[ subtaskId ].workingDirectory
-        self.env.clearTemporary( taskId )
+        self.dirManager.clearTemporary( taskId )
         tt = PyTaskThread( self, subtaskId, workingDirectory, srcCode, extraData, shortDescr, self.resourceManager.getResourceDir( taskId ), self.resourceManager.getTemporaryDir( taskId ) )
         self.currentComputations.append( tt )
         tt.start()

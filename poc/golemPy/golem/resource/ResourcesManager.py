@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 class ResourcesManager:
     ###################
-    def __init__( self, taskEnvironment, owner ):
+    def __init__( self, dirManager, owner ):
         self.resources          = {}
-        self.taskEnvironment    = taskEnvironment
+        self.dirManager         = dirManager
         self.fh                 = None
         self.fileSize           = -1
         self.recvSize           = 0
@@ -67,15 +67,15 @@ class ResourcesManager:
 
     ###################
     def getResourceDir( self, taskId ):
-        return self.taskEnvironment.getTaskResourceDir( taskId )
+        return self.dirManager.getTaskResourceDir( taskId )
 
     ###################
     def getTemporaryDir( self, taskId ):
-        return self.taskEnvironment.getTaskTemporaryDir( taskId )
+        return self.dirManager.getTaskTemporaryDir( taskId )
 
     ###################
     def getOutputDir( self, taskId ):
-        return self.taskEnvironment.getTaskOutputDir( taskId )
+        return self.dirManager.getTaskOutputDir( taskId )
 
 
     def fileDataReceived( self, taskId, data, conn ):

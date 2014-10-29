@@ -3,7 +3,7 @@ import logging
 
 from golem.manager.NodeStateSnapshot import LocalTaskStateSnapshot
 from golem.task.TaskState import TaskState, TaskStatus, SubtaskState, ComputerState
-from Environment import TaskManagerEnvironment
+from golem.resource.DirManager import DirManager
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class TaskManager:
         self.listenAddress  = listenAddress
         self.listenPort     = listenPort
 
-        self.env            = TaskManagerEnvironment( rootPath, self.clientUid )
+        self.dirManager     = DirManager( rootPath, self.clientUid )
 
         self.subTask2TaskMapping = {}
 
@@ -66,7 +66,7 @@ class TaskManager:
         task.initialize()
         self.tasks[ task.header.taskId ] = task
 
-        self.env.clearTemporary( task.header.taskId )
+        self.dirManager.clearTemporary( task.header.taskId )
 
         task.taskStatus = TaskStatus.waiting
 
@@ -127,7 +127,7 @@ class TaskManager:
                 logger.warning("Result for subtask {} when subtask state is {}".format( subtaskId, subtaskStatus ))
                 return False
 
-            self.tasks[ taskId ].computationFinished( subtaskId, result, self.env )
+            self.tasks[ taskId ].computationFinished( subtaskId, result, self.dirManager )
             ss = self.tasksStates[ taskId ].subtaskStates[ subtaskId ]
             ss.subtaskProgress  = 1.0
             ss.subtaskRemTime   = 0.0
@@ -199,7 +199,7 @@ class TaskManager:
     def restartTask( self, taskId ):
         if taskId in self.tasks:
             logger.info("restarting task")
-            self.env.clearTemporary( taskId )
+            self.dirManager.clearTemporary( taskId )
 
             self.tasks[ taskId ].restart()
             self.tasks[ taskId ].taskStatus = TaskStatus.waiting
@@ -260,7 +260,7 @@ class TaskManager:
             del self.tasks[ taskId ]
             del self.tasksStates[ taskId ]
 
-            self.env.clearTemporary( taskId )
+            self.dirManager.clearTemporary( taskId )
         else:
             logger.error( "Task {} not in the active tasks queue ".format( taskId ) )
 
@@ -287,7 +287,7 @@ class TaskManager:
             return None
 
     def changeConfig( self, rootPath ):
-        self.env = TaskManagerEnvironment( rootPath, self.clientUid )
+        self.dirManager = DirManager( rootPath, self.clientUid )
 
     #######################
     def changeTimeouts( self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
