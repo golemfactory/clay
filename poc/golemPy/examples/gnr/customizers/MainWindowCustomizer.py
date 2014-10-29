@@ -151,8 +151,15 @@ class MainWindowCustomizer:
 
     ############################
     def __loadTaskButtonClicked( self ):
+        golemPath = os.environ.get( 'GOLEM' )
+        dir = ""
+        if golemPath:
+            saveDir = os.path.join( golemPath, "save" )
+            if os.path.isdir( saveDir ):
+                dir = saveDir
+
         fileName = QFileDialog.getOpenFileName( self.gui.window,
-            "Choose task file", "", "Golem Task (*.gt)")
+            "Choose task file", dir, "Golem Task (*.gt)")
         if os.path.exists( fileName ):
             self.__loadTask( fileName )
 
