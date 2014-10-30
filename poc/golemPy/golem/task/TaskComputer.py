@@ -179,6 +179,7 @@ class TaskThread( Thread ):
             logger.error( "Task computing error: {}".format( exc ) )
             self.error = True
             self.done = True
+            self.taskComputer.taskComputed( self )
 
 
     ######################

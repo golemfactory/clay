@@ -91,8 +91,9 @@ class TaskTester:
 
     ###########################
     def taskComputed( self, taskThread ):
-        res, estMem = taskThread.result
-        if res:
+        if taskThread.result:
+            res, estMem = taskThread.result
+        if taskThread.result and res:
             logger.info( "Test task computation success !" )
             self.finishedCallback( True, estMem )
         else:
