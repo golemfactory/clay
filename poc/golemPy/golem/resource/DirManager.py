@@ -4,6 +4,14 @@ import shutil
 
 logger = logging.getLogger(__name__)
 
+def splitPath( path ):
+    head, tail = os.path.split( path )
+    if not tail:
+        return []
+    if not head:
+        return [ tail ]
+    return splitPath( head ) + [ tail ]
+
 class DirManager:
     ######################
     def __init__( self, rootPath, nodeId, tmp = 'tmp', res = 'resources', output = 'output' ):

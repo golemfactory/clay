@@ -2,6 +2,7 @@
 import logging
 
 from golem.core.simplehash import SimpleHash
+from golem.resource.DirManager import splitPath
 
 import os
 import zipfile
@@ -10,10 +11,53 @@ logger = logging.getLogger(__name__)
 
 class TaskResourceHeader:
 
+    def __eq__( self, other ):
+        if self.dirName != other.dirName:
+            return False
+        if self.filesData != other.filesData:
+            return False
+        if len( self.subDirHeaders ) != len( other.subDirHeaders ):
+            return False
+        sub1 = sorted( self.subDirHeaders, lambda x: x.dirName )
+        sub2 = sorted( other.subDirHeaders, lambda x: x.dirName )
+        for i in range( len( self.subDirHeaders ) ):
+            if not (sub1[i] == sub2[i]):
+                return False
+        return True
+
+
     ####################
     @classmethod
     def build( cls, relativeRoot, absoluteRoot ):
         return cls.__build( relativeRoot, absoluteRoot )
+
+    ####################
+    @classmethod
+    def buildFromChosen( cls, dirName, absoluteRoot, choosenFiles = None ):
+        curTh = TaskResourceHeader( dirName )
+
+        absDirs = splitPath( absoluteRoot )
+
+        for file in choosenFiles:
+
+            dir, fileName = os.path.split( file )
+            dirs = splitPath( dir )[len(absDirs):]
+
+            lastHeader = curTh
+
+            for d in dirs:
+
+                childSubDirHeader = TaskResourceHeader( d )
+                if lastHeader.__hasSubHeader( d ):
+                    lastHeader = lastHeader.__getSubHeader( d )
+                else:
+                    lastHeader.subDirHeaders.append( childSubDirHeader )
+                    lastHeader = childSubDirHeader
+
+            hsh = SimpleHash.hash_file_base64( file )
+            lastHeader.filesData.append( (fileName, hsh ) )
+
+        return curTh
 
     ####################
     @classmethod
@@ -46,6 +90,48 @@ class TaskResourceHeader:
         return curTh
 
     ####################
+    @classmethod
+    def buildHeaderDeltaFromChosen( cls, header, absoluteRoot, chosenFiles = None ):
+        assert isinstance( header, TaskResourceHeader )
+        curTh = TaskResourceHeader( header.dirName )
+
+        absDirs = splitPath( absoluteRoot )
+
+        for file in chosenFiles:
+
+            dir, fileName = os.path.split( file )
+            dirs = splitPath( dir )[len(absDirs):]
+
+            lastHeader = curTh
+            lastRefHeader = header
+            refHeaderFound = True
+
+            for d in dirs:
+
+                childSubDirHeader = TaskResourceHeader( d )
+
+                if lastHeader.__hasSubHeader( d ):
+                    lastHeader = lastHeader.__getSubHeader( d )
+                else:
+                    lastHeader.subDirHeaders.append( childSubDirHeader )
+                    lastHeader = childSubDirHeader
+
+                if refHeaderFound:
+                    if lastRefHeader.__hasSubHeader( d ):
+                        lastRefHeader = lastRefHeader.__getSubHeader( d )
+                    else:
+                        refHeaderFound = False
+
+            hsh = SimpleHash.hash_file_base64( file )
+            if refHeaderFound:
+                if lastRefHeader.__hasFile( fileName ):
+                    if hsh == lastRefHeader.__getFileHash( fileName ):
+                        continue
+            lastHeader.filesData.append( (fileName, hsh ) )
+
+        return curTh
+
+    ####################
     # Dodaje tylko te pola, ktorych nie ma w headerze (i/lub nie zgadzaj? si? hasze)
     @classmethod
     def buildHeaderDeltaFromHeader( cls, header, absoluteRoot, choosenFiles ):
@@ -57,9 +143,9 @@ class TaskResourceHeader:
         files = [ name for name in os.listdir( absoluteRoot ) if os.path.isfile( os.path.join( absoluteRoot, name ) ) ]
 
         for d in dirs:
-            if d in [ sdh.dirName for sdh in header.subDirHeaders ]:
-                idx = [ sdh.dirName for sdh in header.subDirHeaders ].index( d )
-                curTr.subDirHeaders.append( cls.buildHeaderDeltaFromHeader( header.subDirHeaders[ idx ], os.path.join( absoluteRoot, d ), choosenFiles ) )
+            if header.__hasSubHeader( d ):
+                curTr.subDirHeaders.append(
+                    cls.buildHeaderDeltaFromHeader( header.__getSubHeader( d ), os.path.join( absoluteRoot, d ), choosenFiles ) )
             else:
                 curTr.subDirHeaders.append( cls.__build( d, os.path.join( absoluteRoot, d ), choosenFiles ) )
 
@@ -68,11 +154,10 @@ class TaskResourceHeader:
                 continue
 
             fileHash = 0
-            if f in [ file[ 0 ] for file in header.filesData ]:
-                idx = [ file[ 0 ] for file in header.filesData ].index( f )
+            if header.__hasFile( f ):
                 fileHash = SimpleHash.hash_file_base64( os.path.join( absoluteRoot, f ) )
 
-                if fileHash == header.filesData[ idx ][ 1 ]:
+                if fileHash == header.__getFileHash( f ):
                     continue
 
             if not fileHash:
@@ -115,6 +200,20 @@ class TaskResourceHeader:
     ####################
     def hash( self ):
         return SimpleHash.hash_base64( self.toString().encode('utf-8') )
+
+    def __hasSubHeader( self, dirName ):
+        return dirName in [ sh.dirName for sh in self.subDirHeaders ]
+
+    def __hasFile( self, file ):
+        return file in [ f[0] for f in self.filesData ]
+
+    def __getSubHeader( self, dirName ):
+        idx = [ sh.dirName for sh in self.subDirHeaders ].index( dirName )
+        return self.subDirHeaders[ idx ]
+
+    def __getFileHash( self, file ):
+        idx = [ f[0] for f in self.filesData ].index( file )
+        return self.filesData[ idx ][1]
 
 class TaskResource:
 
@@ -343,7 +442,8 @@ def compressDirImpl( rootPath, header, zipf ):
 
 ####################
 def prepareDeltaZip( rootDir, header, outputDir, choosenFiles = None ):
-    deltaHeader = TaskResourceHeader.buildHeaderDeltaFromHeader( header, rootDir, choosenFiles )
+    #deltaHeader = TaskResourceHeader.buildHeaderDeltaFromHeader( header, rootDir, choosenFiles )
+    deltaHeader = TaskResourceHeader.buildHeaderDeltaFromChosen( header, rootDir, choosenFiles )
     return compressDir( rootDir, deltaHeader, outputDir )
 
 

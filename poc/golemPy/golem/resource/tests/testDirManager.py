@@ -17,6 +17,11 @@ class TestDirManager( unittest.TestCase ):
         if not os.path.isdir( path ):
             os.mkdir( path )
 
+    def tearDown( self ):
+        path = 'C:\golem_test\\test1'
+        if os.path.isdir( path ):
+            shutil.rmtree( path )
+
     def testInit( self ):
         self.assertIsNotNone( DirManager( path, node1 ) )
 
