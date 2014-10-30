@@ -207,6 +207,12 @@ class PbrtRenderTask( GNRTask ):
     #######################
     def queryExtraDataForTestTask( self ):
 
+        commonPathPrefix = os.path.commonprefix( self.taskResources )
+        commonPathPrefix = os.path.dirname( commonPathPrefix )
+
+        workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
+        workingDirectory    = os.path.dirname( workingDirectory )
+
         sceneSrc = regenerateFile( self.sceneFileSrc, 1, 1, self.pixelFilter, self.sampler, self.samplesPerPixel )
 
         extraData =          {      "pathRoot" : self.pathRoot,
@@ -236,8 +242,9 @@ class PbrtRenderTask( GNRTask ):
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
 
-        ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, self.testTaskResPath)
-        ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
+        #ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, self.testTaskResPath)
+        #ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
+        ctd.workingDirectory   = workingDirectory
 
         return ctd
 
