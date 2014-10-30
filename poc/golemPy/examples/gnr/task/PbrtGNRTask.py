@@ -196,7 +196,7 @@ class PbrtRenderTask( GNRTask ):
         ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
         ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
 
-        logger.debug(ctd.workingDirectory)
+        logger.debug( ctd.workingDirectory )
 
         # ctd.workingDirectory = ""
 

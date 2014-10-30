@@ -12,7 +12,6 @@ from golem.core.Compress import decompress
 from testtasks.pbrt.takscollector import PbrtTaksCollector, exr_to_pil
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
 
-import OpenEXR, Imath
 from PIL import Image, ImageChops
 from collections import OrderedDict
 
@@ -87,7 +86,6 @@ class MentalRayTask( GNRTask ):
                           resourceSize )
 
         self.taskResources = self.taskDefinition.resources
-     #   self.taskResources.append( os.path.normpath( self.taskDefinition.rendererOptions.preset ) )
         self.estimatedMemory = self.taskDefinition.estimatedMemory
         self.outputFormat = self.taskDefinition.outputFormat
         self.outputFile = self.taskDefinition.outputFile
@@ -132,8 +130,16 @@ class MentalRayTask( GNRTask ):
         commonPathPrefix = os.path.commonprefix( self.taskResources )
         commonPathPrefix = os.path.dirname( commonPathPrefix )
 
-        sceneFile = os.path.basename( self.taskDefinition.mainSceneFile )
-        presetFile = os.path.basename( self.taskDefinition.rendererOptions.preset)
+        workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
+        workingDirectory    = os.path.dirname( workingDirectory )
+
+        presetFile = os.path.relpath( os.path.dirname( self.taskDefinition.rendererOptions.preset ), os.path.dirname( self.mainProgramFile ) )
+        presetFile = os.path.join( presetFile, self.taskDefinition.rendererOptions.preset )
+
+
+        sceneFile = os.path.relpath( os.path.dirname(self.taskDefinition.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
+        sceneFile = os.path.join( sceneFile, self.taskDefinition.mainSceneFile )
+
         cmdFile = os.path.basename( self.taskDefinition.rendererOptions.cmd )
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
@@ -166,12 +172,9 @@ class MentalRayTask( GNRTask ):
         ctd.srcCode             = self.srcCode
         ctd.performance         = perfIndex
 
-        ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
-        ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
+        ctd.workingDirectory    = workingDirectory
 
-        logger.debug(ctd.workingDirectory)
-
-        # ctd.workingDirectory = ""
+        logger.debug( ctd.workingDirectory )
 
         return ctd
 

@@ -40,12 +40,8 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     for f in files:
         os.remove(f)
 
-    sceneFile = os.path.join( resourcePath, sceneFile )
-    print sceneFile
-
     if preset:
-        print preset
-        presetFile = os.path.join( resourcePath, preset)
+        presetFile = preset
     else:
         presetFile = os.path.join( dsmaxpath,  'renderpresets\mental.ray.daylighting.high.rps')
 
@@ -66,12 +62,7 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
 
     pc.wait()
 
-    print outputFiles
-    print outputFiles + "\*.exr"
-
     files = glob.glob( outputFiles + "\*.exr" )
-
-    print files
 
     res = []
 
