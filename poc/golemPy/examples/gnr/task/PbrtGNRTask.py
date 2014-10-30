@@ -7,12 +7,11 @@ import subprocess
 
 from golem.task.TaskBase import ComputeTaskDef
 from golem.core.Compress import decompress
-from golem.resource.Resource import prepareDeltaZip
 from examples.gnr.RenderingEnvironment import PBRTEnvironment
 
 from examples.gnr.task.SceneFileEditor import regenerateFile
 
-from GNRTask import GNRTask, GNRSubtask, GNRTaskBuilder
+from GNRTask import GNRTask, GNRTaskBuilder
 from testtasks.pbrt.takscollector import PbrtTaksCollector, exr_to_pil
 from GNREnv import GNREnv
 
