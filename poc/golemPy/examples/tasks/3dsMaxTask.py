@@ -3,6 +3,7 @@ import sys
 import glob
 import cPickle as pickle
 import zlib
+import zipfile
 import subprocess
 import win32process
 
@@ -39,6 +40,11 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
 
     for f in files:
         os.remove(f)
+
+    if os.path.splitext( sceneFile )[1] == '.zip':
+        with zipfile.ZipFile( sceneFile , "r" ) as z:
+            z.extractall( os.getcwd() )
+        sceneFile = glob.glob( "*.max" )[0]
 
     if preset:
         presetFile = preset

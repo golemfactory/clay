@@ -19,7 +19,7 @@ class RendererInfo:
         self.filters        = []
         self.pathTracers    = []
         self.outputFormats  = []
-        self.sceneFileExt   = "pbrt"
+        self.sceneFileExt   = []
         self.defaults       = defaults
         self.taskBuilderType = taskBuilderType
         self.dialog = dialog

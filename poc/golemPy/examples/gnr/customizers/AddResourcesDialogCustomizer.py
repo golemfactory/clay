@@ -30,8 +30,8 @@ class AddResourcesDialogCustomizer:
     def __chooseMainSceneFileButtonClicked( self ):
         sceneFileExt = self.logic.getCurrentRenderer().sceneFileExt
 
-        outputFileType = u"{}".format( sceneFileExt )
-        filter = u"{} (*.{})".format( outputFileType, outputFileType )
+        outputFileTypes = " ".join( [u"*.{}".format( ext ) for ext in sceneFileExt ] )
+        filter = u"Scene files ({})".format( outputFileTypes )
 
         dir = os.path.dirname( u"{}".format( self.gui.ui.mainSceneLabel.text() )  )
 

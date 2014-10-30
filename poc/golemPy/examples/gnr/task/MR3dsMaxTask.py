@@ -180,6 +180,20 @@ class MentalRayTask( GNRTask ):
 
     #######################
     def queryExtraDataForTestTask( self ):
+
+        commonPathPrefix = os.path.commonprefix( self.taskResources )
+        commonPathPrefix = os.path.dirname( commonPathPrefix )
+
+        workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
+        workingDirectory    = os.path.dirname( workingDirectory )
+
+        presetFile = os.path.relpath( os.path.dirname( self.taskDefinition.rendererOptions.preset ), os.path.dirname( self.mainProgramFile ) )
+        presetFile = os.path.join( presetFile, self.taskDefinition.rendererOptions.preset )
+
+
+        sceneFile = os.path.relpath( os.path.dirname(self.taskDefinition.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
+        sceneFile = os.path.join( sceneFile, self.taskDefinition.mainSceneFile )
+
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : 0,
                                     "endTask" : 1,
@@ -187,11 +201,11 @@ class MentalRayTask( GNRTask ):
                                     "numSubtasks" : self.numSubtasks,
                                     "numCores" : self.numCores,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFile" : self.taskDefinition.mainSceneFile,
+                                    "sceneFile" : sceneFile,
                                     "sceneFileSrc": self.sceneFileSrc,
                                     "width" : self.taskDefinition.resolution[0],
                                     "height": self.taskDefinition.resolution[1],
-                                    "presetFile": self.taskDefinition.rendererOptions.preset,
+                                    "presetFile": presetFile,
                                     "cmdFile": self.taskDefinition.rendererOptions.cmd
                                 }
 
@@ -212,8 +226,7 @@ class MentalRayTask( GNRTask ):
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
 
-        ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, self.testTaskResPath)
-        ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
+        ctd.workingDirectory    = workingDirectory
 
         return ctd
 

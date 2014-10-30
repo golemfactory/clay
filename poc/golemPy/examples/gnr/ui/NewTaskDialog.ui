@@ -100,7 +100,7 @@
           <x>10</x>
           <y>10</y>
           <width>360</width>
-          <height>211</height>
+          <height>212</height>
          </rect>
         </property>
         <layout class="QFormLayout" name="formLayout_2">
@@ -363,6 +363,26 @@
            </property>
           </widget>
          </item>
+         <item row="3" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout_10">
+           <item>
+            <widget class="QSpinBox" name="totalSpinBox"/>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="optimizeTotalCheckBox">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>optimize</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
          <item row="4" column="0">
           <widget class="QLabel" name="label_14">
            <property name="text">
@@ -451,26 +471,6 @@
             <widget class="QPushButton" name="addResourceButton">
              <property name="text">
               <string>Add Resources</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item row="3" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout_10">
-           <item>
-            <widget class="QSpinBox" name="totalSpinBox"/>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="optimizeTotalCheckBox">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string>optimize</string>
              </property>
             </widget>
            </item>

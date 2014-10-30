@@ -37,9 +37,10 @@ def buildPBRTRendererInfo():
     
 
     renderer                = RendererInfo( "PBRT", defaults, PbrtTaskBuilder, PbrtDialog, PbrtDialogCustomizer, PbrtRendererOptions )
-    renderer.filters        = ["box", "gaussian", "mitchell", "sinc", "triangle" ]
-    renderer.pathTracers    = ["adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified"]
+    renderer.filters        = [ "box", "gaussian", "mitchell", "sinc", "triangle" ]
+    renderer.pathTracers    = [ "adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified" ]
     renderer.outputFormats  = [ "BMP", "DCX", "EPS", "EXR", "GIF", "IM", "IM", "JPEG", "PCD", "PCX", "PDF", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
+    renderer.scenFileExt    = [ "pbrt" ]
 
     return renderer
 
@@ -58,7 +59,7 @@ def buildMentalRayRendererInfo():
     renderer.filters        = ["box", "gaussian", "mitchell", "sinc", "triangle" ]
     renderer.pathTracers    = ["adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified"]
     renderer.outputFormats  = [ "BMP", "DCX", "EPS", "EXR", "GIF", "IM", "IM", "JPEG", "PCD", "PCX", "PDF", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
-    renderer.sceneFileExt = "max"
+    renderer.sceneFileExt   = [ "max",  "zip" ]
 
     return renderer
 
