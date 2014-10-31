@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>809</width>
+    <width>811</width>
     <height>690</height>
    </rect>
   </property>
@@ -546,6 +546,16 @@
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="QLabel" name="errorLabel">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
      </layout>
     </item>
    </layout>
@@ -555,7 +565,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>809</width>
+     <width>811</width>
      <height>21</height>
     </rect>
    </property>

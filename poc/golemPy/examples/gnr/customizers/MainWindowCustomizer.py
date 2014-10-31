@@ -2,7 +2,7 @@ import os
 import cPickle as pickle
 import datetime
 from PyQt4 import QtCore
-from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QMenu, QFileDialog, QMessageBox
+from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QMenu, QFileDialog, QMessageBox, QPalette
 
 from examples.gnr.ui.MainWindow import GNRMainWindow
 from examples.gnr.ui.NewTaskDialog import NewTaskDialog
@@ -44,6 +44,10 @@ class MainWindowCustomizer:
         self.taskDetailsDialog              = None
         self.taskDetailsDialogCustomizer    = None
         self.previewPath = os.path.join( os.getcwd(), GNREnv.getPreviewFile() )
+
+        palette = QPalette()
+        palette.setColor( QPalette.Foreground, QtCore.Qt.red )
+        self.gui.ui.errorLabel.setPalette( palette )
 
     #############################
     def __setupConnections( self ):
