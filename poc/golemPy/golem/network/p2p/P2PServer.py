@@ -43,7 +43,7 @@ class P2PServer:
         logger.info( "Port {} opened - listening".format( self.curPort ) )
 
     #############################
-    def __listeningFailure( self ):
+    def __listeningFailure( self, *args  ):
         logger.error( "Listening on ports {} to {} failure".format( self.configDesc.startPort, self.configDesc.endPort ) )
 
 

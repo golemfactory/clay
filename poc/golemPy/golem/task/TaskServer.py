@@ -188,15 +188,10 @@ class TaskServer:
 
     #############################
     def __listeningFailure(self, p):
-        logger.warning( "Opening {} port for listening failed, trying the next one".format( self.curPort ) )
-
-        self.curPort = self.curPort + 1
-
-        if self.curPort <= self.configDesc.endPort:
-            self.__runListenOnce()
-        else:
-            #FIXME: some graceful terminations should take place here
-            sys.exit(0)
+        self.curPort = 0
+        logger.error( "Task server not listening" )
+        #FIXME: some graceful terminations should take place here
+        # sys.exit(0)
 
     #############################   
     def __connectAndSendTaskRequest( self, clientId, taskClientId, address, port, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores ):

@@ -119,6 +119,7 @@ def main():
     for env in environments:
         client.environmentsManager.addEnvironment( env )
     logic.registerClient( client )
+    logic.checkNetworkState()
     #logic.startNodesManagerClient()
 #    infoServer = InfoServer( client, 55555, 55556, 59999 )
 #    infoServer.start()

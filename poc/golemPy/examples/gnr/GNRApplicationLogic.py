@@ -65,6 +65,13 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.startNodesManagerFunction()
 
     ######################
+    def checkNetworkState( self ):
+        listenPort = self.client.p2pservice.p2pServer.curPort
+        taskServerPort = self.client.taskServer.curPort
+        if listenPort == 0 or taskServerPort == 0:
+            self.customizer.gui.ui.errorLabel.setText("Application not listening, check config file.")
+
+    ######################
     def startNodesManagerClient( self):
         if self.client:
             configDesc = self.client.configDesc
