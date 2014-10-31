@@ -149,7 +149,7 @@ class PbrtRenderTask( GNRTask ):
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
 
-        if ( self.lastTask != self.totalTasks ):
+        if self.lastTask != self.totalTasks :
             perf = max( int( float( perfIndex ) / 1500 ), 1)
             endTask = min( self.lastTask + perf, self.totalTasks )
             startTask = self.lastTask
@@ -265,7 +265,7 @@ class PbrtRenderTask( GNRTask ):
                 fh.write( decompress( tr[ 1 ] ) )
                 fh.close()
 
-                if (self.outputFormat != "EXR"):
+                if self.outputFormat != "EXR":
                     self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
                 else:
                     self.collectedFileNames.append( os.path.join(tmpDir, tr[0] ) )
@@ -275,7 +275,7 @@ class PbrtRenderTask( GNRTask ):
 
         if self.numTasksReceived == self.totalTasks:
             outputFileName = u"{}".format( self.outputFile, self.outputFormat )
-            if (self.outputFormat != "EXR"):
+            if self.outputFormat != "EXR":
                 self.collector.finalize().save( outputFileName, self.outputFormat )
                 self.previewFilePath = outputFileName
             else:

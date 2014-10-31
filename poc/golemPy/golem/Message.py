@@ -178,9 +178,12 @@ class MessagePeers( Message ):
 
     PEERS_STR = u"PEERS"
 
-    def __init__( self, peersArray = [], dictRepr = None ):
+    def __init__( self, peersArray = None, dictRepr = None ):
         Message.__init__(self, MessagePeers.Type)
-        
+
+        if peersArray is None:
+            peersArray = []
+
         self.peersArray = peersArray
 
         if dictRepr:
@@ -195,7 +198,7 @@ class MessageGetTasks( Message ):
 
     GET_TASTKS_STR = u"GET_TASKS"
 
-    def __init__( self, peersArray = [], dictRepr = None ):
+    def __init__( self, dictRepr = None ):
         Message.__init__(self, MessageGetTasks.Type)
 
         if dictRepr:
@@ -210,9 +213,12 @@ class MessageTasks( Message ):
 
     TASKS_STR = u"TASKS"
 
-    def __init__( self, tasksArray = [], dictRepr = None ):
+    def __init__( self, tasksArray = None, dictRepr = None ):
         Message.__init__(self, MessageTasks.Type)
-        
+
+        if tasksArray is None:
+            tasksArray = []
+
         self.tasksArray = tasksArray
 
         if dictRepr:
@@ -473,7 +479,7 @@ class MessageKillNode( Message ):
         Message.__init__(self, MessageKillNode.Type)
 
         if dictRepr:
-            dictRepr[ 0 ] == MessageKillNode.KILL_STR
+            assert dictRepr[ 0 ] == MessageKillNode.KILL_STR
 
     def dictRepr(self):
         return [ MessageKillNode.KILL_STR ]
@@ -487,7 +493,7 @@ class MessageKillAllNodes( Message ):
         Message.__init__(self, MessageKillAllNodes.Type)
 
         if dictRepr:
-            dictRepr[ 0 ] == MessageKillAllNodes.KILLALL_STR
+            assert dictRepr[ 0 ] == MessageKillAllNodes.KILLALL_STR
 
     def dictRepr(self):
         return [ MessageKillAllNodes.KILLALL_STR ]
@@ -561,7 +567,7 @@ if __name__ == "__main__":
     db.appendLenPrefixedString( dcm.serialize() )
 
     print db.dataSize()
-    streamedData = db.readAll();
+    streamedData = db.readAll()
     print len( streamedData )
 
     db.appendString( streamedData )

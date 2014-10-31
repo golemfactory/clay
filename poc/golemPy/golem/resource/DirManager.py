@@ -22,9 +22,9 @@ class DirManager:
         self.output = output
 
     ######################
-    def clearDir( self, dir ):
-        for i in os.listdir( dir ):
-            path = os.path.join( dir, i )
+    def clearDir( self, d ):
+        for i in os.listdir( d ):
+            path = os.path.join( d, i )
             if os.path.isfile( path ):
                 os.remove( path )
             if os.path.isdir( path ):

@@ -122,7 +122,7 @@ def exr_to_pil( exrFile ):
     #lightest = max([hi for (lo,hi) in extrema])
     scale = 255.0
     def normalize_0_255(v):
-        return (v * scale)
+        return v * scale
     rgb8 = [im.point(normalize_0_255).convert("L") for im in rgbf]
     return Image.merge("RGB", rgb8)
 
@@ -140,7 +140,7 @@ class PbrtTaksCollector:
 
         d, l = get_single_rgbf_extrema( rgbf )
 
-        if self.darkest == None:
+        if self.darkest:
             self.darkest = d
             self.lightest = l
 

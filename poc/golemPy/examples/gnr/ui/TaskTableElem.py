@@ -34,7 +34,7 @@ class TaskTableElem:
 
     ############################
     def setProgress( self, val ):
-        if val >= 0.0 and val <= 1.0:
+        if 0.0 <= val <= 1.0:
             self.progress = val
         else:
             assert False, "Wrong progress setting {}".format( val )

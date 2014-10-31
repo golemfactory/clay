@@ -38,9 +38,9 @@ class TaskResourceHeader:
 
         absDirs = splitPath( absoluteRoot )
 
-        for file in choosenFiles:
+        for f in choosenFiles:
 
-            dir, fileName = os.path.split( file )
+            dir, fileName = os.path.split( f )
             dirs = splitPath( dir )[len(absDirs):]
 
             lastHeader = curTh
@@ -54,7 +54,7 @@ class TaskResourceHeader:
                     lastHeader.subDirHeaders.append( childSubDirHeader )
                     lastHeader = childSubDirHeader
 
-            hsh = SimpleHash.hash_file_base64( file )
+            hsh = SimpleHash.hash_file_base64( f )
             lastHeader.filesData.append( (fileName, hsh ) )
 
         return curTh

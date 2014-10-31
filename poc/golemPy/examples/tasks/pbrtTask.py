@@ -35,6 +35,7 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
         cmd = format_pbrt_cmd( pbrt, startTask, endTask, totalTasks, numSubtasks, numCores, outputFiles, tmpSceneFile.name )
     else:
         print "Scene file does not exist"
+        return []
         
     print cmd
    

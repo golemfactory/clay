@@ -309,7 +309,7 @@ class Client:
         else:
             msg = "Waiting for tasks...\n"
 
-        peers = self.p2pservice.getPeers();
+        peers = self.p2pservice.getPeers()
 
         msg += "Active peers in network: {}".format(len(peers))
-        return msg;
+        return msg

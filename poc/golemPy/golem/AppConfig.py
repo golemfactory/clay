@@ -119,7 +119,7 @@ class AppConfig:
         logger.info("Trying to register current process")
         localId = ps.registerSelf()
 
-        if( localId < 0 ):
+        if localId < 0:
             logger.error("Failed to register current process - bailing out")
             return None
 

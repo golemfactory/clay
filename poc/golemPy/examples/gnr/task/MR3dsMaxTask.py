@@ -108,13 +108,13 @@ class MentalRayTask( GNRTask ):
         self.subTasksGiven      = {}
         self.numTasksReceived = 0
 
-        self.tmpCnt = 0;
+        self.tmpCnt = 0
 
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
 
-        if ( self.lastTask != self.totalTasks ):
+        if self.lastTask != self.totalTasks:
             self.lastTask += 1
             startTask = self.lastTask
             endTask = self.lastTask

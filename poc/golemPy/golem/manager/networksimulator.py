@@ -127,7 +127,7 @@ class NodeSimulator(QtCore.QThread):
         loggerMsg = "Starting node '{}' local tasks: {} remote tasks: {}".format( self.uid, self.numLocalTasks, self.numRemoteTasks )
         logger.info( "{} ->local task dura: {} secs, remote task dura: {} secs".format( loggerMsg, self.localTaskDuration, self.remoteTaskDuration ) )
 
-        while( time.time() - startTime < self.totalDuration ):
+        while time.time() - startTime < self.totalDuration:
                 
             if GLOBAL_SHUTDOWN[ 0 ]:
                 logger.warning( "{}: Global shutdown triggered - bailing out".format( self.uid ) )

@@ -331,8 +331,6 @@ class MainWindowCustomizer:
 def insertItem( root, pathTable ):
     assert isinstance( root, QTreeWidgetItem )
 
-    found = False
-
     if len( pathTable ) > 0:
         for i in range( root.childCount() ):
             if pathTable[ 0 ] == "{}".format( root.child( i ).text( 0 ) ):

@@ -65,6 +65,7 @@ class InfoServer( Thread ):
             return False
 
     def __connectToAdditionalPorts( self ):
+        infoClient = None
         for port in range( self.startPort, self.endPort ):
             try:
                 self.__bindPort( port )
