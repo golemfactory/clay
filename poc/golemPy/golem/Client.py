@@ -92,7 +92,11 @@ class GolemClientEventListener:
         pass
 
     ############################
-    def  taskUpdated( self, taskId ):
+    def taskUpdated( self, taskId ):
+        pass
+
+    ############################
+    def networkConnected( self ):
         pass
 
 
@@ -267,6 +271,8 @@ class Client:
                 with self.snapshotLock:
                     self.__makeNodeStateSnapshot()
                 self.lastNSSTime = time.time()
+                for l in self.listeners:
+                    l.checkNetworkState()
 
                 #self.managerServer.sendStateMessage( self.lastNodeStateSnapshot )
 

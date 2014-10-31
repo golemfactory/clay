@@ -28,6 +28,10 @@ class GNRClientEventListener( GolemClientEventListener ):
     def taskUpdated( self, taskId ):
         self.logic.taskStatusChanged( taskId )
 
+    #####################
+    def checkNetworkState( self ):
+        self.logic.checkNetworkState()
+
 taskToRemoveStatus = [ TaskStatus.aborted, TaskStatus.failure, TaskStatus.finished, TaskStatus.paused ]
 
 class GNRApplicationLogic( QtCore.QObject ):
@@ -70,6 +74,13 @@ class GNRApplicationLogic( QtCore.QObject ):
         taskServerPort = self.client.taskServer.curPort
         if listenPort == 0 or taskServerPort == 0:
             self.customizer.gui.ui.errorLabel.setText("Application not listening, check config file.")
+            return
+        peersNum = len( self.client.p2pservice.peers )
+        if peersNum == 0:
+            self.customizer.gui.ui.errorLabel.setText("Not connected to Golem Network. Check seed parameters.")
+            return
+
+        self.customizer.gui.ui.errorLabel.setText("")
 
     ######################
     def startNodesManagerClient( self):
