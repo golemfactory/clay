@@ -37,7 +37,6 @@ class TaskDefinition:
     def __init__( self ):
         self.taskId                 = ""
 
-        self.minPower           = 0
         self.minSubtask         = 0
         self.maxSubtask         = 0
         self.fullTaskTimeout    = 0

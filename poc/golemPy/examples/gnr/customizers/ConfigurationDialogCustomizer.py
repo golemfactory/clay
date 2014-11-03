@@ -4,6 +4,7 @@ from PyQt4 import QtCore
 
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
+from MemoryHelper import resourceSizeToDisplay
 
 logger = logging.getLogger(__name__)
 
@@ -54,26 +55,13 @@ class ConfigurationDialogCustomizer:
             maxMemorySize = 250 * 1024
             logger.error( "Wrong value for maximum memory usage: {}".format( str( e ) ) )
 
-        maxResourceSize, index = self.__resourceSizeToDisplay( maxResourceSize )
+        maxResourceSize, index = resourceSizeToDisplay( maxResourceSize )
         self.gui.ui.maxResourceSizeComboBox.setCurrentIndex( index )
         self.gui.ui.maxResourceSizeSpinBox.setValue( maxResourceSize )
 
-        maxMemorySize, index = self.__resourceSizeToDisplay( maxMemorySize )
+        maxMemorySize, index = resourceSizeToDisplay( maxMemorySize )
         self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex( index )
         self.gui.ui.maxMemoryUsageSpinBox.setValue( maxMemorySize )
-
-
-    #############################
-    def __resourceSizeToDisplay( self, maxResourceSize ):
-        if maxResourceSize / ( 1024 * 1024 ) > 0:
-            maxResourceSize /= ( 1024 * 1024 )
-            index = 2
-        elif maxResourceSize / 1024 > 0:
-            maxResourceSize /= 1024
-            index = 1
-        else:
-            index = 0
-        return maxResourceSize, index
 
     #############################
     def __setupConnections( self ):

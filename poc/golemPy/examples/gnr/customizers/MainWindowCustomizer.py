@@ -24,6 +24,7 @@ from StatusWindowCustomizer import StatusWindowCustomizer
 from ChangeTaskDialogCustomizer import ChangeTaskDialogCustomizer
 from InfoTaskDialogCustomizer import InfoTaskDialogCustomizer
 from EnvironmentsDialogCustomizer import EnvironmentsDialogCustomizer
+from MemoryHelper import resourceSizeToDisplay, translateResourceIndex
 
 import time
 import logging
@@ -96,7 +97,8 @@ class MainWindowCustomizer:
         from examples.gnr.TaskState import GNRTaskState
         assert isinstance( t, GNRTaskState )
 
-        self.gui.ui.minNodePower.setText( "{} ray per pixel".format( t.definition.minPower ) )
+        mem, index = resourceSizeToDisplay( t.definition.estimatedMemory / 1024 )
+        self.gui.ui.estimatedMemoryLabel.setText( "{} {}".format( mem, translateResourceIndex( index ) ) )
         self.gui.ui.minSubtask.setText( "{} pixels".format( t.definition.minSubtask ) )
         self.gui.ui.maxSubtask.setText( "{} pixels".format( t.definition.maxSubtask ) )
         self.gui.ui.subtaskTimeout.setText( "{} minutes".format( int( t.definition.subtaskTimeout / 60.0 ) ) )
