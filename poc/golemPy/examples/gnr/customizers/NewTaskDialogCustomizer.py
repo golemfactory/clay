@@ -63,6 +63,24 @@ class NewTaskDialogCustomizer:
         QtCore.QObject.connect(self.gui.ui.totalSpinBox, QtCore.SIGNAL( "valueChanged( const QString )" ), self.__taskSettingsChanged )
 
     #############################
+    def __init( self ):
+        renderers = self.logic.getRenderers()
+        dr = self.logic.getDefaultRenderer()
+        self.rendererOptions = dr.options()
+
+        self.gui.ui.taskIdLabel.setText( self.__generateNewTaskUID() )
+
+        for k in renderers:
+            r = renderers[ k ]
+            self.gui.ui.rendererComboBox.addItem( r.name )
+
+        self.gui.ui.totalSpinBox.setRange( self.rendererOptions.minSubtasks, self.rendererOptions.maxSubtasks )
+        self.gui.ui.totalSpinBox.setValue( self.rendererOptions.defaultSubtasks )
+
+        self.gui.ui.outputResXSpinBox.setValue ( dr.defaults.resolution[0] )
+        self.gui.ui.outputResYSpinBox.setValue ( dr.defaults.resolution[1] )
+
+    #############################
     def __updateRendererOptions( self, name ):
         r = self.logic.getRenderer( name )
 
@@ -107,8 +125,8 @@ class NewTaskDialogCustomizer:
 
         self.gui.ui.outputFileLineEdit.clear()
 
-        self.gui.ui.outputResXSpinBox.setValue( dr.defaults.outputResX )
-        self.gui.ui.outputResYSpinBox.setValue( dr.defaults.outputResY )
+        self.gui.ui.outputResXSpinBox.setValue( dr.defaults.resolution[0] )
+        self.gui.ui.outputResYSpinBox.setValue( dr.defaults.resolution[1] )
 
         if self.addTaskResourceDialog:
             self.addTaskResourcesDialogCustomizer.resources = []
@@ -299,21 +317,6 @@ class NewTaskDialogCustomizer:
     def __generateNewTaskUID( self ):
         import uuid
         return "{}".format( uuid.uuid4() )
-
-    #############################
-    def __init( self ):
-        renderers = self.logic.getRenderers()
-        dr = self.logic.getDefaultRenderer()
-        self.rendererOptions = dr.options()
-
-        self.gui.ui.taskIdLabel.setText( self.__generateNewTaskUID() )
-
-        for k in renderers:
-            r = renderers[ k ]
-            self.gui.ui.rendererComboBox.addItem( r.name )
-
-        self.gui.ui.totalSpinBox.setRange( self.rendererOptions.minSubtasks, self.rendererOptions.maxSubtasks )
-        self.gui.ui.totalSpinBox.setValue( self.rendererOptions.defaultSubtasks )
 
     #############################
     def __getCurrentRenderer( self ):

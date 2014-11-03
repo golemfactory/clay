@@ -29,14 +29,12 @@ class RendererInfo:
 class RendererDefaults:
     #########################
     def __init__( self ):
-        self.samplesPerPixel    = 0
         self.outputFormat       = ""
         self.mainProgramFile    = ""
-        self.fullTaskTimeout    = 0
-        self.minSubtaskTime     = 0
-        self.subtaskTimeout     = 0
-        self.outputResX         = 800
-        self.outputResY         = 600
+        self.fullTaskTimeout    = 4 * 3600
+        self.minSubtaskTime     = 60
+        self.subtaskTimeout     = 20 * 60
+        self.resolution         = [800, 600]
 
 class TestTaskInfo:
     #########################
@@ -48,22 +46,28 @@ class TaskDefinition:
     #########################
     def __init__( self ):
         self.id                 = ""
+
         self.minPower           = 0
         self.minSubtask         = 0
         self.maxSubtask         = 0
+        self.fullTaskTimeout    = 0
         self.subtaskTimeout     = 0
         self.minSubtaskTime     = 0
+
         self.resolution         = [ 0, 0 ]
         self.renderer           = None
-        self.outputFile         = ""
+
         self.taskResources      = []
-        self.fullTaskTimeout    = 0    
+        self.resources          = []
+        self.rendererOptions      = None
+
         self.mainProgramFile    = ""
         self.mainSceneFile      = ""
+        self.outputFile         = ""
         self.outputFormat       = ""
-        self.resources          = []
+
         self.estimatedMemory    = 0
-        self.rendererOptions      = None
+
         self.totalSubtasks      = 0
         self.optimizeTotal      = False
 

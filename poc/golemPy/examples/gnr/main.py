@@ -28,10 +28,6 @@ from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
 
 def buildPBRTRendererInfo():
     defaults = RendererDefaults()
-    defaults.fullTaskTimeout    = 4 * 3600
-    defaults.minSubtaskTime     = 60
-    defaults.subtaskTimeout     = 20 * 60
-    defaults.samplesPerPixel    = 200
     defaults.outputFormat       = "EXR"
     defaults.mainProgramFile    = "d:/test_run/pbrt_compact.py"
     
@@ -47,10 +43,6 @@ def buildPBRTRendererInfo():
 
 def buildMentalRayRendererInfo():
     defaults = RendererDefaults()
-    defaults.fullTaskTimeout    = 4 * 3600
-    defaults.minSubtaskTime     = 60
-    defaults.subtaskTimeout     = 20 * 60
-    defaults.samplesPerPixel    = 200
     defaults.outputFormat       = "EXR"
     defaults.mainProgramFile    = "d:/test_run/pbrt_compact.py"
 

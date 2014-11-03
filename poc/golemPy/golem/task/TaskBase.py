@@ -1,6 +1,5 @@
 import time
 import abc
-from TaskState import TaskStatus
 
 class TaskHeader:
     #######################
