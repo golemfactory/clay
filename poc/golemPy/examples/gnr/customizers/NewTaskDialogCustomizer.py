@@ -331,7 +331,7 @@ class NewTaskDialogCustomizer:
     def __queryTaskDefinition( self ):
         definition      = TaskDefinition()
 
-        definition.id                = u"{}".format( self.gui.ui.taskIdLabel.text() )
+        definition.taskId                = u"{}".format( self.gui.ui.taskIdLabel.text() )
         definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime = getTimeValues( self.gui )
         definition.renderer          = self.__getCurrentRenderer().name
         definition.rendererOptions = self.rendererOptions

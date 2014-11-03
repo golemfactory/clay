@@ -28,21 +28,6 @@ def main():
     logic   = GNRApplicationLogic()
     app     = GNRGui( logic )
 
-    # task = TaskState()
-    # computer = ComputerState()
-    # computer.subtaskState.subtaskDefinition = "sdasuncbnasocbno \n duiasidun uia\n diausndianu \n"
-    # computer.subtaskState.subtaskId = "5675128936189263"
-    # computer.subtaskState.subtaskProgress = 0.43
-    # computer.subtaskState.subtaskRemTime = 3200
-    # computer.subtaskState.subtaskStatus = TaskStatus.computing
-    # computer.ipAddress = "123.53.23.11"
-    # computer.performance = 20000
-    # computer.nodeId = "jsajcnas89090casdc"
-    #
-    # task.computers[ computer.nodeId ] = computer
-    #
-    # task.definition.id = "asiomxcasoncd90jscsnpac"
-
     try:
         import qt4reactor
     except ImportError:
@@ -52,8 +37,6 @@ def main():
     from twisted.internet import reactor
 
     logic.registerGui( app.getMainWindow() )
-
-    #app.appLogic.addTasks( [ task ] )
 
     logic.registerNewRendererType( buildPBRTRendererInfo() )
     logic.registerNewRendererType( buildMentalRayRendererInfo() )

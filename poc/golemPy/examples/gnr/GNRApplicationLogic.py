@@ -97,10 +97,10 @@ class GNRApplicationLogic( QtCore.QObject ):
             logger.error("Can't register nodes manager client. No client instance.")
 
     ######################
-    def getTask( self, id ):
-        assert id in self.tasks, "GNRApplicationLogic: task {} not added".format( id )
+    def getTask( self, taskId ):
+        assert taskId in self.tasks, "GNRApplicationLogic: task {} not added".format( taskId )
 
-        return self.tasks[ id ]
+        return self.tasks[ taskId ]
 
     ######################
     def getRenderers( self ):
@@ -150,7 +150,7 @@ class GNRApplicationLogic( QtCore.QObject ):
                                           subtaskTimeout)
         task = Task.buildTask(  taskBuilder )
         taskDefinition = TaskDefinition()
-        taskDefinition.id = task.header.taskId
+        taskDefinition.taskId = task.header.taskId
         taskDefinition.taskResources = task.taskResources
         self.addTaskFromDefinition( taskDefinition )
         self.client.enqueueNewTask( task )
@@ -242,11 +242,11 @@ class GNRApplicationLogic( QtCore.QObject ):
 
         for t in tasks:
             assert isinstance( t, GNRTaskState )
-            if t.definition.id not in self.tasks:
-                self.tasks[ t.definition.id ] = t
+            if t.definition.taskId not in self.tasks:
+                self.tasks[ t.definition.taskId ] = t
                 self.customizer.addTask( t )
             else:
-                self.tasks[ t.definition.id ] = t
+                self.tasks[ t.definition.taskId ] = t
 
         self.customizer.updateTasks( self.tasks )
 
@@ -342,7 +342,7 @@ class GNRApplicationLogic( QtCore.QObject ):
             assert False, "Should never be here!"
 
 
-        if self.customizer.currentTaskHighlighted.definition.id == taskId:
+        if self.customizer.currentTaskHighlighted.definition.taskId == taskId:
             self.customizer.updateTaskAdditionalInfo( self.tasks[ taskId ] )
 
     ######################

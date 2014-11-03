@@ -72,24 +72,24 @@ class MainWindowCustomizer:
     # Updates tasks information in gui
     def updateTasks( self, tasks ):
         for i in range( self.gui.ui.renderTaskTableWidget.rowCount() ):
-            taskID = self.gui.ui.renderTaskTableWidget.item( i, 0 ).text()
-            taskID = "{}".format( taskID )
-            if taskID in tasks:
-                self.gui.ui.renderTaskTableWidget.item( i, 1 ).setText( tasks[ taskID ].taskState.status )
+            taskId = self.gui.ui.renderTaskTableWidget.item( i, 0 ).text()
+            taskId = "{}".format( taskId )
+            if taskId in tasks:
+                self.gui.ui.renderTaskTableWidget.item( i, 1 ).setText( tasks[ taskId ].taskState.status )
                 progressBarInBoxLayout = self.gui.ui.renderTaskTableWidget.cellWidget( i, 2 )
                 layout = progressBarInBoxLayout.layout()
                 pb = layout.itemAt( 0 ).widget()
-                pb.setProperty( "value", int( tasks[ taskID ].taskState.progress * 100.0 ) )
+                pb.setProperty( "value", int( tasks[ taskId ].taskState.progress * 100.0 ) )
                 if self.taskDetailsDialogCustomizer:
-                    if self.taskDetailsDialogCustomizer.gnrTaskState.definition.id == taskID:
-                        self.taskDetailsDialogCustomizer.updateView( tasks[ taskID ].taskState )
+                    if self.taskDetailsDialogCustomizer.gnrTaskState.definition.taskId == taskId:
+                        self.taskDetailsDialogCustomizer.updateView( tasks[ taskId ].taskState )
             else:
                 assert False, "Trying to update not added task."
         
     ############################
     # Add task information in gui
     def addTask( self, task ):
-        self.__addTask( task.definition.id, task.status )
+        self.__addTask( task.definition.taskId, task.status )
 
     ############################
     def updateTaskAdditionalInfo( self, t ):
@@ -133,23 +133,23 @@ class MainWindowCustomizer:
         self.currentTaskHighlighted = t
 
     ############################
-    def __addTask( self, id, status ):
+    def __addTask( self, taskId, status ):
         currentRowCount = self.gui.ui.renderTaskTableWidget.rowCount()
         self.gui.ui.renderTaskTableWidget.insertRow( currentRowCount )
 
-        taskTableElem = TaskTableElem( id, status )
+        taskTableElem = TaskTableElem( taskId, status )
 
         for col in range( 0, 2 ): self.gui.ui.renderTaskTableWidget.setItem( currentRowCount, col, taskTableElem.getColumnItem( col ) )
 
         self.gui.ui.renderTaskTableWidget.setCellWidget( currentRowCount, 2, taskTableElem.progressBarInBoxLayoutWidget )
 
-        self.updateTaskAdditionalInfo( self.logic.getTask( id ) )
+        self.updateTaskAdditionalInfo( self.logic.getTask( taskId ) )
 
     ############################
-    def removeTask( self, id ):
+    def removeTask( self, taskId ):
 
         for row in range(0, self.gui.ui.renderTaskTableWidget.rowCount()):
-            if self.gui.ui.renderTaskTableWidget.item(row, 0).text() == id:
+            if self.gui.ui.renderTaskTableWidget.item(row, 0).text() == taskId:
                 self.gui.ui.renderTaskTableWidget.removeRow( row )
                 return
 

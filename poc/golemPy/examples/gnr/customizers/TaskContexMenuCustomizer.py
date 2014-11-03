@@ -39,39 +39,39 @@ class TaskContextMenuCustomizer:
     # SLOTS
     ###########################
     def __abortTaskTriggered( self ):
-        self.logic.abortTask( self.gnrTaskState.definition.id )
+        self.logic.abortTask( self.gnrTaskState.definition.taskId )
 
     ###########################
     def __restartTaskTriggered( self ):
-        self.logic.restartTask( self.gnrTaskState.definition.id )
+        self.logic.restartTask( self.gnrTaskState.definition.taskId )
 
     ###########################
     def __deleteTaskTriggered( self ):
-        self.logic.deleteTask( self.gnrTaskState.definition.id )
+        self.logic.deleteTask( self.gnrTaskState.definition.taskId )
 
     ###########################
     def __newTaskTriggered( self ):
-        self.logic.showNewTaskDialog( self.gnrTaskState.definition.id )
+        self.logic.showNewTaskDialog( self.gnrTaskState.definition.taskId )
 
     ###########################
     def __startTaskTriggered( self ):
-        self.logic.startTask( self.gnrTaskState.definition.id )
+        self.logic.startTask( self.gnrTaskState.definition.taskId )
 
     ###########################
     def __pauseTaskTriggered( self ):
-        self.logic.pauseTask( self.gnrTaskState.definition.id )
+        self.logic.pauseTask( self.gnrTaskState.definition.taskId )
 
     ###########################
     def __resumeTaskTriggered( self ):
-        self.logic.resumeTask( self.gnrTaskState.definition.id )
+        self.logic.resumeTask( self.gnrTaskState.definition.taskId )
 
     ###########################
     def __showTaskDetailsTriggered( self ):
-        self.logic.showTaskDetails( self.gnrTaskState.definition.id )
+        self.logic.showTaskDetails( self.gnrTaskState.definition.taskId )
 
     ###########################
     def __changeTaskTriggered( self ):
-        self.logic.changeTask( self.gnrTaskState.definition.id )
+        self.logic.changeTask( self.gnrTaskState.definition.taskId )
 
 
     # ######################

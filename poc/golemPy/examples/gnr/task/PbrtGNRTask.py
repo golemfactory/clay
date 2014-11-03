@@ -55,7 +55,7 @@ class PbrtTaskBuilder( GNRTaskBuilder ):
         mainSceneDir = os.path.dirname( self.taskDefinition.mainSceneFile )
 
         pbrtTask = PbrtRenderTask( self.clientId,
-                                   self.taskDefinition.id,
+                                   self.taskDefinition.taskId,
                                    mainSceneDir,
                                    self.taskDefinition.mainProgramFile,
                                    self.__calculateTotal( self.taskDefinition ),

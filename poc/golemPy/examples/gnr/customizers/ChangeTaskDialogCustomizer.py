@@ -34,7 +34,7 @@ class ChangeTaskDialogCustomizer:
     def loadTaskDefinition( self, definition ):
         assert isinstance( definition, TaskDefinition )
 
-        self.gui.ui.taskIdLabel.setText( u"{}".format( definition.id ) )
+        self.gui.ui.taskIdLabel.setText( u"{}".format( definition.taskId ) )
         setTimeSpinBoxes( self.gui, definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime )
 
     #############################

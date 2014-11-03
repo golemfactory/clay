@@ -1,17 +1,6 @@
 from PyQt4 import QtCore
 from golem.task.TaskState import TaskState
 
-class TaskComputerInfo:
-    #########################
-    def __init__( self ):
-        self.id             = ""
-        self.subtaskId      = 0
-        self.status         = ""
-        self.progress       = 0.0
-        self.ip             = ""
-        self.power          = 0
-        self.subtaskDef     = ""
-
 class RendererInfo:
     #########################
     def __init__( self, name, defaults, taskBuilderType, dialog, dialogCustomizer, rendererOptions):
@@ -46,7 +35,7 @@ class TestTaskInfo:
 class TaskDefinition:
     #########################
     def __init__( self ):
-        self.id                 = ""
+        self.taskId                 = ""
 
         self.minPower           = 0
         self.minSubtask         = 0

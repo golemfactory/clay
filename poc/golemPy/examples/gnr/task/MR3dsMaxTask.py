@@ -92,7 +92,7 @@ class MentalRayTask( GNRTask ):
         GNRTask.__init__( self,
                           srcCode,
                           clientId,
-                          self.taskDefinition.id,
+                          self.taskDefinition.taskId,
                           returnAddress,
                           returnPort,
                           ThreeDSMaxEnvironment.getId(),
