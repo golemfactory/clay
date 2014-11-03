@@ -74,8 +74,8 @@ class NewTaskDialogCustomizer:
             r = renderers[ k ]
             self.gui.ui.rendererComboBox.addItem( r.name )
 
-        self.gui.ui.totalSpinBox.setRange( self.rendererOptions.minSubtasks, self.rendererOptions.maxSubtasks )
-        self.gui.ui.totalSpinBox.setValue( self.rendererOptions.defaultSubtasks )
+        self.gui.ui.totalSpinBox.setRange( dr.defaults.minSubtasks, dr.defaults.maxSubtasks )
+        self.gui.ui.totalSpinBox.setValue( dr.defaults.defaultSubtasks )
 
         self.gui.ui.outputResXSpinBox.setValue ( dr.defaults.resolution[0] )
         self.gui.ui.outputResYSpinBox.setValue ( dr.defaults.resolution[1] )
@@ -99,7 +99,7 @@ class NewTaskDialogCustomizer:
 
             setTimeSpinBoxes( self.gui, r.defaults.fullTaskTimeout, r.defaults.subtaskTimeout, r.defaults.minSubtaskTime )
 
-            self.gui.ui.totalSpinBox.setRange( self.rendererOptions.minSubtasks, self.rendererOptions.maxSubtasks )
+            self.gui.ui.totalSpinBox.setRange( r.defaults.minSubtasks, r.defaults.maxSubtasks )
 
         else:
             assert False, "Unreachable"
@@ -137,8 +137,8 @@ class NewTaskDialogCustomizer:
         self.gui.ui.finishButton.setEnabled( False )
         self.gui.ui.testTaskButton.setEnabled( True )
 
-        self.gui.ui.totalSpinBox.setRange( self.rendererOptions.minSubtasks, self.rendererOptions.maxSubtasks )
-        self.gui.ui.totalSpinBox.setValue( self.rendererOptions.defaultSubtasks )
+        self.gui.ui.totalSpinBox.setRange( dr.defaults.minSubtasks, dr.defaults.maxSubtasks )
+        self.gui.ui.totalSpinBox.setValue( dr.defaults.defaultSubtasks )
         self.gui.ui.totalSpinBox.setEnabled( True )
         self.gui.ui.optimizeTotalCheckBox.setChecked( False )
 
@@ -231,11 +231,14 @@ class NewTaskDialogCustomizer:
         assert isinstance( definition, TaskDefinition )
         rendererItem = self.gui.ui.rendererComboBox.findText( definition.renderer )
 
+
         if rendererItem >= 0:
             self.gui.ui.rendererComboBox.setCurrentIndex( rendererItem )
         else:
             logger.error( "Cannot load task, wrong renderer" )
             return
+
+        r = self.logic.getRenderer( definition.renderer )
 
         self.rendererOptions = definition.rendererOptions
 
@@ -257,7 +260,7 @@ class NewTaskDialogCustomizer:
             logger.error( "Cannot load task, wrong output format" )
             return
 
-        self.gui.ui.totalSpinBox.setRange( self.rendererOptions.minSubtasks, self.rendererOptions.maxSubtasks )
+        self.gui.ui.totalSpinBox.setRange( r.defaults.minSubtasks, r.defaults.maxSubtasks )
         self.gui.ui.totalSpinBox.setValue( definition.totalSubtasks )
         self.gui.ui.totalSpinBox.setEnabled( not definition.optimizeTotal )
         self.gui.ui.optimizeTotalCheckBox.setChecked( definition.optimizeTotal )

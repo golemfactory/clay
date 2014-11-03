@@ -14,20 +14,37 @@ from examples.gnr.task.SceneFileEditor import regenerateFile
 from GNRTask import GNRTask, GNRTaskBuilder
 from testtasks.pbrt.takscollector import PbrtTaksCollector, exr_to_pil
 from GNREnv import GNREnv
+from TaskState import RendererDefaults, RendererInfo
+from examples.gnr.ui.PbrtDialog import PbrtDialog
+from examples.gnr.customizers.PbrtDialogCustomizer import PbrtDialogCustomizer
 
 import OpenEXR, Imath
 from PIL import Image, ImageChops
 
 logger = logging.getLogger(__name__)
 
+def buildPBRTRendererInfo():
+    defaults = RendererDefaults()
+    defaults.outputFormat       = "EXR"
+    defaults.mainProgramFile    = os.path.normpath( os.path.join( os.environ.get( 'GOLEM' ), 'examples\\tasks\\pbrtTask.py' ) )
+    defaults.minSubtasks        = 4
+    defaults.maxSubtasks        = 200
+    defaults.defaultSubtasks    = 60
+
+
+    renderer                = RendererInfo( "PBRT", defaults, PbrtTaskBuilder, PbrtDialog, PbrtDialogCustomizer, PbrtRendererOptions )
+    renderer.outputFormats  = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF" ]
+    renderer.sceneFileExt    = [ "pbrt" ]
+
+    return renderer
+
 class PbrtRendererOptions:
     def __init__( self ):
         self.pixelFilter = "mitchell"
         self.samplesPerPixelCount = 32
         self.algorithmType = "lowdiscrepancy"
-        self.minSubtasks = 4
-        self.maxSubtasks = 200
-        self.defaultSubtasks = 60
+        self.filters = [ "box", "gaussian", "mitchell", "sinc", "triangle" ]
+        self.pathTracers = [ "adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified" ]
 
     def addToResources( self , resources ):
         return resources
@@ -63,14 +80,14 @@ class PbrtTaskBuilder( GNRTaskBuilder ):
         return pbrtTask
     #######################
     def __calculateTotal( self, definition ):
-        options = PbrtRendererOptions()
+        renderer = buildPBRTRendererInfo()
 
-        if (not definition.optimizeTotal) and (options.minSubtasks <= definition.totalSubtasks <= options.maxSubtasks):
+        if (not definition.optimizeTotal) and (renderer.defaults.minSubtasks <= definition.totalSubtasks <= renderer.defaults.maxSubtasks):
             return definition.totalSubtasks
 
         taskBase = 1000000
         allOp = definition.resolution[0] * definition.resolution[1] * definition.rendererOptions.samplesPerPixelCount
-        return max( options.minSubtasks, min( options.maxSubtasks, allOp / taskBase ) )
+        return max( renderer.defaults.minSubtasks, min( renderer.defaults.maxSubtasks, allOp / taskBase ) )
 
 class PbrtRenderTask( GNRTask ):
 

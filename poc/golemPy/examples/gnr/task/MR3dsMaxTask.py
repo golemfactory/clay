@@ -7,10 +7,13 @@ import pickle
 
 from GNRTask import GNRTaskBuilder, GNRTask
 from GNREnv import GNREnv
+from TaskState import RendererDefaults, RendererInfo
 from golem.task.TaskBase import ComputeTaskDef
 from golem.core.Compress import decompress
 from testtasks.pbrt.takscollector import PbrtTaksCollector, exr_to_pil
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
+from examples.gnr.ui.MentalRayDialog import MentalRayDialog
+from examples.gnr.customizers.MentalRayDialogCustomizer import MentalRayDialogCustomizer
 
 from PIL import Image, ImageChops
 from collections import OrderedDict
@@ -18,14 +21,26 @@ from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
 
+def buildMentalRayRendererInfo():
+    defaults = RendererDefaults()
+    defaults.outputFormat       = "EXR"
+    defaults.mainProgramFile    = os.path.normpath( os.path.join( os.environ.get( 'GOLEM' ), 'examples\\tasks\\3dsMaxTask.py' ) )
+    defaults.minSubtasks        = 1
+    defaults.maxSubtasks        = 100
+    defaults.defaultSubtasks    = 6
+
+
+    renderer                = RendererInfo( "MentalRay", defaults, MentalRayTaskBuilder, MentalRayDialog, MentalRayDialogCustomizer, MentalRayRendererOptions )
+    renderer.outputFormats  = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCD", "PCX", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
+    renderer.sceneFileExt   = [ "max",  "zip" ]
+
+    return renderer
+
 class MentalRayRendererOptions:
     def __init__( self ):
         self.environment = ThreeDSMaxEnvironment()
         self.preset = self.environment.getDefaultPreset()
         self.cmd = self.environment.get3dsmaxcmdPath()
-        self.minSubtasks = 1
-        self.defaultSubtasks = 6
-        self.maxSubtasks = 100
 
     def addToResources( self, resources ):
         if os.path.isfile( self.preset ):
@@ -49,15 +64,15 @@ class MentalRayTaskBuilder( GNRTaskBuilder ):
         return mentalRayTask
 
     def __calculateTotal(self, definition ):
-        options = MentalRayRendererOptions()
+        renderer = buildMentalRayRendererInfo()
 
         if definition.optimizeTotal:
-            return options.defaultSubtasks
+            return renderer.defaults.defaultSubtasks
 
-        if options.minSubtasks <= definition.totalSubtasks <= options.maxSubtasks:
+        if renderer.defaults.minSubtasks <= definition.totalSubtasks <= renderer.defaults.maxSubtasks:
             return definition.totalSubtasks
         else :
-            return options.defaultSubtasks
+            return renderer.defaults.defaultSubtasks
 
 class MentalRayTask( GNRTask ):
 

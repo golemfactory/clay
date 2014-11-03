@@ -1,7 +1,6 @@
 import logging
 
 from examples.gnr.ui.PbrtDialog import PbrtDialog
-from examples.gnr.task.PbrtGNRTask import PbrtRendererOptions
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +23,13 @@ class PbrtDialogCustomizer:
         renderer = self.logic.getRenderer( u"PBRT" )
 
         self.gui.ui.pixelFilterComboBox.clear()
-        self.gui.ui.pixelFilterComboBox.addItems( renderer.filters )
+        self.gui.ui.pixelFilterComboBox.addItems( self.rendererOptions.filters )
         pixelFilterItem = self.gui.ui.pixelFilterComboBox.findText( self.rendererOptions.pixelFilter )
         if pixelFilterItem >= 0:
             self.gui.ui.pixelFilterComboBox.setCurrentIndex( pixelFilterItem )
 
         self.gui.ui.pathTracerComboBox.clear()
-        self.gui.ui.pathTracerComboBox.addItems( renderer.pathTracers )
+        self.gui.ui.pathTracerComboBox.addItems( self.rendererOptions.pathTracers )
 
         algItem = self.gui.ui.pathTracerComboBox.findText( self.rendererOptions.algorithmType )
 

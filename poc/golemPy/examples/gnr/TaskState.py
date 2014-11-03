@@ -16,8 +16,6 @@ class RendererInfo:
     #########################
     def __init__( self, name, defaults, taskBuilderType, dialog, dialogCustomizer, rendererOptions):
         self.name           = name
-        self.filters        = []
-        self.pathTracers    = []
         self.outputFormats  = []
         self.sceneFileExt   = []
         self.defaults       = defaults
@@ -35,6 +33,9 @@ class RendererDefaults:
         self.minSubtaskTime     = 60
         self.subtaskTimeout     = 20 * 60
         self.resolution         = [800, 600]
+        self.minSubtasks        = 1
+        self.maxSubtasks        = 50
+        self.defaultSubtasks    = 20
 
 class TestTaskInfo:
     #########################
