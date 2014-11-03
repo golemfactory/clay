@@ -129,7 +129,7 @@ class NewTaskDialogCustomizer:
         self.gui.ui.outputResYSpinBox.setValue( dr.defaults.resolution[1] )
 
         if self.addTaskResourceDialog:
-            self.addTaskResourcesDialogCustomizer.resources = []
+            self.addTaskResourcesDialogCustomizer.resources = set()
             self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.clear()
             self.addTaskResourceDialog.ui.folderTreeView.model().addStartFiles([])
             self.addTaskResourceDialog.ui.folderTreeView.model().checks = {}
@@ -250,6 +250,7 @@ class NewTaskDialogCustomizer:
         self.gui.ui.outputResXSpinBox.setValue( definition.resolution[ 0 ] )
         self.gui.ui.outputResYSpinBox.setValue( definition.resolution[ 1 ] )
         self.gui.ui.outputFileLineEdit.setText( definition.outputFile )
+
         self.gui.ui.mainProgramFileLineEdit.setText( definition.mainProgramFile )
 
         outputFormatItem = self.gui.ui.outputFormatsComboBox.findText( definition.outputFormat )
@@ -265,6 +266,11 @@ class NewTaskDialogCustomizer:
         self.gui.ui.totalSpinBox.setEnabled( not definition.optimizeTotal )
         self.gui.ui.optimizeTotalCheckBox.setChecked( definition.optimizeTotal )
 
+        if os.path.normpath( definition.mainProgramFile ) in definition.resources:
+            definition.resources.remove( os.path.normpath( definition.mainProgramFile ) )
+        if os.path.normpath( definition.mainSceneFile ) in definition.resources:
+            definition.resources.remove( os.path.normpath( definition.mainSceneFile ) )
+        definition.resources = definition.rendererOptions.removeFromResources( definition.resources )
 
         self.addTaskResourceDialog = AddTaskResourcesDialog( self.gui.window )
         self.addTaskResourcesDialogCustomizer = AddResourcesDialogCustomizer( self.addTaskResourceDialog, self.logic )
@@ -349,9 +355,9 @@ class NewTaskDialogCustomizer:
             definition.resources         = self.rendererOptions.addToResources( self.addTaskResourcesDialogCustomizer.resources )
             definition.mainSceneFile     = u"{}".format( self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.text() )
 
-            definition.resources.append( os.path.normpath( definition.mainSceneFile ) )
+            definition.resources.add( os.path.normpath( definition.mainSceneFile ) )
 
-        definition.resources.append( os.path.normpath( definition.mainProgramFile ) )
+        definition.resources.add( os.path.normpath( definition.mainProgramFile ) )
 
         return definition
 

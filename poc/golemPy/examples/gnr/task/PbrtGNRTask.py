@@ -49,6 +49,9 @@ class PbrtRendererOptions:
     def addToResources( self , resources ):
         return resources
 
+    def removeFromResources( self, resources ):
+        return resources
+
 class PbrtTaskBuilder( GNRTaskBuilder ):
     #######################
     def build( self ):

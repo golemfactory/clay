@@ -44,7 +44,12 @@ class MentalRayRendererOptions:
 
     def addToResources( self, resources ):
         if os.path.isfile( self.preset ):
-            resources.append( os.path.normpath( self.preset ) )
+            resources.add( os.path.normpath( self.preset ) )
+        return resources
+
+    def removeFromResources( self, resources ):
+        if os.path.normpath( self.preset ) in resources:
+            resources.remove( os.path.normpath( self.preset ) )
         return resources
 
 class MentalRayTaskBuilder( GNRTaskBuilder ):

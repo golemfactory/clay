@@ -36,9 +36,6 @@ class TaskDefinition:
     #########################
     def __init__( self ):
         self.taskId                 = ""
-
-        self.minSubtask         = 0
-        self.maxSubtask         = 0
         self.fullTaskTimeout    = 0
         self.subtaskTimeout     = 0
         self.minSubtaskTime     = 0
@@ -46,8 +43,7 @@ class TaskDefinition:
         self.resolution         = [ 0, 0 ]
         self.renderer           = None
 
-        self.taskResources      = []
-        self.resources          = []
+        self.resources          = set()
         self.rendererOptions      = None
 
         self.mainProgramFile    = ""

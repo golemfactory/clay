@@ -81,4 +81,4 @@ class CheckableDirModel(QtGui.QFileSystemModel):
                 if os.path.isdir(unicode(self.filePath(index))):
                     self.addCheckedFilesFromDir(self.filePath(index), selection)
 
-        return list( set( selection ) )
+        return set( selection )

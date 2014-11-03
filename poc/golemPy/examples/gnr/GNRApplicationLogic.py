@@ -151,7 +151,8 @@ class GNRApplicationLogic( QtCore.QObject ):
         task = Task.buildTask(  taskBuilder )
         taskDefinition = TaskDefinition()
         taskDefinition.taskId = task.header.taskId
-        taskDefinition.taskResources = task.taskResources
+        taskDefinition.resources = task.taskResources
+     #   taskDefinition.taskResources = task.taskResources
         self.addTaskFromDefinition( taskDefinition )
         self.client.enqueueNewTask( task )
 
