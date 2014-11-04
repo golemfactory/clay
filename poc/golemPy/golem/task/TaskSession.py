@@ -104,7 +104,7 @@ class TaskSession:
             #resFilePath  = "d:/src/golem/poc/golemPy/test/res2222221"
 
             if not resFilePath:
-                logger.error( "Task {} has no resource".format( msg.subtaskId ) )
+                logger.error( "Task {} has no resource".format( msg.taskId ) )
                 self.conn.transport.write( struct.pack( "!L", 0 ) )
                 self.dropped()
                 return

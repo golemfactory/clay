@@ -11,7 +11,7 @@ from examples.gnr.RenderingEnvironment import PBRTEnvironment
 
 from examples.gnr.task.SceneFileEditor import regenerateFile
 
-from GNRTask import GNRTask, GNRTaskBuilder
+from GNRTask import GNRTask, GNRTaskBuilder, GNROptions
 from testtasks.pbrt.takscollector import PbrtTaksCollector, exr_to_pil
 from GNREnv import GNREnv
 from TaskState import RendererDefaults, RendererInfo
@@ -38,19 +38,13 @@ def buildPBRTRendererInfo():
 
     return renderer
 
-class PbrtRendererOptions:
+class PbrtRendererOptions(  GNROptions ):
     def __init__( self ):
         self.pixelFilter = "mitchell"
         self.samplesPerPixelCount = 32
         self.algorithmType = "lowdiscrepancy"
         self.filters = [ "box", "gaussian", "mitchell", "sinc", "triangle" ]
         self.pathTracers = [ "adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified" ]
-
-    def addToResources( self , resources ):
-        return resources
-
-    def removeFromResources( self, resources ):
-        return resources
 
 class PbrtTaskBuilder( GNRTaskBuilder ):
     #######################
@@ -306,7 +300,7 @@ class PbrtRenderTask( GNRTask ):
                 files = ""
                 for file in self.collectedFileNames:
                     files += file + " "
-                cmd = u"{} pbrt {} {}".format(taskCollectorPath, outputFileName, files )
+                cmd = u"{} add {} {}".format(taskCollectorPath, outputFileName, files )
                 pc = subprocess.Popen( cmd )
                 pc.wait()
 

@@ -1,63 +1,50 @@
 import logging
-import random
 import os
-import subprocess
+import random
 import pickle
+import subprocess
 
-
+from TaskState import RendererDefaults, RendererInfo
 from GNRTask import GNRTaskBuilder, GNRTask, GNROptions
 from GNREnv import GNREnv
-from TaskState import RendererDefaults, RendererInfo
+
+from examples.gnr.RenderingEnvironment import VRayEnvironment
+from examples.gnr.ui.VRayDialog import VRayDialog
+from examples.gnr.customizers.VRayDialogCustomizer import VRayDialogCustomizer
+
 from golem.task.TaskBase import ComputeTaskDef
 from golem.core.Compress import decompress
-from testtasks.pbrt.takscollector import PbrtTaksCollector, exr_to_pil
-from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
-from examples.gnr.ui.MentalRayDialog import MentalRayDialog
-from examples.gnr.customizers.MentalRayDialogCustomizer import MentalRayDialogCustomizer
 
+from testtasks.pbrt.takscollector import PbrtTaksCollector, exr_to_pil
 from PIL import Image, ImageChops
 from collections import OrderedDict
 
-
 logger = logging.getLogger(__name__)
 
-def buildMentalRayRendererInfo():
+def buildVRayRendererInfo():
     defaults = RendererDefaults()
-    defaults.outputFormat       = "EXR"
-    defaults.mainProgramFile    = os.path.normpath( os.path.join( os.environ.get( 'GOLEM' ), 'examples\\tasks\\3dsMaxTask.py' ) )
-    defaults.minSubtasks        = 1
-    defaults.maxSubtasks        = 100
-    defaults.defaultSubtasks    = 6
+    defaults.outputFormat = "EXR"
+    defaults.mainProgramFile = os.path.normpath( os.path.join( os.environ.get('GOLEM'), 'examples\\tasks\\VRayTask.py' ) )
+    defaults.minSubtasks = 1
+    defaults.maxSubtasks = 100
+    defaults.defaultSubtasks = 6
 
-
-    renderer                = RendererInfo( "MentalRay", defaults, MentalRayTaskBuilder, MentalRayDialog, MentalRayDialogCustomizer, MentalRayRendererOptions )
-    renderer.outputFormats  = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCD", "PCX", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
-    renderer.sceneFileExt   = [ "max",  "zip" ]
+    renderer = RendererInfo( "VRay", defaults, VRayTaskBuilder, VRayDialog, VRayDialogCustomizer, VRayRendererOptions )
+    renderer.outputFormats = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF" ]
+    renderer.sceneFileExt = [ "vrscene" ]
 
     return renderer
 
-class MentalRayRendererOptions ( GNROptions ):
+
+class VRayRendererOptions( GNROptions ):
     def __init__( self ):
-        self.environment = ThreeDSMaxEnvironment()
-        self.preset = self.environment.getDefaultPreset()
-        self.cmd = self.environment.get3dsmaxcmdPath()
+        self.environment = VRayEnvironment()
 
-    def addToResources( self, resources ):
-        if os.path.isfile( self.preset ):
-            resources.add( os.path.normpath( self.preset ) )
-        return resources
-
-    def removeFromResources( self, resources ):
-        if os.path.normpath( self.preset ) in resources:
-            resources.remove( os.path.normpath( self.preset ) )
-        return resources
-
-class MentalRayTaskBuilder( GNRTaskBuilder ):
-
+class VRayTaskBuilder( GNRTaskBuilder ):
     def build( self ):
         mainSceneDir = os.path.dirname( self.taskDefinition.mainSceneFile )
 
-        mentalRayTask = MentalRayTask(self.clientId,
+        mentalRayTask = VRayTask(self.clientId,
                                    self.taskDefinition,
                                    mainSceneDir,
                                    self.__calculateTotal( self.taskDefinition ),
@@ -69,7 +56,7 @@ class MentalRayTaskBuilder( GNRTaskBuilder ):
         return mentalRayTask
 
     def __calculateTotal(self, definition ):
-        renderer = buildMentalRayRendererInfo()
+        renderer = buildVRayRendererInfo()
 
         if definition.optimizeTotal:
             return renderer.defaults.defaultSubtasks
@@ -79,20 +66,18 @@ class MentalRayTaskBuilder( GNRTaskBuilder ):
         else :
             return renderer.defaults.defaultSubtasks
 
-class MentalRayTask( GNRTask ):
-
+class VRayTask( GNRTask ):
     def __init__( self, clientId, taskDefinition, mainSceneDir, totalTasks, numSubtasks, numCores,
-                  outfilebasename, rootPath, returnAddress = "", returnPort = 0 ):
+                  outfilebasename, rootPath, returnAddress = "", returnPort = 0):
 
         self.taskDefinition = taskDefinition
 
         srcFile = open( self.taskDefinition.mainProgramFile, "r")
         srcCode = srcFile.read()
 
-
         resourceSize = 0
         for resource in self.taskDefinition.resources:
-            resourceSize += os.stat(resource).st_size
+            resourceSize += os.stat( resource ).st_size
 
         GNRTask.__init__( self,
                           srcCode,
@@ -100,10 +85,11 @@ class MentalRayTask( GNRTask ):
                           self.taskDefinition.taskId,
                           returnAddress,
                           returnPort,
-                          ThreeDSMaxEnvironment.getId(),
+                          VRayEnvironment.getId(),
                           self.taskDefinition.fullTaskTimeout,
                           self.taskDefinition.subtaskTimeout,
                           resourceSize )
+
 
         self.taskResources = self.taskDefinition.resources
         self.estimatedMemory = self.taskDefinition.estimatedMemory
@@ -128,7 +114,10 @@ class MentalRayTask( GNRTask ):
         self.subTasksGiven      = {}
         self.numTasksReceived = 0
 
+        self.fullTaskTimeout = self.taskDefinition.fullTaskTimeout
+
         self.tmpCnt = 0
+        self.collector = PbrtTaksCollector()
 
 
     #######################
@@ -153,14 +142,9 @@ class MentalRayTask( GNRTask ):
         workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
         workingDirectory    = os.path.dirname( workingDirectory )
 
-        presetFile = os.path.relpath( os.path.dirname( self.taskDefinition.rendererOptions.preset ), os.path.dirname( self.mainProgramFile ) )
-        presetFile = os.path.join( presetFile, self.taskDefinition.rendererOptions.preset )
-
-
         sceneFile = os.path.relpath( os.path.dirname(self.taskDefinition.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
         sceneFile = os.path.join( sceneFile, self.taskDefinition.mainSceneFile )
 
-        cmdFile = os.path.basename( self.taskDefinition.rendererOptions.cmd )
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
@@ -170,11 +154,8 @@ class MentalRayTask( GNRTask ):
                                     "numCores" : numCores,
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFile" : sceneFile,
-                                    "sceneFileSrc" : self.sceneFileSrc,
                                     "width" : self.taskDefinition.resolution[0],
-                                    "height": self.taskDefinition.resolution[1],
-                                    "presetFile": presetFile,
-                                    "cmdFile": cmdFile
+                                    "height": self.taskDefinition.resolution[1]
                                 }
 
 
@@ -207,10 +188,6 @@ class MentalRayTask( GNRTask ):
         workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
         workingDirectory    = os.path.dirname( workingDirectory )
 
-        presetFile = os.path.relpath( os.path.dirname( self.taskDefinition.rendererOptions.preset ), os.path.dirname( self.mainProgramFile ) )
-        presetFile = os.path.join( presetFile, self.taskDefinition.rendererOptions.preset )
-
-
         sceneFile = os.path.relpath( os.path.dirname(self.taskDefinition.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
         sceneFile = os.path.join( sceneFile, self.taskDefinition.mainSceneFile )
 
@@ -222,11 +199,8 @@ class MentalRayTask( GNRTask ):
                                     "numCores" : self.numCores,
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFile" : sceneFile,
-                                    "sceneFileSrc": self.sceneFileSrc,
-                                    "width" : self.taskDefinition.resolution[0],
-                                    "height": self.taskDefinition.resolution[1],
-                                    "presetFile": presetFile,
-                                    "cmdFile": self.taskDefinition.rendererOptions.cmd
+                                    "width" : 1,
+                                    "height": 1
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -261,46 +235,48 @@ class MentalRayTask( GNRTask ):
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
 
         if len( taskResult ) > 0:
+            numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
+            numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
             for trp in taskResult:
                 tr = pickle.loads( trp )
                 fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
                 fh.write( decompress( tr[ 1 ] ) )
                 fh.close()
-                num = self.subTasksGiven[ subtaskId ][ 'startTask' ]
-                self.collectedFileNames[ num ] = os.path.join(tmpDir, tr[0] )
-                self.numTasksReceived += 1
+                if self.outputFormat != "EXR":
+                    self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) )
+                else:
+                    self.collectedFileNames[ numStart ] = os.path.join(tmpDir, tr[0] )
+                self.__updatePreview( os.path.join( tmpDir, tr[ 0 ] ), numStart )
 
-                self.__updatePreview( os.path.join( tmpDir, tr[ 0 ] ), num )
+            self.numTasksReceived += numEnd - numStart + 1
+
+
 
         if self.numTasksReceived == self.totalTasks:
             outputFileName = u"{}".format( self.outputFile, self.outputFormat )
 
-            pth, filename =  os.path.split(os.path.realpath(__file__))
-            taskCollectorPath = os.path.join(pth, "..\..\..\\tools\\taskcollector\Release\\taskcollector.exe")
-            logger.debug( "taskCollector path: {}".format( taskCollectorPath ) )
+            if self.outputFormat != "EXR":
+                self.collector.finalize().save( outputFileName, self.outputFormat )
+                self.previewFilePath = outputFileName
+            else:
+                pth, filename =  os.path.split(os.path.realpath(__file__))
+                taskCollectorPath = os.path.join(pth, "..\..\..\\tools\\taskcollector\Release\\taskcollector.exe")
+                logger.debug( "taskCollector path: {}".format( taskCollectorPath ) )
 
-            self.collectedFileNames = OrderedDict( sorted( self.collectedFileNames.items() ) )
-            files = " ".join( self.collectedFileNames.values() )
-            cmd = u"{} paste {} {}".format(taskCollectorPath, outputFileName, files )
-            logger.debug("cmd = {}".format( cmd ) )
-            pc = subprocess.Popen( cmd )
-            pc.wait()
+                self.collectedFileNames = OrderedDict( sorted( self.collectedFileNames.items() ) )
+                files = " ".join( self.collectedFileNames.values() )
+                cmd = u"{} add {} {}".format(taskCollectorPath, outputFileName, files )
+                logger.debug("cmd = {}".format( cmd ) )
+                pc = subprocess.Popen( cmd )
+                pc.wait()
 
 
    #######################
     def __updatePreview( self, newChunkFilePath, chunkNum ):
-
         if newChunkFilePath.endswith(".exr"):
             img = exr_to_pil( newChunkFilePath )
         else:
             img = Image.open( newChunkFilePath )
-
-        imgOffset = Image.new("RGB", (self.taskDefinition.resolution[0], self.taskDefinition.resolution[1]))
-        try:
-            imgOffset.paste(img, (0, (chunkNum - 1) * (self.taskDefinition.resolution[1]) / self.totalTasks ) )
-        except Exception, err:
-            logger.error("Can't generate preview {}".format( str(err) ))
-
 
         tmpDir = GNREnv.getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
 
@@ -308,9 +284,7 @@ class MentalRayTask( GNRTask ):
 
         if os.path.exists( self.previewFilePath ):
             imgCurrent = Image.open( self.previewFilePath )
-            imgCurrent = ImageChops.add( imgCurrent, imgOffset )
+            imgCurrent = ImageChops.add( imgCurrent, img )
             imgCurrent.save( self.previewFilePath, "BMP" )
         else:
-            imgOffset.save( self.previewFilePath, "BMP" )
-
-
+            img.save( self.previewFilePath, "BMP" )

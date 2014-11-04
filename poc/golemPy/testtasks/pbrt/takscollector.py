@@ -19,7 +19,7 @@ def open_exr_as_rgbf_images( exr_file ):
     return rgbf
 
 ############################
-def convert_rgbf_images_to_rgb8_image( rgbf, lightest, darkest ):
+def convert_rgbf_images_to_rgb8_image( rgbf, lightest = 255.0, darkest=0.0 ):
     scale = 255 / (lightest - darkest)
 
     def normalize_0_255( val ):
@@ -140,9 +140,8 @@ class PbrtTaksCollector:
 
         d, l = get_single_rgbf_extrema( rgbf )
 
-        if self.darkest:
-            self.darkest = d
-            self.lightest = l
+        self.darkest = d
+        self.lightest = l
 
         self.darkest = min( d, self.darkest )
         self.lightest = max( l, self.lightest )

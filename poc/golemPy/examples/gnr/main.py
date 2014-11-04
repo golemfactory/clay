@@ -17,8 +17,10 @@ from golem.Client import startClient
 from TaskState import RendererDefaults, RendererInfo, TestTaskInfo
 from task.PbrtGNRTask import buildPBRTRendererInfo
 from task.MR3dsMaxTask import buildMentalRayRendererInfo
+from task.VRayTask import buildVRayRendererInfo
 
-from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, Environment
+from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
+from golem.environments.Environment import Environment
 from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
 
 def main():
@@ -40,6 +42,7 @@ def main():
 
     logic.registerNewRendererType( buildPBRTRendererInfo() )
     logic.registerNewRendererType( buildMentalRayRendererInfo() )
+    logic.registerNewRendererType( buildVRayRendererInfo() )
     logic.registerNewTestTaskType( TestTaskInfo( "CornellBox" ) )
 
     path = os.getcwd()
@@ -53,7 +56,7 @@ def main():
     logic.registerStartNewNodeFunction( runGNRNodes )
     logic.registerStartNodesManagerFunction( runGNRManager )
 
-    environments = [PBRTEnvironment(), ThreeDSMaxEnvironment(), Environment() ]
+    environments = [PBRTEnvironment(), ThreeDSMaxEnvironment(), VRayEnvironment(), Environment() ]
 
     client = startClient( )
 

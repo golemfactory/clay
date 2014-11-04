@@ -68,7 +68,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="PbrtTaskCollector.cpp" />
+    <ClCompile Include="TaskCollector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FreeImage.h" />

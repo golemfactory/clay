@@ -1,6 +1,7 @@
 from golem.task.TaskBase import Task, TaskHeader, TaskBuilder
 from golem.resource.Resource import prepareDeltaZip
 from golem.core.Compress import decompress
+from golem.environments.Environment import Environment
 
 import OpenEXR, Imath
 from PIL import Image, ImageChops
@@ -11,6 +12,7 @@ import pickle
 import os
 import logging
 import subprocess
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,16 @@ class GNRSubtask():
         self.subtaskId = subtaskId
         self.startChunk = startChunk
         self.endChunk = endChunk
+
+class GNROptions:
+    def __init__( self ):
+        self.environment = Environment()
+
+    def addToResources( self, resources ):
+        return resources
+
+    def removeFromResources( self, resources ):
+        return resources
 
 class GNRTask( Task ):
     #####################

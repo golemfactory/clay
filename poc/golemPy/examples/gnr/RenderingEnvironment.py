@@ -54,3 +54,36 @@ class PBRTEnvironment ( Environment ):
 
     def supported( self ) :
         return True
+
+class VRayEnvironment( Environment ):
+    @classmethod
+    def getId( cls ):
+        return "VRAY"
+
+    def __init__( self ):
+        Environment.__init__( self )
+        self.software.append('Windows')
+        self.software.append('V-Ray standalone')
+        self.shortDescription = "V-Ray Renderer (http://www.vray.com/)"
+        self.softwareEnvVariable = 'VRAY_PATH'
+        self.softwareName = 'vray.exe'
+        self.path = ""
+
+    def checkSoftware( self ):
+        if os.environ.get( self.softwareEnvVariable ):
+            self.path = os.path.join( os.environ.get( self.softwareEnvVariable ), self.softwareName )
+            if os.path.isfile( self.path ):
+                return True
+        return False
+
+    def supported( self ):
+        return self.checkSoftware()
+
+    def getCmdPath ( self ):
+        self.checkSoftware()
+        if os.path.isfile( self.path ):
+            return self.path
+        else:
+            return ""
+
+
