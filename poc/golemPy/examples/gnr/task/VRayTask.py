@@ -39,6 +39,8 @@ def buildVRayRendererInfo():
 class VRayRendererOptions( GNROptions ):
     def __init__( self ):
         self.environment = VRayEnvironment()
+        self.rtEngine = 0
+        self.rtEngineValues = {0: 'No engine', 1: 'CPU', 3: 'OpenGL', 5: 'CUDA' }
 
 class VRayTaskBuilder( GNRTaskBuilder ):
     def build( self ):
@@ -155,7 +157,8 @@ class VRayTask( GNRTask ):
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFile" : sceneFile,
                                     "width" : self.taskDefinition.resolution[0],
-                                    "height": self.taskDefinition.resolution[1]
+                                    "height": self.taskDefinition.resolution[1],
+                                    "rtEngine": self.taskDefinition.rendererOptions.rtEngine
                                 }
 
 
@@ -200,7 +203,8 @@ class VRayTask( GNRTask ):
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFile" : sceneFile,
                                     "width" : 1,
-                                    "height": 1
+                                    "height": 1,
+                                    "rtEngine": self.taskDefinition.rendererOptions.rtEngine
                                 }
 
         hash = "{}".format( random.getrandbits(128) )

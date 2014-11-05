@@ -23,6 +23,12 @@ class VRayDialogCustomizer:
     #############################
     def __init( self ):
         renderer = self.logic.getRenderer( u"VRay" )
+        self.gui.ui.rtComboBox.addItems( self.rendererOptions.rtEngineValues.values() )
+        rtEngineItem = self.gui.ui.rtComboBox.findText( self.rendererOptions.rtEngineValues[ self.rendererOptions.rtEngine ] )
+        if rtEngineItem != -1:
+            self.gui.ui.rtComboBox.setCurrentIndex( rtEngineItem )
+        else:
+            logger.error("Wrong renderer type ")
 
     #############################
     def __setupConnections( self ):
@@ -31,5 +37,14 @@ class VRayDialogCustomizer:
 
     #############################
     def __changeRendererOptions( self ):
-        self.newTaskDialog.setRendererOptions( self.rendererOptions )
+        index = self.gui.ui.rtComboBox.currentIndex()
+        rtEngine = u"{}".format( self.gui.ui.rtComboBox.itemText( index ) )
+        changed = False
+        for key, value in self.rendererOptions.rtEngineValues.iteritems():
+            if rtEngine == value:
+                self.rendererOptions.rtEngine = key
+                self.newTaskDialog.setRendererOptions( self.rendererOptions )
+                changed = True
+        if not changed:
+            logger.error( "Wrong rtEngine value: {}".format( rtEngine ) )
         self.gui.window.close()
