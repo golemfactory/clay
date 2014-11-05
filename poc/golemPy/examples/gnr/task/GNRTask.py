@@ -1,17 +1,11 @@
 from golem.task.TaskBase import Task, TaskHeader, TaskBuilder
 from golem.resource.Resource import prepareDeltaZip
-from golem.core.Compress import decompress
 from golem.environments.Environment import Environment
-
-import OpenEXR, Imath
-from PIL import Image, ImageChops
 
 from GNREnv import GNREnv
 
-import pickle
 import os
 import logging
-import subprocess
 import time
 
 logger = logging.getLogger(__name__)
@@ -25,7 +19,6 @@ class GNRTaskBuilder( TaskBuilder ):
 
     def build( self ):
         pass
-
 
 class GNRSubtask():
     def __init__(self, subtaskId, startChunk, endChunk):
@@ -45,8 +38,23 @@ class GNROptions:
 
 class GNRTask( Task ):
     #####################
-    def __init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, environment, ttl, subtaskTtl, resourceSize ):
-        Task.__init__( self, TaskHeader( clientId, taskId, ownerAddress, ownerPort, environment, ttl, subtaskTtl, resourceSize ), srcCode )
+    def __init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, environment,
+                  ttl, subtaskTtl, resourceSize, estimatedMemory ):
+        th = TaskHeader( clientId, taskId, ownerAddress, ownerPort, environment,
+                         ttl, subtaskTtl, resourceSize, estimatedMemory)
+        Task.__init__( self, th, srcCode )
+
+        self.taskResources = []
+
+        self.totalTasks = 0
+        self.lastTask = 0
+
+        self.numTasksReceived = 0
+        self.subTasksGiven = {}
+        self.numFailedSubtasks = 0
+        self.failedSubtasks = set()
+
+        self.fullTaskTimeout = 2200
 
     #######################
     def initialize( self ):
@@ -62,13 +70,6 @@ class GNRTask( Task ):
         self.failedSubtasks.clear()
         self.header.lastChecking = time.time()
         self.header.ttl = self.fullTaskTimeout
-
-        del self.collector
-        self.collector = PbrtTaksCollector()
-        self.collectedFileNames = []
-
-        self.previewFilePath = None
-
 
 
     #######################

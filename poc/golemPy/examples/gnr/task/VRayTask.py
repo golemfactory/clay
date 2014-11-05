@@ -5,8 +5,10 @@ import pickle
 import subprocess
 
 from TaskState import RendererDefaults, RendererInfo
-from GNRTask import GNRTaskBuilder, GNRTask, GNROptions
+from GNRTask import GNROptions
 from GNREnv import GNREnv
+from RenderingTask import RenderingTask, RenderingTaskBuilder
+from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
 
 from examples.gnr.RenderingEnvironment import VRayEnvironment
 from examples.gnr.ui.VRayDialog import VRayDialog
@@ -15,7 +17,6 @@ from examples.gnr.customizers.VRayDialogCustomizer import VRayDialogCustomizer
 from golem.task.TaskBase import ComputeTaskDef
 from golem.core.Compress import decompress
 
-from testtasks.pbrt.takscollector import PbrtTaksCollector, exr_to_pil
 from PIL import Image, ImageChops
 from collections import OrderedDict
 
@@ -42,84 +43,59 @@ class VRayRendererOptions( GNROptions ):
         self.rtEngine = 0
         self.rtEngineValues = {0: 'No engine', 1: 'CPU', 3: 'OpenGL', 5: 'CUDA' }
 
-class VRayTaskBuilder( GNRTaskBuilder ):
+class VRayTaskBuilder( RenderingTaskBuilder ):
     def build( self ):
         mainSceneDir = os.path.dirname( self.taskDefinition.mainSceneFile )
 
-        mentalRayTask = VRayTask(self.clientId,
-                                   self.taskDefinition,
+        vRayTask = VRayTask(       self.clientId,
+                                   self.taskDefinition.taskId,
                                    mainSceneDir,
-                                   self.__calculateTotal( self.taskDefinition ),
-                                   32,
-                                   4,
+                                   self.taskDefinition.mainSceneFile,
+                                   self.taskDefinition.mainProgramFile,
+                                   self._calculateTotal( buildVRayRendererInfo(), self.taskDefinition ),
+                                   self.taskDefinition.resolution[0],
+                                   self.taskDefinition.resolution[1],
                                    "temp",
-                                   self.rootPath
+                                   self.taskDefinition.outputFile,
+                                   self.taskDefinition.outputFormat,
+                                   self.taskDefinition.fullTaskTimeout,
+                                   self.taskDefinition.subtaskTimeout,
+                                   self.taskDefinition.resources,
+                                   self.taskDefinition.estimatedMemory,
+                                   self.rootPath,
+                                   self.taskDefinition.rendererOptions.rtEngine
                                    )
-        return mentalRayTask
+        return vRayTask
 
-    def __calculateTotal(self, definition ):
-        renderer = buildVRayRendererInfo()
+class VRayTask( RenderingTask ):
+    def __init__( self,
+                  clientId,
+                  taskId,
+                  mainSceneDir,
+                  mainSceneFile,
+                  mainProgramFile,
+                  totalTasks,
+                  resX,
+                  resY,
+                  outfilebasename,
+                  outputFile,
+                  outputFormat,
+                  fullTaskTimeout,
+                  subtaskTimeout,
+                  taskResources,
+                  estimatedMemory,
+                  rootPath,
+                  rtEngine,
+                  returnAddress = "",
+                  returnPort = 0):
 
-        if definition.optimizeTotal:
-            return renderer.defaults.defaultSubtasks
+        RenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort,
+                          VRayEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
+                          mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
+                          totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
+                          rootPath, estimatedMemory )
 
-        if renderer.defaults.minSubtasks <= definition.totalSubtasks <= renderer.defaults.maxSubtasks:
-            return definition.totalSubtasks
-        else :
-            return renderer.defaults.defaultSubtasks
-
-class VRayTask( GNRTask ):
-    def __init__( self, clientId, taskDefinition, mainSceneDir, totalTasks, numSubtasks, numCores,
-                  outfilebasename, rootPath, returnAddress = "", returnPort = 0):
-
-        self.taskDefinition = taskDefinition
-
-        srcFile = open( self.taskDefinition.mainProgramFile, "r")
-        srcCode = srcFile.read()
-
-        resourceSize = 0
-        for resource in self.taskDefinition.resources:
-            resourceSize += os.stat( resource ).st_size
-
-        GNRTask.__init__( self,
-                          srcCode,
-                          clientId,
-                          self.taskDefinition.taskId,
-                          returnAddress,
-                          returnPort,
-                          VRayEnvironment.getId(),
-                          self.taskDefinition.fullTaskTimeout,
-                          self.taskDefinition.subtaskTimeout,
-                          resourceSize )
-
-
-        self.taskResources = self.taskDefinition.resources
-        self.estimatedMemory = self.taskDefinition.estimatedMemory
-        self.outputFormat = self.taskDefinition.outputFormat
-        self.outputFile = self.taskDefinition.outputFile
-        self.mainSceneDir = mainSceneDir
-        self.mainProgramFile = self.taskDefinition.mainProgramFile
-        self.outfilebasename = outfilebasename
-
-        self.rootPath = rootPath
-        self.numCores = numCores
-        self.totalTasks = totalTasks
-        self.lastTask = 0
-        self.numFailedSubtasks = 0
-        self.failedSubtasks     = set()
-        self.numSubtasks = numSubtasks
-        self.sceneFileSrc = ""
-        self.previewFilePath    = None
-
-        self.collector          = PbrtTaksCollector()
-        self.collectedFileNames = {}
-        self.subTasksGiven      = {}
-        self.numTasksReceived = 0
-
-        self.fullTaskTimeout = self.taskDefinition.fullTaskTimeout
-
-        self.tmpCnt = 0
-        self.collector = PbrtTaksCollector()
+        self.rtEngine = rtEngine
 
 
     #######################
@@ -135,30 +111,25 @@ class VRayTask( GNRTask ):
             endTask = subtask.endChunk
             startTask = subtask.startChunk
 
-        if numCores == 0:
-            numCores = self.numCores
-
         commonPathPrefix = os.path.commonprefix( self.taskResources )
         commonPathPrefix = os.path.dirname( commonPathPrefix )
 
         workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
         workingDirectory    = os.path.dirname( workingDirectory )
 
-        sceneFile = os.path.relpath( os.path.dirname(self.taskDefinition.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
-        sceneFile = os.path.join( sceneFile, self.taskDefinition.mainSceneFile )
+        sceneFile = os.path.relpath( os.path.dirname(self.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
+        sceneFile = os.path.join( sceneFile, self.mainSceneFile )
 
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
                                     "endTask" : endTask,
                                     "totalTasks" : self.totalTasks,
-                                    "numSubtasks" : self.numSubtasks,
-                                    "numCores" : numCores,
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFile" : sceneFile,
-                                    "width" : self.taskDefinition.resolution[0],
-                                    "height": self.taskDefinition.resolution[1],
-                                    "rtEngine": self.taskDefinition.rendererOptions.rtEngine
+                                    "width" : self.resX,
+                                    "height": self.resY,
+                                    "rtEngine": self.rtEngine
                                 }
 
 
@@ -191,20 +162,18 @@ class VRayTask( GNRTask ):
         workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
         workingDirectory    = os.path.dirname( workingDirectory )
 
-        sceneFile = os.path.relpath( os.path.dirname(self.taskDefinition.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
-        sceneFile = os.path.join( sceneFile, self.taskDefinition.mainSceneFile )
+        sceneFile = os.path.relpath( os.path.dirname(self.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
+        sceneFile = os.path.join( sceneFile, self.mainSceneFile )
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : 0,
                                     "endTask" : 1,
                                     "totalTasks" : self.totalTasks,
-                                    "numSubtasks" : self.numSubtasks,
-                                    "numCores" : self.numCores,
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFile" : sceneFile,
                                     "width" : 1,
                                     "height": 1,
-                                    "rtEngine": self.taskDefinition.rendererOptions.rtEngine
+                                    "rtEngine": self.rtEngine
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -231,7 +200,7 @@ class VRayTask( GNRTask ):
      #######################
     def __shortExtraDataRepr( self, perfIndex, extraData ):
         l = extraData
-        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFile"] )
+        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["outfilebasename"], l["sceneFile"] )
 
   #######################
     def computationFinished( self, subtaskId, taskResult, dirManager = None ):
@@ -250,7 +219,7 @@ class VRayTask( GNRTask ):
                     self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) )
                 else:
                     self.collectedFileNames[ numStart ] = os.path.join(tmpDir, tr[0] )
-                self.__updatePreview( os.path.join( tmpDir, tr[ 0 ] ), numStart )
+                self._updatePreview( os.path.join( tmpDir, tr[ 0 ] ) )
 
             self.numTasksReceived += numEnd - numStart + 1
 
@@ -273,22 +242,3 @@ class VRayTask( GNRTask ):
                 logger.debug("cmd = {}".format( cmd ) )
                 pc = subprocess.Popen( cmd )
                 pc.wait()
-
-
-   #######################
-    def __updatePreview( self, newChunkFilePath, chunkNum ):
-        if newChunkFilePath.endswith(".exr"):
-            img = exr_to_pil( newChunkFilePath )
-        else:
-            img = Image.open( newChunkFilePath )
-
-        tmpDir = GNREnv.getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
-
-        self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
-
-        if os.path.exists( self.previewFilePath ):
-            imgCurrent = Image.open( self.previewFilePath )
-            imgCurrent = ImageChops.add( imgCurrent, img )
-            imgCurrent.save( self.previewFilePath, "BMP" )
-        else:
-            img.save( self.previewFilePath, "BMP" )

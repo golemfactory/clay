@@ -85,7 +85,7 @@ class TaskManager:
             return False
         if task.header.resourceSize > ( long( maxResourceSize ) * 1024 ):
             return False
-        if task.estimatedMemory > ( long( maxMemorySize ) * 1024 ):
+        if task.header.estimatedMemory > ( long( maxMemorySize ) * 1024 ):
             return False
         return True
 

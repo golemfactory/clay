@@ -7,7 +7,7 @@ import zipfile
 import subprocess
 import win32process
 
-def formatVRayCmd( cmdFile, startTask, endTask, totalTasks, numSubtaks, numCores, outfilebasename, scenefile, width, height, rtEngine ):
+def formatVRayCmd( cmdFile, startTask, endTask, totalTasks, outfilebasename, scenefile, width, height, rtEngine ):
     print "formatVRayCMD"
     cmd = '"{}" -imgFile="{}\\chunk{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -region={};{};{};{} -autoClose=1 -display=0 -rtEngine={}'.format(cmdFile, outfilebasename, startTask, scenefile, width, height, 0, (startTask-1) * (height / totalTasks), width, startTask * ( height / totalTasks ), rtEngine )
     print cmd
@@ -33,7 +33,7 @@ def __readFromEnvironment( ):
 
 
 ############################
-def runVRayTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneFile, width, height, rtEngine):
+def runVRayTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, rtEngine):
     print 'runVray Taskk'
     outputFiles = tmpPath
 
@@ -52,7 +52,7 @@ def runVRayTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores
     cmdFile = __readFromEnvironment( )
     print "cmdFile " + cmdFile
     if os.path.exists( sceneFile ):
-        cmd = formatVRayCmd( cmdFile, startTask, endTask, totalTasks, numSubtasks, numCores, outputFiles, sceneFile, width, height, rtEngine )
+        cmd = formatVRayCmd( cmdFile, startTask, endTask, totalTasks, outputFiles, sceneFile, width, height, rtEngine )
     else:
         print "Scene file does not exist"
         return []
@@ -80,4 +80,4 @@ def runVRayTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores
     return res
 
 
-output = runVRayTask ( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneFile, width, height, rtEngine )
+output = runVRayTask ( pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, rtEngine )

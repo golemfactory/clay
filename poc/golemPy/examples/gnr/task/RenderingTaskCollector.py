@@ -126,7 +126,7 @@ def exr_to_pil( exrFile ):
     rgb8 = [im.point(normalize_0_255).convert("L") for im in rgbf]
     return Image.merge("RGB", rgb8)
 
-class PbrtTaksCollector:
+class RenderingTaskCollector:
 
     ############################
     def __init__( self ):
@@ -185,7 +185,7 @@ if __name__ == "__main__":
             print "No test data provided"
             return
 
-        ptc = PbrtTaksCollector()
+        ptc = RenderingTaskCollector()
 
         print "Accepting incoming tasks"
         for i, f in enumerate( files ):

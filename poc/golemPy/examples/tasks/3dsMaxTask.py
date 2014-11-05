@@ -7,7 +7,7 @@ import zipfile
 import subprocess
 import win32process
 
-def format3dsMaxCmd( cmdFile, startTask, endTask, totalTasks, numSubtaks, numCores, outfilebasename, scenefile, width, height, presetFile ):
+def format3dsMaxCmd( cmdFile, startTask, endTask, totalTasks, outfilebasename, scenefile, width, height, presetFile ):
     cmd = '{} -outputName:{}\\chunk{}.exr -strip:{},0,{} "{}" -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile, outfilebasename, startTask, totalTasks, startTask, scenefile, width, height, presetFile )
     print cmd
     return cmd
@@ -32,7 +32,7 @@ def __readFromEnvironment( defaultCmdFile ):
 
 
 ############################f =
-def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneSrc, sceneFile, width, height, preset, cmdFile):
+def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, preset, cmdFile):
     print 'run3dsMaxTask'
     outputFiles = tmpPath
 
@@ -54,7 +54,7 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
 
     cmdFile = __readFromEnvironment( cmdFile )
     if os.path.exists( sceneFile ):
-        cmd = format3dsMaxCmd( cmdFile, startTask, endTask, totalTasks, numSubtasks, numCores, outputFiles, sceneFile, width, height, presetFile )
+        cmd = format3dsMaxCmd( cmdFile, startTask, endTask, totalTasks, outputFiles, sceneFile, width, height, presetFile )
     else:
         print "Scene file does not exist"
         return []
@@ -82,4 +82,4 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     return res
 
 
-output = run3dsMaxTask ( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneFileSrc, sceneFile, width, height, presetFile, cmdFile )
+output = run3dsMaxTask ( pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, presetFile, cmdFile )
