@@ -6,7 +6,7 @@ import subprocess
 
 from TaskState import RendererDefaults, RendererInfo
 from GNRTask import GNROptions
-from GNREnv import GNREnv
+from RenderingDirManager import getTestTaskPath
 from RenderingTask import RenderingTask, RenderingTaskBuilder
 from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
 
@@ -188,7 +188,7 @@ class VRayTask( RenderingTask ):
         ctd.srcCode             = self.srcCode
         ctd.performance         = 0
 
-        self.testTaskResPath = GNREnv.getTestTaskPath( self.rootPath )
+        self.testTaskResPath = getTestTaskPath( self.rootPath )
         logger.debug( self.testTaskResPath )
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )

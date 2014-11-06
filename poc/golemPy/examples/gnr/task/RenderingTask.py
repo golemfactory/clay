@@ -1,7 +1,7 @@
 import os
 import logging
 
-from GNREnv import GNREnv
+from RenderingDirManager import getTmpPath
 from GNRTask import GNRTask, GNRTaskBuilder
 from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
 
@@ -79,7 +79,7 @@ class RenderingTask( GNRTask ):
         else:
             img = Image.open( newChunkFilePath )
 
-        tmpDir = GNREnv.getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
+        tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
 
         self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
 

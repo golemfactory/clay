@@ -6,7 +6,7 @@ import pickle
 
 
 from GNRTask import  GNROptions
-from GNREnv import GNREnv
+from RenderingDirManager import getTestTaskPath, getTmpPath
 from TaskState import RendererDefaults, RendererInfo
 from golem.task.TaskBase import ComputeTaskDef
 from golem.core.Compress import decompress
@@ -216,7 +216,7 @@ class MentalRayTask( RenderingTask ):
         ctd.srcCode             = self.srcCode
         ctd.performance         = 0
 
-        self.testTaskResPath = GNREnv.getTestTaskPath( self.rootPath )
+        self.testTaskResPath = getTestTaskPath( self.rootPath )
         logger.debug( self.testTaskResPath )
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
@@ -276,7 +276,7 @@ class MentalRayTask( RenderingTask ):
             logger.error("Can't generate preview {}".format( str(err) ))
 
 
-        tmpDir = GNREnv.getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
+        tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
 
         self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
 

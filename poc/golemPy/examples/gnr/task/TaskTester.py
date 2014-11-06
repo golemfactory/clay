@@ -7,7 +7,7 @@ from golem.task.TaskBase import Task
 from golem.resource.Resource import TaskResourceHeader, decompressDir
 from golem.task.TaskComputer import PyTestTaskThread
 
-from GNREnv import GNREnv
+from RenderingDirManager import getTestTaskPath, getTestTaskDirectory, getTestTaskTmpPath
 
 logger = logging.getLogger(__name__)
 
@@ -64,14 +64,14 @@ class TaskTester:
     #########################
     def __prepareResources( self ):
 
-        self.testTaskResPath = GNREnv.getTestTaskPath( self.rootPath )
+        self.testTaskResPath = getTestTaskPath( self.rootPath )
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
         else:
             shutil.rmtree( self.testTaskResPath, True )
             os.makedirs( self.testTaskResPath )
 
-        self.testTaskResDir = GNREnv.getTestTaskDirectory( )
+        self.testTaskResDir = getTestTaskDirectory( )
         rh = TaskResourceHeader( self.testTaskResDir )
         resFile = self.task.prepareResourceDelta( self.task.header.taskId, rh )
 
@@ -82,7 +82,7 @@ class TaskTester:
     #########################
     def __prepareTmpDir( self ):
 
-        self.tmpDir = GNREnv.getTestTaskTmpPath( self.rootPath )
+        self.tmpDir = getTestTaskTmpPath( self.rootPath )
         if not os.path.exists( self.tmpDir ):
             os.makedirs( self.tmpDir )
         else:

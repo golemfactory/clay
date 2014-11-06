@@ -14,7 +14,7 @@ from examples.gnr.task.SceneFileEditor import regenerateFile
 from GNRTask import GNRTask, GNRTaskBuilder, GNROptions
 from RenderingTask import RenderingTask, RenderingTaskBuilder
 from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
-from GNREnv import GNREnv
+from RenderingDirManager import getTestTaskPath
 from TaskState import RendererDefaults, RendererInfo
 from examples.gnr.ui.PbrtDialog import PbrtDialog
 from examples.gnr.customizers.PbrtDialogCustomizer import PbrtDialogCustomizer
@@ -226,7 +226,7 @@ class PbrtRenderTask( RenderingTask ):
         ctd.srcCode             = self.srcCode
         ctd.performance         = 0
 
-        self.testTaskResPath = GNREnv.getTestTaskPath( self.rootPath )
+        self.testTaskResPath = getTestTaskPath( self.rootPath )
         logger.debug( self.testTaskResPath )
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )

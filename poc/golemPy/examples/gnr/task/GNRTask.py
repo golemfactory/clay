@@ -2,7 +2,7 @@ from golem.task.TaskBase import Task, TaskHeader, TaskBuilder
 from golem.resource.Resource import prepareDeltaZip
 from golem.environments.Environment import Environment
 
-from GNREnv import GNREnv
+from RenderingDirManager import getTmpPath
 
 import os
 import logging
@@ -124,7 +124,7 @@ class GNRTask( Task ):
             commonPathPrefix = os.path.commonprefix( self.taskResources )
             commonPathPrefix = os.path.dirname( commonPathPrefix )
             dirName = commonPathPrefix #os.path.join( "res", self.header.clientId, self.header.taskId, "resources" )
-            tmpDir = GNREnv.getTmpPath(self.header.clientId, self.header.taskId, self.rootPath)
+            tmpDir = getTmpPath(self.header.clientId, self.header.taskId, self.rootPath)
 
 
             if not os.path.exists( tmpDir ):
