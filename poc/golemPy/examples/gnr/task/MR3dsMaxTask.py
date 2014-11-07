@@ -4,7 +4,7 @@ import os
 import subprocess
 import pickle
 import shutil
-
+import math
 
 from GNRTask import  GNROptions
 from RenderingDirManager import getTestTaskPath, getTmpPath
@@ -94,7 +94,16 @@ class MentalRayTaskBuilder( RenderingTaskBuilder ):
                 return renderer.defaults.defaultSubtasks
 
         if self.taskDefinition.rendererOptions.useFrames:
-            return len( self.taskDefinition.rendererOptions.frames )
+            numFrames = len( self.taskDefinition.rendererOptions.frames )
+            if definition.totalSubtasks > numFrames:
+                logger.warning("Too many subtasks for this task. {} subtasks will be used".format( numFrames ) )
+                return numFrames
+
+            est = int ( math.ceil( float( numFrames ) / float( math.ceil( float( numFrames ) / float( definition.totalSubtasks ) ) ) ) )
+            if est != definition.totalSubtasks:
+                logger.warning("Too many subtasks for this task. {} subtasks will be used.".format( est ) )
+
+            return est
 
         if renderer.defaults.minSubtasks <= definition.totalSubtasks <= renderer.defaults.maxSubtasks:
             return definition.totalSubtasks
@@ -142,6 +151,11 @@ class MentalRayTask( RenderingTask ):
         self.frames     = frames
 
 
+    def __chooseFrames( self, frames, startTask, totalTasks ):
+        subtasksFrames = int ( math.ceil( float( len( frames ) ) / float( totalTasks ) ) )
+        startFrame = (startTask - 1) * subtasksFrames
+        endFrame = min( startTask * subtasksFrames, len( frames ) )
+        return frames[ startFrame:endFrame ]
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
@@ -172,7 +186,7 @@ class MentalRayTask( RenderingTask ):
         cmdFile = os.path.basename( self.cmd )
 
         if self.useFrames:
-            frames = [ self.frames[ startTask - 1 ] ]
+            frames = self.__chooseFrames( self.frames, startTask, self.totalTasks )
         else:
             frames = []
 
