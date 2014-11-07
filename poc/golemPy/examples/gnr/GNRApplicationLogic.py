@@ -1,9 +1,10 @@
 import os
 import logging
+import uuid
 import cPickle as pickle
 from PyQt4 import QtCore
 
-from examples.gnr.task.InfoTask import InfoTaskBuilder
+from examples.gnr.task.InfoTask import InfoTaskBuilder, InfoTaskDefinition
 from examples.gnr.ui.TestingTaskProgressDialog import TestingTaskProgressDialog
 from golem.task.TaskState import TaskStatus
 from examples.gnr.TaskState import GNRTaskState, TaskDefinition
@@ -141,19 +142,21 @@ class GNRApplicationLogic( QtCore.QObject ):
     ######################
     #FIXME: task definiton jest skoncentrowany na taskach PBRT, trzeba zrobic tu jakis innych mechanizm definiowania definicji taskow
     def sendInfoTask( self, iterations, fullTaskTimeout, subtaskTimeout ):
+        infoTaskDefinition = InfoTaskDefinition()
+        infoTaskDefinition.taskId           = "{}".format( uuid.uuid4() )
+        infoTaskDefinition.srcFile          = os.path.join( os.environ.get('GOLEM'), "examples\\tasks\\sendSnapshot.py" )
+        infoTaskDefinition.totalSubtasks    = iterations
+        infoTaskDefinition.fullTaskTimeout  = fullTaskTimeout
+        infoTaskDefinition.subtaskTimeout   = subtaskTimeout
+        infoTaskDefinition.managerAddress   = self.client.configDesc.managerAddress
+        infoTaskDefinition.managerPort      = self.client.configDesc.managerPort
+
         taskBuilder = InfoTaskBuilder( self.client.getId(),
-                                          "sendSnapshot.py",
-                                          self.client.configDesc.managerAddress,
-                                          self.client.configDesc.managerPort,
-                                          iterations,
-                                          fullTaskTimeout,
-                                          subtaskTimeout)
+                                          infoTaskDefinition,
+                                        self.client.getRootPath() )
+
         task = Task.buildTask(  taskBuilder )
-        taskDefinition = TaskDefinition()
-        taskDefinition.taskId = task.header.taskId
-        taskDefinition.resources = task.taskResources
-     #   taskDefinition.taskResources = task.taskResources
-        self.addTaskFromDefinition( taskDefinition )
+        self.addTaskFromDefinition( infoTaskDefinition )
         self.client.enqueueNewTask( task )
 
     ######################

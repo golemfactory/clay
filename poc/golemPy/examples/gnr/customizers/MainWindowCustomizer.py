@@ -15,6 +15,7 @@ from examples.gnr.ui.ChangeTaskDialog import ChangeTaskDialog
 from examples.gnr.ui.InfoTaskDialog import InfoTaskDialog
 from examples.gnr.ui.EnvironmentsDialog import EnvironmentsDialog
 from examples.gnr.RenderingDirManager import getPreviewFile
+from examples.gnr.TaskState import TaskDefinition
 
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from TaskContexMenuCustomizer import TaskContextMenuCustomizer
@@ -97,9 +98,18 @@ class MainWindowCustomizer:
         from examples.gnr.TaskState import GNRTaskState
         assert isinstance( t, GNRTaskState )
 
+        self.currentTaskHighlighted = t
+        self.gui.ui.subtaskTimeout.setText( "{} minutes".format( int( t.definition.subtaskTimeout / 60.0 ) ) )
+        self.gui.ui.fullTaskTimeout.setText( str( datetime.timedelta( seconds = t.definition.fullTaskTimeout ) ) )
+        if t.taskState.timeStarted != 0.0:
+            lt = time.localtime( t.taskState.timeStarted )
+            timeString  = time.strftime( "%Y.%m.%d  %H:%M:%S", lt )
+            self.gui.ui.timeStarted.setText( timeString )
+
+        if not isinstance( t.definition, TaskDefinition ):
+            return
         mem, index = resourceSizeToDisplay( t.definition.estimatedMemory / 1024 )
         self.gui.ui.estimatedMemoryLabel.setText( "{} {}".format( mem, translateResourceIndex( index ) ) )
-        self.gui.ui.subtaskTimeout.setText( "{} minutes".format( int( t.definition.subtaskTimeout / 60.0 ) ) )
         self.gui.ui.resolution.setText( "{} x {}".format( t.definition.resolution[ 0 ], t.definition.resolution[ 1 ] ) )
         self.gui.ui.renderer.setText( "{}".format( t.definition.renderer ) )
         if t.definition.renderer == u"PBRT":
@@ -117,11 +127,6 @@ class MainWindowCustomizer:
             self.gui.ui.samplesPerPixel.setText( "" )
             self.gui.ui.samplesPerPixelLabel.setVisible( False )
         self.gui.ui.outputFile.setText( u"{}".format( t.definition.outputFile ) )
-        self.gui.ui.fullTaskTimeout.setText( str( datetime.timedelta( seconds = t.definition.fullTaskTimeout ) ) )
-        if t.taskState.timeStarted != 0.0:
-            lt = time.localtime( t.taskState.timeStarted )
-            timeString  = time.strftime( "%Y.%m.%d  %H:%M:%S", lt )
-            self.gui.ui.timeStarted.setText( timeString )
 
         if "resultPreview" in t.taskState.extraData:
             filePath = os.path.abspath( t.taskState.extraData["resultPreview"] )

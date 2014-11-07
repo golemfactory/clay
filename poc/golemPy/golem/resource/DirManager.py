@@ -23,6 +23,8 @@ class DirManager:
 
     ######################
     def clearDir( self, d ):
+        if not os.path.isdir( d ):
+            return
         for i in os.listdir( d ):
             path = os.path.join( d, i )
             if os.path.isfile( path ):
