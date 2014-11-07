@@ -47,8 +47,7 @@ class SubtaskState:
         self.timeStarted        = 0
         self.ttl                = 0
         self.lastChecking       = time.time()
-        self.startChunk         = 0
-        self.endChunk           = 0
+        self.extraData          = {}
         self.subtaskRemTime     = 0
         self.subtaskStatus      = ""
 

@@ -166,7 +166,7 @@ class TaskManager:
                     if s.ttl <= 0:
                         logger.info( "Subtask {} dies".format(  s.subtaskId ) )
                         s.subtaskStatus        = TaskStatus.failure
-                        t.subtaskFailed( s.subtaskId, s.startChunk, s.endChunk )
+                        t.subtaskFailed( s.subtaskId, s.extraData )
                         self.__noticeTaskUpdated( th.taskId )
 
 
@@ -325,8 +325,7 @@ class TaskManager:
             # TODO: read node ip address
             ss.subtaskDefinition    = ctd.shortDescription
             ss.subtaskId            = ctd.subtaskId
-            ss.startChunk           = ctd.extraData["startTask"]
-            ss.endChunk             = ctd.extraData["endTask"]
+            ss.extraData            = ctd.extraData
             ss.subtaskStatus        = TaskStatus.starting
 
             ts.subtaskStates[ ctd.subtaskId ] = ss

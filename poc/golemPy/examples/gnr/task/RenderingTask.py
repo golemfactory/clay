@@ -40,9 +40,9 @@ class RenderingTask( GNRTask ):
         GNRTask.__init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, environment,
                           ttl, subtaskTtl, resourceSize, estimatedMemory )
 
-        self.fullTaskTimeout        = max( MIN_TIMEOUT, ttl )
+        self.fullTaskTimeout        = ttl
         self.header.ttl             = self.fullTaskTimeout
-        self.header.subtaskTimeout  = max( SUBTASK_TIMEOUT, subtaskTtl )
+        self.header.subtaskTimeout  = subtaskTtl
 
         self.mainProgramFile        = mainProgramFile
         self.mainSceneFile          = mainSceneFile

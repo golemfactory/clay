@@ -85,9 +85,9 @@ class GNRTask( Task ):
         return self.previewFilePath
 
     #######################
-    def subtaskFailed( self, subtaskId, startChunk, endChunk ):
+    def subtaskFailed( self, subtaskId, extraData ):
         self.numFailedSubtasks += 1
-        self.failedSubtasks.add( GNRSubtask( subtaskId, startChunk, endChunk ) )
+        self.failedSubtasks.add( GNRSubtask( subtaskId, extraData["startTask"], extraData["endTask"] ) )
 
     #######################
     def needsComputation( self ):
