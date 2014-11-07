@@ -3,6 +3,7 @@ import random
 import os
 import subprocess
 import pickle
+import shutil
 
 
 from GNRTask import  GNROptions
@@ -44,6 +45,8 @@ class MentalRayRendererOptions ( GNROptions ):
         self.environment = ThreeDSMaxEnvironment()
         self.preset = self.environment.getDefaultPreset()
         self.cmd = self.environment.get3dsmaxcmdPath()
+        self.useFrames = False
+        self.frames = range(1, 11)
 
     def addToResources( self, resources ):
         if os.path.isfile( self.preset ):
@@ -68,7 +71,7 @@ class MentalRayTaskBuilder( RenderingTaskBuilder ):
                                    self._calculateTotal( buildMentalRayRendererInfo(), self.taskDefinition ),
                                    self.taskDefinition.resolution[0],
                                    self.taskDefinition.resolution[1],
-                                   "temp",
+                                   os.path.splitext( os.path.basename( self.taskDefinition.outputFile ) )[0],
                                    self.taskDefinition.outputFile,
                                    self.taskDefinition.outputFormat,
                                    self.taskDefinition.fullTaskTimeout,
@@ -77,9 +80,27 @@ class MentalRayTaskBuilder( RenderingTaskBuilder ):
                                    self.taskDefinition.estimatedMemory,
                                    self.rootPath,
                                    self.taskDefinition.rendererOptions.preset,
-                                   self.taskDefinition.rendererOptions.cmd
+                                   self.taskDefinition.rendererOptions.cmd,
+                                   self.taskDefinition.rendererOptions.useFrames,
+                                   self.taskDefinition.rendererOptions.frames
                                    )
         return mentalRayTask
+
+    def _calculateTotal(self, renderer, definition ):
+        if definition.optimizeTotal:
+            if self.taskDefinition.rendererOptions.useFrames:
+                return len( self.taskDefinition.rendererOptions.frames )
+            else:
+                return renderer.defaults.defaultSubtasks
+
+        if self.taskDefinition.rendererOptions.useFrames:
+            return len( self.taskDefinition.rendererOptions.frames )
+
+        if renderer.defaults.minSubtasks <= definition.totalSubtasks <= renderer.defaults.maxSubtasks:
+            return definition.totalSubtasks
+        else :
+            return renderer.defaults.defaultSubtasks
+
 
 class MentalRayTask( RenderingTask ):
 
@@ -102,6 +123,8 @@ class MentalRayTask( RenderingTask ):
                   rootPath,
                   presetFile,
                   cmdFile,
+                  useFrames,
+                  frames,
                   returnAddress = "",
                   returnPort = 0,
                   ):
@@ -115,6 +138,10 @@ class MentalRayTask( RenderingTask ):
 
         self.presetFile = presetFile
         self.cmd        = cmdFile
+        self.useFrames  = useFrames
+        self.frames     = frames
+
+
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
@@ -144,6 +171,11 @@ class MentalRayTask( RenderingTask ):
 
         cmdFile = os.path.basename( self.cmd )
 
+        if self.useFrames:
+            frames = [ self.frames[ startTask - 1 ] ]
+        else:
+            frames = []
+
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
                                     "endTask" : endTask,
@@ -153,7 +185,9 @@ class MentalRayTask( RenderingTask ):
                                     "width" : self.resX,
                                     "height": self.resY,
                                     "presetFile": presetFile,
-                                    "cmdFile": cmdFile
+                                    "cmdFile": cmdFile,
+                                    "useFrames": self.useFrames,
+                                    "frames": frames
                                 }
 
 
@@ -201,7 +235,9 @@ class MentalRayTask( RenderingTask ):
                                     "width" : 1,
                                     "height": 1,
                                     "presetFile": presetFile,
-                                    "cmdFile": self.cmd
+                                    "cmdFile": self.cmd,
+                                    "useFrames": self.useFrames,
+                                    "frames": [ self.frames[0] ]
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -236,18 +272,30 @@ class MentalRayTask( RenderingTask ):
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
 
         if len( taskResult ) > 0:
+            numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
+            numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
+
             for trp in taskResult:
                 tr = pickle.loads( trp )
                 fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
                 fh.write( decompress( tr[ 1 ] ) )
                 fh.close()
-                num = self.subTasksGiven[ subtaskId ][ 'startTask' ]
-                self.collectedFileNames[ num ] = os.path.join(tmpDir, tr[0] )
-                self.numTasksReceived += 1
 
-                self._updatePreview( os.path.join( tmpDir, tr[ 0 ] ), num )
+                self.collectedFileNames[ numStart ] = os.path.join(tmpDir, tr[0] )
+                if not self.useFrames:
+                    self._updatePreview( os.path.join( tmpDir, tr[ 0 ] ), numStart )
+                else:
+                    self._updateFramePreview( os.path.join( tmpDir, tr[0] ) )
+
+            self.numTasksReceived += numEnd - numStart + 1
 
         if self.numTasksReceived == self.totalTasks:
+            if self.useFrames:
+                outpuDir = os.path.dirname( self.outputFile )
+                for file in self.collectedFileNames.values():
+                    shutil.copy( file, os.path.join( outpuDir, os.path.basename( file ) ) )
+                return
+
             outputFileName = u"{}".format( self.outputFile, self.outputFormat )
 
             pth, filename =  os.path.split(os.path.realpath(__file__))
@@ -287,4 +335,17 @@ class MentalRayTask( RenderingTask ):
         else:
             imgOffset.save( self.previewFilePath, "BMP" )
 
+    def _updateFramePreview( self, newChunkFilePath ):
+
+        if newChunkFilePath.endswith(".exr"):
+            img = exr_to_pil( newChunkFilePath )
+        else:
+            img = Image.open( newChunkFilePath )
+
+        tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
+
+        self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
+
+
+        img.save( self.previewFilePath, "BMP" )
 

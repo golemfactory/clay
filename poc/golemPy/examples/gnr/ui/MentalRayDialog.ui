@@ -70,6 +70,19 @@
        </item>
       </layout>
      </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="framesLineEdit"/>
+     </item>
+     <item row="1" column="0">
+      <widget class="QCheckBox" name="framesCheckBox">
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
+       <property name="text">
+        <string>Frames</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
   </layout>

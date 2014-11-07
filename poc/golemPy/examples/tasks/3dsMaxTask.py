@@ -7,10 +7,14 @@ import zipfile
 import subprocess
 import win32process
 
-def format3dsMaxCmd( cmdFile, startTask, endTask, totalTasks, outfilebasename, scenefile, width, height, presetFile ):
-    cmd = '{} -outputName:{}\\chunk{}.exr -strip:{},0,{} "{}" -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile, outfilebasename, startTask, totalTasks, startTask, scenefile, width, height, presetFile )
-    print cmd
+def format3dsMaxCmd( cmdFile, startTask, endTask, totalTasks, outputFile, outfilebasename, scenefile, width, height, presetFile ):
+    cmd = '{} -outputName:{}\\{}.exr -strip:{},0,{} "{}" -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile,outputFile,  outfilebasename, totalTasks, startTask, scenefile, width, height, presetFile )
     return cmd
+
+def format3dsMaxCmdWithFrames( cmdFile, frames, outputFile, outfilebasename, scenefile, width, height, presetFile ):
+    cmd = '{} -outputName:{}\\{}.exr -frames:{} "{}" -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile, outputFile, outfilebasename, frames, scenefile, width, height, presetFile )
+    return cmd
+
 
 def __readFromEnvironment( defaultCmdFile ):
     GOLEM_ENV = 'GOLEM'
@@ -32,7 +36,7 @@ def __readFromEnvironment( defaultCmdFile ):
 
 
 ############################f =
-def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, preset, cmdFile):
+def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, preset, cmdFile, useFrames, frames):
     print 'run3dsMaxTask'
     outputFiles = tmpPath
 
@@ -54,7 +58,12 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, sc
 
     cmdFile = __readFromEnvironment( cmdFile )
     if os.path.exists( sceneFile ):
-        cmd = format3dsMaxCmd( cmdFile, startTask, endTask, totalTasks, outputFiles, sceneFile, width, height, presetFile )
+        if useFrames:
+            frames = parseFrames( frames )
+            cmd = format3dsMaxCmdWithFrames( cmdFile, frames, outputFiles, outfilebasename, sceneFile, width, height, presetFile )
+        else:
+            cmd = format3dsMaxCmd( cmdFile, startTask, endTask, totalTasks, outputFiles, outfilebasename, sceneFile, width, height, presetFile )
+
     else:
         print "Scene file does not exist"
         return []
@@ -82,4 +91,7 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, sc
     return res
 
 
-output = run3dsMaxTask ( pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, presetFile, cmdFile )
+def parseFrames( frames ):
+    return ",".join( [ u"{}".format(frame) for frame in frames ] )
+
+output = run3dsMaxTask ( pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, presetFile, cmdFile, useFrames, frames )
