@@ -278,8 +278,7 @@ class TaskManager:
             else:
                 ts.remainingTime = -0.0
 
-            if hasattr( t, "getPreviewFilePath" ): # bardzo brzydkie
-                ts.resultPreview = t.getPreviewFilePath()
+            t.updateTaskState( ts )
 
             return ts
         else:

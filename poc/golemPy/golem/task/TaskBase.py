@@ -120,6 +120,10 @@ class Task:
     def testTask( self ):
         return False
 
+    @abc.abstractmethod
+    def updateTaskState( self, taskState ):
+        return
+
     #######################
     @classmethod
     def buildTask( cls, taskBuilder ):

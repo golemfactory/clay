@@ -123,8 +123,8 @@ class MainWindowCustomizer:
             timeString  = time.strftime( "%Y.%m.%d  %H:%M:%S", lt )
             self.gui.ui.timeStarted.setText( timeString )
 
-        if t.taskState.resultPreview:
-            filePath = os.path.abspath( t.taskState.resultPreview )
+        if "resultPreview" in t.taskState.extraData:
+            filePath = os.path.abspath( t.taskState.extraData["resultPreview"] )
             if os.path.exists( filePath ):
                 self.gui.ui.previewLabel.setPixmap( QPixmap( filePath ) )
         else:

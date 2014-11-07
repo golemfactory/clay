@@ -9,9 +9,10 @@ class TaskState:
         self.remainingTime  = 0
         self.elapsedTime    = 0
         self.timeStarted    = 0
-        self.resultPreview  = None
 
         self.subtaskStates  = {}
+
+        self.extraData      = {}
 
     #########################
     def getSubtaskState( self, subtaskId ):

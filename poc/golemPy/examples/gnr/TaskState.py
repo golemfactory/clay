@@ -44,7 +44,7 @@ class TaskDefinition:
         self.renderer           = None
 
         self.resources          = set()
-        self.rendererOptions      = None
+        self.rendererOptions    = None
 
         self.mainProgramFile    = ""
         self.mainSceneFile      = ""

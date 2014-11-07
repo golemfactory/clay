@@ -140,3 +140,7 @@ class GNRTask( Task ):
     #######################
     def abort ( self ):
         pass
+
+    #######################
+    def updateTaskState( self, taskState ):
+        pass

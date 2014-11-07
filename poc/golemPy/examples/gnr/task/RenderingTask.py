@@ -71,6 +71,10 @@ class RenderingTask( GNRTask ):
         self.collector = RenderingTaskCollector()
         self.collectedFileNames = []
 
+    def updateTaskState( self, taskState ):
+        if self.previewFilePath:
+            taskState.extraData['resultPreview'] = self.previewFilePath
+
     #######################
     def _updatePreview( self, newChunkFilePath ):
 
