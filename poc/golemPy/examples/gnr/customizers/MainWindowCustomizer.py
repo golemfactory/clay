@@ -45,11 +45,13 @@ class MainWindowCustomizer:
         self.currentTaskHighlighted         = None
         self.taskDetailsDialog              = None
         self.taskDetailsDialogCustomizer    = None
-        self.previewPath = os.path.join( os.getcwd(), getPreviewFile() )
+        self.previewPath = os.path.join( os.environ.get('GOLEM'), "examples\\gnr", getPreviewFile() )
+        self.sliderPreviews = {}
 
         palette = QPalette()
         palette.setColor( QPalette.Foreground, QtCore.Qt.red )
         self.gui.ui.errorLabel.setPalette( palette )
+        self.gui.ui.frameSlider.setVisible( False )
 
     #############################
     def __setupConnections( self ):
@@ -64,6 +66,7 @@ class MainWindowCustomizer:
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "doubleClicked(const QModelIndex)" ), self.__taskTableRowDoubleClicked )
         self.gui.ui.showResourceButton.clicked.connect( self.__showTaskResourcesClicked )
         self.gui.ui.renderTaskTableWidget.customContextMenuRequested.connect( self.__contexMenuRequested )
+        QtCore.QObject.connect( self.gui.ui.frameSlider, QtCore.SIGNAL( "valueChanged( int )" ), self.__updateSliderPreview )
 
     ############################
     # Add new task to golem client
@@ -85,6 +88,7 @@ class MainWindowCustomizer:
                 if self.taskDetailsDialogCustomizer:
                     if self.taskDetailsDialogCustomizer.gnrTaskState.definition.taskId == taskId:
                         self.taskDetailsDialogCustomizer.updateView( tasks[ taskId ].taskState )
+
             else:
                 assert False, "Trying to update not added task."
         
@@ -126,14 +130,24 @@ class MainWindowCustomizer:
             self.gui.ui.pixelFilterLabel.setVisible( False )
             self.gui.ui.samplesPerPixel.setText( "" )
             self.gui.ui.samplesPerPixelLabel.setVisible( False )
-        self.gui.ui.outputFile.setText( u"{}".format( t.definition.outputFile ) )
 
-        if "resultPreview" in t.taskState.extraData:
-            filePath = os.path.abspath( t.taskState.extraData["resultPreview"] )
-            if os.path.exists( filePath ):
-                self.gui.ui.previewLabel.setPixmap( QPixmap( filePath ) )
+        if t.definition.renderer == u"MentalRay" and t.definition.rendererOptions.useFrames:
+            if "resultPreview" in t.taskState.extraData:
+                self.sliderPreviews = t.taskState.extraData[ "resultPreview" ]
+            self.gui.ui.frameSlider.setVisible( True )
+            self.gui.ui.frameSlider.setRange( 1, len( t.definition.rendererOptions.frames ) )
+            self.gui.ui.frameSlider.setSingleStep( 1 )
+            self.gui.ui.frameSlider.pageStep( 10 )
+            self.__updateSliderPreview()
         else:
-            self.gui.ui.previewLabel.setPixmap( QPixmap( self.previewPath ) )
+            self.gui.ui.frameSlider.setVisible( False )
+            if "resultPreview" in t.taskState.extraData:
+                filePath = os.path.abspath( t.taskState.extraData["resultPreview"] )
+                if os.path.exists( filePath ):
+                    self.gui.ui.previewLabel.setPixmap( QPixmap( filePath ) )
+            else:
+                self.gui.ui.previewLabel.setPixmap( QPixmap( self.previewPath ) )
+        self.gui.ui.outputFile.setText( u"{}".format( t.definition.outputFile ) )
 
         self.currentTaskHighlighted = t
 
@@ -335,6 +349,16 @@ class MainWindowCustomizer:
         self.environmentsDialogCustomizer = EnvironmentsDialogCustomizer( self.environmentsDialog, self.logic )
         self.environmentsDialog.show()
 
+
+    def __updateSliderPreview( self ):
+        num = self.gui.ui.frameSlider.value() - 1
+        if len( self.sliderPreviews ) > num:
+            if self.sliderPreviews[ num ]:
+                if os.path.exists ( self.sliderPreviews [ num ]):
+                    self.gui.ui.previewLabel.setPixmap( QPixmap( self.sliderPreviews[ num ] ) )
+                    return
+
+        self.gui.ui.previewLabel.setPixmap( QPixmap( self.previewPath ) )
 
 #######################################################################################
 def insertItem( root, pathTable ):

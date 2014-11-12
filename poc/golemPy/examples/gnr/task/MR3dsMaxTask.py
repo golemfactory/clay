@@ -153,6 +153,9 @@ class MentalRayTask( RenderingTask ):
         self.frames     = frames
         self.framesGiven = {}
 
+        if useFrames:
+            self.previewFilePath = [ None ] * len ( frames )
+
 
     def __chooseFrames( self, frames, startTask, totalTasks ):
         if totalTasks <= len( frames ):
@@ -310,7 +313,7 @@ class MentalRayTask( RenderingTask ):
                     if not self.useFrames:
                         self._updatePreview( trFile, numStart )
                     else:
-                        self._updateFramePreview( trFile )
+                        self._updateFramePreview( trFile, numStart )
                 else:
                     frameNum = self.frames[(numStart - 1 ) / parts ]
                     part = ( ( numStart - 1 ) % parts ) + 1
@@ -354,7 +357,9 @@ class MentalRayTask( RenderingTask ):
             imgOffset.save( self.previewFilePath, "BMP" )
 
     #######################
-    def _updateFramePreview( self, newChunkFilePath ):
+    def _updateFramePreview( self, newChunkFilePath, frameNum ):
+
+        num = self.frames.index( frameNum )
 
         if newChunkFilePath.endswith(".exr"):
             img = exr_to_pil( newChunkFilePath )
@@ -363,9 +368,9 @@ class MentalRayTask( RenderingTask ):
 
         tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
 
-        self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
+        self.previewFilePath[ num ] = "{}{}".format( os.path.join( tmpDir, "current_preview" ), num )
 
-        img.save( self.previewFilePath, "BMP" )
+        img.save( self.previewFilePath[ num ], "BMP" )
 
     #######################
     def __getOutputName( self, frameNum ):
@@ -395,7 +400,7 @@ class MentalRayTask( RenderingTask ):
         files = " ".join( collected.values() )
         self.__putCollectedFilesTogether( outputFileName, files )
         self.collectedFileNames[ numStart ] = outputFileName
-        self._updateFramePreview( outputFileName )
+        self._updateFramePreview( outputFileName, frameNum )
 
     #######################
     def __putImageTogether( self, tmpDir ):
@@ -412,7 +417,7 @@ class MentalRayTask( RenderingTask ):
         fh.close()
         return os.path.join( tmpDir, tr[0] )
 
-
+    #######################
     def __copyFrames( self ):
         outpuDir = os.path.dirname( self.outputFile )
         for file in self.collectedFileNames.values():
