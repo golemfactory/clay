@@ -96,8 +96,10 @@ class MentalRayTaskBuilder( RenderingTaskBuilder ):
         if self.taskDefinition.rendererOptions.useFrames:
             numFrames = len( self.taskDefinition.rendererOptions.frames )
             if definition.totalSubtasks > numFrames:
-                logger.warning("Too many subtasks for this task. {} subtasks will be used".format( numFrames ) )
-                return numFrames
+                est = int( math.floor( float( definition.totalSubtasks ) / float( numFrames ) ) ) * numFrames
+                if est != definition.totalSubtasks:
+                    logger.warning("Too many subtasks for this task. {} subtasks will be used".format( numFrames ) )
+                return est
 
             est = int ( math.ceil( float( numFrames ) / float( math.ceil( float( numFrames ) / float( definition.totalSubtasks ) ) ) ) )
             if est != definition.totalSubtasks:
@@ -149,13 +151,18 @@ class MentalRayTask( RenderingTask ):
         self.cmd        = cmdFile
         self.useFrames  = useFrames
         self.frames     = frames
+        self.framesGiven = {}
 
 
     def __chooseFrames( self, frames, startTask, totalTasks ):
-        subtasksFrames = int ( math.ceil( float( len( frames ) ) / float( totalTasks ) ) )
-        startFrame = (startTask - 1) * subtasksFrames
-        endFrame = min( startTask * subtasksFrames, len( frames ) )
-        return frames[ startFrame:endFrame ]
+        if totalTasks <= len( frames ):
+            subtasksFrames = int ( math.ceil( float( len( frames ) ) / float( totalTasks ) ) )
+            startFrame = (startTask - 1) * subtasksFrames
+            endFrame = min( startTask * subtasksFrames, len( frames ) )
+            return frames[ startFrame:endFrame ], 1
+        else:
+            parts = totalTasks / len( frames )
+            return [ frames[(startTask - 1 ) / parts ] ], parts
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
@@ -186,9 +193,10 @@ class MentalRayTask( RenderingTask ):
         cmdFile = os.path.basename( self.cmd )
 
         if self.useFrames:
-            frames = self.__chooseFrames( self.frames, startTask, self.totalTasks )
+            frames, parts = self.__chooseFrames( self.frames, startTask, self.totalTasks )
         else:
             frames = []
+            parts = 1
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
@@ -201,13 +209,16 @@ class MentalRayTask( RenderingTask ):
                                     "presetFile": presetFile,
                                     "cmdFile": cmdFile,
                                     "useFrames": self.useFrames,
-                                    "frames": frames
+                                    "frames": frames,
+                                    "parts": parts
                                 }
 
 
 
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
+        if parts != 1:
+            self.framesGiven[ frames[0] ] = {}
 
         ctd = ComputeTaskDef()
         ctd.taskId              = self.header.taskId
@@ -251,7 +262,8 @@ class MentalRayTask( RenderingTask ):
                                     "presetFile": presetFile,
                                     "cmdFile": self.cmd,
                                     "useFrames": self.useFrames,
-                                    "frames": [ self.frames[0] ]
+                                    "frames": [ self.frames[0] ],
+                                    "parts": 1
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -287,41 +299,33 @@ class MentalRayTask( RenderingTask ):
 
         if len( taskResult ) > 0:
             numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
+            parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
             numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
 
             for trp in taskResult:
-                tr = pickle.loads( trp )
-                fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
-                fh.write( decompress( tr[ 1 ] ) )
-                fh.close()
+                trFile = self.__unpackTaskResult( trp, tmpDir )
 
-                self.collectedFileNames[ numStart ] = os.path.join(tmpDir, tr[0] )
-                if not self.useFrames:
-                    self._updatePreview( os.path.join( tmpDir, tr[ 0 ] ), numStart )
+                if not self.useFrames or self.totalTasks <= len( self.frames ):
+                    self.collectedFileNames[ numStart ] = trFile
+                    if not self.useFrames:
+                        self._updatePreview( trFile, numStart )
+                    else:
+                        self._updateFramePreview( trFile )
                 else:
-                    self._updateFramePreview( os.path.join( tmpDir, tr[0] ) )
+                    frameNum = self.frames[(numStart - 1 ) / parts ]
+                    part = ( ( numStart - 1 ) % parts ) + 1
+                    self.framesGiven[ frameNum ][ part ] = trFile
+
+                    if len( self.framesGiven[ frameNum ] ) == parts:
+                        self.__putFrameTogether( tmpDir, frameNum, numStart )
 
             self.numTasksReceived += numEnd - numStart + 1
 
         if self.numTasksReceived == self.totalTasks:
             if self.useFrames:
-                outpuDir = os.path.dirname( self.outputFile )
-                for file in self.collectedFileNames.values():
-                    shutil.copy( file, os.path.join( outpuDir, os.path.basename( file ) ) )
-                return
-
-            outputFileName = u"{}".format( self.outputFile, self.outputFormat )
-
-            pth, filename =  os.path.split(os.path.realpath(__file__))
-            taskCollectorPath = os.path.join(pth, "..\..\..\\tools\\taskcollector\Release\\taskcollector.exe")
-            logger.debug( "taskCollector path: {}".format( taskCollectorPath ) )
-
-            self.collectedFileNames = OrderedDict( sorted( self.collectedFileNames.items() ) )
-            files = " ".join( self.collectedFileNames.values() )
-            cmd = u"{} paste {} {}".format(taskCollectorPath, outputFileName, files )
-            logger.debug("cmd = {}".format( cmd ) )
-            pc = subprocess.Popen( cmd )
-            pc.wait()
+                self.__copyFrames()
+            else:
+                self.__putImageTogether( tmpDir )
 
     #######################
     def _updatePreview( self, newChunkFilePath, chunkNum ):
@@ -349,6 +353,7 @@ class MentalRayTask( RenderingTask ):
         else:
             imgOffset.save( self.previewFilePath, "BMP" )
 
+    #######################
     def _updateFramePreview( self, newChunkFilePath ):
 
         if newChunkFilePath.endswith(".exr"):
@@ -360,6 +365,55 @@ class MentalRayTask( RenderingTask ):
 
         self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
 
-
         img.save( self.previewFilePath, "BMP" )
 
+    #######################
+    def __getOutputName( self, frameNum ):
+        if frameNum < 10:
+            frameNum = "000{}".format( frameNum )
+        elif frameNum < 100:
+            frameNum = "00{}".format( frameNum )
+        elif frameNum < 1000:
+            frameNum = "0{}".format( frameNum )
+        else:
+            frameNum = "{}".format( frameNum )
+        return "{}{}.exr".format( self.outfilebasename, frameNum )
+
+    #######################
+    def __putCollectedFilesTogether( self, outputFileName, files ):
+        taskCollectorPath = os.path.join( os.environ.get( 'GOLEM' ), "tools\\taskcollector\Release\\taskcollector.exe" )
+        cmd = u"{} paste {} {}".format(taskCollectorPath, outputFileName, files )
+        logger.debug( cmd )
+        pc = subprocess.Popen( cmd )
+        pc.wait()
+
+    #######################
+    def __putFrameTogether( self, tmpDir, frameNum, numStart ):
+        outputFileName = os.path.join( tmpDir, self.__getOutputName( frameNum ) )
+        collected = self.framesGiven[ frameNum ]
+        collected = OrderedDict( sorted( collected.items() ) )
+        files = " ".join( collected.values() )
+        self.__putCollectedFilesTogether( outputFileName, files )
+        self.collectedFileNames[ numStart ] = outputFileName
+        self._updateFramePreview( outputFileName )
+
+    #######################
+    def __putImageTogether( self, tmpDir ):
+        outputFileName = u"{}".format( self.outputFile, self.outputFormat )
+        self.collectedFileNames = OrderedDict( sorted( self.collectedFileNames.items() ) )
+        files = " ".join( self.collectedFileNames.values() )
+        self.__putCollectedFilesTogether ( os.path.join( tmpDir, outputFileName ), files )
+
+    #######################
+    def __unpackTaskResult( self, trp, tmpDir ):
+        tr = pickle.loads( trp )
+        fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
+        fh.write( decompress( tr[ 1 ] ) )
+        fh.close()
+        return os.path.join( tmpDir, tr[0] )
+
+
+    def __copyFrames( self ):
+        outpuDir = os.path.dirname( self.outputFile )
+        for file in self.collectedFileNames.values():
+            shutil.copy( file, os.path.join( outpuDir, os.path.basename( file ) ) )
