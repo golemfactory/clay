@@ -249,18 +249,15 @@ class PbrtRenderTask( RenderingTask ):
 
         if len( taskResult ) > 0:
             for trp in taskResult:
-                tr = pickle.loads( trp )
-                fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
-                fh.write( decompress( tr[ 1 ] ) )
-                fh.close()
+                trFile = self._unpackTaskResult (trp, tmpDir )
 
                 if self.outputFormat != "EXR":
-                    self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
+                    self.collector.acceptTask( trFile ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
                 else:
-                    self.collectedFileNames.append( os.path.join(tmpDir, tr[0] ) )
+                    self.collectedFileNames.append( trFile )
                 self.numTasksReceived += 1
 
-                self._updatePreview( os.path.join( tmpDir, tr[ 0 ] ) )
+                self._updatePreview( trFile )
 
         if self.numTasksReceived == self.totalTasks:
             outputFileName = u"{}".format( self.outputFile, self.outputFormat )
@@ -268,14 +265,6 @@ class PbrtRenderTask( RenderingTask ):
                 self.collector.finalize().save( outputFileName, self.outputFormat )
                 self.previewFilePath = outputFileName
             else:
-
-                pth, filename =  os.path.split(os.path.realpath(__file__))
-                taskCollectorPath = os.path.join(pth, "..\..\..\\tools\\taskcollector\Release\\taskcollector.exe")
-                logger.debug( "taskCollector path: {}".format( taskCollectorPath ) )
-                files = ""
-                for file in self.collectedFileNames:
-                    files += file + " "
-                cmd = u"{} add {} {}".format(taskCollectorPath, outputFileName, files )
-                pc = subprocess.Popen( cmd )
-                pc.wait()
+                files = " ".join( self.collectedFileNames )
+                self._putCollectedFilesTogether( outputFileName, files, "add" )
 

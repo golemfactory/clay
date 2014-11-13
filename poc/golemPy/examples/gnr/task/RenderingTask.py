@@ -1,9 +1,12 @@
 import os
 import logging
+import pickle
+import subprocess
 
 from RenderingDirManager import getTmpPath
 from GNRTask import GNRTask, GNRTaskBuilder
 from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
+from golem.core.Compress import decompress
 
 from PIL import Image, ImageChops
 
@@ -93,3 +96,19 @@ class RenderingTask( GNRTask ):
             imgCurrent.save( self.previewFilePath, "BMP" )
         else:
             img.save( self.previewFilePath, "BMP" )
+
+    #######################
+    def _unpackTaskResult( self, trp, tmpDir ):
+        tr = pickle.loads( trp )
+        fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
+        fh.write( decompress( tr[ 1 ] ) )
+        fh.close()
+        return os.path.join( tmpDir, tr[0] )
+
+    #######################
+    def _putCollectedFilesTogether( self, outputFileName, files, arg ):
+        taskCollectorPath = os.path.join( os.environ.get( 'GOLEM' ), "tools\\taskcollector\Release\\taskcollector.exe" )
+        cmd = u"{} {} {} {}".format(taskCollectorPath, arg, outputFileName, files )
+        logger.debug( cmd )
+        pc = subprocess.Popen( cmd )
+        pc.wait()

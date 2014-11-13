@@ -6,7 +6,7 @@ import subprocess
 
 from TaskState import RendererDefaults, RendererInfo
 from GNRTask import GNROptions
-from RenderingDirManager import getTestTaskPath
+from RenderingDirManager import getTestTaskPath, getTmpPath
 from RenderingTask import RenderingTask, RenderingTaskBuilder
 from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
 
@@ -96,6 +96,7 @@ class VRayTask( RenderingTask ):
                           rootPath, estimatedMemory )
 
         self.rtEngine = rtEngine
+        self.collectedAlphaFiles = {}
 
 
     #######################
@@ -211,34 +212,27 @@ class VRayTask( RenderingTask ):
             numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
             numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
             for trp in taskResult:
-                tr = pickle.loads( trp )
-                fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
-                fh.write( decompress( tr[ 1 ] ) )
-                fh.close()
-                if self.outputFormat != "EXR":
-                    self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) )
+                trFile = self._unpackTaskResult( trp, tmpDir )
+                if self.outputFormat != "EXR" and self.outputFormat != "TIFF":
+                    self.collector.acceptTask( trFile )
                 else:
-                    self.collectedFileNames[ numStart ] = os.path.join(tmpDir, tr[0] )
-                self._updatePreview( os.path.join( tmpDir, tr[ 0 ] ) )
+                    if trFile.find('Alpha') != -1:
+                        self.collectedAlphaFiles[ numStart ] = trFile
+                    else:
+                        self.collectedFileNames[ numStart ] = trFile
+                        self._updatePreview( trFile )
 
             self.numTasksReceived += numEnd - numStart + 1
-
-
 
         if self.numTasksReceived == self.totalTasks:
             outputFileName = u"{}".format( self.outputFile, self.outputFormat )
 
-            if self.outputFormat != "EXR":
+            if self.outputFormat != "EXR" and self.outputFormat != "TIFF":
                 self.collector.finalize().save( outputFileName, self.outputFormat )
                 self.previewFilePath = outputFileName
             else:
-                pth, filename =  os.path.split(os.path.realpath(__file__))
-                taskCollectorPath = os.path.join(pth, "..\..\..\\tools\\taskcollector\Release\\taskcollector.exe")
-                logger.debug( "taskCollector path: {}".format( taskCollectorPath ) )
-
                 self.collectedFileNames = OrderedDict( sorted( self.collectedFileNames.items() ) )
-                files = " ".join( self.collectedFileNames.values() )
-                cmd = u"{} add {} {}".format(taskCollectorPath, outputFileName, files )
-                logger.debug("cmd = {}".format( cmd ) )
-                pc = subprocess.Popen( cmd )
-                pc.wait()
+                self.collectedAlphaFiles = OrderedDict( sorted( self.collectedAlphaFiles.items() ) )
+                files = " ".join( self.collectedFileNames.values() + self.collectedAlphaFiles.values() )
+                self._putCollectedFilesTogether( outputFileName, files, "add" )
+

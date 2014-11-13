@@ -1,8 +1,6 @@
 import logging
 import random
 import os
-import subprocess
-import pickle
 import shutil
 import math
 
@@ -10,7 +8,6 @@ from GNRTask import  GNROptions
 from RenderingDirManager import getTestTaskPath, getTmpPath
 from TaskState import RendererDefaults, RendererInfo
 from golem.task.TaskBase import ComputeTaskDef
-from golem.core.Compress import decompress
 
 from RenderingTaskCollector import exr_to_pil
 from RenderingTask import RenderingTask, RenderingTaskBuilder
@@ -306,7 +303,7 @@ class MentalRayTask( RenderingTask ):
             numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
 
             for trp in taskResult:
-                trFile = self.__unpackTaskResult( trp, tmpDir )
+                trFile = self._unpackTaskResult( trp, tmpDir )
 
                 if not self.useFrames or self.totalTasks <= len( self.frames ):
                     self.collectedFileNames[ numStart ] = trFile
@@ -384,13 +381,6 @@ class MentalRayTask( RenderingTask ):
             frameNum = "{}".format( frameNum )
         return "{}{}.exr".format( self.outfilebasename, frameNum )
 
-    #######################
-    def __putCollectedFilesTogether( self, outputFileName, files ):
-        taskCollectorPath = os.path.join( os.environ.get( 'GOLEM' ), "tools\\taskcollector\Release\\taskcollector.exe" )
-        cmd = u"{} paste {} {}".format(taskCollectorPath, outputFileName, files )
-        logger.debug( cmd )
-        pc = subprocess.Popen( cmd )
-        pc.wait()
 
     #######################
     def __putFrameTogether( self, tmpDir, frameNum, numStart ):
@@ -398,7 +388,7 @@ class MentalRayTask( RenderingTask ):
         collected = self.framesGiven[ frameNum ]
         collected = OrderedDict( sorted( collected.items() ) )
         files = " ".join( collected.values() )
-        self.__putCollectedFilesTogether( outputFileName, files )
+        self._putCollectedFilesTogether( outputFileName, files, "paste" )
         self.collectedFileNames[ numStart ] = outputFileName
         self._updateFramePreview( outputFileName, frameNum )
 
@@ -407,15 +397,8 @@ class MentalRayTask( RenderingTask ):
         outputFileName = u"{}".format( self.outputFile, self.outputFormat )
         self.collectedFileNames = OrderedDict( sorted( self.collectedFileNames.items() ) )
         files = " ".join( self.collectedFileNames.values() )
-        self.__putCollectedFilesTogether ( os.path.join( tmpDir, outputFileName ), files )
+        self._putCollectedFilesTogether ( os.path.join( tmpDir, outputFileName ), files, "paste" )
 
-    #######################
-    def __unpackTaskResult( self, trp, tmpDir ):
-        tr = pickle.loads( trp )
-        fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
-        fh.write( decompress( tr[ 1 ] ) )
-        fh.close()
-        return os.path.join( tmpDir, tr[0] )
 
     #######################
     def __copyFrames( self ):
