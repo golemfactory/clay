@@ -72,7 +72,7 @@ class RenderingTask( GNRTask ):
         self.previewFilePath = None
 
         self.collector = RenderingTaskCollector()
-        self.collectedFileNames = []
+        self.collectedFileNames = {}
 
     def updateTaskState( self, taskState ):
         if self.previewFilePath:

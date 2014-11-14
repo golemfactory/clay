@@ -154,6 +154,11 @@ class MentalRayTask( RenderingTask ):
             self.previewFilePath = [ None ] * len ( frames )
 
 
+        def restart( self ):
+            RenderingTask.restart( self )
+            if self.useFrames:
+                self.previewFilePath = [ None ] * len( frames )
+
     def __chooseFrames( self, frames, startTask, totalTasks ):
         if totalTasks <= len( frames ):
             subtasksFrames = int ( math.ceil( float( len( frames ) ) / float( totalTasks ) ) )
@@ -188,7 +193,7 @@ class MentalRayTask( RenderingTask ):
 
 
         sceneFile = os.path.relpath( os.path.dirname(self.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
-        sceneFile = os.path.join( sceneFile, self.mainSceneFile )
+        sceneFile = os.path.join( sceneFile, os.path.basename( self.mainSceneFile ) )
 
         cmdFile = os.path.basename( self.cmd )
 
@@ -302,6 +307,9 @@ class MentalRayTask( RenderingTask ):
             parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
             numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
 
+            if self.useFrames and self.totalTasks <= len( self.frames ):
+                framesList = self.subTasksGiven[ subtaskId ]['frames']
+
             for trp in taskResult:
                 trFile = self._unpackTaskResult( trp, tmpDir )
 
@@ -310,7 +318,8 @@ class MentalRayTask( RenderingTask ):
                     if not self.useFrames:
                         self._updatePreview( trFile, numStart )
                     else:
-                        self._updateFramePreview( trFile, numStart )
+                        self._updateFramePreview( trFile, framesList[0] )
+                        del framesList[0]
                 else:
                     frameNum = self.frames[(numStart - 1 ) / parts ]
                     part = ( ( numStart - 1 ) % parts ) + 1
@@ -356,7 +365,7 @@ class MentalRayTask( RenderingTask ):
     #######################
     def _updateFramePreview( self, newChunkFilePath, frameNum ):
 
-        num = self.frames.index( frameNum )
+        num = self.frames.index(frameNum)
 
         if newChunkFilePath.endswith(".exr"):
             img = exr_to_pil( newChunkFilePath )
@@ -366,6 +375,7 @@ class MentalRayTask( RenderingTask ):
         tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
 
         self.previewFilePath[ num ] = "{}{}".format( os.path.join( tmpDir, "current_preview" ), num )
+        print self.previewFilePath[num]
 
         img.save( self.previewFilePath[ num ], "BMP" )
 

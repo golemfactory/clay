@@ -1,6 +1,7 @@
 import os
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
+from copy import deepcopy
 
 from examples.gnr.ui.NewTaskDialog import NewTaskDialog
 from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
@@ -240,7 +241,7 @@ class NewTaskDialogCustomizer:
 
         r = self.logic.getRenderer( definition.renderer )
 
-        self.rendererOptions = definition.rendererOptions
+        self.rendererOptions = deepcopy( definition.rendererOptions )
 
         time            = QtCore.QTime()
         self.gui.ui.taskIdLabel.setText( self.__generateNewTaskUID() )
@@ -340,7 +341,7 @@ class NewTaskDialogCustomizer:
         definition.taskId                = u"{}".format( self.gui.ui.taskIdLabel.text() )
         definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime = getTimeValues( self.gui )
         definition.renderer          = self.__getCurrentRenderer().name
-        definition.rendererOptions = self.rendererOptions
+        definition.rendererOptions   = deepcopy( self.rendererOptions )
         definition.resolution        = [ self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value() ]
         definition.outputFile        = u"{}".format( self.gui.ui.outputFileLineEdit.text() )
         definition.mainProgramFile   = u"{}".format( self.gui.ui.mainProgramFileLineEdit.text() )

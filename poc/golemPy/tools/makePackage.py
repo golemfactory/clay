@@ -9,7 +9,7 @@ def makeFolder( dest ):
         os.mkdir( dest )
 
 def copyFiles( dest, src ):
-    files = glob.glob(os.path.join( src, '*.pyc') ) + glob.glob( os.path.join( src, '*.ini') )
+    files = glob.glob( os.path.join( src, '*.pyc') ) + glob.glob( os.path.join( src, '*.ini') )
     files += glob.glob( os.path.join( src, '*.jpg') ) + glob.glob( os.path.join( src, '*.exe') )
     files += glob.glob( os.path.join( src, '*.txt') ) + glob.glob( os.path.join( src, '*.dll' ) )
     for f in files:

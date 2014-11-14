@@ -134,14 +134,14 @@ public:
 		unsigned int width = FreeImage_GetWidth(*it);
 		unsigned int height = FreeImage_GetHeight(*it);
 
-		WORD bpp = FreeImage_GetBPP(*it);
-		printf("%d\n", bpp);
+		printf("%d %d\n", width, height);
 
 		FIBITMAP *finalImage = FreeImage_Copy(*it, 0, height, width, 0);
 
 		int bytesapp = FreeImage_GetLine(*it) / FreeImage_GetWidth(*it);
 
 		for (it++; it != chunks.end(); it++) {
+			printf("CHUNK!");
 				for(unsigned int y = 0 ; y < height ; y++) {
 					FIRGBAF *srcbits = (FIRGBAF *) FreeImage_GetScanLine(*it, y);
 					FIRGBAF *dstbits = (FIRGBAF *) FreeImage_GetScanLine(finalImage, y);
@@ -150,6 +150,7 @@ public:
 						dstbits[x].red += srcbits[x].red;
 						dstbits[x].blue += srcbits[x].blue;
 						dstbits[x].green += srcbits[x].green;
+						dstbits[x].alpha += srcbits[x].alpha;
 					}
 				}
 		}

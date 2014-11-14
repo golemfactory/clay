@@ -137,6 +137,7 @@ class MainWindowCustomizer:
             self.gui.ui.frameSlider.setVisible( True )
             self.gui.ui.frameSlider.setRange( 1, len( t.definition.rendererOptions.frames ) )
             self.gui.ui.frameSlider.setSingleStep( 1 )
+            self.gui.ui.frameSlider.setPageStep( 1 )
             self.__updateSliderPreview()
         else:
             self.gui.ui.frameSlider.setVisible( False )

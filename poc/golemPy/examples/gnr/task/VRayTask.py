@@ -119,8 +119,7 @@ class VRayTask( RenderingTask ):
         workingDirectory    = os.path.dirname( workingDirectory )
 
         sceneFile = os.path.relpath( os.path.dirname(self.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
-        sceneFile = os.path.join( sceneFile, self.mainSceneFile )
-
+        sceneFile = os.path.join( sceneFile, os.path.basename( self.mainSceneFile ) )
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
