@@ -14,7 +14,7 @@ def open_exr_as_rgbf_images( exr_file ):
     dw = file.header()['dataWindow']
     size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
 
-    rgbf = [Image.fromstring("F", size, file.channel(c, pt)) for c in "RGB"]
+    rgbf = [Image.fromstring("F", size, file.channel(c, pt) ) for c in "RGB"]
 
     return rgbf
 
@@ -32,6 +32,23 @@ def convert_rgbf_images_to_rgb8_image( rgbf, lightest = 255.0, darkest=0.0 ):
     img = Image.merge("RGB", rgb8)
     
     return img
+
+############################
+def convert_rgbf_images_to_l_image( rgbf, lightest = 255.0, darkest=0.0 ):
+    scale = 255 / (lightest - darkest)
+
+    def normalize_0_255( val ):
+        scale = 255.0
+        darkest = 0.0
+        return (val * scale) + darkest
+
+    rgb8 = [im.point(normalize_0_255).convert("L") for im in rgbf]
+
+    img = Image.merge("RGB", rgb8)
+    img = img.convert("L")
+
+    return img
+
 
 ############################
 def get_single_rgbf_extrema( rgbf ):
@@ -132,21 +149,45 @@ class RenderingTaskCollector:
     def __init__( self ):
         self.darkest = None
         self.lightest = None
+        self.alphaDarkest = None
+        self.alphaLightest = None
         self.acceptedExrFiles = []
+        self.acceptedAlphaFiles = []
 
     ############################
     def acceptTask( self, exrFile ):
         rgbf = open_exr_as_rgbf_images( exrFile )
-
         d, l = get_single_rgbf_extrema( rgbf )
 
-        self.darkest = d
-        self.lightest = l
+        if self.darkest:
+            self.darkest = min( d, self.darkest )
+        else:
+            self.darkest = d
 
-        self.darkest = min( d, self.darkest )
-        self.lightest = max( l, self.lightest )
+        if self.lightest:
+            self.lightest = max( l, self.lightest )
+        else:
+            self.lightest = l
 
         self.acceptedExrFiles.append( exrFile )
+
+    ############################
+    def acceptAlpha( self, exrFile ):
+        rgbf = open_exr_as_rgbf_images( exrFile )
+        d, l = get_single_rgbf_extrema( rgbf )
+
+        if self.alphaDarkest:
+            self.alphaDarkest = min( d, self.alphaDarkest )
+        else:
+            self.alphaDarkest = d
+
+        if self.alphaLightest:
+            self.alphaLightest = max( l, self.alphaLightest )
+        else:
+            self.alphaLightest = l
+
+        self.acceptedAlphaFiles.append( exrFile )
+
 
     ############################
     def finalize( self, showProgress = False ):
@@ -167,6 +208,15 @@ class RenderingTaskCollector:
 
             if showProgress:
                 print_progress( i, len( self.acceptedExrFiles ) )
+
+        if len( self.acceptedAlphaFiles ) > 0:
+            finalAlpha = convert_rgbf_images_to_l_image( open_exr_as_rgbf_images( self.acceptedAlphaFiles[ 0 ] ), self.lightest, self.darkest )
+
+            for i in range( 1, len( self.acceptedAlphaFiles) ):
+                l_im = convert_rgbf_images_to_l_image( open_exr_as_rgbf_images( self.acceptedAlphaFiles[ i ] ), self.lightest, self.darkest )
+                finalAlpha = ImageChops.add( finalAlpha, l_im )
+
+            finalImg.putalpha( finalAlpha )
 
         return finalImg
 

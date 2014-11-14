@@ -160,21 +160,18 @@ class VRayTask( RenderingTask ):
 
             for trp in taskResult:
                 trFile = self._unpackTaskResult( trp, tmpDir )
-                if self.outputFormat != "EXR" and self.outputFormat != "TIFF":
-                    self.collector.acceptTask( trFile )
+                if trFile.find('Alpha') != -1:
+                    self.__collectAlphaFile( trFile, numStart )
                 else:
-                    if trFile.find('Alpha') != -1:
-                        self.collectedAlphaFiles[ numStart ] = trFile
-                    else:
-                        self.collectedFileNames[ numStart ] = trFile
-                        self._updatePreview( trFile )
+                    self.__collectTaskFile( trFile, numStart )
+                    self._updatePreview( trFile )
 
             self.numTasksReceived += numEnd - numStart + 1
 
         if self.numTasksReceived == self.totalTasks:
             outputFileName = u"{}".format( self.outputFile, self.outputFormat )
 
-            if self.outputFormat != "EXR" and self.outputFormat != "TIFF":
+            if not self.__useOuterTaskCollector():
                 self.collector.finalize().save( outputFileName, self.outputFormat )
                 self.previewFilePath = outputFileName
             else:
@@ -182,4 +179,30 @@ class VRayTask( RenderingTask ):
                 self.collectedAlphaFiles = OrderedDict( sorted( self.collectedAlphaFiles.items() ) )
                 files = " ".join( self.collectedFileNames.values() + self.collectedAlphaFiles.values() )
                 self._putCollectedFilesTogether( outputFileName, files, "add" )
+
+    def __collectAlphaFile( self, trFile, numStart ):
+        if self.__useAlpha():
+            if self.__useOuterTaskCollector():
+                self.collectedAlphaFiles[ numStart ] = trFile
+            else:
+                self.collector.acceptAlpha( trFile )
+
+
+    def __collectTaskFile( self, trFile, numStart ):
+        if self.__useOuterTaskCollector():
+            self.collectedFileNames[ numStart ] = trFile
+        else:
+            self.collector.acceptTask( trFile )
+
+    def __useOuterTaskCollector( self ):
+        unsupportedFormats = ['EXR', 'EPS']
+        if self.outputFormat in unsupportedFormats:
+            return True
+        return False
+
+    def __useAlpha( self ):
+        unsupportedFormats = ['BMP', 'PCX', 'PDF']
+        if self.outputFormat in unsupportedFormats:
+            return False
+        return True
 
