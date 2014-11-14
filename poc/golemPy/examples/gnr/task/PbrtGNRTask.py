@@ -1,29 +1,22 @@
 import os
 import random
-import cPickle as pickle
 import logging
-import time
-import subprocess
 
-from golem.task.TaskBase import ComputeTaskDef
-from golem.core.Compress import decompress
+
 from examples.gnr.RenderingEnvironment import PBRTEnvironment
 
 from examples.gnr.task.SceneFileEditor import regenerateFile
 
-from GNRTask import GNRTask, GNRTaskBuilder, GNROptions
+from GNRTask import GNROptions
 from RenderingTask import RenderingTask, RenderingTaskBuilder
-from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
 from RenderingDirManager import getTestTaskPath
 from TaskState import RendererDefaults, RendererInfo
 from examples.gnr.ui.PbrtDialog import PbrtDialog
 from examples.gnr.customizers.PbrtDialogCustomizer import PbrtDialogCustomizer
 
-import OpenEXR, Imath
-from PIL import Image, ImageChops
-
 logger = logging.getLogger(__name__)
 
+##############################################
 def buildPBRTRendererInfo():
     defaults = RendererDefaults()
     defaults.outputFormat       = "EXR"
@@ -39,7 +32,9 @@ def buildPBRTRendererInfo():
 
     return renderer
 
+##############################################
 class PbrtRendererOptions(  GNROptions ):
+    #######################
     def __init__( self ):
         self.pixelFilter = "mitchell"
         self.samplesPerPixelCount = 32
@@ -47,6 +42,7 @@ class PbrtRendererOptions(  GNROptions ):
         self.filters = [ "box", "gaussian", "mitchell", "sinc", "triangle" ]
         self.pathTracers = [ "adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified" ]
 
+##############################################
 class PbrtTaskBuilder( RenderingTaskBuilder ):
     #######################
     def build( self ):
@@ -76,6 +72,7 @@ class PbrtTaskBuilder( RenderingTaskBuilder ):
                                   )
 
         return pbrtTask
+
     #######################
     def _calculateTotal( self, renderer, definition ):
 
@@ -86,6 +83,7 @@ class PbrtTaskBuilder( RenderingTaskBuilder ):
         allOp = definition.resolution[0] * definition.resolution[1] * definition.rendererOptions.samplesPerPixelCount
         return max( renderer.defaults.minSubtasks, min( renderer.defaults.maxSubtasks, allOp / taskBase ) )
 
+##############################################
 class PbrtRenderTask( RenderingTask ):
 
     #######################
@@ -138,24 +136,14 @@ class PbrtRenderTask( RenderingTask ):
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
 
-        if self.lastTask != self.totalTasks :
-            perf = max( int( float( perfIndex ) / 1500 ), 1)
-            endTask = min( self.lastTask + perf, self.totalTasks )
-            startTask = self.lastTask
-            self.lastTask = endTask
-        else:
-            subtask = self.failedSubtasks.pop()
-            self.numFailedSubtasks -= 1
-            endTask = subtask.endChunk
-            startTask = subtask.startChunk
+        startTask, endTask = self._getNextTask( perfIndex )
 
         if numCores == 0:
             numCores = self.numCores
 
-        commonPathPrefix = os.path.commonprefix( self.taskResources )
-        commonPathPrefix = os.path.dirname( commonPathPrefix )
-
-        sceneSrc = regenerateFile( self.sceneFileSrc, self.resX, self.resY, self.pixelFilter, self.sampler, self.samplesPerPixel )
+        workingDirectory = self._getWorkingDirectory()
+        sceneSrc = regenerateFile( self.sceneFileSrc, self.resX, self.resY, self.pixelFilter,
+                                   self.sampler, self.samplesPerPixel )
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
@@ -167,42 +155,18 @@ class PbrtRenderTask( RenderingTask ):
                                     "sceneFileSrc" : sceneSrc
                                 }
 
-
-
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
 
-        ctd = ComputeTaskDef()
-        ctd.taskId              = self.header.taskId
-        ctd.subtaskId           = hash
-        ctd.extraData           = extraData
-        ctd.returnAddress       = self.header.taskOwnerAddress
-        ctd.returnPort          = self.header.taskOwnerPort
-        ctd.shortDescription    = self.__shortExtraDataRepr( perfIndex, extraData )
-        ctd.srcCode             = self.srcCode
-        ctd.performance         = perfIndex
-
-        ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
-        ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
-
-        logger.debug( ctd.workingDirectory )
-
-        # ctd.workingDirectory = ""
-
-
-        return ctd
-
+        return self._newComputeTaskDef( hash, extraData, workingDirectory, perfIndex )
 
     #######################
     def queryExtraDataForTestTask( self ):
 
-        commonPathPrefix = os.path.commonprefix( self.taskResources )
-        commonPathPrefix = os.path.dirname( commonPathPrefix )
+        workingDirectory = self._getWorkingDirectory()
 
-        workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
-        workingDirectory    = os.path.dirname( workingDirectory )
-
-        sceneSrc = regenerateFile( self.sceneFileSrc, 1, 1, self.pixelFilter, self.sampler, self.samplesPerPixel )
+        sceneSrc = regenerateFile( self.sceneFileSrc, 1, 1, self.pixelFilter, self.sampler,
+                                   self.samplesPerPixel )
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : 0,
@@ -216,29 +180,29 @@ class PbrtRenderTask( RenderingTask ):
 
         hash = "{}".format( random.getrandbits(128) )
 
-        ctd = ComputeTaskDef()
-        ctd.taskId              = self.header.taskId
-        ctd.subtaskId           = hash
-        ctd.extraData           = extraData
-        ctd.returnAddress       = self.header.taskOwnerAddress
-        ctd.returnPort          = self.header.taskOwnerPort
-        ctd.shortDescription    = self.__shortExtraDataRepr( 0, extraData )
-        ctd.srcCode             = self.srcCode
-        ctd.performance         = 0
-
         self.testTaskResPath = getTestTaskPath( self.rootPath )
         logger.debug( self.testTaskResPath )
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
 
-        #ctd.workingDirectory    = os.path.relpath( self.mainProgramFile, self.testTaskResPath)
-        #ctd.workingDirectory    = os.path.dirname( ctd.workingDirectory )
-        ctd.workingDirectory   = workingDirectory
-
-        return ctd
+        return self._newComputeTaskDef( hash, extraData, workingDirectory, 0 )
 
     #######################
-    def __shortExtraDataRepr( self, perfIndex, extraData ):
+    def _getNextTask( self, perfIndex ):
+        if self.lastTask != self.totalTasks :
+            perf = max( int( float( perfIndex ) / 1500 ), 1)
+            endTask = min( self.lastTask + perf, self.totalTasks )
+            startTask = self.lastTask
+            self.lastTask = endTask
+        else:
+            subtask = self.failedSubtasks.pop()
+            self.numFailedSubtasks -= 1
+            endTask = subtask.endChunk
+            startTask = subtask.startChunk
+        return startTask, endTask
+
+    #######################
+    def _shortExtraDataRepr( self, perfIndex, extraData ):
         l = extraData
         return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFileSrc: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFileSrc"] )
 

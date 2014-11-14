@@ -10,6 +10,7 @@ import time
 
 logger = logging.getLogger(__name__)
 
+##############################################
 class GNRTaskBuilder( TaskBuilder ):
     #######################
     def __init__( self, clientId, taskDefinition, rootPath ):
@@ -17,25 +18,33 @@ class GNRTaskBuilder( TaskBuilder ):
         self.clientId       = clientId
         self.rootPath       = rootPath
 
+    #######################
     def build( self ):
         pass
 
+##############################################
 class GNRSubtask():
+    #######################
     def __init__(self, subtaskId, startChunk, endChunk):
         self.subtaskId = subtaskId
         self.startChunk = startChunk
         self.endChunk = endChunk
 
+##############################################
 class GNROptions:
+    #######################
     def __init__( self ):
         self.environment = Environment()
 
+    #######################
     def addToResources( self, resources ):
         return resources
 
+    #######################
     def removeFromResources( self, resources ):
         return resources
 
+##############################################
 class GNRTask( Task ):
     #####################
     def __init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, environment,
@@ -100,7 +109,6 @@ class GNRTask( Task ):
     #######################
     def computationStarted( self, extraData ):
         pass
-
 
     #######################
     def getTotalTasks( self ):

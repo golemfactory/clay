@@ -10,6 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+##############################################
 class InfoTaskDefinition:
     def __init__( self ):
         self.taskId = ""
@@ -23,6 +24,7 @@ class InfoTaskDefinition:
         self.managerAddress     = ""
         self.managerPort        = 0
 
+##############################################
 class InfoTaskBuilder( GNRTaskBuilder ):
 
     def build( self ):
@@ -42,7 +44,7 @@ class InfoTaskBuilder( GNRTaskBuilder ):
                             self.taskDefinition.totalSubtasks
                            )
 
-
+##############################################
 class InfoTask( GNRTask ):
 
     def __init__( self,

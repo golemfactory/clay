@@ -7,7 +7,6 @@ import math
 from GNRTask import  GNROptions
 from RenderingDirManager import getTestTaskPath, getTmpPath
 from TaskState import RendererDefaults, RendererInfo
-from golem.task.TaskBase import ComputeTaskDef
 
 from RenderingTaskCollector import exr_to_pil
 from RenderingTask import RenderingTask, RenderingTaskBuilder
@@ -22,6 +21,7 @@ from PIL import Image, ImageChops
 
 logger = logging.getLogger(__name__)
 
+##############################################
 def buildMentalRayRendererInfo():
     defaults = RendererDefaults()
     defaults.outputFormat       = "EXR"
@@ -37,7 +37,9 @@ def buildMentalRayRendererInfo():
 
     return renderer
 
+##############################################
 class MentalRayRendererOptions ( GNROptions ):
+    #######################
     def __init__( self ):
         self.environment = ThreeDSMaxEnvironment()
         self.preset = self.environment.getDefaultPreset()
@@ -45,18 +47,21 @@ class MentalRayRendererOptions ( GNROptions ):
         self.useFrames = False
         self.frames = range(1, 11)
 
+    #######################
     def addToResources( self, resources ):
         if os.path.isfile( self.preset ):
             resources.add( os.path.normpath( self.preset ) )
         return resources
 
+    #######################
     def removeFromResources( self, resources ):
         if os.path.normpath( self.preset ) in resources:
             resources.remove( os.path.normpath( self.preset ) )
         return resources
 
+##############################################
 class MentalRayTaskBuilder( RenderingTaskBuilder ):
-
+    #######################
     def build( self ):
         mainSceneDir = os.path.dirname( self.taskDefinition.mainSceneFile )
 
@@ -83,6 +88,7 @@ class MentalRayTaskBuilder( RenderingTaskBuilder ):
                                    )
         return mentalRayTask
 
+    #######################
     def _calculateTotal(self, renderer, definition ):
         if definition.optimizeTotal:
             if self.taskDefinition.rendererOptions.useFrames:
@@ -109,9 +115,10 @@ class MentalRayTaskBuilder( RenderingTaskBuilder ):
         else :
             return renderer.defaults.defaultSubtasks
 
-
+##############################################
 class MentalRayTask( RenderingTask ):
 
+    #######################
     def __init__( self,
                   clientId,
                   taskId,
@@ -153,48 +160,20 @@ class MentalRayTask( RenderingTask ):
         if useFrames:
             self.previewFilePath = [ None ] * len ( frames )
 
-
-        def restart( self ):
-            RenderingTask.restart( self )
-            if self.useFrames:
-                self.previewFilePath = [ None ] * len( frames )
-
-    def __chooseFrames( self, frames, startTask, totalTasks ):
-        if totalTasks <= len( frames ):
-            subtasksFrames = int ( math.ceil( float( len( frames ) ) / float( totalTasks ) ) )
-            startFrame = (startTask - 1) * subtasksFrames
-            endFrame = min( startTask * subtasksFrames, len( frames ) )
-            return frames[ startFrame:endFrame ], 1
-        else:
-            parts = totalTasks / len( frames )
-            return [ frames[(startTask - 1 ) / parts ] ], parts
+    #######################
+    def restart( self ):
+        RenderingTask.restart( self )
+        if self.useFrames:
+            self.previewFilePath = [ None ] * len( frames )
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
 
-        if self.lastTask != self.totalTasks:
-            self.lastTask += 1
-            startTask = self.lastTask
-            endTask = self.lastTask
-        else:
-            subtask = self.failedSubtasks.pop()
-            self.numFailedSubtasks -= 1
-            endTask = subtask.endChunk
-            startTask = subtask.startChunk
+        startTask, endTask = self._getNextTask()
 
-        commonPathPrefix = os.path.commonprefix( self.taskResources )
-        commonPathPrefix = os.path.dirname( commonPathPrefix )
-
-        workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
-        workingDirectory    = os.path.dirname( workingDirectory )
-
-        presetFile = os.path.relpath( os.path.dirname( self.presetFile ), os.path.dirname( self.mainProgramFile ) )
-        presetFile = os.path.join( presetFile, self.presetFile )
-
-
-        sceneFile = os.path.relpath( os.path.dirname(self.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
-        sceneFile = os.path.join( sceneFile, os.path.basename( self.mainSceneFile ) )
-
+        workingDirectory = self._getWorkingDirectory()
+        presetFile = self.__getPresetFileRelPath()
+        sceneFile = self._getSceneFileRelPath()
         cmdFile = os.path.basename( self.cmd )
 
         if self.useFrames:
@@ -225,36 +204,15 @@ class MentalRayTask( RenderingTask ):
         if parts != 1:
             self.framesGiven[ frames[0] ] = {}
 
-        ctd = ComputeTaskDef()
-        ctd.taskId              = self.header.taskId
-        ctd.subtaskId           = hash
-        ctd.extraData           = extraData
-        ctd.returnAddress       = self.header.taskOwnerAddress
-        ctd.returnPort          = self.header.taskOwnerPort
-        ctd.shortDescription    = self.__shortExtraDataRepr( perfIndex, extraData )
-        ctd.srcCode             = self.srcCode
-        ctd.performance         = perfIndex
-
-        ctd.workingDirectory    = workingDirectory
-
-        logger.debug( ctd.workingDirectory )
-
-        return ctd
+        return self._newComputeTaskDef( hash, extraData, workingDirectory, perfIndex )
 
     #######################
     def queryExtraDataForTestTask( self ):
 
-        commonPathPrefix = os.path.commonprefix( self.taskResources )
-        commonPathPrefix = os.path.dirname( commonPathPrefix )
-
-        workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
-        workingDirectory    = os.path.dirname( workingDirectory )
-
-        presetFile = os.path.relpath( os.path.dirname( self.presetFile ), os.path.dirname( self.mainProgramFile ) )
-        presetFile = os.path.join( presetFile, self.presetFile )
-
-        sceneFile = os.path.relpath( os.path.dirname(self.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
-        sceneFile = os.path.join( sceneFile, self.mainSceneFile )
+        workingDirectory = self._getWorkingDirectory()
+        presetFile = self.__getPresetFileRelPath()
+        sceneFile = self._getSceneFileRelPath()
+        cmdFile = os.path.basename( self.cmd )
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : 0,
@@ -265,7 +223,7 @@ class MentalRayTask( RenderingTask ):
                                     "width" : 1,
                                     "height": 1,
                                     "presetFile": presetFile,
-                                    "cmdFile": self.cmd,
+                                    "cmdFile": cmdFile,
                                     "useFrames": self.useFrames,
                                     "frames": [ self.frames[0] ],
                                     "parts": 1
@@ -273,29 +231,12 @@ class MentalRayTask( RenderingTask ):
 
         hash = "{}".format( random.getrandbits(128) )
 
-        ctd = ComputeTaskDef()
-        ctd.taskId              = self.header.taskId
-        ctd.subtaskId           = hash
-        ctd.extraData           = extraData
-        ctd.returnAddress       = self.header.taskOwnerAddress
-        ctd.returnPort          = self.header.taskOwnerPort
-        ctd.shortDescription    = self.__shortExtraDataRepr( 0, extraData )
-        ctd.srcCode             = self.srcCode
-        ctd.performance         = 0
-
         self.testTaskResPath = getTestTaskPath( self.rootPath )
         logger.debug( self.testTaskResPath )
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
 
-        ctd.workingDirectory    = workingDirectory
-
-        return ctd
-
-     #######################
-    def __shortExtraDataRepr( self, perfIndex, extraData ):
-        l = extraData
-        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {},  outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["outfilebasename"], l["sceneFile"] )
+        return self._newComputeTaskDef( hash, extraData, workingDirectory, 0 )
 
   #######################
     def computationFinished( self, subtaskId, taskResult, dirManager = None ):
@@ -313,20 +254,12 @@ class MentalRayTask( RenderingTask ):
             for trp in taskResult:
                 trFile = self._unpackTaskResult( trp, tmpDir )
 
-                if not self.useFrames or self.totalTasks <= len( self.frames ):
-                    self.collectedFileNames[ numStart ] = trFile
-                    if not self.useFrames:
-                        self._updatePreview( trFile, numStart )
-                    else:
-                        self._updateFramePreview( trFile, framesList[0] )
-                        del framesList[0]
+                if not self.useFrames:
+                    self.__collectImagePart( numStart, trFile )
+                elif self.totalTasks <= len( self.frames ):
+                    framesList = self.__collectFrames( numStart, trFile, framesList )
                 else:
-                    frameNum = self.frames[(numStart - 1 ) / parts ]
-                    part = ( ( numStart - 1 ) % parts ) + 1
-                    self.framesGiven[ frameNum ][ part ] = trFile
-
-                    if len( self.framesGiven[ frameNum ] ) == parts:
-                        self.__putFrameTogether( tmpDir, frameNum, numStart )
+                    self.__collectFramePart( numStart, trFile, parts, tmpDir )
 
             self.numTasksReceived += numEnd - numStart + 1
 
@@ -349,7 +282,6 @@ class MentalRayTask( RenderingTask ):
             imgOffset.paste(img, (0, (chunkNum - 1) * ( self.resY ) / self.totalTasks ) )
         except Exception, err:
             logger.error("Can't generate preview {}".format( str(err) ))
-
 
         tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
 
@@ -380,6 +312,18 @@ class MentalRayTask( RenderingTask ):
         img.save( self.previewFilePath[ num ], "BMP" )
 
     #######################
+    def __chooseFrames( self, frames, startTask, totalTasks ):
+        if totalTasks <= len( frames ):
+            subtasksFrames = int ( math.ceil( float( len( frames ) ) / float( totalTasks ) ) )
+            startFrame = (startTask - 1) * subtasksFrames
+            endFrame = min( startTask * subtasksFrames, len( frames ) )
+            return frames[ startFrame:endFrame ], 1
+        else:
+            parts = totalTasks / len( frames )
+            return [ frames[(startTask - 1 ) / parts ] ], parts
+
+
+    #######################
     def __getOutputName( self, frameNum ):
         if frameNum < 10:
             frameNum = "000{}".format( frameNum )
@@ -390,7 +334,6 @@ class MentalRayTask( RenderingTask ):
         else:
             frameNum = "{}".format( frameNum )
         return "{}{}.exr".format( self.outfilebasename, frameNum )
-
 
     #######################
     def __putFrameTogether( self, tmpDir, frameNum, numStart ):
@@ -409,9 +352,37 @@ class MentalRayTask( RenderingTask ):
         files = " ".join( self.collectedFileNames.values() )
         self._putCollectedFilesTogether ( os.path.join( tmpDir, outputFileName ), files, "paste" )
 
-
     #######################
     def __copyFrames( self ):
         outpuDir = os.path.dirname( self.outputFile )
         for file in self.collectedFileNames.values():
             shutil.copy( file, os.path.join( outpuDir, os.path.basename( file ) ) )
+
+    #######################
+    def __collectImagePart( self, numStart, trFile ):
+        self.collectedFileNames[ numStart ] = trFile
+        self._updatePreview(trFile, numStart)
+
+    #######################
+    def __collectFrames( self, numStart, trFile, framesList ):
+        self.collectedFileNames[ numStart ] = trFile
+        self._updateFramePreview( trFile, framesList[0] )
+        return framesList[1:]
+
+    #######################
+    def __collectFramePart( self, numStart, trFile, parts, tmpDir ):
+        frameNum = self.frames[(numStart - 1 ) / parts ]
+        part = ( ( numStart - 1 ) % parts ) + 1
+        self.framesGiven[ frameNum ][ part ] = trFile
+
+        if len( self.framesGiven[ frameNum ] ) == parts:
+            self.__putFrameTogether( tmpDir, frameNum, numStart )
+
+    #######################
+    def __getPresetFileRelPath( self ):
+        presetFile = os.path.relpath( os.path.dirname( self.presetFile ), os.path.dirname( self.mainProgramFile ) )
+        presetFile = os.path.join( presetFile, os.path.basename( self.presetFile ) )
+        return presetFile
+
+
+

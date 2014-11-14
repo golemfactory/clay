@@ -1,27 +1,21 @@
 import logging
 import os
 import random
-import pickle
-import subprocess
+
+from collections import OrderedDict
 
 from TaskState import RendererDefaults, RendererInfo
 from GNRTask import GNROptions
-from RenderingDirManager import getTestTaskPath, getTmpPath
 from RenderingTask import RenderingTask, RenderingTaskBuilder
-from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
+from RenderingDirManager import getTestTaskPath
 
 from examples.gnr.RenderingEnvironment import VRayEnvironment
 from examples.gnr.ui.VRayDialog import VRayDialog
 from examples.gnr.customizers.VRayDialogCustomizer import VRayDialogCustomizer
 
-from golem.task.TaskBase import ComputeTaskDef
-from golem.core.Compress import decompress
-
-from PIL import Image, ImageChops
-from collections import OrderedDict
-
 logger = logging.getLogger(__name__)
 
+##############################################
 def buildVRayRendererInfo():
     defaults = RendererDefaults()
     defaults.outputFormat = "EXR"
@@ -36,14 +30,18 @@ def buildVRayRendererInfo():
 
     return renderer
 
-
+##############################################
 class VRayRendererOptions( GNROptions ):
+
+    #######################
     def __init__( self ):
         self.environment = VRayEnvironment()
         self.rtEngine = 0
         self.rtEngineValues = {0: 'No engine', 1: 'CPU', 3: 'OpenGL', 5: 'CUDA' }
 
+##############################################
 class VRayTaskBuilder( RenderingTaskBuilder ):
+    #######################
     def build( self ):
         mainSceneDir = os.path.dirname( self.taskDefinition.mainSceneFile )
 
@@ -67,7 +65,9 @@ class VRayTaskBuilder( RenderingTaskBuilder ):
                                    )
         return vRayTask
 
+##############################################
 class VRayTask( RenderingTask ):
+    #######################
     def __init__( self,
                   clientId,
                   taskId,
@@ -98,28 +98,13 @@ class VRayTask( RenderingTask ):
         self.rtEngine = rtEngine
         self.collectedAlphaFiles = {}
 
-
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
 
-        if self.lastTask != self.totalTasks:
-            self.lastTask += 1
-            startTask = self.lastTask
-            endTask = self.lastTask
-        else:
-            subtask = self.failedSubtasks.pop()
-            self.numFailedSubtasks -= 1
-            endTask = subtask.endChunk
-            startTask = subtask.startChunk
+        startTask, endTask = self._getNextTask()
 
-        commonPathPrefix = os.path.commonprefix( self.taskResources )
-        commonPathPrefix = os.path.dirname( commonPathPrefix )
-
-        workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
-        workingDirectory    = os.path.dirname( workingDirectory )
-
-        sceneFile = os.path.relpath( os.path.dirname(self.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
-        sceneFile = os.path.join( sceneFile, os.path.basename( self.mainSceneFile ) )
+        workingDirectory = self._getWorkingDirectory()
+        sceneFile = self._getSceneFileRelPath()
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
@@ -133,37 +118,16 @@ class VRayTask( RenderingTask ):
                                 }
 
 
-
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
 
-        ctd = ComputeTaskDef()
-        ctd.taskId              = self.header.taskId
-        ctd.subtaskId           = hash
-        ctd.extraData           = extraData
-        ctd.returnAddress       = self.header.taskOwnerAddress
-        ctd.returnPort          = self.header.taskOwnerPort
-        ctd.shortDescription    = self.__shortExtraDataRepr( perfIndex, extraData )
-        ctd.srcCode             = self.srcCode
-        ctd.performance         = perfIndex
-
-        ctd.workingDirectory    = workingDirectory
-
-        logger.debug( ctd.workingDirectory )
-
-        return ctd
+        return self._newComputeTaskDef( hash, extraData, workingDirectory, perfIndex )
 
     #######################
     def queryExtraDataForTestTask( self ):
 
-        commonPathPrefix = os.path.commonprefix( self.taskResources )
-        commonPathPrefix = os.path.dirname( commonPathPrefix )
-
-        workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
-        workingDirectory    = os.path.dirname( workingDirectory )
-
-        sceneFile = os.path.relpath( os.path.dirname(self.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
-        sceneFile = os.path.join( sceneFile, self.mainSceneFile )
+        workingDirectory = self._getWorkingDirectory()
+        sceneFile = self._getSceneFileRelPath()
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : 0,
@@ -178,29 +142,12 @@ class VRayTask( RenderingTask ):
 
         hash = "{}".format( random.getrandbits(128) )
 
-        ctd = ComputeTaskDef()
-        ctd.taskId              = self.header.taskId
-        ctd.subtaskId           = hash
-        ctd.extraData           = extraData
-        ctd.returnAddress       = self.header.taskOwnerAddress
-        ctd.returnPort          = self.header.taskOwnerPort
-        ctd.shortDescription    = self.__shortExtraDataRepr( 0, extraData )
-        ctd.srcCode             = self.srcCode
-        ctd.performance         = 0
-
         self.testTaskResPath = getTestTaskPath( self.rootPath )
         logger.debug( self.testTaskResPath )
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
 
-        ctd.workingDirectory    = workingDirectory
-
-        return ctd
-
-     #######################
-    def __shortExtraDataRepr( self, perfIndex, extraData ):
-        l = extraData
-        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["outfilebasename"], l["sceneFile"] )
+        return self._newComputeTaskDef( hash, extraData, workingDirectory, 0 )
 
   #######################
     def computationFinished( self, subtaskId, taskResult, dirManager = None ):
@@ -210,6 +157,7 @@ class VRayTask( RenderingTask ):
         if len( taskResult ) > 0:
             numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
             numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
+
             for trp in taskResult:
                 trFile = self._unpackTaskResult( trp, tmpDir )
                 if self.outputFormat != "EXR" and self.outputFormat != "TIFF":

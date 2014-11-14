@@ -5,6 +5,7 @@ import subprocess
 
 from RenderingDirManager import getTmpPath
 from GNRTask import GNRTask, GNRTaskBuilder
+from golem.task.TaskBase import ComputeTaskDef
 from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
 from golem.core.Compress import decompress
 
@@ -112,3 +113,50 @@ class RenderingTask( GNRTask ):
         logger.debug( cmd )
         pc = subprocess.Popen( cmd )
         pc.wait()
+
+    #######################
+    def _newComputeTaskDef( self, hash, extraData, workingDirectory, perfIndex ):
+        ctd = ComputeTaskDef()
+        ctd.taskId              = self.header.taskId
+        ctd.subtaskId           = hash
+        ctd.extraData           = extraData
+        ctd.returnAddress       = self.header.taskOwnerAddress
+        ctd.returnPort          = self.header.taskOwnerPort
+        ctd.shortDescription    = self._shortExtraDataRepr( perfIndex, extraData )
+        ctd.srcCode             = self.srcCode
+        ctd.performance         = perfIndex
+        ctd.workingDirectory    = workingDirectory
+        return ctd
+
+    #######################
+    def _getNextTask( self ):
+        if self.lastTask != self.totalTasks:
+            self.lastTask += 1
+            startTask = self.lastTask
+            endTask = self.lastTask
+        else:
+            subtask = self.failedSubtasks.pop()
+            self.numFailedSubtasks -= 1
+            endTask = subtask.endChunk
+            startTask = subtask.startChunk
+        return startTask, endTask
+
+    #######################
+    def _getWorkingDirectory( self ):
+        commonPathPrefix = os.path.commonprefix( self.taskResources )
+        commonPathPrefix = os.path.dirname( commonPathPrefix )
+
+        workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
+        workingDirectory    = os.path.dirname( workingDirectory )
+        return workingDirectory
+
+    #######################
+    def _getSceneFileRelPath( self ):
+        sceneFile = os.path.relpath( os.path.dirname(self.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
+        sceneFile = os.path.join( sceneFile, os.path.basename( self.mainSceneFile ) )
+        return sceneFile
+
+    ########################
+    def _shortExtraDataRepr( self, perfIndex, extraData ):
+        l = extraData
+        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["outfilebasename"], l["sceneFile"] )
