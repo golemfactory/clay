@@ -164,7 +164,7 @@ class MentalRayTask( RenderingTask ):
     def restart( self ):
         RenderingTask.restart( self )
         if self.useFrames:
-            self.previewFilePath = [ None ] * len( frames )
+            self.previewFilePath = [ None ] * len( self.frames )
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
@@ -214,6 +214,11 @@ class MentalRayTask( RenderingTask ):
         sceneFile = self._getSceneFileRelPath()
         cmdFile = os.path.basename( self.cmd )
 
+        if self.useFrames:
+            frames = [ self.frames[0] ]
+        else:
+            frames = []
+
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : 0,
                                     "endTask" : 1,
@@ -225,7 +230,7 @@ class MentalRayTask( RenderingTask ):
                                     "presetFile": presetFile,
                                     "cmdFile": cmdFile,
                                     "useFrames": self.useFrames,
-                                    "frames": [ self.frames[0] ],
+                                    "frames": frames, 
                                     "parts": 1
                                 }
 

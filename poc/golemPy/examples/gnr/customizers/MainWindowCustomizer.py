@@ -131,7 +131,9 @@ class MainWindowCustomizer:
             self.gui.ui.samplesPerPixel.setText( "" )
             self.gui.ui.samplesPerPixelLabel.setVisible( False )
 
-        if t.definition.renderer == u"MentalRay" and t.definition.rendererOptions.useFrames:
+        frameRenderers = [ u"MentalRay", u"VRay" ]
+
+        if t.definition.renderer in frameRenderers and t.definition.rendererOptions.useFrames:
             if "resultPreview" in t.taskState.extraData:
                 self.sliderPreviews = t.taskState.extraData[ "resultPreview" ]
             self.gui.ui.frameSlider.setVisible( True )
