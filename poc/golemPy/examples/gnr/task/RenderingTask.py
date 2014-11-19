@@ -61,6 +61,7 @@ class RenderingTask( GNRTask ):
 
         self.rootPath               = rootPath
         self.previewFilePath        = None
+        self.previewTaskFilePath    = None
 
         self.taskResources          = taskResources
 
@@ -71,12 +72,15 @@ class RenderingTask( GNRTask ):
     def restart( self ):
         GNRTask.restart( self )
         self.previewFilePath = None
+        self.previewTaskFilePath = None
 
         self.collector = RenderingTaskCollector()
         self.collectedFileNames = {}
 
     def updateTaskState( self, taskState ):
-        if self.previewFilePath:
+        if not self.finishedComputation() and self.previewTaskFilePath:
+            taskState.extraData['resultPreview'] = self.previewTaskFilePath
+        elif self.previewFilePath:
             taskState.extraData['resultPreview'] = self.previewFilePath
 
     #######################
@@ -95,8 +99,34 @@ class RenderingTask( GNRTask ):
             imgCurrent = Image.open( self.previewFilePath )
             imgCurrent = ImageChops.add( imgCurrent, img )
             imgCurrent.save( self.previewFilePath, "BMP" )
+
         else:
             img.save( self.previewFilePath, "BMP" )
+
+    def _updateTaskPreview( self ):
+        sentColor = (0, 255, 0)
+        failedColor = (255, 0, 0)
+
+        tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
+        self.previewTaskFilePath = "{}".format( os.path.join( tmpDir, "current_task_preview") )
+        if self.previewFilePath and os.path.exists( self.previewFilePath ):
+            imgTask = Image.open( self.previewFilePath )
+            for sub in self.subTasksGiven.values():
+                if sub['status'] == 'sent':
+                    self._markTaskArea( sub, imgTask, sentColor )
+                if sub['status'] == 'failed':
+                    self._markTaskArea( sub, imgTask, failedColor )
+
+            imgTask.save( self.previewTaskFilePath, "BMP" )
+            print self.previewTaskFilePath
+
+
+    def _markTaskArea(self, subtask, imgTask, color ):
+        upper = ( self.resY / self.totalTasks ) * (subtask[ 'startTask' ] - 1)
+        lower = ( self.resY / self.totalTasks ) * ( subtask[ 'endTask' ] )
+        for i in range(0, self.resX ):
+            for j in range( upper, lower):
+                imgTask.putpixel( (i, j), color )
 
     #######################
     def _unpackTaskResult( self, trp, tmpDir ):

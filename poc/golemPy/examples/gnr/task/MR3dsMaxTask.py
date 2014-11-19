@@ -201,6 +201,7 @@ class MentalRayTask( RenderingTask ):
 
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
+        self.subTasksGiven[ hash ]['status' ] = 'sent'
         if parts != 1:
             self.framesGiven[ frames[0] ] = {}
 
@@ -252,6 +253,7 @@ class MentalRayTask( RenderingTask ):
             numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
             parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
             numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
+            self.subTasksGiven[ subtaskId ][ 'status' ] = 'finished'
 
             if self.useFrames and self.totalTasks <= len( self.frames ):
                 framesList = self.subTasksGiven[ subtaskId ]['frames']
@@ -367,6 +369,7 @@ class MentalRayTask( RenderingTask ):
     def __collectImagePart( self, numStart, trFile ):
         self.collectedFileNames[ numStart ] = trFile
         self._updatePreview(trFile, numStart)
+        self._updateTaskPreview()
 
     #######################
     def __collectFrames( self, numStart, trFile, framesList ):

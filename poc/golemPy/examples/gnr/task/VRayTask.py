@@ -149,6 +149,7 @@ class VRayTask( RenderingTask ):
     #######################
     def restart( self ):
         RenderingTask.restart( self )
+        self.previewPartsFilePath = None
         if self.useFrames:
             self.previewFilePath = [ None ] * len( self.frames )
 
@@ -183,9 +184,11 @@ class VRayTask( RenderingTask ):
 
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
+        self.subTasksGiven[ hash ][ 'status' ] = 'sent'
         if parts != 1 and frames[0] not in self.framesGiven:
             self.framesGiven[ frames[0] ] = {}
 
+        self._updateTaskPreview()
         return self._newComputeTaskDef( hash, extraData, workingDirectory, perfIndex )
 
     #######################
@@ -231,6 +234,7 @@ class VRayTask( RenderingTask ):
             numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
             parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
             numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
+            self.subTasksGiven[ subtaskId ][ 'status' ] = 'finished'
 
             if self.useFrames and self.totalTasks <= len( self.frames ):
                 framesList = self.subTasksGiven[ subtaskId ][ 'frames' ]
@@ -301,6 +305,7 @@ class VRayTask( RenderingTask ):
         print self.previewFilePath[num]
 
         img.save( self.previewFilePath[ num ], "BMP" )
+        self._updateTaskPreview()
 
     #######################
     def __chooseFrames( self, frames, startTask, totalTasks ):
@@ -337,6 +342,7 @@ class VRayTask( RenderingTask ):
         else:
             self.__collectTaskFile( trFile, numStart )
             self._updatePreview( trFile )
+            self._updateTaskPreview()
 
     #######################
     def __collectFrames( self, numStart, trFile, framesList, parts ):

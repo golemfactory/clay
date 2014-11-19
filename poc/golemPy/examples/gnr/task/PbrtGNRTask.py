@@ -1,7 +1,7 @@
 import os
 import random
 import logging
-
+import math
 
 from examples.gnr.RenderingEnvironment import PBRTEnvironment
 
@@ -53,7 +53,7 @@ class PbrtTaskBuilder( RenderingTaskBuilder ):
                                    mainSceneDir,
                                    self.taskDefinition.mainProgramFile,
                                    self._calculateTotal( buildPBRTRendererInfo(), self.taskDefinition ),
-                                   32,
+                                   20,
                                    4,
                                    self.taskDefinition.resolution[ 0 ],
                                    self.taskDefinition.resolution[ 1 ],
@@ -132,6 +132,11 @@ class PbrtRenderTask( RenderingTask ):
         self.pixelFilter        = pixelFilter
         self.sampler            = sampler
         self.samplesPerPixel    = samplesPerPixel
+        self.nx                 = self.totalTasks * self.numSubtasks
+        self.ny                 = 1
+        self.__countSubtaskReg()
+        self.taskResX           = float( self.resX ) / float( self.nx )
+        self.taskResY           = float( self.resY ) / float ( self.ny )
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
@@ -157,6 +162,9 @@ class PbrtRenderTask( RenderingTask ):
 
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
+        self.subTasksGiven[ hash ][ 'status' ] = 'sent'
+
+        self._updateTaskPreview()
 
         return self._newComputeTaskDef( hash, extraData, workingDirectory, perfIndex )
 
@@ -212,6 +220,7 @@ class PbrtRenderTask( RenderingTask ):
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
 
         if len( taskResult ) > 0:
+            self.subTasksGiven[ subtaskId ][ 'status' ] = 'finished'
             for trp in taskResult:
                 trFile = self._unpackTaskResult (trp, tmpDir )
 
@@ -222,6 +231,7 @@ class PbrtRenderTask( RenderingTask ):
                 self.numTasksReceived += 1
 
                 self._updatePreview( trFile )
+                self._updateTaskPreview()
 
         if self.numTasksReceived == self.totalTasks:
             outputFileName = u"{}".format( self.outputFile, self.outputFormat )
@@ -232,3 +242,22 @@ class PbrtRenderTask( RenderingTask ):
                 files = " ".join( self.collectedFileNames )
                 self._putCollectedFilesTogether( outputFileName, files, "add" )
 
+    def _markTaskArea(self, subtask, imgTask, color ):
+        for numTask in range( subtask['startTask'], subtask['endTask'] ):
+            for sb in range(0, self.numSubtasks):
+                num = self.numSubtasks * numTask + sb
+                tx = num % self.nx
+                ty = num / self.nx
+                xL = tx * self.taskResX
+                xR = (tx + 1) * self.taskResX
+                yL = ty * self.taskResY
+                yR = (ty + 1) * self.taskResY
+
+                for i in range( int( math.floor(xL) ) , int( math.floor(xR) ) ):
+                    for j in range( int( math.floor( yL )) , int( math.floor( yR ) ) ) :
+                        imgTask.putpixel( (i, j), color )
+
+    def __countSubtaskReg( self ):
+        while ( self.nx % 2 == 0 ) and (2 * self.resX * self.ny < self.resY * self.nx ):
+            self.nx /= 2
+            self.ny *= 2

@@ -97,6 +97,7 @@ class GNRTask( Task ):
     def subtaskFailed( self, subtaskId, extraData ):
         self.numFailedSubtasks += 1
         self.failedSubtasks.add( GNRSubtask( subtaskId, extraData["startTask"], extraData["endTask"] ) )
+        self.subTasksGiven[ subtaskId ]['status'] = 'failed'
 
     #######################
     def needsComputation( self ):
