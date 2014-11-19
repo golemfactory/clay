@@ -22,7 +22,7 @@ class SimpleEnv:
     def openEnvFile( cls, filename, options = 'a' ):
         fname = cls.envFileName( filename )
 
-        if not os.path.exists( filename ):
+        if not os.path.exists( fname ):
             with open( fname, 'a' ):
                 os.utime( fname, None )
 
