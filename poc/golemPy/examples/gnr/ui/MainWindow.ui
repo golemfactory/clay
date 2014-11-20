@@ -59,6 +59,9 @@
         <property name="alternatingRowColors">
          <bool>false</bool>
         </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SingleSelection</enum>
+        </property>
         <property name="selectionBehavior">
          <enum>QAbstractItemView::SelectRows</enum>
         </property>
@@ -73,6 +76,9 @@
         </property>
         <property name="gridStyle">
          <enum>Qt::DashLine</enum>
+        </property>
+        <property name="sortingEnabled">
+         <bool>false</bool>
         </property>
         <property name="cornerButtonEnabled">
          <bool>true</bool>

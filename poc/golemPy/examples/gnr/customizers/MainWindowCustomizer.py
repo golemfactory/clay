@@ -164,6 +164,8 @@ class MainWindowCustomizer:
 
         self.gui.ui.renderTaskTableWidget.setCellWidget( currentRowCount, 2, taskTableElem.progressBarInBoxLayoutWidget )
 
+        self.gui.ui.renderTaskTableWidget.setCurrentItem( self.gui.ui.renderTaskTableWidget.item( currentRowCount, 1) )
+
         self.updateTaskAdditionalInfo( self.logic.getTask( taskId ) )
 
     ############################
