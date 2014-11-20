@@ -61,7 +61,6 @@ class GNRTask( Task ):
         self.numTasksReceived = 0
         self.subTasksGiven = {}
         self.numFailedSubtasks = 0
-        self.failedSubtasks = set()
 
         self.fullTaskTimeout = 2200
 
@@ -76,7 +75,6 @@ class GNRTask( Task ):
         self.subTasksGiven.clear()
 
         self.numFailedSubtasks = 0
-        self.failedSubtasks.clear()
         self.header.lastChecking = time.time()
         self.header.ttl = self.fullTaskTimeout
 
@@ -96,7 +94,6 @@ class GNRTask( Task ):
     #######################
     def subtaskFailed( self, subtaskId, extraData ):
         self.numFailedSubtasks += 1
-        self.failedSubtasks.add( GNRSubtask( subtaskId, extraData["startTask"], extraData["endTask"] ) )
         self.subTasksGiven[ subtaskId ]['status'] = 'failed'
 
     #######################

@@ -2,6 +2,7 @@ import os
 import logging
 import pickle
 import subprocess
+import math
 
 from RenderingDirManager import getTmpPath
 from GNRTask import GNRTask, GNRTaskBuilder
@@ -77,11 +78,16 @@ class RenderingTask( GNRTask ):
         self.collector = RenderingTaskCollector()
         self.collectedFileNames = {}
 
+    #######################
     def updateTaskState( self, taskState ):
         if not self.finishedComputation() and self.previewTaskFilePath:
             taskState.extraData['resultPreview'] = self.previewTaskFilePath
         elif self.previewFilePath:
             taskState.extraData['resultPreview'] = self.previewFilePath
+
+    def subtaskFailed( self, subtaskId, extraData ):
+        GNRTask.subtaskFailed( self, subtaskId, extraData )
+        self._updateTaskPreview()
 
     #######################
     def _updatePreview( self, newChunkFilePath ):
@@ -103,6 +109,7 @@ class RenderingTask( GNRTask ):
         else:
             img.save( self.previewFilePath, "BMP" )
 
+    #######################
     def _updateTaskPreview( self ):
         sentColor = (0, 255, 0)
         failedColor = (255, 0, 0)
@@ -120,10 +127,10 @@ class RenderingTask( GNRTask ):
             imgTask.save( self.previewTaskFilePath, "BMP" )
             print self.previewTaskFilePath
 
-
+    #######################
     def _markTaskArea(self, subtask, imgTask, color ):
-        upper = ( self.resY / self.totalTasks ) * (subtask[ 'startTask' ] - 1)
-        lower = ( self.resY / self.totalTasks ) * ( subtask[ 'endTask' ] )
+        upper = int( math.floor( float(self.resY ) / float( self.totalTasks ) ) ) * (subtask[ 'startTask' ] - 1)
+        lower = int( math.floor( float( self.resY ) / float( self.totalTasks ) ) )* ( subtask[ 'endTask' ] )
         for i in range(0, self.resX ):
             for j in range( upper, lower):
                 imgTask.putpixel( (i, j), color )
@@ -164,12 +171,16 @@ class RenderingTask( GNRTask ):
             self.lastTask += 1
             startTask = self.lastTask
             endTask = self.lastTask
+            return startTask, endTask
         else:
-            subtask = self.failedSubtasks.pop()
-            self.numFailedSubtasks -= 1
-            endTask = subtask.endChunk
-            startTask = subtask.startChunk
-        return startTask, endTask
+            for sub in self.subTasksGiven:
+                if sub['status'] == 'failed':
+                    sub['status'] = 'resent'
+                    endTask = sub['endTask']
+                    startTask = sub['startTask']
+                    self.numFailedSubtasks -= 1
+                    return startTask, endTask
+        return None, None
 
     #######################
     def _getWorkingDirectory( self ):

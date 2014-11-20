@@ -142,6 +142,9 @@ class PbrtRenderTask( RenderingTask ):
     def queryExtraData( self, perfIndex, numCores = 0 ):
 
         startTask, endTask = self._getNextTask( perfIndex )
+        if startTask is None or endTask is None:
+            logger.error("Task already computed")
+            return None
 
         if numCores == 0:
             numCores = self.numCores
@@ -202,12 +205,16 @@ class PbrtRenderTask( RenderingTask ):
             endTask = min( self.lastTask + perf, self.totalTasks )
             startTask = self.lastTask
             self.lastTask = endTask
+            return startTask, endTask
         else:
-            subtask = self.failedSubtasks.pop()
-            self.numFailedSubtasks -= 1
-            endTask = subtask.endChunk
-            startTask = subtask.startChunk
-        return startTask, endTask
+            for sub in self.subTasksGiven.values():
+                if sub['status'] == 'failed':
+                    sub['status'] = 'resent'
+                    endTask = sub['endTask']
+                    startTask = sub['startTask']
+                    self.numFailedSubtasks -= 1
+                    return startTask, endTask
+        return None, None
 
     #######################
     def _shortExtraDataRepr( self, perfIndex, extraData ):
