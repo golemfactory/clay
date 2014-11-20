@@ -227,6 +227,11 @@ class PbrtRenderTask( RenderingTask ):
                 self._putCollectedFilesTogether( outputFileName, files, "add" )
 
     #######################
+    def restart( self ):
+        RenderingTask.restart( self )
+        self.collectedFileNames = []
+
+    #######################
     def _getNextTask( self, perfIndex ):
         if self.lastTask != self.totalTasks :
             perf = max( int( float( perfIndex ) / 1500 ), 1)
