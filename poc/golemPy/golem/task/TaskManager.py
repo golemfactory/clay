@@ -101,12 +101,12 @@ class TaskManager:
                 self.subTask2TaskMapping[ ctd.subtaskId ] = taskId
                 self.__addSubtaskToTasksStates( clientId, ctd )
                 self.__noticeTaskUpdated( taskId )
-                return ctd
+                return ctd, False
             logger.info( "Cannot get next task for estimated performence {}".format( estimatedPerformance ) )
-            return None
+            return None, False
         else:
             logger.info( "Cannot find task {} in my tasks".format( taskId ) )
-            return None
+            return None, True
 
     #######################
     def getTasksHeaders( self ):

@@ -21,11 +21,15 @@ class TaskComputer:
     def __init__( self, clientUid, taskServer ):
         self.clientUid              = clientUid
         self.taskServer             = taskServer
-        self.waitingForTask         = 0
+        self.waitingForTask         = None
+        self.countingTask           = False
         self.currentComputations    = []
         self.lock                   = Lock()
         self.lastTaskRequest        = time.time()
         self.taskRequestFrequency   = taskServer.configDesc.taskRequestInterval
+        self.waitingForTaskTimeout  = taskServer.configDesc.waitingForTaskTimeout
+        self.waitingTtl             = 0
+        self.lastChecking           = time.time()
         self.dirManager             = DirManager ( taskServer.getTaskComputerRoot(), self.clientUid )
 
         self.resourceManager        = ResourcesManager( self.dirManager, self )
@@ -52,6 +56,8 @@ class TaskComputer:
         if taskId in self.taskToSubTaskMapping:
             subtaskId = self.taskToSubTaskMapping[ taskId ]
             if subtaskId in self.assignedSubTasks:
+                self.waitingTtl = 0
+                self.countingTask = True
                 self.__computeTask( subtaskId, self.assignedSubTasks[ subtaskId ].srcCode, self.assignedSubTasks[ subtaskId ].extraData, self.assignedSubTasks[ subtaskId ].shortDescription )
                 self.waitingForTask = None
                 return True
@@ -66,12 +72,14 @@ class TaskComputer:
     ######################
     def resourceRequestRejected( self, subtaskId, reason ):
         self.waitingForTask = None
+        self.waitingTtl = 0
         logger.warning( "Task {} resource request rejected: {}".format( subtaskId, reason ) )
         del self.assignedSubTasks[ subtaskId ]
 
     ######################
     def taskComputed( self, taskThread ):
         with self.lock:
+            self.countingTask = False
             self.currentComputations.remove( taskThread )
 
             subtaskId   = taskThread.subtaskId
@@ -84,11 +92,19 @@ class TaskComputer:
 
     ######################
     def run( self ):
+        if self.countingTask:
+            return
+
         if not self.waitingForTask:
             if time.time() - self.lastTaskRequest > self.taskRequestFrequency:
                 if len( self.currentComputations ) == 0:
                     self.lastTaskRequest = time.time()
                     self.__requestTask()
+        else:
+            self.waitingTtl -= time.time() - self.lastChecking
+            if self.waitingTtl < 0:
+                self.waitingForTask = None
+                self.waitingTtl = 0
 
     ######################
     def getProgresses( self ):
@@ -106,10 +122,14 @@ class TaskComputer:
 
     ######################
     def __requestTask( self ):
+        self.waitingTtl  = self.waitingForTaskTimeout
+        self.lastChecking = time.time()
         self.waitingForTask = self.taskServer.requestTask( )
 
     ######################
     def __requestResource( self, taskId, resourceHeader, returnAddress, returnPort ):
+        self.waitingTtl = self.waitingForTaskTimeout
+        self.lastChecking = time.time()
         self.waitingForTask = self.taskServer.requestResource( taskId, resourceHeader, returnAddress, returnPort )
 
     ######################

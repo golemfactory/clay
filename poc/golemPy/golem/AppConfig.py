@@ -77,6 +77,7 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "getting peers interval",   4.0,   self, "GettingPeersInterval" )
         ConfigEntry.createProperty( self.section(), "getting tasks interval",   4.0,   self, "GettingTasksInterval" )
         ConfigEntry.createProperty( self.section(), "task request interval",    5.0,   self, "TaskRequestInterval" )
+        ConfigEntry.createProperty( self.section(), "waiting for task timeout", 60.0, self, "WaitingForTaskTimeout" )
         ConfigEntry.createProperty( self.section(), "estimated perfomance",  estimated,  self, "EstimatedPerformance" )
         ConfigEntry.createProperty( self.section(), "node snapshot interval",   4.0,  self, "NodeSnapshotInterval" )
         ConfigEntry.createProperty( self.section(), "add tasks",           0,     self, "AddTasks" )
@@ -175,6 +176,9 @@ class AppConfig:
 
     def getTaskRequestInterval( self ):
         return self._cfg.getNodeConfig().getTaskRequestInterval()
+
+    def getWaitingForTaskTimeout( self ):
+        return self._cfg.getNodeConfig().getWaitingForTaskTimeout()
 
     def getEstimatedPerformance( self ):
         try:

@@ -47,6 +47,7 @@ def startClient():
     gettingPeersInterval    = cfg.getGettingPeersInterval()
     gettingTasksInterval    = cfg.getGettingTasksInterval()
     taskRequestInterval     = cfg.getTaskRequestInterval()
+    waitingForTaskTimeout   = cfg.getWaitingForTaskTimeout()
     estimatedPerformance    = cfg.getEstimatedPerformance()
     nodeSnapshotInterval    = cfg.getNodeSnapshotInterval()
 
@@ -73,6 +74,7 @@ def startClient():
     configDesc.gettingPeersInterval   = gettingPeersInterval
     configDesc.gettingTasksInterval   = gettingTasksInterval
     configDesc.taskRequestInterval    = taskRequestInterval
+    configDesc.waitingForTaskTimeout  = waitingForTaskTimeout
     configDesc.estimatedPerformance   = estimatedPerformance
     configDesc.nodeSnapshotInterval   = nodeSnapshotInterval
     configDesc.maxResultsSendingDelay = cfg.getMaxResultsSendingDelay()

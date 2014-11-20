@@ -1,5 +1,5 @@
 
-from golem.Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult
+from golem.Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask
 from TaskConnState import TaskConnState
 import time
 import cPickle as pickle
@@ -53,9 +53,12 @@ class TaskSession:
 
         if type == MessageWantToComputeTask.Type:
 
-            ctd = self.taskManager.getNextSubTask( msg.clientId, msg.taskId, msg.perfIndex, msg.maxResourceSize, msg.maxMemorySize, msg.numCores )
+            ctd, wrongTask = self.taskManager.getNextSubTask( msg.clientId, msg.taskId, msg.perfIndex, msg.maxResourceSize, msg.maxMemorySize, msg.numCores )
 
-            if ctd:
+            if wrongTask:
+                self.conn.sendMessage( MessageCannotAssignTask( msg.taskId, "Not my task  {}".format( msg.taskId ) ) )
+                self.conn.sendMessage( MessageRemoveTask( msg.taskId ) )
+            elif ctd:
                 self.conn.sendMessage( MessageTaskToCompute( ctd ) )
             else:
                 self.conn.sendMessage( MessageCannotAssignTask( msg.taskId, "No more subtasks in {}".format( msg.taskId ) ) )

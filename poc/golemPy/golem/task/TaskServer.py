@@ -23,10 +23,12 @@ class TaskServer:
         self.curPort            = configDesc.startPort
         self.taskHeaders        = {}
         self.supportedTasks     = []
+        self.removedTasks        = {}
         self.taskManager        = TaskManager( configDesc.clientUid, rootPath = self.__getTaskManagerRoot( configDesc ) )
         self.taskComputer       = TaskComputer( configDesc.clientUid, self )
         self.taskSessions       = {}
         self.taskSessionsIncoming = []
+        self.removedTaskTimeout = 240.0
 
         self.lastMessages       = []
 
@@ -109,10 +111,11 @@ class TaskServer:
             id = thDictRepr[ "id" ]
             if id not in self.taskHeaders.keys(): # dont have it
                 if id not in self.taskManager.tasks.keys(): # It is not my task id
-                    logger.info( "Adding task {}".format( id ) )
-                    self.taskHeaders[ id ] = TaskHeader( thDictRepr[ "clientId" ], id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr["environment"], thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"] )
-                    if self.client.supportedTask( thDictRepr["environment"] ):
-                        self.supportedTasks.append( id )
+                    if id not in self.removedTasks.keys(): # not removed recently
+                        logger.info( "Adding task {}".format( id ) )
+                        self.taskHeaders[ id ] = TaskHeader( thDictRepr[ "clientId" ], id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr["environment"], thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"] )
+                        if self.client.supportedTask( thDictRepr["environment"] ):
+                            self.supportedTasks.append( id )
             return True
         except:
             logger.error( "Wrong task header received" )
@@ -124,6 +127,7 @@ class TaskServer:
             del self.taskHeaders[ taskId ]
         if taskId in self.supportedTasks:
            self.supportedTasks.remove( taskId )
+        self.removedTasks[ taskId ] = time.time()
 
     #############################
     def removeTaskSession( self, taskSession ):
@@ -274,6 +278,11 @@ class TaskServer:
                 self.removeTaskHeader( t.taskId )
 
         self.taskManager.removeOldTasks()
+
+        for id, removeTime in self.removedTasks.items():
+            currTime = time.time()
+            if  currTime - removeTime > self.removedTaskTimeout:
+                del self.removedTasks[ id ]
 
     def __sendWaitingResults( self ):
         for wtr in self.resultsToSend:
