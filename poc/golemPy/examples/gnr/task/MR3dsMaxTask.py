@@ -204,6 +204,7 @@ class MentalRayTask( RenderingTask ):
         self.subTasksGiven[ hash ]['status' ] = 'sent'
         if parts != 1:
             self.framesGiven[ frames[0] ] = {}
+        self._updateTaskPreview()
 
         return self._newComputeTaskDef( hash, extraData, workingDirectory, perfIndex )
 
@@ -286,7 +287,8 @@ class MentalRayTask( RenderingTask ):
 
         imgOffset = Image.new("RGB", (self.resX, self.resY) )
         try:
-            imgOffset.paste(img, (0, (chunkNum - 1) * ( self.resY ) / self.totalTasks ) )
+            offset = int (math.floor( (chunkNum - 1) * float( self.resY ) / float( self.totalTasks ) ) )
+            imgOffset.paste(img, ( 0, offset ) )
         except Exception, err:
             logger.error("Can't generate preview {}".format( str(err) ))
 

@@ -116,21 +116,27 @@ class RenderingTask( GNRTask ):
 
         tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
         self.previewTaskFilePath = "{}".format( os.path.join( tmpDir, "current_task_preview") )
-        if self.previewFilePath and os.path.exists( self.previewFilePath ):
-            imgTask = Image.open( self.previewFilePath )
-            for sub in self.subTasksGiven.values():
-                if sub['status'] == 'sent':
-                    self._markTaskArea( sub, imgTask, sentColor )
-                if sub['status'] == 'failed':
-                    self._markTaskArea( sub, imgTask, failedColor )
 
-            imgTask.save( self.previewTaskFilePath, "BMP" )
-            print self.previewTaskFilePath
+        if not self.previewFilePath or not os.path.exists( self.previewFilePath ):
+            self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
+            img = Image.new("RGB", ( self.resX,self.resY ) )
+            img.save( self.previewFilePath, "BMP" )
+
+        imgTask = Image.open( self.previewFilePath )
+        for sub in self.subTasksGiven.values():
+            if sub['status'] == 'sent':
+                self._markTaskArea( sub, imgTask, sentColor )
+            if sub['status'] == 'failed':
+                self._markTaskArea( sub, imgTask, failedColor )
+
+        imgTask.save( self.previewTaskFilePath, "BMP" )
+
 
     #######################
     def _markTaskArea(self, subtask, imgTask, color ):
-        upper = int( math.floor( float(self.resY ) / float( self.totalTasks ) ) ) * (subtask[ 'startTask' ] - 1)
-        lower = int( math.floor( float( self.resY ) / float( self.totalTasks ) ) )* ( subtask[ 'endTask' ] )
+        upper = int( math.floor( float(self.resY ) / float( self.totalTasks )   * (subtask[ 'startTask' ] - 1) ) )
+        lower = int( math.floor( float( self.resY ) / float( self.totalTasks )  * ( subtask[ 'endTask' ] ) ) )
+        print "Task area for task {}: ({}, {})".format( subtask['startTask'], upper, lower )
         for i in range(0, self.resX ):
             for j in range( upper, lower):
                 imgTask.putpixel( (i, j), color )

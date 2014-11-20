@@ -6,9 +6,12 @@ import zlib
 import zipfile
 import subprocess
 import win32process
+import math
 
 def formatVRayCmd( cmdFile, startTask, endTask, totalTasks, outputFile, outfilebasename, scenefile, width, height, rtEngine ):
-    cmd = '"{}" -imgFile="{}\\{}{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -region={};{};{};{} -autoClose=1 -display=0 -rtEngine={}'.format(cmdFile, outputFile, outfilebasename, startTask, scenefile, width, height, 0, (startTask-1) * (height / totalTasks), width, startTask * ( height / totalTasks ), rtEngine )
+    upper = int( math.floor( (startTask - 1) * ( float( height ) / float( totalTasks ) ) ) )
+    lower = int( math.floor( startTask * ( float( height ) / float( totalTasks ) ) ) )
+    cmd = '"{}" -imgFile="{}\\{}{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -region={};{};{};{} -autoClose=1 -display=0 -rtEngine={}'.format(cmdFile, outputFile, outfilebasename, startTask, scenefile, width, height, 0, upper, width, lower, rtEngine )
     return cmd
 
 def formatVRayCmdWithFrames( cmdFile, frames, outputFile, outfilebasename, scenefile, width, height, rtEngine ):
@@ -17,7 +20,9 @@ def formatVRayCmdWithFrames( cmdFile, frames, outputFile, outfilebasename, scene
 
 def formatVRayCmdWithParts( cmdFile, frames, parts, startTask, outputFile, outfilebasename, scenefile, width, height, rtEngine ):
     part = ( ( startTask - 1 ) % parts ) + 1
-    cmd = '"{}" -imgFile="{}\\{}.{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -region={};{};{};{}  -autoClose=1 -display=0 -rtEngine={}'.format(cmdFile, outputFile, outfilebasename, part, scenefile, width, height, frames, 0, ( part -1 ) * (height / parts), width, part * ( height / parts ), rtEngine )
+    upper = int( math.floor( (part  - 1) * ( float( height ) / float( parts ) ) ) )
+    lower = int( math.floor( part * ( float( height ) / float( parts ) ) ) )
+    cmd = '"{}" -imgFile="{}\\{}.{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -region={};{};{};{}  -autoClose=1 -display=0 -rtEngine={}'.format(cmdFile, outputFile, outfilebasename, part, scenefile, width, height, frames, 0, upper, width, lower, rtEngine )
     return cmd
 
 def __readFromEnvironment( ):

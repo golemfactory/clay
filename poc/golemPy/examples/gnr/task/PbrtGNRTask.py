@@ -199,29 +199,6 @@ class PbrtRenderTask( RenderingTask ):
         return self._newComputeTaskDef( hash, extraData, workingDirectory, 0 )
 
     #######################
-    def _getNextTask( self, perfIndex ):
-        if self.lastTask != self.totalTasks :
-            perf = max( int( float( perfIndex ) / 1500 ), 1)
-            endTask = min( self.lastTask + perf, self.totalTasks )
-            startTask = self.lastTask
-            self.lastTask = endTask
-            return startTask, endTask
-        else:
-            for sub in self.subTasksGiven.values():
-                if sub['status'] == 'failed':
-                    sub['status'] = 'resent'
-                    endTask = sub['endTask']
-                    startTask = sub['startTask']
-                    self.numFailedSubtasks -= 1
-                    return startTask, endTask
-        return None, None
-
-    #######################
-    def _shortExtraDataRepr( self, perfIndex, extraData ):
-        l = extraData
-        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFileSrc: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFileSrc"] )
-
-    #######################
     def computationFinished( self, subtaskId, taskResult, dirManager = None ):
 
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
@@ -249,6 +226,30 @@ class PbrtRenderTask( RenderingTask ):
                 files = " ".join( self.collectedFileNames )
                 self._putCollectedFilesTogether( outputFileName, files, "add" )
 
+    #######################
+    def _getNextTask( self, perfIndex ):
+        if self.lastTask != self.totalTasks :
+            perf = max( int( float( perfIndex ) / 1500 ), 1)
+            endTask = min( self.lastTask + perf, self.totalTasks )
+            startTask = self.lastTask
+            self.lastTask = endTask
+            return startTask, endTask
+        else:
+            for sub in self.subTasksGiven.values():
+                if sub['status'] == 'failed':
+                    sub['status'] = 'resent'
+                    endTask = sub['endTask']
+                    startTask = sub['startTask']
+                    self.numFailedSubtasks -= 1
+                    return startTask, endTask
+        return None, None
+
+    #######################
+    def _shortExtraDataRepr( self, perfIndex, extraData ):
+        l = extraData
+        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFileSrc: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFileSrc"] )
+
+    #######################
     def _markTaskArea(self, subtask, imgTask, color ):
         for numTask in range( subtask['startTask'], subtask['endTask'] ):
             for sb in range(0, self.numSubtasks):
@@ -264,6 +265,7 @@ class PbrtRenderTask( RenderingTask ):
                     for j in range( int( math.floor( yL )) , int( math.floor( yR ) ) ) :
                         imgTask.putpixel( (i, j), color )
 
+    #######################
     def __countSubtaskReg( self ):
         while ( self.nx % 2 == 0 ) and (2 * self.resX * self.ny < self.resY * self.nx ):
             self.nx /= 2
