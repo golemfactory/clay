@@ -17,6 +17,7 @@ SUBTASK_TIMEOUT = 220.0
 
 logger = logging.getLogger(__name__)
 
+##############################################
 class RenderingTaskBuilder( GNRTaskBuilder ):
     def _calculateTotal (self, renderer, definition ):
         if definition.optimizeTotal:
@@ -28,6 +29,7 @@ class RenderingTaskBuilder( GNRTaskBuilder ):
             return renderer.defaults.defaultSubtasks
 
 
+##############################################
 class RenderingTask( GNRTask ):
     #######################
     def __init__( self, clientId, taskId, ownerAddress, ownerPort, environment, ttl,
@@ -85,6 +87,7 @@ class RenderingTask( GNRTask ):
         elif self.previewFilePath:
             taskState.extraData['resultPreview'] = self.previewFilePath
 
+    #######################
     def subtaskFailed( self, subtaskId, extraData ):
         GNRTask.subtaskFailed( self, subtaskId, extraData )
         self._updateTaskPreview()
@@ -130,7 +133,6 @@ class RenderingTask( GNRTask ):
                 self._markTaskArea( sub, imgTask, failedColor )
 
         imgTask.save( self.previewTaskFilePath, "BMP" )
-
 
     #######################
     def _markTaskArea(self, subtask, imgTask, color ):

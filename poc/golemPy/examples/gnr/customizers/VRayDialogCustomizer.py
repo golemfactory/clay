@@ -113,10 +113,16 @@ class VRayDialogCustomizer:
             splitted = s.split(";")
             for i in splitted:
                 inter = i.split("-")
-                if len ( inter ) == 1:
+                if len ( inter ) == 1:      # pojedyncza klatka (np. 5)
                     frames.append( int ( inter[0] ) )
                 elif len( inter ) == 2:
-                    frames += range( int( inter[0] ), int( inter[1] ) + 1 )
+                    inter2 = inter[1].split(",")
+                    if len( inter2 ) == 1:      #przedzial klatek (np. 1-10)
+                        frames += range( int( inter[0] ), int( inter[1] ) + 1 )
+                    elif len ( inter2 )== 2:    # co n-ta klata z przedzialu (np. 10-100,5)
+                        frames += range( int ( inter[0] ), int (inter2[0] ) + 1, int ( inter2[1] ) )
+                    else:
+                        raise
                 else:
                     raise
             return frames

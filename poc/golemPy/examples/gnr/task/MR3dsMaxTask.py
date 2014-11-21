@@ -204,7 +204,8 @@ class MentalRayTask( RenderingTask ):
         self.subTasksGiven[ hash ]['status' ] = 'sent'
         if parts != 1:
             self.framesGiven[ frames[0] ] = {}
-        self._updateTaskPreview()
+        if not self.useFrames:
+            self._updateTaskPreview()
 
         return self._newComputeTaskDef( hash, extraData, workingDirectory, perfIndex )
 
@@ -334,15 +335,8 @@ class MentalRayTask( RenderingTask ):
 
     #######################
     def __getOutputName( self, frameNum ):
-        if frameNum < 10:
-            frameNum = "000{}".format( frameNum )
-        elif frameNum < 100:
-            frameNum = "00{}".format( frameNum )
-        elif frameNum < 1000:
-            frameNum = "0{}".format( frameNum )
-        else:
-            frameNum = "{}".format( frameNum )
-        return "{}{}.exr".format( self.outfilebasename, frameNum )
+        num = str( frameNum )
+        return "{}{}.exr".format( self.outfilebasename, num.zfill(4) )
 
     #######################
     def __putFrameTogether( self, tmpDir, frameNum, numStart ):

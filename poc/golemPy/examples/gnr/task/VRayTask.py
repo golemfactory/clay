@@ -188,7 +188,8 @@ class VRayTask( RenderingTask ):
         if parts != 1 and frames[0] not in self.framesGiven:
             self.framesGiven[ frames[0] ] = {}
 
-        self._updateTaskPreview()
+        if not self.useFrames:
+            self._updateTaskPreview()
         return self._newComputeTaskDef( hash, extraData, workingDirectory, perfIndex )
 
     #######################
@@ -305,7 +306,6 @@ class VRayTask( RenderingTask ):
         print self.previewFilePath[num]
 
         img.save( self.previewFilePath[ num ], "BMP" )
-        self._updateTaskPreview()
 
     #######################
     def __chooseFrames( self, frames, startTask, totalTasks ):
