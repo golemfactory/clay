@@ -309,7 +309,13 @@ class VRayTask( RenderingTask ):
     #######################
     def _updateFramePreview(self, newChunkFilePath, frameNum ):
         num = self.frames.index(frameNum)
-        self.previewFilePath[ num ] = newChunkFilePath
+        if newChunkFilePath.endswith(".exr") or newChunkFilePath.endswith(".EXR"):
+            img = exr_to_pil( newChunkFilePath )
+            tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
+            self.previewFilePath[ num ] = "{}{}".format( os.path.join( tmpDir, "current_preview" ), num )
+            img.save( self.previewFilePath[ num ], "BMP" )
+        else:
+            self.previewFilePath[ num ] = newChunkFilePath
 
     #######################
     def __chooseFrames( self, frames, startTask, totalTasks ):
