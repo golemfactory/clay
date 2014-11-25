@@ -67,6 +67,7 @@ class MainWindowCustomizer:
         self.gui.ui.showResourceButton.clicked.connect( self.__showTaskResourcesClicked )
         self.gui.ui.renderTaskTableWidget.customContextMenuRequested.connect( self.__contexMenuRequested )
         QtCore.QObject.connect( self.gui.ui.frameSlider, QtCore.SIGNAL( "valueChanged( int )" ), self.__updateSliderPreview )
+        QtCore.QObject.connect( self.gui.ui.outputFile, QtCore.SIGNAL( "clicked()" ), self.__openOutputFile )
 
     ############################
     # Add new task to golem client
@@ -150,6 +151,10 @@ class MainWindowCustomizer:
             else:
                 self.gui.ui.previewLabel.setPixmap( QPixmap( self.previewPath ) )
         self.gui.ui.outputFile.setText( u"{}".format( t.definition.outputFile ) )
+        if os.path.isfile( t.definition.outputFile ):
+            self.gui.ui.outputFile.setStyleSheet( 'color: blue' )
+        else:
+            self.gui.ui.outputFile.setStyleSheet( 'color: black' )
 
         self.currentTaskHighlighted = t
 
@@ -363,6 +368,11 @@ class MainWindowCustomizer:
                     return
 
         self.gui.ui.previewLabel.setPixmap( QPixmap( self.previewPath ) )
+
+    def __openOutputFile( self ):
+        file = self.gui.ui.outputFile.text()
+        if os.path.isfile( file ):
+            os.startfile( file )
 
 #######################################################################################
 def insertItem( root, pathTable ):

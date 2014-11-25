@@ -2,6 +2,8 @@ from PyQt4.QtGui import QMainWindow, QPixmap, QMessageBox
 
 from gen.ui_MainWindow import Ui_MainWindow
 
+from clickableqlabel import ClickableQLabel
+
 class MainWindow( QMainWindow ):
 
     def closeEvent( self, event ):

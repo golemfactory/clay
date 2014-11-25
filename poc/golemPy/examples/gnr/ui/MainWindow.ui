@@ -193,13 +193,6 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="1">
-           <widget class="QLabel" name="outputFile">
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
           <item row="3" column="0">
            <widget class="QLabel" name="label_32">
             <property name="text">
@@ -292,6 +285,13 @@
              </size>
             </property>
            </spacer>
+          </item>
+          <item row="2" column="1">
+           <widget class="ClickableQLabel" name="outputFile">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -635,6 +635,13 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ClickableQLabel</class>
+   <extends>QLabel</extends>
+   <header>clickableqlabel.h</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>renderTaskTableWidget</tabstop>
  </tabstops>
