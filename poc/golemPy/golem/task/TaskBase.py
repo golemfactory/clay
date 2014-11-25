@@ -77,6 +77,16 @@ class Task:
 
     #######################
     @abc.abstractmethod
+    def verifySubtask( self, subtaskId ):
+        return # Implement in derived class
+
+    #######################
+    @abc.abstractmethod
+    def verifyTask( self ):
+        return # Implement in derived class
+
+    #######################
+    @abc.abstractmethod
     def getTotalTasks( self ):
         return # Implement in derived class
 

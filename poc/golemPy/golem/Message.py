@@ -424,6 +424,43 @@ class MessageResource( Message ):
                     MessageResource.RESOURCE_STR: self.resource
                }
 
+class MessageSubtaskResultAccepted( Message ):
+    Type = TASK_MSG_BASE + 10
+
+    SUB_TASK_ID_STR = u"SUB_TASK_ID"
+
+    def __init__( self, subtaskId = 0, dictRepr = None ):
+        Message.__init__( self, MessageSubtaskResultAccepted.Type )
+
+        self.subtaskId = subtaskId
+
+        if dictRepr:
+            self.subtaskId = dictRepr[ MessageSubtaskResultAccepted.SUB_TASK_ID_STR ]
+
+
+    def dictRepr( self ):
+        return {
+            MessageSubtaskResultAccepted.SUB_TASK_ID_STR: self.subtaskId
+        }
+
+class MessageSubtaskResultRejected( Message ):
+    Type = TASK_MSG_BASE + 11
+
+    SUB_TASK_ID_STR = u"SUB_TASK_ID"
+
+    def __init__( self, subtaskId = 0, dictRepr = None ):
+        Message.__init__( self, MessageSubtaskResultRejected.Type )
+
+        self.subtaskId = subtaskId
+
+        if dictRepr:
+            self.subtaskId = dictRepr[ MessageSubtaskResultRejected.SUB_TASK_ID_STR ]
+
+
+    def dictRepr( self ):
+        return {
+            MessageSubtaskResultRejected.SUB_TASK_ID_STR: self.subtaskId
+        }
 
 
 MANAGER_MSG_BASE = 1000
@@ -538,6 +575,8 @@ def initMessages():
     MessageTaskResult()
     MessageGetTaskResult()
     MessageNewNodes()
+    MessageSubtaskResultAccepted()
+    MessageSubtaskResultRejected()
 
 def initManagerMessages():
     MessagePeerStatus()

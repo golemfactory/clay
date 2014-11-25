@@ -118,6 +118,14 @@ class TaskManager:
         return ret
 
     #######################
+    def verifySubtask( self, subtaskId ):
+        if subtaskId in self.subTask2TaskMapping:
+            taskId = self.subTask2TaskMapping[ subtaskId ]
+            return self.tasks[ taskId ].verifySubtask( subtaskId )
+        else:
+            return False
+
+    #######################
     def computedTaskReceived( self, subtaskId, result ):
         if subtaskId in self.subTask2TaskMapping:
             taskId = self.subTask2TaskMapping[ subtaskId ]
@@ -125,6 +133,7 @@ class TaskManager:
             subtaskStatus = self.tasksStates[ taskId ].subtaskStates[ subtaskId ].subtaskStatus
             if  subtaskStatus != TaskStatus.starting:
                 logger.warning("Result for subtask {} when subtask state is {}".format( subtaskId, subtaskStatus ))
+                self.__noticeTaskUpdated( taskId )
                 return False
 
             self.tasks[ taskId ].computationFinished( subtaskId, result, self.dirManager )
@@ -133,10 +142,19 @@ class TaskManager:
             ss.subtaskRemTime   = 0.0
             ss.subtaskStatus    = TaskStatus.finished
 
+            if not self.tasks [ taskId ].verifySubtask( subtaskId ):
+                logger.debug( "Subtask {} not accepted\n".format( subtaskId ) )
+                self.__noticeTaskUpdated( taskId )
+                return False
+
             if self.tasksStates[ taskId ].status in self.activeStatus:
                 if not self.tasks[ taskId ].finishedComputation():
                     self.tasksStates[ taskId ].status = TaskStatus.computing
                 else:
+                    if self.tasks[ taskId ].verifyTask():
+                        logger.debug( "Task {} accepted".format( taskId ) )
+                    else:
+                        logger.debug( "Task {} not accepted".format( taskId ) )
                     self.tasksStates[ taskId ].status = TaskStatus.finished
             self.__noticeTaskUpdated( taskId )
 

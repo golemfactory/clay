@@ -29,6 +29,7 @@ class TaskServer:
         self.taskSessions       = {}
         self.taskSessionsIncoming = []
         self.removedTaskTimeout = 240.0
+        self.waitingForVerification = {}
 
         self.lastMessages       = []
 
@@ -170,8 +171,23 @@ class TaskServer:
     def changeTimeouts( self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
         self.taskManager.changeTimeouts( taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime )
 
+    ############################
     def getTaskComputerRoot( self ):
         return os.path.join( self.configDesc.rootPath, "ComputerRes")
+
+    ############################
+    def subtaskRejected( self, subtaskId ):
+        logger.debug( "Subtask {} result rejected".format( subtaskId ) )
+        if subtaskId in self.waitingForVerification:
+            self.removeTaskHeader( self.waitingForVerification[ subtaskId ] )
+            del self.waitingForVerification[ subtaskId ]
+
+    ############################
+    def subtaskAccepted( self, subtaskId ):
+        logger.debug( "Subtask {} result accepted".format( subtaskId ) )
+        if subtaskId in self.waitingForVerification:
+            del self.waitingForVerification[ subtaskId ]
+
 
 
     #############################
@@ -209,6 +225,7 @@ class TaskServer:
     #############################
     def __connectionForTaskRequestEstablished( self, session, clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores ):
 
+        session.taskId = taskId
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager

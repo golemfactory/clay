@@ -1,5 +1,5 @@
 
-from golem.Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask
+from golem.Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected
 from TaskConnState import TaskConnState
 import time
 import cPickle as pickle
@@ -100,6 +100,10 @@ class TaskSession:
 
         elif type == MessageTaskResult.Type:
             self.taskManager.computedTaskReceived( msg.subtaskId, msg.result )
+            if self.taskManager.verifySubtask( msg.subtaskId ):
+                self.__send( MessageSubtaskResultAccepted( msg.subtaskId ) )
+            else:
+                self.__send( MessageSubtaskResultRejected( msg.subtaskId ) )
             self.dropped()
 
         elif type == MessageGetResource.Type:
@@ -128,6 +132,10 @@ class TaskSession:
         elif type == MessageResource.Type:
             self.taskComputer.resourceGiven( msg.subtaskId )
             self.dropped()
+        elif type == MessageSubtaskResultAccepted.Type:
+            self.taskServer.subtaskAccepted( msg.subtaskId )
+        elif type == MessageSubtaskResultRejected.Type:
+            self.taskServer.subtaskRejected( msg.subtaskId )
 
     ##########################
     def dropped( self ):

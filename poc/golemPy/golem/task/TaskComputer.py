@@ -87,6 +87,7 @@ class TaskComputer:
             if taskThread.result:
                 logger.info ( "Task {} computed".format( subtaskId ) )
                 if subtaskId in self.assignedSubTasks:
+                    self.taskServer.waitingForVerification[ subtaskId ] = self.assignedSubTasks[ subtaskId ].taskId
                     self.taskServer.sendResults( subtaskId, taskThread.result, self.assignedSubTasks[ subtaskId ].returnAddress, self.assignedSubTasks[ subtaskId ].returnPort )
                     del self.assignedSubTasks[ subtaskId ]
 

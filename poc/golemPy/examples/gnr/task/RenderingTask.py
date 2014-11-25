@@ -7,7 +7,7 @@ import math
 from RenderingDirManager import getTmpPath
 from GNRTask import GNRTask, GNRTaskBuilder
 from golem.task.TaskBase import ComputeTaskDef
-from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
+from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil, verifyPILImg, verifyExrImg
 from golem.core.Compress import decompress
 
 from PIL import Image, ImageChops
@@ -138,7 +138,6 @@ class RenderingTask( GNRTask ):
     def _markTaskArea(self, subtask, imgTask, color ):
         upper = int( math.floor( float(self.resY ) / float( self.totalTasks )   * (subtask[ 'startTask' ] - 1) ) )
         lower = int( math.floor( float( self.resY ) / float( self.totalTasks )  * ( subtask[ 'endTask' ] ) ) )
-        print "Task area for task {}: ({}, {})".format( subtask['startTask'], upper, lower )
         for i in range(0, self.resX ):
             for j in range( upper, lower):
                 imgTask.putpixel( (i, j), color )
@@ -209,3 +208,11 @@ class RenderingTask( GNRTask ):
     def _shortExtraDataRepr( self, perfIndex, extraData ):
         l = extraData
         return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["outfilebasename"], l["sceneFile"] )
+
+    #######################
+    def _verifyImg( self, file ):
+        _, ext = os.path.splitext( file )
+        if ext.upper() != "EXR":
+            return verifyExrImg( file, self.resX, self.resY )
+        else:
+            return verifyPILImg( file, self.resX, self.resY )

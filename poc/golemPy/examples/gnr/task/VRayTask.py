@@ -138,7 +138,8 @@ class VRayTask( RenderingTask ):
 
         self.useFrames = useFrames
         self.frames = frames
-        self.framesGiven = {}
+        self.framesParts = {}
+        self.framesAlphaParts = {}
 
         if useFrames:
             self.previewFilePath = [ None ] * len ( frames )
@@ -185,8 +186,10 @@ class VRayTask( RenderingTask ):
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
         self.subTasksGiven[ hash ][ 'status' ] = 'sent'
-        if parts != 1 and frames[0] not in self.framesGiven:
-            self.framesGiven[ frames[0] ] = {}
+        for frame in frames:
+            if self.useFrames and frame not in self.framesParts:
+                self.framesParts[ frame ] = {}
+                self.framesAlphaParts[ frame ] = {}
 
         if not self.useFrames:
             self._updateTaskPreview()
@@ -239,18 +242,33 @@ class VRayTask( RenderingTask ):
 
             if self.useFrames and self.totalTasks <= len( self.frames ):
                 framesList = self.subTasksGiven[ subtaskId ][ 'frames' ]
+                if len( taskResult ) < len( framesList ):
+                    self._markSubtaskFailed( subtaskId )
+                    return
 
+            trFiles = []
             for trp in taskResult:
-                trFile = self._unpackTaskResult( trp, tmpDir )
+                trFiles.append( self._unpackTaskResult( trp, tmpDir ) )
 
+            if not self.__verifyImgs( trFiles ):
+                self._markSubtaskFailed( subtaskId )
+                if not self.useFrames:
+                    self._updateTaskPreview()
+                return
+
+            for trFile in trFiles:
                 if not self.useFrames:
                     self.__collectImagePart( numStart, trFile )
-                elif self.totalTasks <= len( self.frames ):
+                elif self.totalTasks < len( self.frames ):
                     framesList = self.__collectFrames( numStart, trFile, framesList, parts )
                 else:
                     self.__collectFramePart( numStart, trFile, parts, tmpDir )
 
             self.numTasksReceived += numEnd - numStart + 1
+        else:
+            self._markSubtaskFailed( subtaskId )
+            if not self.useFrames:
+                self._updateTaskPreview()
 
         if self.numTasksReceived == self.totalTasks:
             if self.useFrames:
@@ -291,21 +309,7 @@ class VRayTask( RenderingTask ):
     #######################
     def _updateFramePreview(self, newChunkFilePath, frameNum ):
         num = self.frames.index(frameNum)
-
-        if newChunkFilePath.endswith(".exr") or newChunkFilePath.endswith(".EXR"):
-            img = exr_to_pil( newChunkFilePath )
-        else:
-            img = Image.open( newChunkFilePath )
-
-        tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
-
-        print num
-        print os.path.join( tmpDir, "current_preview" )
-        print len( self.previewFilePath )
-        self.previewFilePath[ num ] = "{}{}".format( os.path.join( tmpDir, "current_preview" ), num )
-        print self.previewFilePath[num]
-
-        img.save( self.previewFilePath[ num ], "BMP" )
+        self.previewFilePath[ num ] = newChunkFilePath
 
     #######################
     def __chooseFrames( self, frames, startTask, totalTasks ):
@@ -347,23 +351,26 @@ class VRayTask( RenderingTask ):
     #######################
     def __collectFrames( self, numStart, trFile, framesList, parts ):
         if self.__isAlphaFile( trFile ):
+            self.framesAlphaParts[framesList[0]] = trFile
             return framesList
+
+        base, ext = os.path.splitext( trFile )
+        outputFileName = u"{}.{}".format( base, self.outputFormat )
+        if len( self.frames ) > self.totalTasks:
+            self.collectedFileNames[ numStart ].append( outputFileName )
         else:
-            self._updateFramePreview( trFile, framesList[0] )
-            base, ext = os.path.splitext( trFile )
-            outputFileName = u"{}.{}".format( base, self.outputFormat )
-            if len( self.frames ) > self.totalTasks:
-                self.collectedFileNames[ numStart ].append( outputFileName )
-            else:
-                self.collectedFileNames[ numStart ] = outputFileName
-            if not self.__useOuterTaskCollector():
-                collector = RenderingTaskCollector()
-                collector.acceptTask( trFile )
-                self.__putImageTogether( outputFileName, collector )
-            else:
-                files = trFile
-                self._putCollectedFilesTogether( outputFileName, files, "add" )
-            return framesList[1:]
+            self.collectedFileNames[ numStart ] = outputFileName
+        if not self.__useOuterTaskCollector():
+            collector = RenderingTaskCollector()
+            collector.acceptTask( trFile )
+            for alpha in self.framesAlphaParts[ framesList[0] ]:
+                collector.acceptAlpha( alpha )
+            self.__putImageTogether( outputFileName, collector )
+        else:
+            files = " ".join( [trFile] + self.framesAlphaParts[ framesList[0] ].values() )
+            self._putCollectedFilesTogether( outputFileName, files, "add" )
+        self._updateFramePreview( outputFileName, framesList[0] )
+        return framesList[1:]
 
     #######################
     def __collectFramePart( self, numStart, trFile, parts, tmpDir ):
@@ -371,11 +378,11 @@ class VRayTask( RenderingTask ):
         part = ( ( numStart - 1 ) % parts ) + 1
 
         if self.__isAlphaFile( trFile ):
-            pass
+            self.framesAlphaParts[ frameNum ][ part ] = trFile
         else:
-            self.framesGiven[ frameNum ][ part ] = trFile
+            self.framesParts[ frameNum ][ part ] = trFile
 
-        if len( self.framesGiven[ frameNum ] ) == parts:
+        if len( self.framesParts[ frameNum ] ) == parts:
             self.__putFrameTogether( tmpDir, frameNum, numStart )
 
     #######################
@@ -393,18 +400,30 @@ class VRayTask( RenderingTask ):
     def __putFrameTogether( self, tmpDir, frameNum, numStart ):
         outputFileName = os.path.join( tmpDir, self.__getOutputName( frameNum ) )
         if self.__useOuterTaskCollector():
-            collected = self.framesGiven[ frameNum ]
+            collected = self.framesParts[ frameNum ]
             collected = OrderedDict( sorted( collected.items() ) )
-            files = " ".join( collected.values() )
+            collectedAlphas = self.framesAlphaParts[ frameNum ]
+            collectedAlphas = OrderedDict( sorted( collectedAlphas.items() ) )
+            files = " ".join( collected.values() + collectedAlphas.values() )
             self._putCollectedFilesTogether( outputFileName, files, "add" )
         else:
             collector = RenderingTaskCollector()
-            for part in self.framesGiven[ frameNum ].values():
+            for part in self.framesParts[ frameNum ].values():
                 collector.acceptTask( part )
+            for part in self.framesAlphaParts[ frameNum ].values():
+                collector.acceptAlpha( part )
             collector.finalize().save( outputFileName, self.outputFormat )
         self.collectedFileNames[ numStart ] = outputFileName
         self._updateFramePreview( outputFileName, frameNum )
 
+    #######################
     def __getOutputName( self, frameNum ):
         num = str( frameNum )
         return "{}{}.{}".format( self.outfilebasename, num.zfill( 4 ), self.outputFormat )
+
+    #######################
+    def __verifyImgs( self, trFiles ):
+        for trFile in trFiles:
+            if not self._verifyImg(trFile ):
+                return False
+        return True

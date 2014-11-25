@@ -150,3 +150,16 @@ class GNRTask( Task ):
     #######################
     def updateTaskState( self, taskState ):
         pass
+
+    #######################
+    def verifySubtask( self, subtaskId ):
+       return self.subTasksGiven[ subtaskId ]['status'] == 'finished'
+
+    #######################
+    def verifyTask( self ):
+        return self.finishedComputation()
+
+    #######################
+    def _markSubtaskFailed( self, subtaskId ):
+        self.subTasksGiven[ subtaskId ]['status'] = 'failed'
+        self.numFailedSubtasks += 1

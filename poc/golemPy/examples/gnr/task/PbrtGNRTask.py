@@ -9,6 +9,7 @@ from examples.gnr.task.SceneFileEditor import regenerateFile
 
 from GNRTask import GNROptions
 from RenderingTask import RenderingTask, RenderingTaskBuilder
+
 from RenderingDirManager import getTestTaskPath
 from TaskState import RendererDefaults, RendererInfo
 from examples.gnr.ui.PbrtDialog import PbrtDialog
@@ -208,6 +209,11 @@ class PbrtRenderTask( RenderingTask ):
             for trp in taskResult:
                 trFile = self._unpackTaskResult (trp, tmpDir )
 
+                if not self._verifyImg( trFile ):
+                    self._markSubtaskFailed( subtaskId )
+                    self._updateTaskPreview()
+                    return
+
                 if self.outputFormat != "EXR":
                     self.collector.acceptTask( trFile ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
                 else:
@@ -216,6 +222,9 @@ class PbrtRenderTask( RenderingTask ):
 
                 self._updatePreview( trFile )
                 self._updateTaskPreview()
+        else:
+            self._markSubtaskFailed( subtaskId )
+            self._updateTaskPreview()
 
         if self.numTasksReceived == self.totalTasks:
             outputFileName = u"{}".format( self.outputFile, self.outputFormat )
@@ -275,3 +284,5 @@ class PbrtRenderTask( RenderingTask ):
         while ( self.nx % 2 == 0 ) and (2 * self.resX * self.ny < self.resY * self.nx ):
             self.nx /= 2
             self.ny *= 2
+
+

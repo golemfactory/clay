@@ -8,7 +8,7 @@ from GNRTask import  GNROptions
 from RenderingDirManager import getTestTaskPath, getTmpPath
 from TaskState import RendererDefaults, RendererInfo
 
-from RenderingTaskCollector import exr_to_pil
+from RenderingTaskCollector import exr_to_pil, verifyPILImg, verifyExrImg
 from RenderingTask import RenderingTask, RenderingTaskBuilder
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
 from examples.gnr.ui.MentalRayDialog import MentalRayDialog
@@ -204,6 +204,7 @@ class MentalRayTask( RenderingTask ):
         self.subTasksGiven[ hash ]['status' ] = 'sent'
         if parts != 1:
             self.framesGiven[ frames[0] ] = {}
+
         if not self.useFrames:
             self._updateTaskPreview()
 
@@ -259,6 +260,19 @@ class MentalRayTask( RenderingTask ):
 
             if self.useFrames and self.totalTasks <= len( self.frames ):
                 framesList = self.subTasksGiven[ subtaskId ]['frames']
+                if len( taskResult ) < len( framesList ):
+                    self._markSubtaskFailed( subtaskId )
+                    return
+
+            trFiles = []
+            for trp in taskResult:
+                trFiles.append( self._unpackTaskResult( trp, tmpDir ) )
+
+            if not self.__verifyImgs( trFiles ):
+                self._markSubtaskFailed( subtaskId )
+                if not self.useFrames:
+                    self._updateTaskPreview()
+                return
 
             for trp in taskResult:
                 trFile = self._unpackTaskResult( trp, tmpDir )
@@ -317,7 +331,6 @@ class MentalRayTask( RenderingTask ):
         tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
 
         self.previewFilePath[ num ] = "{}{}".format( os.path.join( tmpDir, "current_preview" ), num )
-        print self.previewFilePath[num]
 
         img.save( self.previewFilePath[ num ], "BMP" )
 
@@ -388,5 +401,18 @@ class MentalRayTask( RenderingTask ):
         presetFile = os.path.join( presetFile, os.path.basename( self.presetFile ) )
         return presetFile
 
+    def __verifyImgs( self, trFiles ):
+        for trFile in trFiles:
+            if not self._verifyImg( trFile ):
+                return False
+        return True
+
+    def _verifyImg( self, file ):
+        _, ext = os.path.splitext( file )
+        resY = int (math.floor( float( self.resY ) / float( self.totalTasks ) ) )
+        if ext.upper() != "EXR":
+            return verifyExrImg( file, self.resX, resY )
+        else:
+            return verifyPILImg( file, self.resX, resY )
 
 
