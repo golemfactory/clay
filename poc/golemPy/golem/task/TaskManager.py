@@ -153,9 +153,9 @@ class TaskManager:
                 else:
                     if self.tasks[ taskId ].verifyTask():
                         logger.debug( "Task {} accepted".format( taskId ) )
+                        self.tasksStates[ taskId ].status = TaskStatus.finished
                     else:
                         logger.debug( "Task {} not accepted".format( taskId ) )
-                    self.tasksStates[ taskId ].status = TaskStatus.finished
             self.__noticeTaskUpdated( taskId )
 
             return True
@@ -231,6 +231,19 @@ class TaskManager:
             self.__noticeTaskUpdated( taskId )
         else:
             logger.error( "Task {} not in the active tasks queue ".format( taskId ) )
+
+    #######################
+    def restartSubtask( self, subtaskId ):
+        if not subtaskId in self.subTask2TaskMapping:
+            logger.error( "Subtask {} not in subtasks queue".format( subtaskId ) )
+            return
+
+        taskId = self.subTask2TaskMapping[ subtaskId ]
+        self.tasks[ taskId ].restartSubtask( subtaskId )
+        self.tasksStates[ taskId ].status = TaskStatus.computing
+        self.tasksStates[ taskId ].subtaskStates[ subtaskId ].subtaskStatus = TaskStatus.failure
+
+        self.__noticeTaskUpdated( taskId )
 
     #######################
     def abortTask( self, taskId ):

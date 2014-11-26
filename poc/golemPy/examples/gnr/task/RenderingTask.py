@@ -180,7 +180,7 @@ class RenderingTask( GNRTask ):
             endTask = self.lastTask
             return startTask, endTask
         else:
-            for sub in self.subTasksGiven:
+            for sub in self.subTasksGiven.values():
                 if sub['status'] == 'failed':
                     sub['status'] = 'resent'
                     endTask = sub['endTask']

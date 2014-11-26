@@ -249,6 +249,8 @@ class MentalRayTask( RenderingTask ):
 
   #######################
     def computationFinished( self, subtaskId, taskResult, dirManager = None ):
+        if not self.shouldAccept( subtaskId ):
+            return
 
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
 
@@ -403,7 +405,7 @@ class MentalRayTask( RenderingTask ):
 
     def __verifyImgs( self, trFiles ):
         for trFile in trFiles:
-            if not self._verifyImg( trFile ):
+            if not self.useFrames and not self._verifyImg( trFile ):
                 return False
         return True
 

@@ -205,6 +205,10 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.customizer.showNewTaskDialog(taskId)
 
     ######################
+    def restartSubtask ( self, subtaskId ):
+        self.client.restartSubtask( subtaskId )
+
+    ######################
     def changeTask (self, taskId ):
         self.customizer.showChangeTaskDialog( taskId )
 

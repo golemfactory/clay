@@ -160,6 +160,23 @@ class GNRTask( Task ):
         return self.finishedComputation()
 
     #######################
+    def restartSubtask( self, subtaskId ):
+        if subtaskId in self.subTasksGiven:
+            if self.subTasksGiven[ subtaskId ][ 'status' ] == 'sent':
+                self._markSubtaskFailed( subtaskId )
+            elif self.subTasksGiven[ subtaskId ][ 'status' ] == 'finished':
+                self._markSubtaskFailed( subtaskId )
+                tasks = self.subTasksGiven[ subtaskId ]['endTask'] - self.subTasksGiven[ subtaskId  ]['startTask'] + 1
+                self.numTasksReceived -= tasks
+
+    #######################
+    def shouldAccept(self, subtaskId):
+
+        if self.subTasksGiven[ subtaskId ][ 'status' ] != 'sent':
+            return False
+        return True
+
+    #######################
     def _markSubtaskFailed( self, subtaskId ):
         self.subTasksGiven[ subtaskId ]['status'] = 'failed'
         self.numFailedSubtasks += 1

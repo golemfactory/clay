@@ -232,6 +232,9 @@ class VRayTask( RenderingTask ):
   #######################
     def computationFinished( self, subtaskId, taskResult, dirManager = None ):
 
+        if not self.shouldAccept( subtaskId ):
+            return
+
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
 
         if len( taskResult ) > 0:
@@ -430,6 +433,6 @@ class VRayTask( RenderingTask ):
     #######################
     def __verifyImgs( self, trFiles ):
         for trFile in trFiles:
-            if not self._verifyImg(trFile ):
+            if not self.useFrames and not self._verifyImg( trFile ):
                 return False
         return True

@@ -1,9 +1,11 @@
 import datetime
 
 from PyQt4 import QtCore
+from PyQt4.QtGui import QMenu
 
 from golem.task.TaskState import TaskState, ComputerState
 from examples.gnr.TaskState import GNRTaskState
+from SubtaskContextMenuCustomizer import SubtaskContextMenuCustomizer
 
 from examples.gnr.ui.SubtaskTableEntry import SubtaskTableElem
 
@@ -46,6 +48,7 @@ class TaskDetailsDialogCustomizer:
     def __setupConnections( self ):
         QtCore.QObject.connect( self.gui.ui.nodesTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__nodesTabelRowClicked )
         QtCore.QObject.connect( self.gui.ui.nodesTableWidget, QtCore.SIGNAL( "itemSelectionChanged()" ), self.__nodesTabelRowSelected )
+        self.gui.ui.nodesTableWidget.customContextMenuRequested.connect( self.__contextMenuRequested )
         self.gui.ui.closeButton.clicked.connect( self.__closeButtonClicked )
 
     # ###########################
@@ -108,3 +111,14 @@ class TaskDetailsDialogCustomizer:
     ###########################
     def __closeButtonClicked( self ):
         self.gui.window.close()
+
+    def __contextMenuRequested( self, p ):
+        if self.gui.ui.nodesTableWidget.itemAt( p ) is None:
+            return
+        row = self.gui.ui.nodesTableWidget.itemAt( p ).row()
+        idItem = self.gui.ui.nodesTableWidget.item( row, 1 )
+        subtaskId = "{}".format( idItem.text() )
+        menu = QMenu()
+        self.subtaskContextMenuCustomizer = SubtaskContextMenuCustomizer( menu, self.logic, subtaskId )
+        menu.popup( self.gui.ui.nodesTableWidget.viewport().mapToGlobal( p ) )
+        menu.exec_()

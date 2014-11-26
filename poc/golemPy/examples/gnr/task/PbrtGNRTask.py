@@ -202,6 +202,9 @@ class PbrtRenderTask( RenderingTask ):
     #######################
     def computationFinished( self, subtaskId, taskResult, dirManager = None ):
 
+        if not self.shouldAccept( subtaskId ):
+            return
+
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
 
         if len( taskResult ) > 0:
@@ -239,6 +242,12 @@ class PbrtRenderTask( RenderingTask ):
     def restart( self ):
         RenderingTask.restart( self )
         self.collectedFileNames = []
+
+    #######################
+    def restartSubtask( self, subtaskId ):
+        RenderingTask.restartSubtask( self, subtaskId )
+        self.numTasksReceived += 1
+        self._updateTaskPreview()
 
     #######################
     def _getNextTask( self, perfIndex ):

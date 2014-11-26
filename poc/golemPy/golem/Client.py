@@ -182,6 +182,10 @@ class Client:
         self.taskServer.taskManager.restartTask( taskId )
 
     ############################
+    def restartSubtask( self, subtaskId ):
+        self.taskServer.taskManager.restartSubtask( subtaskId )
+
+    ############################
     def pauseTask( self, taskId ):
         self.taskServer.taskManager.pauseTask( taskId )
 
