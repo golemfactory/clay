@@ -1,4 +1,5 @@
 from golem.task.TaskBase import Task, TaskHeader, TaskBuilder
+from golem.task.TaskState import SubtaskStatus
 from golem.resource.Resource import prepareDeltaZip
 from golem.environments.Environment import Environment
 
@@ -94,7 +95,7 @@ class GNRTask( Task ):
     #######################
     def subtaskFailed( self, subtaskId, extraData ):
         self.numFailedSubtasks += 1
-        self.subTasksGiven[ subtaskId ]['status'] = 'failed'
+        self.subTasksGiven[ subtaskId ]['status'] = SubtaskStatus.failure
 
     #######################
     def needsComputation( self ):
@@ -153,7 +154,7 @@ class GNRTask( Task ):
 
     #######################
     def verifySubtask( self, subtaskId ):
-       return self.subTasksGiven[ subtaskId ]['status'] == 'finished'
+       return self.subTasksGiven[ subtaskId ]['status'] == SubtaskStatus.finished
 
     #######################
     def verifyTask( self ):
@@ -162,21 +163,20 @@ class GNRTask( Task ):
     #######################
     def restartSubtask( self, subtaskId ):
         if subtaskId in self.subTasksGiven:
-            if self.subTasksGiven[ subtaskId ][ 'status' ] == 'sent':
+            if self.subTasksGiven[ subtaskId ][ 'status' ] == SubtaskStatus.starting:
                 self._markSubtaskFailed( subtaskId )
-            elif self.subTasksGiven[ subtaskId ][ 'status' ] == 'finished':
+            elif self.subTasksGiven[ subtaskId ][ 'status' ] == SubtaskStatus.finished :
                 self._markSubtaskFailed( subtaskId )
                 tasks = self.subTasksGiven[ subtaskId ]['endTask'] - self.subTasksGiven[ subtaskId  ]['startTask'] + 1
                 self.numTasksReceived -= tasks
 
     #######################
     def shouldAccept(self, subtaskId):
-
-        if self.subTasksGiven[ subtaskId ][ 'status' ] != 'sent':
+        if self.subTasksGiven[ subtaskId ][ 'status' ] != SubtaskStatus.starting:
             return False
         return True
 
     #######################
     def _markSubtaskFailed( self, subtaskId ):
-        self.subTasksGiven[ subtaskId ]['status'] = 'failed'
+        self.subTasksGiven[ subtaskId ]['status'] = SubtaskStatus.failure
         self.numFailedSubtasks += 1

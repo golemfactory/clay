@@ -2,7 +2,7 @@ import time
 import logging
 
 from golem.manager.NodeStateSnapshot import LocalTaskStateSnapshot
-from golem.task.TaskState import TaskState, TaskStatus, SubtaskState, ComputerState
+from golem.task.TaskState import TaskState, TaskStatus, SubtaskStatus, SubtaskState, ComputerState
 from golem.resource.DirManager import DirManager
 
 logger = logging.getLogger(__name__)
@@ -131,7 +131,7 @@ class TaskManager:
             taskId = self.subTask2TaskMapping[ subtaskId ]
 
             subtaskStatus = self.tasksStates[ taskId ].subtaskStates[ subtaskId ].subtaskStatus
-            if  subtaskStatus != TaskStatus.starting:
+            if  subtaskStatus != SubtaskStatus.starting:
                 logger.warning("Result for subtask {} when subtask state is {}".format( subtaskId, subtaskStatus ))
                 self.__noticeTaskUpdated( taskId )
                 return False
@@ -140,10 +140,11 @@ class TaskManager:
             ss = self.tasksStates[ taskId ].subtaskStates[ subtaskId ]
             ss.subtaskProgress  = 1.0
             ss.subtaskRemTime   = 0.0
-            ss.subtaskStatus    = TaskStatus.finished
+            ss.subtaskStatus    = SubtaskStatus.finished
 
             if not self.tasks [ taskId ].verifySubtask( subtaskId ):
                 logger.debug( "Subtask {} not accepted\n".format( subtaskId ) )
+                ss.subtaskStatus = SubtaskStatus.failure
                 self.__noticeTaskUpdated( taskId )
                 return False
 
@@ -178,12 +179,12 @@ class TaskManager:
                 continue
             ts = self.tasksStates[th.taskId]
             for s in ts.subtaskStates.values():
-                if s.subtaskStatus in [ TaskStatus.starting, TaskStatus.computing ]:
+                if s.subtaskStatus == SubtaskStatus.starting:
                     s.ttl = s.ttl - (currTime - s.lastChecking)
                     s.lastChecking = currTime
                     if s.ttl <= 0:
                         logger.info( "Subtask {} dies".format(  s.subtaskId ) )
-                        s.subtaskStatus        = TaskStatus.failure
+                        s.subtaskStatus        = SubtaskStatus.failure
                         t.subtaskFailed( s.subtaskId, s.extraData )
                         self.__noticeTaskUpdated( th.taskId )
 
@@ -241,7 +242,7 @@ class TaskManager:
         taskId = self.subTask2TaskMapping[ subtaskId ]
         self.tasks[ taskId ].restartSubtask( subtaskId )
         self.tasksStates[ taskId ].status = TaskStatus.computing
-        self.tasksStates[ taskId ].subtaskStates[ subtaskId ].subtaskStatus = TaskStatus.failure
+        self.tasksStates[ taskId ].subtaskStates[ subtaskId ].subtaskStatus = SubtaskStatus.failure
 
         self.__noticeTaskUpdated( taskId )
 

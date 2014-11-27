@@ -8,12 +8,12 @@ from GNRTask import  GNROptions
 from RenderingDirManager import getTestTaskPath, getTmpPath
 from TaskState import RendererDefaults, RendererInfo
 
-from RenderingTaskCollector import exr_to_pil, verifyPILImg, verifyExrImg
+from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil, verifyPILImg, verifyExrImg
 from RenderingTask import RenderingTask, RenderingTaskBuilder
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
 from examples.gnr.ui.MentalRayDialog import MentalRayDialog
 from examples.gnr.customizers.MentalRayDialogCustomizer import MentalRayDialogCustomizer
-
+from golem.task.TaskState import SubtaskStatus
 
 from collections import OrderedDict
 from PIL import Image, ImageChops
@@ -201,7 +201,7 @@ class MentalRayTask( RenderingTask ):
 
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
-        self.subTasksGiven[ hash ]['status' ] = 'sent'
+        self.subTasksGiven[ hash ]['status' ] = SubtaskStatus.starting
         if parts != 1:
             self.framesGiven[ frames[0] ] = {}
 
@@ -258,7 +258,7 @@ class MentalRayTask( RenderingTask ):
             numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
             parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
             numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
-            self.subTasksGiven[ subtaskId ][ 'status' ] = 'finished'
+            self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
 
             if self.useFrames and self.totalTasks <= len( self.frames ):
                 framesList = self.subTasksGiven[ subtaskId ]['frames']

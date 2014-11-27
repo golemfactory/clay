@@ -9,6 +9,7 @@ from GNRTask import GNRTask, GNRTaskBuilder
 from golem.task.TaskBase import ComputeTaskDef
 from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil, verifyPILImg, verifyExrImg
 from golem.core.Compress import decompress
+from golem.task.TaskState import SubtaskStatus
 
 from PIL import Image, ImageChops
 
@@ -68,7 +69,6 @@ class RenderingTask( GNRTask ):
 
         self.taskResources          = taskResources
 
-        self.collector              = RenderingTaskCollector()
         self.collectedFileNames     = {}
 
     #######################
@@ -77,7 +77,6 @@ class RenderingTask( GNRTask ):
         self.previewFilePath = None
         self.previewTaskFilePath = None
 
-        self.collector = RenderingTaskCollector()
         self.collectedFileNames = {}
 
     #######################
@@ -93,6 +92,13 @@ class RenderingTask( GNRTask ):
         self._updateTaskPreview()
 
     #######################
+    def restartSubtask( self, subtaskId ):
+        if subtaskId in self.subTasksGiven:
+            if self.subTasksGiven[ subtaskId ][ 'status' ] == SubtaskStatus.finished:
+                self._removeFromPreview( subtaskId )
+        GNRTask.restartSubtask( self, subtaskId )
+
+    #######################
     def _updatePreview( self, newChunkFilePath ):
 
         if newChunkFilePath.endswith(".exr"):
@@ -100,17 +106,18 @@ class RenderingTask( GNRTask ):
         else:
             img = Image.open( newChunkFilePath )
 
-        tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
+        imgCurrent = self.__openPreview()
+        imgCurrent = ImageChops.add( imgCurrent, img )
+        imgCurrent.save( self.previewFilePath, "BMP" )
 
-        self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
-
-        if os.path.exists( self.previewFilePath ):
-            imgCurrent = Image.open( self.previewFilePath )
-            imgCurrent = ImageChops.add( imgCurrent, img )
-            imgCurrent.save( self.previewFilePath, "BMP" )
-
-        else:
-            img.save( self.previewFilePath, "BMP" )
+    #######################
+    def _removeFromPreview( self, subtaskId ):
+        emptyColor = (0, 0, 0)
+        if isinstance( self.previewFilePath, list ): #FIXME
+            return
+        img = self.__openPreview()
+        self._markTaskArea( self.subTasksGiven[ subtaskId ], img, emptyColor )
+        img.save( self.previewFilePath, "BMP" )
 
     #######################
     def _updateTaskPreview( self ):
@@ -120,16 +127,12 @@ class RenderingTask( GNRTask ):
         tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
         self.previewTaskFilePath = "{}".format( os.path.join( tmpDir, "current_task_preview") )
 
-        if not self.previewFilePath or not os.path.exists( self.previewFilePath ):
-            self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
-            img = Image.new("RGB", ( self.resX,self.resY ) )
-            img.save( self.previewFilePath, "BMP" )
+        imgTask = self.__openPreview()
 
-        imgTask = Image.open( self.previewFilePath )
         for sub in self.subTasksGiven.values():
-            if sub['status'] == 'sent':
+            if sub['status'] == SubtaskStatus.starting:
                 self._markTaskArea( sub, imgTask, sentColor )
-            if sub['status'] == 'failed':
+            if sub['status'] == SubtaskStatus.failure:
                 self._markTaskArea( sub, imgTask, failedColor )
 
         imgTask.save( self.previewTaskFilePath, "BMP" )
@@ -181,8 +184,8 @@ class RenderingTask( GNRTask ):
             return startTask, endTask
         else:
             for sub in self.subTasksGiven.values():
-                if sub['status'] == 'failed':
-                    sub['status'] = 'resent'
+                if sub['status'] == SubtaskStatus.failure:
+                    sub['status'] = SubtaskStatus.resent
                     endTask = sub['endTask']
                     startTask = sub['startTask']
                     self.numFailedSubtasks -= 1
@@ -216,3 +219,14 @@ class RenderingTask( GNRTask ):
             return verifyExrImg( file, self.resX, self.resY )
         else:
             return verifyPILImg( file, self.resX, self.resY )
+
+    #######################
+    def __openPreview( self ):
+        tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
+
+        if self.previewFilePath is None or not os.path.exists( self.previewFilePath ):
+            self.previewFilePath = "{}".format( os.path.join( tmpDir, "current_preview") )
+            img = Image.new("RGB", ( self.resX,self.resY ) )
+            img.save( self.previewFilePath, "BMP" )
+
+        return Image.open( self.previewFilePath )

@@ -9,11 +9,13 @@ from examples.gnr.task.SceneFileEditor import regenerateFile
 
 from GNRTask import GNROptions
 from RenderingTask import RenderingTask, RenderingTaskBuilder
+from RenderingTaskCollector import RenderingTaskCollector
 
 from RenderingDirManager import getTestTaskPath
 from TaskState import RendererDefaults, RendererInfo
 from examples.gnr.ui.PbrtDialog import PbrtDialog
 from examples.gnr.customizers.PbrtDialogCustomizer import PbrtDialogCustomizer
+from golem.task.TaskState import SubtaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +123,7 @@ class PbrtRenderTask( RenderingTask ):
                                 totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
                                 rootPath, estimatedMemory )
 
-        self.collectedFileNames = []
+        self.collectedFileNames = set()
 
         self.numSubtasks        = numSubtasks
         self.numCores           = numCores
@@ -166,7 +168,7 @@ class PbrtRenderTask( RenderingTask ):
 
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
-        self.subTasksGiven[ hash ][ 'status' ] = 'sent'
+        self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
 
         self._updateTaskPreview()
 
@@ -208,7 +210,7 @@ class PbrtRenderTask( RenderingTask ):
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
 
         if len( taskResult ) > 0:
-            self.subTasksGiven[ subtaskId ][ 'status' ] = 'finished'
+            self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
             for trp in taskResult:
                 trFile = self._unpackTaskResult (trp, tmpDir )
 
@@ -217,10 +219,7 @@ class PbrtRenderTask( RenderingTask ):
                     self._updateTaskPreview()
                     return
 
-                if self.outputFormat != "EXR":
-                    self.collector.acceptTask( trFile ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
-                else:
-                    self.collectedFileNames.append( trFile )
+                self.collectedFileNames.add( trFile )
                 self.numTasksReceived += 1
 
                 self._updatePreview( trFile )
@@ -232,7 +231,10 @@ class PbrtRenderTask( RenderingTask ):
         if self.numTasksReceived == self.totalTasks:
             outputFileName = u"{}".format( self.outputFile, self.outputFormat )
             if self.outputFormat != "EXR":
-                self.collector.finalize().save( outputFileName, self.outputFormat )
+                collector = RenderingTaskCollector()
+                for file in self.collectedFileNames:
+                    collector.acceptTask( file )
+                collector.finalize().save( outputFileName, self.outputFormat )
                 self.previewFilePath = outputFileName
             else:
                 files = " ".join( self.collectedFileNames )
@@ -241,12 +243,13 @@ class PbrtRenderTask( RenderingTask ):
     #######################
     def restart( self ):
         RenderingTask.restart( self )
-        self.collectedFileNames = []
+        self.collectedFileNames.clear()
 
     #######################
     def restartSubtask( self, subtaskId ):
+        if self.subTasksGiven[ subtaskId ][ 'status' ] == SubtaskStatus.finished:
+            self.numTasksReceived += 1
         RenderingTask.restartSubtask( self, subtaskId )
-        self.numTasksReceived += 1
         self._updateTaskPreview()
 
     #######################
@@ -259,8 +262,8 @@ class PbrtRenderTask( RenderingTask ):
             return startTask, endTask
         else:
             for sub in self.subTasksGiven.values():
-                if sub['status'] == 'failed':
-                    sub['status'] = 'resent'
+                if sub['status'] == SubtaskStatus.failure:
+                    sub['status'] = SubtaskStatus.resent
                     endTask = sub['endTask']
                     startTask = sub['startTask']
                     self.numFailedSubtasks -= 1
@@ -278,13 +281,13 @@ class PbrtRenderTask( RenderingTask ):
             for sb in range(0, self.numSubtasks):
                 num = self.numSubtasks * numTask + sb
                 tx = num % self.nx
-                ty = num / self.nx
+                ty = num /  self.nx
                 xL = tx * self.taskResX
                 xR = (tx + 1) * self.taskResX
                 yL = ty * self.taskResY
                 yR = (ty + 1) * self.taskResY
 
-                for i in range( int( math.floor(xL) ) , int( math.floor(xR) ) ):
+                for i in range( int( round(xL) ) , int( round(xR) ) ):
                     for j in range( int( math.floor( yL )) , int( math.floor( yR ) ) ) :
                         imgTask.putpixel( (i, j), color )
 

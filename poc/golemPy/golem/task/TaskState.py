@@ -64,3 +64,10 @@ class TaskStatus:
     aborted     = "Aborted"
     failure     = "Failure"
     paused      = "Paused"
+
+class SubtaskStatus:
+    waiting     = "Waiting"
+    starting    = "Starting"
+    resent      = "Failed - Resent"
+    finished    = "Finished"
+    failure     = "Failure"

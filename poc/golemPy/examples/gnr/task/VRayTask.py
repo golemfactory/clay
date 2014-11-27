@@ -15,6 +15,7 @@ from RenderingTaskCollector import exr_to_pil, RenderingTaskCollector
 from examples.gnr.RenderingEnvironment import VRayEnvironment
 from examples.gnr.ui.VRayDialog import VRayDialog
 from examples.gnr.customizers.VRayDialogCustomizer import VRayDialogCustomizer
+from golem.task.TaskState import SubtaskStatus
 
 from PIL import Image
 
@@ -185,7 +186,7 @@ class VRayTask( RenderingTask ):
 
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
-        self.subTasksGiven[ hash ][ 'status' ] = 'sent'
+        self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
         for frame in frames:
             if self.useFrames and frame not in self.framesParts:
                 self.framesParts[ frame ] = {}
@@ -241,7 +242,7 @@ class VRayTask( RenderingTask ):
             numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
             parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
             numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
-            self.subTasksGiven[ subtaskId ][ 'status' ] = 'finished'
+            self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
 
             if self.useFrames and self.totalTasks <= len( self.frames ):
                 framesList = self.subTasksGiven[ subtaskId ][ 'frames' ]
@@ -278,22 +279,7 @@ class VRayTask( RenderingTask ):
                 self.__copyFrames()
             else:
                 outputFileName = u"{}".format( self.outputFile, self.outputFormat )
-                self.__putImageTogether( outputFileName, self.collector )
-
-    #######################
-    def __collectAlphaFile( self, trFile, numStart ):
-        if self.__useAlpha():
-            if self.__useOuterTaskCollector():
-                self.collectedAlphaFiles[ numStart ] = trFile
-            else:
-                self.collector.acceptAlpha( trFile )
-
-    #######################
-    def __collectTaskFile( self, trFile, numStart ):
-        if self.__useOuterTaskCollector():
-            self.collectedFileNames[ numStart ] = trFile
-        else:
-            self.collector.acceptTask( trFile )
+                self.__putImageTogether( outputFileName )
 
     #######################
     def __useOuterTaskCollector( self ):
@@ -336,12 +322,17 @@ class VRayTask( RenderingTask ):
         return fileName.find('Alpha') != -1
 
     #######################
-    def __putImageTogether( self, outputFileName, collector  ):
+    def __putImageTogether( self, outputFileName  ):
+        collector = RenderingTaskCollector()
 
         if not self.__useOuterTaskCollector():
+            for file in self.collectedFileNames.values():
+                collector.acceptTask( file )
+            for file in self.collectedAlphaFiles.values():
+                collector.acceptAlpha( file )
             collector.finalize().save( outputFileName, self.outputFormat )
-            if not self.useFrames:
-                self.previewFilePath = outputFileName
+#            if not self.useFrames:
+#                self.previewFilePath = outputFileName
         else:
             self.collectedFileNames = OrderedDict( sorted( self.collectedFileNames.items() ) )
             self.collectedAlphaFiles = OrderedDict( sorted( self.collectedAlphaFiles.items() ) )
@@ -351,9 +342,9 @@ class VRayTask( RenderingTask ):
     #######################
     def __collectImagePart( self, numStart, trFile ):
         if self.__isAlphaFile( trFile ):
-            self.__collectAlphaFile( trFile, numStart )
+            self.collectedAlphaFiles[ numStart ] = trFile
         else:
-            self.__collectTaskFile( trFile, numStart )
+            self.collectedFileNames[ numStart ] = trFile
             self._updatePreview( trFile )
             self._updateTaskPreview()
 
@@ -374,7 +365,7 @@ class VRayTask( RenderingTask ):
             collector.acceptTask( trFile )
             for alpha in self.framesAlphaParts[ framesList[0] ]:
                 collector.acceptAlpha( alpha )
-            self.__putImageTogether( outputFileName, collector )
+            collector.finalize().save( outputFileName, self.outputFormat )
         else:
             files = " ".join( [trFile] + self.framesAlphaParts[ framesList[0] ].values() )
             self._putCollectedFilesTogether( outputFileName, files, "add" )
