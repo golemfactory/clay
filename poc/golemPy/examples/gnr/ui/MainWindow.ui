@@ -421,7 +421,7 @@
            </spacer>
           </item>
           <item>
-           <widget class="QLabel" name="previewLabel">
+           <widget class="ClickableQLabel" name="previewLabel">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
               <horstretch>0</horstretch>

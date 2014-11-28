@@ -32,6 +32,7 @@ def buildPBRTRendererInfo():
     renderer                = RendererInfo( "PBRT", defaults, PbrtTaskBuilder, PbrtDialog, PbrtDialogCustomizer, PbrtRendererOptions )
     renderer.outputFormats  = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF" ]
     renderer.sceneFileExt    = [ "pbrt" ]
+    renderer.getTaskNumFromPixels = getTaskNumFromPixels
 
     return renderer
 
@@ -86,6 +87,16 @@ class PbrtTaskBuilder( RenderingTaskBuilder ):
         allOp = definition.resolution[0] * definition.resolution[1] * definition.rendererOptions.samplesPerPixelCount
         return max( renderer.defaults.minSubtasks, min( renderer.defaults.maxSubtasks, allOp / taskBase ) )
 
+def countSubtaskReg( totalTasks, subtasks, resX, resY ):
+    nx = totalTasks * subtasks
+    ny = 1
+    while ( nx % 2 == 0 ) and (2 * resX * ny < resY * nx ):
+        nx /= 2
+        ny *= 2
+    taskResX = float( resX ) / float( nx )
+    taskResY = float( resY ) / float( ny )
+    return nx, ny, taskResX, taskResY
+
 ##############################################
 class PbrtRenderTask( RenderingTask ):
 
@@ -135,11 +146,7 @@ class PbrtRenderTask( RenderingTask ):
         self.pixelFilter        = pixelFilter
         self.sampler            = sampler
         self.samplesPerPixel    = samplesPerPixel
-        self.nx                 = self.totalTasks * self.numSubtasks
-        self.ny                 = 1
-        self.__countSubtaskReg()
-        self.taskResX           = float( self.resX ) / float( self.nx )
-        self.taskResY           = float( self.resY ) / float ( self.ny )
+        self.nx, self.ny, self.taskResX, self.taskResY = countSubtaskReg( self.totalTasks, self.numSubtasks, self.resX, self.resY)
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
@@ -291,10 +298,13 @@ class PbrtRenderTask( RenderingTask ):
                     for j in range( int( math.floor( yL )) , int( math.floor( yR ) ) ) :
                         imgTask.putpixel( (i, j), color )
 
-    #######################
-    def __countSubtaskReg( self ):
-        while ( self.nx % 2 == 0 ) and (2 * self.resX * self.ny < self.resY * self.nx ):
-            self.nx /= 2
-            self.ny *= 2
+
+
+def getTaskNumFromPixels( pX, pY, totalTasks, resX = 300, resY = 200, subtasks = 20):
+    nx, ny, taskResX, taskResY = countSubtaskReg(totalTasks, subtasks, resX, resY)
+    numX = int( math.floor( pX / taskResX ) )
+    numY = int( math.floor( pY / taskResY ) )
+    num = (numY * nx + numX) /subtasks + 1
+    return num
 
 

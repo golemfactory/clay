@@ -52,6 +52,7 @@ class SubtaskState:
         self.subtaskRemTime     = 0
         self.subtaskStatus      = ""
 
+
         self.computer           = ComputerState()
 
 

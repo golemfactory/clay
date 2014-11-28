@@ -240,7 +240,6 @@ class GNRApplicationLogic( QtCore.QObject ):
 
         self.addTasks( [taskState] )
 
-
     ######################
     def addTasks( self, tasks ):
 

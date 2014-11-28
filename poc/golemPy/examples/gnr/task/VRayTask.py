@@ -33,6 +33,7 @@ def buildVRayRendererInfo():
     renderer = RendererInfo( "VRay", defaults, VRayTaskBuilder, VRayDialog, VRayDialogCustomizer, VRayRendererOptions )
     renderer.outputFormats = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF" ]
     renderer.sceneFileExt = [ "vrscene" ]
+    renderer.getTaskNumFromPixels = getTaskNumFromPixels
 
     return renderer
 
@@ -427,3 +428,18 @@ class VRayTask( RenderingTask ):
             if not self.useFrames and not self._verifyImg( trFile ):
                 return False
         return True
+
+def __numFromPixel( pY, resY, tasks ):
+    return int( math.floor( pY / math.floor( float( resY ) / float( tasks ) ) ) ) + 1
+
+def getTaskNumFromPixels( pX, pY, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):
+    if not useFrames:
+        num = __numFromPixel(pY, resY, totalTasks)
+    else:
+        if totalTasks <= frames:
+            subtaskFrames = int ( math.ceil( float( frames )  / float( totalTasks ) ) )
+            num = int ( math.ceil( float( frameNum ) / subtaskFrames ) )
+        else:
+            parts = totalTasks / frames
+            num = (frameNum - 1) * parts +  __numFromPixel( pY, resY, parts )
+    return num

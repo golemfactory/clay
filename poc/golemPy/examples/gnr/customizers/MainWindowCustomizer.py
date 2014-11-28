@@ -8,6 +8,7 @@ from examples.gnr.ui.MainWindow import GNRMainWindow
 from examples.gnr.ui.NewTaskDialog import NewTaskDialog
 from examples.gnr.ui.ShowTaskResourcesDialog import ShowTaskResourcesDialog
 from examples.gnr.ui.TaskDetailsDialog import TaskDetailsDialog
+from examples.gnr.ui.SubtaskDetailsDialog import SubtaskDetailsDialog
 from examples.gnr.ui.TaskTableElem import TaskTableElem
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 from examples.gnr.ui.StatusWindow import StatusWindow
@@ -20,6 +21,7 @@ from examples.gnr.TaskState import TaskDefinition
 from NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from TaskContexMenuCustomizer import TaskContextMenuCustomizer
 from TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
+from SubtaskDetailsDialogCustomizer import SubtaskDetailsDialogCustomizer
 from ConfigurationDialogCustomizer import ConfigurationDialogCustomizer
 from StatusWindowCustomizer import StatusWindowCustomizer
 from ChangeTaskDialogCustomizer import ChangeTaskDialogCustomizer
@@ -27,10 +29,14 @@ from InfoTaskDialogCustomizer import InfoTaskDialogCustomizer
 from EnvironmentsDialogCustomizer import EnvironmentsDialogCustomizer
 from MemoryHelper import resourceSizeToDisplay, translateResourceIndex
 
+from golem.task.TaskState import SubtaskStatus
+
 import time
 import logging
 
 logger = logging.getLogger(__name__)
+
+frameRenderers = [ u"MentalRay", u"VRay" ]
 
 class MainWindowCustomizer:
     ############################
@@ -67,7 +73,8 @@ class MainWindowCustomizer:
         self.gui.ui.showResourceButton.clicked.connect( self.__showTaskResourcesClicked )
         self.gui.ui.renderTaskTableWidget.customContextMenuRequested.connect( self.__contexMenuRequested )
         QtCore.QObject.connect( self.gui.ui.frameSlider, QtCore.SIGNAL( "valueChanged( int )" ), self.__updateSliderPreview )
-        QtCore.QObject.connect( self.gui.ui.outputFile, QtCore.SIGNAL( "clicked()" ), self.__openOutputFile )
+        QtCore.QObject.connect( self.gui.ui.outputFile, QtCore.SIGNAL( "mouseReleaseEvent( int, int, QMouseEvent )" ), self.__openOutputFile )
+        QtCore.QObject.connect( self.gui.ui.previewLabel, QtCore.SIGNAL( "mouseReleaseEvent( int, int, QMouseEvent )" ), self.__pixmapClicked )
 
     ############################
     # Add new task to golem client
@@ -132,7 +139,6 @@ class MainWindowCustomizer:
             self.gui.ui.samplesPerPixel.setText( "" )
             self.gui.ui.samplesPerPixelLabel.setVisible( False )
 
-        frameRenderers = [ u"MentalRay", u"VRay" ]
 
         if t.definition.renderer in frameRenderers and t.definition.rendererOptions.useFrames:
             if "resultPreview" in t.taskState.extraData:
@@ -170,7 +176,6 @@ class MainWindowCustomizer:
         self.gui.ui.renderTaskTableWidget.setCellWidget( currentRowCount, 2, taskTableElem.progressBarInBoxLayoutWidget )
 
         self.gui.ui.renderTaskTableWidget.setCurrentItem( self.gui.ui.renderTaskTableWidget.item( currentRowCount, 1) )
-
         self.updateTaskAdditionalInfo( self.logic.getTask( taskId ) )
 
     ############################
@@ -262,7 +267,12 @@ class MainWindowCustomizer:
         self.taskDetailsDialogCustomizer = TaskDetailsDialogCustomizer( self.taskDetailsDialog, self.logic, ts )
         self.taskDetailsDialog.show()
 
-
+    #############################
+    def showSubtaskDetailsDialog( self, subtask ):
+        subtaskDetailsDialog = SubtaskDetailsDialog( self.gui.window )
+        subtaskDetailsDialogCustomizer = SubtaskDetailsDialogCustomizer( subtaskDetailsDialog, self.logic, subtask )
+        subtaskDetailsDialog.show()
+    #############################
     def __taskTableRowDoubleClicked( self, m ):
         row = m.row()
         taskId = "{}".format( self.gui.ui.renderTaskTableWidget.item( row, 0 ).text() )
@@ -358,7 +368,7 @@ class MainWindowCustomizer:
         self.environmentsDialogCustomizer = EnvironmentsDialogCustomizer( self.environmentsDialog, self.logic )
         self.environmentsDialog.show()
 
-
+    #############################
     def __updateSliderPreview( self ):
         num = self.gui.ui.frameSlider.value() - 1
         if len( self.sliderPreviews ) > num:
@@ -369,10 +379,32 @@ class MainWindowCustomizer:
 
         self.gui.ui.previewLabel.setPixmap( QPixmap( self.previewPath ) )
 
+    #############################
     def __openOutputFile( self ):
         file = self.gui.ui.outputFile.text()
         if os.path.isfile( file ):
             os.startfile( file )
+
+    #############################
+    def __pixmapClicked( self, x, y, *args ):
+        if self.currentTaskHighlighted and self.currentTaskHighlighted.definition.renderer:
+            definition = self.currentTaskHighlighted.definition
+            taskId = definition.taskId
+            task =  self.logic.getTask( taskId )
+            renderer = self.logic.getRenderer( definition.renderer )
+            if len( task.taskState.subtaskStates ) > 0:
+                totalTasks = task.taskState.subtaskStates.values()[0].extraData['totalTasks']
+                if definition.renderer in frameRenderers and definition.rendererOptions.useFrames:
+                    frames = len ( definition.rendererOptions.frames )
+                    frameNum = self.gui.ui.frameSlider.value()
+                    num = renderer.getTaskNumFromPixels( x, y, totalTasks, useFrames = True, frames = frames, frameNum = frameNum )
+                else:
+                    num = renderer.getTaskNumFromPixels( x, y, totalTasks )
+                if num is not None:
+                    subtasks = [ sub  for sub in task.taskState.subtaskStates.values() if sub.extraData['startTask']  <= num <= sub.extraData['endTask']  ]
+                    if len( subtasks ) > 0:
+                        subtask = min( subtasks, key=lambda x: subtasksPriority( x ) )
+                        self.showSubtaskDetailsDialog( subtask )
 
 #######################################################################################
 def insertItem( root, pathTable ):
@@ -388,6 +420,13 @@ def insertItem( root, pathTable ):
         root.addChild( newChild )
         insertItem( newChild, pathTable[ 1: ] )
 
+def subtasksPriority( sub ):
+    priority = {
+        SubtaskStatus.failure: 5,
+        SubtaskStatus.resent: 4,
+        SubtaskStatus.finished: 3,
+        SubtaskStatus.starting: 2,
+        SubtaskStatus.waiting: 1 }
 
-
+    return priority[ sub.subtaskStatus ]
 
