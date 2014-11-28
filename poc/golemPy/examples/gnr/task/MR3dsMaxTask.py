@@ -404,19 +404,20 @@ class MentalRayTask( RenderingTask ):
         presetFile = os.path.join( presetFile, os.path.basename( self.presetFile ) )
         return presetFile
 
+    #######################
     def __verifyImgs( self, trFiles ):
+        if not self.useFrames:
+            resY = int (math.floor( float( self.resY ) / float( self.totalTasks ) ) )
+        elif len( self.frames ) >= self.totalTasks:
+            resY = self.resY
+        else:
+            parts = self.totalTasks / len( self.frames )
+            resY = int (math.floor( float( self.resY ) / float( parts ) ) )
         for trFile in trFiles:
-            if not self.useFrames and not self._verifyImg( trFile ):
+            if not self._verifyImg( trFile, self.resX, resY ):
                 return False
         return True
 
-    def _verifyImg( self, file ):
-        _, ext = os.path.splitext( file )
-        resY = int (math.floor( float( self.resY ) / float( self.totalTasks ) ) )
-        if ext.upper() != "EXR":
-            return verifyExrImg( file, self.resX, resY )
-        else:
-            return verifyPILImg( file, self.resX, resY )
 
 def __numFromPixel( pY, resY, tasks ):
     return int( math.floor( pY / math.floor( float( resY ) / float( tasks ) ) ) ) + 1

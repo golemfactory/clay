@@ -425,7 +425,7 @@ class VRayTask( RenderingTask ):
     #######################
     def __verifyImgs( self, trFiles ):
         for trFile in trFiles:
-            if not self.useFrames and not self._verifyImg( trFile ):
+            if not self._verifyImg( trFile, self.resX, self.resY ):
                 return False
         return True
 

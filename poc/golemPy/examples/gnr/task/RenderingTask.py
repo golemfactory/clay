@@ -213,12 +213,12 @@ class RenderingTask( GNRTask ):
         return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["outfilebasename"], l["sceneFile"] )
 
     #######################
-    def _verifyImg( self, file ):
+    def _verifyImg( self, file, resX, resY ):
         _, ext = os.path.splitext( file )
         if ext.upper() != "EXR":
-            return verifyExrImg( file, self.resX, self.resY )
+            return verifyExrImg( file, resX, resY )
         else:
-            return verifyPILImg( file, self.resX, self.resY )
+            return verifyPILImg( file, resX, resY )
 
     #######################
     def __openPreview( self ):

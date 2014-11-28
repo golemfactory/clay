@@ -221,7 +221,7 @@ class PbrtRenderTask( RenderingTask ):
             for trp in taskResult:
                 trFile = self._unpackTaskResult (trp, tmpDir )
 
-                if not self._verifyImg( trFile ):
+                if not self._verifyImg( trFile, self.resX, self.resY ):
                     self._markSubtaskFailed( subtaskId )
                     self._updateTaskPreview()
                     return
