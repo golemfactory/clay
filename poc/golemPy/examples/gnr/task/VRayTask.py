@@ -146,9 +146,6 @@ class VRayTask( RenderingTask ):
 
         if useFrames:
             self.previewFilePath = [ None ] * len ( frames )
-            if len( frames ) > self.totalTasks:
-                for task in range(1, self.totalTasks + 1):
-                    self.collectedFileNames[ task ] = []
 
     #######################
     def restart( self ):
@@ -247,8 +244,7 @@ class VRayTask( RenderingTask ):
             self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
 
             if self.useFrames and self.totalTasks <= len( self.frames ):
-                framesList = self.subTasksGiven[ subtaskId ][ 'frames' ]
-                if len( taskResult ) < len( framesList ):
+                if len( taskResult ) < len( self.subTasksGiven[ subtaskId ][ 'frames' ] ):
                     self._markSubtaskFailed( subtaskId )
                     return
 
@@ -262,12 +258,16 @@ class VRayTask( RenderingTask ):
                     self._updateTaskPreview()
                 return
 
-            for trFile in trFiles:
-                if not self.useFrames:
+
+            if not self.useFrames:
+                for trFile in trFiles:
                     self.__collectImagePart( numStart, trFile )
-                elif self.totalTasks < len( self.frames ):
-                    framesList = self.__collectFrames( numStart, trFile, framesList, parts )
-                else:
+            elif self.totalTasks < len( self.frames ):
+                for trFile in trFiles:
+                    self.__collectFrameFile( trFile )
+                self.__collectFrames( self.subTasksGiven[ subtaskId ][ 'frames' ], tmpDir )
+            else:
+                for trFile in trFiles:
                     self.__collectFramePart( numStart, trFile, parts, tmpDir )
 
             self.numTasksReceived += numEnd - numStart + 1
@@ -351,28 +351,45 @@ class VRayTask( RenderingTask ):
             self._updateTaskPreview()
 
     #######################
-    def __collectFrames( self, numStart, trFile, framesList, parts ):
-        if self.__isAlphaFile( trFile ):
-            self.framesAlphaParts[framesList[0]] = trFile
-            return framesList
+    # def __collectFrameFile( self, numStart, trFile ):
+    #     frameNum = self.__getFrameNumberFromName( trFile )
+    #     if frameNum is None:
+    #         return
+    #     if self.__isAlphaFile( trFile ):
+    #         self.framesAlphaParts[ frameNum ] = trFile
+    #         return
+    #     base, ext = os.path.splitext( trFile )
+    #     outputFileName = u"{}.{}".format( base, self.outputFormat )
+    #     if len( self.frames ) > self.totalTasks:
+    #         self.collectedFileNames[ numStart ].append( outputFileName )
+    #     else:
+    #         self.collectedFileNames[ numStart ] = outputFileName
+    #     if not self.__useOuterTaskCollector():
+    #         collector = RenderingTaskCollector()
+    #         collector.acceptTask( trFile )
+    #         for alpha in self.framesAlphaParts[ frameNum ]:
+    #             collector.acceptAlpha( alpha )
+    #         collector.finalize().save( outputFileName, self.outputFormat )
+    #     else:
+    #         files = " ".join( [trFile] + self.framesAlphaParts[ frameNum ].values() )
+    #         self._putCollectedFilesTogether( outputFileName, files, "add" )
+    #     self._updateFramePreview( outputFileName, frameNum )
 
-        base, ext = os.path.splitext( trFile )
-        outputFileName = u"{}.{}".format( base, self.outputFormat )
-        if len( self.frames ) > self.totalTasks:
-            self.collectedFileNames[ numStart ].append( outputFileName )
+    #######################
+    def __collectFrames(self, frames, tmpDir):
+        for frame in frames:
+            self.__putFrameTogether( tmpDir, frame, frame )
+
+
+    #######################
+    def __collectFrameFile( self, trFile ):
+        frameNum = self.__getFrameNumberFromName( trFile )
+        if frameNum is None:
+            return
+        if self.__isAlphaFile( trFile ):
+            self.framesAlphaParts[ frameNum ][1] = trFile
         else:
-            self.collectedFileNames[ numStart ] = outputFileName
-        if not self.__useOuterTaskCollector():
-            collector = RenderingTaskCollector()
-            collector.acceptTask( trFile )
-            for alpha in self.framesAlphaParts[ framesList[0] ]:
-                collector.acceptAlpha( alpha )
-            collector.finalize().save( outputFileName, self.outputFormat )
-        else:
-            files = " ".join( [trFile] + self.framesAlphaParts[ framesList[0] ].values() )
-            self._putCollectedFilesTogether( outputFileName, files, "add" )
-        self._updateFramePreview( outputFileName, framesList[0] )
-        return framesList[1:]
+            self.framesParts[ frameNum ][1] = trFile
 
     #######################
     def __collectFramePart( self, numStart, trFile, parts, tmpDir ):
@@ -390,13 +407,8 @@ class VRayTask( RenderingTask ):
     #######################
     def __copyFrames( self ):
         outpuDir = os.path.dirname( self.outputFile )
-        if len( self.frames ) <= self.totalTasks:
-            for file in self.collectedFileNames.values():
-                shutil.copy( file, os.path.join( outpuDir, os.path.basename( file ) ) )
-        else:
-            for subtaskFiles in self.collectedFileNames.values():
-                for file in subtaskFiles:
-                    shutil.copy( file, os.path.join( outpuDir, os.path.basename( file ) ) )
+        for file in self.collectedFileNames.values():
+            shutil.copy( file, os.path.join( outpuDir, os.path.basename( file ) ) )
 
     #######################
     def __putFrameTogether( self, tmpDir, frameNum, numStart ):
@@ -417,6 +429,17 @@ class VRayTask( RenderingTask ):
             collector.finalize().save( outputFileName, self.outputFormat )
         self.collectedFileNames[ numStart ] = outputFileName
         self._updateFramePreview( outputFileName, frameNum )
+
+    #######################
+    def __getFrameNumberFromName( self, frameName ):
+        frameName, ext = os.path.splitext( frameName )
+        try:
+            num = int( frameName.split(".")[-1].lstrip("0") )
+            return num
+        except Exception, err:
+            logger.warning("Wrong result name: {}; {} ", frameName, str( err ) )
+            return None
+
 
     #######################
     def __getOutputName( self, frameNum ):
