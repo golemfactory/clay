@@ -35,6 +35,7 @@ def buildMentalRayRendererInfo():
     renderer.outputFormats  = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCD", "PCX", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
     renderer.sceneFileExt   = [ "max",  "zip" ]
     renderer.getTaskNumFromPixels = getTaskNumFromPixels
+    renderer.getTaskBoarder = getTaskBoarder
 
     return renderer
 
@@ -433,3 +434,26 @@ def getTaskNumFromPixels( pX, pY, totalTasks, resX = 300, resY = 200, useFrames 
             parts = totalTasks / frames
             num = (frameNum - 1) * parts +  __numFromPixel( pY, resY, parts )
     return num
+
+def __getBoarder( startTask, endTask, parts, resX, resY ):
+    boarder = []
+    upper = int( math.floor( float(resY ) / float( parts )   * (startTask - 1) ) )
+    lower = int( math.floor( float( resY ) / float( parts )  * endTask  ) )
+    for i in range( upper, lower ):
+        boarder.append( (0, i) )
+        boarder.append( (resX, i) )
+    for i in range( 0,  resX ):
+        boarder.append( (i, upper) )
+        boarder.append( (i, lower) )
+    return boarder
+
+def getTaskBoarder( startTask, endTask, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):
+    if not useFrames:
+        boarder = __getBoarder( startTask, endTask, totalTasks, resX, resY )
+#    elif totalTasks > frames:
+#        parts = totalTasks / frames
+#        boarder = __getBoarder( startTask % parts + 1, endTask % parts + 1, parts, resX, resY)
+    else:
+        boarder = []
+
+    return boarder

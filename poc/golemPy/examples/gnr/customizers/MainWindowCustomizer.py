@@ -2,7 +2,7 @@ import os
 import cPickle as pickle
 import datetime
 from PyQt4 import QtCore
-from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QMenu, QFileDialog, QMessageBox, QPalette
+from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QMenu, QFileDialog, QMessageBox, QPalette, QPainter, QBrush, QColor, QPen
 
 from examples.gnr.ui.MainWindow import GNRMainWindow
 from examples.gnr.ui.NewTaskDialog import NewTaskDialog
@@ -52,6 +52,7 @@ class MainWindowCustomizer:
         self.taskDetailsDialog              = None
         self.taskDetailsDialogCustomizer    = None
         self.previewPath = os.path.join( os.environ.get('GOLEM'), "examples\\gnr", getPreviewFile() )
+        self.lastPreviewPath = self.previewPath
         self.sliderPreviews = {}
 
         palette = QPalette()
@@ -75,6 +76,8 @@ class MainWindowCustomizer:
         QtCore.QObject.connect( self.gui.ui.frameSlider, QtCore.SIGNAL( "valueChanged( int )" ), self.__updateSliderPreview )
         QtCore.QObject.connect( self.gui.ui.outputFile, QtCore.SIGNAL( "mouseReleaseEvent( int, int, QMouseEvent )" ), self.__openOutputFile )
         QtCore.QObject.connect( self.gui.ui.previewLabel, QtCore.SIGNAL( "mouseReleaseEvent( int, int, QMouseEvent )" ), self.__pixmapClicked )
+        self.gui.ui.previewLabel.setMouseTracking( True )
+        QtCore.QObject.connect( self.gui.ui.previewLabel, QtCore.SIGNAL( "mouseMoveEvent( int, int, QMouseEvent )" ), self.__mouseOnPixmapMoved )
 
     ############################
     # Add new task to golem client
@@ -154,8 +157,10 @@ class MainWindowCustomizer:
                 filePath = os.path.abspath( t.taskState.extraData["resultPreview"] )
                 if os.path.exists( filePath ):
                     self.gui.ui.previewLabel.setPixmap( QPixmap( filePath ) )
+                    self.lastPreviewPath = filePath
             else:
                 self.gui.ui.previewLabel.setPixmap( QPixmap( self.previewPath ) )
+                self.lastPreviewPath = self.previewPath
         self.gui.ui.outputFile.setText( u"{}".format( t.definition.outputFile ) )
         if os.path.isfile( t.definition.outputFile ):
             self.gui.ui.outputFile.setStyleSheet( 'color: blue' )
@@ -375,9 +380,11 @@ class MainWindowCustomizer:
             if self.sliderPreviews[ num ]:
                 if os.path.exists ( self.sliderPreviews [ num ]):
                     self.gui.ui.previewLabel.setPixmap( QPixmap( self.sliderPreviews[ num ] ) )
+                    self.lastPreviewPath = self.sliderPreviews[ num ]
                     return
 
         self.gui.ui.previewLabel.setPixmap( QPixmap( self.previewPath ) )
+        self.lastPreviewPath = self.previewPath
 
     #############################
     def __openOutputFile( self ):
@@ -386,7 +393,8 @@ class MainWindowCustomizer:
             os.startfile( file )
 
     #############################
-    def __pixmapClicked( self, x, y, *args ):
+    def __getTaskNumFromPixels(self, x, y ):
+        num = None
         if self.currentTaskHighlighted and self.currentTaskHighlighted.definition.renderer:
             definition = self.currentTaskHighlighted.definition
             taskId = definition.taskId
@@ -400,11 +408,60 @@ class MainWindowCustomizer:
                     num = renderer.getTaskNumFromPixels( x, y, totalTasks, useFrames = True, frames = frames, frameNum = frameNum )
                 else:
                     num = renderer.getTaskNumFromPixels( x, y, totalTasks )
-                if num is not None:
-                    subtasks = [ sub  for sub in task.taskState.subtaskStates.values() if sub.extraData['startTask']  <= num <= sub.extraData['endTask']  ]
-                    if len( subtasks ) > 0:
-                        subtask = min( subtasks, key=lambda x: subtasksPriority( x ) )
-                        self.showSubtaskDetailsDialog( subtask )
+        return num
+
+    def __getSubtask( self, num ):
+        subtask = None
+        task = self.logic.getTask( self.currentTaskHighlighted.definition.taskId )
+        subtasks = [ sub  for sub in task.taskState.subtaskStates.values() if sub.extraData['startTask']  <= num <= sub.extraData['endTask']  ]
+        if len( subtasks ) > 0:
+                subtask = min( subtasks, key=lambda x: subtasksPriority( x ) )
+        return subtask
+
+    #############################
+    def __pixmapClicked( self, x, y, *args ):
+        num = self.__getTaskNumFromPixels(x, y)
+        if num is not None:
+            subtask = self.__getSubtask( num )
+            if subtask is not None:
+                self.showSubtaskDetailsDialog( subtask )
+
+    #############################
+    def __mouseOnPixmapMoved(self, x, y, *args ):
+        num = self.__getTaskNumFromPixels(x, y)
+        if num is not None:
+            definition = self.currentTaskHighlighted.definition
+            renderer = self.logic.getRenderer( definition.renderer )
+            subtask = self.__getSubtask( num )
+            if subtask is not None:
+                if definition.renderer in frameRenderers and definition.rendererOptions.useFrames:
+                    frames = len ( definition.rendererOptions.frames )
+                    frameNum = self.gui.ui.frameSlider.value()
+                    boarder = renderer.getTaskBoarder( subtask.extraData['startTask'],
+                                                       subtask.extraData['endTask'],
+                                                       subtask.extraData['totalTasks'],
+                                                       self.currentTaskHighlighted.definition.resolution[0],
+                                                       self.currentTaskHighlighted.definition.resolution[1],
+                                                       useFrames = True,
+                                                       frames = frames,
+                                                       frameNum = frameNum )
+                else:
+                    boarder = renderer.getTaskBoarder( subtask.extraData['startTask'],
+                                                       subtask.extraData['endTask'],
+                                                       subtask.extraData['totalTasks'],
+                                                       self.currentTaskHighlighted.definition.resolution[0],
+                                                       self.currentTaskHighlighted.definition.resolution[1])
+                pixmap = QPixmap( self.lastPreviewPath )
+                p = QPainter( pixmap )
+                pen = QPen( QColor( 0, 0, 0 ))
+                pen.setWidth( 3 )
+                p.setPen( pen )
+                for (x, y) in boarder:
+                    p.drawPoint( x, y )
+                p.end()
+                self.gui.ui.previewLabel.setPixmap( pixmap )
+         #   print "boarder!"
+        #print "mouse on pixmap! {} {}".format(x, y)
 
 #######################################################################################
 def insertItem( root, pathTable ):

@@ -33,6 +33,7 @@ def buildPBRTRendererInfo():
     renderer.outputFormats  = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF" ]
     renderer.sceneFileExt    = [ "pbrt" ]
     renderer.getTaskNumFromPixels = getTaskNumFromPixels
+    renderer.getTaskBoarder = getTaskBoarder
 
     return renderer
 
@@ -307,4 +308,38 @@ def getTaskNumFromPixels( pX, pY, totalTasks, resX = 300, resY = 200, subtasks =
     num = (numY * nx + numX) /subtasks + 1
     return num
 
+def getTaskBoarder(startTask, endTask, totalTasks, resX = 300, resY = 200, numSubtasks = 20):
+    boarder = []
+    newLeft = True
+    lastRight = None
+    for numTask in range( startTask, endTask ):
+        for sb in range( numSubtasks ):
+            num = numSubtasks * numTask + sb
+            nx, ny, taskResX, taskResY = countSubtaskReg(totalTasks, numSubtasks, resX, resY)
+            tx = num % nx
+            ty = num /  nx
+            xL = int( round( tx * taskResX ) )
+            xR = int ( round( (tx + 1) * taskResX ) )
+            yL = int ( round( ty * taskResY ) )
+            yR = int( round( (ty + 1) * taskResY ) )
+            for i in range( xL, xR ):
+                if (i, yL) in boarder:
+                    boarder.remove( (i, yL ) )
+                else:
+                    boarder.append( (i, yL ) )
+                boarder.append( (i, yR) )
+            if xL == 0:
+                newLeft = True
+            if newLeft:
+                for i in range( yL, yR ):
+                    boarder.append( (xL, i) )
+                newLeft = False
+            if xR == resY:
+                for i in range( yL, yR ):
+                    boarder.append( (xR, i) )
+            lastRight = (xR, yL, yR)
+    xR, yL, yR = lastRight
+    for i in range( yL, yR ):
+        boarder.append( (xR, i) )
+    return boarder
 

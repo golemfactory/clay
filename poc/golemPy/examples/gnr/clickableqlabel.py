@@ -8,3 +8,6 @@ class   ClickableQLabel(QLabel):
 
     def mouseReleaseEvent(self, ev):
         self.emit(SIGNAL('mouseReleaseEvent( int, int, QMouseEvent)'), ev.pos().x(), ev.pos().y(), ev )
+
+    def mouseMoveEvent(self, ev):
+        self.emit(SIGNAL('mouseMoveEvent( int, int, QMouseEvent)'), ev.pos().x(), ev.pos().y(), ev )
