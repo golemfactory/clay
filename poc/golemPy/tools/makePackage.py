@@ -12,6 +12,7 @@ def copyFiles( dest, src ):
     files = glob.glob( os.path.join( src, '*.pyc') ) + glob.glob( os.path.join( src, '*.ini') )
     files += glob.glob( os.path.join( src, '*.jpg') ) + glob.glob( os.path.join( src, '*.exe') )
     files += glob.glob( os.path.join( src, '*.txt') ) + glob.glob( os.path.join( src, '*.dll' ) )
+    files += glob.glob( os.path.join( src, '*.gt' ) )
     for f in files:
         shutil.copy( f, os.path.join( dest, os.path.basename( f ) ) )
 
