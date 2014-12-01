@@ -15,7 +15,7 @@ def formatVRayCmd( cmdFile, startTask, endTask, totalTasks, outputFile, outfileb
     return cmd
 
 def formatVRayCmdWithFrames( cmdFile, frames, outputFile, outfilebasename, scenefile, width, height, rtEngine ):
-    cmd = '"{}" -imgFile="{}\\{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -autoClose=1 -display=0 -rtEngine={}'.format(cmdFile, outputFile, outfilebasename, scenefile, width, height, frames, rtEngine )
+    cmd = '"{}" -imgFile="{}\\{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -region={};{};{};{} -autoClose=1 -display=0 -rtEngine={}'.format(cmdFile, outputFile, outfilebasename, scenefile, width, height, frames, 0, 0, width, height, rtEngine )
     return cmd
 
 def formatVRayCmdWithParts( cmdFile, frames, parts, startTask, outputFile, outfilebasename, scenefile, width, height, rtEngine ):
