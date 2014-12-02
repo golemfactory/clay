@@ -291,6 +291,21 @@ class MentalRayTask( FrameRenderingTask ):
             imgOffset.save( self.previewFilePath, "BMP" )
 
     #######################
+    def _pasteNewChunk(self, imgChunk, previewFilePath, chunkNum  ):
+        imgOffset = Image.new("RGB", (self.resX, self.resY) )
+        try:
+            offset = int (math.floor( (chunkNum - 1) * float( self.resY ) / float( self.totalTasks ) ) )
+            imgOffset.paste(imgChunk, ( 0, offset ) )
+        except Exception, err:
+            logger.error("Can't generate preview {}".format( str(err) ))
+        if os.path.exists( previewFilePath ):
+            img = Image.open( previewFilePath )
+            img = ImageChops.add( img, imgOffset )
+            return img
+        else:
+            return imgOffset
+
+    #######################
     def __chooseFrames( self, frames, startTask, totalTasks ):
         if totalTasks <= len( frames ):
             subtasksFrames = int ( math.ceil( float( len( frames ) ) / float( totalTasks ) ) )
@@ -315,7 +330,7 @@ class MentalRayTask( FrameRenderingTask ):
         files = " ".join( collected.values() )
         self._putCollectedFilesTogether( outputFileName, files, "paste" )
         self.collectedFileNames[ numStart ] = outputFileName
-        self._updateFramePreview( outputFileName, frameNum )
+        self._updateFramePreview( outputFileName, frameNum, final = True )
 
     #######################
     def __putImageTogether( self, tmpDir ):
@@ -348,6 +363,8 @@ class MentalRayTask( FrameRenderingTask ):
         frameNum = self.frames[(numStart - 1 ) / parts ]
         part = ( ( numStart - 1 ) % parts ) + 1
         self.framesGiven[ frameNum ][ part ] = trFile
+
+        self._updateFramePreview( trFile, frameNum, part )
 
         if len( self.framesGiven[ frameNum ] ) == parts:
             self.__putFrameTogether( tmpDir, frameNum, numStart )

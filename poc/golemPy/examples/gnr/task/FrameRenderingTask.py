@@ -68,7 +68,7 @@ class FrameRenderingTask( RenderingTask ):
             self.previewTaskFilePath = [ None ] * len ( self.frames )
 
     #######################
-    def _updateFramePreview(self, newChunkFilePath, frameNum ):
+    def _updateFramePreview(self, newChunkFilePath, frameNum, part = 1, final = False ):
         num = self.frames.index(frameNum)
         if newChunkFilePath.endswith(".exr") or newChunkFilePath.endswith(".EXR"):
             img = exr_to_pil( newChunkFilePath )
@@ -80,6 +80,9 @@ class FrameRenderingTask( RenderingTask ):
             self.previewFilePath[ num ] = "{}{}".format( os.path.join( tmpDir, "current_preview" ), num )
         if self.previewTaskFilePath[ num ] is None:
             self.previewTaskFilePath[ num ] = "{}{}".format( os.path.join( tmpDir, "current_task_preview" ) , num )
+
+        if not final:
+            img = self._pasteNewChunk( img, self.previewFilePath[ num ], part )
 
         img.save( self.previewFilePath[ num ], "BMP" )
         img.save( self.previewTaskFilePath[ num ], "BMP" )

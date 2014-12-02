@@ -18,6 +18,8 @@ from examples.gnr.ui.VRayDialog import VRayDialog
 from examples.gnr.customizers.VRayDialogCustomizer import VRayDialogCustomizer
 from golem.task.TaskState import SubtaskStatus
 
+from PIL import Image, ImageChops
+
 logger = logging.getLogger(__name__)
 
 ##############################################
@@ -252,6 +254,16 @@ class VRayTask( FrameRenderingTask ):
                 self.__putImageTogether( outputFileName )
 
     #######################
+    def _pasteNewChunk(self, imgChunk, previewFilePath, chunkNum  ):
+        print previewFilePath
+        if os.path.exists( previewFilePath ):
+            img = Image.open( previewFilePath )
+            img = ImageChops.add( img, imgChunk )
+            return img
+        else:
+            return imgChunk
+
+    #######################
     def __useOuterTaskCollector( self ):
         unsupportedFormats = ['EXR', 'EPS']
         if self.outputFormat in unsupportedFormats:
@@ -333,6 +345,8 @@ class VRayTask( FrameRenderingTask ):
         else:
             self.framesParts[ frameNum ][ part ] = trFile
 
+        self._updateFramePreview( trFile, frameNum, part )
+
         if len( self.framesParts[ frameNum ] ) == parts:
             self.__putFrameTogether( tmpDir, frameNum, numStart )
 
@@ -360,7 +374,7 @@ class VRayTask( FrameRenderingTask ):
                 collector.acceptAlpha( part )
             collector.finalize().save( outputFileName, self.outputFormat )
         self.collectedFileNames[ numStart ] = outputFileName
-        self._updateFramePreview( outputFileName, frameNum )
+        self._updateFramePreview( outputFileName, frameNum, final=True )
 
     #######################
     def __getFrameNumberFromName( self, frameName ):
@@ -384,4 +398,6 @@ class VRayTask( FrameRenderingTask ):
             if not self._verifyImg( trFile, self.resX, self.resY ):
                 return False
         return True
+
+
 
