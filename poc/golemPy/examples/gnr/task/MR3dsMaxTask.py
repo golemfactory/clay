@@ -10,6 +10,7 @@ from TaskState import RendererDefaults, RendererInfo
 
 from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil, verifyPILImg, verifyExrImg
 from RenderingTask import RenderingTask, RenderingTaskBuilder
+from FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
 from examples.gnr.ui.MentalRayDialog import MentalRayDialog
 from examples.gnr.customizers.MentalRayDialogCustomizer import MentalRayDialogCustomizer
@@ -62,7 +63,7 @@ class MentalRayRendererOptions ( GNROptions ):
         return resources
 
 ##############################################
-class MentalRayTaskBuilder( RenderingTaskBuilder ):
+class MentalRayTaskBuilder( FrameRenderingTaskBuiler ):
     #######################
     def build( self ):
         mainSceneDir = os.path.dirname( self.taskDefinition.mainSceneFile )
@@ -90,35 +91,9 @@ class MentalRayTaskBuilder( RenderingTaskBuilder ):
                                    )
         return mentalRayTask
 
-    #######################
-    def _calculateTotal(self, renderer, definition ):
-        if definition.optimizeTotal:
-            if self.taskDefinition.rendererOptions.useFrames:
-                return len( self.taskDefinition.rendererOptions.frames )
-            else:
-                return renderer.defaults.defaultSubtasks
-
-        if self.taskDefinition.rendererOptions.useFrames:
-            numFrames = len( self.taskDefinition.rendererOptions.frames )
-            if definition.totalSubtasks > numFrames:
-                est = int( math.floor( float( definition.totalSubtasks ) / float( numFrames ) ) ) * numFrames
-                if est != definition.totalSubtasks:
-                    logger.warning("Too many subtasks for this task. {} subtasks will be used".format( numFrames ) )
-                return est
-
-            est = int ( math.ceil( float( numFrames ) / float( math.ceil( float( numFrames ) / float( definition.totalSubtasks ) ) ) ) )
-            if est != definition.totalSubtasks:
-                logger.warning("Too many subtasks for this task. {} subtasks will be used.".format( est ) )
-
-            return est
-
-        if renderer.defaults.minSubtasks <= definition.totalSubtasks <= renderer.defaults.maxSubtasks:
-            return definition.totalSubtasks
-        else :
-            return renderer.defaults.defaultSubtasks
 
 ##############################################
-class MentalRayTask( RenderingTask ):
+class MentalRayTask( FrameRenderingTask ):
 
     #######################
     def __init__( self,
@@ -146,27 +121,16 @@ class MentalRayTask( RenderingTask ):
                   returnPort = 0,
                   ):
 
-        RenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort,
+        FrameRenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort,
                           ThreeDSMaxEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
-                          rootPath, estimatedMemory )
+                          rootPath, estimatedMemory, useFrames, frames )
 
 
         self.presetFile = presetFile
         self.cmd        = cmdFile
-        self.useFrames  = useFrames
-        self.frames     = frames
         self.framesGiven = {}
-
-        if useFrames:
-            self.previewFilePath = [ None ] * len ( frames )
-
-    #######################
-    def restart( self ):
-        RenderingTask.restart( self )
-        if self.useFrames:
-            self.previewFilePath = [ None ] * len( self.frames )
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
@@ -209,6 +173,8 @@ class MentalRayTask( RenderingTask ):
 
         if not self.useFrames:
             self._updateTaskPreview()
+        else:
+            self._updateFrameTaskPreview()
 
         return self._newComputeTaskDef( hash, extraData, workingDirectory, perfIndex )
 
@@ -276,6 +242,8 @@ class MentalRayTask( RenderingTask ):
                 self._markSubtaskFailed( subtaskId )
                 if not self.useFrames:
                     self._updateTaskPreview()
+                else:
+                    self._updateFrameTaskPreview()
                 return
 
             for trp in taskResult:
@@ -321,22 +289,6 @@ class MentalRayTask( RenderingTask ):
             imgCurrent.save( self.previewFilePath, "BMP" )
         else:
             imgOffset.save( self.previewFilePath, "BMP" )
-
-    #######################
-    def _updateFramePreview( self, newChunkFilePath, frameNum ):
-
-        num = self.frames.index(frameNum)
-
-        if newChunkFilePath.endswith(".exr"):
-            img = exr_to_pil( newChunkFilePath )
-        else:
-            img = Image.open( newChunkFilePath )
-
-        tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
-
-        self.previewFilePath[ num ] = "{}{}".format( os.path.join( tmpDir, "current_preview" ), num )
-
-        img.save( self.previewFilePath[ num ], "BMP" )
 
     #######################
     def __chooseFrames( self, frames, startTask, totalTasks ):
@@ -388,6 +340,7 @@ class MentalRayTask( RenderingTask ):
     def __collectFrames( self, numStart, trFile, framesList ):
         self.collectedFileNames[ numStart ] = trFile
         self._updateFramePreview( trFile, framesList[0] )
+        self._updateFrameTaskPreview()
         return framesList[1:]
 
     #######################
@@ -418,42 +371,3 @@ class MentalRayTask( RenderingTask ):
             if not self._verifyImg( trFile, self.resX, resY ):
                 return False
         return True
-
-
-def __numFromPixel( pY, resY, tasks ):
-    return int( math.floor( pY / math.floor( float( resY ) / float( tasks ) ) ) ) + 1
-
-def getTaskNumFromPixels( pX, pY, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):
-    if not useFrames:
-        num = __numFromPixel( pY, resY, totalTasks )
-    else:
-        if totalTasks <= frames:
-            subtaskFrames = int ( math.ceil( float( frames )  / float( totalTasks ) ) )
-            num = int ( math.ceil( float( frameNum ) / subtaskFrames ) )
-        else:
-            parts = totalTasks / frames
-            num = (frameNum - 1) * parts +  __numFromPixel( pY, resY, parts )
-    return num
-
-def __getBoarder( startTask, endTask, parts, resX, resY ):
-    boarder = []
-    upper = int( math.floor( float(resY ) / float( parts )   * (startTask - 1) ) )
-    lower = int( math.floor( float( resY ) / float( parts )  * endTask  ) )
-    for i in range( upper, lower ):
-        boarder.append( (0, i) )
-        boarder.append( (resX, i) )
-    for i in range( 0,  resX ):
-        boarder.append( (i, upper) )
-        boarder.append( (i, lower) )
-    return boarder
-
-def getTaskBoarder( startTask, endTask, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):
-    if not useFrames:
-        boarder = __getBoarder( startTask, endTask, totalTasks, resX, resY )
-#    elif totalTasks > frames:
-#        parts = totalTasks / frames
-#        boarder = __getBoarder( startTask % parts + 1, endTask % parts + 1, parts, resX, resY)
-    else:
-        boarder = []
-
-    return boarder

@@ -8,7 +8,8 @@ from collections import OrderedDict
 
 from TaskState import RendererDefaults, RendererInfo
 from GNRTask import GNROptions
-from RenderingTask import RenderingTask, RenderingTaskBuilder
+from RenderingTask import RenderingTask
+from FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
 from RenderingDirManager import getTestTaskPath, getTmpPath
 
 from RenderingTaskCollector import exr_to_pil, RenderingTaskCollector
@@ -16,8 +17,6 @@ from examples.gnr.RenderingEnvironment import VRayEnvironment
 from examples.gnr.ui.VRayDialog import VRayDialog
 from examples.gnr.customizers.VRayDialogCustomizer import VRayDialogCustomizer
 from golem.task.TaskState import SubtaskStatus
-
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ class VRayRendererOptions( GNROptions ):
         self.frames = range(1, 11)
 
 ##############################################
-class VRayTaskBuilder( RenderingTaskBuilder ):
+class VRayTaskBuilder( FrameRenderingTaskBuiler ):
     #######################
     def build( self ):
         mainSceneDir = os.path.dirname( self.taskDefinition.mainSceneFile )
@@ -77,35 +76,8 @@ class VRayTaskBuilder( RenderingTaskBuilder ):
                                    )
         return vRayTask
 
-    #######################
-    def _calculateTotal(self, renderer, definition ):
-        if definition.optimizeTotal:
-            if self.taskDefinition.rendererOptions.useFrames:
-                return len( self.taskDefinition.rendererOptions.frames )
-            else:
-                return renderer.defaults.defaultSubtasks
-
-        if self.taskDefinition.rendererOptions.useFrames:
-            numFrames = len( self.taskDefinition.rendererOptions.frames )
-            if definition.totalSubtasks > numFrames:
-                est = int( math.floor( float( definition.totalSubtasks ) / float( numFrames ) ) ) * numFrames
-                if est != definition.totalSubtasks:
-                    logger.warning("Too many subtasks for this task. {} subtasks will be used".format( numFrames ) )
-                return est
-
-            est = int ( math.ceil( float( numFrames ) / float( math.ceil( float( numFrames ) / float( definition.totalSubtasks ) ) ) ) )
-            if est != definition.totalSubtasks:
-                logger.warning("Too many subtasks for this task. {} subtasks will be used.".format( est ) )
-
-            return est
-
-        if renderer.defaults.minSubtasks <= definition.totalSubtasks <= renderer.defaults.maxSubtasks:
-            return definition.totalSubtasks
-        else :
-            return renderer.defaults.defaultSubtasks
-
 ##############################################
-class VRayTask( RenderingTask ):
+class VRayTask( FrameRenderingTask ):
     #######################
     def __init__( self,
                   clientId,
@@ -130,29 +102,18 @@ class VRayTask( RenderingTask ):
                   returnAddress = "",
                   returnPort = 0):
 
-        RenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort,
+        FrameRenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort,
                           VRayEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
-                          rootPath, estimatedMemory )
+                          rootPath, estimatedMemory, useFrames, frames )
 
         self.rtEngine = rtEngine
         self.collectedAlphaFiles = {}
 
-        self.useFrames = useFrames
-        self.frames = frames
         self.framesParts = {}
         self.framesAlphaParts = {}
 
-        if useFrames:
-            self.previewFilePath = [ None ] * len ( frames )
-
-    #######################
-    def restart( self ):
-        RenderingTask.restart( self )
-        self.previewPartsFilePath = None
-        if self.useFrames:
-            self.previewFilePath = [ None ] * len( self.frames )
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0 ):
@@ -193,6 +154,9 @@ class VRayTask( RenderingTask ):
 
         if not self.useFrames:
             self._updateTaskPreview()
+        else:
+            self._updateFrameTaskPreview()
+
         return self._newComputeTaskDef( hash, extraData, workingDirectory, perfIndex )
 
     #######################
@@ -256,6 +220,8 @@ class VRayTask( RenderingTask ):
                 self._markSubtaskFailed( subtaskId )
                 if not self.useFrames:
                     self._updateTaskPreview()
+                else:
+                    self._updateFrameTaskPreview()
                 return
 
 
@@ -275,6 +241,8 @@ class VRayTask( RenderingTask ):
             self._markSubtaskFailed( subtaskId )
             if not self.useFrames:
                 self._updateTaskPreview()
+            else:
+                self._updateFrameTaskPreview()
 
         if self.numTasksReceived == self.totalTasks:
             if self.useFrames:
@@ -296,17 +264,6 @@ class VRayTask( RenderingTask ):
         if self.outputFormat in unsupportedFormats:
             return False
         return True
-
-    #######################
-    def _updateFramePreview(self, newChunkFilePath, frameNum ):
-        num = self.frames.index(frameNum)
-        if newChunkFilePath.endswith(".exr") or newChunkFilePath.endswith(".EXR"):
-            img = exr_to_pil( newChunkFilePath )
-            tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
-            self.previewFilePath[ num ] = "{}{}".format( os.path.join( tmpDir, "current_preview" ), num )
-            img.save( self.previewFilePath[ num ], "BMP" )
-        else:
-            self.previewFilePath[ num ] = newChunkFilePath
 
     #######################
     def __chooseFrames( self, frames, startTask, totalTasks ):
@@ -349,31 +306,6 @@ class VRayTask( RenderingTask ):
             self.collectedFileNames[ numStart ] = trFile
             self._updatePreview( trFile )
             self._updateTaskPreview()
-
-    #######################
-    # def __collectFrameFile( self, numStart, trFile ):
-    #     frameNum = self.__getFrameNumberFromName( trFile )
-    #     if frameNum is None:
-    #         return
-    #     if self.__isAlphaFile( trFile ):
-    #         self.framesAlphaParts[ frameNum ] = trFile
-    #         return
-    #     base, ext = os.path.splitext( trFile )
-    #     outputFileName = u"{}.{}".format( base, self.outputFormat )
-    #     if len( self.frames ) > self.totalTasks:
-    #         self.collectedFileNames[ numStart ].append( outputFileName )
-    #     else:
-    #         self.collectedFileNames[ numStart ] = outputFileName
-    #     if not self.__useOuterTaskCollector():
-    #         collector = RenderingTaskCollector()
-    #         collector.acceptTask( trFile )
-    #         for alpha in self.framesAlphaParts[ frameNum ]:
-    #             collector.acceptAlpha( alpha )
-    #         collector.finalize().save( outputFileName, self.outputFormat )
-    #     else:
-    #         files = " ".join( [trFile] + self.framesAlphaParts[ frameNum ].values() )
-    #         self._putCollectedFilesTogether( outputFileName, files, "add" )
-    #     self._updateFramePreview( outputFileName, frameNum )
 
     #######################
     def __collectFrames(self, frames, tmpDir):
@@ -453,40 +385,3 @@ class VRayTask( RenderingTask ):
                 return False
         return True
 
-def __numFromPixel( pY, resY, tasks ):
-    return int( math.floor( pY / math.floor( float( resY ) / float( tasks ) ) ) ) + 1
-
-def getTaskNumFromPixels( pX, pY, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):
-    if not useFrames:
-        num = __numFromPixel(pY, resY, totalTasks)
-    else:
-        if totalTasks <= frames:
-            subtaskFrames = int ( math.ceil( float( frames )  / float( totalTasks ) ) )
-            num = int ( math.ceil( float( frameNum ) / subtaskFrames ) )
-        else:
-            parts = totalTasks / frames
-            num = (frameNum - 1) * parts +  __numFromPixel( pY, resY, parts )
-    return num
-
-def __getBoarder( startTask, endTask, parts, resX, resY ):
-    boarder = []
-    upper = int( math.floor( float(resY ) / float( parts )   * (startTask - 1) ) )
-    lower = int( math.floor( float( resY ) / float( parts )  * endTask  ) )
-    for i in range( upper, lower ):
-        boarder.append( (0, i) )
-        boarder.append( (resX, i) )
-    for i in range( 0,  resX ):
-        boarder.append( (i, upper) )
-        boarder.append( (i, lower) )
-    return boarder
-
-def getTaskBoarder( startTask, endTask, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):
-    if not useFrames:
-        boarder = __getBoarder( startTask, endTask, totalTasks, resX, resY )
- #   elif totalTasks > frames:
- #       parts = totalTasks / frames
- #       boarder = __getBoarder( startTask % parts + 1, endTask % parts + 1, parts, resX, resY)
-    else:
-        boarder = []
-
-    return boarder

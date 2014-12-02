@@ -17,8 +17,8 @@ MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
 
 logger = logging.getLogger(__name__)
-
 ##############################################
+
 class RenderingTaskBuilder( GNRTaskBuilder ):
     def _calculateTotal (self, renderer, definition ):
         if definition.optimizeTotal:
