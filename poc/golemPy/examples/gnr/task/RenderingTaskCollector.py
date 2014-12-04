@@ -1,5 +1,6 @@
 import glob
 import logging
+import math
 
 import OpenEXR, Imath
 from PIL import Image, ImageChops
@@ -169,13 +170,16 @@ def exr_to_pil( exrFile ):
 class RenderingTaskCollector:
 
     ############################
-    def __init__( self ):
+    def __init__( self, paste = False, width = 1, height = 1 ):
         self.darkest = None
         self.lightest = None
         self.alphaDarkest = None
         self.alphaLightest = None
         self.acceptedExrFiles = []
         self.acceptedAlphaFiles = []
+        self.paste = paste
+        self.width = width
+        self.height = height
 
     ############################
     def acceptTask( self, exrFile ):
@@ -224,10 +228,19 @@ class RenderingTaskCollector:
             self.lightest = self.darkest + 0.1
 
         finalImg = convert_rgbf_images_to_rgb8_image( open_exr_as_rgbf_images( self.acceptedExrFiles[ 0 ] ), self.lightest, self.darkest )
+
+        if self.paste:
+            if not self.width or not self.height:
+                self.width, self.height = finalImg.size
+                self.height *= len( self.acceptedExrFiles )
+            finalImg = self.__pasteImage( Image.new( 'RGB', ( self.width, self.height ) ), finalImg, 0 )
         
         for i in range( 1, len( self.acceptedExrFiles ) ):
             rgb8_im = convert_rgbf_images_to_rgb8_image( open_exr_as_rgbf_images( self.acceptedExrFiles[ i ] ), self.lightest, self.darkest )
-            finalImg = ImageChops.add( finalImg, rgb8_im )
+            if not self.paste:
+                finalImg = ImageChops.add( finalImg, rgb8_im )
+            else:
+                finalImg = self.__pasteImage( finalImg, rgb8_im, i )
 
             if showProgress:
                 print_progress( i, len( self.acceptedExrFiles ) )
@@ -242,6 +255,12 @@ class RenderingTaskCollector:
             finalImg.putalpha( finalAlpha )
 
         return finalImg
+
+    def __pasteImage( self, finalImg, newPart, num ):
+        imgOffset = Image.new("RGB", (self.width, self.height))
+        offset = int ( math.floor( num * float( self.height ) / float( len( self.acceptedExrFiles ) ) ) )
+        imgOffset.paste( newPart, (0, offset ) )
+        return ImageChops.add( finalImg, imgOffset )
 
 #klasa powinna miec add task (ktore otwiera i liczy min/max oraz update na tej podstawie swojego stanu) oraz dodaje chunk do listy i tyle - potem usuwa
 #finalize - czyli po ostatnim chunku konwertuje na bazie min/max po kolei wszystkie chunki (ale nie otwiera wszystkich, bo na to jest za malo miejsca)

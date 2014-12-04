@@ -336,8 +336,14 @@ class MentalRayTask( FrameRenderingTask ):
     def __putImageTogether( self, tmpDir ):
         outputFileName = u"{}".format( self.outputFile, self.outputFormat )
         self.collectedFileNames = OrderedDict( sorted( self.collectedFileNames.items() ) )
-        files = " ".join( self.collectedFileNames.values() )
-        self._putCollectedFilesTogether ( os.path.join( tmpDir, outputFileName ), files, "paste" )
+        if not self._useOuterTaskCollector():
+            collector = RenderingTaskCollector( paste = True, width = self.resX, height = self.resY )
+            for file in self.collectedFileNames.values():
+                collector.acceptTask( file )
+            collector.finalize().save( outputFileName, self.outputFormat )
+        else:
+            files = " ".join( self.collectedFileNames.values() )
+            self._putCollectedFilesTogether ( os.path.join( tmpDir, outputFileName ), files, "paste" )
 
     #######################
     def __copyFrames( self ):

@@ -230,3 +230,11 @@ class RenderingTask( GNRTask ):
             img.save( self.previewFilePath, "BMP" )
 
         return Image.open( self.previewFilePath )
+
+
+    #######################
+    def _useOuterTaskCollector( self ):
+        unsupportedFormats = ['EXR', 'EPS', 'exr', 'eps']
+        if self.outputFormat in unsupportedFormats:
+            return True
+        return False

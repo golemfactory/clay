@@ -263,12 +263,7 @@ class VRayTask( FrameRenderingTask ):
         else:
             return imgChunk
 
-    #######################
-    def __useOuterTaskCollector( self ):
-        unsupportedFormats = ['EXR', 'EPS']
-        if self.outputFormat in unsupportedFormats:
-            return True
-        return False
+
 
     #######################
     def __useAlpha( self ):
@@ -296,7 +291,7 @@ class VRayTask( FrameRenderingTask ):
     def __putImageTogether( self, outputFileName  ):
         collector = RenderingTaskCollector()
 
-        if not self.__useOuterTaskCollector():
+        if not self._useOuterTaskCollector():
             for file in self.collectedFileNames.values():
                 collector.acceptTask( file )
             for file in self.collectedAlphaFiles.values():
@@ -359,7 +354,7 @@ class VRayTask( FrameRenderingTask ):
     #######################
     def __putFrameTogether( self, tmpDir, frameNum, numStart ):
         outputFileName = os.path.join( tmpDir, self.__getOutputName( frameNum ) )
-        if self.__useOuterTaskCollector():
+        if self._useOuterTaskCollector():
             collected = self.framesParts[ frameNum ]
             collected = OrderedDict( sorted( collected.items() ) )
             collectedAlphas = self.framesAlphaParts[ frameNum ]
