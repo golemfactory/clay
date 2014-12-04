@@ -88,10 +88,6 @@ class GNRTask( Task ):
     def getProgress( self ):
         return float( self.lastTask ) / self.totalTasks
 
-    #####################
-    def getPreviewFilePath( self ):
-        return self.previewFilePath
-
     #######################
     def subtaskFailed( self, subtaskId, extraData ):
         self.numFailedSubtasks += 1

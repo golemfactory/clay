@@ -67,6 +67,7 @@ class TaskManager:
         self.tasks[ task.header.taskId ] = task
 
         self.dirManager.clearTemporary( task.header.taskId )
+        self.dirManager.getTaskTemporaryDir( task.header.taskId, create = True)
 
         task.taskStatus = TaskStatus.waiting
 

@@ -1,6 +1,7 @@
 import os
 import logging
 import uuid
+import glob
 import cPickle as pickle
 from PyQt4 import QtCore
 
@@ -139,7 +140,6 @@ class GNRApplicationLogic( QtCore.QObject ):
             assert False, "Renderer {} not registered".format( name )
 
     ######################
-    #FIXME: task definiton jest skoncentrowany na taskach PBRT, trzeba zrobic tu jakis innych mechanizm definiowania definicji taskow
     def sendInfoTask( self, iterations, fullTaskTimeout, subtaskTimeout ):
         infoTaskDefinition = InfoTaskDefinition()
         infoTaskDefinition.taskId           = "{}".format( uuid.uuid4() )
@@ -157,6 +157,21 @@ class GNRApplicationLogic( QtCore.QObject ):
         task = Task.buildTask(  taskBuilder )
         self.addTaskFromDefinition( infoTaskDefinition )
         self.client.enqueueNewTask( task )
+
+    def sendTestTasks( self ):
+        path = os.path.join( os.environ.get( 'GOLEM' ), 'save/test')
+        files = glob.glob( os.path.join( path, '*.gt' ) )
+        tasks = []
+        for file in files:
+            taskState = GNRTaskState()
+            taskState.status = TaskStatus.notStarted
+            taskState.definition = pickle.loads( open( file, 'r' ).read() )
+            import uuid
+            taskState.definition.taskId = "{}".format( uuid.uuid4() )
+            tasks.append( taskState )
+        self.addTasks ( tasks )
+        for task in tasks:
+            self.startTask( task.definition.taskId )
 
     ######################
     def startTask( self, taskId ):

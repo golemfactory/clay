@@ -565,6 +565,7 @@
     <addaction name="actionLoadTask"/>
     <addaction name="separator"/>
     <addaction name="actionSendInfoTask"/>
+    <addaction name="actionSendTestTasks"/>
    </widget>
    <widget class="QMenu" name="menuProperties">
     <property name="title">
@@ -632,6 +633,11 @@
   <action name="actionEnvironments">
    <property name="text">
     <string>Environments</string>
+   </property>
+  </action>
+  <action name="actionSendTestTasks">
+   <property name="text">
+    <string>Send Test Tasks</string>
    </property>
   </action>
  </widget>

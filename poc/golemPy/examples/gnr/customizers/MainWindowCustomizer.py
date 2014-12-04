@@ -68,6 +68,7 @@ class MainWindowCustomizer:
         self.gui.ui.actionStatus.triggered.connect( self.__showStatusClicked )
         self.gui.ui.actionStartNodesManager.triggered.connect( self.__startNodesManager )
         self.gui.ui.actionSendInfoTask.triggered.connect( self.__showInfoTaskDialog )
+        self.gui.ui.actionSendTestTasks.triggered.connect( self.__sendTestTasks )
         self.gui.ui.actionEnvironments.triggered.connect( self.__showEnvironments )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "doubleClicked(const QModelIndex)" ), self.__taskTableRowDoubleClicked )
@@ -213,6 +214,9 @@ class MainWindowCustomizer:
     def __sendInfoTask( self ):
         self.logic.sendInfoTask()
 
+    ############################
+    def __sendTestTasks( self ):
+        self.logic.sendTestTasks()
 
     ############################
     def __loadTask( self, filePath ):

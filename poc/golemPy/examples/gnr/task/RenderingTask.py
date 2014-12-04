@@ -98,6 +98,10 @@ class RenderingTask( GNRTask ):
                 self._removeFromPreview( subtaskId )
         GNRTask.restartSubtask( self, subtaskId )
 
+    #####################
+    def getPreviewFilePath( self ):
+        return self.previewFilePath
+
     #######################
     def _updatePreview( self, newChunkFilePath ):
 
