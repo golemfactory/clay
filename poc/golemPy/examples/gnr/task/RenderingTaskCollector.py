@@ -236,6 +236,7 @@ class RenderingTaskCollector:
             finalImg = self.__pasteImage( Image.new( 'RGB', ( self.width, self.height ) ), finalImg, 0 )
         
         for i in range( 1, len( self.acceptedExrFiles ) ):
+            print self.acceptedExrFiles[ i ]
             rgb8_im = convert_rgbf_images_to_rgb8_image( open_exr_as_rgbf_images( self.acceptedExrFiles[ i ] ), self.lightest, self.darkest )
             if not self.paste:
                 finalImg = ImageChops.add( finalImg, rgb8_im )

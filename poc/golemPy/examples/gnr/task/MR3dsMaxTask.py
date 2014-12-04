@@ -168,8 +168,8 @@ class MentalRayTask( FrameRenderingTask ):
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
         self.subTasksGiven[ hash ]['status' ] = SubtaskStatus.starting
-        if parts != 1:
-            self.framesGiven[ frames[0] ] = {}
+        for frame in frames:
+            self.framesGiven[ frame ] = {}
 
         if not self.useFrames:
             self._updateTaskPreview()
@@ -252,7 +252,7 @@ class MentalRayTask( FrameRenderingTask ):
                 if not self.useFrames:
                     self.__collectImagePart( numStart, trFile )
                 elif self.totalTasks <= len( self.frames ):
-                    framesList = self.__collectFrames( numStart, trFile, framesList )
+                    framesList = self.__collectFrames( numStart, trFile, framesList, tmpDir )
                 else:
                     self.__collectFramePart( numStart, trFile, parts, tmpDir )
 
@@ -320,17 +320,24 @@ class MentalRayTask( FrameRenderingTask ):
     #######################
     def __getOutputName( self, frameNum ):
         num = str( frameNum )
-        return "{}{}.exr".format( self.outfilebasename, num.zfill(4) )
+        return "{}{}.{}".format( self.outfilebasename, num.zfill(4), self.outputFormat )
 
     #######################
     def __putFrameTogether( self, tmpDir, frameNum, numStart ):
         outputFileName = os.path.join( tmpDir, self.__getOutputName( frameNum ) )
         collected = self.framesGiven[ frameNum ]
         collected = OrderedDict( sorted( collected.items() ) )
-        files = " ".join( collected.values() )
-        self._putCollectedFilesTogether( outputFileName, files, "paste" )
-        self.collectedFileNames[ numStart ] = outputFileName
+        if not self._useOuterTaskCollector():
+            collector = RenderingTaskCollector( paste = True, width = self.resX, height = self.resY )
+            for file in collected.values():
+                collector.acceptTask( file )
+            collector.finalize().save( outputFileName, self.outputFormat )
+        else:
+            files = " ".join( collected.values() )
+            self._putCollectedFilesTogether( outputFileName, files, "paste" )
+        self.collectedFileNames[ frameNum ] = outputFileName
         self._updateFramePreview( outputFileName, frameNum, final = True )
+        self._updateFrameTaskPreview()
 
     #######################
     def __putImageTogether( self, tmpDir ):
@@ -358,10 +365,9 @@ class MentalRayTask( FrameRenderingTask ):
         self._updateTaskPreview()
 
     #######################
-    def __collectFrames( self, numStart, trFile, framesList ):
-        self.collectedFileNames[ numStart ] = trFile
-        self._updateFramePreview( trFile, framesList[0] )
-        self._updateFrameTaskPreview()
+    def __collectFrames( self, numStart, trFile, framesList, tmpDir  ):
+        self.framesGiven[ framesList[0] ][0] = trFile
+        self.__putFrameTogether( tmpDir, framesList[0], numStart )
         return framesList[1:]
 
     #######################
