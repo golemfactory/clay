@@ -36,7 +36,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-frameRenderers = [ u"3ds Max Renderer", u"VRay" ]
+frameRenderers = [ u"3ds Max Renderer", u"VRay Standalone" ]
 
 class MainWindowCustomizer:
     ############################

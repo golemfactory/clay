@@ -22,7 +22,7 @@ class VRayDialogCustomizer:
 
     #############################
     def __init( self ):
-        renderer = self.logic.getRenderer( u"VRay" )
+        renderer = self.logic.getRenderer( u"VRay Standalone" )
         self.gui.ui.rtComboBox.addItems( self.rendererOptions.rtEngineValues.values() )
         rtEngineItem = self.gui.ui.rtComboBox.findText( self.rendererOptions.rtEngineValues[ self.rendererOptions.rtEngine ] )
         if rtEngineItem != -1:

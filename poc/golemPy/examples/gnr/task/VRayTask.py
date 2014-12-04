@@ -31,7 +31,7 @@ def buildVRayRendererInfo():
     defaults.maxSubtasks = 100
     defaults.defaultSubtasks = 6
 
-    renderer = RendererInfo( "VRay", defaults, VRayTaskBuilder, VRayDialog, VRayDialogCustomizer, VRayRendererOptions )
+    renderer = RendererInfo( "VRay Standalone", defaults, VRayTaskBuilder, VRayDialog, VRayDialogCustomizer, VRayRendererOptions )
     renderer.outputFormats = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF" ]
     renderer.sceneFileExt = [ "vrscene" ]
     renderer.getTaskNumFromPixels = getTaskNumFromPixels
