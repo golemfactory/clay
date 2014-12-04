@@ -55,7 +55,7 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, sc
         sceneFile = glob.glob( "*.max" )[0]
 
     if preset:
-        presetFile = preset
+        presetFile = os.path.normpath(  os.path.join( os.getcwd(), preset ) )
     else:
         presetFile = os.path.join( dsmaxpath,  'renderpresets\mental.ray.daylighting.high.rps')
 

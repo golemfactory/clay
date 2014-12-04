@@ -3,14 +3,14 @@ import os
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog, QMessageBox
-from examples.gnr.ui.MentalRayDialog import MentalRayDialog
+from examples.gnr.ui.ThreeDSMaxDialog import ThreeDSMaxDialog
 
 logger = logging.getLogger(__name__)
 
-class MentalRayDialogCustomizer:
+class ThreeDSMaxDialogCustomizer:
     #############################
     def __init__( self, gui, logic, newTaskDialog ):
-        assert isinstance( gui, MentalRayDialog )
+        assert isinstance( gui, ThreeDSMaxDialog )
 
         self.gui = gui
         self.logic = logic
@@ -23,7 +23,7 @@ class MentalRayDialogCustomizer:
 
     #############################
     def __init( self ):
-        renderer = self.logic.getRenderer( u"MentalRay" )
+        renderer = self.logic.getRenderer( u"3ds Max Renderer" )
         self.gui.ui.presetLineEdit.setText( self.rendererOptions.preset )
         self.gui.ui.framesCheckBox.setChecked( self.rendererOptions.useFrames )
         self.gui.ui.framesLineEdit.setEnabled( self.rendererOptions.useFrames )

@@ -16,7 +16,7 @@ from golem.Client import startClient
 
 from TaskState import RendererDefaults, RendererInfo, TestTaskInfo
 from task.PbrtGNRTask import buildPBRTRendererInfo
-from task.MR3dsMaxTask import buildMentalRayRendererInfo
+from task.ThreeDSMaxTask import build3dsMaxRendererInfo
 from task.VRayTask import buildVRayRendererInfo
 
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
@@ -41,7 +41,7 @@ def main():
     logic.registerGui( app.getMainWindow() )
 
     logic.registerNewRendererType( buildPBRTRendererInfo() )
-    logic.registerNewRendererType( buildMentalRayRendererInfo() )
+    logic.registerNewRendererType( build3dsMaxRendererInfo() )
     logic.registerNewRendererType( buildVRayRendererInfo() )
     logic.registerNewTestTaskType( TestTaskInfo( "CornellBox" ) )
 

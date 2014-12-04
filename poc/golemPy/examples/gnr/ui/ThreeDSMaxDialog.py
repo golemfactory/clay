@@ -1,11 +1,11 @@
 from PyQt4.QtGui import QDialog
-from gen.ui_MentalRayDialog import Ui_MentalRayDialog
+from gen.ui_ThreeDSMaxDialog import Ui_ThreeDSMaxDialog
 
-class MentalRayDialog:
+class ThreeDSMaxDialog:
     ###################
     def __init__( self, parent ):
         self.window = QDialog( parent )
-        self.ui = Ui_MentalRayDialog()
+        self.ui = Ui_ThreeDSMaxDialog()
         self.ui.setupUi( self.window )
 
     ###################
