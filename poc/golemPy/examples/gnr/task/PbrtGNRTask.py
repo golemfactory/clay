@@ -150,7 +150,7 @@ class PbrtRenderTask( RenderingTask ):
         self.nx, self.ny, self.taskResX, self.taskResY = countSubtaskReg( self.totalTasks, self.numSubtasks, self.resX, self.resY)
 
     #######################
-    def queryExtraData( self, perfIndex, numCores = 0 ):
+    def queryExtraData( self, perfIndex, numCores = 0, clientId = None ):
 
         startTask, endTask = self._getNextTask( perfIndex )
         if startTask is None or endTask is None:

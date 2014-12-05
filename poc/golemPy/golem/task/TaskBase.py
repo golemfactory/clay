@@ -52,7 +52,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def queryExtraData( self, perfIndex ):
+    def queryExtraData( self, perfIndex, numCores = 1, clientId = None ):
         return # Implement in derived class
 
     #######################

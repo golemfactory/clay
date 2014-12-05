@@ -6,6 +6,7 @@ import cPickle as pickle
 from PyQt4 import QtCore
 
 from examples.gnr.task.InfoTask import InfoTaskBuilder, InfoTaskDefinition
+from examples.gnr.task.UpdateOtherGolemsTask import UpdateOtherGolemsTaskBuilder, UpdateOtherGolemsTaskDefinition
 from examples.gnr.ui.TestingTaskProgressDialog import TestingTaskProgressDialog
 from golem.task.TaskState import TaskStatus
 from examples.gnr.TaskState import GNRTaskState, TaskDefinition
@@ -158,6 +159,7 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.addTaskFromDefinition( infoTaskDefinition )
         self.client.enqueueNewTask( task )
 
+    ######################
     def sendTestTasks( self ):
         path = os.path.join( os.environ.get( 'GOLEM' ), 'save/test')
         files = glob.glob( os.path.join( path, '*.gt' ) )
@@ -221,6 +223,26 @@ class GNRApplicationLogic( QtCore.QObject ):
     ######################
     def restartSubtask ( self, subtaskId ):
         self.client.restartSubtask( subtaskId )
+
+
+    ######################
+    def updateOtherGolems( self, golemDir ):
+        taskDefinition         = UpdateOtherGolemsTaskDefinition()
+        taskDefinition.taskId  = "{}".format( uuid.uuid4() )
+        taskDefinition.srcFile          = os.path.join( os.environ.get('GOLEM'), "examples\\tasks\\updateGolem.py" )
+        taskDefinition.totalSubtasks    = 100
+        taskDefinition.fullTaskTimeout  = 4 * 60 * 60
+        taskDefinition.subtaskTimeout   = 20 * 60
+
+        taskBuilder = UpdateOtherGolemsTaskBuilder( self.client.getId(),
+                                          taskDefinition,
+                                        self.client.getRootPath(), golemDir )
+
+        task = Task.buildTask(  taskBuilder )
+        self.addTaskFromDefinition( taskDefinition )
+        self.client.enqueueNewTask( task )
+
+        print "Update with {}".format( golemDir )
 
     ######################
     def changeTask (self, taskId ):

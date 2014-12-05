@@ -1,51 +1,67 @@
-from golem.manager.client.NodesManagerClient import NodesManagerClient
 from golem.environments.Environment import Environment
 from golem.task.TaskBase import ComputeTaskDef
-import cPickle as pickle
+from golem.task.TaskState import SubtaskStatus
 
 from GNRTask import GNRTask, GNRTaskBuilder
 
 import random
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
 ##############################################
-class InfoTaskDefinition:
+class UpdateOtherGolemsTaskDefinition:
     def __init__( self ):
         self.taskId = ""
 
         self.fullTaskTimeout    = 0
         self.subtaskTimeout     = 0
 
+        self.resourceDir        = ""
         self.srcFile            = ""
-        self.totalSubtasks      = 0
-
-        self.managerAddress     = ""
-        self.managerPort        = 0
+        self.resources          = []
+        self.totalSubtasks      = 1
 
 ##############################################
-class InfoTaskBuilder( GNRTaskBuilder ):
+class UpdateOtherGolemsTaskBuilder( GNRTaskBuilder ):
+    #######################
+    def __init__(self, clientId, taskDefinition, rootPath, srcDir ):
+        GNRTaskBuilder.__init__( self, clientId, taskDefinition, rootPath )
+        self.srcDir = srcDir
 
     def build( self ):
         srcCode = open( self.taskDefinition.srcFile ).read()
-        return InfoTask(    srcCode,
+        self.taskDefinition.taskResources = set()
+        for dir, dirs, files in os.walk( self.srcDir ):
+            for file_ in files:
+                _, ext = os.path.splitext( file_ )
+                if ext in '.ini':
+                    continue
+                self.taskDefinition.taskResources.add( os.path.join( dir,file_ ) )
+
+        print self.taskDefinition.taskResources
+        resourceSize = 0
+        for resource in self.taskDefinition.taskResources:
+            resourceSize += os.stat(resource).st_size
+
+        return UpdateOtherGolemsTask(    srcCode,
                             self.clientId,
                             self.taskDefinition.taskId,
                             "",
                             0,
+                            self.rootPath,
                             Environment.getId(),
                             self.taskDefinition.fullTaskTimeout,
                             self.taskDefinition.subtaskTimeout,
+                            self.taskDefinition.taskResources,
+                            resourceSize,
                             0,
-                            0,
-                            self.taskDefinition.managerAddress,
-                            self.taskDefinition.managerPort,
                             self.taskDefinition.totalSubtasks
                            )
 
 ##############################################
-class InfoTask( GNRTask ):
+class UpdateOtherGolemsTask( GNRTask ):
 
     def __init__( self,
                   srcCode,
@@ -53,56 +69,57 @@ class InfoTask( GNRTask ):
                   taskId,
                   ownerAddress,
                   ownerPort,
+                  rootPath,
                   environment,
                   ttl,
                   subtaskTtl,
+                  resources,
                   resourceSize,
                   estimatedMemory,
-                  nodesManagerAddress,
-                  nodesManagerPort,
-                  iterations ):
+                  totalTasks ):
 
 
         GNRTask.__init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, environment,
                             ttl, subtaskTtl, resourceSize, estimatedMemory )
 
-        self.totalTasks = iterations
+        self.totalTasks = totalTasks
+        self.rootPath = rootPath
 
-        self.nodesManagerClient = NodesManagerClient( nodesManagerAddress, int( nodesManagerPort ) )
-        self.nodesManagerClient.start()
+        self.taskResources = resources
+        self.active = True
+        self.updated = {}
+
 
     #######################
     def abort ( self ):
-        self.nodesManagerClient.dropConnection()
+        self.active = False
 
     #######################
-    def queryExtraData( self, perfIndex, numCores, clientId = None ):
+    def queryExtraData( self, perfIndex, numCores, clientId ):
+
+        if clientId in self.updated:
+            return None
+
         ctd = ComputeTaskDef()
         ctd.taskId = self.header.taskId
         hash = "{}".format( random.getrandbits(128) )
         ctd.subtaskId = hash
-        ctd.extraData = {
-                          "startTask" : self.lastTask,
+        ctd.extraData = { "startTask" : self.lastTask,
                           "endTask": self.lastTask + 1 }
         ctd.returnAddress = self.header.taskOwnerAddress
         ctd.returnPort = self.header.taskOwnerPort
-        ctd.shortDescription = "Standard info Task"
+        ctd.shortDescription = "Golem update"
         ctd.srcCode = self.srcCode
         ctd.performance = perfIndex
         if self.lastTask + 1 <= self.totalTasks:
             self.lastTask += 1
+        self.updated[ clientId ] = True
+
+        self.subTasksGiven[ hash ] = ctd.extraData
+        self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
 
         return ctd
 
     #######################
     def computationFinished( self, subtaskId, taskResult, dirManager = None):
-        try:
-            msgs = pickle.loads( taskResult )
-            for msg in msgs:
-                self.nodesManagerClient.sendClientStateSnapshot( msg )
-        except Exception as ex:
-            logger.error("Error while interpreting results: {}".format( str( ex ) ) )
-
-    #######################
-    def prepareResourceDelta( self, taskId, resourceHeader ):
-        return None
+        self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished

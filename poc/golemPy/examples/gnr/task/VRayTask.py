@@ -118,7 +118,7 @@ class VRayTask( FrameRenderingTask ):
 
 
     #######################
-    def queryExtraData( self, perfIndex, numCores = 0 ):
+    def queryExtraData( self, perfIndex, numCores = 0, clientId = None ):
 
         startTask, endTask = self._getNextTask()
 

@@ -15,6 +15,7 @@ from examples.gnr.ui.StatusWindow import StatusWindow
 from examples.gnr.ui.ChangeTaskDialog import ChangeTaskDialog
 from examples.gnr.ui.InfoTaskDialog import InfoTaskDialog
 from examples.gnr.ui.EnvironmentsDialog import EnvironmentsDialog
+from examples.gnr.ui.UpdateOtherGolemsDialog import UpdateOtherGolemsDialog
 from examples.gnr.RenderingDirManager import getPreviewFile
 from examples.gnr.TaskState import TaskDefinition
 
@@ -27,6 +28,7 @@ from StatusWindowCustomizer import StatusWindowCustomizer
 from ChangeTaskDialogCustomizer import ChangeTaskDialogCustomizer
 from InfoTaskDialogCustomizer import InfoTaskDialogCustomizer
 from EnvironmentsDialogCustomizer import EnvironmentsDialogCustomizer
+from UpdateOtherGolemsDialogCustomizer import UpdateOtherGolemsDialogCustomizer
 from MemoryHelper import resourceSizeToDisplay, translateResourceIndex
 
 from golem.task.TaskState import SubtaskStatus
@@ -69,6 +71,7 @@ class MainWindowCustomizer:
         self.gui.ui.actionStartNodesManager.triggered.connect( self.__startNodesManager )
         self.gui.ui.actionSendInfoTask.triggered.connect( self.__showInfoTaskDialog )
         self.gui.ui.actionSendTestTasks.triggered.connect( self.__sendTestTasks )
+        self.gui.ui.actionUpdateOtherGolems.triggered.connect( self.__sendUpdateOtherGolemsTask )
         self.gui.ui.actionEnvironments.triggered.connect( self.__showEnvironments )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "doubleClicked(const QModelIndex)" ), self.__taskTableRowDoubleClicked )
@@ -217,6 +220,13 @@ class MainWindowCustomizer:
     ############################
     def __sendTestTasks( self ):
         self.logic.sendTestTasks()
+
+    def __sendUpdateOtherGolemsTask( self ):
+        #self.logic.sendUpdateOtherGolemsTask()
+        updateOtherGolemsDialog = UpdateOtherGolemsDialog ( self.gui.window )
+        updateOtherGolemsDialogCustomizer = UpdateOtherGolemsDialogCustomizer( updateOtherGolemsDialog, self.logic )
+        updateOtherGolemsDialog.show()
+
 
     ############################
     def __loadTask( self, filePath ):
@@ -399,8 +409,13 @@ class MainWindowCustomizer:
     #############################
     def __getTaskNumFromPixels(self, x, y ):
         num = None
-        if self.currentTaskHighlighted and self.currentTaskHighlighted.definition.renderer:
-            definition = self.currentTaskHighlighted.definition
+
+        t = self.currentTaskHighlighted
+        if t is None or not isinstance( t.definition, TaskDefinition ):
+            return
+
+        if t.definition.renderer:
+            definition = t.definition
             taskId = definition.taskId
             task =  self.logic.getTask( taskId )
             renderer = self.logic.getRenderer( definition.renderer )
@@ -435,6 +450,8 @@ class MainWindowCustomizer:
         num = self.__getTaskNumFromPixels(x, y)
         if num is not None:
             definition = self.currentTaskHighlighted.definition
+            if not isinstance( definition, TaskDefinition ):
+                return
             renderer = self.logic.getRenderer( definition.renderer )
             subtask = self.__getSubtask( num )
             if subtask is not None:

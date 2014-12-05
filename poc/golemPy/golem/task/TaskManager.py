@@ -98,7 +98,9 @@ class TaskManager:
             ts = self.tasksStates[ taskId ]
             th = task.header
             if self.__hasSubtasks(ts, task, maxResourceSize, maxMemorySize):
-                ctd  = task.queryExtraData( estimatedPerformance, numCores )
+                ctd  = task.queryExtraData( estimatedPerformance, numCores, clientId )
+                if ctd is None or ctd.subtaskId is None:
+                    return None, False
                 self.subTask2TaskMapping[ ctd.subtaskId ] = taskId
                 self.__addSubtaskToTasksStates( clientId, ctd )
                 self.__noticeTaskUpdated( taskId )

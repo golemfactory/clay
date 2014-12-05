@@ -564,6 +564,7 @@
     <addaction name="actionNew"/>
     <addaction name="actionLoadTask"/>
     <addaction name="separator"/>
+    <addaction name="actionUpdateOtherGolems"/>
     <addaction name="actionSendInfoTask"/>
     <addaction name="actionSendTestTasks"/>
    </widget>
@@ -638,6 +639,11 @@
   <action name="actionSendTestTasks">
    <property name="text">
     <string>Send Test Tasks</string>
+   </property>
+  </action>
+  <action name="actionUpdateOtherGolems">
+   <property name="text">
+    <string>Update Other Golems</string>
    </property>
   </action>
  </widget>
