@@ -133,7 +133,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         self.framesGiven = {}
 
     #######################
-    def queryExtraData( self, perfIndex, numCores = 0 ):
+    def queryExtraData( self, perfIndex, numCores = 0, clientId = None ):
 
         startTask, endTask = self._getNextTask()
 
