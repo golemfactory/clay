@@ -168,6 +168,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
         self.subTasksGiven[ hash ]['status' ] = SubtaskStatus.starting
+        self.subTasksGiven[ hash ]['perf'] = perfIndex
         for frame in frames:
             self.framesGiven[ frame ] = {}
 
@@ -263,6 +264,16 @@ class ThreeDSMaxTask( FrameRenderingTask ):
                 self.__copyFrames()
             else:
                 self.__putImageTogether( tmpDir )
+
+    #######################
+    def getPriceMod( self, subtaskId ):
+        if subtaskId not in self.subTasksGiven:
+            logger.error( "Not my subtask {}".format( subtaskId ) )
+            return 0
+        perf =  (self.subTasksGiven[ subtaskId ]['endTask'] - self.subTasksGiven[ subtaskId ][ 'startTask' ]) + 1
+        perf *= float( self.subTasksGiven[ subtaskId ]['perf'] ) / 1000
+        perf *= 50
+        return perf
 
     #######################
     def _updatePreview( self, newChunkFilePath, chunkNum ):
