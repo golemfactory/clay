@@ -135,6 +135,10 @@ class ThreeDSMaxTask( FrameRenderingTask ):
     #######################
     def queryExtraData( self, perfIndex, numCores = 0, clientId = None ):
 
+        if not self._acceptClient( clientId ):
+            logger.warning(" Client {} banned from this task ".format( clientId ) )
+            return None
+
         startTask, endTask = self._getNextTask()
 
         workingDirectory = self._getWorkingDirectory()
@@ -169,6 +173,8 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         self.subTasksGiven[ hash ] = extraData
         self.subTasksGiven[ hash ]['status' ] = SubtaskStatus.starting
         self.subTasksGiven[ hash ]['perf'] = perfIndex
+        self.subTasksGiven[ hash ][ 'clientId' ] = clientId
+
         for frame in frames:
             self.framesGiven[ frame ] = {}
 
@@ -246,6 +252,8 @@ class ThreeDSMaxTask( FrameRenderingTask ):
                 else:
                     self._updateFrameTaskPreview()
                 return
+
+            self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'clientId' ] ] = 1
 
             for trp in taskResult:
                 trFile = self._unpackTaskResult( trp, tmpDir )
