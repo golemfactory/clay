@@ -101,7 +101,8 @@ class TaskSession:
         elif type == MessageTaskResult.Type:
             self.taskManager.computedTaskReceived( msg.subtaskId, msg.result )
             if self.taskManager.verifySubtask( msg.subtaskId ):
-                self.__send( MessageSubtaskResultAccepted( msg.subtaskId ) )
+                reward = self.taskServer.payForTask( msg.subtaskId )
+                self.__send( MessageSubtaskResultAccepted( msg.subtaskId, reward ) )
             else:
                 self.__send( MessageSubtaskResultRejected( msg.subtaskId ) )
             self.dropped()
@@ -133,7 +134,7 @@ class TaskSession:
             self.taskComputer.resourceGiven( msg.subtaskId )
             self.dropped()
         elif type == MessageSubtaskResultAccepted.Type:
-            self.taskServer.subtaskAccepted( msg.subtaskId )
+            self.taskServer.subtaskAccepted( msg.subtaskId, msg.reward )
         elif type == MessageSubtaskResultRejected.Type:
             self.taskServer.subtaskRejected( msg.subtaskId )
 

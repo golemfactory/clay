@@ -149,6 +149,7 @@ class VRayTask( FrameRenderingTask ):
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
+        self.subTasksGiven[ hash ][ 'perf' ] = perfIndex
         for frame in frames:
             if self.useFrames and frame not in self.framesParts:
                 self.framesParts[ frame ] = {}
@@ -254,16 +255,23 @@ class VRayTask( FrameRenderingTask ):
                 self.__putImageTogether( outputFileName )
 
     #######################
+    def getPriceMod( self, subtaskId ):
+        if subtaskId not in self.subTasksGiven:
+            logger.error( "Not my subtask {}".format( subtaskId ) )
+            return 0
+        perf =  (self.subTasksGiven[ subtaskId ]['endTask'] - self.subTasksGiven[ subtaskId ][ 'startTask' ]) + 1
+        perf *= float( self.subTasksGiven[ subtaskId ]['perf'] ) / 1000
+        perf *= 10
+        return perf
+
+    #######################
     def _pasteNewChunk(self, imgChunk, previewFilePath, chunkNum  ):
-        print previewFilePath
         if os.path.exists( previewFilePath ):
             img = Image.open( previewFilePath )
             img = ImageChops.add( img, imgChunk )
             return img
         else:
             return imgChunk
-
-
 
     #######################
     def __useAlpha( self ):

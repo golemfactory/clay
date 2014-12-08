@@ -183,12 +183,22 @@ class TaskServer:
             del self.waitingForVerification[ subtaskId ]
 
     ############################
-    def subtaskAccepted( self, subtaskId ):
+    def subtaskAccepted( self, subtaskId, reward ):
         logger.debug( "Subtask {} result accepted".format( subtaskId ) )
+        try:
+            logger.info( "Getting {} for subtask {}".format( reward, subtaskId ) )
+            self.client.getReward( int( reward ) )
+        except ValueError:
+            logger.error("Wrong reward amount {} for subtask {}".format( reward, subtaskId ) )
         if subtaskId in self.waitingForVerification:
             del self.waitingForVerification[ subtaskId ]
 
-
+    ###########################
+    def payForTask( self, subtaskId ):
+        priceMod = self.taskManager.getPriceMod( subtaskId )
+        price = self.client.payForTask( priceMod )
+        logger.info( "Paying {} for subtask {}".format( price, subtaskId ) )
+        return price
 
     #############################
     # PRIVATE SECTION

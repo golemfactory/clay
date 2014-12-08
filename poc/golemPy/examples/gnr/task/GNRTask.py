@@ -157,6 +157,10 @@ class GNRTask( Task ):
         return self.finishedComputation()
 
     #######################
+    def getPriceMod( self, subtaskId ):
+        return 1
+
+    #######################
     def restartSubtask( self, subtaskId ):
         if subtaskId in self.subTasksGiven:
             if self.subTasksGiven[ subtaskId ][ 'status' ] == SubtaskStatus.starting:

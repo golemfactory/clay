@@ -1,6 +1,6 @@
 import os
 
-DATA_DIRECTORY  = "node_data"
+DATA_DIRECTORY  = os.path.join( os.environ.get('GOLEM'), "examples/gnr/node_data" )
 
 class SimpleEnv:
 

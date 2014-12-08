@@ -12,6 +12,7 @@ from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 import time
 
 from golem.AppConfig import AppConfig
+from golem.BankConfig import BankConfig
 from golem.Message import initMessages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
 from golem.environments.EnvironmentsManager import EnvironmentsManager
@@ -140,6 +141,7 @@ class Client:
         self.cfg = config
         self.sendSnapshot = False
         self.snapshotLock = Lock()
+        self.budget = BankConfig.loadConfig( self.configDesc.clientUid ).getBudget()
 
         self.environmentsManager = EnvironmentsManager()
        
@@ -205,6 +207,26 @@ class Client:
     ############################
     def getRootPath( self ):
         return self.configDesc.rootPath
+
+    ############################
+    def payForTask( self, priceMod ):
+        bankConfig = BankConfig.loadConfig( self.configDesc.clientUid )
+        price = int( round( priceMod * bankConfig.getPriceBase() ) )
+        self.budget = bankConfig.getBudget()
+        if self.budget >= price:
+            bankConfig.addToBudget( -price )
+            self.budget -= price
+            return price
+        else:
+            logger.warning( "Not enough money to pay for task. ")
+            return 0
+
+    ############################
+    def getReward( self, reward ):
+        time.sleep( 2 )
+        bankConfig = BankConfig.loadConfig( self.configDesc.clientUid )
+        bankConfig.addToBudget( reward )
+        self.budget = bankConfig.getBudget()
 
     ############################
     def registerListener( self, listener ):
@@ -323,5 +345,6 @@ class Client:
 
         peers = self.p2pservice.getPeers()
 
-        msg += "Active peers in network: {}".format(len(peers))
+        msg += "Active peers in network: {}\n".format(len(peers))
+        msg += "Budget: {}\n".format( self.budget )
         return msg

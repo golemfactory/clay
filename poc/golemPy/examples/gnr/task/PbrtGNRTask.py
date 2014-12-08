@@ -177,6 +177,7 @@ class PbrtRenderTask( RenderingTask ):
         hash = "{}".format( random.getrandbits(128) )
         self.subTasksGiven[ hash ] = extraData
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
+        self.subTasksGiven[ hash ][ 'perf' ] = perfIndex
 
         self._updateTaskPreview()
 
@@ -259,6 +260,15 @@ class PbrtRenderTask( RenderingTask ):
             self.numTasksReceived += 1
         RenderingTask.restartSubtask( self, subtaskId )
         self._updateTaskPreview()
+
+    #######################
+    def getPriceMod( self, subtaskId ):
+        if subtaskId not in self.subTasksGiven:
+            logger.error( "Not my subtask {}".format( subtaskId ) )
+            return 0
+        perf =  (self.subTasksGiven[ subtaskId ]['endTask'] - self.subTasksGiven[ subtaskId ][ 'startTask' ])
+        perf *= float( self.subTasksGiven[ subtaskId ]['perf'] ) / 1000
+        return perf
 
     #######################
     def _getNextTask( self, perfIndex ):

@@ -134,6 +134,10 @@ class Task:
     def updateTaskState( self, taskState ):
         return
 
+    @abc.abstractmethod
+    def getPriceMode( self, subtaskId ):
+        return
+
     #######################
     @classmethod
     def buildTask( cls, taskBuilder ):

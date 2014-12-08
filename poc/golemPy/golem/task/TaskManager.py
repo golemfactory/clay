@@ -121,6 +121,17 @@ class TaskManager:
         return ret
 
     #######################
+    def getPriceMod( self, subtaskId ):
+        if subtaskId in self.subTask2TaskMapping:
+            taskId = self.subTask2TaskMapping[ subtaskId ]
+            return self.tasks[ taskId ].getPriceMod( subtaskId )
+        else:
+            logger.error( "This is not my subtask {}".format( subtaskId ) )
+            return 0
+
+
+
+    #######################
     def verifySubtask( self, subtaskId ):
         if subtaskId in self.subTask2TaskMapping:
             taskId = self.subTask2TaskMapping[ subtaskId ]
