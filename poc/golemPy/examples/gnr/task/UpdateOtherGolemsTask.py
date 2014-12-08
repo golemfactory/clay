@@ -117,6 +117,7 @@ class UpdateOtherGolemsTask( GNRTask ):
 
         self.subTasksGiven[ hash ] = ctd.extraData
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
+        self.subTasksGiven[ hash ][ 'clientId' ] = clientId
 
         return ctd
 

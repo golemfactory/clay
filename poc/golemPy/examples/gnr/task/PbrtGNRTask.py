@@ -151,6 +151,10 @@ class PbrtRenderTask( RenderingTask ):
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0, clientId = None ):
+        if not self._acceptClient( clientId ):
+            logger.warning(" Client {} banned from this task ".format( clientId ) )
+            return None
+
 
         startTask, endTask = self._getNextTask( perfIndex )
         if startTask is None or endTask is None:
@@ -178,6 +182,7 @@ class PbrtRenderTask( RenderingTask ):
         self.subTasksGiven[ hash ] = extraData
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
         self.subTasksGiven[ hash ][ 'perf' ] = perfIndex
+        self.subTasksGiven[ hash ][ 'clientId' ] = clientId
 
         self._updateTaskPreview()
 
@@ -230,6 +235,7 @@ class PbrtRenderTask( RenderingTask ):
 
                 self.collectedFileNames.add( trFile )
                 self.numTasksReceived += 1
+                self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'clientId' ] ] = 1
 
                 self._updatePreview( trFile )
                 self._updateTaskPreview()

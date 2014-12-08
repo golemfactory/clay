@@ -64,6 +64,7 @@ class GNRTask( Task ):
         self.numFailedSubtasks = 0
 
         self.fullTaskTimeout = 2200
+        self.countingNodes = {}
 
     #######################
     def initialize( self ):
@@ -179,4 +180,5 @@ class GNRTask( Task ):
     #######################
     def _markSubtaskFailed( self, subtaskId ):
         self.subTasksGiven[ subtaskId ]['status'] = SubtaskStatus.failure
+        self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'clientId' ] ] = -1
         self.numFailedSubtasks += 1

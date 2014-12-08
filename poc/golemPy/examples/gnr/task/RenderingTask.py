@@ -242,3 +242,18 @@ class RenderingTask( GNRTask ):
         if self.outputFormat in unsupportedFormats:
             return True
         return False
+
+    #######################
+    def _acceptClient( self, clientId ):
+        if clientId in self.countingNodes:
+            if self.countingNodes[ clientId ] > 0: # client with accepted task
+                return True
+            elif self.countingNodes[ clientId ] == 0: # client took task but hasn't return result yet
+                self.countingNodes[ clientId ] = -1
+                return True
+            else:
+                self.countingNodes[ clientId ] = -1 # client with failed task or client that took more than one task without returning any results
+                return False
+        else:
+            self.countingNodes[ clientId ] = 0
+            return True #new node
