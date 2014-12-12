@@ -22,7 +22,7 @@ class GNRMainWindow:
         self.ui         = Ui_MainWindow()
 
         self.ui.setupUi( self.window )
-        self.ui.previewLabel.setPixmap( QPixmap( "ui/nopreview.jpg" ) )
+        self.ui.previewLabel.setPixmap( QPixmap( "ui/nopreview.png" ) )
 
     ##########################
     def show( self ):

@@ -4,7 +4,7 @@ TEST_RES_DIRECTORY = "testing_task_resources"
 TEST_TMP_DIRECTORY = "testing_task_tmp"
 RES_DIRECTORY = "res"
 TMP_DIRECTORY = "tmp"
-PREV_FILE = "ui/nopreview.jpg"
+PREV_FILE = "ui/nopreview.png"
 
 def getTestTaskDirectory( ):
     return TEST_RES_DIRECTORY
