@@ -10,6 +10,7 @@ from golem.task.TaskBase import ComputeTaskDef
 from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil, verifyPILImg, verifyExrImg
 from golem.core.Compress import decompress
 from golem.task.TaskState import SubtaskStatus
+from copy import deepcopy
 
 from PIL import Image, ImageChops
 
@@ -67,7 +68,7 @@ class RenderingTask( GNRTask ):
         self.previewFilePath        = None
         self.previewTaskFilePath    = None
 
-        self.taskResources          = taskResources
+        self.taskResources          = deepcopy( taskResources )
 
         self.collectedFileNames     = {}
 
@@ -203,6 +204,7 @@ class RenderingTask( GNRTask ):
 
         workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
         workingDirectory    = os.path.dirname( workingDirectory )
+        logger.debug("Working directory {}".format( workingDirectory ) )
         return workingDirectory
 
     #######################

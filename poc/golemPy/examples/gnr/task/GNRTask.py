@@ -3,7 +3,7 @@ from golem.task.TaskState import SubtaskStatus
 from golem.resource.Resource import prepareDeltaZip
 from golem.environments.Environment import Environment
 
-from RenderingDirManager import getTmpPath
+from examples.gnr.RenderingDirManager import getTmpPath
 
 import os
 import logging

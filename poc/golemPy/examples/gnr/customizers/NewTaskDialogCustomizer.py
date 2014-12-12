@@ -228,8 +228,11 @@ class NewTaskDialogCustomizer:
         self.logic.saveTask( definition, filePath )
 
     ############################
-    def loadTaskDefinition( self, definition ):
-        assert isinstance( definition, TaskDefinition )
+    def loadTaskDefinition( self, taskDefinition ):
+        assert isinstance( taskDefinition, TaskDefinition )
+
+        definition = deepcopy( taskDefinition )
+
         rendererItem = self.gui.ui.rendererComboBox.findText( definition.renderer )
 
 
