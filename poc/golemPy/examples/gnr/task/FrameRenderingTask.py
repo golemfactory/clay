@@ -2,9 +2,9 @@ import os
 import logging
 import math
 
-from RenderingTask import RenderingTask, RenderingTaskBuilder
-from RenderingTaskCollector import exr_to_pil
-from RenderingDirManager import getTmpPath
+from examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
+from examples.gnr.task.RenderingTaskCollector import exr_to_pil
+from examples.gnr.RenderingDirManager import getTmpPath
 
 from golem.task.TaskState import SubtaskStatus
 

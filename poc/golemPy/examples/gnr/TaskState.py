@@ -32,6 +32,21 @@ class TestTaskInfo:
         self.name           = name
         # TODO
 
+class GNRTaskDefinition:
+    def __init__( self ):
+        self.taskId = ""
+        self.fullTaskTimeout = 0
+        self.subtaskTimeout     = 0
+        self.minSubtaskTime     = 0
+
+        self.resources = set()
+        self.estimatedMemory    = 0
+
+        self.totalSubtasks      = 0
+        self.optimizeTotal      = False
+        self.mainProgramFile    = ""
+        self.taskType           = None
+
 class TaskDefinition:
     #########################
     def __init__( self ):

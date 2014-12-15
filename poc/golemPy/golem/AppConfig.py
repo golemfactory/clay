@@ -71,8 +71,8 @@ class NodeConfig:
 
         ConfigEntry.createProperty( self.section(), "seed host",           seedHost,    self, "SeedHost" )
         ConfigEntry.createProperty( self.section(), "seed host port",      seedPort,     self, "SeedHostPort")
-        ConfigEntry.createProperty( self.section(), "send pings",          0,     self, "SendPings" )
-        ConfigEntry.createProperty( self.section(), "pigns interval",      0,     self, "PingsInterval" )
+        ConfigEntry.createProperty( self.section(), "send pings",          1,     self, "SendPings" )
+        ConfigEntry.createProperty( self.section(), "pigns interval",      30,     self, "PingsInterval" )
         ConfigEntry.createProperty( self.section(), "client UUID",         u"",   self, "ClientUid" )
         ConfigEntry.createProperty( self.section(), "getting peers interval",   4.0,   self, "GettingPeersInterval" )
         ConfigEntry.createProperty( self.section(), "getting tasks interval",   4.0,   self, "GettingTasksInterval" )

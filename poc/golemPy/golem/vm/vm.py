@@ -68,7 +68,7 @@ class PythonVM( GolemVM ):
         exec self.srcCode in self.scope
         return self.scope[ "output" ]
 
-
+##############################################
 class PythonTestVM( GolemVM ):
     def _interpret( self ):
         mc = MemoryChecker()

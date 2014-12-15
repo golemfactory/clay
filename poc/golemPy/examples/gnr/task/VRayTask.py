@@ -6,13 +6,13 @@ import shutil
 
 from collections import OrderedDict
 
-from TaskState import RendererDefaults, RendererInfo
-from GNRTask import GNROptions
-from RenderingTask import RenderingTask
-from FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
-from RenderingDirManager import getTestTaskPath, getTmpPath
+from  examples.gnr.TaskState import RendererDefaults, RendererInfo
+from  examples.gnr.task.GNRTask import GNROptions
+from  examples.gnr.task.RenderingTask import RenderingTask
+from  examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
+from  examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
 
-from RenderingTaskCollector import exr_to_pil, RenderingTaskCollector
+from examples.gnr.task.RenderingTaskCollector import exr_to_pil, RenderingTaskCollector
 from examples.gnr.RenderingEnvironment import VRayEnvironment
 from examples.gnr.ui.VRayDialog import VRayDialog
 from examples.gnr.customizers.VRayDialogCustomizer import VRayDialogCustomizer

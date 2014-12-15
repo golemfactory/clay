@@ -4,7 +4,7 @@ import pickle
 import subprocess
 import math
 
-from RenderingDirManager import getTmpPath
+from examples.gnr.RenderingDirManager import getTmpPath
 from GNRTask import GNRTask, GNRTaskBuilder
 from golem.task.TaskBase import ComputeTaskDef
 from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil, verifyPILImg, verifyExrImg

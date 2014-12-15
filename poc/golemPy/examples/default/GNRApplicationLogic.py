@@ -6,6 +6,7 @@ import cPickle as pickle
 from PyQt4 import QtCore
 
 from examples.gnr.task.InfoTask import InfoTaskBuilder, InfoTaskDefinition
+from examples.gnr.task.UpdateOtherGolemsTask import UpdateOtherGolemsTaskBuilder, UpdateOtherGolemsTaskDefinition
 from examples.gnr.ui.TestingTaskProgressDialog import TestingTaskProgressDialog
 from golem.task.TaskState import TaskStatus
 from examples.gnr.TaskState import GNRTaskState, TaskDefinition
@@ -13,8 +14,9 @@ from examples.gnr.task.TaskTester import TaskTester
 from golem.task.TaskBase import Task
 from golem.task.TaskState import TaskState
 from golem.Client import GolemClientEventListener
-from golem.manager.client.NodesManagerClient import NodesManagerUidClient
-from customizers.MainWindowCustomizer import MainWindowCustomizer
+from golem.manager.client.NodesManagerClient import NodesManagerClient
+from examples.default.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
+from examples.default.TaskType import TaskType
 
 from testtasks.minilight.src.minilight import makePerfTest
 
@@ -41,11 +43,9 @@ class GNRApplicationLogic( QtCore.QObject ):
     def __init__( self ):
         QtCore.QObject.__init__( self )
         self.tasks              = {}
-        self.renderers          = {}
+        self.taskTypes          = {}
         self.testTasks          = {}
         self.customizer         = None
-        self.currentRenderer    = None
-        self.defaultRenderer    = None
         self.rootPath           = os.getcwd()
         self.nodesManagerClient = None
         self.addNewNodesFunction = lambda x: None
@@ -53,7 +53,7 @@ class GNRApplicationLogic( QtCore.QObject ):
 
     ######################
     def registerGui( self, gui ):
-        self.customizer = MainWindowCustomizer( gui, self )
+        self.customizer = GNRMainWindowCustomizer( gui, self )
 
     ######################
     def registerClient( self, client ):
@@ -100,13 +100,13 @@ class GNRApplicationLogic( QtCore.QObject ):
 
     ######################
     def getTask( self, taskId ):
-        assert taskId in self.tasks, "GNRApplicationLogic: task {} not added".format( taskId )
+        assert taskId in self.tasks, "ApplicationLogic: task {} not added".format( taskId )
 
         return self.tasks[ taskId ]
 
     ######################
-    def getRenderers( self ):
-        return self.renderers
+    def getTaskTypes( self ):
+        return self.taskTypes
 
     ######################
     def getStatus( self ):
@@ -115,6 +115,13 @@ class GNRApplicationLogic( QtCore.QObject ):
     ######################
     def getConfig( self ):
         return self.client.configDesc
+
+    ######################
+    def getTaskType( self, name ):
+        if name in self.taskTypes:
+            return self.taskTypes[ name ]
+        else:
+            assert False, "Task {} not registered".format( name )
 
     ######################
     def changeConfig (  self, cfgDesc ):
@@ -131,13 +138,6 @@ class GNRApplicationLogic( QtCore.QObject ):
             self.nodesManagerClient.start()
             self.client.registerNodesManagerClient( self.nodesManagerClient )
         self.client.changeConfig( cfgDesc )
-
-    ######################
-    def getRenderer( self, name ):
-        if name in self.renderers:
-            return self.renderers[ name ]
-        else:
-            assert False, "Renderer {} not registered".format( name )
 
     ######################
     def sendInfoTask( self, iterations, fullTaskTimeout, subtaskTimeout ):
@@ -184,7 +184,7 @@ class GNRApplicationLogic( QtCore.QObject ):
             logger.error( errorMsg )
             return
 
-        tb = self.renderers[ ts.definition.renderer ].taskBuilderType( self.client.getId(), ts.definition, self.client.getRootPath( ) )
+        tb = self.taskTypes[ ts.definition.taskType.name ].taskBuilderType( self.client.getId(), ts.definition, self.client.getRootPath( ) )
 
         t = Task.buildTask( tb )
 
@@ -223,6 +223,26 @@ class GNRApplicationLogic( QtCore.QObject ):
     def restartSubtask ( self, subtaskId ):
         self.client.restartSubtask( subtaskId )
 
+
+    ######################
+    def updateOtherGolems( self, golemDir ):
+        taskDefinition         = UpdateOtherGolemsTaskDefinition()
+        taskDefinition.taskId  = "{}".format( uuid.uuid4() )
+        taskDefinition.srcFile          = os.path.join( os.environ.get('GOLEM'), "examples\\tasks\\updateGolem.py" )
+        taskDefinition.totalSubtasks    = 100
+        taskDefinition.fullTaskTimeout  = 4 * 60 * 60
+        taskDefinition.subtaskTimeout   = 20 * 60
+
+        taskBuilder = UpdateOtherGolemsTaskBuilder( self.client.getId(),
+                                          taskDefinition,
+                                        self.client.getRootPath(), golemDir )
+
+        task = Task.buildTask(  taskBuilder )
+        self.addTaskFromDefinition( taskDefinition )
+        self.client.enqueueNewTask( task )
+
+        print "Update with {}".format( golemDir )
+
     ######################
     def changeTask (self, taskId ):
         self.customizer.showChangeTaskDialog( taskId )
@@ -238,10 +258,6 @@ class GNRApplicationLogic( QtCore.QObject ):
             self.customizer.updateTaskAdditionalInfo( task )
         else:
             logger.error("It's not my task: {} ", taskId )
-
-    ######################
-    def getDefaultRenderer( self ):
-        return self.defaultRenderer
 
     ######################
     def getTestTasks( self ):
@@ -264,6 +280,8 @@ class GNRApplicationLogic( QtCore.QObject ):
 
         for t in tasks:
             assert isinstance( t, GNRTaskState )
+            if hasattr( t.definition, 'renderer' ):
+                t.definition.taskType = self.taskTypes[ t.definition.renderer ]
             if t.definition.taskId not in self.tasks:
                 self.tasks[ t.definition.taskId ] = t
                 self.customizer.addTask( t )
@@ -271,33 +289,6 @@ class GNRApplicationLogic( QtCore.QObject ):
                 self.tasks[ t.definition.taskId ] = t
 
         self.customizer.updateTasks( self.tasks )
-
-    ######################
-    def registerNewRendererType( self, renderer ):
-        if renderer.name not in self.renderers:
-            self.renderers[ renderer.name ] = renderer
-            if len( self.renderers ) == 1:
-                self.defaultRenderer = renderer
-        else:
-            assert False, "Renderer {} already registered".format( renderer.name )
-
-    ######################
-    def registerNewTestTaskType( self, testTaskInfo ):
-        if testTaskInfo.name not in self.testTasks:
-            self.testTasks[ testTaskInfo.name ] = testTaskInfo
-        else:
-            assert False, "Test task {} already registered".format( testTaskInfo.name )
-
-    ######################
-    def setCurrentRenderer( self, rname ):
-        if rname in self.renderers:
-            self.currentRenderer = self.renderers[ rname ]
-        else:
-            assert False, "Unreachable"
-
-    ######################
-    def getCurrentRenderer( self ):
-        return self.currentRenderer
 
     ######################
     def saveTask( self, taskState, filePath ):
@@ -309,31 +300,18 @@ class GNRApplicationLogic( QtCore.QObject ):
         f.close()
 
     ######################
+    def registerNewTaskType(self, taskType):
+        if taskType.name not in self.taskTypes:
+            self.taskTypes[ taskType.name ] = taskType
+        else:
+            assert False, "Task type {} already registered".format( taskType.name )
+
+    ######################
     def recountPerformance( self, numCores ):
-        testFile = os.path.join( os.environ.get('GOLEM'), 'testtasks\minilight\cornellbox.ml.txt' )
+        testFile = os.path.join( os.environ.get('GOLEM'), 'testtasks\minilight\cornellbox.ml.txt')
         resultFile = os.path.join( os.environ.get( 'GOLEM' ), 'examples\\gnr\\node_data\\minilight.ini')
         estimatedPerf =  makePerfTest(testFile, resultFile, numCores)
         return estimatedPerf
-
-
-    ######################
-    def runTestTask( self, taskState ):
-        if self.__validateTaskState( taskState ):
-
-            tb = self.renderers[ taskState.definition.renderer ].taskBuilderType( self.client.getId(), taskState.definition, self.client.getRootPath() )
-
-            t = Task.buildTask( tb )
-
-            self.tt = TaskTester( t, self.client.getRootPath(), self.__testTaskComputationFinished )
-
-            self.progressDialog = TestingTaskProgressDialog( self.customizer.gui.window  )
-            self.progressDialog.show()
-
-            self.tt.run()
-
-            return True
-        else:
-            return False
 
     ######################
     def getEnvironments( self ) :
@@ -373,46 +351,3 @@ class GNRApplicationLogic( QtCore.QObject ):
         msBox = QMessageBox( QMessageBox.Critical, "Error", text )
         msBox.exec_()
         msBox.show()
-
-    ######################
-    def __checkOutputFile(self, outputFile):
-        try:
-            if os.path.exists( outputFile ):
-                f = open( outputFile , 'a')
-                f.close()
-            else:
-                f = open( outputFile , 'w')
-                f.close()
-                os.remove(outputFile)
-            return True
-        except IOError:
-            self.__showErrorWindow( "Cannot open file: {}".format( outputFile ))
-            return False
-        except:
-            self.__showErrorWindow( "Output file is not properly set" )
-            return False
-
-    ######################
-    def __validateTaskState( self, taskState ):
-
-        td = taskState.definition
-        if td.renderer in self.renderers:
-            r = self.renderers[ td.renderer ]
-
-            if not os.path.exists( td.mainProgramFile ):
-                self.__showErrorWindow( "Main program file does not exist: {}".format( td.mainProgramFile ) )
-                return False
-
-            if not self.__checkOutputFile(td.outputFile):
-                return False
-
-            if not os.path.exists( td.mainSceneFile ):
-                self.__showErrorWindow( "Main scene file is not properly set" )
-                return False
-
-
-        else:
-            return False
-
-        return True
-

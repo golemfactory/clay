@@ -7,12 +7,12 @@ from examples.gnr.RenderingEnvironment import PBRTEnvironment
 
 from examples.gnr.task.SceneFileEditor import regenerateFile
 
-from GNRTask import GNROptions
-from RenderingTask import RenderingTask, RenderingTaskBuilder
-from RenderingTaskCollector import RenderingTaskCollector
+from examples.gnr.task.GNRTask import GNROptions
+from  examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
+from  examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector
 
-from RenderingDirManager import getTestTaskPath
-from TaskState import RendererDefaults, RendererInfo
+from examples.gnr.RenderingDirManager import getTestTaskPath
+from examples.gnr.TaskState import RendererDefaults, RendererInfo
 from examples.gnr.ui.PbrtDialog import PbrtDialog
 from examples.gnr.customizers.PbrtDialogCustomizer import PbrtDialogCustomizer
 from golem.task.TaskState import SubtaskStatus

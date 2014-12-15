@@ -68,10 +68,7 @@ class MainWindowCustomizer:
         self.gui.ui.actionLoadTask.triggered.connect( self.__loadTaskButtonClicked )
         self.gui.ui.actionEdit.triggered.connect( self.__showConfigurationDialogClicked )
         self.gui.ui.actionStatus.triggered.connect( self.__showStatusClicked )
-        self.gui.ui.actionStartNodesManager.triggered.connect( self.__startNodesManager )
-        self.gui.ui.actionSendInfoTask.triggered.connect( self.__showInfoTaskDialog )
-        self.gui.ui.actionSendTestTasks.triggered.connect( self.__sendTestTasks )
-        self.gui.ui.actionUpdateOtherGolems.triggered.connect( self.__sendUpdateOtherGolemsTask )
+        #self.gui.ui.actionSendTestTasks.triggered.connect( self.__sendTestTasks )
         self.gui.ui.actionEnvironments.triggered.connect( self.__showEnvironments )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "doubleClicked(const QModelIndex)" ), self.__taskTableRowDoubleClicked )
@@ -208,10 +205,6 @@ class MainWindowCustomizer:
             "Choose task file", dir, "Golem Task (*.gt)")
         if os.path.exists( fileName ):
             self.__loadTask( fileName )
-
-    ############################
-    def __startNodesManager( self ):
-        self.logic.startNodesManagerServer()
 
     ############################
     def __sendInfoTask( self ):
