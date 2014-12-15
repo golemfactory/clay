@@ -4,13 +4,13 @@ import os
 import shutil
 import math
 
-from GNRTask import  GNROptions
-from RenderingDirManager import getTestTaskPath, getTmpPath
-from TaskState import RendererDefaults, RendererInfo
+from examples.gnr.task.GNRTask import  GNROptions
+from examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
+from examples.gnr.TaskState import RendererDefaults, RendererInfo
 
-from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil, verifyPILImg, verifyExrImg
-from RenderingTask import RenderingTask, RenderingTaskBuilder
-from FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
+from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector, exr_to_pil, verifyPILImg, verifyExrImg
+from examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
+from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
 from examples.gnr.ui.ThreeDSMaxDialog import ThreeDSMaxDialog
 from examples.gnr.customizers.ThreeDSMaxDialogCustomizer import ThreeDSMaxDialogCustomizer
