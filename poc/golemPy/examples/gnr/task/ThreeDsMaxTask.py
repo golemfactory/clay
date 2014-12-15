@@ -325,6 +325,22 @@ class ThreeDSMaxTask( FrameRenderingTask ):
             return imgOffset
 
     #######################
+    def _shortExtraDataRepr( self, perfIndex, extraData ):
+        l = extraData
+        msg = []
+        msg.append( "scene file: {} ".format( l [ "sceneFile" ] ) )
+        msg.append( "preset: {} ".format( l [ "presetFile" ] ) )
+        msg.append( "total tasks: {}".format( l[ "totalTasks" ] ) )
+        msg.append( "start task: {}".format( l[ "startTask" ] ) )
+        msg.append( "end task: {}".format( l[ "endTask" ] ) )
+        msg.append( "outfile basename: {}".format( l[ "outfilebasename" ] ) )
+        msg.append( "size: {}x{}".format( l[ "width" ], l[ "height" ] ) )
+        if l["useFrames"]:
+            msg.append( "frames: {}".format( l[ "frames" ] ) )
+        return "\n".join( msg )
+
+
+    #######################
     def __chooseFrames( self, frames, startTask, totalTasks ):
         if totalTasks <= len( frames ):
             subtasksFrames = int ( math.ceil( float( len( frames ) ) / float( totalTasks ) ) )

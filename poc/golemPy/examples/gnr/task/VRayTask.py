@@ -273,6 +273,21 @@ class VRayTask( FrameRenderingTask ):
         return perf
 
     #######################
+    def _shortExtraDataRepr( self, perfIndex, extraData ):
+        l = extraData
+        msg = []
+        msg.append(" scene file: {} ".format( l [ "sceneFile" ] ) )
+        msg.append("total tasks: {}".format( l[ "totalTasks" ] ) )
+        msg.append("start task: {}".format( l[ "startTask" ] ) )
+        msg.append("end task: {}".format( l[ "endTask" ] ) )
+        msg.append( "outfile basename: {}".format( l[ "outfilebasename" ] ) )
+        msg.append("size: {}x{}".format( l[ "width" ], l[ "height" ] ) )
+        msg.append("rtEngine: {}".format( l[ "rtEngine" ] ) )
+        if l["useFrames"]:
+            msg.append("frames: {}".format( l[ "frames" ] ) )
+        return "\n".join( msg )
+
+    #######################
     def _pasteNewChunk(self, imgChunk, previewFilePath, chunkNum  ):
         if os.path.exists( previewFilePath ):
             img = Image.open( previewFilePath )
