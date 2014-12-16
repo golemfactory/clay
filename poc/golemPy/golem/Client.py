@@ -309,8 +309,6 @@ class Client:
             )
             return False
 
-
-
     ############################
     def getEnvironments( self ):
         return self.environmentsManager.getEnvironments()

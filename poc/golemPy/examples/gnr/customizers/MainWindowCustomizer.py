@@ -1,6 +1,7 @@
 import os
 import cPickle as pickle
 import datetime
+from time import sleep
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QMenu, QFileDialog, QMessageBox, QPalette, QPainter, QBrush, QColor, QPen
 
@@ -16,20 +17,22 @@ from examples.gnr.ui.ChangeTaskDialog import ChangeTaskDialog
 from examples.gnr.ui.InfoTaskDialog import InfoTaskDialog
 from examples.gnr.ui.EnvironmentsDialog import EnvironmentsDialog
 from examples.gnr.ui.UpdateOtherGolemsDialog import UpdateOtherGolemsDialog
+from examples.gnr.ui.AboutWindow import AboutWindow
 from examples.gnr.RenderingDirManager import getPreviewFile
 from examples.gnr.TaskState import TaskDefinition
 
-from NewTaskDialogCustomizer import NewTaskDialogCustomizer
-from TaskContexMenuCustomizer import TaskContextMenuCustomizer
-from TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
-from SubtaskDetailsDialogCustomizer import SubtaskDetailsDialogCustomizer
-from ConfigurationDialogCustomizer import ConfigurationDialogCustomizer
-from StatusWindowCustomizer import StatusWindowCustomizer
-from ChangeTaskDialogCustomizer import ChangeTaskDialogCustomizer
-from InfoTaskDialogCustomizer import InfoTaskDialogCustomizer
-from EnvironmentsDialogCustomizer import EnvironmentsDialogCustomizer
-from UpdateOtherGolemsDialogCustomizer import UpdateOtherGolemsDialogCustomizer
-from MemoryHelper import resourceSizeToDisplay, translateResourceIndex
+from examples.gnr.customizers.NewTaskDialogCustomizer import NewTaskDialogCustomizer
+from examples.gnr.customizers.TaskContexMenuCustomizer import TaskContextMenuCustomizer
+from examples.gnr.customizers.TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
+from examples.gnr.customizers.SubtaskDetailsDialogCustomizer import SubtaskDetailsDialogCustomizer
+from examples.gnr.customizers.ConfigurationDialogCustomizer import ConfigurationDialogCustomizer
+from examples.gnr.customizers.StatusWindowCustomizer import StatusWindowCustomizer
+from examples.gnr.customizers.ChangeTaskDialogCustomizer import ChangeTaskDialogCustomizer
+from examples.gnr.customizers.InfoTaskDialogCustomizer import InfoTaskDialogCustomizer
+from examples.gnr.customizers.EnvironmentsDialogCustomizer import EnvironmentsDialogCustomizer
+from examples.gnr.customizers.UpdateOtherGolemsDialogCustomizer import UpdateOtherGolemsDialogCustomizer
+from examples.gnr.customizers.MemoryHelper import resourceSizeToDisplay, translateResourceIndex
+from examples.gnr.customizers.AboutWindowCustomizer import AboutWindowCustomizer
 
 from golem.task.TaskState import SubtaskStatus
 
@@ -68,7 +71,8 @@ class MainWindowCustomizer:
         self.gui.ui.actionLoadTask.triggered.connect( self.__loadTaskButtonClicked )
         self.gui.ui.actionEdit.triggered.connect( self.__showConfigurationDialogClicked )
         self.gui.ui.actionStatus.triggered.connect( self.__showStatusClicked )
-        #self.gui.ui.actionSendTestTasks.triggered.connect( self.__sendTestTasks )
+        self.gui.ui.actionAbout.triggered.connect( self.__showAboutClicked )
+        self.gui.ui.actionSendTestTasks.triggered.connect( self.__sendTestTasks )
         self.gui.ui.actionEnvironments.triggered.connect( self.__showEnvironments )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "cellClicked(int, int)" ), self.__taskTableRowClicked )
         QtCore.QObject.connect( self.gui.ui.renderTaskTableWidget, QtCore.SIGNAL( "doubleClicked(const QModelIndex)" ), self.__taskTableRowDoubleClicked )
@@ -156,6 +160,7 @@ class MainWindowCustomizer:
             self.gui.ui.frameSlider.setVisible( False )
             if "resultPreview" in t.taskState.extraData:
                 filePath = os.path.abspath( t.taskState.extraData["resultPreview"] )
+                sleep(0.5)
                 if os.path.exists( filePath ):
                     self.gui.ui.previewLabel.setPixmap( QPixmap( filePath ) )
                     self.lastPreviewPath = filePath
@@ -328,6 +333,11 @@ class MainWindowCustomizer:
         self.statusWindowCustomizer = StatusWindowCustomizer( self.statusWindow, self.logic )
         self.statusWindowCustomizer.getStatus()
         self.statusWindow.show()
+    #############################
+    def __showAboutClicked( self ):
+        aboutWindow = AboutWindow( self.gui.window )
+        aboutWindowCustomizer = AboutWindowCustomizer( aboutWindow, self.logic )
+        aboutWindow.show()
 
     #############################
     def __showTaskResourcesClicked( self ):
@@ -474,8 +484,6 @@ class MainWindowCustomizer:
                     p.drawPoint( x, y )
                 p.end()
                 self.gui.ui.previewLabel.setPixmap( pixmap )
-         #   print "boarder!"
-        #print "mouse on pixmap! {} {}".format(x, y)
 
 #######################################################################################
 def insertItem( root, pathTable ):
