@@ -224,6 +224,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
 
   #######################
     def computationFinished( self, subtaskId, taskResult, dirManager = None ):
+
         if not self.shouldAccept( subtaskId ):
             return
 
@@ -239,6 +240,10 @@ class ThreeDSMaxTask( FrameRenderingTask ):
                 framesList = self.subTasksGiven[ subtaskId ]['frames']
                 if len( taskResult ) < len( framesList ):
                     self._markSubtaskFailed( subtaskId )
+                    if not self.useFrames:
+                        self._updateTaskPreview()
+                    else:
+                        self._updateFrameTaskPreview()
                     return
 
             trFiles = []
@@ -282,6 +287,14 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         perf *= float( self.subTasksGiven[ subtaskId ]['perf'] ) / 1000
         perf *= 50
         return perf
+
+    #######################
+    def restartSubtask( self, subtaskId ):
+        FrameRenderingTask.restartSubtask( self, subtaskId )
+        if not self.useFrames:
+            self._updateTaskPreview()
+        else:
+            self._updateFrameTaskPreview()
 
     #######################
     def _updatePreview( self, newChunkFilePath, chunkNum ):
