@@ -102,7 +102,8 @@ class TaskServer:
                             "ttl"           : th.ttl,
                             "subtaskTimeout": th.subtaskTimeout,
                             "clientId"      : th.clientId,
-                            "environment"   : th.environment })
+                            "environment"   : th.environment,
+                            "minVersion"    : th.minVersion })
 
         return ret
 
@@ -115,11 +116,11 @@ class TaskServer:
                     if id not in self.removedTasks.keys(): # not removed recently
                         logger.info( "Adding task {}".format( id ) )
                         self.taskHeaders[ id ] = TaskHeader( thDictRepr[ "clientId" ], id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr["environment"], thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"] )
-                        if self.client.supportedTask( thDictRepr["environment"] ):
+                        if self.client.supportedTask( thDictRepr ):
                             self.supportedTasks.append( id )
             return True
-        except:
-            logger.error( "Wrong task header received" )
+        except Exception, err:
+            logger.error( "Wrong task header received {}".format( str( err ) ) )
             return False
 
     #############################

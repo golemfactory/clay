@@ -113,6 +113,10 @@ class GNRApplicationLogic( QtCore.QObject ):
         return self.client.getStatus()
 
     ######################
+    def getAboutInfo( self ):
+        return self.client.getAboutInfo()
+
+    ######################
     def getConfig( self ):
         return self.client.configDesc
 

@@ -44,6 +44,8 @@ def startClient():
     numCores        = cfg.getNumCores()
     maxResourceSize = cfg.getMaxResourceSize()
     maxMemorySize   = cfg.getMaxMemorySize()
+    appName         = cfg.getAppName()
+    appVersion      = cfg.getAppVersion()
 
     gettingPeersInterval    = cfg.getGettingPeersInterval()
     gettingTasksInterval    = cfg.getGettingTasksInterval()
@@ -71,6 +73,9 @@ def startClient():
 
     configDesc.seedHost               = seedHost
     configDesc.seedHostPort           = seedHostPort
+
+    configDesc.appVersion             = appVersion
+    configDesc.appName                = appName
 
     configDesc.gettingPeersInterval   = gettingPeersInterval
     configDesc.gettingTasksInterval   = gettingTasksInterval
@@ -278,8 +283,33 @@ class Client:
         return self.taskServer.taskManager.querryTaskState( taskId )
 
     ############################
-    def supportedTask( self, envId ):
-        return self.environmentsManager.supported( envId )
+    def supportedTask( self, thDictRepr ):
+        supported = self.__checkSupportedEnvironment( thDictRepr )
+        return supported and self.__checkSupportedVersion( thDictRepr )
+
+    def __checkSupportedEnvironment( self, thDictRepr ):
+        if "environment" not in thDictRepr:
+            return False
+        if not self.environmentsManager.supported( thDictRepr["environment"] ):
+            return False
+        return True
+
+    def __checkSupportedVersion( self, thDictRepr ):
+        if "minVersion" not in thDictRepr:
+            return True
+        try:
+            supported =  float( self.configDesc.appVersion ) >= float( thDictRepr[ "minVersion" ] )
+            return supported
+        except ValueError:
+            logger.error(
+                "Wrong app version - app version {}, required version {}".format(
+                    self.configDesc.appVersion,
+                    thDictRepr[ "minVersion" ]
+                )
+            )
+            return False
+
+
 
     ############################
     def getEnvironments( self ):
@@ -348,3 +378,6 @@ class Client:
         msg += "Active peers in network: {}\n".format(len(peers))
         msg += "Budget: {}\n".format( self.budget )
         return msg
+
+    def getAboutInfo( self ):
+        return self.configDesc.appName, self.configDesc.appVersion

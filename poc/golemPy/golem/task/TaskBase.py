@@ -3,7 +3,7 @@ import abc
 
 class TaskHeader:
     #######################
-    def __init__( self, clientId, taskId, taskOwnerAddress, taskOwnerPort, environment, ttl = 0.0, subtaskTimeout = 0.0, resourceSize = 0, estimatedMemory = 0 ):
+    def __init__( self, clientId, taskId, taskOwnerAddress, taskOwnerPort, environment, ttl = 0.0, subtaskTimeout = 0.0, resourceSize = 0, estimatedMemory = 0, minVersion = 1.0 ):
         self.taskId = taskId
         self.taskOwnerAddress = taskOwnerAddress
         self.taskOwnerPort = taskOwnerPort
@@ -14,6 +14,7 @@ class TaskHeader:
         self.resourceSize = resourceSize
         self.environment = environment
         self.estimatedMemory = estimatedMemory
+        self.minVersion = minVersion
 
 class TaskBuilder:
     #######################
