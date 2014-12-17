@@ -20,7 +20,7 @@ DEFAULT_ROOT_PATH = "C:\\Sources\\golem\\poc\\golemPy\\examples\\gnr"
 MAX_RESOURCE_SIZE = 250 * 1024
 MAX_MEMORY_SIZE = 250 * 1024
 APP_NAME = "Golem LAN Renderer"
-APP_VERSION = "1.02"
+APP_VERSION = "1.021"
 
 class CommonConfig:
 

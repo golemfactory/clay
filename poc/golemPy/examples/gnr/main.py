@@ -21,6 +21,8 @@ from task.VRayTask import buildVRayRendererInfo
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
 from golem.environments.Environment import Environment
 
+from golem.environments.EnvironmentsConfig import EnvironmentsConfig
+
 def main():
 
     logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
@@ -49,6 +51,9 @@ def main():
 
     for env in environments:
         client.environmentsManager.addEnvironment( env )
+
+    client.environmentsManager.loadConfig( client.configDesc.clientUid )
+
     logic.registerClient( client )
     logic.checkNetworkState()
 

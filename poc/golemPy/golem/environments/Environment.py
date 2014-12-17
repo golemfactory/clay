@@ -8,6 +8,7 @@ class Environment:
         self.caps = []
         self.shortDescription = "Default environment for generic tasks without any additional requirements."
         self.longDescription = ""
+        self.acceptTasks = False
 
     def checkSoftware( self ):
         return True
@@ -17,6 +18,9 @@ class Environment:
 
     def supported( self ):
         return True
+
+    def isAccepted( self ):
+        return self.acceptTasks
 
     def description( self ):
         desc = self.shortDescription + "\n"

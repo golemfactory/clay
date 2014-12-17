@@ -344,6 +344,10 @@ class GNRApplicationLogic( QtCore.QObject ):
         return self.client.getEnvironments()
 
     ######################
+    def changeAcceptTasksForEnvironment( self, envId, state ):
+        self.client.changeAcceptTasksForEnvironment( envId, state )
+
+    ######################
     def __testTaskComputationFinished( self, success, estMem = 0 ):
         if success:
             self.progressDialog.showMessage("Test task computation success!")

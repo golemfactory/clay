@@ -30,7 +30,6 @@ class NodeConfig:
         self._section = "Node {}".format( nodeId )
 
         ConfigEntry.createProperty( self.section(), "budget", budget, self, "Budget" )
-        ConfigEntry.createProperty( self.section(), "bank client UUID",         u"",   self, "ClientUid" )
 
     ##############################
     def section( self ):
@@ -45,7 +44,7 @@ class BankConfig:
 
         logger = logging.getLogger(__name__)
 
-        cfg  = SimpleConfig( CommonConfig(), NodeConfig( nodeId ), cfgFile )
+        cfg  = SimpleConfig( CommonConfig(), NodeConfig( nodeId ), cfgFile, True, False )
 
         return BankConfig( cfg )
 
@@ -66,7 +65,7 @@ class BankConfig:
         budget = self._cfg.getNodeConfig().getBudget()
         budget += amount
         self._cfg.getNodeConfig().setBudget( budget )
-        SimpleConfig( self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile, True )
+        SimpleConfig( self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile, True, False )
 
     ##############################
         def __str__( self ):

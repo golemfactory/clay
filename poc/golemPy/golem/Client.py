@@ -292,7 +292,7 @@ class Client:
             return False
         if not self.environmentsManager.supported( thDictRepr["environment"] ):
             return False
-        return True
+        return self.environmentsManager.acceptTasks( thDictRepr[ "environment"] )
 
     def __checkSupportedVersion( self, thDictRepr ):
         if "minVersion" not in thDictRepr:
@@ -312,6 +312,10 @@ class Client:
     ############################
     def getEnvironments( self ):
         return self.environmentsManager.getEnvironments()
+
+    ############################
+    def changeAcceptTasksForEnvironment( self, envId, state ):
+        self.environmentsManager.changeAcceptTasks( envId, state )
 
     ############################
     def __doWork(self):

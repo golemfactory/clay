@@ -75,7 +75,7 @@ class ConfigEntry:
 class SimpleConfig:
 
     ##############################
-    def __init__(self, commonConfig, nodeConfig, cfgFile, refresh = False ):
+    def __init__(self, commonConfig, nodeConfig, cfgFile, refresh = False, checkUid = True ):
 
         self._commonConfig  = commonConfig
         self._nodeConfig    = nodeConfig
@@ -97,7 +97,9 @@ class SimpleConfig:
                     else:
                         self.__readOptions( cfg )
 
-                        if len( self._nodeConfig.getClientUid() ) > 0:
+                        if not checkUid:
+                            writeConfig = False
+                        elif len( self._nodeConfig.getClientUid() ) > 0:
                             writeConfig = False
                 else:
                     cfg.add_section( self._nodeConfig.section() )
@@ -109,12 +111,12 @@ class SimpleConfig:
 
             if writeConfig:
                 logger.info( "Writing {}'s configuration to {}".format( self.getNodeConfig().section(), cfgFile ) )
-                self.__writeConfig( cfg, cfgFile )
+                self.__writeConfig( cfg, cfgFile, checkUid )
         except Exception as ex:
             logger.warning( "{} ... failed with an exception".format( loggerMsg ))
             #no additional try catch because this cannot fail (if it fails then the program shouldn't start anyway)
             logger.info( "Failed to write configuration file. Creating fresh config." )
-            self.__writeConfig( self.__createFreshConfig(), cfgFile )
+            self.__writeConfig( self.__createFreshConfig(), cfgFile, checkUid )
 
     ##############################
     def getCommonConfig( self ):
@@ -133,11 +135,12 @@ class SimpleConfig:
         return cfg
 
     ##############################
-    def __writeConfig( self, cfg, cfgFile ):
-        loggerMsg = "Generating fresh UUID for {} ->".format( self.getNodeConfig().section() )
-        uajdi = SimpleAuth.generateUUID()
-        logger.info( "{} {}".format( loggerMsg, uajdi.get_hex() ) )
-        self.getNodeConfig().setClientUid( uajdi.get_hex() )
+    def __writeConfig( self, cfg, cfgFile, uuid ):
+        if uuid:
+            loggerMsg = "Generating fresh UUID for {} ->".format( self.getNodeConfig().section() )
+            uajdi = SimpleAuth.generateUUID()
+            logger.info( "{} {}".format( loggerMsg, uajdi.get_hex() ) )
+            self.getNodeConfig().setClientUid( uajdi.get_hex() )
 
         self.__writeOptions( cfg )
    
