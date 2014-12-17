@@ -59,6 +59,7 @@ class MainWindowCustomizer:
         self.previewPath = os.path.join( os.environ.get('GOLEM'), "examples\\gnr", getPreviewFile() )
         self.lastPreviewPath = self.previewPath
         self.sliderPreviews = {}
+        self.lastDefinition = None
 
         palette = QPalette()
         palette.setColor( QPalette.Foreground, QtCore.Qt.red )
@@ -156,7 +157,10 @@ class MainWindowCustomizer:
             self.gui.ui.frameSlider.setSingleStep( 1 )
             self.gui.ui.frameSlider.setPageStep( 1 )
             self.__updateSliderPreview()
+            firstFrameName = self.__getFrameName( t.definition, 0 )
+            self.gui.ui.outputFile.setText( u"{}".format( firstFrameName ) )
         else:
+            self.gui.ui.outputFile.setText( u"{}".format( t.definition.outputFile ) )
             self.gui.ui.frameSlider.setVisible( False )
             if "resultPreview" in t.taskState.extraData:
                 filePath = os.path.abspath( t.taskState.extraData["resultPreview"] )
@@ -167,13 +171,23 @@ class MainWindowCustomizer:
             else:
                 self.gui.ui.previewLabel.setPixmap( QPixmap( self.previewPath ) )
                 self.lastPreviewPath = self.previewPath
-        self.gui.ui.outputFile.setText( u"{}".format( t.definition.outputFile ) )
-        if os.path.isfile( t.definition.outputFile ):
+
+        self.__updateOutputFileColor()
+        self.currentTaskHighlighted = t
+
+    ############################
+    def __getFrameName( self, definition, num ):
+        outputName, ext = os.path.splitext( definition.outputFile )
+        frameNum = definition.rendererOptions.frames[ num ]
+        outputName += str(frameNum).zfill(4)
+        return outputName + ext
+
+    ############################
+    def __updateOutputFileColor( self ):
+        if os.path.isfile( self.gui.ui.outputFile.text() ):
             self.gui.ui.outputFile.setStyleSheet( 'color: blue' )
         else:
             self.gui.ui.outputFile.setStyleSheet( 'color: black' )
-
-        self.currentTaskHighlighted = t
 
     ############################
     def __addTask( self, taskId, status ):
@@ -393,6 +407,8 @@ class MainWindowCustomizer:
     #############################
     def __updateSliderPreview( self ):
         num = self.gui.ui.frameSlider.value() - 1
+        self.gui.ui.outputFile.setText( self.__getFrameName( self.currentTaskHighlighted.definition, num ))
+        self.__updateOutputFileColor()
         if len( self.sliderPreviews ) > num:
             if self.sliderPreviews[ num ]:
                 if os.path.exists ( self.sliderPreviews [ num ]):
