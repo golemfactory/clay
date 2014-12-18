@@ -145,6 +145,7 @@ class VRayTask( FrameRenderingTask ):
                                     "width" : self.resX,
                                     "height": self.resY,
                                     "rtEngine": self.rtEngine,
+                                    "numThreads": numCores,
                                     "useFrames": self.useFrames,
                                     "frames": frames,
                                     "parts": parts
@@ -189,6 +190,7 @@ class VRayTask( FrameRenderingTask ):
                                     "width" : 1,
                                     "height": 1,
                                     "rtEngine": self.rtEngine,
+                                    "numThreads": 0,
                                     "useFrames": self.useFrames,
                                     "frames": frames,
                                     "parts": 1

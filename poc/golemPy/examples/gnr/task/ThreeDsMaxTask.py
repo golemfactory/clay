@@ -162,6 +162,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
                                     "height": self.resY,
                                     "presetFile": presetFile,
                                     "cmdFile": cmdFile,
+                                    "numCores": numCores,
                                     "useFrames": self.useFrames,
                                     "frames": frames,
                                     "parts": parts
@@ -208,6 +209,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
                                     "height": 1,
                                     "presetFile": presetFile,
                                     "cmdFile": cmdFile,
+                                    "numCores": 1,
                                     "useFrames": self.useFrames,
                                     "frames": frames, 
                                     "parts": 1

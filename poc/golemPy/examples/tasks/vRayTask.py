@@ -8,21 +8,21 @@ import subprocess
 import win32process
 import math
 
-def formatVRayCmd( cmdFile, startTask, endTask, totalTasks, outputFile, outfilebasename, scenefile, width, height, rtEngine ):
+def formatVRayCmd( cmdFile, startTask, endTask, totalTasks, outputFile, outfilebasename, scenefile, width, height, rtEngine, numThreads ):
     upper = int( math.floor( (startTask - 1) * ( float( height ) / float( totalTasks ) ) ) )
     lower = int( math.floor( startTask * ( float( height ) / float( totalTasks ) ) ) )
-    cmd = '"{}" -imgFile="{}\\{}{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -region={};{};{};{} -autoClose=1 -display=0 -rtEngine={}'.format(cmdFile, outputFile, outfilebasename, startTask, scenefile, width, height, 0, upper, width, lower, rtEngine )
+    cmd = '"{}" -imgFile="{}\\{}{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -region={};{};{};{} -autoClose=1 -display=0 -rtEngine={} -numThreads={}'.format(cmdFile, outputFile, outfilebasename, startTask, scenefile, width, height, 0, upper, width, lower, rtEngine, numThreads )
     return cmd
 
-def formatVRayCmdWithFrames( cmdFile, frames, outputFile, outfilebasename, scenefile, width, height, rtEngine ):
-    cmd = '"{}" -imgFile="{}\\{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -region={};{};{};{} -autoClose=1 -display=0 -rtEngine={}'.format(cmdFile, outputFile, outfilebasename, scenefile, width, height, frames, 0, 0, width, height, rtEngine )
+def formatVRayCmdWithFrames( cmdFile, frames, outputFile, outfilebasename, scenefile, width, height, rtEngine, numThreads ):
+    cmd = '"{}" -imgFile="{}\\{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -region={};{};{};{} -autoClose=1 -display=0 -rtEngine={} -numThreads={}'.format(cmdFile, outputFile, outfilebasename, scenefile, width, height, frames, 0, 0, width, height, rtEngine, numThreads )
     return cmd
 
-def formatVRayCmdWithParts( cmdFile, frames, parts, startTask, outputFile, outfilebasename, scenefile, width, height, rtEngine ):
+def formatVRayCmdWithParts( cmdFile, frames, parts, startTask, outputFile, outfilebasename, scenefile, width, height, rtEngine, numThreads ):
     part = ( ( startTask - 1 ) % parts ) + 1
     upper = int( math.floor( (part  - 1) * ( float( height ) / float( parts ) ) ) )
     lower = int( math.floor( part * ( float( height ) / float( parts ) ) ) )
-    cmd = '"{}" -imgFile="{}\\{}.{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -region={};{};{};{}  -autoClose=1 -display=0 -rtEngine={}'.format(cmdFile, outputFile, outfilebasename, part, scenefile, width, height, frames, 0, upper, width, lower, rtEngine )
+    cmd = '"{}" -imgFile="{}\\{}.{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -region={};{};{};{}  -autoClose=1 -display=0 -rtEngine={} -numThreads={}'.format(cmdFile, outputFile, outfilebasename, part, scenefile, width, height, frames, 0, upper, width, lower, rtEngine, numThreads )
     return cmd
 
 def __readFromEnvironment( ):
@@ -48,7 +48,7 @@ def outputNumber( num ):
     return num.zfill( 4 )
 
 ############################
-def runVRayTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, rtEngine, useFrames, frames, parts):
+def runVRayTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, rtEngine, useFrames, frames, parts, numThreads):
     print 'runVray Taskk'
     print frames
 
@@ -74,12 +74,12 @@ def runVRayTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, scen
             if parts == 1:
                 if len( frames ) == 1:
                     outfilebasename = "{}.{}".format(outfilebasename, outputNumber( frames[0] ) )
-                cmd = formatVRayCmdWithFrames( cmdFile, frames, outputFiles, outfilebasename, sceneFile, width, height, rtEngine )
+                cmd = formatVRayCmdWithFrames( cmdFile, frames, outputFiles, outfilebasename, sceneFile, width, height, rtEngine, numThreads )
             else:
                 outfilebasename = "{}.{}".format(outfilebasename, outputNumber( frames[0] ) )
-                cmd = formatVRayCmdWithParts( cmdFile, frames, parts, startTask, outputFiles, outfilebasename, sceneFile, width, height, rtEngine )
+                cmd = formatVRayCmdWithParts( cmdFile, frames, parts, startTask, outputFiles, outfilebasename, sceneFile, width, height, rtEngine, numThreads )
         else:
-            cmd = formatVRayCmd( cmdFile, startTask, endTask, totalTasks, outputFiles,outfilebasename,  sceneFile, width, height, rtEngine )
+            cmd = formatVRayCmd( cmdFile, startTask, endTask, totalTasks, outputFiles,outfilebasename,  sceneFile, width, height, rtEngine, numThreads )
     else:
         print "Scene file does not exist"
         return []
@@ -109,4 +109,4 @@ def runVRayTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, scen
 def parseFrames( frames ):
     return ";".join( [ u"{}".format(frame) for frame in frames ] )
 
-output = runVRayTask ( pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, rtEngine, useFrames, frames, parts )
+output = runVRayTask ( pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, rtEngine, useFrames, frames, parts, numThreads )
