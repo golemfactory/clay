@@ -138,6 +138,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         self.presetFile = presetFile
         self.cmd        = cmdFile
         self.framesGiven = {}
+        self.verifiedClients = set()
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0, clientId = None ):
@@ -458,15 +459,19 @@ class ThreeDSMaxTask( FrameRenderingTask ):
             resY = int (math.floor( float( self.resY ) / float( parts ) ) )
 
         advTestFile = None
-        if self.advanceVerification:
-            advTestFile = random.sample( trFiles, 1 )
+        if self.advanceVerification and not self.useFrames:
+            if self.verificationOptions.forAll or ( self.subTasksGiven[subtaskId]['clientId'] not in self.verifiedClients ):
+                advTestFile = random.sample( trFiles, 1 )
 
         for trFile in trFiles:
-            if trFile in advTestFile:
+            if advTestFile is not None and trFile in advTestFile:
                 startBox = self.__getBoxStart(self.resX, resY)
                 cmpFile, cmpStartBox = self.getCmpFile( trFile, startBox, subtaskId )
                 if not advanceVerifyImg( trFile, self.resX, resY, startBox, self.verificationOptions.boxSize, cmpFile, cmpStartBox ):
+
                     return False
+                else:
+                    self.verifiedClients.add( self.subTasksGiven[subtaskId][ 'clientId' ] )
             if not self._verifyImg( trFile, self.resX, resY ):
                 return False
 
