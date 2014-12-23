@@ -3,22 +3,23 @@ import random
 import os
 import shutil
 import math
+import uuid
 
-from examples.gnr.task.GNRTask import  GNROptions
-from examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
-from examples.gnr.TaskState import RendererDefaults, RendererInfo
-
-from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector, exr_to_pil, verifyPILImg, verifyExrImg
-from examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
-from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
-from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
-from examples.gnr.ui.ThreeDSMaxDialog import ThreeDSMaxDialog
-from examples.gnr.customizers.ThreeDSMaxDialogCustomizer import ThreeDSMaxDialogCustomizer
-from golem.task.TaskState import SubtaskStatus
-
+from copy import copy
 from collections import OrderedDict
 from PIL import Image, ImageChops
 
+from golem.task.TaskState import SubtaskStatus
+
+from examples.gnr.task.GNRTask import  GNROptions
+from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
+from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
+from examples.gnr.task.ImgRepr import advanceVerifyImg
+from examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
+from examples.gnr.TaskState import RendererDefaults, RendererInfo, AdvanceVerificationOption
+from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
+from examples.gnr.ui.ThreeDSMaxDialog import ThreeDSMaxDialog
+from examples.gnr.customizers.ThreeDSMaxDialogCustomizer import ThreeDSMaxDialogCustomizer
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,6 @@ def build3dsMaxRendererInfo():
     defaults.minSubtasks        = 1
     defaults.maxSubtasks        = 100
     defaults.defaultSubtasks    = 6
-
 
     renderer                = RendererInfo( "3ds Max Renderer", defaults, ThreeDSMaxTaskBuilder, ThreeDSMaxDialog, ThreeDSMaxDialogCustomizer, ThreeDSMaxRendererOptions )
     renderer.outputFormats  = [ "BMP", "EXR", "GIF", "IM", "JPEG", "PCD", "PCX", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
@@ -89,6 +89,13 @@ class ThreeDSMaxTaskBuilder( FrameRenderingTaskBuiler ):
                                    self.taskDefinition.rendererOptions.useFrames,
                                    self.taskDefinition.rendererOptions.frames
                                    )
+        if self.taskDefinition.verificationOptions is None:
+            threeDSMaxTask.advanceVerification = False
+        else:
+            threeDSMaxTask.advanceVerification = True
+            threeDSMaxTask.verificationOptions = AdvanceVerificationOption()
+            threeDSMaxTask.verificationOptions.forAll = self.taskDefinition.verificationOptions.forAll
+            threeDSMaxTask.verificationOptions.boxSize = (self.taskDefinition.verificationOptions.boxSize[0], (self.taskDefinition.verificationOptions.boxSize[1] / 2) * 2)
         return threeDSMaxTask
 
 
@@ -165,7 +172,8 @@ class ThreeDSMaxTask( FrameRenderingTask ):
                                     "numCores": numCores,
                                     "useFrames": self.useFrames,
                                     "frames": frames,
-                                    "parts": parts
+                                    "parts": parts,
+                                    "overlap": 0
                                 }
 
 
@@ -209,10 +217,11 @@ class ThreeDSMaxTask( FrameRenderingTask ):
                                     "height": 1,
                                     "presetFile": presetFile,
                                     "cmdFile": cmdFile,
-                                    "numCores": 1,
+                                    "numCores": 0,
                                     "useFrames": self.useFrames,
                                     "frames": frames, 
-                                    "parts": 1
+                                    "parts": 1,
+                                    "overlap": 0
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -231,6 +240,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
             return
 
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
+        self.tmpDir = tmpDir
 
         if len( taskResult ) > 0:
             numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
@@ -252,7 +262,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
             for trp in taskResult:
                 trFiles.append( self._unpackTaskResult( trp, tmpDir ) )
 
-            if not self.__verifyImgs( trFiles ):
+            if not self.__verifyImgs( trFiles, subtaskId ):
                 self._markSubtaskFailed( subtaskId )
                 if not self.useFrames:
                     self._updateTaskPreview()
@@ -438,7 +448,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         return presetFile
 
     #######################
-    def __verifyImgs( self, trFiles ):
+    def __verifyImgs( self, trFiles, subtaskId ):
         if not self.useFrames:
             resY = int (math.floor( float( self.resY ) / float( self.totalTasks ) ) )
         elif len( self.frames ) >= self.totalTasks:
@@ -446,7 +456,54 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         else:
             parts = self.totalTasks / len( self.frames )
             resY = int (math.floor( float( self.resY ) / float( parts ) ) )
+
+        advTestFile = None
+        if self.advanceVerification:
+            advTestFile = random.sample( trFiles, 1 )
+
         for trFile in trFiles:
+            if trFile in advTestFile:
+                startBox = self.__getBoxStart(self.resX, resY)
+                cmpFile, cmpStartBox = self.getCmpFile( trFile, startBox, subtaskId )
+                if not advanceVerifyImg( trFile, self.resX, resY, startBox, self.verificationOptions.boxSize, cmpFile, cmpStartBox ):
+                    return False
             if not self._verifyImg( trFile, self.resX, resY ):
                 return False
+
         return True
+
+    def getCmpFile( self, trFile, startBox, subtaskId ):
+        workingDirector = self._getWorkingDirectory()
+        extraData, newStartBox = self.__changeScope( subtaskId, startBox )
+        cmpFile = self.__runTask( self.srcCode, extraData )
+        return cmpFile, newStartBox
+
+    def __getBoxStart( self, x, y ):
+        verX = min( self.verificationOptions.boxSize[0], x )
+        verY = min( self.verificationOptions.boxSize[1], y )
+        startX = random.randint( 0, x - verX)
+        startY = random.randint( 0, y - verY)
+        return (startX, startY)
+
+    #######################
+    def __changeScope( self, subtaskId, startBox ):
+        extraData = copy( self.subTasksGiven[ subtaskId ] )
+        extraData['outfilebasename'] = uuid.uuid4()
+        extraData['tmpPath'] = os.path.join( self.tmpDir, str( self.subTasksGiven[subtaskId]['startTask'] ) )
+        os.mkdir( extraData['tmpPath'] )
+        startY = startBox[1] + (extraData['startTask'] - 1) * self.resY / extraData['totalTasks']
+        extraData['totalTasks'] = self.resY / self.verificationOptions.boxSize[1]
+        extraData['startTask'] = startY / self.verificationOptions.boxSize[1]  + 1
+        extraData['endTask'] = (startY + self.verificationOptions.boxSize[1] ) / self.verificationOptions.boxSize[1]  + 1
+        extraData['overlap'] = (( extraData['endTask'] - extraData['startTask']) * self.verificationOptions.boxSize[1])
+        if extraData['startTask'] != 1:
+            newStartY = extraData['overlap']
+        else:
+            newStartY = 0
+        newStartY += startY % self.verificationOptions.boxSize[1]
+        return extraData, (startBox[0], newStartY)
+
+    #######################
+    def __runTask( self, srcCode, scope ):
+        exec srcCode in scope
+        return self._unpackTaskResult( scope['output'][0], self.tmpDir )

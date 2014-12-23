@@ -71,8 +71,15 @@ class TaskDefinition:
         self.totalSubtasks      = 0
         self.optimizeTotal      = False
 
+        self.verificationOptions = None
+
 class GNRTaskState:
     #########################
     def __init__( self ):
         self.definition     = TaskDefinition()
         self.taskState      = TaskState()
+
+class AdvanceVerificationOption:
+    def __init__( self ):
+        self.forAll = True
+        self.boxSize = ( 5, 5 )

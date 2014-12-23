@@ -3,16 +3,17 @@ import logging
 import pickle
 import subprocess
 import math
+from copy import deepcopy
+from PIL import Image, ImageChops
 
-from examples.gnr.RenderingDirManager import getTmpPath
-from GNRTask import GNRTask, GNRTaskBuilder
-from golem.task.TaskBase import ComputeTaskDef
-from RenderingTaskCollector import RenderingTaskCollector, exr_to_pil, verifyPILImg, verifyExrImg
 from golem.core.Compress import decompress
 from golem.task.TaskState import SubtaskStatus
-from copy import deepcopy
+from golem.task.TaskBase import ComputeTaskDef
 
-from PIL import Image, ImageChops
+from examples.gnr.RenderingDirManager import getTmpPath
+from examples.gnr.task.RenderingTaskCollector import exr_to_pil
+from examples.gnr.task.ImgRepr import verifyImg
+from examples.gnr.task.GNRTask import GNRTask, GNRTaskBuilder
 
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
@@ -71,6 +72,8 @@ class RenderingTask( GNRTask ):
         self.taskResources          = deepcopy( taskResources )
 
         self.collectedFileNames     = {}
+
+        self.advanceVerification    = False
 
     #######################
     def restart( self ):
@@ -219,12 +222,8 @@ class RenderingTask( GNRTask ):
         return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, outfilebasename: {}, sceneFile: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["outfilebasename"], l["sceneFile"] )
 
     #######################
-    def _verifyImg( self, file, resX, resY ):
-        _, ext = os.path.splitext( file )
-        if ext.upper() != "EXR":
-            return verifyExrImg( file, resX, resY )
-        else:
-            return verifyPILImg( file, resX, resY )
+    def _verifyImg( self, file_, resX, resY ):
+        return verifyImg( file_, resX, resY )
 
     #######################
     def __openPreview( self ):

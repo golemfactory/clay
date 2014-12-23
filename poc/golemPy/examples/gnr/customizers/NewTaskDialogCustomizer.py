@@ -7,7 +7,7 @@ from examples.gnr.ui.NewTaskDialog import NewTaskDialog
 from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 
 from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
-from examples.gnr.TaskState import GNRTaskState, TaskDefinition
+from examples.gnr.TaskState import GNRTaskState, TaskDefinition, AdvanceVerificationOption
 from golem.task.TaskState import TaskStatus
 from TimeHelper import setTimeSpinBoxes, getTimeValues
 
@@ -45,8 +45,11 @@ class NewTaskDialogCustomizer:
         self.gui.ui.resetToDefaultButton.clicked.connect( self.__resetToDefaultButtonClicked )
         self.gui.ui.rendererOptionsButton.clicked.connect( self.__openRendererOptions )
 
-        QtCore.QObject.connect( self.gui.ui.optimizeTotalCheckBox, QtCore.SIGNAL( "stateChanged( int ) "), self.__optimizeTotalCheckBoxChanged )
+        QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__resXChanged)
+        QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__resYChanged)
 
+        QtCore.QObject.connect( self.gui.ui.optimizeTotalCheckBox, QtCore.SIGNAL( "stateChanged( int ) "), self.__optimizeTotalCheckBoxChanged )
+        QtCore.QObject.connect(self.gui.ui.advanceVerificationCheckBox, QtCore.SIGNAL( "stateChanged( int )" ), self.__advanceVerificationChanged )
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutHourSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutMinSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutSecSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
@@ -58,10 +61,11 @@ class NewTaskDialogCustomizer:
         QtCore.QObject.connect(self.gui.ui.subtaskTimeoutSecSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.mainProgramFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputFormatsComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
-        QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
-        QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.totalSpinBox, QtCore.SIGNAL( "valueChanged( const QString )" ), self.__taskSettingsChanged )
+        QtCore.QObject.connect(self.gui.ui.verificationSizeXSpinBox, QtCore.SIGNAL( "valueChanged( const QString )" ), self.__taskSettingsChanged )
+        QtCore.QObject.connect(self.gui.ui.verificationSizeYSpinBox, QtCore.SIGNAL( "valueChanged( const QString )" ), self.__taskSettingsChanged )
+        QtCore.QObject.connect(self.gui.ui.verificationForAllRadioButton, QtCore.SIGNAL( "toggled( bool )" ), self.__taskSettingsChanged )
 
     #############################
     def __init( self ):
@@ -80,6 +84,8 @@ class NewTaskDialogCustomizer:
 
         self.gui.ui.outputResXSpinBox.setValue ( dr.defaults.resolution[0] )
         self.gui.ui.outputResYSpinBox.setValue ( dr.defaults.resolution[1] )
+        self.gui.ui.verificationSizeXSpinBox.setMaximum( dr.defaults.resolution[0] )
+        self.gui.ui.verificationSizeYSpinBox.setMaximum( dr.defaults.resolution[1] )
 
     #############################
     def __updateRendererOptions( self, name ):
@@ -292,11 +298,33 @@ class NewTaskDialogCustomizer:
                 self.addTaskResourcesDialogCustomizer.gui.ui.folderTreeView.setExpanded(model.index(pathHead), True)
                 pathHead, pathTail = os.path.split(pathHead)
 
+        self.__loadVerificationParameters( definition )
+
         # TODO
         self.addTaskResourcesDialogCustomizer.gui.ui.folderTreeView.model().addStartFiles(definition.resources)
         # for res in definition.resources:
         #     model.setData( model.index( res ), QtCore.Qt.Checked, QtCore.Qt.CheckStateRole )
 
+    ############################
+    def __loadVerificationParameters( self, definition ):
+        enabled = definition.verificationOptions is not None
+
+        self.__setVerificationWidgetsState( enabled )
+        if enabled:
+            self.gui.ui.advanceVerificationCheckBox.setCheckState( QtCore.Qt.Checked )
+            self.gui.ui.verificationSizeXSpinBox.setValue( definition.verificationOptions.boxSize[0])
+            self.gui.ui.verificationSizeYSpinBox.setValue( definition.verificationOptions.boxSize[1])
+            self.gui.ui.verificationForAllRadioButton.setChecked( definition.verificationOptions.forAll )
+            self.gui.ui.verificationForFirstRadioButton.setChecked( not definition.verificationOptions.forAll )
+        else:
+            self.gui.ui.advanceVerificationCheckBox.setCheckState( QtCore.Qt.Unchecked )
+
+    ############################
+    def __setVerificationWidgetsState( self, state ):
+        self.gui.ui.verificationForAllRadioButton.setEnabled( state )
+        self.gui.ui.verificationForFirstRadioButton.setEnabled( state )
+        self.gui.ui.verificationSizeXSpinBox.setEnabled( state )
+        self.gui.ui.verificationSizeYSpinBox.setEnabled( state )
 
     ############################
     def __testTaskButtonClicked( self ):
@@ -363,7 +391,15 @@ class NewTaskDialogCustomizer:
 
         definition.resources.add( os.path.normpath( definition.mainProgramFile ) )
 
+        self.__queryAdvanceVerification( definition )
+
         return definition
+
+    def __queryAdvanceVerification( self, definition ):
+        if self.gui.ui.advanceVerificationCheckBox.isChecked:
+            definition.verificationOptions = AdvanceVerificationOption()
+            definition.verificationOptions.forAll = self.gui.ui.verificationForAllRadioButton.isChecked()
+            definition.verificationOptions.boxSize = ( int( self.gui.ui.verificationSizeXSpinBox.value() ), int( self.gui.ui.verificationSizeYSpinBox.value() ) )
 
     def __optimizeTotalCheckBoxChanged( self ):
         self.gui.ui.totalSpinBox.setEnabled( not self.gui.ui.optimizeTotalCheckBox.isChecked() )
@@ -386,3 +422,18 @@ class NewTaskDialogCustomizer:
     def getRendererOptions( self ):
         return self.rendererOptions
 
+    #############################
+    def __advanceVerificationChanged( self ):
+        state = self.gui.ui.advanceVerificationCheckBox.isChecked()
+        self.__setVerificationWidgetsState( state )
+        self.__taskSettingsChanged()
+
+    #############################
+    def __resXChanged( self ):
+        self.gui.ui.verificationSizeXSpinBox.setMaximum( self.gui.ui.outputResXSpinBox.value() )
+        self.__taskSettingsChanged()
+
+    #############################
+    def __resYChanged( self ):
+        self.gui.ui.verificationSizeYSpinBox.setMaximum( self.gui.ui.outputResYSpinBox.value() )
+        self.__taskSettingsChanged()

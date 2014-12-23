@@ -8,26 +8,6 @@ from PIL import Image, ImageChops
 logger = logging.getLogger(__name__)
 
 ############################
-def verifyPILImg ( file, resX, resY ):
-    try:
-        img = Image.open( file )
-        return img.size == (resX, resY)
-    except Exception, err:
-        logger.info("Can't verify img file {}: {}".format( file, str( err ) ) )
-        return False
-
-############################
-def verifyExrImg( file, resX, resY ):
-    try:
-        img = OpenEXR.InputFile( file )
-        dw = img.header()['dataWindow']
-        size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
-        return size == ( resX, resY )
-    except Exception, err:
-        logger.info("Can't verify img file {}: {}".format( file, str( err ) ) )
-        return False
-
-############################
 def print_progress( i, total ):
     print "\rProgress: {} %       ".format( 100.0 * float( i + 1 ) / total ),
 
