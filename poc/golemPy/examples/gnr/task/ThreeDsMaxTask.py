@@ -459,16 +459,17 @@ class ThreeDSMaxTask( FrameRenderingTask ):
             resY = int (math.floor( float( self.resY ) / float( parts ) ) )
 
         advTestFile = None
-        if self.advanceVerification and not self.useFrames:
+        if self.advanceVerification:
             if self.verificationOptions.forAll or ( self.subTasksGiven[subtaskId]['clientId'] not in self.verifiedClients ):
                 advTestFile = random.sample( trFiles, 1 )
 
         for trFile in trFiles:
             if advTestFile is not None and trFile in advTestFile:
                 startBox = self.__getBoxStart(self.resX, resY)
+                logger.debug( 'testBox: {}'.format( startBox ) )
                 cmpFile, cmpStartBox = self.getCmpFile( trFile, startBox, subtaskId )
+                logger.debug( 'cmpStarBox {}'.format( cmpStartBox ) )
                 if not advanceVerifyImg( trFile, self.resX, resY, startBox, self.verificationOptions.boxSize, cmpFile, cmpStartBox ):
-
                     return False
                 else:
                     self.verifiedClients.add( self.subTasksGiven[subtaskId][ 'clientId' ] )
@@ -479,7 +480,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
 
     def getCmpFile( self, trFile, startBox, subtaskId ):
         workingDirector = self._getWorkingDirectory()
-        extraData, newStartBox = self.__changeScope( subtaskId, startBox )
+        extraData, newStartBox = self.__changeScope( subtaskId, startBox, trFile )
         cmpFile = self.__runTask( self.srcCode, extraData )
         return cmpFile, newStartBox
 
@@ -491,13 +492,22 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         return (startX, startY)
 
     #######################
-    def __changeScope( self, subtaskId, startBox ):
+    def __changeScope( self, subtaskId, startBox, trFile ):
         extraData = copy( self.subTasksGiven[ subtaskId ] )
         extraData['outfilebasename'] = uuid.uuid4()
         extraData['tmpPath'] = os.path.join( self.tmpDir, str( self.subTasksGiven[subtaskId]['startTask'] ) )
         os.mkdir( extraData['tmpPath'] )
-        startY = startBox[1] + (extraData['startTask'] - 1) * self.resY / extraData['totalTasks']
+        if not self.useFrames:
+            startY = startBox[1] + (extraData['startTask'] - 1) * self.resY / extraData['totalTasks']
+        elif self.totalTasks <= len( self.frames ):
+            startY = startBox[1]
+            extraData['frames'] = [ self.__getFrameNumFromOutputFile( trFile ) ]
+            extraData['parts'] = extraData['totalTasks']
+        else:
+            part = ( ( extraData['startTask'] - 1 ) % extraData['parts'] ) + 1
+            startY = startBox[1] + (part - 1) * self.resY / extraData['parts']
         extraData['totalTasks'] = self.resY / self.verificationOptions.boxSize[1]
+        extraData['parts'] = extraData['totalTasks']
         extraData['startTask'] = startY / self.verificationOptions.boxSize[1]  + 1
         extraData['endTask'] = (startY + self.verificationOptions.boxSize[1] ) / self.verificationOptions.boxSize[1]  + 1
         extraData['overlap'] = (( extraData['endTask'] - extraData['startTask']) * self.verificationOptions.boxSize[1])
@@ -507,6 +517,12 @@ class ThreeDSMaxTask( FrameRenderingTask ):
             newStartY = 0
         newStartY += startY % self.verificationOptions.boxSize[1]
         return extraData, (startBox[0], newStartY)
+
+    def __getFrameNumFromOutputFile( self, file_ ):
+        fileName = os.path.basename( file_ )
+        fileName, ext = os.path.splitext( fileName )
+        idx = fileName.find( self.outfilebasename )
+        return int( fileName[ idx+1:] )
 
     #######################
     def __runTask( self, srcCode, scope ):
