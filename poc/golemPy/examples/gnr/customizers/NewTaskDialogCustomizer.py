@@ -47,6 +47,7 @@ class NewTaskDialogCustomizer:
 
         QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__resXChanged)
         QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__resYChanged)
+        QtCore.QObject.connect(self.gui.ui.verificationRandomRadioButton, QtCore.SIGNAL( "toggled( bool )" ), self.__verificationRandomChanged )
 
         QtCore.QObject.connect( self.gui.ui.optimizeTotalCheckBox, QtCore.SIGNAL( "stateChanged( int ) "), self.__optimizeTotalCheckBoxChanged )
         QtCore.QObject.connect(self.gui.ui.advanceVerificationCheckBox, QtCore.SIGNAL( "stateChanged( int )" ), self.__advanceVerificationChanged )
@@ -66,6 +67,9 @@ class NewTaskDialogCustomizer:
         QtCore.QObject.connect(self.gui.ui.verificationSizeXSpinBox, QtCore.SIGNAL( "valueChanged( const QString )" ), self.__taskSettingsChanged )
         QtCore.QObject.connect(self.gui.ui.verificationSizeYSpinBox, QtCore.SIGNAL( "valueChanged( const QString )" ), self.__taskSettingsChanged )
         QtCore.QObject.connect(self.gui.ui.verificationForAllRadioButton, QtCore.SIGNAL( "toggled( bool )" ), self.__taskSettingsChanged )
+        QtCore.QObject.connect(self.gui.ui.verificationForFirstRadioButton, QtCore.SIGNAL( "toggled( bool )" ), self.__taskSettingsChanged )
+        QtCore.QObject.connect(self.gui.ui.probabilityLineEdit, QtCore.SIGNAL( "valueChanged( const QString )" ), self.__taskSettingsChanged )
+
 
     #############################
     def __init( self ):
@@ -314,8 +318,13 @@ class NewTaskDialogCustomizer:
             self.gui.ui.advanceVerificationCheckBox.setCheckState( QtCore.Qt.Checked )
             self.gui.ui.verificationSizeXSpinBox.setValue( definition.verificationOptions.boxSize[0])
             self.gui.ui.verificationSizeYSpinBox.setValue( definition.verificationOptions.boxSize[1])
-            self.gui.ui.verificationForAllRadioButton.setChecked( definition.verificationOptions.forAll )
-            self.gui.ui.verificationForFirstRadioButton.setChecked( not definition.verificationOptions.forAll )
+            self.gui.ui.verificationForAllRadioButton.setChecked( definition.verificationOptions.type == 'forAll' )
+            self.gui.ui.verificationForFirstRadioButton.setChecked( definition.verificationOptions.type == 'forFirst' )
+            self.gui.ui.verificationRandomRadioButton.setChecked( definition.verificationOptions.type == 'random' )
+            self.gui.ui.probabilityLabel.setEnabled( definition.verificationOptions.type == 'random')
+            self.gui.ui.probabilityLineEdit.setEnabled( definition.verificationOptions.type == 'random')
+            if hasattr( definition.verificationOptions, 'probability' ):
+                self.gui.ui.probabilityLineEdit.setText( "{}".format( definition.verificationOptions.probability ) )
         else:
             self.gui.ui.advanceVerificationCheckBox.setCheckState( QtCore.Qt.Unchecked )
 
@@ -325,6 +334,9 @@ class NewTaskDialogCustomizer:
         self.gui.ui.verificationForFirstRadioButton.setEnabled( state )
         self.gui.ui.verificationSizeXSpinBox.setEnabled( state )
         self.gui.ui.verificationSizeYSpinBox.setEnabled( state )
+        self.gui.ui.verificationRandomRadioButton.setEnabled( state )
+        self.gui.ui.probabilityLabel.setEnabled( state and self.gui.ui.verificationRandomRadioButton.isChecked() )
+        self.gui.ui.probabilityLineEdit.setEnabled( state and self.gui.ui.verificationRandomRadioButton.isChecked() )
 
     ############################
     def __testTaskButtonClicked( self ):
@@ -398,7 +410,25 @@ class NewTaskDialogCustomizer:
     def __queryAdvanceVerification( self, definition ):
         if self.gui.ui.advanceVerificationCheckBox.isChecked():
             definition.verificationOptions = AdvanceVerificationOption()
-            definition.verificationOptions.forAll = self.gui.ui.verificationForAllRadioButton.isChecked()
+            if self.gui.ui.verificationForAllRadioButton.isChecked():
+                definition.verificationOptions.type = 'forAll'
+            elif self.gui.ui.verificationForFirstRadioButton.isChecked():
+                definition.verificationOptions.type = 'forFirst'
+            else:
+                definition.verificationOptions.type = 'random'
+                try:
+                    definition.verificationOptions.probability = float( self.gui.ui.probabilityLineEdit.text() )
+                    if definition.verificationOptions.probability < 0:
+                        definition.verificationOptions.probability = 0.0
+                        self.gui.ui.probabilityLineEdit.setText( "0.0" )
+                    if definition.verificationOptions.probability > 1:
+                        definition.verificationOptions.probability = 1.0
+                        self.gui.ui.probabilityLineEdit.setText( "1.0" )
+                    print definition.verificationOptions.probability
+                except:
+                    logger.warning("Wrong probability values {}".format( self.gui.ui.probabilityLineEdit.text() ) )
+                    definition.verificationOptions.probability = 0.0
+                    self.gui.ui.probabilityLineEdit.setText( "0.0" )
             definition.verificationOptions.boxSize = ( int( self.gui.ui.verificationSizeXSpinBox.value() ), int( self.gui.ui.verificationSizeYSpinBox.value() ) )
         else:
             definition.verificationOptions = None
@@ -438,4 +468,11 @@ class NewTaskDialogCustomizer:
     #############################
     def __resYChanged( self ):
         self.gui.ui.verificationSizeYSpinBox.setMaximum( self.gui.ui.outputResYSpinBox.value() )
+        self.__taskSettingsChanged()
+
+    #############################
+    def __verificationRandomChanged( self ):
+        randSet =  self.gui.ui.verificationRandomRadioButton.isChecked()
+        self.gui.ui.probabilityLineEdit.setEnabled( randSet )
+        self.gui.ui.probabilityLabel.setEnabled( randSet )
         self.__taskSettingsChanged()

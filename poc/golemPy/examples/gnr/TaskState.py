@@ -79,7 +79,10 @@ class GNRTaskState:
         self.definition     = TaskDefinition()
         self.taskState      = TaskState()
 
+advanceVerificationTypes = [ 'forAll', 'forFirst', 'random' ]
+
 class AdvanceVerificationOption:
     def __init__( self ):
-        self.forAll = True
+        self.type = 'forFirst'
         self.boxSize = ( 5, 5 )
+        self.probability = 0.01

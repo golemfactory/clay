@@ -83,7 +83,7 @@ class PbrtTaskBuilder( RenderingTaskBuilder ):
             boxX = min( newTask.verificationOptions.boxSize[0], newTask.taskResX )
             boxY = min( newTask.verificationOptions.boxSize[1], newTask.taskResY )
             newTask.boxSize = ( boxX, boxY )
-            return newTask
+        return newTask
 
     #######################
     def _calculateTotal( self, renderer, definition ):

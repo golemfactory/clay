@@ -40,8 +40,9 @@ class RenderingTaskBuilder( GNRTaskBuilder ):
         else:
             newTask.advanceVerification = True
             newTask.verificationOptions = AdvanceVerificationOption()
-            newTask.verificationOptions.forAll = self.taskDefinition.verificationOptions.forAll
+            newTask.verificationOptions.type = self.taskDefinition.verificationOptions.type
             newTask.verificationOptions.boxSize = (self.taskDefinition.verificationOptions.boxSize[0], (self.taskDefinition.verificationOptions.boxSize[1] / 2) * 2)
+            newTask.verificationOptions.probability = self.taskDefinition.verificationOptions.probability
         return newTask
 
 
@@ -283,11 +284,20 @@ class RenderingTask( GNRTask ):
             self.countingNodes[ clientId ] = 0
             return True #new node
 
+    def __useAdvVerification( self, subtaskId ):
+        if self.verificationOptions.type == 'forAll':
+            return True
+        if self.verificationOptions.type == 'forFirst'and self.subTasksGiven[subtaskId]['clientId'] not in self.verifiedClients:
+            return True
+        if self.verificationOptions.type == 'random' and random.random() < self.verificationOptions.probability:
+            return True
+        return False
+
     #######################
     def _chooseAdvVerFile( self, trFiles, subtaskId ):
         advTestFile = None
         if self.advanceVerification:
-            if self.verificationOptions.forAll or ( self.subTasksGiven[subtaskId]['clientId'] not in self.verifiedClients ):
+            if self.__useAdvVerification( subtaskId ):
                 advTestFile = random.sample( trFiles, 1 )
         return advTestFile
 
