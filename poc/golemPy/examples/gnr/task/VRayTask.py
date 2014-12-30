@@ -76,7 +76,7 @@ class VRayTaskBuilder( FrameRenderingTaskBuiler ):
                                    self.taskDefinition.rendererOptions.useFrames,
                                    self.taskDefinition.rendererOptions.frames
                                    )
-        return vRayTask
+        return self._setVerificationOptions( vRayTask )
 
 ##############################################
 class VRayTask( FrameRenderingTask ):
@@ -139,6 +139,7 @@ class VRayTask( FrameRenderingTask ):
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
                                     "endTask" : endTask,
+                                    "hTask": self.totalTasks,
                                     "totalTasks" : self.totalTasks,
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFile" : sceneFile,
@@ -184,6 +185,7 @@ class VRayTask( FrameRenderingTask ):
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : 0,
                                     "endTask" : 1,
+                                    "hTask": self.totalTasks,
                                     "totalTasks" : self.totalTasks,
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFile" : sceneFile,
@@ -212,6 +214,7 @@ class VRayTask( FrameRenderingTask ):
             return
 
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
+        self.tmpDir = tmpDir
 
         if len( taskResult ) > 0:
             numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
@@ -224,11 +227,9 @@ class VRayTask( FrameRenderingTask ):
                     self._markSubtaskFailed( subtaskId )
                     return
 
-            trFiles = []
-            for trp in taskResult:
-                trFiles.append( self._unpackTaskResult( trp, tmpDir ) )
+            trFiles = [ self._unpackTaskResult( trp, tmpDir ) for trp in taskResult ]
 
-            if not self.__verifyImgs( trFiles ):
+            if not self._verifyImgs( trFiles, subtaskId ):
                 self._markSubtaskFailed( subtaskId )
                 if not self.useFrames:
                     self._updateTaskPreview()
@@ -297,6 +298,38 @@ class VRayTask( FrameRenderingTask ):
             return img
         else:
             return imgChunk
+
+    #######################
+    def _changeScope( self, subtaskId, startBox, trFile ):
+        extraData, _ = FrameRenderingTask._changeScope( self, subtaskId, startBox, trFile )
+        extraData['generateStartBox'] = True
+        if startBox[0] == 0:
+            newStartBoxX = 0
+            newBoxX = self.verificationOptions.boxSize[0] + 1
+        else:
+            newStartBoxX = startBox[0] - 1
+            newBoxX = self.verificationOptions.boxSize[0] + 2
+        if startBox[1] == 0:
+            newStartBoxY = 0
+            newBoxY = self.verificationOptions.boxSize[1] + 1
+        else:
+            newStartBoxY = startBox[1] - 1
+            newBoxY = self.verificationOptions.boxSize[1] + 2
+        extraData['startBox'] = (newStartBoxX, newStartBoxY )
+        extraData['box'] = ( newBoxX, newBoxY )
+        if self.useFrames:
+            if self.totalTasks <= len( self.frames ) :
+                extraData['frames'] = [ self.__getFrameNumFromOutputFile( trFile ) ]
+                extraData['parts'] = extraData['totalTasks']
+
+        return extraData, startBox
+
+    #######################
+    def __getFrameNumFromOutputFile( self, file_ ):
+        fileName = os.path.basename( file_ )
+        fileName, ext = os.path.splitext( fileName )
+        idx = fileName.find( self.outfilebasename )
+        return int( fileName[ idx + len( self.outfilebasename ) + 1:] )
 
     #######################
     def __useAlpha( self ):
@@ -419,13 +452,6 @@ class VRayTask( FrameRenderingTask ):
     def __getOutputName( self, frameNum ):
         num = str( frameNum )
         return "{}{}.{}".format( self.outfilebasename, num.zfill( 4 ), self.outputFormat )
-
-    #######################
-    def __verifyImgs( self, trFiles ):
-        for trFile in trFiles:
-            if not self._verifyImg( trFile, self.resX, self.resY ):
-                return False
-        return True
 
 
 

@@ -3,19 +3,18 @@ import random
 import logging
 import math
 
+from golem.task.TaskState import SubtaskStatus
+
 from examples.gnr.RenderingEnvironment import PBRTEnvironment
-
-from examples.gnr.task.SceneFileEditor import regenerateFile
-
-from examples.gnr.task.GNRTask import GNROptions
-from  examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
-from  examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector
-
 from examples.gnr.RenderingDirManager import getTestTaskPath
 from examples.gnr.TaskState import RendererDefaults, RendererInfo
+from examples.gnr.task.SceneFileEditor import regenerateFile
+from examples.gnr.task.GNRTask import GNROptions
+from examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
+from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector
 from examples.gnr.ui.PbrtDialog import PbrtDialog
 from examples.gnr.customizers.PbrtDialogCustomizer import PbrtDialogCustomizer
-from golem.task.TaskState import SubtaskStatus
+
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +75,15 @@ class PbrtTaskBuilder( RenderingTaskBuilder ):
                                    self.rootPath
                                   )
 
-        return pbrtTask
+        return self._setVerificationOptions( pbrtTask )
+
+    def _setVerificationOptions( self, newTask ):
+        newTask = RenderingTaskBuilder._setVerificationOptions( self, newTask )
+        if newTask.advanceVerification:
+            boxX = min( newTask.verificationOptions.boxSize[0], newTask.taskResX )
+            boxY = min( newTask.verificationOptions.boxSize[1], newTask.taskResY )
+            newTask.boxSize = ( boxX, boxY )
+            return newTask
 
     #######################
     def _calculateTotal( self, renderer, definition ):
@@ -222,16 +229,17 @@ class PbrtRenderTask( RenderingTask ):
             return
 
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
+        self.tmpDir = tmpDir
+        trFiles = [ self._unpackTaskResult( trp, tmpDir ) for trp in taskResult ]
+
+        if not self._verifyImgs( trFiles, subtaskId ):
+            self._markSubtaskFailed( subtaskId )
+            self._updateTaskPreview()
+            return
 
         if len( taskResult ) > 0:
             self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
-            for trp in taskResult:
-                trFile = self._unpackTaskResult (trp, tmpDir )
-
-                if not self._verifyImg( trFile, self.resX, self.resY ):
-                    self._markSubtaskFailed( subtaskId )
-                    self._updateTaskPreview()
-                    return
+            for trFile in trFiles:
 
                 self.collectedFileNames.add( trFile )
                 self.numTasksReceived += 1
@@ -300,6 +308,17 @@ class PbrtRenderTask( RenderingTask ):
         return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFileSrc: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFileSrc"] )
 
     #######################
+    def _getPartImgSize( self, subtaskId ):
+        numTask = random.randint( self.subTasksGiven[ subtaskId ]['startTask'], self.subTasksGiven[ subtaskId ]['endTask'] - 1 )
+        numSubtask = random.randint(0, self.numSubtasks - 1)
+        num = numTask * self.numSubtasks + numSubtask
+        x0 = int( round( num % self.nx) * self.taskResX )
+        x1 = x0 + self.taskResX
+        y0 = int( math.floor( (num / self.nx) * self.taskResY ) )
+        y1 = y0 + self.taskResY
+        return x0, y0, x1, y1
+
+    #######################
     def _markTaskArea(self, subtask, imgTask, color ):
         for numTask in range( subtask['startTask'], subtask['endTask'] ):
             for sb in range(0, self.numSubtasks):
@@ -315,8 +334,20 @@ class PbrtRenderTask( RenderingTask ):
                     for j in range( int( math.floor( yL )) , int( math.floor( yR ) ) ) :
                         imgTask.putpixel( (i, j), color )
 
+    #######################
+    def _changeScope( self, subtaskId, startBox, trFile ):
+        extraData, startBox = RenderingTask._changeScope( self, subtaskId, startBox, trFile )
+        extraData[ "outfilebasename" ] = str( extraData[ "outfilebasename" ] )
+        extraData[ "resourcePath" ] = os.path.dirname( self.mainProgramFile )
+        extraData[ "tmpPath" ] = self.tmpDir
+        extraData[ "totalTasks" ] = self.totalTasks * self.numSubtasks
+        extraData[ "numSubtasks" ] = 1
+        extraData[ "startTask" ] = getTaskNumFromPixels( startBox[0], startBox[1], extraData[ "totalTasks" ], self.resX, self.resY, 1) - 1
+        extraData[ "endTask" ] = extraData[ "startTask" ] + 1
 
+        return extraData, startBox
 
+#####################################################################
 def getTaskNumFromPixels( pX, pY, totalTasks, resX = 300, resY = 200, subtasks = 20):
     nx, ny, taskResX, taskResY = countSubtaskReg(totalTasks, subtasks, resX, resY)
     numX = int( math.floor( pX / taskResX ) )
@@ -324,6 +355,7 @@ def getTaskNumFromPixels( pX, pY, totalTasks, resX = 300, resY = 200, subtasks =
     num = (numY * nx + numX) /subtasks + 1
     return num
 
+#####################################################################
 def getTaskBoarder(startTask, endTask, totalTasks, resX = 300, resY = 200, numSubtasks = 20):
     boarder = []
     newLeft = True

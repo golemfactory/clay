@@ -3,7 +3,6 @@ import random
 import os
 import shutil
 import math
-import uuid
 
 from copy import copy
 from collections import OrderedDict
@@ -14,7 +13,6 @@ from golem.task.TaskState import SubtaskStatus
 from examples.gnr.task.GNRTask import  GNROptions
 from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
 from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
-from examples.gnr.task.ImgRepr import advanceVerifyImg
 from examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
 from examples.gnr.TaskState import RendererDefaults, RendererInfo, AdvanceVerificationOption
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
@@ -89,14 +87,8 @@ class ThreeDSMaxTaskBuilder( FrameRenderingTaskBuiler ):
                                    self.taskDefinition.rendererOptions.useFrames,
                                    self.taskDefinition.rendererOptions.frames
                                    )
-        if self.taskDefinition.verificationOptions is None:
-            threeDSMaxTask.advanceVerification = False
-        else:
-            threeDSMaxTask.advanceVerification = True
-            threeDSMaxTask.verificationOptions = AdvanceVerificationOption()
-            threeDSMaxTask.verificationOptions.forAll = self.taskDefinition.verificationOptions.forAll
-            threeDSMaxTask.verificationOptions.boxSize = (self.taskDefinition.verificationOptions.boxSize[0], (self.taskDefinition.verificationOptions.boxSize[1] / 2) * 2)
-        return threeDSMaxTask
+
+        return self._setVerificationOptions( threeDSMaxTask )
 
 
 ##############################################
@@ -138,7 +130,6 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         self.presetFile = presetFile
         self.cmd        = cmdFile
         self.framesGiven = {}
-        self.verifiedClients = set()
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0, clientId = None ):
@@ -259,11 +250,9 @@ class ThreeDSMaxTask( FrameRenderingTask ):
                         self._updateFrameTaskPreview()
                     return
 
-            trFiles = []
-            for trp in taskResult:
-                trFiles.append( self._unpackTaskResult( trp, tmpDir ) )
+            trFiles = [ self._unpackTaskResult( trp, tmpDir ) for trp in taskResult ]
 
-            if not self.__verifyImgs( trFiles, subtaskId ):
+            if not self._verifyImgs( trFiles, subtaskId ):
                 self._markSubtaskFailed( subtaskId )
                 if not self.useFrames:
                     self._updateTaskPreview()
@@ -449,7 +438,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         return presetFile
 
     #######################
-    def __verifyImgs( self, trFiles, subtaskId ):
+    def _getPartSize( self ) :
         if not self.useFrames:
             resY = int (math.floor( float( self.resY ) / float( self.totalTasks ) ) )
         elif len( self.frames ) >= self.totalTasks:
@@ -457,46 +446,16 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         else:
             parts = self.totalTasks / len( self.frames )
             resY = int (math.floor( float( self.resY ) / float( parts ) ) )
-
-        advTestFile = None
-        if self.advanceVerification:
-            if self.verificationOptions.forAll or ( self.subTasksGiven[subtaskId]['clientId'] not in self.verifiedClients ):
-                advTestFile = random.sample( trFiles, 1 )
-
-        for trFile in trFiles:
-            if advTestFile is not None and trFile in advTestFile:
-                startBox = self.__getBoxStart(self.resX, resY)
-                logger.debug( 'testBox: {}'.format( startBox ) )
-                cmpFile, cmpStartBox = self.getCmpFile( trFile, startBox, subtaskId )
-                logger.debug( 'cmpStarBox {}'.format( cmpStartBox ) )
-                if not advanceVerifyImg( trFile, self.resX, resY, startBox, self.verificationOptions.boxSize, cmpFile, cmpStartBox ):
-                    return False
-                else:
-                    self.verifiedClients.add( self.subTasksGiven[subtaskId][ 'clientId' ] )
-            if not self._verifyImg( trFile, self.resX, resY ):
-                return False
-
-        return True
-
-    def getCmpFile( self, trFile, startBox, subtaskId ):
-        workingDirector = self._getWorkingDirectory()
-        extraData, newStartBox = self.__changeScope( subtaskId, startBox, trFile )
-        cmpFile = self.__runTask( self.srcCode, extraData )
-        return cmpFile, newStartBox
-
-    def __getBoxStart( self, x, y ):
-        verX = min( self.verificationOptions.boxSize[0], x )
-        verY = min( self.verificationOptions.boxSize[1], y )
-        startX = random.randint( 0, x - verX)
-        startY = random.randint( 0, y - verY)
-        return (startX, startY)
+        return self.resX, resY
 
     #######################
-    def __changeScope( self, subtaskId, startBox, trFile ):
-        extraData = copy( self.subTasksGiven[ subtaskId ] )
-        extraData['outfilebasename'] = uuid.uuid4()
-        extraData['tmpPath'] = os.path.join( self.tmpDir, str( self.subTasksGiven[subtaskId]['startTask'] ) )
-        os.mkdir( extraData['tmpPath'] )
+    def _getPartImgSize( self, subtaskId ) :
+        x, y = self._getPartSize()
+        return 0, 0, x, y
+
+    #######################
+    def _changeScope( self, subtaskId, startBox, trFile ):
+        extraData, _ = FrameRenderingTask._changeScope( self, subtaskId, startBox, trFile )
         if not self.useFrames:
             startY = startBox[1] + (extraData['startTask'] - 1) * self.resY / extraData['totalTasks']
         elif self.totalTasks <= len( self.frames ):
@@ -522,9 +481,4 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         fileName = os.path.basename( file_ )
         fileName, ext = os.path.splitext( fileName )
         idx = fileName.find( self.outfilebasename )
-        return int( fileName[ idx+1:] )
-
-    #######################
-    def __runTask( self, srcCode, scope ):
-        exec srcCode in scope
-        return self._unpackTaskResult( scope['output'][0], self.tmpDir )
+        return int( fileName[ idx + len( self.outfilebasename ):] )

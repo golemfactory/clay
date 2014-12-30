@@ -396,10 +396,12 @@ class NewTaskDialogCustomizer:
         return definition
 
     def __queryAdvanceVerification( self, definition ):
-        if self.gui.ui.advanceVerificationCheckBox.isChecked:
+        if self.gui.ui.advanceVerificationCheckBox.isChecked():
             definition.verificationOptions = AdvanceVerificationOption()
             definition.verificationOptions.forAll = self.gui.ui.verificationForAllRadioButton.isChecked()
             definition.verificationOptions.boxSize = ( int( self.gui.ui.verificationSizeXSpinBox.value() ), int( self.gui.ui.verificationSizeYSpinBox.value() ) )
+        else:
+            definition.verificationOptions = None
 
     def __optimizeTotalCheckBoxChanged( self ):
         self.gui.ui.totalSpinBox.setEnabled( not self.gui.ui.optimizeTotalCheckBox.isChecked() )

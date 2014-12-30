@@ -3,7 +3,9 @@ import logging
 import pickle
 import subprocess
 import math
-from copy import deepcopy
+import random
+import uuid
+from copy import deepcopy, copy
 from PIL import Image, ImageChops
 
 from golem.core.Compress import decompress
@@ -11,8 +13,9 @@ from golem.task.TaskState import SubtaskStatus
 from golem.task.TaskBase import ComputeTaskDef
 
 from examples.gnr.RenderingDirManager import getTmpPath
+from examples.gnr.TaskState import AdvanceVerificationOption
 from examples.gnr.task.RenderingTaskCollector import exr_to_pil
-from examples.gnr.task.ImgRepr import verifyImg
+from examples.gnr.task.ImgRepr import verifyImg, advanceVerifyImg
 from examples.gnr.task.GNRTask import GNRTask, GNRTaskBuilder
 
 MIN_TIMEOUT = 2200.0
@@ -30,6 +33,16 @@ class RenderingTaskBuilder( GNRTaskBuilder ):
             return definition.totalSubtasks
         else :
             return renderer.defaults.defaultSubtasks
+
+    def _setVerificationOptions( self, newTask ):
+        if self.taskDefinition.verificationOptions is None:
+            newTask.advanceVerification = False
+        else:
+            newTask.advanceVerification = True
+            newTask.verificationOptions = AdvanceVerificationOption()
+            newTask.verificationOptions.forAll = self.taskDefinition.verificationOptions.forAll
+            newTask.verificationOptions.boxSize = (self.taskDefinition.verificationOptions.boxSize[0], (self.taskDefinition.verificationOptions.boxSize[1] / 2) * 2)
+        return newTask
 
 
 ##############################################
@@ -74,6 +87,7 @@ class RenderingTask( GNRTask ):
         self.collectedFileNames     = {}
 
         self.advanceVerification    = False
+        self.verifiedClients        = set()
 
     #######################
     def restart( self ):
@@ -105,6 +119,16 @@ class RenderingTask( GNRTask ):
     #####################
     def getPreviewFilePath( self ):
         return self.previewFilePath
+
+    #######################
+    def _getPartSize( self ):
+        return self.resX, self.resY
+
+    #######################
+    def _getPartImgSize( self, subtaskId ):
+        numTask = self.subTasksGiven[ subtaskId ][ 'startTask' ]
+        imgHeight = int (math.floor( float( self.resY ) / float( self.totalTasks ) ) )
+        return 0, (numTask - 1) * imgHeight, self.resX, numTask * imgHeight
 
     #######################
     def _updatePreview( self, newChunkFilePath ):
@@ -258,3 +282,63 @@ class RenderingTask( GNRTask ):
         else:
             self.countingNodes[ clientId ] = 0
             return True #new node
+
+    #######################
+    def _chooseAdvVerFile( self, trFiles, subtaskId ):
+        advTestFile = None
+        if self.advanceVerification:
+            if self.verificationOptions.forAll or ( self.subTasksGiven[subtaskId]['clientId'] not in self.verifiedClients ):
+                advTestFile = random.sample( trFiles, 1 )
+        return advTestFile
+
+    #######################
+    def _verifyImgs( self, trFiles, subtaskId ):
+        resX, resY = self._getPartSize()
+        x0, y0, x1, y1 = self._getPartImgSize( subtaskId )
+
+        advTestFile = self._chooseAdvVerFile( trFiles, subtaskId )
+
+        for trFile in trFiles:
+            if advTestFile is not None and trFile in advTestFile:
+                startBox = self._getBoxStart(x0, y0, x1, y1)
+                logger.debug( 'testBox: {}'.format( startBox ) )
+                cmpFile, cmpStartBox = self._getCmpFile( trFile, startBox, subtaskId )
+                logger.debug( 'cmpStarBox {}'.format( cmpStartBox ) )
+                if not advanceVerifyImg( trFile, resX, resY, startBox, self.verificationOptions.boxSize, cmpFile, cmpStartBox ):
+                    return False
+                else:
+                    self.verifiedClients.add( self.subTasksGiven[subtaskId][ 'clientId' ] )
+            if not self._verifyImg( trFile, resX, resY ):
+                return False
+
+        return True
+
+    #######################
+    def _getCmpFile( self, trFile, startBox, subtaskId ):
+        extraData, newStartBox = self._changeScope( subtaskId, startBox, trFile )
+        cmpFile = self._runTask( self.srcCode, extraData )
+        return cmpFile, newStartBox
+
+    #######################
+    def _getBoxStart( self, x0, y0, x1, y1 ):
+        verX = min( self.verificationOptions.boxSize[0], x1 )
+        verY = min( self.verificationOptions.boxSize[1], y1 )
+        startX = random.randint( x0, x1 - verX)
+        startY = random.randint( y0, y1 - verY)
+        return (startX, startY)
+
+    #######################
+    def _changeScope( self, subtaskId, startBox, trFile ):
+        extraData = copy( self.subTasksGiven[ subtaskId ] )
+        extraData['outfilebasename'] = uuid.uuid4()
+        extraData['tmpPath'] = os.path.join( self.tmpDir, str( self.subTasksGiven[subtaskId]['startTask'] ) )
+        if not os.path.isdir( extraData['tmpPath'] ):
+            os.mkdir( extraData['tmpPath'] )
+        return extraData, startBox
+
+    #######################
+    def _runTask( self, srcCode, scope ):
+        print "Working directory"
+        print os.getcwd()
+        exec srcCode in scope
+        return self._unpackTaskResult( scope['output'][0], self.tmpDir )
