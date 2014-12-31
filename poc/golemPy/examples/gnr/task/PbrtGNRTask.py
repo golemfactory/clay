@@ -309,7 +309,10 @@ class PbrtRenderTask( RenderingTask ):
 
     #######################
     def _getPartImgSize( self, subtaskId, advTestFile ):
-        numTask = self.__getNumFromFileName( advTestFile, subtaskId )
+        if advTestFile is not None:
+            numTask = self.__getNumFromFileName( advTestFile[0], subtaskId )
+        else:
+            numTask = self.subTasksGiven[ subtaskId ][ 'startTask' ]
         numSubtask = random.randint(0, self.numSubtasks - 1)
         num = numTask * self.numSubtasks + numSubtask
         x0 = int(  round( (num % self.nx) * self.taskResX ) )

@@ -1,6 +1,6 @@
-from PyQt4 import QtCore
 from golem.task.TaskState import TaskState
 
+###########################################################################
 class RendererInfo:
     #########################
     def __init__( self, name, defaults, taskBuilderType, dialog, dialogCustomizer, rendererOptions):
@@ -13,6 +13,7 @@ class RendererInfo:
         self.dialogCustomizer = dialogCustomizer
         self.options = rendererOptions
 
+###########################################################################
 class RendererDefaults:
     #########################
     def __init__( self ):
@@ -26,28 +27,8 @@ class RendererDefaults:
         self.maxSubtasks        = 50
         self.defaultSubtasks    = 20
 
-class TestTaskInfo:
-    #########################
-    def __init__( self, name ):
-        self.name           = name
-        # TODO
-
-class GNRTaskDefinition:
-    def __init__( self ):
-        self.taskId = ""
-        self.fullTaskTimeout = 0
-        self.subtaskTimeout     = 0
-        self.minSubtaskTime     = 0
-
-        self.resources = set()
-        self.estimatedMemory    = 0
-
-        self.totalSubtasks      = 0
-        self.optimizeTotal      = False
-        self.mainProgramFile    = ""
-        self.taskType           = None
-
-class TaskDefinition:
+###########################################################################
+class RenderingTaskDefinition:
     #########################
     def __init__( self ):
         self.taskId                 = ""
@@ -73,16 +54,34 @@ class TaskDefinition:
 
         self.verificationOptions = None
 
-class GNRTaskState:
+###########################################################################
+class RenderingTaskState:
     #########################
     def __init__( self ):
-        self.definition     = TaskDefinition()
+        self.definition     = RenderingTaskDefinition()
         self.taskState      = TaskState()
 
-advanceVerificationTypes = [ 'forAll', 'forFirst', 'random' ]
-
-class AdvanceVerificationOption:
+###########################################################################
+class AdvanceRenderingVerificationOptions:
     def __init__( self ):
         self.type = 'forFirst'
         self.boxSize = ( 5, 5 )
         self.probability = 0.01
+
+
+advanceVerificationTypes = [ 'forAll', 'forFirst', 'random' ]
+
+class GNRTaskDefinition:
+    def __init__( self ):
+        self.taskId = ""
+        self.fullTaskTimeout = 0
+        self.subtaskTimeout     = 0
+        self.minSubtaskTime     = 0
+
+        self.resources = set()
+        self.estimatedMemory    = 0
+
+        self.totalSubtasks      = 0
+        self.optimizeTotal      = False
+        self.mainProgramFile    = ""
+        self.taskType           = None

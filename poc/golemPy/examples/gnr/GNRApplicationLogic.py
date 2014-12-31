@@ -8,7 +8,7 @@ from PyQt4 import QtCore
 from examples.gnr.task.InfoTask import InfoTaskBuilder, InfoTaskDefinition
 from examples.gnr.ui.TestingTaskProgressDialog import TestingTaskProgressDialog
 from golem.task.TaskState import TaskStatus
-from examples.gnr.TaskState import GNRTaskState, TaskDefinition
+from examples.gnr.TaskState import RenderingTaskState
 from examples.gnr.task.TaskTester import TaskTester
 from golem.task.TaskBase import Task
 from golem.task.TaskState import TaskState
@@ -168,7 +168,7 @@ class GNRApplicationLogic( QtCore.QObject ):
         files = glob.glob( os.path.join( path, '*.gt' ) )
         tasks = []
         for file in files:
-            taskState = GNRTaskState()
+            taskState = RenderingTaskState()
             taskState.status = TaskStatus.notStarted
             taskState.definition = pickle.loads( open( file, 'r' ).read() )
             import uuid
@@ -253,7 +253,7 @@ class GNRApplicationLogic( QtCore.QObject ):
 
     ######################
     def addTaskFromDefinition ( self, definition ):
-        taskState = GNRTaskState()
+        taskState = RenderingTaskState()
         taskState.status = TaskStatus.notStarted
 
         taskState.definition = definition
@@ -267,7 +267,7 @@ class GNRApplicationLogic( QtCore.QObject ):
             return
 
         for t in tasks:
-            assert isinstance( t, GNRTaskState )
+            assert isinstance( t, RenderingTaskState )
             if t.definition.taskId not in self.tasks:
                 self.tasks[ t.definition.taskId ] = t
                 self.customizer.addTask( t )
@@ -360,7 +360,7 @@ class GNRApplicationLogic( QtCore.QObject ):
     def taskStatusChanged( self, taskId ):
 
         if taskId in self.tasks:
-            assert isinstance( self.tasks[ taskId ], GNRTaskState )
+            assert isinstance( self.tasks[ taskId ], RenderingTaskState )
             ts = self.client.querryTaskState( taskId )
             assert isinstance( ts, TaskState )
             self.tasks[taskId].taskState = ts

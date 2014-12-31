@@ -7,7 +7,7 @@ from examples.gnr.ui.NewTaskDialog import NewTaskDialog
 from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 
 from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
-from examples.gnr.TaskState import GNRTaskState, TaskDefinition, AdvanceVerificationOption
+from examples.gnr.TaskState import RenderingTaskState, RenderingTaskDefinition, AdvanceRenderingVerificationOptions
 from golem.task.TaskState import TaskStatus
 from TimeHelper import setTimeSpinBoxes, getTimeValues
 
@@ -239,7 +239,7 @@ class NewTaskDialogCustomizer:
 
     ############################
     def loadTaskDefinition( self, taskDefinition ):
-        assert isinstance( taskDefinition, TaskDefinition )
+        assert isinstance( taskDefinition, RenderingTaskDefinition )
 
         definition = deepcopy( taskDefinition )
 
@@ -340,7 +340,7 @@ class NewTaskDialogCustomizer:
 
     ############################
     def __testTaskButtonClicked( self ):
-        self.taskState = GNRTaskState()
+        self.taskState = RenderingTaskState()
         self.taskState.status = TaskStatus.notStarted
         self.taskState.definition = self.__queryTaskDefinition()
         
@@ -379,7 +379,7 @@ class NewTaskDialogCustomizer:
 
     #############################
     def __queryTaskDefinition( self ):
-        definition      = TaskDefinition()
+        definition      = RenderingTaskDefinition()
 
         definition.taskId                = u"{}".format( self.gui.ui.taskIdLabel.text() )
         definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime = getTimeValues( self.gui )
@@ -409,7 +409,7 @@ class NewTaskDialogCustomizer:
 
     def __queryAdvanceVerification( self, definition ):
         if self.gui.ui.advanceVerificationCheckBox.isChecked():
-            definition.verificationOptions = AdvanceVerificationOption()
+            definition.verificationOptions = AdvanceRenderingVerificationOptions()
             if self.gui.ui.verificationForAllRadioButton.isChecked():
                 definition.verificationOptions.type = 'forAll'
             elif self.gui.ui.verificationForFirstRadioButton.isChecked():

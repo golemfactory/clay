@@ -7,7 +7,7 @@ from examples.default.ui.NewTaskDialog import NewTaskDialog
 from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 
 from examples.gnr.customizers.AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
-from examples.gnr.TaskState import GNRTaskState, TaskDefinition, GNRTaskDefinition
+from examples.gnr.TaskState import RenderingTaskState, RenderingTaskDefinition, GNRTaskDefinition
 from golem.task.TaskState import TaskStatus
 from examples.gnr.customizers.TimeHelper import setTimeSpinBoxes, getTimeValues
 from examples.default.TaskType import buildPythonGNRTaskType
@@ -129,7 +129,7 @@ class NewTaskDialogCustomizer:
 
     #############################
     def __finishButtonClicked( self ):
-        self.taskState = GNRTaskState()
+        self.taskState = RenderingTaskState()
         self.taskState.status = TaskStatus.notStarted
         self.taskState.definition = self.__queryTaskDefinition()
         self.taskState.definition.taskType = buildPythonGNRTaskType()

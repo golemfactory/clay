@@ -3,7 +3,7 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
 
 from examples.gnr.ui.ChangeTaskDialog import ChangeTaskDialog
-from examples.gnr.TaskState import TaskDefinition
+from examples.gnr.TaskState import RenderingTaskDefinition
 from TimeHelper import setTimeSpinBoxes, getTimeValues
 
 import logging
@@ -32,7 +32,7 @@ class ChangeTaskDialogCustomizer:
 
     ############################
     def loadTaskDefinition( self, definition ):
-        assert isinstance( definition, TaskDefinition )
+        assert isinstance( definition, RenderingTaskDefinition )
 
         self.gui.ui.taskIdLabel.setText( u"{}".format( definition.taskId ) )
         setTimeSpinBoxes( self.gui, definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime )

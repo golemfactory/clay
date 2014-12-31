@@ -19,7 +19,7 @@ from examples.gnr.ui.EnvironmentsDialog import EnvironmentsDialog
 from examples.gnr.ui.UpdateOtherGolemsDialog import UpdateOtherGolemsDialog
 from examples.gnr.ui.AboutWindow import AboutWindow
 from examples.gnr.RenderingDirManager import getPreviewFile
-from examples.gnr.TaskState import TaskDefinition
+from examples.gnr.TaskState import RenderingTaskDefinition
 
 from examples.gnr.customizers.NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from examples.gnr.customizers.TaskContexMenuCustomizer import TaskContextMenuCustomizer
@@ -116,8 +116,8 @@ class MainWindowCustomizer:
 
     ############################
     def updateTaskAdditionalInfo( self, t ):
-        from examples.gnr.TaskState import GNRTaskState
-        assert isinstance( t, GNRTaskState )
+        from examples.gnr.TaskState import RenderingTaskState
+        assert isinstance( t, RenderingTaskState )
 
         self.currentTaskHighlighted = t
         self.gui.ui.subtaskTimeout.setText( "{} minutes".format( int( t.definition.subtaskTimeout / 60.0 ) ) )
@@ -127,7 +127,7 @@ class MainWindowCustomizer:
             timeString  = time.strftime( "%Y.%m.%d  %H:%M:%S", lt )
             self.gui.ui.timeStarted.setText( timeString )
 
-        if not isinstance( t.definition, TaskDefinition ):
+        if not isinstance( t.definition, RenderingTaskDefinition ):
             return
         mem, index = resourceSizeToDisplay( t.definition.estimatedMemory / 1024 )
         self.gui.ui.estimatedMemoryLabel.setText( "{} {}".format( mem, translateResourceIndex( index ) ) )
@@ -430,7 +430,7 @@ class MainWindowCustomizer:
         num = None
 
         t = self.currentTaskHighlighted
-        if t is None or not isinstance( t.definition, TaskDefinition ):
+        if t is None or not isinstance( t.definition, RenderingTaskDefinition ):
             return
 
         if t.definition.renderer:
@@ -469,7 +469,7 @@ class MainWindowCustomizer:
         num = self.__getTaskNumFromPixels(x, y)
         if num is not None:
             definition = self.currentTaskHighlighted.definition
-            if not isinstance( definition, TaskDefinition ):
+            if not isinstance( definition, RenderingTaskDefinition ):
                 return
             renderer = self.logic.getRenderer( definition.renderer )
             subtask = self.__getSubtask( num )

@@ -13,7 +13,7 @@ from golem.task.TaskState import SubtaskStatus
 from golem.task.TaskBase import ComputeTaskDef
 
 from examples.gnr.RenderingDirManager import getTmpPath
-from examples.gnr.TaskState import AdvanceVerificationOption
+from examples.gnr.TaskState import AdvanceRenderingVerificationOptions
 from examples.gnr.task.RenderingTaskCollector import exr_to_pil
 from examples.gnr.task.ImgRepr import verifyImg, advanceVerifyImg
 from examples.gnr.task.GNRTask import GNRTask, GNRTaskBuilder
@@ -39,7 +39,7 @@ class RenderingTaskBuilder( GNRTaskBuilder ):
             newTask.advanceVerification = False
         else:
             newTask.advanceVerification = True
-            newTask.verificationOptions = AdvanceVerificationOption()
+            newTask.verificationOptions = AdvanceRenderingVerificationOptions()
             newTask.verificationOptions.type = self.taskDefinition.verificationOptions.type
             newTask.verificationOptions.boxSize = (self.taskDefinition.verificationOptions.boxSize[0], (self.taskDefinition.verificationOptions.boxSize[1] / 2) * 2)
             newTask.verificationOptions.probability = self.taskDefinition.verificationOptions.probability
@@ -308,7 +308,7 @@ class RenderingTask( GNRTask ):
         resX, resY = self._getPartSize()
 
         advTestFile = self._chooseAdvVerFile( trFiles, subtaskId )
-        x0, y0, x1, y1 = self._getPartImgSize( subtaskId, advTestFile[0] )
+        x0, y0, x1, y1 = self._getPartImgSize( subtaskId, advTestFile )
 
         for trFile in trFiles:
             if advTestFile is not None and trFile in advTestFile:

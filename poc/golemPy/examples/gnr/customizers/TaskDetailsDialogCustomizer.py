@@ -4,7 +4,7 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QMenu
 
 from golem.task.TaskState import TaskState, ComputerState
-from examples.gnr.TaskState import GNRTaskState
+from examples.gnr.TaskState import RenderingTaskState
 from SubtaskContextMenuCustomizer import SubtaskContextMenuCustomizer
 
 from examples.gnr.ui.SubtaskTableEntry import SubtaskTableElem
@@ -12,7 +12,7 @@ from examples.gnr.ui.SubtaskTableEntry import SubtaskTableElem
 class TaskDetailsDialogCustomizer:
     ###########################
     def __init__( self, gui, logic, gnrTaskState ):
-        assert isinstance( gnrTaskState, GNRTaskState )
+        assert isinstance( gnrTaskState, RenderingTaskState )
         self.gui            = gui
         self.logic          = logic
         self.gnrTaskState   = gnrTaskState

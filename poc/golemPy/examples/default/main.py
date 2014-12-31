@@ -51,6 +51,8 @@ def main():
     for env in environments:
         client.environmentsManager.addEnvironment( env )
 
+    client.environmentsManager.loadConfig( client.configDesc.clientUid )
+
     logic.registerClient( client )
     logic.checkNetworkState()
 
