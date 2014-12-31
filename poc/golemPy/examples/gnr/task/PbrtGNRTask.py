@@ -308,14 +308,14 @@ class PbrtRenderTask( RenderingTask ):
         return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFileSrc: {}".format( l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFileSrc"] )
 
     #######################
-    def _getPartImgSize( self, subtaskId ):
-        numTask = random.randint( self.subTasksGiven[ subtaskId ]['startTask'], self.subTasksGiven[ subtaskId ]['endTask'] - 1 )
+    def _getPartImgSize( self, subtaskId, advTestFile ):
+        numTask = self.__getNumFromFileName( advTestFile, subtaskId )
         numSubtask = random.randint(0, self.numSubtasks - 1)
         num = numTask * self.numSubtasks + numSubtask
-        x0 = int( round( num % self.nx) * self.taskResX )
-        x1 = x0 + self.taskResX
-        y0 = int( math.floor( (num / self.nx) * self.taskResY ) )
-        y1 = y0 + self.taskResY
+        x0 = int(  round( (num % self.nx) * self.taskResX ) )
+        x1 = int(  round( ( ( num % self.nx ) + 1 ) * self.taskResX ) )
+        y0 = int( math.floor( ( num / self.nx ) * self.taskResY ) )
+        y1 = int ( math.floor( ( ( num / self.nx ) + 1 ) * self.taskResY ) )
         return x0, y0, x1, y1
 
     #######################
@@ -346,6 +346,18 @@ class PbrtRenderTask( RenderingTask ):
         extraData[ "endTask" ] = extraData[ "startTask" ] + 1
 
         return extraData, startBox
+
+    #######################
+    def __getNumFromFileName( self, file_, subtaskId ):
+        try:
+            fileName = os.path.basename( file_ )
+            fileName, ext = os.path.splitext( fileName )
+            BASENAME = "temp"
+            idx = fileName.find( BASENAME )
+            return int( fileName[idx + len( BASENAME ):] )
+        except Exception, err:
+            logger.error("Wrong output file name {}: {}".format( file_, str( err ) ) )
+            return self.subTasksGiven[ subtaskId ][ 'startTask' ]
 
 #####################################################################
 def getTaskNumFromPixels( pX, pY, totalTasks, resX = 300, resY = 200, subtasks = 20):

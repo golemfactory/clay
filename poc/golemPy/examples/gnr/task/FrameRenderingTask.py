@@ -137,9 +137,24 @@ class FrameRenderingTask( RenderingTask ):
                 for j in range( upper, lower ):
                     imgTask.putpixel( (i, j), color )
 
+    def _getPartImgSize( self, subtaskId, advTestFile ):
+        if not self.useFrames or self.__fullFrames():
+            return RenderingTask._getPartImgSize( self, subtaskId, advTestFile )
+        else:
+            startTask = self.subTasksGiven[ subtaskId ][ 'startTask' ]
+            parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
+            numTask = self.__countPart( startTask, parts )
+            imgHeight = int (math.floor( float( self.resY ) / float( parts ) ) )
+            return 1, (numTask - 1) * imgHeight + 1, self.resX - 1, numTask * imgHeight - 1
+
+
+
     #######################
     def __fullFrames( self ):
         return self.totalTasks <= len( self.frames )
+
+    def __countPart( self, startNum, parts ):
+        return ( ( startNum - 1 ) % parts ) + 1
 
 ##############################################
 def getTaskBoarder( startTask, endTask, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):

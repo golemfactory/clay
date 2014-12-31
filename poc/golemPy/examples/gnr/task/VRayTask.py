@@ -302,6 +302,7 @@ class VRayTask( FrameRenderingTask ):
     #######################
     def _changeScope( self, subtaskId, startBox, trFile ):
         extraData, _ = FrameRenderingTask._changeScope( self, subtaskId, startBox, trFile )
+        extraData['isAlpha'] = self.__isAlphaFile( trFile )
         extraData['generateStartBox'] = True
         if startBox[0] == 0:
             newStartBoxX = 0
@@ -318,9 +319,9 @@ class VRayTask( FrameRenderingTask ):
         extraData['startBox'] = (newStartBoxX, newStartBoxY )
         extraData['box'] = ( newBoxX, newBoxY )
         if self.useFrames:
-            if self.totalTasks <= len( self.frames ) :
-                extraData['frames'] = [ self.__getFrameNumFromOutputFile( trFile ) ]
-                extraData['parts'] = extraData['totalTasks']
+            extraData['frames'] = [ self.__getFrameNumFromOutputFile( trFile ) ]
+            extraData['parts'] = extraData['totalTasks']
+
 
         return extraData, startBox
 
@@ -329,7 +330,23 @@ class VRayTask( FrameRenderingTask ):
         fileName = os.path.basename( file_ )
         fileName, ext = os.path.splitext( fileName )
         idx = fileName.find( self.outfilebasename )
-        return int( fileName[ idx + len( self.outfilebasename ) + 1:] )
+        if self.__isAlphaFile( fileName ):
+            idxAlpha = fileName.find( "Alpha" )
+            if self.useFrames and self.totalTasks == len( self.frames ):
+                return int ( fileName[ idx + len( self.outfilebasename) + 1: idxAlpha - 1])
+            elif self.useFrames and self.totalTasks < len( self.frames ):
+                return int ( fileName[ idxAlpha + len("Alpha") + 1: ] )
+            else:
+                return int( fileName.split(".")[-3] )
+
+        else:
+            if self.useFrames and self.totalTasks > len( self.frames ):
+                suf = fileName[ idx + len( self.outfilebasename ) + 1:]
+                idxDot = suf.find(".")
+                return int ( suf[ idxDot + 1: ] )
+            else:
+                return int( fileName[ idx + len( self.outfilebasename ) + 1:] )
+
 
     #######################
     def __useAlpha( self ):
@@ -452,6 +469,19 @@ class VRayTask( FrameRenderingTask ):
     def __getOutputName( self, frameNum ):
         num = str( frameNum )
         return "{}{}.{}".format( self.outfilebasename, num.zfill( 4 ), self.outputFormat )
+
+    def _runTask(self, srcCode, scope):
+        exec srcCode in scope
+        trFiles = [ self._unpackTaskResult( file_, self.tmpDir ) for file_ in scope['output'] ]
+        if scope['isAlpha']:
+            for trFile in trFiles:
+                if self.__isAlphaFile( trFile ):
+                    return trFile
+        else:
+            for trFile in trFiles:
+                if not self.__isAlphaFile( trFile):
+                    return trFile
+        return trFiles[0]
 
 
 

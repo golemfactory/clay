@@ -449,7 +449,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         return self.resX, resY
 
     #######################
-    def _getPartImgSize( self, subtaskId ) :
+    def _getPartImgSize( self, subtaskId, advTestFile ) :
         x, y = self._getPartSize()
         return 0, 0, x, y
 

@@ -13,7 +13,7 @@ def formatTestVRayCmd( cmdFile, outputFile, outfilebasename, scenefile, width, h
     return cmd
 
 def formatTestVRayCmdWithParts( cmdFile, frames,  outputFile, outfilebasename, scenefile, width, height, rtEngine, numThreads ):
-    cmd = '"{}" -imgFile="{}\\{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -region={};{};{};{}  -autoClose=1 -display=0 -rtEngine={} -numThreads={}'.format(cmdFile, outputFile, outfilebasename, scenefile, width, height, frames, startBox[0], startBox[1], startBox[0] + box[0], startBox[1] + box[1],  rtEngine, numThreads )
+    cmd = '"{}" -imgFile="{}\\{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -region={};{};{};{}  -autoClose=1 -display=0 -rtEngine={} -numThreads={}'.format(cmdFile, outputFile, outfilebasename, scenefile, width, height, frames, 0, startBox[1], width, startBox[1] + box[1],  rtEngine, numThreads )
     return cmd
 
 def formatVRayCmd( cmdFile, startTask, endTask, hTasks, totalTasks, outputFile, outfilebasename, scenefile, width, height, rtEngine, numThreads ):

@@ -126,10 +126,12 @@ class RenderingTask( GNRTask ):
         return self.resX, self.resY
 
     #######################
-    def _getPartImgSize( self, subtaskId ):
+    def _getPartImgSize( self, subtaskId, advTestFile ):
         numTask = self.subTasksGiven[ subtaskId ][ 'startTask' ]
         imgHeight = int (math.floor( float( self.resY ) / float( self.totalTasks ) ) )
         return 0, (numTask - 1) * imgHeight, self.resX, numTask * imgHeight
+
+
 
     #######################
     def _updatePreview( self, newChunkFilePath ):
@@ -304,9 +306,9 @@ class RenderingTask( GNRTask ):
     #######################
     def _verifyImgs( self, trFiles, subtaskId ):
         resX, resY = self._getPartSize()
-        x0, y0, x1, y1 = self._getPartImgSize( subtaskId )
 
         advTestFile = self._chooseAdvVerFile( trFiles, subtaskId )
+        x0, y0, x1, y1 = self._getPartImgSize( subtaskId, advTestFile[0] )
 
         for trFile in trFiles:
             if advTestFile is not None and trFile in advTestFile:
@@ -348,7 +350,5 @@ class RenderingTask( GNRTask ):
 
     #######################
     def _runTask( self, srcCode, scope ):
-        print "Working directory"
-        print os.getcwd()
         exec srcCode in scope
         return self._unpackTaskResult( scope['output'][0], self.tmpDir )
