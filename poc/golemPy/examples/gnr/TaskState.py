@@ -1,5 +1,7 @@
 from golem.task.TaskState import TaskState
 
+from examples.gnr.GNRTaskState import GNRTaskDefinition, AdvanceVerificationOptions
+
 ###########################################################################
 class RendererInfo:
     #########################
@@ -28,31 +30,18 @@ class RendererDefaults:
         self.defaultSubtasks    = 20
 
 ###########################################################################
-class RenderingTaskDefinition:
+class RenderingTaskDefinition( GNRTaskDefinition ):
     #########################
     def __init__( self ):
-        self.taskId                 = ""
-        self.fullTaskTimeout    = 0
-        self.subtaskTimeout     = 0
-        self.minSubtaskTime     = 0
+        GNRTaskDefinition.__init__( self )
 
         self.resolution         = [ 0, 0 ]
         self.renderer           = None
-
-        self.resources          = set()
         self.rendererOptions    = None
 
-        self.mainProgramFile    = ""
         self.mainSceneFile      = ""
         self.outputFile         = ""
         self.outputFormat       = ""
-
-        self.estimatedMemory    = 0
-
-        self.totalSubtasks      = 0
-        self.optimizeTotal      = False
-
-        self.verificationOptions = None
 
 ###########################################################################
 class RenderingTaskState:
@@ -62,26 +51,9 @@ class RenderingTaskState:
         self.taskState      = TaskState()
 
 ###########################################################################
-class AdvanceRenderingVerificationOptions:
+class AdvanceRenderingVerificationOptions ( AdvanceVerificationOptions ):
     def __init__( self ):
-        self.type = 'forFirst'
+        AdvanceVerificationOptions.__init__( self )
         self.boxSize = ( 5, 5 )
         self.probability = 0.01
 
-
-advanceVerificationTypes = [ 'forAll', 'forFirst', 'random' ]
-
-class GNRTaskDefinition:
-    def __init__( self ):
-        self.taskId = ""
-        self.fullTaskTimeout = 0
-        self.subtaskTimeout     = 0
-        self.minSubtaskTime     = 0
-
-        self.resources = set()
-        self.estimatedMemory    = 0
-
-        self.totalSubtasks      = 0
-        self.optimizeTotal      = False
-        self.mainProgramFile    = ""
-        self.taskType           = None
