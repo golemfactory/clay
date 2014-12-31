@@ -101,7 +101,7 @@ class GNRMainWindowCustomizer:
 
     ############################
     def updateTaskAdditionalInfo( self, t ):
-        from examples.gnr.TaskState import RenderingTaskState
+        from examples.gnr.RenderingTaskState import RenderingTaskState
         assert isinstance( t, RenderingTaskState )
 
         self.currentTaskHighlighted = t

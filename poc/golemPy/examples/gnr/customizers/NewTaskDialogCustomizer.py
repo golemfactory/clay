@@ -7,7 +7,7 @@ from examples.gnr.ui.NewTaskDialog import NewTaskDialog
 from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 
 from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
-from examples.gnr.TaskState import RenderingTaskState, RenderingTaskDefinition, AdvanceRenderingVerificationOptions
+from examples.gnr.RenderingTaskState import RenderingTaskState, RenderingTaskDefinition, AdvanceRenderingVerificationOptions
 from golem.task.TaskState import TaskStatus
 from TimeHelper import setTimeSpinBoxes, getTimeValues
 

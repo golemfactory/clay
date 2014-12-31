@@ -7,7 +7,7 @@ from golem.task.TaskState import SubtaskStatus
 
 from examples.gnr.RenderingEnvironment import PBRTEnvironment
 from examples.gnr.RenderingDirManager import getTestTaskPath
-from examples.gnr.TaskState import RendererDefaults, RendererInfo
+from examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 from examples.gnr.task.SceneFileEditor import regenerateFile
 from examples.gnr.task.GNRTask import GNROptions
 from examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder

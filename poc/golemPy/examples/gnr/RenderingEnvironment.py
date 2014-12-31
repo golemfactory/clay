@@ -6,11 +6,14 @@ from examples.gnr.task.ThreeDSMaxCfgEditor import regenerateFile
 
 logger = logging.getLogger(__name__)
 
+###########################################################################
 class ThreeDSMaxEnvironment( Environment ):
+    #########################
     @classmethod
     def getId( cls ):
         return "3DSMAX"
 
+    #########################
     def __init__( self ):
         Environment.__init__( self )
         self.software.append('3DS Max Studio 2015')
@@ -22,6 +25,7 @@ class ThreeDSMaxEnvironment( Environment ):
         self.shortDescription = "3DS MAX Studio command tool (http://www.autodesk.pl/products/3ds-max/overview)"
         self.path = ""
 
+    #########################
     def checkSoftware( self ):
         for var in self.softwareEnvVar:
             if os.environ.get( var ):
@@ -30,9 +34,11 @@ class ThreeDSMaxEnvironment( Environment ):
                     return True
         return False
 
+    #########################
     def supported( self ) :
         return self.checkSoftware()
 
+    #########################
     def get3dsmaxcmdPath ( self ):
         self.checkSoftware()
         if os.path.isfile( self.path ):
@@ -40,12 +46,13 @@ class ThreeDSMaxEnvironment( Environment ):
         else:
             return ""
 
+    #########################
     def setNThreads( self, numCores ):
         for var in self.softwareEnvVar:
             if os.environ.get( var ):
                 self.__rewriteCfgFile( var, numCores)
 
-
+    #########################
     def __rewriteCfgFile( self, var, numCores ):
         path = os.path.join( os.environ.get( var ), self.configFileName )
         backupPath = os.path.join( os.environ.get( var ), self.configFileBackup )
@@ -59,7 +66,7 @@ class ThreeDSMaxEnvironment( Environment ):
                 f.write( newCfg )
             return
 
-
+    #########################
     def getDefaultPreset( self ):
         for var in self.softwareEnvVar:
             if os.environ.get( var ):
@@ -68,25 +75,31 @@ class ThreeDSMaxEnvironment( Environment ):
                     return presetFile
         return ""
 
-
+###########################################################################
 class PBRTEnvironment ( Environment ):
+    #########################
     @classmethod
     def getId( cls ):
         return "PBRT"
 
+    #########################
     def __init__( self ):
         Environment.__init__( self )
         self.software.append('Windows')
         self.shortDescription =  "PBRT renderer (http://www.pbrt.org/)  "
 
+    #########################
     def supported( self ) :
         return True
 
+###########################################################################
 class VRayEnvironment( Environment ):
+    #########################
     @classmethod
     def getId( cls ):
         return "VRAY"
 
+    #########################
     def __init__( self ):
         Environment.__init__( self )
         self.software.append('Windows')
@@ -96,6 +109,7 @@ class VRayEnvironment( Environment ):
         self.softwareName = 'vray.exe'
         self.path = ""
 
+    #########################
     def checkSoftware( self ):
         if os.environ.get( self.softwareEnvVariable ):
             self.path = os.path.join( os.environ.get( self.softwareEnvVariable ), self.softwareName )
@@ -103,14 +117,14 @@ class VRayEnvironment( Environment ):
                 return True
         return False
 
+    #########################
     def supported( self ):
         return self.checkSoftware()
 
+    #########################
     def getCmdPath ( self ):
         self.checkSoftware()
         if os.path.isfile( self.path ):
             return self.path
         else:
             return ""
-
-

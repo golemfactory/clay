@@ -13,7 +13,7 @@ from golem.task.TaskState import SubtaskStatus
 from golem.task.TaskBase import ComputeTaskDef
 
 from examples.gnr.RenderingDirManager import getTmpPath
-from examples.gnr.TaskState import AdvanceRenderingVerificationOptions
+from examples.gnr.RenderingTaskState import AdvanceRenderingVerificationOptions
 from examples.gnr.task.RenderingTaskCollector import exr_to_pil
 from examples.gnr.task.ImgRepr import verifyImg, advanceVerifyImg
 from examples.gnr.task.GNRTask import GNRTask, GNRTaskBuilder

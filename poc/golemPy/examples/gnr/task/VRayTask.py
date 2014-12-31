@@ -6,7 +6,7 @@ import shutil
 
 from collections import OrderedDict
 
-from  examples.gnr.TaskState import RendererDefaults, RendererInfo
+from  examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 from  examples.gnr.task.GNRTask import GNROptions
 from  examples.gnr.task.RenderingTask import RenderingTask
 from  examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels

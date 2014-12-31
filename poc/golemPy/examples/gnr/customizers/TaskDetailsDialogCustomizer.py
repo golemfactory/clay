@@ -4,7 +4,7 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QMenu
 
 from golem.task.TaskState import TaskState, ComputerState
-from examples.gnr.TaskState import RenderingTaskState
+from examples.gnr.RenderingTaskState import RenderingTaskState
 from SubtaskContextMenuCustomizer import SubtaskContextMenuCustomizer
 
 from examples.gnr.ui.SubtaskTableEntry import SubtaskTableElem

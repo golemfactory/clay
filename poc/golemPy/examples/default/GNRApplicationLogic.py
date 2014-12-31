@@ -8,7 +8,7 @@ from PyQt4 import QtCore
 from examples.gnr.task.InfoTask import InfoTaskBuilder, InfoTaskDefinition
 from examples.gnr.task.UpdateOtherGolemsTask import UpdateOtherGolemsTaskBuilder, UpdateOtherGolemsTaskDefinition
 from golem.task.TaskState import TaskStatus
-from examples.gnr.TaskState import RenderingTaskState
+from examples.gnr.RenderingTaskState import RenderingTaskState
 from golem.task.TaskBase import Task
 from golem.task.TaskState import TaskState
 from golem.Client import GolemClientEventListener

@@ -8,7 +8,7 @@ from PyQt4 import QtCore
 from examples.gnr.task.InfoTask import InfoTaskBuilder, InfoTaskDefinition
 from examples.gnr.ui.TestingTaskProgressDialog import TestingTaskProgressDialog
 from golem.task.TaskState import TaskStatus
-from examples.gnr.TaskState import RenderingTaskState
+from examples.gnr.RenderingTaskState import RenderingTaskState
 from examples.gnr.task.TaskTester import TaskTester
 from golem.task.TaskBase import Task
 from golem.task.TaskState import TaskState

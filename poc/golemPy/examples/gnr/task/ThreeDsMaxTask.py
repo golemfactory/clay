@@ -14,7 +14,7 @@ from examples.gnr.task.GNRTask import  GNROptions
 from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
 from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
 from examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
-from examples.gnr.TaskState import RendererDefaults, RendererInfo
+from examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
 from examples.gnr.ui.ThreeDSMaxDialog import ThreeDSMaxDialog
 from examples.gnr.customizers.ThreeDSMaxDialogCustomizer import ThreeDSMaxDialogCustomizer

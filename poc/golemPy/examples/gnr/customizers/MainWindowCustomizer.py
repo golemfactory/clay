@@ -19,7 +19,7 @@ from examples.gnr.ui.EnvironmentsDialog import EnvironmentsDialog
 from examples.gnr.ui.UpdateOtherGolemsDialog import UpdateOtherGolemsDialog
 from examples.gnr.ui.AboutWindow import AboutWindow
 from examples.gnr.RenderingDirManager import getPreviewFile
-from examples.gnr.TaskState import RenderingTaskDefinition
+from examples.gnr.RenderingTaskState import RenderingTaskDefinition
 
 from examples.gnr.customizers.NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from examples.gnr.customizers.TaskContexMenuCustomizer import TaskContextMenuCustomizer
@@ -116,7 +116,7 @@ class MainWindowCustomizer:
 
     ############################
     def updateTaskAdditionalInfo( self, t ):
-        from examples.gnr.TaskState import RenderingTaskState
+        from examples.gnr.RenderingTaskState import RenderingTaskState
         assert isinstance( t, RenderingTaskState )
 
         self.currentTaskHighlighted = t

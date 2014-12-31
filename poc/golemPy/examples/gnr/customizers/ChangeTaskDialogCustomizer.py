@@ -3,7 +3,7 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
 
 from examples.gnr.ui.ChangeTaskDialog import ChangeTaskDialog
-from examples.gnr.TaskState import RenderingTaskDefinition
+from examples.gnr.RenderingTaskState import RenderingTaskDefinition
 from TimeHelper import setTimeSpinBoxes, getTimeValues
 
 import logging
