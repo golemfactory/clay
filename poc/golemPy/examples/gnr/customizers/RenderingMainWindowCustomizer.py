@@ -90,6 +90,24 @@ class RenderingMainWindowCustomizer ( GNRAdministratorMainWindowCustomizer ):
         assert isinstance( t, RenderingTaskState )
 
         self.currentTaskHighlighted = t
+        self.__setTimeParams( t )
+
+        if not isinstance( t.definition, RenderingTaskDefinition ):
+            return
+
+        self.__setRendererParams( t )
+        self.__setPBRTParams( t, isPBRT=( t.definition.renderer == u"PBRT")  )
+
+        if t.definition.renderer in frameRenderers and t.definition.rendererOptions.useFrames:
+            self.__setFramePreview( t )
+        else:
+            self.__setPreview( t )
+
+        self.__updateOutputFileColor()
+        self.currentTaskHighlighted = t
+
+    ############################
+    def __setTimeParams( self, t ):
         self.gui.ui.subtaskTimeout.setText( "{} minutes".format( int( t.definition.subtaskTimeout / 60.0 ) ) )
         self.gui.ui.fullTaskTimeout.setText( str( datetime.timedelta( seconds = t.definition.fullTaskTimeout ) ) )
         if t.taskState.timeStarted != 0.0:
@@ -97,53 +115,53 @@ class RenderingMainWindowCustomizer ( GNRAdministratorMainWindowCustomizer ):
             timeString  = time.strftime( "%Y.%m.%d  %H:%M:%S", lt )
             self.gui.ui.timeStarted.setText( timeString )
 
-        if not isinstance( t.definition, RenderingTaskDefinition ):
-            return
+    ############################
+    def __setRendererParams( self, t ):
         mem, index = resourceSizeToDisplay( t.definition.estimatedMemory / 1024 )
         self.gui.ui.estimatedMemoryLabel.setText( "{} {}".format( mem, translateResourceIndex( index ) ) )
         self.gui.ui.resolution.setText( "{} x {}".format( t.definition.resolution[ 0 ], t.definition.resolution[ 1 ] ) )
         self.gui.ui.renderer.setText( "{}".format( t.definition.renderer ) )
-        if t.definition.renderer == u"PBRT":
+
+    ############################
+    def __setPBRTParams( self, t, isPBRT = True ):
+        if isPBRT:
             self.gui.ui.algorithmType.setText( "{}".format( t.definition.rendererOptions.algorithmType ) )
-            self.gui.ui.algorithmTypeLabel.setVisible( True )
             self.gui.ui.pixelFilter.setText( "{}".format( t.definition.rendererOptions.pixelFilter ) )
-            self.gui.ui.pixelFilterLabel.setVisible( True )
             self.gui.ui.samplesPerPixel.setText( "{}".format( t.definition.rendererOptions.samplesPerPixelCount ) )
-            self.gui.ui.samplesPerPixelLabel.setVisible( True )
+
+        self.gui.ui.algorithmType.setVisible( isPBRT )
+        self.gui.ui.algorithmTypeLabel.setVisible( isPBRT )
+        self.gui.ui.pixelFilter.setVisible( isPBRT )
+        self.gui.ui.pixelFilterLabel.setVisible( isPBRT )
+        self.gui.ui.samplesPerPixel.setVisible( isPBRT )
+        self.gui.ui.samplesPerPixelLabel.setVisible( isPBRT )
+
+    ############################
+    def __setFramePreview( self, t ):
+        if "resultPreview" in t.taskState.extraData:
+            self.sliderPreviews = t.taskState.extraData[ "resultPreview" ]
+        self.gui.ui.frameSlider.setVisible( True )
+        self.gui.ui.frameSlider.setRange( 1, len( t.definition.rendererOptions.frames ) )
+        self.gui.ui.frameSlider.setSingleStep( 1 )
+        self.gui.ui.frameSlider.setPageStep( 1 )
+        self.__updateSliderPreview()
+        firstFrameName = self.__getFrameName( t.definition, 0 )
+        self.gui.ui.outputFile.setText( u"{}".format( firstFrameName ) )
+
+    ############################
+    def __setPreview( self, t ):
+        self.gui.ui.outputFile.setText( u"{}".format( t.definition.outputFile ) )
+        self.gui.ui.frameSlider.setVisible( False )
+        if "resultPreview" in t.taskState.extraData:
+            filePath = os.path.abspath( t.taskState.extraData["resultPreview"] )
+            time.sleep(0.5)
+            if os.path.exists( filePath ):
+                self.gui.ui.previewLabel.setPixmap( QPixmap( filePath ) )
+                self.lastPreviewPath = filePath
         else:
-            self.gui.ui.algorithmType.setText( "" )
-            self.gui.ui.algorithmTypeLabel.setVisible( False )
-            self.gui.ui.pixelFilter.setText( "" )
-            self.gui.ui.pixelFilterLabel.setVisible( False )
-            self.gui.ui.samplesPerPixel.setText( "" )
-            self.gui.ui.samplesPerPixelLabel.setVisible( False )
+            self.gui.ui.previewLabel.setPixmap( QPixmap( self.previewPath ) )
+            self.lastPreviewPath = self.previewPath
 
-
-        if t.definition.renderer in frameRenderers and t.definition.rendererOptions.useFrames:
-            if "resultPreview" in t.taskState.extraData:
-                self.sliderPreviews = t.taskState.extraData[ "resultPreview" ]
-            self.gui.ui.frameSlider.setVisible( True )
-            self.gui.ui.frameSlider.setRange( 1, len( t.definition.rendererOptions.frames ) )
-            self.gui.ui.frameSlider.setSingleStep( 1 )
-            self.gui.ui.frameSlider.setPageStep( 1 )
-            self.__updateSliderPreview()
-            firstFrameName = self.__getFrameName( t.definition, 0 )
-            self.gui.ui.outputFile.setText( u"{}".format( firstFrameName ) )
-        else:
-            self.gui.ui.outputFile.setText( u"{}".format( t.definition.outputFile ) )
-            self.gui.ui.frameSlider.setVisible( False )
-            if "resultPreview" in t.taskState.extraData:
-                filePath = os.path.abspath( t.taskState.extraData["resultPreview"] )
-                time.sleep(0.5)
-                if os.path.exists( filePath ):
-                    self.gui.ui.previewLabel.setPixmap( QPixmap( filePath ) )
-                    self.lastPreviewPath = filePath
-            else:
-                self.gui.ui.previewLabel.setPixmap( QPixmap( self.previewPath ) )
-                self.lastPreviewPath = self.previewPath
-
-        self.__updateOutputFileColor()
-        self.currentTaskHighlighted = t
 
     ############################
     def __getFrameName( self, definition, num ):
