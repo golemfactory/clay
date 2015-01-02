@@ -8,14 +8,14 @@ sys.path.append( os.environ.get( 'GOLEM' ) )
 from tools.UiGen import genUiFiles
 genUiFiles( "ui" )
 
-from GNRApplicationLogic import GNRApplicationLogic
+from RenderingApplicationLogic import RenderingApplicationLogic
 
 from Application import GNRGui
 from golem.Client import startClient
 
-from task.PbrtGNRTask import buildPBRTRendererInfo
-from task.ThreeDSMaxTask import build3dsMaxRendererInfo
-from task.VRayTask import buildVRayRendererInfo
+from examples.gnr.task.PbrtGNRTask import buildPBRTRendererInfo
+from examples.gnr.task.ThreeDSMaxTask import build3dsMaxRendererInfo
+from examples.gnr.task.VRayTask import buildVRayRendererInfo
 
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
 from golem.environments.Environment import Environment
@@ -24,7 +24,7 @@ def main():
 
     logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
 
-    logic   = GNRApplicationLogic()
+    logic   = RenderingApplicationLogic()
     app     = GNRGui( logic )
 
     try:

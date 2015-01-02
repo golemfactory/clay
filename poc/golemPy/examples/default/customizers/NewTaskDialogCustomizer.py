@@ -8,6 +8,7 @@ from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 
 from examples.gnr.customizers.AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
 from examples.gnr.RenderingTaskState import RenderingTaskState, RenderingTaskDefinition
+from examples.gnr.GNRTaskState import GNRTaskDefinition
 from golem.task.TaskState import TaskStatus
 from examples.gnr.customizers.TimeHelper import setTimeSpinBoxes, getTimeValues
 from examples.default.TaskType import buildPythonGNRTaskType
@@ -98,7 +99,6 @@ class NewTaskDialogCustomizer:
 
         self.gui.ui.mainProgramFileLineEdit.setText( definition.mainProgramFile )
 
-        self.gui.ui.totalSpinBox.setRange( r.defaults.minSubtasks, r.defaults.maxSubtasks )
         self.gui.ui.totalSpinBox.setValue( definition.totalSubtasks )
         self.gui.ui.totalSpinBox.setEnabled( not definition.optimizeTotal )
         self.gui.ui.optimizeTotalCheckBox.setChecked( definition.optimizeTotal )
@@ -163,9 +163,6 @@ class NewTaskDialogCustomizer:
             definition.totalSubtasks = 0
         else:
             definition.totalSubtasks = self.gui.ui.totalSpinBox.value()
-
-        if self.addTaskResourcesDialogCustomizer:
-            definition.resources         = self.rendererOptions.addToResources( self.addTaskResourcesDialogCustomizer.resources )
 
         definition.resources.add( os.path.normpath( definition.mainProgramFile ) )
 

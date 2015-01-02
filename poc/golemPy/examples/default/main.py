@@ -9,7 +9,7 @@ from tools.UiGen import genUiFiles
 genUiFiles( "ui" )
 
 from golem.network.transport.reactor import importReactor
-from GNRApplicationLogic import GNRApplicationLogic
+from examples.gnr.GNRApplicationLogic import GNRApplicationLogic
 from examples.default.TaskType import buildPBRTTaskType, build3dsMaxTaskType, buildVRayTaskType, buildPythonGNRTaskType
 from Application import GNRGui
 from golem.environments.Environment import Environment

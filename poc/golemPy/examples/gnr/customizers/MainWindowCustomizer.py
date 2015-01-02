@@ -47,8 +47,6 @@ class MainWindowCustomizer:
     ############################
     def __init__( self, gui, logic ):
 
-        assert isinstance( gui, GNRMainWindow )
-
         self.gui    = gui
         self.logic  = logic
 
