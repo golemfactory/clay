@@ -3,7 +3,7 @@ import os
 
 from examples.gnr.GNRApplicationLogic import GNRApplicationLogic
 from examples.gnr.RenderingTaskState import RenderingTaskState
-from examples.gnr.customizers.MainWindowCustomizer import RenderingMainWindowCustomizer
+from examples.gnr.customizers.RenderingMainWindowCustomizer import RenderingMainWindowCustomizer
 
 logger = logging.getLogger(__name__)
 
