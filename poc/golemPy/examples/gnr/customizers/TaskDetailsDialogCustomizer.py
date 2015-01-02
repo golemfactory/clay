@@ -12,7 +12,7 @@ from examples.gnr.ui.SubtaskTableEntry import SubtaskTableElem
 class TaskDetailsDialogCustomizer:
     ###########################
     def __init__( self, gui, logic, gnrTaskState ):
-        assert isinstance( gnrTaskState, RenderingTaskState )
+    #    assert isinstance( gnrTaskState, RenderingTaskState )
         self.gui            = gui
         self.logic          = logic
         self.gnrTaskState   = gnrTaskState

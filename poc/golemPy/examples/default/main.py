@@ -9,20 +9,25 @@ from tools.UiGen import genUiFiles
 genUiFiles( "ui" )
 
 from golem.network.transport.reactor import importReactor
-from examples.gnr.GNRApplicationLogic import GNRApplicationLogic
-from examples.default.TaskType import buildPBRTTaskType, build3dsMaxTaskType, buildVRayTaskType, buildPythonGNRTaskType
-from Application import GNRGui
 from golem.environments.Environment import Environment
-from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
-from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
 from golem.Client import startClient
+
+from examples.gnr.GNRApplicationLogic import GNRApplicationLogic
+from examples.gnr.Application import GNRGui
+from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
 from examples.gnr.InfoServer import InfoServer
+
+from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
+
+from examples.default.TaskType import buildPBRTTaskType, build3dsMaxTaskType, buildVRayTaskType, buildPythonGNRTaskType
+from examples.default.ui.MainWindow import GNRMainWindow
+
 
 def main():
     logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
 
     logic = GNRApplicationLogic()
-    app     = GNRGui( logic )
+    app     = GNRGui( logic, GNRMainWindow )
 
     logic.registerGui( app.getMainWindow() )
 

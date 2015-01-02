@@ -1,12 +1,11 @@
 import sys
 from PyQt4.QtGui import QApplication
-from examples.gnr.ui.MainWindow import GNRMainWindow
 
 class GNRGui:
     ############################
-    def __init__( self, appLogic ):
+    def __init__( self, appLogic, mainWindowClass ):
         self.app            = QApplication( sys.argv )
-        self.mainWindow     = GNRMainWindow()
+        self.mainWindow     = mainWindowClass()
         self.appLogic       = appLogic
 
     ############################

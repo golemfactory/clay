@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MainWindow</class>
- <widget class="QMainWindow" name="MainWindow">
+ <class>AdministrationMainWindow</class>
+ <widget class="QMainWindow" name="AdministrationMainWindow">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -564,6 +564,9 @@
     <addaction name="actionNew"/>
     <addaction name="actionLoadTask"/>
     <addaction name="separator"/>
+    <addaction name="actionSendTestTasks"/>
+    <addaction name="actionUpdateOtherGolems"/>
+    <addaction name="actionSendInfoTask"/>
    </widget>
    <widget class="QMenu" name="menuProperties">
     <property name="title">
@@ -577,6 +580,7 @@
      <string>View</string>
     </property>
     <addaction name="actionStatus"/>
+    <addaction name="actionStartNodesManager"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
@@ -618,16 +622,6 @@
     <string>Status</string>
    </property>
   </action>
-  <action name="actionStartNodesManager">
-   <property name="text">
-    <string>Start Node Manager</string>
-   </property>
-  </action>
-  <action name="actionSendInfoTask">
-   <property name="text">
-    <string>Send Info Task</string>
-   </property>
-  </action>
   <action name="actionEnvironments">
    <property name="text">
     <string>Environments</string>
@@ -641,14 +635,24 @@
     <string>Send Test Tasks</string>
    </property>
   </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
   <action name="actionUpdateOtherGolems">
    <property name="text">
     <string>Update Other Golems</string>
    </property>
   </action>
-  <action name="actionAbout">
+  <action name="actionSendInfoTask">
    <property name="text">
-    <string>About</string>
+    <string>Send Info Task</string>
+   </property>
+  </action>
+  <action name="actionStartNodesManager">
+   <property name="text">
+    <string>Start Nodes Manager</string>
    </property>
   </action>
  </widget>

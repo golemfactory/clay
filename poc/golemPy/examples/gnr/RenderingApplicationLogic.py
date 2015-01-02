@@ -3,7 +3,7 @@ import os
 
 from examples.gnr.GNRApplicationLogic import GNRApplicationLogic
 from examples.gnr.RenderingTaskState import RenderingTaskState
-from examples.gnr.customizers.MainWindowCustomizer import MainWindowCustomizer
+from examples.gnr.customizers.MainWindowCustomizer import RenderingMainWindowCustomizer
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class RenderingApplicationLogic( GNRApplicationLogic ):
 
     ######################
     def registerGui( self, gui ):
-        self.customizer = MainWindowCustomizer( gui, self )
+        self.customizer = RenderingMainWindowCustomizer( gui, self )
 
 
     ######################

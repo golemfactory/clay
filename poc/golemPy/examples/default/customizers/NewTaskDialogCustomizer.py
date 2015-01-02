@@ -132,7 +132,7 @@ class NewTaskDialogCustomizer:
         self.taskState = RenderingTaskState()
         self.taskState.status = TaskStatus.notStarted
         self.taskState.definition = self.__queryTaskDefinition()
-        self.taskState.definition.taskType = buildPythonGNRTaskType()
+        self.taskState.definition.taskType = u"{}".format( self.gui.ui.taskTypeComboBox.currentText() )
         self.logic.addTasks( [ self.taskState ] )
         self.gui.window.close()
 

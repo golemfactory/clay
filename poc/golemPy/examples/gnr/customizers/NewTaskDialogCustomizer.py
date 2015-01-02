@@ -156,8 +156,8 @@ class NewTaskDialogCustomizer:
     # SLOTS
     #############################
     def __taskTableRowClicked( self, row ):
-        if row < self.gui.ui.renderTaskTableWidget.rowCount():
-            taskId = self.gui.ui.renderTaskTableWidget.item( row, 0 ).text()
+        if row < self.gui.ui.taskTableWidget.rowCount():
+            taskId = self.gui.ui.taskTableWidget.item( row, 0 ).text()
             taskId = "{}".format( taskId )
             self.updateTaskAdditionalInfo( taskId )
 

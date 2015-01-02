@@ -14,7 +14,8 @@ from golem.task.TaskBase import Task
 from golem.task.TaskState import TaskState
 from golem.Client import GolemClientEventListener
 from golem.manager.client.NodesManagerClient import NodesManagerUidClient, NodesManagerClient
-from examples.default.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
+#from examples.default.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
+from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdministratorMainWindowCustomizer
 
 from testtasks.minilight.src.minilight import makePerfTest
 
@@ -51,7 +52,7 @@ class GNRApplicationLogic( QtCore.QObject ):
 
     ######################
     def registerGui( self, gui ):
-        self.customizer = GNRMainWindowCustomizer( gui, self )
+        self.customizer = GNRAdministratorMainWindowCustomizer( gui, self )
 
     ######################
     def registerClient( self, client ):
@@ -200,7 +201,11 @@ class GNRApplicationLogic( QtCore.QObject ):
 
     ######################
     def _getBuilder( self, taskState ):
-        return self.taskTypes[ taskState.definition.taskType.name ].taskBuilderType( self.client.getId(), taskState.definition, self.client.getRootPath( ) )
+        #FIXME Bardzo tymczasowe rozwiazanie dla zapewnienia zgodnosci
+        if hasattr(taskState.definition, "renderer"):
+            taskState.definition.taskType = taskState.definition.renderer
+
+        return self.taskTypes[ taskState.definition.taskType ].taskBuilderType( self.client.getId(), taskState.definition, self.client.getRootPath( ) )
 
     ######################
     def restartTask( self, taskId ):

@@ -18,7 +18,7 @@ from examples.gnr.task.PbrtGNRTask import buildPBRTRendererInfo
 from examples.gnr.task.ThreeDSMaxTask import build3dsMaxRendererInfo
 from examples.gnr.task.VRayTask import buildVRayRendererInfo
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
-from examples.gnr.ui.MainWindow import GNRMainWindow
+from examples.gnr.ui.AdministrationMainWindow import AdministrationMainWindow
 from examples.gnr.Application import GNRGui
 
 
@@ -27,7 +27,7 @@ def main():
     logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
 
     logic   = RenderingApplicationLogic()
-    app     = GNRGui( logic, GNRMainWindow )
+    app     = GNRGui( logic, AdministrationMainWindow )
 
     try:
         import qt4reactor
