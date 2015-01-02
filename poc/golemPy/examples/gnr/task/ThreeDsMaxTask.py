@@ -200,13 +200,13 @@ class ThreeDSMaxTask( FrameRenderingTask ):
             frames = []
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
-                                    "startTask" : 0,
+                                    "startTask" : 1,
                                     "endTask" : 1,
                                     "totalTasks" : self.totalTasks,
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFile" : sceneFile,
                                     "width" : 1,
-                                    "height": 1,
+                                    "height": self.totalTasks,
                                     "presetFile": presetFile,
                                     "cmdFile": cmdFile,
                                     "numCores": 0,

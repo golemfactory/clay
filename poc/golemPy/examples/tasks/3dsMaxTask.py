@@ -8,7 +8,7 @@ import subprocess
 import win32process
 
 def format3dsMaxCmd( cmdFile, startTask, endTask, totalTasks, outputFile, outfilebasename, scenefile, width, height, presetFile, overlap ):
-    cmd = '{} -outputName:{}\\{}.exr -strip:{},{},{} "{}" -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile,outputFile,  outfilebasename, totalTasks, overlap, startTask, scenefile, width, height, presetFile )
+    cmd = '{} -outputName:{}\\{}.exr -strip:{},{},{} "{}" -frames:0 -stillFrame -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile,outputFile,  outfilebasename, totalTasks, overlap, startTask, scenefile, width, height, presetFile )
     return cmd
 
 def format3dsMaxCmdWithFrames( cmdFile, frames, outputFile, outfilebasename, scenefile, width, height, presetFile ):
