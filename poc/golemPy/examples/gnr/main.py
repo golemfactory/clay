@@ -18,7 +18,7 @@ from examples.gnr.task.PbrtGNRTask import buildPBRTRendererInfo
 from examples.gnr.task.ThreeDSMaxTask import build3dsMaxRendererInfo
 from examples.gnr.task.VRayTask import buildVRayRendererInfo
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
-from examples.gnr.ui.MainWindow import RenderingMainWindow
+from examples.gnr.ui.RenderingMainWindow import RenderingMainWindow
 from examples.gnr.Application import GNRGui
 from examples.gnr.customizers.RenderingMainWindowCustomizer import RenderingMainWindowCustomizer
 

@@ -15,7 +15,7 @@ from examples.gnr.RenderingTaskState import RenderingTaskDefinition
 
 from examples.gnr.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
 from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdministratorMainWindowCustomizer
-from examples.gnr.customizers.NewTaskDialogCustomizer import RenderingNewTaskDialogCustomizer
+from examples.gnr.customizers.RenderingNewTaskDialogCustomizer import RenderingNewTaskDialogCustomizer
 
 from examples.gnr.customizers.MemoryHelper import resourceSizeToDisplay, translateResourceIndex
 
