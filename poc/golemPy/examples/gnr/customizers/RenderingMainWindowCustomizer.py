@@ -13,7 +13,7 @@ from examples.gnr.ui.NewTaskDialog import NewTaskDialog
 from examples.gnr.RenderingDirManager import getPreviewFile
 from examples.gnr.RenderingTaskState import RenderingTaskDefinition
 
-#from examples.gnr.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
+from examples.gnr.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
 from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdministratorMainWindowCustomizer
 from examples.gnr.customizers.NewTaskDialogCustomizer import NewTaskDialogCustomizer
 
@@ -50,19 +50,16 @@ def insertItem( root, pathTable ):
         insertItem( newChild, pathTable[ 1: ] )
 
 #######################################################################################
-class RenderingMainWindowCustomizer ( GNRAdministratorMainWindowCustomizer ):
+class AbsRenderingMainWindowCustomizer ( object ):
     ############################
-    def __init__( self, gui, logic ):
-        GNRAdministratorMainWindowCustomizer.__init__( self, gui, logic )
-
+    def _setRenderingVariables( self ):
         self.previewPath = os.path.join( os.environ.get('GOLEM'), "examples\\gnr", getPreviewFile() )
         self.lastPreviewPath = self.previewPath
         self.sliderPreviews = {}
         self.gui.ui.frameSlider.setVisible( False )
 
     #############################
-    def _setupConnections( self ):
-        GNRAdministratorMainWindowCustomizer._setupConnections( self )
+    def _setupRenderingConnections( self ):
         self._setupRenderingConnections()
         self._setupAdvanceTaskConnections()
 
@@ -302,3 +299,15 @@ class RenderingMainWindowCustomizer ( GNRAdministratorMainWindowCustomizer ):
                 p.end()
                 self.gui.ui.previewLabel.setPixmap( pixmap )
 
+class RenderingMainWindowCustomizer( AbsRenderingMainWindowCustomizer, GNRMainWindowCustomizer ):
+    def __init__( self, gui, logic ):
+        GNRMainWindowCustomizer.__init__( self, gui, logic )
+        self._setRenderingVariables()
+        self._setupRenderingConnections()
+
+
+class RenderingAdmMainWindowCustomizer( AbsRenderingMainWindowCustomizer, GNRAdministratorMainWindowCustomizer ):
+    def __init__( self, gui, logic ):
+        GNRAdministratorMainWindowCustomizer.__init__( self, gui, logic )
+        self._setRenderingVariables()
+        self._setupRenderingConnections()

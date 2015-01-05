@@ -15,7 +15,7 @@ class MainWindow( QMainWindow ):
         else:
             event.ignore()
 
-class GNRMainWindow:
+class RenderingMainWindow:
     ##########################
     def __init__( self ):
         self.window     = MainWindow()

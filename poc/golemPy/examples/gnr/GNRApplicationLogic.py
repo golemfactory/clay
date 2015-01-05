@@ -14,7 +14,7 @@ from golem.task.TaskBase import Task
 from golem.task.TaskState import TaskState
 from golem.Client import GolemClientEventListener
 from golem.manager.client.NodesManagerClient import NodesManagerUidClient, NodesManagerClient
-#from examples.default.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
+
 from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdministratorMainWindowCustomizer
 
 from testtasks.minilight.src.minilight import makePerfTest
@@ -51,8 +51,12 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.startNodesManagerFunction = lambda: None
 
     ######################
-    def registerGui( self, gui ):
-        self.customizer = GNRAdministratorMainWindowCustomizer( gui, self )
+    def registerGui( self, gui, customizerClass ):
+        self.customizer = customizerClass( gui, self )
+
+    ######################
+#    def registerGui( self, gui ):
+ #       self.customizer = GNRAdministratorMainWindowCustomizer( gui, self )
 
     ######################
     def registerClient( self, client ):

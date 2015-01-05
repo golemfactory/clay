@@ -18,8 +18,9 @@ from examples.gnr.task.PbrtGNRTask import buildPBRTRendererInfo
 from examples.gnr.task.ThreeDSMaxTask import build3dsMaxRendererInfo
 from examples.gnr.task.VRayTask import buildVRayRendererInfo
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
-from examples.gnr.ui.MainWindow import GNRMainWindow
+from examples.gnr.ui.MainWindow import RenderingMainWindow
 from examples.gnr.Application import GNRGui
+from examples.gnr.customizers.RenderingMainWindowCustomizer import RenderingMainWindowCustomizer
 
 
 def main():
@@ -27,7 +28,7 @@ def main():
     logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
 
     logic   = RenderingApplicationLogic()
-    app     = GNRGui( logic, GNRMainWindow )
+    app     = GNRGui( logic, RenderingMainWindow )
 
     try:
         import qt4reactor
@@ -37,7 +38,7 @@ def main():
     qt4reactor.install()
     from twisted.internet import reactor
 
-    logic.registerGui( app.getMainWindow() )
+    logic.registerGui( app.getMainWindow(), RenderingMainWindowCustomizer )
 
     logic.registerNewRendererType( buildPBRTRendererInfo() )
     logic.registerNewRendererType( build3dsMaxRendererInfo() )

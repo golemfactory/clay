@@ -20,6 +20,7 @@ from examples.gnr.task.VRayTask import buildVRayRendererInfo
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
 from examples.gnr.ui.AdministrationMainWindow import AdministrationMainWindow
 from examples.gnr.Application import GNRGui
+from examples.gnr.customizers.RenderingMainWindowCustomizer import RenderingAdmMainWindowCustomizer
 
 
 def main():
@@ -37,7 +38,7 @@ def main():
     qt4reactor.install()
     from twisted.internet import reactor
 
-    logic.registerGui( app.getMainWindow() )
+    logic.registerGui( app.getMainWindow(), RenderingAdmMainWindowCustomizer )
 
     logic.registerNewRendererType( buildPBRTRendererInfo() )
     logic.registerNewRendererType( build3dsMaxRendererInfo() )

@@ -40,11 +40,6 @@ class RenderingApplicationLogic( GNRApplicationLogic ):
             assert False, "Renderer {} already registered".format( renderer.name )
 
     ######################
-    def registerGui( self, gui ):
-        self.customizer = RenderingMainWindowCustomizer( gui, self )
-
-
-    ######################
     def setCurrentRenderer( self, rname ):
         if rname in self.renderers:
             self.currentRenderer = self.renderers[ rname ]
