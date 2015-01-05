@@ -470,6 +470,7 @@ class VRayTask( FrameRenderingTask ):
         num = str( frameNum )
         return "{}{}.{}".format( self.outfilebasename, num.zfill( 4 ), self.outputFormat )
 
+    #######################
     def _runTask(self, srcCode, scope):
         exec srcCode in scope
         trFiles = [ self._unpackTaskResult( file_, self.tmpDir ) for file_ in scope['output'] ]
@@ -481,7 +482,10 @@ class VRayTask( FrameRenderingTask ):
             for trFile in trFiles:
                 if not self.__isAlphaFile( trFile):
                     return trFile
-        return trFiles[0]
+        if len( trFiles ) > 0:
+            return trFiles[0]
+        else:
+            return None
 
 
 

@@ -41,8 +41,11 @@ class TaskDetailsDialogCustomizer:
 
         for k in self.subtaskTableElements:
             elem = self.subtaskTableElements[ k ]
-            ss = self.gnrTaskState.taskState.subtaskStates[ elem.subtaskId ]
-            elem.update( ss.subtaskProgress, ss.subtaskStatus, ss.subtaskRemTime )
+            if elem.subtaskId in self.gnrTaskState.taskState.subtaskStates:
+                ss = self.gnrTaskState.taskState.subtaskStates[ elem.subtaskId ]
+                elem.update( ss.subtaskProgress, ss.subtaskStatus, ss.subtaskRemTime )
+            else:
+                del self.subtaskTableElements[ k ]
 
     ###########################
     def __setupConnections( self ):
