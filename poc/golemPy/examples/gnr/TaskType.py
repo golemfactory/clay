@@ -1,7 +1,7 @@
 from examples.gnr.task.PbrtGNRTask import PbrtTaskBuilder
 from examples.gnr.task.VRayTask import VRayTaskBuilder
 from examples.gnr.task.ThreeDSMaxTask import ThreeDSMaxTaskBuilder
-from examples.default.task.PythonGNRTask import PythonGNRTaskBuilder
+from examples.gnr.task.PythonGNRTask import PythonGNRTaskBuilder
 
 def buildPBRTTaskType():
     return TaskType( "PBRT", PbrtTaskBuilder )

@@ -1,6 +1,6 @@
 from PyQt4.QtGui import QMainWindow, QPixmap, QMessageBox
 
-from examples.default.ui.gen.ui_MainWindow import Ui_MainWindow
+from examples.gnr.ui.gen.ui_MainWindow import Ui_MainWindow
 
 class MainWindow( QMainWindow ):
 

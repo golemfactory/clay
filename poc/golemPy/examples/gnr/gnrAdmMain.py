@@ -21,7 +21,7 @@ from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
 
 from examples.gnr.TaskType import buildPBRTTaskType, build3dsMaxTaskType, buildVRayTaskType, buildPythonGNRTaskType
 from examples.gnr.ui.MainWindow import GNRMainWindow
-from examples.gnr.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
+from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdministratorMainWindowCustomizer
 
 
 def main():
@@ -30,7 +30,7 @@ def main():
     logic = GNRApplicationLogic()
     app     = GNRGui( logic, GNRMainWindow )
 
-    logic.registerGui( app.getMainWindow(), GNRMainWindowCustomizer )
+    logic.registerGui( app.getMainWindow(), GNRAdministratorMainWindowCustomizer )
 
     logic.registerNewTaskType( buildPBRTTaskType() )
 
@@ -68,7 +68,5 @@ def main():
 
     app.execute( False )
     reactor.run()
-
-
 
 main()

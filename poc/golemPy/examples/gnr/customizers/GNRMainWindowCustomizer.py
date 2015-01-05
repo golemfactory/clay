@@ -17,7 +17,7 @@ from examples.gnr.ui.AboutWindow import AboutWindow
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 from examples.gnr.ui.EnvironmentsDialog import EnvironmentsDialog
 
-from examples.default.customizers.NewTaskDialogCustomizer import NewTaskDialogCustomizer
+from examples.gnr.customizers.NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from examples.gnr.customizers.TaskContexMenuCustomizer import TaskContextMenuCustomizer
 from examples.gnr.customizers.TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
 from examples.gnr.customizers.SubtaskDetailsDialogCustomizer import SubtaskDetailsDialogCustomizer
