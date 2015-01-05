@@ -95,8 +95,8 @@ class RenderingApplicationLogic( GNRApplicationLogic ):
                 os.remove(outputFile)
             return True
         except IOError:
-            self.__showErrorWindow( "Cannot open file: {}".format( outputFile ))
+            self._showErrorWindow( "Cannot open file: {}".format( outputFile ))
             return False
         except:
-            self.__showErrorWindow( "Output file is not properly set" )
+            self._showErrorWindow( "Output file is not properly set" )
             return False
