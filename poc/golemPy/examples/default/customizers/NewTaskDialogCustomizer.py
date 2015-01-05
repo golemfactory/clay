@@ -3,15 +3,14 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
 from copy import deepcopy
 
-from examples.default.ui.NewTaskDialog import NewTaskDialog
+from examples.gnr.ui.NewTaskDialog import NewTaskDialog
 from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 
 from examples.gnr.customizers.AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
-from examples.gnr.RenderingTaskState import RenderingTaskState, RenderingTaskDefinition
+from examples.gnr.RenderingTaskState import RenderingTaskState
 from examples.gnr.GNRTaskState import GNRTaskDefinition
 from golem.task.TaskState import TaskStatus
 from examples.gnr.customizers.TimeHelper import setTimeSpinBoxes, getTimeValues
-from examples.default.TaskType import buildPythonGNRTaskType
 
 import logging
 

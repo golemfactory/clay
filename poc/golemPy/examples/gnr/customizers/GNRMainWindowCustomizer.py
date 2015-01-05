@@ -7,7 +7,7 @@ from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
 logger = logging.getLogger(__name__)
 
-from examples.default.ui.NewTaskDialog import NewTaskDialog
+from examples.gnr.ui.NewTaskDialog import NewTaskDialog
 from examples.gnr.ui.TaskTableElem import TaskTableElem
 from examples.gnr.ui.TaskDetailsDialog import TaskDetailsDialog
 from examples.gnr.ui.SubtaskDetailsDialog import SubtaskDetailsDialog
@@ -18,7 +18,6 @@ from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 from examples.gnr.ui.EnvironmentsDialog import EnvironmentsDialog
 
 from examples.default.customizers.NewTaskDialogCustomizer import NewTaskDialogCustomizer
-#from examples.gnr.customizers.NewTaskDialogCustomizer import NewTaskDialogCustomizer
 from examples.gnr.customizers.TaskContexMenuCustomizer import TaskContextMenuCustomizer
 from examples.gnr.customizers.TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
 from examples.gnr.customizers.SubtaskDetailsDialogCustomizer import SubtaskDetailsDialogCustomizer

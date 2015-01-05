@@ -3,7 +3,7 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
 from copy import deepcopy
 
-from examples.gnr.ui.NewTaskDialog import NewTaskDialog
+from examples.gnr.ui.RenderingNewTaskDialog import NewTaskDialog
 from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 
 from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
@@ -15,7 +15,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class NewTaskDialogCustomizer:
+class RenderingNewTaskDialogCustomizer:
     #############################
     def __init__( self, gui, logic ):
 

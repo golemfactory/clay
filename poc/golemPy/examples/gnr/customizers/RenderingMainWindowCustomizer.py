@@ -8,14 +8,14 @@ from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen
 from golem.task.TaskState import SubtaskStatus
 
 from examples.gnr.ui.ShowTaskResourcesDialog import ShowTaskResourcesDialog
-from examples.gnr.ui.NewTaskDialog import NewTaskDialog
+from examples.gnr.ui.RenderingNewTaskDialog import NewTaskDialog
 
 from examples.gnr.RenderingDirManager import getPreviewFile
 from examples.gnr.RenderingTaskState import RenderingTaskDefinition
 
 from examples.gnr.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
 from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdministratorMainWindowCustomizer
-from examples.gnr.customizers.NewTaskDialogCustomizer import NewTaskDialogCustomizer
+from examples.gnr.customizers.NewTaskDialogCustomizer import RenderingNewTaskDialogCustomizer
 
 from examples.gnr.customizers.MemoryHelper import resourceSizeToDisplay, translateResourceIndex
 
@@ -79,7 +79,7 @@ class AbsRenderingMainWindowCustomizer ( object ):
 
     ############################
     def _setNewTaskDialogCustomizer( self ):
-        self.newTaskDialogCustomizer = NewTaskDialogCustomizer( self.newTaskDialog, self.logic )
+        self.newTaskDialogCustomizer = RenderingNewTaskDialogCustomizer( self.newTaskDialog, self.logic )
 
     ############################
     def updateTaskAdditionalInfo( self, t ):
