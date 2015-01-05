@@ -1,11 +1,10 @@
 import os
 import logging
 import uuid
-import glob
 import cPickle as pickle
 from PyQt4 import QtCore
 
-from examples.gnr.task.InfoTask import InfoTaskBuilder, InfoTaskDefinition
+
 from examples.gnr.ui.TestingTaskProgressDialog import TestingTaskProgressDialog
 from golem.task.TaskState import TaskStatus
 from examples.gnr.GNRTaskState import GNRTaskState
@@ -14,8 +13,6 @@ from golem.task.TaskBase import Task
 from golem.task.TaskState import TaskState
 from golem.Client import GolemClientEventListener
 from golem.manager.client.NodesManagerClient import NodesManagerUidClient, NodesManagerClient
-
-from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdministratorMainWindowCustomizer
 
 from testtasks.minilight.src.minilight import makePerfTest
 
@@ -48,15 +45,10 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.rootPath           = os.path.join( os.environ.get('GOLEM'), 'examples/gnr' )
         self.nodesManagerClient = None
         self.addNewNodesFunction = lambda x: None
-        self.startNodesManagerFunction = lambda: None
 
     ######################
     def registerGui( self, gui, customizerClass ):
         self.customizer = customizerClass( gui, self )
-
-    ######################
-#    def registerGui( self, gui ):
- #       self.customizer = GNRAdministratorMainWindowCustomizer( gui, self )
 
     ######################
     def registerClient( self, client ):
@@ -66,14 +58,6 @@ class GNRApplicationLogic( QtCore.QObject ):
     ######################
     def registerStartNewNodeFunction( self, func ):
         self.addNewNodesFunction = func
-
-    ######################
-    def registerStartNodesManagerFunction( self, func ):
-        self.startNodesManagerFunction = func
-
-    ######################
-    def startNodesManagerServer( self ):
-        self.startNodesManagerFunction()
 
     ######################
     def checkNetworkState( self ):
@@ -147,41 +131,6 @@ class GNRApplicationLogic( QtCore.QObject ):
             self.nodesManagerClient.start()
             self.client.registerNodesManagerClient( self.nodesManagerClient )
         self.client.changeConfig( cfgDesc )
-
-    ######################
-    def sendInfoTask( self, iterations, fullTaskTimeout, subtaskTimeout ):
-        infoTaskDefinition = InfoTaskDefinition()
-        infoTaskDefinition.taskId           = "{}".format( uuid.uuid4() )
-        infoTaskDefinition.srcFile          = os.path.join( os.environ.get('GOLEM'), "examples\\tasks\\sendSnapshot.py" )
-        infoTaskDefinition.totalSubtasks    = iterations
-        infoTaskDefinition.fullTaskTimeout  = fullTaskTimeout
-        infoTaskDefinition.subtaskTimeout   = subtaskTimeout
-        infoTaskDefinition.managerAddress   = self.client.configDesc.managerAddress
-        infoTaskDefinition.managerPort      = self.client.configDesc.managerPort
-
-        taskBuilder = InfoTaskBuilder( self.client.getId(),
-                                          infoTaskDefinition,
-                                        self.client.getRootPath() )
-
-        task = Task.buildTask(  taskBuilder )
-        self.addTaskFromDefinition( infoTaskDefinition )
-        self.client.enqueueNewTask( task )
-
-    ######################
-    def sendTestTasks( self ):
-        path = os.path.join( os.environ.get( 'GOLEM' ), 'save/test')
-        files = glob.glob( os.path.join( path, '*.gt' ) )
-        tasks = []
-        for file in files:
-            taskState = self._getNewTaskState()
-            taskState.status = TaskStatus.notStarted
-            taskState.definition = pickle.loads( open( file, 'r' ).read() )
-            import uuid
-            taskState.definition.taskId = "{}".format( uuid.uuid4() )
-            tasks.append( taskState )
-        self.addTasks ( tasks )
-        for task in tasks:
-            self.startTask( task.definition.taskId )
 
     ######################
     def _getNewTaskState( self ):
@@ -259,7 +208,6 @@ class GNRApplicationLogic( QtCore.QObject ):
             self.customizer.updateTaskAdditionalInfo( task )
         else:
             logger.error("It's not my task: {} ", taskId )
-
 
     ######################
     def getTestTasks( self ):

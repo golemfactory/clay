@@ -2,15 +2,15 @@ import logging
 import os
 
 from examples.gnr.GNRApplicationLogic import GNRApplicationLogic
+from examples.gnr.GNRAdmApplicationLogic import GNRAdmApplicationLogic
 from examples.gnr.RenderingTaskState import RenderingTaskState
-from examples.gnr.customizers.RenderingMainWindowCustomizer import RenderingMainWindowCustomizer
 
 logger = logging.getLogger(__name__)
 
-class RenderingApplicationLogic( GNRApplicationLogic ):
+##################################################################
+class AbsRenderingApplicationLogic( object ):
     ######################
     def __init__( self ):
-        GNRApplicationLogic.__init__( self )
         self.renderers          = {}
         self.currentRenderer    = None
         self.defaultRenderer    = None
@@ -100,3 +100,16 @@ class RenderingApplicationLogic( GNRApplicationLogic ):
         except:
             self._showErrorWindow( "Output file is not properly set" )
             return False
+
+##################################################################
+class RenderingApplicationLogic( AbsRenderingApplicationLogic, GNRApplicationLogic ):
+    def __init__( self ):
+        GNRApplicationLogic.__init__( self )
+        AbsRenderingApplicationLogic.__init__( self )
+
+##################################################################
+class RenderingAdmApplicationLogic( AbsRenderingApplicationLogic, GNRAdmApplicationLogic ):
+    def __init__( self ):
+        GNRAdmApplicationLogic.__init__( self )
+        AbsRenderingApplicationLogic.__init__( self )
+

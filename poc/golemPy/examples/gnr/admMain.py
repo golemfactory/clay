@@ -8,7 +8,7 @@ sys.path.append( os.environ.get( 'GOLEM' ) )
 from tools.UiGen import genUiFiles
 genUiFiles( "ui" )
 
-from RenderingApplicationLogic import RenderingApplicationLogic
+from RenderingApplicationLogic import RenderingAdmApplicationLogic
 
 
 from golem.Client import startClient
@@ -27,7 +27,7 @@ def main():
 
     logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
 
-    logic   = RenderingApplicationLogic()
+    logic   = RenderingAdmApplicationLogic()
     app     = GNRGui( logic, AdministrationMainWindow )
 
     try:

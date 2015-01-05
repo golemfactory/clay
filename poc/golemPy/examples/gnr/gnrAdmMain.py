@@ -12,7 +12,7 @@ from golem.network.transport.reactor import importReactor
 from golem.environments.Environment import Environment
 from golem.Client import startClient
 
-from examples.gnr.GNRApplicationLogic import GNRApplicationLogic
+from examples.gnr.GNRAdmApplicationLogic import GNRAdmApplicationLogic
 from examples.gnr.Application import GNRGui
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
 from examples.gnr.InfoServer import InfoServer
@@ -27,7 +27,7 @@ from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdm
 def main():
     logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
 
-    logic = GNRApplicationLogic()
+    logic = GNRAdmApplicationLogic()
     app     = GNRGui( logic, GNRMainWindow )
 
     logic.registerGui( app.getMainWindow(), GNRAdministratorMainWindowCustomizer )
