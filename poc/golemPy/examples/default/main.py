@@ -20,8 +20,8 @@ from examples.gnr.InfoServer import InfoServer
 from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
 
 from examples.gnr.TaskType import buildPBRTTaskType, build3dsMaxTaskType, buildVRayTaskType, buildPythonGNRTaskType
-from examples.default.ui.MainWindow import GNRMainWindow
-from examples.default.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
+from examples.gnr.ui.MainWindow import GNRMainWindow
+from examples.gnr.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
 
 
 def main():

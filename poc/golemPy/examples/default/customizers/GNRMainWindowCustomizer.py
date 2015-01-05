@@ -4,7 +4,7 @@ import datetime
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QMenu, QFileDialog, QMessageBox, QPalette, QPainter, QBrush, QColor, QPen
 
-from examples.default.ui.MainWindow import GNRMainWindow
+from examples.gnr.ui.MainWindow import GNRMainWindow
 from examples.gnr.ui.NewTaskDialog import NewTaskDialog
 from examples.gnr.ui.ShowTaskResourcesDialog import ShowTaskResourcesDialog
 from examples.gnr.ui.TaskDetailsDialog import TaskDetailsDialog

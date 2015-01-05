@@ -1,6 +1,6 @@
 from PyQt4.QtGui import QMainWindow, QPixmap, QMessageBox
 
-from gen.ui_MainWindow import Ui_MainWindow
+from gen.ui_RenderingMainWindow import Ui_MainWindow
 
 from clickableqlabel import ClickableQLabel
 
