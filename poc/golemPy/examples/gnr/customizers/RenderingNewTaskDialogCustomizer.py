@@ -29,6 +29,7 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
     def _setupRenderersConnections( self ):
         QtCore.QObject.connect( self.gui.ui.rendererComboBox, QtCore.SIGNAL( "currentIndexChanged( const QString )" ), self.__rendererComboBoxValueChanged )
         self.gui.ui.rendererOptionsButton.clicked.connect( self.__openRendererOptions )
+        self.gui.ui.chooseMainSceneFileButton.clicked.connect( self._chooseMainSceneFileButtonClicked )
 
     #############################
     def _setupOutputConnections( self ):
@@ -52,6 +53,7 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
         QtCore.QObject.connect(self.gui.ui.subtaskTimeoutMinSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.subtaskTimeoutSecSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.mainProgramFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.mainSceneFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputFormatsComboBox, QtCore.SIGNAL("currentIndexChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.outputFileLineEdit, QtCore.SIGNAL("textChanged( const QString )"), self.__taskSettingsChanged)
         QtCore.QObject.connect(self.gui.ui.totalSpinBox, QtCore.SIGNAL( "valueChanged( const QString )" ), self.__taskSettingsChanged )
@@ -85,6 +87,22 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
         self.gui.ui.outputResYSpinBox.setValue ( dr.defaults.resolution[1] )
         self.gui.ui.verificationSizeXSpinBox.setMaximum( dr.defaults.resolution[0] )
         self.gui.ui.verificationSizeYSpinBox.setMaximum( dr.defaults.resolution[1] )
+
+    #############################
+    def _chooseMainSceneFileButtonClicked( self ):
+        sceneFileExt = self.logic.getCurrentRenderer().sceneFileExt
+
+        outputFileTypes = " ".join( [u"*.{}".format( ext ) for ext in sceneFileExt ] )
+        filter = u"Scene files ({})".format( outputFileTypes )
+
+        dir = os.path.dirname( u"{}".format( self.gui.ui.mainSceneFileLineEdit.text() )  )
+
+        fileName = u"{}".format( QFileDialog.getOpenFileName( self.gui.window,
+            "Choose main scene file", dir, filter ) )
+
+        if fileName != '':
+            self.gui.ui.mainSceneFileLineEdit.setText( fileName )
+
 
     #############################
     def __updateRendererOptions( self, name ):
@@ -133,9 +151,10 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
         self.gui.ui.outputResXSpinBox.setValue( dr.defaults.resolution[0] )
         self.gui.ui.outputResYSpinBox.setValue( dr.defaults.resolution[1] )
 
+        self.gui.ui.mainSceneFileLineEdit.clear()
+
         if self.addTaskResourceDialog:
             self.addTaskResourcesDialogCustomizer.resources = set()
-            self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.clear()
             self.addTaskResourceDialog.ui.folderTreeView.model().addStartFiles([])
             self.addTaskResourceDialog.ui.folderTreeView.model().checks = {}
 
@@ -266,7 +285,7 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
 
         NewTaskDialogCustomizer._loadResources( self, definition )
 
-        self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.setText( definition.mainSceneFile )
+        self.gui.ui.mainSceneFileLineEdit.setText( definition.mainSceneFile )
 
     ############################
     def _loadVerificationParams( self, definition ):
@@ -350,8 +369,8 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
 
         if self.addTaskResourcesDialogCustomizer:
             definition.resources         = self.rendererOptions.addToResources( self.addTaskResourcesDialogCustomizer.resources )
-            definition.mainSceneFile     = u"{}".format( self.addTaskResourcesDialogCustomizer.gui.ui.mainSceneLabel.text() )
 
+            definition.mainSceneFile = u"{}".format( self.gui.ui.mainSceneFileLineEdit.text() )
             definition.resources.add( os.path.normpath( definition.mainSceneFile ) )
         return definition
 
