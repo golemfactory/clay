@@ -351,7 +351,7 @@ class RenderingTask( GNRTask ):
     #######################
     def _runTask( self, srcCode, scope ):
         exec srcCode in scope
-        if len( self.scope['output'] ) > 0:
+        if len( scope['output'] ) > 0:
             return self._unpackTaskResult( scope['output'][0], self.tmpDir )
         else:
             return None
