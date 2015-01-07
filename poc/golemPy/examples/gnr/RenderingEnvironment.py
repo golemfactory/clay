@@ -16,9 +16,9 @@ class ThreeDSMaxEnvironment( Environment ):
     #########################
     def __init__( self ):
         Environment.__init__( self )
-        self.software.append('3DS Max Studio 2015')
+        self.software.append('3DS Max Studio 2014 or 3DS Max Studio 2015')
         self.software.append('Windows')
-        self.softwareEnvVar = ['ADSK_3DSMAX_x64_2015', 'ADSK_3DSMAX_x32_2015']
+        self.softwareEnvVar = ['ADSK_3DSMAX_x64_2015', 'ADSK_3DSMAX_x32_2015', 'ADSK_3DSMAX_x64_2014', 'ADSK_3DSMAX_x32_2014']
         self.softwareName = '3dsmaxcmd.exe'
         self.configFileName = 'plugcfg_ln/mentalray_cpu.ini'
         self.configFileBackup = 'plugcfg_ln/mentalray_cpu.bak'
