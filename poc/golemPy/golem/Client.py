@@ -133,7 +133,7 @@ class Client:
 
         self.lastNodeStateSnapshot = None
 
-        self.hostAddress    = getHostAddress()
+        self.hostAddress    = getHostAddress( self.configDesc.seedHost )
 
         self.nodesManagerClient = None
 
