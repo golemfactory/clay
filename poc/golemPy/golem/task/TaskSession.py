@@ -117,19 +117,10 @@ class TaskSession:
                 self.dropped()
                 return
 
-            size = os.path.getsize( resFilePath )
+            producer = FileProducer( resFilePath, self.conn )
+            producer.produce()
 
-            logger.info( "Sendig file size:{}".format( size ) )
-
-            fh = open( resFilePath, 'rb' )
-            data = struct.pack( "!L", size ) + fh.read( 4096 * 1024 )
-            while data:
-                self.conn.transport.write( data )
-                #self.conn.transport.doWrite()
-                logger.info( "\rSending progress {}                        ".format( float( fh.tell() ) / size ) ),
-                data = fh.read( 4096 * 1024 )
-                
-            self.dropped()
+            #self.dropped()
         elif type == MessageResource.Type:
             self.taskComputer.resourceGiven( msg.subtaskId )
             self.dropped()
@@ -147,3 +138,46 @@ class TaskSession:
         #print "Sending to {}:{}: {}".format( self.address, self.port, msg )
         self.conn.sendMessage( msg )
         self.taskServer.setLastMessage( "->", time.localtime(), msg, self.address, self.port )
+
+class FileProducer:
+    def __init__( self, file_, conn ):
+
+        self.file_ = file_
+        self.conn = conn
+        self.paused = False
+        self.stopped = False
+        self.openFile()
+        self.register()
+
+    def openFile( self ):
+        self.fh = open( self.file_, 'rb' )
+        self.size = os.path.getsize( self.file_ )
+        logger.info( "Sendig file size:{}".format( self.size ) )
+        self.data = struct.pack( "!L", self.size ) + self.fh.read( 1024 * 1024 )
+
+    def register( self ):
+        self.conn.transport.registerProducer( self, False )
+
+    def stopProducing( self ):
+        self.stopped = True
+        self.fh.close()
+
+    def resumeProducing( self ):
+        self.paused = False
+
+    def produce( self ):
+        if not self.paused:
+            if self.data:
+                self.conn.transport.write( self.data )
+                self.conn.transport.doWrite()
+                print "\rSending progress {} %                       ".format( int( 100 * float( self.fh.tell() ) / self.size ) ),
+                self.data = self.fh.read( 1024 * 1024 )
+            else:
+                self.stopProducing()
+            if not self.stopped:
+                from twisted.internet import reactor
+                reactor.callLater(0.1, self.produce )
+
+    def pausedProducing(self):
+        self.paused = True
+

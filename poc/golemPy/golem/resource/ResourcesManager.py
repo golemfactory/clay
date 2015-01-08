@@ -5,6 +5,8 @@ from os.path import join, isdir, isfile
 import struct
 import logging
 
+from golem.core.databuffer import DataBuffer
+
 logger = logging.getLogger(__name__)
 
 class ResourcesManager:
@@ -16,6 +18,9 @@ class ResourcesManager:
         self.fileSize           = -1
         self.recvSize           = 0
         self.owner              = owner
+        self.lastPrct           = 0
+        self.buffSize           = 4 * 1024 * 1024
+        self.buff               = DataBuffer()
 
     ###################
     def getResourceHeader( self, taskId ):
@@ -80,22 +85,26 @@ class ResourcesManager:
 
     def fileDataReceived( self, taskId, data, conn ):
 
-        print "\rFile data receving {}%                              ".format( 100 * self.recvSize / float( self.fileSize ) ),
-
+        prct = int( 100 * self.recvSize / float( self.fileSize ) )
+        if prct > self.lastPrct:
+            print "\rFile data receving {} %                       ".format(  prct ),
         locData = data
         if self.fileSize == -1:
             # First chunk
+            self.lastPrct = 0
+            self.buffSize = 0
             ( self.fileSize, ) = struct.unpack( "!L", data[0:4] )
-            logger.info( "File size {}".format( self.fileSize ) )
             locData = data[ 4: ]
             assert self.fh is None
 
             self.fh = open( os.path.join( self.getTemporaryDir( taskId ),  "res" + taskId ), 'wb' )
 
         assert self.fh
-
-        self.fh.write( locData )
         self.recvSize += len( locData )
+        self.buff.appendString( locData )
+
+        if self.buff.dataSize() >= self.buffSize or self.recvSize == self.fileSize:
+            self.fh.write( self.buff.readAll() )
 
         if self.recvSize == self.fileSize:
             conn.fileMode = False
