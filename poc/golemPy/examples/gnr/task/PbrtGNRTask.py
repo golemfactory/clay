@@ -266,7 +266,7 @@ class PbrtRenderTask( RenderingTask ):
     #######################
     def restart( self ):
         RenderingTask.restart( self )
-        self.collectedFileNames.clear()
+        self.collectedFileNames = set()
 
     #######################
     def restartSubtask( self, subtaskId ):
