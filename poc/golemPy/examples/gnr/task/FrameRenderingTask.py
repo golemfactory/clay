@@ -2,6 +2,7 @@ import os
 import logging
 import math
 
+from examples.gnr.task.GNRTask import checkSubtaskIdWrapper
 from examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
 from examples.gnr.task.RenderingTaskCollector import exr_to_pil
 from examples.gnr.RenderingDirManager import getTmpPath
@@ -137,6 +138,8 @@ class FrameRenderingTask( RenderingTask ):
                 for j in range( upper, lower ):
                     imgTask.putpixel( (i, j), color )
 
+    #######################
+    @checkSubtaskIdWrapper
     def _getPartImgSize( self, subtaskId, advTestFile ):
         if not self.useFrames or self.__fullFrames():
             return RenderingTask._getPartImgSize( self, subtaskId, advTestFile )
@@ -153,6 +156,7 @@ class FrameRenderingTask( RenderingTask ):
     def __fullFrames( self ):
         return self.totalTasks <= len( self.frames )
 
+    #######################
     def __countPart( self, startNum, parts ):
         return ( ( startNum - 1 ) % parts ) + 1
 

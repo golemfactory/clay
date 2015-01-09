@@ -12,6 +12,17 @@ import time
 logger = logging.getLogger(__name__)
 
 ##############################################
+def checkSubtaskIdWrapper( func ):
+    def checkSubtaskId( *args, **kwargs):
+        task = args[0]
+        subtaskId = args[1]
+        if subtaskId not in task.subTasksGiven:
+            logger.error( "This is not my subtask {}".format( subtaskId ) )
+            return False
+        return func( *args, **kwargs )
+    return checkSubtaskId
+
+##############################################
 class GNRTaskBuilder( TaskBuilder ):
     #######################
     def __init__( self, clientId, taskDefinition, rootPath ):
@@ -89,7 +100,8 @@ class GNRTask( Task ):
     def getProgress( self ):
         return float( self.lastTask ) / self.totalTasks
 
-    #######################
+    ########################
+    @checkSubtaskIdWrapper
     def subtaskFailed( self, subtaskId, extraData ):
         self.numFailedSubtasks += 1
         self.subTasksGiven[ subtaskId ]['status'] = SubtaskStatus.failure
@@ -150,6 +162,7 @@ class GNRTask( Task ):
         pass
 
     #######################
+    @checkSubtaskIdWrapper
     def verifySubtask( self, subtaskId ):
        return self.subTasksGiven[ subtaskId ]['status'] == SubtaskStatus.finished
 
@@ -158,10 +171,12 @@ class GNRTask( Task ):
         return self.finishedComputation()
 
     #######################
+    @checkSubtaskIdWrapper
     def getPriceMod( self, subtaskId ):
         return 1
 
     #######################
+    @checkSubtaskIdWrapper
     def restartSubtask( self, subtaskId ):
         if subtaskId in self.subTasksGiven:
             if self.subTasksGiven[ subtaskId ][ 'status' ] == SubtaskStatus.starting:
@@ -172,13 +187,16 @@ class GNRTask( Task ):
                 self.numTasksReceived -= tasks
 
     #######################
+    @checkSubtaskIdWrapper
     def shouldAccept(self, subtaskId):
         if self.subTasksGiven[ subtaskId ][ 'status' ] != SubtaskStatus.starting:
             return False
         return True
 
     #######################
+    @checkSubtaskIdWrapper
     def _markSubtaskFailed( self, subtaskId ):
         self.subTasksGiven[ subtaskId ]['status'] = SubtaskStatus.failure
         self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'clientId' ] ] = -1
         self.numFailedSubtasks += 1
+

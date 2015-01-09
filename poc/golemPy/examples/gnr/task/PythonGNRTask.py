@@ -1,4 +1,4 @@
-from examples.gnr.task.GNRTask import GNRTaskBuilder, GNRTask
+from examples.gnr.task.GNRTask import GNRTaskBuilder, GNRTask, checkSubtaskIdWrapper
 from golem.environments.Environment import Environment
 from golem.task.TaskBase import ComputeTaskDef
 from golem.task.TaskState import SubtaskStatus
@@ -70,9 +70,9 @@ class PythonGNRTask( GNRTask ):
     #######################
     def shortExtraDataRepr( self, perfIndex ):
         return "Generic Python Task"
-    #######################
 
     #######################
+    @checkSubtaskIdWrapper
     def computationFinished( self, subtaskId, taskResult, dirManager = None ):
         self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
         self.numTasksReceived += 1

@@ -7,7 +7,7 @@ import shutil
 from collections import OrderedDict
 
 from  examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
-from  examples.gnr.task.GNRTask import GNROptions
+from  examples.gnr.task.GNRTask import GNROptions, checkSubtaskIdWrapper
 from  examples.gnr.task.RenderingTask import RenderingTask
 from  examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
 from  examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
@@ -208,6 +208,7 @@ class VRayTask( FrameRenderingTask ):
         return self._newComputeTaskDef( hash, extraData, workingDirectory, 0 )
 
   #######################
+    @checkSubtaskIdWrapper
     def computationFinished( self, subtaskId, taskResult, dirManager = None ):
 
         if not self.shouldAccept( subtaskId ):
@@ -229,7 +230,7 @@ class VRayTask( FrameRenderingTask ):
 
             trFiles = [ self._unpackTaskResult( trp, tmpDir ) for trp in taskResult ]
 
-            if not self._verifyImgs( trFiles, subtaskId ):
+            if not self._verifyImgs( subtaskId, trFiles ):
                 self._markSubtaskFailed( subtaskId )
                 if not self.useFrames:
                     self._updateTaskPreview()
@@ -266,10 +267,8 @@ class VRayTask( FrameRenderingTask ):
                 self.__putImageTogether( outputFileName )
 
     #######################
+    @checkSubtaskIdWrapper
     def getPriceMod( self, subtaskId ):
-        if subtaskId not in self.subTasksGiven:
-            logger.error( "Not my subtask {}".format( subtaskId ) )
-            return 0
         perf =  (self.subTasksGiven[ subtaskId ]['endTask'] - self.subTasksGiven[ subtaskId ][ 'startTask' ]) + 1
         perf *= float( self.subTasksGiven[ subtaskId ]['perf'] ) / 1000
         perf *= 10
@@ -300,6 +299,7 @@ class VRayTask( FrameRenderingTask ):
             return imgChunk
 
     #######################
+    @checkSubtaskIdWrapper
     def _changeScope( self, subtaskId, startBox, trFile ):
         extraData, _ = FrameRenderingTask._changeScope( self, subtaskId, startBox, trFile )
         extraData['isAlpha'] = self.__isAlphaFile( trFile )

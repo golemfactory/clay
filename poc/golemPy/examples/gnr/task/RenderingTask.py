@@ -16,7 +16,7 @@ from examples.gnr.RenderingDirManager import getTmpPath
 from examples.gnr.RenderingTaskState import AdvanceRenderingVerificationOptions
 from examples.gnr.task.RenderingTaskCollector import exr_to_pil
 from examples.gnr.task.ImgRepr import verifyImg, advanceVerifyImg
-from examples.gnr.task.GNRTask import GNRTask, GNRTaskBuilder
+from examples.gnr.task.GNRTask import GNRTask, GNRTaskBuilder, checkSubtaskIdWrapper
 
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
@@ -106,11 +106,13 @@ class RenderingTask( GNRTask ):
             taskState.extraData['resultPreview'] = self.previewFilePath
 
     #######################
+    @checkSubtaskIdWrapper
     def subtaskFailed( self, subtaskId, extraData ):
         GNRTask.subtaskFailed( self, subtaskId, extraData )
         self._updateTaskPreview()
 
     #######################
+    @checkSubtaskIdWrapper
     def restartSubtask( self, subtaskId ):
         if subtaskId in self.subTasksGiven:
             if self.subTasksGiven[ subtaskId ][ 'status' ] == SubtaskStatus.finished:
@@ -126,6 +128,7 @@ class RenderingTask( GNRTask ):
         return self.resX, self.resY
 
     #######################
+    @checkSubtaskIdWrapper
     def _getPartImgSize( self, subtaskId, advTestFile ):
         numTask = self.subTasksGiven[ subtaskId ][ 'startTask' ]
         imgHeight = int (math.floor( float( self.resY ) / float( self.totalTasks ) ) )
@@ -146,6 +149,7 @@ class RenderingTask( GNRTask ):
         imgCurrent.save( self.previewFilePath, "BMP" )
 
     #######################
+    @checkSubtaskIdWrapper
     def _removeFromPreview( self, subtaskId ):
         emptyColor = (0, 0, 0)
         if isinstance( self.previewFilePath, list ): #FIXME
@@ -286,6 +290,8 @@ class RenderingTask( GNRTask ):
             self.countingNodes[ clientId ] = 0
             return True #new node
 
+    #######################
+    @checkSubtaskIdWrapper
     def __useAdvVerification( self, subtaskId ):
         if self.verificationOptions.type == 'forAll':
             return True
@@ -304,7 +310,8 @@ class RenderingTask( GNRTask ):
         return advTestFile
 
     #######################
-    def _verifyImgs( self, trFiles, subtaskId ):
+    @checkSubtaskIdWrapper
+    def _verifyImgs( self, subtaskId, trFiles ):
         resX, resY = self._getPartSize()
 
         advTestFile = self._chooseAdvVerFile( trFiles, subtaskId )
@@ -340,6 +347,7 @@ class RenderingTask( GNRTask ):
         return (startX, startY)
 
     #######################
+    @checkSubtaskIdWrapper
     def _changeScope( self, subtaskId, startBox, trFile ):
         extraData = copy( self.subTasksGiven[ subtaskId ] )
         extraData['outfilebasename'] = uuid.uuid4()

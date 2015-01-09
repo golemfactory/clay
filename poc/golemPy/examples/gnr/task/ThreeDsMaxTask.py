@@ -10,7 +10,7 @@ from PIL import Image, ImageChops
 
 from golem.task.TaskState import SubtaskStatus
 
-from examples.gnr.task.GNRTask import  GNROptions
+from examples.gnr.task.GNRTask import  GNROptions, checkSubtaskIdWrapper
 from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
 from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
 from examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
@@ -226,6 +226,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         return self._newComputeTaskDef( hash, extraData, workingDirectory, 0 )
 
   #######################
+    @checkSubtaskIdWrapper
     def computationFinished( self, subtaskId, taskResult, dirManager = None ):
 
         if not self.shouldAccept( subtaskId ):
@@ -252,7 +253,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
 
             trFiles = [ self._unpackTaskResult( trp, tmpDir ) for trp in taskResult ]
 
-            if not self._verifyImgs( trFiles, subtaskId ):
+            if not self._verifyImgs( subtaskId, trFiles ):
                 self._markSubtaskFailed( subtaskId )
                 if not self.useFrames:
                     self._updateTaskPreview()
@@ -281,16 +282,15 @@ class ThreeDSMaxTask( FrameRenderingTask ):
                 self.__putImageTogether( tmpDir )
 
     #######################
+    @checkSubtaskIdWrapper
     def getPriceMod( self, subtaskId ):
-        if subtaskId not in self.subTasksGiven:
-            logger.error( "Not my subtask {}".format( subtaskId ) )
-            return 0
         perf =  (self.subTasksGiven[ subtaskId ]['endTask'] - self.subTasksGiven[ subtaskId ][ 'startTask' ]) + 1
         perf *= float( self.subTasksGiven[ subtaskId ]['perf'] ) / 1000
         perf *= 50
         return perf
 
     #######################
+    @checkSubtaskIdWrapper
     def restartSubtask( self, subtaskId ):
         FrameRenderingTask.restartSubtask( self, subtaskId )
         if not self.useFrames:
@@ -449,11 +449,13 @@ class ThreeDSMaxTask( FrameRenderingTask ):
         return self.resX, resY
 
     #######################
+    @checkSubtaskIdWrapper
     def _getPartImgSize( self, subtaskId, advTestFile ) :
         x, y = self._getPartSize()
         return 0, 0, x, y
 
     #######################
+    @checkSubtaskIdWrapper
     def _changeScope( self, subtaskId, startBox, trFile ):
         extraData, _ = FrameRenderingTask._changeScope( self, subtaskId, startBox, trFile )
         if not self.useFrames:
