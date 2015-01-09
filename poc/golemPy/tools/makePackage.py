@@ -39,6 +39,7 @@ def main():
     srcPath = os.environ.get( 'GOLEM' )
     print srcPath
     py_compile.compile( os.path.join( srcPath, 'examples\\gnr\\main.py' ) )
+    py_compile.compile( os.path.join( srcPath, 'examples\\gnr\\admMain.py' ) )
 
     makeFolder( dest )
     copyToPackage( dest, srcPath)
