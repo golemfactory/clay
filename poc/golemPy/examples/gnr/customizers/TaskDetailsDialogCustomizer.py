@@ -39,8 +39,7 @@ class TaskDetailsDialogCustomizer:
                 ss = self.gnrTaskState.taskState.subtaskStates[ k ]
                 self.__addNode( ss.computer.nodeId, ss.subtaskId, ss.subtaskStatus )
 
-        for k in self.subtaskTableElements:
-            elem = self.subtaskTableElements[ k ]
+        for k, elem in self.subtaskTableElements.items():
             if elem.subtaskId in self.gnrTaskState.taskState.subtaskStates:
                 ss = self.gnrTaskState.taskState.subtaskStates[ elem.subtaskId ]
                 elem.update( ss.subtaskProgress, ss.subtaskStatus, ss.subtaskRemTime )
