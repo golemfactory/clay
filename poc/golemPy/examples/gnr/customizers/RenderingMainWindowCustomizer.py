@@ -306,8 +306,3 @@ class RenderingMainWindowCustomizer( AbsRenderingMainWindowCustomizer, GNRMainWi
         self._setupRenderingConnections()
 
 
-class RenderingAdmMainWindowCustomizer( AbsRenderingMainWindowCustomizer, GNRAdministratorMainWindowCustomizer ):
-    def __init__( self, gui, logic ):
-        GNRAdministratorMainWindowCustomizer.__init__( self, gui, logic )
-        self._setRenderingVariables()
-        self._setupRenderingConnections()

@@ -8,7 +8,7 @@ sys.path.append( os.environ.get( 'GOLEM' ) )
 from tools.UiGen import genUiFiles
 genUiFiles( "ui" )
 
-from RenderingApplicationLogic import RenderingAdmApplicationLogic
+from RenderingAdmApplicationLogic import RenderingAdmApplicationLogic
 
 
 from golem.Client import startClient
@@ -20,7 +20,7 @@ from examples.gnr.task.VRayTask import buildVRayRendererInfo
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
 from examples.gnr.ui.AdministrationMainWindow import AdministrationMainWindow
 from examples.gnr.Application import GNRGui
-from examples.gnr.customizers.RenderingMainWindowCustomizer import RenderingAdmMainWindowCustomizer
+from examples.gnr.customizers.RenderingAdmMainWindowCustomizer import RenderingAdmMainWindowCustomizer
 
 
 def main():

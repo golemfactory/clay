@@ -2,7 +2,6 @@ import logging
 import os
 
 from examples.gnr.GNRApplicationLogic import GNRApplicationLogic
-from examples.gnr.GNRAdmApplicationLogic import GNRAdmApplicationLogic
 from examples.gnr.RenderingTaskState import RenderingTaskState
 
 logger = logging.getLogger(__name__)
@@ -105,11 +104,5 @@ class AbsRenderingApplicationLogic( object ):
 class RenderingApplicationLogic( AbsRenderingApplicationLogic, GNRApplicationLogic ):
     def __init__( self ):
         GNRApplicationLogic.__init__( self )
-        AbsRenderingApplicationLogic.__init__( self )
-
-##################################################################
-class RenderingAdmApplicationLogic( AbsRenderingApplicationLogic, GNRAdmApplicationLogic ):
-    def __init__( self ):
-        GNRAdmApplicationLogic.__init__( self )
         AbsRenderingApplicationLogic.__init__( self )
 
