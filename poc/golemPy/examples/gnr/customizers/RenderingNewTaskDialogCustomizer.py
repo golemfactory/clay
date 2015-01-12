@@ -80,6 +80,12 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
             r = renderers[ k ]
             self.gui.ui.rendererComboBox.addItem( r.name )
 
+        rendererItem = self.gui.ui.rendererComboBox.findText( dr.name )
+        if rendererItem >= 0:
+            self.gui.ui.rendererComboBox.setCurrentIndex( rendererItem )
+        else:
+            logger.error( "Cannot load task, wrong default renderer" )
+
         self.gui.ui.totalSpinBox.setRange( dr.defaults.minSubtasks, dr.defaults.maxSubtasks )
         self.gui.ui.totalSpinBox.setValue( dr.defaults.defaultSubtasks )
 
