@@ -1,29 +1,29 @@
 !define MULTIUSER_EXECUTIONLEVEL Highest
 !define MULTIUSER_MUI
 !define MULTIUSER_INSTALLMODE_COMMANDLINE
+!define MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_KEY "Software\Golem"
+!define MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_VALUENAME ""
+!define MULTIUSER_INSTALLMODE_INSTDIR "Golem"
 !include x64.nsh
 !include "winmessages.nsh"
 !include MultiUser.nsh
 !include "MUI2.nsh"
 
 
-	Name "Golem"
+Name "Golem"
 
-	OutFile "Installer.exe"
-   
- 
-	Var "INSTGOLEM"
-	
-	!define MUI_ABORTWARNING
- 
+OutFile "Installer.exe"
+
+
+Var "INSTGOLEM"
+
+!define MUI_ABORTWARNING
+!define UNINST_KEY \
+	  "Software\Microsoft\Windows\CurrentVersion\Uninstall\Golem"
+
 Function .onInit
 	!insertmacro MULTIUSER_INIT
-	${If} ${RunningX64}
-		StrCpy $INSTDIR "$PROGRAMFILES64\golem"
-	${Else}
-		StrCpy $INSTDIR "$PROGRAMFILES\golem"
-	${EndIf}     
-	
+
 FunctionEnd
 
 Function un.onInit
@@ -50,64 +50,58 @@ InstallDirRegKey HKCU "Software\Golem" ""
 Section "Install Golem" SecGolem
 
 	SectionIn RO
-  
+
 	CreateDirectory $INSTDIR
 
 	SetOutPath $INSTDIR
-	
-	File /nonfatal /a /r "golem\"	
-	
+
+	File /nonfatal /a /r "golem\"
+
 	${If} $MultiUser.InstallMode == "AllUsers"
 		AccessControl::GrantOnFile "$INSTDIR" "(BU)" "FullAccess"
-	${Else}
+	${EndIf}
 
 ;	AccessControl::GrantOnFile "$INSTDIR\src\examples\gnr\node_data" "(BU)" "FullAccess"
 ;	AccessControl::GrantOnFile "$INSTDIR\src\save" "(BU)" "FullAccess"
 ;	AccessControl::GrantOnFile "$INSTDIR\temp.bat" "(BU)" "FullAccess"
 
-	WriteUninstaller $INSTDIR\uninstaller.exe
+	WriteRegStr SHCTX "${UNINST_KEY}" "DisplayName" "Golem"
+	WriteRegStr SHCTX "${UNINST_KEY}" "UninstallString" \
+    "$\"$INSTDIR\uninstaller.exe$\" /$MultiUser.InstallMode"
+	WriteRegStr SHCTX "${UNINST_KEY}" "QuietUninstallString" \
+    "$\"$INSTDIR\uninstaller.exe$\" /$MultiUser.InstallMode /S"
 
-	${If} $MultiUser.InstallMode == "AllUsers"
-		WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Golem" \
-					"DisplayName" "Golem"
-		WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Golem" \
-					"UninstallString" "$\"$INSTDIR\uninstaller.exe$\""
-	${Else}
-		WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Golem" \
-					"DisplayName" "Golem"
-		WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Golem" \
-					"UninstallString" "$\"$INSTDIR\uninstaller.exe$\""
-	${EndIf}
 
 
 	StrCpy $INSTGOLEM "$INSTDIR\src"
 
    !define env_hklm 'HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"'
    !define env_hkcu 'HKCU "Environment"'
-   
-   
-   
+
+
+
 	${If} $MultiUser.InstallMode == "AllUsers"
 		WriteRegExpandStr ${env_hklm} GOLEM $INSTGOLEM
 	${Else}
 		WriteRegExpandStr ${env_hkcu} GOLEM $INSTGOLEM
-	${EndIf} 
+	${EndIf}
 
-	
+
 
    SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
-    
+
     CreateDirectory "$SMPROGRAMS\golem"
-	CreateShortCut "$SMPROGRAMS\golem\Uninstall.lnk" "$INSTDIR\uninstaller.exe"
+	CreateShortCut "$SMPROGRAMS\golem\Uninstall.lnk"  "$INSTDIR\uninstaller.exe"
 	CreateShortCut "$SMPROGRAMS\golem\golem.lnk" "$INSTDIR\golem.exe"
- 
+
 	!define MULTIUSER_INSTALLMODE_DEFAULT_REGISTRY_KEY "${MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_KEY}"
 	!define MULTIUSER_INSTALLMODE_DEFAULT_REGISTRY_VALUENAME "${MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_VALUENAME}"
+
+	WriteUninstaller $INSTDIR\uninstaller.exe
 
 SectionEnd
 
 Section "Uninstall"
-
 
 	${If} $MultiUser.InstallMode == "AllUsers"
 		DeleteRegValue ${env_hklm} GOLEM
@@ -116,13 +110,7 @@ Section "Uninstall"
 		DeleteRegValue ${env_hkcu} GOLEM
 	${EndIf}
 	SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
-	
-	${If} $MultiUser.InstallMode == "AllUsers"
-		DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Golem"
-		DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Golem"
-	${Else}
-		DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Golem"
-	${EndIf}
+
 
 	Delete $INSTDIR\uninstaller.exe
 
@@ -130,10 +118,12 @@ Section "Uninstall"
 	RmDir /r $INSTDIR\Python27
 	Delete $INSTDIR\golem.exe
 	Delete $INSTDIR\temp.bat
-    
+
 	Delete "$SMPROGRAMS\golem\*.*"
 	RMDir "$SMPROGRAMS\golem"
-	
+
 	RmDir $INSTDIR
+
+	DeleteRegKey SHCTX "${UNINST_KEY}"
 
 SectionEnd
