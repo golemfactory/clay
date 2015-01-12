@@ -51,7 +51,7 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, sc
         os.remove(f)
 
     if os.path.splitext( sceneFile )[1] == '.zip':
-        with zipfile.ZipFile( sceneFile , "r" ) as z:
+        with zipfile.ZipFile( sceneFile , "r", allowZip64 = True ) as z:
             z.extractall( os.getcwd() )
         sceneFile = glob.glob( "*.max" )[0]
 

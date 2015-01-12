@@ -408,7 +408,7 @@ def compressDir( rootPath, header, outputDir ):
 
     outputFile = os.path.join( outputDir, outputFile )
 
-    zipf = zipfile.ZipFile( outputFile, 'w', compression = zipfile.ZIP_DEFLATED )
+    zipf = zipfile.ZipFile( outputFile, 'w', compression = zipfile.ZIP_DEFLATED, allowZip64 = True )
 
     currWorkingDir = os.getcwd()
     os.chdir( rootPath )
@@ -427,7 +427,7 @@ def compressDir( rootPath, header, outputDir ):
 ####################
 def decompressDir( rootPath, zipFile ):
 
-    zipf = zipfile.ZipFile( zipFile, 'r' )
+    zipf = zipfile.ZipFile( zipFile, 'r', allowZip64 = True )
 
     zipf.extractall( rootPath )
 

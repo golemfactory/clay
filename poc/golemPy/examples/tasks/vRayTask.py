@@ -78,7 +78,7 @@ def runVRayTask( pathRoot, startTask, endTask, hTask, totalTasks, outfilebasenam
 
     print "sceneFile " + sceneFile
     if os.path.splitext( sceneFile )[1] == '.zip':
-        with zipfile.ZipFile( sceneFile , "r" ) as z:
+        with zipfile.ZipFile( sceneFile , "r", allowZip64 = True ) as z:
             z.extractall( os.getcwd() )
         sceneFile = glob.glob( "*.vrscene" )[0]
 

@@ -7,6 +7,7 @@ import time
 from copy import copy
 
 from golem.vm.vm import PythonVM, PythonTestVM
+#from golem.vm.VBoxVM import VBoxVM
 from golem.manager.NodeStateSnapshot import TaskChunkStateSnapshot
 from golem.resource.ResourcesManager import ResourcesManager
 from golem.resource.DirManager import DirManager
@@ -131,6 +132,7 @@ class TaskComputer:
     def __requestResource( self, taskId, resourceHeader, returnAddress, returnPort ):
         self.waitingTtl = self.waitingForTaskTimeout
         self.lastChecking = time.time()
+        self.waitingForTask = self.waitingTtl
         self.waitingForTask = self.taskServer.requestResource( taskId, resourceHeader, returnAddress, returnPort )
 
     ######################
@@ -228,6 +230,7 @@ class PyTaskThread( TaskThread ):
     def __init__( self, taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath ):
         super( PyTaskThread, self ).__init__( taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath )
         self.vm = PythonVM()
+    #    self.vm = VBoxVM()
 
 
 class PyTestTaskThread( PyTaskThread ):
