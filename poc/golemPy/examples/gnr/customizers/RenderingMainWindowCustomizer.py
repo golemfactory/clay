@@ -59,9 +59,6 @@ class AbsRenderingMainWindowCustomizer ( object ):
         self.gui.ui.frameSlider.setVisible( False )
 
     #############################
-    def _setupRenderingConnections( self ):
-        self._setupRenderingConnections()
-        self._setupAdvanceTaskConnections()
 
     def _setupRenderingConnections( self ):
         QtCore.QObject.connect( self.gui.ui.frameSlider, QtCore.SIGNAL( "valueChanged( int )" ), self.__updateSliderPreview )
@@ -304,5 +301,6 @@ class RenderingMainWindowCustomizer( AbsRenderingMainWindowCustomizer, GNRMainWi
         GNRMainWindowCustomizer.__init__( self, gui, logic )
         self._setRenderingVariables()
         self._setupRenderingConnections()
+        self._setupAdvanceTaskConnections()
 
 

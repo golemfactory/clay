@@ -11,3 +11,4 @@ class RenderingAdmMainWindowCustomizer( AbsRenderingMainWindowCustomizer, GNRAdm
         GNRAdministratorMainWindowCustomizer.__init__( self, gui, logic )
         self._setRenderingVariables()
         self._setupRenderingConnections()
+        self._setupAdvanceTaskConnections()
