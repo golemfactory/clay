@@ -67,27 +67,44 @@ class NodeConfig:
                 return 0
         return res
 
+    SEND_PINGS = 1
+    PINGS_INTERVALS = 120
+    GETTING_PEERS_INTERVAL = 4.0
+    GETTING_TASKS_INTERVAL = 4.0
+    TASK_REQUEST_INTERVAL = 5.0
+    USE_WAITING_FOR_TASK_TIMEOUT = 0
+    WAITING_FOR_TASK_TIMEOUT = 36000
+    NODE_SNAPSHOT_INTERVAL = 4.0
+    ADD_TASKS = 0
+    MAX_SENDING_DELAY = 360
+
     ##############################
-    def __init__( self, nodeId, seedHost = "", seedPort = 0, numCores = 4, maxResourceSize = MAX_RESOURCE_SIZE, maxMemorySize = MAX_MEMORY_SIZE ):
+    def __init__( self, nodeId, seedHost = "", seedPort = 0, numCores = 4, maxResourceSize = MAX_RESOURCE_SIZE,
+                  maxMemorySize = MAX_MEMORY_SIZE, sendPings = SEND_PINGS, pingsInterval = PINGS_INTERVALS,
+                  gettingPeersInterval = GETTING_PEERS_INTERVAL, gettingTasksInterval = GETTING_TASKS_INTERVAL,
+                  taskRequestInterval = TASK_REQUEST_INTERVAL, useWaitingForTaskTimeout = USE_WAITING_FOR_TASK_TIMEOUT,
+                  waitingForTaskTimeout = WAITING_FOR_TASK_TIMEOUT, nodesSnapshotInterval = NODE_SNAPSHOT_INTERVAL,
+                  addTasks = ADD_TASKS, maxSendingDelay = MAX_SENDING_DELAY):
         self._section = "Node {}".format( nodeId )
 
         estimated = NodeConfig.readEstimatedPerformance()
         if estimated == 0:
             estimated = ESTIMATED_DEFAULT
 
-        ConfigEntry.createProperty( self.section(), "seed host",           seedHost,    self, "SeedHost" )
-        ConfigEntry.createProperty( self.section(), "seed host port",      seedPort,     self, "SeedHostPort")
-        ConfigEntry.createProperty( self.section(), "send pings",          1,     self, "SendPings" )
-        ConfigEntry.createProperty( self.section(), "pigns interval",      120,     self, "PingsInterval" )
-        ConfigEntry.createProperty( self.section(), "client UUID",         u"",   self, "ClientUid" )
-        ConfigEntry.createProperty( self.section(), "getting peers interval",   4.0,   self, "GettingPeersInterval" )
-        ConfigEntry.createProperty( self.section(), "getting tasks interval",   4.0,   self, "GettingTasksInterval" )
-        ConfigEntry.createProperty( self.section(), "task request interval",    5.0,   self, "TaskRequestInterval" )
-        ConfigEntry.createProperty( self.section(), "waiting for task timeout", 3600.0, self, "WaitingForTaskTimeout" )
-        ConfigEntry.createProperty( self.section(), "estimated perfomance",  estimated,  self, "EstimatedPerformance" )
-        ConfigEntry.createProperty( self.section(), "node snapshot interval",   4.0,  self, "NodeSnapshotInterval" )
-        ConfigEntry.createProperty( self.section(), "add tasks",           0,     self, "AddTasks" )
-        ConfigEntry.createProperty( self.section(), "maximum delay for sending task results",           360,  self, "MaxResultsSendingDelay" )
+        ConfigEntry.createProperty( self.section(), "seed host", seedHost, self, "SeedHost" )
+        ConfigEntry.createProperty( self.section(), "seed host port", seedPort, self, "SeedHostPort")
+        ConfigEntry.createProperty( self.section(), "send pings", sendPings, self, "SendPings" )
+        ConfigEntry.createProperty( self.section(), "pings interval", pingsInterval, self, "PingsInterval" )
+        ConfigEntry.createProperty( self.section(), "client UUID", u"",   self, "ClientUid" )
+        ConfigEntry.createProperty( self.section(), "getting peers interval",gettingPeersInterval, self, "GettingPeersInterval" )
+        ConfigEntry.createProperty( self.section(), "getting tasks interval", gettingTasksInterval, self, "GettingTasksInterval" )
+        ConfigEntry.createProperty( self.section(), "task request interval", taskRequestInterval, self, "TaskRequestInterval" )
+        ConfigEntry.createProperty( self.section(), "use waiting for task timeout", useWaitingForTaskTimeout, self, "UseWaitingForTaskTimeout" )
+        ConfigEntry.createProperty( self.section(), "waiting for task timeout", waitingForTaskTimeout, self, "WaitingForTaskTimeout" )
+        ConfigEntry.createProperty( self.section(), "estimated perfomance", estimated,  self, "EstimatedPerformance" )
+        ConfigEntry.createProperty( self.section(), "node snapshot interval", nodesSnapshotInterval,  self, "NodeSnapshotInterval" )
+        ConfigEntry.createProperty( self.section(), "add tasks", addTasks, self, "AddTasks" )
+        ConfigEntry.createProperty( self.section(), "maximum delay for sending task results", maxSendingDelay,  self, "MaxResultsSendingDelay" )
         ConfigEntry.createProperty( self.section(), "number of cores", numCores, self, "NumCores")
         ConfigEntry.createProperty( self.section(), "maximum resource size", maxResourceSize, self, "MaxResourceSize" )
         ConfigEntry.createProperty( self.section(), "maximum memory usage", maxMemorySize, self, "MaxMemorySize" )
@@ -191,6 +208,9 @@ class AppConfig:
 
     def getWaitingForTaskTimeout( self ):
         return self._cfg.getNodeConfig().getWaitingForTaskTimeout()
+
+    def getUseWaitingForTaskTimeout( self ):
+        return self._cfg.getNodeConfig().getUseWaitingForTaskTimeout()
 
     def getEstimatedPerformance( self ):
         try:

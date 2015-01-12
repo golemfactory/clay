@@ -47,12 +47,13 @@ def startClient():
     appName         = cfg.getAppName()
     appVersion      = cfg.getAppVersion()
 
-    gettingPeersInterval    = cfg.getGettingPeersInterval()
-    gettingTasksInterval    = cfg.getGettingTasksInterval()
-    taskRequestInterval     = cfg.getTaskRequestInterval()
-    waitingForTaskTimeout   = cfg.getWaitingForTaskTimeout()
-    estimatedPerformance    = cfg.getEstimatedPerformance()
-    nodeSnapshotInterval    = cfg.getNodeSnapshotInterval()
+    gettingPeersInterval        = cfg.getGettingPeersInterval()
+    gettingTasksInterval        = cfg.getGettingTasksInterval()
+    taskRequestInterval         = cfg.getTaskRequestInterval()
+    useWaitingForTaskTimeout    = cfg.getUseWaitingForTaskTimeout()
+    waitingForTaskTimeout       = cfg.getWaitingForTaskTimeout()
+    estimatedPerformance        = cfg.getEstimatedPerformance()
+    nodeSnapshotInterval        = cfg.getNodeSnapshotInterval()
 
     configDesc = ClientConfigDescriptor()
 
@@ -77,13 +78,14 @@ def startClient():
     configDesc.appVersion             = appVersion
     configDesc.appName                = appName
 
-    configDesc.gettingPeersInterval   = gettingPeersInterval
-    configDesc.gettingTasksInterval   = gettingTasksInterval
-    configDesc.taskRequestInterval    = taskRequestInterval
-    configDesc.waitingForTaskTimeout  = waitingForTaskTimeout
-    configDesc.estimatedPerformance   = estimatedPerformance
-    configDesc.nodeSnapshotInterval   = nodeSnapshotInterval
-    configDesc.maxResultsSendingDelay = cfg.getMaxResultsSendingDelay()
+    configDesc.gettingPeersInterval     = gettingPeersInterval
+    configDesc.gettingTasksInterval     = gettingTasksInterval
+    configDesc.taskRequestInterval      = taskRequestInterval
+    configDesc.useWaitingForTaskTimeout = useWaitingForTaskTimeout
+    configDesc.waitingForTaskTimeout    = waitingForTaskTimeout
+    configDesc.estimatedPerformance     = estimatedPerformance
+    configDesc.nodeSnapshotInterval     = nodeSnapshotInterval
+    configDesc.maxResultsSendingDelay   = cfg.getMaxResultsSendingDelay()
 
     logger.info( "Adding tasks {}".format( addTasks ) )
     logger.info( "Creating public client interface with uuid: {}".format( clientUid ) )

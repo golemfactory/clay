@@ -28,6 +28,7 @@ class TaskComputer:
         self.lock                   = Lock()
         self.lastTaskRequest        = time.time()
         self.taskRequestFrequency   = taskServer.configDesc.taskRequestInterval
+        self.useWaitingTtl          = taskServer.configDesc.useWaitingForTaskTimeout
         self.waitingForTaskTimeout  = taskServer.configDesc.waitingForTaskTimeout
         self.waitingTtl             = 0
         self.lastChecking           = time.time()
@@ -97,12 +98,12 @@ class TaskComputer:
         if self.countingTask:
             return
 
-        if not self.waitingForTask:
+        if self.waitingForTask is None:
             if time.time() - self.lastTaskRequest > self.taskRequestFrequency:
                 if len( self.currentComputations ) == 0:
                     self.lastTaskRequest = time.time()
                     self.__requestTask()
-        else:
+        elif self.useWaitingTtl:
             self.waitingTtl -= time.time() - self.lastChecking
             if self.waitingTtl < 0:
                 self.waitingForTask = None

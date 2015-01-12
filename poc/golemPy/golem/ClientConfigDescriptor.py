@@ -18,15 +18,16 @@ class ClientConfigDescriptor:
         self.seedHost               = u""
         self.seedHostPort           = 0
 
-        self.gettingPeersInterval   = 0.0
-        self.gettingTasksInterval   = 0.0
-        self.taskRequestInterval    = 0.0
-        self.waitingForTaskTimeout  = 0.0
-        self.estimatedPerformance   = 0.0
-        self.nodeSnapshotInterval   = 0.0
-        self.maxResultsSendingDelay = 0.0
-        self.rootPath               = u""
-        self.numCores               = 0
-        self.maxResourceSize        = 0
-        self.maxMemorySize          = 0
+        self.gettingPeersInterval       = 0.0
+        self.gettingTasksInterval       = 0.0
+        self.taskRequestInterval        = 0.0
+        self.useWaitingForTaskTimeout   = 0
+        self.waitingForTaskTimeout      = 0.0
+        self.estimatedPerformance       = 0.0
+        self.nodeSnapshotInterval       = 0.0
+        self.maxResultsSendingDelay     = 0.0
+        self.rootPath                   = u""
+        self.numCores                   = 0
+        self.maxResourceSize            = 0
+        self.maxMemorySize              = 0
 
