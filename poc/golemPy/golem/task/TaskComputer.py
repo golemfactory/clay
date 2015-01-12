@@ -98,13 +98,15 @@ class TaskComputer:
         if self.countingTask:
             return
 
-        if self.waitingForTask is None:
+        if self.waitingForTask == 0 or self.waitingForTask is None:
             if time.time() - self.lastTaskRequest > self.taskRequestFrequency:
                 if len( self.currentComputations ) == 0:
                     self.lastTaskRequest = time.time()
                     self.__requestTask()
         elif self.useWaitingTtl:
-            self.waitingTtl -= time.time() - self.lastChecking
+            time_ = time.time()
+            self.waitingTtl -= time_ - self.lastChecking
+            self.lastChecking = time_
             if self.waitingTtl < 0:
                 self.waitingForTask = None
                 self.waitingTtl = 0
@@ -133,7 +135,7 @@ class TaskComputer:
     def __requestResource( self, taskId, resourceHeader, returnAddress, returnPort ):
         self.waitingTtl = self.waitingForTaskTimeout
         self.lastChecking = time.time()
-        self.waitingForTask = self.waitingTtl
+        self.waitingForTask = 1
         self.waitingForTask = self.taskServer.requestResource( taskId, resourceHeader, returnAddress, returnPort )
 
     ######################
