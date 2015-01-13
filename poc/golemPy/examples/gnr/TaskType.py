@@ -16,6 +16,8 @@ def buildPythonGNRTaskType():
     return TaskType( "Python GNR Task", PythonGNRTaskBuilder )
 
 class TaskType:
-    def __init__( self, name, taskBuilderType ):
+    def __init__( self, name, taskBuilderType, dialog = None, dialogCustomizer = None ):
         self.name = name
         self.taskBuilderType = taskBuilderType
+        self.dialog = dialog
+        self.dialogCustomizer = dialogCustomizer

@@ -32,8 +32,13 @@ class NewTaskDialogCustomizer:
 
     #############################
     def _setupConnections( self ):
+        self._setupTaskTypeConnections()
         self._setupBasicNewTaskConnections()
         self._setupAdvanceNewTaskConnections()
+        self._setupOptionsConnections()
+
+    def _setupTaskTypeConnections( self ):
+        QtCore.QObject.connect( self.gui.ui.taskTypeComboBox, QtCore.SIGNAL( "currentIndexChanged( const QString)" ), self._taskTypeValueChanged )
 
     #############################
     def _setupBasicNewTaskConnections( self ):
@@ -46,6 +51,10 @@ class NewTaskDialogCustomizer:
     #############################
     def _setupAdvanceNewTaskConnections( self ):
         QtCore.QObject.connect( self.gui.ui.optimizeTotalCheckBox, QtCore.SIGNAL( "stateChanged( int ) "), self._optimizeTotalCheckBoxChanged )
+
+    #############################
+    def _setupOptionsConnections( self ):
+        self.gui.ui.optionsButton.clicked.connect( self._openOptions )
 
     #############################
     def _setUid( self ):
@@ -185,3 +194,21 @@ class NewTaskDialogCustomizer:
     #############################
     def _optimizeTotalCheckBoxChanged( self ):
         self.gui.ui.totalSpinBox.setEnabled( not self.gui.ui.optimizeTotalCheckBox.isChecked() )
+
+    #############################
+    def _openOptions( self ):
+        taskName =  u"{}".format( self.gui.ui.taskTypeComboBox.currentText() )
+        task = self.logic.getTaskTypes( taskName )
+        dialog = task.dialog
+        dialogCustomizer = task.dialogCustomizer
+        if dialog is not None and dialogCustomizer is not None:
+            taskDialog = dialog ( self.gui.window )
+            taskDialogCustomizer = dialogCustomizer( taskDialog, self.logic, self )
+            taskDialog.show()
+        else:
+            self.gui.ui.optionsButton.setEnabled( False )
+
+    def _taskTypeValueChanged( self, name ):
+        taskName =  u"{}".format( self.gui.ui.taskTypeComboBox.currentText() )
+        task = self.logic.getTaskType( taskName )
+        self.gui.ui.optionsButton.setEnabled( task.dialog is not None and task.dialogCustomizer is not None )

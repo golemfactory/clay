@@ -517,6 +517,13 @@
       </property>
      </widget>
     </item>
+    <item row="7" column="0" colspan="2">
+     <widget class="QPushButton" name="optionsButton">
+      <property name="text">
+       <string>Task options</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
  </widget>

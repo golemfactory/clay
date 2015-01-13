@@ -26,9 +26,13 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
         self._setupVerificationConnections()
 
     #############################
+    def _setupTaskTypeConnections( self ):
+        pass
+
+    #############################
     def _setupRenderersConnections( self ):
         QtCore.QObject.connect( self.gui.ui.rendererComboBox, QtCore.SIGNAL( "currentIndexChanged( const QString )" ), self.__rendererComboBoxValueChanged )
-        self.gui.ui.rendererOptionsButton.clicked.connect( self.__openRendererOptions )
+        self.gui.ui.optionsButton.clicked.connect( self._openOptions )
         self.gui.ui.chooseMainSceneFileButton.clicked.connect( self._chooseMainSceneFileButtonClicked )
 
     #############################
@@ -414,7 +418,7 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
         self.__taskSettingsChanged()
 
     #############################
-    def __openRendererOptions( self ):
+    def _openOptions( self ):
          rendererName = self.gui.ui.rendererComboBox.itemText( self.gui.ui.rendererComboBox.currentIndex() )
          renderer = self.logic.getRenderer( u"{}".format( rendererName ) )
          dialog = renderer.dialog
