@@ -253,12 +253,9 @@ class GNRApplicationLogic( QtCore.QObject ):
 
     ######################
     def saveTask( self, taskState, filePath ):
-        f = open( filePath, "wb" )
-
-        tspickled = pickle.dumps( taskState )
-
-        f.write( tspickled )
-        f.close()
+        with open( filePath, "wb" ) as f:
+            tspickled = pickle.dumps( taskState )
+            f.write( tspickled )
 
     ######################
     def recountPerformance( self, numCores ):

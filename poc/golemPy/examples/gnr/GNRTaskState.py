@@ -17,6 +17,7 @@ class GNRTaskDefinition:
         self.taskType           = None
 
         self.verificationOptions = None
+        self.options = GNROptions
 
 ###########################################################################
 
@@ -33,3 +34,8 @@ class GNRTaskState:
     def __init__( self ):
         self.definition     = GNRTaskDefinition()
         self.taskState      = TaskState()
+
+class GNROptions:
+    #########################
+    def __init__( self ):
+        self.name = ''

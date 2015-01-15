@@ -21,6 +21,7 @@ class NewTaskDialogCustomizer:
 
         self.gui    = gui
         self.logic  = logic
+        self.options = None
 
         self.addTaskResourceDialog      = None
         self.taskState                  = None
@@ -98,7 +99,6 @@ class NewTaskDialogCustomizer:
     ############################
     def _saveTask( self, filePath ):
         definition = self._queryTaskDefinition()
-
         self.logic.saveTask( definition, filePath )
 
     ############################
@@ -111,6 +111,10 @@ class NewTaskDialogCustomizer:
         self._loadBasicTaskParams( definition )
         self._loadAdvanceTaskParams( definition )
         self._loadResources( definition )
+
+    #############################
+    def setOptions( self, options ):
+        self.options = options
 
     #############################
     def _loadResources( self, definition ):
@@ -143,6 +147,27 @@ class NewTaskDialogCustomizer:
         if os.path.normpath( definition.mainProgramFile ) in definition.resources:
             definition.resources.remove( os.path.normpath( definition.mainProgramFile ) )
 
+        self._loadTaskType( definition )
+        self._loadOptions( definition )
+
+
+    ############################
+    def _loadOptions( self, definition ):
+        self.options = deepcopy( definition.options )
+
+    ############################
+    def _loadTaskType( self, definition ):
+        try:
+            taskTypeItem = self.gui.ui.taskTypeComboBox.findText( definition.taskType )
+            if taskTypeItem >= 0:
+                self.gui.ui.taskTypeComboBox.setCurrentIndex( taskTypeItem )
+            else:
+                logger.error( "Cannot load task, unknown task type" )
+                return
+        except Exception, err:
+            logger.error("Wrong task type {}".format( str( err ) ) )
+            return
+
     #############################
     def _loadAdvanceTaskParams( self, definition ):
         self.gui.ui.totalSpinBox.setEnabled( not definition.optimizeTotal )
@@ -153,7 +178,6 @@ class NewTaskDialogCustomizer:
         self.taskState = RenderingTaskState()
         self.taskState.status = TaskStatus.notStarted
         self.taskState.definition = self._queryTaskDefinition()
-        self.taskState.definition.taskType = u"{}".format( self.gui.ui.taskTypeComboBox.currentText() )
         self._addCurrentTask()
 
     #############################
@@ -174,6 +198,8 @@ class NewTaskDialogCustomizer:
     def _queryTaskDefinition( self ):
         definition = GNRTaskDefinition()
         definition = self._readBasicTaskParams( definition )
+        definition = self._readTaskType( definition )
+        definition.options = self.options
         return definition
 
     #############################
@@ -187,8 +213,15 @@ class NewTaskDialogCustomizer:
         else:
             definition.totalSubtasks = self.gui.ui.totalSpinBox.value()
 
+        definition.resources = self.addTaskResourcesDialogCustomizer.resources
+
         definition.resources.add( os.path.normpath( definition.mainProgramFile ) )
 
+        return definition
+
+    #############################
+    def _readTaskType( self, definition ):
+        definition.taskType = u"{}".format( self.gui.ui.taskTypeComboBox.currentText() )
         return definition
 
     #############################
@@ -198,7 +231,7 @@ class NewTaskDialogCustomizer:
     #############################
     def _openOptions( self ):
         taskName =  u"{}".format( self.gui.ui.taskTypeComboBox.currentText() )
-        task = self.logic.getTaskTypes( taskName )
+        task = self.logic.getTaskType( taskName )
         dialog = task.dialog
         dialogCustomizer = task.dialogCustomizer
         if dialog is not None and dialogCustomizer is not None:
@@ -212,3 +245,4 @@ class NewTaskDialogCustomizer:
         taskName =  u"{}".format( self.gui.ui.taskTypeComboBox.currentText() )
         task = self.logic.getTaskType( taskName )
         self.gui.ui.optionsButton.setEnabled( task.dialog is not None and task.dialogCustomizer is not None )
+        self.options = deepcopy( task.options )

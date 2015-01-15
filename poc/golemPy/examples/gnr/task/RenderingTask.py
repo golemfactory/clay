@@ -54,10 +54,15 @@ class RenderingTask( GNRTask ):
                   totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, rootPath,
                   estimatedMemory ):
 
-        srcFile = open( mainProgramFile, "r" )
-        srcCode = srcFile.read()
+        try:
+            with open( mainProgramFile, "r" ) as srcFile:
+                srcCode = srcFile.read()
+        except Exception, err:
+            logger.error( "Wrong main program file: {}".format( str( err ) ) )
+            srcCode = ""
 
         resourceSize = 0
+        taskResources = set( filter( os.path.isfile, taskResources ) )
         for resource in taskResources:
             resourceSize += os.stat(resource).st_size
 

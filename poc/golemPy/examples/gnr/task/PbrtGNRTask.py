@@ -7,9 +7,9 @@ from golem.task.TaskState import SubtaskStatus
 
 from examples.gnr.RenderingEnvironment import PBRTEnvironment
 from examples.gnr.RenderingDirManager import getTestTaskPath
-from examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
+from examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo, RenderingTaskDefinition
 from examples.gnr.task.SceneFileEditor import regenerateFile
-from examples.gnr.task.GNRTask import GNROptions
+from examples.gnr.task.GNRTask import GNROptions, GNRTaskBuilder
 from examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
 from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector
 from examples.gnr.ui.PbrtDialog import PbrtDialog
@@ -45,6 +45,37 @@ class PbrtRendererOptions(  GNROptions ):
         self.algorithmType = "lowdiscrepancy"
         self.filters = [ "box", "gaussian", "mitchell", "sinc", "triangle" ]
         self.pathTracers = [ "adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified" ]
+
+##############################################
+class PbrtGNRTaskBuilder( GNRTaskBuilder ):
+    def build( self ):
+        rtd = RenderingTaskDefinition()
+        rtd.taskId = self.taskDefinition.taskId
+        rtd.fullTaskTimeout = self.taskDefinition.fullTaskTimeout
+        rtd.subtaskTimeout = self.taskDefinition.subtaskTimeout
+        rtd.minSubtaskTime = self.taskDefinition.minSubtaskTime
+        rtd.resources = self.taskDefinition.resources
+        rtd.estimatedMemory = self.taskDefinition.estimatedMemory
+        rtd.totalSubtasks = self.taskDefinition.totalSubtasks
+        rtd.optimizeTotal = self.taskDefinition.optimizeTotal
+        rtd.mainProgramFile = self.taskDefinition.mainProgramFile
+        rtd.taskType = self.taskDefinition.taskType
+        rtd.verificationOptions = self.taskDefinition.verificationOptions
+
+        rtd.resolution = self.taskDefinition.options.resolution
+        rtd.renderer = self.taskDefinition.taskType
+        rtd.mainSceneFile = self.taskDefinition.options.mainSceneFile
+        rtd.resources.add( rtd.mainSceneFile )
+        rtd.outputFile = self.taskDefinition.options.outputFile
+        rtd.outputFormat = self.taskDefinition.options.outputFormat
+        rtd.rendererOptions = PbrtRendererOptions()
+        rtd.rendererOptions.pixelFilter = self.taskDefinition.options.pixelFilter
+        rtd.rendererOptions.algorithmType = self.taskDefinition.options.algorithmType
+        rtd.rendererOptions.samplesPerPixelCount = self.taskDefinition.options.samplesPerPixelCount
+
+        pbrtTaskBuilder = PbrtTaskBuilder( self.clientId, rtd, self.rootPath )
+        return pbrtTaskBuilder.build()
+
 
 ##############################################
 class PbrtTaskBuilder( RenderingTaskBuilder ):
@@ -147,7 +178,12 @@ class PbrtRenderTask( RenderingTask ):
         self.numSubtasks        = numSubtasks
         self.numCores           = numCores
 
-        self.sceneFileSrc       = open(sceneFile).read()
+        try:
+            with open( sceneFile ) as f:
+                self.sceneFileSrc = f.read()
+        except Exception, err:
+            logger.error( "Wrong scene file: {}".format( str( err ) ) )
+            self.scenFileSrc = ""
 
         self.resX               = resX
         self.resY               = resY

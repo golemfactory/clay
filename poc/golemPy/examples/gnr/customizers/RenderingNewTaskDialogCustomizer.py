@@ -11,6 +11,8 @@ from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
 from examples.gnr.RenderingTaskState import RenderingTaskState, RenderingTaskDefinition, AdvanceRenderingVerificationOptions
 from golem.task.TaskState import TaskStatus
 from TimeHelper import setTimeSpinBoxes, getTimeValues
+from VerificationParamsHelper import readAdvanceVerificationParams, setVerificationWidgetsState, loadVerificationParams, \
+                                        verificationRandomChanged
 
 import logging
 
@@ -206,8 +208,6 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
     #############################
     def __chooseOutputFileButtonClicked( self ):
 
-        cr = self.logic.getCurrentRenderer()
-
         outputFileType = u"{}".format( self.gui.ui.outputFormatsComboBox.currentText() )
         filter = u"{} (*.{})".format( outputFileType, outputFileType )
 
@@ -254,8 +254,12 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
         self._loadResources( definition )
         self._loadVerificationParams( definition )
 
+    ########################
+    def _loadOptions( self, definition ):
+        pass
+
     ############################
-    def _loadRendererParams( self, definition ):
+    def _loadTaskType( self, definition ):
         rendererItem = self.gui.ui.rendererComboBox.findText( definition.renderer )
         if rendererItem >= 0:
             self.gui.ui.rendererComboBox.setCurrentIndex( rendererItem )
@@ -263,6 +267,8 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
             logger.error( "Cannot load task, wrong renderer" )
             return
 
+    ############################
+    def _loadRendererParams( self, definition ):
         self.rendererOptions = deepcopy( definition.rendererOptions )
 
         self.gui.ui.outputResXSpinBox.setValue( definition.resolution[ 0 ] )
@@ -299,32 +305,11 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
 
     ############################
     def _loadVerificationParams( self, definition ):
-        enabled = definition.verificationOptions is not None
-
-        self.__setVerificationWidgetsState( enabled )
-        if enabled:
-            self.gui.ui.advanceVerificationCheckBox.setCheckState( QtCore.Qt.Checked )
-            self.gui.ui.verificationSizeXSpinBox.setValue( definition.verificationOptions.boxSize[0])
-            self.gui.ui.verificationSizeYSpinBox.setValue( definition.verificationOptions.boxSize[1])
-            self.gui.ui.verificationForAllRadioButton.setChecked( definition.verificationOptions.type == 'forAll' )
-            self.gui.ui.verificationForFirstRadioButton.setChecked( definition.verificationOptions.type == 'forFirst' )
-            self.gui.ui.verificationRandomRadioButton.setChecked( definition.verificationOptions.type == 'random' )
-            self.gui.ui.probabilityLabel.setEnabled( definition.verificationOptions.type == 'random')
-            self.gui.ui.probabilityLineEdit.setEnabled( definition.verificationOptions.type == 'random')
-            if hasattr( definition.verificationOptions, 'probability' ):
-                self.gui.ui.probabilityLineEdit.setText( "{}".format( definition.verificationOptions.probability ) )
-        else:
-            self.gui.ui.advanceVerificationCheckBox.setCheckState( QtCore.Qt.Unchecked )
+        loadVerificationParams( self.gui, definition )
 
     ############################
     def __setVerificationWidgetsState( self, state ):
-        self.gui.ui.verificationForAllRadioButton.setEnabled( state )
-        self.gui.ui.verificationForFirstRadioButton.setEnabled( state )
-        self.gui.ui.verificationSizeXSpinBox.setEnabled( state )
-        self.gui.ui.verificationSizeYSpinBox.setEnabled( state )
-        self.gui.ui.verificationRandomRadioButton.setEnabled( state )
-        self.gui.ui.probabilityLabel.setEnabled( state and self.gui.ui.verificationRandomRadioButton.isChecked() )
-        self.gui.ui.probabilityLineEdit.setEnabled( state and self.gui.ui.verificationRandomRadioButton.isChecked() )
+        setVerificationWidgetsState( self.gui, state )
 
     ############################
     def __testTaskButtonClicked( self ):
@@ -363,11 +348,15 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
     #############################
     def _queryTaskDefinition( self ):
         definition = RenderingTaskDefinition()
-        definition = self._readRendererParams( definition )
         definition = self._readBasicTaskParams( definition )
+        definition = self._readRendererParams( definition )
         definition = self._readAdvanceVerificationParams( definition )
 
         return definition
+
+    #############################
+    def _readTaskType( self ):
+        pass
 
     #############################
     def _readRendererParams( self, definition ):
@@ -378,7 +367,7 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
         definition.outputFormat      = u"{}".format( self.gui.ui.outputFormatsComboBox.itemText( self.gui.ui.outputFormatsComboBox.currentIndex() ) )
 
         if self.addTaskResourcesDialogCustomizer:
-            definition.resources         = self.rendererOptions.addToResources( self.addTaskResourcesDialogCustomizer.resources )
+            definition.resources         = self.rendererOptions.addToResources( definition.resources )
 
             definition.mainSceneFile = u"{}".format( self.gui.ui.mainSceneFileLineEdit.text() )
             definition.resources.add( os.path.normpath( definition.mainSceneFile ) )
@@ -386,33 +375,9 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
 
     #############################
     def _readAdvanceVerificationParams( self, definition ):
-        if self.gui.ui.advanceVerificationCheckBox.isChecked():
-            definition.verificationOptions = AdvanceRenderingVerificationOptions()
-            if self.gui.ui.verificationForAllRadioButton.isChecked():
-                definition.verificationOptions.type = 'forAll'
-            elif self.gui.ui.verificationForFirstRadioButton.isChecked():
-                definition.verificationOptions.type = 'forFirst'
-            else:
-                definition.verificationOptions.type = 'random'
-                try:
-                    definition.verificationOptions.probability = float( self.gui.ui.probabilityLineEdit.text() )
-                    if definition.verificationOptions.probability < 0:
-                        definition.verificationOptions.probability = 0.0
-                        self.gui.ui.probabilityLineEdit.setText( "0.0" )
-                    if definition.verificationOptions.probability > 1:
-                        definition.verificationOptions.probability = 1.0
-                        self.gui.ui.probabilityLineEdit.setText( "1.0" )
-                    print definition.verificationOptions.probability
-                except:
-                    logger.warning("Wrong probability values {}".format( self.gui.ui.probabilityLineEdit.text() ) )
-                    definition.verificationOptions.probability = 0.0
-                    self.gui.ui.probabilityLineEdit.setText( "0.0" )
-            definition.verificationOptions.boxSize = ( int( self.gui.ui.verificationSizeXSpinBox.value() ), int( self.gui.ui.verificationSizeYSpinBox.value() ) )
-        else:
-            definition.verificationOptions = None
+        return readAdvanceVerificationParams( self.gui, definition )
 
-        return definition
-
+    #############################
     def _optimizeTotalCheckBoxChanged( self ):
         NewTaskDialogCustomizer._optimizeTotalCheckBoxChanged( self )
         self.__taskSettingsChanged()
@@ -452,7 +417,6 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
 
     #############################
     def __verificationRandomChanged( self ):
-        randSet =  self.gui.ui.verificationRandomRadioButton.isChecked()
-        self.gui.ui.probabilityLineEdit.setEnabled( randSet )
-        self.gui.ui.probabilityLabel.setEnabled( randSet )
+        verificationRandomChanged( self.gui )
         self.__taskSettingsChanged()
+

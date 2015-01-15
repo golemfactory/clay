@@ -33,7 +33,7 @@ def __readFromEnvironment( defaultCmdFile, numCores ):
     env = ThreeDSMaxEnvironment()
     cmdFile = env.get3dsmaxcmdPath()
     if cmdFile:
-        env.setNThreads( numCores )
+    #    env.setNThreads( numCores )
         return cmdFile
     else:
         print "Environment not supported... Assuming that exec is in working folder"

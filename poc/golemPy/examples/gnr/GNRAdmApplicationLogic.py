@@ -36,7 +36,8 @@ class GNRAdmApplicationLogic( GNRApplicationLogic ):
         for file in files:
             taskState = self._getNewTaskState()
             taskState.status = TaskStatus.notStarted
-            taskState.definition = pickle.loads( open( file, 'r' ).read() )
+            with open( file, 'r' ).read() as f:
+                taskState.definition = pickle.loads( f.read() )
             import uuid
             taskState.definition.taskId = "{}".format( uuid.uuid4() )
             tasks.append( taskState )
