@@ -33,11 +33,10 @@ class GNRAdmApplicationLogic( GNRApplicationLogic ):
         path = os.path.join( os.environ.get( 'GOLEM' ), 'save/test')
         files = glob.glob( os.path.join( path, '*.gt' ) )
         tasks = []
-        for file in files:
+        for file_ in files:
             taskState = self._getNewTaskState()
             taskState.status = TaskStatus.notStarted
-            with open( file, 'r' ).read() as f:
-                taskState.definition = pickle.loads( f.read() )
+            taskState.definition = pickle.loads( open( file_, 'r' ).read() )
             import uuid
             taskState.definition.taskId = "{}".format( uuid.uuid4() )
             tasks.append( taskState )
