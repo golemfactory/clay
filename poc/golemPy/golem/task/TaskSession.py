@@ -117,9 +117,9 @@ class TaskSession:
                 self.dropped()
                 return
 
-            producer = FileProducer( resFilePath, self.conn )
-            producer.produce()
+            producer = FileProducer( resFilePath, self )
 
+            #Producer powinien zakonczyc tu polaczenie
             #self.dropped()
         elif type == MessageResource.Type:
             self.taskComputer.resourceGiven( msg.subtaskId )
@@ -140,12 +140,11 @@ class TaskSession:
         self.taskServer.setLastMessage( "->", time.localtime(), msg, self.address, self.port )
 
 class FileProducer:
-    def __init__( self, file_, conn ):
+    def __init__( self, file_, taskSession ):
 
         self.file_ = file_
-        self.conn = conn
+        self.taskSession = taskSession
         self.paused = False
-        self.stopped = False
         self.openFile()
         self.register()
 
@@ -156,28 +155,22 @@ class FileProducer:
         self.data = struct.pack( "!L", self.size ) + self.fh.read( 1024 * 1024 )
 
     def register( self ):
-        self.conn.transport.registerProducer( self, False )
+        self.taskSession.conn.transport.registerProducer( self, False )
 
     def stopProducing( self ):
-        self.stopped = True
-        self.fh.close()
+        self.paused = True
 
     def resumeProducing( self ):
-        self.paused = False
+        if self.data:
+            self.taskSession.conn.transport.write( self.data )
+            print "\rSending progress {} %                       ".format( int( 100 * float( self.fh.tell() ) / self.size ) ),
+            self.data = self.fh.read( 1024 * 1024 )
+        else:
+            self.fh.close()
+            self.taskSession.conn.transport.unregisterProducer()
+            self.taskSession.dropped()
 
-    def produce( self ):
-        if not self.paused:
-            if self.data:
-                self.conn.transport.write( self.data )
-                self.conn.transport.doWrite()
-                print "\rSending progress {} %                       ".format( int( 100 * float( self.fh.tell() ) / self.size ) ),
-                self.data = self.fh.read( 1024 * 1024 )
-            else:
-                self.stopProducing()
-            if not self.stopped:
-                from twisted.internet import reactor
-                reactor.callLater(0.1, self.produce )
 
-    def pausedProducing(self):
+    def pauseProducing(self):
         self.paused = True
 

@@ -88,11 +88,11 @@ class ResourcesManager:
         prct = int( 100 * self.recvSize / float( self.fileSize ) )
         if prct > self.lastPrct:
             print "\rFile data receving {} %                       ".format(  prct ),
+            self.lastPrct = prct
         locData = data
         if self.fileSize == -1:
             # First chunk
             self.lastPrct = 0
-            self.buffSize = 0
             ( self.fileSize, ) = struct.unpack( "!L", data[0:4] )
             locData = data[ 4: ]
             assert self.fh is None
@@ -101,10 +101,8 @@ class ResourcesManager:
 
         assert self.fh
         self.recvSize += len( locData )
-        self.buff.appendString( locData )
 
-        if self.buff.dataSize() >= self.buffSize or self.recvSize == self.fileSize:
-            self.fh.write( self.buff.readAll() )
+        self.fh.write( locData )
 
         if self.recvSize == self.fileSize:
             conn.fileMode = False
