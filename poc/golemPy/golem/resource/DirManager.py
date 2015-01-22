@@ -14,12 +14,13 @@ def splitPath( path ):
 
 class DirManager:
     ######################
-    def __init__( self, rootPath, nodeId, tmp = 'tmp', res = 'resources', output = 'output' ):
+    def __init__( self, rootPath, nodeId, tmp = 'tmp', res = 'resources', output = 'output', globalResource = 'golemres' ):
         self.rootPath = rootPath
         self.nodeId = nodeId
         self.tmp = tmp
         self.res = res
         self.output = output
+        self.globalResource = globalResource
 
     ######################
     def clearDir( self, d ):
@@ -49,6 +50,11 @@ class DirManager:
         else:
             logger.error( errMsg )
             return ""
+
+    ######################
+    def getResourceDir ( self, create = True ):
+        fullPath = self.__getGlobalResourcePath( )
+        return self.getDir( fullPath, create, "resource dir does not exist" )
 
     ######################
     def getTaskTemporaryDir( self, taskId, create = True ):
@@ -85,3 +91,6 @@ class DirManager:
 
     def __getOutPath( self, taskId ):
         return os.path.join( self.rootPath, self.nodeId, taskId, self.output )
+
+    def __getGlobalResourcePath( self ):
+        return os.path.join( self.rootPath, self.globalResource )

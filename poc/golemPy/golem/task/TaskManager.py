@@ -23,7 +23,7 @@ class TaskManagerEventListener:
 
 class TaskManager:
     #######################
-    def __init__( self, clientUid, listenAddress = "", listenPort = 0, rootPath = "res" ):
+    def __init__( self, clientUid, listenAddress = "", listenPort = 0, rootPath = "res", useDistributedResources=True ):
         self.clientUid      = clientUid
 
         self.tasks          = {}
@@ -38,6 +38,8 @@ class TaskManager:
 
         self.listeners      = []
         self.activeStatus = [ TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting ]
+
+        self.useDistributedResources = useDistributedResources
 
     #######################
     def registerListener( self, listener ):
@@ -69,15 +71,23 @@ class TaskManager:
         self.dirManager.clearTemporary( task.header.taskId )
         self.dirManager.getTaskTemporaryDir( task.header.taskId, create = True)
 
-        task.taskStatus = TaskStatus.waiting
-
         ts              = TaskState()
-        ts.status       = TaskStatus.waiting
+        if self.useDistributedResources:
+            task.taskStatus = TaskStatus.sending
+            ts.status       = TaskStatus.sending
+        else:
+            task.taskStatus = TaskStatus.waiting
+            ts.status       = TaskStatus.waiting
         ts.timeStarted  = time.time()
 
         self.tasksStates[ task.header.taskId ] = ts
 
         self.__noticeTaskUpdated( task.header.taskId )
+
+    def resourcesSend( self, taskId ):
+        self.tasksStates[ taskId ].status = TaskStatus.waiting
+        self.tasks[taskId].taskStatus = TaskStatus.waiting
+        logger.info( "Resources for task {} send".format( taskId ) )
 
     def __hasSubtasks(self, taskState, task, maxResourceSize, maxMemorySize):
         if taskState.status not in self.activeStatus:
@@ -128,8 +138,6 @@ class TaskManager:
         else:
             logger.error( "This is not my subtask {}".format( subtaskId ) )
             return 0
-
-
 
     #######################
     def verifySubtask( self, subtaskId ):
@@ -220,6 +228,12 @@ class TaskManager:
         if taskId in self.tasks:
             task = self.tasks[ taskId ]
             return task.prepareResourceDelta( taskId, resourceHeader )
+
+    #######################
+    def getResourcePartsList( self, taskId, resourceHeader ):
+        if taskId in self.tasks:
+            task = self.tasks[ taskId ]
+            return task.getResourcePartsList( taskId, resourceHeader )
 
     #######################
     def acceptResultsDelay( self, taskId ):

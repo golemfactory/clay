@@ -29,6 +29,13 @@ class P2PService:
 
         self.lastMessages           = []
 
+        self.resourcePort           = 0
+        self.resourcePeers          = {}
+        self.resourceServer         = None
+        self.connectToNetwork()
+
+    #############################
+    def connectToNetwork( self ):
         if not self.wrongSeedData():
             self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
 
@@ -159,6 +166,52 @@ class P2PService:
     def getListenParams( self ):
         return ( self.p2pServer.curPort, self.configDesc.clientUid )
 
+    #Resource functions
+    #############################
+    def setResourceServer ( self, resourceServer ):
+        self.resourceServer = resourceServer
+
+    ############################
+    def setResourcePeer( self, addr, port ):
+        self.resourcePort = port
+        self.resourcePeers[ self.clientUid ] = [ addr, port ]
+
+    #############################
+    def sendGetResourcePeers( self ):
+        for p in self.peers.values():
+            p.sendGetResourcePeers()
+
+    ############################
+    def getResourcePeers( self ):
+        resourcePeersInfo = []
+        for clientId, [addr, port] in self.resourcePeers.iteritems():
+            resourcePeersInfo.append({ 'clientId': clientId, 'addr': addr, 'port': port })
+
+        return resourcePeersInfo
+
+    ############################
+    def setResourcePeers( self, resourcePeers ):
+        for peer in resourcePeers:
+            try:
+                if peer['clientId'] != self.clientUid:
+                    self.resourcePeers[ peer['clientId']]  = [ peer['addr'], peer['port'] ]
+            except Exception, err:
+                logger.error( "Wrong set peer message (peer: {}): {}".format( peer, str( err ) ) )
+        self.resourceServer.setResourcePeers( self.resourcePeers.copy() )
+
+    #############################
+    def sendPutResource( self, resource, addr, port, copies ):
+
+        if len ( self.peers ) > 0:
+            p = self.peers.itervalues().next()
+            p.sendPutResource( resource, addr, port, copies )
+
+    #############################
+    def putResource( self, resource, addr, port, copies ):
+        self.resourceServer.putResource( resource, addr, port, copies )
+
+
+    #TASK FUNCTIONS
     ############################
     def getTasksHeaders( self ):
         return self.taskServer.getTasksHeaders()

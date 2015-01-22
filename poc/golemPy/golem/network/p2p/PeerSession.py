@@ -3,7 +3,7 @@ import logging
 
 from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, \
                           MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks, \
-                          MessageRemoveTask
+                          MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers
 from golem.network.p2p.NetConnState import NetConnState
 
 
@@ -130,6 +130,12 @@ class PeerSession(PeerSessionInterface):
         elif type == MessageRemoveTask.Type:
             self.p2pService.removeTaskHeader( msg.taskId )
 
+        elif type == MessageGetResourcePeers.Type:
+            self.__sendResourcePeers()
+
+        elif type == MessageResourcePeers.Type:
+            self.p2pService.setResourcePeers( msg.resourcePeers )
+
         else:
             self.__disconnect( PeerSession.DCRBadProtocol )
 
@@ -144,6 +150,11 @@ class PeerSession(PeerSessionInterface):
     ##########################
     def sendRemoveTask( self, taskId ):
         self.__send( MessageRemoveTask( taskId ) )
+
+    ##########################
+    def sendGetResourcePeers( self ):
+        self.__send( MessageGetResourcePeers() )
+
 
     ##########################
     # PRIVATE SECTION
@@ -187,8 +198,13 @@ class PeerSession(PeerSessionInterface):
         self.__send( MessageTasks( tasks ) )
 
     ##########################
+    def __sendResourcePeers( self ):
+        resourcePeersInfo = self.p2pService.getResourcePeers()
+        self.__send( MessageResourcePeers( resourcePeersInfo ) )
+
+    ##########################
     def __send(self, message):
-        #print "Sending to {}:{}: {}".format( self.address, self.port, message )
+       #print "Sending to {}:{}: {}".format( self.address, self.port, message )
         if not self.conn.sendMessage( message ):
             self.dropped()
             return

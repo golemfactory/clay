@@ -24,7 +24,7 @@ class TaskServer:
         self.taskHeaders        = {}
         self.supportedTasks     = []
         self.removedTasks        = {}
-        self.taskManager        = TaskManager( configDesc.clientUid, rootPath = self.__getTaskManagerRoot( configDesc ) )
+        self.taskManager        = TaskManager( configDesc.clientUid, rootPath = self.__getTaskManagerRoot( configDesc ), useDistributedResources = self.configDesc.useDistributedResourceManagement )
         self.taskComputer       = TaskComputer( configDesc.clientUid, self )
         self.taskSessions       = {}
         self.taskSessionsIncoming = []
@@ -69,6 +69,10 @@ class TaskServer:
     def requestResource( self, subtaskId, resourceHeader, address, port ):
         self.__connectAndSendResourceRequest( address, port, subtaskId, resourceHeader )
         return subtaskId
+
+    #############################
+    def pullResources( self, taskId, listFiles ):
+        self.client.resourceServer.addFilesToGet( listFiles, taskId )
 
     #############################
     def sendResults( self, subtaskId, result, ownerAddress, ownerPort ):
@@ -200,6 +204,10 @@ class TaskServer:
         price = self.client.payForTask( priceMod )
         logger.info( "Paying {} for subtask {}".format( price, subtaskId ) )
         return price
+
+    ###########################
+    def unpackDelta( self, destDir, delta, taskId ):
+        self.client.resourceServer.unpackDelta( destDir, delta, taskId )
 
     #############################
     # PRIVATE SECTION

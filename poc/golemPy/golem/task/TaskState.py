@@ -58,6 +58,7 @@ class SubtaskState:
 
 class TaskStatus:
     notStarted  = "Not started"
+    sending     = "Sending"
     waiting     = "Waiting"
     starting    = "Starting"
     computing   = "Computing"

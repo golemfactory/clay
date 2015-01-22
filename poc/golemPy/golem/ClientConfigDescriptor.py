@@ -31,3 +31,5 @@ class ClientConfigDescriptor:
         self.maxResourceSize            = 0
         self.maxMemorySize              = 0
 
+        self.useDistributedResourceManagement = True
+

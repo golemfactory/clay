@@ -244,6 +244,41 @@ class MessageRemoveTask( Message ):
     def dictRepr( self ):
         return { MessageRemoveTask.REMOVE_TASK_STR : self.taskId }
 
+class MessageGetResourcePeers( Message ):
+
+    Type = 9
+
+    WANT_RESOURCE_PEERS_STR = u"WANT_RESOURCE_PEERS"
+
+    def __init__( self, dictRepr = None ):
+        Message.__init__( self, MessageGetResourcePeers.Type )
+
+        if dictRepr:
+            assert dictRepr[ 0 ] == MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR
+
+    def dictRepr( self ):
+        return [ MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR ]
+
+class MessageResourcePeers( Message ):
+
+    Type = 10
+
+    RESOURCE_PEERS_STR = u"RESOURCE_PEERS"
+
+    def __init__( self, resourcePeers = None, dictRepr = None ):
+        Message.__init__( self, MessageResourcePeers.Type )
+
+        if resourcePeers is None:
+            resourcePeers = []
+
+        self.resourcePeers = resourcePeers
+
+        if dictRepr:
+            self.resourcePeers = dictRepr[ MessageResourcePeers.RESOURCE_PEERS_STR ]
+
+    def dictRepr( self ):
+        return { MessageResourcePeers.RESOURCE_PEERS_STR: self.resourcePeers }
+
 TASK_MSG_BASE = 2000
 
 class MessageWantToComputeTask( Message ):
@@ -465,6 +500,179 @@ class MessageSubtaskResultRejected( Message ):
             MessageSubtaskResultRejected.SUB_TASK_ID_STR: self.subtaskId
         }
 
+class MessageDeltaParts( Message ):
+    Type = TASK_MSG_BASE + 12
+
+    TASK_ID_STR = u"TASK_ID"
+    DELTA_HEADER_STR = u"DELTA_HEADER"
+    PARTS_STR = u"PARTS"
+
+    def __init__( self, taskId = 0, deltaHeader = None, parts = None, dictRepr = None ):
+        Message.__init__( self, MessageDeltaParts.Type )
+
+        self.taskId = taskId
+        self.deltaHeader = deltaHeader
+        self.parts = parts
+
+        if dictRepr:
+            self.taskId = dictRepr[ MessageDeltaParts.TASK_ID_STR ]
+            self.deltaHeader = dictRepr[ MessageDeltaParts.DELTA_HEADER_STR ]
+            self.parts = dictRepr[ MessageDeltaParts.PARTS_STR ]
+
+    def dictRepr( self ):
+        return {
+            MessageDeltaParts.TASK_ID_STR: self.taskId,
+            MessageDeltaParts.DELTA_HEADER_STR: self.deltaHeader,
+            MessageDeltaParts.PARTS_STR: self.parts
+        }
+
+class MessageResourceFormat( Message ):
+    Type = TASK_MSG_BASE + 13
+
+    USE_DISTRIBUTED_RESOURCE_STR = u"USE_DISTRIBUTED_RESOURCE"
+
+    def __init__( self, useDistributedResource = 0, dictRepr = None ):
+        Message.__init__( self, MessageResourceFormat.Type )
+
+        self.useDistributedResource = useDistributedResource
+
+        if dictRepr:
+            self.useDistributedResource = dictRepr[ MessageResourceFormat.USE_DISTRIBUTED_RESOURCE_STR ]
+
+    def dictRepr( self ):
+        return {
+            MessageResourceFormat.USE_DISTRIBUTED_RESOURCE_STR: self.useDistributedResource
+        }
+
+class MessageAcceptResourceFormat( Message ):
+    Type = TASK_MSG_BASE + 14
+
+    ACCEPT_RESOURCE_FORMAT_STR = u"ACCEPT_RESOURCE_FORMAT"
+
+    def __init__( self, dictRepr = None ):
+        Message.__init__( self, MessageAcceptResourceFormat.Type )
+
+        if dictRepr:
+            assert dictRepr[0] == MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR
+
+
+    def dictRepr( self ):
+        return [ MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR ]
+
+RESOURCE_MSG_BASE = 3000
+
+class MessagePushResource( Message ):
+
+    Type = RESOURCE_MSG_BASE + 1
+
+    RESOURCE_STR = u"resource"
+    OWNER_ADDR_STR = u"ownerAddr"
+    OWNER_PORT_STR = u"ownerPort"
+    COPIES_STR = u"copies"
+
+    def __init__( self, resource = None, ownerAddr = '', ownerPort = '', copies = 0, dictRepr = None ):
+        Message.__init__( self, MessagePushResource.Type )
+        self.resource = resource
+        self.ownerAddr = ownerAddr
+        self.ownerPort = ownerPort
+        self.copies = copies
+
+        if dictRepr:
+            self.resource = dictRepr[ MessagePushResource.RESOURCE_STR ]
+            self.ownerAddr = dictRepr[ MessagePushResource.OWNER_ADDR_STR ]
+            self.ownerPort = dictRepr[ MessagePushResource.OWNER_PORT_STR ]
+            self.copies = dictRepr[ MessagePushResource.COPIES_STR ]
+
+    def dictRepr( self ):
+        return {    MessagePushResource.RESOURCE_STR: self.resource,
+                    MessagePushResource.OWNER_ADDR_STR: self.ownerAddr,
+                    MessagePushResource.OWNER_PORT_STR: self.ownerPort,
+                    MessagePushResource.COPIES_STR: self.copies
+        }
+class MessageHasResource( Message ):
+
+    Type = RESOURCE_MSG_BASE + 2
+
+    RESOURCE_STR = u"resource"
+
+    def __init__( self, resource = None, dictRepr = None ):
+        Message.__init__( self, MessageHasResource.Type )
+        self.resource = resource
+
+        if dictRepr:
+            self.resource = dictRepr[ MessageHasResource.RESOURCE_STR ]
+
+    def dictRepr( self ):
+        return { MessageHasResource.RESOURCE_STR: self.resource }
+
+class MessageWantResource( Message ):
+
+    Type = RESOURCE_MSG_BASE + 3
+
+    RESOURCE_STR = u"resource"
+
+    def __init__( self, resource = None, dictRepr = None ):
+        Message.__init__( self, MessageWantResource.Type )
+        self.resource = resource
+
+        if dictRepr:
+            self.resource = dictRepr[ MessageWantResource.RESOURCE_STR ]
+
+    def dictRepr( self ):
+        return { MessageWantResource.RESOURCE_STR : self.resource }
+
+
+class MessagePullResource( Message ):
+
+    Type = RESOURCE_MSG_BASE + 4
+
+    RESOURCE_STR = u"resource"
+
+    def __init__( self, resource = None, dictRepr = None ):
+        Message.__init__( self, MessagePullResource.Type )
+        self.resource = resource
+
+        if dictRepr:
+            self.resource = dictRepr[ MessagePullResource.RESOURCE_STR ]
+
+    def dictRepr( self ):
+        return { MessagePullResource.RESOURCE_STR : self.resource }
+
+class MessagePullAnswer( Message ):
+
+    Type = RESOURCE_MSG_BASE + 5
+
+    RESOURCE_STR = u"resource"
+    HAS_RESOURCE_STR = u"hasResource"
+
+    def __init__( self, resource = None, hasResource = False, dictRepr = None ):
+        Message.__init__( self, MessagePullAnswer.Type )
+        self.resource = resource
+        self.hasReource = hasResource
+
+        if dictRepr:
+            self.resource = dictRepr[ MessagePullAnswer.RESOURCE_STR ]
+            self.hasResource = dictRepr[ MessagePullAnswer.HAS_RESOURCE_STR ]
+
+    def dictRepr( self ):
+        return { MessagePullAnswer.RESOURCE_STR: self.resource,
+                 MessagePullAnswer.HAS_RESOURCE_STR: self.hasReource }
+
+class MessageSendResource( Message ):
+
+    Type = RESOURCE_MSG_BASE + 6
+
+    RESOURCE_STR = u"resource"
+
+    def __init__( self, resource = None, dictRepr = None ):
+        Message.__init__( self, MessageSendResource.Type )
+        self.resource = resource
+
+        if dictRepr:
+            self.resource = dictRepr[ MessageSendResource.RESOURCE_STR ]
+
+    def dictRepr( self ):
+        return { MessageSendResource.RESOURCE_STR: self.resource }
 
 MANAGER_MSG_BASE = 1000
 
@@ -566,6 +774,9 @@ def initMessages():
     MessagePeers()
     MessageTasks()
     MessageRemoveTask()
+    MessageGetResourcePeers()
+    MessageResourcePeers()
+
     MessageTaskToCompute()
     MessageWantToComputeTask()
     MessagePeerStatus()
@@ -580,6 +791,16 @@ def initMessages():
     MessageNewNodes()
     MessageSubtaskResultAccepted()
     MessageSubtaskResultRejected()
+    MessageDeltaParts()
+    MessageResourceFormat()
+    MessageAcceptResourceFormat()
+
+    MessagePushResource()
+    MessageHasResource()
+    MessageWantResource()
+    MessagePullResource()
+    MessagePullAnswer()
+    MessageSendResource()
 
 def initManagerMessages():
     MessagePeerStatus()

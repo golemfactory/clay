@@ -1,5 +1,5 @@
 
-from golem.Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected
+from golem.Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat
 from TaskConnState import TaskConnState
 import time
 import cPickle as pickle
@@ -23,6 +23,8 @@ class TaskSession:
         self.port           = self.conn.transport.getPeer().port
         self.taskId         = 0
 
+        self.lastResourceMsg = None
+
     ##########################
     def requestTask( self, clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores ):
         self.__send( MessageWantToComputeTask( clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores ) )
@@ -30,7 +32,6 @@ class TaskSession:
     ##########################
     def requestResource( self, taskId, resourceHeader ):
         self.__send( MessageGetResource( taskId, pickle.dumps( resourceHeader ) ) )
-        self.conn.fileMode = True
 
     ##########################
     def sendReportComputedTask( self, subtaskId ):
@@ -108,19 +109,18 @@ class TaskSession:
             self.dropped()
 
         elif type == MessageGetResource.Type:
-            resFilePath = self.taskManager.prepareResource( msg.taskId, pickle.loads( msg.resourceHeader ) )
-            #resFilePath  = "d:/src/golem/poc/golemPy/test/res2222221"
-
-            if not resFilePath:
-                logger.error( "Task {} has no resource".format( msg.taskId ) )
-                self.conn.transport.write( struct.pack( "!L", 0 ) )
+            self.lastResourceMsg = msg
+            self.__sendResourceFormat ( self.taskServer.configDesc.useDistributedResourceManagement )
+        elif type == MessageAcceptResourceFormat.Type:
+            if self.lastResourceMsg is not None:
+                if self.taskServer.configDesc.useDistributedResourceManagement:
+                    self.__sendResourcePartsList( self.lastResourceMsg )
+                else:
+                    self.__sendDeltaResource( self.lastResourceMsg )
+                self.lastResourceMsg = None
+            else:
+                logger.error("Unexpected MessageAcceptResource message")
                 self.dropped()
-                return
-
-            producer = FileProducer( resFilePath, self )
-
-            #Producer powinien zakonczyc tu polaczenie
-            #self.dropped()
         elif type == MessageResource.Type:
             self.taskComputer.resourceGiven( msg.subtaskId )
             self.dropped()
@@ -128,6 +128,14 @@ class TaskSession:
             self.taskServer.subtaskAccepted( msg.subtaskId, msg.reward )
         elif type == MessageSubtaskResultRejected.Type:
             self.taskServer.subtaskRejected( msg.subtaskId )
+        elif type == MessageDeltaParts.Type:
+            self.taskComputer.waitForResources( self.taskId, msg.deltaHeader )
+            self.taskServer.pullResources( self.taskId, msg.parts )
+            self.dropped()
+        elif type == MessageResourceFormat.Type:
+            if not msg.useDistributedResource:
+                self.conn.fileMode = True
+            self.__sendAcceptResourceFormat()
 
     ##########################
     def dropped( self ):
@@ -138,6 +146,31 @@ class TaskSession:
         #print "Sending to {}:{}: {}".format( self.address, self.port, msg )
         self.conn.sendMessage( msg )
         self.taskServer.setLastMessage( "->", time.localtime(), msg, self.address, self.port )
+
+    def __sendDeltaResource(self, msg ):
+        resFilePath = self.taskManager.prepareResource( msg.taskId, pickle.loads( msg.resourceHeader ) )
+        #resFilePath  = "d:/src/golem/poc/golemPy/test/res2222221"
+
+        if not resFilePath:
+            logger.error( "Task {} has no resource".format( msg.taskId ) )
+            self.conn.transport.write( struct.pack( "!L", 0 ) )
+            self.dropped()
+            return
+
+        producer = FileProducer( resFilePath, self )
+
+        #Producer powinien zakonczyc tu polaczenie
+        #self.dropped()
+
+    def __sendResourcePartsList(self, msg ):
+        deltaHeader, partsList = self.taskManager.getResourcePartsList( msg.taskId, pickle.loads( msg.resourceHeader ) )
+        self.__send( MessageDeltaParts( self.taskId, deltaHeader, partsList ) )
+
+    def __sendResourceFormat( self, useDistributedResource ):
+        self.__send( MessageResourceFormat( useDistributedResource ) )
+
+    def __sendAcceptResourceFormat( self ):
+        self.__send( MessageAcceptResourceFormat() )
 
 class FileProducer:
     def __init__( self, file_, taskSession ):

@@ -22,6 +22,7 @@ MAX_MEMORY_SIZE = 250 * 1024
 APP_NAME = "Golem LAN Renderer"
 APP_VERSION = "1.021"
 
+
 class CommonConfig:
 
     ##############################
@@ -77,6 +78,7 @@ class NodeConfig:
     NODE_SNAPSHOT_INTERVAL = 4.0
     ADD_TASKS = 0
     MAX_SENDING_DELAY = 360
+    USE_DISTRIBUTED_RESOURCE_MANAGEMENT = 1
 
     ##############################
     def __init__( self, nodeId, seedHost = "", seedPort = 0, numCores = 4, maxResourceSize = MAX_RESOURCE_SIZE,
@@ -84,7 +86,8 @@ class NodeConfig:
                   gettingPeersInterval = GETTING_PEERS_INTERVAL, gettingTasksInterval = GETTING_TASKS_INTERVAL,
                   taskRequestInterval = TASK_REQUEST_INTERVAL, useWaitingForTaskTimeout = USE_WAITING_FOR_TASK_TIMEOUT,
                   waitingForTaskTimeout = WAITING_FOR_TASK_TIMEOUT, nodesSnapshotInterval = NODE_SNAPSHOT_INTERVAL,
-                  addTasks = ADD_TASKS, maxSendingDelay = MAX_SENDING_DELAY):
+                  addTasks = ADD_TASKS, maxSendingDelay = MAX_SENDING_DELAY,
+                  useDistributedResourceManagement = USE_DISTRIBUTED_RESOURCE_MANAGEMENT):
         self._section = "Node {}".format( nodeId )
 
         estimated = NodeConfig.readEstimatedPerformance()
@@ -108,6 +111,7 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "number of cores", numCores, self, "NumCores")
         ConfigEntry.createProperty( self.section(), "maximum resource size", maxResourceSize, self, "MaxResourceSize" )
         ConfigEntry.createProperty( self.section(), "maximum memory usage", maxMemorySize, self, "MaxMemorySize" )
+        ConfigEntry.createProperty( self.section(), "use distributed resource management", useDistributedResourceManagement, self, "UseDistributedResourceManagement")
 
 
     ##############################
@@ -235,6 +239,9 @@ class AppConfig:
 
     def getMaxMemorySize ( self ):
         return self._cfg.getNodeConfig().getMaxMemorySize()
+
+    def getUseDistributedResourceManagement( self ):
+        return self._cfg.getNodeConfig().getUseDistributedResourceManagement()
 
     ##############################
     def changeConfig( self, cfgDesc , cfgFile = CONFIG_FILENAME, ):

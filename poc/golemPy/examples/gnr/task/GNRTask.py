@@ -1,6 +1,6 @@
 from golem.task.TaskBase import Task, TaskHeader, TaskBuilder
 from golem.task.TaskState import SubtaskStatus
-from golem.resource.Resource import prepareDeltaZip
+from golem.resource.Resource import prepareDeltaZip, TaskResourceHeader
 from golem.environments.Environment import Environment
 
 from examples.gnr.RenderingDirManager import getTmpPath
@@ -77,6 +77,8 @@ class GNRTask( Task ):
         self.fullTaskTimeout = 2200
         self.countingNodes = {}
 
+        self.resFiles = {}
+
     #######################
     def initialize( self ):
         pass
@@ -135,13 +137,13 @@ class GNRTask( Task ):
         return self.lastTask
 
     #######################
+    def setResFiles( self, resFiles ):
+        self.resFiles = resFiles
+
+    #######################
     def prepareResourceDelta( self, taskId, resourceHeader ):
         if taskId == self.header.taskId:
-            commonPathPrefix = os.path.commonprefix( self.taskResources )
-            commonPathPrefix = os.path.dirname( commonPathPrefix )
-            dirName = commonPathPrefix #os.path.join( "res", self.header.clientId, self.header.taskId, "resources" )
-            tmpDir = getTmpPath(self.header.clientId, self.header.taskId, self.rootPath)
-
+            commonPathPrefix, dirName, tmpDir = self.__getTaskDirParams()
 
             if not os.path.exists( tmpDir ):
                 os.makedirs( tmpDir )
@@ -154,12 +156,37 @@ class GNRTask( Task ):
             return None
 
     #######################
+    def getResourcePartsList( self, taskId, resourceHeader ):
+        if taskId == self.header.taskId:
+            commonPathPrefix, dirName, tmpDir = self.__getTaskDirParams()
+
+            if os.path.exists( dirName ):
+                deltaHeader, parts = TaskResourceHeader.buildPartsHeaderDeltaFromChosen( resourceHeader, dirName, self.resFiles )
+                return deltaHeader, parts
+            else:
+                return None
+        else:
+            return None
+
+    #######################
+    def __getTaskDirParams( self ):
+        commonPathPrefix = os.path.commonprefix( self.taskResources )
+        commonPathPrefix = os.path.dirname( commonPathPrefix )
+        dirName = commonPathPrefix #os.path.join( "res", self.header.clientId, self.header.taskId, "resources" )
+        tmpDir = getTmpPath(self.header.clientId, self.header.taskId, self.rootPath)
+        if not os.path.exists( tmpDir ):
+                os.makedirs( tmpDir )
+
+        return commonPathPrefix, dirName, tmpDir
+
+    #######################
     def abort ( self ):
         pass
 
     #######################
     def updateTaskState( self, taskState ):
         pass
+
 
     #######################
     @checkSubtaskIdWrapper

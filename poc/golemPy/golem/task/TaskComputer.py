@@ -43,6 +43,8 @@ class TaskComputer:
         self.curExtraData           = None
         self.curShortDescr          = None
 
+        self.delta = None
+
     ######################
     def taskGiven( self, ctd ):
         if ctd.subtaskId not in self.assignedSubTasks:
@@ -65,6 +67,28 @@ class TaskComputer:
                 return True
             else:
                 return False
+
+    ######################
+    def taskResourceCollected( self, taskId ):
+        if taskId in self.taskToSubTaskMapping:
+            subtaskId = self.taskToSubTaskMapping[ taskId ]
+            if subtaskId in self.assignedSubTasks:
+                self.waitingTtl = 0
+                self.countingTask = True
+                self.taskServer.unpackDelta( self.dirManager.getTaskResourceDir( taskId ), self.delta, taskId )
+                self.__computeTask( subtaskId, self.assignedSubTasks[ subtaskId ].srcCode, self.assignedSubTasks[ subtaskId ].extraData, self.assignedSubTasks[ subtaskId ].shortDescription )
+                self.waitingForTask = None
+                self.delta = None
+                return True
+            else:
+                return False
+
+    #####################
+    def waitForResources( self, taskId, delta ):
+        if taskId in self.taskToSubTaskMapping:
+            subtaskId = self.taskToSubTaskMapping[ taskId ]
+            if subtaskId in self.assignedSubTasks:
+                self.delta = delta
 
     ######################
     def taskRequestRejected( self, taskId, reason ):

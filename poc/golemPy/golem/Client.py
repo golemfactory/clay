@@ -16,6 +16,7 @@ from golem.BankConfig import BankConfig
 from golem.Message import initMessages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
 from golem.environments.EnvironmentsManager import EnvironmentsManager
+from golem.resource.ResourceServer import ResourceServer
 
 import logging
 
@@ -54,6 +55,7 @@ def startClient():
     waitingForTaskTimeout       = cfg.getWaitingForTaskTimeout()
     estimatedPerformance        = cfg.getEstimatedPerformance()
     nodeSnapshotInterval        = cfg.getNodeSnapshotInterval()
+    useDistributedResourceManagement = cfg.getUseDistributedResourceManagement()
 
     configDesc = ClientConfigDescriptor()
 
@@ -86,6 +88,7 @@ def startClient():
     configDesc.estimatedPerformance     = estimatedPerformance
     configDesc.nodeSnapshotInterval     = nodeSnapshotInterval
     configDesc.maxResultsSendingDelay   = cfg.getMaxResultsSendingDelay()
+    configDesc.useDistributedResourceManagement = useDistributedResourceManagement
 
     logger.info( "Adding tasks {}".format( addTasks ) )
     logger.info( "Creating public client interface with uuid: {}".format( clientUid ) )
@@ -151,14 +154,24 @@ class Client:
         self.budget = BankConfig.loadConfig( self.configDesc.clientUid ).getBudget()
 
         self.environmentsManager = EnvironmentsManager()
+
+        self.resourceServer = None
+        self.resourcePort   = 0
+        self.lastGetResourcePeersTime  = time.time()
+        self.getResourcePeersInterval = 5.0
        
     ############################
     def startNetwork( self ):
         logger.info( "Starting network ..." )
+
         logger.info( "Starting p2p server ..." )
         self.p2pservice = P2PService( self.hostAddress, self.configDesc )
-
         time.sleep( 1.0 )
+
+        logger.info( "Starting resource server..." )
+        self.resourceServer = ResourceServer( self.configDesc, self )
+        time.sleep( 1.0 )
+        self.p2pservice.setResourceServer( self.resourceServer )
 
         logger.info( "Starting task server ..." )
         self.taskServer = TaskServer( self.hostAddress, self.configDesc, self )
@@ -181,6 +194,22 @@ class Client:
     ############################
     def enqueueNewTask( self, task ):
         self.taskServer.taskManager.addNewTask( task )
+        if self.configDesc.useDistributedResourceManagement:
+            resFiles = self.resourceServer.addFilesToSend( task.taskResources, task.header.taskId, 2 )
+            task.setResFiles( resFiles )
+
+    ############################
+    def taskResourcesSend( self, taskId ):
+        self.taskServer.taskManager.resourcesSend( taskId )
+
+    ############################
+    def taskResourcesCollected( self, taskId ):
+        self.taskServer.taskComputer.taskResourceCollected( taskId )
+
+    ############################
+    def setResourcePort ( self, resourcePort ):
+        self.resourcePort = resourcePort
+        self.p2pservice.setResourcePeer( self.hostAddress, self.resourcePort )
 
     ############################
     def abortTask( self, taskId ):
@@ -327,6 +356,7 @@ class Client:
 
             self.p2pservice.syncNetwork()
             self.taskServer.syncNetwork()
+            self.resourceServer.syncNetwork()
 
 
             if time.time() - self.lastNSSTime > self.configDesc.nodeSnapshotInterval:
@@ -338,7 +368,9 @@ class Client:
 
                 #self.managerServer.sendStateMessage( self.lastNodeStateSnapshot )
 
-
+            if time.time() - self.lastGetResourcePeersTime > self.getResourcePeersInterval:
+                self.p2pservice.sendGetResourcePeers()
+                self.lastGetResourcePeersTime = time.time()
 
     ############################
     def __makeNodeStateSnapshot( self, isRunning = True ):

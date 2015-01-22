@@ -104,23 +104,8 @@ class TaskResourceHeader:
 
             lastHeader = curTh
             lastRefHeader = header
-            refHeaderFound = True
 
-            for d in dirs:
-
-                childSubDirHeader = TaskResourceHeader( d )
-
-                if lastHeader.__hasSubHeader( d ):
-                    lastHeader = lastHeader.__getSubHeader( d )
-                else:
-                    lastHeader.subDirHeaders.append( childSubDirHeader )
-                    lastHeader = childSubDirHeader
-
-                if refHeaderFound:
-                    if lastRefHeader.__hasSubHeader( d ):
-                        lastRefHeader = lastRefHeader.__getSubHeader( d )
-                    else:
-                        refHeaderFound = False
+            lastHeader, lastRefHeader, refHeaderFound = cls.__resolveDirs( dirs, lastHeader, lastRefHeader )
 
             hsh = SimpleHash.hash_file_base64( file )
             if refHeaderFound:
@@ -130,6 +115,33 @@ class TaskResourceHeader:
             lastHeader.filesData.append( (fileName, hsh ) )
 
         return curTh
+
+    ####################
+    @classmethod
+    def buildPartsHeaderDeltaFromChosen(cls, header, absoluteRoot, resParts ):
+        assert isinstance( header, TaskResourceHeader )
+        curTh = TaskResourceHeader( header.dirName )
+        absDirs = splitPath ( absoluteRoot )
+        deltaParts = []
+
+        for file_, parts in resParts.iteritems():
+            dir, fileName = os.path.split( file_ )
+            dirs = splitPath( dir ) [ len(absDirs): ]
+
+            lastHeader = curTh
+            lastRefHeader = header
+
+            lastHeader, lastRefHeader, refHeaderFound = cls.__resolveDirs( dirs, lastHeader, lastRefHeader )
+
+            hsh = SimpleHash.hash_file_base64( file_ )
+            if refHeaderFound:
+                if lastRefHeader.__hasFile( fileName ):
+                    if hsh == lastRefHeader.__getFileHash( fileName ):
+                        continue
+            lastHeader.filesData.append( (fileName, hsh, parts ) )
+            deltaParts += parts
+
+        return curTh, deltaParts
 
     ####################
     # Dodaje tylko te pola, ktorych nie ma w headerze (i/lub nie zgadzaj? si? hasze)
@@ -167,6 +179,27 @@ class TaskResourceHeader:
 
         return curTr
 
+    @classmethod
+    def __resolveDirs( self, dirs, lastHeader, lastRefHeader ):
+        refHeaderFound = True
+        for d in dirs:
+
+            childSubDirHeader = TaskResourceHeader( d )
+
+            if lastHeader.__hasSubHeader( d ):
+                lastHeader = lastHeader.__getSubHeader( d )
+            else:
+                lastHeader.subDirHeaders.append( childSubDirHeader )
+                lastHeader = childSubDirHeader
+
+            if refHeaderFound:
+                if lastRefHeader.__hasSubHeader( d ):
+                    lastRefHeader = lastRefHeader.__getSubHeader( d )
+                else:
+                    refHeaderFound = False
+        return lastHeader, lastRefHeader, refHeaderFound
+
+
     ####################
     def __init__( self, dirName ):
         self.subDirHeaders  = []
@@ -185,7 +218,10 @@ class TaskResourceHeader:
         if len( self.filesData ) > 0:
             out += u"FILES \n"
             for f in self.filesData:
-                out += u"    {} {}".format( f[ 0 ], f[ 1 ] )
+                if len( f ) > 2:
+                    out += u"    {} {} {}".format( f[ 0 ], f[ 1 ], f[2] )
+                else:
+                    out += u"    {} {}".format( f[ 0 ], f[ 1 ] )
 
         for d in self.subDirHeaders:
             out += d.toString()

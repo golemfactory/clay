@@ -6,8 +6,46 @@ import struct
 import logging
 
 from golem.core.databuffer import DataBuffer
+from golem.resource.ResourceHash import ResourceHash
 
 logger = logging.getLogger(__name__)
+
+class DistributedResourceManager:
+    ###################
+    def __init__( self, resourceDir ):
+        self.resources = set()
+        self.resourceDir = resourceDir
+        self.addResources()
+
+    ###################
+    def splitFile( self, fileName, blockSize = 2 ** 20 ):
+        resourceHash = ResourceHash( self.resourceDir )
+        listFiles = [ os.path.basename(file_) for file_ in resourceHash.splitFile( fileName, blockSize ) ]
+        return listFiles
+
+    ###################
+    def connectFile ( self, partsList, fileName ):
+        resourceHash = ResourceHash( self.resourceDir )
+        resList = [ os.path.join( self.resourceDir, p ) for p in partsList ]
+        resourceHash.connectFiles( resList, fileName )
+
+    ###################
+    def addResources( self ):
+        filenames = next(os.walk( self.resourceDir ))[2]
+        self.resources = set( filenames )
+
+    ###################
+    def checkResource( self, resource):
+        if os.path.normpath( resource ) in self.resources:
+            return True
+        else:
+            return False
+
+    ###################
+    def getResourcePath( self, resource ):
+        return os.path.join( self.resourceDir, resource )
+
+#########################################################
 
 class ResourcesManager:
     ###################
@@ -83,6 +121,7 @@ class ResourcesManager:
         return self.dirManager.getTaskOutputDir( taskId )
 
 
+    ###################
     def fileDataReceived( self, taskId, data, conn ):
 
         prct = int( 100 * self.recvSize / float( self.fileSize ) )
