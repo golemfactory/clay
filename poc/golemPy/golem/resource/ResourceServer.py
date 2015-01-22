@@ -36,7 +36,7 @@ class ResourceServer( GNRServer ):
         for file_ in files:
             resFiles[ file_ ] = self.resourceManager.splitFile( file_ )
         for res in resFiles[ file_ ]:
-            self.addResourceToSend( res, taskId, num  )
+            self.addResourceToSend( res, num, taskId  )
         return resFiles
 
     ############################
@@ -53,7 +53,7 @@ class ResourceServer( GNRServer ):
             self.client.taskResourcesCollected( taskId )
 
     ############################
-    def addResourceToSend( self, name, taskId,  num ):
+    def addResourceToSend( self, name, num, taskId = None  ):
         if taskId not in self.waitingTasks:
             self.waitingTasks[ taskId ] = 0
         self.resourcesToSend.append( [ name, taskId, num ] )
@@ -142,7 +142,7 @@ class ResourceServer( GNRServer ):
 
     ############################
     def pushResource( self, resource, addr, port, copies ):
-        Network.connect( addr, port, ResourceSession, self.__connectionPushResourceEstablished, self.__connectionPushResourceFailure, resource )
+        Network.connect( addr, port, ResourceSession, self.__connectionPushResourceEstablished, self.__connectionPushResourceFailure, resource, copies )
 
     ############################
     def checkResource( self, resource ):
@@ -175,7 +175,8 @@ class ResourceServer( GNRServer ):
                     self.waitingTasks[taskId] -= 1
                     if self.waitingTasks[ taskId ] == 0:
                         del self.waitingTasks[ taskId ]
-                        self.client.taskResourcesSend( taskId )
+                        if taskId is not None:
+                            self.client.taskResourcesSend( taskId )
                     break
 
         if removeRes:
@@ -201,9 +202,9 @@ class ResourceServer( GNRServer ):
 
 
     ############################
-    def __connectionPushResourceEstablished( self, session, resource ):
+    def __connectionPushResourceEstablished( self, session, resource, copies ):
         session.resourceServer = self
-        session.sendPushResource( resource )
+        session.sendPushResource( resource, copies )
 
     ############################
     def __connectionPushResourceFailure( self, *args ):

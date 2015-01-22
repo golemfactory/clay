@@ -19,6 +19,7 @@ OPTIMAL_PEER_NUM = 10
 DEFAULT_ROOT_PATH = "C:\\Sources\\golem\\poc\\golemPy\\examples\\gnr"
 MAX_RESOURCE_SIZE = 250 * 1024
 MAX_MEMORY_SIZE = 250 * 1024
+DISTRIBUTED_RES_NUM = 2
 APP_NAME = "Golem LAN Renderer"
 APP_VERSION = "1.021"
 
@@ -34,6 +35,7 @@ class CommonConfig:
                   startPort = START_PORT,
                   endPort = END_PORT,
                   optimalPeerNum = OPTIMAL_PEER_NUM,
+                  distributedResNum = DISTRIBUTED_RES_NUM,
                   appName = APP_NAME,
                   appVersion = APP_VERSION ):
 
@@ -45,6 +47,7 @@ class CommonConfig:
         ConfigEntry.createProperty( section, "manager address", managerAddress, self, "ManagerAddress" )
         ConfigEntry.createProperty( section, "manager listen port", managerPort, self, "ManagerListenPort" )
         ConfigEntry.createProperty( section, "resource root path", rootPath, self, "RootPath")
+        ConfigEntry.createProperty( section, "distributed res num", distributedResNum, self, "DistributedResNum" )
         ConfigEntry.createProperty( section, "application name", appName, self, "AppName" )
         ConfigEntry.createProperty( section, "application version", appVersion, self, "AppVersion" )
 
@@ -185,6 +188,9 @@ class AppConfig:
 
     def getAppVersion( self ):
         return self._cfg.getCommonConfig().getAppVersion()
+
+    def getDistributedResNum( self ):
+        return self._cfg.getCommonConfig().getDistributedResNum()
 
     def getSeedHost( self ):
         return self._cfg.getNodeConfig().getSeedHost()

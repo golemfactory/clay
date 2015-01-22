@@ -566,27 +566,19 @@ class MessagePushResource( Message ):
     Type = RESOURCE_MSG_BASE + 1
 
     RESOURCE_STR = u"resource"
-    OWNER_ADDR_STR = u"ownerAddr"
-    OWNER_PORT_STR = u"ownerPort"
     COPIES_STR = u"copies"
 
-    def __init__( self, resource = None, ownerAddr = '', ownerPort = '', copies = 0, dictRepr = None ):
+    def __init__( self, resource = None, copies = 0, dictRepr = None ):
         Message.__init__( self, MessagePushResource.Type )
         self.resource = resource
-        self.ownerAddr = ownerAddr
-        self.ownerPort = ownerPort
         self.copies = copies
 
         if dictRepr:
             self.resource = dictRepr[ MessagePushResource.RESOURCE_STR ]
-            self.ownerAddr = dictRepr[ MessagePushResource.OWNER_ADDR_STR ]
-            self.ownerPort = dictRepr[ MessagePushResource.OWNER_PORT_STR ]
             self.copies = dictRepr[ MessagePushResource.COPIES_STR ]
 
     def dictRepr( self ):
         return {    MessagePushResource.RESOURCE_STR: self.resource,
-                    MessagePushResource.OWNER_ADDR_STR: self.ownerAddr,
-                    MessagePushResource.OWNER_PORT_STR: self.ownerPort,
                     MessagePushResource.COPIES_STR: self.copies
         }
 class MessageHasResource( Message ):

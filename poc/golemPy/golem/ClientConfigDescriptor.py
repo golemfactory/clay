@@ -13,6 +13,7 @@ class ClientConfigDescriptor:
         self.sendPings      = 0
         self.pingsInterval  = 0.0
         self.addTasks       = 0
+        self.distResNum = 0
         self.clientVersion  = 0
 
         self.seedHost               = u""

@@ -28,6 +28,7 @@ class ResourceSession:
         self.fileName = None
         self.recvSize = 0
         self.confirmation = False
+        self.copies = 0
 
     ##########################
     def interpret( self, msg ):
@@ -38,13 +39,17 @@ class ResourceSession:
         type = msg.getType()
 
         if type == MessagePushResource.Type:
+            copies = msg.copies -1
             if self.resourceServer.checkResource( msg.resource ):
                 self.sendHasResource( msg.resource )
+                if copies > 0:
+                    self.resourceServer.addResourceToSend( msg.resource, copies )
             else:
                 self.sendWantResource( msg.resource )
                 self.fileName = msg.resource
                 self.conn.fileMode = True
                 self.confirmation = True
+                self.copies = copies
         elif type == MessageHasResource.Type:
             self.resourceServer.hasResource( msg.resource, self.address, self.port )
             self.dropped()
@@ -87,6 +92,9 @@ class ResourceSession:
             if self.confirmation:
                 self.__send( MessageHasResource( self.fileName ) )
                 self.confirmation = False
+                if self.copies > 0:
+                    self.resourceServer.addResourceToSend( self.fileName, self.copies)
+                self.copies = 0
             else:
                 self.resourceServer.resourceDownloaded( self.fileName, self.address, self.port )
                 self.dropped()
@@ -106,8 +114,8 @@ class ResourceSession:
         self.__send( MessageWantResource( resource ) )
 
     ##########################
-    def sendPushResource( self, resource ):
-         self.__send( MessagePushResource( resource ) )
+    def sendPushResource( self, resource, copies = 1 ):
+        self.__send( MessagePushResource( resource, copies ) )
 
     ##########################
     def sendPullResource( self, resource ):

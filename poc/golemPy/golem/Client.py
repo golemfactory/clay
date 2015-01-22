@@ -45,6 +45,7 @@ def startClient():
     numCores        = cfg.getNumCores()
     maxResourceSize = cfg.getMaxResourceSize()
     maxMemorySize   = cfg.getMaxMemorySize()
+    distResNum      = cfg.getDistributedResNum()
     appName         = cfg.getAppName()
     appVersion      = cfg.getAppVersion()
 
@@ -73,6 +74,7 @@ def startClient():
     configDesc.numCores         = numCores
     configDesc.maxResourceSize  = maxResourceSize
     configDesc.maxMemorySize    = maxMemorySize
+    configDesc.distResNum       = distResNum
 
     configDesc.seedHost               = seedHost
     configDesc.seedHostPort           = seedHostPort
@@ -195,7 +197,7 @@ class Client:
     def enqueueNewTask( self, task ):
         self.taskServer.taskManager.addNewTask( task )
         if self.configDesc.useDistributedResourceManagement:
-            resFiles = self.resourceServer.addFilesToSend( task.taskResources, task.header.taskId, 2 )
+            resFiles = self.resourceServer.addFilesToSend( task.taskResources, task.header.taskId, self.configDesc.distResNum )
             task.setResFiles( resFiles )
 
     ############################
