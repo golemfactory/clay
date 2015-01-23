@@ -22,13 +22,21 @@ class ConfigurationDialogCustomizer:
     #############################
     def loadConfig( self ):
         configDesc = self.logic.getConfig()
+        self.__loadBasicConfig( configDesc )
+        self.__loadAdvanceConfig( configDesc )
+        self.__loadManagerConfig( configDesc )
+
+    #############################
+    def __loadBasicConfig( self, configDesc ):
         self.gui.ui.hostAddressLineEdit.setText( u"{}".format( configDesc.seedHost ) )
         self.gui.ui.hostIPLineEdit.setText( u"{}".format( configDesc.seedHostPort ) )
         self.gui.ui.workingDirectoryLineEdit.setText( u"{}".format( configDesc.rootPath ) )
-        self.gui.ui.managerAddressLineEdit.setText( u"{}".format( configDesc.managerAddress ) )
-        self.gui.ui.managerPortLineEdit.setText( u"{}".format( configDesc.managerPort ) )
         self.gui.ui.performanceLabel.setText( u"{}".format( configDesc.estimatedPerformance ) )
+        self.__loadNumCores( configDesc )
+        self.__loadMemoryConfig( configDesc )
 
+    #############################
+    def __loadNumCores( self, configDesc ):
         maxNumCores = multiprocessing.cpu_count()
         self.gui.ui.numCoresSlider.setMaximum(  maxNumCores )
         self.gui.ui.coresMaxLabel.setText( u"{}".format( maxNumCores ) )
@@ -40,6 +48,8 @@ class ConfigurationDialogCustomizer:
             logger.error( "Wrong value for number of cores: {}".format( str( e ) )  )
         self.gui.ui.numCoresSlider.setValue( numCores )
 
+    #############################
+    def __loadMemoryConfig ( self, configDesc ):
         memTab = ["kB","MB", "GB"]
         self.gui.ui.maxResourceSizeComboBox.addItems(memTab)
         self.gui.ui.maxMemoryUsageComboBox.addItems(memTab)
@@ -63,6 +73,42 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex( index )
         self.gui.ui.maxMemoryUsageSpinBox.setValue( maxMemorySize )
 
+    def __loadAdvanceConfig( self, configDesc ):
+        self.gui.ui.optimalPeerNumLineEdit.setText( u"{}".format( configDesc.optNumPeers ) )
+
+        self.__loadCheckBoxParam( configDesc.useDistributedResourceManagement, self.gui.ui.useDistributedResCheckBox, 'use distributed res' )
+        self.gui.ui.distributedResNumLineEdit.setText( u"{}".format( configDesc.distResNum ) )
+
+        self.__loadCheckBoxParam( configDesc.useWaitingForTaskTimeout, self.gui.ui.useWaitingForTaskTimeoutCheckBox, 'waiting for task timeout' )
+        self.gui.ui.waitingForTaskTimeoutLineEdit.setText( u"{}".format( configDesc.waitingForTaskTimeout ) )
+
+        self.__loadCheckBoxParam( configDesc.sendPings, self.gui.ui.sendPingsCheckBox, 'send pings''')
+        self.gui.ui.sendPingsLineEdit.setText( u"{}".format( configDesc.pingsInterval ) )
+
+        self.gui.ui.gettingPeersLineEdit.setText( u"{}".format( configDesc.gettingPeersInterval ) )
+        self.gui.ui.gettingTasksIntervalLineEdit.setText( u"{}".format( configDesc.gettingTasksInterval ) )
+        self.gui.ui.nodeSnapshotIntervalLineEdit.setText( u"{}".format( configDesc.nodeSnapshotInterval ) )
+        self.gui.ui.maxSendingDelayLineEdit.setText( u"{}".format( configDesc.maxResultsSendingDelay ) )
+
+    #############################
+    def __loadCheckBoxParam( self, param, checkBox, paramName = '' ):
+        try:
+            param = int ( param )
+            if param == 0:
+                checked = False
+            else:
+                checked = True
+        except ValueError:
+            checked = True
+            logger.error("Wrong configuration parameter {}: {}".format( paramName, param ) )
+        checkBox.setChecked( checked )
+
+
+    #############################
+    def __loadManagerConfig( self, configDesc ):
+        self.gui.ui.managerAddressLineEdit.setText( u"{}".format( configDesc.managerAddress ) )
+        self.gui.ui.managerPortLineEdit.setText( u"{}".format( configDesc.managerPort ) )
+
     #############################
     def __setupConnections( self ):
         self.gui.ui.recountButton.clicked.connect( self.__recountPerformance )
@@ -81,17 +127,19 @@ class ConfigurationDialogCustomizer:
     #############################
     def __changeConfig ( self ):
         cfgDesc = ClientConfigDescriptor()
+        self.__readBasicConfig( cfgDesc )
+        self.__readAdvanceConfig( cfgDesc )
+        self.__readManagerConfig( cfgDesc )
+        self.logic.changeConfig ( cfgDesc )
+
+    def __readBasicConfig( self, cfgDesc ):
         cfgDesc.seedHost =  u"{}".format( self.gui.ui.hostAddressLineEdit.text() )
         try:
             cfgDesc.seedHostPort = int( self.gui.ui.hostIPLineEdit.text() )
-        except:
+        except ValueError:
             cfgDesc.seedHostPort    =  u"{}".format ( self.gui.ui.hostIPLineEdit.text() )
         cfgDesc.rootPath = u"{}".format( self.gui.ui.workingDirectoryLineEdit.text() )
-        cfgDesc.managerAddress = u"{}".format( self.gui.ui.managerAddressLineEdit.text() )
-        try:
-            cfgDesc.managerPort = int( self.gui.ui.managerPortLineEdit.text() )
-        except:
-            cfgDesc.managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
+
         cfgDesc.numCores = u"{}".format( self.gui.ui.numCoresSlider.value() )
         cfgDesc.estimatedPerformance = u"{}".format( self.gui.ui.performanceLabel.text() )
         maxResourceSize = int( self.gui.ui.maxResourceSizeSpinBox.value() )
@@ -100,7 +148,27 @@ class ConfigurationDialogCustomizer:
         maxMemorySize = int( self.gui.ui.maxMemoryUsageSpinBox.value() )
         index = self.gui.ui.maxMemoryUsageComboBox.currentIndex()
         cfgDesc.maxMemorySize = u"{}".format( self.__countResourceSize( maxMemorySize, index ) )
-        self.logic.changeConfig ( cfgDesc )
+
+    def __readAdvanceConfig( self, cfgDesc ):
+        cfgDesc.optNumPeers = u"{}".format( self.gui.ui.optimalPeerNumLineEdit.text() )
+        cfgDesc.useDistributedResourceManagement = int( self.gui.ui.useDistributedResCheckBox.isChecked() )
+        cfgDesc.distResNum = u"{}".format( self.gui.ui.distributedResNumLineEdit.text() )
+        cfgDesc.useWaitingForTaskTimeout = int( self.gui.ui.useWaitingForTaskTimeoutCheckBox.isChecked() )
+        cfgDesc.waitingForTaskTimeout = u"{}".format( self.gui.ui.waitingForTaskTimeoutLineEdit.text() )
+        cfgDesc.sendPings = int( self.gui.ui.sendPingsCheckBox.isChecked() )
+        cfgDesc.pingsInterval = u"{}".format( self.gui.ui.sendPingsLineEdit.text() )
+        cfgDesc.gettingPeersInterval = u"{}".format( self.gui.ui.gettingPeersLineEdit.text() )
+        cfgDesc.gettingTasksInterval = u"{}".format( self.gui.ui.gettingTasksIntervalLineEdit.text() )
+        cfgDesc.nodeSnapshotInterval = u"{}".format( self.gui.ui.nodeSnapshotIntervalLineEdit.text() )
+        cfgDesc.maxResultsSendingDelay = u"{}".format( self.gui.ui.maxSendingDelayLineEdit.text() )
+
+    def __readManagerConfig( self, cfgDesc ):
+        cfgDesc.managerAddress = u"{}".format( self.gui.ui.managerAddressLineEdit.text() )
+        try:
+            cfgDesc.managerPort = int( self.gui.ui.managerPortLineEdit.text() )
+        except ValueError:
+            cfgDesc.managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
+
 
     #############################
     def __recountPerformance( self ):

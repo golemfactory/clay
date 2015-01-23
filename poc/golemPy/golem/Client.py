@@ -291,6 +291,51 @@ class Client:
         self.configDesc.maxResourceSize = newConfigDesc.maxResourceSize
         self.configDesc.maxMemorySize   = newConfigDesc.maxMemorySize
 
+        try:
+            self.configDesc.optNumPeers = int( newConfigDesc.optNumPeers )
+        except ValueError:
+            logger.warning( "Opt peer number '{}' is not a number".format( newConfigDesc.optNumPeers ) )
+
+        self.configDesc.useDistributedResourceManagement = newConfigDesc.useDistributedResourceManagement
+
+        try:
+            self.configDesc.distResNum = int( newConfigDesc.distResNum )
+        except ValueError:
+            logger.warning( "Distributed resource number '{}' is not a number".format( newConfigDesc.optNumPeers ) )
+
+        self.configDesc.useWaitingForTaskTimeout = newConfigDesc.useWaitingForTaskTimeout
+        try:
+            self.configDesc.waitingForTaskTimeout = float( newConfigDesc.waitingForTaskTimeout )
+        except ValueError:
+            logger.warning( "Waiting for task timeout '{}' is not a number".format( newConfigDesc.waitingForTaskTimeout ) )
+
+        self.configDesc.sendPings = newConfigDesc.sendPings
+        try:
+            self.configDesc.pingsInterval = float( newConfigDesc.pingsInterval )
+        except ValueError:
+            logger.warning( "Pings interval '{}' is not a number".format( newConfigDesc.pingsInterval ) )
+
+        try:
+            self.configDesc.gettingPeersInterval = float( newConfigDesc.gettingPeersInterval )
+        except ValueError:
+            logger.warning( "Getting peers interval '{}' is not a number".format( newConfigDesc.gettingPeersInterval ) )
+
+        try:
+            self.configDesc.gettingTasksInterval = float( newConfigDesc.gettingTasksInterval )
+        except ValueError:
+            logger.warning( "Getting tasks interval '{}' is not a number".format( newConfigDesc.gettingTasksInterval ) )
+
+        try:
+            self.configDesc.nodeSnapshotInterval = float( newConfigDesc.nodeSnapshotInterval )
+        except ValueError:
+            logger.warning( "Node snapshot interval '{}' is not a number".format( newConfigDesc.nodeSnapshotInterval ) )
+
+        try:
+            self.configDesc.maxResultsSendingDelay = float( newConfigDesc.maxResultsSendingDelay )
+        except ValueError:
+            logger.warning( "Max result sending delay '{}' is not a number".format( newConfigDesc.maxResultsSendingDelay ) )
+
+
         self.p2pservice.changeConfig( self.configDesc )
         self.taskServer.changeConfig( self.configDesc )
 
