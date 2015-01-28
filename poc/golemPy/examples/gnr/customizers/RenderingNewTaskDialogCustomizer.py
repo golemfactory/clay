@@ -34,7 +34,6 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
     #############################
     def _setupRenderersConnections( self ):
         QtCore.QObject.connect( self.gui.ui.rendererComboBox, QtCore.SIGNAL( "currentIndexChanged( const QString )" ), self.__rendererComboBoxValueChanged )
-        self.gui.ui.optionsButton.clicked.connect( self._openOptions )
         self.gui.ui.chooseMainSceneFileButton.clicked.connect( self._chooseMainSceneFileButtonClicked )
 
     #############################
@@ -80,7 +79,7 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
 
         renderers = self.logic.getRenderers()
         dr = self.logic.getDefaultRenderer()
-        self.rendererOptions = dr.options()
+        self.rendererOptions = dr.rendererOptions()
 
         for k in renderers:
             r = renderers[ k ]
@@ -122,7 +121,7 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
 
         if r:
             self.logic.setCurrentRenderer( name )
-            self.rendererOptions = r.options()
+            self.rendererOptions = r.rendererOptions()
 
             self.gui.ui.outputFormatsComboBox.clear()
             self.gui.ui.outputFormatsComboBox.addItems( r.outputFormats )
@@ -144,7 +143,7 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
     def __resetToDefaults( self ):
         dr = self.__getCurrentRenderer()
 
-        self.rendererOptions = dr.options()
+        self.rendererOptions = dr.rendererOptions()
         self.logic.setCurrentRenderer( dr.name )
 
         self.gui.ui.outputFormatsComboBox.clear()
@@ -248,8 +247,8 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
         definition = deepcopy( taskDefinition )
         self.gui.ui.taskIdLabel.setText( self._generateNewTaskUID() )
 
-        self._loadRendererParams( definition )
         self._loadBasicTaskParams( definition )
+        self._loadRendererParams( definition )
         self._loadAdvanceTaskParams( definition )
         self._loadResources( definition )
         self._loadVerificationParams( definition )
