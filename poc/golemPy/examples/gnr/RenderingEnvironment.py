@@ -1,8 +1,12 @@
 import os
 import shutil
 import logging
+
 from golem.environments.Environment import Environment
+from golem.environments.checkCmd import checkCmd
+
 from examples.gnr.task.ThreeDSMaxCfgEditor import regenerateFile
+
 
 logger = logging.getLogger(__name__)
 
@@ -128,3 +132,53 @@ class VRayEnvironment( Environment ):
             return self.path
         else:
             return ""
+
+class LuxRenderEnvironment( Environment ):
+    #########################
+    @classmethod
+    def getId( cls ):
+        return "LUXRENDER"
+
+    #########################
+    def __init__( self ):
+        Environment.__init__( self )
+        self.software.append('Blender')
+        self.software.append('LuxRender')
+        self.shortDescription = "LuxRenderer Renderer (http://www.luxrender.net/)"
+        self.softwareEnvVariables = ['LUXRENDER_ROOT']
+        self.softwareName = 'vray.exe'
+        self.softwareCmd = 'blender'
+        self.luxPath = ''
+
+    #########################
+    def checkSoftware( self ):
+        luxInstalled = False
+        for var in self.softwareEnvVariables:
+            if os.environ.get( var ):
+                self.luxPath = os.path.join( os.environ.get( var ), 'luxconsole.exe' )
+                if os.path.isfile( self.luxPath ):
+                    luxInstalled = True
+        blenderInstalled = checkCmd( self.softwareCmd )
+        return luxInstalled and blenderInstalled
+
+    #########################
+    def supported( self ):
+        return self.checkSoftware()
+
+    def getBlender( self ) :
+        return self.softwareCmd
+
+    def getLuxConsole( self ):
+        self.checkSoftware()
+        if os.path.isfile( self.luxPath ):
+            return self.luxPath
+        else:
+            return ""
+
+    def getLuxMerger( self ):
+        luxMerger = None
+        for var in self.softwareEnvVariables:
+            if os.environ.get( var ):
+                luxMerger = os.path.join( os.environ.get( var ), 'luxmerger.exe' )
+        if os.path.isfile( luxMerger ):
+            return luxMerger

@@ -149,7 +149,7 @@ class RenderingTask( GNRTask ):
         else:
             img = Image.open( newChunkFilePath )
 
-        imgCurrent = self.__openPreview()
+        imgCurrent = self._openPreview()
         imgCurrent = ImageChops.add( imgCurrent, img )
         imgCurrent.save( self.previewFilePath, "BMP" )
 
@@ -159,7 +159,7 @@ class RenderingTask( GNRTask ):
         emptyColor = (0, 0, 0)
         if isinstance( self.previewFilePath, list ): #FIXME
             return
-        img = self.__openPreview()
+        img = self._openPreview()
         self._markTaskArea( self.subTasksGiven[ subtaskId ], img, emptyColor )
         img.save( self.previewFilePath, "BMP" )
 
@@ -171,7 +171,7 @@ class RenderingTask( GNRTask ):
         tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
         self.previewTaskFilePath = "{}".format( os.path.join( tmpDir, "current_task_preview") )
 
-        imgTask = self.__openPreview()
+        imgTask = self._openPreview()
 
         for sub in self.subTasksGiven.values():
             if sub['status'] == SubtaskStatus.starting:
@@ -262,7 +262,7 @@ class RenderingTask( GNRTask ):
         return verifyImg( file_, resX, resY )
 
     #######################
-    def __openPreview( self ):
+    def _openPreview( self ):
         tmpDir = getTmpPath( self.header.clientId, self.header.taskId, self.rootPath )
 
         if self.previewFilePath is None or not os.path.exists( self.previewFilePath ):

@@ -17,7 +17,8 @@ from golem.environments.Environment import Environment
 from examples.gnr.task.PbrtGNRTask import buildPBRTRendererInfo
 from examples.gnr.task.ThreeDSMaxTask import build3dsMaxRendererInfo
 from examples.gnr.task.VRayTask import buildVRayRendererInfo
-from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
+from examples.gnr.task.LuxRenderTask import buildLuxRenderInfo
+from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment,  LuxRenderEnvironment
 from examples.gnr.ui.RenderingMainWindow import RenderingMainWindow
 from examples.gnr.Application import GNRGui
 from examples.gnr.customizers.RenderingMainWindowCustomizer import RenderingMainWindowCustomizer
@@ -43,8 +44,9 @@ def main():
     logic.registerNewRendererType( buildPBRTRendererInfo() )
     logic.registerNewRendererType( build3dsMaxRendererInfo() )
     logic.registerNewRendererType( buildVRayRendererInfo() )
+    logic.registerNewRendererType( buildLuxRenderInfo() )
 
-    environments = [PBRTEnvironment(), ThreeDSMaxEnvironment(), VRayEnvironment(), Environment() ]
+    environments = [PBRTEnvironment(), ThreeDSMaxEnvironment(), VRayEnvironment(), LuxRenderEnvironment(), Environment() ]
 
     client = startClient( )
 

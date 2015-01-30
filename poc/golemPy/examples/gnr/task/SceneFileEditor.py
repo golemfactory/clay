@@ -1,6 +1,6 @@
 import re
 
-def regenerateFile( sceneFileSrc, xres, yres, pixelFilter, sampler, samplesPerPixel ):
+def regeneratePbrtFile( sceneFileSrc, xres, yres, pixelFilter, sampler, samplesPerPixel ):
     out = ""
 
     pixelSamplesSamplers = ['bestcandidate', 'lowdiscrepancy', 'halton', 'random']
@@ -21,8 +21,66 @@ def regenerateFile( sceneFileSrc, xres, yres, pixelFilter, sampler, samplesPerPi
 
     return out
 
+def regenerateLuxFile( sceneFileSrc, xres, yres, halttime, haltspp, writeinterval, crop, outputFormat ):
+    out = ""
+    if "halttime" in sceneFileSrc:
+        addHaltTime = False
+    else:
+        addHaltTime = True
+
+    if "haltspp" in sceneFileSrc:
+        addHaltspp = False
+    else:
+        addHaltspp = True
+
+    if "cropwindow" in sceneFileSrc:
+        addCropWindow = False
+    else:
+        addCropWindow = True
+
+    exr = "false"
+    png = "false"
+    tga = "false"
+    if outputFormat == "EXR":
+        exr = "true"
+    elif outputFormat == "PNG":
+        png = "true"
+    elif outputFormat == "TGA":
+        tga = "true"
+
+    nextLineAddHalt = False
+    nextLineAddCrop = False
+    nextLineAddHaltspp = False
+    for l in sceneFileSrc.splitlines():
+        if nextLineAddHalt:
+            nextLineAddHalt = False
+            out += '\t"integer halttime" [{}]\n'.format( halttime )
+        if nextLineAddHaltspp:
+            nextLineAddHaltspp = False
+            out += '\t"integer haltspp" [{}]\n'.format( haltspp )
+        if nextLineAddCrop:
+            nextLineAddCrop = False
+            out += '\t"float cropwindow [{} {} {} {}]\n'.format( crop[0], crop[1], crop[2], crop[3])
+        line = re.sub( r'("integer\s+xresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format( xres ), l )
+        line = re.sub( r'("integer\s+yresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format( yres ), line )
+        line = re.sub( r'("integer\s+halttime"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format( halttime ), line )
+        line = re.sub( r'("integer\s+haltspp"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format( haltspp ), line )
+        line = re.sub( r'("float\s+cropwindow"\s*)(\[\s*[0-9,\.,\s*]*\s*\])', r'\1[{} {} {} {}]'.format( crop[0], crop[1], crop[2], crop[3]), line )
+        line = re.sub( r'("integer\s+writeinterval"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format( writeinterval ), line )
+        line = re.sub( r'("bool\s+write_exr"\s*)(\[\s*"[A-Z,a-z]*"\s*\])', r'\1["{}"]'.format( exr ), line )
+        line = re.sub( r'("bool\s+write_png"\s*)(\[\s*"[A-Z,a-z]*"\s*\])', r'\1["{}"]'.format( png ), line )
+        line = re.sub( r'("bool\s+write_tga"\s*)(\[\s*"[A-Z,a-z]*"\s*\])', r'\1["{}"]'.format( tga ), line )
+        out += line + "\n"
+        if addHaltTime and 'Film' in line:
+            nextLineAddHalt = True
+        if addCropWindow and 'Film' in line:
+            nextLineAddCrop = True
+        if addHaltspp and 'Film' in line:
+            nextLineAddHaltspp = True
+
+    return out
 
 
 if __name__ == "__main__":
 
-    print regenerateFile( open( "d:/test_run/resources/scene.pbrt" ).read(), 3,2,"michell", "dupa22", 60 )
+    print regeneratePbrtFile( open( "d:/test_run/resources/scene.pbrt" ).read(), 3,2,"michell", "dupa22", 60 )

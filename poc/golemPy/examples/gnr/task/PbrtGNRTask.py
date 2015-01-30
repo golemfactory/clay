@@ -8,7 +8,7 @@ from golem.task.TaskState import SubtaskStatus
 from examples.gnr.RenderingEnvironment import PBRTEnvironment
 from examples.gnr.RenderingDirManager import getTestTaskPath
 from examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo, RenderingTaskDefinition
-from examples.gnr.task.SceneFileEditor import regenerateFile
+from examples.gnr.task.SceneFileEditor import regeneratePbrtFile
 from examples.gnr.task.GNRTask import GNROptions, GNRTaskBuilder
 from examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
 from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector
@@ -183,7 +183,7 @@ class PbrtRenderTask( RenderingTask ):
                 self.sceneFileSrc = f.read()
         except Exception, err:
             logger.error( "Wrong scene file: {}".format( str( err ) ) )
-            self.scenFileSrc = ""
+            self.sceneFileSrc = ""
 
         self.resX               = resX
         self.resY               = resY
@@ -208,7 +208,7 @@ class PbrtRenderTask( RenderingTask ):
             numCores = self.numCores
 
         workingDirectory = self._getWorkingDirectory()
-        sceneSrc = regenerateFile( self.sceneFileSrc, self.resX, self.resY, self.pixelFilter,
+        sceneSrc = regeneratePbrtFile( self.sceneFileSrc, self.resX, self.resY, self.pixelFilter,
                                    self.sampler, self.samplesPerPixel )
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
@@ -236,7 +236,7 @@ class PbrtRenderTask( RenderingTask ):
 
         workingDirectory = self._getWorkingDirectory()
 
-        sceneSrc = regenerateFile( self.sceneFileSrc, 1, 1, self.pixelFilter, self.sampler,
+        sceneSrc = regeneratePbrtFile( self.sceneFileSrc, 1, 1, self.pixelFilter, self.sampler,
                                    self.samplesPerPixel )
 
         extraData =          {      "pathRoot" : self.mainSceneDir,

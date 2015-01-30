@@ -140,6 +140,7 @@ class NewTaskDialogCustomizer:
 
     #############################
     def _loadBasicTaskParams( self, definition ):
+        self._loadTaskType( definition )
         setTimeSpinBoxes( self.gui, definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime )
         self.gui.ui.mainProgramFileLineEdit.setText( definition.mainProgramFile )
         self.gui.ui.totalSpinBox.setValue( definition.totalSubtasks )
@@ -147,7 +148,7 @@ class NewTaskDialogCustomizer:
         if os.path.normpath( definition.mainProgramFile ) in definition.resources:
             definition.resources.remove( os.path.normpath( definition.mainProgramFile ) )
 
-        self._loadTaskType( definition )
+
         self._loadOptions( definition )
 
 

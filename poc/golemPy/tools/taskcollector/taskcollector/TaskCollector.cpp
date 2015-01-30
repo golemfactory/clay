@@ -133,23 +133,42 @@ public:
 		std::list<FIBITMAP*>::iterator it = chunks.begin();
 		unsigned int width = FreeImage_GetWidth(*it);
 		unsigned int height = FreeImage_GetHeight(*it);
+		FREE_IMAGE_TYPE type = FreeImage_GetImageType(*it);
 
 		FIBITMAP *finalImage = FreeImage_Copy(*it, 0, height, width, 0);
 
 		int bytesapp = FreeImage_GetLine(*it) / FreeImage_GetWidth(*it);
 
 		for (it++; it != chunks.end(); it++) {
-				for(unsigned int y = 0 ; y < height ; y++) {
-					FIRGBAF *srcbits = (FIRGBAF *) FreeImage_GetScanLine(*it, y);
-					FIRGBAF *dstbits = (FIRGBAF *) FreeImage_GetScanLine(finalImage, y);
+			switch(type) {
+				case FIT_RGBF:
+					for(unsigned int y = 0 ; y < height ; y++) {
+						FIRGBF *srcbits = (FIRGBF *) FreeImage_GetScanLine(*it, y);
+						FIRGBF *dstbits = (FIRGBF *) FreeImage_GetScanLine(finalImage, y);
 	
-					for(unsigned int x = 0 ; x < width  ; x++) {
-						dstbits[x].red += srcbits[x].red;
-						dstbits[x].blue += srcbits[x].blue;
-						dstbits[x].green += srcbits[x].green;
-						dstbits[x].alpha += srcbits[x].alpha;
+						for(unsigned int x = 0 ; x < width  ; x++) {
+							dstbits[x].red += srcbits[x].red;
+							dstbits[x].blue += srcbits[x].blue;
+							dstbits[x].green += srcbits[x].green;
+						}
 					}
-				}
+					break;
+
+				case FIT_RGBAF:
+					for(unsigned int y = 0 ; y < height ; y++) {
+						FIRGBAF *srcbits = (FIRGBAF *) FreeImage_GetScanLine(*it, y);
+						FIRGBAF *dstbits = (FIRGBAF *) FreeImage_GetScanLine(finalImage, y);
+	
+						for(unsigned int x = 0 ; x < width  ; x++) {
+							dstbits[x].red += srcbits[x].red;
+							dstbits[x].blue += srcbits[x].blue;
+							dstbits[x].green += srcbits[x].green;
+							dstbits[x].alpha += srcbits[x].alpha;
+						}
+					}
+					break;
+				
+			}
 		}
 
 		while( !alphaChunks.empty() ) {
@@ -222,23 +241,35 @@ public:
 		unsigned int height =  chunkHeight * chunks.size() ;
 		unsigned int currentHeight = height - chunkHeight;
 
-
 		FREE_IMAGE_TYPE type = FreeImage_GetImageType(*it);
 		int bpp = FreeImage_GetBPP(*it);
 		FIBITMAP *finalImage = FreeImage_AllocateT(type, width, height, bpp);
 
-
 		for (; it != chunks.end(); it++) {
-		
-			for(unsigned int y = 0 ; y < chunkHeight ; y++) {
-				FIRGBAF *srcbits = (FIRGBAF *) FreeImage_GetScanLine(*it, y);
-				FIRGBAF *dstbits = (FIRGBAF *) FreeImage_GetScanLine(finalImage, y + currentHeight);
-				for(unsigned int x = 0 ; x < width  ; x++) {
-					dstbits[x].red = srcbits[x].red;
-					dstbits[x].blue = srcbits[x].blue;
-					dstbits[x].green = srcbits[x].green;
-					dstbits[x].alpha = srcbits[x].alpha;
-				}
+			switch(type) {
+				case FIT_RGBF:
+					for(unsigned int y = 0 ; y < chunkHeight ; y++) {
+						FIRGBF *srcbits = (FIRGBF *) FreeImage_GetScanLine(*it, y);
+						FIRGBF *dstbits = (FIRGBF *) FreeImage_GetScanLine(finalImage, y + currentHeight);
+						for(unsigned int x = 0 ; x < width  ; x++) {				
+							dstbits[x].red = srcbits[x].red;
+							dstbits[x].blue = srcbits[x].blue;
+							dstbits[x].green = srcbits[x].green;
+						}
+					}
+					break;
+				case FIT_RGBAF:
+					for(unsigned int y = 0 ; y < chunkHeight ; y++) {
+						FIRGBAF *srcbits = (FIRGBAF *) FreeImage_GetScanLine(*it, y);
+						FIRGBAF *dstbits = (FIRGBAF *) FreeImage_GetScanLine(finalImage, y + currentHeight);
+						for(unsigned int x = 0 ; x < width  ; x++) {				
+							dstbits[x].red = srcbits[x].red;
+							dstbits[x].blue = srcbits[x].blue;
+							dstbits[x].green = srcbits[x].green;
+							dstbits[x].alpha = srcbits[x].alpha;
+						}
+					}
+					break;
 			}
 			currentHeight -= chunkHeight;
 		}

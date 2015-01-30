@@ -9,8 +9,3 @@ def regenerateFile( cfgFileSrc, threadNum ):
 
     return out
 
-
-
-if __name__ == "__main__":
-
-    print regenerateFile( open( "d:/test_run/resources/scene.pbrt" ).read(), 3,2,"michell", "dupa22", 60 )
