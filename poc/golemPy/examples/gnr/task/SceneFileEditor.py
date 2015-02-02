@@ -60,7 +60,7 @@ def regenerateLuxFile( sceneFileSrc, xres, yres, halttime, haltspp, writeinterva
             out += '\t"integer haltspp" [{}]\n'.format( haltspp )
         if nextLineAddCrop:
             nextLineAddCrop = False
-            out += '\t"float cropwindow [{} {} {} {}]\n'.format( crop[0], crop[1], crop[2], crop[3])
+            out += '\t"float cropwindow" [{} {} {} {}]\n'.format( crop[0], crop[1], crop[2], crop[3])
         line = re.sub( r'("integer\s+xresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format( xres ), l )
         line = re.sub( r'("integer\s+yresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format( yres ), line )
         line = re.sub( r'("integer\s+halttime"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format( halttime ), line )
@@ -70,6 +70,7 @@ def regenerateLuxFile( sceneFileSrc, xres, yres, halttime, haltspp, writeinterva
         line = re.sub( r'("bool\s+write_exr"\s*)(\[\s*"[A-Z,a-z]*"\s*\])', r'\1["{}"]'.format( exr ), line )
         line = re.sub( r'("bool\s+write_png"\s*)(\[\s*"[A-Z,a-z]*"\s*\])', r'\1["{}"]'.format( png ), line )
         line = re.sub( r'("bool\s+write_tga"\s*)(\[\s*"[A-Z,a-z]*"\s*\])', r'\1["{}"]'.format( tga ), line )
+        line = re.sub( r'("bool\s+write_resume_flm"\s*)(\[\s*"[A-z,a-z]*"\s*\])', r'\1["{}"]'.format( "true" ), line )
         out += line + "\n"
         if addHaltTime and 'Film' in line:
             nextLineAddHalt = True

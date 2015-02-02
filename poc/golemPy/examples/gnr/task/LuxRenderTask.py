@@ -17,6 +17,7 @@ from golem.task.TaskState import SubtaskStatus
 from  examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 from examples.gnr.RenderingEnvironment import LuxRenderEnvironment
 from examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
+from examples.gnr.task.ImgRepr import loadImg, blend
 from  examples.gnr.task.GNRTask import GNROptions
 from  examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler
 from examples.gnr.task.SceneFileEditor import regenerateLuxFile
@@ -50,7 +51,7 @@ def getTaskBoarder( startTask, endTask, totalTasks, resX = 300 , resY = 200, use
         boarder.append( (resX - 1, i) )
     for i in range(0, resX ):
         boarder.append( (i, 0))
-        boarder.append( (resY - 1, i))
+        boarder.append( (i, resY - 1))
     return boarder
 
 def getTaskNumFromPixels( pX, pY, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):
@@ -143,12 +144,16 @@ class LuxTask( FrameRenderingTask ):
         self.outputFile, _ = os.path.splitext( self.outputFile )
         self.numAdd = 0
 
+        if self.useFrames:
+            self.scenFiles = self.__generateFrameFiles()
+
+        self.previewEXR = None
+
     #######################
     def queryExtraData( self, perfIndex, numCores = 0, clientId = None ):
         if not self._acceptClient( clientId ):
             logger.warning(" Client {} banned from this task ".format( clientId ) )
             return None
-
 
         startTask, endTask = self._getNextTask()
         if startTask is None or endTask is None:
@@ -165,7 +170,7 @@ class LuxTask( FrameRenderingTask ):
             writeInterval =  int( self.halttime / 2)
         else:
             writeInterval = 60
-        sceneSrc = regenerateLuxFile( self.sceneFileSrc, self.resX, self.resY, self.halttime, self.haltspp, writeInterval, [0, 1, 0, 1], "EXR" )
+        sceneSrc = regenerateLuxFile( self.sceneFileSrc, self.resX, self.resY, self.halttime, self.haltspp, writeInterval, [0, 1, 0, 1], "PNG" )
         sceneDir= os.path.dirname(self._getSceneFileRelPath())
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
@@ -188,13 +193,12 @@ class LuxTask( FrameRenderingTask ):
 
     #######################
     def queryExtraDataForTestTask( self ):
-
         self.testTaskResPath = getTestTaskPath( self.rootPath )
         logger.debug( self.testTaskResPath )
         if not os.path.exists( self.testTaskResPath ):
             os.makedirs( self.testTaskResPath )
 
-        sceneSrc = regenerateLuxFile( self.sceneFileSrc, 1, 1, 5, 0, 1, [0, 1, 0, 1 ], "EXR")
+        sceneSrc = regenerateLuxFile( self.sceneFileSrc, 1, 1, 5, 0, 1, [0, 1, 0, 1 ], "PNG")
         workingDirectory = self._getWorkingDirectory()
         sceneDir= os.path.dirname(self._getSceneFileRelPath())
 
@@ -220,7 +224,6 @@ class LuxTask( FrameRenderingTask ):
 
     #######################
     def computationFinished(self, subtaskId, taskResult, dirManager = None ):
-
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
         self.tmpDir = tmpDir
         trFiles = [ self._unpackTaskResult( trp, tmpDir ) for trp in taskResult ]
@@ -240,7 +243,7 @@ class LuxTask( FrameRenderingTask ):
             self._markSubtaskFailed( subtaskId )
 
         if self.numTasksReceived == self.totalTasks:
-            self.__generateFinalFLM( )
+            self.__generateFinalFLM()
             self.__generateFinalFile()
             self.previewFilePath = "{}.{}".format( self.outputFile, self.outputFormat )
 
@@ -291,16 +294,41 @@ class LuxTask( FrameRenderingTask ):
 
     #######################
     def _updatePreview( self, newChunkFilePath, chunkNum ):
-        if newChunkFilePath.endswith(".exr"):
-            img = exr_to_pil( newChunkFilePath )
-        else:
-            img = Image.open( newChunkFilePath )
-
         self.numAdd += 1
+        if newChunkFilePath.endswith(".exr"):
+            self.__updatePreviewFromEXR( newChunkFilePath )
+        else:
+            self.__updatePreviewFromPILFile( newChunkFilePath )
+
+    #######################
+    def __updatePreviewFromPILFile( self, newChunkFilePath ):
+        img = Image.open( newChunkFilePath )
 
         imgCurrent = self._openPreview()
         imgCurrent = ImageChops.blend( imgCurrent, img, 1.0 / float(self.numAdd) )
         imgCurrent.save( self.previewFilePath, "BMP" )
+
+    #######################
+    def __updatePreviewFromEXR( self, newChunkFile ):
+        if self.previewEXR is None:
+            self.previewEXR = loadImg( newChunkFile )
+        else:
+            self.previewEXR = blend( self.previewEXR, loadImg( newChunkFile ), 1.0 / float( self.numAdd ) )
+
+        imgCurrent = self._openPreview()
+        img = self.previewEXR.toPIL()
+        img.save( self.previewFilePath, "BMP")
+
+    #######################
+    def __generateFrameFiles(self):
+        self.sceneFiles = {}
+        blender = LuxRenderEnvironment().getBlender()
+        partOut = self.getTaskTmpPath()
+        for frame in self.frames:
+            cmd = "{} -b {} -o {} -E LUXRENDER_RENDER -f {}".format( blender, self.mainSceneFile, partOut, frame)
+
+    def getTaskTmpPath( self ):
+        return "C:/tmp"
 
     # def _getScenePartRelPath( self, scenePartFile ):
     #     sceneFile = os.path.relpath( os.path.dirname( scenePartFile ), os.path.dirname( self.mainProgramFile ) )

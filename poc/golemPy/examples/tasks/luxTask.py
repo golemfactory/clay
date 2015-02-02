@@ -15,7 +15,7 @@ def formatLuxRendererCmd( cmdFile, startTask, outputFile, outfilebasename, scene
     print "outputFile {}".format( outputFile )
     print "outfilebasename {}".format( outfilebasename )
     print "scenefile {}".format( scenefile )
-    cmd = '"{}" {} -o "{}\{}{}.exr"'.format(cmdFile, scenefile, outputFile, outfilebasename, startTask )
+    cmd = '"{}" {} -o "{}\{}{}.png"'.format(cmdFile, scenefile, outputFile, outfilebasename, startTask )
     return cmd
 
 def __readFromEnvironment( ):
@@ -43,7 +43,7 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir ):
     outputFiles = tmpPath
     print "outputFiles " + str( outputFiles )
 
-    files = glob.glob( outputFiles + "\*.exr" ) + glob.glob( outputFiles + "\*.flm" )
+    files = glob.glob( outputFiles + "\*.png" ) + glob.glob( outputFiles + "\*.flm" )
 
     for f in files:
         os.remove(f)
@@ -72,7 +72,7 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir ):
     win32process.SetPriorityClass( pc._handle, win32process.IDLE_PRIORITY_CLASS )
     pc.wait()
     os.chdir( prevDir )
-    files = glob.glob( outputFiles + "\*.exr" ) + glob.glob( outputFiles + "\*.flm" )
+    files = glob.glob( outputFiles + "\*.png" ) + glob.glob( outputFiles + "\*.flm" )
 
     res = []
 
