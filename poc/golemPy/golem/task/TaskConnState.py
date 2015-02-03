@@ -12,6 +12,7 @@ class TaskConnState( ConnectionState ):
         self.taskSession = None
         self.server = server
         self.fileMode = False
+        self.dataMode = False
 
     ############################
     def setSession( self, taskSession ):
@@ -33,6 +34,10 @@ class TaskConnState( ConnectionState ):
 
         if self.fileMode:
             self.fileDataReceived( data )
+            return
+
+        if self.dataMode:
+            self.resultDataReceived( data )
             return
 
         self.db.appendString(data)
@@ -61,6 +66,12 @@ class TaskConnState( ConnectionState ):
         assert len( data ) >= 4
 
         self.taskSession.taskComputer.resourceManager.fileDataReceived( self.taskSession.taskId, data, self )            
+
+    ############################
+    def resultDataReceived( self, data ):
+        assert len( data ) >= 4
+
+        self.taskSession.resultDataReceived( self.taskSession.taskId, data, self )
 
     ############################
     def connectionLost(self, reason):
