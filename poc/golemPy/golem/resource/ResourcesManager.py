@@ -120,36 +120,4 @@ class ResourcesManager:
     def getOutputDir( self, taskId ):
         return self.dirManager.getTaskOutputDir( taskId )
 
-
-    ###################
-    def fileDataReceived( self, taskId, data, conn ):
-
-        prct = int( 100 * self.recvSize / float( self.fileSize ) )
-        if prct > self.lastPrct:
-            print "\rFile data receving {} %                       ".format(  prct ),
-            self.lastPrct = prct
-        locData = data
-        if self.fileSize == -1:
-            # First chunk
-            self.lastPrct = 0
-            ( self.fileSize, ) = struct.unpack( "!L", data[0:4] )
-            locData = data[ 4: ]
-            assert self.fh is None
-
-            self.fh = open( os.path.join( self.getTemporaryDir( taskId ),  "res" + taskId ), 'wb' )
-
-        assert self.fh
-        self.recvSize += len( locData )
-
-        self.fh.write( locData )
-
-        if self.recvSize == self.fileSize:
-            conn.fileMode = False
-            self.fh.close()
-            self.fh = None
-            if self.fileSize > 0:
-                decompressDir( self.getResourceDir( taskId ), os.path.join( self.getTemporaryDir( taskId ),  "res" + taskId) )
-            self.owner.resourceGiven( taskId )
-            self.fileSize = -1
-            self.recvSize = 0
             

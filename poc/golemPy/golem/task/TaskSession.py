@@ -1,15 +1,17 @@
-
-from golem.Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat
-from TaskConnState import TaskConnState
 import time
 import cPickle as pickle
-import os
 import struct
 import logging
+import os
+
+from TaskConnState import TaskConnState
+from golem.Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat
+from golem.network.FileProducer import FileProducer
+from golem.network.DataProducer import DataProducer
+from golem.network.FileConsumer import FileConsumer
+from golem.network.DataConsumer import DataConsumer
 
 logger = logging.getLogger(__name__)
-
-LONG_STANDARD_SIZE = 4
 
 class TaskSession:
 
@@ -89,6 +91,8 @@ class TaskSession:
                     self.dropped()
                 elif delay == 0.0:
                     self.conn.sendMessage( MessageGetTaskResult( msg.subtaskId, delay ) )
+                    extraData = {"subtaskId": msg.subtaskId }
+                    self.conn.dataConsumer = DataConsumer( self, extraData )
                     self.conn.dataMode = True
                     self.subtaskId = msg.subtaskId
                 else:
@@ -101,10 +105,11 @@ class TaskSession:
             res = self.taskServer.getWaitingTaskResult( msg.subtaskId )
             if res:
                 if msg.delay == 0.0:
-                    result = pickle.dumps( res.result )
-                    dataProducer = DataProducer( result, self, res.subtaskId)
                     res.alreadySending = True
-#                    self.__send( MessageTaskResult( res.subtaskId, res.result ) )
+        #            self.__send( MessageTaskResult( res.subtaskId, res.result ) )
+                    result = pickle.dumps( res.result )
+                    extraData = { 'subtaskId': res.subtaskId }
+                    dataProducer = DataProducer( result, self, extraData = extraData )
 #                    self.taskServer.taskResultSent( res.subtaskId )
                 else:
                     res.lastSendingTrial    = time()
@@ -140,6 +145,10 @@ class TaskSession:
             self.dropped()
         elif type == MessageResourceFormat.Type:
             if not msg.useDistributedResource:
+                tmpFile = os.path.join( self.taskComputer.resourceManager.getTemporaryDir( self.taskId ), "res" + self.taskId )
+                outputDir = self.taskComputer.resourceManager.getResourceDir( self.taskId )
+                extraData = { "taskId": self.taskId }
+                self.conn.fileConsumer = FileConsumer( tmpFile, outputDir, self, extraData )
                 self.conn.fileMode = True
             self.__sendAcceptResourceFormat()
 
@@ -149,32 +158,25 @@ class TaskSession:
         self.taskServer.removeTaskSession( self )
 
     ##########################
-    def resultDataReceived(self, taskId, data, conn ):
-
-        if self.dataSize == -1:
-            self.__receiveFirstDataChunk( data )
-        else:
-            self.locData += data
-
-        self.recvSize = len( self.locData )
-        prct = int( 100 * self.recvSize / float( self.dataSize ) )
-        if prct > self.lastPrct:
-            print "\rFile data receving {} %                       ".format(  prct ),
-            self.lastPrct = prct
-
-        if self.recvSize == self.dataSize:
-            conn.dataMode = False
-            result = pickle.loads( self.locData )
-            self.dataSize = -1
-            self.recvSize = 0
-            self.locData = ""
-            self.__receiveTaskResult( self.subtaskId, result )
+    def fileSent( self, file_ ):
+        self.dropped()
 
     ##########################
-    def __receiveFirstDataChunk( self, data  ):
-        self.lastPrct = 0
-        ( self.dataSize, ) = struct.unpack( "!L", data[0:LONG_STANDARD_SIZE] )
-        self.locData = data[ LONG_STANDARD_SIZE: ]
+    def dataSent(self, extraData ):
+        if 'subtaskId' in extraData:
+            self.taskServer.taskResultSent( extraData['subtaskId'] )
+        else:
+            logger.error( "No subtaskId in extraData for sent data" )
+        self.dropped()
+
+    ##########################
+    def fullFileReceived( self, extraData ):
+        if 'taskId' in extraData:
+            self.taskComputer.resourceGiven( extraData['taskId'] )
+        else:
+            logger.error( "No taskId in extraData for received File")
+        self.dropped()
+
 
     ##########################
     def __send( self, msg ):
@@ -209,91 +211,18 @@ class TaskSession:
     def __sendAcceptResourceFormat( self ):
         self.__send( MessageAcceptResourceFormat() )
 
-    def __receiveTaskResult(self, subtaskId, result ):
-        self.taskManager.computedTaskReceived( subtaskId, result )
-        if self.taskManager.verifySubtask( subtaskId ):
-            reward = self.taskServer.payForTask( subtaskId )
-            self.__send( MessageSubtaskResultAccepted( subtaskId, reward ) )
+    def fullDataReceived(self, result, extraData ):
+        if 'subtaskId' in extraData:
+            subtaskId = extraData[ 'subtaskId' ]
+
+            self.taskManager.computedTaskReceived( subtaskId, result )
+            if self.taskManager.verifySubtask( subtaskId ):
+                reward = self.taskServer.payForTask( subtaskId )
+                self.__send( MessageSubtaskResultAccepted( subtaskId, reward ) )
+            else:
+                self.__send( MessageSubtaskResultRejected( subtaskId ) )
         else:
-            self.__send( MessageSubtaskResultRejected( subtaskId ) )
+            logger.error("No taskId value in extraData for received data ")
         self.dropped()
 
-class FileProducer:
-    def __init__( self, file_, taskSession ):
 
-        self.file_ = file_
-        self.taskSession = taskSession
-        self.paused = False
-        self.openFile()
-        self.register()
-
-    def openFile( self ):
-        self.fh = open( self.file_, 'rb' )
-        self.size = os.path.getsize( self.file_ )
-        logger.info( "Sendig file size:{}".format( self.size ) )
-        self.data = struct.pack( "!L", self.size ) + self.fh.read( 1024 * 1024 )
-
-    def register( self ):
-        self.taskSession.conn.transport.registerProducer( self, False )
-
-    def stopProducing( self ):
-        self.paused = True
-
-    def resumeProducing( self ):
-        if self.data:
-            self.taskSession.conn.transport.write( self.data )
-            print "\rSending progress {} %                       ".format( int( 100 * float( self.fh.tell() ) / self.size ) ),
-            self.data = self.fh.read( 1024 * 1024 )
-        else:
-            self.fh.close()
-            self.taskSession.conn.transport.unregisterProducer()
-            self.taskSession.dropped()
-
-
-    def pauseProducing(self):
-        self.paused = True
-
-class DataProducer:
-    def __init__( self, dataToSend, taskSession, subtaskId, buffSize = 1024 * 1024 * 1024 ):
-        self.dataToSend = dataToSend
-        self.taskSession = taskSession
-        self.paused = False
-        self.data = None
-        self.it = 0
-        self.numSend = 0
-        self.subtaskId = subtaskId
-        self.buffSize = buffSize
-        self.loadData()
-        self.register()
-
-    def loadData( self ):
-        self.size = len( self.dataToSend )
-        logger.info( "Sendig file size:{}".format( self.size ) )
-        self.data = struct.pack( "!L", self.size )
-        dataLen = len( self.data )
-        self.data += self.dataToSend[: self.buffSize ]
-        self.it = self.buffSize
-        self.size += LONG_STANDARD_SIZE
-
-    def register( self ):
-        self.taskSession.conn.transport.registerProducer( self, False )
-
-    def resumeProducing( self ):
-        if self.data:
-            self.taskSession.conn.transport.write( self.data )
-            self.numSend += len( self.data )
-            print "\rSending progress {} %                       ".format( int( 100 * float( self.numSend ) / self.size ) ),
-            if self.it < len( self.dataToSend ):
-                self.data = self.dataToSend[self.it:self.it + self.buffSize]
-                self.it += self.buffSize
-            else:
-                self.data = None
-                self.taskSession.taskServer.taskResultSent( self.subtaskId )
-                self.taskSession.conn.transport.unregisterProducer()
-                self.taskSession.dropped()
-
-    def stopProducing( self ):
-        self.paused = True
-
-    def pauseProducing( self ):
-        self.paused = True

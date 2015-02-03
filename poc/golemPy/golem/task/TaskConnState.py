@@ -1,7 +1,9 @@
+import logging
 
 from golem.Message import Message
 from golem.network.p2p.ConnectionState import ConnectionState
-import logging
+from golem.core.variables import LONG_STANDARD_SIZE
+
 
 logger = logging.getLogger(__name__)
 
@@ -63,15 +65,17 @@ class TaskConnState( ConnectionState ):
 
     ############################
     def fileDataReceived( self, data ):
-        assert len( data ) >= 4
+        assert self.fileConsumer
+        assert len( data ) >= LONG_STANDARD_SIZE
 
-        self.taskSession.taskComputer.resourceManager.fileDataReceived( self.taskSession.taskId, data, self )            
+        self.fileConsumer.dataReceived( data )
 
     ############################
     def resultDataReceived( self, data ):
-        assert len( data ) >= 4
+        assert self.dataConsumer
+        assert len( data ) >= LONG_STANDARD_SIZE
 
-        self.taskSession.resultDataReceived( self.taskSession.taskId, data, self )
+        self.dataConsumer.dataReceived( data )
 
     ############################
     def connectionLost(self, reason):
