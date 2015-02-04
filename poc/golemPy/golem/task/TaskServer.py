@@ -76,9 +76,12 @@ class TaskServer:
 
     #############################
     def sendResults( self, subtaskId, result, ownerAddress, ownerPort ):
-        
+        if 'data' not in result or 'resultType' not in result:
+            logger.error( "Wrong result format" )
+            assert False
+
         if subtaskId not in self.resultsToSend:
-            self.resultsToSend[ subtaskId ] = WaitingTaskResult( subtaskId, result, 0.0, 0.0, ownerAddress, ownerPort )
+            self.resultsToSend[ subtaskId ] = WaitingTaskResult( subtaskId, result['data'], result['resultType'], 0.0, 0.0, ownerAddress, ownerPort )
         else:
             assert False
 
@@ -272,8 +275,8 @@ class TaskServer:
         session.taskManager = self.taskManager
 
         self.taskSessions[ waitingTaskResult.subtaskId ] = session
-        
-        session.sendReportComputedTask( waitingTaskResult.subtaskId )
+
+        session.sendReportComputedTask( waitingTaskResult )
 
     #############################
     def __connectionForTaskResultFailure( self, waitingTaskResult ):
@@ -336,9 +339,10 @@ class TaskServer:
 
 class WaitingTaskResult:
     #############################
-    def __init__( self, subtaskId, result, lastSendingTrial, delayTime, ownerAddress, ownerPort  ):
+    def __init__( self, subtaskId, result, resultType, lastSendingTrial, delayTime, ownerAddress, ownerPort  ):
         self.subtaskId          = subtaskId
         self.result             = result
+        self.resultType         = resultType
         self.lastSendingTrial   = lastSendingTrial
         self.delayTime          = delayTime
         self.ownerAddress       = ownerAddress

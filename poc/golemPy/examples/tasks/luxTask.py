@@ -8,6 +8,7 @@ import zipfile
 import subprocess
 import win32process
 import math
+import shutil
 
 def formatLuxRendererCmd( cmdFile, startTask, outputFile, outfilebasename, scenefile ):
     print "cmdFile {}".format( cmdFile )
@@ -74,15 +75,13 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir ):
     os.chdir( prevDir )
     files = glob.glob( outputFiles + "\*.png" ) + glob.glob( outputFiles + "\*.flm" )
 
-    res = []
-
+    copyPath = os.path.normpath( os.path.join( tmpPath, "..") )
     for f in files:
-        fh = open( f, "rb" )
-        fileData = fh.read()
-        fileData = zlib.compress( fileData, 9 )
-        res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
-        fh.close()
+        shutil.copy2( f, copyPath )
 
-    return res
+    files = [ os.path.normpath( os.path.join( copyPath, os.path.basename( f ) ) ) for f in files]
+
+    return { 'data': files, 'resultType': 1 }
+
 
 output = runLuxRendererTask ( startTask, outfilebasename, sceneFileSrc, sceneDir )

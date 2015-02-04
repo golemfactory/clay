@@ -110,7 +110,7 @@ class TaskComputer:
 
             subtaskId   = taskThread.subtaskId
 
-            if taskThread.result:
+            if taskThread.result and 'data' in taskThread.result and 'resultType' in taskThread.result:
                 logger.info ( "Task {} computed".format( subtaskId ) )
                 if subtaskId in self.assignedSubTasks:
                     self.taskServer.waitingForVerification[ subtaskId ] = self.assignedSubTasks[ subtaskId ].taskId

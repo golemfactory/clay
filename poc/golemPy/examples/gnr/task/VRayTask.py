@@ -473,7 +473,7 @@ class VRayTask( FrameRenderingTask ):
     #######################
     def _runTask(self, srcCode, scope):
         exec srcCode in scope
-        trFiles = [ self._unpackTaskResult( file_, self.tmpDir ) for file_ in scope['output'] ]
+        trFiles = [ self._unpackTaskResult( file_, self.tmpDir ) for file_ in scope['output']['data'] ]
         if scope['isAlpha']:
             for trFile in trFiles:
                 if self.__isAlphaFile( trFile ):

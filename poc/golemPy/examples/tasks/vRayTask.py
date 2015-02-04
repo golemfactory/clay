@@ -121,7 +121,7 @@ def runVRayTask( pathRoot, startTask, endTask, hTask, totalTasks, outfilebasenam
         res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
         fh.close()
 
-    return res
+    return { 'data': res, 'resultType': 0 }
 
 def parseFrames( frames ):
     return ";".join( [ u"{}".format(frame) for frame in frames ] )

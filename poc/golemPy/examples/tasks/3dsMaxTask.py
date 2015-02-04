@@ -96,7 +96,7 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, sc
         res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
         fh.close()
 
-    return res
+    return { 'data': res, 'resultType': 0 }
 
 
 def parseFrames( frames ):

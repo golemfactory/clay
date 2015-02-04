@@ -49,7 +49,6 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
 
     files = glob.glob( outputFiles + "*.exr" )
 
-    print files
 
     res = []
 
@@ -60,9 +59,8 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
         res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
         fh.close()
 
-    #os.remove( tmpSceneFile.name )
 
-    return res
+    return { 'data': res, 'resultType': 0 }
 
 
 output = run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneFileSrc )

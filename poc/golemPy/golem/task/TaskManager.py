@@ -367,6 +367,9 @@ class TaskManager:
             logger.info( "Cannot find task {} in my tasks".format( taskId ) )
             return False
 
+    def getTaskId( self, subtaskId ):
+        return self.subTask2TaskMapping[ subtaskId ]
+
 
     #######################
     def __addSubtaskToTasksStates( self, clientId, ctd ):

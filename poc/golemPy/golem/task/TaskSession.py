@@ -10,12 +10,16 @@ from golem.network.FileProducer import FileProducer
 from golem.network.DataProducer import DataProducer
 from golem.network.FileConsumer import FileConsumer
 from golem.network.DataConsumer import DataConsumer
+from golem.network.MultiFileProducer import MultiFileProducer
+from golem.network.MultiFileConsumer import MultiFileConsumer
 
 logger = logging.getLogger(__name__)
 
 class TaskSession:
 
     ConnectionStateType = TaskConnState
+
+    resultTypes = { 'data': 0, 'files': 1 }
 
     ##########################
     def __init__( self, conn ):
@@ -38,8 +42,16 @@ class TaskSession:
         self.__send( MessageGetResource( taskId, pickle.dumps( resourceHeader ) ) )
 
     ##########################
-    def sendReportComputedTask( self, subtaskId ):
-        self.__send( MessageReportComputedTask( subtaskId ) )
+    def sendReportComputedTask( self, taskResult ):
+        if taskResult.resultType == TaskSession.resultTypes['data']:
+            extraData = []
+        elif taskResult.resultType == TaskSession.resultTypes['files']:
+            extraData = [ os.path.basename(x) for x in taskResult.result ]
+        else:
+            logger.error("Unknown result type {}".format( taskResult.resultType ) )
+            return
+
+        self.__send( MessageReportComputedTask( taskResult.subtaskId, taskResult.resultType, extraData ) )
 
     ##########################
     def interpret( self, msg ):
@@ -85,10 +97,14 @@ class TaskSession:
                     self.dropped()
                 elif delay == 0.0:
                     self.conn.sendMessage( MessageGetTaskResult( msg.subtaskId, delay ) )
-                    extraData = {"subtaskId": msg.subtaskId }
-                    self.conn.dataConsumer = DataConsumer( self, extraData )
-                    self.conn.dataMode = True
-                    self.subtaskId = msg.subtaskId
+
+                    if msg.resultType == TaskSession.resultTypes['data']:
+                        self.__receiveDataResult( msg )
+                    elif msg.resultType == TaskSession.resultTypes['files']:
+                        self.__receiveFilesResult( msg)
+                    else:
+                        logger.error("Unknown result type {}".format( msg.resultType ) )
+                        self.dropped()
                 else:
                     self.conn.sendMessage( MessageGetTaskResult( msg.subtaskId, delay ) )
                     self.dropped()
@@ -100,11 +116,13 @@ class TaskSession:
             if res:
                 if msg.delay == 0.0:
                     res.alreadySending = True
-        #            self.__send( MessageTaskResult( res.subtaskId, res.result ) )
-                    result = pickle.dumps( res.result )
-                    extraData = { 'subtaskId': res.subtaskId }
-                    dataProducer = DataProducer( result, self, extraData = extraData )
-#                    self.taskServer.taskResultSent( res.subtaskId )
+                    if res.resultType == TaskSession.resultTypes['data']:
+                        self.__sendDataResults( res )
+                    elif res.resultType == TaskSession.resultTypes['files']:
+                        self.__sendFilesResults( res )
+                    else:
+                        logger.error( "Unknown result type {}".format( res.resultType ) )
+                        self.dropped()
                 else:
                     res.lastSendingTrial    = time()
                     res.delayTime           = msg.delay
@@ -199,17 +217,51 @@ class TaskSession:
         deltaHeader, partsList = self.taskManager.getResourcePartsList( msg.taskId, pickle.loads( msg.resourceHeader ) )
         self.__send( MessageDeltaParts( self.taskId, deltaHeader, partsList ) )
 
+    ##########################
     def __sendResourceFormat( self, useDistributedResource ):
         self.__send( MessageResourceFormat( useDistributedResource ) )
 
+    ##########################
     def __sendAcceptResourceFormat( self ):
         self.__send( MessageAcceptResourceFormat() )
 
+    ##########################
+    def __sendDataResults( self, res ):
+        result = pickle.dumps( res.result )
+        extraData = { 'subtaskId': res.subtaskId }
+        dataProducer = DataProducer( result, self, extraData = extraData )
+
+    def __sendFilesResults( self, res ):
+        extraData = { 'subtaskId': res.subtaskId }
+        multiFileProducer = MultiFileProducer( res.result, self, extraData = extraData )
+
+    ##########################
+    def __receiveDataResult( self, msg ):
+        extraData = {"subtaskId": msg.subtaskId, "resultType": msg.resultType }
+        self.conn.dataConsumer = DataConsumer( self, extraData )
+        self.conn.dataMode = True
+        self.subtaskId = msg.subtaskId
+
+    def __receiveFilesResult( self, msg ):
+        extraData = { "subtaskId": msg.subtaskId, "resultType": msg.resultType }
+        outputDir = self.taskServer.taskManager.dirManager.getTaskTemporaryDir( self.taskManager.getTaskId( msg.subtaskId ), create = False )
+        self.conn.dataConsumer = MultiFileConsumer( msg.extraData, outputDir, self, extraData )
+        self.conn.dataMode = True
+        self.subtaskId = msg.subtaskId
+
+    ##########################
     def fullDataReceived(self, result, extraData ):
-        try:
-            result = pickle.loads( result )
-        except Exception, err:
-            logger.error( "Can't unpickle result data {}".format( str( err ) ) )
+        if "resultType" not in extraData:
+            logger.error( "No information about resultType for received data " )
+            self.dropped()
+            return
+
+        if extraData['resultType'] == TaskSession.resultTypes['data']:
+            try:
+                result = pickle.loads( result )
+            except Exception, err:
+                logger.error( "Can't unpickle result data {}".format( str( err ) ) )
+
         if 'subtaskId' in extraData:
             subtaskId = extraData[ 'subtaskId' ]
 
@@ -222,5 +274,3 @@ class TaskSession:
         else:
             logger.error("No taskId value in extraData for received data ")
         self.dropped()
-
-
