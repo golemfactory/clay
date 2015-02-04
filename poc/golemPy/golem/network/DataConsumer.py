@@ -47,5 +47,4 @@ class DataConsumer:
         self.session.conn.dataMode = False
         self.dataSize = -1
         self.recvSize = 0
-        result = pickle.loads( self.locData )
-        self.session.fullDataReceived( result, self.extraData )
+        self.session.fullDataReceived( self.locData, self.extraData )

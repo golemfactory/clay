@@ -29,12 +29,6 @@ class TaskSession:
 
         self.lastResourceMsg = None
 
-        self.recvSize = 0
-        self.dataSize = -1
-        self.lastPrct = 0
-        self.locData = ""
-        self.subtaskId = ""
-
     ##########################
     def requestTask( self, clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores ):
         self.__send( MessageWantToComputeTask( clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores ) )
@@ -212,6 +206,10 @@ class TaskSession:
         self.__send( MessageAcceptResourceFormat() )
 
     def fullDataReceived(self, result, extraData ):
+        try:
+            result = pickle.loads( result )
+        except Exception, err:
+            logger.error( "Can't unpickle result data {}".format( str( err ) ) )
         if 'subtaskId' in extraData:
             subtaskId = extraData[ 'subtaskId' ]
 
