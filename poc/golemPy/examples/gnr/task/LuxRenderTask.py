@@ -4,6 +4,7 @@ import os
 import tempfile
 
 from collections import OrderedDict
+from Cython.Compiler.ExprNodes import NoneCheckNode
 from PIL import Image, ImageChops
 
 from golem.core.simpleexccmd import execCmd
@@ -13,7 +14,7 @@ from  examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 from examples.gnr.RenderingEnvironment import LuxRenderEnvironment
 from examples.gnr.RenderingDirManager import getTestTaskPath
 from examples.gnr.task.ImgRepr import loadImg, blend
-from  examples.gnr.task.GNRTask import GNROptions
+from  examples.gnr.task.GNRTask import GNROptions, checkSubtaskIdWrapper
 from  examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
 from examples.gnr.task.SceneFileEditor import regenerateLuxFile
 from examples.gnr.ui.LuxRenderDialog import LuxRenderDialog
@@ -223,6 +224,7 @@ class LuxTask( RenderingTask ):
                     self.numTasksReceived += 1
                     self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'clientId' ] ] = 1
                 else:
+                    self.subTasksGiven[ subtaskId ][ 'previewFile' ] = trFile
                     self._updatePreview( trFile, numStart )
         else:
             self._markSubtaskFailed( subtaskId )
@@ -278,6 +280,7 @@ class LuxTask( RenderingTask ):
 
     #######################
     def _updatePreview( self, newChunkFilePath, chunkNum ):
+        print "updatePreview {}".format( newChunkFilePath )
         self.numAdd += 1
         if newChunkFilePath.endswith(".exr"):
             self.__updatePreviewFromEXR( newChunkFilePath )
@@ -304,5 +307,14 @@ class LuxTask( RenderingTask ):
         img.save( self.previewFilePath, "BMP")
 
     #######################
+    @checkSubtaskIdWrapper
     def _removeFromPreview( self, subtaskId ):
-        pass #TODO
+        previewFiles = []
+        for subId, task in self.subTasksGiven.iteritems():
+            if subId != subtaskId and task['status'] == 'Finished' and 'previewFile' in task:
+                previewFiles.append(task['previewFile'])
+
+        self.previewFilePath = None
+        self.numAdd = 0
+        for f in previewFiles:
+            self._updatePreview( f, None )
