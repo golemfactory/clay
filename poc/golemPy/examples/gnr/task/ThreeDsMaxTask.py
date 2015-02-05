@@ -227,13 +227,14 @@ class ThreeDSMaxTask( FrameRenderingTask ):
 
   #######################
     @checkSubtaskIdWrapper
-    def computationFinished( self, subtaskId, taskResult, dirManager = None ):
+    def computationFinished( self, subtaskId, taskResult, dirManager = None, resultType = 0 ):
 
         if not self.shouldAccept( subtaskId ):
             return
 
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
         self.tmpDir = tmpDir
+
 
         if len( taskResult ) > 0:
             numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
@@ -251,7 +252,7 @@ class ThreeDSMaxTask( FrameRenderingTask ):
                         self._updateFrameTaskPreview()
                     return
 
-            trFiles = [ self._unpackTaskResult( trp, tmpDir ) for trp in taskResult ]
+            trFiles = self.loadTaskResults( taskResult, resultType, tmpDir )
 
             if not self._verifyImgs( subtaskId, trFiles ):
                 self._markSubtaskFailed( subtaskId )
