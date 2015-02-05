@@ -6,7 +6,7 @@ from golem.core.variables import LONG_STANDARD_SIZE
 class DataConsumer:
     ###################
     def __init__( self, session, extraData ):
-        self.locData = ''
+        self.locData = []
         self.dataSize = -1
         self.recvSize = 0
 
@@ -18,11 +18,11 @@ class DataConsumer:
     ###################
     def dataReceived( self, data ):
         if self.dataSize == -1:
-            self.locData = self.__getFirstChunk( data )
+            self.locData.append( self.__getFirstChunk( data ) )
+            self.recvSize = len( data ) - LONG_STANDARD_SIZE
         else:
-            self.locData += data
-
-        self.recvSize = len( self.locData )
+            self.locData.append( data )
+            self.recvSize += len( data )
 
         self.__printProgress()
 
@@ -47,4 +47,4 @@ class DataConsumer:
         self.session.conn.dataMode = False
         self.dataSize = -1
         self.recvSize = 0
-        self.session.fullDataReceived( self.locData, self.extraData )
+        self.session.fullDataReceived( "".join(self.locData), self.extraData )
