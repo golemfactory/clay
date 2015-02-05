@@ -12,6 +12,7 @@ class MultiFileProducer:
         self.session = session
         self.buffSize = buffSize
         self.extraData = extraData
+        self.fh = None
         self.initData()
         self.register()
 
@@ -34,12 +35,14 @@ class MultiFileProducer:
             self.__printProgress()
             self.data = self.fh.read( self.buffSize )
         elif len( self.fileList ) > 1:
-            self.fh.close()
+            if self.fh is not None:
+                self.fh.close()
             self.fileList.pop()
             self.initData()
             self.resumeProducing()
         else:
-            self.fh.close()
+            if self.fh is not None:
+                self.fh.close()
             self.session.dataSent( self.extraData )
       #      self.session.fileSent( self.file_ )
             self.session.conn.transport.unregisterProducer()
