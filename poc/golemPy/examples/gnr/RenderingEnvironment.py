@@ -142,43 +142,41 @@ class LuxRenderEnvironment( Environment ):
     #########################
     def __init__( self ):
         Environment.__init__( self )
-        self.software.append('Blender')
         self.software.append('LuxRender')
         self.shortDescription = "LuxRenderer Renderer (http://www.luxrender.net/)"
         self.softwareEnvVariables = ['LUXRENDER_ROOT']
-        self.softwareName = 'vray.exe'
-        self.softwareCmd = 'blender'
-        self.luxPath = ''
+        self.softwareName = ['luxconsole.exe', 'luxmerger.exe']
+        self.luxConsolePath = ''
+        self.luxMergerPath = ''
 
     #########################
     def checkSoftware( self ):
         luxInstalled = False
         for var in self.softwareEnvVariables:
             if os.environ.get( var ):
-                self.luxPath = os.path.join( os.environ.get( var ), 'luxconsole.exe' )
-                if os.path.isfile( self.luxPath ):
+                self.luxConsolePath = os.path.join( os.environ.get( var ), 'luxconsole.exe' )
+                self.luxMergerPath = os.path.join( os.environ.get( var ), 'luxmerger.exe' )
+                if os.path.isfile( self.luxConsolePath ) and os.path.isfile( self.luxMergerPath ):
                     luxInstalled = True
-        blenderInstalled = checkCmd( self.softwareCmd )
-        return luxInstalled and blenderInstalled
+
+        return luxInstalled
 
     #########################
     def supported( self ):
         return self.checkSoftware()
 
-    def getBlender( self ) :
-        return self.softwareCmd
-
+    #########################
     def getLuxConsole( self ):
         self.checkSoftware()
-        if os.path.isfile( self.luxPath ):
-            return self.luxPath
+        if os.path.isfile( self.luxConsolePath ):
+            return self.luxConsolePath
         else:
             return ""
 
+    #########################
     def getLuxMerger( self ):
-        luxMerger = None
-        for var in self.softwareEnvVariables:
-            if os.environ.get( var ):
-                luxMerger = os.path.join( os.environ.get( var ), 'luxmerger.exe' )
-        if os.path.isfile( luxMerger ):
-            return luxMerger
+        self.checkSoftware()
+        if os.path.isfile( self.luxMergerPath ):
+            return self.luxMergerPath
+        else:
+            return ""

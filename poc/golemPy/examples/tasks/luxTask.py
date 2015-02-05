@@ -97,7 +97,7 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir ):
     os.chdir( prevDir )
     files = glob.glob( outputFiles + "\*.png" ) + glob.glob( outputFiles + "\*.flm" )
 
-    return returnData( files )
+    return returnFiles( files )
 
 
 output = runLuxRendererTask ( startTask, outfilebasename, sceneFileSrc, sceneDir )

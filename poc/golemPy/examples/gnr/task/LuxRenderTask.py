@@ -1,29 +1,23 @@
 import logging
 import random
 import os
-import math
-import subprocess
-import win32process
-import shutil
 import tempfile
 
 from collections import OrderedDict
 from PIL import Image, ImageChops
 
-from golem.core.copyFileTree import copyFileTree
 from golem.core.simpleexccmd import execCmd
 from golem.task.TaskState import SubtaskStatus
 
 from  examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 from examples.gnr.RenderingEnvironment import LuxRenderEnvironment
-from examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
+from examples.gnr.RenderingDirManager import getTestTaskPath
 from examples.gnr.task.ImgRepr import loadImg, blend
 from  examples.gnr.task.GNRTask import GNROptions
-from  examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler
+from  examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
 from examples.gnr.task.SceneFileEditor import regenerateLuxFile
 from examples.gnr.ui.LuxRenderDialog import LuxRenderDialog
 from examples.gnr.customizers.LuxRenderDialogCustomizer import LuxRenderDialogCustomizer
-from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +38,7 @@ def buildLuxRenderInfo():
 
     return renderer
 
-def getTaskBoarder( startTask, endTask, totalTasks, resX = 300 , resY = 200, useFrames = False, frames = 100, frameNum = 1):
+def getTaskBoarder( startTask, endTask, totalTasks, resX = 300 , resY = 200, numSubtasks = 20):
     boarder = []
     for i in range( 0, resY ):
         boarder.append( (0, i ))
@@ -54,7 +48,7 @@ def getTaskBoarder( startTask, endTask, totalTasks, resX = 300 , resY = 200, use
         boarder.append( (i, resY - 1))
     return boarder
 
-def getTaskNumFromPixels( pX, pY, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):
+def getTaskNumFromPixels( pX, pY, totalTasks, resX = 300, resY = 200 ):
     return 1
 
 ##############################################
@@ -65,11 +59,9 @@ class LuxRenderOptions( GNROptions ):
         self.environment = LuxRenderEnvironment()
         self.halttime = 600
         self.haltspp = 1
-        self.useFrames = False
-        self.frames = range(1, 11)
 
 ##############################################
-class LuxRenderTaskBuilder( FrameRenderingTaskBuiler ):
+class LuxRenderTaskBuilder( RenderingTaskBuilder ):
     #######################
     def build( self ):
         mainSceneDir = os.path.dirname( self.taskDefinition.mainSceneFile )
@@ -92,14 +84,12 @@ class LuxRenderTaskBuilder( FrameRenderingTaskBuiler ):
                             self.rootPath,
                             self.taskDefinition.rendererOptions.halttime,
                             self.taskDefinition.rendererOptions.haltspp,
-                            self.taskDefinition.rendererOptions.useFrames,
-                            self.taskDefinition.rendererOptions.frames
         )
 
         return self._setVerificationOptions( luxTask )
 
 ##############################################
-class LuxTask( FrameRenderingTask ):
+class LuxTask( RenderingTask ):
     #######################
     def __init__(   self,
                     clientId,
@@ -120,20 +110,17 @@ class LuxTask( FrameRenderingTask ):
                     rootPath,
                     halttime,
                     haltspp,
-                    useFrames,
-                    frames,
                     returnAddress = "",
                     returnPort = 0):
 
-        FrameRenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort,
+        RenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort,
                                  LuxRenderEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                                  mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                                  totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
-                                 rootPath, estimatedMemory, useFrames, frames )
+                                 rootPath, estimatedMemory )
 
         self.halttime = halttime
         self.haltspp = haltspp
-        self.blendTask = os.path.normpath( os.path.join( os.environ.get('GOLEM'), 'examples/tasks/blendTask.py') )
         try:
             with open( mainSceneFile ) as f:
                 self.sceneFileSrc = f.read()
@@ -143,9 +130,6 @@ class LuxTask( FrameRenderingTask ):
 
         self.outputFile, _ = os.path.splitext( self.outputFile )
         self.numAdd = 0
-
-        if self.useFrames:
-            self.scenFiles = self.__generateFrameFiles()
 
         self.previewEXR = None
 
@@ -246,7 +230,6 @@ class LuxTask( FrameRenderingTask ):
         if self.numTasksReceived == self.totalTasks:
             self.__generateFinalFLM()
             self.__generateFinalFile()
-            self.previewFilePath = "{}.{}".format( self.outputFile, self.outputFormat )
 
     #######################
     def __generateFinalFLM( self ):
@@ -321,49 +304,5 @@ class LuxTask( FrameRenderingTask ):
         img.save( self.previewFilePath, "BMP")
 
     #######################
-    def __generateFrameFiles(self):
-        self.sceneFiles = {}
-        blender = LuxRenderEnvironment().getBlender()
-        partOut = self.getTaskTmpPath()
-        for frame in self.frames:
-            cmd = "{} -b {} -o {} -E LUXRENDER_RENDER -f {}".format( blender, self.mainSceneFile, partOut, frame)
-
-    def getTaskTmpPath( self ):
-        return "C:/tmp"
-
-    # def _getScenePartRelPath( self, scenePartFile ):
-    #     sceneFile = os.path.relpath( os.path.dirname( scenePartFile ), os.path.dirname( self.mainProgramFile ) )
-    #     sceneFile = os.path.join( sceneFile, os.path.basename( scenePartFile ) )
-    #     return sceneFile
-
-    # def generateBlenderScene( self, blender, sceneFile ):
-    #
-    #     partOut = os.path.join( self.testTaskResPath, 'testFile' )
-    #     cmd = "{} -b {} -P {} -o {} -E LUXRENDER_RENDER -f 1".format( blender, sceneFile, self.blendTask, partOut )
-    #     logger.debug("Blender cmd: {}".format( cmd ))
-    #
-    #     pc = subprocess.Popen( cmd )
-    #     win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS )
-    #
-    #     pc.wait()
-    #
-    #     basename = os.path.splitext( os.path.basename(self.mainSceneFile ) )[0]
-    #     additionalResources =  os.path.join( self.testTaskResPath,  basename )
-    #     scenePart = os.path.join( self.testTaskResPath, "{}.Scene.00001.lxs".format( basename ) )
-    #     try:
-    #         with open( scenePart ) as f:
-    #             self.scenePartSrc = f.read()
-    #     except Exception, err:
-    #         logger.error( "Wrong scene file: {}".format( str( err ) ) )
-    #         self.scenePartSrc = ""
-    #     self.scenePartSrc = regenerateLuxFile( self.scenePartSrc, self.halttime )
-    #     dstDir = os.path.dirname( self.mainSceneFile )
-    #     self.dstScenePart = os.path.normpath( os.path.join( dstDir, os.path.basename( scenePart ) ) )
-    #     shutil.copyfile( scenePart, self.dstScenePart )
-    #     generatedDstDir = os.path.join( dstDir, basename )
-    #     copyFileTree( additionalResources, generatedDstDir )
-    #     self.taskResources.add( self.dstScenePart )
-    #     for root, _, files in os.walk( generatedDstDir ):
-    #         for f in files:
-    #             self.taskResources.add( os.path.normpath( os.path.join( root, f ) ) )
-    #     print os.getcwd()
+    def _removeFromPreview( self, subtaskId ):
+        pass #TODO
