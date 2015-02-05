@@ -1,13 +1,15 @@
-from golem.task.TaskBase import Task, TaskHeader, TaskBuilder
+from golem.task.TaskBase import Task, TaskHeader, TaskBuilder, resultTypes
 from golem.task.TaskState import SubtaskStatus
 from golem.resource.Resource import prepareDeltaZip, TaskResourceHeader
 from golem.environments.Environment import Environment
+from golem.core.Compress import decompress
 
 from examples.gnr.RenderingDirManager import getTmpPath
 
 import os
 import logging
 import time
+import pickle
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +189,15 @@ class GNRTask( Task ):
     def updateTaskState( self, taskState ):
         pass
 
+    #######################
+    def loadTaskResults( self, taskResult, resultType, tmpDir ):
+        if resultType == resultTypes['data']:
+            return  [ self._unpackTaskResult( trp, tmpDir ) for trp in taskResult ]
+        elif resultType == resultTypes['files']:
+            return taskResult
+        else:
+            logger.error("Task result type not supported {}".format( resultType ) )
+            return []
 
     #######################
     @checkSubtaskIdWrapper
@@ -227,3 +238,10 @@ class GNRTask( Task ):
         self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'clientId' ] ] = -1
         self.numFailedSubtasks += 1
 
+    #######################
+    def _unpackTaskResult( self, trp, tmpDir ):
+        tr = pickle.loads( trp )
+        fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
+        fh.write( decompress( tr[ 1 ] ) )
+        fh.close()
+        return os.path.join( tmpDir, tr[0] )

@@ -73,7 +73,7 @@ class PythonGNRTask( GNRTask ):
 
     #######################
     @checkSubtaskIdWrapper
-    def computationFinished( self, subtaskId, taskResult, dirManager = None ):
+    def computationFinished( self, subtaskId, taskResult, dirManager = None, resultType = 0 ):
         self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
         self.numTasksReceived += 1
 

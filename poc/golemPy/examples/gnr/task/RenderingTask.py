@@ -1,6 +1,5 @@
 import os
 import logging
-import pickle
 import subprocess
 import math
 import random
@@ -8,7 +7,6 @@ import uuid
 from copy import deepcopy, copy
 from PIL import Image, ImageChops
 
-from golem.core.Compress import decompress
 from golem.task.TaskState import SubtaskStatus
 from golem.task.TaskBase import ComputeTaskDef
 
@@ -189,13 +187,6 @@ class RenderingTask( GNRTask ):
             for j in range( upper, lower):
                 imgTask.putpixel( (i, j), color )
 
-    #######################
-    def _unpackTaskResult( self, trp, tmpDir ):
-        tr = pickle.loads( trp )
-        fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
-        fh.write( decompress( tr[ 1 ] ) )
-        fh.close()
-        return os.path.join( tmpDir, tr[0] )
 
     #######################
     def _putCollectedFilesTogether( self, outputFileName, files, arg ):

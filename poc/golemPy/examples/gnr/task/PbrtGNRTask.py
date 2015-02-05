@@ -259,14 +259,14 @@ class PbrtRenderTask( RenderingTask ):
         return self._newComputeTaskDef( hash, extraData, workingDirectory, 0 )
 
     #######################
-    def computationFinished( self, subtaskId, taskResult, dirManager = None ):
+    def computationFinished( self, subtaskId, taskResult, dirManager = None, resultType = 0 ):
 
         if not self.shouldAccept( subtaskId ):
             return
 
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
         self.tmpDir = tmpDir
-        trFiles = [ self._unpackTaskResult( trp, tmpDir ) for trp in taskResult ]
+        trFiles = self.loadTaskResults( taskResult, resultType, tmpDir )
 
         if not self._verifyImgs( subtaskId, trFiles ):
             self._markSubtaskFailed( subtaskId )

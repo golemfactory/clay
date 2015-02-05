@@ -148,7 +148,7 @@ class TaskManager:
             return False
 
     #######################
-    def computedTaskReceived( self, subtaskId, result ):
+    def computedTaskReceived( self, subtaskId, result, resultType ):
         if subtaskId in self.subTask2TaskMapping:
             taskId = self.subTask2TaskMapping[ subtaskId ]
 
@@ -158,7 +158,7 @@ class TaskManager:
                 self.__noticeTaskUpdated( taskId )
                 return False
 
-            self.tasks[ taskId ].computationFinished( subtaskId, result, self.dirManager )
+            self.tasks[ taskId ].computationFinished( subtaskId, result, self.dirManager, resultType )
             ss = self.tasksStates[ taskId ].subtaskStates[ subtaskId ]
             ss.subtaskProgress  = 1.0
             ss.subtaskRemTime   = 0.0

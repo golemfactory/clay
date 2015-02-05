@@ -73,7 +73,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def computationFinished( self, subtaskId, taskResult, dirManager = None ):
+    def computationFinished( self, subtaskId, taskResult, dirManager = None, resultType = 0 ):
         return # Implement in derived class
 
     #######################
@@ -145,3 +145,4 @@ class Task:
         assert isinstance( taskBuilder, TaskBuilder )
         return taskBuilder.build()
 
+resultTypes = { 'data': 0, 'files': 1 }

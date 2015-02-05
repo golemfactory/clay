@@ -37,7 +37,7 @@ class SnapshotGetter:
         messages.append( snapshot )
         try:
             messages = pickle.dumps( messages )
-            return messages
+            return { 'data': messages, 'resultType': 0 }
         except Exception as ex:
             logger.error( "Can't serialize snapshots: {}".format( str( ex ) ) )
 

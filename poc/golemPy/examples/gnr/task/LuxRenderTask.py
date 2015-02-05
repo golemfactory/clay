@@ -223,10 +223,11 @@ class LuxTask( FrameRenderingTask ):
         return "startTask: {}, outfilebasename: {}, sceneFileSrc: {}".format( l['startTask'], l['outfilebasename'], l['sceneFileSrc'])
 
     #######################
-    def computationFinished(self, subtaskId, taskResult, dirManager = None ):
+    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
         tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
         self.tmpDir = tmpDir
-        trFiles = taskResult
+
+        trFiles = self.loadTaskResults( taskResult, resultType, tmpDir )
 
         if len( taskResult ) > 0:
             numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]

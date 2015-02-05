@@ -12,14 +12,13 @@ from golem.network.FileConsumer import FileConsumer
 from golem.network.DataConsumer import DataConsumer
 from golem.network.MultiFileProducer import MultiFileProducer
 from golem.network.MultiFileConsumer import MultiFileConsumer
+from golem.task.TaskBase import resultTypes
 
 logger = logging.getLogger(__name__)
 
 class TaskSession:
 
     ConnectionStateType = TaskConnState
-
-    resultTypes = { 'data': 0, 'files': 1 }
 
     ##########################
     def __init__( self, conn ):
@@ -43,9 +42,9 @@ class TaskSession:
 
     ##########################
     def sendReportComputedTask( self, taskResult ):
-        if taskResult.resultType == TaskSession.resultTypes['data']:
+        if taskResult.resultType == resultTypes['data']:
             extraData = []
-        elif taskResult.resultType == TaskSession.resultTypes['files']:
+        elif taskResult.resultType == resultTypes['files']:
             extraData = [ os.path.basename(x) for x in taskResult.result ]
         else:
             logger.error("Unknown result type {}".format( taskResult.resultType ) )
@@ -98,9 +97,9 @@ class TaskSession:
                 elif delay == 0.0:
                     self.conn.sendMessage( MessageGetTaskResult( msg.subtaskId, delay ) )
 
-                    if msg.resultType == TaskSession.resultTypes['data']:
+                    if msg.resultType == resultTypes['data']:
                         self.__receiveDataResult( msg )
-                    elif msg.resultType == TaskSession.resultTypes['files']:
+                    elif msg.resultType == resultTypes['files']:
                         self.__receiveFilesResult( msg)
                     else:
                         logger.error("Unknown result type {}".format( msg.resultType ) )
@@ -116,9 +115,9 @@ class TaskSession:
             if res:
                 if msg.delay == 0.0:
                     res.alreadySending = True
-                    if res.resultType == TaskSession.resultTypes['data']:
+                    if res.resultType == resultTypes['data']:
                         self.__sendDataResults( res )
-                    elif res.resultType == TaskSession.resultTypes['files']:
+                    elif res.resultType == resultTypes['files']:
                         self.__sendFilesResults( res )
                     else:
                         logger.error( "Unknown result type {}".format( res.resultType ) )
@@ -256,7 +255,7 @@ class TaskSession:
             self.dropped()
             return
 
-        if extraData['resultType'] == TaskSession.resultTypes['data']:
+        if extraData['resultType'] == resultTypes['data']:
             try:
                 result = pickle.loads( result )
             except Exception, err:
@@ -265,7 +264,7 @@ class TaskSession:
         if 'subtaskId' in extraData:
             subtaskId = extraData[ 'subtaskId' ]
 
-            self.taskManager.computedTaskReceived( subtaskId, result )
+            self.taskManager.computedTaskReceived( subtaskId, result, extraData['resultType'] )
             if self.taskManager.verifySubtask( subtaskId ):
                 reward = self.taskServer.payForTask( subtaskId )
                 self.__send( MessageSubtaskResultAccepted( subtaskId, reward ) )

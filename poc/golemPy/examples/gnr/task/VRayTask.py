@@ -209,7 +209,7 @@ class VRayTask( FrameRenderingTask ):
 
   #######################
     @checkSubtaskIdWrapper
-    def computationFinished( self, subtaskId, taskResult, dirManager = None ):
+    def computationFinished( self, subtaskId, taskResult, dirManager = None, resultType = 0 ):
 
         if not self.shouldAccept( subtaskId ):
             return
@@ -228,7 +228,7 @@ class VRayTask( FrameRenderingTask ):
                     self._markSubtaskFailed( subtaskId )
                     return
 
-            trFiles = [ self._unpackTaskResult( trp, tmpDir ) for trp in taskResult ]
+            trFiles = self.loadTaskResults( taskResult, resultType, tmpDir )
 
             if not self._verifyImgs( subtaskId, trFiles ):
                 self._markSubtaskFailed( subtaskId )

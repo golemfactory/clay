@@ -38,6 +38,28 @@ def __readFromEnvironment( ):
         return 'luxconsole.exe'
 
 ############################
+def returnData( files ):
+    res = []
+    for f in files:
+        fh = open( f, "rb" )
+        fileData = fh.read()
+        fileData = zlib.compress( fileData, 9 )
+        res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
+        fh.close()
+
+    return { 'data': res, 'resultType': 0 }
+
+############################
+def returnFiles( files ):
+    copyPath = os.path.normpath( os.path.join( tmpPath, "..") )
+    for f in files:
+        shutil.copy2( f, copyPath )
+
+    files = [ os.path.normpath( os.path.join( copyPath, os.path.basename( f ) ) ) for f in files]
+    return {'data': files, 'resultType': 1 }
+
+
+############################
 def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir ):
     print 'LuxRenderer Task'
 
@@ -75,13 +97,7 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir ):
     os.chdir( prevDir )
     files = glob.glob( outputFiles + "\*.png" ) + glob.glob( outputFiles + "\*.flm" )
 
-    copyPath = os.path.normpath( os.path.join( tmpPath, "..") )
-    for f in files:
-        shutil.copy2( f, copyPath )
-
-    files = [ os.path.normpath( os.path.join( copyPath, os.path.basename( f ) ) ) for f in files]
-
-    return { 'data': files, 'resultType': 1 }
+    return returnData( files )
 
 
 output = runLuxRendererTask ( startTask, outfilebasename, sceneFileSrc, sceneDir )

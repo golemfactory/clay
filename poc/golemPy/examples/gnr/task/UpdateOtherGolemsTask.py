@@ -122,5 +122,5 @@ class UpdateOtherGolemsTask( GNRTask ):
         return ctd
 
     #######################
-    def computationFinished( self, subtaskId, taskResult, dirManager = None):
+    def computationFinished( self, subtaskId, taskResult, dirManager = None, resultType = 0):
         self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
