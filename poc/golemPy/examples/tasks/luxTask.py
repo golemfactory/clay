@@ -10,13 +10,13 @@ import win32process
 import math
 import shutil
 
-def formatLuxRendererCmd( cmdFile, startTask, outputFile, outfilebasename, scenefile ):
+def formatLuxRendererCmd( cmdFile, startTask, outputFile, outfilebasename, scenefile, numThreads ):
     print "cmdFile {}".format( cmdFile )
     print "starTask {}".format( startTask )
     print "outputFile {}".format( outputFile )
     print "outfilebasename {}".format( outfilebasename )
     print "scenefile {}".format( scenefile )
-    cmd = '"{}" {} -o "{}\{}{}.png"'.format(cmdFile, scenefile, outputFile, outfilebasename, startTask )
+    cmd = '"{}" {} -o "{}\{}{}.png" -q -t {}'.format(cmdFile, scenefile, outputFile, outfilebasename, startTask, numThreads )
     return cmd
 
 def __readFromEnvironment( ):
@@ -60,7 +60,7 @@ def returnFiles( files ):
 
 
 ############################
-def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir ):
+def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir, numCores ):
     print 'LuxRenderer Task'
 
     outputFiles = tmpPath
@@ -82,7 +82,7 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir ):
     print "cmdFile " + cmdFile
     if os.path.exists( tmpSceneFile.name ):
         print tmpSceneFile.name
-        cmd = formatLuxRendererCmd( cmdFile, startTask, outputFiles, outfilebasename, tmpSceneFile.name )
+        cmd = formatLuxRendererCmd( cmdFile, startTask, outputFiles, outfilebasename, tmpSceneFile.name, numThreads )
     else:
          print "Scene file does not exist"
          return []
@@ -100,4 +100,4 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir ):
     return returnFiles( files )
 
 
-output = runLuxRendererTask ( startTask, outfilebasename, sceneFileSrc, sceneDir )
+output = runLuxRendererTask ( startTask, outfilebasename, sceneFileSrc, sceneDir, numThreads )

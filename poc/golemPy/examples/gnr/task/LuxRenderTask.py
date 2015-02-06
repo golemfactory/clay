@@ -157,13 +157,16 @@ class LuxTask( RenderingTask ):
         sceneSrc = regenerateLuxFile( self.sceneFileSrc, self.resX, self.resY, self.halttime, self.haltspp, writeInterval, [0, 1, 0, 1], "PNG" )
         sceneDir= os.path.dirname(self._getSceneFileRelPath())
 
+        numThreads = max( numCores, 1 )
+
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
                                     "endTask" : endTask,
                                     "totalTasks" : self.totalTasks,
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFileSrc" : sceneSrc,
-                                    "sceneDir": sceneDir
+                                    "sceneDir": sceneDir,
+                                    "numThreads": numThreads
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -193,7 +196,8 @@ class LuxTask( RenderingTask ):
             "totalTasks": 1,
             "outfilebasename": self.outfilebasename,
             "sceneFileSrc": sceneSrc,
-            "sceneDir": sceneDir
+            "sceneDir": sceneDir,
+            "numThreads": 1
         }
 
         hash = "{}".format( random.getrandbits(128) )
