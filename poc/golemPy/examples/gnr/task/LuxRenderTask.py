@@ -8,6 +8,7 @@ from PIL import Image, ImageChops
 
 from golem.core.simpleexccmd import execCmd
 from golem.task.TaskState import SubtaskStatus
+from golem.environments.Environment import Environment
 
 from  examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 from examples.gnr.RenderingEnvironment import LuxRenderEnvironment
@@ -59,6 +60,20 @@ class LuxRenderOptions( GNROptions ):
         self.environment = LuxRenderEnvironment()
         self.halttime = 600
         self.haltspp = 1
+        self.sendBinaries = False
+        self.luxconsole = self.environment.getLuxConsole()
+
+    #######################
+    def addToResources( self, resources ):
+        if self.sendBinaries and os.path.isfile( self.luxconsole ):
+            resources.add( os.path.normpath( self.luxconsole ) )
+        return resources
+
+    #######################
+    def removeFromResources( self, resources ):
+        if self.sendBinaries and os.path.normpath( self.luxconsole ) in resources:
+            resources.remove( os.path.normpath( self.luxconsole ) )
+        return resources
 
 ##############################################
 class LuxRenderTaskBuilder( RenderingTaskBuilder ):
@@ -84,6 +99,8 @@ class LuxRenderTaskBuilder( RenderingTaskBuilder ):
                             self.rootPath,
                             self.taskDefinition.rendererOptions.halttime,
                             self.taskDefinition.rendererOptions.haltspp,
+                            self.taskDefinition.rendererOptions.sendBinaries,
+                            self.taskDefinition.rendererOptions.luxconsole
         )
 
         return self._setVerificationOptions( luxTask )
@@ -110,6 +127,8 @@ class LuxTask( RenderingTask ):
                     rootPath,
                     halttime,
                     haltspp,
+                    ownBinaries,
+                    luxconsole,
                     returnAddress = "",
                     returnPort = 0):
 
@@ -121,6 +140,9 @@ class LuxTask( RenderingTask ):
 
         self.halttime = halttime
         self.haltspp = haltspp
+        self.ownBinaries = ownBinaries
+        self.luxconsole = luxconsole
+
         try:
             with open( mainSceneFile ) as f:
                 self.sceneFileSrc = f.read()
@@ -132,6 +154,8 @@ class LuxTask( RenderingTask ):
         self.numAdd = 0
 
         self.previewEXR = None
+        if self.ownBinaries:
+            self.header.environment = Environment.getId()
 
     #######################
     def queryExtraData( self, perfIndex, numCores = 0, clientId = None ):
@@ -157,6 +181,11 @@ class LuxTask( RenderingTask ):
         sceneSrc = regenerateLuxFile( self.sceneFileSrc, self.resX, self.resY, self.halttime, self.haltspp, writeInterval, [0, 1, 0, 1], "PNG" )
         sceneDir= os.path.dirname(self._getSceneFileRelPath())
 
+        if self.ownBinaries:
+            luxConsole = self._getLuxConsoleRelPath()
+        else:
+            luxConsole = 'luxconsole.exe'
+
         numThreads = max( numCores, 1 )
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
@@ -166,7 +195,9 @@ class LuxTask( RenderingTask ):
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFileSrc" : sceneSrc,
                                     "sceneDir": sceneDir,
-                                    "numThreads": numThreads
+                                    "numThreads": numThreads,
+                                    "ownBinaries": self.ownBinaries,
+                                    "luxConsole": luxConsole
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -189,6 +220,11 @@ class LuxTask( RenderingTask ):
         workingDirectory = self._getWorkingDirectory()
         sceneDir= os.path.dirname(self._getSceneFileRelPath())
 
+        if self.ownBinaries:
+            luxConsole = self._getLuxConsoleRelPath()
+        else:
+            luxConsole = 'luxconsole.exe'
+
         extraData = {
             "pathRoot" : self.mainSceneDir,
             "startTask": 1,
@@ -197,7 +233,9 @@ class LuxTask( RenderingTask ):
             "outfilebasename": self.outfilebasename,
             "sceneFileSrc": sceneSrc,
             "sceneDir": sceneDir,
-            "numThreads": 1
+            "numThreads": 1,
+            "ownBinaries": self.ownBinaries,
+            "luxConsole": luxConsole
         }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -320,3 +358,9 @@ class LuxTask( RenderingTask ):
         self.numAdd = 0
         for f in previewFiles:
             self._updatePreview( f, None )
+
+    #######################
+    def _getLuxConsoleRelPath( self ):
+        luxconsoleRel = os.path.relpath( os.path.dirname( self.luxconsole ), os.path.dirname( self.mainSceneFile ) )
+        luxconsoleRel = os.path.join( luxconsoleRel, os.path.basename( self.luxconsole ) )
+        return luxconsoleRel

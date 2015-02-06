@@ -60,7 +60,7 @@ def returnFiles( files ):
 
 
 ############################
-def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir, numCores ):
+def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir, numCores, ownBinaries, luxConsole ):
     print 'LuxRenderer Task'
 
     outputFiles = tmpPath
@@ -78,7 +78,10 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir, numC
     f.write( sceneFileSrc )
     f.close()
 
-    cmdFile = __readFromEnvironment( )
+    if ownBinaries:
+        cmdFile = luxConsole
+    else:
+        cmdFile = __readFromEnvironment( )
     print "cmdFile " + cmdFile
     if os.path.exists( tmpSceneFile.name ):
         print tmpSceneFile.name
@@ -89,7 +92,9 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir, numC
 
     print cmd
     prevDir = os.getcwd()
+    print prevDir
     os.chdir( sceneDir )
+    print sceneDir
 
     pc = subprocess.Popen( cmd )
     win32process.SetPriorityClass( pc._handle, win32process.IDLE_PRIORITY_CLASS )
@@ -100,4 +105,4 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir, numC
     return returnFiles( files )
 
 
-output = runLuxRendererTask ( startTask, outfilebasename, sceneFileSrc, sceneDir, numThreads )
+output = runLuxRendererTask ( startTask, outfilebasename, sceneFileSrc, sceneDir, numThreads, ownBinaries, luxConsole )
