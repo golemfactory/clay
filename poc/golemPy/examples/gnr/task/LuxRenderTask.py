@@ -4,7 +4,6 @@ import os
 import tempfile
 
 from collections import OrderedDict
-from Cython.Compiler.ExprNodes import NoneCheckNode
 from PIL import Image, ImageChops
 
 from golem.core.simpleexccmd import execCmd
@@ -280,7 +279,6 @@ class LuxTask( RenderingTask ):
 
     #######################
     def _updatePreview( self, newChunkFilePath, chunkNum ):
-        print "updatePreview {}".format( newChunkFilePath )
         self.numAdd += 1
         if newChunkFilePath.endswith(".exr"):
             self.__updatePreviewFromEXR( newChunkFilePath )
