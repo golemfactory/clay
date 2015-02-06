@@ -21,6 +21,7 @@ class DistributedResourceManager:
     def splitFile( self, fileName, blockSize = 2 ** 20 ):
         resourceHash = ResourceHash( self.resourceDir )
         listFiles = [ os.path.basename(file_) for file_ in resourceHash.splitFile( fileName, blockSize ) ]
+        self.resources |= set( listFiles )
         return listFiles
 
     ###################
@@ -36,7 +37,7 @@ class DistributedResourceManager:
 
     ###################
     def checkResource( self, resource):
-        if os.path.normpath( resource ) in self.resources:
+        if os.path.isfile( os.path.join( self.resourceDir, os.path.basename( resource ))):
             return True
         else:
             return False
