@@ -87,6 +87,7 @@ class TaskManager:
     def resourcesSend( self, taskId ):
         self.tasksStates[ taskId ].status = TaskStatus.waiting
         self.tasks[taskId].taskStatus = TaskStatus.waiting
+        self.__noticeTaskUpdated( taskId )
         logger.info( "Resources for task {} send".format( taskId ) )
 
     def __hasSubtasks(self, taskState, task, maxResourceSize, maxMemorySize):
