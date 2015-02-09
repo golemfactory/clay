@@ -14,7 +14,7 @@ from examples.gnr.ui.RenderingMainWindow import RenderingMainWindow
 from examples.gnr.Application import GNRGui
 from examples.gnr.customizers.RenderingMainWindowCustomizer import RenderingMainWindowCustomizer
 
-from GNRstartApp import startApp
+from GNRstartApp import startRenderingApp
 
 def main():
 
@@ -24,6 +24,6 @@ def main():
     app     = GNRGui( logic, RenderingMainWindow )
     gui     = RenderingMainWindowCustomizer
 
-    startApp( logic, app, gui )
+    startRenderingApp( logic, app, gui )
 
 main()

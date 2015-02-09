@@ -1,12 +1,17 @@
+import os
+
+from golem.Client import startClient
 from golem.environments.Environment import Environment
 
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment, LuxRenderEnvironment
+from examples.gnr.TaskType import buildPBRTTaskType, build3dsMaxTaskType, buildVRayTaskType, buildPythonGNRTaskType, buildLuxRenderTaskType
 from examples.gnr.task.PbrtGNRTask import buildPBRTRendererInfo
 from examples.gnr.task.ThreeDSMaxTask import build3dsMaxRendererInfo
 from examples.gnr.task.VRayTask import buildVRayRendererInfo
 from examples.gnr.task.LuxRenderTask import buildLuxRenderInfo
+from examples.gnr.InfoServer import InfoServer
 
-from golem.Client import startClient
+from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
 
 def install_reactor():
     try:
@@ -20,12 +25,28 @@ def install_reactor():
 def registerGui( logic, app, gui ):
     logic.registerGui( app.getMainWindow(), gui )
 
-def registerTaskTypes( logic ):
+def registerRenderingTaskTypes( logic ):
     logic.registerNewRendererType( buildPBRTRendererInfo() )
     logic.registerNewRendererType( build3dsMaxRendererInfo() )
     logic.registerNewRendererType( buildVRayRendererInfo() )
     logic.registerNewRendererType( buildLuxRenderInfo() )
   #  logic.registerNewRendererType( buildBlenderRenderInfo() )
+
+def registerTaskTypes( logic ):
+    logic.registerNewTaskType( buildPBRTTaskType() )
+    logic.registerNewTaskType( build3dsMaxTaskType() )
+    logic.registerNewTaskType( buildVRayTaskType() )
+    logic.registerNewTaskType( buildPythonGNRTaskType() )
+    logic.registerNewTaskType( buildLuxRenderTaskType() )
+
+def loadEnvironments():
+
+    return [PBRTEnvironment(),
+            ThreeDSMaxEnvironment(),
+            VRayEnvironment(),
+            LuxRenderEnvironment(),
+            Environment() ]
+
 
 def startAndConfigureClient( logic, environments ):
     client = startClient()
@@ -39,19 +60,61 @@ def startAndConfigureClient( logic, environments ):
 
     return client
 
-def startApp( logic, app, gui ):
+def runManager( logic, client):
+    path = os.getcwd()
+    def runGNRNodes( numNodes ):
+        runAdditionalNodes( path, numNodes )
+
+    nmPath = os.path.join(path, "..\\manager\\" )
+    def runGNRManager( ):
+        runManager( nmPath )
+
+    logic.registerStartNewNodeFunction( runGNRNodes )
+    logic.registerStartNodesManagerFunction( runGNRManager )
+
+    client.environmentsManager.loadConfig( client.configDesc.clientUid )
+
+def runInfoServer( client, startPort = 55555, nextPort = 55556, endPort = 59999 ):
+    infoServer = InfoServer( client, startPort, nextPort, endPort )
+    infoServer.start()
+
+def runManagerClient( logic ):
+    logic.startNodesManagerClient()
+
+
+def startRenderingApp( logic, app, gui, startManager = False, startManagerClient = False, startInfoServer = False ):
     install_reactor()
     registerGui( logic, app, gui )
-    registerTaskTypes( logic )
-
-    environments = [PBRTEnvironment(),
-                    ThreeDSMaxEnvironment(),
-                    VRayEnvironment(),
-                    LuxRenderEnvironment(),
-                    Environment() ]
+    registerRenderingTaskTypes( logic )
+    environments = loadEnvironments()
 
     client = startAndConfigureClient( logic, environments )
 
+    if startManager:
+        runManager( logic, client )
+    if startManagerClient:
+        runManagerClient( logic )
+    if startInfoServer:
+        runInfoServer( client )
+
     app.execute( False )
 
+    reactor.run()
+
+def startGNRApp( logic, app, gui, startManager = False, startManagerClient = False, startInfoServer = False ):
+    install_reactor()
+    registerGui( logic, app, gui )
+    registerTaskTypes( logic )
+    environments = loadEnvironments()
+
+    client = startAndConfigureClient( logic, environments )
+
+    if startManager:
+        runManager( logic, client )
+    if startManagerClient:
+        runManagerClient( logic )
+    if startInfoServer:
+        runInfoServer( client )
+
+    app.execute( False )
     reactor.run()

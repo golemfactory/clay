@@ -9,7 +9,7 @@ from tools.UiGen import genUiFiles
 genUiFiles( "ui" )
 
 from RenderingAdmApplicationLogic import RenderingAdmApplicationLogic
-from GNRstartApp import startApp
+from GNRstartApp import startRenderingApp
 
 from examples.gnr.ui.AdministrationMainWindow import AdministrationMainWindow
 from examples.gnr.Application import GNRGui
@@ -24,6 +24,6 @@ def main():
     app     = GNRGui( logic, AdministrationMainWindow )
     gui     = RenderingAdmMainWindowCustomizer
 
-    startApp( logic, app, gui )
+    startRenderingApp( logic, app, gui )
 
 main()

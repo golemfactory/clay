@@ -8,65 +8,23 @@ sys.path.append( os.environ.get( 'GOLEM' ) )
 from tools.UiGen import genUiFiles
 genUiFiles( "ui" )
 
-from golem.network.transport.reactor import importReactor
-from golem.environments.Environment import Environment
-from golem.Client import startClient
 
 from examples.gnr.GNRAdmApplicationLogic import GNRAdmApplicationLogic
 from examples.gnr.Application import GNRGui
-from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
-from examples.gnr.InfoServer import InfoServer
 
-from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
 
-from examples.gnr.TaskType import buildPBRTTaskType, build3dsMaxTaskType, buildVRayTaskType, buildPythonGNRTaskType
+
 from examples.gnr.ui.MainWindow import GNRMainWindow
 from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdministratorMainWindowCustomizer
-
+from GNRstartApp import startGNRApp
 
 def main():
     logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
 
-    logic = GNRAdmApplicationLogic()
+    logic   = GNRAdmApplicationLogic()
     app     = GNRGui( logic, GNRMainWindow )
+    gui     = GNRAdministratorMainWindowCustomizer
+    startGNRApp( logic, app, gui,startManager = True, startInfoServer = True )
 
-    logic.registerGui( app.getMainWindow(), GNRAdministratorMainWindowCustomizer )
-
-    logic.registerNewTaskType( buildPBRTTaskType() )
-
-    logic.registerNewTaskType( build3dsMaxTaskType() )
-    logic.registerNewTaskType( buildVRayTaskType() )
-    logic.registerNewTaskType( buildPythonGNRTaskType() )
-
-    importReactor()
-
-    client = startClient()
-
-    path = os.getcwd()
-    def runGNRNodes( numNodes ):
-        runAdditionalNodes( path, numNodes )
-
-    nmPath = os.path.join(path, "..\\manager\\" )
-    def runGNRManager( ):
-        runManager( nmPath )
-
-    logic.registerStartNewNodeFunction( runGNRNodes )
-    logic.registerStartNodesManagerFunction( runGNRManager )
-
-    environments = [PBRTEnvironment(), ThreeDSMaxEnvironment(), VRayEnvironment(), Environment() ]
-    for env in environments:
-        client.environmentsManager.addEnvironment( env )
-
-    client.environmentsManager.loadConfig( client.configDesc.clientUid )
-
-    logic.registerClient( client )
-    logic.checkNetworkState()
-
-    #logic.startNodesManagerClient()
-    infoServer = InfoServer( client, 55555, 55556, 59999 )
-    infoServer.start()
-
-    app.execute( False )
-    reactor.run()
 
 main()
