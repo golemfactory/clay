@@ -90,11 +90,8 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir, numC
          print "Scene file does not exist"
          return []
 
-    print cmd
     prevDir = os.getcwd()
-    print prevDir
     os.chdir( sceneDir )
-    print sceneDir
 
     pc = subprocess.Popen( cmd )
     win32process.SetPriorityClass( pc._handle, win32process.IDLE_PRIORITY_CLASS )

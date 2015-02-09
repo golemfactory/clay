@@ -40,11 +40,24 @@ def buildPBRTRendererInfo():
 class PbrtRendererOptions(  GNROptions ):
     #######################
     def __init__( self ):
+        self.pbrtPath = ''
         self.pixelFilter = "mitchell"
         self.samplesPerPixelCount = 32
         self.algorithmType = "lowdiscrepancy"
         self.filters = [ "box", "gaussian", "mitchell", "sinc", "triangle" ]
         self.pathTracers = [ "adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified" ]
+
+    #######################
+    def addToResources( self, resources ):
+        if os.path.isfile( self.pbrtPath ):
+            resources.add( os.path.normpath( self.pbrtPath ) )
+        return resources
+
+    #######################
+    def removeFromResources( self, resources ):
+        if os.path.normpath( self.pbrtPath ) in resources:
+            resources.remove( os.path.normpath( self.pbrtPath ) )
+        return resources
 
 ##############################################
 class PbrtGNRTaskBuilder( GNRTaskBuilder ):
@@ -72,6 +85,7 @@ class PbrtGNRTaskBuilder( GNRTaskBuilder ):
         rtd.rendererOptions.pixelFilter = self.taskDefinition.options.pixelFilter
         rtd.rendererOptions.algorithmType = self.taskDefinition.options.algorithmType
         rtd.rendererOptions.samplesPerPixelCount = self.taskDefinition.options.samplesPerPixelCount
+        rtd.rendererOptions.pbrtPath = self.taskDefinition.options.pbrtPath
 
         pbrtTaskBuilder = PbrtTaskBuilder( self.clientId, rtd, self.rootPath )
         return pbrtTaskBuilder.build()
@@ -95,6 +109,7 @@ class PbrtTaskBuilder( RenderingTaskBuilder ):
                                    self.taskDefinition.rendererOptions.pixelFilter,
                                    self.taskDefinition.rendererOptions.algorithmType,
                                    self.taskDefinition.rendererOptions.samplesPerPixelCount,
+                                   self.taskDefinition.rendererOptions.pbrtPath,
                                    "temp",
                                    self.taskDefinition.mainSceneFile,
                                    self.taskDefinition.fullTaskTimeout,
@@ -153,6 +168,7 @@ class PbrtRenderTask( RenderingTask ):
                   pixelFilter,
                   sampler,
                   samplesPerPixel,
+                  pbrtPath,
                   outfilebasename,
                   sceneFile,
                   fullTaskTimeout,
@@ -190,6 +206,7 @@ class PbrtRenderTask( RenderingTask ):
         self.pixelFilter        = pixelFilter
         self.sampler            = sampler
         self.samplesPerPixel    = samplesPerPixel
+        self.pbrtPath           = pbrtPath
         self.nx, self.ny, self.taskResX, self.taskResY = countSubtaskReg( self.totalTasks, self.numSubtasks, self.resX, self.resY)
 
     #######################
@@ -211,6 +228,10 @@ class PbrtRenderTask( RenderingTask ):
         sceneSrc = regeneratePbrtFile( self.sceneFileSrc, self.resX, self.resY, self.pixelFilter,
                                    self.sampler, self.samplesPerPixel )
 
+        sceneDir= os.path.dirname(self._getSceneFileRelPath())
+
+        pbrtPath = self.__getPbrtRelPath()
+
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
                                     "endTask" : endTask,
@@ -218,7 +239,9 @@ class PbrtRenderTask( RenderingTask ):
                                     "numSubtasks" : self.numSubtasks,
                                     "numCores" : numCores,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFileSrc" : sceneSrc
+                                    "sceneFileSrc" : sceneSrc,
+                                    "sceneDir": sceneDir,
+                                    "pbrtPath": pbrtPath
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -239,6 +262,9 @@ class PbrtRenderTask( RenderingTask ):
         sceneSrc = regeneratePbrtFile( self.sceneFileSrc, 1, 1, self.pixelFilter, self.sampler,
                                    self.samplesPerPixel )
 
+        pbrtPath = self.__getPbrtRelPath()
+        sceneDir= os.path.dirname(self._getSceneFileRelPath())
+
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : 0,
                                     "endTask" : 1,
@@ -246,7 +272,9 @@ class PbrtRenderTask( RenderingTask ):
                                     "numSubtasks" : self.numSubtasks,
                                     "numCores" : self.numCores,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFileSrc" : sceneSrc
+                                    "sceneFileSrc" : sceneSrc,
+                                    "sceneDir": sceneDir,
+                                    "pbrtPath": pbrtPath
                                 }
 
         hash = "{}".format( random.getrandbits(128) )
@@ -385,6 +413,12 @@ class PbrtRenderTask( RenderingTask ):
         extraData[ "endTask" ] = extraData[ "startTask" ] + 1
 
         return extraData, startBox
+
+    def __getPbrtRelPath( self ):
+        pbrtRel = os.path.relpath( os.path.dirname( self.pbrtPath ), os.path.dirname( self.mainSceneFile ) )
+        pbrtRel = os.path.join( pbrtRel, os.path.basename( self.pbrtPath ) )
+        return pbrtRel
+
 
     #######################
     def __getNumFromFileName( self, file_, subtaskId ):

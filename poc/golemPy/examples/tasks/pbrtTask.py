@@ -12,8 +12,8 @@ def format_pbrt_cmd( renderer, startTask, endTask, totalTasks, numSubtasks, numC
     return "{} --starttask {} --endtask {} --outresultbasename {} --totaltasks {} --ncores {} --subtasks {} {}".format( renderer, startTask, endTask, outfilebasename, totalTasks, numCores, numSubtasks, scenefile )
 
 ############################f = 
-def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneSrc ):
-    pbrt = os.path.join( resourcePath, "pbrt.exe" )
+def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneSrc, sceneDir, pbrtPath ):
+    pbrt = pbrtPath
 
     outputFiles = os.path.join( tmpPath, outfilebasename )
 
@@ -22,7 +22,7 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     for f in files:
         os.remove(f)
 
-    tmpSceneFile = tempfile.TemporaryFile( suffix = ".pbrt", dir = resourcePath )
+    tmpSceneFile = tempfile.TemporaryFile( suffix = ".pbrt", dir = sceneDir )
     tmpSceneFile.close()
     print sceneSrc
     f = open(tmpSceneFile.name, 'w')
@@ -38,17 +38,18 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
         return []
         
     print cmd
-   
+    prevDir = os.getcwd()
+    os.chdir( sceneDir )
+
     pc = subprocess.Popen( cmd )
-
     win32process.SetPriorityClass( pc._handle, win32process.IDLE_PRIORITY_CLASS )
-
     pc.wait()
+
+    os.chdir( prevDir )
 
     print outputFiles
 
     files = glob.glob( outputFiles + "*.exr" )
-
 
     res = []
 
@@ -63,5 +64,5 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     return { 'data': res, 'resultType': 0 }
 
 
-output = run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneFileSrc )
+output = run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneFileSrc, sceneDir, pbrtPath )
         

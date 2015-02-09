@@ -1,4 +1,6 @@
 import logging
+import os
+from PyQt4.QtGui import QFileDialog
 
 from examples.gnr.ui.PbrtDialog import PbrtDialog
 
@@ -38,15 +40,26 @@ class PbrtDialogCustomizer:
 
         self.gui.ui.samplesPerPixelSpinBox.setValue( self.rendererOptions.samplesPerPixelCount )
 
+        self.gui.ui.pbrtPathLineEdit.setText( self.rendererOptions.pbrtPath )
+
     #############################
     def __setupConnections( self ):
         self.gui.ui.buttonBox.rejected.connect( self.gui.window.close )
         self.gui.ui.buttonBox.accepted.connect( lambda: self.__changeRendererOptions() )
+        self.gui.ui.pbrtPathButton.clicked.connect( self.__choosePbrtPath )
 
     #############################
     def __changeRendererOptions( self ):
         self.rendererOptions.pixelFilter = u"{}".format( self.gui.ui.pixelFilterComboBox.itemText( self.gui.ui.pixelFilterComboBox.currentIndex() ) )
         self.rendererOptions.samplesPerPixelCount = self.gui.ui.samplesPerPixelSpinBox.value()
         self.rendererOptions.algorithmType = u"{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )
+        self.rendererOptions.pbrtPath = u"{}".format( self.gui.ui.pbrtPathLineEdit.text() )
         self.newTaskDialog.setRendererOptions( self.rendererOptions )
         self.gui.window.close()
+
+    #############################
+    def __choosePbrtPath( self ):
+        dir = os.path.dirname( u"{}".format( self.gui.ui.pbrtPathLineEdit.text() ) )
+        fileName = u"{}".format( QFileDialog.getOpenFileName( self.gui.window, "Choose pbrt file", dir, "" ) )
+        if fileName != '':
+            self.gui.ui.pbrtPathLineEdit.setText( fileName )
