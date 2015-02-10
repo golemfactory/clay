@@ -29,6 +29,7 @@ def returnFiles( files ):
     files = [ os.path.normpath( os.path.join( copyPath, os.path.basename( f ) ) ) for f in files]
     return {'data': files, 'resultType': 1 }
 
+############################
 def getFiles():
     outputFiles = tmpPath
     return glob.glob( outputFiles + "\*.exr" )
@@ -37,6 +38,24 @@ def getFiles():
 def removeOldFiles():
     for f in getFiles():
         os.remove( f )
+
+def __readFromEnvironment():
+    defaultCmdFile = 'blender'
+    GOLEM_ENV = 'GOLEM'
+    path = os.environ.get( GOLEM_ENV )
+    if not path:
+        print "No Golem environment variable found..."
+        return defaultCmdFile
+
+    sys.path.append( path )
+
+    from examples.gnr.RenderingEnvironment import BlenderEnvironment
+    env = BlenderEnvironment()
+    cmdFile = env.getBlender()
+    if cmdFile:
+        return cmdFile
+    else:
+        return defaultCmdFile
 
 ############################
 def runCmd( cmd ):
@@ -64,7 +83,7 @@ def runBlenderTask( outfilebasename, sceneFile, scriptSrc, startTask, engine, fr
     f.close()
 
 
-    cmdFile = 'blender'
+    cmdFile = __readFromEnvironment()
     if not os.path.exists( sceneFile ):
         print "Scene file does not exist"
         return []
