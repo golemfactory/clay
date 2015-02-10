@@ -6,10 +6,32 @@ import subprocess
 import platform, psutil
 import win32api, win32process
 import tempfile
+import shutil
 
 ############################
 def format_pbrt_cmd( renderer, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, scenefile ):
     return "{} --starttask {} --endtask {} --outresultbasename {} --totaltasks {} --ncores {} --subtasks {} {}".format( renderer, startTask, endTask, outfilebasename, totalTasks, numCores, numSubtasks, scenefile )
+
+############################
+def returnData( files ):
+    res = []
+    for f in files:
+        fh = open( f, "rb" )
+        fileData = fh.read()
+        fileData = zlib.compress( fileData, 9 )
+        res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
+        fh.close()
+
+    return { 'data': res, 'resultType': 0 }
+
+############################
+def returnFiles( files ):
+    copyPath = os.path.normpath( os.path.join( tmpPath, "..") )
+    for f in files:
+        shutil.copy2( f, copyPath )
+
+    files = [ os.path.normpath( os.path.join( copyPath, os.path.basename( f ) ) ) for f in files]
+    return {'data': files, 'resultType': 1 }
 
 ############################f = 
 def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneSrc, sceneDir, pbrtPath ):
@@ -51,17 +73,7 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
 
     files = glob.glob( outputFiles + "*.exr" )
 
-    res = []
-
-    for f in files:
-        fh = open( f, "rb" )
-        fileData = fh.read()
-        fileData = zlib.compress( fileData, 9 )
-        res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
-        fh.close()
-
-
-    return { 'data': res, 'resultType': 0 }
+    return returnData( files )
 
 
 output = run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneFileSrc, sceneDir, pbrtPath )

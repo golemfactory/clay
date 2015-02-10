@@ -131,7 +131,7 @@ class VRayTask( FrameRenderingTask ):
         sceneFile = self._getSceneFileRelPath()
 
         if self.useFrames:
-            frames, parts = self.__chooseFrames( self.frames, startTask, self.totalTasks )
+            frames, parts = self._chooseFrames( self.frames, startTask, self.totalTasks )
         else:
             frames = []
             parts = 1
@@ -290,7 +290,7 @@ class VRayTask( FrameRenderingTask ):
         return "\n".join( msg )
 
     #######################
-    def _pasteNewChunk(self, imgChunk, previewFilePath, chunkNum  ):
+    def _pasteNewChunk(self, imgChunk, previewFilePath, chunkNum, allChunksNum ):
         if os.path.exists( previewFilePath ):
             img = Image.open( previewFilePath )
             img = ImageChops.add( img, imgChunk )
@@ -355,16 +355,6 @@ class VRayTask( FrameRenderingTask ):
             return False
         return True
 
-    #######################
-    def __chooseFrames( self, frames, startTask, totalTasks ):
-        if totalTasks <= len( frames ):
-            subtasksFrames = int ( math.ceil( float( len( frames ) ) / float( totalTasks ) ) )
-            startFrame = (startTask - 1) * subtasksFrames
-            endFrame = min( startTask * subtasksFrames, len( frames ) )
-            return frames[ startFrame:endFrame ], 1
-        else:
-            parts = totalTasks / len( frames )
-            return [ frames[(startTask - 1 ) / parts ] ], parts
 
     #######################
     def __isAlphaFile(self, fileName ):
@@ -473,7 +463,7 @@ class VRayTask( FrameRenderingTask ):
     #######################
     def _runTask(self, srcCode, scope):
         exec srcCode in scope
-        trFiles = [ self._unpackTaskResult( file_, self.tmpDir ) for file_ in scope['output']['data'] ]
+        trFiles = self.loadTaskResults( scope['output']['data'], scope['output']['resultType'], self.tmpDir )
         if scope['isAlpha']:
             for trFile in trFiles:
                 if self.__isAlphaFile( trFile ):

@@ -133,6 +133,7 @@ class VRayEnvironment( Environment ):
         else:
             return ""
 
+###########################################################################
 class LuxRenderEnvironment( Environment ):
     #########################
     @classmethod
@@ -180,3 +181,29 @@ class LuxRenderEnvironment( Environment ):
             return self.luxMergerPath
         else:
             return ""
+
+###########################################################################
+class BlenderEnvironment( Environment ):
+    #########################
+    @classmethod
+    def getId( cls ):
+        return "Blender"
+
+    #########################
+    def __init__( self ):
+        Environment.__init__( self )
+        self.software.append('Blender')
+        self.shortDescription = "Blender (http://www.blender.org/)"
+        self.softwareName = 'blender'
+
+    #########################
+    def supported( self ):
+        return self.checkSoftware()
+
+    #########################
+    def checkSoftware( self ):
+        return checkCmd( self.softwareName )
+
+    #########################
+    def getBlender( self ):
+        return self.softwareName

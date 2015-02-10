@@ -1,15 +1,18 @@
 import os
 import logging
 import math
+import shutil
+
+from collections import OrderedDict
+from PIL import Image, ImageChops
 
 from examples.gnr.task.GNRTask import checkSubtaskIdWrapper
 from examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
-from examples.gnr.task.RenderingTaskCollector import exr_to_pil
+from examples.gnr.task.RenderingTaskCollector import exr_to_pil, RenderingTaskCollector
 from examples.gnr.RenderingDirManager import getTmpPath
 
 from golem.task.TaskState import SubtaskStatus
 
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -83,10 +86,27 @@ class FrameRenderingTask( RenderingTask ):
             self.previewTaskFilePath[ num ] = "{}{}".format( os.path.join( tmpDir, "current_task_preview" ) , num )
 
         if not final:
-            img = self._pasteNewChunk( img, self.previewFilePath[ num ], part )
+            img = self._pasteNewChunk( img, self.previewFilePath[ num ], part, self.totalTasks / len( self.frames ) )
 
         img.save( self.previewFilePath[ num ], "BMP" )
         img.save( self.previewTaskFilePath[ num ], "BMP" )
+
+
+    #######################
+    def _pasteNewChunk(self, imgChunk, previewFilePath, chunkNum, allChunksNum  ):
+        imgOffset = Image.new("RGB", (self.resX, self.resY) )
+        try:
+            offset = int (math.floor( (chunkNum - 1) * float( self.resY ) / float( allChunksNum ) ) )
+            imgOffset.paste(imgChunk, ( 0, offset ) )
+        except Exception, err:
+            logger.error("Can't generate preview {}".format( str(err) ))
+        if os.path.exists( previewFilePath ):
+            img = Image.open( previewFilePath )
+            img = ImageChops.add( img, imgOffset )
+            return img
+        else:
+            return imgOffset
+
 
     #######################
     def _updateFrameTaskPreview(self ):
@@ -146,10 +166,82 @@ class FrameRenderingTask( RenderingTask ):
         else:
             startTask = self.subTasksGiven[ subtaskId ][ 'startTask' ]
             parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
-            numTask = self.__countPart( startTask, parts )
+            numTask = self._countPart( startTask, parts )
             imgHeight = int (math.floor( float( self.resY ) / float( parts ) ) )
             return 1, (numTask - 1) * imgHeight + 1, self.resX - 1, numTask * imgHeight - 1
 
+
+    #######################
+    def _chooseFrames( self, frames, startTask, totalTasks ):
+        if totalTasks <= len( frames ):
+            subtasksFrames = int ( math.ceil( float( len( frames ) ) / float( totalTasks ) ) )
+            startFrame = (startTask - 1) * subtasksFrames
+            endFrame = min( startTask * subtasksFrames, len( frames ) )
+            return frames[ startFrame:endFrame ], 1
+        else:
+            parts = totalTasks / len( frames )
+            return [ frames[(startTask - 1 ) / parts ] ], parts
+
+        #######################
+    def _putImageTogether( self, tmpDir ):
+        outputFileName = u"{}".format( self.outputFile, self.outputFormat )
+        self.collectedFileNames = OrderedDict( sorted( self.collectedFileNames.items() ) )
+        if not self._useOuterTaskCollector():
+            collector = RenderingTaskCollector( paste = True, width = self.resX, height = self.resY )
+            for file in self.collectedFileNames.values():
+                collector.acceptTask( file )
+            collector.finalize().save( outputFileName, self.outputFormat )
+        else:
+            files = " ".join( self.collectedFileNames.values() )
+            self._putCollectedFilesTogether ( os.path.join( tmpDir, outputFileName ), files, "paste" )
+
+    #######################
+    def _putFrameTogether( self, tmpDir, frameNum, numStart ):
+        outputFileName = os.path.join( tmpDir, self._getOutputName( frameNum, numStart ) )
+        collected = self.framesGiven[ frameNum ]
+        collected = OrderedDict( sorted( collected.items() ) )
+        if not self._useOuterTaskCollector():
+            collector = RenderingTaskCollector( paste = True, width = self.resX, height = self.resY )
+            for file in collected.values():
+                collector.acceptTask( file )
+            collector.finalize().save( outputFileName, self.outputFormat )
+        else:
+            files = " ".join( collected.values() )
+            self._putCollectedFilesTogether( outputFileName, files, "paste" )
+        self.collectedFileNames[ frameNum ] = outputFileName
+        self._updateFramePreview( outputFileName, frameNum, final = True )
+        self._updateFrameTaskPreview()
+
+    #######################
+    def _copyFrames( self ):
+        outpuDir = os.path.dirname( self.outputFile )
+        for file in self.collectedFileNames.values():
+            shutil.copy( file, os.path.join( outpuDir, os.path.basename( file ) ) )
+
+    #######################
+    def _collectImagePart( self, numStart, trFile ):
+        self.collectedFileNames[ numStart ] = trFile
+        self._updatePreview(trFile, numStart)
+        self._updateTaskPreview()
+
+    #######################
+    def _collectFrames( self, numStart, trFile, framesList, tmpDir  ):
+        self.framesGiven[ framesList[0] ][0] = trFile
+        self._putFrameTogether( tmpDir, framesList[0], numStart )
+        return framesList[1:]
+
+    #######################
+    def _collectFramePart( self, numStart, trFile, parts, tmpDir ):
+
+        frameNum = self.frames[(numStart - 1 ) / parts ]
+        part = self._countPart( numStart, parts )
+        self.framesGiven[ frameNum ][ part ] = trFile
+
+        self._updateFramePreview( trFile, frameNum, part )
+
+        print "collect frame {}, part {}, collected parts {}".format( frameNum, part, self.framesGiven[frameNum] )
+        if len( self.framesGiven[ frameNum ] ) == parts:
+            self._putFrameTogether( tmpDir, frameNum, numStart )
 
 
     #######################
@@ -157,7 +249,7 @@ class FrameRenderingTask( RenderingTask ):
         return self.totalTasks <= len( self.frames )
 
     #######################
-    def __countPart( self, startNum, parts ):
+    def _countPart( self, startNum, parts ):
         return ( ( startNum - 1 ) % parts ) + 1
 
 ##############################################

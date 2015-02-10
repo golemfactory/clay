@@ -3,6 +3,7 @@ from examples.gnr.task.VRayTask import VRayTaskBuilder
 from examples.gnr.task.ThreeDSMaxTask import ThreeDSMaxTaskBuilder
 from examples.gnr.task.PythonGNRTask import PythonGNRTaskBuilder
 from examples.gnr.task.LuxRenderTask import LuxRenderTaskBuilder
+from examples.gnr.task.BlenderRenderTask import BlenderRenderTaskBuilder
 from examples.gnr.task.GNRTask import GNROptions
 
 from examples.gnr.ui.PbrtTaskDialog import PbrtTaskDialog
@@ -42,6 +43,9 @@ def buildVRayTaskType():
 
 def buildLuxRenderTaskType():
     return TaskType( "LuxRender", LuxRenderTaskBuilder )
+
+def buildBlenderRenderTaskType():
+    return TaskType( "BlenderRender", BlenderRenderTaskBuilder )
 
 def buildPythonGNRTaskType():
     return TaskType( "Python GNR Task", PythonGNRTaskBuilder )

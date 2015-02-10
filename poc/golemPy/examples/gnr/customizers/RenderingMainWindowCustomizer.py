@@ -22,7 +22,7 @@ from examples.gnr.customizers.MemoryHelper import resourceSizeToDisplay, transla
 logger = logging.getLogger(__name__)
 
 #######################################################################################
-frameRenderers = [ u"3ds Max Renderer", u"VRay Standalone" ]
+frameRenderers = [ u"3ds Max Renderer", u"VRay Standalone", u"Blender" ]
 
 #######################################################################################
 def subtasksPriority( sub ):

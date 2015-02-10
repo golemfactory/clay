@@ -214,7 +214,10 @@ class NewTaskDialogCustomizer:
         else:
             definition.totalSubtasks = self.gui.ui.totalSpinBox.value()
 
-        definition.resources = self.addTaskResourcesDialogCustomizer.resources
+        if self.addTaskResourcesDialogCustomizer is not None:
+            definition.resources = self.addTaskResourcesDialogCustomizer.resources
+        else:
+            definition.resources = []
 
         definition.resources.add( os.path.normpath( definition.mainProgramFile ) )
 

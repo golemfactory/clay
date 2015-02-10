@@ -21,6 +21,22 @@ def regeneratePbrtFile( sceneFileSrc, xres, yres, pixelFilter, sampler, samplesP
 
     return out
 
+def regenerateBlenderCropFile( cropFileSrc, xres, yres, totalTasks, numTask ):
+    out = ""
+
+    for l in cropFileSrc.splitlines():
+        line = re.sub(r'(resolution_x\s*=)(\s*\d*\s*)', r'\1 {}'.format( xres ), l )
+        line = re.sub(r'(resolution_y\s*=)(\s*\d*\s*)', r'\1 {}'.format( yres ), line )
+        line = re.sub(r'(border_max_x\s*=)(\s*\d*.\d*\s*)', r'\1 {}'.format( 1.0 ), line )
+        line = re.sub(r'(border_min_x\s*=)(\s*\d*.\d*\s*)', r'\1 {}'.format( 0.0 ), line )
+        line = re.sub(r'(border_min_y\s*=)(\s*\d*.\d*\s*)', r'\1 {}'.format( ( totalTasks - numTask ) * ( 1.0 / float( totalTasks ) ) ), line )
+        line = re.sub(r'(border_max_y\s*=)(\s*\d*.\d*\s*)', r'\1 {}'.format( (totalTasks - numTask + 1) * ( 1.0 / float( totalTasks ) ) ), line )
+        print line
+        out += line + "\n"
+
+    return out
+
+
 def regenerateLuxFile( sceneFileSrc, xres, yres, halttime, haltspp, writeinterval, crop, outputFormat ):
     out = ""
     if "halttime" in sceneFileSrc:
