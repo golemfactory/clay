@@ -77,6 +77,14 @@ class BlenderRenderTaskBuilder( FrameRenderingTaskBuiler ):
                                    )
         return self._setVerificationOptions( vRayTask )
 
+    def _setVerificationOptions( self, newTask ):
+        newTask = FrameRenderingTaskBuiler._setVerificationOptions( self, newTask )
+        if newTask.advanceVerification:
+            boxX = max( newTask.verificationOptions.boxSize[0], 8 )
+            boxY = max( newTask.verificationOptions.boxSize[1], 8 )
+            newTask.boxSize = ( boxX, boxY )
+        return newTask
+
 
 ##############################################
 class BlenderRenderTask( FrameRenderingTask ):
@@ -143,12 +151,16 @@ class BlenderRenderTask( FrameRenderingTask ):
             parts = 1
 
         if not self.useFrames:
-            scriptSrc = regenerateBlenderCropFile( self.scriptSrc, self.resX, self.resY, self.totalTasks, startTask )
+            minY = ( self.totalTasks - startTask ) * ( 1.0 / float( self.totalTasks ) )
+            maxY = ( self.totalTasks - startTask + 1) * ( 1.0 / float( self.totalTasks ) )
         elif parts > 1:
-            scriptSrc = regenerateBlenderCropFile( self.scriptSrc, self.resX, self.resY, parts, self._countPart( startTask, parts ) )
+            minY = ( parts - self._countPart( startTask, parts ) ) * ( 1.0 / float( parts ) )
+            maxY = ( parts - self._countPart( startTask, parts ) + 1) * ( 1.0 / float( parts ) )
         else:
-            scriptSrc = regenerateBlenderCropFile( self.scriptSrc, self.resX, self.resY, 1, 1 )
+            minY = 0.0
+            maxY = 1.0
 
+        scriptSrc = regenerateBlenderCropFile( self.scriptSrc, self.resX, self.resY, 0.0, 1.0, minY, maxY )
         extraData =          {      "pathRoot": self.mainSceneDir,
                                     "startTask" : startTask,
                                     "endTask": endTask,
@@ -192,8 +204,7 @@ class BlenderRenderTask( FrameRenderingTask ):
         else:
             frames = [1]
 
-        scriptSrc = regenerateBlenderCropFile( self.scriptSrc, 5, 5, 1, 1)
-        print scriptSrc
+        scriptSrc = regenerateBlenderCropFile( self.scriptSrc, 8, 8, 0.0, 1.0, 0.0, 1.0)
 
         extraData =          {      "pathRoot": self.mainSceneDir,
                                     "startTask" : 1,
@@ -216,54 +227,6 @@ class BlenderRenderTask( FrameRenderingTask ):
         return self._newComputeTaskDef( hash, extraData, workingDirectory, 0 )
 
     #######################
-    @checkSubtaskIdWrapper
-    def computationFinished( self, subtaskId, taskResult, dirManager = None, resultType = 0 ):
-
-        if not self.shouldAccept( subtaskId ):
-            return
-
-        tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
-        self.tmpDir = tmpDir
-
-        if len( taskResult ) > 0:
-            numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
-            numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
-            parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
-            self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
-
-            if self.useFrames and self.totalTasks <= len( self.frames ):
-                framesList = self.subTasksGiven[ subtaskId ]['frames']
-                if len( taskResult ) < len( framesList ):
-                    self._markSubtaskFailed( subtaskId )
-                    if not self.useFrames:
-                        self._updateTaskPreview()
-                    else:
-                        self._updateFrameTaskPreview()
-                    return
-
-            trFiles = self.loadTaskResults( taskResult, resultType, tmpDir )
-
-            self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'clientId' ] ] = 1
-
-            for trFile in trFiles:
-                if not self.useFrames:
-                    self._collectImagePart( numStart, trFile )
-                elif self.totalTasks <= len( self.frames ):
-                    framesList = self._collectFrames( numStart, trFile, framesList, tmpDir )
-                else:
-                    self._collectFramePart( numStart, trFile, parts, tmpDir )
-
-
-            self.numTasksReceived += numEnd - numStart + 1
-
-            if self.numTasksReceived == self.totalTasks:
-                if self.useFrames:
-                    self._copyFrames()
-                else:
-                    self._putImageTogether( tmpDir )
-
-
-    #######################
     def _getPartSize( self ) :
         if not self.useFrames:
             resY = int (math.floor( float( self.resY ) / float( self.totalTasks ) ) )
@@ -279,6 +242,25 @@ class BlenderRenderTask( FrameRenderingTask ):
     def _getPartImgSize( self, subtaskId, advTestFile ) :
         x, y = self._getPartSize()
         return 0, 0, x, y
+
+    #######################
+    @checkSubtaskIdWrapper
+    def _changeScope( self, subtaskId, startBox, trFile ):
+        extraData, _ = FrameRenderingTask._changeScope( self, subtaskId, startBox, trFile )
+        minX = startBox[0]/float( self.resX)
+        maxX = (startBox[0] + self.verificationOptions.boxSize[0] + 1) / float( self.resX )
+        startY = startBox[1]+ (extraData['startTask'] - 1) * ( self.resY / float( extraData['totalTasks'] ) )
+        maxY = float( self.resY - startY) /self.resY
+        minY = max( float(self.resY - startY - self.verificationOptions.boxSize[1] - 1) /self.resY, 0.0)
+        scriptSrc = regenerateBlenderCropFile( self.scriptSrc, self.resX, self.resY, minX, maxX, minY, maxY )
+        extraData['scriptSrc'] = scriptSrc
+        return extraData, (0, 0)
+
+    def __getFrameNumFromOutputFile( self, file_ ):
+        fileName = os.path.basename( file_ )
+        fileName, ext = os.path.splitext( fileName )
+        idx = fileName.find( self.outfilebasename )
+        return int( fileName[ idx + len( self.outfilebasename ):] )
 
     #######################
     def _updatePreview( self, newChunkFilePath, chunkNum ):

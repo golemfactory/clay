@@ -222,61 +222,6 @@ class ThreeDSMaxTask( FrameRenderingTask ):
 
         return self._newComputeTaskDef( hash, extraData, workingDirectory, 0 )
 
-  #######################
-    @checkSubtaskIdWrapper
-    def computationFinished( self, subtaskId, taskResult, dirManager = None, resultType = 0 ):
-
-        if not self.shouldAccept( subtaskId ):
-            return
-
-        tmpDir = dirManager.getTaskTemporaryDir( self.header.taskId, create = False )
-        self.tmpDir = tmpDir
-
-
-        if len( taskResult ) > 0:
-            numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
-            parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
-            numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
-            self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
-
-            if self.useFrames and self.totalTasks <= len( self.frames ):
-                framesList = self.subTasksGiven[ subtaskId ]['frames']
-                if len( taskResult ) < len( framesList ):
-                    self._markSubtaskFailed( subtaskId )
-                    if not self.useFrames:
-                        self._updateTaskPreview()
-                    else:
-                        self._updateFrameTaskPreview()
-                    return
-
-            trFiles = self.loadTaskResults( taskResult, resultType, tmpDir )
-
-            if not self._verifyImgs( subtaskId, trFiles ):
-                self._markSubtaskFailed( subtaskId )
-                if not self.useFrames:
-                    self._updateTaskPreview()
-                else:
-                    self._updateFrameTaskPreview()
-                return
-
-            self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'clientId' ] ] = 1
-
-            for trFile in trFiles:
-
-                if not self.useFrames:
-                    self._collectImagePart( numStart, trFile )
-                elif self.totalTasks <= len( self.frames ):
-                    framesList = self._collectFrames( numStart, trFile, framesList, tmpDir )
-                else:
-                    self._collectFramePart( numStart, trFile, parts, tmpDir )
-
-            self.numTasksReceived += numEnd - numStart + 1
-
-        if self.numTasksReceived == self.totalTasks:
-            if self.useFrames:
-                self._copyFrames()
-            else:
-                self._putImageTogether( tmpDir )
 
     #######################
     @checkSubtaskIdWrapper
