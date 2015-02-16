@@ -202,11 +202,16 @@ class TaskServer:
             del self.waitingForVerification[ subtaskId ]
 
     ###########################
-    def payForTask( self, subtaskId ):
+    def payForTask( self, subtaskId, address, port ):
         priceMod = self.taskManager.getPriceMod( subtaskId )
         price = self.client.payForTask( priceMod )
         logger.info( "Paying {} for subtask {}".format( price, subtaskId ) )
+        self.__connectAndPayForTask( address, port, subtaskId, price )
         return price
+
+    ###########################
+    def rejectResult( self, subtaskId, address, port ):
+        self.__connectAndSendResultRejected( subtaskId, address, port )
 
     ###########################
     def unpackDelta( self, destDir, delta, taskId ):
@@ -243,6 +248,13 @@ class TaskServer:
     def __connectAndSendResourceRequest( self, address ,port, subtaskId, resourceHeader ):
         Network.connect( address, port, TaskSession, self.__connectionForResourceRequestEstablished, self.__connectionForResourceRequestFailure, subtaskId, resourceHeader )
 
+    #############################
+    def __connectAndSendResultRejected( self, subtaskId, address, port ):
+        Network.connect( address, port, TaskSession, self.__connectionForSendResultRejectedEstablished, self.__connectionForResultRejectedFailure, subtaskId )
+
+    #############################
+    def __connectAndPayForTask( self, address, port, subtaskId, price ):
+        Network.connect( address, port, TaskSession, self.__connectionForPayForTaskEstablished, self.__connectionForPayForTaskFailure, subtaskId, price )
 
     #############################
     def __connectionForTaskRequestEstablished( self, session, clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores ):
@@ -276,7 +288,7 @@ class TaskServer:
 
         self.taskSessions[ waitingTaskResult.subtaskId ] = session
 
-        session.sendReportComputedTask( waitingTaskResult )
+        session.sendReportComputedTask( waitingTaskResult, self.address, self.curPort )
 
     #############################
     def __connectionForTaskResultFailure( self, waitingTaskResult ):
@@ -305,7 +317,29 @@ class TaskServer:
         self.taskComputer.resourceRequestRejected( subtaskId, "Connection failed" )
         
         self.removeTaskHeader( subtaskId )
-         
+
+    #############################
+    def __connectionForResultRejectedFailure( self, subtaskId ):
+        logger.warning( "Cannot connect to deliver information about rejected result for task {}".format( subtaskId ) )
+
+    #############################
+    def __connectionForPayForTaskFailure( self,subtaskId, price ):
+        logger.warning( "Cannot connect to pay for task {} ".format( subtaskId ) )
+        #TODO
+        # Taka informacja powinna byc przechowywana i proba oplaty powinna byc wysylana po jakims czasie
+
+    def __connectionForSendResultRejectedEstablished( self, session, subtaskId ):
+        session.taskServer = self
+        session.taskComputer = self.taskComputer
+        session.taskManager = self.taskManager
+        session.sendResultRejected( subtaskId )
+
+    def __connectionForPayForTaskEstablished( self, session, subtaskId, price ):
+        session.taskServer = self
+        session.taskComputer = self.taskComputer
+        session.taskManager = self.taskManager
+        session.sendRewardForTask( subtaskId, price )
+
     #############################
     def __removeOldTasks( self ):
         for t in self.taskHeaders.values():

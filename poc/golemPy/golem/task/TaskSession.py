@@ -32,6 +32,9 @@ class TaskSession:
 
         self.lastResourceMsg = None
 
+        self.taskResultOwnerAddr = None
+        self.taskResultOwnerPort = None
+
     ##########################
     def requestTask( self, clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores ):
         self.__send( MessageWantToComputeTask( clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores ) )
@@ -41,7 +44,7 @@ class TaskSession:
         self.__send( MessageGetResource( taskId, pickle.dumps( resourceHeader ) ) )
 
     ##########################
-    def sendReportComputedTask( self, taskResult ):
+    def sendReportComputedTask( self, taskResult, address, port ):
         if taskResult.resultType == resultTypes['data']:
             extraData = []
         elif taskResult.resultType == resultTypes['files']:
@@ -50,7 +53,15 @@ class TaskSession:
             logger.error("Unknown result type {}".format( taskResult.resultType ) )
             return
 
-        self.__send( MessageReportComputedTask( taskResult.subtaskId, taskResult.resultType, extraData ) )
+        self.__send( MessageReportComputedTask( taskResult.subtaskId, taskResult.resultType, address, port, extraData ) )
+
+    ##########################
+    def sendResultRejected( self, subtaskId ):
+        self.__send( MessageSubtaskResultRejected( subtaskId ))
+
+    ##########################
+    def sendRewardForTask( self, subtaskId, reward ):
+        self.__send( MessageSubtaskResultAccepted( subtaskId, reward ) )
 
     ##########################
     def interpret( self, msg ):
@@ -96,7 +107,8 @@ class TaskSession:
                     self.dropped()
                 elif delay == 0.0:
                     self.conn.sendMessage( MessageGetTaskResult( msg.subtaskId, delay ) )
-
+                    self.taskResultOwnerAddr = msg.address
+                    self.taskResultOwnerPort = msg.port
                     if msg.resultType == resultTypes['data']:
                         self.__receiveDataResult( msg )
                     elif msg.resultType == resultTypes['files']:
@@ -148,8 +160,10 @@ class TaskSession:
             self.dropped()
         elif type == MessageSubtaskResultAccepted.Type:
             self.taskServer.subtaskAccepted( msg.subtaskId, msg.reward )
+            self.dropped()
         elif type == MessageSubtaskResultRejected.Type:
             self.taskServer.subtaskRejected( msg.subtaskId )
+            self.dropped()
         elif type == MessageDeltaParts.Type:
             self.taskComputer.waitForResources( self.taskId, msg.deltaHeader )
             self.taskServer.pullResources( self.taskId, msg.parts )
@@ -166,7 +180,8 @@ class TaskSession:
     ##########################
     def dropped( self ):
         self.conn.close()
-        self.taskServer.removeTaskSession( self )
+        if self.taskServer:
+            self.taskServer.removeTaskSession( self )
 
     ##########################
     def fileSent( self, file_ ):
@@ -266,10 +281,9 @@ class TaskSession:
 
             self.taskManager.computedTaskReceived( subtaskId, result, extraData['resultType'] )
             if self.taskManager.verifySubtask( subtaskId ):
-                reward = self.taskServer.payForTask( subtaskId )
-                self.__send( MessageSubtaskResultAccepted( subtaskId, reward ) )
+                self.taskServer.payForTask( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
             else:
-                self.__send( MessageSubtaskResultRejected( subtaskId ) )
+                self.taskServer.rejectResult( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
         else:
             logger.error("No taskId value in extraData for received data ")
         self.dropped()

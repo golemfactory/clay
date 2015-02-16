@@ -362,23 +362,31 @@ class MessageReportComputedTask( Message ):
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     RESULT_TYPE_STR = u"RESULT_TYPE"
+    ADDR_STR = u"ADDR"
+    PORT_STR = u"PORT"
     EXTRA_DATA_STR = u"EXTRA_DATA"
 
-    def __init__( self, subtaskId = 0, resultType = None, extraData = None, dictRepr = None ):
+    def __init__( self, subtaskId = 0, resultType = None, address = '', port = '',  extraData = None, dictRepr = None ):
         Message.__init__(self, MessageReportComputedTask.Type)
 
         self.subtaskId  = subtaskId
         self.resultType = resultType
         self.extraData = extraData
+        self.address = address
+        self.port = port
 
         if dictRepr:
             self.subtaskId  = dictRepr[ MessageReportComputedTask.SUB_TASK_ID_STR ]
             self.resultType = dictRepr[ MessageReportComputedTask.RESULT_TYPE_STR ]
+            self.address = dictRepr[ MessageReportComputedTask.ADDR_STR ]
+            self.port = dictRepr[ MessageReportComputedTask.PORT_STR ]
             self.extraData = dictRepr[ MessageReportComputedTask.EXTRA_DATA_STR ]
 
     def dictRepr(self):
         return {    MessageReportComputedTask.SUB_TASK_ID_STR : self.subtaskId,
                     MessageReportComputedTask.RESULT_TYPE_STR: self.resultType,
+                    MessageReportComputedTask.ADDR_STR: self.address,
+                    MessageReportComputedTask.PORT_STR: self.port,
                     MessageReportComputedTask.EXTRA_DATA_STR: self.extraData }
 
 class MessageGetTaskResult( Message ):

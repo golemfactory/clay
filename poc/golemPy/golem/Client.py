@@ -153,7 +153,10 @@ class Client:
         self.cfg = config
         self.sendSnapshot = False
         self.snapshotLock = Lock()
-        self.budget = BankConfig.loadConfig( self.configDesc.clientUid ).getBudget()
+
+        self.bankConfig = BankConfig.loadConfig( self.configDesc.clientUid )
+        self.budget = self.bankConfig.getBudget()
+        self.priceBase = self.bankConfig.getPriceBase()
 
         self.environmentsManager = EnvironmentsManager()
 
@@ -248,11 +251,9 @@ class Client:
 
     ############################
     def payForTask( self, priceMod ):
-        bankConfig = BankConfig.loadConfig( self.configDesc.clientUid )
-        price = int( round( priceMod * bankConfig.getPriceBase() ) )
-        self.budget = bankConfig.getBudget()
+        price = int( round( priceMod * self.priceBase ) )
         if self.budget >= price:
-            bankConfig.addToBudget( -price )
+            self.bankConfig.addToBudget( -price )
             self.budget -= price
             return price
         else:
@@ -261,10 +262,8 @@ class Client:
 
     ############################
     def getReward( self, reward ):
-        time.sleep( 2 )
-        bankConfig = BankConfig.loadConfig( self.configDesc.clientUid )
-        bankConfig.addToBudget( reward )
-        self.budget = bankConfig.getBudget()
+        self.bankConfig.addToBudget( reward )
+        self.budget += reward
 
     ############################
     def registerListener( self, listener ):
