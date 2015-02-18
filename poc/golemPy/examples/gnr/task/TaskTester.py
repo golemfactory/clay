@@ -93,7 +93,7 @@ class TaskTester:
     def taskComputed( self, taskThread ):
         if taskThread.result:
             res, estMem = taskThread.result
-        if taskThread.result and res:
+        if taskThread.result and 'data' in res and res['data']:
             logger.info( "Test task computation success !" )
             self.finishedCallback( True, estMem )
         else:

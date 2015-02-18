@@ -122,7 +122,7 @@ def runVRayTask( pathRoot, startTask, endTask, hTask, totalTasks, outfilebasenam
             cmd = formatVRayCmd( cmdFile, startTask, endTask, hTask, totalTasks, outputFiles,outfilebasename,  sceneFile, width, height, rtEngine, numThreads )
     else:
         print "Scene file does not exist"
-        return []
+        return {'data': [], 'resultType': 0 }
 
     print cmd
 

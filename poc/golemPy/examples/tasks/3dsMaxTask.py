@@ -97,7 +97,7 @@ def run3dsMaxTask( pathRoot, startTask, endTask, totalTasks, outfilebasename, sc
 
     else:
         print "Scene file does not exist"
-        return []
+        return {'data': [], 'resultType': 0 }
 
     print cmd
 

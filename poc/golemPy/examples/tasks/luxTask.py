@@ -88,7 +88,7 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir, numC
         cmd = formatLuxRendererCmd( cmdFile, startTask, outputFiles, outfilebasename, tmpSceneFile.name, numThreads )
     else:
          print "Scene file does not exist"
-         return []
+         return {'data': [], 'resultType': 0 }
 
     prevDir = os.getcwd()
     os.chdir( sceneDir )
