@@ -198,6 +198,10 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.customizer.showChangeTaskDialog( taskId )
 
     ######################
+    def showTaskResult( self, taskId ):
+        self.customizer.showTaskResult( taskId )
+
+    ######################
     def changeTimeouts ( self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
         if taskId in self.tasks:
             task = self.tasks[taskId]

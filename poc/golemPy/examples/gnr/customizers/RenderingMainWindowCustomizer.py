@@ -215,9 +215,9 @@ class AbsRenderingMainWindowCustomizer ( object ):
 
     #############################
     def __openOutputFile( self ):
-        file = self.gui.ui.outputFile.text()
-        if os.path.isfile( file ):
-            os.startfile( file )
+        file_ = self.gui.ui.outputFile.text()
+        if os.path.isfile( file_ ):
+            os.startfile( file_ )
 
     #############################
     def __getTaskNumFromPixels(self, x, y ):
@@ -302,5 +302,6 @@ class RenderingMainWindowCustomizer( AbsRenderingMainWindowCustomizer, GNRMainWi
         self._setRenderingVariables()
         self._setupRenderingConnections()
         self._setupAdvanceTaskConnections()
+
 
 

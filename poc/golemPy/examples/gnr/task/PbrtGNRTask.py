@@ -62,6 +62,15 @@ class PbrtRendererOptions(  GNROptions ):
 ##############################################
 class PbrtGNRTaskBuilder( GNRTaskBuilder ):
     def build( self ):
+        if isinstance( self.taskDefinition, RenderingTaskDefinition ):
+            rtd = self.taskDefinition
+        else:
+            rtd = self.__translateTaskDefinition()
+
+        pbrtTaskBuilder = PbrtTaskBuilder( self.clientId, rtd, self.rootPath )
+        return pbrtTaskBuilder.build()
+
+    def __translateTaskDefinition( self ):
         rtd = RenderingTaskDefinition()
         rtd.taskId = self.taskDefinition.taskId
         rtd.fullTaskTimeout = self.taskDefinition.fullTaskTimeout
@@ -86,9 +95,8 @@ class PbrtGNRTaskBuilder( GNRTaskBuilder ):
         rtd.rendererOptions.algorithmType = self.taskDefinition.options.algorithmType
         rtd.rendererOptions.samplesPerPixelCount = self.taskDefinition.options.samplesPerPixelCount
         rtd.rendererOptions.pbrtPath = self.taskDefinition.options.pbrtPath
+        return rtd
 
-        pbrtTaskBuilder = PbrtTaskBuilder( self.clientId, rtd, self.rootPath )
-        return pbrtTaskBuilder.build()
 
 
 ##############################################

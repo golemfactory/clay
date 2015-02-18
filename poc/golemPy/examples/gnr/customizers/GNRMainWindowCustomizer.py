@@ -102,6 +102,19 @@ class GNRMainWindowCustomizer:
     def updateTaskAdditionalInfo( self, t ):
         self.currentTaskHighlighted = t
 
+    #############################
+    def showTaskResult( self, taskId ):
+        t = self.logic.getTask( taskId )
+        if hasattr( t.definition, 'outputFile' ) and os.path.isfile( t.definition.outputFile ):
+            os.startfile( t.definition.outputFile )
+        elif hasattr( t.definition.options, 'outputFile' ) and os.path.isfile( t.definition.options.outputFile ):
+            os.startfile( t.definition.options.outputFile )
+        else:
+            msgBox = QMessageBox()
+            msgBox.setText("No output file defined.")
+            msgBox.exec_()
+
+
     ############################
     def _addTask( self, taskId, status ):
         currentRowCount = self.gui.ui.taskTableWidget.rowCount()

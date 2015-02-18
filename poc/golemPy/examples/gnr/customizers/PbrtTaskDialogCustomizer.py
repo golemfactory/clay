@@ -49,6 +49,7 @@ class PbrtTaskDialogCustomizer:
             self.gui.ui.pathTracerComboBox.setCurrentIndex( algItem )
 
         self.gui.ui.samplesPerPixelSpinBox.setValue( self.options.samplesPerPixelCount )
+        #self.gui.ui.pbrtPathLineEdit.setText( self.options.pbrtPath )
 
         self.gui.ui.mainSceneLineEdit.setText( self.options.mainSceneFile )
 
@@ -79,6 +80,7 @@ class PbrtTaskDialogCustomizer:
         self.gui.ui.okButton.clicked.connect( lambda: self.__changeRendererOptions() )
         self.gui.ui.chooseOutputFileButton.clicked.connect( self.__chooseOutputFileButtonClicked )
         self.gui.ui.mainSceneButton.clicked.connect( self.__chooseMainSceneFileButtonClicked )
+        self.gui.ui.pbrtPathButton.clicked.connect( self.__choosePbrtPath )
         QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__resXChanged)
         QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged( const QString )"), self.__resYChanged)
         QtCore.QObject.connect(self.gui.ui.verificationRandomRadioButton, QtCore.SIGNAL( "toggled( bool )" ), self.__verificationRandomChanged )
@@ -98,6 +100,7 @@ class PbrtTaskDialogCustomizer:
         self.options.samplesPerPixelCount = self.gui.ui.samplesPerPixelSpinBox.value()
         self.options.algorithmType = u"{}".format( self.gui.ui.pathTracerComboBox.itemText( self.gui.ui.pathTracerComboBox.currentIndex() ) )
         self.options.mainSceneFile = os.path.normpath( u"{}".format( self.gui.ui.mainSceneLineEdit.text() ) )
+        self.options.pbrtPath = u"{}".format( self.gui.ui.pbrtPathLineEdit.text() )
 
     #############################
     def __readOutputParams( self ):
@@ -136,6 +139,13 @@ class PbrtTaskDialogCustomizer:
 
         if fileName != '':
             self.gui.ui.outputFileLineEdit.setText( fileName )
+
+    #############################
+    def __choosePbrtPath( self ):
+        dir = os.path.dirname( u"{}".format( self.gui.ui.pbrtPathLineEdit.text() ) )
+        fileName = u"{}".format( QFileDialog.getOpenFileName( self.gui.window, "Choose pbrt file", dir, "" ) )
+        if fileName != '':
+            self.gui.ui.pbrtPathLineEdit.setText( fileName )
 
     #############################
     def __verificationRandomChanged( self ):

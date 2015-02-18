@@ -217,7 +217,7 @@ class NewTaskDialogCustomizer:
         if self.addTaskResourcesDialogCustomizer is not None:
             definition.resources = self.addTaskResourcesDialogCustomizer.resources
         else:
-            definition.resources = []
+            definition.resources = set()
 
         definition.resources.add( os.path.normpath( definition.mainProgramFile ) )
 

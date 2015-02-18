@@ -25,6 +25,7 @@ class TaskContextMenuCustomizer:
         self.__buildAndConnectAction( "Resume",          self.__resumeTaskTriggered,        enabledActions )
         self.__buildAndConnectAction( "Change Timeouts", self.__changeTaskTriggered,        enabledActions )
         self.__buildAndConnectAction( "Show Details",    self.__showTaskDetailsTriggered,   enabledActions )
+        self.__buildAndConnectAction( "Show Result",     self.__showResultTriggered,        enabledActions )
 
     ##########################
     def __buildAndConnectAction( self, name, triggeredFunc, enabledActions ):
@@ -73,8 +74,11 @@ class TaskContextMenuCustomizer:
     def __changeTaskTriggered( self ):
         self.logic.changeTask( self.gnrTaskState.definition.taskId )
 
+    ###########################
+    def __showResultTriggered( self ):
+        self.logic.showTaskResult( self.gnrTaskState.definition.taskId )
 
-    # ######################
+    #######################
     ##########################
     def __getEnabledActions( self, taskStatus ):
 
@@ -91,6 +95,7 @@ class TaskContextMenuCustomizer:
             enabled[ "Pause" ]          = False
             enabled[ "Resume"]          = False
             enabled["Change Timeouts"]  = True
+            enabled[ "Show Result" ]   = False
 
         if taskStatus == TaskStatus.sending:
             enabled[ "Abort Task"]      = True
@@ -99,7 +104,7 @@ class TaskContextMenuCustomizer:
             enabled[ "Pause" ]          = False
             enabled[ "Resume"]          = False
             enabled["Change Timeouts"]  = True
-
+            enabled[ "Show Result" ]   = False
 
         if taskStatus == TaskStatus.waiting:
             enabled[ "Abort Task"]      = True
@@ -108,6 +113,7 @@ class TaskContextMenuCustomizer:
             enabled[ "Pause" ]          = True
             enabled[ "Resume"]          = False
             enabled["Change Timeouts"]  = True
+            enabled[ "Show Result" ]   = False
 
         if taskStatus == TaskStatus.starting:
             enabled[ "Abort Task"]      = True
@@ -116,6 +122,7 @@ class TaskContextMenuCustomizer:
             enabled[ "Pause" ]          = True
             enabled[ "Resume"]          = False
             enabled["Change Timeouts"]  = True
+            enabled[ "Show Result" ]   = False
 
         if taskStatus == TaskStatus.computing:
             enabled[ "Abort Task"]      = True
@@ -124,6 +131,7 @@ class TaskContextMenuCustomizer:
             enabled[ "Pause" ]          = True
             enabled[ "Resume"]          = False
             enabled["Change Timeouts"]  = True
+            enabled[ "Show Result" ]   = False
             
         if taskStatus == TaskStatus.finished:
             enabled[ "Abort Task"]      = False
@@ -132,6 +140,7 @@ class TaskContextMenuCustomizer:
             enabled[ "Pause" ]          = False
             enabled[ "Resume"]          = False
             enabled["Change Timeouts"]  = False
+            enabled[ "Show Result" ]   = True
 
         if taskStatus == TaskStatus.aborted:
             enabled[ "Abort Task"]      = False
@@ -140,6 +149,7 @@ class TaskContextMenuCustomizer:
             enabled[ "Pause" ]          = False
             enabled[ "Resume"]          = False
             enabled["Change Timeouts"]  = False
+            enabled[ "Show Result" ]   = False
 
         if taskStatus == TaskStatus.failure:
             enabled[ "Abort Task"]      = False
@@ -148,6 +158,7 @@ class TaskContextMenuCustomizer:
             enabled[ "Pause" ]          = False
             enabled[ "Resume"]          = False
             enabled["Change Timeouts"]  = False
+            enabled[ "Show Result" ]   = False
 
         if taskStatus == TaskStatus.paused:
             enabled[ "Abort Task"]      = True
@@ -156,7 +167,8 @@ class TaskContextMenuCustomizer:
             enabled[ "Pause" ]          = False
             enabled[ "Resume"]          = True
             enabled["Change Timeouts"]  = True
+            enabled[ "Show Result" ]   = False
 
-        assert len( enabled ) == 9
+        assert len( enabled ) == 10
 
         return enabled

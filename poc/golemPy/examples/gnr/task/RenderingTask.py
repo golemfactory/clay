@@ -239,8 +239,8 @@ class RenderingTask( GNRTask ):
 
     #######################
     def _getSceneFileRelPath( self ):
-        sceneFile = os.path.relpath( os.path.dirname(self.mainSceneFile), os.path.dirname( self.mainProgramFile ) )
-        sceneFile = os.path.join( sceneFile, os.path.basename( self.mainSceneFile ) )
+        sceneFile = os.path.relpath( os.path.dirname(self.mainSceneFile) , os.path.dirname( self.mainProgramFile ) )
+        sceneFile = os.path.normpath( os.path.join( sceneFile, os.path.basename( self.mainSceneFile ) ) )
         return sceneFile
 
     ########################
