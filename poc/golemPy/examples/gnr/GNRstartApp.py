@@ -44,7 +44,7 @@ def registerTaskTypes( logic ):
     logic.registerNewTaskType( buildVRayTaskType() )
     logic.registerNewTaskType( buildPythonGNRTaskType() )
     logic.registerNewTaskType( buildLuxRenderTaskType() )
-    logic.registerNewRendererType( buildBlenderRenderTaskType() )
+    logic.registerNewTaskType( buildBlenderRenderTaskType() )
 
 ############################
 def loadEnvironments():

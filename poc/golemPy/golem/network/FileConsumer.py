@@ -45,10 +45,11 @@ class FileConsumer:
 
     ###################
     def __printProgress( self ):
-        prct = int( 100 * self.recvSize / float( self.fileSize ) )
-        if prct > self.lastPercent:
-            print "\rFile data receving {} %                       ".format(  prct ),
-            self.lastPercent = prct
+        if self.fileSize > 0:
+            prct = int( 100 * self.recvSize / float( self.fileSize ) )
+            if prct > self.lastPercent:
+                print "\rFile data receving {} %                       ".format(  prct ),
+                self.lastPercent = prct
 
     ###################
     def __endReceiving( self ):
