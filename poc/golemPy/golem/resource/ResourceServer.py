@@ -35,8 +35,8 @@ class ResourceServer( GNRServer ):
         resFiles = {}
         for file_ in files:
             resFiles[ file_ ] = self.resourceManager.splitFile( file_ )
-        for res in resFiles[ file_ ]:
-            self.addResourceToSend( res, num, taskId  )
+            for res in resFiles[ file_ ]:
+                self.addResourceToSend( res, num, taskId  )
         return resFiles
 
     ############################
