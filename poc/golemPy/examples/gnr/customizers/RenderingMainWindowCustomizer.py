@@ -3,7 +3,7 @@ import datetime
 import time
 import logging
 from PyQt4 import QtCore
-from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen
+from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox
 
 from golem.task.TaskState import SubtaskStatus
 
@@ -99,6 +99,20 @@ class AbsRenderingMainWindowCustomizer ( object ):
 
         self.__updateOutputFileColor()
         self.currentTaskHighlighted = t
+
+    #############################
+    def showTaskResult( self, taskId ):
+        t = self.logic.getTask( taskId )
+        if t.definition.renderer in frameRenderers and t.definition.rendererOptions.useFrames:
+            file_ = self.__getFrameName( t.definition, 0 )
+        else:
+            file_ = t.definition.outputFile
+        if os.path.isfile( file_ ):
+                os.startfile( file_ )
+        else:
+            msgBox = QMessageBox()
+            msgBox.setText("No output file defined.")
+            msgBox.exec_()
 
     ############################
     def __setTimeParams( self, t ):
