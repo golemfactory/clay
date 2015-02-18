@@ -84,9 +84,11 @@ def runBlenderTask( outfilebasename, sceneFile, scriptSrc, startTask, engine, fr
 
 
     cmdFile = __readFromEnvironment()
-    if not os.path.exists( sceneFile ):
+    sceneFile = os.path.normpath( os.path.join( os.getcwd(), sceneFile ) )
+    if not os.path.exists( os.path.normpath( sceneFile ) ):
         print "Scene file does not exist"
-        return []
+        return { 'data': [], 'resultType': 0 }
+
 
     for frame in frames:
         cmd = formatBlenderRenderCmd( cmdFile, outputFiles, outfilebasename, sceneFile, scriptFile.name, startTask, engine, frame )
