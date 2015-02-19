@@ -172,7 +172,7 @@ class TaskServer:
     #############################
     def changeConfig( self, configDesc ):
         self.configDesc = configDesc
-        self.taskManager.changeConfig( self.__getTaskManagerRoot( configDesc ) )
+        self.taskManager.changeConfig( self.__getTaskManagerRoot( configDesc ), configDesc.useDistributedResourceManagement )
         self.taskComputer.changeConfig( )
 
     ############################

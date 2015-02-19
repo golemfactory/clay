@@ -346,8 +346,9 @@ class TaskManager:
             assert False, "Should never be here!"
             return None
 
-    def changeConfig( self, rootPath ):
+    def changeConfig( self, rootPath, useDistributedResourceManagement ):
         self.dirManager = DirManager( rootPath, self.clientUid )
+        self.useDistributedResources = useDistributedResourceManagement
 
     #######################
     def changeTimeouts( self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
