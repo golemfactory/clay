@@ -11,7 +11,7 @@ from examples.gnr.task.VRayTask import buildVRayRendererInfo
 from examples.gnr.task.LuxRenderTask import buildLuxRenderInfo
 from examples.gnr.task.BlenderRenderTask import buildBlenderRendererInfo
 
-from examples.gnr.InfoServer import InfoServer
+
 
 from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
 
@@ -86,6 +86,7 @@ def runManager( logic, client):
 
 ############################
 def runInfoServer( client, startPort = 55555, nextPort = 55556, endPort = 59999 ):
+    from examples.gnr.InfoServer import InfoServer
     infoServer = InfoServer( client, startPort, nextPort, endPort )
     infoServer.start()
 
@@ -107,6 +108,7 @@ def startRenderingApp( logic, app, gui, startManager = False, startManagerClient
     if startManagerClient:
         runManagerClient( logic )
     if startInfoServer:
+
         runInfoServer( client )
 
     app.execute( False )

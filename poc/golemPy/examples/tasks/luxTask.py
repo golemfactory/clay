@@ -6,17 +6,13 @@ import cPickle as pickle
 import zlib
 import zipfile
 import subprocess
-import win32process
-import math
+import psutil
 import shutil
 
 def formatLuxRendererCmd( cmdFile, startTask, outputFile, outfilebasename, scenefile, numThreads ):
-    print "cmdFile {}".format( cmdFile )
-    print "starTask {}".format( startTask )
-    print "outputFile {}".format( outputFile )
-    print "outfilebasename {}".format( outfilebasename )
-    print "scenefile {}".format( scenefile )
-    cmd = '"{}" {} -o "{}\{}{}.png" -q -t {}'.format(cmdFile, scenefile, outputFile, outfilebasename, startTask, numThreads )
+    cmd = ["{}".format( cmdFile ), "{}".format( scenefile ), "-o",
+           "{}\{}{}.png".format( outputFile, outfilebasename, startTask), "-q", "-t", "{}".format( numThreads ) ]
+    print cmd
     return cmd
 
 def __readFromEnvironment( ):
@@ -24,7 +20,10 @@ def __readFromEnvironment( ):
     path = os.environ.get( GOLEM_ENV )
     if not path:
         print "No Golem environment variable found... Assuming that exec is in working folder"
-        return 'luxconsole.exe'
+        if isWindows():
+            return 'luxconsole.exe'
+        else:
+            return 'luxconsole'
 
     sys.path.append( path )
 
@@ -35,7 +34,10 @@ def __readFromEnvironment( ):
         return cmdFile
     else:
         print "Environment not supported... Assuming that exec is in working folder"
-        return 'luxconsole.exe'
+        if isWindows():
+            return 'luxconsole.exe'
+        else:
+            return 'luxconsole'
 
 ############################
 def returnData( files ):
@@ -60,32 +62,59 @@ def returnFiles( files ):
 
 
 ############################
+def isWindows():
+    return sys.platform == 'win32'
+
+def execCmd( cmd, nice = 20 ):
+    pc = subprocess.Popen( cmd )
+    if isWindows():
+        import win32process
+        win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS )
+    else:
+        p = psutil.Process(pc.pid)
+        p.set_nice( nice )
+
+    pc.wait()
+
+def makeTmpFile( sceneDir, sceneSrc ):
+    if isWindows():
+        tmpSceneFile = tempfile.TemporaryFile( suffix = ".lxs", dir = sceneDir )
+        tmpSceneFile.close()
+        f = open(tmpSceneFile.name, 'w')
+        f.write( sceneSrc )
+        f.close()
+
+        return tmpSceneFile.name
+    else:
+        tmpSceneFile = os.path.join( sceneDir, "tmpSceneFile.lxs" )
+        f = open(tmpSceneFile, "w")
+        f.write( sceneSrc )
+        f.close()
+        return tmpSceneFile
+
+
+############################
 def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir, numCores, ownBinaries, luxConsole ):
     print 'LuxRenderer Task'
 
     outputFiles = tmpPath
     print "outputFiles " + str( outputFiles )
 
-    files = glob.glob( outputFiles + "\*.png" ) + glob.glob( outputFiles + "\*.flm" )
+    files = glob.glob( outputFiles + "/*.png" ) + glob.glob( outputFiles + "/*.flm" )
 
     for f in files:
         os.remove(f)
 
-    tmpSceneFile = tempfile.TemporaryFile( suffix = ".lxs", dir = sceneDir )
-    tmpSceneFile.close()
-    print sceneFileSrc
-    f = open(tmpSceneFile.name, 'w')
-    f.write( sceneFileSrc )
-    f.close()
+    tmpSceneFile = makeTmpFile( sceneDir, sceneFileSrc )
 
     if ownBinaries:
         cmdFile = luxConsole
     else:
         cmdFile = __readFromEnvironment( )
     print "cmdFile " + cmdFile
-    if os.path.exists( tmpSceneFile.name ):
-        print tmpSceneFile.name
-        cmd = formatLuxRendererCmd( cmdFile, startTask, outputFiles, outfilebasename, tmpSceneFile.name, numThreads )
+    if os.path.exists( tmpSceneFile ):
+        print tmpSceneFile
+        cmd = formatLuxRendererCmd( cmdFile, startTask, outputFiles, outfilebasename, tmpSceneFile, numThreads )
     else:
          print "Scene file does not exist"
          return {'data': [], 'resultType': 0 }
@@ -93,11 +122,10 @@ def runLuxRendererTask( startTask, outfilebasename, sceneFileSrc, sceneDir, numC
     prevDir = os.getcwd()
     os.chdir( sceneDir )
 
-    pc = subprocess.Popen( cmd )
-    win32process.SetPriorityClass( pc._handle, win32process.IDLE_PRIORITY_CLASS )
-    pc.wait()
+    execCmd( cmd )
+
     os.chdir( prevDir )
-    files = glob.glob( outputFiles + "\*.png" ) + glob.glob( outputFiles + "\*.flm" )
+    files = glob.glob( outputFiles + "/*.png" ) + glob.glob( outputFiles + "/*.flm" )
 
     return returnFiles( files )
 

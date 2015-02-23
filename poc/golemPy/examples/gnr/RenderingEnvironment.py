@@ -31,6 +31,8 @@ class ThreeDSMaxEnvironment( Environment ):
 
     #########################
     def checkSoftware( self ):
+        if not self.isWindows():
+            return False
         for var in self.softwareEnvVar:
             if os.environ.get( var ):
                 self.path = os.path.join( os.environ.get( var ), '3dsmaxcmd.exe')
@@ -89,7 +91,6 @@ class PBRTEnvironment ( Environment ):
     #########################
     def __init__( self ):
         Environment.__init__( self )
-        self.software.append('Windows')
         self.shortDescription =  "PBRT renderer (http://www.pbrt.org/)  "
 
     #########################
@@ -106,11 +107,13 @@ class VRayEnvironment( Environment ):
     #########################
     def __init__( self ):
         Environment.__init__( self )
-        self.software.append('Windows')
         self.software.append('V-Ray standalone')
         self.shortDescription = "V-Ray Renderer (http://www.vray.com/)"
         self.softwareEnvVariable = 'VRAY_PATH'
-        self.softwareName = 'vray.exe'
+        if self.isWindows():
+            self.softwareName = 'vray.exe'
+        else:
+            self.softwareName = 'vray'
         self.path = ""
 
     #########################
@@ -146,7 +149,10 @@ class LuxRenderEnvironment( Environment ):
         self.software.append('LuxRender')
         self.shortDescription = "LuxRenderer Renderer (http://www.luxrender.net/)"
         self.softwareEnvVariables = ['LUXRENDER_ROOT']
-        self.softwareName = ['luxconsole.exe', 'luxmerger.exe']
+        if self.isWindows():
+            self.softwareName = ['luxconsole.exe', 'luxmerger.exe']
+        else:
+            self.softwareName = ['luxconsole', 'luxmerger']
         self.luxConsolePath = ''
         self.luxMergerPath = ''
 
@@ -155,8 +161,8 @@ class LuxRenderEnvironment( Environment ):
         luxInstalled = False
         for var in self.softwareEnvVariables:
             if os.environ.get( var ):
-                self.luxConsolePath = os.path.join( os.environ.get( var ), 'luxconsole.exe' )
-                self.luxMergerPath = os.path.join( os.environ.get( var ), 'luxmerger.exe' )
+                self.luxConsolePath = os.path.join( os.environ.get( var ), self.softwareName[0] )
+                self.luxMergerPath = os.path.join( os.environ.get( var ), self.softwareName[1] )
                 if os.path.isfile( self.luxConsolePath ) and os.path.isfile( self.luxMergerPath ):
                     luxInstalled = True
 

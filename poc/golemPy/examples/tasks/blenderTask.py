@@ -5,8 +5,8 @@ import glob
 import cPickle as pickle
 import zlib
 import subprocess
-import win32process
 import shutil
+import psutil
 
 ############################
 def returnData( files ):
@@ -32,7 +32,7 @@ def returnFiles( files ):
 ############################
 def getFiles():
     outputFiles = tmpPath
-    return glob.glob( outputFiles + "\*.exr" )
+    return glob.glob( outputFiles + "/*.exr" )
 
 ############################
 def removeOldFiles():
@@ -58,13 +58,25 @@ def __readFromEnvironment():
         return defaultCmdFile
 
 ############################
-def runCmd( cmd ):
+def isWindows():
+    return sys.platform == 'win32'
+
+def execCmd( cmd, nice = 20 ):
     pc = subprocess.Popen( cmd )
-    win32process.SetPriorityClass( pc._handle, win32process.IDLE_PRIORITY_CLASS )
+    if isWindows():
+        import win32process
+        win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS )
+    else:
+        p = psutil.Process(pc.pid)
+        p.set_nice( nice )
+
     pc.wait()
 
+############################
 def formatBlenderRenderCmd( cmdFile, outputFiles, outfilebasename, sceneFile, scriptFile, startTask, engine, frame ):
-    cmd = '"{}" -b "{}" -P "{}" -o "{}\{}{}" -E {} -F EXR -f {} '.format( cmdFile, sceneFile, scriptFile, outputFiles, outfilebasename, startTask, engine, frame )
+    cmd = ["{}".format( cmdFile ), "-b", "{}".format( sceneFile ), "-P", "{}".format( scriptFile ),
+           "-o", "{}\{}{}".format( outputFiles, outfilebasename, startTask ), "-E", "{}".format( engine ), "-F", "EXR",
+           "-f", "{}".format( frame ) ]
     return cmd
 
 ############################
@@ -93,7 +105,7 @@ def runBlenderTask( outfilebasename, sceneFile, scriptSrc, startTask, engine, fr
     for frame in frames:
         cmd = formatBlenderRenderCmd( cmdFile, outputFiles, outfilebasename, sceneFile, scriptFile.name, startTask, engine, frame )
         print cmd
-        runCmd( cmd )
+        execCmd( cmd )
 
     return returnFiles( getFiles() )
 

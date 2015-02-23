@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 def buildPBRTRendererInfo():
     defaults = RendererDefaults()
     defaults.outputFormat       = "EXR"
-    defaults.mainProgramFile    = os.path.normpath( os.path.join( os.environ.get( 'GOLEM' ), 'examples\\tasks\\pbrtTask.py' ) )
+    defaults.mainProgramFile    = os.path.normpath( os.path.join( os.environ.get( 'GOLEM' ), 'examples/tasks/pbrtTask.py' ) )
     defaults.minSubtasks        = 4
     defaults.maxSubtasks        = 200
     defaults.defaultSubtasks    = 60
@@ -332,8 +332,7 @@ class PbrtRenderTask( RenderingTask ):
                 collector.finalize().save( outputFileName, self.outputFormat )
                 self.previewFilePath = outputFileName
             else:
-                files = " ".join( self.collectedFileNames )
-                self._putCollectedFilesTogether( outputFileName, files, "add" )
+                self._putCollectedFilesTogether( outputFileName, list( self.collectedFileNames ), "add" )
 
     #######################
     def restart( self ):

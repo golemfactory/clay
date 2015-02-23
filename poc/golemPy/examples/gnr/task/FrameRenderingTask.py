@@ -251,8 +251,7 @@ class FrameRenderingTask( RenderingTask ):
                 collector.acceptTask( file )
             collector.finalize().save( outputFileName, self.outputFormat )
         else:
-            files = " ".join( self.collectedFileNames.values() )
-            self._putCollectedFilesTogether ( os.path.join( tmpDir, outputFileName ), files, "paste" )
+            self._putCollectedFilesTogether ( os.path.join( tmpDir, outputFileName ), self.collectedFileNames.values(), "paste" )
 
     #######################
     def _putFrameTogether( self, tmpDir, frameNum, numStart ):
@@ -265,8 +264,7 @@ class FrameRenderingTask( RenderingTask ):
                 collector.acceptTask( file )
             collector.finalize().save( outputFileName, self.outputFormat )
         else:
-            files = " ".join( collected.values() )
-            self._putCollectedFilesTogether( outputFileName, files, "paste" )
+            self._putCollectedFilesTogether( outputFileName, collected.values(), "paste" )
         self.collectedFileNames[ frameNum ] = outputFileName
         self._updateFramePreview( outputFileName, frameNum, final = True )
         self._updateFrameTaskPreview()

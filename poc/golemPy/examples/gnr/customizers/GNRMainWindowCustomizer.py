@@ -27,6 +27,8 @@ from examples.gnr.customizers.AboutWindowCustomizer import AboutWindowCustomizer
 from examples.gnr.customizers.ConfigurationDialogCustomizer import ConfigurationDialogCustomizer
 from examples.gnr.customizers.EnvironmentsDialogCustomizer import EnvironmentsDialogCustomizer
 
+from golem.core.simpleexccmd import isWindows, execCmd
+
 class GNRMainWindowCustomizer:
     ############################
     def __init__( self, gui, logic ):
@@ -106,13 +108,21 @@ class GNRMainWindowCustomizer:
     def showTaskResult( self, taskId ):
         t = self.logic.getTask( taskId )
         if hasattr( t.definition, 'outputFile' ) and os.path.isfile( t.definition.outputFile ):
-            os.startfile( t.definition.outputFile )
+            self._showFile( t.definition.outputFile )
         elif hasattr( t.definition.options, 'outputFile' ) and os.path.isfile( t.definition.options.outputFile ):
-            os.startfile( t.definition.options.outputFile )
+            self._showFile( t.definition.options.outputFile )
         else:
             msgBox = QMessageBox()
             msgBox.setText("No output file defined.")
             msgBox.exec_()
+
+    ############################
+    def _showFile( self, fileName ):
+        if isWindows():
+            os.startfile( fileName )
+        else:
+            opener = "see"
+            execCmd([opener, fileName ], wait=False )
 
 
     ############################

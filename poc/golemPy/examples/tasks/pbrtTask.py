@@ -4,13 +4,15 @@ import cPickle as pickle
 import zlib
 import subprocess
 import platform, psutil
-import win32api, win32process
 import tempfile
 import shutil
+import sys
 
 ############################
 def format_pbrt_cmd( renderer, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, scenefile ):
-    return "{} --starttask {} --endtask {} --outresultbasename {} --totaltasks {} --ncores {} --subtasks {} {}".format( renderer, startTask, endTask, outfilebasename, totalTasks, numCores, numSubtasks, scenefile )
+    return ["{}".format(renderer), "--starttask", "{}".format( startTask ), "--endtask", "{}".format( endTask ),
+            "--outresultbasename", "{}".format( outfilebasename ),  "--totaltasks",  "{}".format( totalTasks ),
+            "--ncores", "{}".format( numCores), "--subtasks", "{}".format( numSubtasks ), "{}".format( scenefile )]
 
 ############################
 def returnData( files ):
@@ -33,6 +35,38 @@ def returnFiles( files ):
     files = [ os.path.normpath( os.path.join( copyPath, os.path.basename( f ) ) ) for f in files]
     return {'data': files, 'resultType': 1 }
 
+############################
+def isWindows():
+    return sys.platform == 'win32'
+
+def execCmd( cmd, nice = 20 ):
+    pc = subprocess.Popen( cmd )
+    if isWindows():
+        import win32process
+        win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS )
+    else:
+        p = psutil.Process(pc.pid)
+        p.set_nice( nice )
+
+    pc.wait()
+
+def makeTmpFile( sceneDir, sceneSrc ):
+    if isWindows():
+        tmpSceneFile = tempfile.TemporaryFile( suffix = ".pbrt", dir = sceneDir )
+        tmpSceneFile.close()
+        f = open(tmpSceneFile.name, 'w')
+        f.write( sceneSrc )
+        f.close()
+
+        return tmpSceneFile.name
+    else:
+        tmpSceneFile = os.path.join( sceneDir, "tmpSceneFile.pbrt" )
+        f = open(tmpSceneFile, "w")
+        f.write( sceneSrc )
+        f.close()
+        return tmpSceneFile
+
+
 ############################f = 
 def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneSrc, sceneDir, pbrtPath ):
     pbrt = pbrtPath
@@ -44,17 +78,11 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     for f in files:
         os.remove(f)
 
-    tmpSceneFile = tempfile.TemporaryFile( suffix = ".pbrt", dir = sceneDir )
-    tmpSceneFile.close()
-    print sceneSrc
-    f = open(tmpSceneFile.name, 'w')
-    f.write( sceneSrc )
-    f.close()
-    
-    print tmpSceneFile.name
 
-    if os.path.exists( tmpSceneFile.name ):
-        cmd = format_pbrt_cmd( pbrt, startTask, endTask, totalTasks, numSubtasks, numCores, outputFiles, tmpSceneFile.name )
+    tmpSceneFile = makeTmpFile( sceneDir, sceneSrc )
+
+    if os.path.exists( tmpSceneFile ):
+        cmd = format_pbrt_cmd( pbrt, startTask, endTask, totalTasks, numSubtasks, numCores, outputFiles, tmpSceneFile )
     else:
         print "Scene file does not exist"
         return {'data': [], 'resultType': 0 }
@@ -63,9 +91,7 @@ def run_pbrt_task( pathRoot, startTask, endTask, totalTasks, numSubtasks, numCor
     prevDir = os.getcwd()
     os.chdir( sceneDir )
 
-    pc = subprocess.Popen( cmd )
-    win32process.SetPriorityClass( pc._handle, win32process.IDLE_PRIORITY_CLASS )
-    pc.wait()
+    execCmd( cmd )
 
     os.chdir( prevDir )
 

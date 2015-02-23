@@ -5,16 +5,22 @@ import cPickle as pickle
 import zlib
 import zipfile
 import subprocess
-import win32process
+import psutil
 import math
 import shutil
 
 def formatTestVRayCmd( cmdFile, outputFile, outfilebasename, scenefile, width, height, rtEngine, numThreads ):
-    cmd = '"{}" -imgFile="{}\\{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -region={};{};{};{} -autoClose=1 -display=0 -rtEngine={} -numThreads={}'.format(cmdFile, outputFile, outfilebasename, scenefile, width, height, startBox[0], startBox[1], startBox[0] + box[0], startBox[1] + box[1], rtEngine, numThreads )
+    cmd = ["{}".format( cmdFile ), "-imgFile={}/{}.exr".format( outputFile, outfilebasename ),
+           "-sceneFile={}".format( scenefile ), "-imgWidth={}".format( width ), "-imgHeight={}".format( height ),
+           "-region={};{};{};{}".format( startBox[0], startBox[1], startBox[0] + box[0], startBox[1] + box[1] ),
+           "-autoClose=1", "-display=0", "-rtEngine={}".format( rtEngine ), "-numThreads={}".format( numThreads ) ]
     return cmd
 
 def formatTestVRayCmdWithParts( cmdFile, frames,  outputFile, outfilebasename, scenefile, width, height, rtEngine, numThreads ):
-    cmd = '"{}" -imgFile="{}\\{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -region={};{};{};{}  -autoClose=1 -display=0 -rtEngine={} -numThreads={}'.format(cmdFile, outputFile, outfilebasename, scenefile, width, height, frames, 0, startBox[1], width, startBox[1] + box[1],  rtEngine, numThreads )
+    cmd = ["{}".format( cmdFile ), "-imgFile={}/{}.exr".format( outputFile, outfilebasename ),
+           "-sceneFile={}".format( scenefile ), "-imgWidth={}".format( width ), "-imgHeight={}".format( height ),
+           "-frames={}".format( frames ), "-region={};{};{};{}".format( 0, startBox[1], width, startBox[1] + box[1] ),
+           "-autoClose=1", "-display=0", "-rtEngine={}".format( rtEngine ), "-numThreads={}".format( numThreads ) ]
     return cmd
 
 def formatVRayCmd( cmdFile, startTask, endTask, hTasks, totalTasks, outputFile, outfilebasename, scenefile, width, height, rtEngine, numThreads ):
@@ -27,11 +33,17 @@ def formatVRayCmd( cmdFile, startTask, endTask, hTasks, totalTasks, outputFile, 
     right = left + partWidth
     upper = ( (startTask - 1) % hTasks ) * partHeight
     lower = upper + partHeight
-    cmd = '"{}" -imgFile="{}\\{}{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -region={};{};{};{} -autoClose=1 -display=0 -rtEngine={} -numThreads={}'.format(cmdFile, outputFile, outfilebasename, startTask, scenefile, width, height, left, upper, right, lower, rtEngine, numThreads )
+    cmd = ["{}".format( cmdFile ), "-imgFile={}/{}{}.exr".format( outputFile, outfilebasename, startTask ),
+           "-sceneFile={}".format( scenefile ), "-imgWidth={}".format( width ),  "-imgHeight={}".format( height ),
+           "-region={};{};{};{}".format( left, upper, right, lower ), "-autoClose=1", "-display=0",
+           "-rtEngine={}".format( rtEngine ), "-numThreads={}".format( numThreads ) ]
     return cmd
 
 def formatVRayCmdWithFrames( cmdFile, frames, outputFile, outfilebasename, scenefile, width, height, rtEngine, numThreads ):
-    cmd = '"{}" -imgFile="{}\\{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -region={};{};{};{} -autoClose=1 -display=0 -rtEngine={} -numThreads={}'.format(cmdFile, outputFile, outfilebasename, scenefile, width, height, frames, 0, 0, width, height, rtEngine, numThreads )
+    cmd = ["{}".format( cmdFile ), "-imgFile={}/{}.exr".format( outputFile, outfilebasename ),
+           "-sceneFile={}".format( scenefile ), "-imgWidth={}".format( width ), "-imgHeight={}".format( height ),
+           "-frames={}".format( frames ), "-region={};{};{};{}".format( 0, 0, width, height ),
+           "-autoClose=1", "-display=0", "-rtEngine={}".format( rtEngine ), "-numThreads={}".format( numThreads ) ]
     return cmd
 
 def formatVRayCmdWithParts( cmdFile, frames, parts, startTask, outputFile, outfilebasename, scenefile, width, height, rtEngine, numThreads ):
@@ -40,7 +52,10 @@ def formatVRayCmdWithParts( cmdFile, frames, parts, startTask, outputFile, outfi
     part = ( ( startTask - 1 ) % parts ) + 1
     upper = int( math.floor( (part  - 1) * ( float( height ) / float( parts ) ) ) )
     lower = int( math.floor( part * ( float( height ) / float( parts ) ) ) )
-    cmd = '"{}" -imgFile="{}\\{}.{}.exr" -sceneFile="{}" -imgWidth={} -imgHeight={} -frames={} -region={};{};{};{}  -autoClose=1 -display=0 -rtEngine={} -numThreads={}'.format(cmdFile, outputFile, outfilebasename, part, scenefile, width, height, frames, 0, upper, width, lower, rtEngine, numThreads )
+    cmd = ["{}".format( cmdFile ), "-imgFile={}/{}.{}.exr".format( outputFile, outfilebasename, part ),
+           "-sceneFile={}".format( scenefile ), "-imgWidth={}".format( width ), "-imgHeight={}".format( height ),
+           "-frames={}".format( frames ), "-region={};{};{};{}".format( 0, upper, width, lower ),
+           "-autoClose=1", "-display=0", "-rtEngine={}".format( rtEngine ),  "-numThreads={}".format( numThreads )]
     return cmd
 
 def __readFromEnvironment( ):
@@ -48,7 +63,10 @@ def __readFromEnvironment( ):
     path = os.environ.get( GOLEM_ENV )
     if not path:
         print "No Golem environment variable found... Assuming that exec is in working folder"
-        return 'vray.exe'
+        if isWindows():
+            return 'vray.exe'
+        else:
+            return 'vray'
 
     sys.path.append( path )
 
@@ -59,7 +77,10 @@ def __readFromEnvironment( ):
         return cmdFile
     else:
         print "Environment not supported... Assuming that exec is in working folder"
-        return 'vray.exe'
+        if isWindows():
+            return 'vray.exe'
+        else:
+            return 'vray'
 
 def outputNumber( num ):
     num = str( num )
@@ -79,6 +100,21 @@ def returnData( files ):
     return { 'data': res, 'resultType': 0 }
 
 ############################
+def isWindows():
+    return sys.platform == 'win32'
+
+def execCmd( cmd, nice = 20 ):
+    pc = subprocess.Popen( cmd )
+    if isWindows():
+        import win32process
+        win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS )
+    else:
+        p = psutil.Process(pc.pid)
+        p.set_nice( nice )
+
+    pc.wait()
+
+############################
 def returnFiles( files ):
     copyPath = os.path.normpath( os.path.join( tmpPath, "..") )
     for f in files:
@@ -94,7 +130,7 @@ def runVRayTask( pathRoot, startTask, endTask, hTask, totalTasks, outfilebasenam
 
     outputFiles = tmpPath
 
-    files = glob.glob( outputFiles + "*.exr" )
+    files = glob.glob( outputFiles + "/*.exr" )
 
     for f in files:
         os.remove(f)
@@ -126,14 +162,9 @@ def runVRayTask( pathRoot, startTask, endTask, hTask, totalTasks, outfilebasenam
 
     print cmd
 
-    pc = subprocess.Popen( cmd )
+    execCmd( cmd )
 
-    win32process.SetPriorityClass( pc._handle, win32process.IDLE_PRIORITY_CLASS )
-
-
-    pc.wait()
-
-    files = glob.glob( outputFiles + "\*.exr" )
+    files = glob.glob( outputFiles + "/*.exr" )
 
     return returnData( files )
 

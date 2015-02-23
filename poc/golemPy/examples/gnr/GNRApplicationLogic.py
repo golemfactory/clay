@@ -263,8 +263,8 @@ class GNRApplicationLogic( QtCore.QObject ):
 
     ######################
     def recountPerformance( self, numCores ):
-        testFile = os.path.join( os.environ.get('GOLEM'), 'testtasks\minilight\cornellbox.ml.txt' )
-        resultFile = os.path.join( os.environ.get( 'GOLEM' ), 'examples\\gnr\\node_data\\minilight.ini')
+        testFile = os.path.normpath( os.path.join( os.environ.get('GOLEM'), 'testtasks/minilight/cornellbox.ml.txt' ) )
+        resultFile = os.path.normpath( os.path.join( os.environ.get( 'GOLEM' ), 'examples/gnr/node_data/minilight.ini') )
         estimatedPerf =  makePerfTest(testFile, resultFile, numCores)
         return estimatedPerf
 

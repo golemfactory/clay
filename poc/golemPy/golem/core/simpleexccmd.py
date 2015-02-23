@@ -1,8 +1,18 @@
 import subprocess
-import win32process
+import sys
+import psutil
 
-def execCmd( cmd ):
+def isWindows():
+    return sys.platform == 'win32'
+
+def execCmd( cmd, nice = 20, wait = True ):
     pc = subprocess.Popen( cmd )
-    win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS )
+    if isWindows():
+        import win32process
+        win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS )
+    else:
+        p = psutil.Process(pc.pid)
+        p.set_nice( nice )
 
-    pc.wait()
+    if wait:
+        pc.wait()

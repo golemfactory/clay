@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 def build3dsMaxRendererInfo():
     defaults = RendererDefaults()
     defaults.outputFormat       = "EXR"
-    defaults.mainProgramFile    = os.path.normpath( os.path.join( os.environ.get( 'GOLEM' ), 'examples\\tasks\\3dsMaxTask.py' ) )
+    defaults.mainProgramFile    = os.path.normpath( os.path.join( os.environ.get( 'GOLEM' ), 'examples/tasks/3dsMaxTask.py' ) )
     defaults.minSubtasks        = 1
     defaults.maxSubtasks        = 100
     defaults.defaultSubtasks    = 6

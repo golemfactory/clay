@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 def buildLuxRenderInfo():
     defaults = RendererDefaults()
     defaults.outputFormat = "EXR"
-    defaults.mainProgramFile = os.path.normpath( os.path.join( os.environ.get('GOLEM'), 'examples\\tasks\\luxTask.py') )
+    defaults.mainProgramFile = os.path.normpath( os.path.join( os.environ.get('GOLEM'), 'examples/tasks/luxTask.py') )
     defaults.minSubtasks = 1
     defaults.maxSubtasks = 100
     defaults.defaultSubtasks = 5

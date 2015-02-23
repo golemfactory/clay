@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 def buildVRayRendererInfo():
     defaults = RendererDefaults()
     defaults.outputFormat = "EXR"
-    defaults.mainProgramFile = os.path.normpath( os.path.join( os.environ.get('GOLEM'), 'examples\\tasks\\VRayTask.py' ) )
+    defaults.mainProgramFile = os.path.normpath( os.path.join( os.environ.get('GOLEM'), 'examples/tasks/VRayTask.py' ) )
     defaults.minSubtasks = 1
     defaults.maxSubtasks = 100
     defaults.defaultSubtasks = 6
@@ -375,7 +375,7 @@ class VRayTask( FrameRenderingTask ):
         else:
             self.collectedFileNames = OrderedDict( sorted( self.collectedFileNames.items() ) )
             self.collectedAlphaFiles = OrderedDict( sorted( self.collectedAlphaFiles.items() ) )
-            files = " ".join( self.collectedFileNames.values() + self.collectedAlphaFiles.values() )
+            files = self.collectedFileNames.values() + self.collectedAlphaFiles.values()
             self._putCollectedFilesTogether( outputFileName, files, "add" )
 
     #######################
@@ -432,7 +432,7 @@ class VRayTask( FrameRenderingTask ):
             collected = OrderedDict( sorted( collected.items() ) )
             collectedAlphas = self.framesAlphaParts[ frameNum ]
             collectedAlphas = OrderedDict( sorted( collectedAlphas.items() ) )
-            files = " ".join( collected.values() + collectedAlphas.values() )
+            files = collected.values() + collectedAlphas.values()
             self._putCollectedFilesTogether( outputFileName, files, "add" )
         else:
             collector = RenderingTaskCollector()

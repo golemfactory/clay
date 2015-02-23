@@ -309,9 +309,9 @@ main(int argc, char *argv[]) {
 	TaskCollector *taskCollector;
 
 	if (strcmp(argv[1], "add") == 0) {
-		taskCollector = &(AddTaskCollector());
+		taskCollector = new AddTaskCollector();
 	} else if ( strcmp( argv[1], "paste") == 0) {
-		taskCollector = &(PasteTaskCollector());
+		taskCollector = new PasteTaskCollector();
 	} else {
 		printf("Possible types: 'add', 'paste'\n");
 		return -1;

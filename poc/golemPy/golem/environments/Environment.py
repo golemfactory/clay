@@ -1,3 +1,5 @@
+import sys
+
 class Environment:
     @classmethod
     def getId( cls ):
@@ -39,3 +41,9 @@ class Environment:
         if self.longDescription:
             desc += "Additional informations:\n" + self.longDescription
         return desc
+
+    def isWindows( self ):
+        return sys.platform == 'win32'
+
+    def isLinux( self ):
+        return sys.platform.startswith('linux')
