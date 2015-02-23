@@ -2,13 +2,14 @@ import os
 import platform
 import subprocess
 
-def checkCmd( cmd ):
+def checkCmd( cmd, noOutput = True ):
     prefCmd = "where" if platform.system() == "Windows" else "which"
     try:
-        rc = subprocess.call([prefCmd, cmd])
-        if rc == 0:
+        if noOutput:
+            rc = subprocess.check_output( [prefCmd, cmd], stderr=subprocess.STDOUT )
             return True
         else:
-            return False
-    except:
+            rc = subprocess.call([prefCmd, cmd])
+            return rc == 0
+    except Exception, err:
         return False
