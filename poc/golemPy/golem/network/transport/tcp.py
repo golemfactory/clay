@@ -48,7 +48,7 @@ class Network:
             conn.setSession( session )
 
             pp = conn.transport.getPeer()
-            logger.info( "__connectionEstablished {} {}".format( pp.host, pp.port ) )
+            logger.debug( "__connectionEstablished {} {}".format( pp.host, pp.port ) )
 
             if establishedCallback:
                 if len( args ) == 0:

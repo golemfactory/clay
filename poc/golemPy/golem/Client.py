@@ -200,8 +200,13 @@ class Client:
     def enqueueNewTask( self, task ):
         self.taskServer.taskManager.addNewTask( task )
         if self.configDesc.useDistributedResourceManagement:
+            self.getResourcePeers()
             resFiles = self.resourceServer.addFilesToSend( task.taskResources, task.header.taskId, self.configDesc.distResNum )
             task.setResFiles( resFiles )
+
+    ############################
+    def getResourcePeers( self ):
+        self.p2pservice.sendGetResourcePeers()
 
     ############################
     def taskResourcesSend( self, taskId ):
@@ -360,6 +365,15 @@ class Client:
         return self.taskServer.taskManager.querryTaskState( taskId )
 
     ############################
+    def pullResources( self, taskId, listFiles ):
+        self.resourceServer.addFilesToGet( listFiles, taskId )
+        self.getResourcePeers()
+
+    ############################
+    def addResourcePeer( self, clientId, addr, port ):
+        self.resourceServer.addResourcePeer( clientId, addr, port )
+
+    ############################
     def supportedTask( self, thDictRepr ):
         supported = self.__checkSupportedEnvironment( thDictRepr )
         return supported and self.__checkSupportedVersion( thDictRepr )
@@ -413,10 +427,6 @@ class Client:
                     l.checkNetworkState()
 
                 #self.managerServer.sendStateMessage( self.lastNodeStateSnapshot )
-
-            if time.time() - self.lastGetResourcePeersTime > self.getResourcePeersInterval:
-                self.p2pservice.sendGetResourcePeers()
-                self.lastGetResourcePeersTime = time.time()
 
     ############################
     def __makeNodeStateSnapshot( self, isRunning = True ):

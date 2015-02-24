@@ -197,7 +197,10 @@ class P2PService:
                     self.resourcePeers[ peer['clientId']]  = [ peer['addr'], peer['port'] ]
             except Exception, err:
                 logger.error( "Wrong set peer message (peer: {}): {}".format( peer, str( err ) ) )
-        self.resourceServer.setResourcePeers( self.resourcePeers.copy() )
+        resourcePeersCopy = self.resourcePeers.copy()
+        if self.clientUid in resourcePeersCopy:
+            del resourcePeersCopy[ self.clientUid ]
+        self.resourceServer.setResourcePeers( resourcePeersCopy )
 
     #############################
     def sendPutResource( self, resource, addr, port, copies ):
@@ -261,7 +264,7 @@ class P2PService:
     def __connectionEstablished( self, session ):
         session.p2pService = self
         self.allPeers.append( session )
-        logger.info( "Connection to peer established. {}: {}".format( session.conn.transport.getPeer().host, session.conn.transport.getPeer().port ) )
+        logger.debug( "Connection to peer established. {}: {}".format( session.conn.transport.getPeer().host, session.conn.transport.getPeer().port ) )
 
     #############################
     def __connectionFailure( self ):

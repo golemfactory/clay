@@ -148,9 +148,9 @@ class TaskComputer:
     def changeConfig( self ):
         self.dirManager = DirManager( self.taskServer.getTaskComputerRoot(), self.clientUid )
         self.resourceManager = ResourcesManager( self.dirManager, self )
-        self.taskRequestFrequency   = taskServer.configDesc.taskRequestInterval
-        self.useWaitingTtl          = taskServer.configDesc.useWaitingForTaskTimeout
-        self.waitingForTaskTimeout  = taskServer.configDesc.waitingForTaskTimeout
+        self.taskRequestFrequency   = self.taskServer.configDesc.taskRequestInterval
+        self.useWaitingTtl          = self.taskServer.configDesc.useWaitingForTaskTimeout
+        self.waitingForTaskTimeout  = self.taskServer.configDesc.waitingForTaskTimeout
 
     ######################
     def __requestTask( self ):

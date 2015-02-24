@@ -167,6 +167,7 @@ class TaskSession:
         elif type == MessageDeltaParts.Type:
             self.taskComputer.waitForResources( self.taskId, msg.deltaHeader )
             self.taskServer.pullResources( self.taskId, msg.parts )
+            self.taskServer.addResourcePeer( msg.clientId, msg.addr, msg.port )
             self.dropped()
         elif type == MessageResourceFormat.Type:
             if not msg.useDistributedResource:
@@ -229,7 +230,7 @@ class TaskSession:
     ##########################
     def __sendResourcePartsList(self, msg ):
         deltaHeader, partsList = self.taskManager.getResourcePartsList( msg.taskId, pickle.loads( msg.resourceHeader ) )
-        self.__send( MessageDeltaParts( self.taskId, deltaHeader, partsList ) )
+        self.__send( MessageDeltaParts( self.taskId, deltaHeader, partsList, self.taskServer.getClientId(), self.taskServer.getResourceAddr(), self.taskServer.getResourcePort() ) )
 
     ##########################
     def __sendResourceFormat( self, useDistributedResource ):

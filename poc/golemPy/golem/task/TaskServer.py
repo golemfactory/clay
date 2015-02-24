@@ -72,7 +72,7 @@ class TaskServer:
 
     #############################
     def pullResources( self, taskId, listFiles ):
-        self.client.resourceServer.addFilesToGet( listFiles, taskId )
+        self.client.pullResources( taskId, listFiles )
 
     #############################
     def sendResults( self, subtaskId, result, ownerAddress, ownerPort ):
@@ -161,6 +161,22 @@ class TaskServer:
             return self.resultsToSend[ subtaskId ]
         else:
             return None
+
+    #############################
+    def getClientId( self ):
+        return self.configDesc.clientUid
+
+    #############################
+    def getResourceAddr( self ) :
+        return self.client.hostAddress
+
+    #############################
+    def getResourcePort( self ) :
+        return self.client.resourcePort
+
+    #############################
+    def addResourcePeer( self, clientId, addr, port ):
+        self.client.addResourcePeer( clientId, addr, port )
 
     #############################
     def taskResultSent( self, subtaskId ):

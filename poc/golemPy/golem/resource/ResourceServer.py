@@ -1,6 +1,7 @@
 import logging
 import random
 import os
+import time
 
 from golem.network.transport.Tcp import Network
 from golem.network.GNRServer import GNRServer
@@ -29,6 +30,13 @@ class ResourceServer( GNRServer ):
         self.waitingTasks = {}
         self.waitingTasksToCompute = {}
         self.waitingResources = {}
+
+        self.lastGetResourcePeersTime  = time.time()
+        self.getResourcePeersInterval = 5.0
+
+    ############################
+    def getPeers( self ):
+        self.client.getResourcePeers()
 
     ############################
     def addFilesToSend( self, files, taskId, num ):
@@ -68,21 +76,29 @@ class ResourceServer( GNRServer ):
         session.resourceServer = self
 
     ############################
+    def addResourcePeer(self, clientId, addr, port ):
+        if clientId in self.resourcePeers:
+            if self.resourcePeers[ clientId ]['addr'] == addr and self.resourcePeers[clientId]['port'] == port:
+                return
+
+        self.resourcePeers[ clientId ] = { 'addr': addr, 'port': port, 'state': 'free' }
+
+    ############################
     def setResourcePeers( self, resourcePeers ):
 
         if self.configDesc.clientUid in resourcePeers:
             del resourcePeers[ self.configDesc.clientUid ]
 
         for clientId, [addr, port] in resourcePeers.iteritems():
-            if clientId in self.resourcePeers:
-                if self.resourcePeers[ clientId ]['addr'] == addr and self.resourcePeers[clientId]['port'] == port:
-                    return
-
-            self.resourcePeers[ clientId ] = { 'addr': addr, 'port': port, 'state': 'free' }
-
+            self.addResourcePeer( clientId, addr, port )
 
     ############################
     def syncNetwork( self ):
+        if len( self.resourcesToGet ) + len( self.resourcesToSend ) > 0:
+            curTime = time.time()
+            if curTime - self.lastGetResourcePeersTime > self.getResourcePeersInterval:
+                self.client.getResourcePeers()
+                self.lastGetResourcePeersTime = time.time()
         self.sendResources()
         self.getResources()
 
@@ -120,7 +136,7 @@ class ResourceServer( GNRServer ):
 
     ############################
     def pullResource( self, resource, addr, port ):
-        Network.connect( addr, port, ResourceSession, self.__connectionPullResourceEstablished, self.__connectionPullResourceFailure, resource )
+        Network.connect( addr, port, ResourceSession, self.__connectionPullResourceEstablished, self.__connectionPullResourceFailure, resource, addr, port )
 
     ############################
     def pullAnswer( self, resource, hasResource, session ):
@@ -142,7 +158,7 @@ class ResourceServer( GNRServer ):
 
     ############################
     def pushResource( self, resource, addr, port, copies ):
-        Network.connect( addr, port, ResourceSession, self.__connectionPushResourceEstablished, self.__connectionPushResourceFailure, resource, copies )
+        Network.connect( addr, port, ResourceSession, self.__connectionPushResourceEstablished, self.__connectionPushResourceFailure, resource, copies, addr, port )
 
     ############################
     def checkResource( self, resource ):
@@ -202,30 +218,46 @@ class ResourceServer( GNRServer ):
 
 
     ############################
-    def __connectionPushResourceEstablished( self, session, resource, copies ):
+    def __connectionPushResourceEstablished( self, session, resource, copies, addr, port ):
         session.resourceServer = self
         session.sendPushResource( resource, copies )
 
     ############################
-    def __connectionPushResourceFailure( self, *args ):
+    def __connectionPushResourceFailure( self, resource, copies, addr, port ):
+        self.__removeClient( addr, port )
         logger.error( "Connection to resource server failed" )
 
     ############################
-    def __connectionPullResourceEstablished( self, session, resource ):
+    def __connectionPullResourceEstablished( self, session, resource, addr, port ):
         session.resourceServer = self
         session.sendPullResource( resource )
 
     ############################
-    def __connectionPullResourceFailure( self, *args ):
+    def __connectionPullResourceFailure( self, resource, addr, port ):
+        self.__removeClient( addr, port )
         logger.error( "Connection to resource server failed" )
 
     ############################
-    def __connectionForResourceEstablished( self, session, resource ):
+    def __connectionForResourceEstablished( self, session, resource, addr, port ):
         session.sendWantResource( resource )
 
     ############################
-    def __connectionForResourceFailure( self, *args ):
+    def __connectionForResourceFailure( self, resource, addr, port ):
+        self.__removeClient( addr, port )
         logger.error( "Connection to resource server failed" )
+
+    ############################
+    def __removeClient( self, addr, port ):
+        badClient = None
+        for clientId, peer in self.resourcePeers.iteritems():
+            if peer['addr'] == addr and peer['port'] == port:
+                badClient = clientId
+                break
+
+        print "remove client {}".format( badClient )
+
+        if badClient is not None:
+            self.resoucePeers[ badClient ]
 
     ############################
     def _listeningEstablished( self, iListeningPort ):

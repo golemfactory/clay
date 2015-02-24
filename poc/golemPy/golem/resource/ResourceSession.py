@@ -43,6 +43,7 @@ class ResourceSession:
             if self.resourceServer.checkResource( msg.resource ):
                 self.sendHasResource( msg.resource )
                 if copies > 0:
+                    self.resourceServer.getPeers()
                     self.resourceServer.addResourceToSend( msg.resource, copies )
             else:
                 self.sendWantResource( msg.resource )
@@ -65,7 +66,10 @@ class ResourceSession:
             logger.info( "Disconnecting {}:{}".format( self.address, self.port ) )
             self.dropped()
         elif type == MessagePullResource.Type:
-            self.sendPullAnswer( msg.resource, self.resourceServer.checkResource( msg.resource) )
+            hasResource = self.resourceServer.checkResource( msg.resource)
+            if not hasResource:
+                self.resourceServer.getPeers()
+            self.sendPullAnswer( msg.resource, hasResource )
         elif type == MessagePullAnswer.Type:
             self.resourceServer.pullAnswer( msg.resource, msg.hasResource, self )
         else:

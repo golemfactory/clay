@@ -522,24 +522,36 @@ class MessageDeltaParts( Message ):
     TASK_ID_STR = u"TASK_ID"
     DELTA_HEADER_STR = u"DELTA_HEADER"
     PARTS_STR = u"PARTS"
+    CLIENT_ID_STR = u"CLIENT_ID"
+    ADDR_STR = u"ADDR"
+    PORT_STR = u"PORT"
 
-    def __init__( self, taskId = 0, deltaHeader = None, parts = None, dictRepr = None ):
+    def __init__( self, taskId = 0, deltaHeader = None, parts = None, clientId = '', addr  = '', port = '', dictRepr = None ):
         Message.__init__( self, MessageDeltaParts.Type )
 
         self.taskId = taskId
         self.deltaHeader = deltaHeader
         self.parts = parts
+        self.clientId = clientId
+        self.addr = addr
+        self.port = port
 
         if dictRepr:
             self.taskId = dictRepr[ MessageDeltaParts.TASK_ID_STR ]
             self.deltaHeader = dictRepr[ MessageDeltaParts.DELTA_HEADER_STR ]
             self.parts = dictRepr[ MessageDeltaParts.PARTS_STR ]
+            self.clientId = dictRepr[ MessageDeltaParts.CLIENT_ID_STR ]
+            self.addr = dictRepr[ MessageDeltaParts.ADDR_STR ]
+            self.port = dictRepr[ MessageDeltaParts.PORT_STR ]
 
     def dictRepr( self ):
         return {
             MessageDeltaParts.TASK_ID_STR: self.taskId,
             MessageDeltaParts.DELTA_HEADER_STR: self.deltaHeader,
-            MessageDeltaParts.PARTS_STR: self.parts
+            MessageDeltaParts.PARTS_STR: self.parts,
+            MessageDeltaParts.CLIENT_ID_STR: self.clientId,
+            MessageDeltaParts.ADDR_STR: self.addr,
+            MessageDeltaParts.PORT_STR: self.port
         }
 
 class MessageResourceFormat( Message ):
