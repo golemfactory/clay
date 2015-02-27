@@ -29,7 +29,7 @@ class SimpleRank:
     def setSeedRank( self, nodeId ):
         self.ranking[ nodeId ] = self.seedRank
 
-    def changeNodeRank( self, nodeId, otherRanks ):
+    def globalNodeRank( self, nodeId, otherRanks ):
         weightSum = 0.0
         rankSum = 0.0
         for nId, rank in otherRanks.iteritems():
@@ -52,5 +52,6 @@ class SimpleRank:
             rankSum += self.basicRank
             weightSum += 1.0
 
-        self.setNodeRank( nodeId, rankSum / weightSum )
+        return rankSum / weightSum
+
 
