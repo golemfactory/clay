@@ -34,6 +34,10 @@ class ResourceServer( GNRServer ):
         self.lastGetResourcePeersTime  = time.time()
         self.getResourcePeersInterval = 5.0
 
+    def changeResourceDir( self, configDesc ):
+        dirManager = DirManager( configDesc.rootPath, configDesc.clientUid )
+        self.resourceManager.changeResourceDir( dirManager.getResourceDir() )
+
     ############################
     def getPeers( self ):
         self.client.getResourcePeers()

@@ -284,6 +284,8 @@ class Client:
         except:
             logger.warning( "{} is not a proper port number".format( newConfigDesc.seedHostPort ) )
             self.configDesc.seedHostPort = ""
+        if self.configDesc.rootPath != newConfigDesc.rootPath:
+            self.resourceServer.changeResourceDir( newConfigDesc )
         self.configDesc.rootPath = newConfigDesc.rootPath
         try:
             self.configDesc.managerPort = int( newConfigDesc.managerPort )

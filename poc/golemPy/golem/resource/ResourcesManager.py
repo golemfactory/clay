@@ -6,6 +6,7 @@ import struct
 import logging
 
 from golem.core.databuffer import DataBuffer
+from golem.core.copyFileTree import copyFileTree
 from golem.resource.ResourceHash import ResourceHash
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,19 @@ class DistributedResourceManager:
         self.resources = set()
         self.resourceDir = resourceDir
         self.addResources()
+
+    def changeResourceDir( self, resourceDir ):
+        self.copyResources( resourceDir )
+        self.resources = set()
+        self.resourceDir = resourceDir
+        self.addResources()
+
+    def copyResources(self, newResourceDir ):
+        copyFileTree( self.resourceDir, newResourceDir )
+        filenames = next(os.walk( self.resourceDir ))[2]
+        for f in filenames:
+            os.remove( os.path.join( self.resourceDir, f ) )
+
 
     ###################
     def splitFile( self, fileName, blockSize = 2 ** 20 ):
