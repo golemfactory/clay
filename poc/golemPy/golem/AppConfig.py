@@ -16,7 +16,6 @@ ESTIMATED_DEFAULT = 2220.0
 START_PORT = 40102
 END_PORT = 60102
 OPTIMAL_PEER_NUM = 10
-DEFAULT_ROOT_PATH = os.environ.get( 'GOLEM' )
 MAX_RESOURCE_SIZE = 250 * 1024
 MAX_MEMORY_SIZE = 250 * 1024
 DISTRIBUTED_RES_NUM = 2
@@ -29,7 +28,6 @@ class CommonConfig:
     ##############################
     def __init__( self,
                   section = "Common",
-                  rootPath = DEFAULT_ROOT_PATH,
                   managerAddress = MANAGER_ADDRESS,
                   managerPort = MANAGER_PORT,
                   startPort = START_PORT,
@@ -46,7 +44,6 @@ class CommonConfig:
         ConfigEntry.createProperty( section, "end port",            endPort, self, "EndPort" )
         ConfigEntry.createProperty( section, "manager address", managerAddress, self, "ManagerAddress" )
         ConfigEntry.createProperty( section, "manager listen port", managerPort, self, "ManagerListenPort" )
-        ConfigEntry.createProperty( section, "resource root path", rootPath, self, "RootPath")
         ConfigEntry.createProperty( section, "distributed res num", distributedResNum, self, "DistributedResNum" )
         ConfigEntry.createProperty( section, "application name", appName, self, "AppName" )
         ConfigEntry.createProperty( section, "application version", appVersion, self, "AppVersion" )
@@ -82,9 +79,11 @@ class NodeConfig:
     ADD_TASKS = 0
     MAX_SENDING_DELAY = 360
     USE_DISTRIBUTED_RESOURCE_MANAGEMENT = 1
+    DEFAULT_ROOT_PATH = os.environ.get( 'GOLEM' )
+
 
     ##############################
-    def __init__( self, nodeId, seedHost = "", seedPort = 0, numCores = 4, maxResourceSize = MAX_RESOURCE_SIZE,
+    def __init__( self, nodeId, seedHost = "", seedPort = 0, rootPath = DEFAULT_ROOT_PATH, numCores = 4, maxResourceSize = MAX_RESOURCE_SIZE,
                   maxMemorySize = MAX_MEMORY_SIZE, sendPings = SEND_PINGS, pingsInterval = PINGS_INTERVALS,
                   gettingPeersInterval = GETTING_PEERS_INTERVAL, gettingTasksInterval = GETTING_TASKS_INTERVAL,
                   taskRequestInterval = TASK_REQUEST_INTERVAL, useWaitingForTaskTimeout = USE_WAITING_FOR_TASK_TIMEOUT,
@@ -99,6 +98,7 @@ class NodeConfig:
 
         ConfigEntry.createProperty( self.section(), "seed host", seedHost, self, "SeedHost" )
         ConfigEntry.createProperty( self.section(), "seed host port", seedPort, self, "SeedHostPort")
+        ConfigEntry.createProperty( self.section(), "resource root path", rootPath, self, "RootPath")
         ConfigEntry.createProperty( self.section(), "send pings", sendPings, self, "SendPings" )
         ConfigEntry.createProperty( self.section(), "pings interval", pingsInterval, self, "PingsInterval" )
         ConfigEntry.createProperty( self.section(), "client UUID", u"",   self, "ClientUid" )
@@ -165,9 +165,6 @@ class AppConfig:
         self._cfg = cfg
 
     ##############################
-    def getRootPath( self ):
-        return self._cfg.getCommonConfig().getRootPath()
-
     def getOptimalPeerNum( self ):
         return self._cfg.getCommonConfig().getOptimalPeerNum()
 
@@ -197,6 +194,9 @@ class AppConfig:
 
     def getSeedHostPort( self ):
         return self._cfg.getNodeConfig().getSeedHostPort()
+
+    def getRootPath( self ):
+        return self._cfg.getNodeConfig().getRootPath()
 
     def getSendPings( self ):
         return self._cfg.getNodeConfig().getSendPings()
@@ -255,6 +255,7 @@ class AppConfig:
 
         self._cfg.getNodeConfig().setSeedHost( cfgDesc.seedHost )
         self._cfg.getNodeConfig().setSeedHostPort( cfgDesc.seedHostPort )
+        self._cfg.getNodeConfig().setRootPath( cfgDesc.rootPath )
         self._cfg.getNodeConfig().setNumCores( cfgDesc.numCores )
         self._cfg.getNodeConfig().setEstimatedPerformance( cfgDesc.estimatedPerformance )
         self._cfg.getNodeConfig().setMaxResourceSize( cfgDesc.maxResourceSize )
@@ -269,7 +270,7 @@ class AppConfig:
         self._cfg.getNodeConfig().setNodeSnapshotInterval( cfgDesc.nodeSnapshotInterval )
         self._cfg.getNodeConfig().setMaxResultsSendingDelay( cfgDesc.maxResultsSendingDelay  )
         self._cfg.getNodeConfig().setUseDistributedResourceManagement( cfgDesc.useDistributedResourceManagement )
-        self._cfg.getCommonConfig().setRootPath( cfgDesc.rootPath )
+
         self._cfg.getCommonConfig().setManagerAddress( cfgDesc.managerAddress )
         self._cfg.getCommonConfig().setManagerListenPort( cfgDesc.managerPort )
         self._cfg.getCommonConfig().setOptimalPeerNum( cfgDesc.optNumPeers )
