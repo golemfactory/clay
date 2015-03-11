@@ -1,6 +1,9 @@
 import multiprocessing
 import logging
+import subprocess
+
 from PyQt4 import QtCore
+from PyQt4.QtGui import QMessageBox
 
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
@@ -25,6 +28,7 @@ class ConfigurationDialogCustomizer:
         self.__loadBasicConfig( configDesc )
         self.__loadAdvanceConfig( configDesc )
         self.__loadManagerConfig( configDesc )
+        self.__loadResourceConfig()
 
     #############################
     def __loadBasicConfig( self, configDesc ):
@@ -73,6 +77,7 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex( index )
         self.gui.ui.maxMemoryUsageSpinBox.setValue( maxMemorySize )
 
+    #############################
     def __loadAdvanceConfig( self, configDesc ):
         self.gui.ui.optimalPeerNumLineEdit.setText( u"{}".format( configDesc.optNumPeers ) )
 
@@ -110,11 +115,56 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.managerPortLineEdit.setText( u"{}".format( configDesc.managerPort ) )
 
     #############################
+    def __loadResourceConfig( self ):
+        resDirs = self.logic.getResDirs()
+        self.gui.ui.computingResSize.setText( self.du( resDirs['computing'] ) )
+        self.gui.ui.distributedResSize.setText( self.du(resDirs['distributed'] ))
+        self.gui.ui.receivedResSize.setText( self.du( resDirs['received'] ))
+
+    #############################
+    def du( self, path ):
+        try:
+            return subprocess.check_output(['du', '-sh', path]).split()[0]
+        except:
+            return "Error"
+
+    #############################
     def __setupConnections( self ):
         self.gui.ui.recountButton.clicked.connect( self.__recountPerformance )
         self.gui.ui.buttonBox.accepted.connect ( self.__changeConfig )
 
         QtCore.QObject.connect( self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged( const int )"), self.__recountPerformance )
+
+        self.gui.ui.removeComputingButton.clicked.connect( self.__removeFromComputing )
+        self.gui.ui.removeDistributedButton.clicked.connect( self.__removeFromDistributed )
+        self.gui.ui.removeReceivedButton.clicked.connect( self.__removeFromReceived )
+
+    #############################
+    def __removeFromComputing( self ):
+        reply = QMessageBox.question( self.gui.window, 'Golem Message', "Are you sure you want to remove all computed files?", QMessageBox.Yes | QMessageBox.No, defaultButton = QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.logic.removeComputedFiles()
+            self.__loadResourceConfig()
+        else:
+            pass
+
+    #############################
+    def __removeFromDistributed( self ):
+        reply = QMessageBox.question( self.gui.window, 'Golem Message', "Are you sure you want to remove all distributed resources?", QMessageBox.Yes | QMessageBox.No, defaultButton = QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.logic.removeDistributedFiles()
+            self.__loadResourceConfig()
+        else:
+            pass
+
+    #############################
+    def __removeFromReceived( self ):
+        reply = QMessageBox.question( self.gui.window, 'Golem Message', "Are you sure you want to remove all received task results?", QMessageBox.Yes | QMessageBox.No, defaultButton = QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.logic.removeReceivedFiles()
+            self.__loadResourceConfig()
+        else:
+            pass
 
     #############################
     def __countResourceSize( self, size, index ):

@@ -60,6 +60,22 @@ class GNRApplicationLogic( QtCore.QObject ):
         self.addNewNodesFunction = func
 
     ######################
+    def getResDirs( self ):
+        return self.client.getResDirs()
+
+    ######################
+    def removeComputedFiles( self ):
+        self.client.removeComputedFiles()
+
+    ######################
+    def removeDistributedFiles( self ):
+        self.client.removeDistributedFiles()
+
+    ######################
+    def removeReceivedFiles( self ):
+        self.client.removeReceivedFiles()
+
+    ######################
     def checkNetworkState( self ):
         listenPort = self.client.p2pservice.p2pServer.curPort
         taskServerPort = self.client.taskServer.curPort

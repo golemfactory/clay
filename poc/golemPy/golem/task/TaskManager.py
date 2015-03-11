@@ -32,7 +32,8 @@ class TaskManager:
         self.listenAddress  = listenAddress
         self.listenPort     = listenPort
 
-        self.dirManager     = DirManager( rootPath, self.clientUid )
+        self.rootPath = rootPath
+        self.dirManager     = DirManager( self.getTaskManagerRoot(), self.clientUid )
 
         self.subTask2TaskMapping = {}
 
@@ -40,6 +41,10 @@ class TaskManager:
         self.activeStatus = [ TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting ]
 
         self.useDistributedResources = useDistributedResources
+
+    #######################
+    def getTaskManagerRoot( self ):
+        return self.rootPath
 
     #######################
     def registerListener( self, listener ):

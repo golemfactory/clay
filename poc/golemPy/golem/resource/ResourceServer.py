@@ -22,8 +22,8 @@ class ResourceServer( GNRServer ):
         self.resourcesToGet = []
         self.resSendIt = 0
         self.peersIt = 0
-        dirManager = DirManager( configDesc.rootPath, configDesc.clientUid )
-        self.resourceManager = DistributedResourceManager( dirManager.getResourceDir() )
+        self.dirManager = DirManager( configDesc.rootPath, configDesc.clientUid )
+        self.resourceManager = DistributedResourceManager( self.dirManager.getResourceDir() )
         GNRServer.__init__( self, configDesc, ResourceServerFactory )
 
         self.resourcePeers = {}
@@ -35,8 +35,12 @@ class ResourceServer( GNRServer ):
         self.getResourcePeersInterval = 5.0
 
     def changeResourceDir( self, configDesc ):
-        dirManager = DirManager( configDesc.rootPath, configDesc.clientUid )
-        self.resourceManager.changeResourceDir( dirManager.getResourceDir() )
+        self.dirManager.rootPath = configDesc.rootPath
+        self.dirManager.nodeId = configDesc.clientUid
+        self.resourceManager.changeResourceDir( self.dirManager.getResourceDir() )
+
+    def getDistributedResourceRoot( self ):
+        return self.dirManager.getResourceDir()
 
     ############################
     def getPeers( self ):

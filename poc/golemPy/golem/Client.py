@@ -17,6 +17,7 @@ from golem.Message import initMessages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
 from golem.environments.EnvironmentsManager import EnvironmentsManager
 from golem.resource.ResourceServer import ResourceServer
+from golem.resource.DirManager import DirManager
 
 import logging
 
@@ -380,6 +381,39 @@ class Client:
         supported = self.__checkSupportedEnvironment( thDictRepr )
         return supported and self.__checkSupportedVersion( thDictRepr )
 
+    ############################
+    def getResDirs( self ):
+        dirs = { "computing": self.getComputedFilesDir(),
+                 "received": self.getReceivedFilesDir(),
+                 "distributed": self.getDistributedFilesDir()
+                }
+        return dirs
+
+    def getComputedFilesDir( self ):
+        return self.taskServer.getTaskComputerRoot()
+
+    def getReceivedFilesDir( self ):
+        return self.taskServer.taskManager.getTaskManagerRoot()
+
+    def getDistributedFilesDir( self ):
+        return self.resourceServer.getDistributedResourceRoot()
+
+    ############################
+    def removeComputedFiles( self ):
+        dirManager = DirManager(self.configDesc.rootPath, self.configDesc.clientUid )
+        dirManager.clearDir( self.getComputedFilesDir() )
+
+   ############################
+    def removeDistributedFiles( self ):
+        dirManager = DirManager(self.configDesc.rootPath, self.configDesc.clientUid )
+        dirManager.clearDir( self.getDistributedFilesDir() )
+
+   ############################
+    def removeReceivedFiles( self ):
+        dirManager = DirManager(self.configDesc.rootPath, self.configDesc.clientUid )
+        dirManager.clearDir( self.getReceivedFilesDir() )
+
+    ############################
     def __checkSupportedEnvironment( self, thDictRepr ):
         if "environment" not in thDictRepr:
             return False
@@ -387,6 +421,7 @@ class Client:
             return False
         return self.environmentsManager.acceptTasks( thDictRepr[ "environment"] )
 
+    #############################
     def __checkSupportedVersion( self, thDictRepr ):
         if "minVersion" not in thDictRepr:
             return True

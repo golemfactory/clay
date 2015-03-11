@@ -286,7 +286,7 @@ class AbsRenderingMainWindowCustomizer ( object ):
                 if definition.renderer in frameRenderers and definition.rendererOptions.useFrames:
                     frames = len ( definition.rendererOptions.frames )
                     frameNum = self.gui.ui.frameSlider.value()
-                    boarder = renderer.getTaskBoarder( subtask.extraData['startTask'],
+                    border = renderer.getTaskBoarder( subtask.extraData['startTask'],
                                                        subtask.extraData['endTask'],
                                                        subtask.extraData['totalTasks'],
                                                        self.currentTaskHighlighted.definition.resolution[0],
@@ -295,20 +295,25 @@ class AbsRenderingMainWindowCustomizer ( object ):
                                                        frames = frames,
                                                        frameNum = frameNum )
                 else:
-                    boarder = renderer.getTaskBoarder( subtask.extraData['startTask'],
+                    border = renderer.getTaskBoarder( subtask.extraData['startTask'],
                                                        subtask.extraData['endTask'],
                                                        subtask.extraData['totalTasks'],
                                                        self.currentTaskHighlighted.definition.resolution[0],
                                                        self.currentTaskHighlighted.definition.resolution[1])
-                pixmap = QPixmap( self.lastPreviewPath )
-                p = QPainter( pixmap )
-                pen = QPen( QColor( 0, 0, 0 ))
-                pen.setWidth( 3 )
-                p.setPen( pen )
-                for (x, y) in boarder:
-                    p.drawPoint( x, y )
-                p.end()
-                self.gui.ui.previewLabel.setPixmap( pixmap )
+
+                if os.path.isfile( self.lastPreviewPath ):
+                    self.__drawBoarder( border )
+
+    def __drawBoarder(self, border ):
+        pixmap = QPixmap( self.lastPreviewPath )
+        p = QPainter( pixmap )
+        pen = QPen( QColor( 0, 0, 0 ))
+        pen.setWidth( 3 )
+        p.setPen( pen )
+        for (x, y) in border:
+            p.drawPoint( x, y )
+        p.end()
+        self.gui.ui.previewLabel.setPixmap( pixmap )
 
 class RenderingMainWindowCustomizer( AbsRenderingMainWindowCustomizer, GNRMainWindowCustomizer ):
     def __init__( self, gui, logic ):
