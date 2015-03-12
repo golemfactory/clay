@@ -13,6 +13,7 @@ import time
 
 from golem.AppConfig import AppConfig
 from golem.BankConfig import BankConfig
+from golem.Model import Database, Node, Bank
 from golem.Message import initMessages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
 from golem.environments.EnvironmentsManager import EnvironmentsManager
@@ -155,9 +156,15 @@ class Client:
         self.sendSnapshot = False
         self.snapshotLock = Lock()
 
-        self.bankConfig = BankConfig.loadConfig( self.configDesc.clientUid )
-        self.budget = self.bankConfig.getBudget()
-        self.priceBase = self.bankConfig.getPriceBase()
+        self.db = Database()
+        self.db.checkNode( self.configDesc.clientUid )
+
+
+        #self.bankConfig = BankConfig.loadConfig( self.configDesc.clientUid )
+        #self.budget = self.bankConfig.getBudget()
+        #self.priceBase = self.bankConfig.getPriceBase()
+        self.budget = Bank.get(Bank.nodeId == self.configDesc.clientUid ).val
+        self.priceBase = 10.0
 
         self.environmentsManager = EnvironmentsManager()
 
@@ -259,8 +266,9 @@ class Client:
     def payForTask( self, priceMod ):
         price = int( round( priceMod * self.priceBase ) )
         if self.budget >= price:
-            self.bankConfig.addToBudget( -price )
+#            self.bankConfig.addToBudget( -price )
             self.budget -= price
+            Bank.update(val = self.budget ).where( Bank.nodeId == self.configDesc.clientUid ).execute()
             return price
         else:
             logger.warning( "Not enough money to pay for task. ")
@@ -268,8 +276,9 @@ class Client:
 
     ############################
     def getReward( self, reward ):
-        self.bankConfig.addToBudget( reward )
+#        self.bankConfig.addToBudget( reward )
         self.budget += reward
+        Bank.update(val = self.budget ).where( Bank.nodeId == self.configDesc.clientUid ).execute()
 
     ############################
     def registerListener( self, listener ):
