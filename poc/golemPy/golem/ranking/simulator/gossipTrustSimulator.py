@@ -61,12 +61,13 @@ class GossipTrustNodeRank:
     def doGossip( self, finished ):
         gossip = [None, None ]
         gossip[0] = self.computing.doGossip( finished[0], finished[1] )
-        gossip[1] = self.computing.doGossip( finished[2], finished[3] )
+        gossip[1] = self.delegating.doGossip( finished[2], finished[3] )
         return gossip
 
 
+
 class GossipTrustSimulator( RankSimulator ):
-    def __init__( self, optPeers = 3, aggMaxSteps = 10, gossipMaxSteps = 10 ):
+    def __init__( self, optPeers = 3, aggMaxSteps = 3, gossipMaxSteps = 3 ):
         RankSimulator.__init__( self, GossipTrustNodeRank, optPeers )
         self.globalRanks = {}
         self.aggMaxSteps = aggMaxSteps
@@ -81,7 +82,7 @@ class GossipTrustSimulator( RankSimulator ):
         nodeId = 'node{}'.format( str( self.nodesCnt ).zfill(3) )
         self.nodes[ nodeId ]['globalRanking'] = {}
         self.nodes[ nodeId ]['ranking'].setNodeId( nodeId )
-    #    self.nodes[ nodeId ]['ranking'].computing.positive.printData = True
+        self.nodes[ nodeId ]['ranking'].computing.negative.printData = True
 
     def goodCounting( self, cntNode, dntNode ):
         self.nodes[ dntNode ]['ranking'].computing.incNodePositive( cntNode )
@@ -96,7 +97,16 @@ class GossipTrustSimulator( RankSimulator ):
     def noPayment( self, cntNode, dntNode ):
         self.nodes[ cntNode ]['ranking'].delegating.incNodeNegative( dntNode )
 
+    def askForNodeComputing( self, cntNode, dntNode ):
+        return True
+       # return self.nodes[dntNode]['ranking'].computing.negative.getNodeTrust( cntNode ) < 1.0
+
+    def askForNodeDelegating( self, cntNode, dntNode ):
+        return True
+      #  return self.nodes[cntNode]['ranking'].delegating.negative.getNodeTrust( dntNode ) < 1.0
+
     def syncRanking( self ):
+        print "SYNC RANKING"
         while True:
             self.doAggregationStep( )
             if self.stopAggregation():
@@ -105,11 +115,13 @@ class GossipTrustSimulator( RankSimulator ):
             if self.aggSteps >= self.aggMaxSteps:
                 break
         print "AGG STEP {}".format( self.aggSteps )
+        self.aggSteps = 0
 
     def startAggregation( self ):
         for nodeId, node in self.nodes.iteritems():
             node['ranking'].startAggregation()
         self.finished = [ False, False, False, False ]
+        self.aggSteps = 0
 
     def stopAggregation( self ):
         stop = [0, 0, 0, 0]
@@ -142,8 +154,8 @@ class GossipTrustSimulator( RankSimulator ):
             self.gossipSteps += 1
             if self.gossipSteps >= self.gossipMaxSteps:
                 break
-
         print "GOSSIP STEP {}".format( self.gossipSteps )
+        self.gossipSteps = 0
 
     def stopGossip( self ):
         stop = [0, 0, 0, 0]
@@ -216,25 +228,33 @@ class GossipTrustSimulator( RankSimulator ):
         for gossip in gossips:
             if gossip[0] is not None:
                 if gossip[0][0] is not None:
-            #        print "GOSSIP1 " + str(  gossip[0][0] )
-                    gossipVec, node1, node2 = gossip[0][0]
-                  #  print "GossipVec {}".format( gossipVec )
- #                   print "gossip nodes: {}, {}".format( node1, node2 )
+                    gossipVec, node1 = gossip[0][0]
+                    node2 = self.getSecondNode( node1 )
                     self.nodes[node1]['ranking'].computing.positive.hearGossip( gossipVec )
                     self.nodes[node2]['ranking'].computing.positive.hearGossip( gossipVec )
                 if gossip[0][1] is not None:
-                    gossipVec, node1, node2 = gossip[0][1]
+                    gossipVec, node1 = gossip[0][1]
+                    node2 = self.getSecondNode( node1 )
                     self.nodes[node1]['ranking'].computing.negative.hearGossip( gossipVec )
                     self.nodes[node2]['ranking'].computing.negative.hearGossip( gossipVec )
             if gossip[1] is not None:
                 if gossip[1][0] is not None:
-                    gossipVec, node1, node2 = gossip[1][0]
+                    gossipVec, node1 = gossip[1][0]
+                    node2 = self.getSecondNode( node1 )
                     self.nodes[node1]['ranking'].delegating.positive.hearGossip( gossipVec )
                     self.nodes[node2]['ranking'].delegating.positive.hearGossip( gossipVec )
                 if gossip[1][1] is not None:
-                    gossipVec, node1, node2 = gossip[1][1]
+                    gossipVec, node1 = gossip[1][1]
+                    node2 = self.getSecondNode( node1 )
                     self.nodes[node1]['ranking'].delegating.negative.hearGossip( gossipVec )
                     self.nodes[node2]['ranking'].delegating.negative.hearGossip( gossipVec )
+
+    def getSecondNode(self, node1 ):
+        r = random.sample( self.nodes.keys(), 1)
+        if len( self.nodes ) > 1:
+            while r == node1:
+                r = random.sample( self.nodes.keys(), 1)
+        return r[0]
 
 
 def countDiv( a, b):
@@ -267,15 +287,16 @@ def makeGossipTrustTest():
 
 def main():
     rs = GossipTrustSimulator()
-    for i in range(0, 3):
+    for i in range(0, 1):
         rs.fullAddNode( goodNode = False )
-    for i in range(0, 100):
+    for i in range(0, 2):
         rs.fullAddNode( goodNode = True )
 
     rs.printState()
     print "################"
-    for i in range(0, 2000):
+    for i in range(0, 3):
         rs.startTask( random.sample( rs.nodes.keys(), 1)[0] )
+      #  rs.syncRanking()
     rs.printState()
     rs.syncRanking()
     rs.printState()

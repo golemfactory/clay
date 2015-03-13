@@ -6,55 +6,46 @@ from copy import copy
 sys.path.append( os.environ.get( 'GOLEM' ) )
 
 from golem.ranking.simpleRank import SimpleRank
+from networkSimulator import PANetworkSimulator
 
 class RankSimulator:
-    def __init__( self, rankClass, optPeers = 3 ):
-        self.nodes = {}
+    def __init__( self, rankClass, optPeers = 2, network = PANetworkSimulator ):
+        self.network = network()
+        self.ranking = {}
+        self.behaviour = {}
         self.nodesCnt = 0
         self.rankClass = rankClass
         self.optPeers = optPeers
+        self.lastNode = None
+
+    def getLastNodeName( self ):
+        return self.lastNode
 
     def addNode( self, goodNode = True ):
-        self.nodesCnt += 1
-        self.nodes['node{}'.format( str( self.nodesCnt ).zfill(3 ))] = {'ranking': self.rankClass(), 'peers': set(), 'good': goodNode }
+        node = self.network.addNode()
+        self.ranking[ node ] = self.rankClass()
+        self.behaviour[ node ] = goodNode
+        self.lastNode = node
 
     def fullAddNode( self, goodNode = True ):
         self.addNode( goodNode )
-        self.connectNode( "node{}".format( str( self.nodesCnt ).zfill(3 ) ) )
         self.syncNetwork()
 
     def connectNode( self, node ):
-        if node not in self.nodes:
-            print "Wrong node {}".format( node )
-
-        if self.nodesCnt > 1:
-            while True:
-                seedNode = random.sample( self.nodes.keys(), 1 )[0]
-                if seedNode != node:
-                    break
-            self.nodes[ seedNode ][ 'peers' ].add( node )
-            self.nodes[ node ]['ranking'].setSeedRank( seedNode )
-            self.nodes[ node ][ 'peers' ].add( seedNode )
+        self.network.connectNode( node )
 
     def syncNetwork( self ):
-        for node, nodeData in self.nodes.iteritems():
-            if len( nodeData['peers'] ) < self.optPeers:
-                newPeers = set()
-                for peer in copy( nodeData['peers'] ):
-                    if len( self.nodes[node]['peers'] ) < self.optPeers:
-                        self.nodes[node]['peers'] |= self.nodes[peer]['peers']
-                        if node in self.nodes[ node ]['peers']:
-                            self.nodes[ node ]['peers'].remove( node )
+        self.network.syncNetwork( self.optPeers )
 
     def printState( self ):
-        for node, nodeData in self.nodes.iteritems():
-            print "{}: {}, peers {}\n".format( node, nodeData['ranking'], nodeData['peers'] )
+        for node, nodeData in self.network.nodes.iteritems():
+            print "{}: {}, peers {}\n".format( node, self.ranking[node], nodeData )
 
     def startTask( self, node ):
-        if node not in self.nodes:
+        if node not in self.ranking:
             print "Wrong node {}".format( node )
 
-        countingNodes = self.nodes.keys()
+        countingNodes = self.ranking.keys()
         for n in random.sample( countingNodes, self.numNodesTask() ):
             if n != node:
                 if self.askForNodeDelegating( n, node ) and self.askForNodeComputing( node, n ):
@@ -70,14 +61,14 @@ class RankSimulator:
         return 3
 
     def countTask(self, cntNode, dntNode ):
-        if cntNode not in self.nodes:
+        if cntNode not in self.ranking:
             print "Wrong node {}".format( cntNode )
-        if dntNode not in self.nodes:
+        if dntNode not in self.ranking:
             print "Wrong node {}".format( dntNode )
 
-        if self.nodes[cntNode]['good']:
+        if self.behaviour[cntNode]:
             self.goodCounting(cntNode, dntNode )
-            if self.nodes[dntNode]['good']:
+            if self.behaviour[dntNode]:
                 self.goodPayment( cntNode, dntNode )
             else:
                 self.noPayment( cntNode, dntNode )
@@ -96,7 +87,6 @@ class RankSimulator:
 
     def noPayment( self, cntNode, dntNode ):
         pass
-
 
 
 
@@ -128,7 +118,7 @@ class SimpleRankSimulator( RankSimulator ):
         self.addToRank( cntNode, dntNode, -self.badPaymentPunishment )
 
     def addToRank(self, inNode, forNode, value ):
-        self.nodes[inNode]['ranking'].setNodeRank(forNode, self.getGlobalRank(inNode, forNode) + value )
+        self.ranking[inNode].setNodeRank(forNode, self.getGlobalRank(inNode, forNode) + value )
 
     def askForNodeDelegating( self, cntNode, dntNode ):
         return self.askForNode( cntNode, dntNode )
@@ -137,42 +127,42 @@ class SimpleRankSimulator( RankSimulator ):
         return self.askForNode( dntNode, cntNode )
 
     def askForNode( self, node, forNode ):
-        if node not in self.nodes:
+        if node not in self.ranking:
             print "Wrong node {}".format( node )
-        if forNode not in self.nodes:
+        if forNode not in self.ranking:
             print "Wrong node {}".format( forNode )
 
         otherRank = {}
-        for peer in self.nodes[node]['peers']:
-            otherRank[peer] = self.nodes[peer]['ranking'].getNodeRank( forNode )
+        for peer in self.network.nodes[node]:
+            otherRank[peer] = self.ranking[peer].getNodeRank( forNode )
 
-        test = self.nodes[node]['ranking'].globalNodeRank( forNode, otherRank )
+        test = self.ranking[node].globalNodeRank( forNode, otherRank )
         if test > self.trustThreshold:
             return True
         else:
-            if forNode in self.nodes[node]['peers']:
-                self.nodes[node]['peers'].remove( forNode )
+            if forNode in self.network.nodes[node]:
+                self.network.nodes[node].remove( forNode )
             return False
 
     def getGlobalRank(self, node, forNode ):
         otherRank = {}
-        for peer in self.nodes[node]['peers']:
-            otherRank[peer] = self.nodes[peer]['ranking'].getNodeRank( forNode )
+        for peer in self.network.nodes[node]:
+            otherRank[peer] = self.ranking[peer].getNodeRank( forNode )
 
-        return self.nodes[node]['ranking'].globalNodeRank( forNode, otherRank )
+        return self.ranking[node].globalNodeRank( forNode, otherRank )
 
 
 def main():
     rs = SimpleRankSimulator()
     for i in range(0, 5):
         rs.fullAddNode( goodNode = False )
-    for i in range(0, 25):
+    for i in range(0, 10):
         rs.fullAddNode( goodNode = True )
 
     rs.printState()
     print "################"
     for i in range(0, 200):
-        rs.startTask( random.sample( rs.nodes.keys(), 1)[0] )
+        rs.startTask( random.sample( rs.ranking.keys(), 1)[0] )
     rs.printState()
 
 

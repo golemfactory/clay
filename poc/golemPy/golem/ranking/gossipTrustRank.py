@@ -146,10 +146,15 @@ class GossipTrustTest:
             self.collectedPairs[ r ].append( [ self.weightedScores[i] / 2.0, self.consensusFactors[i] /2.0 ])
 
 class GossipPositiveNegativeTrustRank:
-    def __init__( self ):
+    def __init__( self, posTrustVal = 1.0, negTrustVal = 2.0, minSumVal = 50 ):
         self.nodeId = None
         self.positive = GossipTrustRank(selfValue = 1.0)
         self.negative = GossipTrustRank( selfValue = 0.0)
+        self.posTrustVal = posTrustVal
+        self.negTrustVal = negTrustVal
+        self.minSumVal = minSumVal
+        self.globVec = {}
+        self.gossipNum = 0
 
     def __str__( self ):
         return "[Positive: {}, Negative: {}]".format( self.positive, self.negative )
@@ -165,7 +170,7 @@ class GossipPositiveNegativeTrustRank:
         self.positive.setNodeId( nodeId )
         self.negative.setNodeId( nodeId )
 
-    def getNodePostive( self, nodeId ):
+    def getNodePositive( self, nodeId ):
         return self.positive.getNodeRank( nodeId )
 
     def getNodeNegative( self, nodeId ):
@@ -176,6 +181,17 @@ class GossipPositiveNegativeTrustRank:
 
     def setNodeNegative( self, nodeId, value ):
         self.negative.setNodeRank( nodeId, value )
+
+    def getNodeTrust( self, nodeId ):
+        pos = self.positive.getNodeRank( nodeId )
+        if pos is None:
+            pos = 0.0
+        neg = self.negative.getNodeRank( nodeId )
+        if neg is None:
+            neg = 0.0
+        val = ( self.posTrustVal * pos - self.negTrustVal * neg )
+        sumVal = max( self.minSumVal, pos + neg )
+        return float( val ) / float( sumVal )
 
     def startAggregation( self ):
         self.positive.startAggregation()
@@ -212,6 +228,8 @@ class GossipPositiveNegativeTrustRank:
         if not finNeg:
             gossip[1] = self.negative.doGossip()
         return gossip
+
+
 
 
 
@@ -261,6 +279,7 @@ class GossipTrustRank:
         self.ranking[ nodeId ] = value
 
     def startAggregation( self ):
+        print "startAggregation"
         self.weightedScore = {}
         norm = sum( self.ranking.values() )
         n = len( self.ranking )
@@ -273,9 +292,11 @@ class GossipTrustRank:
         else:
             self.weightedScore[ self.nodeId ] = 1.0 / float( n + 1)
 
+        self.updateGlobVec()
+
         self.collectedVecs = [ self.globVec ]
         self.prevVec = {}
-        self.updateGlobVec()
+        self.prevGossipVec = {}
 
     def prepAggregation ( self ):
         self.prevVec = self.globVec
@@ -337,25 +358,23 @@ class GossipTrustRank:
 
         self.collectedVecs = []
 
-        if len( self.globVec ) < 2:
-            r = self.nodeId
-        else:
-            r = sample( self.globVec.keys(), 1 )
-            while r == self.nodeId:
-                r = sample( self.globVec.keys(), 1 )
-            r = r[0]
 
         vecToSend = {}
         for nodeId, val in self.globVec.iteritems():
             vecToSend[nodeId] = [val[0] / 2.0, val[1] / 2.0 ]
 
-        return [ vecToSend, self.nodeId, r ]
+        return [ vecToSend, self.nodeId]
 
     def hearGossip( self, gossip ):
         if self.printData:
             print "NODE {} hear gossip {}".format( self.nodeId, gossip )
         self.collectedVecs.append( gossip )
 
+    def getNodeTrust(self, nodeId):
+        if nodeId in self.globVec:
+            return self.countDiv( self.globVec[0], self.globVec[1] )
+        else:
+            return 0.0
 
 
 
