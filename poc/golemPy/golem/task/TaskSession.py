@@ -34,6 +34,7 @@ class TaskSession:
 
         self.taskResultOwnerAddr = None
         self.taskResultOwnerPort = None
+        self.taskResultOwnerNodeId = None
 
     ##########################
     def requestTask( self, clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores ):
@@ -52,8 +53,9 @@ class TaskSession:
         else:
             logger.error("Unknown result type {}".format( taskResult.resultType ) )
             return
+        nodeId = self.taskServer.getNodeId()
 
-        self.__send( MessageReportComputedTask( taskResult.subtaskId, taskResult.resultType, address, port, extraData ) )
+        self.__send( MessageReportComputedTask( taskResult.subtaskId, taskResult.resultType, nodeId, address, port, extraData ) )
 
     ##########################
     def sendResultRejected( self, subtaskId ):
@@ -107,8 +109,10 @@ class TaskSession:
                     self.dropped()
                 elif delay == 0.0:
                     self.conn.sendMessage( MessageGetTaskResult( msg.subtaskId, delay ) )
+                    self.taskResultOwnerNodeId = msg.nodeId
                     self.taskResultOwnerAddr = msg.address
                     self.taskResultOwnerPort = msg.port
+
                     if msg.resultType == resultTypes['data']:
                         self.__receiveDataResult( msg )
                     elif msg.resultType == resultTypes['files']:
@@ -282,9 +286,9 @@ class TaskSession:
 
             self.taskManager.computedTaskReceived( subtaskId, result, extraData['resultType'] )
             if self.taskManager.verifySubtask( subtaskId ):
-                self.taskServer.payForTask( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
+                self.taskServer.acceptTask( subtaskId, self.taskResultOwnerNodeId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
             else:
-                self.taskServer.rejectResult( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
+                self.taskServer.rejectResult( subtaskId, self.taskResultOwnerNodeId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
         else:
             logger.error("No taskId value in extraData for received data ")
         self.dropped()

@@ -215,6 +215,11 @@ class GNRTask( Task ):
 
     #######################
     @checkSubtaskIdWrapper
+    def getTrustMod(self, subtaskId ):
+        return 1.0
+
+    #######################
+    @checkSubtaskIdWrapper
     def restartSubtask( self, subtaskId ):
         if subtaskId in self.subTasksGiven:
             if self.subTasksGiven[ subtaskId ][ 'status' ] == SubtaskStatus.starting:

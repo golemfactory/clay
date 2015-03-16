@@ -23,12 +23,15 @@ class TaskServer:
         self.curPort            = configDesc.startPort
         self.taskHeaders        = {}
         self.supportedTasks     = []
-        self.removedTasks        = {}
+        self.removedTasks       = {}
+        self.activeTasks        = {}
         self.taskManager        = TaskManager( configDesc.clientUid, rootPath = self.__getTaskManagerRoot( configDesc ), useDistributedResources = self.configDesc.useDistributedResourceManagement )
         self.taskComputer       = TaskComputer( configDesc.clientUid, self )
         self.taskSessions       = {}
         self.taskSessionsIncoming = []
         self.removedTaskTimeout = 240.0
+        self.maxTrust           = 1.0
+        self.minTrust           = 0.0
         self.waitingForVerification = {}
 
         self.lastMessages       = []
@@ -49,7 +52,8 @@ class TaskServer:
 
         if  len ( self.supportedTasks ) > 0:
             tn = random.randrange( 0, len( self.supportedTasks ) )
-            theader = self.taskHeaders[ self.supportedTasks[ tn ] ]
+            taskId = self.supportedTasks[ tn ]
+            theader = self.taskHeaders[ taskId ]
 
             self.__connectAndSendTaskRequest( self.configDesc.clientUid,
                                               theader.clientId,
@@ -61,9 +65,19 @@ class TaskServer:
                                               self.configDesc.maxMemorySize,
                                               self.configDesc.numCores )
 
+            if taskId in self.activeTasks:
+                self.activeTasks[taskId]['requests'] += 1
+            else:
+                self.activeTasks[taskId] = {'header': theader, 'requests': 1 }
+
+
             return theader.taskId
         else:
             return 0
+
+    #############################
+    def getNodeId( self ):
+        return self.configDesc.clientUid
 
     #############################
     def requestResource( self, subtaskId, resourceHeader, address, port ):
@@ -137,6 +151,9 @@ class TaskServer:
         if taskId in self.supportedTasks:
            self.supportedTasks.remove( taskId )
         self.removedTasks[ taskId ] = time.time()
+        if taskId in self.activeTasks and self.activeTasks[taskId]['requests'] <= 0:
+            del self.activeTasks[ taskId ]
+
 
     #############################
     def removeTaskSession( self, taskSession ):
@@ -203,6 +220,7 @@ class TaskServer:
     def subtaskRejected( self, subtaskId ):
         logger.debug( "Subtask {} result rejected".format( subtaskId ) )
         if subtaskId in self.waitingForVerification:
+            self.decreaseRequesterTrust( self.waitingForVerification[ subtaskId ] )
             self.removeTaskHeader( self.waitingForVerification[ subtaskId ] )
             del self.waitingForVerification[ subtaskId ]
 
@@ -212,10 +230,55 @@ class TaskServer:
         try:
             logger.info( "Getting {} for subtask {}".format( reward, subtaskId ) )
             self.client.getReward( int( reward ) )
+
         except ValueError:
             logger.error("Wrong reward amount {} for subtask {}".format( reward, subtaskId ) )
         if subtaskId in self.waitingForVerification:
+            self.increaseRequesterTrust( self.waitingForVerification[ subtaskId ] )
+
             del self.waitingForVerification[ subtaskId ]
+
+    ###########################
+    def acceptTask(self, subtaskId, nodeId, address, port ):
+        self.payForTask( subtaskId, address, port )
+        self.increaseComputingTrust( nodeId, subtaskId )
+
+    ###########################
+    def increaseComputingTrust(self, nodeId, subtaskId ):
+        trustMod = min( max( self.taskManager.getTrustMod( subtaskId ), self.minTrust), self.maxTrust )
+        self.client.increaseComputingTrust( nodeId, trustMod )
+
+    ###########################
+    def decreaseComputingTrust(self, nodeId, subtaskId ):
+        trustMod = min( max( self.taskManager.getTrustMod( subtaskId ), self.minTrust), self.maxTrust )
+        self.client.decreaseComputingTrust( nodeId, trustMod )
+
+    ###########################
+    def getReceiverForTaskVerificationResult( self, taskId ):
+        if taskId not in self.activeTasks:
+            return None
+        return self.activeTasks[taskId]['header'].clientId
+
+    ###########################
+    def receiveTaskVerification( self, taskId ):
+        if taskId not in self.activeTasks:
+            logger.warning("Wasn't waiting for verification result for {}").format( taskId )
+            return
+        self.activeTasks[ taskId ]['requests'] -= 1
+        if self.activeTasks[ taskId ]['requests'] <= 0 and taskId not in self.taskHeaders:
+            del self.activeTasks[ taskId ]
+
+    ###########################
+    def increaseRequesterTrust(self, taskId ):
+        nodeId = self.getReceiverForTaskVerificationResult( taskId )
+        self.receiveTaskVerification( taskId )
+        self.client.increaseRequesterTrust( nodeId, self.maxTrust )
+
+    ###########################
+    def decreaseRequesterTrust(self, taskId ):
+        nodeId = self.getReceiverForTaskVerificationResult( taskId )
+        self.receiveTaskVerification( taskId )
+        self.client.decreaseRequesterTrust( nodeId, self.maxTrust )
 
     ###########################
     def payForTask( self, subtaskId, address, port ):
@@ -226,7 +289,8 @@ class TaskServer:
         return price
 
     ###########################
-    def rejectResult( self, subtaskId, address, port ):
+    def rejectResult( self, subtaskId, nodeId, address, port ):
+        self.decreaseComputingTrust( nodeId, subtaskId )
         self.__connectAndSendResultRejected( subtaskId, address, port )
 
     ###########################
@@ -288,7 +352,8 @@ class TaskServer:
         logger.warning( "Removing task {} from task list".format( taskId ) )
         
         self.taskComputer.taskRequestRejected( taskId, "Connection failed" )
-        
+        if taskId in self.activeTaskHeaders:
+            self.activeTaskHeaders[ taskId ]['requests'] -= 1
         self.removeTaskHeader( taskId )
 
     #############################   

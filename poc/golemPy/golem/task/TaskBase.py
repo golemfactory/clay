@@ -131,13 +131,20 @@ class Task:
     def testTask( self ):
         return False
 
+    #######################
     @abc.abstractmethod
     def updateTaskState( self, taskState ):
-        return
+        return # Implement in derived class
 
+    #######################
     @abc.abstractmethod
-    def getPriceMode( self, subtaskId ):
-        return
+    def getPriceMod( self, subtaskId ):
+        return # Implement in derived class
+
+    #######################
+    @abc.abstractmethod
+    def getTrustMod( self, subtaskId ):
+        return # Implement in derived class
 
     #######################
     @classmethod

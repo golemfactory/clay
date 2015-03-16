@@ -146,6 +146,15 @@ class TaskManager:
             return 0
 
     #######################
+    def getTrustMod(self, subtaskId ):
+        if subtaskId in self.subTask2TaskMapping:
+            taskId = self.subTask2TaskMapping[ subtaskId ]
+            return self.tasks[ taskId ].getTrustMod( subtaskId )
+        else:
+            logger.error( "This is not my subtask {}".format( subtaskId ) )
+            return 0
+
+    #######################
     def verifySubtask( self, subtaskId ):
         if subtaskId in self.subTask2TaskMapping:
             taskId = self.subTask2TaskMapping[ subtaskId ]

@@ -12,8 +12,8 @@ from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 import time
 
 from golem.AppConfig import AppConfig
-from golem.BankConfig import BankConfig
-from golem.Model import Database, Node, Bank
+#from golem.BankConfig import BankConfig
+from golem.Model import Database, Bank, LocalRank
 from golem.Message import initMessages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
 from golem.environments.EnvironmentsManager import EnvironmentsManager
@@ -261,6 +261,22 @@ class Client:
     ############################
     def getRootPath( self ):
         return self.configDesc.rootPath
+
+    ############################
+    def increaseComputingTrust( self, nodeId, trustMod ):
+        self.db.increaseComputingTrust( nodeId, trustMod )
+
+    ############################
+    def decreaseComputingTrust( self, nodeId, trustMod ):
+        self.db.decreaseComputingTrust( nodeId, trustMod )
+
+    ############################
+    def increaseRequesterTrust( self, nodeId, trustMod ):
+        self.db.increaseRequesterTrust( nodeId, trustMod )
+
+    ############################
+    def decreaseRequesterTrust( self, nodeId, trustMod ):
+        self.db.decreaseRequesterTrust( nodeId, trustMod )
 
     ############################
     def payForTask( self, priceMod ):
