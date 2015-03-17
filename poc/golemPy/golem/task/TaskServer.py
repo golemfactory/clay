@@ -3,9 +3,7 @@ from TaskManager import TaskManager
 from TaskComputer import TaskComputer
 from TaskSession import TaskSession
 from TaskKeeper import TaskKeeper
-import random
 import time
-import sys
 import os
 import logging
 
