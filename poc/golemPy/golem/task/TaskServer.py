@@ -1,9 +1,8 @@
-
 from golem.network.transport.Tcp import Network
 from TaskManager import TaskManager
 from TaskComputer import TaskComputer
 from TaskSession import TaskSession
-from TaskBase import TaskHeader
+from TaskKeeper import TaskKeeper
 import random
 import time
 import sys
@@ -11,6 +10,7 @@ import os
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 class TaskServer:
     #############################
@@ -21,18 +21,14 @@ class TaskServer:
 
         self.address            = address
         self.curPort            = configDesc.startPort
-        self.taskHeaders        = {}
-        self.supportedTasks     = []
-        self.removedTasks       = {}
-        self.activeTasks        = {}
+        self.taskKeeper         = TaskKeeper()
         self.taskManager        = TaskManager( configDesc.clientUid, rootPath = self.__getTaskManagerRoot( configDesc ), useDistributedResources = self.configDesc.useDistributedResourceManagement )
         self.taskComputer       = TaskComputer( configDesc.clientUid, self )
         self.taskSessions       = {}
         self.taskSessionsIncoming = []
-        self.removedTaskTimeout = 240.0
+
         self.maxTrust           = 1.0
         self.minTrust           = 0.0
-        self.waitingForVerification = {}
 
         self.lastMessages       = []
 
@@ -50,11 +46,8 @@ class TaskServer:
     # This method chooses random task from the network to compute on our machine
     def requestTask( self ):
 
-        if  len ( self.supportedTasks ) > 0:
-            tn = random.randrange( 0, len( self.supportedTasks ) )
-            taskId = self.supportedTasks[ tn ]
-            theader = self.taskHeaders[ taskId ]
-
+        theader = self.taskKeeper.getTask()
+        if theader is not None:
             self.__connectAndSendTaskRequest( self.configDesc.clientUid,
                                               theader.clientId,
                                               theader.taskOwnerAddress,
@@ -65,19 +58,11 @@ class TaskServer:
                                               self.configDesc.maxMemorySize,
                                               self.configDesc.numCores )
 
-            if taskId in self.activeTasks:
-                self.activeTasks[taskId]['requests'] += 1
-            else:
-                self.activeTasks[taskId] = {'header': theader, 'requests': 1 }
 
 
             return theader.taskId
         else:
             return 0
-
-    #############################
-    def getNodeId( self ):
-        return self.configDesc.clientUid
 
     #############################
     def requestResource( self, subtaskId, resourceHeader, address, port ):
@@ -89,12 +74,13 @@ class TaskServer:
         self.client.pullResources( taskId, listFiles )
 
     #############################
-    def sendResults( self, subtaskId, result, ownerAddress, ownerPort ):
+    def sendResults( self, subtaskId, taskId, result, ownerAddress, ownerPort ):
         if 'data' not in result or 'resultType' not in result:
             logger.error( "Wrong result format" )
             assert False
 
         if subtaskId not in self.resultsToSend:
+            self.taskKeeper.addToVerification( subtaskId, taskId )
             self.resultsToSend[ subtaskId ] = WaitingTaskResult( subtaskId, result['data'], result['resultType'], 0.0, 0.0, ownerAddress, ownerPort )
         else:
             assert False
@@ -112,7 +98,7 @@ class TaskServer:
 
     #############################
     def getTasksHeaders( self ):
-        ths =  self.taskHeaders.values() + self.taskManager.getTasksHeaders()
+        ths =  self.taskKeeper.getAllTasks() + self.taskManager.getTasksHeaders()
 
         ret = []
 
@@ -132,13 +118,8 @@ class TaskServer:
     def addTaskHeader( self, thDictRepr ):
         try:
             id = thDictRepr[ "id" ]
-            if id not in self.taskHeaders.keys(): # dont have it
-                if id not in self.taskManager.tasks.keys(): # It is not my task id
-                    if id not in self.removedTasks.keys(): # not removed recently
-                        logger.info( "Adding task {}".format( id ) )
-                        self.taskHeaders[ id ] = TaskHeader( thDictRepr[ "clientId" ], id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr["environment"], thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"] )
-                        if self.client.supportedTask( thDictRepr ):
-                            self.supportedTasks.append( id )
+            if id not in self.taskManager.tasks.keys(): # It is not my task id
+                self.taskKeeper.addTaskHeader( thDictRepr,  self.client.supportedTask( thDictRepr ) )
             return True
         except Exception, err:
             logger.error( "Wrong task header received {}".format( str( err ) ) )
@@ -146,14 +127,7 @@ class TaskServer:
 
     #############################
     def removeTaskHeader( self, taskId ):
-        if taskId in self.taskHeaders:
-            del self.taskHeaders[ taskId ]
-        if taskId in self.supportedTasks:
-           self.supportedTasks.remove( taskId )
-        self.removedTasks[ taskId ] = time.time()
-        if taskId in self.activeTasks and self.activeTasks[taskId]['requests'] <= 0:
-            del self.activeTasks[ taskId ]
-
+        self.taskKeeper.removeTaskHeader( taskId )
 
     #############################
     def removeTaskSession( self, taskSession ):
@@ -227,16 +201,19 @@ class TaskServer:
     ############################
     def subtaskAccepted( self, subtaskId, reward ):
         logger.debug( "Subtask {} result accepted".format( subtaskId ) )
+        taskId = self.taskKeeper.getWaitingForVerificationTaskId( subtaskId )
+        if taskId is None:
+            logger.error("Wasn't waiting for reward for subtask {}".format( subtaskId ) )
+            return
         try:
             logger.info( "Getting {} for subtask {}".format( reward, subtaskId ) )
             self.client.getReward( int( reward ) )
-
+            self.increaseRequesterTrust( taskId )
         except ValueError:
             logger.error("Wrong reward amount {} for subtask {}".format( reward, subtaskId ) )
-        if subtaskId in self.waitingForVerification:
-            self.increaseRequesterTrust( self.waitingForVerification[ subtaskId ] )
+            self.decreaseRequesterTrust( taskId )
+        self.taskKeeper.removeWaitingForVerificationTaskId( subtaskId )
 
-            del self.waitingForVerification[ subtaskId ]
 
     ###########################
     def acceptTask(self, subtaskId, nodeId, address, port ):
@@ -254,29 +231,18 @@ class TaskServer:
         self.client.decreaseComputingTrust( nodeId, trustMod )
 
     ###########################
-    def getReceiverForTaskVerificationResult( self, taskId ):
-        if taskId not in self.activeTasks:
-            return None
-        return self.activeTasks[taskId]['header'].clientId
-
-    ###########################
     def receiveTaskVerification( self, taskId ):
-        if taskId not in self.activeTasks:
-            logger.warning("Wasn't waiting for verification result for {}").format( taskId )
-            return
-        self.activeTasks[ taskId ]['requests'] -= 1
-        if self.activeTasks[ taskId ]['requests'] <= 0 and taskId not in self.taskHeaders:
-            del self.activeTasks[ taskId ]
+        self.taskKeeper.receiveTaskVerification( taskId )
 
     ###########################
     def increaseRequesterTrust(self, taskId ):
-        nodeId = self.getReceiverForTaskVerificationResult( taskId )
+        nodeId = self.taskKeeper.getReceiverForTaskVerificationResult( taskId )
         self.receiveTaskVerification( taskId )
         self.client.increaseRequesterTrust( nodeId, self.maxTrust )
 
     ###########################
     def decreaseRequesterTrust(self, taskId ):
-        nodeId = self.getReceiverForTaskVerificationResult( taskId )
+        nodeId = self.taskKeeper.getReceiverForTaskVerificationResult( taskId )
         self.receiveTaskVerification( taskId )
         self.client.decreaseRequesterTrust( nodeId, self.maxTrust )
 
@@ -350,11 +316,9 @@ class TaskServer:
     def __connectionForTaskRequestFailure( self, clientId, taskId, estimatedPerformance, *args ):
         logger.warning( "Cannot connect to task {} owner".format( taskId ) )
         logger.warning( "Removing task {} from task list".format( taskId ) )
-        
+
         self.taskComputer.taskRequestRejected( taskId, "Connection failed" )
-        if taskId in self.activeTaskHeaders:
-            self.activeTaskHeaders[ taskId ]['requests'] -= 1
-        self.removeTaskHeader( taskId )
+        self.taskKeeper.requestFailure( taskId )
 
     #############################   
     def __connectAndSendTaskResults( self, address, port, waitingTaskResult ):
@@ -409,12 +373,14 @@ class TaskServer:
         #TODO
         # Taka informacja powinna byc przechowywana i proba oplaty powinna byc wysylana po jakims czasie
 
+    #############################
     def __connectionForSendResultRejectedEstablished( self, session, subtaskId ):
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
         session.sendResultRejected( subtaskId )
 
+    #############################
     def __connectionForPayForTaskEstablished( self, session, subtaskId, price ):
         session.taskServer = self
         session.taskComputer = self.taskComputer
@@ -423,32 +389,20 @@ class TaskServer:
 
     #############################
     def __removeOldTasks( self ):
-        for t in self.taskHeaders.values():
-            currTime = time.time()
-            t.ttl = t.ttl - ( currTime - t.lastChecking )
-            t.lastChecking = currTime
-            if t.ttl <= 0:
-                logger.warning( "Task {} dies".format( t.taskId ) )
-                self.removeTaskHeader( t.taskId )
-
+        self.taskKeeper.removeOldTasks()
         self.taskManager.removeOldTasks()
 
-        for id, removeTime in self.removedTasks.items():
-            currTime = time.time()
-            if  currTime - removeTime > self.removedTaskTimeout:
-                del self.removedTasks[ id ]
-
+    #############################
     def __sendWaitingResults( self ):
         for wtr in self.resultsToSend:
             waitingTaskResult = self.resultsToSend[ wtr ]
 
             if not waitingTaskResult.alreadySending:
                 if time.time() - waitingTaskResult.lastSendingTrial > waitingTaskResult.delayTime:
-                    subtaskId = waitingTaskResult.subtaskId
-
                     waitingTaskResult.alreadySending = True
                     self.__connectAndSendTaskResults( waitingTaskResult.ownerAddress, waitingTaskResult.ownerPort, waitingTaskResult )
 
+    #############################
     def __getTaskManagerRoot( self, configDesc ):
         return os.path.join( configDesc.rootPath, "res" )
 

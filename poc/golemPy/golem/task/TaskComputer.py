@@ -7,7 +7,6 @@ import time
 from copy import copy
 
 from golem.vm.vm import PythonVM, PythonTestVM
-#from golem.vm.VBoxVM import VBoxVM
 from golem.manager.NodeStateSnapshot import TaskChunkStateSnapshot
 from golem.resource.ResourcesManager import ResourcesManager
 from golem.resource.DirManager import DirManager
@@ -106,6 +105,7 @@ class TaskComputer:
     def taskComputed( self, taskThread ):
         with self.lock:
             self.countingTask = False
+            print self.currentComputations
             self.currentComputations.remove( taskThread )
 
             subtaskId   = taskThread.subtaskId
@@ -113,8 +113,7 @@ class TaskComputer:
             if taskThread.result and 'data' in taskThread.result and 'resultType' in taskThread.result:
                 logger.info ( "Task {} computed".format( subtaskId ) )
                 if subtaskId in self.assignedSubTasks:
-                    self.taskServer.waitingForVerification[ subtaskId ] = self.assignedSubTasks[ subtaskId ].taskId
-                    self.taskServer.sendResults( subtaskId, taskThread.result, self.assignedSubTasks[ subtaskId ].returnAddress, self.assignedSubTasks[ subtaskId ].returnPort )
+                    self.taskServer.sendResults( subtaskId, self.assignedSubTasks[subtaskId].taskId, taskThread.result, self.assignedSubTasks[ subtaskId ].returnAddress, self.assignedSubTasks[ subtaskId ].returnPort )
                     del self.assignedSubTasks[ subtaskId ]
 
     ######################
@@ -260,8 +259,6 @@ class PyTaskThread( TaskThread ):
     def __init__( self, taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath ):
         super( PyTaskThread, self ).__init__( taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath )
         self.vm = PythonVM()
-    #    self.vm = VBoxVM()
-
 
 class PyTestTaskThread( PyTaskThread ):
     ######################

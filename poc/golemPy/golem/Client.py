@@ -497,7 +497,7 @@ class Client:
         lastNetworkMessages = self.p2pservice.getLastMessages()
 
         if self.taskServer:
-            tasksNum                = len( self.taskServer.taskHeaders )
+            tasksNum                = len( self.taskServer.taskKeeper.taskHeaders )
             remoteTasksProgresses   = self.taskServer.taskComputer.getProgresses()
             localTasksProgresses    = self.taskServer.taskManager.getProgresses()
             lastTaskMessages        = self.taskServer.getLastMessages()

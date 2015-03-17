@@ -53,7 +53,7 @@ class TaskSession:
         else:
             logger.error("Unknown result type {}".format( taskResult.resultType ) )
             return
-        nodeId = self.taskServer.getNodeId()
+        nodeId = self.taskServer.getClientId()
 
         self.__send( MessageReportComputedTask( taskResult.subtaskId, taskResult.resultType, nodeId, address, port, extraData ) )
 
