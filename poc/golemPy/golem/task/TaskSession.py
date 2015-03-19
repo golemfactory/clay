@@ -81,7 +81,7 @@ class TaskSession:
         #print "{} at {}".format( msg.serialize(), timeString )
 
         if type == MessageWantToComputeTask.Type:
-
+            print self.taskServer.getComputingTrust( msg.clientId )
             ctd, wrongTask = self.taskManager.getNextSubTask( msg.clientId, msg.taskId, msg.perfIndex, msg.maxResourceSize, msg.maxMemorySize, msg.numCores )
 
             if wrongTask:

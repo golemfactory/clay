@@ -46,6 +46,7 @@ class TaskServer:
 
         theader = self.taskKeeper.getTask()
         if theader is not None:
+            print self.client.getRequestingTrust( theader.clientId )
             self.__connectAndSendTaskRequest( self.configDesc.clientUid,
                                               theader.clientId,
                                               theader.taskOwnerAddress,
@@ -260,6 +261,10 @@ class TaskServer:
     ###########################
     def unpackDelta( self, destDir, delta, taskId ):
         self.client.resourceServer.unpackDelta( destDir, delta, taskId )
+
+    #############################
+    def getComputingTrust( self, nodeId ):
+        return self.client.getComputingTrust( nodeId )
 
     #############################
     # PRIVATE SECTION

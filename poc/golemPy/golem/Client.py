@@ -13,12 +13,13 @@ import time
 
 from golem.AppConfig import AppConfig
 #from golem.BankConfig import BankConfig
-from golem.Model import Database, Bank, LocalRank
+from golem.Model import Database, Bank
 from golem.Message import initMessages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
 from golem.environments.EnvironmentsManager import EnvironmentsManager
 from golem.resource.ResourceServer import ResourceServer
 from golem.resource.DirManager import DirManager
+from golem.ranking.Ranking import Ranking
 
 import logging
 
@@ -159,7 +160,7 @@ class Client:
         self.db = Database()
         self.db.checkNode( self.configDesc.clientUid )
 
-
+        self.ranking = Ranking( self.db )
         #self.bankConfig = BankConfig.loadConfig( self.configDesc.clientUid )
         #self.budget = self.bankConfig.getBudget()
         #self.priceBase = self.bankConfig.getPriceBase()
@@ -264,19 +265,19 @@ class Client:
 
     ############################
     def increaseComputingTrust( self, nodeId, trustMod ):
-        self.db.increaseComputingTrust( nodeId, trustMod )
+        self.ranking.increaseComputingTrust( nodeId, trustMod )
 
     ############################
     def decreaseComputingTrust( self, nodeId, trustMod ):
-        self.db.decreaseComputingTrust( nodeId, trustMod )
+        self.ranking.decreaseComputingTrust( nodeId, trustMod )
 
     ############################
     def increaseRequesterTrust( self, nodeId, trustMod ):
-        self.db.increaseRequesterTrust( nodeId, trustMod )
+        self.ranking.increaseRequesterTrust( nodeId, trustMod )
 
     ############################
     def decreaseRequesterTrust( self, nodeId, trustMod ):
-        self.db.decreaseRequesterTrust( nodeId, trustMod )
+        self.ranking.decreaseRequesterTrust( nodeId, trustMod )
 
     ############################
     def payForTask( self, priceMod ):
@@ -439,6 +440,22 @@ class Client:
         dirManager.clearDir( self.getReceivedFilesDir() )
 
     ############################
+    def getEnvironments( self ):
+        return self.environmentsManager.getEnvironments()
+
+    ############################
+    def changeAcceptTasksForEnvironment( self, envId, state ):
+        self.environmentsManager.changeAcceptTasks( envId, state )
+
+    ############################
+    def getComputingTrust(self, nodeId):
+        return self.ranking.getComputingTrust( nodeId )
+
+    ############################
+    def getRequestingTrust(self, nodeId):
+        return self.ranking.getRequestingTrust( nodeId )
+
+    ############################
     def __checkSupportedEnvironment( self, thDictRepr ):
         if "environment" not in thDictRepr:
             return False
@@ -461,14 +478,6 @@ class Client:
                 )
             )
             return False
-
-    ############################
-    def getEnvironments( self ):
-        return self.environmentsManager.getEnvironments()
-
-    ############################
-    def changeAcceptTasksForEnvironment( self, envId, state ):
-        self.environmentsManager.changeAcceptTasks( envId, state )
 
     ############################
     def __doWork(self):

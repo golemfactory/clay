@@ -28,35 +28,6 @@ class Database:
             if len( bank ) == 0:
                 Bank.create( nodeId = nodeId )
 
-    def increaseComputingTrust(self, nodeId, trustMod ):
-        try:
-            with db.transaction():
-                LocalRank.create(nodeId=nodeId, positiveComputed=trustMod)
-        except IntegrityError:
-            LocalRank.update(positiveComputed = LocalRank.positiveComputed + trustMod).where(nodeId == nodeId).execute()
-
-    def decreaseComputingTrust(self, nodeId, trustMod):
-        try:
-            with db.transaction():
-                LocalRank.create(nodeId = nodeId, negativeComputed = trustMod)
-        except IntegrityError:
-            LocalRank.update(negativeComputed = LocalRank.negativeComputed + trustMod).where(nodeId == nodeId).execute()
-
-    def increaseRequesterTrust(self, nodeId, trustMod):
-        try:
-            with db.transaction():
-                LocalRank.create(nodeId = nodeId, positiveRequested = trustMod)
-        except IntegrityError:
-            LocalRank.update(positiveRequested = LocalRank.positiveRequested + trustMod).where(nodeId == nodeId).execute()
-
-    def decreaseRequesterTrust(self, nodeId, trustMod):
-        try:
-            with db.transaction():
-                LocalRank.create(nodeId = nodeId, negativeRequested = trustMod)
-        except IntegrityError:
-            LocalRank.update(negativeRequested = LocalRank.negativeRequested + trustMod).where(nodeId == nodeId).execute()
-
-
 class BaseModel( Model ):
     class Meta:
         database = db
