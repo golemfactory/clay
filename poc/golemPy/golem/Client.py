@@ -60,6 +60,8 @@ def startClient():
     estimatedPerformance        = cfg.getEstimatedPerformance()
     nodeSnapshotInterval        = cfg.getNodeSnapshotInterval()
     useDistributedResourceManagement = cfg.getUseDistributedResourceManagement()
+    requestingTrust             = cfg.getRequestingTrust()
+    computingTrust              = cfg.getComputingTrust()
 
     configDesc = ClientConfigDescriptor()
 
@@ -94,6 +96,8 @@ def startClient():
     configDesc.nodeSnapshotInterval     = nodeSnapshotInterval
     configDesc.maxResultsSendingDelay   = cfg.getMaxResultsSendingDelay()
     configDesc.useDistributedResourceManagement = useDistributedResourceManagement
+    configDesc.requestingTrust          = requestingTrust
+    configDesc.computingTrust           = computingTrust
 
     logger.info( "Adding tasks {}".format( addTasks ) )
     logger.info( "Creating public client interface with uuid: {}".format( clientUid ) )
@@ -368,6 +372,15 @@ class Client:
         except ValueError:
             logger.warning( "Max result sending delay '{}' is not a number".format( newConfigDesc.maxResultsSendingDelay ) )
 
+        try:
+            self.configDesc.computingTrust = float( newConfigDesc.computingTrust )
+        except ValueError:
+            logger.warning("Minimum trust for computing node '{}' is not a number".format( newConfigDesc.computingTrust ) )
+
+        try:
+            self.configDesc.requestingTrust = float( newConfigDesc.requestingTrust )
+        except ValueError:
+            logger.warning("Minimum trust for requesting node '{}' is not a number".format( newConfigDesc.requestingTrust ) )
 
         self.p2pservice.changeConfig( self.configDesc )
         self.taskServer.changeConfig( self.configDesc )

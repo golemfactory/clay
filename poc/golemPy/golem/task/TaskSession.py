@@ -81,8 +81,12 @@ class TaskSession:
         #print "{} at {}".format( msg.serialize(), timeString )
 
         if type == MessageWantToComputeTask.Type:
-            print self.taskServer.getComputingTrust( msg.clientId )
-            ctd, wrongTask = self.taskManager.getNextSubTask( msg.clientId, msg.taskId, msg.perfIndex, msg.maxResourceSize, msg.maxMemorySize, msg.numCores )
+            trust = self.taskServer.getComputingTrust( msg.clientId )
+            logger.debug("Computing trust level: {}".format( trust ) )
+            if trust >= self.taskServer.configDesc.computingTrust:
+                ctd, wrongTask = self.taskManager.getNextSubTask( msg.clientId, msg.taskId, msg.perfIndex, msg.maxResourceSize, msg.maxMemorySize, msg.numCores )
+            else:
+                ctd, wrongTask = None, False
 
             if wrongTask:
                 self.conn.sendMessage( MessageCannotAssignTask( msg.taskId, "Not my task  {}".format( msg.taskId ) ) )

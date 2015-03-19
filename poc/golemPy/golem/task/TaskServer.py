@@ -46,8 +46,10 @@ class TaskServer:
 
         theader = self.taskKeeper.getTask()
         if theader is not None:
-            print self.client.getRequestingTrust( theader.clientId )
-            self.__connectAndSendTaskRequest( self.configDesc.clientUid,
+            trust = self.client.getRequestingTrust( theader.clientId )
+            logger.debug("Requesting trust level: {}".format( trust ))
+            if trust >= self.configDesc.requestingTrust:
+                self.__connectAndSendTaskRequest( self.configDesc.clientUid,
                                               theader.clientId,
                                               theader.taskOwnerAddress,
                                               theader.taskOwnerPort,
@@ -59,9 +61,9 @@ class TaskServer:
 
 
 
-            return theader.taskId
-        else:
-            return 0
+                return theader.taskId
+
+        return 0
 
     #############################
     def requestResource( self, subtaskId, resourceHeader, address, port ):

@@ -80,6 +80,8 @@ class NodeConfig:
     MAX_SENDING_DELAY = 360
     USE_DISTRIBUTED_RESOURCE_MANAGEMENT = 1
     DEFAULT_ROOT_PATH = os.environ.get( 'GOLEM' )
+    REQUESTING_TRUST = -1.0
+    COMPUTING_TRUST = -1.0
 
 
     ##############################
@@ -89,6 +91,7 @@ class NodeConfig:
                   taskRequestInterval = TASK_REQUEST_INTERVAL, useWaitingForTaskTimeout = USE_WAITING_FOR_TASK_TIMEOUT,
                   waitingForTaskTimeout = WAITING_FOR_TASK_TIMEOUT, nodesSnapshotInterval = NODE_SNAPSHOT_INTERVAL,
                   addTasks = ADD_TASKS, maxSendingDelay = MAX_SENDING_DELAY,
+                  requestingTrust = REQUESTING_TRUST, computingTrust = COMPUTING_TRUST,
                   useDistributedResourceManagement = USE_DISTRIBUTED_RESOURCE_MANAGEMENT):
         self._section = "Node {}".format( nodeId )
 
@@ -115,6 +118,8 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "maximum resource size", maxResourceSize, self, "MaxResourceSize" )
         ConfigEntry.createProperty( self.section(), "maximum memory usage", maxMemorySize, self, "MaxMemorySize" )
         ConfigEntry.createProperty( self.section(), "use distributed resource management", useDistributedResourceManagement, self, "UseDistributedResourceManagement")
+        ConfigEntry.createProperty( self.section(), "minimum trust for requesting node", requestingTrust, self, "RequestingTrust")
+        ConfigEntry.createProperty( self.section(), "minimum trust for computing node", computingTrust, self, "ComputingTrust")
 
 
     ##############################
@@ -249,6 +254,12 @@ class AppConfig:
     def getUseDistributedResourceManagement( self ):
         return self._cfg.getNodeConfig().getUseDistributedResourceManagement()
 
+    def getRequestingTrust(self):
+        return self._cfg.getNodeConfig().getRequestingTrust()
+
+    def getComputingTrust(self):
+        return self._cfg.getNodeConfig().getComputingTrust()
+
     ##############################
     def changeConfig( self, cfgDesc , cfgFile = CONFIG_FILENAME, ):
         assert isinstance( cfgDesc, ClientConfigDescriptor )
@@ -270,6 +281,10 @@ class AppConfig:
         self._cfg.getNodeConfig().setNodeSnapshotInterval( cfgDesc.nodeSnapshotInterval )
         self._cfg.getNodeConfig().setMaxResultsSendingDelay( cfgDesc.maxResultsSendingDelay  )
         self._cfg.getNodeConfig().setUseDistributedResourceManagement( cfgDesc.useDistributedResourceManagement )
+        print cfgDesc.requestingTrust
+        print cfgDesc.computingTrust
+        self._cfg.getNodeConfig().setRequestingTrust( cfgDesc.requestingTrust )
+        self._cfg.getNodeConfig().setComputingTrust( cfgDesc.computingTrust )
 
         self._cfg.getCommonConfig().setManagerAddress( cfgDesc.managerAddress )
         self._cfg.getCommonConfig().setManagerListenPort( cfgDesc.managerPort )
