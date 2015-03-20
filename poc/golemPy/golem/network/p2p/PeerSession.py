@@ -3,7 +3,8 @@ import logging
 
 from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, \
                           MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks, \
-                          MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers
+                          MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
+                          MessageDegree, MessageGossip
 from golem.network.p2p.NetConnState import NetConnState
 
 
@@ -39,6 +40,7 @@ class PeerSession(PeerSessionInterface):
         self.port = pp.port
         self.state = PeerSession.StateInitialize
         self.lastMessageTime = 0.0
+        self.degree = 0
 
         logger.info( "CREATING PEER SESSION {} {}".format( self.address, self.port ) )
 
@@ -99,6 +101,7 @@ class PeerSession(PeerSessionInterface):
             p = self.p2pService.findPeer( self.id )
 
             if p and p != self and p.conn.isOpen():
+#                self.__sendPing()
                 loggerMsg = "PEER DUPLICATED: {} {} : {}".format( p.id, p.address, p.port )
                 logger.warning( "{} AND {} : {}".format( loggerMsg, msg.clientUID, msg.port ) )
                 self.__disconnect( PeerSession.DCRDuplicatePeers )
@@ -108,13 +111,14 @@ class PeerSession(PeerSessionInterface):
                 self.p2pService.addPeer( self.id, self )
 
             #print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)
-            self.__sendPing()
+
 
         elif type == MessageGetPeers.Type:
             self.__sendPeers()
 
         elif type == MessagePeers.Type:
             peersInfo = msg.peersArray
+            self.degree = len( peersInfo )
             for pi in peersInfo:
                 self.p2pService.tryToAddPeer( pi )
 
@@ -136,6 +140,12 @@ class PeerSession(PeerSessionInterface):
         elif type == MessageResourcePeers.Type:
             self.p2pService.setResourcePeers( msg.resourcePeers )
 
+        elif type == MessageDegree.Type:
+            self.degree = msg.degree
+
+        elif type == MessageGossip.Type:
+            self.p2pService.hearGossip( msg.gossip )
+
         else:
             self.__disconnect( PeerSession.DCRBadProtocol )
 
@@ -155,6 +165,14 @@ class PeerSession(PeerSessionInterface):
     def sendGetResourcePeers( self ):
         self.__send( MessageGetResourcePeers() )
 
+    ##########################
+    def sendDegree(self, degree):
+        self.__send( MessageDegree( degree ) )
+
+    ##########################
+    def sendGossip(self, gossip):
+        print "SEND GOSSIP "
+        self.__send( MessageGossip( gossip ) )
 
     ##########################
     # PRIVATE SECTION

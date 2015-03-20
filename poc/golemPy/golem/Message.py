@@ -279,6 +279,38 @@ class MessageResourcePeers( Message ):
     def dictRepr( self ):
         return { MessageResourcePeers.RESOURCE_PEERS_STR: self.resourcePeers }
 
+class MessageDegree( Message ):
+    Type = 11
+
+    DEGREE_STR = u"DEGREE"
+
+    def __init__(self, degree = None, dictRepr = None):
+        Message.__init__( self, MessageDegree.Type )
+
+        self.degree = degree
+
+        if dictRepr:
+            self.degree = dictRepr[ MessageDegree.DEGREE_STR ]
+
+    def dictRepr( self ):
+        return { MessageDegree.DEGREE_STR: self.degree }
+
+class MessageGossip( Message ):
+    Type = 12
+
+    GOSSIP_STR = u"GOSSIP"
+
+    def __init__( self, gossip = None, dictRepr = None):
+        Message.__init__( self, MessageGossip.Type )
+
+        self.gossip = gossip
+
+        if dictRepr:
+            self.gossip = dictRepr[ MessageGossip.GOSSIP_STR ]
+
+    def dictRepr( self ):
+        return { MessageGossip.GOSSIP_STR: self.gossip }
+
 TASK_MSG_BASE = 2000
 
 class MessageWantToComputeTask( Message ):
@@ -801,6 +833,8 @@ def initMessages():
     MessageRemoveTask()
     MessageGetResourcePeers()
     MessageResourcePeers()
+    MessageDegree()
+    MessageGossip()
 
     MessageTaskToCompute()
     MessageWantToComputeTask()

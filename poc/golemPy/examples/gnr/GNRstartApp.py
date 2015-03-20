@@ -24,6 +24,7 @@ def install_reactor():
         from twisted.internet import qt4reactor
     qt4reactor.install()
     from twisted.internet import reactor
+    return reactor
 
 ############################
 def registerGui( logic, app, gui ):
@@ -94,9 +95,13 @@ def runInfoServer( client, startPort = 55555, nextPort = 55556, endPort = 59999 
 def runManagerClient( logic ):
     logic.startNodesManagerClient()
 
+############################
+def runRanking( client, reactor):
+    client.ranking.run(reactor)
+
 ###########################################################################
-def startRenderingApp( logic, app, gui, startManager = False, startManagerClient = False, startInfoServer = False ):
-    install_reactor()
+def startRenderingApp( logic, app, gui, startManager = False, startManagerClient = False, startInfoServer = False, startRanking = True ):
+    reactor = install_reactor()
     registerGui( logic, app, gui )
     registerRenderingTaskTypes( logic )
     environments = loadEnvironments()
@@ -108,21 +113,22 @@ def startRenderingApp( logic, app, gui, startManager = False, startManagerClient
     if startManagerClient:
         runManagerClient( logic )
     if startInfoServer:
-
         runInfoServer( client )
+    if startRanking:
+        runRanking( client, reactor )
 
     app.execute( False )
 
     reactor.run()
 
 ###########################################################################
-def startGNRApp( logic, app, gui, startManager = False, startManagerClient = False, startInfoServer = False ):
-    install_reactor()
+def startGNRApp( logic, app, gui, startManager = False, startManagerClient = False, startInfoServer = False, startRanking = True ):
+    reactor = install_reactor()
     registerGui( logic, app, gui )
     registerTaskTypes( logic )
     environments = loadEnvironments()
 
-    client = startAndConfigureClient( logic, environments )
+    client = startAndConfigureClient( logic, environments)
 
     if startManager:
         runManager( logic, client )
@@ -130,6 +136,8 @@ def startGNRApp( logic, app, gui, startManager = False, startManagerClient = Fal
         runManagerClient( logic )
     if startInfoServer:
         runInfoServer( client )
+    if startRanking:
+        runRanking( client, reactor )
 
     app.execute( False )
     reactor.run()

@@ -270,7 +270,6 @@ class TaskServer:
 
     #############################
     # PRIVATE SECTION
-
     #############################
     def __startAccepting(self):
         logger.info( "Enabling tasks accepting state" )

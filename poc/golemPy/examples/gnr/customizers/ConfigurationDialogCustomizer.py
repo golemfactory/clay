@@ -38,6 +38,7 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.performanceLabel.setText( u"{}".format( configDesc.estimatedPerformance ) )
         self.__loadNumCores( configDesc )
         self.__loadMemoryConfig( configDesc )
+        self.__loadTrustConfig( configDesc )
 
     #############################
     def __loadNumCores( self, configDesc ):
@@ -76,6 +77,21 @@ class ConfigurationDialogCustomizer:
         maxMemorySize, index = resourceSizeToDisplay( maxMemorySize )
         self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex( index )
         self.gui.ui.maxMemoryUsageSpinBox.setValue( maxMemorySize )
+
+    #############################
+    def __loadTrustConfig( self, configDesc ):
+        self.__loadTrust( configDesc.computingTrust, self.gui.ui.computingTrustLineEdit, self.gui.ui.computingTrustSlider )
+        self.__loadTrust( configDesc.requestingTrust, self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider )
+
+    #############################
+    def __loadTrust(self, value, lineEdit, slider):
+        try:
+            trust = max(min( int( round( value * 100 ) ), 100), -100)
+        except TypeError:
+            logger.error("Wrong configuration trust value {}").format( value )
+            trust = -100
+        lineEdit.setText("{}".format( trust ))
+        slider.setValue( trust )
 
     #############################
     def __loadAdvanceConfig( self, configDesc ):
@@ -139,6 +155,12 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.removeDistributedButton.clicked.connect( self.__removeFromDistributed )
         self.gui.ui.removeReceivedButton.clicked.connect( self.__removeFromReceived )
 
+        QtCore.QObject.connect( self.gui.ui.requestingTrustSlider, QtCore.SIGNAL("valueChanged( const int )"), self.__requestingTrustSliderChanged )
+        QtCore.QObject.connect( self.gui.ui.computingTrustSlider, QtCore.SIGNAL("valueChanged( const int )"), self.__computingTrustSliderChanged )
+        QtCore.QObject.connect( self.gui.ui.requestingTrustLineEdit, QtCore.SIGNAL("textEdited( const QString & text)"), self.__requestingTrustEdited )
+        QtCore.QObject.connect( self.gui.ui.computingTrustLineEdit, QtCore.SIGNAL("textEdited( const QString & text)"), self.__computingTrustEdited )
+
+
     #############################
     def __removeFromComputing( self ):
         reply = QMessageBox.question( self.gui.window, 'Golem Message', "Are you sure you want to remove all computed files?", QMessageBox.Yes | QMessageBox.No, defaultButton = QMessageBox.No)
@@ -175,6 +197,30 @@ class ConfigurationDialogCustomizer:
         return size
 
     #############################
+    def __computingTrustSliderChanged( self ):
+        self.gui.ui.computingTrustLineEdit.setText( "{}".format( self.gui.ui.computingTrustSlider.value() ) )
+
+    #############################
+    def __requestingTrustSliderChanged( self ):
+        self.gui.ui.requestingTrustLineEdit.setText( "{}".format( self.gui.ui.requestingTrustSlider.value() ) )
+
+    #############################
+    def __computingTrustEdited( self ):
+        try:
+            trust = int( self.gui.ui.computingTrustLineEdit.text() )
+            self.gui.ui.computingTrustSlider.setValue( trust )
+        except ValueError:
+            return
+
+    #############################
+    def __requestingTrustEdited( self ):
+        try:
+            trust = int( self.gui.ui.requestingTrustLineEdit.text() )
+            self.gui.ui.requestingTrustSlider.setValue( trust )
+        except ValueError:
+            return
+
+    #############################
     def __changeConfig ( self ):
         cfgDesc = ClientConfigDescriptor()
         self.__readBasicConfig( cfgDesc )
@@ -182,6 +228,7 @@ class ConfigurationDialogCustomizer:
         self.__readManagerConfig( cfgDesc )
         self.logic.changeConfig ( cfgDesc )
 
+    #############################
     def __readBasicConfig( self, cfgDesc ):
         cfgDesc.seedHost =  u"{}".format( self.gui.ui.hostAddressLineEdit.text() )
         try:
@@ -198,7 +245,9 @@ class ConfigurationDialogCustomizer:
         maxMemorySize = int( self.gui.ui.maxMemoryUsageSpinBox.value() )
         index = self.gui.ui.maxMemoryUsageComboBox.currentIndex()
         cfgDesc.maxMemorySize = u"{}".format( self.__countResourceSize( maxMemorySize, index ) )
+        self.__readTrustConfig( cfgDesc )
 
+    #############################
     def __readAdvanceConfig( self, cfgDesc ):
         cfgDesc.optNumPeers = u"{}".format( self.gui.ui.optimalPeerNumLineEdit.text() )
         cfgDesc.useDistributedResourceManagement = int( self.gui.ui.useDistributedResCheckBox.isChecked() )
@@ -212,6 +261,7 @@ class ConfigurationDialogCustomizer:
         cfgDesc.nodeSnapshotInterval = u"{}".format( self.gui.ui.nodeSnapshotIntervalLineEdit.text() )
         cfgDesc.maxResultsSendingDelay = u"{}".format( self.gui.ui.maxSendingDelayLineEdit.text() )
 
+    #############################
     def __readManagerConfig( self, cfgDesc ):
         cfgDesc.managerAddress = u"{}".format( self.gui.ui.managerAddressLineEdit.text() )
         try:
@@ -219,6 +269,30 @@ class ConfigurationDialogCustomizer:
         except ValueError:
             cfgDesc.managerPort = u"{}".format( self.gui.ui.managerPortLineEdit.text() )
 
+    #############################
+    def __readTrustConfig(self, cfgDesc ):
+        requestingTrust = self.__readTrust( self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider )
+        computingTrust = self.__readTrust( self.gui.ui.computingTrustLineEdit, self.gui.ui.computingTrustSlider )
+        cfgDesc.requestingTrust = self.__trustToConfigTrust( requestingTrust )
+        cfgDesc.computingTrust = self.__trustToConfigTrust( computingTrust )
+
+    #############################
+    def __trustToConfigTrust(self, trust):
+        try:
+            trust = max(min( float( trust ) / 100.0, 1.0), -1.0)
+        except ValueError:
+            logger.error("Wrong trust value {}").format( trust )
+            trust = -1
+        return trust
+
+    #############################
+    def __readTrust( self, lineEdit, slider ):
+        try:
+            trust = int( lineEdit.text() )
+        except ValueError:
+            logger.info("Wrong trust value {}").format( lineEdit.text() )
+            trust = slider.value()
+        return trust
 
     #############################
     def __recountPerformance( self ):

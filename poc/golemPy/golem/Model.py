@@ -1,7 +1,6 @@
-from peewee import SqliteDatabase, Model, CharField, ForeignKeyField, FloatField, DateTimeField, IntegrityError
+from peewee import SqliteDatabase, Model, CharField, ForeignKeyField, FloatField, DateTimeField
 
 import datetime
-import random
 
 DATABASE_NAME = 'golem.db'
 START_BUDGET = 42000000
@@ -17,7 +16,7 @@ class Database:
         self.createDatabase()
 
     def createDatabase(self):
-        db.create_tables([Node, Bank, LocalRank], safe=True)
+        db.create_tables([Node, Bank, LocalRank, GlobalRank], safe=True)
 
     def checkNode(self, nodeId ):
         with db.transaction():
@@ -46,3 +45,8 @@ class LocalRank( BaseModel ):
     negativeComputed = FloatField( default = 0.0 )
     positiveRequested = FloatField( default = 0.0 )
     negativeRequested = FloatField( default = 0.0 )
+
+class GlobalRank( BaseModel ):
+    nodeId = CharField( unique=True )
+    requestingTrustValue = FloatField( default = 0.0 )
+    computingTrustValue = FloatField( default = 0.0 )

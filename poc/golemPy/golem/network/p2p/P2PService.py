@@ -32,6 +32,7 @@ class P2PService:
         self.resourcePort           = 0
         self.resourcePeers          = {}
         self.resourceServer         = None
+        self.gossip                 = []
         self.connectToNetwork()
 
     #############################
@@ -92,6 +93,7 @@ class P2PService:
     #############################
     def addPeer( self, id, peer ):
         self.peers[ id ] = peer
+        self.__sendDegree()
 
     #############################
     def tryToAddPeer( self, peerInfo ):
@@ -115,6 +117,8 @@ class P2PService:
         for p in self.peers.keys():
             if self.peers[ p ] == peerSession:
                 del self.peers[ p ]
+
+        self.__sendDegree()
 
     #############################
     def removePeerById( self, peerId ):
@@ -165,6 +169,10 @@ class P2PService:
     ############################
     def getListenParams( self ):
         return ( self.p2pServer.curPort, self.configDesc.clientUid )
+
+    ############################
+    def getPeersDegree(self):
+        return  { peer.id: peer.degree for peer in self.peers.values() }
 
     #Resource functions
     #############################
@@ -232,6 +240,27 @@ class P2PService:
         for p in self.peers.values():
             p.sendRemoveTask( taskId )
 
+    #############################
+    #RANKING FUNCTIONS          #
+    #############################
+    def sendGossip(self, gossip, sendTo):
+        for peerId in sendTo:
+            peer = self.findPeer(peerId)
+            if peer is not None:
+                peer.sendGossip( gossip )
+
+    #############################
+    def hearGossip(self, gossip):
+        self.gossip.append( gossip )
+
+    #############################
+    def popGossip(self):
+        gossip = self.gossip
+        self.gossip = []
+        return gossip
+
+    #############################
+    #PRIVATE SECTION
     #############################   
     def __connect( self, address, port ):
 
@@ -280,6 +309,16 @@ class P2PService:
     #############################
     def __removeOldPeers( self ):
         curTime = time.time()
+        removed = False
         for peerId in self.peers.keys():
             if curTime - self.peers[peerId].lastMessageTime > self.lastMessageTimeThreshold:
                 self.removePeerById( peerId )
+                removed = True
+        if removed:
+            self.__sendDegree()
+
+    #############################
+    def __sendDegree(self):
+        degree = len( self.peers )
+        for p in self.peers.values():
+            p.sendDegree( degree )

@@ -262,10 +262,8 @@ class ResourceServer( GNRServer ):
                 badClient = clientId
                 break
 
-        print "remove client {}".format( badClient )
-
         if badClient is not None:
-            self.resoucePeers[ badClient ]
+            self.resourcePeers[ badClient ]
 
     ############################
     def _listeningEstablished( self, iListeningPort ):
