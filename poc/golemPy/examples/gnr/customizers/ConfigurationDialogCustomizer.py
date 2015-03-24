@@ -1,13 +1,15 @@
 import multiprocessing
 import logging
 import subprocess
+import os
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMessageBox
 
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
-from MemoryHelper import resourceSizeToDisplay
+from golem.core.filesHelper import getDirSize
+from MemoryHelper import resourceSizeToDisplay, translateResourceIndex, dirSizeToDisplay
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +144,15 @@ class ConfigurationDialogCustomizer:
         try:
             return subprocess.check_output(['du', '-sh', path]).split()[0]
         except:
-            return "Error"
+            try:
+                size = getDirSize( path )
+                humanReadableSize, idx = dirSizeToDisplay( size )
+                return "{} {}".format( humanReadableSize, translateResourceIndex(idx))
+            except Exception, err:
+                logger.error(str(err))
+                return "Error"
+
+
 
     #############################
     def __setupConnections( self ):

@@ -17,3 +17,13 @@ def copyFileTree( src, dst, exclude = [] ):
             if os.path.exists(dst_file):
                 os.remove(dst_file)
             shutil.copy2(src_file, dst_dir)
+
+def getDirSize( dir):
+    size = os.path.getsize( dir )
+    for el in os.listdir( dir ):
+        path = os.path.join(dir, el)
+        if os.path.isfile(path):
+            size += os.path.getsize(path)
+        elif os.path.isdir(path):
+            size += getDirSize(path)
+    return size
