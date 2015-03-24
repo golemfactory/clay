@@ -95,17 +95,24 @@ class Ranking:
         self.globRank = {}
         self.receivedGossip = []
         self.finished = False
+        self.finishedNeighbours = set()
         self.globalFinished = False
         self.reactor = None
 
     ############################
     def run(self, reactor):
         self.reactor = reactor
+        deferLater(self.reactor, self.roundOracle.secToNewStage(), self.initStage)
+
+    ############################
+    def initStage(self):
+        logger.debug("New gossip stage")
         self.finished = False
         self.globalFinished = False
         self.step = 0
+        self.finishedNeighbours = set()
         self.initWorkingVec()
-        deferLater(self.reactor, self.roundOracle.secToRound(), self.newRound)
+        deferLater( self.reactor, self.roundOracle.secToRound(), self.newRound)
 
     ############################
     def initWorkingVec( self ):
@@ -119,6 +126,7 @@ class Ranking:
 
     ############################
     def newRound(self):
+        logger.debug("New gossip round")
         try:
             self.__setK()
             self.step += 1
@@ -128,10 +136,11 @@ class Ranking:
                 self.client.sendGossip(gossip, sendTo)
             self.receivedGossip = [ gossip ]
         finally:
-            deferLater(self.reactor, self.roundOracle.secToBreak(), self.endRound)
+            deferLater(self.reactor, self.roundOracle.secToEndRound(), self.endRound)
 
     ############################
     def endRound(self):
+        logger.debug("End gossip round")
         try:
             self.receivedGossip = self.client.collectGossip() + self.receivedGossip
             self.__makePrevRank()
@@ -139,10 +148,24 @@ class Ranking:
             self.__addGossip()
             self.__checkFinished()
         finally:
-            if self.globalFinished:
+            deferLater(self.reactor, self.roundOracle.secToBreak(), self.makeBreak)
+
+    ############################
+    def makeBreak(self):
+        logger.debug("Gossip round finished")
+        try:
+            self.__checkGlobalFinished()
+        except Exception:
+            deferLater(self.reactor, self.roundOracle.secToRound(), self.newRound)
+            raise
+
+        if self.globalFinished:
+            try:
                 self.__saveWorkingVec()
-            else:
-                deferLater(self.reactor, self.roundOracle.secToRound(), self.newRound)
+            finally:
+                deferLater( self.reactor, self.roundOracle.secToNewStage(), self.initStage)
+        else:
+            deferLater(self.reactor, self.roundOracle.secToRound(), self.newRound)
 
     ############################
     def increaseComputingTrust(self, nodeId, trustMod):
@@ -183,15 +206,28 @@ class Ranking:
 
     ############################
     def __checkFinished(self):
-        if self.step >= self.maxSteps:
-            self.finished = True
-            self.globalFinished = True #FIXME
+        if self.globalFinished:
             return
+        if not self.finished:
+            if self.step >= self.maxSteps:
+                self.finished = True
+                self.__sendFinished()
+            else:
+                val = self.__compareWorkingVecAndPrevRank()
+                if val <= len( self.workingVec ) * self.epsilon * 2:
+                    self.finished = True
+                    self.__sendFinished()
 
-        val = self.__compareWorkingVecAndPrevRank()
-        if val <= len( self.workingVec ) * self.epsilon * 2:
-            self.finished = True
-            self.globalFinished = True #FIXME
+
+    ############################
+    def __checkGlobalFinished(self):
+        self.__markFinished( self.client.collectStoppedPeers() )
+        if self.finished:
+            self.globalFinished = True
+            for n in self.neighbours:
+                if n not in self.finishedNeighbours:
+                    self.globalFinished = False
+                    break
 
     ############################
     def __compareWorkingVecAndPrevRank(self ):
@@ -309,26 +345,59 @@ class Ranking:
     def __sumGossip(self, a, b):
         return map(sum, izip(a, b))
 
+    ############################
+    def __sendFinished(self):
+        self.client.sendStopGossip()
+
+    ############################
+    def __markFinished(self, finished):
+        self.finishedNeighbours |= finished
+
+####################################################################################
+
 BREAK_TIME = 3
+END_ROUND_TIME = 3
 ROUND_TIME = 6
-LONG_ROUND_TIME = 10
+STAGE_TIME = 300
 
 class DiscreteTimeRoundOracle:
-    def __init__(self, breakTime = BREAK_TIME, roundTime = ROUND_TIME ):
+    def __init__(self, breakTime = BREAK_TIME, roundTime = ROUND_TIME, endRoundTime = END_ROUND_TIME, stageTime = STAGE_TIME ):
         self.breakTime = breakTime
         self.roundTime = roundTime
+        self.endRoundTime = endRoundTime
+        self.stageTime = stageTime
+
+    def __sumTime(self):
+        return self.roundTime + self.breakTime + self.endRoundTime
+
+    def __timeMod(self):
+        return time.time() % self.__sumTime()
 
     def isBreak(self):
-        return time.time() % ( self.roundTime + self.breakTime ) > self.roundTime
+        return self.roundTime + self.endRoundTime < self.__timeMod()
 
     def isRound(self):
-        return time.time() % ( self.roundTime + self.breakTime ) <= self.roundTime
+        return self.__timeMod() <= self.roundTime
 
-    def secToBreak(self):
-        return max( self.roundTime - (time.time() % ( self.roundTime + self.breakTime )), 0.01)
+    def isEndRound(self):
+        return self.roundTime < self.__timeMod() <= self.roundTime + self.endRoundTime
+
+    def secToEndRound(self):
+        tm = self.__timeMod()
+        if self.roundTime - tm >= 0:
+            return self.roundTime - tm
+        else:
+            return self.__sumTime() + self.roundTime - tm
 
     def secToRound(self):
-        return max( self.roundTime + self.breakTime - (time.time() % ( self.roundTime + self.breakTime )), 0.01)
+        return self.__sumTime() - self.__timeMod()
 
-    def secToLongRound(self):
-        return max( self.longRoundTime - (time.time() % ( self.longRoundTime) ), 0.01 )
+    def secToBreak(self):
+        tm = self.__timeMod()
+        if self.roundTime + self.endRoundTime -tm >= 0:
+            return self.roundTime + self.endRoundTime - tm
+        else:
+            return self.__sumTime + self.roundTime + self.endRoundTime - tm
+
+    def secToNewStage(self):
+        return self.stageTime - time.time() % self.stageTime

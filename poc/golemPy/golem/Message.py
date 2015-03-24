@@ -311,6 +311,20 @@ class MessageGossip( Message ):
     def dictRepr( self ):
         return { MessageGossip.GOSSIP_STR: self.gossip }
 
+class MessageStopGossip( Message ):
+    Type = 13
+
+    STOP_GOSSIP_STR = u"STOP_GOSSIP"
+
+    def __init__( self, dictRepr = None ):
+        Message.__init__( self, MessageStopGossip.Type )
+
+        if dictRepr:
+            assert dictRepr[ 0 ] == MessageStopGossip.STOP_GOSSIP_STR
+
+    def dictRepr( self ):
+        return [ MessageStopGossip.STOP_GOSSIP_STR ]
+
 TASK_MSG_BASE = 2000
 
 class MessageWantToComputeTask( Message ):
@@ -835,6 +849,7 @@ def initMessages():
     MessageResourcePeers()
     MessageDegree()
     MessageGossip()
+    MessageStopGossip()
 
     MessageTaskToCompute()
     MessageWantToComputeTask()

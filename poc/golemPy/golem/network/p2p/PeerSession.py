@@ -4,7 +4,7 @@ import logging
 from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, \
                           MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks, \
                           MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
-                          MessageDegree, MessageGossip
+                          MessageDegree, MessageGossip, MessageStopGossip
 from golem.network.p2p.NetConnState import NetConnState
 
 
@@ -146,6 +146,9 @@ class PeerSession(PeerSessionInterface):
         elif type == MessageGossip.Type:
             self.p2pService.hearGossip( msg.gossip )
 
+        elif type == MessageStopGossip.Type:
+            self.p2pService.stopGossip( self.id )
+
         else:
             self.__disconnect( PeerSession.DCRBadProtocol )
 
@@ -171,8 +174,11 @@ class PeerSession(PeerSessionInterface):
 
     ##########################
     def sendGossip(self, gossip):
-        print "SEND GOSSIP "
         self.__send( MessageGossip( gossip ) )
+
+    ##########################
+    def sendStopGossip(self):
+        self.__send( MessageStopGossip())
 
     ##########################
     # PRIVATE SECTION

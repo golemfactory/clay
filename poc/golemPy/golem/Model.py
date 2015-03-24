@@ -5,7 +5,12 @@ import datetime
 DATABASE_NAME = 'golem.db'
 START_BUDGET = 42000000
 
-db = SqliteDatabase( DATABASE_NAME, threadlocals=True)
+class SqliteFKTimeoutDatabase( SqliteDatabase ):
+    def initalize_connection(self, conn):
+        self.execute_sql('PRAGMA foreign_keys = ON')
+        self.execute_sql('PRAGMA busy_timeout = 30000')
+
+db = SqliteFKTimeoutDatabase( DATABASE_NAME, threadlocals=True)
 
 class Database:
     def __init__( self ):

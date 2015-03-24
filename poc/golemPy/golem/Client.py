@@ -19,7 +19,7 @@ from golem.ClientConfigDescriptor import ClientConfigDescriptor
 from golem.environments.EnvironmentsManager import EnvironmentsManager
 from golem.resource.ResourceServer import ResourceServer
 from golem.resource.DirManager import DirManager
-from golem.ranking.Ranking import Ranking
+from golem.ranking.Ranking import Ranking, RankingDatabase
 
 import logging
 
@@ -164,7 +164,8 @@ class Client:
         self.db = Database()
         self.db.checkNode( self.configDesc.clientUid )
 
-        self.ranking = Ranking( self.db )
+        self.ranking = Ranking( self, RankingDatabase( self.db ) )
+       # self.ranking.start()
         #self.bankConfig = BankConfig.loadConfig( self.configDesc.clientUid )
         #self.budget = self.bankConfig.getBudget()
         #self.priceBase = self.bankConfig.getPriceBase()
@@ -282,6 +283,10 @@ class Client:
     ############################
     def decreaseRequesterTrust( self, nodeId, trustMod ):
         self.ranking.decreaseRequesterTrust( nodeId, trustMod )
+
+    ############################
+    def getNeighboursDegree( self ):
+        return self.p2pservice.getPeersDegree()
 
     ############################
     def payForTask( self, priceMod ):
@@ -465,8 +470,24 @@ class Client:
         return self.ranking.getComputingTrust( nodeId )
 
     ############################
+    def sendGossip(self, gossip, sendTo):
+        return self.p2pservice.sendGossip( gossip, sendTo )
+
+    ############################
+    def sendStopGossip(self):
+        return self.p2pservice.sendStopGossip()
+
+    ############################
     def getRequestingTrust(self, nodeId):
         return self.ranking.getRequestingTrust( nodeId )
+
+    ############################
+    def collectGossip(self):
+        return self.p2pservice.popGossip()
+
+    ############################
+    def collectStoppedPeers(self):
+        return self.p2pservice.popStopGossipFromPeers()
 
     ############################
     def __checkSupportedEnvironment( self, thDictRepr ):

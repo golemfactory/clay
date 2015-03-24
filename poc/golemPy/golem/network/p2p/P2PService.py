@@ -33,6 +33,7 @@ class P2PService:
         self.resourcePeers          = {}
         self.resourceServer         = None
         self.gossip                 = []
+        self.stopGossipFromPeers    = set()
         self.connectToNetwork()
 
     #############################
@@ -258,6 +259,22 @@ class P2PService:
         gossip = self.gossip
         self.gossip = []
         return gossip
+
+    #############################
+    def sendStopGossip(self):
+        for peer in self.peers.values():
+            peer.sendStopGossip()
+
+    #############################
+    def stopGossip(self, id):
+        self.stopGossipFromPeers.add(id)
+
+    #############################
+    def popStopGossipFromPeers(self):
+        stop = self.stopGossipFromPeers
+        self.stopGossipFromPeers = set()
+        return stop
+
 
     #############################
     #PRIVATE SECTION
