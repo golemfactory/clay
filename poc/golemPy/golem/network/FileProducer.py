@@ -31,11 +31,16 @@ class FileProducer:
             self.data = self.fh.read( self.buffSize )
         else:
             self.fh.close()
+            self.fh =  None
             self.session.fileSent( self.file_ )
             self.session.conn.transport.unregisterProducer()
 
     def stopProducing( self ):
         pass
+
+    def clean(self):
+        if self.fh is not None:
+            self.fh.close()
 
     def __printProgress( self ):
         print "\rSending progress {} %                       ".format( int( 100 * float( self.fh.tell() ) / self.size ) ),

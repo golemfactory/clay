@@ -31,7 +31,7 @@ class DirManager:
             if os.path.isfile( path ):
                 os.remove( path )
             if os.path.isdir( path ):
-                shutil.rmtree( path )
+                shutil.rmtree( path, ignore_errors=True )
 
     ######################
     def createDir( self, fullPath ):

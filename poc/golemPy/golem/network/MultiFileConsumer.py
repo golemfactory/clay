@@ -46,6 +46,13 @@ class MultiFileConsumer:
         if self.recvSize >= self.fileSize:
             self.__endReceivingFile()
 
+    def close(self):
+        if self.fh is not None:
+            self.fh.close()
+            self.fh = None
+            if self.recvSize < self.fileSize and len( self.fileList ) > 0:
+                os.remove( self.fileList[-1])
+
     ###################
     def __getFirstChunk( self, data ):
         self.lastPercent = 0

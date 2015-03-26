@@ -179,6 +179,9 @@ class ResourceServer( GNRServer ):
     ############################
     def resourceDownloaded( self, resource, address, port ):
         self.__freePeer( address, port )
+        if not self.resourceManager.checkResource(resource):
+            logger.error("Wrong resource downloaded\n")
+            return
         for taskId in self.waitingResources[ resource ]:
             self.waitingTasksToCompute[taskId] -= 1
             if self.waitingTasksToCompute[ taskId ] == 0:

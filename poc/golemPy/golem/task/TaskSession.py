@@ -36,6 +36,8 @@ class TaskSession:
         self.taskResultOwnerPort = None
         self.taskResultOwnerNodeId = None
 
+        self.producer = None
+
     ##########################
     def requestTask( self, clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores ):
         self.__send( MessageWantToComputeTask( clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores ) )
@@ -188,9 +190,16 @@ class TaskSession:
 
     ##########################
     def dropped( self ):
+        self.clean()
+        self.conn.clean()
         self.conn.close()
         if self.taskServer:
             self.taskServer.removeTaskSession( self )
+
+    ##########################
+    def clean(self):
+        if self.producer is not None:
+            self.producer.clean()
 
     ##########################
     def fileSent( self, file_ ):
@@ -202,6 +211,7 @@ class TaskSession:
             self.taskServer.taskResultSent( extraData['subtaskId'] )
         else:
             logger.error( "No subtaskId in extraData for sent data" )
+        self.producer = None
         self.dropped()
 
     ##########################
@@ -210,6 +220,7 @@ class TaskSession:
             self.taskComputer.resourceGiven( extraData['taskId'] )
         else:
             logger.error( "No taskId in extraData for received File")
+        self.producer = None
         self.dropped()
 
 
@@ -230,7 +241,7 @@ class TaskSession:
             self.dropped()
             return
 
-        producer = FileProducer( resFilePath, self )
+        self.producer = FileProducer( resFilePath, self )
 
         #Producer powinien zakonczyc tu polaczenie
         #self.dropped()
@@ -252,11 +263,11 @@ class TaskSession:
     def __sendDataResults( self, res ):
         result = pickle.dumps( res.result )
         extraData = { 'subtaskId': res.subtaskId }
-        dataProducer = DataProducer( result, self, extraData = extraData )
+        self.producer = DataProducer( result, self, extraData = extraData )
 
     def __sendFilesResults( self, res ):
         extraData = { 'subtaskId': res.subtaskId }
-        multiFileProducer = MultiFileProducer( res.result, self, extraData = extraData )
+        self.producer = MultiFileProducer( res.result, self, extraData = extraData )
 
     ##########################
     def __receiveDataResult( self, msg ):

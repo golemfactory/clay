@@ -16,20 +16,23 @@ class DistributedResourceManager:
     def __init__( self, resourceDir ):
         self.resources = set()
         self.resourceDir = resourceDir
+        self.resourceHash = ResourceHash( self.resourceDir )
         self.addResources()
 
+    ###################
     def changeResourceDir( self, resourceDir ):
+        self.resourceHash.setResourceDir( resourceDir )
         self.copyResources( resourceDir )
         self.resources = set()
         self.resourceDir = resourceDir
         self.addResources()
 
+    ###################
     def copyResources(self, newResourceDir ):
         copyFileTree( self.resourceDir, newResourceDir )
         filenames = next(os.walk( self.resourceDir ))[2]
         for f in filenames:
             os.remove( os.path.join( self.resourceDir, f ) )
-
 
     ###################
     def splitFile( self, fileName, blockSize = 2 ** 20 ):
@@ -51,7 +54,8 @@ class DistributedResourceManager:
 
     ###################
     def checkResource( self, resource):
-        if os.path.isfile( os.path.join( self.resourceDir, os.path.basename( resource ))):
+        resPath = os.path.join( self.resourceDir, os.path.basename( resource ))
+        if os.path.isfile( resPath ) and self.resourceHash.getFileHash( resPath ) == resource:
             return True
         else:
             return False

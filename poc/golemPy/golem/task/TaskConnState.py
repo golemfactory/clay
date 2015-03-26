@@ -16,6 +16,9 @@ class TaskConnState( ConnectionState ):
         self.fileMode = False
         self.dataMode = False
 
+        self.fileConsumer = None
+        self.dataConsumer = None
+
     ############################
     def setSession( self, taskSession ):
         self.taskSession = taskSession
@@ -83,3 +86,10 @@ class TaskConnState( ConnectionState ):
 
         if self.taskSession:
             self.taskSession.dropped()
+
+    ############################
+    def clean(self):
+        if self.dataConsumer is not None:
+            self.dataConsumer.close()
+        if self.fileConsumer is not None:
+            self.fileConsumer.close()

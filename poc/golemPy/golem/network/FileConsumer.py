@@ -1,4 +1,5 @@
 import struct
+import os
 
 from golem.core.variables import LONG_STANDARD_SIZE
 from golem.resource.Resource import decompressDir
@@ -33,6 +34,14 @@ class FileConsumer:
 
         if self.recvSize == self.fileSize:
             self.__endReceiving()
+
+    ###################
+    def close(self):
+        if self.fh is not None:
+            self.fh.close()
+            self.fh = None
+            if self.recvSize != self.fileSize:
+                os.remove( self.tmpFile )
 
     ###################
     def __getFirstChunk( self, data ):

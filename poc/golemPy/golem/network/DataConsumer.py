@@ -30,6 +30,10 @@ class DataConsumer:
             self.__endReceiving()
 
     ###################
+    def close(self):
+        pass
+
+    ###################
     def __getFirstChunk( self, data ):
         self.lastPercent = 0
         ( self.dataSize, ) = struct.unpack("!L", data[ :LONG_STANDARD_SIZE ] )

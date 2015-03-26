@@ -16,10 +16,8 @@ class ResourceHash:
                 if not data:
                     break
 
-                sha = hashlib.sha1()
-                sha.update( data )
 
-                filehash = os.path.join( self.resourceDir, base64.urlsafe_b64encode( sha.digest() ) )
+                filehash = os.path.join( self.resourceDir, self.__countHash( data ) )
                 filehash = os.path.normpath( filehash )
 
                 with open( filehash, "wb") as fwb:
@@ -38,3 +36,20 @@ class ResourceHash:
                         if not data:
                             break
                         f.write( data )
+
+    ##################################
+    def getFileHash(self, filename):
+        with open(filename, "rb") as f:
+            data = f.read()
+            hash = self.__countHash( data )
+        return hash
+
+    ##################################
+    def setResourceDir( self, resourceDir ):
+        self.resourceDir = resourceDir
+
+    ##################################
+    def __countHash(self, data):
+            sha = hashlib.sha1()
+            sha.update(data)
+            return base64.urlsafe_b64encode( sha.digest() )

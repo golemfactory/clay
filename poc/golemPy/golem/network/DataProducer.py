@@ -45,6 +45,9 @@ class DataProducer:
 #                self.session.taskServer.taskResultSent( self.subtaskId )
                 self.session.conn.transport.unregisterProducer()
 
+    def clean(self):
+        pass
+
     def stopProducing( self ):
         pass
 

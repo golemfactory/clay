@@ -50,5 +50,9 @@ class MultiFileProducer:
     def stopProducing( self ):
         pass
 
+    def clean(self):
+        if self.fh is not None:
+            self.fh.close()
+
     def __printProgress( self ):
         print "\rSending progress {} %                       ".format( int( 100 * float( self.fh.tell() ) / self.size ) ),
