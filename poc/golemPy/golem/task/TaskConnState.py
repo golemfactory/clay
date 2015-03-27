@@ -1,4 +1,5 @@
 import logging
+import time
 
 from golem.Message import Message
 from golem.network.p2p.ConnectionState import ConnectionState
@@ -36,6 +37,11 @@ class TaskConnState( ConnectionState ):
     ############################
     def dataReceived(self, data):
         assert self.opened
+        if not self.taskSession:
+            logger.error( "Task session for connection is None" )
+            assert False
+
+        self.taskSession.lastMessageTime = time.time()
 
         if self.fileMode:
             self.fileDataReceived( data )
@@ -59,12 +65,8 @@ class TaskConnState( ConnectionState ):
             self.taskSession.interpret(None)
             return
 
-        if self.taskSession:
-            for m in mess:
-                self.taskSession.interpret(m)
-        else:
-            logger.error( "Task session for connection is None" )
-            assert False
+        for m in mess:
+            self.taskSession.interpret(m)
 
     ############################
     def fileDataReceived( self, data ):

@@ -152,6 +152,14 @@ class TaskComputer:
         self.waitingForTaskTimeout  = self.taskServer.configDesc.waitingForTaskTimeout
 
     ######################
+    def sessionTimeout( self ):
+        if self.countingTask:
+            return
+        else:
+            self.waitingForTask = None
+            self.waitingTtl = 0
+
+    ######################
     def __requestTask( self ):
         self.waitingTtl  = self.waitingForTaskTimeout
         self.lastChecking = time.time()

@@ -26,9 +26,12 @@ class ResourceSession:
         self.resourceServer = None
         self.fileSize = -1
         self.fileName = None
+        self.fh = None
         self.recvSize = 0
         self.confirmation = False
         self.copies = 0
+
+        self.lastMessageTime = time.time()
 
     ##########################
     def interpret( self, msg ):
@@ -104,10 +107,18 @@ class ResourceSession:
                 self.dropped()
             self.fileName = None
 
+    ##########################
+    def clean(self):
+        if self.fh is not None:
+            self.fh.close()
+            if self.recvSize < self.fileSize:
+                os.remove( self.fileName)
 
     ##########################
     def dropped( self ):
+        self.clean()
         self.conn.close()
+        self.resourceServer.removeSession(self)
 
     ##########################
     def sendHasResource( self, resource ):

@@ -29,6 +29,7 @@ class TaskServer:
         self.minTrust           = 0.0
 
         self.lastMessages       = []
+        self.lastMessageTimeThreshold = 360
 
         self.resultsToSend      = {}
 
@@ -39,6 +40,7 @@ class TaskServer:
         self.taskComputer.run()
         self.__removeOldTasks()
         self.__sendWaitingResults()
+        self.__removeOldSessions()
 
     #############################
     # This method chooses random task from the network to compute on our machine
@@ -395,6 +397,19 @@ class TaskServer:
     def __removeOldTasks( self ):
         self.taskKeeper.removeOldTasks()
         self.taskManager.removeOldTasks()
+
+    #############################
+    def __removeOldSessions(self):
+        curTime = time.time()
+        sessionsToRemove = []
+        for subtaskId, session in self.taskSessions.iteritems():
+            if curTime - session.lastMessageTime > self.lastMessageTimeThreshold:
+                sessionsToRemove.append(subtaskId)
+        for subtaskId in sessionsToRemove:
+            if self.taskSessions[subtaskId].taskComputer is not None:
+                self.taskSessions[subtaskId].taskComputer.sessionTimeout()
+            print "removing session {}".format(subtaskId)
+            self.taskSessions[subtaskId].dropped()
 
     #############################
     def __sendWaitingResults( self ):

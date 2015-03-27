@@ -8,7 +8,7 @@ class Network:
     ######################
     @classmethod
     def connect( cls, address, port, SessionType, establishedCallback = None, failureCallback = None, *args ):
-        logger.info( "Connecting to host {} : {}".format( address, port ) )
+        logger.debug( "Connecting to host {} : {}".format( address, port ) )
         from twisted.internet import reactor
         endpoint    = TCP4ClientEndpoint( reactor, address, port )
         connection  = SessionType.ConnectionStateType()
@@ -48,7 +48,7 @@ class Network:
             conn.setSession( session )
 
             pp = conn.transport.getPeer()
-            logger.debug( "__connectionEstablished {} {}".format( pp.host, pp.port ) )
+            logger.debug( "ConnectionEstablished {} {}".format( pp.host, pp.port ) )
 
             if establishedCallback:
                 if len( args ) == 0:

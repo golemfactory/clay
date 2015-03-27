@@ -33,6 +33,9 @@ class ResourceServer( GNRServer ):
 
         self.lastGetResourcePeersTime  = time.time()
         self.getResourcePeersInterval = 5.0
+        self.sessions = []
+
+        self.lastMessageTimeThreshold = 360
 
     def changeResourceDir( self, configDesc ):
         self.dirManager.rootPath = configDesc.rootPath
@@ -82,6 +85,7 @@ class ResourceServer( GNRServer ):
     ############################
     def newConnection( self, session ):
         session.resourceServer = self
+        self.sessions.append( session )
 
     ############################
     def addResourcePeer(self, clientId, addr, port ):
@@ -109,6 +113,7 @@ class ResourceServer( GNRServer ):
                 self.lastGetResourcePeersTime = time.time()
         self.sendResources()
         self.getResources()
+        self.__removeOldSessions()
 
     ############################
     def getResources( self ):
@@ -150,7 +155,7 @@ class ResourceServer( GNRServer ):
     def pullAnswer( self, resource, hasResource, session ):
         if not hasResource or resource not in [ res[0] for res in self.resourcesToGet]:
             self.__freePeer( session.address, session.port )
-            session.conn.close()
+            session.dropped()
         else:
             if resource not in self.waitingResources:
                 self.waitingResources[resource] = []
@@ -163,6 +168,8 @@ class ResourceServer( GNRServer ):
             session.conn.fileMode = True
             session.conn.confirmation = False
             session.sendWantResource( resource )
+            if self.session not in self.sessions:
+                self.sessions.append(session)
 
     ############################
     def pushResource( self, resource, addr, port, copies ):
@@ -222,6 +229,13 @@ class ResourceServer( GNRServer ):
             self.resourceManager.connectFile( filesData[2], os.path.join( destDir, filesData[0] ) )
 
     ############################
+    def removeSession(self, session):
+        if session in self.sessions:
+            self.__freePeer( session.address, session.port)
+            self.sessions.remove(session)
+
+
+    ############################
     def __freePeer( self, addr, port ):
         for clientId, value in self.resourcePeers.iteritems():
             if value['addr'] == addr and value['port'] == port:
@@ -232,6 +246,7 @@ class ResourceServer( GNRServer ):
     def __connectionPushResourceEstablished( self, session, resource, copies, addr, port ):
         session.resourceServer = self
         session.sendPushResource( resource, copies )
+        self.sessions.append( session )
 
     ############################
     def __connectionPushResourceFailure( self, resource, copies, addr, port ):
@@ -242,6 +257,7 @@ class ResourceServer( GNRServer ):
     def __connectionPullResourceEstablished( self, session, resource, addr, port ):
         session.resourceServer = self
         session.sendPullResource( resource )
+        self.sessions.append( session )
 
     ############################
     def __connectionPullResourceFailure( self, resource, addr, port ):
@@ -251,6 +267,7 @@ class ResourceServer( GNRServer ):
     ############################
     def __connectionForResourceEstablished( self, session, resource, addr, port ):
         session.sendWantResource( resource )
+        self.sessions.append( session )
 
     ############################
     def __connectionForResourceFailure( self, resource, addr, port ):
@@ -267,6 +284,16 @@ class ResourceServer( GNRServer ):
 
         if badClient is not None:
             self.resourcePeers[ badClient ]
+
+    ############################
+    def __removeOldSessions( self ):
+        curTime = time.time()
+        sessionsToRemove = []
+        for session in self.sessions:
+            if curTime - session.lastMessageTime > self.lastMessageTimeThreshold:
+                sessionsToRemove.append(session)
+        for session in sessionsToRemove:
+            self.removeSession(session)
 
     ############################
     def _listeningEstablished( self, iListeningPort ):

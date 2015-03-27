@@ -27,6 +27,7 @@ class PeerSession(PeerSessionInterface):
 
     DCRBadProtocol      = "Bad protocol"
     DCRDuplicatePeers   = "Duplicate peers"
+    DCRTimeout          = "Timeout"
 
     ##########################
     def __init__(self, conn ):
@@ -74,7 +75,7 @@ class PeerSession(PeerSessionInterface):
         #print "Receiving from {}:{}: {}".format( self.address, self.port, msg )
 
         if msg is None:
-            self.__disconnect( PeerSession.DCRBadProtocol )
+            self.disconnect( PeerSession.DCRBadProtocol )
             return
 
         self.p2pService.setLastMessage( "<-", time.localtime(), msg, self.address, self.port )
@@ -104,7 +105,7 @@ class PeerSession(PeerSessionInterface):
 #                self.__sendPing()
                 loggerMsg = "PEER DUPLICATED: {} {} : {}".format( p.id, p.address, p.port )
                 logger.warning( "{} AND {} : {}".format( loggerMsg, msg.clientUID, msg.port ) )
-                self.__disconnect( PeerSession.DCRDuplicatePeers )
+                self.disconnect( PeerSession.DCRDuplicatePeers )
 
             if not p:
                 self.__sendHello()
@@ -129,7 +130,7 @@ class PeerSession(PeerSessionInterface):
         elif type == MessageTasks.Type:
             for t in msg.tasksArray:
                 if not self.p2pService.addTaskHeader( t ):
-                    self.__disconnect( PeerSession.DCRBadProtocol )
+                    self.disconnect( PeerSession.DCRBadProtocol )
 
         elif type == MessageRemoveTask.Type:
             self.p2pService.removeTaskHeader( msg.taskId )
@@ -150,7 +151,7 @@ class PeerSession(PeerSessionInterface):
             self.p2pService.stopGossip( self.id )
 
         else:
-            self.__disconnect( PeerSession.DCRBadProtocol )
+            self.disconnect( PeerSession.DCRBadProtocol )
 
     ##########################
     def sendGetPeers( self ):
@@ -181,10 +182,7 @@ class PeerSession(PeerSessionInterface):
         self.__send( MessageStopGossip())
 
     ##########################
-    # PRIVATE SECTION
-       
-    ##########################
-    def __disconnect(self, reason):
+    def disconnect(self, reason):
         logger.info( "Disconnecting {} : {} reason: {}".format( self.address, self.port, reason ) )
         if self.conn.isOpen():
             if self.lastDisconnectTime:
@@ -193,6 +191,9 @@ class PeerSession(PeerSessionInterface):
                 self.__sendDisconnect(reason)
                 self.lastDisconnectTime = time.time()
 
+
+    ##########################
+    # PRIVATE SECTION
     ##########################
     def __sendHello(self):
         listenParams = self.p2pService.getListenParams()

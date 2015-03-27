@@ -124,10 +124,13 @@ class P2PService:
     #############################
     def removePeerById( self, peerId ):
         if peerId not in self.peers:
+            logger.error("Can't remove peer {}, unknown peer".format(peerId))
             return
         if self.peers[ peerId ] in self.allPeers:
             self.allPeers.remove( self.peers[ peerId ] )
         del self.peers[ peerId ]
+
+        self.__sendDegree()
     
     #############################
     def setLastMessage( self, type, t, msg, address, port ):
@@ -326,13 +329,9 @@ class P2PService:
     #############################
     def __removeOldPeers( self ):
         curTime = time.time()
-        removed = False
         for peerId in self.peers.keys():
             if curTime - self.peers[peerId].lastMessageTime > self.lastMessageTimeThreshold:
-                self.removePeerById( peerId )
-                removed = True
-        if removed:
-            self.__sendDegree()
+                self.peers[peerId].disconnect(PeerSession.DCRTimeout)
 
     #############################
     def __sendDegree(self):

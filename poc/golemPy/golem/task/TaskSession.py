@@ -31,6 +31,7 @@ class TaskSession:
         self.taskId         = 0
 
         self.lastResourceMsg = None
+        self.lastMessageTime = time.time()
 
         self.taskResultOwnerAddr = None
         self.taskResultOwnerPort = None

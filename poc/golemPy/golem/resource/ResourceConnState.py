@@ -1,4 +1,5 @@
 import logging
+import time
 
 from golem.Message import Message
 from golem.core.databuffer import DataBuffer
@@ -31,23 +32,27 @@ class ResourceConnState( ConnectionState ):
         assert self.opened
         assert isinstance(self.db, DataBuffer)
 
+        if not self.session:
+            logger.warning( "No session argument in connection state" )
+            return
+
+        self.session.lastMessageTime = time.time()
+
         if self.fileMode:
             self.fileDataReceived( data )
             return
 
-        if self.session:
-            self.db.appendString( data )
-            mess = Message.deserialize( self.db )
-            if mess is None or len( mess ) == 0:
-                logger.error( "Deserialization message failed " )
-                return None
+        self.db.appendString( data )
+        mess = Message.deserialize( self.db )
+        if mess is None or len( mess ) == 0:
+            logger.error( "Deserialization message failed " )
+            return None
 
-            for m in mess:
-                self.session.interpret( m )
-        else:
-            logger.warning( "No session argument in connection state" )
+        for m in mess:
+            self.session.interpret( m )
 
 
+    ############################
     def fileDataReceived( self, data  ):
         self.session.fileDataReceived( data )
 
