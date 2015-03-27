@@ -29,7 +29,7 @@ class TaskServer:
         self.minTrust           = 0.0
 
         self.lastMessages       = []
-        self.lastMessageTimeThreshold = 360
+        self.lastMessageTimeThreshold = configDesc.taskSessionTimeout
 
         self.resultsToSend      = {}
 
@@ -182,6 +182,7 @@ class TaskServer:
     #############################
     def changeConfig( self, configDesc ):
         self.configDesc = configDesc
+        self.lastMessageTimeThreshold = configDesc.taskSessionTimeout
         self.taskManager.changeConfig( self.__getTaskManagerRoot( configDesc ), configDesc.useDistributedResourceManagement )
         self.taskComputer.changeConfig( )
 

@@ -25,7 +25,7 @@ class P2PService:
         self.freePeers              = []
         self.taskServer             = None
         self.hostAddress            = hostAddress
-        self.lastMessageTimeThreshold = 180
+        self.lastMessageTimeThreshold = self.configDesc.p2pSessionTimeout
 
         self.lastMessages           = []
 
@@ -152,12 +152,17 @@ class P2PService:
         self.configDesc = configDesc
         self.p2pServer.changeConfig( configDesc )
 
+        self.lastMessageTimeThreshold = self.configDesc.p2pSessionTimeout
+
         for peer in self.peers.values():
             if (peer.port == self.configDesc.seedHostPort) and (peer.address == self.configDesc.seedHostPort):
                 return
 
         if not self.wrongSeedData():
             self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
+
+        if self.resourceServer:
+            self.resourceServer.changeConfig( configDesc )
 
     #############################
     def changeAddress( self, thDictRepr ):

@@ -136,9 +136,10 @@ class GNRApplicationLogic( QtCore.QObject ):
     def changeConfig (  self, cfgDesc ):
         oldCfgDesc = self.client.configDesc
         if ( oldCfgDesc.managerAddress != cfgDesc.managerAddress ) or ( oldCfgDesc.managerPort != cfgDesc.managerPort ):
-            self.nodesManagerClient.dropConnection()
-            del self.nodesManagerClient
-            self.nodesManagerClient = NodesManagerClient( cfgDesc.clientUid,
+            if self.nodesManagerClient is not None:
+                self.nodesManagerClient.dropConnection()
+                del self.nodesManagerClient
+            self.nodesManagerClient = NodesManagerUidClient( cfgDesc.clientUid,
                                                           cfgDesc.managerAddress,
                                                           cfgDesc.managerPort,
                                                           None,

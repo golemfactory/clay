@@ -113,6 +113,10 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.nodeSnapshotIntervalLineEdit.setText( u"{}".format( configDesc.nodeSnapshotInterval ) )
         self.gui.ui.maxSendingDelayLineEdit.setText( u"{}".format( configDesc.maxResultsSendingDelay ) )
 
+        self.gui.ui.p2pSessionTimeoutLineEdit.setText( u"{}".format( configDesc.p2pSessionTimeout ) )
+        self.gui.ui.taskSessionTimeoutLineEdit.setText( u"{}".format( configDesc.taskSessionTimeout ) )
+        self.gui.ui.resourceSessionTimeoutLineEdit.setText( u"{}".format( configDesc.resourceSessionTimeout ) )
+
     #############################
     def __loadCheckBoxParam( self, param, checkBox, paramName = '' ):
         try:
@@ -264,6 +268,9 @@ class ConfigurationDialogCustomizer:
         cfgDesc.distResNum = u"{}".format( self.gui.ui.distributedResNumLineEdit.text() )
         cfgDesc.useWaitingForTaskTimeout = int( self.gui.ui.useWaitingForTaskTimeoutCheckBox.isChecked() )
         cfgDesc.waitingForTaskTimeout = u"{}".format( self.gui.ui.waitingForTaskTimeoutLineEdit.text() )
+        cfgDesc.p2pSessionTimeout = u"{}".format( self.gui.ui.p2pSessionTimeoutLineEdit.text())
+        cfgDesc.taskSessionTimeout = u"{}".format( self.gui.ui.taskSessionTimeoutLineEdit.text())
+        cfgDesc.resourceSessionTimeout = u"{}".format( self.gui.ui.resourceSessionTimeoutLineEdit.text())
         cfgDesc.sendPings = int( self.gui.ui.sendPingsCheckBox.isChecked() )
         cfgDesc.pingsInterval = u"{}".format( self.gui.ui.sendPingsLineEdit.text() )
         cfgDesc.gettingPeersInterval = u"{}".format( self.gui.ui.gettingPeersLineEdit.text() )

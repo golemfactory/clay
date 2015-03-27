@@ -57,6 +57,10 @@ def startClient():
     taskRequestInterval         = cfg.getTaskRequestInterval()
     useWaitingForTaskTimeout    = cfg.getUseWaitingForTaskTimeout()
     waitingForTaskTimeout       = cfg.getWaitingForTaskTimeout()
+    p2pSessionTimeout           = cfg.getP2pSessionTimeout()
+    taskSessionTimeout          = cfg.getTaskSessionTimeout()
+    resourceSessionTimeout      = cfg.getResourceSessionTimeout()
+
     estimatedPerformance        = cfg.getEstimatedPerformance()
     nodeSnapshotInterval        = cfg.getNodeSnapshotInterval()
     useDistributedResourceManagement = cfg.getUseDistributedResourceManagement()
@@ -92,12 +96,17 @@ def startClient():
     configDesc.taskRequestInterval      = taskRequestInterval
     configDesc.useWaitingForTaskTimeout = useWaitingForTaskTimeout
     configDesc.waitingForTaskTimeout    = waitingForTaskTimeout
+    configDesc.p2pSessionTimeout        = p2pSessionTimeout
+    configDesc.taskSessionTimeout       = taskSessionTimeout
+    configDesc.resourceSessionTimeout   = resourceSessionTimeout
+
     configDesc.estimatedPerformance     = estimatedPerformance
     configDesc.nodeSnapshotInterval     = nodeSnapshotInterval
     configDesc.maxResultsSendingDelay   = cfg.getMaxResultsSendingDelay()
     configDesc.useDistributedResourceManagement = useDistributedResourceManagement
     configDesc.requestingTrust          = requestingTrust
     configDesc.computingTrust           = computingTrust
+
 
     logger.info( "Adding tasks {}".format( addTasks ) )
     logger.info( "Creating public client interface with uuid: {}".format( clientUid ) )
@@ -315,77 +324,94 @@ class Client:
     def changeConfig( self, newConfigDesc ):
         self.cfg.changeConfig( newConfigDesc )
         self.configDesc.seedHost = newConfigDesc.seedHost
-        try:
-            self.configDesc.seedHostPort = int( newConfigDesc.seedHostPort )
-        except:
-            logger.warning( "{} is not a proper port number".format( newConfigDesc.seedHostPort ) )
-            self.configDesc.seedHostPort = ""
+        self.configDesc.seedHostPort = self.__tryChangeToNumber( self.configDesc.seedHostPort, newConfigDesc.seedHostPort,
+                                                           toInt = True, name = 'Seed host port' )
+
         if self.configDesc.rootPath != newConfigDesc.rootPath:
             self.resourceServer.changeResourceDir( newConfigDesc )
         self.configDesc.rootPath = newConfigDesc.rootPath
-        try:
-            self.configDesc.managerPort = int( newConfigDesc.managerPort )
-        except:
-            logger.warning( "{} is not a proper port number".format( newConfigDesc.managerPort ) )
-            self.configDesc.managerPort = ""
+        self.configDesc.managerPort = self.__tryChangeToNumber(self.configDesc.managerPort, newConfigDesc.managerPort,
+                                                               toInt = True, name = 'Manager port')
+
         self.configDesc.numCores = newConfigDesc.numCores
         self.configDesc.estimatedPerformance = newConfigDesc.estimatedPerformance
         self.configDesc.maxResourceSize = newConfigDesc.maxResourceSize
         self.configDesc.maxMemorySize   = newConfigDesc.maxMemorySize
 
-        try:
-            self.configDesc.optNumPeers = int( newConfigDesc.optNumPeers )
-        except ValueError:
-            logger.warning( "Opt peer number '{}' is not a number".format( newConfigDesc.optNumPeers ) )
+        self.configDesc.optNumPeers = self.__tryChangeToNumber(self.configDesc.optNumPeers, newConfigDesc.optNumPeers,
+                                                              toInt = True, name='Opt peers number')
 
         self.configDesc.useDistributedResourceManagement = newConfigDesc.useDistributedResourceManagement
 
-        try:
-            self.configDesc.distResNum = int( newConfigDesc.distResNum )
-        except ValueError:
-            logger.warning( "Distributed resource number '{}' is not a number".format( newConfigDesc.optNumPeers ) )
+        self.configDesc.distResNum = self.__tryChangeToNumber( self.configDesc.distResNum,
+                                                                      newConfigDesc.distResNum,
+                                                                      toInt = True,
+                                                                      name = 'Distributed resource number')
 
         self.configDesc.useWaitingForTaskTimeout = newConfigDesc.useWaitingForTaskTimeout
-        try:
-            self.configDesc.waitingForTaskTimeout = float( newConfigDesc.waitingForTaskTimeout )
-        except ValueError:
-            logger.warning( "Waiting for task timeout '{}' is not a number".format( newConfigDesc.waitingForTaskTimeout ) )
+
+        self.configDesc.waitingForTaskTimeout = self.__tryChangeToNumber( self.configDesc.waitingForTaskTimeout,
+                                                                          newConfigDesc.waitingForTaskTimeout,
+                                                                          toFloat = True,
+                                                                          name = "Waiting for task timeout")
+
+        self.configDesc.p2pSessionTimeout = self.__tryChangeToNumber( self.configDesc.p2pSessionTimeout,
+                                                                      newConfigDesc.p2pSessionTimeout,
+                                                                      toInt = True,
+                                                                      name = 'P2p session timeout')
+
+        self.configDesc.taskSessionTimeout = self.__tryChangeToNumber( self.configDesc.taskSessionTimeout,
+                                                                      newConfigDesc.taskSessionTimeout,
+                                                                      toInt = True,
+                                                                      name = 'Task session timeout')
+
+        self.configDesc.resourceSessionTimeout = self.__tryChangeToNumber( self.configDesc.resourceSessionTimeout,
+                                                                      newConfigDesc.resourceSessionTimeout,
+                                                                      toInt = True,
+                                                                      name = 'Resource session timeout')
+
 
         self.configDesc.sendPings = newConfigDesc.sendPings
-        try:
-            self.configDesc.pingsInterval = float( newConfigDesc.pingsInterval )
-        except ValueError:
-            logger.warning( "Pings interval '{}' is not a number".format( newConfigDesc.pingsInterval ) )
 
-        try:
-            self.configDesc.gettingPeersInterval = float( newConfigDesc.gettingPeersInterval )
-        except ValueError:
-            logger.warning( "Getting peers interval '{}' is not a number".format( newConfigDesc.gettingPeersInterval ) )
 
-        try:
-            self.configDesc.gettingTasksInterval = float( newConfigDesc.gettingTasksInterval )
-        except ValueError:
-            logger.warning( "Getting tasks interval '{}' is not a number".format( newConfigDesc.gettingTasksInterval ) )
+        self.configDesc.pingsInterval = self.__tryChangeToNumber( self.configDesc.pingsInterval,
+                                                                  newConfigDesc.pingsInterval,
+                                                                  toFloat = True,
+                                                                  name = 'Ping interval')
 
-        try:
-            self.configDesc.nodeSnapshotInterval = float( newConfigDesc.nodeSnapshotInterval )
-        except ValueError:
-            logger.warning( "Node snapshot interval '{}' is not a number".format( newConfigDesc.nodeSnapshotInterval ) )
 
-        try:
-            self.configDesc.maxResultsSendingDelay = float( newConfigDesc.maxResultsSendingDelay )
-        except ValueError:
-            logger.warning( "Max result sending delay '{}' is not a number".format( newConfigDesc.maxResultsSendingDelay ) )
+        self.configDesc.gettingPeersInterval = self.__tryChangeToNumber( self.configDesc.gettingPeersInterval,
+                                                                           newConfigDesc.gettingPeersInterval,
+                                                                           toFloat = True,
+                                                                           name = "Getting peers interval")
 
-        try:
-            self.configDesc.computingTrust = float( newConfigDesc.computingTrust )
-        except ValueError:
-            logger.warning("Minimum trust for computing node '{}' is not a number".format( newConfigDesc.computingTrust ) )
 
-        try:
-            self.configDesc.requestingTrust = float( newConfigDesc.requestingTrust )
-        except ValueError:
-            logger.warning("Minimum trust for requesting node '{}' is not a number".format( newConfigDesc.requestingTrust ) )
+        self.configDesc.gettingTasksInterval = self.__tryChangeToNumber( self.configDesc.gettingTasksInterval,
+                                                                           newConfigDesc.gettingTasksInterval,
+                                                                           toFloat = True,
+                                                                           name = "Getting tasks interval")
+
+        self.configDesc.nodeSnapshotInterval = self.__tryChangeToNumber( self.configDesc.nodeSnapshotInterval,
+                                                                      newConfigDesc.nodeSnapshotInterval,
+                                                                      toFloat = True,
+                                                                      name = "Node snapshot interval")
+
+        self.configDesc.maxResultsSendingDelay = self.__tryChangeToNumber( self.configDesc.maxResultsSendingDelay,
+                                                                      newConfigDesc.maxResultsSendingDelay,
+                                                                      toFloat = True,
+                                                                      name = "Max result sending delay")
+
+
+        self.configDesc.computingTrust = self.__tryChangeToNumber( self.configDesc.computingTrust,
+                                                                      newConfigDesc.computingTrust,
+                                                                      toFloat = True,
+                                                                      name = "Minimum trust for computing node")
+
+
+        self.configDesc.requestingTrust = self.__tryChangeToNumber( self.configDesc.requestingTrust,
+                                                                      newConfigDesc.requestingTrust,
+                                                                      toFloat = True,
+                                                                      name = "Minimum trust for requesting node")
 
         self.p2pservice.changeConfig( self.configDesc )
         self.taskServer.changeConfig( self.configDesc )
@@ -488,6 +514,18 @@ class Client:
     ############################
     def collectStoppedPeers(self):
         return self.p2pservice.popStopGossipFromPeers()
+
+    ############################
+    def __tryChangeToNumber(self, oldValue, newValue, toInt = False, toFloat = False, name="Config"):
+        try:
+            if toInt:
+                newValue = int( newValue )
+            elif toFloat:
+                newValue = float( newValue )
+        except ValueError:
+            logger.warning("{} value '{}' is not a number".format( name, newValue ))
+            newValue = oldValue
+        return newValue
 
     ############################
     def __checkSupportedEnvironment( self, thDictRepr ):

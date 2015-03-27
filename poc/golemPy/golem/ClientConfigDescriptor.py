@@ -24,6 +24,10 @@ class ClientConfigDescriptor:
         self.taskRequestInterval        = 0.0
         self.useWaitingForTaskTimeout   = 0
         self.waitingForTaskTimeout      = 0.0
+        self.p2pSessionTimeout          = 0
+        self.taskSessionTimeout         = 0
+        self.resourceSessionTimeout     = 0
+
         self.estimatedPerformance       = 0.0
         self.nodeSnapshotInterval       = 0.0
         self.maxResultsSendingDelay     = 0.0

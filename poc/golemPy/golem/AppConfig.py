@@ -82,6 +82,9 @@ class NodeConfig:
     DEFAULT_ROOT_PATH = os.environ.get( 'GOLEM' )
     REQUESTING_TRUST = -1.0
     COMPUTING_TRUST = -1.0
+    P2P_SESSION_TIMEOUT = 240
+    TASK_SESSION_TIMEOUT = 900
+    RESOURCE_SESSION_TIMEOUT = 600
 
 
     ##############################
@@ -92,7 +95,9 @@ class NodeConfig:
                   waitingForTaskTimeout = WAITING_FOR_TASK_TIMEOUT, nodesSnapshotInterval = NODE_SNAPSHOT_INTERVAL,
                   addTasks = ADD_TASKS, maxSendingDelay = MAX_SENDING_DELAY,
                   requestingTrust = REQUESTING_TRUST, computingTrust = COMPUTING_TRUST,
-                  useDistributedResourceManagement = USE_DISTRIBUTED_RESOURCE_MANAGEMENT):
+                  useDistributedResourceManagement = USE_DISTRIBUTED_RESOURCE_MANAGEMENT,
+                  p2pSessionTimeout = P2P_SESSION_TIMEOUT, taskSessionTimeout = TASK_SESSION_TIMEOUT,
+                  resourceSessionTimeout = RESOURCE_SESSION_TIMEOUT):
         self._section = "Node {}".format( nodeId )
 
         estimated = NodeConfig.readEstimatedPerformance()
@@ -120,6 +125,9 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "use distributed resource management", useDistributedResourceManagement, self, "UseDistributedResourceManagement")
         ConfigEntry.createProperty( self.section(), "minimum trust for requesting node", requestingTrust, self, "RequestingTrust")
         ConfigEntry.createProperty( self.section(), "minimum trust for computing node", computingTrust, self, "ComputingTrust")
+        ConfigEntry.createProperty( self.section(), "p2p session timeout", p2pSessionTimeout, self, "P2pSessionTimeout" )
+        ConfigEntry.createProperty( self.section(), "task session timeout", taskSessionTimeout, self, "TaskSessionTimeout" )
+        ConfigEntry.createProperty( self.section(), "resource session timeout", resourceSessionTimeout, self, "ResourceSessionTimeout" )
 
 
     ##############################
@@ -260,6 +268,16 @@ class AppConfig:
     def getComputingTrust(self):
         return self._cfg.getNodeConfig().getComputingTrust()
 
+    def getP2pSessionTimeout(self):
+        return self._cfg.getNodeConfig().getP2pSessionTimeout()
+
+    def getTaskSessionTimeout(self):
+        return self._cfg.getNodeConfig().getTaskSessionTimeout()
+
+    def getResourceSessionTimeout(self):
+        return self._cfg.getNodeConfig().getResourceSessionTimeout()
+
+
     ##############################
     def changeConfig( self, cfgDesc , cfgFile = CONFIG_FILENAME, ):
         assert isinstance( cfgDesc, ClientConfigDescriptor )
@@ -281,10 +299,11 @@ class AppConfig:
         self._cfg.getNodeConfig().setNodeSnapshotInterval( cfgDesc.nodeSnapshotInterval )
         self._cfg.getNodeConfig().setMaxResultsSendingDelay( cfgDesc.maxResultsSendingDelay  )
         self._cfg.getNodeConfig().setUseDistributedResourceManagement( cfgDesc.useDistributedResourceManagement )
-        print cfgDesc.requestingTrust
-        print cfgDesc.computingTrust
         self._cfg.getNodeConfig().setRequestingTrust( cfgDesc.requestingTrust )
         self._cfg.getNodeConfig().setComputingTrust( cfgDesc.computingTrust )
+        self._cfg.getNodeConfig().setP2pSessionTimeout( cfgDesc.p2pSessionTimeout )
+        self._cfg.getNodeConfig().setTaskSessionTimeout( cfgDesc.taskSessionTimeout )
+        self._cfg.getNodeConfig().setResourceSessionTimeout( cfgDesc.resourceSessionTimeout )
 
         self._cfg.getCommonConfig().setManagerAddress( cfgDesc.managerAddress )
         self._cfg.getCommonConfig().setManagerListenPort( cfgDesc.managerPort )

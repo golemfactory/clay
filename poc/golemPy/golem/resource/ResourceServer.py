@@ -35,7 +35,7 @@ class ResourceServer( GNRServer ):
         self.getResourcePeersInterval = 5.0
         self.sessions = []
 
-        self.lastMessageTimeThreshold = 360
+        self.lastMessageTimeThreshold = configDesc.resourceSessionTimeout
 
     def changeResourceDir( self, configDesc ):
         self.dirManager.rootPath = configDesc.rootPath
@@ -234,6 +234,10 @@ class ResourceServer( GNRServer ):
             self.__freePeer( session.address, session.port)
             self.sessions.remove(session)
 
+
+    ############################
+    def changeConfig( self, configDesc ):
+        self.lastMessageTimeThreshold = configDesc.resourceSessionTimeout
 
     ############################
     def __freePeer( self, addr, port ):
