@@ -33,10 +33,16 @@ class TestEthereumConnector( unittest.TestCase ):
         dataDesc = EthJSON()
         dataDesc.setMethod("eth_getLogs")
         dataDesc.setId(74)
-       # dataDesc.addParam({"topics": ["0x12341234"]})b6d97503bff4edd93591c57fc91925b41a19bd9c
+        dataDesc.addParam({"topics": ["0x12341234"]})
         data = dataDesc.getData()
         ec = EthereumConnector(address)
         print ec.sendJsonRpc(data)
+
+    def testSendTransaction(self):
+        ec = EthereumConnector( address)
+        self.assertNotIn("error",  ec.sendTransaction(id="0xb60e8dd61c5d32be8058bb8eb970870f07233155", to="0xd46e8dd67c5d32be8058bb8eb970870f07244567",
+                           gas="0x76c0", gasPrice = "0x9184e72a000", value = "0x9184e72a", data = "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"))
+
 
 
 if __name__ == '__main__':
