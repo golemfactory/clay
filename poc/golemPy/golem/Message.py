@@ -325,6 +325,27 @@ class MessageStopGossip( Message ):
     def dictRepr( self ):
         return [ MessageStopGossip.STOP_GOSSIP_STR ]
 
+class MessageLocRank( Message ):
+    Type = 14
+
+    NODE_ID_STR = u"NODE_ID"
+    LOC_RANK_STR = u"LOC_RANK"
+
+    def __init__( self, nodeId = '', locRank = '', dictRepr = None ):
+        Message.__init__( self, MessageLocRank.Type )
+
+        self.nodeId = nodeId
+        self.locRank = locRank
+
+        if dictRepr:
+            self.nodeId = dictRepr[ MessageLocRank.NODE_ID_STR ]
+            self.locRank = dictRepr[ MessageLocRank.LOC_RANK_STR ]
+
+    def dictRepr( self ):
+        return { MessageLocRank.NODE_ID_STR: self.nodeId,
+                 MessageLocRank.LOC_RANK_STR: self.locRank }
+
+
 TASK_MSG_BASE = 2000
 
 class MessageWantToComputeTask( Message ):
@@ -850,6 +871,7 @@ def initMessages():
     MessageDegree()
     MessageGossip()
     MessageStopGossip()
+    MessageLocRank()
 
     MessageTaskToCompute()
     MessageWantToComputeTask()

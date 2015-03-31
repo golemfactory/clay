@@ -168,7 +168,7 @@ class ResourceServer( GNRServer ):
             session.conn.fileMode = True
             session.conn.confirmation = False
             session.sendWantResource( resource )
-            if self.session not in self.sessions:
+            if session not in self.sessions:
                 self.sessions.append(session)
 
     ############################

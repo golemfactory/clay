@@ -1,4 +1,4 @@
-from peewee import SqliteDatabase, Model, CharField, ForeignKeyField, FloatField, DateTimeField
+from peewee import SqliteDatabase, Model, CharField, ForeignKeyField, FloatField, DateTimeField, CompositeKey
 
 import datetime
 
@@ -21,7 +21,7 @@ class Database:
         self.createDatabase()
 
     def createDatabase(self):
-        db.create_tables([Node, Bank, LocalRank, GlobalRank], safe=True)
+        db.create_tables([Node, Bank, LocalRank, GlobalRank, NeighbourLocRank], safe=True)
 
     def checkNode(self, nodeId ):
         with db.transaction():
@@ -55,3 +55,16 @@ class GlobalRank( BaseModel ):
     nodeId = CharField( unique=True )
     requestingTrustValue = FloatField( default = 0.0 )
     computingTrustValue = FloatField( default = 0.0 )
+    gossipWeightComputing = FloatField( default = 0.0 )
+    gossipWeightRequesting = FloatField( default = 0.0)
+
+class NeighbourLocRank( BaseModel ):
+    nodeId = CharField()
+    aboutNodeId = CharField()
+    requestingTrustValue = FloatField( default = 0.0 )
+    computingTrustValue = FloatField( default = 0.0 )
+
+    class Meta:
+        primary_key = CompositeKey( 'nodeId', 'aboutNodeId' )
+
+

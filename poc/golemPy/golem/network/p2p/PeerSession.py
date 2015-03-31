@@ -4,7 +4,7 @@ import logging
 from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, \
                           MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks, \
                           MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
-                          MessageDegree, MessageGossip, MessageStopGossip
+                          MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank
 from golem.network.p2p.NetConnState import NetConnState
 
 
@@ -150,6 +150,8 @@ class PeerSession(PeerSessionInterface):
         elif type == MessageStopGossip.Type:
             self.p2pService.stopGossip( self.id )
 
+        elif type == MessageLocRank.Type:
+            self.p2pService.safeNeighbourLocRank( self.id, msg.nodeId, msg.locRank )
         else:
             self.disconnect( PeerSession.DCRBadProtocol )
 
@@ -180,6 +182,11 @@ class PeerSession(PeerSessionInterface):
     ##########################
     def sendStopGossip(self):
         self.__send( MessageStopGossip())
+
+    ##########################
+    def sendLocRank( self, nodeId, locRank ):
+#        print "SendLocRank"
+        self.__send( MessageLocRank( nodeId, locRank ))
 
     ##########################
     def disconnect(self, reason):
@@ -229,7 +236,7 @@ class PeerSession(PeerSessionInterface):
 
     ##########################
     def __send(self, message):
-       #print "Sending to {}:{}: {}".format( self.address, self.port, message )
+#        print "Sending to {}:{}: {}".format( self.address, self.port, message )
         if not self.conn.sendMessage( message ):
             self.dropped()
             return

@@ -34,6 +34,7 @@ class P2PService:
         self.resourceServer         = None
         self.gossip                 = []
         self.stopGossipFromPeers    = set()
+        self.neighbourLocRankBuff   = []
         self.connectToNetwork()
 
     #############################
@@ -283,6 +284,20 @@ class P2PService:
         self.stopGossipFromPeers = set()
         return stop
 
+    #############################
+    def pushLocalRank( self, nodeId, locRank ):
+        for peer in self.peers.values():
+            peer.sendLocRank( nodeId, locRank )
+
+    #############################
+    def safeNeighbourLocRank(self, neighId, aboutId, rank):
+        self.neighbourLocRankBuff.append( [neighId, aboutId, rank] )
+
+    #############################
+    def popNeighboursLocRanks(self):
+        nrb = self.neighbourLocRankBuff
+        self.neighbourLocRankBuff = []
+        return nrb
 
     #############################
     #PRIVATE SECTION

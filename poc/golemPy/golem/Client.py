@@ -516,6 +516,14 @@ class Client:
         return self.p2pservice.popStopGossipFromPeers()
 
     ############################
+    def collectNeighboursLocRanks(self):
+        return self.p2pservice.popNeighboursLocRanks()
+
+    ############################
+    def pushLocalRank(self, nodeId, locRank ):
+        self.p2pservice.pushLocalRank( nodeId, locRank )
+
+    ############################
     def __tryChangeToNumber(self, oldValue, newValue, toInt = False, toFloat = False, name="Config"):
         try:
             if toInt:
@@ -560,6 +568,7 @@ class Client:
             self.p2pservice.syncNetwork()
             self.taskServer.syncNetwork()
             self.resourceServer.syncNetwork()
+            self.ranking.syncNetwork()
 
 
             if time.time() - self.lastNSSTime > self.configDesc.nodeSnapshotInterval:
