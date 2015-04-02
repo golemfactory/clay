@@ -302,9 +302,9 @@ class TaskSession:
 
             self.taskManager.computedTaskReceived( subtaskId, result, extraData['resultType'] )
             if self.taskManager.verifySubtask( subtaskId ):
-                self.taskServer.acceptTask( subtaskId, self.taskResultOwnerNodeId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
+                self.taskServer.acceptTask( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
             else:
-                self.taskServer.rejectResult( subtaskId, self.taskResultOwnerNodeId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
+                self.taskServer.rejectResult( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
         else:
             logger.error("No taskId value in extraData for received data ")
         self.dropped()

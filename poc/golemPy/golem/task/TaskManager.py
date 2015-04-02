@@ -89,23 +89,12 @@ class TaskManager:
 
         self.__noticeTaskUpdated( task.header.taskId )
 
+    #######################
     def resourcesSend( self, taskId ):
         self.tasksStates[ taskId ].status = TaskStatus.waiting
         self.tasks[taskId].taskStatus = TaskStatus.waiting
         self.__noticeTaskUpdated( taskId )
         logger.info( "Resources for task {} send".format( taskId ) )
-
-    def __hasSubtasks(self, taskState, task, maxResourceSize, maxMemorySize):
-        if taskState.status not in self.activeStatus:
-            return False
-        if not task.needsComputation():
-            return False
-        if task.header.resourceSize > ( long( maxResourceSize ) * 1024 ):
-            return False
-        if task.header.estimatedMemory > ( long( maxMemorySize ) * 1024 ):
-            return False
-        return True
-
 
     #######################
     def getNextSubTask( self, clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores = 0  ):
@@ -161,6 +150,23 @@ class TaskManager:
             return self.tasks[ taskId ].verifySubtask( subtaskId )
         else:
             return False
+
+    #######################
+    def setPriceForSubtask(self, subtaskId, price):
+        if subtaskId in self.subTask2TaskMapping:
+            self.tasksStates[ self.subTask2TaskMapping[ subtaskId ] ].subtaskStates[subtaskId ].value = price
+        else:
+            logger.error("Not my subtask {}".format( subtaskId ))
+
+
+
+    #######################
+    def getNodeIdForSubtask(self, subtaskId ):
+        if subtaskId in self.subTask2TaskMapping:
+            subtaskState = self.tasksStates[ self.subTask2TaskMapping[ subtaskId ] ].subtaskStates[ subtaskId ]
+            return subtaskState.computer.nodeId
+        else:
+            return None
 
     #######################
     def computedTaskReceived( self, subtaskId, result, resultType ):
@@ -365,6 +371,13 @@ class TaskManager:
         self.useDistributedResources = useDistributedResourceManagement
 
     #######################
+    def getNewPaymentsTasks(self):
+        for taskId, task in self.tasksStates.iteritems():
+            if task.status == TaskStatus.finished and not task.paymentBooked and not task.paymentSettled:
+                task.paymentBooked = True
+                return self.getListOfPayments( taskId )
+
+    #######################
     def changeTimeouts( self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
         if taskId in self.tasks:
             task = self.tasks[taskId]
@@ -383,8 +396,23 @@ class TaskManager:
             logger.info( "Cannot find task {} in my tasks".format( taskId ) )
             return False
 
+    #######################
     def getTaskId( self, subtaskId ):
         return self.subTask2TaskMapping[ subtaskId ]
+
+    #######################
+    def getListOfPayments( self, taskId ):
+        payments = {}
+        if taskId in self.tasksStates:
+            for ss in self.tasksStates[taskId].subtaskStates.itervalues():
+                if ss.computer.nodeId in payments:
+                    payments[ss.computer.nodeId] += ss.value
+                else:
+                    payments[ss.computer.nodeId] = ss.value
+            return payments
+        else:
+            logger.error("Not my task {}".format( taskId ))
+            return None
 
 
     #######################
@@ -405,6 +433,7 @@ class TaskManager:
             ss.subtaskId            = ctd.subtaskId
             ss.extraData            = ctd.extraData
             ss.subtaskStatus        = TaskStatus.starting
+            ss.value                = 0
 
             ts.subtaskStates[ ctd.subtaskId ] = ss
 
@@ -412,3 +441,16 @@ class TaskManager:
     def __noticeTaskUpdated( self, taskId ):
         for l in self.listeners:
             l.taskStatusUpdated( taskId )
+
+    #######################
+    def __hasSubtasks(self, taskState, task, maxResourceSize, maxMemorySize):
+        if taskState.status not in self.activeStatus:
+            return False
+        if not task.needsComputation():
+            return False
+        if task.header.resourceSize > ( long( maxResourceSize ) * 1024 ):
+            return False
+        if task.header.estimatedMemory > ( long( maxMemorySize ) * 1024 ):
+            return False
+        return True
+

@@ -9,6 +9,8 @@ class TaskState:
         self.remainingTime  = 0
         self.elapsedTime    = 0
         self.timeStarted    = 0
+        self.paymentBooked  = False
+        self.paymentSettled = False
 
         self.subtaskStates  = {}
 
@@ -51,6 +53,7 @@ class SubtaskState:
         self.extraData          = {}
         self.subtaskRemTime     = 0
         self.subtaskStatus      = ""
+        self.value              = 0
 
 
         self.computer           = ComputerState()
