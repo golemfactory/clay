@@ -41,6 +41,7 @@ class TaskServer:
         self.__removeOldTasks()
         self.__sendWaitingResults()
         self.__removeOldSessions()
+        self.__sendPayments()
 
     #############################
     # This method chooses random task from the network to compute on our machine
@@ -218,15 +219,15 @@ class TaskServer:
             self.decreaseRequesterTrust( taskId )
         self.taskKeeper.removeWaitingForVerificationTaskId( subtaskId )
 
-
     ###########################
-    def acceptTask(self, subtaskId, nodeId, address, port ):
+    def acceptTask(self, subtaskId, address, port ):
         self.payForTask( subtaskId, address, port )
-        self.increaseComputingTrust( nodeId, subtaskId )
+        self.increaseComputingTrust( subtaskId )
 
     ###########################
-    def increaseComputingTrust(self, nodeId, subtaskId ):
+    def increaseComputingTrust(self, subtaskId ):
         trustMod = min( max( self.taskManager.getTrustMod( subtaskId ), self.minTrust), self.maxTrust )
+        nodeId = self.taskManager.getNodeIdForSubtask( subtaskId )
         self.client.increaseComputingTrust( nodeId, trustMod )
 
     ###########################
@@ -255,6 +256,7 @@ class TaskServer:
         priceMod = self.taskManager.getPriceMod( subtaskId )
         price = self.client.payForTask( priceMod )
         logger.info( "Paying {} for subtask {}".format( price, subtaskId ) )
+        self.taskManager.setPriceForSubtask( subtaskId, price )
         self.__connectAndPayForTask( address, port, subtaskId, price )
         return price
 
@@ -423,8 +425,19 @@ class TaskServer:
                     self.__connectAndSendTaskResults( waitingTaskResult.ownerAddress, waitingTaskResult.ownerPort, waitingTaskResult )
 
     #############################
+    def __sendPayments( self ):
+        payments = self.taskManager.getNewPaymentsTasks()
+        if payments:
+            logger.info("Payments {}".format( payments ))
+            #TODO
+            #Tutaj nalezy przeniesc rozliczenia = uzytkownik po zweryfikowaniu calosci sprawdza
+            #czy moze juz zaplacic, jesli nie - dopisuje calosc do tablicy.
+
+    #############################
     def __getTaskManagerRoot( self, configDesc ):
         return os.path.join( configDesc.rootPath, "res" )
+
+
 
 class WaitingTaskResult:
     #############################
