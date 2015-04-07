@@ -19,6 +19,8 @@ class ClientConfigDescriptor:
         self.seedHost               = u""
         self.seedHostPort           = 0
 
+        self.pluginPort                 = 0
+
         self.gettingPeersInterval       = 0.0
         self.gettingTasksInterval       = 0.0
         self.taskRequestInterval        = 0.0

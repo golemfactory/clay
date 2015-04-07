@@ -85,6 +85,7 @@ class NodeConfig:
     P2P_SESSION_TIMEOUT = 240
     TASK_SESSION_TIMEOUT = 900
     RESOURCE_SESSION_TIMEOUT = 600
+    PLUGIN_PORT = 1111
 
 
     ##############################
@@ -97,7 +98,7 @@ class NodeConfig:
                   requestingTrust = REQUESTING_TRUST, computingTrust = COMPUTING_TRUST,
                   useDistributedResourceManagement = USE_DISTRIBUTED_RESOURCE_MANAGEMENT,
                   p2pSessionTimeout = P2P_SESSION_TIMEOUT, taskSessionTimeout = TASK_SESSION_TIMEOUT,
-                  resourceSessionTimeout = RESOURCE_SESSION_TIMEOUT):
+                  resourceSessionTimeout = RESOURCE_SESSION_TIMEOUT, pluginPort = PLUGIN_PORT):
         self._section = "Node {}".format( nodeId )
 
         estimated = NodeConfig.readEstimatedPerformance()
@@ -128,6 +129,7 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "p2p session timeout", p2pSessionTimeout, self, "P2pSessionTimeout" )
         ConfigEntry.createProperty( self.section(), "task session timeout", taskSessionTimeout, self, "TaskSessionTimeout" )
         ConfigEntry.createProperty( self.section(), "resource session timeout", resourceSessionTimeout, self, "ResourceSessionTimeout" )
+        ConfigEntry.createProperty( self.section(), "plugin port", pluginPort, self, "PluginPort")
 
 
     ##############################
@@ -277,6 +279,8 @@ class AppConfig:
     def getResourceSessionTimeout(self):
         return self._cfg.getNodeConfig().getResourceSessionTimeout()
 
+    def getPluginPort( self ):
+        return self._cfg.getNodeConfig().getPluginPort()
 
     ##############################
     def changeConfig( self, cfgDesc , cfgFile = CONFIG_FILENAME, ):
@@ -304,6 +308,7 @@ class AppConfig:
         self._cfg.getNodeConfig().setP2pSessionTimeout( cfgDesc.p2pSessionTimeout )
         self._cfg.getNodeConfig().setTaskSessionTimeout( cfgDesc.taskSessionTimeout )
         self._cfg.getNodeConfig().setResourceSessionTimeout( cfgDesc.resourceSessionTimeout )
+        self._cfg.getNodeConfig().setPluginPort( cfgDesc.pluginPort )
 
         self._cfg.getCommonConfig().setManagerAddress( cfgDesc.managerAddress )
         self._cfg.getCommonConfig().setManagerListenPort( cfgDesc.managerPort )

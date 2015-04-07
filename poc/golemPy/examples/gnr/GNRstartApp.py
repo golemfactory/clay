@@ -99,11 +99,25 @@ def runManagerClient( logic ):
 def runRanking( client, reactor):
     client.ranking.run(reactor)
 
+############################
+def runAddTaskClient( logic ):
+    logic.startAddTaskClient()
+
+############################
+def runAddTaskServer( client ):
+   client.runAddTaskServer()
+ #   from PluginServer import TaskAdderServer
+ #   server =  TaskAdderServer( client.getPluginPort() )
+ #   server.start()
+
 ###########################################################################
-def startRenderingApp( logic, app, gui, startManager = False, startManagerClient = False, startInfoServer = False, startRanking = True ):
+def startApp( logic, app, gui, rendering = False, startManager = False, startManagerClient = False, startInfoServer = False, startRanking = True, startAddTaskClient = False, startAddTaskServer = False  ):
     reactor = install_reactor()
     registerGui( logic, app, gui )
-    registerRenderingTaskTypes( logic )
+    if rendering:
+        registerRenderingTaskTypes( logic )
+    else:
+        registerTaskTypes( logic )
     environments = loadEnvironments()
 
     client = startAndConfigureClient( logic, environments )
@@ -116,28 +130,11 @@ def startRenderingApp( logic, app, gui, startManager = False, startManagerClient
         runInfoServer( client )
     if startRanking:
         runRanking( client, reactor )
+    if startAddTaskClient:
+        runAddTaskClient( logic )
+    if startAddTaskServer:
+        runAddTaskServer( client )
 
     app.execute( False )
 
-    reactor.run()
-
-###########################################################################
-def startGNRApp( logic, app, gui, startManager = False, startManagerClient = False, startInfoServer = False, startRanking = True ):
-    reactor = install_reactor()
-    registerGui( logic, app, gui )
-    registerTaskTypes( logic )
-    environments = loadEnvironments()
-
-    client = startAndConfigureClient( logic, environments)
-
-    if startManager:
-        runManager( logic, client )
-    if startManagerClient:
-        runManagerClient( logic )
-    if startInfoServer:
-        runInfoServer( client )
-    if startRanking:
-        runRanking( client, reactor )
-
-    app.execute( False )
     reactor.run()

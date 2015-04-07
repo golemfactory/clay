@@ -20,6 +20,8 @@ class GNRAdmApplicationLogic( GNRApplicationLogic ):
         GNRApplicationLogic.__init__( self )
         self.startNodesManagerFunction = lambda: None
 
+        self.addTasksClient = None
+
     ######################
     def registerStartNodesManagerFunction( self, func ):
         self.startNodesManagerFunction = func
@@ -31,24 +33,13 @@ class GNRAdmApplicationLogic( GNRApplicationLogic ):
     ######################
     def sendTestTasks( self ):
         path = os.path.join( os.environ.get( 'GOLEM' ), 'save/test')
-        files = glob.glob( os.path.join( path, '*.gt' ) )
-        tasks = []
-        for file_ in files:
-            taskState = self._getNewTaskState()
-            taskState.status = TaskStatus.notStarted
-            taskState.definition = pickle.loads( open( file_, 'r' ).read() )
-            import uuid
-            taskState.definition.taskId = "{}".format( uuid.uuid4() )
-            tasks.append( taskState )
-        self.addTasks ( tasks )
-        for task in tasks:
-            self.startTask( task.definition.taskId )
+        self.addAndStartTasksFromFiles( glob.glob( os.path.join( path, '*.gt' ) ) )
 
     ######################
     def updateOtherGolems( self, golemDir ):
         taskDefinition         = UpdateOtherGolemsTaskDefinition()
         taskDefinition.taskId  = "{}".format( uuid.uuid4() )
-        taskDefinition.srcFile          = os.path.join( os.environ.get('GOLEM'), "examples\\tasks\\updateGolem.py" )
+        taskDefinition.srcFile          = os.path.normpath( os.path.join( os.environ.get('GOLEM'), "examples/tasks/updateGolem.py" ) )
         taskDefinition.totalSubtasks    = 100
         taskDefinition.fullTaskTimeout  = 4 * 60 * 60
         taskDefinition.subtaskTimeout   = 20 * 60
@@ -68,7 +59,7 @@ class GNRAdmApplicationLogic( GNRApplicationLogic ):
     def sendInfoTask( self, iterations, fullTaskTimeout, subtaskTimeout ):
         infoTaskDefinition = InfoTaskDefinition()
         infoTaskDefinition.taskId           = "{}".format( uuid.uuid4() )
-        infoTaskDefinition.srcFile          = os.path.join( os.environ.get('GOLEM'), "examples\\tasks\\sendSnapshot.py" )
+        infoTaskDefinition.srcFile          = os.path.normpath( os.path.join( os.environ.get('GOLEM'), "examples/tasks/sendSnapshot.py" ) )
         infoTaskDefinition.totalSubtasks    = iterations
         infoTaskDefinition.fullTaskTimeout  = fullTaskTimeout
         infoTaskDefinition.subtaskTimeout   = subtaskTimeout
@@ -82,3 +73,39 @@ class GNRAdmApplicationLogic( GNRApplicationLogic ):
         task = Task.buildTask(  taskBuilder )
         self.addTaskFromDefinition( infoTaskDefinition )
         self.client.enqueueNewTask( task )
+
+
+    ######################
+    def startAddTaskClient(self):
+        import zerorpc
+        self.addTasksClient = zerorpc.Client()
+        self.addTasksClient.connect("tcp://127.0.0.1:{}".format( self.client.getPluginPort()))
+
+    ######################
+    def checkNetworkState( self ):
+        GNRApplicationLogic.checkNetworkState(self)
+        if self.addTasksClient:
+            self.addAndStartTasksFromFiles( self.addTasksClient.getTasks())
+
+    ######################
+    def addAndStartTasksFromFiles(self, files):
+        tasks = []
+        for taskFile in files:
+            try:
+                taskState = self.__readTaskFromFile(taskFile)
+                tasks.append( taskState )
+            except Exception as ex:
+                logger.error("Wrong task file {}, {}".format(taskFile, str( ex ) ))
+
+        self.addTasks ( tasks )
+        for task in tasks:
+            self.startTask( task.definition.taskId )
+
+    ######################
+    def __readTaskFromFile(self, taskFile ):
+        taskState = self._getNewTaskState()
+        taskState.status = TaskStatus.notStarted
+        taskState.definition = pickle.loads( open( taskFile, 'r' ).read() )
+        import uuid
+        taskState.definition.taskId = "{}".format( uuid.uuid4() )
+        return taskState

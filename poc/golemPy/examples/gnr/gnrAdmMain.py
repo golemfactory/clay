@@ -16,7 +16,7 @@ from examples.gnr.Application import GNRGui
 
 from examples.gnr.ui.MainWindow import GNRMainWindow
 from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdministratorMainWindowCustomizer
-from GNRstartApp import startGNRApp
+from GNRstartApp import startApp
 
 def main():
     logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
@@ -24,7 +24,7 @@ def main():
     logic   = GNRAdmApplicationLogic()
     app     = GNRGui( logic, GNRMainWindow )
     gui     = GNRAdministratorMainWindowCustomizer
-    startGNRApp( logic, app, gui,startManager = True, startInfoServer = True )
+    startApp( logic, app, gui,startManager = True, startInfoServer = True )
 
 
 main()

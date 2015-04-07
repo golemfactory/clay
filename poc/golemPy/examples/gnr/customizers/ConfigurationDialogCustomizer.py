@@ -22,6 +22,8 @@ class ConfigurationDialogCustomizer:
         self.gui    = gui
         self.logic  = logic
 
+        self.oldPluginPort = None
+
         self.__setupConnections()
 
     #############################
@@ -116,6 +118,9 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.p2pSessionTimeoutLineEdit.setText( u"{}".format( configDesc.p2pSessionTimeout ) )
         self.gui.ui.taskSessionTimeoutLineEdit.setText( u"{}".format( configDesc.taskSessionTimeout ) )
         self.gui.ui.resourceSessionTimeoutLineEdit.setText( u"{}".format( configDesc.resourceSessionTimeout ) )
+
+        self.gui.ui.pluginPortLineEdit.setText(u"{}".format( configDesc.pluginPort ) )
+        self.oldPluginPort = u"{}".format( configDesc.pluginPort )
 
     #############################
     def __loadCheckBoxParam( self, param, checkBox, paramName = '' ):
@@ -277,6 +282,10 @@ class ConfigurationDialogCustomizer:
         cfgDesc.gettingTasksInterval = u"{}".format( self.gui.ui.gettingTasksIntervalLineEdit.text() )
         cfgDesc.nodeSnapshotInterval = u"{}".format( self.gui.ui.nodeSnapshotIntervalLineEdit.text() )
         cfgDesc.maxResultsSendingDelay = u"{}".format( self.gui.ui.maxSendingDelayLineEdit.text() )
+        cfgDesc.pluginPort = u"{}".format( self.gui.ui.pluginPortLineEdit.text() )
+
+        if self.oldPluginPort != cfgDesc.pluginPort:
+            self.__showPluginPortWarning()
 
     #############################
     def __readManagerConfig( self, cfgDesc ):
@@ -319,3 +328,6 @@ class ConfigurationDialogCustomizer:
             numCores = 1
         self.gui.ui.performanceLabel.setText( str( self.logic.recountPerformance( numCores ) ) )
 
+    #############################
+    def __showPluginPortWarning( self ):
+        QMessageBox.warning( self.gui.window, 'Golem Message', "Restart application to change plugin port")

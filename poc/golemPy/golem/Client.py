@@ -51,6 +51,7 @@ def startClient():
     distResNum      = cfg.getDistributedResNum()
     appName         = cfg.getAppName()
     appVersion      = cfg.getAppVersion()
+    pluginPort      = cfg.getPluginPort()
 
     gettingPeersInterval        = cfg.getGettingPeersInterval()
     gettingTasksInterval        = cfg.getGettingTasksInterval()
@@ -91,6 +92,7 @@ def startClient():
     configDesc.appVersion             = appVersion
     configDesc.appName                = appName
 
+    configDesc.pluginPort               = pluginPort
     configDesc.gettingPeersInterval     = gettingPeersInterval
     configDesc.gettingTasksInterval     = gettingTasksInterval
     configDesc.taskRequestInterval      = taskRequestInterval
@@ -187,6 +189,8 @@ class Client:
         self.resourcePort   = 0
         self.lastGetResourcePeersTime  = time.time()
         self.getResourcePeersInterval = 5.0
+
+        self.taskServer = None
        
     ############################
     def startNetwork( self ):
@@ -211,6 +215,12 @@ class Client:
         #logger.info( "Starting nodes manager client ..." )
 
         #self.taskServer.taskManager.addNewTask( )
+
+    ############################
+    def runAddTaskServer( self ):
+        from PluginServer import TaskAdderServer
+        self.server = TaskAdderServer( self.getPluginPort() )
+        self.server.start()
 
     ############################
     def stopNetwork(self):
@@ -522,6 +532,10 @@ class Client:
     ############################
     def pushLocalRank(self, nodeId, locRank ):
         self.p2pservice.pushLocalRank( nodeId, locRank )
+
+    ############################
+    def getPluginPort(self):
+        return self.configDesc.pluginPort
 
     ############################
     def __tryChangeToNumber(self, oldValue, newValue, toInt = False, toFloat = False, name="Config"):
