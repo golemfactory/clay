@@ -191,6 +191,7 @@ class Client:
         self.getResourcePeersInterval = 5.0
 
         self.taskServer = None
+        self.taskAdderServer = None
        
     ############################
     def startNetwork( self ):
@@ -218,9 +219,15 @@ class Client:
 
     ############################
     def runAddTaskServer( self ):
-        from PluginServer import TaskAdderServer
-        self.server = TaskAdderServer( self.getPluginPort() )
-        self.server.start()
+        from PluginServer import startTaskAdderServer
+        from multiprocessing import Process, freeze_support
+        freeze_support()
+        self.taskAdderServer = Process( target = startTaskAdderServer, args=(self.getPluginPort(),))
+        self.taskAdderServer.start()
+
+    ############################
+    def quit(self):
+        self.taskAdderServer.terminate()
 
     ############################
     def stopNetwork(self):

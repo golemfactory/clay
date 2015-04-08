@@ -1,9 +1,6 @@
 import zerorpc
-import gevent
-from threading import Thread, Event
+
 import logging
-import sys
-import time
 
 logger = logging.getLogger( __name__ )
 
@@ -24,16 +21,10 @@ class TaskAdder():
     def addTask(self, task):
         self.taskList.append( task )
 
-    def stop(self):
-        self.stop()
-
-class TaskAdderServer( Thread ):
+class TaskAdderServer:
     def __init__( self, port ):
-        Thread.__init__( self )
-        self.deamon = True
         self.port = port
         self.server = None
-        self._stop = Event()
 
     def __bindPort(self, port ):
         self.server.bind( _localTcpAddr( port ) )
@@ -54,6 +45,11 @@ class TaskAdderServer( Thread ):
         print "server ruuuuuning"
         self.server.run()
         print "after server run"
+
+def startTaskAdderServer(port):
+    server = TaskAdderServer(port)
+    server.run()
+
 
    # def stop(self):
     #    time.sleep(3)

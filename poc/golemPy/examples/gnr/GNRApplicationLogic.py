@@ -126,6 +126,10 @@ class GNRApplicationLogic( QtCore.QObject ):
         return self.client.configDesc
 
     ######################
+    def quit(self):
+        self.client.quit()
+
+    ######################
     def getTaskType( self, name ):
         if name in self.taskTypes:
             return self.taskTypes[ name ]

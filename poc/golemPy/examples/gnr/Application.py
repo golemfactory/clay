@@ -1,5 +1,8 @@
 import sys
+import logging
 from PyQt4.QtGui import QApplication
+
+logger = logging.getLogger(__name__)
 
 class GNRGui:
     ############################
@@ -12,7 +15,13 @@ class GNRGui:
     def execute( self, usingqt4Reactor = True ):
         self.mainWindow.show()
         if not usingqt4Reactor:
-            sys.exit( self.app.exec_() )
+            res = self.app.exec_()
+            try:
+                self.appLogic.quit()
+            except Exception as err:
+                logger.error("{}".format(err))
+            finally:
+                sys.exit( res )
 
     ############################
     def getMainWindow( self ):
