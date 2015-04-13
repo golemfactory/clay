@@ -1,3 +1,7 @@
+import time
+import datetime
+import logging
+
 from twisted.internet import task
 from threading import Lock
 
@@ -9,7 +13,6 @@ from golem.core.hostaddress import getHostAddress
 
 from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 
-import time
 
 from golem.AppConfig import AppConfig
 #from golem.BankConfig import BankConfig
@@ -20,8 +23,6 @@ from golem.environments.EnvironmentsManager import EnvironmentsManager
 from golem.resource.ResourceServer import ResourceServer
 from golem.resource.DirManager import DirManager
 from golem.ranking.Ranking import Ranking, RankingDatabase
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -320,7 +321,7 @@ class Client:
         if self.budget >= price:
 #            self.bankConfig.addToBudget( -price )
             self.budget -= price
-            Bank.update(val = self.budget ).where( Bank.nodeId == self.configDesc.clientUid ).execute()
+            Bank.update(val = self.budget, modified_date = str( datetime.datetime.now() ) ).where( Bank.nodeId == self.configDesc.clientUid ).execute()
             return price
         else:
             logger.warning( "Not enough money to pay for task. ")
@@ -330,7 +331,7 @@ class Client:
     def getReward( self, reward ):
 #        self.bankConfig.addToBudget( reward )
         self.budget += reward
-        Bank.update(val = self.budget ).where( Bank.nodeId == self.configDesc.clientUid ).execute()
+        Bank.update(val = self.budget,  modified_date = str( datetime.datetime.now() ) ).where( Bank.nodeId == self.configDesc.clientUid ).execute()
 
     ############################
     def registerListener( self, listener ):

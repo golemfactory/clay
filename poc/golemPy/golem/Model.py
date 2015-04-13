@@ -38,11 +38,14 @@ class BaseModel( Model ):
 
 class Node( BaseModel ):
     nodeId = CharField( primary_key=True )
+    created_date = DateTimeField( default = datetime.datetime.now )
+    modified_date = DateTimeField( default = datetime.datetime.now )
 
 class Bank( BaseModel ):
     nodeId = ForeignKeyField( Node, related_name='has', unique=True )
     val = FloatField( default = START_BUDGET )
     created_date = DateTimeField( default = datetime.datetime.now )
+    modified_date = DateTimeField( default = datetime.datetime.now )
 
 class LocalRank( BaseModel ):
     nodeId = CharField( unique=True )
@@ -50,6 +53,8 @@ class LocalRank( BaseModel ):
     negativeComputed = FloatField( default = 0.0 )
     positiveRequested = FloatField( default = 0.0 )
     negativeRequested = FloatField( default = 0.0 )
+    created_date = DateTimeField( default = datetime.datetime.now )
+    modified_date = DateTimeField( default = datetime.datetime.now )
 
 class GlobalRank( BaseModel ):
     nodeId = CharField( unique=True )
@@ -57,12 +62,16 @@ class GlobalRank( BaseModel ):
     computingTrustValue = FloatField( default = 0.0 )
     gossipWeightComputing = FloatField( default = 0.0 )
     gossipWeightRequesting = FloatField( default = 0.0)
+    created_date = DateTimeField( default = datetime.datetime.now )
+    modified_date = DateTimeField( default = datetime.datetime.now )
 
 class NeighbourLocRank( BaseModel ):
     nodeId = CharField()
     aboutNodeId = CharField()
     requestingTrustValue = FloatField( default = 0.0 )
     computingTrustValue = FloatField( default = 0.0 )
+    created_date = DateTimeField( default = datetime.datetime.now )
+    modified_date = DateTimeField( default = datetime.datetime.now )
 
     class Meta:
         primary_key = CompositeKey( 'nodeId', 'aboutNodeId' )

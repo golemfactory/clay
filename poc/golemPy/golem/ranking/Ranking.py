@@ -2,6 +2,7 @@ import logging
 import time
 import random
 import operator
+import datetime
 
 from twisted.internet.task import deferLater
 from itertools import izip
@@ -20,7 +21,7 @@ class RankingDatabase:
             with self.db.transaction():
                 LocalRank.create(nodeId=nodeId, positiveComputed=trustMod)
         except IntegrityError:
-            LocalRank.update(positiveComputed = LocalRank.positiveComputed + trustMod).where(LocalRank.nodeId == nodeId).execute()
+            LocalRank.update(positiveComputed = LocalRank.positiveComputed + trustMod, modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
 
     ############################
     def decreaseComputingTrust(self, nodeId, trustMod):
@@ -28,7 +29,7 @@ class RankingDatabase:
             with self.db.transaction():
                 LocalRank.create(nodeId = nodeId, negativeComputed = trustMod)
         except IntegrityError:
-            LocalRank.update(negativeComputed = LocalRank.negativeComputed + trustMod).where(LocalRank.nodeId == nodeId).execute()
+            LocalRank.update(negativeComputed = LocalRank.negativeComputed + trustMod, modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
 
     ############################
     def increaseRequesterTrust(self, nodeId, trustMod):
@@ -36,7 +37,7 @@ class RankingDatabase:
             with self.db.transaction():
                 LocalRank.create(nodeId = nodeId, positiveRequested = trustMod)
         except IntegrityError:
-            LocalRank.update(positiveRequested = LocalRank.positiveRequested + trustMod).where(LocalRank.nodeId == nodeId).execute()
+            LocalRank.update(positiveRequested = LocalRank.positiveRequested + trustMod, modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
 
     ############################
     def decreaseRequesterTrust(self, nodeId, trustMod):
@@ -44,7 +45,7 @@ class RankingDatabase:
             with self.db.transaction():
                 LocalRank.create(nodeId = nodeId, negativeRequested = trustMod)
         except IntegrityError:
-            LocalRank.update(negativeRequested = LocalRank.negativeRequested + trustMod).where(LocalRank.nodeId == nodeId).execute()
+            LocalRank.update(negativeRequested = LocalRank.negativeRequested + trustMod,  modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
 
     ############################
     def getLocalRank(self, nodeId ):
@@ -60,7 +61,7 @@ class RankingDatabase:
             with self.db.transaction():
                 GlobalRank.create( nodeId = nodeId, requestingTrustValue = reqTrust, computingTrustValue = compTrust, gossipWeightComputing = compWeight, gossipWeightRequesting = reqWeight )
         except IntegrityError:
-            GlobalRank.update(requestingTrustValue = reqTrust, computingTrustValue = compTrust, gossipWeightComputing = compWeight, gossipWeightRequesting = reqWeight).where( GlobalRank.nodeId == nodeId ).execute()
+            GlobalRank.update(requestingTrustValue = reqTrust, computingTrustValue = compTrust, gossipWeightComputing = compWeight, gossipWeightRequesting = reqWeight,  modified_date = str( datetime.datetime.now() )).where( GlobalRank.nodeId == nodeId ).execute()
 
     ############################
     def getAllLocalRank(self):
