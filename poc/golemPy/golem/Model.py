@@ -53,6 +53,10 @@ class LocalRank( BaseModel ):
     negativeComputed = FloatField( default = 0.0 )
     positiveRequested = FloatField( default = 0.0 )
     negativeRequested = FloatField( default = 0.0 )
+    positivePayment = FloatField( default = 0.0 )
+    negativePayment = FloatField( default = 0.0 )
+    positiveResource = FloatField( default = 0.0 )
+    negativeResource = FloatField( default = 0.0 )
     created_date = DateTimeField( default = datetime.datetime.now )
     modified_date = DateTimeField( default = datetime.datetime.now )
 

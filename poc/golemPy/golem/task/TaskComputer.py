@@ -10,6 +10,7 @@ from golem.vm.vm import PythonVM, PythonTestVM
 from golem.manager.NodeStateSnapshot import TaskChunkStateSnapshot
 from golem.resource.ResourcesManager import ResourcesManager
 from golem.resource.DirManager import DirManager
+
 import os
 import logging
 
@@ -105,19 +106,24 @@ class TaskComputer:
     def taskComputed( self, taskThread ):
         with self.lock:
             self.countingTask = False
-            print self.currentComputations
             self.currentComputations.remove( taskThread )
 
             subtaskId   = taskThread.subtaskId
 
-            if taskThread.result and 'data' in taskThread.result and 'resultType' in taskThread.result:
+            if taskThread.error:
+                self.taskServer.sendTaskFailed( subtaskId, self.assignedSubTasks[subtaskId].taskId, taskThread.errorMsg, self.assignedSubTasks[ subtaskId ].returnAddress, self.assignedSubTasks[ subtaskId ].returnPort, self.clientUid )
+            elif taskThread.result and 'data' in taskThread.result and 'resultType' in taskThread.result:
                 logger.info ( "Task {} computed".format( subtaskId ) )
-                if subtaskId in self.assignedSubTasks:
-                    self.taskServer.sendResults( subtaskId, self.assignedSubTasks[subtaskId].taskId, taskThread.result, self.assignedSubTasks[ subtaskId ].returnAddress, self.assignedSubTasks[ subtaskId ].returnPort )
-                    del self.assignedSubTasks[ subtaskId ]
+                self.taskServer.sendResults( subtaskId, self.assignedSubTasks[subtaskId].taskId, taskThread.result, self.assignedSubTasks[ subtaskId ].returnAddress, self.assignedSubTasks[ subtaskId ].returnPort, self.clientUid )
+            else:
+                self.taskServer.sendTaskFailed( subtaskId, self.assignedSubTasks[subtaskId].taskId, "Wrong result format", self.assignedSubTasks[ subtaskId ].returnAddress, self.assignedSubTasks[subtaskId].returnPort, self.clientUid )
 
+
+            if subtaskId in self.assignedSubTasks:
+                del self.assignedSubTasks[ subtaskId ]
     ######################
     def run( self ):
+
         if self.countingTask:
             return
 
@@ -158,6 +164,11 @@ class TaskComputer:
         else:
             self.waitingForTask = None
             self.waitingTtl = 0
+
+    ######################
+    def increaseRequestTrust(self, subtaskId ):
+        with self.lock:
+            self.increaseTrustVal = True
 
     ######################
     def __requestTask( self ):
@@ -210,6 +221,7 @@ class TaskThread( Thread ):
         self.prevWorkingDirectory = ""
         self.lock           = Lock()
         self.error          = False
+        self.errorMsg       = ""
 
     ######################
     def getSubTaskId( self ):
@@ -238,6 +250,7 @@ class TaskThread( Thread ):
         except Exception as exc:
             logger.error( "Task computing error: {}".format( exc ) )
             self.error = True
+            self.errorMsg = str( exc )
             self.done = True
             self.taskComputer.taskComputed( self )
 
@@ -254,13 +267,9 @@ class TaskThread( Thread ):
         try:
             extraData[ "resourcePath" ] = absResPath
             extraData[ "tmpPath" ] = absTmpPath
-
             self.result = self.vm.runTask( self.srcCode, extraData )
         finally:
             os.chdir( self.prevWorkingDirectory )
-
-
-
 
 class PyTaskThread( TaskThread ):
     ######################

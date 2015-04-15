@@ -11,12 +11,18 @@ logger = logging.getLogger(__name__)
 from peewee import IntegrityError
 from golem.Model import LocalRank, GlobalRank, NeighbourLocRank
 
+class RankingStats:
+    computed = "computed"
+    requested = "requested"
+    payment = "payment"
+    resource = "resource"
+
 class RankingDatabase:
     def __init__(self, database):
         self.db = database.db
 
     ############################
-    def increaseComputingTrust(self, nodeId, trustMod):
+    def increasePositiveComputing(self, nodeId, trustMod):
         try:
             with self.db.transaction():
                 LocalRank.create(nodeId=nodeId, positiveComputed=trustMod)
@@ -24,7 +30,7 @@ class RankingDatabase:
             LocalRank.update(positiveComputed = LocalRank.positiveComputed + trustMod, modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
 
     ############################
-    def decreaseComputingTrust(self, nodeId, trustMod):
+    def increaseNegativeComputing(self, nodeId, trustMod):
         try:
             with self.db.transaction():
                 LocalRank.create(nodeId = nodeId, negativeComputed = trustMod)
@@ -32,20 +38,52 @@ class RankingDatabase:
             LocalRank.update(negativeComputed = LocalRank.negativeComputed + trustMod, modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
 
     ############################
-    def increaseRequesterTrust(self, nodeId, trustMod):
+    def increasePositiveRequested(self, nodeId, trustMod):
         try:
             with self.db.transaction():
-                LocalRank.create(nodeId = nodeId, positiveRequested = trustMod)
+                LocalRank.create(nodeId=nodeId, positiveRequested=trustMod)
         except IntegrityError:
             LocalRank.update(positiveRequested = LocalRank.positiveRequested + trustMod, modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
 
     ############################
-    def decreaseRequesterTrust(self, nodeId, trustMod):
+    def increaseNegativeRequested(self, nodeId, trustMod):
         try:
             with self.db.transaction():
-                LocalRank.create(nodeId = nodeId, negativeRequested = trustMod)
+                LocalRank.create(nodeId=nodeId, negativeRequested=trustMod)
         except IntegrityError:
-            LocalRank.update(negativeRequested = LocalRank.negativeRequested + trustMod,  modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
+            LocalRank.update(negativeRequested = LocalRank.negativeRequested + trustMod, modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
+
+    ############################
+    def increasePositivePayment(self, nodeId, trustMod):
+        try:
+            with self.db.transaction():
+                LocalRank.create(nodeId = nodeId, positivePayment = trustMod)
+        except IntegrityError:
+            LocalRank.update(positivePayment = LocalRank.positivePayment + trustMod, modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
+
+    ############################
+    def increaseNegativePayment(self, nodeId, trustMod):
+        try:
+            with self.db.transaction():
+                LocalRank.create(nodeId = nodeId, negativePayment = trustMod)
+        except IntegrityError:
+            LocalRank.update(negativePayment = LocalRank.negativePayment + trustMod,  modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
+
+    ############################
+    def increasePositiveResource( self, nodeId, trustMod):
+        try:
+            with self.db.transaction():
+                LocalRank.create(nodeId = nodeId, positiveResource = trustMod)
+        except IntegrityError:
+            LocalRank.update(positiveResource = LocalRank.positiveResource + trustMod, modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
+
+    ############################
+    def increaseNegativeResource( self, nodeId, trustMod):
+        try:
+            with self.db.transaction():
+                LocalRank.create(nodeId = nodeId, negativeResource = trustMod)
+        except IntegrityError:
+            LocalRank.update(positiveResource = LocalRank.negativeResource + trustMod, modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
 
     ############################
     def getLocalRank(self, nodeId ):
@@ -148,7 +186,7 @@ class Ranking:
         self.prevRank = {}
         for locRank in self.db.getAllLocalRank():
             compTrust = self.__countTrust( locRank.positiveComputed, locRank.negativeComputed )
-            reqTrust = self.__countTrust( locRank.positiveRequested, locRank.negativeRequested )
+            reqTrust = self.__countTrust( locRank.positivePayment, locRank.negativePayment )
             self.workingVec[locRank.nodeId] = [[compTrust, 1.0], [reqTrust, 1.0]]
             self.prevRank[locRank.nodeId] = [ compTrust, reqTrust ]
 
@@ -198,20 +236,30 @@ class Ranking:
             deferLater(self.reactor, self.roundOracle.secToRound(), self.newRound)
 
     ############################
-    def increaseComputingTrust(self, nodeId, trustMod):
-        self.db.increaseComputingTrust( nodeId, trustMod )
+    def increaseTrust(self, nodeId, stat, mod):
+        if stat == RankingStats.computed:
+            self.db.increasePositiveComputing( nodeId, mod )
+        elif stat == RankingStats.requested:
+            self.db.increasePositiveRequested( nodeId, mod )
+        elif stat == RankingStats.payment:
+            self.db.increasePositivePayment( nodeId, mod )
+        elif stat == RankingStats.resource:
+            self.db.increasePositiveResource( nodeId, mod )
+        else:
+            logger.error( "Wrong stat type {}".format( stat ) )
 
-    ############################
-    def decreaseComputingTrust(self, nodeId, trustMod):
-        self.db.decreaseComputingTrust( nodeId, trustMod )
-
-    ############################
-    def increaseRequesterTrust(self, nodeId, trustMod):
-        self.db.increaseRequesterTrust( nodeId, trustMod )
-
-    ############################
-    def decreaseRequesterTrust(self, nodeId, trustMod):
-        self.db.decreaseComputingTrust( nodeId, trustMod )
+   ############################
+    def decreaseTrust(self, nodeId, stat, mod):
+        if stat == RankingStats.computed:
+            self.db.increaseNegativeComputing( nodeId, mod )
+        elif stat == RankingStats.requested:
+            self.db.increaseNegativeRequested( nodeId, mod )
+        elif stat == RankingStats.payment:
+            self.db.increaseNegativePayment( nodeId, mod )
+        elif stat == RankingStats.resource:
+            self.db.increaseNegativeResource( nodeId, mod )
+        else:
+            logger.error( "Wrong stat type {}".format( stat ) )
 
     ############################
     def getLocComputingTrust(self, nodeId ):
@@ -243,7 +291,7 @@ class Ranking:
         localRank = self.db.getLocalRank( nodeId )
         #Known node
         if localRank is not None:
-            return self.__countTrust( localRank.positiveRequested, localRank.negativeRequested )
+            return self.__countTrust( localRank.positivePayment, localRank.negativePayment )
         return None
 
     ############################
@@ -309,7 +357,7 @@ class Ranking:
                 prevTrust = self.prevLocRank[ locRank.nodeId ]
 
             compTrust = self.__countTrust( locRank.positiveComputed, locRank.negativeComputed )
-            reqTrust = self.__countTrust( locRank.positiveRequested, locRank.negativeRequested )
+            reqTrust = self.__countTrust( locRank.positivePayment, locRank.negativePayment )
             trust = [ compTrust, reqTrust ]
             if locRank.nodeId in self.prevLocRank:
                 prevTrust = self.prevLocRank[ locRank.nodeId ]

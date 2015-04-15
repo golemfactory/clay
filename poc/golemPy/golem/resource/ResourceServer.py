@@ -9,7 +9,7 @@ from golem.resource.ResourceConnState import ResourceConnState
 from golem.resource.DirManager import DirManager
 from golem.resource.ResourcesManager import DistributedResourceManager
 from golem.resource.ResourceSession import ResourceSession
-
+from golem.ranking.Ranking import RankingStats
 
 logger = logging.getLogger( __name__ )
 
@@ -93,7 +93,7 @@ class ResourceServer( GNRServer ):
             if self.resourcePeers[ clientId ]['addr'] == addr and self.resourcePeers[clientId]['port'] == port:
                 return
 
-        self.resourcePeers[ clientId ] = { 'addr': addr, 'port': port, 'state': 'free' }
+        self.resourcePeers[ clientId ] = { 'addr': addr, 'port': port, 'state': 'free', 'posResource': 0 }
 
     ############################
     def setResourcePeers( self, resourcePeers ):
@@ -185,10 +185,17 @@ class ResourceServer( GNRServer ):
 
     ############################
     def resourceDownloaded( self, resource, address, port ):
-        self.__freePeer( address, port )
+        clientId = self.__freePeer( address, port )
         if not self.resourceManager.checkResource(resource):
             logger.error("Wrong resource downloaded\n")
+            if clientId is not None:
+                self.client.decreaseTrust(clientId, RankingStats.resource)
             return
+        if clientId is not None:
+            # Uaktualniamy ranking co 100 zasobow, zeby specjalnie nie zasmiecac sieci
+            self.resourcePeers[clientId]['posResource'] += 1
+            if (self.resourcePeers[clientId]['posResource'] % 50) == 0:
+                self.client.increaseTrust(clientId, RankingStats.resource, 50)
         for taskId in self.waitingResources[ resource ]:
             self.waitingTasksToCompute[taskId] -= 1
             if self.waitingTasksToCompute[ taskId ] == 0:
@@ -244,6 +251,7 @@ class ResourceServer( GNRServer ):
         for clientId, value in self.resourcePeers.iteritems():
             if value['addr'] == addr and value['port'] == port:
                 self.resourcePeers[ clientId ]['state'] = 'free'
+                return clientId
 
 
     ############################

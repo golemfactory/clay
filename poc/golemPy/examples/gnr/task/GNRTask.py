@@ -104,11 +104,6 @@ class GNRTask( Task ):
     def getProgress( self ):
         return float( self.lastTask ) / self.totalTasks
 
-    ########################
-    @checkSubtaskIdWrapper
-    def subtaskFailed( self, subtaskId, extraData ):
-        self.numFailedSubtasks += 1
-        self.subTasksGiven[ subtaskId ]['status'] = SubtaskStatus.failure
 
     #######################
     def needsComputation( self ):
@@ -121,6 +116,10 @@ class GNRTask( Task ):
     #######################
     def computationStarted( self, extraData ):
         pass
+
+    #######################
+    def computationFailed( self, subtaskId ):
+        self._markSubtaskFailed( subtaskId )
 
     #######################
     def getTotalTasks( self ):

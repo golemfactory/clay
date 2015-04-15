@@ -51,6 +51,10 @@ class TaskTester:
             self.finishedCallback( False )
 
     #########################
+    def increaseRequestTrust( self, subtaskId ):
+        pass
+
+    #########################
     def getProgress( self ):
         if self.tt:
             with self.lock:

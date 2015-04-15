@@ -1,6 +1,7 @@
 import logging
 import random
 import time
+import datetime
 
 from TaskBase import TaskHeader
 
@@ -8,7 +9,7 @@ logger = logging.getLogger( __name__ )
 
 class TaskKeeper:
     #############################
-    def __init__( self, removeTaskTimeout = 240.0 ):
+    def __init__( self, removeTaskTimeout = 240.0, verificationTimeout = 3600 ):
         self.taskHeaders    = {}
         self.supportedTasks = []
         self.removedTasks   = {}
@@ -16,6 +17,7 @@ class TaskKeeper:
         self.activeRequests = {}
         self.waitingForVerification = {}
 
+        self.verificationTimeout = verificationTimeout
         self.removedTaskTimeout = removeTaskTimeout
 
     #############################
@@ -75,7 +77,7 @@ class TaskKeeper:
     def getWaitingForVerificationTaskId(self, subtaskId):
         if subtaskId not in self.waitingForVerification:
             return None
-        return self.waitingForVerification[subtaskId]
+        return self.waitingForVerification[subtaskId][0]
 
     ############################
     def removeWaitingForVerificationTaskId(self, subtaskId):
@@ -109,8 +111,24 @@ class TaskKeeper:
             return None
         return self.activeTasks[taskId].clientId
 
+    ###########################
     def addToVerification( self, subtaskId, taskId ):
-        self.waitingForVerification[ subtaskId ] = taskId
+        now = datetime.datetime.now()
+        self.waitingForVerification[ subtaskId ] = [taskId, now, self.__countDeadline(now)]
+
+    #############################
+    def checkPayments(self):
+        now = datetime.datetime.now()
+        afterDeadline = []
+        for subtaskId, [taskId, taskDate, deadline] in self.waitingForVerification.items():
+            if deadline < now:
+                afterDeadline.append( taskId )
+                del self.waitingForVerification[subtaskId]
+        return afterDeadline
+
+    ###########################
+    def __countDeadline(self, date): #FIXME Cos zdecydowanie bardziej zaawansowanego i moze dopasowanego do kwoty
+        return datetime.datetime.fromtimestamp(time.time() + self.verificationTimeout)
 
     ###########################
     def __delActiveTask(self, taskId):

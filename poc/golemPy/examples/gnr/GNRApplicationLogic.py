@@ -163,7 +163,7 @@ class GNRApplicationLogic( QtCore.QObject ):
 
         if ts.taskState.status != TaskStatus.notStarted:
             errorMsg = "Task already started"
-            self.__showErrorWindow( errorMsg )
+            self._showErrorWindow( errorMsg )
             logger.error( errorMsg )
             return
 

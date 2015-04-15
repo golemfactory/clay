@@ -208,6 +208,28 @@ class TaskManager:
             return False
 
     #######################
+    def taskComputationFailure(self, subtaskId, err):
+        if subtaskId in self.subTask2TaskMapping:
+            taskId = self.subTask2TaskMapping[ subtaskId ]
+            subtaskStatus = self.tasksStates[ taskId ].subtaskStates[ subtaskId ].subtaskStatus
+            if  subtaskStatus != SubtaskStatus.starting:
+                logger.warning("Result for subtask {} when subtask state is {}".format( subtaskId, subtaskStatus ))
+                self.__noticeTaskUpdated( taskId )
+                return False
+
+            self.tasks[ taskId ].computationFailed( subtaskId )
+            ss = self.tasksStates[ taskId ].subtaskStates[ subtaskId ]
+            ss.subtaskProgress = 1.0
+            ss.subtaskRemTime = 0.0
+            ss.subtaskStatus = SubtaskStatus.failure
+
+            self.__noticeTaskUpdated( taskId )
+            return True
+        else:
+            logger.error( "It is not my task id {}".format( subtaskId ) )
+            return False
+
+    #######################
     def removeOldTasks( self ):
         for t in self.tasks.values():
             th = t.header
@@ -228,7 +250,7 @@ class TaskManager:
                     if s.ttl <= 0:
                         logger.info( "Subtask {} dies".format(  s.subtaskId ) )
                         s.subtaskStatus        = SubtaskStatus.failure
-                        t.subtaskFailed( s.subtaskId, s.extraData )
+                        t.computationFailed( s.subtaskId )
                         self.__noticeTaskUpdated( th.taskId )
 
 

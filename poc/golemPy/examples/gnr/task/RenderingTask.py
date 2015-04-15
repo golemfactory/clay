@@ -111,8 +111,8 @@ class RenderingTask( GNRTask ):
 
     #######################
     @checkSubtaskIdWrapper
-    def subtaskFailed( self, subtaskId, extraData ):
-        GNRTask.subtaskFailed( self, subtaskId, extraData )
+    def computationFailed( self, subtaskId ):
+        GNRTask.computationFailed( self, subtaskId )
         self._updateTaskPreview()
 
     #######################

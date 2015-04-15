@@ -5,7 +5,7 @@ import logging
 import os
 
 from TaskConnState import TaskConnState
-from golem.Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat
+from golem.Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure
 from golem.network.FileProducer import FileProducer
 from golem.network.DataProducer import DataProducer
 from golem.network.FileConsumer import FileConsumer
@@ -67,6 +67,10 @@ class TaskSession:
     ##########################
     def sendRewardForTask( self, subtaskId, reward ):
         self.__send( MessageSubtaskResultAccepted( subtaskId, reward ) )
+
+    ##########################
+    def sendTaskFailure(self, subtaskId, errMsg ):
+        self.__send( MessageTaskFailure( subtaskId, errMsg ))
 
     ##########################
     def interpret( self, msg ):
@@ -174,6 +178,9 @@ class TaskSession:
             self.dropped()
         elif type == MessageSubtaskResultRejected.Type:
             self.taskServer.subtaskRejected( msg.subtaskId )
+            self.dropped()
+        elif type == MessageTaskFailure.Type:
+            self.taskServer.subtaskFailure( msg.subtaskId, msg.err )
             self.dropped()
         elif type == MessageDeltaParts.Type:
             self.taskComputer.waitForResources( self.taskId, msg.deltaHeader )

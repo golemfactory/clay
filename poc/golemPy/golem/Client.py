@@ -13,7 +13,6 @@ from golem.core.hostaddress import getHostAddress
 
 from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 
-
 from golem.AppConfig import AppConfig
 #from golem.BankConfig import BankConfig
 from golem.Model import Database, Bank
@@ -296,20 +295,12 @@ class Client:
         return self.configDesc.rootPath
 
     ############################
-    def increaseComputingTrust( self, nodeId, trustMod ):
-        self.ranking.increaseComputingTrust( nodeId, trustMod )
+    def increaseTrust( self, nodeId, stat, mod = 1.0 ):
+        self.ranking.increaseTrust( nodeId, stat, mod )
 
     ############################
-    def decreaseComputingTrust( self, nodeId, trustMod ):
-        self.ranking.decreaseComputingTrust( nodeId, trustMod )
-
-    ############################
-    def increaseRequesterTrust( self, nodeId, trustMod ):
-        self.ranking.increaseRequesterTrust( nodeId, trustMod )
-
-    ############################
-    def decreaseRequesterTrust( self, nodeId, trustMod ):
-        self.ranking.decreaseRequesterTrust( nodeId, trustMod )
+    def decreaseTrust( self, nodeId, stat, mod = 1.0 ):
+        self.ranking.decreaseTrust( nodeId, stat, mod )
 
     ############################
     def getNeighboursDegree( self ):

@@ -78,6 +78,11 @@ class Task:
 
     #######################
     @abc.abstractmethod
+    def computationFailed( self, subtaskId ):
+        return # Implement in derived class
+
+    #######################
+    @abc.abstractmethod
     def verifySubtask( self, subtaskId ):
         return # Implement in derived class
 

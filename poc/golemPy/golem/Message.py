@@ -659,6 +659,28 @@ class MessageAcceptResourceFormat( Message ):
     def dictRepr( self ):
         return [ MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR ]
 
+class MessageTaskFailure( Message):
+    Type = TASK_MSG_BASE + 15
+
+    SUBTASK_ID_STR = u"SUBTASK_ID"
+    ERR_STR = u"ERR"
+
+    def __init__(self, subtaskId = "", err = "", dictRepr = None ):
+        Message.__init__( self, MessageTaskFailure.Type )
+
+        self.subtaskId = subtaskId
+        self.err = err
+
+        if dictRepr:
+            self.subtaskId = dictRepr[ MessageTaskFailure.SUBTASK_ID_STR ]
+            self.err = dictRepr[ MessageTaskFailure.ERR_STR ]
+
+    def dictRepr( self ):
+        return {
+            MessageTaskFailure.SUBTASK_ID_STR: self.subtaskId,
+            MessageTaskFailure.ERR_STR: self.err
+        }
+
 RESOURCE_MSG_BASE = 3000
 
 class MessagePushResource( Message ):
@@ -883,6 +905,7 @@ def initMessages():
     MessageResource()
     MessageReportComputedTask()
     MessageTaskResult()
+    MessageTaskFailure()
     MessageGetTaskResult()
     MessageNewNodes()
     MessageSubtaskResultAccepted()
