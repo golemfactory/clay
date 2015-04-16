@@ -51,6 +51,7 @@ class LocalRank( BaseModel ):
     nodeId = CharField( unique=True )
     positiveComputed = FloatField( default = 0.0 )
     negativeComputed = FloatField( default = 0.0 )
+    wrongComputed = FloatField( default = 0.0 )
     positiveRequested = FloatField( default = 0.0 )
     negativeRequested = FloatField( default = 0.0 )
     positivePayment = FloatField( default = 0.0 )

@@ -64,6 +64,11 @@ class TaskKeeper:
         if taskId in self.activeRequests and self.activeRequests[taskId] <= 0:
             self.__delActiveTask(taskId)
 
+    #############################
+    def getSubtaskTtl(self, taskId ):
+        if taskId in self.taskHeaders:
+            return self.taskHeaders[taskId].subtaskTimeout
+
     ###########################
     def receiveTaskVerification( self, taskId ):
         if taskId not in self.activeTasks:

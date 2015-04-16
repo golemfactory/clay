@@ -231,6 +231,7 @@ class TaskManager:
 
     #######################
     def removeOldTasks( self ):
+        nodesWithTimeouts = []
         for t in self.tasks.values():
             th = t.header
             if self.tasksStates[th.taskId].status not in self.activeStatus:
@@ -250,8 +251,10 @@ class TaskManager:
                     if s.ttl <= 0:
                         logger.info( "Subtask {} dies".format(  s.subtaskId ) )
                         s.subtaskStatus        = SubtaskStatus.failure
+                        nodesWithTimeouts.append(s.computer.nodeId)
                         t.computationFailed( s.subtaskId )
                         self.__noticeTaskUpdated( th.taskId )
+        return nodesWithTimeouts
 
 
 

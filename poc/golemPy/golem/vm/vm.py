@@ -57,16 +57,50 @@ class GolemVM( IGolemVM ):
 
         return self._interpret()
 
+    def endComp(self):
+        pass
+
     #######################
     @abc.abstractmethod
     def _interpret( self ):
         return
 
 ##############################################
+import multiprocessing as mp
+
 class PythonVM( GolemVM ):
+
     def _interpret( self ):
         exec self.srcCode in self.scope
         return self.scope[ "output" ]
+
+##############################################
+import multiprocessing as mp
+
+class PythonProcVM( GolemVM ):
+    def __init__(self):
+        GolemVM.__init__(self)
+        self.proc = None
+
+    def endComp(self):
+        if self.proc is not None:
+            self.proc.terminate()
+
+    def _interpret( self ):
+        del self.scope['taskProgress']
+        manager = mp.Manager()
+        scope = manager.dict( self.scope )
+        self.proc = mp.Process(target = execCode, args=(self.srcCode, scope ))
+        self.proc.start()
+        self.proc.join()
+        if "output" not in scope:
+            return None
+        return scope["output"]
+
+def execCode( srcCode, scopeManager ):
+    scope = dict(scopeManager)
+    exec srcCode in scope
+    scopeManager["output"] = scope["output"]
 
 ##############################################
 class PythonTestVM( GolemVM ):

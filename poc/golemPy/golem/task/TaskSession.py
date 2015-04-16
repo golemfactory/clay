@@ -104,7 +104,8 @@ class TaskSession:
                 self.conn.sendMessage( MessageCannotAssignTask( msg.taskId, "No more subtasks in {}".format( msg.taskId ) ) )
 
         elif type == MessageTaskToCompute.Type:
-            self.taskComputer.taskGiven(  msg.ctd )
+
+            self.taskComputer.taskGiven(  msg.ctd, self.taskServer.getSubtaskTtl( msg.ctd.taskId ) )
             self.dropped()
 
         elif type == MessageCannotAssignTask.Type:
@@ -311,7 +312,7 @@ class TaskSession:
             if self.taskManager.verifySubtask( subtaskId ):
                 self.taskServer.acceptTask( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
             else:
-                self.taskServer.rejectResult( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
+                self.taskServer.rejectResult( subtaskId, self.taskResultOwnerNodeId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
         else:
             logger.error("No taskId value in extraData for received data ")
         self.dropped()

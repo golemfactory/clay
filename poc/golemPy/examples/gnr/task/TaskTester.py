@@ -43,7 +43,8 @@ class TaskTester:
                                 ctd.extraData,
                                 ctd.shortDescription,
                                 self.testTaskResPath,
-                                self.tmpDir )
+                                self.tmpDir,
+                                0 )
             self.tt.start()
 
         except Exception as exc:

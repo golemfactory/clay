@@ -13,6 +13,7 @@ from golem.Model import LocalRank, GlobalRank, NeighbourLocRank
 
 class RankingStats:
     computed = "computed"
+    wrongComputed = "wrongComputed"
     requested = "requested"
     payment = "payment"
     resource = "resource"
@@ -36,6 +37,14 @@ class RankingDatabase:
                 LocalRank.create(nodeId = nodeId, negativeComputed = trustMod)
         except IntegrityError:
             LocalRank.update(negativeComputed = LocalRank.negativeComputed + trustMod, modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
+
+    ############################
+    def increaseWrongComputed(self, nodeId, trustMod):
+        try:
+            with self.db.transaction():
+                LocalRank.create(nodeId = nodeId, wrongComputed = trustMod)
+        except IntegrityError:
+            LocalRank.update( wrongComputed = LocalRank.wrongComputed + trustMod, modified_date = str( datetime.datetime.now() )).where(LocalRank.nodeId == nodeId).execute()
 
     ############################
     def increasePositiveRequested(self, nodeId, trustMod):
@@ -185,8 +194,8 @@ class Ranking:
         self.workingVec = {}
         self.prevRank = {}
         for locRank in self.db.getAllLocalRank():
-            compTrust = self.__countTrust( locRank.positiveComputed, locRank.negativeComputed )
-            reqTrust = self.__countTrust( locRank.positivePayment, locRank.negativePayment )
+            compTrust = self.__countTrust( self.__getCompTrustPos(locRank), self.__getCompTrustNeg(locRank))
+            reqTrust = self.__countTrust( self.__getReqTrustPos(locRank), self.__getReqTrustNeg(locRank) )
             self.workingVec[locRank.nodeId] = [[compTrust, 1.0], [reqTrust, 1.0]]
             self.prevRank[locRank.nodeId] = [ compTrust, reqTrust ]
 
@@ -252,6 +261,8 @@ class Ranking:
     def decreaseTrust(self, nodeId, stat, mod):
         if stat == RankingStats.computed:
             self.db.increaseNegativeComputing( nodeId, mod )
+        elif stat == RankingStats.wrongComputed:
+            self.db.increaseWrongComputed(nodeId, mod)
         elif stat == RankingStats.requested:
             self.db.increaseNegativeRequested( nodeId, mod )
         elif stat == RankingStats.payment:
@@ -266,7 +277,7 @@ class Ranking:
         localRank = self.db.getLocalRank( nodeId )
         #Known node
         if localRank is not None:
-            return self.__countTrust( localRank.positiveComputed, localRank.negativeComputed )
+            return self.__countTrust( self.__getCompTrustPos( localRank ), self.__getCompTrustNeg( localRank ) )
         return None
 
     ############################
@@ -291,7 +302,7 @@ class Ranking:
         localRank = self.db.getLocalRank( nodeId )
         #Known node
         if localRank is not None:
-            return self.__countTrust( localRank.positivePayment, localRank.negativePayment )
+            return self.__countTrust( self.__getReqTrustPos( localRank ), self.__getReqTrustNeg( localRank ) )
         return None
 
     ############################
@@ -356,8 +367,8 @@ class Ranking:
             if locRank.nodeId in self.prevLocRank:
                 prevTrust = self.prevLocRank[ locRank.nodeId ]
 
-            compTrust = self.__countTrust( locRank.positiveComputed, locRank.negativeComputed )
-            reqTrust = self.__countTrust( locRank.positivePayment, locRank.negativePayment )
+            compTrust = self.__countTrust( self.__getCompTrustPos( locRank ), self.__getCompTrustNeg( locRank ) )
+            reqTrust = self.__countTrust( self.__getReqTrustPos( locRank ), self.__getReqTrustNeg( locRank ) )
             trust = [ compTrust, reqTrust ]
             if locRank.nodeId in self.prevLocRank:
                 prevTrust = self.prevLocRank[ locRank.nodeId ]
@@ -533,6 +544,21 @@ class Ranking:
                 sumWeight += weight
         return sumTrust, sumWeight
 
+    ############################
+    def __getCompTrustPos(self, rank):
+        return rank.positiveComputed
+
+    ############################
+    def __getCompTrustNeg(self, rank):
+        return rank.negativeComputed + rank.wrongComputed
+
+    ############################
+    def __getReqTrustPos(self, rank):
+        return rank.positivePayment
+
+    ############################
+    def __getReqTrustNeg(self, rank):
+        return rank.negativeRequested + rank.negativePayment
 
 ####################################################################################
 

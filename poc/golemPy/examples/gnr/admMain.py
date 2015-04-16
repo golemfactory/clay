@@ -6,7 +6,8 @@ import logging.config
 sys.path.append( os.environ.get( 'GOLEM' ) )
 
 from tools.UiGen import genUiFiles
-genUiFiles( "ui" )
+if os.path.normpath(os.getcwd()) == os.path.normpath(os.environ.get('GOLEM')):
+    genUiFiles( "ui" )
 
 from RenderingAdmApplicationLogic import RenderingAdmApplicationLogic
 from GNRstartApp import startApp

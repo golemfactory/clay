@@ -184,6 +184,10 @@ class TaskServer:
         return self.client.resourcePort
 
     #############################
+    def getSubtaskTtl( self, taskId ):
+        return self.taskKeeper.getSubtaskTtl( taskId )
+
+    #############################
     def addResourcePeer( self, clientId, addr, port ):
         self.client.addResourcePeer( clientId, addr, port )
 
@@ -237,6 +241,8 @@ class TaskServer:
     ############################
     def subtaskFailure( self, subtaskId, err ):
         logger.info( "Computation for task {} failed: {}.".format( subtaskId, err ) )
+        nodeId = self.taskManager.getNodeIdForSubtask( subtaskId )
+        self.client.decreaseTrust( nodeId, RankingStats.computed )
         self.taskManager.taskComputationFailure(subtaskId, err)
 
     ###########################
@@ -275,7 +281,7 @@ class TaskServer:
     ###########################
     def rejectResult( self, subtaskId, nodeId, address, port ):
         mod = min( max( self.taskManager.getTrustMod( subtaskId ), self.minTrust), self.maxTrust )
-        self.client.decreaseTrust( nodeId, RankingStats.computed, mod )
+        self.client.decreaseTrust( nodeId, RankingStats.wrongComputed, mod )
 
         self.__connectAndSendResultRejected( subtaskId, address, port )
 
@@ -427,7 +433,9 @@ class TaskServer:
     #############################
     def __removeOldTasks( self ):
         self.taskKeeper.removeOldTasks()
-        self.taskManager.removeOldTasks()
+        nodesWithTimeouts = self.taskManager.removeOldTasks()
+        for nodeId in nodesWithTimeouts:
+            self.client.decreaseTrust(nodeId, RankingStats.computed )
 
     #############################
     def __removeOldSessions(self):
