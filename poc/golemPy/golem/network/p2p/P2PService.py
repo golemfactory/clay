@@ -4,13 +4,13 @@ import logging
 from golem.network.transport.Tcp import Network
 from golem.network.p2p.PeerSession import PeerSession
 from golem.network.p2p.P2PServer import P2PServer
-
+from PeerKeeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
 
 class P2PService:
     ########################
-    def __init__( self, hostAddress, configDesc ):
+    def __init__( self, hostAddress, configDesc, keysAuth ):
 
         self.p2pServer              = P2PServer( configDesc, self )
 
@@ -35,6 +35,10 @@ class P2PService:
         self.gossip                 = []
         self.stopGossipFromPeers    = set()
         self.neighbourLocRankBuff   = []
+
+        self.keysAuth               = keysAuth
+        self.peerKeeper             = PeerKeeper(keysAuth.getKeyId())
+
         self.connectToNetwork()
 
     #############################
@@ -82,7 +86,8 @@ class P2PService:
             p.ping( interval )
     
     #############################
-    def findPeer( self, peerID ):
+    def findPeer( self, peerID, peerKeyId ):
+        print "Distance {}".format( self.peerKeeper.cntDistance(peerKeyId) )
         if peerID in self.peers:
             return self.peers[ peerID ]
         else:
@@ -93,7 +98,8 @@ class P2PService:
         return self.peers
 
     #############################
-    def addPeer( self, id, peer ):
+    def addPeer( self, id, peer, peerKeyId, address, port ):
+        self.peerKeeper.addPeer( peerKeyId, id, address, port )
         self.peers[ id ] = peer
         self.__sendDegree()
 
@@ -178,7 +184,7 @@ class P2PService:
 
     ############################
     def getListenParams( self ):
-        return ( self.p2pServer.curPort, self.configDesc.clientUid )
+        return ( self.p2pServer.curPort, self.configDesc.clientUid, self.keysAuth.getKeyId() )
 
     ############################
     def getPeersDegree(self):

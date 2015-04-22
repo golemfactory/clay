@@ -38,8 +38,10 @@ class ComputerState:
     #########################
     def __init__( self ):
         self.nodeId             = ""
+        self.ethAccount         = ""
         self.performance        = 0
         self.ipAddress          = ""
+        self.port               = 0
 
 class SubtaskState:
     #########################

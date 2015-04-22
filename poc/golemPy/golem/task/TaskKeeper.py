@@ -85,6 +85,19 @@ class TaskKeeper:
         return self.waitingForVerification[subtaskId][0]
 
     ############################
+    def isWaitingForTask(self, taskId):
+        for v in self.waitingForVerification.itervalues():
+            if v[0] == taskId:
+                return True
+        return False
+
+    ############################
+    def removeWaitingForVerification(self, taskId ):
+        subtasks = [subId for subId, val in self.waitingForVerification.iteritems() if val[0] == taskId ]
+        for subtaskId in subtasks:
+            del self.waitingForVerification[ subtaskId ]
+
+    ############################
     def removeWaitingForVerificationTaskId(self, subtaskId):
         if subtaskId in self.waitingForVerification:
             del self.waitingForVerification[subtaskId]

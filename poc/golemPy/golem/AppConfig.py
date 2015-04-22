@@ -22,7 +22,6 @@ DISTRIBUTED_RES_NUM = 2
 APP_NAME = "Golem LAN Renderer"
 APP_VERSION = "1.021"
 
-
 class CommonConfig:
 
     ##############################
@@ -86,6 +85,7 @@ class NodeConfig:
     TASK_SESSION_TIMEOUT = 900
     RESOURCE_SESSION_TIMEOUT = 600
     PLUGIN_PORT = 1111
+    ETH_ACCOUNT_NAME = ""
 
 
     ##############################
@@ -98,7 +98,7 @@ class NodeConfig:
                   requestingTrust = REQUESTING_TRUST, computingTrust = COMPUTING_TRUST,
                   useDistributedResourceManagement = USE_DISTRIBUTED_RESOURCE_MANAGEMENT,
                   p2pSessionTimeout = P2P_SESSION_TIMEOUT, taskSessionTimeout = TASK_SESSION_TIMEOUT,
-                  resourceSessionTimeout = RESOURCE_SESSION_TIMEOUT, pluginPort = PLUGIN_PORT):
+                  resourceSessionTimeout = RESOURCE_SESSION_TIMEOUT, pluginPort = PLUGIN_PORT, ethAccount = ETH_ACCOUNT_NAME):
         self._section = "Node {}".format( nodeId )
 
         estimated = NodeConfig.readEstimatedPerformance()
@@ -130,6 +130,7 @@ class NodeConfig:
         ConfigEntry.createProperty( self.section(), "task session timeout", taskSessionTimeout, self, "TaskSessionTimeout" )
         ConfigEntry.createProperty( self.section(), "resource session timeout", resourceSessionTimeout, self, "ResourceSessionTimeout" )
         ConfigEntry.createProperty( self.section(), "plugin port", pluginPort, self, "PluginPort")
+        ConfigEntry.createProperty( self.section(), "eth account name", ethAccount, self, "EthAccount")
 
 
     ##############################
@@ -282,6 +283,9 @@ class AppConfig:
     def getPluginPort( self ):
         return self._cfg.getNodeConfig().getPluginPort()
 
+    def getEthAccount( self ):
+        return self._cfg.getNodeConfig().getEthAccount()
+
     ##############################
     def changeConfig( self, cfgDesc , cfgFile = CONFIG_FILENAME, ):
         assert isinstance( cfgDesc, ClientConfigDescriptor )
@@ -309,6 +313,7 @@ class AppConfig:
         self._cfg.getNodeConfig().setTaskSessionTimeout( cfgDesc.taskSessionTimeout )
         self._cfg.getNodeConfig().setResourceSessionTimeout( cfgDesc.resourceSessionTimeout )
         self._cfg.getNodeConfig().setPluginPort( cfgDesc.pluginPort )
+        self._cfg.getNodeConfig().setEthAccount( cfgDesc.ethAccount )
 
         self._cfg.getCommonConfig().setManagerAddress( cfgDesc.managerAddress )
         self._cfg.getCommonConfig().setManagerListenPort( cfgDesc.managerPort )

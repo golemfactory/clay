@@ -43,3 +43,5 @@ class ClientConfigDescriptor:
         self.requestingTrust = 0.0
         self.computingTrust = 0.0
 
+        self.ethAccount= ""
+

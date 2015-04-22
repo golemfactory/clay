@@ -223,20 +223,21 @@ class TaskServer:
             self.taskKeeper.removeWaitingForVerificationTaskId( subtaskId )
 
     ############################
-    def subtaskAccepted( self, subtaskId, reward ):
-        logger.debug( "Subtask {} result accepted".format( subtaskId ) )
-        taskId = self.taskKeeper.getWaitingForVerificationTaskId( subtaskId )
-        if taskId is None:
-            logger.error("Wasn't waiting for reward for subtask {}".format( subtaskId ) )
+    def subtaskAccepted( self, taskId, reward ):
+        logger.debug( "Task {} result accepted".format( taskId ) )
+
+      #  taskId = self.taskKeeper.getWaitingForVerificationTaskId( taskId )
+        if not self.taskKeeper.isWaitingForTask( taskId ):
+            logger.error("Wasn't waiting for reward for task {}".format( taskId ) )
             return
         try:
-            logger.info( "Getting {} for subtask {}".format( reward, subtaskId ) )
+            logger.info( "Getting {} for task {}".format( reward, taskId ) )
             self.client.getReward( int( reward ) )
             self.increaseTrustPayment( taskId )
         except ValueError:
-            logger.error("Wrong reward amount {} for subtask {}".format( reward, subtaskId ) )
+            logger.error("Wrong reward amount {} for task {}".format( reward, taskId ) )
             self.decreaseTrustPayment( taskId )
-        self.taskKeeper.removeWaitingForVerificationTaskId( subtaskId )
+        self.taskKeeper.removeWaitingForVerification( taskId )
 
     ############################
     def subtaskFailure( self, subtaskId, err ):
@@ -246,8 +247,11 @@ class TaskServer:
         self.taskManager.taskComputationFailure(subtaskId, err)
 
     ###########################
-    def acceptTask(self, subtaskId, address, port ):
-        self.payForTask( subtaskId, address, port )
+    def acceptTask(self, subtaskId, address, port, ethAccount ):
+        priceMod = self.taskManager.getPriceMod( subtaskId )
+        price = self.client.payForTask( priceMod )
+        self.taskManager.setPaymentInfoForSubtask( subtaskId, price, address, port, ethAccount )
+        #self.payForTask( subtaskId, address, port, ethAccount )
 
         mod = min( max( self.taskManager.getTrustMod( subtaskId ), self.minTrust), self.maxTrust )
         nodeId = self.taskManager.getNodeIdForSubtask( subtaskId )
@@ -270,13 +274,25 @@ class TaskServer:
         self.client.decreaseTrust( nodeId, RankingStats.payment, self.maxTrust )
 
     ###########################
-    def payForTask( self, subtaskId, address, port ):
-        priceMod = self.taskManager.getPriceMod( subtaskId )
-        price = self.client.payForTask( priceMod )
-        logger.info( "Paying {} for subtask {}".format( price, subtaskId ) )
-        self.taskManager.setPriceForSubtask( subtaskId, price )
-        self.__connectAndPayForTask( address, port, subtaskId, price )
-        return price
+    def localPayForTask(self, taskId, address, port, price ):
+        logger.info( "Paying {} for task {}".format( price, taskId ) )
+        self.__connectAndPayForTask( address, port, taskId, price )
+
+    ###########################
+    def globalPayForTask(self, taskId, payments):
+        globalPayments = { ethAccount: desc[0] for ethAccount, desc in payments.items() }
+        self.client.globalPayForTask(taskId, globalPayments)
+        for ethAccount, v in globalPayments.iteritems():
+            print "Global paying {} to {}".format(v, ethAccount)
+
+    ###########################
+#    def payForTask( self, subtaskId, address, port, ethAccount ):
+#        priceMod = self.taskManager.getPriceMod( subtaskId )
+#        price = self.client.payForTask( priceMod )
+#        logger.info( "Paying {} for subtask {} to {}".format( price, subtaskId, ethAccount ) )
+#        self.taskManager.setPaymentInfoForSubtask( subtaskId, price, ethAccount )
+ #       self.__connectAndPayForTask( address, port, subtaskId, price )
+ #       return price
 
     ###########################
     def rejectResult( self, subtaskId, nodeId, address, port ):
@@ -366,7 +382,7 @@ class TaskServer:
 
         self.taskSessions[ waitingTaskResult.subtaskId ] = session
 
-        session.sendReportComputedTask( waitingTaskResult, self.address, self.curPort )
+        session.sendReportComputedTask( waitingTaskResult, self.address, self.curPort, self.client.getEthAccount() )
 
     #############################
     def __connectionForTaskResultFailure( self, waitingTaskResult ):
@@ -465,9 +481,18 @@ class TaskServer:
 
     #############################
     def __sendPayments( self ):
-        payments = self.taskManager.getNewPaymentsTasks()
+        taskId, payments = self.taskManager.getNewPaymentsTasks()
         if payments:
             logger.info("Payments {}".format( payments ))
+            self.globalPayForTask(taskId, payments)
+            for val, desc in payments.itervalues():
+                for nodeDesc in desc:
+                    self.localPayForTask(taskId, nodeDesc[1], nodeDesc[2], nodeDesc[3])
+
+
+#            for ethAccount in payments:
+
+#                self.payForTask( taskId, address, port, ethAccount )
             #TODO
             #Tutaj nalezy przeniesc rozliczenia = uzytkownik po zweryfikowaniu calosci sprawdza
             #czy moze juz zaplacic, jesli nie - dopisuje calosc do tablicy.

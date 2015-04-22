@@ -6,7 +6,7 @@ import logging.config
 sys.path.append( os.environ.get( 'GOLEM' ) )
 
 from tools.UiGen import genUiFiles
-if os.path.normpath(os.getcwd()) == os.path.normpath(os.environ.get('GOLEM')):
+if os.path.normpath(os.getcwd()) == os.path.normpath( os.path.join( os.environ.get('GOLEM'), "examples/gnr" ) ):
     genUiFiles( "ui" )
 
 from RenderingAdmApplicationLogic import RenderingAdmApplicationLogic
@@ -25,7 +25,7 @@ def main():
     app     = GNRGui( logic, AdministrationMainWindow )
     gui     = RenderingAdmMainWindowCustomizer
 
-    startApp( logic, app, gui, rendering = True, startAddTaskClient = True, startAddTaskServer= True )
+    startApp( logic, app, gui, rendering = True, startAddTaskClient = False, startAddTaskServer= False )
 
 from multiprocessing import freeze_support
 

@@ -33,6 +33,7 @@ class ConfigurationDialogCustomizer:
         self.__loadAdvanceConfig( configDesc )
         self.__loadManagerConfig( configDesc )
         self.__loadResourceConfig()
+        self.__loadPaymentConfig( configDesc )
 
     #############################
     def __loadBasicConfig( self, configDesc ):
@@ -135,11 +136,14 @@ class ConfigurationDialogCustomizer:
             logger.error("Wrong configuration parameter {}: {}".format( paramName, param ) )
         checkBox.setChecked( checked )
 
-
     #############################
     def __loadManagerConfig( self, configDesc ):
         self.gui.ui.managerAddressLineEdit.setText( u"{}".format( configDesc.managerAddress ) )
         self.gui.ui.managerPortLineEdit.setText( u"{}".format( configDesc.managerPort ) )
+
+    #############################
+    def __loadPaymentConfig( self, configDesc ):
+        self.gui.ui.ethAccountLineEdit.setText( u"{}".format( configDesc.ethAccount ) )
 
     #############################
     def __loadResourceConfig( self ):
@@ -245,6 +249,7 @@ class ConfigurationDialogCustomizer:
         self.__readBasicConfig( cfgDesc )
         self.__readAdvanceConfig( cfgDesc )
         self.__readManagerConfig( cfgDesc )
+        self.__readPaymentConfig( cfgDesc )
         self.logic.changeConfig ( cfgDesc )
 
     #############################
@@ -327,6 +332,10 @@ class ConfigurationDialogCustomizer:
         except:
             numCores = 1
         self.gui.ui.performanceLabel.setText( str( self.logic.recountPerformance( numCores ) ) )
+
+    #############################
+    def __readPaymentConfig( self, cfgDesc ):
+        cfgDesc.ethAccount = u"{}".format( self.gui.ui.ethAccountLineEdit.text())
 
     #############################
     def __showPluginPortWarning( self ):

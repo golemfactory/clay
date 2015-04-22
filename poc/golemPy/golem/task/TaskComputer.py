@@ -6,7 +6,7 @@ from threading import Thread, Lock
 import time
 from copy import copy
 
-from golem.vm.vm import PythonProcVM, PythonTestVM
+from golem.vm.vm import PythonProcVM, PythonTestVM, PythonVM
 from golem.manager.NodeStateSnapshot import TaskChunkStateSnapshot
 from golem.resource.ResourcesManager import ResourcesManager
 from golem.resource.DirManager import DirManager

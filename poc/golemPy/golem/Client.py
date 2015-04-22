@@ -10,6 +10,8 @@ from golem.task.TaskServer import TaskServer
 from golem.task.TaskManager import TaskManagerEventListener
 
 from golem.core.hostaddress import getHostAddress
+from golem.core.variables import ETH_CONN_ADDR
+from golem.core.KeysAuth import EllipticalKeysAuth
 
 from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 
@@ -22,6 +24,8 @@ from golem.environments.EnvironmentsManager import EnvironmentsManager
 from golem.resource.ResourceServer import ResourceServer
 from golem.resource.DirManager import DirManager
 from golem.ranking.Ranking import Ranking, RankingDatabase
+from golem.transactions.EthereumConnector import EthereumConnector
+
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +72,8 @@ def startClient():
     requestingTrust             = cfg.getRequestingTrust()
     computingTrust              = cfg.getComputingTrust()
 
+    ethAccount                  = cfg.getEthAccount()
+
     configDesc = ClientConfigDescriptor()
 
     configDesc.clientUid        = clientUid
@@ -109,6 +115,8 @@ def startClient():
     configDesc.requestingTrust          = requestingTrust
     configDesc.computingTrust           = computingTrust
 
+    configDesc.ethAccount               = ethAccount
+
 
     logger.info( "Adding tasks {}".format( addTasks ) )
     logger.info( "Creating public client interface with uuid: {}".format( clientUid ) )
@@ -149,6 +157,7 @@ class Client:
     def __init__(self, configDesc, rootPath = "", config = "" ):
 
         self.configDesc     = configDesc
+        self.keysAuth       = EllipticalKeysAuth(configDesc.clientUid)
 
         self.lastPingTime   = 0.0
         self.p2service      = None
@@ -198,7 +207,7 @@ class Client:
         logger.info( "Starting network ..." )
 
         logger.info( "Starting p2p server ..." )
-        self.p2pservice = P2PService( self.hostAddress, self.configDesc )
+        self.p2pservice = P2PService( self.hostAddress, self.configDesc, self.keysAuth)
         time.sleep( 1.0 )
 
         logger.info( "Starting resource server..." )
@@ -319,6 +328,11 @@ class Client:
             return 0
 
     ############################
+    def globalPayForTask(self, taskId, payments):
+        ethConnector = EthereumConnector(ETH_CONN_ADDR)
+        ethConnector.payForTask(self.configDesc.ethAccount, taskId, payments)
+
+    ############################
     def getReward( self, reward ):
 #        self.bankConfig.addToBudget( reward )
         self.budget += reward
@@ -421,6 +435,8 @@ class Client:
                                                                       newConfigDesc.requestingTrust,
                                                                       toFloat = True,
                                                                       name = "Minimum trust for requesting node")
+
+        self.configDesc.ethAccount = newConfigDesc.ethAccount
 
         self.p2pservice.changeConfig( self.configDesc )
         self.taskServer.changeConfig( self.configDesc )
@@ -535,6 +551,10 @@ class Client:
     ############################
     def getPluginPort(self):
         return self.configDesc.pluginPort
+
+    ############################
+    def getEthAccount(self):
+        return self.configDesc.ethAccount
 
     ############################
     def __tryChangeToNumber(self, oldValue, newValue, toInt = False, toFloat = False, name="Config"):

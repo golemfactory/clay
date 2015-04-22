@@ -26,5 +26,8 @@ def main():
     gui     = GNRAdministratorMainWindowCustomizer
     startApp( logic, app, gui,startManager = True, startInfoServer = True )
 
+from multiprocessing import freeze_support
 
-main()
+if __name__ == "__main__":
+    freeze_support()
+    main()

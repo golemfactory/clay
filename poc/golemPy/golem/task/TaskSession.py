@@ -36,6 +36,7 @@ class TaskSession:
         self.taskResultOwnerAddr = None
         self.taskResultOwnerPort = None
         self.taskResultOwnerNodeId = None
+        self.taskResultOwnerEthAccount = None
 
         self.producer = None
 
@@ -48,7 +49,7 @@ class TaskSession:
         self.__send( MessageGetResource( taskId, pickle.dumps( resourceHeader ) ) )
 
     ##########################
-    def sendReportComputedTask( self, taskResult, address, port ):
+    def sendReportComputedTask( self, taskResult, address, port, ethAccount ):
         if taskResult.resultType == resultTypes['data']:
             extraData = []
         elif taskResult.resultType == resultTypes['files']:
@@ -58,7 +59,7 @@ class TaskSession:
             return
         nodeId = self.taskServer.getClientId()
 
-        self.__send( MessageReportComputedTask( taskResult.subtaskId, taskResult.resultType, nodeId, address, port, extraData ) )
+        self.__send( MessageReportComputedTask( taskResult.subtaskId, taskResult.resultType, nodeId, address, port, ethAccount, extraData ) )
 
     ##########################
     def sendResultRejected( self, subtaskId ):
@@ -124,11 +125,12 @@ class TaskSession:
                     self.taskResultOwnerNodeId = msg.nodeId
                     self.taskResultOwnerAddr = msg.address
                     self.taskResultOwnerPort = msg.port
+                    self.taskResultOwnerEthAccount = msg.ethAccount
 
                     if msg.resultType == resultTypes['data']:
                         self.__receiveDataResult( msg )
                     elif msg.resultType == resultTypes['files']:
-                        self.__receiveFilesResult( msg)
+                        self.__receiveFilesResult( msg )
                     else:
                         logger.error("Unknown result type {}".format( msg.resultType ) )
                         self.dropped()
@@ -310,7 +312,7 @@ class TaskSession:
 
             self.taskManager.computedTaskReceived( subtaskId, result, extraData['resultType'] )
             if self.taskManager.verifySubtask( subtaskId ):
-                self.taskServer.acceptTask( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
+                self.taskServer.acceptTask( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort, self.taskResultOwnerEthAccount )
             else:
                 self.taskServer.rejectResult( subtaskId, self.taskResultOwnerNodeId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
         else:

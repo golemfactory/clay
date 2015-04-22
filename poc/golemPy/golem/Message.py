@@ -88,26 +88,30 @@ class MessageHello(Message):
     CLI_VER_STR     = u"clientVer"
     PORT_STR        = u"port"
     CLIENT_UID_STR  = u"clientUID"
+    CLIENT_KEY_ID_STR = u"clientKeyId"
 
-    def __init__( self, port = 0, clientUID = None, protoId = 0, cliVer = 0, dictRepr = None ):
+    def __init__( self, port = 0, clientUID = None, clientKeyId = None, protoId = 0, cliVer = 0,  dictRepr = None ):
         Message.__init__( self, MessageHello.Type )
         
         self.protoId    = protoId
         self.clientVer  = cliVer
         self.port       = port
         self.clientUID  = clientUID
+        self.clientKeyId = clientKeyId
 
         if dictRepr:
             self.protoId    = dictRepr[ MessageHello.PROTO_ID_STR ]
             self.clientVer  = dictRepr[ MessageHello.CLI_VER_STR ]
             self.port       = dictRepr[ MessageHello.PORT_STR ]
             self.clientUID  = dictRepr[ MessageHello.CLIENT_UID_STR ]
+            self.clientKeyId = dictRepr[ MessageHello.CLIENT_KEY_ID_STR ]
 
     def dictRepr(self):
         return {    MessageHello.PROTO_ID_STR : self.protoId,
                     MessageHello.CLI_VER_STR : self.clientVer,
                     MessageHello.PORT_STR : self.port,
-                    MessageHello.CLIENT_UID_STR : self.clientUID
+                    MessageHello.CLIENT_UID_STR : self.clientUID,
+                    MessageHello.CLIENT_KEY_ID_STR: self.clientKeyId
                     }
 
 class MessagePing(Message):
@@ -433,8 +437,9 @@ class MessageReportComputedTask( Message ):
     ADDR_STR = u"ADDR"
     PORT_STR = u"PORT"
     EXTRA_DATA_STR = u"EXTRA_DATA"
+    ETH_ACCOUNT_STR = u"ETH_ACCOUNT"
 
-    def __init__( self, subtaskId = 0, resultType = None, nodeId = '', address = '', port = '',  extraData = None, dictRepr = None ):
+    def __init__( self, subtaskId = 0, resultType = None, nodeId = '', address = '', port = '', ethAccount = '', extraData = None, dictRepr = None ):
         Message.__init__(self, MessageReportComputedTask.Type)
 
         self.subtaskId  = subtaskId
@@ -443,6 +448,7 @@ class MessageReportComputedTask( Message ):
         self.nodeId = nodeId
         self.address = address
         self.port = port
+        self.ethAccount = ethAccount
 
         if dictRepr:
             self.subtaskId  = dictRepr[ MessageReportComputedTask.SUB_TASK_ID_STR ]
@@ -450,6 +456,7 @@ class MessageReportComputedTask( Message ):
             self.nodeId = dictRepr[ MessageReportComputedTask.NODE_ID_STR ]
             self.address = dictRepr[ MessageReportComputedTask.ADDR_STR ]
             self.port = dictRepr[ MessageReportComputedTask.PORT_STR ]
+            self.ethAccount = dictRepr[ MessageReportComputedTask.ETH_ACCOUNT_STR ]
             self.extraData = dictRepr[ MessageReportComputedTask.EXTRA_DATA_STR ]
 
     def dictRepr(self):
@@ -458,6 +465,7 @@ class MessageReportComputedTask( Message ):
                     MessageReportComputedTask.NODE_ID_STR: self.nodeId,
                     MessageReportComputedTask.ADDR_STR: self.address,
                     MessageReportComputedTask.PORT_STR: self.port,
+                    MessageReportComputedTask.ETH_ACCOUNT_STR: self.ethAccount,
                     MessageReportComputedTask.EXTRA_DATA_STR: self.extraData }
 
 class MessageGetTaskResult( Message ):

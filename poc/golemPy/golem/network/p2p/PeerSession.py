@@ -38,6 +38,7 @@ class PeerSession(PeerSessionInterface):
         pp = conn.transport.getPeer()
         self.address = pp.host
         self.id = 0
+        self.clientKeyId = 0
         self.port = pp.port
         self.state = PeerSession.StateInitialize
         self.lastMessageTime = 0.0
@@ -98,8 +99,9 @@ class PeerSession(PeerSessionInterface):
         elif type == MessageHello.Type:
             self.port = msg.port
             self.id = msg.clientUID
+            self.clientKeyId = msg.clientKeyId
 
-            p = self.p2pService.findPeer( self.id )
+            p = self.p2pService.findPeer( self.id, self.clientKeyId )
 
             if p and p != self and p.conn.isOpen():
 #                self.__sendPing()
@@ -109,7 +111,7 @@ class PeerSession(PeerSessionInterface):
 
             if not p:
                 self.__sendHello()
-                self.p2pService.addPeer( self.id, self )
+                self.p2pService.addPeer( self.id, self, self.clientKeyId, self.address, self.port )
 
             #print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)
 

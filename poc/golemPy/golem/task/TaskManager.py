@@ -152,9 +152,13 @@ class TaskManager:
             return False
 
     #######################
-    def setPriceForSubtask(self, subtaskId, price):
+    def setPaymentInfoForSubtask(self, subtaskId, price, address, port, ethAccount):
         if subtaskId in self.subTask2TaskMapping:
-            self.tasksStates[ self.subTask2TaskMapping[ subtaskId ] ].subtaskStates[subtaskId ].value = price
+            taskId = self.subTask2TaskMapping[ subtaskId ]
+            self.tasksStates[ taskId ].subtaskStates[ subtaskId ].value = price
+            self.tasksStates[ taskId ].subtaskStates[ subtaskId ].computer.ethAccount = ethAccount
+            self.tasksStates[ taskId ].subtaskStates[ subtaskId ].computer.ipAddress = address
+            self.tasksStates[ taskId ].subtaskStates[ subtaskId ].computer.port = port
         else:
             logger.error("Not my subtask {}".format( subtaskId ))
 
@@ -400,7 +404,8 @@ class TaskManager:
         for taskId, task in self.tasksStates.iteritems():
             if task.status == TaskStatus.finished and not task.paymentBooked and not task.paymentSettled:
                 task.paymentBooked = True
-                return self.getListOfPayments( taskId )
+                return taskId, self.getListOfPayments( taskId )
+        return None, None
 
     #######################
     def changeTimeouts( self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
@@ -430,10 +435,20 @@ class TaskManager:
         payments = {}
         if taskId in self.tasksStates:
             for ss in self.tasksStates[taskId].subtaskStates.itervalues():
-                if ss.computer.nodeId in payments:
-                    payments[ss.computer.nodeId] += ss.value
+                if ss.computer.ethAccount in payments:
+                    payments[ss.computer.ethAccount][0] += ss.value
+                    knownValues = False
+                    for i in range(0, len( payments[ss.computer.ethAccount][1] ) ):
+                        print payments[ss.computer.ethAccount][1][i]
+                        id, addr, port, v = payments[ss.computer.ethAccount][1][i]
+                        if ss.computer.nodeId == id and ss.computer.ipAddress == addr and ss.computer.port == port:
+                            payments[ss.computer.ethAccount][1][i][3] += ss.value
+                            knownValues = True
+                            break
+                    if not knownValues:
+                        payments[ss.computer.ethAccount][1].append([ss.computer.nodeId, ss.computer.ipAddress, ss.computer.port, ss.value])
                 else:
-                    payments[ss.computer.nodeId] = ss.value
+                    payments[ss.computer.ethAccount] = [ss.value, [[ss.computer.nodeId, ss.computer.ipAddress, ss.computer.port, ss.value]]]
             return payments
         else:
             logger.error("Not my task {}".format( taskId ))
