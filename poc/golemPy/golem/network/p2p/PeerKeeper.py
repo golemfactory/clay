@@ -1,6 +1,9 @@
 import time
+import logging
 
 from golem.core.variables import K, CONCURRENCY
+
+logger = logging.getLogger(__name__)
 
 class PeerKeeper:
 
@@ -16,15 +19,22 @@ class PeerKeeper:
     #############################
     def addPeer(self, peerKeyId, peerId, ip, port):
         if peerKeyId == self.peerKeyId:
+            logger.warning("Trying to add self to Routing table")
             return
-        peerKeyId = long( peerKeyId, 16 )
+        peerKeyLongId = long( peerKeyId, 16 )
 
-        peerInfo = PeerInfo(peerId, peerKeyId, ip, port)
-        bucket = self.bucketForNode( peerKeyId )
-        bucket.addNode( peerInfo )
+        peerInfo = PeerInfo(peerId, peerKeyLongId, ip, port)
+        bucket = self.bucketForNode( peerKeyLongId )
+        peerToRemove = bucket.addNode( peerInfo )
+        if peerToRemove:
+            if bucket.start <= self.longId <= bucket.end:
+                self.splitBucket(bucket)
+         #       return self.addPeer(peerKeyId, peerId, ip, port)
+            return peerToRemove
 
         for bucket in self.buckets:
-            print "Bucket {}-{}, nodes {}".format(bucket.start, bucket.end, len( bucket.nodes ) )
+            logger.debug( "Bucket {}-{}, nodes {}".format(bucket.start, bucket.end, len( bucket.nodes ) ) )
+        return None
 
     #############################
     def bucketForNode(self, peerKeyId ):
@@ -32,12 +42,17 @@ class PeerKeeper:
             if bucket.start <= peerKeyId < bucket.end:
                 return bucket
 
-
-
+    #############################
+    def splitBucket(self, bucket):
+        buck1, buck2 = bucket.split()
+        idx = self.buckets.index(bucket)
+        self.buckets[idx] = buck1
+        self.buckets.insert(idx + 1, buck2)
 
 
     #############################
     def cntDistance(self, peerKeyId):
+
         return self.longId ^ long( peerKeyId, 16 )
 
 class PeerInfo:
@@ -47,13 +62,17 @@ class PeerInfo:
         self.ip = ip
         self.port = port
 
+    def __str__(self, nodeId):
+        print nodeId
+
+from collections import deque
+
 class KBucket:
     def __init__( self, start, end,  k ):
-        print "KBUCKET"
         self.start = start
         self.end = end
         self.k = k
-        self.nodes = []
+        self.nodes = deque()
         self.replacementNodes = []
         self.lastUpdated = time.time()
 
@@ -65,6 +84,7 @@ class KBucket:
             self.nodes.append( node )
         else:
             self.replacementNodes.append( node )
+            return self.nodes[0]
 
     def split(self):
         midpoint = (self.start + self.end) / 2
@@ -81,4 +101,7 @@ class KBucket:
             else:
                 upper.replacementNodes.append( node )
         return lower, upper
+
+    def __str__(self):
+        return "start: {}, end: {} nodes {}".format(self.start, self.end, len(self.nodes ))
 

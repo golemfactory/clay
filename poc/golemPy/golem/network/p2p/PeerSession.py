@@ -101,7 +101,7 @@ class PeerSession(PeerSessionInterface):
             self.id = msg.clientUID
             self.clientKeyId = msg.clientKeyId
 
-            p = self.p2pService.findPeer( self.id, self.clientKeyId )
+            p = self.p2pService.findPeer( self.id )
 
             if p and p != self and p.conn.isOpen():
 #                self.__sendPing()

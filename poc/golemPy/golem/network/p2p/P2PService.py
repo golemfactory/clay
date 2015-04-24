@@ -86,8 +86,7 @@ class P2PService:
             p.ping( interval )
     
     #############################
-    def findPeer( self, peerID, peerKeyId ):
-        print "Distance {}".format( self.peerKeeper.cntDistance(peerKeyId) )
+    def findPeer( self, peerID ):
         if peerID in self.peers:
             return self.peers[ peerID ]
         else:
