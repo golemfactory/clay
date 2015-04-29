@@ -73,6 +73,7 @@ class P2PService:
             self.__sendMessageGetTasks()
 
         self.__removeOldPeers()
+        self.peerKeeper.syncNetwork()
 
     #############################
     def newSession( self, session ):
@@ -98,9 +99,20 @@ class P2PService:
 
     #############################
     def addPeer( self, id, peer, peerKeyId, address, port ):
-        self.peerKeeper.addPeer( peerKeyId, id, address, port )
+        peerToPingInfo = self.peerKeeper.addPeer( peerKeyId, id, address, port )
+        if peerToPingInfo and peerToPingInfo.nodeId in self.peers:
+            peerToPing = self.peers[peerToPingInfo.nodeId]
+            if peerToPing:
+                peerToPing.ping(0)
+            print "Ping {}".format(peerToPingInfo.nodeId)
+
         self.peers[ id ] = peer
         self.__sendDegree()
+
+    #############################
+    def pongReceived( self, id, peerKeyId, address, port ):
+        print "pong {}".format(id)
+        self.peerKeeper.pongReceived( peerKeyId, id, address, port )
 
     #############################
     def tryToAddPeer( self, peerInfo ):

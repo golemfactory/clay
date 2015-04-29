@@ -90,7 +90,7 @@ class PeerSession(PeerSessionInterface):
         if type == MessagePing.Type:
             self.__sendPong()
         elif type == MessagePong.Type:
-            pass
+            self.p2pService.pongReceived( self.id, self.clientKeyId, self.address, self.port )
         elif type == MessageDisconnect.Type:
             logger.info( "Disconnect reason: {}".format(msg.reason) )
             logger.info( "Closing {} : {}".format( self.address, self.port ) )
