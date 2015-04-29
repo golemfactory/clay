@@ -45,7 +45,8 @@ class RSAKeysAuth( KeysAuth ):
         publicKey = self._getPublicKeyLoc( uuid )
         if not os.path.isfile( privateKey ) or not os.path.isfile( publicKey ):
             self._generateKeys( uuid )
-        key = open(privateKey).read()
+        with open(privateKey) as f:
+            key = f.read()
         key = RSA.importKey(key)
         return key
 
@@ -54,7 +55,8 @@ class RSAKeysAuth( KeysAuth ):
         publicKey = self._getPublicKeyLoc( uuid )
         if not os.path.isfile(privateKey) or not os.path.isfile(publicKey):
             self._generateKeys( uuid )
-        key = open(publicKey).read()
+        with open(publicKey) as f:
+            key = f.read()
         key = RSA.importKey(key)
         return key
 
@@ -63,12 +65,10 @@ class RSAKeysAuth( KeysAuth ):
         publicKey = self._getPublicKeyLoc( uuid )
         key = RSA.generate(2048)
         pubKey = key.publickey()
-        f = open( privateKey, 'w' )
-        f.write( key.exportKey('PEM') )
-        f.close()
-        f = open( publicKey, 'w')
-        f.write( pubKey.exportKey() )
-        f.close()
+        with open( privateKey, 'w' ) as f:
+            f.write( key.exportKey('PEM') )
+        with open( publicKey, 'w') as f:
+            f.write( pubKey.exportKey() )
 
 class EllipticalKeysAuth( KeysAuth ):
 
@@ -123,3 +123,5 @@ if __name__ == "__main__":
     auth = EllipticalKeysAuth()
     print auth.getPublicKey()
     print auth.getKeyId()
+    print auth.cntKeyId(auth.getPublicKey())
+    print len(auth.cntKeyId(auth.getPublicKey()))

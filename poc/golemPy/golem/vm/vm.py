@@ -83,7 +83,7 @@ class PythonProcVM( GolemVM ):
         self.proc = None
 
     def endComp(self):
-        if self.proc is not None:
+        if self.proc:
             self.proc.terminate()
 
     def _interpret( self ):

@@ -236,7 +236,8 @@ class Client:
 
     ############################
     def quit(self):
-        self.taskAdderServer.terminate()
+        if self.taskAdderServer:
+            self.taskAdderServer.terminate()
 
     ############################
     def stopNetwork(self):

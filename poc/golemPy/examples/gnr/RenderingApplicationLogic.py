@@ -85,13 +85,12 @@ class AbsRenderingApplicationLogic( object ):
     ######################
     def __checkOutputFile(self, outputFile):
         try:
-            if os.path.exists( outputFile ):
-                f = open( outputFile , 'a')
-                f.close()
-            else:
-                f = open( outputFile , 'w')
-                f.close()
-                os.remove(outputFile)
+            fileExist = os.path.exists( outputFile )
+
+            with open( outputFile, 'a'):
+                pass
+            if not fileExist:
+                os.remove( outputFile )
             return True
         except IOError:
             self._showErrorWindow( "Cannot open file: {}".format( outputFile ))

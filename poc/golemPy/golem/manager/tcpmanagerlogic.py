@@ -1,7 +1,7 @@
 import subprocess
 
-from PyQt4.QtCore import *
-from PyQt4.QtNetwork import *
+from PyQt4.QtCore import QObject
+from PyQt4.QtNetwork import QTcpServer, QHostAddress
 
 class TcpManagerLogic(QObject):
 

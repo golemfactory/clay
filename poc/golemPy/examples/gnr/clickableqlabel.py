@@ -1,5 +1,5 @@
-from PyQt4.QtGui import *
-from PyQt4.QtCore import *
+from PyQt4.QtGui import QLabel
+from PyQt4.QtCore import SIGNAL
 
 class   ClickableQLabel(QLabel):
 

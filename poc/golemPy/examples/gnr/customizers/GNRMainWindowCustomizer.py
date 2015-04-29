@@ -193,7 +193,6 @@ class GNRMainWindowCustomizer:
    ############################
     def _loadTask( self, filePath ):
         f = open( filePath, 'r' )
-
         try:
             definition = pickle.loads( f.read() )
         except Exception, e:

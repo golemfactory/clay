@@ -12,11 +12,10 @@ import psutil
 def returnData( files ):
     res = []
     for f in files:
-        fh = open( f, "rb" )
-        fileData = fh.read()
+        with open( f, "rb" ) as fh:
+            fileData = fh.read()
         fileData = zlib.compress( fileData, 9 )
         res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
-        fh.close()
 
     return { 'data': res, 'resultType': 0 }
 
@@ -90,10 +89,8 @@ def runBlenderTask( outfilebasename, sceneFile, scriptSrc, startTask, engine, fr
     sceneDir = os.path.dirname( sceneFile )
     scriptFile = tempfile.TemporaryFile( suffix = ".py", dir = sceneDir )
     scriptFile.close()
-    f = open( scriptFile.name, 'w')
-    f.write( scriptSrc )
-    f.close()
-
+    with open( scriptFile.name, 'w') as f:
+        f.write( scriptSrc )
 
     cmdFile = __readFromEnvironment()
     sceneFile = os.path.normpath( os.path.join( os.getcwd(), sceneFile ) )

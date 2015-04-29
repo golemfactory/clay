@@ -27,7 +27,8 @@ class InfoTaskDefinition:
 class InfoTaskBuilder( GNRTaskBuilder ):
 
     def build( self ):
-        srcCode = open( self.taskDefinition.srcFile ).read()
+        with open( self.taskDefinition.srcFile ) as f:
+            srcCode = f.read()
         return InfoTask(    srcCode,
                             self.clientId,
                             self.taskDefinition.taskId,

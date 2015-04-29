@@ -245,7 +245,6 @@ class GNRTask( Task ):
     #######################
     def _unpackTaskResult( self, trp, tmpDir ):
         tr = pickle.loads( trp )
-        fh = open( os.path.join( tmpDir, tr[ 0 ] ), "wb" )
-        fh.write( decompress( tr[ 1 ] ) )
-        fh.close()
+        with open( os.path.join( tmpDir, tr[ 0 ] ), "wb" ) as fh:
+            fh.write( decompress( tr[ 1 ] ) )
         return os.path.join( tmpDir, tr[0] )

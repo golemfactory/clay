@@ -60,9 +60,8 @@ class NodeConfig:
         res = 0
         if os.path.isfile(estmFile):
             try:
-                file = open(estmFile, 'r')
-                res = "{0:.1f}".format(float(file.read()))
-                file.close()
+                with open(estmFile, 'r') as file:
+                    res = "{0:.1f}".format(float(file.read()))
             except:
                 return 0
         return res

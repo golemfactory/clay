@@ -105,7 +105,7 @@ class GNRAdmApplicationLogic( GNRApplicationLogic ):
     def __readTaskFromFile(self, taskFile ):
         taskState = self._getNewTaskState()
         taskState.status = TaskStatus.notStarted
-        taskState.definition = pickle.loads( open( taskFile, 'r' ).read() )
-        import uuid
+        with open( taskFile, 'r' ) as f:
+            taskState.definition = pickle.loads( f.read() )
         taskState.definition.taskId = "{}".format( uuid.uuid4() )
         return taskState

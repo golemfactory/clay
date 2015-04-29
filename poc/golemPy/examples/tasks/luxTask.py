@@ -43,11 +43,10 @@ def __readFromEnvironment( ):
 def returnData( files ):
     res = []
     for f in files:
-        fh = open( f, "rb" )
-        fileData = fh.read()
+        with open( f, "rb" ) as fh:
+            fileData = fh.read()
         fileData = zlib.compress( fileData, 9 )
         res.append( pickle.dumps( ( os.path.basename( f ), fileData ) ) )
-        fh.close()
 
     return { 'data': res, 'resultType': 0 }
 

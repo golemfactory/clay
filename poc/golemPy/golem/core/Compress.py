@@ -29,9 +29,8 @@ def decompress( data ):
 if __name__ == "__main__":
     def main():
         c = compress( "12334231234434123452341234" )
-        f = open( "tezt.gz", "wb")
-        f.write( c )
-        f.close()
+        with open( "tezt.gz", "wb") as f:
+            f.write( c )
         print c 
         d = decompress( c )
         print d

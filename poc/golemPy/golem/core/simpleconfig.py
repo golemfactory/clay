@@ -149,9 +149,8 @@ class SimpleConfig:
             logger.info( "Creating backup configuration file {}".format( backupFileName ) )
             shutil.copy( cfgFile, backupFileName )
 
-        f = open( cfgFile, 'w' )
-        cfg.write( f )            
-        f.close()
+        with open( cfgFile, 'w' ) as f:
+            cfg.write( f )
 
     ##############################
     def __readOption( self, cfg, property ):

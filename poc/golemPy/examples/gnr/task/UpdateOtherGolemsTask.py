@@ -31,7 +31,8 @@ class UpdateOtherGolemsTaskBuilder( GNRTaskBuilder ):
         self.srcDir = srcDir
 
     def build( self ):
-        srcCode = open( self.taskDefinition.srcFile ).read()
+        with open( self.taskDefinition.srcFile ) as f:
+            srcCode = f.read()
         self.taskDefinition.taskResources = set()
         for dir, dirs, files in os.walk( self.srcDir ):
             for file_ in files:

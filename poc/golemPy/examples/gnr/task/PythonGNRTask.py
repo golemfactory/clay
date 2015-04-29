@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 class PythonGNRTaskBuilder( GNRTaskBuilder ):
     #######################
     def build( self ):
-        srcCode = open( self.taskDefinition.mainProgramFile ).read()
+        with open( self.taskDefinition.mainProgramFile ) as f:
+            srcCode = f.read()
         self.taskDefinition.taskResources = set()
 
         resourceSize = 0
