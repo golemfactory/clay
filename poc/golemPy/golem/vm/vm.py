@@ -93,9 +93,7 @@ class PythonProcVM( GolemVM ):
         self.proc = mp.Process(target = execCode, args=(self.srcCode, scope ))
         self.proc.start()
         self.proc.join()
-        if "output" not in scope:
-            return None
-        return scope["output"]
+        return scope.get("output")
 
 def execCode( srcCode, scopeManager ):
     scope = dict(scopeManager)

@@ -161,8 +161,9 @@ class ConfigurationDialogCustomizer:
                 size = getDirSize( path )
                 humanReadableSize, idx = dirSizeToDisplay( size )
                 return "{} {}".format( humanReadableSize, translateResourceIndex(idx))
-            except Exception, err:
+            except Exception as err:
                 logger.error(str(err))
+                raise err
                 return "Error"
 
 

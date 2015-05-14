@@ -1,5 +1,7 @@
 import time
 import logging
+import random
+import operator
 
 from golem.core.variables import K, CONCURRENCY
 
@@ -16,7 +18,10 @@ class PeerKeeper:
         self.kSize = kSize
         self.buckets = [KBucket( 0, 2 ** kSize - 1, self.k )]
         self.expectedPongs = {}
+        self.findRequests = {}
         self.pongTimeout = 5
+        self.requestTimeout = 10
+        self.idleRefresh = 3600
 
     #############################
     def addPeer(self, peerKey, peerId, ip, port):
@@ -69,13 +74,54 @@ class PeerKeeper:
 
     #############################
     def syncNetwork(self):
+        self.__removeOldExpectedPongs()
+        self.__removeOldRequests()
+        nodesToFind = self.__sendNewRequests()
+        return nodesToFind
+
+    def __removeOldExpectedPongs(self):
+        currentTime = time.time()
         for peerKeyId, (replacement, time_) in self.expectedPongs.items():
-            current_time = time.time()
-            if current_time - time_ > self.pongTimeout:
+            if currentTime - time_ > self.pongTimeout:
                 self.bucketForNode( peerKeyId ).removeNode( peerKeyId )
                 if replacement:
                     self.addPeer( replacement.nodeKey, replacement.nodeId,  replacement.ip, replacement.port )
                 del self.expectedPongs[peerKeyId]
+
+
+    def __sendNewRequests(self):
+        nodesToFind = {}
+        currentTime = time.time()
+        for bucket in self.buckets:
+            if currentTime - bucket.lastUpdated > self.idleRefresh:
+                nodeKeyId = random.randint(bucket.start, bucket.end)
+                self.findRequests[nodeKeyId] = currentTime
+                nodesToFind[nodeKeyId] = self.neighbours(nodeKeyId)
+                bucket.lastUpdated = currentTime
+        return nodesToFind
+
+    def neighbours(self, nodeKeyId, k = None):
+        if not k:
+            k = self.k
+
+        neigh = []
+        for bucket in self.bucketsByIdDistance(nodeKeyId):
+            for node in bucket.nodesByIdDistance(nodeKeyId):
+                if node.nodeKeyId != nodeKeyId:
+                    neigh.append(node)
+                    if len(neigh) == k * 2:
+                        break
+        return sorted(neigh, key = operator.methodcaller('idDistance', nodeKeyId))[:k]
+
+    def bucketsByIdDistance(self, nodeKeyId ):
+        return sorted(self.buckets, key=operator.methodcaller('idDistance', nodeKeyId))
+
+
+    def __removeOldRequests(self):
+        currentTime = time.time()
+        for peerKeyId, time_ in self.findRequests.items():
+            if currentTime - time.time() > self.requestTimeout:
+                del self.findRequests[peerKeyId]
 
 
     #############################
@@ -95,6 +141,9 @@ class PeerInfo:
         self.ip = ip
         self.port = port
 
+    def idDistance(self, nodeKeyId):
+        return self.nodeKeyId ^ nodeKeyId
+
     def __str__(self ):
         return self.nodeId
 
@@ -106,18 +155,18 @@ class KBucket:
         self.end = end
         self.k = k
         self.nodes = deque()
-        self.replacementNodes = []
+ #       self.replacementNodes = []
         self.lastUpdated = time.time()
 
     def addNode( self, node ):
         logger.debug("KBucekt adding node {}".format( node ) )
+        self.lastUpdated = time.time()
         if node in self.nodes:
             self.nodes.remove(node )
             self.nodes.append(node )
         elif len(self.nodes) < self.k:
             self.nodes.append( node )
         else:
-            self.replacementNodes.append( node )
             return self.nodes[0]
         return None
 
@@ -128,6 +177,11 @@ class KBucket:
                 self.nodes.remove(node)
                 return
 
+    def idDistance(self, nodeKeyId):
+        return ((self.start + self.end) / 2) ^ nodeKeyId
+
+    def nodesByIdDistance(self, nodeKeyId):
+        return sorted(self.nodes, key = operator.methodcaller('idDistance', nodeKeyId))
 
     def split(self):
         midpoint = (self.start + self.end) / 2
@@ -138,11 +192,11 @@ class KBucket:
                 lower.addNode( node )
             else:
                 upper.addNode( node )
-        for node in self.replacementNodes:
-            if node.nodeKeyId < midpoint:
-                lower.replacementNodes.append( node )
-            else:
-                upper.replacementNodes.append( node )
+#        for node in self.replacementNodes:
+#            if node.nodeKeyId < midpoint:
+#                lower.replacementNodes.append( node )
+#            else:
+ #               upper.replacementNodes.append( node )
         return lower, upper
 
     def __str__(self):

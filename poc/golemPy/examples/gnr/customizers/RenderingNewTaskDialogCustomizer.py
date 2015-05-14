@@ -126,8 +126,8 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
             self.gui.ui.outputFormatsComboBox.clear()
             self.gui.ui.outputFormatsComboBox.addItems( r.outputFormats )
 
-            for i in range( len( r.outputFormats ) ):
-                if r.outputFormats[ i ] == r.defaults.outputFormat:
+            for i, outputFormat in enumerate( r.outputFormats ):
+                if outputFormat == r.defaults.outputFormat:
                     self.gui.ui.outputFormatsComboBox.setCurrentIndex( i )
 
             self.gui.ui.mainProgramFileLineEdit.setText( r.defaults.mainProgramFile )
@@ -149,8 +149,8 @@ class RenderingNewTaskDialogCustomizer ( NewTaskDialogCustomizer ):
         self.gui.ui.outputFormatsComboBox.clear()
         self.gui.ui.outputFormatsComboBox.addItems( dr.outputFormats )
 
-        for i in range( len( dr.outputFormats ) ):
-            if dr.outputFormats[ i ] == dr.defaults.outputFormat:
+        for i, outputFormat in enumerate( dr.outputFormats ):
+            if outputFormat == dr.defaults.outputFormat:
                 self.gui.ui.outputFormatsComboBox.setCurrentIndex( i )
 
         self.gui.ui.mainProgramFileLineEdit.setText( dr.defaults.mainProgramFile )

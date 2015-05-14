@@ -73,7 +73,9 @@ class P2PService:
             self.__sendMessageGetTasks()
 
         self.__removeOldPeers()
-        self.peerKeeper.syncNetwork()
+        nodesToFind = self.peerKeeper.syncNetwork()
+        if nodesToFind:
+            self.sendFindNodes(nodesToFind)
 
     #############################
     def newSession( self, session ):
@@ -88,10 +90,7 @@ class P2PService:
     
     #############################
     def findPeer( self, peerID ):
-        if peerID in self.peers:
-            return self.peers[ peerID ]
-        else:
-            return None
+        return self.peers.get( peerID )
 
     #############################
     def getPeers( self ):
@@ -104,14 +103,12 @@ class P2PService:
             peerToPing = self.peers[peerToPingInfo.nodeId]
             if peerToPing:
                 peerToPing.ping(0)
-            print "Ping {}".format(peerToPingInfo.nodeId)
 
         self.peers[ id ] = peer
         self.__sendDegree()
 
     #############################
     def pongReceived( self, id, peerKeyId, address, port ):
-        print "pong {}".format(id)
         self.peerKeeper.pongReceived( peerKeyId, id, address, port )
 
     #############################
@@ -141,11 +138,12 @@ class P2PService:
 
     #############################
     def removePeerById( self, peerId ):
-        if peerId not in self.peers:
+        peer = self.peers.get( peerId )
+        if not peer:
             logger.error("Can't remove peer {}, unknown peer".format(peerId))
             return
-        if self.peers[ peerId ] in self.allPeers:
-            self.allPeers.remove( self.peers[ peerId ] )
+        if peer in self.allPeers:
+            self.allPeers.remove( peer )
         del self.peers[ peerId ]
 
         self.__sendDegree()
@@ -200,6 +198,21 @@ class P2PService:
     ############################
     def getPeersDegree(self):
         return  { peer.id: peer.degree for peer in self.peers.values() }
+
+    #Kademlia functions
+    #############################
+    def sendFindNodes(self, nodesToFind):
+        for nodeKeyId, neighbours in nodesToFind.iteritems():
+            for neighbour in neighbours:
+                peer =  self.peers.get(neighbour.nodeId)
+                if peer:
+                    peer.sendFindNode( nodeKeyId )
+                    print "sending message to {} about {}".format( neighbour.nodeId, nodeKeyId )
+
+    #Find node
+    #############################
+    def findNode(self, nodeKeyId ):
+        print "answering about neighbours of {}: {}".format( nodeKeyId, self.peerKeeper.neighbours( nodeKeyId ) )
 
     #Resource functions
     #############################

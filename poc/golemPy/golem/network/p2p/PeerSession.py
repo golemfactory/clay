@@ -4,9 +4,8 @@ import logging
 from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, \
                           MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks, \
                           MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
-                          MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank
+                          MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode
 from golem.network.p2p.NetConnState import NetConnState
-
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ class PeerSession(PeerSessionInterface):
     DCRTimeout          = "Timeout"
 
     ##########################
-    def __init__(self, conn ):
+    def __init__( self, conn ):
 
         PeerSessionInterface.__init__(self)
         self.p2pService = None
@@ -154,6 +153,10 @@ class PeerSession(PeerSessionInterface):
 
         elif type == MessageLocRank.Type:
             self.p2pService.safeNeighbourLocRank( self.id, msg.nodeId, msg.locRank )
+
+        elif type == MessageFindNode.Type:
+            self.p2pService.findNode( msg.nodeKeyId )
+
         else:
             self.disconnect( PeerSession.DCRBadProtocol )
 
@@ -187,8 +190,11 @@ class PeerSession(PeerSessionInterface):
 
     ##########################
     def sendLocRank( self, nodeId, locRank ):
-#        print "SendLocRank"
         self.__send( MessageLocRank( nodeId, locRank ))
+
+    ##########################
+    def sendFindNode(self, nodeId ):
+        self.__send( MessageFindNode( nodeId ) )
 
     ##########################
     def disconnect(self, reason):

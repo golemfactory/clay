@@ -349,6 +349,24 @@ class MessageLocRank( Message ):
         return { MessageLocRank.NODE_ID_STR: self.nodeId,
                  MessageLocRank.LOC_RANK_STR: self.locRank }
 
+class MessageFindNode( Message ):
+
+    Type = 15
+
+    NODE_KEY_ID_STR = u"NODE_KEY_ID"
+
+    def __init__( self, nodeKeyId = '', dictRepr = None ):
+        Message.__init__( self, MessageFindNode.Type )
+
+        self.nodeKeyId = nodeKeyId
+
+        if dictRepr:
+            self.nodeKeyId = dictRepr[ MessageFindNode.NODE_KEY_ID_STR ]
+
+    def dictRepr( self ):
+        return { MessageFindNode.NODE_KEY_ID_STR: self.nodeKeyId }
+
+
 
 TASK_MSG_BASE = 2000
 
@@ -902,6 +920,7 @@ def initMessages():
     MessageGossip()
     MessageStopGossip()
     MessageLocRank()
+    MessageFindNode()
 
     MessageTaskToCompute()
     MessageWantToComputeTask()

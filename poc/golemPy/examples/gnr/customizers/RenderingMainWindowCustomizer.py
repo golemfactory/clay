@@ -189,9 +189,7 @@ class AbsRenderingMainWindowCustomizer ( object ):
     def _showTaskResourcesClicked( self ):
 
         if self.currentTaskHighlighted:
-            res = list( self.currentTaskHighlighted.definition.resources )
-            for i in range( len( res ) ):
-                res[ i ] = os.path.abspath( res[ i ] )
+            res = [ os.path.abspath(r) for r in self.currentTaskHighlighted.definition.resources ]
             res.sort()
             self.showTaskResourcesDialog = ShowTaskResourcesDialog( self.gui.window )
 

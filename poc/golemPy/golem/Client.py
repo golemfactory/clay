@@ -571,24 +571,26 @@ class Client:
 
     ############################
     def __checkSupportedEnvironment( self, thDictRepr ):
-        if "environment" not in thDictRepr:
+        env = thDictRepr.get("environment")
+        if not env:
             return False
-        if not self.environmentsManager.supported( thDictRepr["environment"] ):
+        if not self.environmentsManager.supported( env ):
             return False
-        return self.environmentsManager.acceptTasks( thDictRepr[ "environment"] )
+        return self.environmentsManager.acceptTasks( env )
 
     #############################
     def __checkSupportedVersion( self, thDictRepr ):
-        if "minVersion" not in thDictRepr:
+        minV = thDictRepr.get("minVersion")
+        if not minV:
             return True
         try:
-            supported =  float( self.configDesc.appVersion ) >= float( thDictRepr[ "minVersion" ] )
+            supported =  float( self.configDesc.appVersion ) >= float( minV )
             return supported
         except ValueError:
             logger.error(
                 "Wrong app version - app version {}, required version {}".format(
                     self.configDesc.appVersion,
-                    thDictRepr[ "minVersion" ]
+                    minV
                 )
             )
             return False

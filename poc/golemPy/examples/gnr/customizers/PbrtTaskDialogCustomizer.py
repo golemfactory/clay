@@ -60,9 +60,9 @@ class PbrtTaskDialogCustomizer:
 
         self.gui.ui.outputFormatsComboBox.clear()
         self.gui.ui.outputFormatsComboBox.addItems( self.options.outputFormats )
-        for i in range( len( self.options.outputFormats ) ):
-            if self.options.outputFormats[ i ] == self.options.outputFormat:
-                self.gui.ui.outputFormatsComboBox.setCurrentIndex( i )
+        for idx, outputFormat in enumerate( self.options.outputFormats ):
+            if outputFormat == self.options.outputFormat:
+                self.gui.ui.outputFormatsComboBox.setCurrentIndex( idx )
 
         self.gui.ui.outputFileLineEdit.setText( self.options.outputFile )
 
