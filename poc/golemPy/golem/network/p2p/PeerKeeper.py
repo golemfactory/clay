@@ -11,6 +11,7 @@ class PeerKeeper:
 
     #############################
     def __init__(self, peerKey, kSize = 512 ):
+
         self.peerKey = peerKey
         self.peerKeyId = long( peerKey, 16 )
         self.k                      = K
@@ -21,13 +22,22 @@ class PeerKeeper:
         self.findRequests = {}
         self.pongTimeout = 5
         self.requestTimeout = 10
-        self.idleRefresh = 3600
+        self.idleRefresh = 3
+        self.sessionsToEnd = []
+
+    #############################
+    def __str__(self):
+        return "\n".join( [ str(bucket) for bucket in self.buckets ] )
 
     #############################
     def addPeer(self, peerKey, peerId, ip, port):
         if peerKey == self.peerKey:
             logger.warning("Trying to add self to Routing table")
             return
+
+        if not peerKey:
+            return
+
         peerKeyId = long( peerKey, 16 )
 
         peerInfo = PeerInfo(peerId, peerKey, ip, port)
@@ -43,13 +53,33 @@ class PeerKeeper:
 
 
         for bucket in self.buckets:
-            logger.debug( "Bucket 2^{}-2^{}, nodes {}".format(self.__numToPow(bucket.start), self.__numToPow(bucket.end), len( bucket.nodes ) ) )
+            logger.debug( str(bucket) )
         return None
 
     #############################
+    def setLastMessageTime( self, peerKey ):
+        if not peerKey:
+            return
+
+        for i, bucket in enumerate(self.buckets):
+            if bucket.start <= long(peerKey, 16) < bucket.end:
+                self.buckets[i].lastUpdated = time.time()
+                break
+
+    #############################
+    def getRandomKnownNode( self ):
+
+        bucket = self.buckets[random.randint( 0, len(self.buckets) - 1 )]
+        if len( bucket.nodes ) > 0:
+            return bucket.nodes[random.randint( 0, len(bucket.nodes) - 1 )]
+
+    #############################
     def pongReceived(self, peerKey, peerId, ip, port ):
+        if not peerKey:
+            return
         peerKeyId = long( peerKey, 16 )
         if peerKeyId in self.expectedPongs:
+            self.sessionsToEnd.append( peerId )
             del self.expectedPongs[peerKeyId]
 
 
@@ -61,6 +91,7 @@ class PeerKeeper:
 
     #############################
     def splitBucket(self, bucket):
+        logger.debug("Splitting bucket")
         buck1, buck2 = bucket.split()
         idx = self.buckets.index(bucket)
         self.buckets[idx] = buck1
@@ -79,16 +110,20 @@ class PeerKeeper:
         nodesToFind = self.__sendNewRequests()
         return nodesToFind
 
+    #############################
     def __removeOldExpectedPongs(self):
         currentTime = time.time()
         for peerKeyId, (replacement, time_) in self.expectedPongs.items():
             if currentTime - time_ > self.pongTimeout:
-                self.bucketForNode( peerKeyId ).removeNode( peerKeyId )
+                peerId = self.bucketForNode( peerKeyId ).removeNode( peerKeyId )
+                if peerId:
+                    self.sessionsToEnd.append(peerId)
                 if replacement:
                     self.addPeer( replacement.nodeKey, replacement.nodeId,  replacement.ip, replacement.port )
+
                 del self.expectedPongs[peerKeyId]
 
-
+    #############################
     def __sendNewRequests(self):
         nodesToFind = {}
         currentTime = time.time()
@@ -100,40 +135,35 @@ class PeerKeeper:
                 bucket.lastUpdated = currentTime
         return nodesToFind
 
-    def neighbours(self, nodeKeyId, k = None):
-        if not k:
-            k = self.k
+    #############################
+    def neighbours(self, nodeKeyId, alpha = None):
+        if not alpha:
+            alpha = self.concurrency
 
         neigh = []
         for bucket in self.bucketsByIdDistance(nodeKeyId):
             for node in bucket.nodesByIdDistance(nodeKeyId):
                 if node.nodeKeyId != nodeKeyId:
                     neigh.append(node)
-                    if len(neigh) == k * 2:
+                    if len(neigh) == alpha * 2:
                         break
-        return sorted(neigh, key = operator.methodcaller('idDistance', nodeKeyId))[:k]
+        return sorted(neigh, key = operator.methodcaller('idDistance', nodeKeyId))[:alpha]
 
+    #############################
     def bucketsByIdDistance(self, nodeKeyId ):
         return sorted(self.buckets, key=operator.methodcaller('idDistance', nodeKeyId))
 
-
+    #############################
     def __removeOldRequests(self):
         currentTime = time.time()
         for peerKeyId, time_ in self.findRequests.items():
             if currentTime - time.time() > self.requestTimeout:
                 del self.findRequests[peerKeyId]
 
-
-    #############################
-    def __numToPow(self, num):
-        pow = self.kSize
-        while 2 ** pow - 1 > num:
-            pow -= 1
-        return pow
-
-
+##########################################################
 
 class PeerInfo:
+    #############################
     def __init__(self, nodeId, nodeKey, ip, port):
         self.nodeId = nodeId
         self.nodeKey = nodeKey
@@ -141,23 +171,28 @@ class PeerInfo:
         self.ip = ip
         self.port = port
 
+    #############################
     def idDistance(self, nodeKeyId):
         return self.nodeKeyId ^ nodeKeyId
 
+    #############################
     def __str__(self ):
         return self.nodeId
+
+##########################################################
 
 from collections import deque
 
 class KBucket:
+    #############################
     def __init__( self, start, end,  k ):
         self.start = start
         self.end = end
         self.k = k
         self.nodes = deque()
- #       self.replacementNodes = []
         self.lastUpdated = time.time()
 
+    #############################
     def addNode( self, node ):
         logger.debug("KBucekt adding node {}".format( node ) )
         self.lastUpdated = time.time()
@@ -170,19 +205,24 @@ class KBucket:
             return self.nodes[0]
         return None
 
+    #############################
     def removeNode( self, nodeKeyId ):
-        print self.nodes
         for node in self.nodes:
             if node.nodeKeyId == nodeKeyId:
+                nodeId = node.nodeId
                 self.nodes.remove(node)
-                return
+                return nodeId
+        return None
 
+    #############################
     def idDistance(self, nodeKeyId):
         return ((self.start + self.end) / 2) ^ nodeKeyId
 
+    #############################
     def nodesByIdDistance(self, nodeKeyId):
         return sorted(self.nodes, key = operator.methodcaller('idDistance', nodeKeyId))
 
+    #############################
     def split(self):
         midpoint = (self.start + self.end) / 2
         lower = KBucket(self.start, midpoint, self.k)
@@ -192,13 +232,15 @@ class KBucket:
                 lower.addNode( node )
             else:
                 upper.addNode( node )
-#        for node in self.replacementNodes:
-#            if node.nodeKeyId < midpoint:
-#                lower.replacementNodes.append( node )
-#            else:
- #               upper.replacementNodes.append( node )
         return lower, upper
 
+    #############################
     def __str__(self):
-        return "start: {}, end: {} nodes {}".format(self.start, self.end, len(self.nodes ))
+        return "Bucket: {} - {} nodes {}".format(self.start, self.end, len(self.nodes ))
 
+    #############################
+    def __numToPow(self, num):
+        pow = 512
+        while 2 ** pow - 1 > num:
+            pow -= 1
+        return pow

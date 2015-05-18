@@ -1,5 +1,8 @@
 import time
 import logging
+import random
+
+from copy import copy
 
 from golem.network.transport.Tcp import Network
 from golem.network.p2p.PeerSession import PeerSession
@@ -26,6 +29,8 @@ class P2PService:
         self.taskServer             = None
         self.hostAddress            = hostAddress
         self.lastMessageTimeThreshold = self.configDesc.p2pSessionTimeout
+        self.refreshPeersTimeout    = 900
+        self.lastRefreshPeers       = time.time()
 
         self.lastMessages           = []
 
@@ -73,9 +78,21 @@ class P2PService:
             self.__sendMessageGetTasks()
 
         self.__removeOldPeers()
+        self.__syncPeerKeeper()
+
+    #############################
+    def __syncPeerKeeper(self):
+        self.__removeSessionsToEndFromPeerKeeper()
         nodesToFind = self.peerKeeper.syncNetwork()
+        self.__removeSessionsToEndFromPeerKeeper()
         if nodesToFind:
             self.sendFindNodes(nodesToFind)
+
+    #############################
+    def __removeSessionsToEndFromPeerKeeper(self):
+        for peerId in self.peerKeeper.sessionsToEnd:
+            self.removePeerById( peerId )
+        self.peerKeeper.sessionsToEnd = []
 
     #############################
     def newSession( self, session ):
@@ -97,15 +114,19 @@ class P2PService:
         return self.peers
 
     #############################
-    def addPeer( self, id, peer, peerKeyId, address, port ):
+    def addPeer( self, id, peer):
+
+        self.peers[ id ] = peer
+        self.__sendDegree()
+
+    #############################
+    def addToPeerKeeper(self, id, peerKeyId, address, port):
         peerToPingInfo = self.peerKeeper.addPeer( peerKeyId, id, address, port )
         if peerToPingInfo and peerToPingInfo.nodeId in self.peers:
             peerToPing = self.peers[peerToPingInfo.nodeId]
             if peerToPing:
                 peerToPing.ping(0)
 
-        self.peers[ id ] = peer
-        self.__sendDegree()
 
     #############################
     def pongReceived( self, id, peerKeyId, address, port ):
@@ -140,16 +161,21 @@ class P2PService:
     def removePeerById( self, peerId ):
         peer = self.peers.get( peerId )
         if not peer:
-            logger.error("Can't remove peer {}, unknown peer".format(peerId))
+            logger.info("Can't remove peer {}, unknown peer".format(peerId))
             return
         if peer in self.allPeers:
             self.allPeers.remove( peer )
         del self.peers[ peerId ]
 
         self.__sendDegree()
-    
+
     #############################
-    def setLastMessage( self, type, t, msg, address, port ):
+    def enoughPeers( self ):
+        return len(self.peers) >= self.configDesc.optNumPeers
+
+    #############################
+    def setLastMessage( self, type, clientKeyId, t, msg, address, port ):
+        self.peerKeeper.setLastMessageTime( clientKeyId )
         if len( self.lastMessages ) >= 5:
             self.lastMessages = self.lastMessages[ -4: ]
 
@@ -199,6 +225,11 @@ class P2PService:
     def getPeersDegree(self):
         return  { peer.id: peer.degree for peer in self.peers.values() }
 
+
+    #############################
+    def getKeyId(self):
+        return self.peerKeeper.peerKeyId
+
     #Kademlia functions
     #############################
     def sendFindNodes(self, nodesToFind):
@@ -207,12 +238,16 @@ class P2PService:
                 peer =  self.peers.get(neighbour.nodeId)
                 if peer:
                     peer.sendFindNode( nodeKeyId )
-                    print "sending message to {} about {}".format( neighbour.nodeId, nodeKeyId )
 
     #Find node
     #############################
     def findNode(self, nodeKeyId ):
-        print "answering about neighbours of {}: {}".format( nodeKeyId, self.peerKeeper.neighbours( nodeKeyId ) )
+        neighbours = self.peerKeeper.neighbours(nodeKeyId)
+        nodesInfo = []
+        for n in neighbours:
+            nodesInfo.append( { "address": n.ip, "port": n.port, "id": n.nodeId } )
+        return nodesInfo
+
 
     #Resource functions
     #############################
@@ -340,10 +375,14 @@ class P2PService:
     def __sendMessageGetPeers( self ):
         while len( self.peers ) < self.configDesc.optNumPeers:
             if len( self.freePeers ) == 0:
-                if time.time() - self.lastPeersRequest > 2:
-                    self.lastPeersRequest = time.time()
-                    for p in self.peers.values():
-                        p.sendGetPeers()
+                peer = self.peerKeeper.getRandomKnownNode()
+                if not peer or peer.nodeId in self.peers:
+                    if time.time() - self.lastPeersRequest > 2:
+                        self.lastPeersRequest = time.time()
+                        for p in self.peers.values():
+                            p.sendGetPeers()
+                else:
+                    self.tryToAddPeer({"id": peer.nodeId, "address": peer.ip, "port": peer.port })
                 break
 
             x = int( time.time() ) % len( self.freePeers ) # get some random peer from freePeers
@@ -382,6 +421,13 @@ class P2PService:
         for peerId in self.peers.keys():
             if curTime - self.peers[peerId].lastMessageTime > self.lastMessageTimeThreshold:
                 self.peers[peerId].disconnect(PeerSession.DCRTimeout)
+
+        if curTime - self.lastRefreshPeers > self.refreshPeersTimeout:
+            self.lastRefreshPeers = time.time()
+            if len( self.peers ) > 1:
+                peerId = random.choice(self.peers.keys())
+                self.peers[peerId].disconnect(PeerSession.DCRRefresh)
+
 
     #############################
     def __sendDegree(self):

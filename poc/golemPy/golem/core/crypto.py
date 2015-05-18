@@ -261,7 +261,6 @@ recover = ecdsa_recover
 
 
 def sha3(seed):
-    print seed
     return sha3_256(seed).digest()
 
 

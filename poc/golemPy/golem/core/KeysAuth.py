@@ -121,7 +121,7 @@ class EllipticalKeysAuth( KeysAuth ):
 if __name__ == "__main__":
   #  auth = RSAKeysAuth()
     auth = EllipticalKeysAuth()
-    print auth.getPublicKey()
-    print auth.getKeyId()
-    print auth.cntKeyId(auth.getPublicKey())
-    print len(auth.cntKeyId(auth.getPublicKey()))
+ #   print auth.getPublicKey()
+  #  print auth.getKeyId()
+  #  print auth.cntKeyId(auth.getPublicKey())
+

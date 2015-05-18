@@ -163,7 +163,6 @@ class ConfigurationDialogCustomizer:
                 return "{} {}".format( humanReadableSize, translateResourceIndex(idx))
             except Exception as err:
                 logger.error(str(err))
-                raise err
                 return "Error"
 
 

@@ -27,6 +27,8 @@ class PeerSession(PeerSessionInterface):
     DCRBadProtocol      = "Bad protocol"
     DCRDuplicatePeers   = "Duplicate peers"
     DCRTimeout          = "Timeout"
+    DCRTooManyPeers     = "Too many peers"
+    DCRRefresh          = "Refresh"
 
     ##########################
     def __init__( self, conn ):
@@ -78,13 +80,13 @@ class PeerSession(PeerSessionInterface):
             self.disconnect( PeerSession.DCRBadProtocol )
             return
 
-        self.p2pService.setLastMessage( "<-", time.localtime(), msg, self.address, self.port )
+        self.p2pService.setLastMessage( "<-", self.clientKeyId, time.localtime(), msg, self.address, self.port )
 
         type = msg.getType()
 
         #localtime   = time.localtime()
-        #timeString  = time.strftime("%H:%M:%S", localtime)
-        #print "{} at {}".format( msg.serialize(), timeString )
+       # timeString  = time.strftime("%H:%M:%S", localtime)
+       # print "{} at {}".format( msg.serialize(), timeString )
 
         if type == MessagePing.Type:
             self.__sendPong()
@@ -100,7 +102,18 @@ class PeerSession(PeerSessionInterface):
             self.id = msg.clientUID
             self.clientKeyId = msg.clientKeyId
 
+            enoughPeers = self.p2pService.enoughPeers()
             p = self.p2pService.findPeer( self.id )
+
+            self.p2pService.addToPeerKeeper( self.id, self.clientKeyId, self.address, self.port )
+
+            if enoughPeers:
+                loggerMsg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format( self.id, self.address, self.port )
+                logger.info(loggerMsg)
+                nodesInfo = self.p2pService.findNode( self.p2pService.getKeyId() )
+                self.__send(MessagePeers( nodesInfo ))
+                self.disconnect( PeerSession.DCRTooManyPeers )
+                return
 
             if p and p != self and p.conn.isOpen():
 #                self.__sendPing()
@@ -110,7 +123,7 @@ class PeerSession(PeerSessionInterface):
 
             if not p:
                 self.__sendHello()
-                self.p2pService.addPeer( self.id, self, self.clientKeyId, self.address, self.port )
+                self.p2pService.addPeer( self.id, self )
 
             #print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)
 
@@ -155,7 +168,8 @@ class PeerSession(PeerSessionInterface):
             self.p2pService.safeNeighbourLocRank( self.id, msg.nodeId, msg.locRank )
 
         elif type == MessageFindNode.Type:
-            self.p2pService.findNode( msg.nodeKeyId )
+            nodesInfo = self.p2pService.findNode( msg.nodeKeyId )
+            self.__send(MessagePeers( nodesInfo ))
 
         else:
             self.disconnect( PeerSession.DCRBadProtocol )
@@ -248,5 +262,5 @@ class PeerSession(PeerSessionInterface):
         if not self.conn.sendMessage( message ):
             self.dropped()
             return
-        self.p2pService.setLastMessage( "->", time.localtime(), message, self.address, self.port )
+        self.p2pService.setLastMessage( "->", self.clientKeyId, time.localtime(), message, self.address, self.port )
 
