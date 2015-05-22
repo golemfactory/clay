@@ -225,10 +225,27 @@ class P2PService:
     def getPeersDegree(self):
         return  { peer.id: peer.degree for peer in self.peers.values() }
 
-
     #############################
     def getKeyId(self):
         return self.peerKeeper.peerKeyId
+
+    #############################
+    def encrypt(self, message, publicKey):
+        if publicKey == 0:
+            return message
+        return self.keysAuth.encrypt( message, publicKey )
+
+    #############################
+    def decrypt(self, message):
+        return self.keysAuth.decrypt(message)
+
+    #############################
+    def signData(self, data):
+        return self.keysAuth.sign(data)
+
+    #############################
+    def verifySig(self, sig, data, publicKey):
+        return self.keysAuth.verify(sig, data, publicKey)
 
     #Kademlia functions
     #############################

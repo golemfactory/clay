@@ -242,7 +242,7 @@ def main():
 
 
     print "################"
-    for i in range(0, 200):
+    for i in range(0, 5):
         rs.syncNetwork()
         rs.startTask( random.sample( rs.ranking.keys(), 1)[0] )
 

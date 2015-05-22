@@ -1,11 +1,9 @@
 import os
-import hashlib
-
 
 from Crypto.PublicKey import RSA
 from simplehash import SimpleHash
 from simpleauth import SimpleAuth
-from crypto import mk_privkey, privtopub, sha3
+from crypto import mk_privkey, privtopub, ECCx
 
 class KeysAuth:
     def __init__( self, uuid = None ):
@@ -21,6 +19,18 @@ class KeysAuth:
 
     def cntKeyId( self, publicKey ):
         return self.publicKey
+
+    def encrypt(self, msg, publicKey = None):
+        return msg
+
+    def decrypt(self, msg):
+        return msg
+
+    def sign(self, msg):
+        return msg
+
+    def verify(self, sig, msg, publicKey = None):
+        return sig == msg
 
 
 class RSAKeysAuth( KeysAuth ):
@@ -70,9 +80,31 @@ class RSAKeysAuth( KeysAuth ):
         with open( publicKey, 'w') as f:
             f.write( pubKey.exportKey() )
 
+    def encrypt(self, msg, publicKey = None):
+        if publicKey is None:
+            publicKey = self.publicKey
+        return publicKey.encrypt(msg, 32)
+
+    def decrypt(self, msg):
+        return self._privateKey.decrypt(msg)
+
+    def sign(self, msg):
+        return self._privateKey.sign(msg, '')
+
+    def verify(self, sig, msg, publicKey = None):
+        if publicKey is None:
+            publicKey = self.publicKey
+        return publicKey.verify( msg, sig )
+
+
 class EllipticalKeysAuth( KeysAuth ):
 
+    def __init__( self, uuid = None ):
+        KeysAuth.__init__(self, uuid )
+        self.ecc = ECCx( None, self._privateKey )
+
     def cntKeyId( self, publicKey ):
+
         return publicKey.encode('hex')
 
     def _getPrivateKeyLoc(self, uuid):
@@ -105,7 +137,6 @@ class EllipticalKeysAuth( KeysAuth ):
             key = f.read()
         return key
 
-
     def _generateKeys( self, uuid ):
         privateKey = self._getPrivateKeyLoc( uuid )
         publicKey = self._getPublicKeyLoc( uuid )
@@ -117,11 +148,35 @@ class EllipticalKeysAuth( KeysAuth ):
             f.write( pubKey )
 
 
+    def encrypt(self, msg, publicKey = None):
+        if publicKey is None:
+            publicKey = self.publicKey
+        if len(publicKey) == 128:
+            publicKey = publicKey.decode('hex')
+        return ECCx.ecies_encrypt( msg, publicKey )
+
+    def decrypt(self, msg):
+        return self.ecc.ecies_decrypt( msg )
+
+    def sign(self, msg):
+        return self.ecc.sign(msg)
+
+    def verify(self, sig, msg, publicKey = None):
+        if publicKey is None:
+            publicKey = self.publicKey
+        if len(publicKey) == 128:
+            publicKey = publicKey.decode('hex')
+        ecc = ECCx(publicKey)
+        return ecc.verify(sig, msg)
+
+
+
 
 if __name__ == "__main__":
   #  auth = RSAKeysAuth()
     auth = EllipticalKeysAuth()
- #   print auth.getPublicKey()
-  #  print auth.getKeyId()
-  #  print auth.cntKeyId(auth.getPublicKey())
+  #  print len(auth.getPublicKey())
+  #  print len(auth._privateKey)
+    print auth.cntKeyId(auth.getPublicKey())
+
 

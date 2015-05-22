@@ -1,4 +1,5 @@
 import math
+import random
 
 class LocalRank:
     def __init__( self ):
@@ -103,10 +104,13 @@ class DiffGossipTrustRank:
         self.globalStop = False
         knownNodes = set( self.positive.ranking.keys() + self.negative.ranking.keys())
         for node in knownNodes:
-            self.workingVec[node] = [self.getNodeTrust( node ), 1.0]
+            self.workingVec[node] = [self.getNodeTrust( node ), 1.0, 0.0]
         for node in self.globVec:
             if node not in knownNodes:
-                self.workingVec[ node ] = [ 0.0, 0.0 ]
+                self.workingVec[ node ] = [ 0.0, 0.0, 0.0 ]
+        if len( self.workingVec ) > 0:
+            randNode = random.sample( self.workingVec.keys(), 1 )[0]
+            self.workingVec[ randNode ][1] = 1.0
         for node, val in self.workingVec.iteritems():
             self.globVec[ node ] = divTrust( val[0], val[1] )
         self.collectedVecs = [ self.workingVec ]
@@ -124,12 +128,13 @@ class DiffGossipTrustRank:
                 else:
                     self.workingVec[ nodeId ][0] += val[0]
                     self.workingVec[ nodeId ][1] += val[1]
+                    self.workingVec[ nodeId ][2] += val[2]
 
         self.collectedVecs = []
 
         vecToSend = {}
         for nodeId, val in self.workingVec.iteritems():
-            vecToSend[ nodeId ] = [ val[0] / self.gossipNum, val[1] / self.gossipNum ]
+            vecToSend[ nodeId ] = [ val[0] / (self.gossipNum), val[1] / ( self.gossipNum), val[2] / (self.gossipNum) ]
 
 
         return [ vecToSend, self.nodeId ]

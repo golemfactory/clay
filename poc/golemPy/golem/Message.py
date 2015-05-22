@@ -1,10 +1,12 @@
-
+import time
 import sys
-sys.path.append('core')
-
 import abc
+
+from collections import OrderedDict
+
 from golem.core.simpleserializer import SimpleSerializer
 from golem.core.databuffer import DataBuffer
+from golem.core.simplehash import SimpleHash
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,26 +15,68 @@ class Message:
 
     registeredMessageTypes = {}
 
-    def __init__( self, type ):
+    def __init__( self, type, sig = '', timestamp = None):
         if type not in Message.registeredMessageTypes:
             Message.registeredMessageTypes[ type ] = self.__class__
 
         self.type = type
+        self.sig = sig
+        if timestamp is None:
+            timestamp = time.time()
+        self.timestamp = timestamp
         self.serializer = DataBuffer()
+        self.encrypted = True
+        self.signed = True
 
     def getType( self ):
         return self.type
+
+    def getShortHash( self ):
+        return SimpleHash.hash( SimpleSerializer.dumps( sorted( self.dictRepr().items() ) ) )
+
+    def sign(self, server):
+        self.sig = server.signData(self.getShortHash())
 
     def serializeWithHeader( self ):
         self.serializeToBuffer(self.serializer)
         return self.serializer.readAll()
 
     def serialize( self ):
-        return SimpleSerializer.dumps( [ self.type, self.dictRepr() ] )
+        return SimpleSerializer.dumps( [ self.type, self.sig, self.timestamp, self.dictRepr() ] )
 
     def serializeToBuffer( self, db ):
         assert isinstance( db, DataBuffer )
         db.appendLenPrefixedString( self.serialize() )
+
+    @classmethod
+    def decryptAndDeserialize( cls, db, server, publicKey):
+        assert isinstance( db, DataBuffer )
+        messages = []
+        msg = db.readLenPrefixedString()
+        while msg:
+            encrypted = True
+            try:
+                msg = server.decrypt(msg)
+            except AssertionError:
+                logger.warning("Failed to decrypt message, maybe it's not encrypted?")
+                encrypted = False
+            except Exception as err:
+                logger.error( "Failed to decrypt message {}".format( str(err) ) )
+                assert False
+            m = cls.deserializeMessage(msg)
+
+
+            if m is None:
+                logger.error( "Failed to deserialize message {}".format( msg ) )
+                assert False
+
+            m.encrypted = encrypted
+
+
+            messages.append( m )
+            msg = db.readLenPrefixedString()
+
+        return messages
 
     @classmethod
     def deserialize( cls, db ):
@@ -57,10 +101,12 @@ class Message:
         msgRepr = SimpleSerializer.loads( msg )
 
         msgType = msgRepr[ 0 ]
-        dRepr   = msgRepr[ 1 ]
+        msgSig = msgRepr[ 1 ]
+        msgTimestamp = msgRepr[ 2 ]
+        dRepr   = msgRepr[ 3 ]
 
         if msgType in cls.registeredMessageTypes:
-            return cls.registeredMessageTypes[ msgType ]( dictRepr = dRepr )
+            return cls.registeredMessageTypes[ msgType ]( sig = msgSig, timestamp = msgTimestamp, dictRepr = dRepr )
 
         return None
 
@@ -89,15 +135,17 @@ class MessageHello(Message):
     PORT_STR        = u"port"
     CLIENT_UID_STR  = u"clientUID"
     CLIENT_KEY_ID_STR = u"clientKeyId"
+    RAND_VAL_STR    = u"randVal"
 
-    def __init__( self, port = 0, clientUID = None, clientKeyId = None, protoId = 0, cliVer = 0,  dictRepr = None ):
-        Message.__init__( self, MessageHello.Type )
+    def __init__( self, port = 0, clientUID = None, clientKeyId = None,  randVal = 0, protoId = 0, cliVer = 0, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageHello.Type, sig, timestamp )
         
         self.protoId    = protoId
         self.clientVer  = cliVer
         self.port       = port
         self.clientUID  = clientUID
         self.clientKeyId = clientKeyId
+        self.randVal    = randVal
 
         if dictRepr:
             self.protoId    = dictRepr[ MessageHello.PROTO_ID_STR ]
@@ -105,13 +153,15 @@ class MessageHello(Message):
             self.port       = dictRepr[ MessageHello.PORT_STR ]
             self.clientUID  = dictRepr[ MessageHello.CLIENT_UID_STR ]
             self.clientKeyId = dictRepr[ MessageHello.CLIENT_KEY_ID_STR ]
+            self.randVal    = dictRepr[ MessageHello.RAND_VAL_STR ]
 
     def dictRepr(self):
         return {    MessageHello.PROTO_ID_STR : self.protoId,
                     MessageHello.CLI_VER_STR : self.clientVer,
                     MessageHello.PORT_STR : self.port,
                     MessageHello.CLIENT_UID_STR : self.clientUID,
-                    MessageHello.CLIENT_KEY_ID_STR: self.clientKeyId
+                    MessageHello.CLIENT_KEY_ID_STR: self.clientKeyId,
+                    MessageHello.RAND_VAL_STR: self.randVal
                     }
 
 class MessagePing(Message):
@@ -120,14 +170,14 @@ class MessagePing(Message):
 
     PING_STR = u"PING"
 
-    def __init__( self, dictRepr = None ):
-        Message.__init__(self, MessagePing.Type)
+    def __init__( self, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessagePing.Type, sig, timestamp)
         
         if dictRepr:
-            assert dictRepr[ 0 ] == MessagePing.PING_STR
+            assert dictRepr.get( MessagePing.PING_STR )
 
     def dictRepr(self):
-        return [ MessagePing.PING_STR ]
+        return { MessagePing.PING_STR: True }
 
 class MessagePong(Message):
 
@@ -135,8 +185,8 @@ class MessagePong(Message):
 
     PONG_STR = u"PONG"
 
-    def __init__( self, dictRepr = None ):
-        Message.__init__(self, MessagePong.Type)
+    def __init__( self, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessagePong.Type, sig, timestamp)
         
         if dictRepr:
             assert dictRepr[ 0 ] == MessagePong.PONG_STR
@@ -150,8 +200,8 @@ class MessageDisconnect(Message):
 
     DISCONNECT_REASON_STR = u"DISCONNECT_REASON"
 
-    def __init__( self, reason = -1, dictRepr = None ):
-        Message.__init__( self, MessageDisconnect.Type )
+    def __init__( self, reason = -1, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageDisconnect.Type, sig, timestamp )
 
         self.reason = reason
 
@@ -167,14 +217,14 @@ class MessageGetPeers( Message ):
 
     GET_PEERS_STR = u"GET_PEERS"
 
-    def __init__( self, dictRepr = None ):
-        Message.__init__(self, MessageGetPeers.Type)
+    def __init__( self, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageGetPeers.Type, sig, timestamp)
         
         if dictRepr:
-            assert dictRepr[ 0 ] == MessageGetPeers.GET_PEERS_STR
+            assert dictRepr.get( MessageGetPeers.GET_PEERS_STR )
 
     def dictRepr(self):
-        return [ MessageGetPeers.GET_PEERS_STR ]
+        return { MessageGetPeers.GET_PEERS_STR: True }
 
 class MessagePeers( Message ):
 
@@ -182,8 +232,8 @@ class MessagePeers( Message ):
 
     PEERS_STR = u"PEERS"
 
-    def __init__( self, peersArray = None, dictRepr = None ):
-        Message.__init__(self, MessagePeers.Type)
+    def __init__( self, peersArray = None, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessagePeers.Type, sig, timestamp)
 
         if peersArray is None:
             peersArray = []
@@ -196,20 +246,23 @@ class MessagePeers( Message ):
     def dictRepr(self):
         return { MessagePeers.PEERS_STR : self.peersArray }
 
+    def getShortHash( self ):
+        return SimpleHash.hash( SimpleSerializer.dumps( [ sorted( peer.items() ) for peer in self.peersArray ] ) )
+
 class MessageGetTasks( Message ):
 
     Type = 6
 
     GET_TASTKS_STR = u"GET_TASKS"
 
-    def __init__( self, dictRepr = None ):
-        Message.__init__(self, MessageGetTasks.Type)
+    def __init__( self, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageGetTasks.Type, sig, timestamp)
 
         if dictRepr:
-            assert dictRepr[ 0 ] == MessageGetTasks.GET_TASTKS_STR
+            assert dictRepr.get(MessageGetTasks.GET_TASTKS_STR)
 
     def dictRepr(self):
-        return [ MessageGetTasks.GET_TASTKS_STR ]
+        return { MessageGetTasks.GET_TASTKS_STR: True }
 
 class MessageTasks( Message ):
 
@@ -217,8 +270,8 @@ class MessageTasks( Message ):
 
     TASKS_STR = u"TASKS"
 
-    def __init__( self, tasksArray = None, dictRepr = None ):
-        Message.__init__(self, MessageTasks.Type)
+    def __init__( self, tasksArray = None, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageTasks.Type, sig, timestamp)
 
         if tasksArray is None:
             tasksArray = []
@@ -231,14 +284,18 @@ class MessageTasks( Message ):
     def dictRepr(self):
         return { MessageTasks.TASKS_STR : self.tasksArray }
 
+    def getShortHash( self ):
+        return SimpleHash.hash( SimpleSerializer.dumps( [ sorted( task.items() ) for task in self.tasksArray ] ) )
+
+
 class MessageRemoveTask( Message ):
 
     Type = 8
 
     REMOVE_TASK_STR = u"REMOVE_TASK"
 
-    def __init__( self, taskId = None, dictRepr = None ):
-        Message.__init__( self, MessageRemoveTask.Type )
+    def __init__( self, taskId = None, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageRemoveTask.Type, sig, timestamp)
 
         self.taskId = taskId
 
@@ -254,14 +311,14 @@ class MessageGetResourcePeers( Message ):
 
     WANT_RESOURCE_PEERS_STR = u"WANT_RESOURCE_PEERS"
 
-    def __init__( self, dictRepr = None ):
-        Message.__init__( self, MessageGetResourcePeers.Type )
+    def __init__( self, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageGetResourcePeers.Type, sig, timestamp )
 
         if dictRepr:
-            assert dictRepr[ 0 ] == MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR
+            assert dictRepr.get( MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR )
 
     def dictRepr( self ):
-        return [ MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR ]
+        return { MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR: True }
 
 class MessageResourcePeers( Message ):
 
@@ -269,8 +326,8 @@ class MessageResourcePeers( Message ):
 
     RESOURCE_PEERS_STR = u"RESOURCE_PEERS"
 
-    def __init__( self, resourcePeers = None, dictRepr = None ):
-        Message.__init__( self, MessageResourcePeers.Type )
+    def __init__( self, resourcePeers = None, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageResourcePeers.Type, sig, timestamp )
 
         if resourcePeers is None:
             resourcePeers = []
@@ -283,13 +340,17 @@ class MessageResourcePeers( Message ):
     def dictRepr( self ):
         return { MessageResourcePeers.RESOURCE_PEERS_STR: self.resourcePeers }
 
+    def getShortHash( self ):
+        return SimpleHash.hash( SimpleSerializer.dumps( [ sorted( peer.items() ) for peer in self.resourcePeers ] ) )
+
+
 class MessageDegree( Message ):
     Type = 11
 
     DEGREE_STR = u"DEGREE"
 
-    def __init__(self, degree = None, dictRepr = None):
-        Message.__init__( self, MessageDegree.Type )
+    def __init__(self, degree = None, sig = "", timestamp = None, dictRepr = None):
+        Message.__init__( self, MessageDegree.Type, sig, timestamp )
 
         self.degree = degree
 
@@ -304,8 +365,8 @@ class MessageGossip( Message ):
 
     GOSSIP_STR = u"GOSSIP"
 
-    def __init__( self, gossip = None, dictRepr = None):
-        Message.__init__( self, MessageGossip.Type )
+    def __init__( self, gossip = None, sig = "", timestamp = None, dictRepr = None):
+        Message.__init__( self, MessageGossip.Type, sig, timestamp )
 
         self.gossip = gossip
 
@@ -320,14 +381,14 @@ class MessageStopGossip( Message ):
 
     STOP_GOSSIP_STR = u"STOP_GOSSIP"
 
-    def __init__( self, dictRepr = None ):
-        Message.__init__( self, MessageStopGossip.Type )
+    def __init__( self, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageStopGossip.Type, sig, timestamp )
 
         if dictRepr:
-            assert dictRepr[ 0 ] == MessageStopGossip.STOP_GOSSIP_STR
+            assert dictRepr.get( MessageStopGossip.STOP_GOSSIP_STR )
 
     def dictRepr( self ):
-        return [ MessageStopGossip.STOP_GOSSIP_STR ]
+        return { MessageStopGossip.STOP_GOSSIP_STR: True }
 
 class MessageLocRank( Message ):
     Type = 14
@@ -335,8 +396,8 @@ class MessageLocRank( Message ):
     NODE_ID_STR = u"NODE_ID"
     LOC_RANK_STR = u"LOC_RANK"
 
-    def __init__( self, nodeId = '', locRank = '', dictRepr = None ):
-        Message.__init__( self, MessageLocRank.Type )
+    def __init__( self, nodeId = '', locRank = '', sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageLocRank.Type, sig, timestamp )
 
         self.nodeId = nodeId
         self.locRank = locRank
@@ -355,8 +416,8 @@ class MessageFindNode( Message ):
 
     NODE_KEY_ID_STR = u"NODE_KEY_ID"
 
-    def __init__( self, nodeKeyId = '', dictRepr = None ):
-        Message.__init__( self, MessageFindNode.Type )
+    def __init__( self, nodeKeyId = '', sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageFindNode.Type, sig, timestamp )
 
         self.nodeKeyId = nodeKeyId
 
@@ -366,6 +427,22 @@ class MessageFindNode( Message ):
     def dictRepr( self ):
         return { MessageFindNode.NODE_KEY_ID_STR: self.nodeKeyId }
 
+class MessageResendRandVal( Message ):
+
+    Type = 16
+
+    RAND_VAL_STR = u"RAND_VAL"
+
+    def __init__(self, randVal = 0, sig = "", timestamp = None, dictRepr = None):
+        Message.__init__( self, MessageResendRandVal.Type, sig, timestamp )
+
+        self.randVal = randVal
+
+        if dictRepr:
+            self.randVal = dictRepr[ MessageResendRandVal.RAND_VAL_STR ]
+
+    def dictRepr( self ):
+        return { MessageResendRandVal.RAND_VAL_STR: self.randVal }
 
 
 TASK_MSG_BASE = 2000
@@ -381,8 +458,8 @@ class MessageWantToComputeTask( Message ):
     MAX_MEM_STR     = u"MAX_MEM"
     NUM_CORES_STR   = u"NUM_CORES"
 
-    def __init__( self, clientId = 0, taskId = 0, perfIndex = 0, maxResourceSize = 0, maxMemorySize = 0, numCores = 0, dictRepr = None ):
-        Message.__init__(self, MessageWantToComputeTask.Type)
+    def __init__( self, clientId = 0, taskId = 0, perfIndex = 0, maxResourceSize = 0, maxMemorySize = 0, numCores = 0, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageWantToComputeTask.Type, sig, timestamp)
 
         self.clientId           = clientId
         self.taskId             = taskId
@@ -413,8 +490,8 @@ class MessageTaskToCompute( Message ):
 
     COMPUTE_TASK_DEF_STR = u"COMPUTE_TASK_DEF"
 
-    def __init__( self, ctd = None, dictRepr = None ):
-        Message.__init__( self, MessageTaskToCompute.Type )
+    def __init__( self, ctd = None, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageTaskToCompute.Type, sig, timestamp )
 
         self.ctd = ctd
 
@@ -431,8 +508,8 @@ class MessageCannotAssignTask( Message ):
     REASON_STR      = u"REASON"
     TASK_ID_STR     = u"TASK_ID"
 
-    def __init__( self, taskId = 0, reason = "", dictRepr = None ):
-        Message.__init__(self, MessageCannotAssignTask.Type)
+    def __init__( self, taskId = 0, reason = "", sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageCannotAssignTask.Type, sig, timestamp)
 
         self.taskId = taskId
         self.reason = reason
@@ -457,8 +534,8 @@ class MessageReportComputedTask( Message ):
     EXTRA_DATA_STR = u"EXTRA_DATA"
     ETH_ACCOUNT_STR = u"ETH_ACCOUNT"
 
-    def __init__( self, subtaskId = 0, resultType = None, nodeId = '', address = '', port = '', ethAccount = '', extraData = None, dictRepr = None ):
-        Message.__init__(self, MessageReportComputedTask.Type)
+    def __init__( self, subtaskId = 0, resultType = None, nodeId = '', address = '', port = '', ethAccount = '', extraData = None, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageReportComputedTask.Type, sig, timestamp)
 
         self.subtaskId  = subtaskId
         self.resultType = resultType
@@ -493,8 +570,8 @@ class MessageGetTaskResult( Message ):
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     DELAY_STR       = u"DELAY"
 
-    def __init__( self, subtaskId = 0, delay = 0.0, dictRepr = None ):
-        Message.__init__(self, MessageGetTaskResult.Type)
+    def __init__( self, subtaskId = 0, delay = 0.0, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageGetTaskResult.Type, sig, timestamp)
 
         self.subtaskId  = subtaskId
         self.delay      = delay
@@ -514,8 +591,8 @@ class MessageTaskResult( Message ):
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     RESULT_STR      = u"RESULT"
 
-    def __init__( self, subtaskId = 0, result = None, dictRepr = None ):
-        Message.__init__(self, MessageTaskResult.Type)
+    def __init__( self, subtaskId = 0, result = None, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageTaskResult.Type, sig, timestamp)
 
         self.subtaskId  = subtaskId
         self.result     = result
@@ -535,8 +612,8 @@ class MessageGetResource( Message ):
     TASK_ID_STR         = u"SUB_TASK_ID"
     RESOURCE_HEADER_STR = u"RESOURCE_HEADER"
 
-    def __init__( self, taskId = "", resourceHeader = None , dictRepr = None ):
-        Message.__init__(self, MessageGetResource.Type)
+    def __init__( self, taskId = "", resourceHeader = None , sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageGetResource.Type, sig, timestamp)
 
         self.taskId         = taskId
         self.resourceHeader = resourceHeader
@@ -557,8 +634,8 @@ class MessageResource( Message ):
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     RESOURCE_STR    = u"RESOURCE"
 
-    def __init__( self, subtaskId = 0, resource = None , dictRepr = None ):
-        Message.__init__(self, MessageResource.Type)
+    def __init__( self, subtaskId = 0, resource = None, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageResource.Type, sig, timestamp)
 
         self.subtaskId      = subtaskId
         self.resource       = resource
@@ -579,8 +656,8 @@ class MessageSubtaskResultAccepted( Message ):
     NODE_ID_STR     = u"NODE_ID"
     REWARD_STR      = u"REWARD"
 
-    def __init__( self, subtaskId = 0, reward = 0, dictRepr = None ):
-        Message.__init__( self, MessageSubtaskResultAccepted.Type )
+    def __init__( self, subtaskId = 0, reward = 0, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageSubtaskResultAccepted.Type, sig, timestamp )
 
         self.subtaskId  = subtaskId
         self.reward     = reward
@@ -600,8 +677,8 @@ class MessageSubtaskResultRejected( Message ):
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
 
-    def __init__( self, subtaskId = 0, dictRepr = None ):
-        Message.__init__( self, MessageSubtaskResultRejected.Type )
+    def __init__( self, subtaskId = 0, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageSubtaskResultRejected.Type, sig, timestamp )
 
         self.subtaskId = subtaskId
 
@@ -624,8 +701,8 @@ class MessageDeltaParts( Message ):
     ADDR_STR = u"ADDR"
     PORT_STR = u"PORT"
 
-    def __init__( self, taskId = 0, deltaHeader = None, parts = None, clientId = '', addr  = '', port = '', dictRepr = None ):
-        Message.__init__( self, MessageDeltaParts.Type )
+    def __init__( self, taskId = 0, deltaHeader = None, parts = None, clientId = '', addr  = '', port = '', sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageDeltaParts.Type, sig, timestamp )
 
         self.taskId = taskId
         self.deltaHeader = deltaHeader
@@ -657,8 +734,8 @@ class MessageResourceFormat( Message ):
 
     USE_DISTRIBUTED_RESOURCE_STR = u"USE_DISTRIBUTED_RESOURCE"
 
-    def __init__( self, useDistributedResource = 0, dictRepr = None ):
-        Message.__init__( self, MessageResourceFormat.Type )
+    def __init__( self, useDistributedResource = 0, sig = "", timestamp = None,  dictRepr = None ):
+        Message.__init__( self, MessageResourceFormat.Type, sig, timestamp )
 
         self.useDistributedResource = useDistributedResource
 
@@ -675,15 +752,15 @@ class MessageAcceptResourceFormat( Message ):
 
     ACCEPT_RESOURCE_FORMAT_STR = u"ACCEPT_RESOURCE_FORMAT"
 
-    def __init__( self, dictRepr = None ):
-        Message.__init__( self, MessageAcceptResourceFormat.Type )
+    def __init__( self, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageAcceptResourceFormat.Type, sig, timestamp )
 
         if dictRepr:
-            assert dictRepr[0] == MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR
+            assert dictRepr.get( MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR )
 
 
     def dictRepr( self ):
-        return [ MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR ]
+        return { MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR: True }
 
 class MessageTaskFailure( Message):
     Type = TASK_MSG_BASE + 15
@@ -691,8 +768,8 @@ class MessageTaskFailure( Message):
     SUBTASK_ID_STR = u"SUBTASK_ID"
     ERR_STR = u"ERR"
 
-    def __init__(self, subtaskId = "", err = "", dictRepr = None ):
-        Message.__init__( self, MessageTaskFailure.Type )
+    def __init__(self, subtaskId = "", err = "", sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageTaskFailure.Type, sig, timestamp )
 
         self.subtaskId = subtaskId
         self.err = err
@@ -716,8 +793,8 @@ class MessagePushResource( Message ):
     RESOURCE_STR = u"resource"
     COPIES_STR = u"copies"
 
-    def __init__( self, resource = None, copies = 0, dictRepr = None ):
-        Message.__init__( self, MessagePushResource.Type )
+    def __init__( self, resource = None, copies = 0, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessagePushResource.Type, sig, timestamp )
         self.resource = resource
         self.copies = copies
 
@@ -735,8 +812,8 @@ class MessageHasResource( Message ):
 
     RESOURCE_STR = u"resource"
 
-    def __init__( self, resource = None, dictRepr = None ):
-        Message.__init__( self, MessageHasResource.Type )
+    def __init__( self, resource = None, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageHasResource.Type, sig, timestamp )
         self.resource = resource
 
         if dictRepr:
@@ -751,8 +828,8 @@ class MessageWantResource( Message ):
 
     RESOURCE_STR = u"resource"
 
-    def __init__( self, resource = None, dictRepr = None ):
-        Message.__init__( self, MessageWantResource.Type )
+    def __init__( self, resource = None, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageWantResource.Type, sig, timestamp )
         self.resource = resource
 
         if dictRepr:
@@ -768,8 +845,8 @@ class MessagePullResource( Message ):
 
     RESOURCE_STR = u"resource"
 
-    def __init__( self, resource = None, dictRepr = None ):
-        Message.__init__( self, MessagePullResource.Type )
+    def __init__( self, resource = None, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessagePullResource.Type, sig, timestamp )
         self.resource = resource
 
         if dictRepr:
@@ -785,8 +862,8 @@ class MessagePullAnswer( Message ):
     RESOURCE_STR = u"resource"
     HAS_RESOURCE_STR = u"hasResource"
 
-    def __init__( self, resource = None, hasResource = False, dictRepr = None ):
-        Message.__init__( self, MessagePullAnswer.Type )
+    def __init__( self, resource = None, hasResource = False, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessagePullAnswer.Type, sig, timestamp )
         self.resource = resource
         self.hasReource = hasResource
 
@@ -804,8 +881,8 @@ class MessageSendResource( Message ):
 
     RESOURCE_STR = u"resource"
 
-    def __init__( self, resource = None, dictRepr = None ):
-        Message.__init__( self, MessageSendResource.Type )
+    def __init__( self, resource = None, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageSendResource.Type, sig, timestamp )
         self.resource = resource
 
         if dictRepr:
@@ -823,8 +900,8 @@ class MessagePeerStatus( Message ):
     ID_STR      = u"ID"
     DATA_STR    = u"DATA"
 
-    def __init__( self, id = "", data = "", dictRepr = None ):
-        Message.__init__(self, MessagePeerStatus.Type)
+    def __init__( self, id = "", data = "", sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessagePeerStatus.Type, sig, timestamp)
 
         self.id = id
         self.data = data
@@ -844,8 +921,8 @@ class MessageNewTask( Message ):
 
     DATA_STR    = u"DATA"
 
-    def __init__( self, data = "", dictRepr = None ):
-        Message.__init__(self, MessageNewTask.Type)
+    def __init__( self, data = "", sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageNewTask.Type, sig, timestamp)
 
         self.data = data
 
@@ -863,28 +940,28 @@ class MessageKillNode( Message ):
 
     KILL_STR    = u"KILL"
 
-    def __init__( self, dictRepr = None ):
-        Message.__init__(self, MessageKillNode.Type)
+    def __init__( self, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageKillNode.Type, sig, timestamp)
 
         if dictRepr:
-            assert dictRepr[ 0 ] == MessageKillNode.KILL_STR
+            assert dictRepr.get( MessageKillNode.KILL_STR )
 
     def dictRepr(self):
-        return [ MessageKillNode.KILL_STR ]
+        return { MessageKillNode.KILL_STR: True }
 
 class MessageKillAllNodes( Message ):
     Type = MANAGER_MSG_BASE + 4
 
     KILLALL_STR = u"KILLALL"
 
-    def __init__( self, dictRepr = None ):
-        Message.__init__(self, MessageKillAllNodes.Type)
+    def __init__( self, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__(self, MessageKillAllNodes.Type, sig, timestamp)
 
         if dictRepr:
-            assert dictRepr[ 0 ] == MessageKillAllNodes.KILLALL_STR
+            assert dictRepr.get (MessageKillAllNodes.KILLALL_STR )
 
     def dictRepr(self):
-        return [ MessageKillAllNodes.KILLALL_STR ]
+        return { MessageKillAllNodes.KILLALL_STR: True }
 
 
 class MessageNewNodes( Message ):
@@ -892,8 +969,8 @@ class MessageNewNodes( Message ):
 
     NUM_STR = u"NUM"
 
-    def __init__( self, num = 0, dictRepr = None ):
-        Message.__init__( self, MessageNewNodes.Type )
+    def __init__( self, num = 0, sig = "", timestamp = None, dictRepr = None ):
+        Message.__init__( self, MessageNewNodes.Type, sig, timestamp )
 
         self.num = num
 
@@ -921,6 +998,7 @@ def initMessages():
     MessageStopGossip()
     MessageLocRank()
     MessageFindNode()
+    MessageResendRandVal()
 
     MessageTaskToCompute()
     MessageWantToComputeTask()

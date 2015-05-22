@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 #######################################################################################
 class P2PServer( GNRServer ):
     #############################
-    def __init__( self, configDesc, p2pService = None ):
+    def __init__( self, configDesc, p2pService = None):
 
         self.p2pService             = p2pService
         GNRServer.__init__( self, configDesc, NetServerFactory )
@@ -17,6 +17,14 @@ class P2PServer( GNRServer ):
     #############################
     def newConnection( self, session ):
         self.p2pService.newSession( session )
+
+    #############################
+    def encrypt(self, msg, publicKey ):
+        return self.p2pService.encrypt(msg, publicKey )
+
+    #############################
+    def decrypt( self, msg ):
+        return self.p2pService.decrypt( msg )
 
     #############################
     def _getFactory( self ):
@@ -28,11 +36,11 @@ from twisted.internet.protocol import Factory
 
 class NetServerFactory( Factory ):
     #############################
-    def __init__( self, p2pserver ):
+    def __init__( self, p2pserver):
         self.p2pserver = p2pserver
 
     #############################
     def buildProtocol( self, addr ):
         logger.info( "Protocol build for {}".format( addr ) )
-        return NetConnState( self.p2pserver )
+        return NetConnState( self.p2pserver)
 
