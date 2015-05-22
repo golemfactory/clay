@@ -1,10 +1,12 @@
 import time
 import logging
+import random
 
 from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, \
                           MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks, \
                           MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
-                          MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode
+                          MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
+                          MessageResendRandVal
 from golem.network.p2p.NetConnState import NetConnState
 
 logger = logging.getLogger(__name__)
@@ -29,6 +31,9 @@ class PeerSession(PeerSessionInterface):
     DCRTimeout          = "Timeout"
     DCRTooManyPeers     = "Too many peers"
     DCRRefresh          = "Refresh"
+    DCROldMessage       = "Message expired"
+    DCRWrongTimestamp   = "Wrong timestamp"
+    DCRUnverified       = "Unverifed connection"
 
     ##########################
     def __init__( self, conn ):
@@ -44,6 +49,13 @@ class PeerSession(PeerSessionInterface):
         self.state = PeerSession.StateInitialize
         self.lastMessageTime = 0.0
         self.degree = 0
+        self.messageTTL = 600
+        self.futureTimeTolerance = 300
+        self.randVal = random.random()
+        self.verified = False
+        self.canBeUnverified = [ MessageHello.Type, MessageResendRandVal.Type ]
+        self.canBeUnsigned = [ MessageHello.Type ]
+        self.canBeNotEncrypted = [ MessageHello.Type ]
 
         logger.info( "CREATING PEER SESSION {} {}".format( self.address, self.port ) )
 
@@ -58,7 +70,6 @@ class PeerSession(PeerSessionInterface):
         logger.info( "Starting peer session {} : {}".format(self.address, self.port) )
         self.state = PeerSession.StateConnecting
         self.__sendHello()
-        self.__sendPing()        
 
     ##########################
     def dropped( self ):
@@ -80,9 +91,32 @@ class PeerSession(PeerSessionInterface):
             self.disconnect( PeerSession.DCRBadProtocol )
             return
 
+        if not hasattr(msg, "getType"):
+            msg = self.p2pService.decrypt(msg)
+
         self.p2pService.setLastMessage( "<-", self.clientKeyId, time.localtime(), msg, self.address, self.port )
 
         type = msg.getType()
+        if self.lastMessageTime - msg.timestamp > self.messageTTL:
+            self.disconnect( PeerSession.DCROldMessage )
+            return
+        elif msg.timestamp - self.lastMessageTime > self.futureTimeTolerance:
+            self.disconnect( PeerSession.DCRWrongTimestamp )
+            return
+
+        if not self.verified and type not in self.canBeUnverified:
+            self.disconnect( PeerSession.DCRUnverified )
+            return
+
+        if not msg.encrypted and type not in self.canBeNotEncrypted:
+            self.disconnect( PeerSession.DCRBadProtocol )
+            return
+
+        if (not type in self.canBeUnsigned) and (not self.p2pService.verifySig( msg.sig, msg.getShortHash(), self.clientKeyId ) ):
+            logger.error( "Failed to verify message signature" )
+            self.disconnect( PeerSession.DCRUnverified )
+            return
+
 
         #localtime   = time.localtime()
        # timeString  = time.strftime("%H:%M:%S", localtime)
@@ -102,6 +136,12 @@ class PeerSession(PeerSessionInterface):
             self.id = msg.clientUID
             self.clientKeyId = msg.clientKeyId
 
+            if not self.p2pService.verifySig( msg.sig, msg.getShortHash(), msg.clientKeyId ):
+                logger.error( "Wrong signature for Hello msg" )
+                self.disconnect( PeerSession.DCRUnverified )
+                return
+
+
             enoughPeers = self.p2pService.enoughPeers()
             p = self.p2pService.findPeer( self.id )
 
@@ -111,7 +151,7 @@ class PeerSession(PeerSessionInterface):
                 loggerMsg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format( self.id, self.address, self.port )
                 logger.info(loggerMsg)
                 nodesInfo = self.p2pService.findNode( self.p2pService.getKeyId() )
-                self.__send(MessagePeers( nodesInfo ))
+                self.__send( MessagePeers( nodesInfo ) )
                 self.disconnect( PeerSession.DCRTooManyPeers )
                 return
 
@@ -122,8 +162,10 @@ class PeerSession(PeerSessionInterface):
                 self.disconnect( PeerSession.DCRDuplicatePeers )
 
             if not p:
-                self.__sendHello()
                 self.p2pService.addPeer( self.id, self )
+                self.__sendHello()
+                self.__send( MessageResendRandVal( msg.randVal ), sendUverified = True )
+
 
             #print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)
 
@@ -171,6 +213,9 @@ class PeerSession(PeerSessionInterface):
             nodesInfo = self.p2pService.findNode( msg.nodeKeyId )
             self.__send(MessagePeers( nodesInfo ))
 
+        elif type == MessageResendRandVal.Type:
+            if self.randVal == msg.randVal:
+                self.verified = True
         else:
             self.disconnect( PeerSession.DCRBadProtocol )
 
@@ -226,7 +271,8 @@ class PeerSession(PeerSessionInterface):
     ##########################
     def __sendHello(self):
         listenParams = self.p2pService.getListenParams()
-        self.__send( MessageHello( *listenParams ) )
+        listenParams += (self.randVal, )
+        self.__send( MessageHello( *listenParams ), sendUverified = True )
 
     ##########################
     def __sendPing(self):
@@ -257,8 +303,11 @@ class PeerSession(PeerSessionInterface):
         self.__send( MessageResourcePeers( resourcePeersInfo ) )
 
     ##########################
-    def __send(self, message):
-#        print "Sending to {}:{}: {}".format( self.address, self.port, message )
+    def __send(self, message, sendUverified = False):
+        if not self.verified and not sendUverified :
+            logger.info("Connection hasn't been verified yet, not sending message")
+            return
+       # print "Sending to {}:{}: {}".format( self.address, self.port, message )
         if not self.conn.sendMessage( message ):
             self.dropped()
             return
