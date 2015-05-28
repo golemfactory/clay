@@ -2,18 +2,16 @@ import logging
 import time
 
 from golem.Message import Message
-from golem.network.p2p.ConnectionState import ConnectionState
+from golem.network.p2p.NetConnState import NetConnState
 from golem.core.variables import LONG_STANDARD_SIZE
 
 
 logger = logging.getLogger(__name__)
 
-class TaskConnState( ConnectionState ):
+class TaskConnState( NetConnState ):
     ##########################
     def __init__( self, server = None):
-        ConnectionState.__init__( self )
-        self.taskSession = None
-        self.server = server
+        NetConnState.__init__( self, server )
         self.fileMode = False
         self.dataMode = False
 
@@ -21,27 +19,9 @@ class TaskConnState( ConnectionState ):
         self.dataConsumer = None
 
     ############################
-    def setSession( self, taskSession ):
-        self.taskSession = taskSession
-
-    ############################
-    def connectionMade(self):
-        self.opened = True
-
-        if self.server:
-            from TaskSession import TaskSession
-            pp = self.transport.getPeer()
-            self.taskSession = TaskSession( self )
-            self.server.newConnection( self.taskSession )
-
-    ############################
     def dataReceived(self, data):
-        assert self.opened
-        if not self.taskSession:
-            logger.error( "Task session for connection is None" )
-            assert False
 
-        self.taskSession.lastMessageTime = time.time()
+        self.session.lastMessageTime = time.time()
 
         if self.fileMode:
             self.fileDataReceived( data )
@@ -51,22 +31,8 @@ class TaskConnState( ConnectionState ):
             self.resultDataReceived( data )
             return
 
-        self.db.appendString(data)
 
-        mess = None
-
-        try:
-            mess = Message.deserialize(self.db)
-        except:
-            logger.error( "Cannot deserialize message len: {} : {}".format( len(data), data ) )
-
-        if mess is None:
-            logger.error( "Deserialization message failed" )
-            self.taskSession.interpret(None)
-            return
-
-        for m in mess:
-            self.taskSession.interpret(m)
+        NetConnState._interpret(self, data)
 
     ############################
     def fileDataReceived( self, data ):
@@ -81,13 +47,6 @@ class TaskConnState( ConnectionState ):
         assert len( data ) >= LONG_STANDARD_SIZE
 
         self.dataConsumer.dataReceived( data )
-
-    ############################
-    def connectionLost(self, reason):
-        self.opened = False
-
-        if self.taskSession:
-            self.taskSession.dropped()
 
     ############################
     def clean(self):

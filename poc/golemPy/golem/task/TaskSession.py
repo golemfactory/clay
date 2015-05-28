@@ -5,7 +5,7 @@ import logging
 import os
 
 from TaskConnState import TaskConnState
-from golem.Message import MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure
+from golem.Message import Message, MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure
 from golem.network.FileProducer import FileProducer
 from golem.network.DataProducer import DataProducer
 from golem.network.FileConsumer import FileConsumer
@@ -234,6 +234,17 @@ class TaskSession:
         self.producer = None
         self.dropped()
 
+    ##########################
+    def sign(self, msg):
+        return msg
+
+    ##########################
+    def encrypt(self, msg):
+        return msg
+
+    ##########################
+    def decrypt(self, msg):
+        return msg
 
     ##########################
     def __send( self, msg ):
@@ -318,3 +329,9 @@ class TaskSession:
         else:
             logger.error("No taskId value in extraData for received data ")
         self.dropped()
+
+##############################################################################
+
+class TaskSessionFactory:
+    def getSession(self, connection):
+        return TaskSession(connection)

@@ -535,13 +535,16 @@ class WaitingTaskFailure:
 
 from twisted.internet.protocol import Factory
 from TaskConnState import TaskConnState
+from TaskSession import TaskSessionFactory
 
 class TaskServerFactory(Factory):
     #############################
-    def __init__( self, server ):
+    def __init__(self, server):
         self.server = server
 
     #############################
     def buildProtocol(self, addr):
-        logger.info( "Protocol build for {}".format( addr ) )
-        return TaskConnState( self.server )
+        logger.info("Protocol build for {}".format(addr))
+        protocol = TaskConnState(self.server)
+        protocol.setSessionFactory(TaskSessionFactory())
+        return protocol

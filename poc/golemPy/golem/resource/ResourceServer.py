@@ -319,6 +319,8 @@ class ResourceServer( GNRServer ):
 ##########################################################
 from twisted.internet.protocol import Factory
 
+from golem.resource.ResourceSession import ResourceSessionFactory
+
 class ResourceServerFactory( Factory ):
     #############################
     def __init__( self, server ):
@@ -326,4 +328,6 @@ class ResourceServerFactory( Factory ):
 
     #############################
     def buildProtocol( self, addr ):
-        return ResourceConnState( self.server )
+        protocol = ResourceConnState( self.server )
+        protocol.setSessionFactory( ResourceSessionFactory() )
+        return protocol

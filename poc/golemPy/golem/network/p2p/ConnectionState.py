@@ -1,33 +1,37 @@
-
 import abc
+import logging
 
 from twisted.internet.protocol import Protocol
+from golem.Message import Message
 from golem.core.databuffer import DataBuffer
-
-import logging
 
 logger = logging.getLogger(__name__)
 
 class ConnectionState(Protocol):
     ############################
-    def __init__( self ):
-        self.peer = None
-        self.db = DataBuffer()
+    def __init__(self):
         self.opened = False
+        self.db = DataBuffer()
+        self.session = None
+
+    ############################
+    def setSession(self, session):
+        self.session = session
 
     ############################
     def sendMessage(self, msg):
         if not self.opened:
-            logger.error( msg )
-            logger.error( "sendMessage failed - connection closed." )
+            logger.error(msg)
+            logger.error("sendMessage failed - connection closed.")
             return False
 
-        serMsg = msg.serialize()
+        msgToSend = self._prepareMsgToSend(msg)
 
-        db = DataBuffer()
-        db.appendLenPrefixedString( serMsg )
+        if msgToSend is None:
+            return False
+
         self.transport.getHandle()
-        self.transport.write( db.readAll() )
+        self.transport.write(msgToSend)
 
         return True
 
@@ -40,19 +44,55 @@ class ConnectionState(Protocol):
         return self.opened
 
     ############################
-    @abc.abstractmethod
     def connectionMade(self):
         """Called when new connection is successfully opened"""
-        return
+        self.opened = True
 
     ############################
-    @abc.abstractmethod
     def dataReceived(self, data):
         """Called when additional chunk of data is received from another peer"""
-        return
+        if not self._canReceive():
+            return None
+
+        if not self.session:
+            logger.warning( "No session argument in connection state" )
+            return None
+
+        self._interpret(data)
+
 
     ############################
-    @abc.abstractmethod
     def connectionLost(self, reason):
         """Called when connection is lost (for whatever reason)"""
-        return
+        self.opened = False
+        if self.session:
+            self.session.dropped()
+
+    ############################
+    def _prepareMsgToSend(self, msg):
+        serMsg = msg.serialize()
+
+        db = DataBuffer()
+        db.appendLenPrefixedString(serMsg)
+        return db.readAll()
+
+    ############################
+    def _canReceive(self):
+        assert self.opened
+        assert isinstance(self.db, DataBuffer)
+        return True
+
+    ############################
+    def _interpret(self, data):
+        self.db.appendString(data)
+        mess = self._dataToMessages()
+        if mess is None or len(mess) == 0:
+            logger.error( "Deserialization message failed" )
+            return None
+
+        for m in mess:
+            self.session.interpret(m)
+
+    ############################
+    def _dataToMessages(self):
+        return Message.deserialize(self.db)

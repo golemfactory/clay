@@ -34,6 +34,8 @@ class P2PServer( GNRServer ):
 
 from twisted.internet.protocol import Factory
 
+from golem.network.p2p.PeerSession import PeerSessionFactory
+
 class NetServerFactory( Factory ):
     #############################
     def __init__( self, p2pserver):
@@ -42,5 +44,7 @@ class NetServerFactory( Factory ):
     #############################
     def buildProtocol( self, addr ):
         logger.info( "Protocol build for {}".format( addr ) )
-        return NetConnState( self.p2pserver)
+        protocol = NetConnState(self.p2pserver)
+        protocol.setSessionFactory( PeerSessionFactory() )
+        return protocol
 

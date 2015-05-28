@@ -55,6 +55,13 @@ class DataBuffer:
 
         return retStr
 
+    def getLenPrefixedString(self):
+
+        while self.dataSize() > 4 and self.dataSize() >= ( self.peekUInt() + 4 ):
+            numChars = self.readUInt()
+            yield self.readString( numChars )
+
+
     def appendLenPrefixedString( self, data ):
         self.appendUInt( len( data ) )
         self.appendString( data )

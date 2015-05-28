@@ -1,9 +1,10 @@
 import logging
 
 from golem.Message import Message
-from golem.network.p2p.ConnectionState import ConnectionState
+
 from golem.core.databuffer import DataBuffer
 
+from golem.network.p2p.ConnectionState import ConnectionState
 
 logger = logging.getLogger(__name__)
 
@@ -11,70 +12,59 @@ class NetConnState( ConnectionState ):
     ############################
     def __init__( self, server = None ):
         ConnectionState.__init__( self )
-        self.peer = None
+        self.sessionFactory = None
         self.server = server
-    
+
     ############################
-    def setSession( self, session ):
-        self.peer = session
+    def setSessionFactory(self, sessionFactory):
+        self.sessionFactory = sessionFactory
 
     ############################
     def connectionMade(self):
-        self.opened = True
+        ConnectionState.connectionMade(self)
 
-        if self.server:
-            from golem.network.p2p.PeerSession import PeerSession
-            pp = self.transport.getPeer()
-            self.peer = PeerSession( self )
-            self.server.newConnection( self.peer )
+        if not self.server:
+            return
+
+        self.session = self.sessionFactory.getSession( self )
+        self.server.newConnection( self.session )
 
     ############################
-    def dataReceived(self, data):
+    def _prepareMsgToSend(self, msg):
+        if self.session is None:
+            logger.error("Wrong session, not sending message")
+            return None
+
+        msg = self.session.sign(msg)
+        if not msg:
+            logger.error("Wrong session, not sending message")
+            return None
+        serMsg = msg.serialize()
+        encMsg = self.session.encrypt( serMsg )
+
+        db = DataBuffer()
+        db.appendLenPrefixedString( encMsg )
+        return db.readAll()
+
+    ############################
+    def _canReceive(self):
         assert self.opened
         assert isinstance(self.db, DataBuffer)
 
-        if self.peer:
-            self.db.appendString(data)
-            if self.peer and self.peer.p2pService:
-                mess = Message.decryptAndDeserialize(self.db, self.peer.p2pService, self.peer.clientKeyId)
-            else:
-                mess = Message.deserialize( self.db )
-            if mess is None or len(mess) == 0:
-                logger.error( "Deserialization message failed" )
-                return None
-
-            for m in mess:
-                self.peer.interpret(m)
-        elif self.server:
+        if not self.session and self.server:
             self.opened = False
-            logger.error( "Peer for connection is None" )
-            assert False
-        else:
-            pass
-
-    ############################
-    def connectionLost(self, reason):
-        self.opened = False
-        self.peer.dropped()
-
-    ############################
-    def sendMessage(self, msg):
-        if self.peer is None or self.peer.p2pService is None:
-            logger.error("Wrong session, not sending message")
-            return False
-
-        if not self.opened:
-            logger.error( msg )
-            logger.error( "sendMessage failed - connection closed." )
-            return False
-
-        msg.sign(self.peer.p2pService)
-        serMsg = msg.serialize()
-        decMsg = self.peer.p2pService.encrypt( serMsg, self.peer.clientKeyId )
-
-        db = DataBuffer()
-        db.appendLenPrefixedString( decMsg )
-        self.transport.getHandle()
-        self.transport.write( db.readAll() )
+            raise Exception('Peer for connection is None')
 
         return True
+
+    ############################
+    def _dataToMessages(self):
+        assert isinstance( self.db, DataBuffer )
+        msgs = [ msg for msg in self.db.getLenPrefixedString() ]
+        messages = []
+        for msg in msgs:
+            decMsg = self.session.decrypt(msg)
+            m = Message.deserializeMessage(decMsg)
+            m.encrypted = decMsg != msg
+            messages.append(m)
+        return messages

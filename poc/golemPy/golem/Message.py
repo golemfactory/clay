@@ -35,7 +35,7 @@ class Message:
         return SimpleHash.hash( SimpleSerializer.dumps( sorted( self.dictRepr().items() ) ) )
 
     def sign(self, server):
-        self.sig = server.signData(self.getShortHash())
+            self.sig = server.signData(self.getShortHash())
 
     def serializeWithHeader( self ):
         self.serializeToBuffer(self.serializer)
@@ -427,22 +427,22 @@ class MessageFindNode( Message ):
     def dictRepr( self ):
         return { MessageFindNode.NODE_KEY_ID_STR: self.nodeKeyId }
 
-class MessageResendRandVal( Message ):
+class MessageRandVal( Message ):
 
     Type = 16
 
     RAND_VAL_STR = u"RAND_VAL"
 
     def __init__(self, randVal = 0, sig = "", timestamp = None, dictRepr = None):
-        Message.__init__( self, MessageResendRandVal.Type, sig, timestamp )
+        Message.__init__( self, MessageRandVal.Type, sig, timestamp )
 
         self.randVal = randVal
 
         if dictRepr:
-            self.randVal = dictRepr[ MessageResendRandVal.RAND_VAL_STR ]
+            self.randVal = dictRepr[ MessageRandVal.RAND_VAL_STR ]
 
     def dictRepr( self ):
-        return { MessageResendRandVal.RAND_VAL_STR: self.randVal }
+        return { MessageRandVal.RAND_VAL_STR: self.randVal }
 
 
 TASK_MSG_BASE = 2000
@@ -998,7 +998,7 @@ def initMessages():
     MessageStopGossip()
     MessageLocRank()
     MessageFindNode()
-    MessageResendRandVal()
+    MessageRandVal()
 
     MessageTaskToCompute()
     MessageWantToComputeTask()

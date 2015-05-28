@@ -4,7 +4,7 @@ import os
 import struct
 
 from golem.resource.ResourceConnState import ResourceConnState
-from golem.Message import MessageHasResource, MessageWantResource, MessagePushResource, MessageDisconnect,\
+from golem.Message import Message, MessageHasResource, MessageWantResource, MessagePushResource, MessageDisconnect,\
     MessagePullResource, MessagePullAnswer, MessageSendResource
 
 logger = logging.getLogger(__name__)
@@ -146,6 +146,18 @@ class ResourceSession:
         self.conn.fileMode = True
 
     ##########################
+    def sign(self, msg):
+        return msg
+
+    ##########################
+    def encrypt(self, msg):
+        return msg
+
+    ##########################
+    def decrypt(self, msg):
+        return msg
+
+    ##########################
     def __sendDisconnect(self, reason):
         self.__send( MessageDisconnect( reason ) )
 
@@ -164,3 +176,10 @@ class ResourceSession:
             else:
                 self.__sendDisconnect(reason)
                 self.lastDisconnectTime = time.time()
+
+
+##############################################################################
+
+class ResourceSessionFactory:
+    def getSession(self, connection):
+        return ResourceSession(connection)
