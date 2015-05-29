@@ -6,77 +6,66 @@ import struct
 from golem.resource.ResourceConnState import ResourceConnState
 from golem.Message import Message, MessageHasResource, MessageWantResource, MessagePushResource, MessageDisconnect,\
     MessagePullResource, MessagePullAnswer, MessageSendResource
+from golem.network.p2p.Session import NetSession
 
 logger = logging.getLogger(__name__)
 
-class ResourceSession:
+class ResourceSession(NetSession):
 
     ConnectionStateType = ResourceConnState
 
-    DCRBadProtocol      = "Bad protocol"
-    DCRDuplicatePeers   = "Duplicate peers"
-
     ##########################
     def __init__( self, conn ):
-        self.conn = conn
-        pp = conn.transport.getPeer()
-        self.address = pp.host
-        self.port = pp.port
-        self.lastDisconnectTime = None
+        NetSession.__init__(self, conn)
         self.resourceServer = None
+
         self.fileSize = -1
         self.fileName = None
         self.fh = None
         self.recvSize = 0
         self.confirmation = False
         self.copies = 0
+        self.buffSize = 1024
 
-        self.lastMessageTime = time.time()
+        self.__setMsgInterpretations()
+
+   ##########################
+    def clean(self):
+        if self.fh is not None:
+            self.fh.close()
+            if self.recvSize < self.fileSize:
+                os.remove( self.fileName)
 
     ##########################
-    def interpret( self, msg ):
+    def dropped( self ):
+        self.clean()
+        self.conn.close()
+        self.resourceServer.removeSession(self)
 
-        if msg is None:
-            return
+    ##########################
+    def sendHasResource( self, resource ):
+        self._send( MessageHasResource( resource ) )
 
-        type = msg.getType()
+    ##########################
+    def sendWantResource( self, resource ):
+        self._send( MessageWantResource( resource ) )
 
-        if type == MessagePushResource.Type:
-            copies = msg.copies -1
-            if self.resourceServer.checkResource( msg.resource ):
-                self.sendHasResource( msg.resource )
-                if copies > 0:
-                    self.resourceServer.getPeers()
-                    self.resourceServer.addResourceToSend( msg.resource, copies )
-            else:
-                self.sendWantResource( msg.resource )
-                self.fileName = msg.resource
-                self.conn.fileMode = True
-                self.confirmation = True
-                self.copies = copies
-        elif type == MessageHasResource.Type:
-            self.resourceServer.hasResource( msg.resource, self.address, self.port )
-            self.dropped()
-        elif type == MessageWantResource.Type:
-            file_ = self.resourceServer.prepareResource( msg.resource )
-            size = os.path.getsize( file_ )
-            with open( file_, 'rb') as fh:
-                data = struct.pack( "!L", size ) + fh.read( 1024 )
-                while data:
-                    self.conn.transport.write( data )
-                    data = fh.read( 1024 )
-        elif type == MessageDisconnect.Type:
-            logger.info( "Disconnecting {}:{}".format( self.address, self.port ) )
-            self.dropped()
-        elif type == MessagePullResource.Type:
-            hasResource = self.resourceServer.checkResource( msg.resource)
-            if not hasResource:
-                self.resourceServer.getPeers()
-            self.sendPullAnswer( msg.resource, hasResource )
-        elif type == MessagePullAnswer.Type:
-            self.resourceServer.pullAnswer( msg.resource, msg.hasResource, self )
-        else:
-            self.__disconnect( ResourceSession.DCRBadProtocol )
+    ##########################
+    def sendPushResource( self, resource, copies = 1 ):
+        self._send( MessagePushResource( resource, copies ) )
+
+    ##########################
+    def sendPullResource( self, resource ):
+         self._send( MessagePullResource( resource ) )
+
+    ##########################
+    def sendPullAnswer( self, resource, hasResource ):
+        self._send( MessagePullAnswer( resource, hasResource ) )
+
+    ##########################
+    def sendSendResource( self, resource ):
+        self._send( MessageSendResource( resource) )
+        self.conn.fileMode = True
 
     ##########################
     def fileDataReceived( self, data ):
@@ -107,75 +96,64 @@ class ResourceSession:
                 self.dropped()
             self.fileName = None
 
-    ##########################
-    def clean(self):
-        if self.fh is not None:
-            self.fh.close()
-            if self.recvSize < self.fileSize:
-                os.remove( self.fileName)
+    #########################
+    def _send(self, message):  #FIXME
+        NetSession._send(self, message, sendUnverified=True)
 
     ##########################
-    def dropped( self ):
-        self.clean()
-        self.conn.close()
-        self.resourceServer.removeSession(self)
+    def _reactToPushResource(self, msg):
+        copies = msg.copies - 1
+        if self.resourceServer.checkResource(msg.resource):
+            self.sendHasResource(msg.resource)
+            if copies > 0:
+                self.resourceServer.getPeers()
+                self.resourceServer.addResourceToSend(msg.resource, copies)
+        else:
+            self.sendWantResource(msg.resource)
+            self.fileName = msg.resource
+            self.conn.fileMode = True
+            self.confirmation = True
+            self.copies = copies
 
     ##########################
-    def sendHasResource( self, resource ):
-        self.__send( MessageHasResource( resource ) )
+    def _reactToHasResource(self, msg):
+        self.resourceServer.hasResource( msg.resource, self.address, self.port )
+        self.dropped()
 
     ##########################
-    def sendWantResource( self, resource ):
-        self.__send( MessageWantResource( resource ) )
+    def _reactToWantResource(self, msg):
+        file_ = self.resourceServer.prepareResource( msg.resource )
+        size = os.path.getsize( file_ )
+        with open( file_, 'rb') as fh:
+            data = struct.pack( "!L", size ) + fh.read( self.buffSize )
+            while data:
+                self.conn.transport.write( data )
+                data = fh.read( self.buffSize )
 
     ##########################
-    def sendPushResource( self, resource, copies = 1 ):
-        self.__send( MessagePushResource( resource, copies ) )
+    def _reactToPullResource(self, msg):
+        hasResource = self.resourceServer.checkResource(msg.resource)
+        if not hasResource:
+            self.resourceServer.getPeers()
+        self.sendPullAnswer(msg.resource, hasResource)
 
     ##########################
-    def sendPullResource( self, resource ):
-         self.__send( MessagePullResource( resource ) )
+    def _reactToPullAnswer(self, msg):
+        self.resourceServer.pullAnswer(msg.resource, msg.hasResource, self)
 
     ##########################
-    def sendPullAnswer( self, resource, hasResource ):
-        self.__send( MessagePullAnswer( resource, hasResource ) )
+    def __setMsgInterpretations(self):
+        self.interpretation.update( {
+                                        MessagePushResource.Type: self._reactToPushResource,
+                                        MessageHasResource.Type: self._reactToHasResource,
+                                        MessageWantResource.Type: self._reactToWantResource,
+                                        MessagePullResource.Type: self._reactToPullResource,
+                                        MessagePullAnswer.Type: self._reactToPullAnswer
+                                    })
 
-    ##########################
-    def sendSendResource( self, resource ):
-        self.__send( MessageSendResource( resource) )
-        self.conn.fileMode = True
-
-    ##########################
-    def sign(self, msg):
-        return msg
-
-    ##########################
-    def encrypt(self, msg):
-        return msg
-
-    ##########################
-    def decrypt(self, msg):
-        return msg
-
-    ##########################
-    def __sendDisconnect(self, reason):
-        self.__send( MessageDisconnect( reason ) )
-
-
-    ##########################
-    def __send( self, msg ):
-        if not self.conn.sendMessage( msg ):
-            self.dropped()
-
-    ##########################
-    def __disconnect(self, reason):
-        logger.info( "Disconnecting {} : {} reason: {}".format( self.address, self.port, reason ) )
-        if self.conn.isOpen():
-            if self.lastDisconnectTime:
-                self.dropped()
-            else:
-                self.__sendDisconnect(reason)
-                self.lastDisconnectTime = time.time()
+        self.canBeNotEncrypted.extend(self.interpretation.keys()) #FIXME
+        self.canBeUnsigned.extend(self.interpretation.keys()) #FIXME
+        self.canBeUnverified.extend(self.interpretation.keys()) #FIXME
 
 
 ##############################################################################

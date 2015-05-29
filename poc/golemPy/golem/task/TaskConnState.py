@@ -19,7 +19,7 @@ class TaskConnState( NetConnState ):
         self.dataConsumer = None
 
     ############################
-    def dataReceived(self, data):
+    def _interpret(self, data):
 
         self.session.lastMessageTime = time.time()
 

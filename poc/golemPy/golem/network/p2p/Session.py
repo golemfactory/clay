@@ -60,7 +60,7 @@ class Session(SessionInterface):
         self.address = pp.host
         self.port = pp.port
 
-        self.lastMessageTime = 0.0
+        self.lastMessageTime = time.time()
         self.lastDisconnectTime = None
         self.interpretation = { MessageDisconnect.Type: self._reactToDisconnect }
 
@@ -95,11 +95,11 @@ class Session(SessionInterface):
 
     ##########################
     def _sendDisconnect(self, reason):
-        self._send( MessageDisconnect( reason ) )
+        self._send(MessageDisconnect(reason))
 
     ##########################
     def _send(self, message):
-       # print "Sending to {}:{}: {}".format( self.address, self.port, message )
+        #print "Sending to {}:{}: {}".format( self.address, self.port, message )
 
         if not self.conn.sendMessage(message):
             self.dropped()
