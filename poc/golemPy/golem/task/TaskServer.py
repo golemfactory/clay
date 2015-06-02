@@ -213,8 +213,8 @@ class TaskServer:
         return self.taskKeeper.getSubtaskTtl( taskId )
 
     #############################
-    def addResourcePeer( self, clientId, addr, port ):
-        self.client.addResourcePeer( clientId, addr, port )
+    def addResourcePeer( self, clientId, addr, port, keyId ):
+        self.client.addResourcePeer( clientId, addr, port, keyId )
 
     #############################
     def taskResultSent( self, subtaskId ):

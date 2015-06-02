@@ -6,9 +6,9 @@ import os
 
 from TaskConnState import TaskConnState
 from golem.Message import MessageHello, MessageRandVal, MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure
-from golem.network.FileProducer import FileProducer
+from golem.network.FileProducer import EncryptFileProducer
 from golem.network.DataProducer import DataProducer
-from golem.network.FileConsumer import FileConsumer
+from golem.network.FileConsumer import DecryptFileConsumer
 from golem.network.DataConsumer import DataConsumer
 from golem.network.MultiFileProducer import EncryptMultiFileProducer
 from golem.network.MultiFileConsumer import DecryptMultiFileConsumer
@@ -306,7 +306,7 @@ class TaskSession(NetSession):
     def _reactToDeltaParts(self, msg):
         self.taskComputer.waitForResources(self.taskId, msg.deltaHeader)
         self.taskServer.pullResources(self.taskId, msg.parts)
-        self.taskServer.addResourcePeer(msg.clientId, msg.addr, msg.port)
+        self.taskServer.addResourcePeer(msg.clientId, msg.addr, msg.port, self.clientKeyId)
         self.dropped()
 
     ##########################
@@ -315,7 +315,7 @@ class TaskSession(NetSession):
             tmpFile = os.path.join(self.taskComputer.resourceManager.getTemporaryDir(self.taskId), "res" + self.taskId)
             outputDir = self.taskComputer.resourceManager.getResourceDir(self.taskId)
             extraData = { "taskId": self.taskId }
-            self.conn.fileConsumer = FileConsumer(tmpFile, outputDir, self, extraData)
+            self.conn.fileConsumer = DecryptFileConsumer(tmpFile, outputDir, self, extraData)
             self.conn.fileMode = True
         self.__sendAcceptResourceFormat()
 
@@ -362,7 +362,7 @@ class TaskSession(NetSession):
             self.dropped()
             return
 
-        self.producer = FileProducer( resFilePath, self )
+        self.producer = EncryptFileProducer( resFilePath, self )
 
     ##########################
     def __sendResourcePartsList(self, msg):

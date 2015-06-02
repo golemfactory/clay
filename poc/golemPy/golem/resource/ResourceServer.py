@@ -16,8 +16,9 @@ logger = logging.getLogger( __name__ )
 ##########################################################
 class ResourceServer( GNRServer ):
     ############################
-    def __init__( self, configDesc, client ):
+    def __init__( self, configDesc, keysAuth, client ):
         self.client = client
+        self.keysAuth = keysAuth
         self.resourcesToSend = []
         self.resourcesToGet = []
         self.resSendIt = 0
@@ -37,11 +38,13 @@ class ResourceServer( GNRServer ):
 
         self.lastMessageTimeThreshold = configDesc.resourceSessionTimeout
 
+    ############################
     def changeResourceDir( self, configDesc ):
         self.dirManager.rootPath = configDesc.rootPath
         self.dirManager.nodeId = configDesc.clientUid
         self.resourceManager.changeResourceDir( self.dirManager.getResourceDir() )
 
+    ############################
     def getDistributedResourceRoot( self ):
         return self.dirManager.getResourceDir()
 
@@ -88,12 +91,12 @@ class ResourceServer( GNRServer ):
         self.sessions.append( session )
 
     ############################
-    def addResourcePeer(self, clientId, addr, port ):
+    def addResourcePeer(self, clientId, addr, port, keyId ):
         if clientId in self.resourcePeers:
-            if self.resourcePeers[ clientId ]['addr'] == addr and self.resourcePeers[clientId]['port'] == port:
+            if self.resourcePeers[ clientId ]['addr'] == addr and self.resourcePeers[clientId]['port'] == port and self.resourcePeers[clientId]['keyId']:
                 return
 
-        self.resourcePeers[ clientId ] = { 'addr': addr, 'port': port, 'state': 'free', 'posResource': 0 }
+        self.resourcePeers[ clientId ] = { 'addr': addr, 'port': port, 'keyId': keyId, 'state': 'free', 'posResource': 0 }
 
     ############################
     def setResourcePeers( self, resourcePeers ):
@@ -101,8 +104,8 @@ class ResourceServer( GNRServer ):
         if self.configDesc.clientUid in resourcePeers:
             del resourcePeers[ self.configDesc.clientUid ]
 
-        for clientId, [addr, port] in resourcePeers.iteritems():
-            self.addResourcePeer( clientId, addr, port )
+        for clientId, [addr, port, keyId] in resourcePeers.iteritems():
+            self.addResourcePeer( clientId, addr, port, keyId )
 
     ############################
     def syncNetwork( self ):
@@ -127,7 +130,7 @@ class ResourceServer( GNRServer ):
 
         for peer in resourcePeers:
             peer['state'] = 'waiting'
-            self.pullResource( self.resourcesToGet[0][0], peer['addr'], peer['port'])
+            self.pullResource( self.resourcesToGet[0][0], peer['addr'], peer['port'], peer['keyId'])
 
 
     ############################
@@ -144,12 +147,12 @@ class ResourceServer( GNRServer ):
             name = self.resourcesToSend[ self.resSendIt ][0]
             num = self.resourcesToSend[ self.resSendIt ][2]
             peer['state'] = 'waiting'
-            self.pushResource( name , peer['addr'], peer['port'] , num )
+            self.pushResource( name , peer['addr'], peer['port'] , peer['keyId'], num )
             self.resSendIt = (self.resSendIt + 1) % len( self.resourcesToSend )
 
     ############################
-    def pullResource( self, resource, addr, port ):
-        Network.connect( addr, port, ResourceSession, self.__connectionPullResourceEstablished, self.__connectionPullResourceFailure, resource, addr, port )
+    def pullResource( self, resource, addr, port, keyId ):
+        Network.connect( addr, port, ResourceSession, self.__connectionPullResourceEstablished, self.__connectionPullResourceFailure, resource, addr, port, keyId )
 
     ############################
     def pullAnswer( self, resource, hasResource, session ):
@@ -172,8 +175,8 @@ class ResourceServer( GNRServer ):
                 self.sessions.append(session)
 
     ############################
-    def pushResource( self, resource, addr, port, copies ):
-        Network.connect( addr, port, ResourceSession, self.__connectionPushResourceEstablished, self.__connectionPushResourceFailure, resource, copies, addr, port )
+    def pushResource( self, resource, addr, port, keyId, copies ):
+        Network.connect( addr, port, ResourceSession, self.__connectionPushResourceEstablished, self.__connectionPushResourceFailure, resource, copies, addr, port, keyId )
 
     ############################
     def checkResource( self, resource ):
@@ -241,6 +244,28 @@ class ResourceServer( GNRServer ):
             self.__freePeer( session.address, session.port)
             self.sessions.remove(session)
 
+    #############################
+    def getKeyId(self):
+        return self.keysAuth.getKeyId()
+
+    #############################
+    def encrypt(self, message, publicKey):
+        if publicKey == 0:
+            return message
+        return self.keysAuth.encrypt( message, publicKey )
+
+    #############################
+    def decrypt(self, message):
+        return self.keysAuth.decrypt(message)
+
+    #############################
+    def signData(self, data):
+        return self.keysAuth.sign(data)
+
+    #############################
+    def verifySig(self, sig, data, publicKey):
+        return self.keysAuth.verify(sig, data, publicKey)
+
 
     ############################
     def changeConfig( self, configDesc ):
@@ -255,29 +280,36 @@ class ResourceServer( GNRServer ):
 
 
     ############################
-    def __connectionPushResourceEstablished( self, session, resource, copies, addr, port ):
+    def __connectionPushResourceEstablished( self, session, resource, copies, addr, port, keyId ):
         session.resourceServer = self
+        session.clientKeyId = keyId
+        session.sendHello()
         session.sendPushResource( resource, copies )
         self.sessions.append( session )
 
     ############################
-    def __connectionPushResourceFailure( self, resource, copies, addr, port ):
+    def __connectionPushResourceFailure( self, resource, copies, addr, port, keyId ):
         self.__removeClient( addr, port )
         logger.error( "Connection to resource server failed" )
 
     ############################
-    def __connectionPullResourceEstablished( self, session, resource, addr, port ):
+    def __connectionPullResourceEstablished( self, session, resource, addr, port, keyId ):
         session.resourceServer = self
+        session.clientKeyId = keyId
+        session.sendHello()
         session.sendPullResource( resource )
         self.sessions.append( session )
 
     ############################
-    def __connectionPullResourceFailure( self, resource, addr, port ):
+    def __connectionPullResourceFailure( self, resource, addr, port, keyId ):
         self.__removeClient( addr, port )
         logger.error( "Connection to resource server failed" )
 
     ############################
-    def __connectionForResourceEstablished( self, session, resource, addr, port ):
+    def __connectionForResourceEstablished( self, session, resource, addr, port, keyId ):
+        session.resourceServer = self
+        session.clientKeyId = keyId
+        session.sendHello()
         session.sendWantResource( resource )
         self.sessions.append( session )
 

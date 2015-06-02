@@ -211,7 +211,7 @@ class Client:
         time.sleep( 1.0 )
 
         logger.info( "Starting resource server..." )
-        self.resourceServer = ResourceServer( self.configDesc, self )
+        self.resourceServer = ResourceServer( self.configDesc, self.keysAuth, self )
         time.sleep( 1.0 )
         self.p2pservice.setResourceServer( self.resourceServer )
 
@@ -469,8 +469,8 @@ class Client:
         self.getResourcePeers()
 
     ############################
-    def addResourcePeer( self, clientId, addr, port ):
-        self.resourceServer.addResourcePeer( clientId, addr, port )
+    def addResourcePeer( self, clientId, addr, port, keyId ):
+        self.resourceServer.addResourcePeer( clientId, addr, port, keyId )
 
     ############################
     def supportedTask( self, thDictRepr ):

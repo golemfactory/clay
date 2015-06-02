@@ -274,7 +274,7 @@ class P2PService:
     ############################
     def setResourcePeer( self, addr, port ):
         self.resourcePort = port
-        self.resourcePeers[ self.clientUid ] = [ addr, port ]
+        self.resourcePeers[ self.clientUid ] = [ addr, port, self.keysAuth.getKeyId() ]
 
     #############################
     def sendGetResourcePeers( self ):
@@ -284,8 +284,8 @@ class P2PService:
     ############################
     def getResourcePeers( self ):
         resourcePeersInfo = []
-        for clientId, [addr, port] in self.resourcePeers.iteritems():
-            resourcePeersInfo.append({ 'clientId': clientId, 'addr': addr, 'port': port })
+        for clientId, [addr, port, keyId] in self.resourcePeers.iteritems():
+            resourcePeersInfo.append({ 'clientId': clientId, 'addr': addr, 'port': port, 'keyId': keyId })
 
         return resourcePeersInfo
 
@@ -294,7 +294,7 @@ class P2PService:
         for peer in resourcePeers:
             try:
                 if peer['clientId'] != self.clientUid:
-                    self.resourcePeers[ peer['clientId']]  = [ peer['addr'], peer['port'] ]
+                    self.resourcePeers[ peer['clientId']]  = [ peer['addr'], peer['port'], peer['keyId'] ]
             except Exception, err:
                 logger.error( "Wrong set peer message (peer: {}): {}".format( peer, str( err ) ) )
         resourcePeersCopy = self.resourcePeers.copy()
