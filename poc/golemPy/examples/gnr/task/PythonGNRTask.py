@@ -25,6 +25,7 @@ class PythonGNRTaskBuilder( GNRTaskBuilder ):
                             self.taskDefinition.taskId,
                             "",
                             0,
+                            "",
                             Environment.getId(),
                             self.taskDefinition.fullTaskTimeout,
                             self.taskDefinition.subtaskTimeout,
@@ -36,10 +37,10 @@ class PythonGNRTaskBuilder( GNRTaskBuilder ):
 
 class PythonGNRTask( GNRTask ):
     #####################
-    def __init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, environment,
+    def __init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
                   ttl, subtaskTtl, resourceSize, estimatedMemory, totalTasks, rootPath ):
 
-        GNRTask.__init__( self, srcCode, clientId, taskId,ownerAddress, ownerPort, environment, ttl, subtaskTtl,
+        GNRTask.__init__( self, srcCode, clientId, taskId,ownerAddress, ownerPort, ownerKeyId, environment, ttl, subtaskTtl,
                   resourceSize, estimatedMemory )
 
         self.totalTasks = totalTasks

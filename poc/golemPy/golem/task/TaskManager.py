@@ -23,7 +23,7 @@ class TaskManagerEventListener:
 
 class TaskManager:
     #######################
-    def __init__( self, clientUid, listenAddress = "", listenPort = 0, rootPath = "res", useDistributedResources=True ):
+    def __init__( self, clientUid, listenAddress = "", listenPort = 0, keyId = "", rootPath = "res", useDistributedResources=True ):
         self.clientUid      = clientUid
 
         self.tasks          = {}
@@ -31,6 +31,7 @@ class TaskManager:
 
         self.listenAddress  = listenAddress
         self.listenPort     = listenPort
+        self.keyId          = keyId
 
         self.rootPath = rootPath
         self.dirManager     = DirManager( self.getTaskManagerRoot(), self.clientUid )
@@ -69,6 +70,7 @@ class TaskManager:
 
         task.header.taskOwnerAddress = self.listenAddress
         task.header.taskOwnerPort = self.listenPort
+        task.header.taskOwnerKeyId = self.keyId
 
         task.initialize()
         self.tasks[ task.header.taskId ] = task
@@ -106,6 +108,7 @@ class TaskManager:
                 ctd  = task.queryExtraData( estimatedPerformance, numCores, clientId )
                 if ctd is None or ctd.subtaskId is None:
                     return None, False
+                ctd.keyId = th.taskOwnerKeyId
                 self.subTask2TaskMapping[ ctd.subtaskId ] = taskId
                 self.__addSubtaskToTasksStates( clientId, ctd )
                 self.__noticeTaskUpdated( taskId )
@@ -152,13 +155,15 @@ class TaskManager:
             return False
 
     #######################
-    def setPaymentInfoForSubtask(self, subtaskId, price, address, port, ethAccount):
+    def setPaymentInfoForSubtask(self, subtaskId, price, address, port, keyId, ethAccount):
         if subtaskId in self.subTask2TaskMapping:
             taskId = self.subTask2TaskMapping[ subtaskId ]
             self.tasksStates[ taskId ].subtaskStates[ subtaskId ].value = price
             self.tasksStates[ taskId ].subtaskStates[ subtaskId ].computer.ethAccount = ethAccount
             self.tasksStates[ taskId ].subtaskStates[ subtaskId ].computer.ipAddress = address
             self.tasksStates[ taskId ].subtaskStates[ subtaskId ].computer.port = port
+            self.tasksStates[ taskId ].subtaskStates[ subtaskId ].computer.keyId = keyId
+
         else:
             logger.error("Not my subtask {}".format( subtaskId ))
 
@@ -435,20 +440,22 @@ class TaskManager:
         payments = {}
         if taskId in self.tasksStates:
             for ss in self.tasksStates[taskId].subtaskStates.itervalues():
+                print ss.computer
+                print ss.computer.ethAccount
                 if ss.computer.ethAccount in payments:
                     payments[ss.computer.ethAccount][0] += ss.value
                     knownValues = False
                     for i in range(0, len( payments[ss.computer.ethAccount][1] ) ):
                         print payments[ss.computer.ethAccount][1][i]
-                        id, addr, port, v = payments[ss.computer.ethAccount][1][i]
+                        id, addr, port, v, keyId = payments[ss.computer.ethAccount][1][i]
                         if ss.computer.nodeId == id and ss.computer.ipAddress == addr and ss.computer.port == port:
                             payments[ss.computer.ethAccount][1][i][3] += ss.value
                             knownValues = True
                             break
                     if not knownValues:
-                        payments[ss.computer.ethAccount][1].append([ss.computer.nodeId, ss.computer.ipAddress, ss.computer.port, ss.value])
+                        payments[ss.computer.ethAccount][1].append([ss.computer.nodeId, ss.computer.ipAddress, ss.computer.port, ss.value, ss.computer.keyId])
                 else:
-                    payments[ss.computer.ethAccount] = [ss.value, [[ss.computer.nodeId, ss.computer.ipAddress, ss.computer.port, ss.value]]]
+                    payments[ss.computer.ethAccount] = [ss.value, [[ss.computer.nodeId, ss.computer.ipAddress, ss.computer.port, ss.value, ss.computer.keyId]]]
             return payments
         else:
             logger.error("Not my task {}".format( taskId ))

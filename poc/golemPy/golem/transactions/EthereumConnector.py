@@ -51,7 +51,7 @@ class EthereumConnector:
         addresses = []
         values = []
         if len(taskId) > 32:
-            logger.warning("To long task, cropping...")
+            logger.warning("Too long task, cropping...")
             taskId = taskId[:32]
         for ethAddr, val in payments.iteritems():
             addresses.append(ethAddr.zfill(32))

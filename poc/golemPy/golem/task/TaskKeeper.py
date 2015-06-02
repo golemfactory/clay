@@ -46,7 +46,7 @@ class TaskKeeper:
             if id not in self.taskHeaders.keys(): # dont have it
                 if id not in self.removedTasks.keys(): # not removed recently
                     logger.info( "Adding task {}".format( id ) )
-                    self.taskHeaders[ id ] = TaskHeader( thDictRepr[ "clientId" ], id, thDictRepr[ "address" ], thDictRepr[ "port" ], thDictRepr["environment"], thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"] )
+                    self.taskHeaders[id] = TaskHeader(thDictRepr["clientId"], id, thDictRepr["address"], thDictRepr["port"], thDictRepr["keyId"], thDictRepr["environment"], thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"] )
                     if isSupported:
                         self.supportedTasks.append( id )
             return True

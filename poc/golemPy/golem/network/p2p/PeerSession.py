@@ -34,9 +34,9 @@ class PeerSession(NetSession):
         self.state = PeerSession.StateInitialize
         self.degree = 0
 
-        self.canBeUnverified = [ MessageHello.Type, MessageRandVal.Type ]
-        self.canBeUnsigned = [ MessageHello.Type ]
-        self.canBeNotEncrypted = [ MessageHello.Type ]
+        self.canBeUnverified.extend([ MessageHello.Type, MessageRandVal.Type ])
+        self.canBeUnsigned.extend([ MessageHello.Type ])
+        self.canBeNotEncrypted.extend([ MessageHello.Type ])
 
         logger.info( "CREATING PEER SESSION {} {}".format( self.address, self.port ) )
         self.__setMsgInterprations()

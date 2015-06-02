@@ -35,7 +35,7 @@ class Message:
         return SimpleHash.hash( SimpleSerializer.dumps( sorted( self.dictRepr().items() ) ) )
 
     def sign(self, server):
-            self.sig = server.signData(self.getShortHash())
+        self.sig = server.signData(self.getShortHash())
 
     def serializeWithHeader( self ):
         self.serializeToBuffer(self.serializer)
@@ -501,6 +501,9 @@ class MessageTaskToCompute( Message ):
     def dictRepr( self ):
         return { MessageTaskToCompute.COMPUTE_TASK_DEF_STR : self.ctd }
 
+    def getShortHash( self ):
+        return SimpleHash.hash( SimpleSerializer.dumps( sorted([(k, v) for k, v in self.ctd.__dict__.items() if k != 'extraData'] )) )
+
 class MessageCannotAssignTask( Message ):
     
     Type = TASK_MSG_BASE + 3
@@ -531,10 +534,11 @@ class MessageReportComputedTask( Message ):
     NODE_ID_STR = u"NODE_ID"
     ADDR_STR = u"ADDR"
     PORT_STR = u"PORT"
+    KEY_ID_STR = u"KEY_ID"
     EXTRA_DATA_STR = u"EXTRA_DATA"
     ETH_ACCOUNT_STR = u"ETH_ACCOUNT"
 
-    def __init__( self, subtaskId = 0, resultType = None, nodeId = '', address = '', port = '', ethAccount = '', extraData = None, sig = "", timestamp = None, dictRepr = None ):
+    def __init__( self, subtaskId = 0, resultType = None, nodeId = '', address = '', port = '', keyId = '', ethAccount = '', extraData = None, sig = "", timestamp = None, dictRepr = None ):
         Message.__init__(self, MessageReportComputedTask.Type, sig, timestamp)
 
         self.subtaskId  = subtaskId
@@ -543,6 +547,7 @@ class MessageReportComputedTask( Message ):
         self.nodeId = nodeId
         self.address = address
         self.port = port
+        self.keyId = keyId
         self.ethAccount = ethAccount
 
         if dictRepr:
@@ -551,6 +556,7 @@ class MessageReportComputedTask( Message ):
             self.nodeId = dictRepr[ MessageReportComputedTask.NODE_ID_STR ]
             self.address = dictRepr[ MessageReportComputedTask.ADDR_STR ]
             self.port = dictRepr[ MessageReportComputedTask.PORT_STR ]
+            self.keyId = dictRepr[ MessageReportComputedTask.KEY_ID_STR ]
             self.ethAccount = dictRepr[ MessageReportComputedTask.ETH_ACCOUNT_STR ]
             self.extraData = dictRepr[ MessageReportComputedTask.EXTRA_DATA_STR ]
 
@@ -560,6 +566,7 @@ class MessageReportComputedTask( Message ):
                     MessageReportComputedTask.NODE_ID_STR: self.nodeId,
                     MessageReportComputedTask.ADDR_STR: self.address,
                     MessageReportComputedTask.PORT_STR: self.port,
+                    MessageReportComputedTask.KEY_ID_STR: self.keyId,
                     MessageReportComputedTask.ETH_ACCOUNT_STR: self.ethAccount,
                     MessageReportComputedTask.EXTRA_DATA_STR: self.extraData }
 

@@ -130,9 +130,10 @@ class LuxTask( RenderingTask ):
                     ownBinaries,
                     luxconsole,
                     returnAddress = "",
-                    returnPort = 0):
+                    returnPort = 0,
+                    keyId = ""):
 
-        RenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort,
+        RenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort, keyId,
                                  LuxRenderEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                                  mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                                  totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,

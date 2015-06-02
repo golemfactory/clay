@@ -136,9 +136,9 @@ class NetSession(Session, NetSessionInterface):
         self.unverifiedCnt = 10
         self.randVal = random.random()
         self.verified = False
-        self.canBeUnverified = []
-        self.canBeUnsigned = []
-        self.canBeNotEncrypted = []
+        self.canBeUnverified = [MessageDisconnect]
+        self.canBeUnsigned = [MessageDisconnect]
+        self.canBeNotEncrypted = [MessageDisconnect]
 
     #Simple session with no encryption and no signing
     ##########################

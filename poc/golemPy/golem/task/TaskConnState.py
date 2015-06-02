@@ -24,11 +24,11 @@ class TaskConnState( NetConnState ):
         self.session.lastMessageTime = time.time()
 
         if self.fileMode:
-            self.fileDataReceived( data )
+            self.fileDataReceived(data)
             return
 
         if self.dataMode:
-            self.resultDataReceived( data )
+            self.resultDataReceived(data)
             return
 
 

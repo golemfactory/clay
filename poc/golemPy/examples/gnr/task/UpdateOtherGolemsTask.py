@@ -51,6 +51,7 @@ class UpdateOtherGolemsTaskBuilder( GNRTaskBuilder ):
                             self.taskDefinition.taskId,
                             "",
                             0,
+                            "",
                             self.rootPath,
                             Environment.getId(),
                             self.taskDefinition.fullTaskTimeout,
@@ -70,6 +71,7 @@ class UpdateOtherGolemsTask( GNRTask ):
                   taskId,
                   ownerAddress,
                   ownerPort,
+                  ownerKeyId,
                   rootPath,
                   environment,
                   ttl,
@@ -80,7 +82,7 @@ class UpdateOtherGolemsTask( GNRTask ):
                   totalTasks ):
 
 
-        GNRTask.__init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, environment,
+        GNRTask.__init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
                             ttl, subtaskTtl, resourceSize, estimatedMemory )
 
         self.totalTasks = totalTasks

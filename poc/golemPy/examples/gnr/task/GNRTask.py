@@ -61,9 +61,9 @@ class GNROptions:
 ##############################################
 class GNRTask( Task ):
     #####################
-    def __init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, environment,
+    def __init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
                   ttl, subtaskTtl, resourceSize, estimatedMemory ):
-        th = TaskHeader( clientId, taskId, ownerAddress, ownerPort, environment,
+        th = TaskHeader( clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
                          ttl, subtaskTtl, resourceSize, estimatedMemory)
         Task.__init__( self, th, srcCode )
 

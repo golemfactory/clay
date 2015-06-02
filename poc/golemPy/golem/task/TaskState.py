@@ -42,6 +42,7 @@ class ComputerState:
         self.performance        = 0
         self.ipAddress          = ""
         self.port               = 0
+        self.keyId              = 0
 
 class SubtaskState:
     #########################

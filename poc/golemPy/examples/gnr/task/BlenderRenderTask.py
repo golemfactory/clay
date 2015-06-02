@@ -110,9 +110,10 @@ class BlenderRenderTask( FrameRenderingTask ):
                   frames,
                   engine,
                   returnAddress = "",
-                  returnPort = 0):
+                  returnPort = 0,
+                  keyId = ""):
 
-        FrameRenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort,
+        FrameRenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort, keyId,
                           BlenderEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,

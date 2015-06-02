@@ -48,7 +48,7 @@ class RenderingTaskBuilder( GNRTaskBuilder ):
 ##############################################
 class RenderingTask( GNRTask ):
     #######################
-    def __init__( self, clientId, taskId, ownerAddress, ownerPort, environment, ttl,
+    def __init__( self, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                   totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, rootPath,
                   estimatedMemory ):
@@ -65,7 +65,7 @@ class RenderingTask( GNRTask ):
         for resource in taskResources:
             resourceSize += os.stat(resource).st_size
 
-        GNRTask.__init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, environment,
+        GNRTask.__init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
                           ttl, subtaskTtl, resourceSize, estimatedMemory )
 
         self.fullTaskTimeout        = ttl

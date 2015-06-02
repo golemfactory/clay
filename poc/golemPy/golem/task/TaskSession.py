@@ -5,13 +5,13 @@ import logging
 import os
 
 from TaskConnState import TaskConnState
-from golem.Message import Message, MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure
+from golem.Message import MessageHello, MessageRandVal, MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure
 from golem.network.FileProducer import FileProducer
 from golem.network.DataProducer import DataProducer
 from golem.network.FileConsumer import FileConsumer
 from golem.network.DataConsumer import DataConsumer
-from golem.network.MultiFileProducer import MultiFileProducer
-from golem.network.MultiFileConsumer import MultiFileConsumer
+from golem.network.MultiFileProducer import EncryptMultiFileProducer
+from golem.network.MultiFileConsumer import DecryptMultiFileConsumer
 from golem.network.p2p.Session import NetSession
 from golem.task.TaskBase import resultTypes
 
@@ -29,11 +29,14 @@ class TaskSession(NetSession):
         self.taskComputer   = None
         self.taskId         = 0
 
+        self.msgsToSend = []
+
         self.lastResourceMsg = None
 
         self.taskResultOwnerAddr = None
         self.taskResultOwnerPort = None
         self.taskResultOwnerNodeId = None
+        self.taskResultOwnerKeyId = None
         self.taskResultOwnerEthAccount = None
 
         self.producer = None
@@ -59,7 +62,7 @@ class TaskSession(NetSession):
             return
         nodeId = self.taskServer.getClientId()
 
-        self._send( MessageReportComputedTask( taskResult.subtaskId, taskResult.resultType, nodeId, address, port, ethAccount, extraData ) )
+        self._send( MessageReportComputedTask( taskResult.subtaskId, taskResult.resultType, nodeId, address, port, self.taskServer.getKeyId(), ethAccount, extraData ) )
 
     ##########################
     def sendResultRejected( self, subtaskId ):
@@ -74,16 +77,16 @@ class TaskSession(NetSession):
         self._send(MessageTaskFailure(subtaskId, errMsg))
 
     ##########################
+    def sendHello(self):
+        self._send(MessageHello(clientKeyId = self.taskServer.getKeyId(), randVal = self.randVal), sendUnverified=True)
+
+    ##########################
     def interpret(self, msg):
-      #  print "Receiving from {}:{}: {}".format( self.address, self.port, msg )
+       # print "Receiving from {}:{}: {}".format( self.address, self.port, msg )
 
         self.taskServer.setLastMessage("<-", time.localtime(), msg, self.address, self.port)
 
         NetSession.interpret(self, msg)
-
-        #localtime   = time.localtime()
-        #timeString  = time.strftime("%H:%M:%S", localtime)
-        #print "{} at {}".format( msg.serialize(), timeString )
 
     ##########################
     def dropped(self):
@@ -97,6 +100,43 @@ class TaskSession(NetSession):
     def clean(self):
         if self.producer is not None:
             self.producer.clean()
+
+    ##########################
+    def encrypt(self, msg):
+        if self.taskServer:
+            return self.taskServer.encrypt(msg, self.clientKeyId)
+        logger.warning("Can't encrypt message - no taskServer")
+        return msg
+
+    ##########################
+    def decrypt(self, msg):
+        if not self.taskServer:
+            return msg
+        try:
+            msg =  self.taskServer.decrypt(msg)
+        except AssertionError:
+            logger.warning("Failed to decrypt message, maybe it's not encrypted?")
+#        except Exception as err:
+#            logger.error( "Failed to decrypt message {}".format( str(err) ) )
+#            raise E
+#            assert False
+
+        return msg
+
+
+    ##########################
+    def sign(self, msg):
+        if self.taskServer is None:
+            logger.error("Task Server is None, can't sign a message.")
+            return None
+
+        msg.sign(self.taskServer)
+        return msg
+
+    ##########################
+    def verify(self, msg):
+        verify = self.taskServer.verifySig(msg.sig, msg.getShortHash(), self.clientKeyId)
+        return verify
 
     ##########################
     def fileSent(self, file_):
@@ -130,6 +170,7 @@ class TaskSession(NetSession):
 
         if resultType == resultTypes['data']:
             try:
+                result = self.decrypt(result)
                 result = pickle.loads( result )
             except Exception, err:
                 logger.error( "Can't unpickle result data {}".format( str( err ) ) )
@@ -138,9 +179,9 @@ class TaskSession(NetSession):
         if subtaskId:
             self.taskManager.computedTaskReceived( subtaskId, result, resultType )
             if self.taskManager.verifySubtask( subtaskId ):
-                self.taskServer.acceptTask( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort, self.taskResultOwnerEthAccount )
+                self.taskServer.acceptTask( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort, self.taskResultOwnerKeyId, self.taskResultOwnerEthAccount )
             else:
-                self.taskServer.rejectResult( subtaskId, self.taskResultOwnerNodeId, self.taskResultOwnerAddr, self.taskResultOwnerPort )
+                self.taskServer.rejectResult( subtaskId, self.taskResultOwnerNodeId, self.taskResultOwnerAddr, self.taskResultOwnerPort, self.taskResultOwnerKeyId )
         else:
             logger.error("No taskId value in extraData for received data ")
         self.dropped()
@@ -185,6 +226,7 @@ class TaskSession(NetSession):
                 self.taskResultOwnerNodeId = msg.nodeId
                 self.taskResultOwnerAddr = msg.address
                 self.taskResultOwnerPort = msg.port
+                self.taskResultOwnerKeyId = msg.keyId
                 self.taskResultOwnerEthAccount = msg.ethAccount
 
                 if msg.resultType == resultTypes['data']:
@@ -278,9 +320,36 @@ class TaskSession(NetSession):
         self.__sendAcceptResourceFormat()
 
     ##########################
-    def _send(self, msg):
-        NetSession._send(self, msg, sendUnverified = True) #FIXME
-       # print "Task Session Sending to {}:{}: {}".format( self.address, self.port, msg )
+    def _reactToHello(self, msg):
+        if self.clientKeyId == 0:
+            self.clientKeyId = msg.clientKeyId
+            self.sendHello()
+
+        if not self.verify(msg):
+            logger.error( "Wrong signature for Hello msg" )
+            self.disconnect( TaskSession.DCRUnverified )
+            return
+
+        self._send( MessageRandVal( msg.randVal ), sendUnverified=True)
+
+    ##########################
+    def _reactToRandVal(self, msg):
+        if self.randVal == msg.randVal:
+            self.verified = True
+            for msg in self.msgsToSend:
+                self._send(msg)
+            self.msgsToSend = []
+        else:
+            self.disconnect(TaskSession.DCRUnverified)
+
+
+    ##########################
+    def _send(self, msg, sendUnverified=False):
+        if not self.verified and not sendUnverified:
+            self.msgsToSend.append(msg)
+            return
+        NetSession._send(self, msg, sendUnverified=sendUnverified)
+       #print "Task Session Sending to {}:{}: {}".format( self.address, self.port, msg )
         self.taskServer.setLastMessage("->", time.localtime(), msg, self.address, self.port)
 
     ##########################
@@ -312,12 +381,12 @@ class TaskSession(NetSession):
     def __sendDataResults(self, res):
         result = pickle.dumps(res.result)
         extraData = { 'subtaskId': res.subtaskId }
-        self.producer = DataProducer(result, self, extraData = extraData)
+        self.producer = DataProducer(self.encrypt(result), self, extraData = extraData)
 
     ##########################
     def __sendFilesResults(self, res):
         extraData = { 'subtaskId': res.subtaskId }
-        self.producer = MultiFileProducer(res.result, self, extraData = extraData)
+        self.producer = EncryptMultiFileProducer(res.result, self, extraData = extraData)
 
     ##########################
     def __receiveDataResult(self, msg):
@@ -330,7 +399,7 @@ class TaskSession(NetSession):
     def __receiveFilesResult(self, msg):
         extraData = { "subtaskId": msg.subtaskId, "resultType": msg.resultType }
         outputDir = self.taskServer.taskManager.dirManager.getTaskTemporaryDir(self.taskManager.getTaskId( msg.subtaskId ), create=False)
-        self.conn.dataConsumer = MultiFileConsumer(msg.extraData, outputDir, self, extraData)
+        self.conn.dataConsumer = DecryptMultiFileConsumer(msg.extraData, outputDir, self, extraData)
         self.conn.dataMode = True
         self.subtaskId = msg.subtaskId
 
@@ -350,13 +419,15 @@ class TaskSession(NetSession):
                                 MessageSubtaskResultRejected.Type: self._reactToSubtaskResultRejected,
                                 MessageTaskFailure.Type: self._reactToTaskFailure,
                                 MessageDeltaParts.Type: self._reactToDeltaParts,
-                                MessageResourceFormat.Type: self._reactToResourceFormat
+                                MessageResourceFormat.Type: self._reactToResourceFormat,
+                                MessageHello.Type: self._reactToHello,
+                                MessageRandVal.Type: self._reactToRandVal
                             })
 
 
-        self.canBeNotEncrypted.extend(self.interpretation.keys()) #FIXME
-        self.canBeUnsigned.extend(self.interpretation.keys()) #FIXME
-        self.canBeUnverified.extend(self.interpretation.keys()) #FIXME
+        self.canBeNotEncrypted.append(MessageHello.Type)
+        self.canBeUnsigned.append(MessageHello.Type)
+        self.canBeUnverified.extend([MessageHello.Type, MessageRandVal.Type])
 
 ##############################################################################
 

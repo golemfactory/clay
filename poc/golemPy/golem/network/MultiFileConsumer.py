@@ -27,7 +27,7 @@ class MultiFileConsumer:
     def dataReceived( self, data ):
         locData = data
         if self.fileSize == -1:
-            locData = self.__getFirstChunk( self.lastData + data )
+            locData = self._getFirstChunk( self.lastData + data )
 
         assert self.fh
 
@@ -37,14 +37,13 @@ class MultiFileConsumer:
             self.lastData = ''
         else:
             lastData = len( locData ) - (self.recvSize - self.fileSize)
-            print "lastData {}".format( lastData )
             self.fh.write( locData[:lastData] )
             self.lastData = locData[lastData:]
 
-        self.__printProgress()
+        self._printProgress()
 
         if self.recvSize >= self.fileSize:
-            self.__endReceivingFile()
+            self._endReceivingFile()
 
     def close(self):
         if self.fh is not None:
@@ -54,7 +53,7 @@ class MultiFileConsumer:
                 os.remove( self.fileList[-1])
 
     ###################
-    def __getFirstChunk( self, data ):
+    def _getFirstChunk( self, data ):
         self.lastPercent = 0
         ( self.fileSize, ) = struct.unpack("!L", data[ :LONG_STANDARD_SIZE ] )
         logger.info( "Receiving file {}, size {}".format( self.fileList[-1], self.fileSize ) )
@@ -64,7 +63,7 @@ class MultiFileConsumer:
         return  data[ LONG_STANDARD_SIZE: ]
 
     ###################
-    def __printProgress( self ):
+    def _printProgress( self ):
         prct = int( 100 * self.recvSize / float( self.fileSize ) )
         if prct > 100:
             prct = 100
@@ -73,7 +72,7 @@ class MultiFileConsumer:
             self.lastPercent = prct
 
     ###################
-    def __endReceivingFile( self ):
+    def _endReceivingFile( self ):
         self.fh.close()
         self.fh = None
         self.fileList.pop()
@@ -82,3 +81,53 @@ class MultiFileConsumer:
         if len( self.fileList ) == 0:
             self.session.conn.fileMode = False
             self.session.fullDataReceived( self.finalFileList, self.extraData )
+
+#########################################################
+class DecryptMultiFileConsumer(MultiFileConsumer):
+    ###################
+    def __init__( self, fileList, outputDir, session, extraData ):
+        MultiFileConsumer.__init__(self, fileList, outputDir, session, extraData)
+        self.chunkSize = 0
+        self.recvChunkSize = 0
+
+    ###################
+    def _endReceivingFile( self ):
+        self.chunkSize = 0
+        self.recvChunkSize = 0
+        MultiFileConsumer._endReceivingFile(self)
+
+    ###################
+    def dataReceived( self, data ):
+        locData = self.lastData + data
+        if self.fileSize == -1:
+            locData = self._getFirstChunk( locData )
+
+        assert self.fh
+
+        receiveNext = False
+        while not receiveNext:
+            if self.chunkSize == 0:
+                ( self.chunkSize, ) = struct.unpack("!L", locData[ :LONG_STANDARD_SIZE ] )
+                locData = locData[LONG_STANDARD_SIZE:]
+
+            self.recvChunkSize = len( locData )
+            if self.recvChunkSize >= self.chunkSize:
+                data = self.session.decrypt(locData[:self.chunkSize])
+                self.fh.write(data)
+                self.recvSize += len(data)
+                self.lastData = locData[self.chunkSize:]
+                self.recvChunkSize = 0
+                self.chunkSize = 0
+                locData = self.lastData
+
+                if len(self.lastData) <= LONG_STANDARD_SIZE:
+                    receiveNext = True
+            else:
+                self.lastData = locData
+                receiveNext = True
+
+            self._printProgress()
+
+            if self.recvSize >= self.fileSize:
+                self._endReceivingFile()
+                receiveNext = True

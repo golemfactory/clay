@@ -216,7 +216,7 @@ class Client:
         self.p2pservice.setResourceServer( self.resourceServer )
 
         logger.info( "Starting task server ..." )
-        self.taskServer = TaskServer( self.hostAddress, self.configDesc, self )
+        self.taskServer = TaskServer( self.hostAddress, self.configDesc, self.keysAuth, self )
 
         self.p2pservice.setTaskServer( self.taskServer )
 

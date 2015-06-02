@@ -86,7 +86,7 @@ class ResourceSession(NetSession):
             self.fileSize = -1
             self.recvSize = 0
             if self.confirmation:
-                self.__send( MessageHasResource( self.fileName ) )
+                self._send( MessageHasResource( self.fileName ) )
                 self.confirmation = False
                 if self.copies > 0:
                     self.resourceServer.addResourceToSend( self.fileName, self.copies)

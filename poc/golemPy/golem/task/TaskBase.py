@@ -3,8 +3,9 @@ import abc
 
 class TaskHeader:
     #######################
-    def __init__( self, clientId, taskId, taskOwnerAddress, taskOwnerPort, environment, ttl = 0.0, subtaskTimeout = 0.0, resourceSize = 0, estimatedMemory = 0, minVersion = 1.0 ):
+    def __init__( self, clientId, taskId, taskOwnerAddress, taskOwnerPort, taskOwnerKeyId, environment, ttl = 0.0, subtaskTimeout = 0.0, resourceSize = 0, estimatedMemory = 0, minVersion = 1.0 ):
         self.taskId = taskId
+        self.taskOwnerKeyId = taskOwnerKeyId
         self.taskOwnerAddress = taskOwnerAddress
         self.taskOwnerPort = taskOwnerPort
         self.lastChecking = time.time()
@@ -26,7 +27,7 @@ class TaskBuilder:
     def build( self ):
         return
 
-class ComputeTaskDef:
+class ComputeTaskDef(object):
     #######################
     def __init__( self ):
         self.taskId             = ""
@@ -36,6 +37,7 @@ class ComputeTaskDef:
         self.shortDescription   = ""
         self.returnAddress      = ""
         self.returnPort         = 0
+        self.keyId              = 0
         self.workingDirectory   = ""
         self.performance        = 0.0
         self.environment        = ""

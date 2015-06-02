@@ -34,6 +34,7 @@ class InfoTaskBuilder( GNRTaskBuilder ):
                             self.taskDefinition.taskId,
                             "",
                             0,
+                            "",
                             Environment.getId(),
                             self.taskDefinition.fullTaskTimeout,
                             self.taskDefinition.subtaskTimeout,
@@ -53,6 +54,7 @@ class InfoTask( GNRTask ):
                   taskId,
                   ownerAddress,
                   ownerPort,
+                  ownerKeyId,
                   environment,
                   ttl,
                   subtaskTtl,
@@ -63,7 +65,7 @@ class InfoTask( GNRTask ):
                   iterations ):
 
 
-        GNRTask.__init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, environment,
+        GNRTask.__init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
                             ttl, subtaskTtl, resourceSize, estimatedMemory )
 
         self.totalTasks = iterations

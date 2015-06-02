@@ -1,4 +1,5 @@
 import os
+from random import random
 
 from Crypto.PublicKey import RSA
 from simplehash import SimpleHash
@@ -140,7 +141,7 @@ class EllipticalKeysAuth( KeysAuth ):
     def _generateKeys( self, uuid ):
         privateKey = self._getPrivateKeyLoc( uuid )
         publicKey = self._getPublicKeyLoc( uuid )
-        key = mk_privkey( str( SimpleAuth.generateUUID() ) )
+        key = mk_privkey( str( random() ) )
         pubKey = privtopub( key )
         with open( privateKey, 'wb' ) as f:
             f.write( key )
@@ -175,8 +176,12 @@ class EllipticalKeysAuth( KeysAuth ):
 if __name__ == "__main__":
   #  auth = RSAKeysAuth()
     auth = EllipticalKeysAuth()
+    print auth.getKeyId()
+    print len(auth.getKeyId())
+    print len(auth.getKeyId().decode('hex'))
+    print len(auth.getPublicKey())
   #  print len(auth.getPublicKey())
   #  print len(auth._privateKey)
-    print auth.cntKeyId(auth.getPublicKey())
+    #print auth.cntKeyId()
 
 

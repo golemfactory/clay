@@ -48,11 +48,11 @@ class FrameRenderingTaskBuiler( RenderingTaskBuilder ):
 ##############################################
 class FrameRenderingTask( RenderingTask ):
     #######################
-    def __init__( self, clientId, taskId, ownerAddress, ownerPort, environment, ttl,
+    def __init__( self, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                   totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, rootPath,
                   estimatedMemory, useFrames, frames ):
-        RenderingTask.__init__( self, clientId, taskId, ownerAddress, ownerPort, environment, ttl,
+        RenderingTask.__init__( self, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                   totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, rootPath,
                   estimatedMemory )

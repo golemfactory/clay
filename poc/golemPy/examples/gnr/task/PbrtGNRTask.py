@@ -187,11 +187,12 @@ class PbrtRenderTask( RenderingTask ):
                   outputFormat,
                   rootPath,
                   returnAddress = "",
-                  returnPort = 0
+                  returnPort = 0,
+                  keyId = ""
                   ):
 
 
-        RenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort,
+        RenderingTask.__init__( self, clientId, taskId, returnAddress, returnPort, keyId,
                                 PBRTEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                                 mainProgramFile, taskResources, mainSceneDir, sceneFile,
                                 totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
