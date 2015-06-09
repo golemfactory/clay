@@ -248,7 +248,7 @@ class FrameRenderingTask( RenderingTask ):
         if not self._useOuterTaskCollector():
             collector = RenderingTaskCollector( paste = True, width = self.resX, height = self.resY )
             for file in self.collectedFileNames.values():
-                collector.acceptTask( file )
+                collector.addImgFile( file )
             collector.finalize().save( outputFileName, self.outputFormat )
         else:
             self._putCollectedFilesTogether ( os.path.join( tmpDir, outputFileName ), self.collectedFileNames.values(), "paste" )
@@ -261,7 +261,7 @@ class FrameRenderingTask( RenderingTask ):
         if not self._useOuterTaskCollector():
             collector = RenderingTaskCollector( paste = True, width = self.resX, height = self.resY )
             for file in collected.values():
-                collector.acceptTask( file )
+                collector.addImgFile( file )
             collector.finalize().save( outputFileName, self.outputFormat )
         else:
             self._putCollectedFilesTogether( outputFileName, collected.values(), "paste" )

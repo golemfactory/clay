@@ -234,8 +234,10 @@ class RenderingTask( GNRTask ):
     def _getWorkingDirectory( self ):
         commonPathPrefix = os.path.commonprefix( self.taskResources )
         commonPathPrefix = os.path.dirname( commonPathPrefix )
-
-        workingDirectory    = os.path.relpath( self.mainProgramFile, commonPathPrefix )
+        print "common path prefix {}".format(commonPathPrefix)
+        print "main program file {}".format(self.mainProgramFile)
+        workingDirectory    = os.path.relpath( commonPathPrefix, self.mainProgramFile )
+        print "workingDirctory {}".format(workingDirectory)
         workingDirectory    = os.path.dirname( workingDirectory )
         logger.debug("Working directory {}".format( workingDirectory ) )
         return workingDirectory

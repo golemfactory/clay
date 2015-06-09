@@ -272,7 +272,7 @@ class TaskServer:
         self.taskManager.taskComputationFailure(subtaskId, err)
 
     ###########################
-    def acceptTask(self, subtaskId, address, port, keyId, ethAccount ):
+    def acceptResult(self, subtaskId, address, port, keyId, ethAccount ):
         priceMod = self.taskManager.getPriceMod( subtaskId )
         price = self.client.payForTask( priceMod )
         self.taskManager.setPaymentInfoForSubtask( subtaskId, price, address, port, keyId, ethAccount )

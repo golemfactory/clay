@@ -85,7 +85,7 @@ protected:
 		std::list<FIBITMAP *> chunks;
 
 public:
-	bool acceptTask(const char* pathName, int flag = 0)  {
+	bool addImgFile(const char* pathName, int flag = 0)  {
 		FIBITMAP *img = GenericLoader(pathName, flag);
 		if (img == NULL) 
 			return false;
@@ -264,7 +264,7 @@ main(int argc, char *argv[]) {
 
 
 	for (int i = 3; i < argc; i++) {
-		if (! taskCollector->acceptTask(argv[i]) ) {
+		if (! taskCollector->addImgFile(argv[i]) ) {
 			printf("Can't add file: %s\n", argv[i]);
 		}
 	}
@@ -274,14 +274,14 @@ main(int argc, char *argv[]) {
 	for (int i = 0; i < 10; i++) {
 		sprintf_s(text, 14, "temp0000%d.exr", i);
 		printf("%s\n", text);
-		if (! pbrtTC.acceptTask(text)) {
+		if (! pbrtTC.addImgFile(text)) {
 			printf("appendTask error %s\n", text);
 		}
 	}
 	for (int i = 10; i < 60; i++) {
 		sprintf_s(text, 14, "temp000%d.exr", i);
 		printf("%s\n", text);
-		if (! pbrtTC.acceptTask(text)) {
+		if (! pbrtTC.addImgFile(text)) {
 			printf("appendTask error %s\n", text);
 		}
 	}

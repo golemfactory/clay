@@ -164,7 +164,7 @@ class RenderingTaskCollector:
         self.height = height
 
     ############################
-    def acceptTask( self, exrFile ):
+    def addImgFile( self, exrFile ):
         rgbf = open_exr_as_rgbf_images( exrFile )
         d, l = get_single_rgbf_extrema( rgbf )
 
@@ -181,7 +181,7 @@ class RenderingTaskCollector:
         self.acceptedExrFiles.append( exrFile )
 
     ############################
-    def acceptAlpha( self, exrFile ):
+    def addAlphaFile( self, exrFile ):
         rgbf = open_exr_as_rgbf_images( exrFile )
         d, l = get_single_rgbf_extrema( rgbf )
 
@@ -264,7 +264,7 @@ if __name__ == "__main__":
 
         print "Accepting incoming tasks"
         for i, f in enumerate( files ):
-            ptc.acceptTask( f )
+            ptc.addImgFile( f )
             print_progress( i, len( files ) )
 
         print ""

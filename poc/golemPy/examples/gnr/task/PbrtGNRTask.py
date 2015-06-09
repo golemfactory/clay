@@ -329,7 +329,7 @@ class PbrtRenderTask( RenderingTask ):
             if self.outputFormat != "EXR":
                 collector = RenderingTaskCollector()
                 for file in self.collectedFileNames:
-                    collector.acceptTask( file )
+                    collector.addImgFile( file )
                 collector.finalize().save( outputFileName, self.outputFormat )
                 self.previewFilePath = outputFileName
             else:

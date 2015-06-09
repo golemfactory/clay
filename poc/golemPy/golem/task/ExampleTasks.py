@@ -314,7 +314,7 @@ class PbrtRenderTask( Task ):
                 fh.write( decompress( tr[ 1 ] ) )
                 fh.close()
         
-                self.collector.acceptTask( os.path.join( tmpDir, tr[ 0 ] ) ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
+                self.collector.addImgFile( os.path.join( tmpDir, tr[ 0 ] ) ) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
                 self.numTasksReceived += 1
                 
 

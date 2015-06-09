@@ -367,9 +367,9 @@ class VRayTask( FrameRenderingTask ):
 
         if not self._useOuterTaskCollector():
             for file in self.collectedFileNames.values():
-                collector.acceptTask( file )
+                collector.addImgFile( file )
             for file in self.collectedAlphaFiles.values():
-                collector.acceptAlpha( file )
+                collector.acceptAlphaFile( file )
             collector.finalize().save( outputFileName, self.outputFormat )
 #            if not self.useFrames:
 #                self.previewFilePath = outputFileName
@@ -438,9 +438,9 @@ class VRayTask( FrameRenderingTask ):
         else:
             collector = RenderingTaskCollector()
             for part in self.framesParts[ frameNum ].values():
-                collector.acceptTask( part )
+                collector.addImgFile( part )
             for part in self.framesAlphaParts[ frameNum ].values():
-                collector.acceptAlpha( part )
+                collector.addAlphaFile( part )
             collector.finalize().save( outputFileName, self.outputFormat )
         self.collectedFileNames[ numStart ] = outputFileName
         self._updateFramePreview( outputFileName, frameNum, final=True )

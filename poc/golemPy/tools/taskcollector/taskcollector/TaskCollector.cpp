@@ -93,7 +93,7 @@ protected:
 
 public:
 	
-	bool acceptTask(const char* pathName, int flag = 0)  {
+	bool addImgFile(const char* pathName, int flag = 0)  {
 		FIBITMAP *img = GenericLoader(pathName, flag);
 		if (img == NULL) 
 			return false;
@@ -101,7 +101,7 @@ public:
 		return true;
 	};
 
-	bool acceptAlpha( const char* pathName, int flag = 0) {
+	bool addAlphaFile( const char* pathName, int flag = 0) {
 		FIBITMAP *img = GenericLoader(pathName, flag);
 		if (img == NULL)
 			return false;
@@ -320,11 +320,11 @@ main(int argc, char *argv[]) {
 
 	for (int i = 3; i < argc; i++) {
 		if (strstr(argv[i], "Alpha") != NULL) {
-			if (! taskCollector->acceptAlpha(argv[i]) ) {
+			if (! taskCollector->addAlphaFile(argv[i]) ) {
 				printf ("Can't add file: %s\n", argv[i]);
 			}
 		} else {
-			if (! taskCollector->acceptTask(argv[i]) ) {
+			if (! taskCollector->addImgFile(argv[i]) ) {
 				printf("Can't add file: %s\n", argv[i]);
 			}
 		}

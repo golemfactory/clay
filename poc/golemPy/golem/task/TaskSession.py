@@ -179,7 +179,7 @@ class TaskSession(NetSession):
         if subtaskId:
             self.taskManager.computedTaskReceived( subtaskId, result, resultType )
             if self.taskManager.verifySubtask( subtaskId ):
-                self.taskServer.acceptTask( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort, self.taskResultOwnerKeyId, self.taskResultOwnerEthAccount )
+                self.taskServer.acceptResult( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort, self.taskResultOwnerKeyId, self.taskResultOwnerEthAccount )
             else:
                 self.taskServer.rejectResult( subtaskId, self.taskResultOwnerNodeId, self.taskResultOwnerAddr, self.taskResultOwnerPort, self.taskResultOwnerKeyId )
         else:
