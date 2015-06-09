@@ -116,7 +116,7 @@ class TaskComputer:
 
             print taskThread.error
             if taskThread.error:
-                self.taskServer.sendTaskFailed( subtaskId, self.assignedSubTasks[subtaskId].taskId, taskThread.errorMsg, self.assignedSubTasks[ subtaskId ].returnAddress, self.assignedSubTasks[ subtaskId ].returnPort, self.clientUid )
+                self.taskServer.sendTaskFailed( subtaskId, self.assignedSubTasks[subtaskId].taskId, taskThread.errorMsg, self.assignedSubTasks[ subtaskId ].returnAddress, self.assignedSubTasks[ subtaskId ].returnPort, self.assignedSubTasks[subtaskId].keyId, self.clientUid )
             elif taskThread.result and 'data' in taskThread.result and 'resultType' in taskThread.result:
                 logger.info ( "Task {} computed".format( subtaskId ) )
                 subtask = self.assignedSubTasks.get(subtaskId)
