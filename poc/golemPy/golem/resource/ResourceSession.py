@@ -3,18 +3,18 @@ import time
 import os
 import struct
 
-from golem.resource.ResourceConnState import ResourceConnState
 from golem.Message import MessageHello, MessageRandVal, MessageHasResource, MessageWantResource, MessagePushResource, MessageDisconnect,\
     MessagePullResource, MessagePullAnswer, MessageSendResource
 from golem.network.p2p.Session import NetSession
 from golem.network.FileProducer import EncryptFileProducer
 from golem.network.FileConsumer import DecryptFileConsumer
+from golem.network.NetAndFilesConnState import NetAndFilesConnState
 
 logger = logging.getLogger(__name__)
 
 class ResourceSession(NetSession):
 
-    ConnectionStateType = ResourceConnState
+    ConnectionStateType = NetAndFilesConnState
 
     ##########################
     def __init__( self, conn ):

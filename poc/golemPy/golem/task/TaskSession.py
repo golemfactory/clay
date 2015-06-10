@@ -4,14 +4,14 @@ import struct
 import logging
 import os
 
-from TaskConnState import TaskConnState
 from golem.Message import MessageHello, MessageRandVal, MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure
 from golem.network.FileProducer import EncryptFileProducer
-from golem.network.DataProducer import DataProducer
 from golem.network.FileConsumer import DecryptFileConsumer
+from golem.network.DataProducer import DataProducer
 from golem.network.DataConsumer import DataConsumer
 from golem.network.MultiFileProducer import EncryptMultiFileProducer
 from golem.network.MultiFileConsumer import DecryptMultiFileConsumer
+from golem.network.NetAndFilesConnState import NetAndFilesConnState
 from golem.network.p2p.Session import NetSession
 from golem.task.TaskBase import resultTypes
 from golem.resource.Resource import decompressDir
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class TaskSession(NetSession):
 
-    ConnectionStateType = TaskConnState
+    ConnectionStateType = NetAndFilesConnState
 
     ##########################
     def __init__(self, conn):

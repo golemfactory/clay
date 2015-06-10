@@ -573,7 +573,7 @@ class WaitingTaskFailure:
 ##########################################################
 
 from twisted.internet.protocol import Factory
-from TaskConnState import TaskConnState
+from golem.network.NetAndFilesConnState import NetAndFilesConnState
 from TaskSession import TaskSessionFactory
 
 class TaskServerFactory(Factory):
@@ -584,6 +584,6 @@ class TaskServerFactory(Factory):
     #############################
     def buildProtocol(self, addr):
         logger.info("Protocol build for {}".format(addr))
-        protocol = TaskConnState(self.server)
+        protocol = NetAndFilesConnState(self.server)
         protocol.setSessionFactory(TaskSessionFactory())
         return protocol

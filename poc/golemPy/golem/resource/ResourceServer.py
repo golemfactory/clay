@@ -5,7 +5,7 @@ import time
 
 from golem.network.transport.Tcp import Network
 from golem.network.GNRServer import GNRServer
-from golem.resource.ResourceConnState import ResourceConnState
+from golem.network.NetAndFilesConnState import NetAndFilesConnState
 from golem.resource.DirManager import DirManager
 from golem.resource.ResourcesManager import DistributedResourceManager
 from golem.resource.ResourceSession import ResourceSession
@@ -360,6 +360,6 @@ class ResourceServerFactory( Factory ):
 
     #############################
     def buildProtocol( self, addr ):
-        protocol = ResourceConnState( self.server )
+        protocol = NetAndFilesConnState( self.server )
         protocol.setSessionFactory( ResourceSessionFactory() )
         return protocol

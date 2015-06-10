@@ -90,8 +90,8 @@ class Session(SessionInterface):
             if self.lastDisconnectTime:
                 self.dropped()
             else:
-                self._sendDisconnect(reason)
                 self.lastDisconnectTime = time.time()
+                self._sendDisconnect(reason)
 
     ##########################
     def _sendDisconnect(self, reason):
