@@ -14,6 +14,7 @@ from golem.network.MultiFileProducer import EncryptMultiFileProducer
 from golem.network.MultiFileConsumer import DecryptMultiFileConsumer
 from golem.network.p2p.Session import NetSession
 from golem.task.TaskBase import resultTypes
+from golem.resource.Resource import decompressDir
 
 logger = logging.getLogger(__name__)
 
@@ -153,8 +154,12 @@ class TaskSession(NetSession):
 
     ##########################
     def fullFileReceived(self, extraData):
-        if 'taskId' in extraData:
-            self.taskComputer.resourceGiven( extraData['taskId'] )
+        fileSize = extraData.get('fileSize')
+        if fileSize > 0:
+            decompressDir(extraData.get('outputDir'), extraData.get('tmpFile'))
+        taskId = extraData.get('taskId')
+        if taskId:
+            self.taskComputer.resourceGiven( taskId )
         else:
             logger.error( "No taskId in extraData for received File")
         self.producer = None

@@ -48,6 +48,9 @@ class FileProducer:
     def clean(self):
         if self.fh is not None:
             self.fh.close()
+            self.fh = None
+
+    close = clean
 
     ###################
     def _prepareInitData(self):
@@ -74,3 +77,5 @@ class EncryptFileProducer(FileProducer):
         if data:
             data = self.session.encrypt(data)
             self.data = struct.pack("!L", len(data)) + data
+        else:
+            self.data = None

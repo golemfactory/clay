@@ -2,7 +2,6 @@ import struct
 import os
 
 from golem.core.variables import LONG_STANDARD_SIZE
-from golem.resource.Resource import decompressDir
 
 class FileConsumer:
     ###################
@@ -65,8 +64,9 @@ class FileConsumer:
         self.session.conn.fileMode = False
         self.fh.close()
         self.fh = None
-        if self.fileSize > 0:
-            decompressDir( self.outputDir, self.tmpFile )
+        self.extraData['fileSize'] = self.fileSize
+        self.extraData['outputDir'] = self.outputDir
+        self.extraData['tmpFile'] = self.tmpFile
         self.session.fullFileReceived( self.extraData )
         self.fileSize = -1
         self.recvSize = 0
