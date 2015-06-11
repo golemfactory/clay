@@ -9,21 +9,21 @@ logger = logging.getLogger(__name__)
 
 class TaskManagerEventListener:
     #######################
-    def __init__( self ):
+    def __init__(self):
         pass
 
     #######################
-    def taskStatusUpdated( self, taskId ):
+    def taskStatusUpdated(self, taskId):
         pass
 
     #######################
-    def subtaskStatusUpdated( self, subtaskId ):
+    def subtaskStatusUpdated(self, subtaskId):
         pass
 
 
 class TaskManager:
     #######################
-    def __init__( self, clientUid, listenAddress = "", listenPort = 0, keyId = "", rootPath = "res", useDistributedResources=True ):
+    def __init__(self, clientUid, listenAddress = "", listenPort = 0, keyId = "", rootPath = "res", useDistributedResources=True):
         self.clientUid      = clientUid
 
         self.tasks          = {}
@@ -34,38 +34,38 @@ class TaskManager:
         self.keyId          = keyId
 
         self.rootPath = rootPath
-        self.dirManager     = DirManager( self.getTaskManagerRoot(), self.clientUid )
+        self.dirManager     = DirManager(self.getTaskManagerRoot(), self.clientUid)
 
         self.subTask2TaskMapping = {}
 
         self.listeners      = []
-        self.activeStatus = [ TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting ]
+        self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
 
         self.useDistributedResources = useDistributedResources
 
     #######################
-    def getTaskManagerRoot( self ):
+    def getTaskManagerRoot(self):
         return self.rootPath
 
     #######################
-    def registerListener( self, listener ):
-        assert isinstance( listener, TaskManagerEventListener )
+    def registerListener(self, listener):
+        assert isinstance(listener, TaskManagerEventListener)
 
         if listener in self.listeners:
-            logger.error( "listener {} already registered ".format( listener ) )
+            logger.error("listener {} already registered ".format(listener))
             return
 
-        self.listeners.append( listener )
+        self.listeners.append(listener)
 
     #######################
-    def unregisterListener( self, listener ):
-        for i in range( len( self.listeners ) ):
-            if self.listeners[ i ] is listener:
-                del self.listeners[ i ]
+    def unregisterListener(self, listener):
+        for i in range(len(self.listeners)):
+            if self.listeners[i] is listener:
+                del self.listeners[i]
                 return
 
     #######################
-    def addNewTask( self, task ):
+    def addNewTask(self, task):
         assert task.header.taskId not in self.tasks
 
         task.header.taskOwnerAddress = self.listenAddress
@@ -73,10 +73,10 @@ class TaskManager:
         task.header.taskOwnerKeyId = self.keyId
 
         task.initialize()
-        self.tasks[ task.header.taskId ] = task
+        self.tasks[task.header.taskId] = task
 
-        self.dirManager.clearTemporary( task.header.taskId )
-        self.dirManager.getTaskTemporaryDir( task.header.taskId, create = True)
+        self.dirManager.clearTemporary(task.header.taskId)
+        self.dirManager.getTaskTemporaryDir(task.header.taskId, create = True)
 
         ts              = TaskState()
         if self.useDistributedResources:
@@ -87,170 +87,156 @@ class TaskManager:
             ts.status       = TaskStatus.waiting
         ts.timeStarted  = time.time()
 
-        self.tasksStates[ task.header.taskId ] = ts
+        self.tasksStates[task.header.taskId] = ts
 
-        self.__noticeTaskUpdated( task.header.taskId )
+        self.__noticeTaskUpdated(task.header.taskId)
 
     #######################
-    def resourcesSend( self, taskId ):
-        self.tasksStates[ taskId ].status = TaskStatus.waiting
+    def resourcesSend(self, taskId):
+        self.tasksStates[taskId].status = TaskStatus.waiting
         self.tasks[taskId].taskStatus = TaskStatus.waiting
-        self.__noticeTaskUpdated( taskId )
-        logger.info( "Resources for task {} send".format( taskId ) )
+        self.__noticeTaskUpdated(taskId)
+        logger.info("Resources for task {} send".format(taskId))
 
     #######################
-    def getNextSubTask( self, clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores = 0  ):
+    def getNextSubTask(self, clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores = 0 ):
         if taskId in self.tasks:
-            task = self.tasks[ taskId ]
-            ts = self.tasksStates[ taskId ]
+            task = self.tasks[taskId]
+            ts = self.tasksStates[taskId]
             th = task.header
             if self.__hasSubtasks(ts, task, maxResourceSize, maxMemorySize):
-                ctd  = task.queryExtraData( estimatedPerformance, numCores, clientId )
+                ctd  = task.queryExtraData(estimatedPerformance, numCores, clientId)
                 if ctd is None or ctd.subtaskId is None:
                     return None, False
                 ctd.keyId = th.taskOwnerKeyId
-                self.subTask2TaskMapping[ ctd.subtaskId ] = taskId
-                self.__addSubtaskToTasksStates( clientId, ctd )
-                self.__noticeTaskUpdated( taskId )
+                self.subTask2TaskMapping[ctd.subtaskId] = taskId
+                self.__addSubtaskToTasksStates(clientId, ctd)
+                self.__noticeTaskUpdated(taskId)
                 return ctd, False
-            logger.info( "Cannot get next task for estimated performence {}".format( estimatedPerformance ) )
+            logger.info("Cannot get next task for estimated performence {}".format(estimatedPerformance))
             return None, False
         else:
-            logger.info( "Cannot find task {} in my tasks".format( taskId ) )
+            logger.info("Cannot find task {} in my tasks".format(taskId))
             return None, True
 
     #######################
-    def getTasksHeaders( self ):
+    def getTasksHeaders(self):
         ret = []
         for t in self.tasks.values():
             if t.needsComputation() and t.taskStatus in self.activeStatus:
-                ret.append( t.header )
+                ret.append(t.header)
 
         return ret
 
     #######################
-    def getPriceMod( self, subtaskId ):
+    def getPriceMod(self, subtaskId):
         if subtaskId in self.subTask2TaskMapping:
-            taskId = self.subTask2TaskMapping[ subtaskId ]
-            return self.tasks[ taskId ].getPriceMod( subtaskId )
+            taskId = self.subTask2TaskMapping[subtaskId]
+            return self.tasks[taskId].getPriceMod(subtaskId)
         else:
-            logger.error( "This is not my subtask {}".format( subtaskId ) )
+            logger.error("This is not my subtask {}".format(subtaskId))
             return 0
 
     #######################
-    def getTrustMod(self, subtaskId ):
+    def getTrustMod(self, subtaskId):
         if subtaskId in self.subTask2TaskMapping:
-            taskId = self.subTask2TaskMapping[ subtaskId ]
-            return self.tasks[ taskId ].getTrustMod( subtaskId )
+            taskId = self.subTask2TaskMapping[subtaskId]
+            return self.tasks[taskId].getTrustMod(subtaskId)
         else:
-            logger.error( "This is not my subtask {}".format( subtaskId ) )
+            logger.error("This is not my subtask {}".format(subtaskId))
             return 0
 
     #######################
-    def verifySubtask( self, subtaskId ):
+    def verifySubtask(self, subtaskId):
         if subtaskId in self.subTask2TaskMapping:
-            taskId = self.subTask2TaskMapping[ subtaskId ]
-            return self.tasks[ taskId ].verifySubtask( subtaskId )
+            taskId = self.subTask2TaskMapping[subtaskId]
+            return self.tasks[taskId].verifySubtask(subtaskId)
         else:
             return False
 
     #######################
-    def setPaymentInfoForSubtask(self, subtaskId, price, address, port, keyId, ethAccount):
+    def getNodeIdForSubtask(self, subtaskId):
         if subtaskId in self.subTask2TaskMapping:
-            taskId = self.subTask2TaskMapping[ subtaskId ]
-            self.tasksStates[ taskId ].subtaskStates[ subtaskId ].value = price
-            self.tasksStates[ taskId ].subtaskStates[ subtaskId ].computer.ethAccount = ethAccount
-            self.tasksStates[ taskId ].subtaskStates[ subtaskId ].computer.ipAddress = address
-            self.tasksStates[ taskId ].subtaskStates[ subtaskId ].computer.port = port
-            self.tasksStates[ taskId ].subtaskStates[ subtaskId ].computer.keyId = keyId
-
-        else:
-            logger.error("Not my subtask {}".format( subtaskId ))
-
-
-
-    #######################
-    def getNodeIdForSubtask(self, subtaskId ):
-        if subtaskId in self.subTask2TaskMapping:
-            subtaskState = self.tasksStates[ self.subTask2TaskMapping[ subtaskId ] ].subtaskStates[ subtaskId ]
+            subtaskState = self.tasksStates[self.subTask2TaskMapping[subtaskId]].subtaskStates[subtaskId]
             return subtaskState.computer.nodeId
         else:
             return None
 
     #######################
-    def computedTaskReceived( self, subtaskId, result, resultType ):
+    def computedTaskReceived(self, subtaskId, result, resultType):
         if subtaskId in self.subTask2TaskMapping:
-            taskId = self.subTask2TaskMapping[ subtaskId ]
+            taskId = self.subTask2TaskMapping[subtaskId]
 
-            subtaskStatus = self.tasksStates[ taskId ].subtaskStates[ subtaskId ].subtaskStatus
+            subtaskStatus = self.tasksStates[taskId].subtaskStates[subtaskId].subtaskStatus
             if  subtaskStatus != SubtaskStatus.starting:
-                logger.warning("Result for subtask {} when subtask state is {}".format( subtaskId, subtaskStatus ))
-                self.__noticeTaskUpdated( taskId )
+                logger.warning("Result for subtask {} when subtask state is {}".format(subtaskId, subtaskStatus))
+                self.__noticeTaskUpdated(taskId)
                 return False
 
-            self.tasks[ taskId ].computationFinished( subtaskId, result, self.dirManager, resultType )
-            ss = self.tasksStates[ taskId ].subtaskStates[ subtaskId ]
+            self.tasks[taskId].computationFinished(subtaskId, result, self.dirManager, resultType)
+            ss = self.tasksStates[taskId].subtaskStates[subtaskId]
             ss.subtaskProgress  = 1.0
             ss.subtaskRemTime   = 0.0
             ss.subtaskStatus    = SubtaskStatus.finished
 
-            if not self.tasks [ taskId ].verifySubtask( subtaskId ):
-                logger.debug( "Subtask {} not accepted\n".format( subtaskId ) )
+            if not self.tasks [taskId].verifySubtask(subtaskId):
+                logger.debug("Subtask {} not accepted\n".format(subtaskId))
                 ss.subtaskStatus = SubtaskStatus.failure
-                self.__noticeTaskUpdated( taskId )
+                self.__noticeTaskUpdated(taskId)
                 return False
 
-            if self.tasksStates[ taskId ].status in self.activeStatus:
-                if not self.tasks[ taskId ].finishedComputation():
-                    self.tasksStates[ taskId ].status = TaskStatus.computing
+            if self.tasksStates[taskId].status in self.activeStatus:
+                if not self.tasks[taskId].finishedComputation():
+                    self.tasksStates[taskId].status = TaskStatus.computing
                 else:
-                    if self.tasks[ taskId ].verifyTask():
-                        logger.debug( "Task {} accepted".format( taskId ) )
-                        self.tasksStates[ taskId ].status = TaskStatus.finished
+                    if self.tasks[taskId].verifyTask():
+                        logger.debug("Task {} accepted".format(taskId))
+                        self.tasksStates[taskId].status = TaskStatus.finished
                     else:
-                        logger.debug( "Task {} not accepted".format( taskId ) )
-            self.__noticeTaskUpdated( taskId )
+                        logger.debug("Task {} not accepted".format(taskId))
+                    self.__noticeTaskFinished(taskId)
+            self.__noticeTaskUpdated(taskId)
 
             return True
         else:
-            logger.error( "It is not my task id {}".format( subtaskId ) )
+            logger.error("It is not my task id {}".format(subtaskId))
             return False
 
     #######################
     def taskComputationFailure(self, subtaskId, err):
         if subtaskId in self.subTask2TaskMapping:
-            taskId = self.subTask2TaskMapping[ subtaskId ]
-            subtaskStatus = self.tasksStates[ taskId ].subtaskStates[ subtaskId ].subtaskStatus
+            taskId = self.subTask2TaskMapping[subtaskId]
+            subtaskStatus = self.tasksStates[taskId].subtaskStates[subtaskId].subtaskStatus
             if  subtaskStatus != SubtaskStatus.starting:
-                logger.warning("Result for subtask {} when subtask state is {}".format( subtaskId, subtaskStatus ))
-                self.__noticeTaskUpdated( taskId )
+                logger.warning("Result for subtask {} when subtask state is {}".format(subtaskId, subtaskStatus))
+                self.__noticeTaskUpdated(taskId)
                 return False
 
-            self.tasks[ taskId ].computationFailed( subtaskId )
-            ss = self.tasksStates[ taskId ].subtaskStates[ subtaskId ]
+            self.tasks[taskId].computationFailed(subtaskId)
+            ss = self.tasksStates[taskId].subtaskStates[subtaskId]
             ss.subtaskProgress = 1.0
             ss.subtaskRemTime = 0.0
             ss.subtaskStatus = SubtaskStatus.failure
 
-            self.__noticeTaskUpdated( taskId )
+            self.__noticeTaskUpdated(taskId)
             return True
         else:
-            logger.error( "It is not my task id {}".format( subtaskId ) )
+            logger.error("It is not my task id {}".format(subtaskId))
             return False
 
     #######################
-    def removeOldTasks( self ):
+    def removeOldTasks(self):
         nodesWithTimeouts = []
         for t in self.tasks.values():
             th = t.header
             if self.tasksStates[th.taskId].status not in self.activeStatus:
                 continue
             currTime = time.time()
-            th.ttl = th.ttl - ( currTime - th.lastChecking )
+            th.ttl = th.ttl - (currTime - th.lastChecking)
             th.lastChecking = currTime
             if th.ttl <= 0:
-                logger.info( "Task {} dies".format( th.taskId ) )
-                del self.tasks[ th.taskId ]
+                logger.info("Task {} dies".format(th.taskId))
+                del self.tasks[th.taskId]
                 continue
             ts = self.tasksStates[th.taskId]
             for s in ts.subtaskStates.values():
@@ -258,162 +244,155 @@ class TaskManager:
                     s.ttl = s.ttl - (currTime - s.lastChecking)
                     s.lastChecking = currTime
                     if s.ttl <= 0:
-                        logger.info( "Subtask {} dies".format(  s.subtaskId ) )
+                        logger.info("Subtask {} dies".format( s.subtaskId))
                         s.subtaskStatus        = SubtaskStatus.failure
                         nodesWithTimeouts.append(s.computer.nodeId)
-                        t.computationFailed( s.subtaskId )
-                        self.__noticeTaskUpdated( th.taskId )
+                        t.computationFailed(s.subtaskId)
+                        self.__noticeTaskUpdated(th.taskId)
         return nodesWithTimeouts
 
 
 
     #######################
-    def getProgresses( self ):
+    def getProgresses(self):
         tasksProgresses = {}
 
         for t in self.tasks.values():
             if t.getProgress() < 1.0:
-                ltss = LocalTaskStateSnapshot( t.header.taskId, t.getTotalTasks(), t.getTotalChunks(), t.getActiveTasks(), t.getActiveChunks(), t.getChunksLeft(), t.getProgress(), t.shortExtraDataRepr( 2200.0 ) )
-                tasksProgresses[ t.header.taskId ] = ltss
+                ltss = LocalTaskStateSnapshot(t.header.taskId, t.getTotalTasks(), t.getTotalChunks(), t.getActiveTasks(), t.getActiveChunks(), t.getChunksLeft(), t.getProgress(), t.shortExtraDataRepr(2200.0))
+                tasksProgresses[t.header.taskId] = ltss
 
         return tasksProgresses
 
     #######################
-    def prepareResource( self, taskId, resourceHeader ):
+    def prepareResource(self, taskId, resourceHeader):
         if taskId in self.tasks:
-            task = self.tasks[ taskId ]
-            return task.prepareResourceDelta( taskId, resourceHeader )
+            task = self.tasks[taskId]
+            return task.prepareResourceDelta(taskId, resourceHeader)
 
     #######################
-    def getResourcePartsList( self, taskId, resourceHeader ):
+    def getResourcePartsList(self, taskId, resourceHeader):
         if taskId in self.tasks:
-            task = self.tasks[ taskId ]
-            return task.getResourcePartsList( taskId, resourceHeader )
+            task = self.tasks[taskId]
+            return task.getResourcePartsList(taskId, resourceHeader)
 
     #######################
-    def acceptResultsDelay( self, taskId ):
+    def acceptResultsDelay(self, taskId):
         if taskId in self.tasks:
-            return self.tasks[ taskId ].acceptResultsDelay()
+            return self.tasks[taskId].acceptResultsDelay()
         else:
             return -1.0
 
     #######################
-    def restartTask( self, taskId ):
+    def restartTask(self, taskId):
         if taskId in self.tasks:
             logger.info("restarting task")
-            self.dirManager.clearTemporary( taskId )
+            self.dirManager.clearTemporary(taskId)
 
-            self.tasks[ taskId ].restart()
-            self.tasks[ taskId ].taskStatus = TaskStatus.waiting
-            self.tasksStates[ taskId ].status = TaskStatus.waiting
-            self.tasksStates[ taskId ].timeStarted = time.time()
+            self.tasks[taskId].restart()
+            self.tasks[taskId].taskStatus = TaskStatus.waiting
+            self.tasksStates[taskId].status = TaskStatus.waiting
+            self.tasksStates[taskId].timeStarted = time.time()
 
-            for sub in self.tasksStates[ taskId ].subtaskStates.values():
-                del self.subTask2TaskMapping[ sub.subtaskId ]
-            self.tasksStates[ taskId ].subtaskStates.clear()
-
-            self.__noticeTaskUpdated( taskId )
-        else:
-            logger.error( "Task {} not in the active tasks queue ".format( taskId ) )
-
-    #######################
-    def restartSubtask( self, subtaskId ):
-        if not subtaskId in self.subTask2TaskMapping:
-            logger.error( "Subtask {} not in subtasks queue".format( subtaskId ) )
-            return
-
-        taskId = self.subTask2TaskMapping[ subtaskId ]
-        self.tasks[ taskId ].restartSubtask( subtaskId )
-        self.tasksStates[ taskId ].status = TaskStatus.computing
-        self.tasksStates[ taskId ].subtaskStates[ subtaskId ].subtaskStatus = SubtaskStatus.failure
-
-        self.__noticeTaskUpdated( taskId )
-
-    #######################
-    def abortTask( self, taskId ):
-        if taskId in self.tasks:
-            self.tasks[ taskId ].abort()
-            self.tasks[ taskId ].taskStatus = TaskStatus.aborted
-            self.tasksStates[ taskId ].status = TaskStatus.aborted
-            for sub in self.tasksStates[ taskId ].subtaskStates.values():
-                del self.subTask2TaskMapping[ sub.subtaskId ]
-            self.tasksStates[ taskId ].subtaskStates.clear()
-
-            self.__noticeTaskUpdated( taskId )
-        else:
-            logger.error( "Task {} not in the active tasks queue ".format( taskId ) )
-
-    #######################
-    def pauseTask( self, taskId ):
-        if taskId in self.tasks:
-            self.tasks[ taskId ].taskStatus = TaskStatus.paused
-            self.tasksStates[ taskId ].status = TaskStatus.paused
-
-            self.__noticeTaskUpdated( taskId )
-        else:
-            logger.error( "Task {} not in the active tasks queue ".format( taskId ) )
-
-
-    #######################
-    def resumeTask( self, taskId ):
-        if taskId in self.tasks:
-            self.tasks[ taskId ].taskStatus = TaskStatus.starting
-            self.tasksStates[ taskId ].status = TaskStatus.starting
-
-            self.__noticeTaskUpdated( taskId )
-        else:
-            logger.error( "Task {} not in the active tasks queue ".format( taskId ) )
-
-    #######################
-    def deleteTask( self, taskId ):
-        if taskId in self.tasks:
-
-            for sub in self.tasksStates[ taskId ].subtaskStates.values():
-                del self.subTask2TaskMapping[ sub.subtaskId ]
+            for sub in self.tasksStates[taskId].subtaskStates.values():
+                del self.subTask2TaskMapping[sub.subtaskId]
             self.tasksStates[taskId].subtaskStates.clear()
 
-            del self.tasks[ taskId ]
-            del self.tasksStates[ taskId ]
-
-            self.dirManager.clearTemporary( taskId )
+            self.__noticeTaskUpdated(taskId)
         else:
-            logger.error( "Task {} not in the active tasks queue ".format( taskId ) )
+            logger.error("Task {} not in the active tasks queue ".format(taskId))
 
     #######################
-    def querryTaskState( self, taskId ):
+    def restartSubtask(self, subtaskId):
+        if not subtaskId in self.subTask2TaskMapping:
+            logger.error("Subtask {} not in subtasks queue".format(subtaskId))
+            return
+
+        taskId = self.subTask2TaskMapping[subtaskId]
+        self.tasks[taskId].restartSubtask(subtaskId)
+        self.tasksStates[taskId].status = TaskStatus.computing
+        self.tasksStates[taskId].subtaskStates[subtaskId].subtaskStatus = SubtaskStatus.failure
+
+        self.__noticeTaskUpdated(taskId)
+
+    #######################
+    def abortTask(self, taskId):
+        if taskId in self.tasks:
+            self.tasks[taskId].abort()
+            self.tasks[taskId].taskStatus = TaskStatus.aborted
+            self.tasksStates[taskId].status = TaskStatus.aborted
+            for sub in self.tasksStates[taskId].subtaskStates.values():
+                del self.subTask2TaskMapping[sub.subtaskId]
+            self.tasksStates[taskId].subtaskStates.clear()
+
+            self.__noticeTaskUpdated(taskId)
+        else:
+            logger.error("Task {} not in the active tasks queue ".format(taskId))
+
+    #######################
+    def pauseTask(self, taskId):
+        if taskId in self.tasks:
+            self.tasks[taskId].taskStatus = TaskStatus.paused
+            self.tasksStates[taskId].status = TaskStatus.paused
+
+            self.__noticeTaskUpdated(taskId)
+        else:
+            logger.error("Task {} not in the active tasks queue ".format(taskId))
+
+
+    #######################
+    def resumeTask(self, taskId):
+        if taskId in self.tasks:
+            self.tasks[taskId].taskStatus = TaskStatus.starting
+            self.tasksStates[taskId].status = TaskStatus.starting
+
+            self.__noticeTaskUpdated(taskId)
+        else:
+            logger.error("Task {} not in the active tasks queue ".format(taskId))
+
+    #######################
+    def deleteTask(self, taskId):
+        if taskId in self.tasks:
+
+            for sub in self.tasksStates[taskId].subtaskStates.values():
+                del self.subTask2TaskMapping[sub.subtaskId]
+            self.tasksStates[taskId].subtaskStates.clear()
+
+            del self.tasks[taskId]
+            del self.tasksStates[taskId]
+
+            self.dirManager.clearTemporary(taskId)
+        else:
+            logger.error("Task {} not in the active tasks queue ".format(taskId))
+
+    #######################
+    def querryTaskState(self, taskId):
         if taskId in self.tasksStates and taskId in self.tasks:
-            ts  = self.tasksStates[ taskId ]
-            t   = self.tasks[ taskId ]
+            ts  = self.tasksStates[taskId]
+            t   = self.tasks[taskId]
 
             ts.progress = t.getProgress()
             ts.elapsedTime = time.time() - ts.timeStarted
 
             if ts.progress > 0.0:
-                ts.remainingTime =  ( ts.elapsedTime / ts.progress ) - ts.elapsedTime
+                ts.remainingTime =  (ts.elapsedTime / ts.progress) - ts.elapsedTime
             else:
                 ts.remainingTime = -0.0
 
-            t.updateTaskState( ts )
+            t.updateTaskState(ts)
 
             return ts
         else:
             assert False, "Should never be here!"
             return None
 
-    def changeConfig( self, rootPath, useDistributedResourceManagement ):
-        self.dirManager = DirManager( rootPath, self.clientUid )
+    #######################
+    def changeConfig(self, rootPath, useDistributedResourceManagement):
+        self.dirManager = DirManager(rootPath, self.clientUid)
         self.useDistributedResources = useDistributedResourceManagement
 
     #######################
-    def getNewPaymentsTasks(self):
-        for taskId, task in self.tasksStates.iteritems():
-            if task.status == TaskStatus.finished and not task.paymentBooked and not task.paymentSettled:
-                task.paymentBooked = True
-                return taskId, self.getListOfPayments( taskId )
-        return None, None
-
-    #######################
-    def changeTimeouts( self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime ):
+    def changeTimeouts(self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime):
         if taskId in self.tasks:
             task = self.tasks[taskId]
             task.header.ttl = fullTaskTimeout
@@ -422,59 +401,33 @@ class TaskManager:
             task.minSubtaskTime = minSubtaskTime
             task.fullTaskTimeout = fullTaskTimeout
             task.header.lastChecking = time.time()
-            ts = self.tasksStates[ taskId ]
+            ts = self.tasksStates[taskId]
             for s in ts.subtaskStates.values():
                 s.ttl = subtaskTimeout
                 s.lastChecking = time.time()
             return True
         else:
-            logger.info( "Cannot find task {} in my tasks".format( taskId ) )
+            logger.info("Cannot find task {} in my tasks".format(taskId))
             return False
 
     #######################
-    def getTaskId( self, subtaskId ):
-        return self.subTask2TaskMapping[ subtaskId ]
-
-    #######################
-    def getListOfPayments( self, taskId ):
-        payments = {}
-        if taskId in self.tasksStates:
-            for ss in self.tasksStates[taskId].subtaskStates.itervalues():
-                print ss.computer
-                print ss.computer.ethAccount
-                if ss.computer.ethAccount in payments:
-                    payments[ss.computer.ethAccount][0] += ss.value
-                    knownValues = False
-                    for i in range(0, len( payments[ss.computer.ethAccount][1] ) ):
-                        print payments[ss.computer.ethAccount][1][i]
-                        id, addr, port, v, keyId = payments[ss.computer.ethAccount][1][i]
-                        if ss.computer.nodeId == id and ss.computer.ipAddress == addr and ss.computer.port == port:
-                            payments[ss.computer.ethAccount][1][i][3] += ss.value
-                            knownValues = True
-                            break
-                    if not knownValues:
-                        payments[ss.computer.ethAccount][1].append([ss.computer.nodeId, ss.computer.ipAddress, ss.computer.port, ss.value, ss.computer.keyId])
-                else:
-                    payments[ss.computer.ethAccount] = [ss.value, [[ss.computer.nodeId, ss.computer.ipAddress, ss.computer.port, ss.value, ss.computer.keyId]]]
-            return payments
-        else:
-            logger.error("Not my task {}".format( taskId ))
-            return None
+    def getTaskId(self, subtaskId):
+        return self.subTask2TaskMapping[subtaskId]
 
 
     #######################
-    def __addSubtaskToTasksStates( self, clientId, ctd ):
+    def __addSubtaskToTasksStates(self, clientId, ctd):
 
         if ctd.taskId not in self.tasksStates:
             assert False, "Should never be here!"
         else:
-            ts = self.tasksStates[ ctd.taskId ]
+            ts = self.tasksStates[ctd.taskId]
 
             ss                      = SubtaskState()
             ss.computer.nodeId      = clientId
             ss.computer.performance = ctd.performance
             ss.timeStarted      = time.time()
-            ss.ttl              = self.tasks[ ctd.taskId ].header.subtaskTimeout
+            ss.ttl              = self.tasks[ctd.taskId].header.subtaskTimeout
             # TODO: read node ip address
             ss.subtaskDefinition    = ctd.shortDescription
             ss.subtaskId            = ctd.subtaskId
@@ -482,12 +435,17 @@ class TaskManager:
             ss.subtaskStatus        = TaskStatus.starting
             ss.value                = 0
 
-            ts.subtaskStates[ ctd.subtaskId ] = ss
+            ts.subtaskStates[ctd.subtaskId] = ss
 
     #######################
-    def __noticeTaskUpdated( self, taskId ):
+    def __noticeTaskUpdated(self, taskId):
         for l in self.listeners:
-            l.taskStatusUpdated( taskId )
+            l.taskStatusUpdated(taskId)
+
+    #######################
+    def __noticeTaskFinished(self, taskId):
+        for l in self.listeners:
+            l.taskFinished(taskId)
 
     #######################
     def __hasSubtasks(self, taskState, task, maxResourceSize, maxMemorySize):
@@ -495,9 +453,8 @@ class TaskManager:
             return False
         if not task.needsComputation():
             return False
-        if task.header.resourceSize > ( long( maxResourceSize ) * 1024 ):
+        if task.header.resourceSize > (long(maxResourceSize) * 1024):
             return False
-        if task.header.estimatedMemory > ( long( maxMemorySize ) * 1024 ):
+        if task.header.estimatedMemory > (long(maxMemorySize) * 1024):
             return False
         return True
-

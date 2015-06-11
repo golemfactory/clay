@@ -170,14 +170,14 @@ class MessagePing(Message):
 
     PING_STR = u"PING"
 
-    def __init__( self, sig = "", timestamp = None, dictRepr = None ):
+    def __init__(self, sig="", timestamp=None, dictRepr=None):
         Message.__init__(self, MessagePing.Type, sig, timestamp)
         
         if dictRepr:
-            assert dictRepr.get( MessagePing.PING_STR )
+            assert dictRepr.get(MessagePing.PING_STR)
 
     def dictRepr(self):
-        return { MessagePing.PING_STR: True }
+        return {MessagePing.PING_STR: True}
 
 class MessagePong(Message):
 
@@ -185,14 +185,14 @@ class MessagePong(Message):
 
     PONG_STR = u"PONG"
 
-    def __init__( self, sig = "", timestamp = None, dictRepr = None ):
+    def __init__(self, sig="", timestamp=None, dictRepr=None):
         Message.__init__(self, MessagePong.Type, sig, timestamp)
         
         if dictRepr:
-            assert dictRepr[ 0 ] == MessagePong.PONG_STR
+            assert dictRepr.get(MessagePong.PONG_STR)
 
     def dictRepr(self):
-        return [ MessagePong.PONG_STR ]
+        return {MessagePong.PONG_STR: True}
 
 class MessageDisconnect(Message):
 

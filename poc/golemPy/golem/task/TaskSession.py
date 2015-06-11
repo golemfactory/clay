@@ -15,6 +15,7 @@ from golem.network.NetAndFilesConnState import NetAndFilesConnState
 from golem.network.p2p.Session import NetSession
 from golem.task.TaskBase import resultTypes
 from golem.resource.Resource import decompressDir
+from golem.transactions.EthereumPaymentsKeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +35,7 @@ class TaskSession(NetSession):
 
         self.lastResourceMsg = None
 
-        self.taskResultOwnerAddr = None
-        self.taskResultOwnerPort = None
-        self.taskResultOwnerNodeId = None
-        self.taskResultOwnerKeyId = None
-        self.taskResultOwnerEthAccount = None
+        self.resultOwner = None
 
         self.producer = None
 
@@ -117,10 +114,6 @@ class TaskSession(NetSession):
             msg =  self.taskServer.decrypt(msg)
         except AssertionError:
             logger.warning("Failed to decrypt message, maybe it's not encrypted?")
-#        except Exception as err:
-#            logger.error( "Failed to decrypt message {}".format( str(err) ) )
-#            raise E
-#            assert False
 
         return msg
 
@@ -184,9 +177,9 @@ class TaskSession(NetSession):
         if subtaskId:
             self.taskManager.computedTaskReceived( subtaskId, result, resultType )
             if self.taskManager.verifySubtask( subtaskId ):
-                self.taskServer.acceptResult( subtaskId, self.taskResultOwnerAddr, self.taskResultOwnerPort, self.taskResultOwnerKeyId, self.taskResultOwnerEthAccount )
+                self.taskServer.acceptResult( subtaskId, self.resultOwner )
             else:
-                self.taskServer.rejectResult( subtaskId, self.taskResultOwnerNodeId, self.taskResultOwnerAddr, self.taskResultOwnerPort, self.taskResultOwnerKeyId )
+                self.taskServer.rejectResult( subtaskId, self.resultOwner )
         else:
             logger.error("No taskId value in extraData for received data ")
         self.dropped()
@@ -228,11 +221,7 @@ class TaskSession(NetSession):
                 self.dropped()
             elif delay == 0.0:
                 self._send( MessageGetTaskResult( msg.subtaskId, delay ) )
-                self.taskResultOwnerNodeId = msg.nodeId
-                self.taskResultOwnerAddr = msg.address
-                self.taskResultOwnerPort = msg.port
-                self.taskResultOwnerKeyId = msg.keyId
-                self.taskResultOwnerEthAccount = msg.ethAccount
+                self.resultOwner = EthAccountInfo(msg.keyId, msg.port, msg.address, msg.nodeId, msg.ethAccount)
 
                 if msg.resultType == resultTypes['data']:
                     self.__receiveDataResult( msg )
