@@ -202,7 +202,7 @@ class TaskServer:
 
     #############################
     def getResourceAddr(self) :
-        return self.client.hostAddress
+        return self.client.node.prvAddr
 
     #############################
     def getResourcePort(self) :

@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 class P2PService:
     ########################
-    def __init__( self, hostAddress, configDesc, keysAuth ):
+    def __init__(self, hostAddress, configDesc, keysAuth):
 
-        self.p2pServer              = P2PServer( configDesc, self )
+        self.p2pServer              = P2PServer(configDesc, self)
 
         self.configDesc             = configDesc
 
@@ -47,30 +47,30 @@ class P2PService:
         self.connectToNetwork()
 
     #############################
-    def connectToNetwork( self ):
+    def connectToNetwork(self):
         if not self.wrongSeedData():
-            self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
+            self.__connect(self.configDesc.seedHost, self.configDesc.seedHostPort)
 
     #############################
-    def wrongSeedData( self ):
+    def wrongSeedData(self):
         try:
-            if (int( self.configDesc.seedHostPort ) < 1) or ( int( self.configDesc.seedHostPort ) > 65535 ):
-                logger.warning( u"Seed port number out of range [1, 65535]: {}".format( self.configDesc.seedHostPort ) )
+            if (int(self.configDesc.seedHostPort) < 1) or (int(self.configDesc.seedHostPort) > 65535):
+                logger.warning(u"Seed port number out of range [1, 65535]: {}".format(self.configDesc.seedHostPort))
                 return True
         except Exception, e:
-            logger.error( u"Wrong seed port number {}: {}".format( self.configDesc.seedHostPort, str( e ) ) )
+            logger.error(u"Wrong seed port number {}: {}".format(self.configDesc.seedHostPort, str(e)))
             return True
 
-        if len( self.configDesc.seedHost ) <= 0 :
+        if len(self.configDesc.seedHost) <= 0 :
             return True
         return False
 
     #############################
-    def setTaskServer( self, taskServer ):
+    def setTaskServer(self, taskServer):
         self.taskServer = taskServer
 
     #############################
-    def syncNetwork( self ):
+    def syncNetwork(self):
 
         self.__sendMessageGetPeers()
 
@@ -91,37 +91,37 @@ class P2PService:
     #############################
     def __removeSessionsToEndFromPeerKeeper(self):
         for peerId in self.peerKeeper.sessionsToEnd:
-            self.removePeerById( peerId )
+            self.removePeerById(peerId)
         self.peerKeeper.sessionsToEnd = []
 
     #############################
-    def newSession( self, session ):
+    def newSession(self, session):
         session.p2pService = self
-        self.allPeers.append( session )
+        self.allPeers.append(session)
         session.start()
  
     #############################
-    def pingPeers( self, interval ):
+    def pingPeers(self, interval):
         for p in self.peers.values():
-            p.ping( interval )
+            p.ping(interval)
     
     #############################
-    def findPeer( self, peerID ):
-        return self.peers.get( peerID )
+    def findPeer(self, peerID):
+        return self.peers.get(peerID)
 
     #############################
-    def getPeers( self ):
+    def getPeers(self):
         return self.peers
 
     #############################
-    def addPeer( self, id, peer):
+    def addPeer(self, id, peer):
 
-        self.peers[ id ] = peer
+        self.peers[id] = peer
         self.__sendDegree()
 
     #############################
     def addToPeerKeeper(self, id, peerKeyId, address, port):
-        peerToPingInfo = self.peerKeeper.addPeer( peerKeyId, id, address, port )
+        peerToPingInfo = self.peerKeeper.addPeer(peerKeyId, id, address, port)
         if peerToPingInfo and peerToPingInfo.nodeId in self.peers:
             peerToPing = self.peers[peerToPingInfo.nodeId]
             if peerToPing:
@@ -129,70 +129,70 @@ class P2PService:
 
 
     #############################
-    def pongReceived( self, id, peerKeyId, address, port ):
-        self.peerKeeper.pongReceived( peerKeyId, id, address, port )
+    def pongReceived(self, id, peerKeyId, address, port):
+        self.peerKeeper.pongReceived(peerKeyId, id, address, port)
 
     #############################
-    def tryToAddPeer( self, peerInfo ):
-        if self.__isNewPeer( peerInfo[ "id" ] ):
-            logger.info( "add peer to incoming {} {} {}".format( peerInfo[ "id" ],
-                                                             peerInfo[ "address" ],
-                                                             peerInfo[ "port" ] ) )
-            self.incommingPeers[ peerInfo[ "id" ] ] = { "address" : peerInfo[ "address" ],
-                                                    "port" : peerInfo[ "port" ],
+    def tryToAddPeer(self, peerInfo):
+        if self.__isNewPeer(peerInfo["id"]):
+            logger.info("add peer to incoming {} {} {}".format(peerInfo["id"],
+                                                             peerInfo["address"],
+                                                             peerInfo["port"]))
+            self.incommingPeers[peerInfo["id"]] = { "address" : peerInfo["address"],
+                                                    "port" : peerInfo["port"],
                                                     "conn_trials" : 0 }
-            self.freePeers.append( peerInfo[ "id" ] )
-            logger.debug( self.incommingPeers )
+            self.freePeers.append(peerInfo["id"])
+            logger.debug(self.incommingPeers)
 
 
     #############################
-    def removePeer( self, peerSession ):
+    def removePeer(self, peerSession):
 
         if peerSession in self.allPeers:
-            self.allPeers.remove( peerSession )
+            self.allPeers.remove(peerSession)
 
         for p in self.peers.keys():
-            if self.peers[ p ] == peerSession:
-                del self.peers[ p ]
+            if self.peers[p] == peerSession:
+                del self.peers[p]
 
         self.__sendDegree()
 
     #############################
-    def removePeerById( self, peerId ):
-        peer = self.peers.get( peerId )
+    def removePeerById(self, peerId):
+        peer = self.peers.get(peerId)
         if not peer:
             logger.info("Can't remove peer {}, unknown peer".format(peerId))
             return
         if peer in self.allPeers:
-            self.allPeers.remove( peer )
-        del self.peers[ peerId ]
+            self.allPeers.remove(peer)
+        del self.peers[peerId]
 
         self.__sendDegree()
 
     #############################
-    def enoughPeers( self ):
+    def enoughPeers(self):
         return len(self.peers) >= self.configDesc.optNumPeers
 
     #############################
-    def setLastMessage( self, type, clientKeyId, t, msg, address, port ):
-        self.peerKeeper.setLastMessageTime( clientKeyId )
-        if len( self.lastMessages ) >= 5:
-            self.lastMessages = self.lastMessages[ -4: ]
+    def setLastMessage(self, type, clientKeyId, t, msg, address, port):
+        self.peerKeeper.setLastMessageTime(clientKeyId)
+        if len(self.lastMessages) >= 5:
+            self.lastMessages = self.lastMessages[-4:]
 
-        self.lastMessages.append( [ type, t, address, port, msg ] )
+        self.lastMessages.append([type, t, address, port, msg])
 
     #############################
-    def getLastMessages( self ):
+    def getLastMessages(self):
         return self.lastMessages
     
     ############################# 
-    def managerSessionDisconnect( self, uid ):
+    def managerSessionDisconnect(self, uid):
         self.managerSession = None
 
     #############################
-    def changeConfig( self, configDesc ):
+    def changeConfig(self, configDesc):
         self.configDesc = configDesc
-        self.p2pServer.changeConfig( configDesc )
+        self.p2pServer.changeConfig(configDesc)
 
         self.lastMessageTimeThreshold = self.configDesc.p2pSessionTimeout
 
@@ -201,25 +201,25 @@ class P2PService:
                 return
 
         if not self.wrongSeedData():
-            self.__connect( self.configDesc.seedHost, self.configDesc.seedHostPort )
+            self.__connect(self.configDesc.seedHost, self.configDesc.seedHostPort)
 
         if self.resourceServer:
-            self.resourceServer.changeConfig( configDesc )
+            self.resourceServer.changeConfig(configDesc)
 
     #############################
-    def changeAddress( self, thDictRepr ):
+    def changeAddress(self, thDictRepr):
         try:
-            id = thDictRepr[ "clientId" ]
+            id = thDictRepr["clientId"]
 
-            if self.peers[ id ]:
-                thDictRepr [ "address" ] = self.peers[ id ].address
-                thDictRepr [ "port" ] = self.peers[ id ].port
+            if self.peers[id]:
+                thDictRepr ["address"] = self.peers[id].address
+                thDictRepr ["port"] = self.peers[id].port
         except Exception, err:
-            logger.error( "Wrong task representation: {}".format( str( err ) ) )
+            logger.error("Wrong task representation: {}".format(str(err)))
 
     ############################
-    def getListenParams( self ):
-        return ( self.p2pServer.curPort, self.configDesc.clientUid, self.keysAuth.getKeyId() )
+    def getListenParams(self):
+        return (self.p2pServer.curPort, self.configDesc.clientUid, self.keysAuth.getKeyId())
 
     ############################
     def getPeersDegree(self):
@@ -233,7 +233,7 @@ class P2PService:
     def encrypt(self, message, publicKey):
         if publicKey == 0:
             return message
-        return self.keysAuth.encrypt( message, publicKey )
+        return self.keysAuth.encrypt(message, publicKey)
 
     #############################
     def decrypt(self, message):
@@ -254,35 +254,35 @@ class P2PService:
             for neighbour in neighbours:
                 peer =  self.peers.get(neighbour.nodeId)
                 if peer:
-                    peer.sendFindNode( nodeKeyId )
+                    peer.sendFindNode(nodeKeyId)
 
     #Find node
     #############################
-    def findNode(self, nodeKeyId ):
+    def findNode(self, nodeKeyId):
         neighbours = self.peerKeeper.neighbours(nodeKeyId)
         nodesInfo = []
         for n in neighbours:
-            nodesInfo.append( { "address": n.ip, "port": n.port, "id": n.nodeId } )
+            nodesInfo.append({ "address": n.ip, "port": n.port, "id": n.nodeId })
         return nodesInfo
 
 
     #Resource functions
     #############################
-    def setResourceServer ( self, resourceServer ):
+    def setResourceServer (self, resourceServer):
         self.resourceServer = resourceServer
 
     ############################
-    def setResourcePeer( self, addr, port ):
+    def setResourcePeer(self, addr, port):
         self.resourcePort = port
-        self.resourcePeers[ self.clientUid ] = [ addr, port, self.keysAuth.getKeyId() ]
+        self.resourcePeers[self.clientUid] = [addr, port, self.keysAuth.getKeyId()]
 
     #############################
-    def sendGetResourcePeers( self ):
+    def sendGetResourcePeers(self):
         for p in self.peers.values():
             p.sendGetResourcePeers()
 
     ############################
-    def getResourcePeers( self ):
+    def getResourcePeers(self):
         resourcePeersInfo = []
         for clientId, [addr, port, keyId] in self.resourcePeers.iteritems():
             resourcePeersInfo.append({ 'clientId': clientId, 'addr': addr, 'port': port, 'keyId': keyId })
@@ -290,47 +290,47 @@ class P2PService:
         return resourcePeersInfo
 
     ############################
-    def setResourcePeers( self, resourcePeers ):
+    def setResourcePeers(self, resourcePeers):
         for peer in resourcePeers:
             try:
                 if peer['clientId'] != self.clientUid:
-                    self.resourcePeers[ peer['clientId']]  = [ peer['addr'], peer['port'], peer['keyId'] ]
+                    self.resourcePeers[peer['clientId']]  = [peer['addr'], peer['port'], peer['keyId']]
             except Exception, err:
-                logger.error( "Wrong set peer message (peer: {}): {}".format( peer, str( err ) ) )
+                logger.error("Wrong set peer message (peer: {}): {}".format(peer, str(err)))
         resourcePeersCopy = self.resourcePeers.copy()
         if self.clientUid in resourcePeersCopy:
-            del resourcePeersCopy[ self.clientUid ]
-        self.resourceServer.setResourcePeers( resourcePeersCopy )
+            del resourcePeersCopy[self.clientUid]
+        self.resourceServer.setResourcePeers(resourcePeersCopy)
 
     #############################
-    def sendPutResource( self, resource, addr, port, copies ):
+    def sendPutResource(self, resource, addr, port, copies):
 
-        if len ( self.peers ) > 0:
+        if len (self.peers) > 0:
             p = self.peers.itervalues().next()
-            p.sendPutResource( resource, addr, port, copies )
+            p.sendPutResource(resource, addr, port, copies)
 
     #############################
-    def putResource( self, resource, addr, port, copies ):
-        self.resourceServer.putResource( resource, addr, port, copies )
+    def putResource(self, resource, addr, port, copies):
+        self.resourceServer.putResource(resource, addr, port, copies)
 
 
     #TASK FUNCTIONS
     ############################
-    def getTasksHeaders( self ):
+    def getTasksHeaders(self):
         return self.taskServer.getTasksHeaders()
 
     ############################
-    def addTaskHeader( self, thDictRepr ):
-        return self.taskServer.addTaskHeader( thDictRepr)
+    def addTaskHeader(self, thDictRepr):
+        return self.taskServer.addTaskHeader(thDictRepr)
 
     ############################
-    def removeTaskHeader( self, taskId ):
-        return self.taskServer.removeTaskHeader( taskId )
+    def removeTaskHeader(self, taskId):
+        return self.taskServer.removeTaskHeader(taskId)
 
     ############################
-    def removeTask( self, taskId ):
+    def removeTask(self, taskId):
         for p in self.peers.values():
-            p.sendRemoveTask( taskId )
+            p.sendRemoveTask(taskId)
 
     #############################
     #RANKING FUNCTIONS          #
@@ -339,11 +339,11 @@ class P2PService:
         for peerId in sendTo:
             peer = self.findPeer(peerId)
             if peer is not None:
-                peer.sendGossip( gossip )
+                peer.sendGossip(gossip)
 
     #############################
     def hearGossip(self, gossip):
-        self.gossip.append( gossip )
+        self.gossip.append(gossip)
 
     #############################
     def popGossip(self):
@@ -367,13 +367,13 @@ class P2PService:
         return stop
 
     #############################
-    def pushLocalRank( self, nodeId, locRank ):
+    def pushLocalRank(self, nodeId, locRank):
         for peer in self.peers.values():
-            peer.sendLocRank( nodeId, locRank )
+            peer.sendLocRank(nodeId, locRank)
 
     #############################
     def safeNeighbourLocRank(self, neighId, aboutId, rank):
-        self.neighbourLocRankBuff.append( [neighId, aboutId, rank] )
+        self.neighbourLocRankBuff.append([neighId, aboutId, rank])
 
     #############################
     def popNeighboursLocRanks(self):
@@ -383,15 +383,15 @@ class P2PService:
 
     #############################
     #PRIVATE SECTION
-    #############################   
-    def __connect( self, address, port ):
+    #############################
+    def __connect(self, address, port):
 
-        Network.connect( address, port, PeerSession, self.__connectionEstablished, self.__connectionFailure )
+        Network.connect(address, port, PeerSession, self.__connectionEstablished, self.__connectionFailure)
 
     #############################
-    def __sendMessageGetPeers( self ):
-        while len( self.peers ) < self.configDesc.optNumPeers:
-            if len( self.freePeers ) == 0:
+    def __sendMessageGetPeers(self):
+        while len(self.peers) < self.configDesc.optNumPeers:
+            if len(self.freePeers) == 0:
                 peer = self.peerKeeper.getRandomKnownNode()
                 if not peer or peer.nodeId in self.peers:
                     if time.time() - self.lastPeersRequest > 2:
@@ -402,38 +402,38 @@ class P2PService:
                     self.tryToAddPeer({"id": peer.nodeId, "address": peer.ip, "port": peer.port })
                 break
 
-            x = int( time.time() ) % len( self.freePeers ) # get some random peer from freePeers
-            self.incommingPeers[ self.freePeers[ x ] ][ "conn_trials" ] += 1 # increment connection trials
-            logger.info( "Connecting to peer {}".format( self.freePeers[ x ] ) )
-            self.__connect( self.incommingPeers[ self.freePeers[ x ] ][ "address" ], self.incommingPeers[ self.freePeers[ x ] ][ "port" ] )
-            self.freePeers.remove( self.freePeers[ x ] )
+            x = int(time.time()) % len(self.freePeers) # get some random peer from freePeers
+            self.incommingPeers[self.freePeers[x]]["conn_trials"] += 1 # increment connection trials
+            logger.info("Connecting to peer {}".format(self.freePeers[x]))
+            self.__connect(self.incommingPeers[self.freePeers[x]]["address"], self.incommingPeers[self.freePeers[x]]["port"])
+            self.freePeers.remove(self.freePeers[x])
 
     #############################
-    def __sendMessageGetTasks( self ):
+    def __sendMessageGetTasks(self):
         if time.time() - self.lastGetTasksRequest > 2:
             self.lastGetTasksRequest = time.time()
             for p in self.peers.values():
                 p.sendGetTasks()
 
     #############################
-    def __connectionEstablished( self, session ):
+    def __connectionEstablished(self, session):
         session.p2pService = self
-        self.allPeers.append( session )
-        logger.debug( "Connection to peer established. {}: {}".format( session.conn.transport.getPeer().host, session.conn.transport.getPeer().port ) )
+        self.allPeers.append(session)
+        logger.debug("Connection to peer established. {}: {}".format(session.conn.transport.getPeer().host, session.conn.transport.getPeer().port))
 
     #############################
-    def __connectionFailure( self ):
-        logger.error( "Connection to peer failure." )
+    def __connectionFailure(self):
+        logger.error("Connection to peer failure.")
 
     #############################
-    def __isNewPeer (self, id ):
+    def __isNewPeer (self, id):
         if id in self.incommingPeers or id in self.peers or id == self.configDesc.clientUid:
             return False
         else:
             return True
 
     #############################
-    def __removeOldPeers( self ):
+    def __removeOldPeers(self):
         curTime = time.time()
         for peerId in self.peers.keys():
             if curTime - self.peers[peerId].lastMessageTime > self.lastMessageTimeThreshold:
@@ -441,13 +441,13 @@ class P2PService:
 
         if curTime - self.lastRefreshPeers > self.refreshPeersTimeout:
             self.lastRefreshPeers = time.time()
-            if len( self.peers ) > 1:
+            if len(self.peers) > 1:
                 peerId = random.choice(self.peers.keys())
                 self.peers[peerId].disconnect(PeerSession.DCRRefresh)
 
 
     #############################
     def __sendDegree(self):
-        degree = len( self.peers )
+        degree = len(self.peers)
         for p in self.peers.values():
-            p.sendDegree( degree )
+            p.sendDegree(degree)

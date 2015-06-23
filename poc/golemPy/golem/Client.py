@@ -6,6 +6,7 @@ from twisted.internet import task
 from threading import Lock
 
 from golem.network.p2p.P2PService import P2PService
+from golem.network.p2p.Node import Node
 from golem.task.TaskServer import TaskServer
 from golem.task.TaskManager import TaskManagerEventListener
 
@@ -159,26 +160,27 @@ class Client:
 
     ############################
     def __init__(self, configDesc, rootPath = "", config = ""):
-
         self.configDesc     = configDesc
         self.keysAuth       = EllipticalKeysAuth(configDesc.clientUid)
 
-        self.lastPingTime   = 0.0
-        self.p2service      = None
-        self.taskServer     = None
-        self.lastPingTime   = time.time()
-        self.lastNSSTime    = time.time()
+        #NETWORK
+        self.node = Node(self.configDesc.clientUid, self.keysAuth.getKeyId())
+        self.node.collectNetworkInfo(self.configDesc.seedHost)
+        logger.debug("Is super node? {}".format(self.node.isSuperNode()))
+        self.p2service = None
+
+        self.taskServer = None
+        self.taskAdderServer = None
+        self.lastNSSTime = time.time()
 
         self.lastNodeStateSnapshot = None
 
-        self.hostAddress    = getHostAddress(self.configDesc.seedHost)
-
         self.nodesManagerClient = None
 
-        self.doWorkTask     = task.LoopingCall(self.__doWork)
+        self.doWorkTask = task.LoopingCall(self.__doWork)
         self.doWorkTask.start(0.1, False)
 
-        self.listeners      = []
+        self.listeners = []
 
         self.rootPath = rootPath
         self.cfg = config
@@ -199,15 +201,12 @@ class Client:
         self.lastGetResourcePeersTime  = time.time()
         self.getResourcePeersInterval = 5.0
 
-        self.taskServer = None
-        self.taskAdderServer = None
-       
     ############################
     def startNetwork(self):
         logger.info("Starting network ...")
 
         logger.info("Starting p2p server ...")
-        self.p2pservice = P2PService(self.hostAddress, self.configDesc, self.keysAuth)
+        self.p2pservice = P2PService(self.node.prvAddr, self.configDesc, self.keysAuth)
         time.sleep(1.0)
 
         logger.info("Starting resource server...")
@@ -216,7 +215,7 @@ class Client:
         self.p2pservice.setResourceServer(self.resourceServer)
 
         logger.info("Starting task server ...")
-        self.taskServer = TaskServer(self.hostAddress, self.configDesc, self.keysAuth, self)
+        self.taskServer = TaskServer(self.node.prvAddr, self.configDesc, self.keysAuth, self)
 
         self.p2pservice.setTaskServer(self.taskServer)
 
@@ -269,7 +268,7 @@ class Client:
     ############################
     def setResourcePort (self, resourcePort):
         self.resourcePort = resourcePort
-        self.p2pservice.setResourcePeer(self.hostAddress, self.resourcePort)
+        self.p2pservice.setResourcePeer(self.node.prvAddr, self.resourcePort)
 
     ############################
     def abortTask(self, taskId):
