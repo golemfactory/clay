@@ -12,8 +12,8 @@ class Node:
         self.pubPort = pubPort
 
     #############################
-    def collectNetworkInfo(self, seedHost=None):
-        self.prvAddr = getHostAddress(seedHost)
+    def collectNetworkInfo(self, seedHost=None, useIp6=False):
+        self.prvAddr = getHostAddress(seedHost, useIp6)
         if self.prvPort:
             self.pubAddr, self.pubPort = getExternalAddress(self.prvPort)
         else:

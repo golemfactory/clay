@@ -154,7 +154,7 @@ class ResourceServer(GNRServer):
     ############################
     def pullResource(self, resource, addr, port, keyId):
         Network.connect(addr, port, ResourceSession, self.__connectionPullResourceEstablished,
-                        self.__connectionPullResourceFailure, self.useIp6, resource, addr, port, keyId)
+                        self.__connectionPullResourceFailure, resource, addr, port, keyId)
 
     ############################
     def pullAnswer(self, resource, hasResource, session):
@@ -179,7 +179,7 @@ class ResourceServer(GNRServer):
     ############################
     def pushResource(self, resource, addr, port, keyId, copies):
         Network.connect(addr, port, ResourceSession, self.__connectionPushResourceEstablished,
-                        self.__connectionPushResourceFailure, self.useIp6, resource, copies,
+                        self.__connectionPushResourceFailure, resource, copies,
                         addr, port, keyId)
 
     ############################

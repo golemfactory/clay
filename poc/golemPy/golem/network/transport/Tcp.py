@@ -1,6 +1,7 @@
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
     TCP6ClientEndpoint, connectProtocol
 import logging
+import ipaddr
 
 logger = logging.getLogger(__name__)
 
@@ -8,9 +9,16 @@ class Network:
 
     ######################
     @classmethod
-    def connect(cls, address, port, SessionType, establishedCallback=None, failureCallback=None, useIp6=False, *args):
+    def connect(cls, address, port, SessionType, establishedCallback=None, failureCallback=None, *args):
         logger.debug("Connecting to host {} : {}".format(address, port))
+        useIp6 = False
         from twisted.internet import reactor
+        try:
+            ip = ipaddr.IPAddress(address)
+            useIp6 = ip.version == 6
+        except ValueError:
+            logger.warning("{} is invalid".format(address))
+
         if useIp6:
             endpoint = TCP6ClientEndpoint(reactor, address, port)
         else:

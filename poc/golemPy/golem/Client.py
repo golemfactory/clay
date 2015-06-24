@@ -10,8 +10,6 @@ from golem.network.p2p.Node import Node
 from golem.task.TaskServer import TaskServer
 from golem.task.TaskManager import TaskManagerEventListener
 
-from golem.core.hostaddress import getHostAddress
-
 from golem.core.KeysAuth import EllipticalKeysAuth
 
 from golem.manager.NodeStateSnapshot import NodeStateSnapshot
@@ -165,7 +163,7 @@ class Client:
 
         #NETWORK
         self.node = Node(self.configDesc.clientUid, self.keysAuth.getKeyId())
-        self.node.collectNetworkInfo(self.configDesc.seedHost)
+        self.node.collectNetworkInfo(self.configDesc.seedHost, useIp6=True)
         logger.debug("Is super node? {}".format(self.node.isSuperNode()))
         self.p2service = None
 
@@ -206,24 +204,22 @@ class Client:
         logger.info("Starting network ...")
 
         logger.info("Starting p2p server ...")
-        self.p2pservice = P2PService(self.node.prvAddr, self.configDesc, self.keysAuth)
+        self.p2pservice = P2PService(self.node.prvAddr, self.configDesc, self.keysAuth, useIp6=True)
         time.sleep(1.0)
 
         logger.info("Starting resource server...")
-        self.resourceServer = ResourceServer(self.configDesc, self.keysAuth, self)
+        self.resourceServer = ResourceServer(self.configDesc, self.keysAuth, self, useIp6=True)
         time.sleep(1.0)
         self.p2pservice.setResourceServer(self.resourceServer)
 
         logger.info("Starting task server ...")
-        self.taskServer = TaskServer(self.node.prvAddr, self.configDesc, self.keysAuth, self)
+        self.taskServer = TaskServer(self.node.prvAddr, self.configDesc, self.keysAuth, self, useIp6=True)
 
         self.p2pservice.setTaskServer(self.taskServer)
 
         time.sleep(0.5)
         self.taskServer.taskManager.registerListener(ClientTaskManagerEventListener(self))
-        #logger.info("Starting nodes manager client ...")
 
-        #self.taskServer.taskManager.addNewTask()
 
     ############################
     def runAddTaskServer(self):

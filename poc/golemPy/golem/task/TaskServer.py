@@ -351,23 +351,23 @@ class TaskServer:
     def __connectAndSendTaskRequest(self, clientId, taskClientId, address, port, keyId, taskId, estimatedPerformance,
                                     maxResourceSize, maxMemorySize, numCores):
         Network.connect(address, port, TaskSession, self.__connectionForTaskRequestEstablished,
-                        self.__connectionForTaskRequestFailure, self.useIp6, clientId, keyId, taskId,
+                        self.__connectionForTaskRequestFailure, clientId, keyId, taskId,
                         estimatedPerformance, maxResourceSize, maxMemorySize, numCores)
 
     #############################   
     def __connectAndSendResourceRequest(self, address, port, keyId, subtaskId, resourceHeader):
         Network.connect(address, port, TaskSession, self.__connectionForResourceRequestEstablished,
-                        self.__connectionForResourceRequestFailure, self.useIp6, keyId, subtaskId, resourceHeader)
+                        self.__connectionForResourceRequestFailure, keyId, subtaskId, resourceHeader)
 
     #############################
     def __connectAndSendResultRejected(self, subtaskId, address, port, keyId):
         Network.connect(address, port, TaskSession, self.__connectionForSendResultRejectedEstablished,
-                        self.__connectionForResultRejectedFailure, self.useIp6, keyId, subtaskId)
+                        self.__connectionForResultRejectedFailure, keyId, subtaskId)
 
     #############################
     def __connectAndPayForTask(self, address, port, keyId, taskId, price):
         Network.connect(address, port, TaskSession, self.__connectionForPayForTaskEstablished,
-                        self.__connectionForPayForTaskFailure, self.useIp6, keyId, taskId, price)
+                        self.__connectionForPayForTaskFailure, keyId, taskId, price)
 
     #############################
     def __connectionForTaskRequestEstablished(self, session, clientId, keyId, taskId, estimatedPerformance,
@@ -392,11 +392,13 @@ class TaskServer:
 
     #############################   
     def __connectAndSendTaskResults(self, address, port, keyId, waitingTaskResult):
-        Network.connect(address, port, TaskSession, self.__connectionForTaskResultEstablished, self.__connectionForTaskResultFailure, False, keyId, waitingTaskResult)
+        Network.connect(address, port, TaskSession, self.__connectionForTaskResultEstablished,
+                        self.__connectionForTaskResultFailure, keyId, waitingTaskResult)
 
     #############################
     def __connectAndSendTaskFailure(self, address, port, keyId, subtaskId, errMsg):
-        Network.connect(address, port, TaskSession, self.__connectionForTaskFailureEstablished, self.__connectionForTaskFailureFailure, False, keyId, subtaskId, errMsg)
+        Network.connect(address, port, TaskSession, self.__connectionForTaskFailureEstablished,
+                        self.__connectionForTaskFailureFailure, keyId, subtaskId, errMsg)
 
     #############################
     def __connectionForTaskResultEstablished(self, session, keyId, waitingTaskResult):
