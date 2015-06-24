@@ -166,8 +166,6 @@ class ConfigurationDialogCustomizer:
                 logger.error(str(err))
                 return "Error"
 
-
-
     #############################
     def __setupConnections(self):
         self.gui.ui.recountButton.clicked.connect(self.__recountPerformance)
@@ -183,7 +181,6 @@ class ConfigurationDialogCustomizer:
         QtCore.QObject.connect(self.gui.ui.computingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"), self.__computingTrustSliderChanged)
         QtCore.QObject.connect(self.gui.ui.requestingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"), self.__requestingTrustEdited)
         QtCore.QObject.connect(self.gui.ui.computingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"), self.__computingTrustEdited)
-
 
     #############################
     def __removeFromComputing(self):
@@ -255,11 +252,11 @@ class ConfigurationDialogCustomizer:
 
     #############################
     def __readBasicConfig(self, cfgDesc):
-        cfgDesc.seedHost =  u"{}".format(self.gui.ui.hostAddressLineEdit.text())
+        cfgDesc.seedHost = u"{}".format(self.gui.ui.hostAddressLineEdit.text())
         try:
             cfgDesc.seedHostPort = int(self.gui.ui.hostIPLineEdit.text())
         except ValueError:
-            cfgDesc.seedHostPort    =  u"{}".format (self.gui.ui.hostIPLineEdit.text())
+            cfgDesc.seedHostPort = u"{}".format (self.gui.ui.hostIPLineEdit.text())
         cfgDesc.rootPath = u"{}".format(self.gui.ui.workingDirectoryLineEdit.text())
 
         cfgDesc.numCores = u"{}".format(self.gui.ui.numCoresSlider.value())
