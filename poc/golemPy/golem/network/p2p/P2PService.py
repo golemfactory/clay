@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 class P2PService:
     ########################
-    def __init__(self, hostAddress, configDesc, keysAuth):
+    def __init__(self, hostAddress, configDesc, keysAuth, useIp6=False):
 
-        self.p2pServer              = P2PServer(configDesc, self)
+        self.p2pServer              = P2PServer(configDesc, self, useIp6)
 
         self.configDesc             = configDesc
 
