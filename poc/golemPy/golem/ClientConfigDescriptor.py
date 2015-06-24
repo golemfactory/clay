@@ -15,6 +15,7 @@ class ClientConfigDescriptor:
         self.addTasks       = 0
         self.distResNum = 0
         self.clientVersion  = 0
+        self.useIp6 = 0
 
         self.seedHost               = u""
         self.seedHostPort           = 0

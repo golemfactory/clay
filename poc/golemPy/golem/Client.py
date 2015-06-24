@@ -72,6 +72,7 @@ def startClient():
     computingTrust              = cfg.getComputingTrust()
 
     ethAccount                  = cfg.getEthAccount()
+    useIp6                      = cfg.getUseIp6()
 
     configDesc = ClientConfigDescriptor()
 
@@ -115,6 +116,7 @@ def startClient():
     configDesc.computingTrust           = computingTrust
 
     configDesc.ethAccount               = ethAccount
+    configDesc.useIp6                   = useIp6
 
 
     logger.info("Adding tasks {}".format(addTasks))
@@ -163,7 +165,7 @@ class Client:
 
         #NETWORK
         self.node = Node(self.configDesc.clientUid, self.keysAuth.getKeyId())
-        self.node.collectNetworkInfo(self.configDesc.seedHost, useIp6=True)
+        self.node.collectNetworkInfo(self.configDesc.seedHost, useIp6=self.configDesc.useIp6)
         logger.debug("Is super node? {}".format(self.node.isSuperNode()))
         self.p2service = None
 
@@ -204,16 +206,17 @@ class Client:
         logger.info("Starting network ...")
 
         logger.info("Starting p2p server ...")
-        self.p2pservice = P2PService(self.node.prvAddr, self.configDesc, self.keysAuth, useIp6=True)
+        self.p2pservice = P2PService(self.node.prvAddr, self.configDesc, self.keysAuth, useIp6=self.configDesc.useIp6)
         time.sleep(1.0)
 
         logger.info("Starting resource server...")
-        self.resourceServer = ResourceServer(self.configDesc, self.keysAuth, self, useIp6=True)
+        self.resourceServer = ResourceServer(self.configDesc, self.keysAuth, self, useIp6=self.configDesc.useIp6)
         time.sleep(1.0)
         self.p2pservice.setResourceServer(self.resourceServer)
 
         logger.info("Starting task server ...")
-        self.taskServer = TaskServer(self.node.prvAddr, self.configDesc, self.keysAuth, self, useIp6=True)
+        self.taskServer = TaskServer(self.node.prvAddr, self.configDesc, self.keysAuth, self,
+                                     useIp6=self.configDesc.useIp6)
 
         self.p2pservice.setTaskServer(self.taskServer)
 
@@ -434,6 +437,8 @@ class Client:
                                                                       newConfigDesc.requestingTrust,
                                                                       toFloat = True,
                                                                       name = "Minimum trust for requesting node")
+
+        self.configDesc.useIp6 = newConfigDesc.useIp6
 
         self.configDesc.ethAccount = newConfigDesc.ethAccount
 

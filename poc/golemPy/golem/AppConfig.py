@@ -25,7 +25,7 @@ APP_VERSION = "1.021"
 class CommonConfig:
 
     ##############################
-    def __init__( self,
+    def __init__(self,
                   section = "Common",
                   managerAddress = MANAGER_ADDRESS,
                   managerPort = MANAGER_PORT,
@@ -34,21 +34,21 @@ class CommonConfig:
                   optimalPeerNum = OPTIMAL_PEER_NUM,
                   distributedResNum = DISTRIBUTED_RES_NUM,
                   appName = APP_NAME,
-                  appVersion = APP_VERSION ):
+                  appVersion = APP_VERSION):
 
         self._section = section
 
-        ConfigEntry.createProperty( section, "optimal peer num",    optimalPeerNum,    self, "OptimalPeerNum" )
-        ConfigEntry.createProperty( section, "start port",          startPort, self, "StartPort" )
-        ConfigEntry.createProperty( section, "end port",            endPort, self, "EndPort" )
-        ConfigEntry.createProperty( section, "manager address", managerAddress, self, "ManagerAddress" )
-        ConfigEntry.createProperty( section, "manager listen port", managerPort, self, "ManagerListenPort" )
-        ConfigEntry.createProperty( section, "distributed res num", distributedResNum, self, "DistributedResNum" )
-        ConfigEntry.createProperty( section, "application name", appName, self, "AppName" )
-        ConfigEntry.createProperty( section, "application version", appVersion, self, "AppVersion" )
+        ConfigEntry.createProperty(section, "optimal peer num",    optimalPeerNum,    self, "OptimalPeerNum")
+        ConfigEntry.createProperty(section, "start port",          startPort, self, "StartPort")
+        ConfigEntry.createProperty(section, "end port",            endPort, self, "EndPort")
+        ConfigEntry.createProperty(section, "manager address", managerAddress, self, "ManagerAddress")
+        ConfigEntry.createProperty(section, "manager listen port", managerPort, self, "ManagerListenPort")
+        ConfigEntry.createProperty(section, "distributed res num", distributedResNum, self, "DistributedResNum")
+        ConfigEntry.createProperty(section, "application name", appName, self, "AppName")
+        ConfigEntry.createProperty(section, "application version", appVersion, self, "AppVersion")
 
     ##############################
-    def section( self ):
+    def section(self):
         return self._section
 
 
@@ -77,7 +77,7 @@ class NodeConfig:
     ADD_TASKS = 0
     MAX_SENDING_DELAY = 360
     USE_DISTRIBUTED_RESOURCE_MANAGEMENT = 1
-    DEFAULT_ROOT_PATH = os.environ.get( 'GOLEM' )
+    DEFAULT_ROOT_PATH = os.environ.get('GOLEM')
     REQUESTING_TRUST = -1.0
     COMPUTING_TRUST = -1.0
     P2P_SESSION_TIMEOUT = 240
@@ -85,11 +85,13 @@ class NodeConfig:
     RESOURCE_SESSION_TIMEOUT = 600
     PLUGIN_PORT = 1111
     ETH_ACCOUNT_NAME = ""
+    USE_IP6 = 0
 
 
     ##############################
-    def __init__( self, nodeId, seedHost = "", seedPort = 0, rootPath = DEFAULT_ROOT_PATH, numCores = 4, maxResourceSize = MAX_RESOURCE_SIZE,
-                  maxMemorySize = MAX_MEMORY_SIZE, sendPings = SEND_PINGS, pingsInterval = PINGS_INTERVALS,
+    def __init__(self, nodeId, seedHost = "", seedPort = 0, rootPath = DEFAULT_ROOT_PATH, numCores = 4,
+                  maxResourceSize = MAX_RESOURCE_SIZE, maxMemorySize = MAX_MEMORY_SIZE,
+                  sendPings = SEND_PINGS, pingsInterval = PINGS_INTERVALS,
                   gettingPeersInterval = GETTING_PEERS_INTERVAL, gettingTasksInterval = GETTING_TASKS_INTERVAL,
                   taskRequestInterval = TASK_REQUEST_INTERVAL, useWaitingForTaskTimeout = USE_WAITING_FOR_TASK_TIMEOUT,
                   waitingForTaskTimeout = WAITING_FOR_TASK_TIMEOUT, nodesSnapshotInterval = NODE_SNAPSHOT_INTERVAL,
@@ -97,43 +99,44 @@ class NodeConfig:
                   requestingTrust = REQUESTING_TRUST, computingTrust = COMPUTING_TRUST,
                   useDistributedResourceManagement = USE_DISTRIBUTED_RESOURCE_MANAGEMENT,
                   p2pSessionTimeout = P2P_SESSION_TIMEOUT, taskSessionTimeout = TASK_SESSION_TIMEOUT,
-                  resourceSessionTimeout = RESOURCE_SESSION_TIMEOUT, pluginPort = PLUGIN_PORT, ethAccount = ETH_ACCOUNT_NAME):
-        self._section = "Node {}".format( nodeId )
+                  resourceSessionTimeout = RESOURCE_SESSION_TIMEOUT, pluginPort = PLUGIN_PORT,
+                  ethAccount = ETH_ACCOUNT_NAME, useIp6 = USE_IP6):
+        self._section = "Node {}".format(nodeId)
 
         estimated = NodeConfig.readEstimatedPerformance()
         if estimated == 0:
             estimated = ESTIMATED_DEFAULT
 
-        ConfigEntry.createProperty( self.section(), "seed host", seedHost, self, "SeedHost" )
-        ConfigEntry.createProperty( self.section(), "seed host port", seedPort, self, "SeedHostPort")
-        ConfigEntry.createProperty( self.section(), "resource root path", rootPath, self, "RootPath")
-        ConfigEntry.createProperty( self.section(), "send pings", sendPings, self, "SendPings" )
-        ConfigEntry.createProperty( self.section(), "pings interval", pingsInterval, self, "PingsInterval" )
-        ConfigEntry.createProperty( self.section(), "client UUID", u"",   self, "ClientUid" )
-        ConfigEntry.createProperty( self.section(), "getting peers interval",gettingPeersInterval, self, "GettingPeersInterval" )
-        ConfigEntry.createProperty( self.section(), "getting tasks interval", gettingTasksInterval, self, "GettingTasksInterval" )
-        ConfigEntry.createProperty( self.section(), "task request interval", taskRequestInterval, self, "TaskRequestInterval" )
-        ConfigEntry.createProperty( self.section(), "use waiting for task timeout", useWaitingForTaskTimeout, self, "UseWaitingForTaskTimeout" )
-        ConfigEntry.createProperty( self.section(), "waiting for task timeout", waitingForTaskTimeout, self, "WaitingForTaskTimeout" )
-        ConfigEntry.createProperty( self.section(), "estimated perfomance", estimated,  self, "EstimatedPerformance" )
-        ConfigEntry.createProperty( self.section(), "node snapshot interval", nodesSnapshotInterval,  self, "NodeSnapshotInterval" )
-        ConfigEntry.createProperty( self.section(), "add tasks", addTasks, self, "AddTasks" )
-        ConfigEntry.createProperty( self.section(), "maximum delay for sending task results", maxSendingDelay,  self, "MaxResultsSendingDelay" )
-        ConfigEntry.createProperty( self.section(), "number of cores", numCores, self, "NumCores")
-        ConfigEntry.createProperty( self.section(), "maximum resource size", maxResourceSize, self, "MaxResourceSize" )
-        ConfigEntry.createProperty( self.section(), "maximum memory usage", maxMemorySize, self, "MaxMemorySize" )
-        ConfigEntry.createProperty( self.section(), "use distributed resource management", useDistributedResourceManagement, self, "UseDistributedResourceManagement")
-        ConfigEntry.createProperty( self.section(), "minimum trust for requesting node", requestingTrust, self, "RequestingTrust")
-        ConfigEntry.createProperty( self.section(), "minimum trust for computing node", computingTrust, self, "ComputingTrust")
-        ConfigEntry.createProperty( self.section(), "p2p session timeout", p2pSessionTimeout, self, "P2pSessionTimeout" )
-        ConfigEntry.createProperty( self.section(), "task session timeout", taskSessionTimeout, self, "TaskSessionTimeout" )
-        ConfigEntry.createProperty( self.section(), "resource session timeout", resourceSessionTimeout, self, "ResourceSessionTimeout" )
-        ConfigEntry.createProperty( self.section(), "plugin port", pluginPort, self, "PluginPort")
-        ConfigEntry.createProperty( self.section(), "eth account name", ethAccount, self, "EthAccount")
-
+        ConfigEntry.createProperty(self.section(), "seed host", seedHost, self, "SeedHost")
+        ConfigEntry.createProperty(self.section(), "seed host port", seedPort, self, "SeedHostPort")
+        ConfigEntry.createProperty(self.section(), "resource root path", rootPath, self, "RootPath")
+        ConfigEntry.createProperty(self.section(), "send pings", sendPings, self, "SendPings")
+        ConfigEntry.createProperty(self.section(), "pings interval", pingsInterval, self, "PingsInterval")
+        ConfigEntry.createProperty(self.section(), "client UUID", u"",   self, "ClientUid")
+        ConfigEntry.createProperty(self.section(), "getting peers interval",gettingPeersInterval, self, "GettingPeersInterval")
+        ConfigEntry.createProperty(self.section(), "getting tasks interval", gettingTasksInterval, self, "GettingTasksInterval")
+        ConfigEntry.createProperty(self.section(), "task request interval", taskRequestInterval, self, "TaskRequestInterval")
+        ConfigEntry.createProperty(self.section(), "use waiting for task timeout", useWaitingForTaskTimeout, self, "UseWaitingForTaskTimeout")
+        ConfigEntry.createProperty(self.section(), "waiting for task timeout", waitingForTaskTimeout, self, "WaitingForTaskTimeout")
+        ConfigEntry.createProperty(self.section(), "estimated perfomance", estimated,  self, "EstimatedPerformance")
+        ConfigEntry.createProperty(self.section(), "node snapshot interval", nodesSnapshotInterval,  self, "NodeSnapshotInterval")
+        ConfigEntry.createProperty(self.section(), "add tasks", addTasks, self, "AddTasks")
+        ConfigEntry.createProperty(self.section(), "maximum delay for sending task results", maxSendingDelay,  self, "MaxResultsSendingDelay")
+        ConfigEntry.createProperty(self.section(), "number of cores", numCores, self, "NumCores")
+        ConfigEntry.createProperty(self.section(), "maximum resource size", maxResourceSize, self, "MaxResourceSize")
+        ConfigEntry.createProperty(self.section(), "maximum memory usage", maxMemorySize, self, "MaxMemorySize")
+        ConfigEntry.createProperty(self.section(), "use distributed resource management", useDistributedResourceManagement, self, "UseDistributedResourceManagement")
+        ConfigEntry.createProperty(self.section(), "minimum trust for requesting node", requestingTrust, self, "RequestingTrust")
+        ConfigEntry.createProperty(self.section(), "minimum trust for computing node", computingTrust, self, "ComputingTrust")
+        ConfigEntry.createProperty(self.section(), "p2p session timeout", p2pSessionTimeout, self, "P2pSessionTimeout")
+        ConfigEntry.createProperty(self.section(), "task session timeout", taskSessionTimeout, self, "TaskSessionTimeout")
+        ConfigEntry.createProperty(self.section(), "resource session timeout", resourceSessionTimeout, self, "ResourceSessionTimeout")
+        ConfigEntry.createProperty(self.section(), "plugin port", pluginPort, self, "PluginPort")
+        ConfigEntry.createProperty(self.section(), "eth account name", ethAccount, self, "EthAccount")
+        ConfigEntry.createProperty(self.section(), "listen of Ip6", useIp6, self, "UseIp6")
 
     ##############################
-    def section( self ):
+    def section(self):
         return self._section
 
 ##############################
@@ -144,12 +147,12 @@ class AppConfig:
 
     ##############################
     @classmethod
-    def managerPort( cls ):
+    def managerPort(cls):
         return MANAGER_PORT
 
     ##############################
     @classmethod
-    def loadConfig( cls, cfgFile = CONFIG_FILENAME ):
+    def loadConfig(cls, cfgFile = CONFIG_FILENAME):
 
         logger = logging.getLogger(__name__)
 
@@ -169,99 +172,99 @@ class AppConfig:
             logger.error("Failed to register current process - bailing out")
             return None
 
-        cfg  = SimpleConfig( CommonConfig(), NodeConfig( localId ), cfgFile )
+        cfg  = SimpleConfig(CommonConfig(), NodeConfig(localId), cfgFile)
 
         cls.CONFIG_LOADED = True
 
-        return AppConfig( cfg )
+        return AppConfig(cfg)
 
     ##############################
-    def __init__( self, cfg ):
+    def __init__(self, cfg):
         self._cfg = cfg
 
     ##############################
-    def getOptimalPeerNum( self ):
+    def getOptimalPeerNum(self):
         return self._cfg.getCommonConfig().getOptimalPeerNum()
 
-    def getStartPort( self ):
+    def getStartPort(self):
         return self._cfg.getCommonConfig().getStartPort()
 
-    def getEndPort( self ):
+    def getEndPort(self):
         return self._cfg.getCommonConfig().getEndPort()
 
-    def getManagerAddress( self ):
+    def getManagerAddress(self):
         return self._cfg.getCommonConfig().getManagerAddress()
 
-    def getManagerListenPort( self ):
+    def getManagerListenPort(self):
         return self._cfg.getCommonConfig().getManagerListenPort()
 
-    def getAppName( self ):
+    def getAppName(self):
         return self._cfg.getCommonConfig().getAppName()
 
-    def getAppVersion( self ):
+    def getAppVersion(self):
         return self._cfg.getCommonConfig().getAppVersion()
 
-    def getDistributedResNum( self ):
+    def getDistributedResNum(self):
         return self._cfg.getCommonConfig().getDistributedResNum()
 
-    def getSeedHost( self ):
+    def getSeedHost(self):
         return self._cfg.getNodeConfig().getSeedHost()
 
-    def getSeedHostPort( self ):
+    def getSeedHostPort(self):
         return self._cfg.getNodeConfig().getSeedHostPort()
 
-    def getRootPath( self ):
+    def getRootPath(self):
         return self._cfg.getNodeConfig().getRootPath()
 
-    def getSendPings( self ):
+    def getSendPings(self):
         return self._cfg.getNodeConfig().getSendPings()
 
-    def getPingsInterval( self ):
+    def getPingsInterval(self):
         return self._cfg.getNodeConfig().getPingsInterval()
 
-    def getClientUid( self ):
+    def getClientUid(self):
         return self._cfg.getNodeConfig().getClientUid()
 
-    def getGettingPeersInterval( self ):
+    def getGettingPeersInterval(self):
         return self._cfg.getNodeConfig().getGettingPeersInterval()
 
-    def getGettingTasksInterval( self ):
+    def getGettingTasksInterval(self):
         return self._cfg.getNodeConfig().getGettingTasksInterval()
 
-    def getTaskRequestInterval( self ):
+    def getTaskRequestInterval(self):
         return self._cfg.getNodeConfig().getTaskRequestInterval()
 
-    def getWaitingForTaskTimeout( self ):
+    def getWaitingForTaskTimeout(self):
         return self._cfg.getNodeConfig().getWaitingForTaskTimeout()
 
-    def getUseWaitingForTaskTimeout( self ):
+    def getUseWaitingForTaskTimeout(self):
         return self._cfg.getNodeConfig().getUseWaitingForTaskTimeout()
 
-    def getEstimatedPerformance( self ):
+    def getEstimatedPerformance(self):
         try:
-            return float( self._cfg.getNodeConfig().getEstimatedPerformance() )
+            return float(self._cfg.getNodeConfig().getEstimatedPerformance())
         except:
-            return float( ESTIMATED_DEFAULT )
+            return float(ESTIMATED_DEFAULT)
 
-    def getNodeSnapshotInterval( self ):
+    def getNodeSnapshotInterval(self):
         return self._cfg.getNodeConfig().getNodeSnapshotInterval()
 
-    def getAddTasks( self ):
+    def getAddTasks(self):
         return self._cfg.getNodeConfig().getAddTasks()
 
-    def getMaxResultsSendingDelay( self ):
+    def getMaxResultsSendingDelay(self):
         return self._cfg.getNodeConfig().getMaxResultsSendingDelay()
 
-    def getNumCores ( self ):
+    def getNumCores (self):
         return self._cfg.getNodeConfig().getNumCores()
 
-    def getMaxResourceSize ( self ):
+    def getMaxResourceSize (self):
         return self._cfg.getNodeConfig().getMaxResourceSize()
 
-    def getMaxMemorySize ( self ):
+    def getMaxMemorySize (self):
         return self._cfg.getNodeConfig().getMaxMemorySize()
 
-    def getUseDistributedResourceManagement( self ):
+    def getUseDistributedResourceManagement(self):
         return self._cfg.getNodeConfig().getUseDistributedResourceManagement()
 
     def getRequestingTrust(self):
@@ -279,55 +282,59 @@ class AppConfig:
     def getResourceSessionTimeout(self):
         return self._cfg.getNodeConfig().getResourceSessionTimeout()
 
-    def getPluginPort( self ):
+    def getPluginPort(self):
         return self._cfg.getNodeConfig().getPluginPort()
 
-    def getEthAccount( self ):
+    def getEthAccount(self):
         return self._cfg.getNodeConfig().getEthAccount()
 
+    def getUseIp6(self):
+        return self._cfg.getNodeConfig().getUseIp6()
+
     ##############################
-    def changeConfig( self, cfgDesc , cfgFile = CONFIG_FILENAME, ):
-        assert isinstance( cfgDesc, ClientConfigDescriptor )
+    def changeConfig(self, cfgDesc , cfgFile = CONFIG_FILENAME,):
+        assert isinstance(cfgDesc, ClientConfigDescriptor)
 
-        self._cfg.getNodeConfig().setSeedHost( cfgDesc.seedHost )
-        self._cfg.getNodeConfig().setSeedHostPort( cfgDesc.seedHostPort )
-        self._cfg.getNodeConfig().setRootPath( cfgDesc.rootPath )
-        self._cfg.getNodeConfig().setNumCores( cfgDesc.numCores )
-        self._cfg.getNodeConfig().setEstimatedPerformance( cfgDesc.estimatedPerformance )
-        self._cfg.getNodeConfig().setMaxResourceSize( cfgDesc.maxResourceSize )
-        self._cfg.getNodeConfig().setMaxMemorySize( cfgDesc.maxMemorySize )
-        self._cfg.getNodeConfig().setSendPings( cfgDesc.sendPings )
-        self._cfg.getNodeConfig().setPingsInterval( cfgDesc.pingsInterval )
-        self._cfg.getNodeConfig().setGettingPeersInterval( cfgDesc.gettingPeersInterval )
-        self._cfg.getNodeConfig().setGettingTasksInterval( cfgDesc.gettingTasksInterval )
-        self._cfg.getNodeConfig().setTaskRequestInterval( cfgDesc.taskRequestInterval )
-        self._cfg.getNodeConfig().setUseWaitingForTaskTimeout( cfgDesc.useWaitingForTaskTimeout )
-        self._cfg.getNodeConfig().setWaitingForTaskTimeout( cfgDesc.waitingForTaskTimeout )
-        self._cfg.getNodeConfig().setNodeSnapshotInterval( cfgDesc.nodeSnapshotInterval )
-        self._cfg.getNodeConfig().setMaxResultsSendingDelay( cfgDesc.maxResultsSendingDelay  )
-        self._cfg.getNodeConfig().setUseDistributedResourceManagement( cfgDesc.useDistributedResourceManagement )
-        self._cfg.getNodeConfig().setRequestingTrust( cfgDesc.requestingTrust )
-        self._cfg.getNodeConfig().setComputingTrust( cfgDesc.computingTrust )
-        self._cfg.getNodeConfig().setP2pSessionTimeout( cfgDesc.p2pSessionTimeout )
-        self._cfg.getNodeConfig().setTaskSessionTimeout( cfgDesc.taskSessionTimeout )
-        self._cfg.getNodeConfig().setResourceSessionTimeout( cfgDesc.resourceSessionTimeout )
-        self._cfg.getNodeConfig().setPluginPort( cfgDesc.pluginPort )
-        self._cfg.getNodeConfig().setEthAccount( cfgDesc.ethAccount )
+        self._cfg.getNodeConfig().setSeedHost(cfgDesc.seedHost)
+        self._cfg.getNodeConfig().setSeedHostPort(cfgDesc.seedHostPort)
+        self._cfg.getNodeConfig().setRootPath(cfgDesc.rootPath)
+        self._cfg.getNodeConfig().setNumCores(cfgDesc.numCores)
+        self._cfg.getNodeConfig().setEstimatedPerformance(cfgDesc.estimatedPerformance)
+        self._cfg.getNodeConfig().setMaxResourceSize(cfgDesc.maxResourceSize)
+        self._cfg.getNodeConfig().setMaxMemorySize(cfgDesc.maxMemorySize)
+        self._cfg.getNodeConfig().setSendPings(cfgDesc.sendPings)
+        self._cfg.getNodeConfig().setPingsInterval(cfgDesc.pingsInterval)
+        self._cfg.getNodeConfig().setGettingPeersInterval(cfgDesc.gettingPeersInterval)
+        self._cfg.getNodeConfig().setGettingTasksInterval(cfgDesc.gettingTasksInterval)
+        self._cfg.getNodeConfig().setTaskRequestInterval(cfgDesc.taskRequestInterval)
+        self._cfg.getNodeConfig().setUseWaitingForTaskTimeout(cfgDesc.useWaitingForTaskTimeout)
+        self._cfg.getNodeConfig().setWaitingForTaskTimeout(cfgDesc.waitingForTaskTimeout)
+        self._cfg.getNodeConfig().setNodeSnapshotInterval(cfgDesc.nodeSnapshotInterval)
+        self._cfg.getNodeConfig().setMaxResultsSendingDelay(cfgDesc.maxResultsSendingDelay )
+        self._cfg.getNodeConfig().setUseDistributedResourceManagement(cfgDesc.useDistributedResourceManagement)
+        self._cfg.getNodeConfig().setRequestingTrust(cfgDesc.requestingTrust)
+        self._cfg.getNodeConfig().setComputingTrust(cfgDesc.computingTrust)
+        self._cfg.getNodeConfig().setP2pSessionTimeout(cfgDesc.p2pSessionTimeout)
+        self._cfg.getNodeConfig().setTaskSessionTimeout(cfgDesc.taskSessionTimeout)
+        self._cfg.getNodeConfig().setResourceSessionTimeout(cfgDesc.resourceSessionTimeout)
+        self._cfg.getNodeConfig().setPluginPort(cfgDesc.pluginPort)
+        self._cfg.getNodeConfig().setEthAccount(cfgDesc.ethAccount)
+        self._cfg.getNodeConfig().setUseIp6(cfgDesc.useIp6)
 
-        self._cfg.getCommonConfig().setManagerAddress( cfgDesc.managerAddress )
-        self._cfg.getCommonConfig().setManagerListenPort( cfgDesc.managerPort )
-        self._cfg.getCommonConfig().setOptimalPeerNum( cfgDesc.optNumPeers )
-        self._cfg.getCommonConfig().setDistributedResNum( cfgDesc.distResNum )
-        SimpleConfig( self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile, True )
+        self._cfg.getCommonConfig().setManagerAddress(cfgDesc.managerAddress)
+        self._cfg.getCommonConfig().setManagerListenPort(cfgDesc.managerPort)
+        self._cfg.getCommonConfig().setOptimalPeerNum(cfgDesc.optNumPeers)
+        self._cfg.getCommonConfig().setDistributedResNum(cfgDesc.distResNum)
+        SimpleConfig(self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile, True)
 
-    def __str__( self ):
-        return str( self._cfg )
+    def __str__(self):
+        return str(self._cfg)
 
 if __name__ == "__main__":
 
-    c = AppConfig( 0 )
+    c = AppConfig(0)
     print c
-    c = AppConfig( 1 )
+    c = AppConfig(1)
     print c
-    c = AppConfig( 2 )
+    c = AppConfig(2)
     print c

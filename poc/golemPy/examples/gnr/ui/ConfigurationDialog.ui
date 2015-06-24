@@ -38,198 +38,10 @@
           <x>10</x>
           <y>10</y>
           <width>391</width>
-          <height>345</height>
+          <height>391</height>
          </rect>
         </property>
         <layout class="QGridLayout" name="gridLayout">
-         <item row="5" column="0">
-          <widget class="QLabel" name="label_7">
-           <property name="text">
-            <string>Number of cores:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="0">
-          <widget class="QLabel" name="label">
-           <property name="text">
-            <string>Seed address:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="6" column="0">
-          <widget class="QLabel" name="label_4">
-           <property name="text">
-            <string>Estimated performance:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QLineEdit" name="workingDirectoryLineEdit"/>
-         </item>
-         <item row="0" column="1">
-          <widget class="QLineEdit" name="hostAddressLineEdit"/>
-         </item>
-         <item row="5" column="1">
-          <layout class="QVBoxLayout" name="verticalLayout">
-           <item>
-            <widget class="QSlider" name="numCoresSlider">
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>4</number>
-             </property>
-             <property name="singleStep">
-              <number>4</number>
-             </property>
-             <property name="pageStep">
-              <number>1</number>
-             </property>
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="tickPosition">
-              <enum>QSlider::TicksBelow</enum>
-             </property>
-             <property name="tickInterval">
-              <number>1</number>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
-             <item>
-              <widget class="QLabel" name="coresMinLabel">
-               <property name="text">
-                <string>1</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-             <item>
-              <widget class="QLabel" name="coresMaxLabel">
-               <property name="text">
-                <string>1</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-          </layout>
-         </item>
-         <item row="6" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout">
-           <property name="leftMargin">
-            <number>20</number>
-           </property>
-           <property name="rightMargin">
-            <number>10</number>
-           </property>
-           <item>
-            <widget class="QLabel" name="performanceLabel">
-             <property name="text">
-              <string>2200.0</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="recountButton">
-             <property name="text">
-              <string>Recount</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item row="2" column="0">
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>Working directory:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QLineEdit" name="hostIPLineEdit"/>
-         </item>
-         <item row="1" column="0">
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>Seed port:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="0">
-          <widget class="QLabel" name="label_5">
-           <property name="text">
-            <string>Max resources size:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout_3">
-           <item>
-            <widget class="QSpinBox" name="maxResourceSizeSpinBox">
-             <property name="maximum">
-              <number>999999</number>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QComboBox" name="maxResourceSizeComboBox"/>
-           </item>
-          </layout>
-         </item>
-         <item row="4" column="0">
-          <layout class="QVBoxLayout" name="verticalLayout_2">
-           <item>
-            <widget class="QLabel" name="label_8">
-             <property name="text">
-              <string>Max memory usage:</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item row="4" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout_4">
-           <item>
-            <widget class="QSpinBox" name="maxMemoryUsageSpinBox">
-             <property name="maximum">
-              <number>999999</number>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QComboBox" name="maxMemoryUsageComboBox"/>
-           </item>
-          </layout>
-         </item>
-         <item row="8" column="0">
-          <widget class="QLabel" name="label_25">
-           <property name="text">
-            <string>Trust: compute for node</string>
-           </property>
-          </widget>
-         </item>
-         <item row="7" column="0">
-          <widget class="QLabel" name="label_24">
-           <property name="text">
-            <string>Trust: allow node to compute</string>
-           </property>
-          </widget>
-         </item>
          <item row="8" column="1">
           <layout class="QHBoxLayout" name="horizontalLayout_5">
            <item>
@@ -423,6 +235,208 @@
             </layout>
            </item>
           </layout>
+         </item>
+         <item row="5" column="0">
+          <widget class="QLabel" name="label_7">
+           <property name="text">
+            <string>Number of cores:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Seed address:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLineEdit" name="workingDirectoryLineEdit"/>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="hostAddressLineEdit"/>
+         </item>
+         <item row="6" column="0">
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>Estimated performance:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="1">
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <item>
+            <widget class="QSlider" name="numCoresSlider">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>4</number>
+             </property>
+             <property name="singleStep">
+              <number>4</number>
+             </property>
+             <property name="pageStep">
+              <number>1</number>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="tickPosition">
+              <enum>QSlider::TicksBelow</enum>
+             </property>
+             <property name="tickInterval">
+              <number>1</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <item>
+              <widget class="QLabel" name="coresMinLabel">
+               <property name="text">
+                <string>1</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QLabel" name="coresMaxLabel">
+               <property name="text">
+                <string>1</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </item>
+         <item row="6" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout">
+           <property name="leftMargin">
+            <number>20</number>
+           </property>
+           <property name="rightMargin">
+            <number>10</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="performanceLabel">
+             <property name="text">
+              <string>2200.0</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="recountButton">
+             <property name="text">
+              <string>Recount</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Working directory:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="label_5">
+           <property name="text">
+            <string>Max resources size:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLineEdit" name="hostIPLineEdit"/>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Seed port:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0">
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <widget class="QLabel" name="label_8">
+             <property name="text">
+              <string>Max memory usage:</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="3" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout_3">
+           <item>
+            <widget class="QSpinBox" name="maxResourceSizeSpinBox">
+             <property name="maximum">
+              <number>999999</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="maxResourceSizeComboBox"/>
+           </item>
+          </layout>
+         </item>
+         <item row="4" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout_4">
+           <item>
+            <widget class="QSpinBox" name="maxMemoryUsageSpinBox">
+             <property name="maximum">
+              <number>999999</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="maxMemoryUsageComboBox"/>
+           </item>
+          </layout>
+         </item>
+         <item row="8" column="0">
+          <widget class="QLabel" name="label_25">
+           <property name="text">
+            <string>Trust: compute for node</string>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="0">
+          <widget class="QLabel" name="label_24">
+           <property name="text">
+            <string>Trust: allow node to compute</string>
+           </property>
+          </widget>
+         </item>
+         <item row="9" column="1">
+          <widget class="QCheckBox" name="useIp6CheckBox">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="9" column="0">
+          <widget class="QLabel" name="label_37">
+           <property name="text">
+            <string>Listen on IPv6</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>
