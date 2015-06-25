@@ -5,7 +5,7 @@ from golem.core.variables import LONG_STANDARD_SIZE
 
 class DataConsumer:
     ###################
-    def __init__( self, session, extraData ):
+    def __init__(self, session, extraData):
         self.locData = []
         self.dataSize = -1
         self.recvSize = 0
@@ -16,13 +16,13 @@ class DataConsumer:
         self.lastPercent = 0
 
     ###################
-    def dataReceived( self, data ):
+    def dataReceived(self, data):
         if self.dataSize == -1:
-            self.locData.append( self.__getFirstChunk( data ) )
-            self.recvSize = len( data ) - LONG_STANDARD_SIZE
+            self.locData.append(self.__getFirstChunk(data))
+            self.recvSize = len(data) - LONG_STANDARD_SIZE
         else:
-            self.locData.append( data )
-            self.recvSize += len( data )
+            self.locData.append(data)
+            self.recvSize += len(data)
 
         self.__printProgress()
 
@@ -34,21 +34,21 @@ class DataConsumer:
         pass
 
     ###################
-    def __getFirstChunk( self, data ):
+    def __getFirstChunk(self, data):
         self.lastPercent = 0
-        ( self.dataSize, ) = struct.unpack("!L", data[ :LONG_STANDARD_SIZE ] )
+        (self.dataSize,) = struct.unpack("!L", data[ :LONG_STANDARD_SIZE ])
         return data[ LONG_STANDARD_SIZE: ]
 
     ###################
-    def __printProgress( self ):
-        prct = int( 100 * self.recvSize / float( self.dataSize ) )
+    def __printProgress(self):
+        prct = int(100 * self.recvSize / float(self.dataSize))
         if prct > self.lastPercent:
-            print "\rFile data receving {} %                       ".format(  prct ),
+            print "\rFile data receving {} %                       ".format( prct),
             self.lastPercent = prct
 
     ###################
-    def __endReceiving( self ):
+    def __endReceiving(self):
         self.session.conn.dataMode = False
         self.dataSize = -1
         self.recvSize = 0
-        self.session.fullDataReceived( "".join(self.locData), self.extraData )
+        self.session.fullDataReceived("".join(self.locData), self.extraData)

@@ -7,24 +7,24 @@ from TaskComputer import TaskComputer
 from TaskSession import TaskSession
 from TaskKeeper import TaskKeeper
 
-from golem.network.transport.Tcp import Network
+from golem.network.transport.Tcp import Network, HostData
 from golem.ranking.Ranking import RankingStats
+from golem.core.hostaddress import getExternalAddress
 
 logger = logging.getLogger(__name__)
 
-
 class TaskServer:
     #############################
-    def __init__(self, address, configDesc, keysAuth, client, useIp6=False):
+    def __init__(self, node, configDesc, keysAuth, client, useIp6=False):
         self.client             = client
         self.keysAuth           = keysAuth
 
         self.configDesc         = configDesc
 
-        self.address            = address
+        self.node               = node
         self.curPort            = configDesc.startPort
         self.taskKeeper         = TaskKeeper()
-        self.taskManager        = TaskManager(configDesc.clientUid, keyId = self.keysAuth.getKeyId(), rootPath = self.__getTaskManagerRoot(configDesc), useDistributedResources = self.configDesc.useDistributedResourceManagement)
+        self.taskManager        = TaskManager(configDesc.clientUid, self.node, keyId = self.keysAuth.getKeyId(), rootPath = self.__getTaskManagerRoot(configDesc), useDistributedResources = self.configDesc.useDistributedResourceManagement)
         self.taskComputer       = TaskComputer(configDesc.clientUid, self)
         self.taskSessions       = {}
         self.taskSessionsIncoming = []
@@ -60,10 +60,9 @@ class TaskServer:
             logger.debug("Requesting trust level: {}".format(trust))
             if trust >= self.configDesc.requestingTrust:
                 self.__connectAndSendTaskRequest(self.configDesc.clientUid,
-                                              theader.clientId,
-                                              theader.taskOwnerAddress,
                                               theader.taskOwnerPort,
                                               theader.taskOwnerKeyId,
+                                              theader.taskOwner,
                                               theader.taskId,
                                               self.configDesc.estimatedPerformance,
                                               self.configDesc.maxResourceSize,
@@ -128,6 +127,7 @@ class TaskServer:
                             "address"       : th.taskOwnerAddress,
                             "port"          : th.taskOwnerPort,
                             "keyId"         : th.taskOwnerKeyId,
+                            "taskOwner"     : th.taskOwner,
                             "ttl"           : th.ttl,
                             "subtaskTimeout": th.subtaskTimeout,
                             "clientId"      : th.clientId,
@@ -274,7 +274,8 @@ class TaskServer:
 
     ###########################
     def acceptResult(self, subtaskId, accountInfo):
-        priceMod = self.taskManager.getPriceMod(subtaskId)
+        price_mod = self.taskManager.getPriceMod(subtaskId)
+        priceMod = price_mod
         taskId = self.taskManager.getTaskId(subtaskId)
         self.client.acceptResult(taskId, subtaskId, priceMod, accountInfo)
 
@@ -337,8 +338,9 @@ class TaskServer:
         port = iListeningPort.getHost().port
         self.curPort = port
         logger.info("Port {} opened - listening".format(port))
-        self.taskManager.listenAddress = self.address
+        self.taskManager.listenAddress = self.node.prvAddr
         self.taskManager.listenPort = self.curPort
+        self.taskManager.node = self.node
 
     #############################
     def __listeningFailure(self, p):
@@ -348,11 +350,17 @@ class TaskServer:
         # sys.exit(0)
 
     #############################   
-    def __connectAndSendTaskRequest(self, clientId, taskClientId, address, port, keyId, taskId, estimatedPerformance,
-                                    maxResourceSize, maxMemorySize, numCores):
-        Network.connect(address, port, TaskSession, self.__connectionForTaskRequestEstablished,
-                        self.__connectionForTaskRequestFailure, clientId, keyId, taskId,
-                        estimatedPerformance, maxResourceSize, maxMemorySize, numCores)
+    def __connectAndSendTaskRequest(self, clientId, port, keyId, taskOwner, taskId,
+                                    estimatedPerformance, maxResourceSize, maxMemorySize, numCores):
+#Test innej metody
+#        Network.connect(address, port, TaskSession, self.__connectionForTaskRequestEstablished,
+#                        self.__connectionForTaskRequestFailure, clientId, keyId, taskId,
+#                        estimatedPerformance, maxResourceSize, maxMemorySize, numCores)
+        hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
+        hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
+        Network.connectToHost(hostInfos, TaskSession, self.__connectionForTaskRequestEstablished,
+                              self.__connectionForTaskRequestFailure, clientId, keyId, taskId, estimatedPerformance,
+                              maxResourceSize, maxMemorySize, numCores)
 
     #############################   
     def __connectAndSendResourceRequest(self, address, port, keyId, subtaskId, resourceHeader):
@@ -410,7 +418,7 @@ class TaskServer:
         self.taskSessions[waitingTaskResult.subtaskId] = session
 
         session.sendHello()
-        session.sendReportComputedTask(waitingTaskResult, self.address, self.curPort, self.client.getEthAccount())
+        session.sendReportComputedTask(waitingTaskResult, self.node.prvAddr, self.curPort, self.client.getEthAccount())
 
     #############################
     def __connectionForTaskResultFailure(self, keyId, waitingTaskResult):

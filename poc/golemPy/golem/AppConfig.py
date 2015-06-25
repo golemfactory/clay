@@ -310,7 +310,7 @@ class AppConfig:
         self._cfg.getNodeConfig().setUseWaitingForTaskTimeout(cfgDesc.useWaitingForTaskTimeout)
         self._cfg.getNodeConfig().setWaitingForTaskTimeout(cfgDesc.waitingForTaskTimeout)
         self._cfg.getNodeConfig().setNodeSnapshotInterval(cfgDesc.nodeSnapshotInterval)
-        self._cfg.getNodeConfig().setMaxResultsSendingDelay(cfgDesc.maxResultsSendingDelay )
+        self._cfg.getNodeConfig().setMaxResultsSendingDelay(cfgDesc.maxResultsSendingDelay)
         self._cfg.getNodeConfig().setUseDistributedResourceManagement(cfgDesc.useDistributedResourceManagement)
         self._cfg.getNodeConfig().setRequestingTrust(cfgDesc.requestingTrust)
         self._cfg.getNodeConfig().setComputingTrust(cfgDesc.computingTrust)

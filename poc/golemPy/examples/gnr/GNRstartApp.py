@@ -27,25 +27,25 @@ def install_reactor():
     return reactor
 
 ############################
-def registerGui( logic, app, gui ):
-    logic.registerGui( app.getMainWindow(), gui )
+def registerGui(logic, app, gui):
+    logic.registerGui(app.getMainWindow(), gui)
 
 ############################
-def registerRenderingTaskTypes( logic ):
-    logic.registerNewRendererType( buildPBRTRendererInfo() )
-    logic.registerNewRendererType( build3dsMaxRendererInfo() )
-    logic.registerNewRendererType( buildVRayRendererInfo() )
-    logic.registerNewRendererType( buildLuxRenderInfo() )
-    logic.registerNewRendererType( buildBlenderRendererInfo() )
+def registerRenderingTaskTypes(logic):
+    logic.registerNewRendererType(buildPBRTRendererInfo())
+    logic.registerNewRendererType(build3dsMaxRendererInfo())
+    logic.registerNewRendererType(buildVRayRendererInfo())
+    logic.registerNewRendererType(buildLuxRenderInfo())
+    logic.registerNewRendererType(buildBlenderRendererInfo())
 
 ############################
-def registerTaskTypes( logic ):
-    logic.registerNewTaskType( buildPBRTTaskType() )
-    logic.registerNewTaskType( build3dsMaxTaskType() )
-    logic.registerNewTaskType( buildVRayTaskType() )
-    logic.registerNewTaskType( buildPythonGNRTaskType() )
-    logic.registerNewTaskType( buildLuxRenderTaskType() )
-    logic.registerNewTaskType( buildBlenderRenderTaskType() )
+def registerTaskTypes(logic):
+    logic.registerNewTaskType(buildPBRTTaskType())
+    logic.registerNewTaskType(build3dsMaxTaskType())
+    logic.registerNewTaskType(buildVRayTaskType())
+    logic.registerNewTaskType(buildPythonGNRTaskType())
+    logic.registerNewTaskType(buildLuxRenderTaskType())
+    logic.registerNewTaskType(buildBlenderRenderTaskType())
 
 ############################
 def loadEnvironments():
@@ -58,83 +58,83 @@ def loadEnvironments():
             Environment() ]
 
 ############################
-def startAndConfigureClient( logic, environments ):
+def startAndConfigureClient(logic, environments):
     client = startClient()
     for env in environments:
-        client.environmentsManager.addEnvironment( env )
+        client.environmentsManager.addEnvironment(env)
 
-    client.environmentsManager.loadConfig( client.configDesc.clientUid )
+    client.environmentsManager.loadConfig(client.configDesc.clientUid)
 
-    logic.registerClient( client )
+    logic.registerClient(client)
     logic.checkNetworkState()
 
     return client
 
 ############################
-def runManager( logic, client):
+def runManager(logic, client):
     path = os.getcwd()
-    def runGNRNodes( numNodes ):
-        runAdditionalNodes( path, numNodes )
+    def runGNRNodes(numNodes):
+        runAdditionalNodes(path, numNodes)
 
-    nmPath = os.path.join(path, "..\\manager\\" )
-    def runGNRManager( ):
-        runManager( nmPath )
+    nmPath = os.path.join(path, "..\\manager\\")
+    def runGNRManager():
+        runManager(nmPath)
 
-    logic.registerStartNewNodeFunction( runGNRNodes )
-    logic.registerStartNodesManagerFunction( runGNRManager )
+    logic.registerStartNewNodeFunction(runGNRNodes)
+    logic.registerStartNodesManagerFunction(runGNRManager)
 
-    client.environmentsManager.loadConfig( client.configDesc.clientUid )
+    client.environmentsManager.loadConfig(client.configDesc.clientUid)
 
 ############################
-def runInfoServer( client, startPort = 55555, nextPort = 55556, endPort = 59999 ):
+def runInfoServer(client, startPort = 55555, nextPort = 55556, endPort = 59999):
     from examples.gnr.InfoServer import InfoServer
-    infoServer = InfoServer( client, startPort, nextPort, endPort )
+    infoServer = InfoServer(client, startPort, nextPort, endPort)
     infoServer.start()
 
 ############################
-def runManagerClient( logic ):
+def runManagerClient(logic):
     logic.startNodesManagerClient()
 
 ############################
-def runRanking( client, reactor):
+def runRanking(client, reactor):
     client.ranking.run(reactor)
 
 ############################
-def runAddTaskClient( logic ):
+def runAddTaskClient(logic):
     logic.startAddTaskClient()
 
 ############################
-def runAddTaskServer( client ):
+def runAddTaskServer(client):
    client.runAddTaskServer()
  #   from PluginServer import TaskAdderServer
- #   server =  TaskAdderServer( client.getPluginPort() )
+ #   server =  TaskAdderServer(client.getPluginPort())
  #   server.start()
 
 ###########################################################################
-def startApp( logic, app, gui, rendering = False, startManager = False, startManagerClient = False, startInfoServer = False, startRanking = True, startAddTaskClient = False, startAddTaskServer = False  ):
+def startApp(logic, app, gui, rendering = False, startManager = False, startManagerClient = False, startInfoServer = False, startRanking = True, startAddTaskClient = False, startAddTaskServer = False ):
     reactor = install_reactor()
-    registerGui( logic, app, gui )
+    registerGui(logic, app, gui)
     if rendering:
-        registerRenderingTaskTypes( logic )
+        registerRenderingTaskTypes(logic)
     else:
-        registerTaskTypes( logic )
+        registerTaskTypes(logic)
     environments = loadEnvironments()
 
-    client = startAndConfigureClient( logic, environments )
+    client = startAndConfigureClient(logic, environments)
 
     if startManager:
-        runManager( logic, client )
+        runManager(logic, client)
     if startManagerClient:
-        runManagerClient( logic )
+        runManagerClient(logic)
     if startInfoServer:
-        runInfoServer( client )
+        runInfoServer(client)
     if startRanking:
-        runRanking( client, reactor )
+        runRanking(client, reactor)
     if startAddTaskClient:
-        runAddTaskClient( logic )
+        runAddTaskClient(logic)
     if startAddTaskServer:
-        runAddTaskServer( client )
+        runAddTaskServer(client)
 
-    app.execute( False )
+    app.execute(False)
 
     reactor.run()

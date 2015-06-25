@@ -33,25 +33,25 @@ def buildPBRTTaskType():
     options.outputFile = ''
     options.verificationOptions = None
 
-    return TaskType( "PBRT", PbrtGNRTaskBuilder, options, PbrtTaskDialog, PbrtTaskDialogCustomizer)
+    return TaskType("PBRT", PbrtGNRTaskBuilder, options, PbrtTaskDialog, PbrtTaskDialogCustomizer)
 
 def build3dsMaxTaskType():
-    return TaskType( "3ds Max Renderer", ThreeDSMaxTaskBuilder)
+    return TaskType("3ds Max Renderer", ThreeDSMaxTaskBuilder)
 
 def buildVRayTaskType():
-    return TaskType( "VRay Standalone", VRayTaskBuilder)
+    return TaskType("VRay Standalone", VRayTaskBuilder)
 
 def buildLuxRenderTaskType():
-    return TaskType( "LuxRender", LuxRenderTaskBuilder )
+    return TaskType("LuxRender", LuxRenderTaskBuilder)
 
 def buildBlenderRenderTaskType():
-    return TaskType( "BlenderRender", BlenderRenderTaskBuilder )
+    return TaskType("BlenderRender", BlenderRenderTaskBuilder)
 
 def buildPythonGNRTaskType():
-    return TaskType( "Python GNR Task", PythonGNRTaskBuilder )
+    return TaskType("Python GNR Task", PythonGNRTaskBuilder)
 
 class TaskType:
-    def __init__( self, name, taskBuilderType, options = None, dialog = None, dialogCustomizer = None ):
+    def __init__(self, name, taskBuilderType, options = None, dialog = None, dialogCustomizer = None):
         self.name = name
         self.taskBuilderType = taskBuilderType
         self.options = options

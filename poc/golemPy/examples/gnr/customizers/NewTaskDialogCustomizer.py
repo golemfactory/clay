@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class NewTaskDialogCustomizer:
     #############################
-    def __init__( self, gui, logic ):
+    def __init__(self, gui, logic):
 
         self.gui    = gui
         self.logic  = logic
@@ -32,94 +32,94 @@ class NewTaskDialogCustomizer:
         self._init()
 
     #############################
-    def _setupConnections( self ):
+    def _setupConnections(self):
         self._setupTaskTypeConnections()
         self._setupBasicNewTaskConnections()
         self._setupAdvanceNewTaskConnections()
         self._setupOptionsConnections()
 
-    def _setupTaskTypeConnections( self ):
-        QtCore.QObject.connect( self.gui.ui.taskTypeComboBox, QtCore.SIGNAL( "currentIndexChanged( const QString)" ), self._taskTypeValueChanged )
+    def _setupTaskTypeConnections(self):
+        QtCore.QObject.connect(self.gui.ui.taskTypeComboBox, QtCore.SIGNAL("currentIndexChanged(const QString)"), self._taskTypeValueChanged)
 
     #############################
-    def _setupBasicNewTaskConnections( self ):
-        self.gui.ui.saveButton.clicked.connect( self._saveTaskButtonClicked )
-        self.gui.ui.chooseMainProgramFileButton.clicked.connect( self._chooseMainProgramFileButtonClicked )
-        self.gui.ui.addResourceButton.clicked.connect( self._showAddResourcesDialog )
-        self.gui.ui.finishButton.clicked.connect( self._finishButtonClicked )
-        self.gui.ui.cancelButton.clicked.connect( self._cancelButtonClicked )
+    def _setupBasicNewTaskConnections(self):
+        self.gui.ui.saveButton.clicked.connect(self._saveTaskButtonClicked)
+        self.gui.ui.chooseMainProgramFileButton.clicked.connect(self._chooseMainProgramFileButtonClicked)
+        self.gui.ui.addResourceButton.clicked.connect(self._showAddResourcesDialog)
+        self.gui.ui.finishButton.clicked.connect(self._finishButtonClicked)
+        self.gui.ui.cancelButton.clicked.connect(self._cancelButtonClicked)
 
     #############################
-    def _setupAdvanceNewTaskConnections( self ):
-        QtCore.QObject.connect( self.gui.ui.optimizeTotalCheckBox, QtCore.SIGNAL( "stateChanged( int ) "), self._optimizeTotalCheckBoxChanged )
+    def _setupAdvanceNewTaskConnections(self):
+        QtCore.QObject.connect(self.gui.ui.optimizeTotalCheckBox, QtCore.SIGNAL("stateChanged(int) "), self._optimizeTotalCheckBoxChanged)
 
     #############################
-    def _setupOptionsConnections( self ):
-        self.gui.ui.optionsButton.clicked.connect( self._openOptions )
+    def _setupOptionsConnections(self):
+        self.gui.ui.optionsButton.clicked.connect(self._openOptions)
 
     #############################
-    def _setUid( self ):
-        self.gui.ui.taskIdLabel.setText( self._generateNewTaskUID() )
+    def _setUid(self):
+        self.gui.ui.taskIdLabel.setText(self._generateNewTaskUID())
 
     #############################
-    def _init( self ):
+    def _init(self):
         self._setUid()
 
         taskTypes = self.logic.getTaskTypes()
         for t in taskTypes.values():
-            self.gui.ui.taskTypeComboBox.addItem( t.name )
+            self.gui.ui.taskTypeComboBox.addItem(t.name)
 
     #############################
-    def _chooseMainProgramFileButtonClicked( self ):
+    def _chooseMainProgramFileButtonClicked(self):
 
-        dir = os.path.dirname( u"{}".format( self.gui.ui.mainProgramFileLineEdit.text() ) )
+        dir = os.path.dirname(u"{}".format(self.gui.ui.mainProgramFileLineEdit.text()))
 
-        fileName = u"{}".format( QFileDialog.getOpenFileName( self.gui.window,
-            "Choose main program file", dir, "Python (*.py)") )
+        fileName = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
+            "Choose main program file", dir, "Python (*.py)"))
 
         if fileName != '':
-            self.gui.ui.mainProgramFileLineEdit.setText( fileName )
+            self.gui.ui.mainProgramFileLineEdit.setText(fileName)
 
     ############################
-    def _showAddResourcesDialog( self ):
+    def _showAddResourcesDialog(self):
         if not self.addTaskResourceDialog:
-            self.addTaskResourceDialog = AddTaskResourcesDialog( self.gui.window )
-            self.addTaskResourcesDialogCustomizer = AddResourcesDialogCustomizer( self.addTaskResourceDialog, self.logic )
+            self.addTaskResourceDialog = AddTaskResourcesDialog(self.gui.window)
+            self.addTaskResourcesDialogCustomizer = AddResourcesDialogCustomizer(self.addTaskResourceDialog, self.logic)
 
         self.addTaskResourceDialog.show()
 
     ############################
-    def _saveTaskButtonClicked( self ):
-        fileName = QFileDialog.getSaveFileName( self.gui.window,
+    def _saveTaskButtonClicked(self):
+        fileName = QFileDialog.getSaveFileName(self.gui.window,
             "Choose save file", "", "Golem Task (*.gt)")
 
         if fileName != '':
-            self._saveTask( fileName )
+            self._saveTask(fileName)
 
     ############################
-    def _saveTask( self, filePath ):
+    def _saveTask(self, filePath):
         definition = self._queryTaskDefinition()
-        self.logic.saveTask( definition, filePath )
+        self.logic.saveTask(definition, filePath)
 
     ############################
-    def loadTaskDefinition( self, taskDefinition ):
-        assert isinstance( taskDefinition, GNRTaskDefinition )
+    def loadTaskDefinition(self, taskDefinition):
+        assert isinstance(taskDefinition, GNRTaskDefinition)
 
-        definition = deepcopy( taskDefinition )
+        definition = deepcopy(taskDefinition)
 
-        self.gui.ui.taskIdLabel.setText( self._generateNewTaskUID() )
-        self._loadBasicTaskParams( definition )
-        self._loadAdvanceTaskParams( definition )
-        self._loadResources( definition )
+        self.gui.ui.taskIdLabel.setText(self._generateNewTaskUID())
+        self._loadBasicTaskParams(definition)
+        self._loadAdvanceTaskParams(definition)
+        self._loadResources(definition)
 
     #############################
-    def setOptions( self, options ):
+    def setOptions(self, options):
         self.options = options
 
     #############################
-    def _loadResources( self, definition ):
-        self.addTaskResourceDialog = AddTaskResourcesDialog( self.gui.window )
-        self.addTaskResourcesDialogCustomizer = AddResourcesDialogCustomizer( self.addTaskResourceDialog, self.logic )
+    def _loadResources(self, definition):
+        self.addTaskResourceDialog = AddTaskResourcesDialog(self.gui.window)
+        self.addTaskResourcesDialogCustomizer = AddResourcesDialogCustomizer(self.addTaskResourceDialog, self.logic)
         self.addTaskResourcesDialogCustomizer.resources = definition.resources
 
         model = self.addTaskResourcesDialogCustomizer.gui.ui.folderTreeView.model()
@@ -136,78 +136,78 @@ class NewTaskDialogCustomizer:
         # TODO
         self.addTaskResourcesDialogCustomizer.gui.ui.folderTreeView.model().addStartFiles(definition.resources)
         # for res in definition.resources:
-        #     model.setData( model.index( res ), QtCore.Qt.Checked, QtCore.Qt.CheckStateRole )
+        #     model.setData(model.index(res), QtCore.Qt.Checked, QtCore.Qt.CheckStateRole)
 
     #############################
-    def _loadBasicTaskParams( self, definition ):
-        self._loadTaskType( definition )
-        setTimeSpinBoxes( self.gui, definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime )
-        self.gui.ui.mainProgramFileLineEdit.setText( definition.mainProgramFile )
-        self.gui.ui.totalSpinBox.setValue( definition.totalSubtasks )
+    def _loadBasicTaskParams(self, definition):
+        self._loadTaskType(definition)
+        setTimeSpinBoxes(self.gui, definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime)
+        self.gui.ui.mainProgramFileLineEdit.setText(definition.mainProgramFile)
+        self.gui.ui.totalSpinBox.setValue(definition.totalSubtasks)
 
-        if os.path.normpath( definition.mainProgramFile ) in definition.resources:
-            definition.resources.remove( os.path.normpath( definition.mainProgramFile ) )
-
-
-        self._loadOptions( definition )
+        if os.path.normpath(definition.mainProgramFile) in definition.resources:
+            definition.resources.remove(os.path.normpath(definition.mainProgramFile))
 
 
-    ############################
-    def _loadOptions( self, definition ):
-        self.options = deepcopy( definition.options )
+        self._loadOptions(definition)
+
 
     ############################
-    def _loadTaskType( self, definition ):
+    def _loadOptions(self, definition):
+        self.options = deepcopy(definition.options)
+
+    ############################
+    def _loadTaskType(self, definition):
         try:
-            taskTypeItem = self.gui.ui.taskTypeComboBox.findText( definition.taskType )
+            taskTypeItem = self.gui.ui.taskTypeComboBox.findText(definition.taskType)
             if taskTypeItem >= 0:
-                self.gui.ui.taskTypeComboBox.setCurrentIndex( taskTypeItem )
+                self.gui.ui.taskTypeComboBox.setCurrentIndex(taskTypeItem)
             else:
-                logger.error( "Cannot load task, unknown task type" )
+                logger.error("Cannot load task, unknown task type")
                 return
         except Exception, err:
-            logger.error("Wrong task type {}".format( str( err ) ) )
+            logger.error("Wrong task type {}".format(str(err)))
             return
 
     #############################
-    def _loadAdvanceTaskParams( self, definition ):
-        self.gui.ui.totalSpinBox.setEnabled( not definition.optimizeTotal )
-        self.gui.ui.optimizeTotalCheckBox.setChecked( definition.optimizeTotal )
+    def _loadAdvanceTaskParams(self, definition):
+        self.gui.ui.totalSpinBox.setEnabled(not definition.optimizeTotal)
+        self.gui.ui.optimizeTotalCheckBox.setChecked(definition.optimizeTotal)
 
     #############################
-    def _finishButtonClicked( self ):
+    def _finishButtonClicked(self):
         self.taskState = RenderingTaskState()
         self.taskState.status = TaskStatus.notStarted
         self.taskState.definition = self._queryTaskDefinition()
         self._addCurrentTask()
 
     #############################
-    def _addCurrentTask( self ):
-        self.logic.addTasks( [ self.taskState ] )
+    def _addCurrentTask(self):
+        self.logic.addTasks([ self.taskState ])
         self.gui.window.close()
 
     #############################
-    def _cancelButtonClicked( self ):
+    def _cancelButtonClicked(self):
         self.gui.window.close()
 
     #############################
-    def _generateNewTaskUID( self ):
+    def _generateNewTaskUID(self):
         import uuid
-        return "{}".format( uuid.uuid4() )
+        return "{}".format(uuid.uuid4())
 
     #############################
-    def _queryTaskDefinition( self ):
+    def _queryTaskDefinition(self):
         definition = GNRTaskDefinition()
-        definition = self._readBasicTaskParams( definition )
-        definition = self._readTaskType( definition )
+        definition = self._readBasicTaskParams(definition)
+        definition = self._readTaskType(definition)
         definition.options = self.options
         return definition
 
     #############################
-    def _readBasicTaskParams( self, definition ):
-        definition.taskId = u"{}".format( self.gui.ui.taskIdLabel.text() )
-        definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime = getTimeValues( self.gui )
-        definition.mainProgramFile = u"{}".format( self.gui.ui.mainProgramFileLineEdit.text() )
+    def _readBasicTaskParams(self, definition):
+        definition.taskId = u"{}".format(self.gui.ui.taskIdLabel.text())
+        definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime = getTimeValues(self.gui)
+        definition.mainProgramFile = u"{}".format(self.gui.ui.mainProgramFileLineEdit.text())
         definition.optimizeTotal = self.gui.ui.optimizeTotalCheckBox.isChecked()
         if definition.optimizeTotal:
             definition.totalSubtasks = 0
@@ -219,34 +219,34 @@ class NewTaskDialogCustomizer:
         else:
             definition.resources = set()
 
-        definition.resources.add( os.path.normpath( definition.mainProgramFile ) )
+        definition.resources.add(os.path.normpath(definition.mainProgramFile))
 
         return definition
 
     #############################
-    def _readTaskType( self, definition ):
-        definition.taskType = u"{}".format( self.gui.ui.taskTypeComboBox.currentText() )
+    def _readTaskType(self, definition):
+        definition.taskType = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
         return definition
 
     #############################
-    def _optimizeTotalCheckBoxChanged( self ):
-        self.gui.ui.totalSpinBox.setEnabled( not self.gui.ui.optimizeTotalCheckBox.isChecked() )
+    def _optimizeTotalCheckBoxChanged(self):
+        self.gui.ui.totalSpinBox.setEnabled(not self.gui.ui.optimizeTotalCheckBox.isChecked())
 
     #############################
-    def _openOptions( self ):
-        taskName =  u"{}".format( self.gui.ui.taskTypeComboBox.currentText() )
-        task = self.logic.getTaskType( taskName )
+    def _openOptions(self):
+        taskName =  u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
+        task = self.logic.getTaskType(taskName)
         dialog = task.dialog
         dialogCustomizer = task.dialogCustomizer
         if dialog is not None and dialogCustomizer is not None:
-            taskDialog = dialog ( self.gui.window )
-            taskDialogCustomizer = dialogCustomizer( taskDialog, self.logic, self )
+            taskDialog = dialog (self.gui.window)
+            taskDialogCustomizer = dialogCustomizer(taskDialog, self.logic, self)
             taskDialog.show()
         else:
-            self.gui.ui.optionsButton.setEnabled( False )
+            self.gui.ui.optionsButton.setEnabled(False)
 
-    def _taskTypeValueChanged( self, name ):
-        taskName =  u"{}".format( self.gui.ui.taskTypeComboBox.currentText() )
-        task = self.logic.getTaskType( taskName )
-        self.gui.ui.optionsButton.setEnabled( task.dialog is not None and task.dialogCustomizer is not None )
-        self.options = deepcopy( task.options )
+    def _taskTypeValueChanged(self, name):
+        taskName =  u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
+        task = self.logic.getTaskType(taskName)
+        self.gui.ui.optionsButton.setEnabled(task.dialog is not None and task.dialogCustomizer is not None)
+        self.options = deepcopy(task.options)

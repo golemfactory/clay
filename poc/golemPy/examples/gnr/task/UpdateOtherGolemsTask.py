@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 ##############################################
 class UpdateOtherGolemsTaskDefinition:
-    def __init__( self ):
+    def __init__(self):
         self.taskId = ""
 
         self.fullTaskTimeout    = 0
@@ -24,29 +24,29 @@ class UpdateOtherGolemsTaskDefinition:
         self.totalSubtasks      = 1
 
 ##############################################
-class UpdateOtherGolemsTaskBuilder( GNRTaskBuilder ):
+class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
     #######################
-    def __init__(self, clientId, taskDefinition, rootPath, srcDir ):
-        GNRTaskBuilder.__init__( self, clientId, taskDefinition, rootPath )
+    def __init__(self, clientId, taskDefinition, rootPath, srcDir):
+        GNRTaskBuilder.__init__(self, clientId, taskDefinition, rootPath)
         self.srcDir = srcDir
 
-    def build( self ):
-        with open( self.taskDefinition.srcFile ) as f:
+    def build(self):
+        with open(self.taskDefinition.srcFile) as f:
             srcCode = f.read()
         self.taskDefinition.taskResources = set()
-        for dir, dirs, files in os.walk( self.srcDir ):
+        for dir, dirs, files in os.walk(self.srcDir):
             for file_ in files:
-                _, ext = os.path.splitext( file_ )
+                _, ext = os.path.splitext(file_)
                 if ext in '.ini':
                     continue
-                self.taskDefinition.taskResources.add( os.path.join( dir,file_ ) )
+                self.taskDefinition.taskResources.add(os.path.join(dir,file_))
 
         print self.taskDefinition.taskResources
         resourceSize = 0
         for resource in self.taskDefinition.taskResources:
             resourceSize += os.stat(resource).st_size
 
-        return UpdateOtherGolemsTask(    srcCode,
+        return UpdateOtherGolemsTask(   srcCode,
                             self.clientId,
                             self.taskDefinition.taskId,
                             "",
@@ -60,12 +60,12 @@ class UpdateOtherGolemsTaskBuilder( GNRTaskBuilder ):
                             resourceSize,
                             0,
                             self.taskDefinition.totalSubtasks
-                           )
+                          )
 
 ##############################################
-class UpdateOtherGolemsTask( GNRTask ):
+class UpdateOtherGolemsTask(GNRTask):
 
-    def __init__( self,
+    def __init__(self,
                   srcCode,
                   clientId,
                   taskId,
@@ -79,11 +79,11 @@ class UpdateOtherGolemsTask( GNRTask ):
                   resources,
                   resourceSize,
                   estimatedMemory,
-                  totalTasks ):
+                  totalTasks):
 
 
-        GNRTask.__init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
-                            ttl, subtaskTtl, resourceSize, estimatedMemory )
+        GNRTask.__init__(self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+                            ttl, subtaskTtl, resourceSize, estimatedMemory)
 
         self.totalTasks = totalTasks
         self.rootPath = rootPath
@@ -94,18 +94,18 @@ class UpdateOtherGolemsTask( GNRTask ):
 
 
     #######################
-    def abort ( self ):
+    def abort (self):
         self.active = False
 
     #######################
-    def queryExtraData( self, perfIndex, numCores, clientId ):
+    def queryExtraData(self, perfIndex, numCores, clientId):
 
         if clientId in self.updated:
             return None
 
         ctd = ComputeTaskDef()
         ctd.taskId = self.header.taskId
-        hash = "{}".format( random.getrandbits(128) )
+        hash = "{}".format(random.getrandbits(128))
         ctd.subtaskId = hash
         ctd.extraData = { "startTask" : self.lastTask,
                           "endTask": self.lastTask + 1 }
@@ -125,5 +125,5 @@ class UpdateOtherGolemsTask( GNRTask ):
         return ctd
 
     #######################
-    def computationFinished( self, subtaskId, taskResult, dirManager = None, resultType = 0):
+    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
         self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished

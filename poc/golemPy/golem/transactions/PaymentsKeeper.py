@@ -29,7 +29,7 @@ class PaymentsKeeper:
 
     ################################
     def getNewPaymentsTask(self, budget):
-        if len( self.tasksToPay ) > 0:
+        if len(self.tasksToPay) > 0:
             task = self.tasksToPay.popleft()
             if task.value < budget:
                 self.settledTasks[task.taskId] = task

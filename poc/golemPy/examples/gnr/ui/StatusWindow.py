@@ -3,11 +3,11 @@ from gen.ui_StatusWindow import Ui_StatusWindow
 
 class StatusWindow:
     ###################
-    def __init__( self, parent ):
-        self.window = QDialog( parent )
+    def __init__(self, parent):
+        self.window = QDialog(parent)
         self.ui = Ui_StatusWindow()
-        self.ui.setupUi( self.window )
+        self.ui.setupUi(self.window)
 
     ###################
-    def show( self ):
+    def show(self):
         self.window.show()

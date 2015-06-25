@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class P2PService:
     ########################
-    def __init__(self, hostAddress, configDesc, keysAuth, useIp6=False):
+    def __init__(self, node, configDesc, keysAuth, useIp6=False):
 
         self.p2pServer              = P2PServer(configDesc, self, useIp6)
 
@@ -27,7 +27,7 @@ class P2PService:
         self.incommingPeers         = {}
         self.freePeers              = []
         self.taskServer             = None
-        self.hostAddress            = hostAddress
+        self.node                   = node
         self.lastMessageTimeThreshold = self.configDesc.p2pSessionTimeout
         self.refreshPeersTimeout    = 900
         self.lastRefreshPeers       = time.time()

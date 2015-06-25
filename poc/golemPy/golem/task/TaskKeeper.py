@@ -5,11 +5,11 @@ import datetime
 
 from TaskBase import TaskHeader
 
-logger = logging.getLogger( __name__ )
+logger = logging.getLogger(__name__)
 
 class TaskKeeper:
     #############################
-    def __init__( self, removeTaskTimeout = 240.0, verificationTimeout = 3600 ):
+    def __init__(self, removeTaskTimeout = 240.0, verificationTimeout = 3600):
         self.taskHeaders    = {}
         self.supportedTasks = []
         self.removedTasks   = {}
@@ -36,22 +36,25 @@ class TaskKeeper:
             return None
 
     #############################
-    def getAllTasks( self ):
+    def getAllTasks(self):
         return self.taskHeaders.values()
 
     #############################
-    def addTaskHeader( self, thDictRepr, isSupported ):
+    def addTaskHeader(self, thDictRepr, isSupported):
         try:
             id = thDictRepr["id"]
             if id not in self.taskHeaders.keys(): # dont have it
                 if id not in self.removedTasks.keys(): # not removed recently
-                    logger.info( "Adding task {}".format( id ) )
-                    self.taskHeaders[id] = TaskHeader(thDictRepr["clientId"], id, thDictRepr["address"], thDictRepr["port"], thDictRepr["keyId"], thDictRepr["environment"], thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"] )
+                    logger.info("Adding task {}".format(id))
+                    self.taskHeaders[id] = TaskHeader(thDictRepr["clientId"], id, thDictRepr["address"], 
+                                                      thDictRepr["port"], thDictRepr["keyId"], 
+                                                      thDictRepr["environment"], thDictRepr["taskOwner"],
+                                                      thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"])
                     if isSupported:
-                        self.supportedTasks.append( id )
+                        self.supportedTasks.append(id)
             return True
         except Exception, err:
-            logger.error( "Wrong task header received {}".format( str( err ) ) )
+            logger.error("Wrong task header received {}".format(str(err)))
             return False
 
     ###########################
@@ -65,14 +68,14 @@ class TaskKeeper:
             self.__delActiveTask(taskId)
 
     #############################
-    def getSubtaskTtl(self, taskId ):
+    def getSubtaskTtl(self, taskId):
         if taskId in self.taskHeaders:
             return self.taskHeaders[taskId].subtaskTimeout
 
     ###########################
-    def receiveTaskVerification( self, taskId ):
+    def receiveTaskVerification(self, taskId):
         if taskId not in self.activeTasks:
-            logger.warning("Wasn't waiting for verification result for {}").format( taskId )
+            logger.warning("Wasn't waiting for verification result for {}").format(taskId)
             return
         self.activeRequests[taskId] -= 1
         if self.activeRequests[taskId] <= 0 and taskId not in self.taskHeaders:
@@ -92,7 +95,7 @@ class TaskKeeper:
         return False
 
     ############################
-    def removeWaitingForVerification(self, taskId ):
+    def removeWaitingForVerification(self, taskId):
         subtasks = [subId for subId, val in self.waitingForVerification.iteritems() if val[0] == taskId ]
         for subtaskId in subtasks:
             del self.waitingForVerification[ subtaskId ]
@@ -103,14 +106,14 @@ class TaskKeeper:
             del self.waitingForVerification[subtaskId]
 
     ############################
-    def removeOldTasks( self ):
+    def removeOldTasks(self):
         for t in self.taskHeaders.values():
             currTime = time.time()
-            t.ttl = t.ttl - ( currTime - t.lastChecking )
+            t.ttl = t.ttl - (currTime - t.lastChecking)
             t.lastChecking = currTime
             if t.ttl <= 0:
-                logger.warning( "Task {} dies".format( t.taskId ) )
-                self.removeTaskHeader( t.taskId )
+                logger.warning("Task {} dies".format(t.taskId))
+                self.removeTaskHeader(t.taskId)
 
         for taskId, removeTime in self.removedTasks.items():
             currTime = time.time()
@@ -118,19 +121,19 @@ class TaskKeeper:
                 del self.removedTasks[taskId]
 
     ############################
-    def requestFailure(self, taskId ):
+    def requestFailure(self, taskId):
         if taskId in self.activeRequests:
             self.activeRequests[taskId] -= 1
         self.removeTaskHeader(taskId)
 
     ###########################
-    def getReceiverForTaskVerificationResult( self, taskId ):
+    def getReceiverForTaskVerificationResult(self, taskId):
         if taskId not in self.activeTasks:
             return None
         return self.activeTasks[taskId].clientId
 
     ###########################
-    def addToVerification( self, subtaskId, taskId ):
+    def addToVerification(self, subtaskId, taskId):
         now = datetime.datetime.now()
         self.waitingForVerification[ subtaskId ] = [taskId, now, self.__countDeadline(now)]
 
@@ -140,7 +143,7 @@ class TaskKeeper:
         afterDeadline = []
         for subtaskId, [taskId, taskDate, deadline] in self.waitingForVerification.items():
             if deadline < now:
-                afterDeadline.append( taskId )
+                afterDeadline.append(taskId)
                 del self.waitingForVerification[subtaskId]
         return afterDeadline
 

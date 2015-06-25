@@ -3,10 +3,10 @@ import logging.config
 import os
 import sys
 
-sys.path.append( os.environ.get( 'GOLEM' ) )
+sys.path.append(os.environ.get('GOLEM'))
 
 from tools.UiGen import genUiFiles
-genUiFiles( "ui" )
+genUiFiles("ui")
 
 
 from examples.gnr.GNRAdmApplicationLogic import GNRAdmApplicationLogic
@@ -22,9 +22,9 @@ def main():
     logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
 
     logic   = GNRAdmApplicationLogic()
-    app     = GNRGui( logic, GNRMainWindow )
+    app     = GNRGui(logic, GNRMainWindow)
     gui     = GNRAdministratorMainWindowCustomizer
-    startApp( logic, app, gui,startManager = True, startInfoServer = True )
+    startApp(logic, app, gui,startManager = True, startInfoServer = True)
 
 from multiprocessing import freeze_support
 

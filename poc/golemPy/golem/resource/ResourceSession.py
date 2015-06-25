@@ -17,7 +17,7 @@ class ResourceSession(NetSession):
     ConnectionStateType = NetAndFilesConnState
 
     ##########################
-    def __init__( self, conn ):
+    def __init__(self, conn):
         NetSession.__init__(self, conn)
         self.resourceServer = None
 
@@ -33,30 +33,30 @@ class ResourceSession(NetSession):
         self.conn.clean()
 
     ##########################
-    def dropped( self ):
+    def dropped(self):
         self.clean()
         self.conn.close()
         self.resourceServer.removeSession(self)
 
     ##########################
-    def sendHasResource( self, resource ):
-        self._send( MessageHasResource( resource ) )
+    def sendHasResource(self, resource):
+        self._send(MessageHasResource(resource))
 
     ##########################
-    def sendWantResource( self, resource ):
-        self._send( MessageWantResource( resource ) )
+    def sendWantResource(self, resource):
+        self._send(MessageWantResource(resource))
 
     ##########################
-    def sendPushResource( self, resource, copies = 1 ):
-        self._send( MessagePushResource( resource, copies ) )
+    def sendPushResource(self, resource, copies = 1):
+        self._send(MessagePushResource(resource, copies))
 
     ##########################
-    def sendPullResource( self, resource ):
-         self._send( MessagePullResource( resource ) )
+    def sendPullResource(self, resource):
+         self._send(MessagePullResource(resource))
 
     ##########################
-    def sendPullAnswer( self, resource, hasResource ):
-        self._send( MessagePullAnswer( resource, hasResource ) )
+    def sendPullAnswer(self, resource, hasResource):
+        self._send(MessagePullAnswer(resource, hasResource))
 
     ##########################
     def encrypt(self, msg):
@@ -74,7 +74,7 @@ class ResourceSession(NetSession):
         except AssertionError:
             logger.warning("Failed to decrypt message, maybe it's not encrypted?")
         except Exception as err:
-            logger.error( "Failed to decrypt message {}".format( str(err) ) )
+            logger.error("Failed to decrypt message {}".format(str(err)))
             assert False
 
         return msg
@@ -101,13 +101,13 @@ class ResourceSession(NetSession):
     ##########################
     def fullFileReceived(self, extraData):
         if self.confirmation:
-            self._send( MessageHasResource( self.fileName ) )
+            self._send(MessageHasResource(self.fileName))
             self.confirmation = False
             if self.copies > 0:
-                self.resourceServer.addResourceToSend( self.fileName, self.copies)
+                self.resourceServer.addResourceToSend(self.fileName, self.copies)
             self.copies = 0
         else:
-            self.resourceServer.resourceDownloaded( self.fileName, self.address, self.port )
+            self.resourceServer.resourceDownloaded(self.fileName, self.address, self.port)
             self.dropped()
         self.fileName = None
 
@@ -135,18 +135,18 @@ class ResourceSession(NetSession):
             self.sendWantResource(msg.resource)
             self.fileName = msg.resource
             self.conn.fileMode = True
-            self.conn.fileConsumer = DecryptFileConsumer( self.resourceServer.prepareResource( self.fileName ), None, self, {} )
+            self.conn.fileConsumer = DecryptFileConsumer(self.resourceServer.prepareResource(self.fileName), None, self, {})
             self.confirmation = True
             self.copies = copies
 
     ##########################
     def _reactToHasResource(self, msg):
-        self.resourceServer.hasResource( msg.resource, self.address, self.port )
+        self.resourceServer.hasResource(msg.resource, self.address, self.port)
         self.dropped()
 
     ##########################
     def _reactToWantResource(self, msg):
-        self.conn.fileProducer = EncryptFileProducer( self.resourceServer.prepareResource( msg.resource ), self )
+        self.conn.fileProducer = EncryptFileProducer(self.resourceServer.prepareResource(msg.resource), self)
 
     ##########################
     def _reactToPullResource(self, msg):
@@ -166,11 +166,11 @@ class ResourceSession(NetSession):
             self.sendHello()
 
         if not self.verify(msg):
-            logger.error( "Wrong signature for Hello msg" )
-            self.disconnect( ResourceSession.DCRUnverified )
+            logger.error("Wrong signature for Hello msg")
+            self.disconnect(ResourceSession.DCRUnverified)
             return
 
-        self._send( MessageRandVal( msg.randVal ), sendUnverified=True)
+        self._send(MessageRandVal(msg.randVal), sendUnverified=True)
 
 
     ##########################
@@ -185,7 +185,7 @@ class ResourceSession(NetSession):
 
     ##########################
     def __setMsgInterpretations(self):
-        self.interpretation.update( {
+        self.interpretation.update({
                                         MessagePushResource.Type: self._reactToPushResource,
                                         MessageHasResource.Type: self._reactToHasResource,
                                         MessageWantResource.Type: self._reactToWantResource,

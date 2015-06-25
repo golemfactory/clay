@@ -4,7 +4,7 @@ from golem.task.TaskState import SubtaskStatus
 
 class SubtaskContextMenuCustomizer:
     ##########################
-    def __init__( self, ui, logic, subtaskId, subtaskStatus ):
+    def __init__(self, ui, logic, subtaskId, subtaskStatus):
         self.ui             = ui
         self.logic          = logic
         self.subtaskId      = subtaskId
@@ -13,26 +13,26 @@ class SubtaskContextMenuCustomizer:
         self.__buildContextMenu()
 
     ##########################
-    def __buildContextMenu( self ):
-        enabledActions = self.__getEnabledActions( self.subtaskStatus )
-        self.__buildAndConnectAction( "Restart", self.__restartSubtask, enabledActions )
+    def __buildContextMenu(self):
+        enabledActions = self.__getEnabledActions(self.subtaskStatus)
+        self.__buildAndConnectAction("Restart", self.__restartSubtask, enabledActions)
 
     ##########################
-    def __buildAndConnectAction( self, name, triggeredFunc, enabledActions ):
-        action = QAction( name, self.ui )
+    def __buildAndConnectAction(self, name, triggeredFunc, enabledActions):
+        action = QAction(name, self.ui)
 
-        action.setEnabled( enabledActions[ name ] )
+        action.setEnabled(enabledActions[ name ])
 
-        action.triggered.connect( triggeredFunc )
-        self.ui.addAction( action )
+        action.triggered.connect(triggeredFunc)
+        self.ui.addAction(action)
         return action
 
     ##########################
-    def __restartSubtask( self ):
-        self.logic.restartSubtask( self.subtaskId )
+    def __restartSubtask(self):
+        self.logic.restartSubtask(self.subtaskId)
 
     ##########################
-    def __getEnabledActions( self, subtaskStatus ):
+    def __getEnabledActions(self, subtaskStatus):
         enabled = {}
 
         if subtaskStatus == SubtaskStatus.starting:

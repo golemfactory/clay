@@ -68,7 +68,7 @@ class Session(SessionInterface):
     def interpret(self, msg):
         self.lastMessageTime = time.time()
 
-        #print "Receiving from {}:{}: {}".format( self.address, self.port, msg )
+        #print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
 
         if not self._checkMsg(msg):
             return
@@ -80,12 +80,12 @@ class Session(SessionInterface):
             self.disconnect(Session.DCRBadProtocol)
 
     ##########################
-    def dropped( self ):
+    def dropped(self):
         self.conn.close()
 
     ##########################
     def disconnect(self, reason):
-        logger.info( "Disconnecting {} : {} reason: {}".format( self.address, self.port, reason ) )
+        logger.info("Disconnecting {} : {} reason: {}".format(self.address, self.port, reason))
         if self.conn.isOpen():
             if self.lastDisconnectTime:
                 self.dropped()
@@ -99,7 +99,7 @@ class Session(SessionInterface):
 
     ##########################
     def _send(self, message):
-        #print "Sending to {}:{}: {}".format( self.address, self.port, message )
+        #print "Sending to {}:{}: {}".format(self.address, self.port, message)
 
         if not self.conn.sendMessage(message):
             self.dropped()
@@ -114,8 +114,8 @@ class Session(SessionInterface):
 
     ##########################
     def _reactToDisconnect(self, msg):
-        logger.info( "Disconnect reason: {}".format(msg.reason) )
-        logger.info( "Closing {} : {}".format( self.address, self.port ) )
+        logger.info("Disconnect reason: {}".format(msg.reason))
+        logger.info("Closing {} : {}".format(self.address, self.port))
         self.dropped()
 
 
@@ -179,16 +179,16 @@ class NetSession(Session, NetSessionInterface):
         type = msg.getType()
 
         if not self.verified and type not in self.canBeUnverified:
-            self.disconnect( NetSession.DCRUnverified )
+            self.disconnect(NetSession.DCRUnverified)
             return False
 
         if not msg.encrypted and type not in self.canBeNotEncrypted:
-            self.disconnect( NetSession.DCRBadProtocol )
+            self.disconnect(NetSession.DCRBadProtocol)
             return False
 
         if (not type in self.canBeUnsigned) and (not self.verify(msg)):
-            logger.error( "Failed to verify message signature" )
-            self.disconnect( NetSession.DCRUnverified )
+            logger.error("Failed to verify message signature")
+            self.disconnect(NetSession.DCRUnverified)
             return False
 
         return True
@@ -196,10 +196,10 @@ class NetSession(Session, NetSessionInterface):
     ##########################
     def _verifyTime(self, msg):
         if self.lastMessageTime - msg.timestamp > self.messageTTL:
-            self.disconnect( NetSession.DCROldMessage )
+            self.disconnect(NetSession.DCROldMessage)
             return False
         elif msg.timestamp - self.lastMessageTime > self.futureTimeTolerance:
-            self.disconnect( NetSession.DCRWrongTimestamp )
+            self.disconnect(NetSession.DCRWrongTimestamp)
             return False
 
         return True

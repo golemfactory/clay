@@ -2,7 +2,7 @@ import time
 
 class TaskState:
     #########################
-    def __init__( self ):
+    def __init__(self):
 
         self.status         = TaskStatus.notStarted
         self.progress       = 0.0
@@ -17,26 +17,26 @@ class TaskState:
         self.extraData      = {}
 
     #########################
-    def getSubtaskState( self, subtaskId ):
+    def getSubtaskState(self, subtaskId):
         if subtaskId in self.subtaskStates:
             return self.subtaskStates[ subtaskId ]
         else:
             return None
 
     #########################
-    def getSubtaskStateForComputer( self, nodeId ):
+    def getSubtaskStateForComputer(self, nodeId):
 
         subtasksStates = []
 
         for k in self.subtaskStates:
             ss = self.subtaskStates[ k ]
             if ss.computer.nodeId == nodeId:
-                subtasksStates.append( ss )
+                subtasksStates.append(ss)
 
 
 class ComputerState:
     #########################
-    def __init__( self ):
+    def __init__(self):
         self.nodeId             = ""
         self.ethAccount         = ""
         self.performance        = 0
@@ -46,7 +46,7 @@ class ComputerState:
 
 class SubtaskState:
     #########################
-    def __init__( self ):
+    def __init__(self):
         self.subtaskDefinition  = ""
         self.subtaskId          = ""
         self.subtaskProgress    = 0.0

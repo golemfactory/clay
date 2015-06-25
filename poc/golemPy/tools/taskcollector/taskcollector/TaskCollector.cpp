@@ -52,7 +52,7 @@ bool GenericWriter(FIBITMAP* dib, const char* lpszPathName, int flag) {
 	if(dib) {
 		// try to guess the file format from the file extension
 		fif = FreeImage_GetFIFFromFilename(lpszPathName);
-		if(fif != FIF_UNKNOWN ) {
+		if(fif != FIF_UNKNOWN) {
 			// check that the plugin has sufficient writing and export capabilities ...
 			if(FreeImage_FIFSupportsWriting(fif) && FreeImage_FIFSupportsExportType(fif, FreeImage_GetImageType(dib))) {
 				// ok, we can save the file
@@ -101,7 +101,7 @@ public:
 		return true;
 	};
 
-	bool addAlphaFile( const char* pathName, int flag = 0) {
+	bool addAlphaFile(const char* pathName, int flag = 0) {
 		FIBITMAP *img = GenericLoader(pathName, flag);
 		if (img == NULL)
 			return false;
@@ -114,7 +114,7 @@ public:
 	bool finalizeAndSave(const char* outputPath) {
 		printf("finalize & safe %s\n", outputPath);
 		FIBITMAP *img = finalize();
-		return 	GenericWriter(img, outputPath, EXR_FLOAT );
+		return 	GenericWriter(img, outputPath, EXR_FLOAT);
 	};
 
 };
@@ -171,7 +171,7 @@ public:
 			}
 		}
 
-		while( !alphaChunks.empty() ) {
+		while(!alphaChunks.empty()) {
 			for(unsigned int y = 0 ; y < height ; y++) {
 				FIRGBAF *srcbits = (FIRGBAF *) FreeImage_GetScanLine(alphaChunks.front(), y);
 				FIRGBAF *dstbits = (FIRGBAF *) FreeImage_GetScanLine(finalImage, y);
@@ -190,7 +190,7 @@ public:
 		unsigned int lastHeight = height -1 - chunkHeight;
 		unsigned int lastWidth = chunkWidth;
 		unsigned int restWidth = chunkWidth;
-		for ( it++; it != chunks.end(); it++) { 
+		for (it++; it != chunks.end(); it++) {
 			printf("lastHeight = %d, lastWidth = %d restWidth = %d\n", lastHeight, lastWidth, restWidth);
 			bool continueChunk = true;
 			while (continueChunk) {
@@ -310,7 +310,7 @@ main(int argc, char *argv[]) {
 
 	if (strcmp(argv[1], "add") == 0) {
 		taskCollector = new AddTaskCollector();
-	} else if ( strcmp( argv[1], "paste") == 0) {
+	} else if (strcmp(argv[1], "paste") == 0) {
 		taskCollector = new PasteTaskCollector();
 	} else {
 		printf("Possible types: 'add', 'paste'\n");
@@ -320,11 +320,11 @@ main(int argc, char *argv[]) {
 
 	for (int i = 3; i < argc; i++) {
 		if (strstr(argv[i], "Alpha") != NULL) {
-			if (! taskCollector->addAlphaFile(argv[i]) ) {
+			if (! taskCollector->addAlphaFile(argv[i])) {
 				printf ("Can't add file: %s\n", argv[i]);
 			}
 		} else {
-			if (! taskCollector->addImgFile(argv[i]) ) {
+			if (! taskCollector->addImgFile(argv[i])) {
 				printf("Can't add file: %s\n", argv[i]);
 			}
 		}

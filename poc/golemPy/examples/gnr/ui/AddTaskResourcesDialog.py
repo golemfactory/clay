@@ -7,43 +7,43 @@ from CheckableDirModel import CheckableDirModel
 
 class AddTaskResourcesDialog:
     #######################
-    def __init__( self, parent ):
-        self.window     = QDialog( parent )
+    def __init__(self, parent):
+        self.window     = QDialog(parent)
         self.ui         = Ui_AddTaskResourcesDialog()
 
-        self.ui.setupUi( self.window )
+        self.ui.setupUi(self.window)
         self.__initFolderTreeView()
         self.__setupConnections()
 
     ###################
-    def show( self ):
+    def show(self):
         self.window.show()
 
     ###################
-    def __initFolderTreeView( self ):
+    def __initFolderTreeView(self):
 
         fsModel = CheckableDirModel()
         fsModel.setRootPath("")
-        fsModel.setFilter( QtCore.QDir.AllDirs | QtCore.QDir.Files | QtCore.QDir.NoDotAndDotDot )
+        fsModel.setFilter(QtCore.QDir.AllDirs | QtCore.QDir.Files | QtCore.QDir.NoDotAndDotDot)
 
-        self.ui.folderTreeView.setModel( fsModel )
-        self.ui.folderTreeView.setColumnWidth( 0, self.ui.folderTreeView.columnWidth(0) * 2 )
+        self.ui.folderTreeView.setModel(fsModel)
+        self.ui.folderTreeView.setColumnWidth(0, self.ui.folderTreeView.columnWidth(0) * 2)
 
     ###################
-    def __setupConnections( self ):
-        QtCore.QObject.connect( self.ui.folderTreeView
-                        , QtCore.SIGNAL( "expanded ( const QModelIndex )")
-                        , self.__treeViewExpanded )
+    def __setupConnections(self):
+        QtCore.QObject.connect(self.ui.folderTreeView
+                        , QtCore.SIGNAL("expanded (const QModelIndex)")
+                        , self.__treeViewExpanded)
 
-        QtCore.QObject.connect( self.ui.folderTreeView
-                        , QtCore.SIGNAL( "collapsed ( const QModelIndex )")
-                        , self.__treeViewCollapsed )
+        QtCore.QObject.connect(self.ui.folderTreeView
+                        , QtCore.SIGNAL("collapsed (const QModelIndex)")
+                        , self.__treeViewCollapsed)
 
     # SLOTS
     ############################
-    def __treeViewExpanded( self, index ):
+    def __treeViewExpanded(self, index):
         self.ui.folderTreeView.resizeColumnToContents(0)
 
     ############################
-    def __treeViewCollapsed( self, index ):
+    def __treeViewCollapsed(self, index):
         self.ui.folderTreeView.resizeColumnToContents(0)

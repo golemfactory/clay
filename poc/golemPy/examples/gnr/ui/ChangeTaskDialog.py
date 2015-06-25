@@ -3,11 +3,11 @@ from gen.ui_ChangeTaskDialog import Ui_ChangeTaskDialog
 
 class ChangeTaskDialog:
     ###################
-    def __init__( self, parent ):
-        self.window = QDialog( parent )
+    def __init__(self, parent):
+        self.window = QDialog(parent)
         self.ui = Ui_ChangeTaskDialog()
-        self.ui.setupUi( self.window )
+        self.ui.setupUi(self.window)
 
     ###################
-    def show( self ):
+    def show(self):
         self.window.show()

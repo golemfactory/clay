@@ -115,7 +115,7 @@ class ECCx(pyelliptic.ECC):
         """
         ECIES Encrypt, where P = recipient public key is:
         1) generate r = random value
-        2) generate shared-secret = kdf( ecdhAgree(r, P) )
+        2) generate shared-secret = kdf(ecdhAgree(r, P))
         3) generate R = rG [same op as generating a public key]
         4) send 0x04 || R || AsymmetricEncrypt(shared-secret, plaintext) || tag
         https://github.com/ethereum/go-ethereum/blob/develop/crypto/ecies/params.go#L41
@@ -131,7 +131,7 @@ class ECCx(pyelliptic.ECC):
         # 1) generate r = random value
         ephem = ECCx()
 
-        # 2) generate shared-secret = kdf( ecdhAgree(r, P) )
+        # 2) generate shared-secret = kdf(ecdhAgree(r, P))
         key_material = ephem.raw_get_ecdh_key(pubkey_x=raw_pubkey[:32], pubkey_y=raw_pubkey[32:])
         assert len(key_material) == 32
         key = eciesKDF(key_material, 32)
@@ -167,7 +167,7 @@ class ECCx(pyelliptic.ECC):
         """
         Decrypt data with ECIES method using the local private key
         ECIES Decrypt (performed by recipient):
-        1) generate shared-secret = kdf( ecdhAgree(myPrivKey, msg[1:65]) )
+        1) generate shared-secret = kdf(ecdhAgree(myPrivKey, msg[1:65]))
         2) verify tag
         3) decrypt
         ecdhAgree(r, recipientPublic) == ecdhAgree(recipientPrivate, R)
@@ -175,7 +175,7 @@ class ECCx(pyelliptic.ECC):
         """
         assert data[0] == chr(0x04)
 
-        #  1) generate shared-secret = kdf( ecdhAgree(myPrivKey, msg[1:65]) )
+        #  1) generate shared-secret = kdf(ecdhAgree(myPrivKey, msg[1:65]))
         _shared = data[1:1 + 64]
         # FIXME, check that _shared_pub is a valid one (on curve)
 

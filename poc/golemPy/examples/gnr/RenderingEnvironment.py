@@ -11,15 +11,15 @@ from examples.gnr.task.ThreeDSMaxCfgEditor import regenerateFile
 logger = logging.getLogger(__name__)
 
 ###########################################################################
-class ThreeDSMaxEnvironment( Environment ):
+class ThreeDSMaxEnvironment(Environment):
     #########################
     @classmethod
-    def getId( cls ):
+    def getId(cls):
         return "3DSMAX"
 
     #########################
-    def __init__( self ):
-        Environment.__init__( self )
+    def __init__(self):
+        Environment.__init__(self)
         self.software.append('3DS Max Studio 2014 or 3DS Max Studio 2015')
         self.software.append('Windows')
         self.softwareEnvVar = ['ADSK_3DSMAX_x64_2015', 'ADSK_3DSMAX_x32_2015', 'ADSK_3DSMAX_x64_2014', 'ADSK_3DSMAX_x32_2014']
@@ -30,83 +30,83 @@ class ThreeDSMaxEnvironment( Environment ):
         self.path = ""
 
     #########################
-    def checkSoftware( self ):
+    def checkSoftware(self):
         if not self.isWindows():
             return False
         for var in self.softwareEnvVar:
-            if os.environ.get( var ):
-                self.path = os.path.join( os.environ.get( var ), '3dsmaxcmd.exe')
-                if os.path.isfile( self.path ):
+            if os.environ.get(var):
+                self.path = os.path.join(os.environ.get(var), '3dsmaxcmd.exe')
+                if os.path.isfile(self.path):
                     return True
         return False
 
     #########################
-    def supported( self ) :
+    def supported(self) :
         return self.checkSoftware()
 
     #########################
-    def get3dsmaxcmdPath ( self ):
+    def get3dsmaxcmdPath (self):
         self.checkSoftware()
-        if os.path.isfile( self.path ):
+        if os.path.isfile(self.path):
             return self.path
         else:
             return ""
 
     #########################
-    def setNThreads( self, numCores ):
+    def setNThreads(self, numCores):
         for var in self.softwareEnvVar:
-            if os.environ.get( var ):
-                self.__rewriteCfgFile( var, numCores)
+            if os.environ.get(var):
+                self.__rewriteCfgFile(var, numCores)
 
     #########################
-    def __rewriteCfgFile( self, var, numCores ):
-        path = os.path.join( os.environ.get( var ), self.configFileName )
-        backupPath = os.path.join( os.environ.get( var ), self.configFileBackup )
-        logger.debug("Cfg file: {}, numThreads = {}".format( path, numCores ))
-        if os.path.isfile( path ):
-            with open( path, 'r') as f:
+    def __rewriteCfgFile(self, var, numCores):
+        path = os.path.join(os.environ.get(var), self.configFileName)
+        backupPath = os.path.join(os.environ.get(var), self.configFileBackup)
+        logger.debug("Cfg file: {}, numThreads = {}".format(path, numCores))
+        if os.path.isfile(path):
+            with open(path, 'r') as f:
                 cfgSrc = f.read()
-            shutil.copy2( path, backupPath )
-            newCfg = regenerateFile( cfgSrc, numCores )
+            shutil.copy2(path, backupPath)
+            newCfg = regenerateFile(cfgSrc, numCores)
             with open(path, 'w') as f:
-                f.write( newCfg )
+                f.write(newCfg)
             return
 
     #########################
-    def getDefaultPreset( self ):
+    def getDefaultPreset(self):
         for var in self.softwareEnvVar:
-            if os.environ.get( var ):
-                presetFile = os.path.join( os.environ.get( var ), 'renderpresets\mental.ray.daylighting.high.rps' )
-                if os.path.isfile( presetFile ):
+            if os.environ.get(var):
+                presetFile = os.path.join(os.environ.get(var), 'renderpresets\mental.ray.daylighting.high.rps')
+                if os.path.isfile(presetFile):
                     return presetFile
         return ""
 
 ###########################################################################
-class PBRTEnvironment ( Environment ):
+class PBRTEnvironment (Environment):
     #########################
     @classmethod
-    def getId( cls ):
+    def getId(cls):
         return "PBRT"
 
     #########################
-    def __init__( self ):
-        Environment.__init__( self )
+    def __init__(self):
+        Environment.__init__(self)
         self.shortDescription =  "PBRT renderer (http://www.pbrt.org/)  "
 
     #########################
-    def supported( self ) :
+    def supported(self) :
         return True
 
 ###########################################################################
-class VRayEnvironment( Environment ):
+class VRayEnvironment(Environment):
     #########################
     @classmethod
-    def getId( cls ):
+    def getId(cls):
         return "VRAY"
 
     #########################
-    def __init__( self ):
-        Environment.__init__( self )
+    def __init__(self):
+        Environment.__init__(self)
         self.software.append('V-Ray standalone')
         self.shortDescription = "V-Ray Renderer (http://www.vray.com/)"
         self.softwareEnvVariable = 'VRAY_PATH'
@@ -117,35 +117,35 @@ class VRayEnvironment( Environment ):
         self.path = ""
 
     #########################
-    def checkSoftware( self ):
-        if os.environ.get( self.softwareEnvVariable ):
-            self.path = os.path.join( os.environ.get( self.softwareEnvVariable ), self.softwareName )
-            if os.path.isfile( self.path ):
+    def checkSoftware(self):
+        if os.environ.get(self.softwareEnvVariable):
+            self.path = os.path.join(os.environ.get(self.softwareEnvVariable), self.softwareName)
+            if os.path.isfile(self.path):
                 return True
         return False
 
     #########################
-    def supported( self ):
+    def supported(self):
         return self.checkSoftware()
 
     #########################
-    def getCmdPath ( self ):
+    def getCmdPath (self):
         self.checkSoftware()
-        if os.path.isfile( self.path ):
+        if os.path.isfile(self.path):
             return self.path
         else:
             return ""
 
 ###########################################################################
-class LuxRenderEnvironment( Environment ):
+class LuxRenderEnvironment(Environment):
     #########################
     @classmethod
-    def getId( cls ):
+    def getId(cls):
         return "LUXRENDER"
 
     #########################
-    def __init__( self ):
-        Environment.__init__( self )
+    def __init__(self):
+        Environment.__init__(self)
         self.software.append('LuxRender')
         self.shortDescription = "LuxRenderer Renderer (http://www.luxrender.net/)"
         self.softwareEnvVariables = ['LUXRENDER_ROOT']
@@ -157,59 +157,59 @@ class LuxRenderEnvironment( Environment ):
         self.luxMergerPath = ''
 
     #########################
-    def checkSoftware( self ):
+    def checkSoftware(self):
         luxInstalled = False
         for var in self.softwareEnvVariables:
-            if os.environ.get( var ):
-                self.luxConsolePath = os.path.join( os.environ.get( var ), self.softwareName[0] )
-                self.luxMergerPath = os.path.join( os.environ.get( var ), self.softwareName[1] )
-                if os.path.isfile( self.luxConsolePath ) and os.path.isfile( self.luxMergerPath ):
+            if os.environ.get(var):
+                self.luxConsolePath = os.path.join(os.environ.get(var), self.softwareName[0])
+                self.luxMergerPath = os.path.join(os.environ.get(var), self.softwareName[1])
+                if os.path.isfile(self.luxConsolePath) and os.path.isfile(self.luxMergerPath):
                     luxInstalled = True
 
         return luxInstalled
 
     #########################
-    def supported( self ):
+    def supported(self):
         return self.checkSoftware()
 
     #########################
-    def getLuxConsole( self ):
+    def getLuxConsole(self):
         self.checkSoftware()
-        if os.path.isfile( self.luxConsolePath ):
+        if os.path.isfile(self.luxConsolePath):
             return self.luxConsolePath
         else:
             return ""
 
     #########################
-    def getLuxMerger( self ):
+    def getLuxMerger(self):
         self.checkSoftware()
-        if os.path.isfile( self.luxMergerPath ):
+        if os.path.isfile(self.luxMergerPath):
             return self.luxMergerPath
         else:
             return ""
 
 ###########################################################################
-class BlenderEnvironment( Environment ):
+class BlenderEnvironment(Environment):
     #########################
     @classmethod
-    def getId( cls ):
+    def getId(cls):
         return "Blender"
 
     #########################
-    def __init__( self ):
-        Environment.__init__( self )
+    def __init__(self):
+        Environment.__init__(self)
         self.software.append('Blender')
         self.shortDescription = "Blender (http://www.blender.org/)"
         self.softwareName = 'blender'
 
     #########################
-    def supported( self ):
+    def supported(self):
         return self.checkSoftware()
 
     #########################
-    def checkSoftware( self ):
-        return checkCmd( self.softwareName )
+    def checkSoftware(self):
+        return checkCmd(self.softwareName)
 
     #########################
-    def getBlender( self ):
+    def getBlender(self):
         return self.softwareName

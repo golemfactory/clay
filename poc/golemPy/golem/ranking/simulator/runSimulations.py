@@ -8,8 +8,8 @@ def main():
         pan.addNode()
         ns.syncNetwork()
         pan.syncNetwork()
-    print "NS maxD {}, minD {}, avgD {}".format( ns.maxDegree(), ns.minDegree(), ns.avgDegree() )
-    print "PAN maxD {}, minD {}, avgD {}".format( pan.maxDegree(), pan.minDegree(), pan.avgDegree())
+    print "NS maxD {}, minD {}, avgD {}".format(ns.maxDegree(), ns.minDegree(), ns.avgDegree())
+    print "PAN maxD {}, minD {}, avgD {}".format(pan.maxDegree(), pan.minDegree(), pan.avgDegree())
 
 
 

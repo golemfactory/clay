@@ -18,7 +18,7 @@ class EthJSON:
         self.data["id"] = id
 
     def addParam(self, param):
-        self.data["params"].append( param )
+        self.data["params"].append(param)
 
 from golem.core.variables import CONTRACT_ID, PAY_HASH
 
@@ -30,7 +30,7 @@ class EthereumConnector:
     def sendJsonRpc(self, data):
         return requests.post(self.url, data=json.dumps(data), headers=self.headers).json()
 
-    def sendTransaction(self, id, gas, gasPrice, value, data, to = CONTRACT_ID, ):
+    def sendTransaction(self, id, gas, gasPrice, value, data, to = CONTRACT_ID,):
         dataDesc = EthJSON()
         param = {}
         param["from"] = id
@@ -39,12 +39,12 @@ class EthereumConnector:
         param["gasPrice"] = gasPrice
         param["value"] = value
         param["data"] = data
-        dataDesc.addParam( param )
+        dataDesc.addParam(param)
         dataDesc.setMethod("eth_sendTransaction")
         dataDesc.setId(1)
-        return self.sendJsonRpc( dataDesc.getData())
+        return self.sendJsonRpc(dataDesc.getData())
 
-    def payForTask( self, ethAccount, taskId, payments ):
+    def payForTask(self, ethAccount, taskId, payments):
         gas = "0x76c0"
         gasPrice =  "0x9184e72a000"
         tranVal = 9000
@@ -61,5 +61,5 @@ class EthereumConnector:
                 "".join(addresses) + "".join(values)
         logger.debug("Transaction data {}".format(data))
         #Tymczasowo wykomentowane, zeby nie spalac etheru na prozno
-       # self.sendTransaction(ethAccount, gas, gasPrice, hex(tranVal), data )
+       # self.sendTransaction(ethAccount, gas, gasPrice, hex(tranVal), data)
 

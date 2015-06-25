@@ -3,19 +3,19 @@ from PyQt4 import QtGui, QtCore
 
 
 ########################
-def createWrappedProgressBar( red ):
+def createWrappedProgressBar(red):
 
     widget = QtGui.QWidget()
-    widget.setFixedSize( 166, 22 )
+    widget.setFixedSize(166, 22)
 
-    progressBar = QtGui.QProgressBar( widget )
+    progressBar = QtGui.QProgressBar(widget)
     progressBar.setGeometry(7, 2, 159, 16)
     progressBar.setProperty("value", 0)
 
     if red:
-        progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #dd3a36; width: 1px;}" )
+        progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #dd3a36; width: 1px;}")
     else:
-        progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #3add36; width: 1px;}" )
+        progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #3add36; width: 1px;}")
 
     return widget, progressBar
 
@@ -189,7 +189,7 @@ if __name__ == "__main__":
             self.initUI()
 
         def initUI(self):
-            progress = CustomProgressBar( self )
+            progress = CustomProgressBar(self)
 
             hbox = QtGui.QHBoxLayout()
             hbox.addWidget(progress)
@@ -199,7 +199,7 @@ if __name__ == "__main__":
             self.show()
 
     def main():
-        app = QtGui.QApplication( sys.argv )
+        app = QtGui.QApplication(sys.argv)
         ex = Example()
         sys.exit(app.exec_())
 

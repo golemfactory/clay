@@ -12,7 +12,7 @@ class ServerManagerSession:
     ConnectionStateType = ManagerConnState
 
     ##########################
-    def __init__( self, conn, address, port, server ):
+    def __init__(self, conn, address, port, server):
         self.conn       = conn
         self.server     = server
         self.address    = address
@@ -20,58 +20,58 @@ class ServerManagerSession:
         self.uid        = None
 
     ##########################
-    def dropped( self ):
+    def dropped(self):
         self.conn.close()
         self.server.managerSession = None
-        self.server.managerSessionDisconnect( self.uid )
+        self.server.managerSessionDisconnect(self.uid)
 
     ##########################
-    def interpret( self, msg ):
+    def interpret(self, msg):
 
         type = msg.getType()
 
         if type == MessagePeerStatus.Type:
-            nss = pickle.loads( msg.data )
+            nss = pickle.loads(msg.data)
             self.uid = nss.getUID()
-            self.server.nodeStateSnapshotReceived( nss )
+            self.server.nodeStateSnapshotReceived(nss)
 
         else:
-            logger.error( "Wrong message received {}".format( msg ) )
+            logger.error("Wrong message received {}".format(msg))
 
     ##########################
-    def sendClientStateSnapshot( self, snapshot ):
+    def sendClientStateSnapshot(self, snapshot):
 
         if self.conn and self.conn.isOpen():
-            self.conn.sendMessage( MessagePeerStatus( snapshot.uid, pickle.dumps( snapshot ) ) )
+            self.conn.sendMessage(MessagePeerStatus(snapshot.uid, pickle.dumps(snapshot)))
 
-    def sendKillNode( self ):
+    def sendKillNode(self):
         if self.conn and self.conn.isOpen():
-            self.conn.sendMessage( MessageKillNode() )
+            self.conn.sendMessage(MessageKillNode())
 
-    def sendKillAllNodes( self ):
+    def sendKillAllNodes(self):
         if self.conn and self.conn.isOpen():
-            self.conn.sendMessage( MessageKillAllNodes() )
+            self.conn.sendMessage(MessageKillAllNodes())
 
 
     ##########################
-    def sendNewTask( self, task ):
+    def sendNewTask(self, task):
         if self.conn and self.conn.isOpen():
-            tp = pickle.dumps( task )
-            self.conn.sendMessage( MessageNewTask( tp ) )
+            tp = pickle.dumps(task)
+            self.conn.sendMessage(MessageNewTask(tp))
 
     ##########################
-    def sendNewNodes( self, numNodes ):
+    def sendNewNodes(self, numNodes):
         if self.conn and self.conn.isOpen():
-            self.conn.sendMessage( MessageNewNodes( numNodes ) )
+            self.conn.sendMessage(MessageNewNodes(numNodes))
 
 if __name__ == "__main__":
 
     def main():
         from NodeStateSnapshot import NodeStateSnapshot
 
-        snapshot  = NodeStateSnapshot( "some uiid", 0.2, 0.7 )
-        d = pickle.dumps( snapshot )
-        ud = pickle.loads( d )
+        snapshot  = NodeStateSnapshot("some uiid", 0.2, 0.7)
+        d = pickle.dumps(snapshot)
+        ud = pickle.loads(d)
         t = 0
 
 

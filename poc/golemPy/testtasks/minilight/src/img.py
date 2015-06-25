@@ -22,11 +22,11 @@ class Img(object):
         self.pixels = [0.0] * self.width * self.height * 3
 
     def copyPixels(self, data):
-        assert len( data ) == len( self.pixels )
+        assert len(data) == len(self.pixels)
 
         i = 0
         for y in range(self.height):
-            offset = 3 *( self.width * ( self.height - 1 - y ) )
+            offset = 3 *(self.width * (self.height - 1 - y))
             for x in range(3 * self.width):
                 self.pixels[ offset + x ] = data[ i ]
                 i += 1

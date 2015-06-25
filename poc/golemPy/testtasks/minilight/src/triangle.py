@@ -10,7 +10,7 @@ from randommini import Random
 
 import re
 SEARCH = re.compile('(\(.+\))\s*(\(.+\))\s*(\(.+\))\s*(\(.+\))\s*(\(.+\))'
-    ).search
+   ).search
 
 TOLERANCE = 1.0 / 1024.0
 EPSILON   = 1.0 / 1048576.0
@@ -19,7 +19,7 @@ class Triangle(object):
 
     def __init__(self, in_stream):
         for l in in_stream:
-            if type( l ) == type( u"" ):
+            if type(l) == type(u""):
                 line = l.encode('ascii','ignore')
             else:
                 line = l

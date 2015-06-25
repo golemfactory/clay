@@ -29,7 +29,7 @@ def ipAddresses(useIp6=False):
     return addresses
 
 ip4Addresses = ipAddresses
-getHostAddresses = ip4Addresses
+getHostAddresses = ipAddresses
 
 
 #######################################################################################

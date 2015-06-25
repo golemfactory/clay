@@ -1,9 +1,9 @@
 import sys
 import os
-sys.path.append( os.environ.get( 'GOLEM' ) )
+sys.path.append(os.environ.get('GOLEM'))
 
 from tools.UiGen import genUiFiles
-genUiFiles( "./../../golem/ui" )
+genUiFiles("./../../golem/ui")
 
 from golem.AppConfig import AppConfig
 from golem.manager.NodesManager import  NodesManager
@@ -26,15 +26,15 @@ def main():
     from twisted.internet import reactor
 
     port = AppConfig.managerPort()
-    manager = NodesManager( None, port )
-    logic = GNRManagerLogic(  manager.managerServer, "../gnr" )
-    manager.setManagerLogic( logic )
+    manager = NodesManager(None, port)
+    logic = GNRManagerLogic( manager.managerServer, "../gnr")
+    manager.setManagerLogic(logic)
 
 
-    logic.setReactor( reactor )
-    manager.execute( True )
+    logic.setReactor(reactor)
+    manager.execute(True)
 
     reactor.run()
-    sys.exit( 0 )
+    sys.exit(0)
 
 main()

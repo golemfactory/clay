@@ -6,10 +6,10 @@ from golem.core.variables import LONG_STANDARD_SIZE
 
 logger = logging.getLogger(__name__)
 
-class NetAndFilesConnState( NetConnState ):
+class NetAndFilesConnState(NetConnState):
     ############################
-    def __init__( self, server = None):
-        NetConnState.__init__( self, server )
+    def __init__(self, server = None):
+        NetConnState.__init__(self, server)
 
         self.fileMode = False
         self.fileConsumer = None
@@ -25,7 +25,7 @@ class NetAndFilesConnState( NetConnState ):
         self.session.lastMessageTime = time.time()
 
         if self.fileMode:
-            self.fileDataReceived( data )
+            self.fileDataReceived(data)
             return
 
         if self.dataMode:
@@ -35,18 +35,18 @@ class NetAndFilesConnState( NetConnState ):
         NetConnState._interpret(self, data)
 
     ############################
-    def fileDataReceived( self, data  ):
+    def fileDataReceived(self, data ):
         assert self.fileConsumer
-        assert len( data ) >= LONG_STANDARD_SIZE
+        assert len(data) >= LONG_STANDARD_SIZE
 
-        self.fileConsumer.dataReceived( data )
+        self.fileConsumer.dataReceived(data)
 
     ############################
-    def resultDataReceived( self, data ):
+    def resultDataReceived(self, data):
         assert self.dataConsumer
-        assert len( data ) >= LONG_STANDARD_SIZE
+        assert len(data) >= LONG_STANDARD_SIZE
 
-        self.dataConsumer.dataReceived( data )
+        self.dataConsumer.dataReceived(data)
 
     ############################
     def clean(self):

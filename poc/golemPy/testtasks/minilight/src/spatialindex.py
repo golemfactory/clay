@@ -22,7 +22,7 @@ class SpatialIndex(object):
                         bound[j] = item[0][j]
             size = max(list(Vector3f(bound[3:6]) - Vector3f(bound[0:3])))
             self.bound = bound[0:3] + list(Vector3f(bound[3:6]
-                ).clamped(Vector3f(bound[0:3]) + Vector3f(size), MAX))
+               ).clamped(Vector3f(bound[0:3]) + Vector3f(size), MAX))
         else:
             self.bound = arg
         self.is_branch = len(items) > MAX_ITEMS and level < MAX_LEVELS - 1
@@ -79,8 +79,8 @@ class SpatialIndex(object):
                 for i in range(3):
                     high = (sub_cell >> i) & 1
                     face = self.bound[i + high * 3] if (ray_direction[i] < 0.0
-                        ) ^ (0 != high) else (self.bound[i] + self.bound[i + 3]
-                        ) * 0.5
+                       ) ^ (0 != high) else (self.bound[i] + self.bound[i + 3]
+                       ) * 0.5
                     try:
                         distance = (face - ray_origin[i]) / ray_direction[i]
                     except:

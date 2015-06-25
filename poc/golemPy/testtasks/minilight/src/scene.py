@@ -18,7 +18,7 @@ class Scene(object):
 
     def __init__(self, in_stream, eye_position):
         for l in in_stream:
-            if type( l ) == type( u"" ):
+            if type(l) == type(u""):
                 line = l.encode('ascii','ignore')
             else:
                 line = l

@@ -72,7 +72,7 @@ class CheckableDirModel(QtGui.QFileSystemModel):
                     except:
                         pass
 
-    def exportChecked(self ):
+    def exportChecked(self):
         selection = []
         for index in self.checks.keys():
             if self.checks[index] == QtCore.Qt.Checked:
@@ -81,4 +81,4 @@ class CheckableDirModel(QtGui.QFileSystemModel):
                 if os.path.isdir(unicode(self.filePath(index))):
                     self.addCheckedFilesFromDir(self.filePath(index), selection)
 
-        return set( selection )
+        return set(selection)

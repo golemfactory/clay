@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 ##############################################
 class InfoTaskDefinition:
-    def __init__( self ):
+    def __init__(self):
         self.taskId = ""
 
         self.fullTaskTimeout    = 0
@@ -24,12 +24,12 @@ class InfoTaskDefinition:
         self.managerPort        = 0
 
 ##############################################
-class InfoTaskBuilder( GNRTaskBuilder ):
+class InfoTaskBuilder(GNRTaskBuilder):
 
-    def build( self ):
-        with open( self.taskDefinition.srcFile ) as f:
+    def build(self):
+        with open(self.taskDefinition.srcFile) as f:
             srcCode = f.read()
-        return InfoTask(    srcCode,
+        return InfoTask(   srcCode,
                             self.clientId,
                             self.taskDefinition.taskId,
                             "",
@@ -43,12 +43,12 @@ class InfoTaskBuilder( GNRTaskBuilder ):
                             self.taskDefinition.managerAddress,
                             self.taskDefinition.managerPort,
                             self.taskDefinition.totalSubtasks
-                           )
+                          )
 
 ##############################################
-class InfoTask( GNRTask ):
+class InfoTask(GNRTask):
 
-    def __init__( self,
+    def __init__(self,
                   srcCode,
                   clientId,
                   taskId,
@@ -62,26 +62,26 @@ class InfoTask( GNRTask ):
                   estimatedMemory,
                   nodesManagerAddress,
                   nodesManagerPort,
-                  iterations ):
+                  iterations):
 
 
-        GNRTask.__init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
-                            ttl, subtaskTtl, resourceSize, estimatedMemory )
+        GNRTask.__init__(self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+                            ttl, subtaskTtl, resourceSize, estimatedMemory)
 
         self.totalTasks = iterations
 
-        self.nodesManagerClient = NodesManagerClient( nodesManagerAddress, int( nodesManagerPort ) )
+        self.nodesManagerClient = NodesManagerClient(nodesManagerAddress, int(nodesManagerPort))
         self.nodesManagerClient.start()
 
     #######################
-    def abort ( self ):
+    def abort (self):
         self.nodesManagerClient.dropConnection()
 
     #######################
-    def queryExtraData( self, perfIndex, numCores, clientId = None ):
+    def queryExtraData(self, perfIndex, numCores, clientId = None):
         ctd = ComputeTaskDef()
         ctd.taskId = self.header.taskId
-        hash = "{}".format( random.getrandbits(128) )
+        hash = "{}".format(random.getrandbits(128))
         ctd.subtaskId = hash
         ctd.extraData = {
                           "startTask" : self.lastTask,
@@ -97,17 +97,17 @@ class InfoTask( GNRTask ):
         return ctd
 
     #######################
-    def computationFinished( self, subtaskId, taskResult, dirManager = None, resultType = 0):
+    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
         if resultType != resultTypes['data']:
             logger.error("Only data result format supported")
             return
         try:
-            msgs = pickle.loads( taskResult )
+            msgs = pickle.loads(taskResult)
             for msg in msgs:
-                self.nodesManagerClient.sendClientStateSnapshot( msg )
+                self.nodesManagerClient.sendClientStateSnapshot(msg)
         except Exception as ex:
-            logger.error("Error while interpreting results: {}".format( str( ex ) ) )
+            logger.error("Error while interpreting results: {}".format(str(ex)))
 
     #######################
-    def prepareResourceDelta( self, taskId, resourceHeader ):
+    def prepareResourceDelta(self, taskId, resourceHeader):
         return None

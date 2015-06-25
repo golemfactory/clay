@@ -15,55 +15,55 @@ class ClientManagerSession:
     ConnectionStateType = ManagerConnState
 
     ##########################
-    def __init__( self, conn ):
+    def __init__(self, conn):
         self.conn       = conn
         self.client     = None
 
     ##########################
-    def dropped( self ):
+    def dropped(self):
         self.conn.close()
 
     ##########################
-    def interpret( self, msg ):
+    def interpret(self, msg):
 
         type = msg.getType()
 
         if type == MessageNewTask.Type:
-            task = pickle.loads( msg.data )
+            task = pickle.loads(msg.data)
             if self.client:
-                self.client.addNewTask( task )
+                self.client.addNewTask(task)
 
         elif type == MessageKillNode.Type:
             self.dropped()
-            time.sleep( 0.5 )
-            os.system( "taskkill /PID {} /F".format( os.getpid() ) )
+            time.sleep(0.5)
+            os.system("taskkill /PID {} /F".format(os.getpid()))
 
         elif type == MessageKillAllNodes.Type:
             processService = ProcessService()
             if processService.lockState():
                 pids = processService.state.keys()
-                logger.debug("Active processes with pids: {}".format( pids ) )
+                logger.debug("Active processes with pids: {}".format(pids))
                 processService.unlockState()
 
             curPid = os.getpid()
             if curPid in pids:
-                pids.remove( curPid )
+                pids.remove(curPid)
 
-            logger.debug("Killing processes with pids: {}".format( pids ) )
+            logger.debug("Killing processes with pids: {}".format(pids))
             for pid in pids:
-                os.system( "taskkill /PID {} /F".format( pid ) )
-            os.system( "taskkill /PID {} /F".format( curPid ) )
+                os.system("taskkill /PID {} /F".format(pid))
+            os.system("taskkill /PID {} /F".format(curPid))
 
         elif type == MessageNewNodes.Type:
             num = msg.num
             if self.client:
-                self.client.runNewNodes( num )
+                self.client.runNewNodes(num)
 
 
         else:
-            logger.error( "Wrong message received {}".format( msg ) )
+            logger.error("Wrong message received {}".format(msg))
 
     ##########################
-    def sendClientStateSnapshot( self, snapshot ):
+    def sendClientStateSnapshot(self, snapshot):
         if self.conn and self.conn.isOpen():
-            self.conn.sendMessage( MessagePeerStatus( snapshot.uid, pickle.dumps( snapshot ) ) )
+            self.conn.sendMessage(MessagePeerStatus(snapshot.uid, pickle.dumps(snapshot)))

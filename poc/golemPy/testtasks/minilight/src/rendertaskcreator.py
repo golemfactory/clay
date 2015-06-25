@@ -19,18 +19,18 @@ class ThreadedRenderWorker(Thread):
 
 class ThreadRenderWorkerPool:
 
-    def __init__( self, baseExpectedSpeed = 1600.0 ):
+    def __init__(self, baseExpectedSpeed = 1600.0):
         self.rnd = Random()
         self.baseSpeed = baseExpectedSpeed
         self.workers = []
 
-    def createNextWorker( self, taskable_renderer ):
-        speed = ( 0.5 + self.rnd.real64() ) * self.baseSpeed
-        task = taskable_renderer.getNextTask( speed )
+    def createNextWorker(self, taskable_renderer):
+        speed = (0.5 + self.rnd.real64()) * self.baseSpeed
+        task = taskable_renderer.getNextTask(speed)
 
         if task:
-            worker = ThreadedRenderWorker( RenderWorker( task ) )
-            self.workers.append( worker )
+            worker = ThreadedRenderWorker(RenderWorker(task))
+            self.workers.append(worker)
 
             worker.start()
             
@@ -38,9 +38,9 @@ class ThreadRenderWorkerPool:
 
         return None
 
-    def activeCount( self ):
+    def activeCount(self):
         return active_count() - 1
 
-    def joinAll( self ):
+    def joinAll(self):
         for w in self.workers:
             w.join()

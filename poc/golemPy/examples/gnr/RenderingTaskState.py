@@ -5,7 +5,7 @@ from examples.gnr.GNRTaskState import GNRTaskDefinition, AdvanceVerificationOpti
 ###########################################################################
 class RendererInfo:
     #########################
-    def __init__( self, name, defaults, taskBuilderType, dialog, dialogCustomizer, rendererOptions):
+    def __init__(self, name, defaults, taskBuilderType, dialog, dialogCustomizer, rendererOptions):
         self.name           = name
         self.outputFormats  = []
         self.sceneFileExt   = []
@@ -18,7 +18,7 @@ class RendererInfo:
 ###########################################################################
 class RendererDefaults:
     #########################
-    def __init__( self ):
+    def __init__(self):
         self.outputFormat       = ""
         self.mainProgramFile    = ""
         self.fullTaskTimeout    = 4 * 3600
@@ -30,10 +30,10 @@ class RendererDefaults:
         self.defaultSubtasks    = 20
 
 ###########################################################################
-class RenderingTaskDefinition( GNRTaskDefinition ):
+class RenderingTaskDefinition(GNRTaskDefinition):
     #########################
-    def __init__( self ):
-        GNRTaskDefinition.__init__( self )
+    def __init__(self):
+        GNRTaskDefinition.__init__(self)
 
         self.resolution         = [ 0, 0 ]
         self.renderer           = None
@@ -46,14 +46,14 @@ class RenderingTaskDefinition( GNRTaskDefinition ):
 ###########################################################################
 class RenderingTaskState:
     #########################
-    def __init__( self ):
+    def __init__(self):
         self.definition     = RenderingTaskDefinition()
         self.taskState      = TaskState()
 
 ###########################################################################
-class AdvanceRenderingVerificationOptions ( AdvanceVerificationOptions ):
-    def __init__( self ):
-        AdvanceVerificationOptions.__init__( self )
-        self.boxSize = ( 5, 5 )
+class AdvanceRenderingVerificationOptions (AdvanceVerificationOptions):
+    def __init__(self):
+        AdvanceVerificationOptions.__init__(self)
+        self.boxSize = (5, 5)
         self.probability = 0.01
 

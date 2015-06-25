@@ -5,6 +5,11 @@ import ipaddr
 
 logger = logging.getLogger(__name__)
 
+class HostData:
+    def __init__(self, addr, port):
+        self.addr = addr
+        self.port = port
+
 class Network:
 
     ######################
@@ -29,6 +34,39 @@ class Network:
 
         d.addCallback(Network.__connectionEstablished, SessionType, establishedCallback, *args)
         d.addErrback(Network.__connectionFailure, failureCallback, *args)
+
+    ######################
+    @classmethod
+    def connectToHost(cls, hostInfos, SessionType, establishedCallback, failureCallback, *args):
+        Network.__connectToOneHost(hostInfos, SessionType, establishedCallback, failureCallback, *args)
+
+    ######################
+    @classmethod
+    def __connectToHostFailure(cls, hostInfos, SessionType, establishedCallback, failureCallback, *args):
+        if len(hostInfos) > 1:
+            Network.__connectToOneHost(hostInfos[1:], SessionType, establishedCallback, failureCallback, *args)
+        else:
+            if failureCallback:
+                failureCallback(*args)
+
+    ######################
+    @classmethod
+    def __connectionToHostEstablished(cls, session, hostInfos, SessionType, establishedCallback,
+                                      failureCallback, *args):
+
+        print "hostInfos {}".format(hostInfos)
+        print "session {}".format(session)
+
+        establishedCallback(session, *args)
+
+    ######################
+    @classmethod
+    def __connectToOneHost(cls, hostInfos, SessionType, establishedCallback, failureCallback, *args):
+        address = hostInfos[0].addr
+        port = hostInfos[0].port
+        Network.connect(address, port, SessionType, Network.__connectionToHostEstablished,
+                        Network.__connectToHostFailure, hostInfos, SessionType, establishedCallback,
+                        failureCallback, *args)
 
     ######################
     @classmethod

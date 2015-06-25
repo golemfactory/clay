@@ -5,16 +5,16 @@ from gen.ui_TestingTaskProgressDialog import Ui_testingTaskProgressDialog
 
 class TestingTaskProgressDialog:
     ###################
-    def __init__( self, parent ):
-        self.window         = QDialog( parent )
+    def __init__(self, parent):
+        self.window         = QDialog(parent)
         self.ui             = Ui_testingTaskProgressDialog()
-        self.ui.setupUi( self.window )
-        self.ui.okButton.clicked.connect( self.close )
+        self.ui.setupUi(self.window)
+        self.ui.okButton.clicked.connect(self.close)
 
-    def show( self ):
+    def show(self):
         self.window.show()
 
-    def close( self ):
+    def close(self):
         self.window.close()
 
     def showMessage(self, mesg):

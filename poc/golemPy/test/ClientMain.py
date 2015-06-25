@@ -59,12 +59,12 @@ def main():
     configDesc.nodeSnapshotInterval   = nodeSnapshotInterval
     configDesc.maxResultsSendignDelay = cfg.getMaxResultsSendingDelay()
 
-    print "Adding tasks {}".format( addTasks )
-    print "Creating public client interface with uuid: {}".format( clientUid )
-    c = Client( configDesc ) 
+    print "Adding tasks {}".format(addTasks)
+    print "Creating public client interface with uuid: {}".format(clientUid)
+    c = Client(configDesc)
 
     print "Starting all asynchronous services"
-    c.startNetwork( )
+    c.startNetwork()
 
     reactor.run()
 

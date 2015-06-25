@@ -17,14 +17,14 @@ def main(argv):
     for opt, arg in opts:
         if opt in ("-p", "--port"):
             port = arg
-    c.connect( "tcp://127.0.0.1:{}".format( port ) )
+    c.connect("tcp://127.0.0.1:{}".format(port))
 
     for opt, arg in opts:
         if opt in ("-h", "--help"):
             usage()
             sys.exit()
         elif opt in ("-t", "--task"):
-            c.addTask( arg )
+            c.addTask(arg)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

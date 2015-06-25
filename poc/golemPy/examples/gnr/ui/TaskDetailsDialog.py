@@ -5,11 +5,11 @@ from gen.ui_TaskDetailsDialog import Ui_TaskDetailsDialog
 
 class TaskDetailsDialog:
     ###################
-    def __init__( self, parent ):
-        self.window = QDialog( parent )
+    def __init__(self, parent):
+        self.window = QDialog(parent)
         self.ui = Ui_TaskDetailsDialog()
-        self.ui.setupUi( self.window )
+        self.ui.setupUi(self.window)
 
     ###################
-    def show( self ):
+    def show(self):
         self.window.show()

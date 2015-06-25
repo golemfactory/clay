@@ -4,5 +4,5 @@ import uuid
 class SimpleAuth:
 
     @classmethod
-    def generateUUID( cls ):
+    def generateUUID(cls):
         return uuid.uuid4()

@@ -8,10 +8,10 @@ from golem.network.p2p.ConnectionState import ConnectionState
 
 logger = logging.getLogger(__name__)
 
-class NetConnState( ConnectionState ):
+class NetConnState(ConnectionState):
     ############################
-    def __init__( self, server = None ):
-        ConnectionState.__init__( self )
+    def __init__(self, server = None):
+        ConnectionState.__init__(self)
         self.sessionFactory = None
         self.server = server
 
@@ -26,8 +26,8 @@ class NetConnState( ConnectionState ):
         if not self.server:
             return
 
-        self.session = self.sessionFactory.getSession( self )
-        self.server.newConnection( self.session )
+        self.session = self.sessionFactory.getSession(self)
+        self.server.newConnection(self.session)
 
     ############################
     def _prepareMsgToSend(self, msg):
@@ -40,10 +40,10 @@ class NetConnState( ConnectionState ):
             logger.error("Wrong session, not sending message")
             return None
         serMsg = msg.serialize()
-        encMsg = self.session.encrypt( serMsg )
+        encMsg = self.session.encrypt(serMsg)
 
         db = DataBuffer()
-        db.appendLenPrefixedString( encMsg )
+        db.appendLenPrefixedString(encMsg)
         return db.readAll()
 
     ############################
@@ -59,7 +59,7 @@ class NetConnState( ConnectionState ):
 
     ############################
     def _dataToMessages(self):
-        assert isinstance( self.db, DataBuffer )
+        assert isinstance(self.db, DataBuffer)
         msgs = [ msg for msg in self.db.getLenPrefixedString() ]
         messages = []
         for msg in msgs:

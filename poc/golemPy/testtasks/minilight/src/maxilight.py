@@ -17,11 +17,11 @@ MODEL_FORMAT_ID = '#MiniLight'
 
 if __name__ == '__main__':
 
-    def timedafunc( function ):
+    def timedafunc(function):
     
         def timedExecution(*args, **kwargs):
             t0 = time()
-            result = function ( *args, **kwargs )
+            result = function (*args, **kwargs)
             t1 = time()
 
             return result, t1 - t0
@@ -29,12 +29,12 @@ if __name__ == '__main__':
         return timedExecution
  
     @timedafunc
-    def render_taskable( image, image_file_pathname, camera, scene, num_samples, num_threads ):
+    def render_taskable(image, image_file_pathname, camera, scene, num_samples, num_threads):
         workers = []
         
-        for i in range( num_threads ):
-            worker = RenderWorker( camera, scene, image.width, image.height, i, num_threads, num_samples, image.accessRawPixelData() )
-            workers.append( worker )
+        for i in range(num_threads):
+            worker = RenderWorker(camera, scene, image.width, image.height, i, num_threads, num_samples, image.accessRawPixelData())
+            workers.append(worker)
             worker.start()
             
         totalRays = 0.0
@@ -76,14 +76,14 @@ if __name__ == '__main__':
             scene = Scene(model_file, camera.view_position)
             model_file.close()
 
-            numSamples, duration = render_taskable( image, image_file_pathname, camera, scene, iterations, 4 )
+            numSamples, duration = render_taskable(image, image_file_pathname, camera, scene, iterations, 4)
             totalSamples = image.width * image.height * iterations
-            avgSpeed = float( numSamples ) / duration
+            avgSpeed = float(numSamples) / duration
             expectedTime = totalSamples / avgSpeed
 
             print "\nSummary:"
-            print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
-            print "    giving an average speed of {} rays/s".format( avgSpeed )
-            print "    estimated time for the whole scene is {} seconds".format( expectedTime )
+            print "    Rendering scene with {} rays took {} seconds".format(numSamples, duration)
+            print "    giving an average speed of {} rays/s".format(avgSpeed)
+            print "    estimated time for the whole scene is {} seconds".format(expectedTime)
             
     main()

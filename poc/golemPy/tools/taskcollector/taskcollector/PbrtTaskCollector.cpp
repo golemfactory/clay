@@ -48,7 +48,7 @@ bool GenericWriter(FIBITMAP* dib, const char* lpszPathName, int flag) {
 	if(dib) {
 		// try to guess the file format from the file extension
 		fif = FreeImage_GetFIFFromFilename(lpszPathName);
-		if(fif != FIF_UNKNOWN ) {
+		if(fif != FIF_UNKNOWN) {
 			// check that the plugin has sufficient writing and export capabilities ...
 	//		WORD bpp = FreeImage_GetBPP(dib);
 		//	if(FreeImage_FIFSupportsWriting(fif) && FreeImage_FIFSupportsExportBPP(fif, bpp)) {
@@ -147,7 +147,7 @@ public:
 		unsigned int lastHeight = height -1 - chunkHeight;
 		unsigned int lastWidth = chunkWidth;
 		unsigned int restWidth = chunkWidth;
-		for ( it++; it != chunks.end(); it++) { 
+		for (it++; it != chunks.end(); it++) {
 			printf("lastHeight = %d, lastWidth = %d restWidth = %d\n", lastHeight, lastWidth, restWidth);
 			bool continueChunk = true;
 			while (continueChunk) {
@@ -255,7 +255,7 @@ main(int argc, char *argv[]) {
 
 	if (strcmp(argv[1], "pbrt") == 0) {
 		taskCollector = &(PbrtTaskCollector());
-	} else if ( strcmp( argv[1], "mr") == 0) {
+	} else if (strcmp(argv[1], "mr") == 0) {
 		taskCollector = &(MentalRayTaskCollector());
 	} else {
 		printf("Possible types: 'mr', 'pbrt'\n");
@@ -264,7 +264,7 @@ main(int argc, char *argv[]) {
 
 
 	for (int i = 3; i < argc; i++) {
-		if (! taskCollector->addImgFile(argv[i]) ) {
+		if (! taskCollector->addImgFile(argv[i])) {
 			printf("Can't add file: %s\n", argv[i]);
 		}
 	}

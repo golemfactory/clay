@@ -17,16 +17,16 @@ MessageLayer - z tego poziomu wychodzą wiadomości w postaci (tutaj może być 
 ML_msg == message_header | message_data
 |
 V
-ProtocolLayer - dodaje dane niezbędne dla porotokołu ( nagłówek protokołu jest potrzebny chyba tylko do sprawdzania poprawności, więc u nas może być zbędny)
+ProtocolLayer - dodaje dane niezbędne dla porotokołu (nagłówek protokołu jest potrzebny chyba tylko do sprawdzania poprawności, więc u nas może być zbędny)
 PL_msg == protocol_header | ML_msg
 |
 V
 TransportLayer:
-TL_msg = size( PL_msg ) | PL_msg
+TL_msg = size(PL_msg) | PL_msg
 |
 V
 Low level transport layer (dowolnie opakowane TCP - u nas Twisted)
-TCP_abstraction.send( TL_msg )
+TCP_abstraction.send(TL_msg)
 
 Uwaga: docelowo wiadomości powinny być jak najmniejsze, ale na razie to nie robi wielkiej różnicy.
 TTL u nas będzie miał sens tylko w wiadomościach broadcastowanych i trzeba po testach ustalić czy to jest MessageLayer czy już ProtocolLayer (a być może nawet TransportLayer)

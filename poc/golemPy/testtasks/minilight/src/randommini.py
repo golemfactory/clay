@@ -13,7 +13,7 @@ class Random(object):
 
     #def __init__(self):
     #    ul = uuid4().int
-    #    ui = [ int( (ul >> (i * 32)) & 0xFFFFFFFFL ) for i in range(4) ]
+    #    ui = [ int((ul >> (i * 32)) & 0xFFFFFFFFL) for i in range(4) ]
     #    si = [ ui[i] if (ui[i] >= SEED_MINS[i]) else SEED for i in range(4) ]
     #    self.state0, self.state1, self.state2, self.state3 = si
     #    self.id = "%08X" % self.state3

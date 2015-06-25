@@ -16,7 +16,7 @@ class NodeSimulator(QtCore.QThread):
     #updateRequest = QtCore.pyqtSignal()
 
     ########################
-    def __init__(self, simulator, id, uid, numLocalTasks, numRemoteTasks, localTaskDuration, remoteTaskDuration, innerUpdateDelay ):
+    def __init__(self, simulator, id, uid, numLocalTasks, numRemoteTasks, localTaskDuration, remoteTaskDuration, innerUpdateDelay):
         super(NodeSimulator, self).__init__()
             
         self.simulator = simulator
@@ -35,38 +35,38 @@ class NodeSimulator(QtCore.QThread):
         self.forcedQuit = False
 
         self.localAddr = "127.0.0.1"
-        self.localPort = int( random.random() * 60000.0 + 1024.0 )
+        self.localPort = int(random.random() * 60000.0 + 1024.0)
         self.peersNum = 0
         self.tasksNum = 0
         self.running = True
         
         self.addedTasks = []
 
-        for i in range( numLocalTasks ):
-            self.addedTasks.append( "Uninteresting taks desc {}".format( i ) )
+        for i in range(numLocalTasks):
+            self.addedTasks.append("Uninteresting taks desc {}".format(i))
 
     ########################
-    def terminate( self ):
+    def terminate(self):
         self.forcedQuit = True
 
     ########################
-    def enqueueTask( self, w, h, numSamplesPerPixel, fileName ):
+    def enqueueTask(self, w, h, numSamplesPerPixel, fileName):
         self.numLocalTasks += 1
         self.totalDuration += self.localTaskDuration
-        extraData = "w: {}, h: {}, spp: {}, file: {}".format( w, h, numSamplesPerPixel, fileName )
+        extraData = "w: {}, h: {}, spp: {}, file: {}".format(w, h, numSamplesPerPixel, fileName)
 
-        self.addedTasks.append( extraData )
+        self.addedTasks.append(extraData)
 
     ########################
-    def getId( self ):
+    def getId(self):
         return self.id
 
     ########################
-    def getUid( self ):
+    def getUid(self):
         return self.uid
 
     ########################
-    def getStateSnapshot( self ):
+    def getStateSnapshot(self):
         addPeers = 1 if random.random() >= 0.45 else -1
 
         self.peersNum += addPeers
@@ -87,57 +87,57 @@ class NodeSimulator(QtCore.QThread):
 
         curTime = time.time()
 
-        ctl = self.remoteTaskDuration - ( curTime - self.remTaskStartTime )
-        ctl = max( 0.0, ctl )
-        tcss = TaskChunkStateSnapshot( '0xbaadf00d', 1600.0, ctl, self.remProgress, "chunk data: {}".format( self.remTask ) )
+        ctl = self.remoteTaskDuration - (curTime - self.remTaskStartTime)
+        ctl = max(0.0, ctl)
+        tcss = TaskChunkStateSnapshot('0xbaadf00d', 1600.0, ctl, self.remProgress, "chunk data: {}".format(self.remTask))
 
         allChunks = 1000 * 1000
 
-        totalTasks = int( 1000.0 * self.locProgress )
+        totalTasks = int(1000.0 * self.locProgress)
         totalChunks = 1000 * totalTasks
         
         activeRandom = random.random()
-        activeTasks = int( activeRandom * totalTasks )
-        activeChunks = int( activeRandom * totalChunks )
+        activeTasks = int(activeRandom * totalTasks)
+        activeChunks = int(activeRandom * totalChunks)
 
         descr = "nothing here"
         lcT = self.locTask
 
-        if lcT < len( self.addedTasks ):
+        if lcT < len(self.addedTasks):
             descr = self.addedTasks[ lcT ]
 
-        ltss = LocalTaskStateSnapshot( '0xcdcdcdcd', totalTasks, totalChunks, activeTasks, activeChunks, allChunks - totalChunks, self.locProgress, descr ) 
+        ltss = LocalTaskStateSnapshot('0xcdcdcdcd', totalTasks, totalChunks, activeTasks, activeChunks, allChunks - totalChunks, self.locProgress, descr)
 
-        return NodeStateSnapshot( self.running, self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message {}'.format( random.randint(0,200) )], ['test message {}'.format( random.randint(10, 70) )], { '0' : tcss }, { '0xcdcdcd' : ltss } )
+        return NodeStateSnapshot(self.running, self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message {}'.format(random.randint(0,200))], ['test message {}'.format(random.randint(10, 70))], { '0' : tcss }, { '0xcdcdcd' : ltss })
 
     ########################
-    def run( self ):
+    def run(self):
 
         startTime = time.time()
         self.locTasksDuration = self.numLocalTasks * self.localTaskDuration
         self.remTasksDuration = self.numRemoteTasks * self.remoteTaskDuration
 
-        self.totalDuration = max( self.locTasksDuration, self.remTasksDuration )
+        self.totalDuration = max(self.locTasksDuration, self.remTasksDuration)
 
         self.locTask = 0
         self.locTaskStartTime = startTime
         self.remTask = 0
         self.remTaskStartTime = startTime
 
-        loggerMsg = "Starting node '{}' local tasks: {} remote tasks: {}".format( self.uid, self.numLocalTasks, self.numRemoteTasks )
-        logger.info( "{} ->local task dura: {} secs, remote task dura: {} secs".format( loggerMsg, self.localTaskDuration, self.remoteTaskDuration ) )
+        loggerMsg = "Starting node '{}' local tasks: {} remote tasks: {}".format(self.uid, self.numLocalTasks, self.numRemoteTasks)
+        logger.info("{} ->local task dura: {} secs, remote task dura: {} secs".format(loggerMsg, self.localTaskDuration, self.remoteTaskDuration))
 
         while time.time() - startTime < self.totalDuration:
                 
             if GLOBAL_SHUTDOWN[ 0 ]:
-                logger.warning( "{}: Global shutdown triggered - bailing out".format( self.uid ) )
+                logger.warning("{}: Global shutdown triggered - bailing out".format(self.uid))
                 break
 
             if self.forcedQuit:
-                logger.warning( "{}: Forced quit triggered - bailing out".format( self.uid ) )
+                logger.warning("{}: Forced quit triggered - bailing out".format(self.uid))
                 break
 
-            time.sleep( self.innerUpdateDelay )
+            time.sleep(self.innerUpdateDelay)
 
             curTime = time.time()
 
@@ -161,22 +161,22 @@ class NodeSimulator(QtCore.QThread):
                     self.remTask += 1
                     self.remProgress = 0.0
 
-            self.simulator.updateRequested( self.id )
+            self.simulator.updateRequested(self.id)
             #self.updateRequest.emit()
             #self.emit(QtCore.SIGNAL("Activated()"),self.dupa, QtCore.Qt.QueuedConnection)
             #print "\r                                                                      ",
-            #print "\r{:3} : {}   {:3} : {}".format( locTask, self.locProgress, remTask, self.remProgress ),
+            #print "\r{:3} : {}   {:3} : {}".format(locTask, self.locProgress, remTask, self.remProgress),
 
-        logger.info( "Finished node '{}'".format( self.uid ) )
+        logger.info("Finished node '{}'".format(self.uid))
         
         if self.running:
             self.running = False
-            self.simulator.updateRequested( self.id )
+            self.simulator.updateRequested(self.id)
 
 class LocalNetworkSimulator(Thread):
 
     ########################
-    def __init__(self, manager, numNodes, maxLocalTasks, maxRemoteTasks, maxLocalTaskDuration, maxRemoteTaskDuration, maxInnerUpdateDelay, nodeSpawnDelay ):
+    def __init__(self, manager, numNodes, maxLocalTasks, maxRemoteTasks, maxLocalTaskDuration, maxRemoteTaskDuration, maxInnerUpdateDelay, nodeSpawnDelay):
         super(LocalNetworkSimulator, self).__init__()
 
         self.manager = manager
@@ -193,79 +193,79 @@ class LocalNetworkSimulator(Thread):
         self.nodes = []
 
     ########################
-    def terminateAllNodes( self ):
+    def terminateAllNodes(self):
         with self.lock:
             for node in self.nodes:
                 node.terminate()
 
     ########################
-    def terminateNode( self, uid ):
+    def terminateNode(self, uid):
         with self.lock:
-            for i, node in enumerate( self.nodes ):
+            for i, node in enumerate(self.nodes):
                 if node.getUid() == uid:
                     node.terminate()
-                    #self.nodes.pop( i )
+                    #self.nodes.pop(i)
                     break
 
     ########################
-    def enqueueNodeTask( self, uid, w, h, numSamplesPerPixel, fileName ):
+    def enqueueNodeTask(self, uid, w, h, numSamplesPerPixel, fileName):
         with self.lock:
             for node in self.nodes:
                 if node.getUid() == uid:
-                    node.enqueueTask( w, h, numSamplesPerPixel, fileName )
+                    node.enqueueTask(w, h, numSamplesPerPixel, fileName)
 
     ########################
-    def addNewNode( self ):
+    def addNewNode(self):
         with self.lock:
-            node = self.createNewNode( self.curNode )
-            self.nodes.append( node )
+            node = self.createNewNode(self.curNode)
+            self.nodes.append(node)
             node.start()
             self.curNode += 1
-            #node.updateRequest.connect( self.updateRequested )
+            #node.updateRequest.connect(self.updateRequested)
 
     ########################
-    def updateRequested( self, id ):
-        self.manager.appendStateUpdate( self.nodes[ id ].getStateSnapshot() )
+    def updateRequested(self, id):
+        self.manager.appendStateUpdate(self.nodes[ id ].getStateSnapshot())
 
     ########################
-    def getRandomizedUp( self, value, scl = 1.4 ):
-        return ( 0.1 +  scl * random.random() ) * value
+    def getRandomizedUp(self, value, scl = 1.4):
+        return (0.1 +  scl * random.random()) * value
 
     ########################
-    def getRandomizedDown( self, value, scl = 0.7 ):
-        return ( 1.0 - random.random() * scl ) * value
+    def getRandomizedDown(self, value, scl = 0.7):
+        return (1.0 - random.random() * scl) * value
 
     ########################
-    def createNewNode( self, id ):
-        uid = "gen - uid - {}".format( id )
-        numLocTasks = int( self.getRandomizedDown( self.maxLocTasks ) )
-        numRemTasks = int( self.getRandomizedDown( self.maxRemTasks ) )
-        locTaskDura = self.getRandomizedDown( self.maxLocTaskDura )
-        remTaskDura = self.getRandomizedDown( self.maxRemTaskDura )
-        updateDelay = self.getRandomizedDown( self.maxInnerUpdateDelay )
+    def createNewNode(self, id):
+        uid = "gen - uid - {}".format(id)
+        numLocTasks = int(self.getRandomizedDown(self.maxLocTasks))
+        numRemTasks = int(self.getRandomizedDown(self.maxRemTasks))
+        locTaskDura = self.getRandomizedDown(self.maxLocTaskDura)
+        remTaskDura = self.getRandomizedDown(self.maxRemTaskDura)
+        updateDelay = self.getRandomizedDown(self.maxInnerUpdateDelay)
 
-        return NodeSimulator( self, id, uid, numLocTasks, numRemTasks, locTaskDura, remTaskDura, updateDelay )
+        return NodeSimulator(self, id, uid, numLocTasks, numRemTasks, locTaskDura, remTaskDura, updateDelay)
 
     ########################
-    def run( self ):
-        time.sleep( 1 ) #just out of decency
+    def run(self):
+        time.sleep(1) #just out of decency
 
         curTime = time.time()
 
-        logger.info( "Starting node simulator for {} nodes".format( self.numNodes ) )
+        logger.info("Starting node simulator for {} nodes".format(self.numNodes))
 
         while not GLOBAL_SHUTDOWN[ 0 ]:
 
             if self.curNode < self.numNodes:
                 self.addNewNode()
 
-            time.sleep( self.getRandomizedUp( self.nodeSpawnDelay ) )
+            time.sleep(self.getRandomizedUp(self.nodeSpawnDelay))
 
-        logger.info( "Local network simulator finished running." )
-        logger.info( "Waiting for nodes to finish" )
+        logger.info("Local network simulator finished running.")
+        logger.info("Waiting for nodes to finish")
 
         #10 seconds should be just enough for each node to do its cleanup
         for node in self.nodes:
             node.wait()
 
-        logger.info( "Simulation finished" )
+        logger.info("Simulation finished")

@@ -2,29 +2,29 @@ import sys
 
 class Environment:
     @classmethod
-    def getId( cls ):
+    def getId(cls):
         return "DEFAULT"
 
-    def __init__( self ):
+    def __init__(self):
         self.software = []
         self.caps = []
         self.shortDescription = "Default environment for generic tasks without any additional requirements."
         self.longDescription = ""
         self.acceptTasks = False
 
-    def checkSoftware( self ):
+    def checkSoftware(self):
         return True
 
-    def checkCaps( self ):
+    def checkCaps(self):
         return True
 
-    def supported( self ):
+    def supported(self):
         return True
 
-    def isAccepted( self ):
+    def isAccepted(self):
         return self.acceptTasks
 
-    def description( self ):
+    def description(self):
         desc = self.shortDescription + "\n"
         if self.caps or self.software:
             desc += "REQUIREMENTS\n\n"
@@ -42,8 +42,8 @@ class Environment:
             desc += "Additional informations:\n" + self.longDescription
         return desc
 
-    def isWindows( self ):
+    def isWindows(self):
         return sys.platform == 'win32'
 
-    def isLinux( self ):
+    def isLinux(self):
         return sys.platform.startswith('linux')

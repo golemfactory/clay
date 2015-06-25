@@ -49,7 +49,7 @@ class ConfigurationDialogCustomizer:
     #############################
     def __loadNumCores(self, configDesc):
         maxNumCores = multiprocessing.cpu_count()
-        self.gui.ui.numCoresSlider.setMaximum( maxNumCores)
+        self.gui.ui.numCoresSlider.setMaximum(maxNumCores)
         self.gui.ui.coresMaxLabel.setText(u"{}".format(maxNumCores))
 
         try:

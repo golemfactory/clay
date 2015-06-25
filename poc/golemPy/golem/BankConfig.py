@@ -17,22 +17,22 @@ class CommonConfig:
 
         self._section = section
 
-        ConfigEntry.createProperty( section, "price base", priceBase, self, "PriceBase" )
+        ConfigEntry.createProperty(section, "price base", priceBase, self, "PriceBase")
 
     ##############################
-    def section( self ):
+    def section(self):
         return self._section
 
 ############################################################
 class NodeConfig:
     ##############################
-    def __init__( self, nodeId, budget = START_BUDGET ):
-        self._section = "Node {}".format( nodeId )
+    def __init__(self, nodeId, budget = START_BUDGET):
+        self._section = "Node {}".format(nodeId)
 
-        ConfigEntry.createProperty( self.section(), "budget", budget, self, "Budget" )
+        ConfigEntry.createProperty(self.section(), "budget", budget, self, "Budget")
 
     ##############################
-    def section( self ):
+    def section(self):
         return self._section
 
 ############################################################
@@ -40,33 +40,33 @@ class BankConfig:
 
     ##############################
     @classmethod
-    def loadConfig( cls, nodeId, cfgFile = CONFIG_FILENAME ):
+    def loadConfig(cls, nodeId, cfgFile = CONFIG_FILENAME):
 
         logger = logging.getLogger(__name__)
 
-        cfg  = SimpleConfig( CommonConfig(), NodeConfig( nodeId ), cfgFile, True, False )
+        cfg  = SimpleConfig(CommonConfig(), NodeConfig(nodeId), cfgFile, True, False)
 
-        return BankConfig( cfg )
+        return BankConfig(cfg)
 
     ##############################
-    def __init__( self, cfg ):
+    def __init__(self, cfg):
         self._cfg = cfg
 
     ##############################
-    def getPriceBase( self ):
+    def getPriceBase(self):
         return self._cfg.getCommonConfig().getPriceBase()
 
     ##############################
-    def getBudget( self ):
+    def getBudget(self):
         return self._cfg.getNodeConfig().getBudget()
 
     ##############################
-    def addToBudget( self, amount, cfgFile = CONFIG_FILENAME ):
+    def addToBudget(self, amount, cfgFile = CONFIG_FILENAME):
         budget = self._cfg.getNodeConfig().getBudget()
         budget += amount
-        self._cfg.getNodeConfig().setBudget( budget )
-        SimpleConfig( self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile, True, False )
+        self._cfg.getNodeConfig().setBudget(budget)
+        SimpleConfig(self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile, True, False)
 
     ##############################
-        def __str__( self ):
-            return str( self._cfg )
+        def __str__(self):
+            return str(self._cfg)

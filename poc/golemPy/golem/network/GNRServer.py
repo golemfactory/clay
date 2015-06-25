@@ -48,7 +48,7 @@ class GNRServer:
         logger.info(" Port {} opened - listening".format(self.curPort))
 
     #############################
-    def _listeningFailure(self, *args ):
+    def _listeningFailure(self, *args):
         logger.error("Listening on ports {} to {} failure".format(self.configDesc.startPort, self.configDesc.endPort))
 
 

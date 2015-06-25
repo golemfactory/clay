@@ -5,7 +5,7 @@ from golem.core.variables import LONG_STANDARD_SIZE
 
 class FileConsumer:
     ###################
-    def __init__( self, tmpFile, outputDir, session, extraData ):
+    def __init__(self, tmpFile, outputDir, session, extraData):
         self.fh = None
         self.fileSize = -1
         self.recvSize = 0
@@ -19,15 +19,15 @@ class FileConsumer:
         self.lastPercent = 0
 
     ###################
-    def dataReceived( self, data ):
+    def dataReceived(self, data):
         locData = data
         if self.fileSize == -1:
-            locData = self._getFirstChunk( data )
+            locData = self._getFirstChunk(data)
 
         assert self.fh
 
-        self.recvSize += len( locData )
-        self.fh.write( locData )
+        self.recvSize += len(locData)
+        self.fh.write(locData)
 
         self._printProgress()
 
@@ -40,34 +40,34 @@ class FileConsumer:
             self.fh.close()
             self.fh = None
             if self.recvSize != self.fileSize:
-                os.remove( self.tmpFile )
+                os.remove(self.tmpFile)
 
     ###################
-    def _getFirstChunk( self, data ):
+    def _getFirstChunk(self, data):
         self.lastPercent = 0
-        ( self.fileSize, ) = struct.unpack("!L", data[ :LONG_STANDARD_SIZE ] )
+        (self.fileSize,) = struct.unpack("!L", data[ :LONG_STANDARD_SIZE ])
         assert self.fh is None
 
-        self.fh = open( self.tmpFile, 'wb' )
+        self.fh = open(self.tmpFile, 'wb')
         return  data[ LONG_STANDARD_SIZE: ]
 
     ###################
-    def _printProgress( self ):
+    def _printProgress(self):
         if self.fileSize > 0:
-            prct = int( 100 * self.recvSize / float( self.fileSize ) )
+            prct = int(100 * self.recvSize / float(self.fileSize))
             if prct > self.lastPercent:
-                print "\rFile data receving {} %                       ".format(  prct ),
+                print "\rFile data receving {} %                       ".format( prct),
                 self.lastPercent = prct
 
     ###################
-    def _endReceiving( self ):
+    def _endReceiving(self):
         self.session.conn.fileMode = False
         self.fh.close()
         self.fh = None
         self.extraData['fileSize'] = self.fileSize
         self.extraData['outputDir'] = self.outputDir
         self.extraData['tmpFile'] = self.tmpFile
-        self.session.fullFileReceived( self.extraData )
+        self.session.fullFileReceived(self.extraData)
         self.fileSize = -1
         self.recvSize = 0
 
@@ -92,10 +92,10 @@ class DecryptFileConsumer(FileConsumer):
         receiveNext = False
         while not receiveNext:
             if self.chunkSize == 0:
-                ( self.chunkSize, ) = struct.unpack("!L", locData[ :LONG_STANDARD_SIZE ] )
+                (self.chunkSize,) = struct.unpack("!L", locData[ :LONG_STANDARD_SIZE ])
                 locData = locData[LONG_STANDARD_SIZE:]
 
-            self.recvChunkSize = len( locData )
+            self.recvChunkSize = len(locData)
             if self.recvChunkSize >= self.chunkSize:
                 data = self.session.decrypt(locData[:self.chunkSize])
                 self.fh.write(data)

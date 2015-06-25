@@ -59,7 +59,7 @@ class ResourceServer(GNRServer):
         for file_ in files:
             resFiles[ file_ ] = self.resourceManager.splitFile(file_)
             for res in resFiles[ file_ ]:
-                self.addResourceToSend(res, num, taskId )
+                self.addResourceToSend(res, num, taskId)
         return resFiles
 
     ############################
@@ -76,7 +76,7 @@ class ResourceServer(GNRServer):
             self.client.taskResourcesCollected(taskId)
 
     ############################
-    def addResourceToSend(self, name, num, taskId = None ):
+    def addResourceToSend(self, name, num, taskId = None):
         if taskId not in self.waitingTasks:
             self.waitingTasks[ taskId ] = 0
         self.resourcesToSend.append([ name, taskId, num ])

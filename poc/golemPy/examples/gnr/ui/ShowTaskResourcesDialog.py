@@ -5,32 +5,32 @@ from gen.ui_ShowTaskResourcesDialog import Ui_ShowTaskResourceDialog
 
 class ShowTaskResourcesDialog:
     #######################
-    def __init__( self, parent ):
-        self.window = QDialog( parent )
+    def __init__(self, parent):
+        self.window = QDialog(parent)
         self.ui = Ui_ShowTaskResourceDialog()
-        self.ui.setupUi( self.window )
+        self.ui.setupUi(self.window)
 
         self.__setupConnections()
 
     ###################
-    def show( self ):
+    def show(self):
         self.window.show()
 
     ###################
-    def __setupConnections( self ):
-        QtCore.QObject.connect( self.ui.folderTreeWidget
-                        , QtCore.SIGNAL( "expanded ( const QModelIndex )")
-                        , self.__treeViewExpanded )
+    def __setupConnections(self):
+        QtCore.QObject.connect(self.ui.folderTreeWidget
+                        , QtCore.SIGNAL("expanded (const QModelIndex)")
+                        , self.__treeViewExpanded)
 
-        QtCore.QObject.connect( self.ui.folderTreeWidget
-                        , QtCore.SIGNAL( "collapsed ( const QModelIndex )")
-                        , self.__treeViewCollapsed )
+        QtCore.QObject.connect(self.ui.folderTreeWidget
+                        , QtCore.SIGNAL("collapsed (const QModelIndex)")
+                        , self.__treeViewCollapsed)
 
     # SLOTS
     ############################
-    def __treeViewExpanded( self, index ):
+    def __treeViewExpanded(self, index):
         self.ui.folderTreeWidget.resizeColumnToContents(0)
 
     ############################
-    def __treeViewCollapsed( self, index ):
+    def __treeViewCollapsed(self, index):
         self.ui.folderTreeWidget.resizeColumnToContents(0)

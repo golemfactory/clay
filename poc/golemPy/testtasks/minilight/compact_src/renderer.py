@@ -10,7 +10,7 @@ class Random(object):
 
     #def __init__(self):
     #    ul = uuid4().int
-    #    ui = [ int( (ul >> (i * 32)) & 0xFFFFFFFFL ) for i in range(4) ]
+    #    ui = [ int((ul >> (i * 32)) & 0xFFFFFFFFL) for i in range(4) ]
     #    si = [ ui[i] if (ui[i] >= SEED_MINS[i]) else SEED for i in range(4) ]
     #    self.state0, self.state1, self.state2, self.state3 = si
     #    self.id = "%08X" % self.state3
@@ -41,7 +41,7 @@ class Vector3f(object):
     def __init__(self, *args):
         if len(args) == 1 and type(args[0]) == type(''):
             self.x, self.y, self.z = map(float, args[0].lstrip(' (').rstrip(') '
-                ).split())
+               ).split())
         elif type(args[0]) == Vector3f:
             self.x, self.y, self.z = args[0].x, args[0].y, args[0].z
         else:
@@ -52,7 +52,7 @@ class Vector3f(object):
                 self.y, self.z = float(args[1]), float(args[2])
 
     def __str__(self):
-        return "({0.x}, {0.y}, {0.z})".format( self )
+        return "({0.x}, {0.y}, {0.z})".format(self)
 
     def __iter__(self):
         yield self.x
@@ -126,7 +126,7 @@ class SpatialIndex(object):
                         bound[j] = item[0][j]
             size = max(list(Vector3f(bound[3:6]) - Vector3f(bound[0:3])))
             self.bound = bound[0:3] + list(Vector3f(bound[3:6]
-                ).clamped(Vector3f(bound[0:3]) + Vector3f(size), MAX))
+               ).clamped(Vector3f(bound[0:3]) + Vector3f(size), MAX))
         else:
             self.bound = arg
         self.is_branch = len(items) > MAX_ITEMS and level < MAX_LEVELS - 1
@@ -183,8 +183,8 @@ class SpatialIndex(object):
                 for i in range(3):
                     high = (sub_cell >> i) & 1
                     face = self.bound[i + high * 3] if (ray_direction[i] < 0.0
-                        ) ^ (0 != high) else (self.bound[i] + self.bound[i + 3]
-                        ) * 0.5
+                       ) ^ (0 != high) else (self.bound[i] + self.bound[i + 3]
+                       ) * 0.5
                     try:
                         distance = (face - ray_origin[i]) / ray_direction[i]
                     except:
@@ -261,7 +261,7 @@ class SurfacePoint(object):
 ################# TRIANGLE
 
 SEARCH_TRI = re.compile('(\(.+\))\s*(\(.+\))\s*(\(.+\))\s*(\(.+\))\s*(\(.+\))'
-    ).search
+   ).search
 
 TOLERANCE = 1.0 / 1024.0
 EPSILON   = 1.0 / 1048576.0
@@ -270,7 +270,7 @@ class Triangle(object):
 
     def __init__(self, in_stream):
         for l in in_stream:
-            if type( l ) == type( u"" ):
+            if type(l) == type(u""):
                 line = l.encode('ascii','ignore')
             else:
                 line = l
@@ -352,7 +352,7 @@ class RayTracer(object):
                 surface_point.get_emission(ray_origin, -ray_direction, False)
             illumination = self.sample_emitters(ray_direction, surface_point,
                 random)
-            next_direction, color = surface_point.get_next_direction( random,
+            next_direction, color = surface_point.get_next_direction(random,
                 -ray_direction)
             reflection = ZERO if next_direction.is_zero() else color * \
                 self.get_radiance(surface_point.position, next_direction,
@@ -365,12 +365,12 @@ class RayTracer(object):
         emitter_position, emitter_ref = self.scene_ref.get_emitter(random)
         if emitter_ref:
             emit_direction = (emitter_position - surface_point.position
-                ).unitize()
+               ).unitize()
             hit_ref, p = self.scene_ref.get_intersection(
                 surface_point.position, emit_direction,
                 surface_point.triangle_ref)
             emission_in = SurfacePoint(emitter_ref, emitter_position
-                ).get_emission(surface_point.position, -emit_direction, True) \
+               ).get_emission(surface_point.position, -emit_direction, True) \
                 if not hit_ref or emitter_ref == hit_ref else ZERO
             return surface_point.get_reflection(emit_direction,
                 emission_in * self.scene_ref.emitters_count(), -ray_direction)
@@ -388,7 +388,7 @@ class Camera(object):
 
     def __init__(self, in_stream):
         for l in in_stream:
-            if type( l ) == type( u"" ):
+            if type(l) == type(u""):
                 line = l.encode('ascii','ignore')
             else:
                 line = l
@@ -401,7 +401,7 @@ class Camera(object):
                 self.view_angle = min(max(VIEW_ANGLE_MIN, float(a)),
                     VIEW_ANGLE_MAX) * (pi / 180.0)
                 self.right = Vector3f(0.0, 1.0, 0.0).cross(self.view_direction
-                    ).unitize()
+                   ).unitize()
                 if self.right.is_zero():
                     self.up = Vector3f(0.0, 0.0,
                         1.0 if self.view_direction.y else -1.0)
@@ -411,7 +411,7 @@ class Camera(object):
                 break
 
     def __str__(self):
-        return "{} {} {} {} {} ".format( self.view_position, self.view_angle, self.up, self.right, self.view_direction )
+        return "{} {} {} {} {} ".format(self.view_position, self.view_angle, self.up, self.right, self.view_direction)
 
     def pixel_accumulated_radiance(self, scene, random, width, height, x, y, aspect, num_samples):
         raytracer = RayTracer(scene)
@@ -431,7 +431,7 @@ class Camera(object):
             acc_radiance[ 1 ] += radiance[ 1 ]          
             acc_radiance[ 2 ] += radiance[ 2 ]          				
         
-        return Vector3f( acc_radiance[ 0 ], acc_radiance[ 1 ], acc_radiance[ 2 ] )
+        return Vector3f(acc_radiance[ 0 ], acc_radiance[ 1 ], acc_radiance[ 2 ])
 
     def get_frame(self, scene, random, image):
         raytracer = RayTracer(scene)
@@ -460,7 +460,7 @@ class Scene(object):
 
     def __init__(self, in_stream, eye_position):
         for l in in_stream:
-            if type( l ) == type( u"" ):
+            if type(l) == type(u""):
                 line = l.encode('ascii','ignore')
             else:
                 line = l
@@ -503,10 +503,10 @@ class Scene(object):
 class RenderTaskDesc:
 
     @classmethod
-    def createRenderTaskDesc( cls, id, x, y, w, h, num_pixels, num_samples ):
-        return RenderTaskDesc( id, x, y, w, h, num_pixels, num_samples )
+    def createRenderTaskDesc(cls, id, x, y, w, h, num_pixels, num_samples):
+        return RenderTaskDesc(id, x, y, w, h, num_pixels, num_samples)
 
-    def __init__( self, id, x, y, w, h, num_pixels, num_samples ):
+    def __init__(self, id, x, y, w, h, num_pixels, num_samples):
         self.id = id
         self.x = x
         self.y = y
@@ -515,109 +515,109 @@ class RenderTaskDesc:
         self.num_pixels = num_pixels
         self.num_samples = num_samples
 
-    def isValid( self ):
+    def isValid(self):
         if self.x < 0 or self.y < 0 or self.x >= self.w or self.y >= self.h:
-            print "Invalid dimensions loc( {}, {} ), size( {}, {} )".format( self.x, self.y, self.w, self.h )
+            print "Invalid dimensions loc({}, {}), size({}, {})".format(self.x, self.y, self.w, self.h)
             return False
         
         if self.num_samples < 1 or self.num_pixels < 1:
-            print "Not enough pixels {} or samples {} specified".format( self.num_pixels, self.num_samples )
+            print "Not enough pixels {} or samples {} specified".format(self.num_pixels, self.num_samples)
             return False
 
         totalPixels = self.w * self.h
         leftOver = totalPixels - self.w * self.y + self.x
 
         if leftOver < self.num_pixels:
-            print "Too many pixels ({}) specified, for current descriptor at most {} pixels can be rendered".format( self.num_pixels, leftOver )
+            print "Too many pixels ({}) specified, for current descriptor at most {} pixels can be rendered".format(self.num_pixels, leftOver)
             return False
 
         return True
 
-    def getID( self ):
+    def getID(self):
         return self.id
 
-    def getX( self ):
+    def getX(self):
         return self.x
 
-    def getY( self ):
+    def getY(self):
         return self.y
 
-    def getW( self ):
+    def getW(self):
         return self.w
 
-    def getH( self ):
+    def getH(self):
         return self.h
 
-    def getNumPixels( self ):
+    def getNumPixels(self):
         return self.num_pixels
 
-    def getNumSamples( self ):
+    def getNumSamples(self):
         return self.num_samples
 
 class RenderTask:
     
     @classmethod
-    def createRenderTask( cls, renderTaskDesc, scene_data, callback ):
+    def createRenderTask(cls, renderTaskDesc, scene_data, callback):
 
         if not renderTaskDesc.isValid():
             return None
 
         try:
-            data_stream = StringIO( scene_data )
-            camera  = Camera( data_stream )
-            scene   = Scene( data_stream, camera.view_position )
+            data_stream = StringIO(scene_data)
+            camera  = Camera(data_stream)
+            scene   = Scene(data_stream, camera.view_position)
         except Exception as ex:
             print "Failed to read camera or scene from serialized data"
             print ex
             #if verbose -> dump all data
             return None
 
-        return RenderTask( renderTaskDesc, camera, scene, callback )
+        return RenderTask(renderTaskDesc, camera, scene, callback)
 
-    def __init__( self, desc, camera, scene, callback ):
+    def __init__(self, desc, camera, scene, callback):
         self.desc = desc
         self.camera = camera
         self.scene = scene
         self.callback = callback
 
-    def isValid( self ):
+    def isValid(self):
         return self.desc.isValid()
     
-    def getDesc( self ):
+    def getDesc(self):
         return self.desc
 
-    def getCamera( self ):
+    def getCamera(self):
         return self.camera
 
-    def getScene( self ):
+    def getScene(self):
         return self.scene
 
 class RenderTaskResult:
 
     @classmethod
-    def createRenderTaskResult( cls, renderTaskDesc, pixelData ):
+    def createRenderTaskResult(cls, renderTaskDesc, pixelData):
         if not renderTaskDesc.isValid():
             return None
 
-        lenPixels = len( pixelData )
+        lenPixels = len(pixelData)
         if lenPixels % 3 != 0:
-            print "Pixel data len not divisible by 3".format( lenPixels )
+            print "Pixel data len not divisible by 3".format(lenPixels)
             return None
 
         if lenPixels // 3 != renderTaskDesc.getNumPixels():
-            print "Pixel data length {} differs from descriptor data length {}".format( lenPixels, renderTaskDesc.getNumPixels() )
+            print "Pixel data length {} differs from descriptor data length {}".format(lenPixels, renderTaskDesc.getNumPixels())
             return None
 
-        return RenderTaskResult( renderTaskDesc, pixelData )
+        return RenderTaskResult(renderTaskDesc, pixelData)
 
-    def __init__( self, desc, pixelData ):
+    def __init__(self, desc, pixelData):
         self.desc = desc
         self.pixelData = pixelData
 
-    def getDesc( self ):
+    def getDesc(self):
         return self.desc
 
-    def getPixelData( self ):
+    def getPixelData(self):
         return self.pixelData
 
 ################# RENDER WORKER
@@ -625,26 +625,26 @@ class RenderTaskResult:
 class RenderWorker:
 
     @classmethod
-    def createWorker( cls, renderTask ):
+    def createWorker(cls, renderTask):
         
         if not renderTask.isValid():
             return None
 
-        return RenderWorker( renderTask )
+        return RenderWorker(renderTask)
 
-    def __init__( self, task ):
-        assert isinstance( task, RenderTask )
+    def __init__(self, task):
+        assert isinstance(task, RenderTask)
 
         self.task = task
 
         self.random     = Random()
-        self.raytracer  = RayTracer( task.getScene() )
+        self.raytracer  = RayTracer(task.getScene())
         self.progress   = 0.0
 
-    def getProgress( self ):
+    def getProgress(self):
         return self.progress
 
-    def sample_radiance( self, x, y, w, h, aspect, camera, scene, num_samples ):
+    def sample_radiance(self, x, y, w, h, aspect, camera, scene, num_samples):
         acc_radiance = [ 0.0, 0.0, 0.0 ]
 
         for i in range(num_samples):
@@ -661,28 +661,28 @@ class RenderWorker:
             acc_radiance[ 1 ] += radiance[ 1 ]          
             acc_radiance[ 2 ] += radiance[ 2 ]          				
         
-        return Vector3f( acc_radiance[ 0 ], acc_radiance[ 1 ], acc_radiance[ 2 ] )
+        return Vector3f(acc_radiance[ 0 ], acc_radiance[ 1 ], acc_radiance[ 2 ])
 
-    def getXY( self, idx, w ):
+    def getXY(self, idx, w):
         return idx % w, idx // w
 
-    def renderingFinished( self, pixels ):
-        result = RenderTaskResult.createRenderTaskResult( self.task.getDesc(), pixels )
+    def renderingFinished(self, pixels):
+        result = RenderTaskResult.createRenderTaskResult(self.task.getDesc(), pixels)
 
         if result:
             if self.task.callback:
-                self.task.callback( result )
+                self.task.callback(result)
         else:
             print "Failed to acquire result"
             
         return result
 
-    def render( self ):
+    def render(self):
         desc = self.task.getDesc()
         
         x, y, w, h              =  desc.getX(), desc.getY(), desc.getW(), desc.getH()
         num_pixels, num_samples = desc.getNumPixels(), desc.getNumSamples()
-        aspect  = float( h ) / float( w )
+        aspect  = float(h) / float(w)
         offset  = y * w + x
         id = desc.getID()
 
@@ -691,21 +691,21 @@ class RenderWorker:
         cam = self.task.getCamera()
         scn = self.task.getScene()
 
-        for k in range( num_pixels ):
-            x, y = self.getXY( k + offset, w )
+        for k in range(num_pixels):
+            x, y = self.getXY(k + offset, w)
 
-            radiance = self.sample_radiance( x, y, w, h, aspect, cam, scn, num_samples )
+            radiance = self.sample_radiance(x, y, w, h, aspect, cam, scn, num_samples)
 
             pixels[ 3 * k + 0 ] = radiance[ 0 ]                
             pixels[ 3 * k + 1 ] = radiance[ 1 ]                
             pixels[ 3 * k + 2 ] = radiance[ 2 ]                
 
-            progress = float( k + 1 ) / float( num_pixels )
-            taskProgress.set( progress )
+            progress = float(k + 1) / float(num_pixels)
+            taskProgress.set(progress)
 
-        return self.renderingFinished( pixels )
+        return self.renderingFinished(pixels)
 
-def compute( output ):
+def compute(output):
 
     #FIXME: input data (extra data) - external
     #FIXME: scene data (scene) - external
@@ -715,21 +715,21 @@ def compute( output ):
     #FIXME: read scene from the node
 
     #GET TASK
-    extra_desc = RenderTaskDesc.createRenderTaskDesc( id, x, y, w, h, num_pixels, num_samples )
-    task = RenderTask.createRenderTask( extra_desc, task_data, None )
-    worker = RenderWorker.createWorker( task )
+    extra_desc = RenderTaskDesc.createRenderTaskDesc(id, x, y, w, h, num_pixels, num_samples)
+    task = RenderTask.createRenderTask(extra_desc, task_data, None)
+    worker = RenderWorker.createWorker(task)
 
     #CALCULATE
     result = worker.render()
     
     #RETURN RESULT and write to proper stream
     data = result.getPixelData()
-    #print len( data ) // 3
+    #print len(data) // 3
     #print data
-    #print len( data ) // 3
+    #print len(data) // 3
     for p in data:
-        output.append( p )
+        output.append(p)
 
 output = []
 
-compute( output )
+compute(output)

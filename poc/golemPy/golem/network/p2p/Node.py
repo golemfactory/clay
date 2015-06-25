@@ -1,4 +1,4 @@
-from golem.core.hostaddress import getHostAddress, getExternalAddress
+from golem.core.hostaddress import getHostAddress, getExternalAddress, getHostAddresses
 
 ##########################################################
 class Node:
@@ -10,6 +10,7 @@ class Node:
         self.prvPort = prvPort
         self.pubAddr = pubAddr
         self.pubPort = pubPort
+        self.prvAddresses = []
 
     #############################
     def collectNetworkInfo(self, seedHost=None, useIp6=False):
@@ -18,6 +19,7 @@ class Node:
             self.pubAddr, self.pubPort = getExternalAddress(self.prvPort)
         else:
             self.pubAddr, _ = getExternalAddress()
+        self.prvAddresses = getHostAddresses(useIp6)
 
     #############################
     def isSuperNode(self):

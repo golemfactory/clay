@@ -2,7 +2,7 @@
 
 class ClientConfigDescriptor:
 
-    def __init__( self ):
+    def __init__(self):
 
         self.clientUid      = 0
         self.startPort      = 0

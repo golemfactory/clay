@@ -4,6 +4,7 @@ import logging
 from golem.manager.NodeStateSnapshot import LocalTaskStateSnapshot
 from golem.task.TaskState import TaskState, TaskStatus, SubtaskStatus, SubtaskState, ComputerState
 from golem.resource.DirManager import DirManager
+from golem.core.hostaddress import getExternalAddress
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,9 @@ class TaskManagerEventListener:
 
 class TaskManager:
     #######################
-    def __init__(self, clientUid, listenAddress = "", listenPort = 0, keyId = "", rootPath = "res", useDistributedResources=True):
+    def __init__(self, clientUid, node, listenAddress = "", listenPort = 0, keyId = "", rootPath = "res", useDistributedResources=True):
         self.clientUid      = clientUid
+        self.node = node
 
         self.tasks          = {}
         self.tasksStates    = {}
@@ -71,6 +73,8 @@ class TaskManager:
         task.header.taskOwnerAddress = self.listenAddress
         task.header.taskOwnerPort = self.listenPort
         task.header.taskOwnerKeyId = self.keyId
+        self.node.pubAddr, self.node.pubPort = getExternalAddress(self.listenPort)
+        task.header.taskOwner = self.node
 
         task.initialize()
         self.tasks[task.header.taskId] = task
@@ -99,7 +103,7 @@ class TaskManager:
         logger.info("Resources for task {} send".format(taskId))
 
     #######################
-    def getNextSubTask(self, clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores = 0 ):
+    def getNextSubTask(self, clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores = 0):
         if taskId in self.tasks:
             task = self.tasks[taskId]
             ts = self.tasksStates[taskId]
@@ -244,7 +248,7 @@ class TaskManager:
                     s.ttl = s.ttl - (currTime - s.lastChecking)
                     s.lastChecking = currTime
                     if s.ttl <= 0:
-                        logger.info("Subtask {} dies".format( s.subtaskId))
+                        logger.info("Subtask {} dies".format(s.subtaskId))
                         s.subtaskStatus        = SubtaskStatus.failure
                         nodesWithTimeouts.append(s.computer.nodeId)
                         t.computationFailed(s.subtaskId)

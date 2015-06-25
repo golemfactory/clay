@@ -19,7 +19,7 @@ class Camera(object):
 
     def __init__(self, in_stream):
         for l in in_stream:
-            if type( l ) == type( u"" ):
+            if type(l) == type(u""):
                 line = l.encode('ascii','ignore')
             else:
                 line = l
@@ -32,7 +32,7 @@ class Camera(object):
                 self.view_angle = min(max(VIEW_ANGLE_MIN, float(a)),
                     VIEW_ANGLE_MAX) * (pi / 180.0)
                 self.right = Vector3f(0.0, 1.0, 0.0).cross(self.view_direction
-                    ).unitize()
+                   ).unitize()
                 if self.right.is_zero():
                     self.up = Vector3f(0.0, 0.0,
                         1.0 if self.view_direction.y else -1.0)
@@ -42,7 +42,7 @@ class Camera(object):
                 break
 
     def __str__(self):
-        return "{} {} {} {} {} ".format( self.view_position, self.view_angle, self.up, self.right, self.view_direction )
+        return "{} {} {} {} {} ".format(self.view_position, self.view_angle, self.up, self.right, self.view_direction)
 
     def pixel_accumulated_radiance(self, scene, random, width, height, x, y, aspect, num_samples):
         raytracer = RayTracer(scene)
@@ -62,7 +62,7 @@ class Camera(object):
             acc_radiance[ 1 ] += radiance[ 1 ]          
             acc_radiance[ 2 ] += radiance[ 2 ]          				
         
-        return Vector3f( acc_radiance[ 0 ], acc_radiance[ 1 ], acc_radiance[ 2 ] )
+        return Vector3f(acc_radiance[ 0 ], acc_radiance[ 1 ], acc_radiance[ 2 ])
 
     def get_frame(self, scene, random, image):
         raytracer = RayTracer(scene)

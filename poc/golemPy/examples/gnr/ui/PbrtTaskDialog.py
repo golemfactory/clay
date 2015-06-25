@@ -3,11 +3,11 @@ from gen.ui_PbrtTaskDialog import Ui_PbrtTaskDialog
 
 class PbrtTaskDialog:
     ###################
-    def __init__( self, parent ):
-        self.window = QDialog( parent )
+    def __init__(self, parent):
+        self.window = QDialog(parent)
         self.ui = Ui_PbrtTaskDialog()
-        self.ui.setupUi( self.window )
+        self.ui.setupUi(self.window)
 
     ###################
-    def show( self ):
+    def show(self):
         self.window.show()

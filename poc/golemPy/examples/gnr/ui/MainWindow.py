@@ -2,9 +2,9 @@ from PyQt4.QtGui import QMainWindow, QPixmap, QMessageBox
 
 from examples.gnr.ui.gen.ui_MainWindow import Ui_MainWindow
 
-class MainWindow( QMainWindow ):
+class MainWindow(QMainWindow):
 
-    def closeEvent( self, event ):
+    def closeEvent(self, event):
         reply = QMessageBox.question(self, 'Golem Message',
             "Are you sure you want to quit?", QMessageBox.Yes, QMessageBox.No)
 
@@ -15,13 +15,13 @@ class MainWindow( QMainWindow ):
 
 class GNRMainWindow:
     ##########################
-    def __init__( self ):
+    def __init__(self):
         self.window     = MainWindow()
         self.ui         = Ui_MainWindow()
 
-        self.ui.setupUi( self.window )
+        self.ui.setupUi(self.window)
 
     ##########################
-    def show( self ):
+    def show(self):
         self.window.show()
 

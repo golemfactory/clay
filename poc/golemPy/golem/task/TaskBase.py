@@ -3,11 +3,12 @@ import abc
 
 class TaskHeader:
     #######################
-    def __init__( self, clientId, taskId, taskOwnerAddress, taskOwnerPort, taskOwnerKeyId, environment, ttl = 0.0, subtaskTimeout = 0.0, resourceSize = 0, estimatedMemory = 0, minVersion = 1.0 ):
+    def __init__(self, clientId, taskId, taskOwnerAddress, taskOwnerPort, taskOwnerKeyId, environment, taskOwner = None, ttl = 0.0, subtaskTimeout = 0.0, resourceSize = 0, estimatedMemory = 0, minVersion = 1.0):
         self.taskId = taskId
         self.taskOwnerKeyId = taskOwnerKeyId
         self.taskOwnerAddress = taskOwnerAddress
         self.taskOwnerPort = taskOwnerPort
+        self.taskOwner = taskOwner
         self.lastChecking = time.time()
         self.ttl = ttl
         self.subtaskTimeout = subtaskTimeout
@@ -19,17 +20,17 @@ class TaskHeader:
 
 class TaskBuilder:
     #######################
-    def __init__( self ):
+    def __init__(self):
         pass
 
     #######################
     @abc.abstractmethod
-    def build( self ):
+    def build(self):
         return
 
 class ComputeTaskDef(object):
     #######################
-    def __init__( self ):
+    def __init__(self):
         self.taskId             = ""
         self.subtaskId          = ""
         self.srcCode            = ""
@@ -44,119 +45,119 @@ class ComputeTaskDef(object):
 
 class Task:
     #######################
-    def __init__( self, header, srcCode ):
+    def __init__(self, header, srcCode):
         self.srcCode    = srcCode
         self.header     = header
 
     #######################
     @abc.abstractmethod
-    def initialize( self ):
+    def initialize(self):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def queryExtraData( self, perfIndex, numCores = 1, clientId = None ):
+    def queryExtraData(self, perfIndex, numCores = 1, clientId = None):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def shortExtraDataRepr( self, perfIndex ):
+    def shortExtraDataRepr(self, perfIndex):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def needsComputation( self ):
+    def needsComputation(self):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def computationStarted( self, extraData ):
+    def computationStarted(self, extraData):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def computationFinished( self, subtaskId, taskResult, dirManager = None, resultType = 0 ):
+    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def computationFailed( self, subtaskId ):
+    def computationFailed(self, subtaskId):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def verifySubtask( self, subtaskId ):
+    def verifySubtask(self, subtaskId):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def verifyTask( self ):
+    def verifyTask(self):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def getTotalTasks( self ):
+    def getTotalTasks(self):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def getTotalChunks( self ):
+    def getTotalChunks(self):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def getActiveTasks( self ):
+    def getActiveTasks(self):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def getActiveChunks( self ):
+    def getActiveChunks(self):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def getChunksLeft( self ):
+    def getChunksLeft(self):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def getProgress( self ):
+    def getProgress(self):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def acceptResultsDelay( self ):
+    def acceptResultsDelay(self):
         return 0.0
 
     #######################
     @abc.abstractmethod
-    def prepareResourceDelta( self, taskId, resourceHeader ):
+    def prepareResourceDelta(self, taskId, resourceHeader):
         return None
 
     #######################
     @abc.abstractmethod
-    def testTask( self ):
+    def testTask(self):
         return False
 
     #######################
     @abc.abstractmethod
-    def updateTaskState( self, taskState ):
+    def updateTaskState(self, taskState):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def getPriceMod( self, subtaskId ):
+    def getPriceMod(self, subtaskId):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def getTrustMod( self, subtaskId ):
+    def getTrustMod(self, subtaskId):
         return # Implement in derived class
 
     #######################
     @classmethod
-    def buildTask( cls, taskBuilder ):
-        assert isinstance( taskBuilder, TaskBuilder )
+    def buildTask(cls, taskBuilder):
+        assert isinstance(taskBuilder, TaskBuilder)
         return taskBuilder.build()
 
 resultTypes = { 'data': 0, 'files': 1 }

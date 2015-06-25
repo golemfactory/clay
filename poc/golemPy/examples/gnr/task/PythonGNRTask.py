@@ -9,10 +9,10 @@ import random
 logger = logging.getLogger(__name__)
 
 
-class PythonGNRTaskBuilder( GNRTaskBuilder ):
+class PythonGNRTaskBuilder(GNRTaskBuilder):
     #######################
-    def build( self ):
-        with open( self.taskDefinition.mainProgramFile ) as f:
+    def build(self):
+        with open(self.taskDefinition.mainProgramFile) as f:
             srcCode = f.read()
         self.taskDefinition.taskResources = set()
 
@@ -20,7 +20,7 @@ class PythonGNRTaskBuilder( GNRTaskBuilder ):
         for resource in self.taskDefinition.taskResources:
             resourceSize += os.stat(resource).st_size
 
-        return PythonGNRTask(    srcCode,
+        return PythonGNRTask(   srcCode,
                             self.clientId,
                             self.taskDefinition.taskId,
                             "",
@@ -33,25 +33,25 @@ class PythonGNRTaskBuilder( GNRTaskBuilder ):
                             0,
                             self.taskDefinition.totalSubtasks,
                             self.rootPath
-                           )
+                          )
 
-class PythonGNRTask( GNRTask ):
+class PythonGNRTask(GNRTask):
     #####################
-    def __init__( self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
-                  ttl, subtaskTtl, resourceSize, estimatedMemory, totalTasks, rootPath ):
+    def __init__(self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+                  ttl, subtaskTtl, resourceSize, estimatedMemory, totalTasks, rootPath):
 
-        GNRTask.__init__( self, srcCode, clientId, taskId,ownerAddress, ownerPort, ownerKeyId, environment, ttl, subtaskTtl,
-                  resourceSize, estimatedMemory )
+        GNRTask.__init__(self, srcCode, clientId, taskId,ownerAddress, ownerPort, ownerKeyId, environment, ttl, subtaskTtl,
+                  resourceSize, estimatedMemory)
 
         self.totalTasks = totalTasks
         self.rootPath = rootPath
 
 
 
-    def queryExtraData( self, perfIndex, numCores = 1, clientId = None ):
+    def queryExtraData(self, perfIndex, numCores = 1, clientId = None):
         ctd = ComputeTaskDef()
         ctd.taskId = self.header.taskId
-        hash = "{}".format( random.getrandbits(128) )
+        hash = "{}".format(random.getrandbits(128))
         ctd.subtaskId = hash
         ctd.extraData = { "startTask" : self.lastTask,
                           "endTask": self.lastTask + 1 }
@@ -70,12 +70,12 @@ class PythonGNRTask( GNRTask ):
         return ctd
 
     #######################
-    def shortExtraDataRepr( self, perfIndex ):
+    def shortExtraDataRepr(self, perfIndex):
         return "Generic Python Task"
 
     #######################
     @checkSubtaskIdWrapper
-    def computationFinished( self, subtaskId, taskResult, dirManager = None, resultType = 0 ):
+    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
         self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
         self.numTasksReceived += 1
 

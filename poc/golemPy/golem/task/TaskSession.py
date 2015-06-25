@@ -42,33 +42,33 @@ class TaskSession(NetSession):
         self.__setMsgInterpretations()
 
     ##########################
-    def requestTask( self, clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores ):
-        self._send(MessageWantToComputeTask( clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores))
+    def requestTask(self, clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores):
+        self._send(MessageWantToComputeTask(clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores))
 
     ##########################
-    def requestResource( self, taskId, resourceHeader ):
-        self._send( MessageGetResource( taskId, pickle.dumps( resourceHeader ) ) )
+    def requestResource(self, taskId, resourceHeader):
+        self._send(MessageGetResource(taskId, pickle.dumps(resourceHeader)))
 
     ##########################
-    def sendReportComputedTask( self, taskResult, address, port, ethAccount ):
+    def sendReportComputedTask(self, taskResult, address, port, ethAccount):
         if taskResult.resultType == resultTypes['data']:
             extraData = []
         elif taskResult.resultType == resultTypes['files']:
             extraData = [ os.path.basename(x) for x in taskResult.result ]
         else:
-            logger.error("Unknown result type {}".format( taskResult.resultType ) )
+            logger.error("Unknown result type {}".format(taskResult.resultType))
             return
         nodeId = self.taskServer.getClientId()
 
-        self._send( MessageReportComputedTask( taskResult.subtaskId, taskResult.resultType, nodeId, address, port, self.taskServer.getKeyId(), ethAccount, extraData ) )
+        self._send(MessageReportComputedTask(taskResult.subtaskId, taskResult.resultType, nodeId, address, port, self.taskServer.getKeyId(), ethAccount, extraData))
 
     ##########################
-    def sendResultRejected( self, subtaskId ):
-        self._send( MessageSubtaskResultRejected( subtaskId ))
+    def sendResultRejected(self, subtaskId):
+        self._send(MessageSubtaskResultRejected(subtaskId))
 
     ##########################
-    def sendRewardForTask( self, subtaskId, reward ):
-        self._send( MessageSubtaskResultAccepted( subtaskId, reward ) )
+    def sendRewardForTask(self, subtaskId, reward):
+        self._send(MessageSubtaskResultAccepted(subtaskId, reward))
 
     ##########################
     def sendTaskFailure(self, subtaskId, errMsg):
@@ -80,7 +80,7 @@ class TaskSession(NetSession):
 
     ##########################
     def interpret(self, msg):
-       # print "Receiving from {}:{}: {}".format( self.address, self.port, msg )
+       # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
 
         self.taskServer.setLastMessage("<-", time.localtime(), msg, self.address, self.port)
 
@@ -152,9 +152,9 @@ class TaskSession(NetSession):
             decompressDir(extraData.get('outputDir'), extraData.get('tmpFile'))
         taskId = extraData.get('taskId')
         if taskId:
-            self.taskComputer.resourceGiven( taskId )
+            self.taskComputer.resourceGiven(taskId)
         else:
-            logger.error( "No taskId in extraData for received File")
+            logger.error("No taskId in extraData for received File")
         self.producer = None
         self.dropped()
 
@@ -162,24 +162,24 @@ class TaskSession(NetSession):
     def fullDataReceived(self, result, extraData):
         resultType = extraData.get('resultType')
         if resultType is None:
-            logger.error( "No information about resultType for received data " )
+            logger.error("No information about resultType for received data ")
             self.dropped()
             return
 
         if resultType == resultTypes['data']:
             try:
                 result = self.decrypt(result)
-                result = pickle.loads( result )
+                result = pickle.loads(result)
             except Exception, err:
-                logger.error( "Can't unpickle result data {}".format( str( err ) ) )
+                logger.error("Can't unpickle result data {}".format(str(err)))
 
         subtaskId = extraData.get('subtaskId')
         if subtaskId:
-            self.taskManager.computedTaskReceived( subtaskId, result, resultType )
-            if self.taskManager.verifySubtask( subtaskId ):
-                self.taskServer.acceptResult( subtaskId, self.resultOwner )
+            self.taskManager.computedTaskReceived(subtaskId, result, resultType)
+            if self.taskManager.verifySubtask(subtaskId):
+                self.taskServer.acceptResult(subtaskId, self.resultOwner)
             else:
-                self.taskServer.rejectResult( subtaskId, self.resultOwner )
+                self.taskServer.rejectResult(subtaskId, self.resultOwner)
         else:
             logger.error("No taskId value in extraData for received data ")
         self.dropped()
@@ -208,46 +208,46 @@ class TaskSession(NetSession):
 
     ##########################
     def _reactToCannotAssignTask(self, msg):
-        self.taskComputer.taskRequestRejected( msg.taskId, msg.reason )
-        self.taskServer.removeTaskHeader( msg.taskId )
+        self.taskComputer.taskRequestRejected(msg.taskId, msg.reason)
+        self.taskServer.removeTaskHeader(msg.taskId)
         self.dropped()
 
     ##########################
     def _reactToReportComputedTask(self, msg):
         if msg.subtaskId in self.taskManager.subTask2TaskMapping:
-            delay = self.taskManager.acceptResultsDelay( self.taskManager.subTask2TaskMapping[ msg.subtaskId ] )
+            delay = self.taskManager.acceptResultsDelay(self.taskManager.subTask2TaskMapping[ msg.subtaskId ])
 
             if delay == -1.0:
                 self.dropped()
             elif delay == 0.0:
-                self._send( MessageGetTaskResult( msg.subtaskId, delay ) )
+                self._send(MessageGetTaskResult(msg.subtaskId, delay))
                 self.resultOwner = EthAccountInfo(msg.keyId, msg.port, msg.address, msg.nodeId, msg.ethAccount)
 
                 if msg.resultType == resultTypes['data']:
-                    self.__receiveDataResult( msg )
+                    self.__receiveDataResult(msg)
                 elif msg.resultType == resultTypes['files']:
-                    self.__receiveFilesResult( msg )
+                    self.__receiveFilesResult(msg)
                 else:
-                    logger.error("Unknown result type {}".format( msg.resultType ) )
+                    logger.error("Unknown result type {}".format(msg.resultType))
                     self.dropped()
             else:
-                self._send( MessageGetTaskResult( msg.subtaskId, delay ) )
+                self._send(MessageGetTaskResult(msg.subtaskId, delay))
                 self.dropped()
         else:
             self.dropped()
 
     ##########################
     def _reactToGetTaskResult(self, msg):
-        res = self.taskServer.getWaitingTaskResult( msg.subtaskId )
+        res = self.taskServer.getWaitingTaskResult(msg.subtaskId)
         if res:
             if msg.delay == 0.0:
                 res.alreadySending = True
                 if res.resultType == resultTypes['data']:
-                    self.__sendDataResults( res )
+                    self.__sendDataResults(res)
                 elif res.resultType == resultTypes['files']:
-                    self.__sendFilesResults( res )
+                    self.__sendFilesResults(res)
                 else:
-                    logger.error( "Unknown result type {}".format( res.resultType ) )
+                    logger.error("Unknown result type {}".format(res.resultType))
                     self.dropped()
             else:
                 res.lastSendingTrial    = time()
@@ -257,12 +257,12 @@ class TaskSession(NetSession):
 
     ##########################
     def _reactToTaskResult(self, msg):
-        self.__receiveTaskResult( msg.subtaskId, msg.result )
+        self.__receiveTaskResult(msg.subtaskId, msg.result)
 
     ##########################
     def _reactToGetResource(self, msg):
         self.lastResourceMsg = msg
-        self.__sendResourceFormat ( self.taskServer.configDesc.useDistributedResourceManagement )
+        self.__sendResourceFormat (self.taskServer.configDesc.useDistributedResourceManagement)
 
     ##########################
     def _reactToAcceptResourceFormat(self, msg):
@@ -320,11 +320,11 @@ class TaskSession(NetSession):
             self.sendHello()
 
         if not self.verify(msg):
-            logger.error( "Wrong signature for Hello msg" )
-            self.disconnect( TaskSession.DCRUnverified )
+            logger.error("Wrong signature for Hello msg")
+            self.disconnect(TaskSession.DCRUnverified)
             return
 
-        self._send( MessageRandVal( msg.randVal ), sendUnverified=True)
+        self._send(MessageRandVal(msg.randVal), sendUnverified=True)
 
     ##########################
     def _reactToRandVal(self, msg):
@@ -343,24 +343,24 @@ class TaskSession(NetSession):
             self.msgsToSend.append(msg)
             return
         NetSession._send(self, msg, sendUnverified=sendUnverified)
-       #print "Task Session Sending to {}:{}: {}".format( self.address, self.port, msg )
+       #print "Task Session Sending to {}:{}: {}".format(self.address, self.port, msg)
         self.taskServer.setLastMessage("->", time.localtime(), msg, self.address, self.port)
 
     ##########################
     def __sendDeltaResource(self, msg):
-        resFilePath = self.taskManager.prepareResource( msg.taskId, pickle.loads( msg.resourceHeader ) )
+        resFilePath = self.taskManager.prepareResource(msg.taskId, pickle.loads(msg.resourceHeader))
 
         if not resFilePath:
-            logger.error( "Task {} has no resource".format( msg.taskId ) )
-            self.conn.transport.write( struct.pack( "!L", 0 ) )
+            logger.error("Task {} has no resource".format(msg.taskId))
+            self.conn.transport.write(struct.pack("!L", 0))
             self.dropped()
             return
 
-        self.producer = EncryptFileProducer( resFilePath, self )
+        self.producer = EncryptFileProducer(resFilePath, self)
 
     ##########################
     def __sendResourcePartsList(self, msg):
-        deltaHeader, partsList = self.taskManager.getResourcePartsList( msg.taskId, pickle.loads( msg.resourceHeader ) )
+        deltaHeader, partsList = self.taskManager.getResourcePartsList(msg.taskId, pickle.loads(msg.resourceHeader))
         self._send(MessageDeltaParts(self.taskId, deltaHeader, partsList, self.taskServer.getClientId(), self.taskServer.getResourceAddr(), self.taskServer.getResourcePort()))
 
     ##########################
@@ -392,14 +392,14 @@ class TaskSession(NetSession):
     ##########################
     def __receiveFilesResult(self, msg):
         extraData = { "subtaskId": msg.subtaskId, "resultType": msg.resultType }
-        outputDir = self.taskServer.taskManager.dirManager.getTaskTemporaryDir(self.taskManager.getTaskId( msg.subtaskId ), create=False)
+        outputDir = self.taskServer.taskManager.dirManager.getTaskTemporaryDir(self.taskManager.getTaskId(msg.subtaskId), create=False)
         self.conn.dataConsumer = DecryptMultiFileConsumer(msg.extraData, outputDir, self, extraData)
         self.conn.dataMode = True
         self.subtaskId = msg.subtaskId
 
     ##########################
     def __setMsgInterpretations(self):
-        self.interpretation.update( {
+        self.interpretation.update({
                                 MessageWantToComputeTask.Type: self._reactToWantToComputeTask,
                                 MessageTaskToCompute.Type: self._reactToTaskToCompute,
                                 MessageCannotAssignTask.Type: self._reactToCannotAssignTask,

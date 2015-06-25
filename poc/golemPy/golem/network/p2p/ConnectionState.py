@@ -55,7 +55,7 @@ class ConnectionState(Protocol):
             return None
 
         if not self.session:
-            logger.warning( "No session argument in connection state" )
+            logger.warning("No session argument in connection state")
             return None
 
         self._interpret(data)
@@ -87,7 +87,7 @@ class ConnectionState(Protocol):
         self.db.appendString(data)
         mess = self._dataToMessages()
         if mess is None or len(mess) == 0:
-            logger.error( "Deserialization message failed" )
+            logger.error("Deserialization message failed")
             return None
 
         for m in mess:

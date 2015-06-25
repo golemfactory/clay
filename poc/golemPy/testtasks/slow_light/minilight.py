@@ -63,18 +63,18 @@ MODEL_FORMAT_ID = '#MiniLight'
 
 if __name__ == '__main__':
 
-    def timedafunc( function ):
+    def timedafunc(function):
 
         def timedExecution(*args, **kwargs):
             t0 = time()
-            result = function ( *args, **kwargs )
+            result = function (*args, **kwargs)
             t1 = time()
 
             return t1 - t0
 
         return timedExecution
 
-    def render_orig( image, image_file_pathname, camera, scene, iterations ):
+    def render_orig(image, image_file_pathname, camera, scene, iterations):
         random = Random()
 
         try:
@@ -91,13 +91,13 @@ if __name__ == '__main__':
             print '\ninterrupted'
 
     @timedafunc
-    def render_taskable( image, image_file_pathname, camera, scene, num_samples ):
+    def render_taskable(image, image_file_pathname, camera, scene, num_samples):
         random = Random()
         aspect = float(image.height) / float(image.width)
         samplesPerUpdate = 200
 
         try:
-            totalPasses = float( image.height * image.width )
+            totalPasses = float(image.height * image.width)
             curPass = 0
             passUpdateDelta = samplesPerUpdate // num_samples if  num_samples < samplesPerUpdate else 1
 
@@ -108,13 +108,13 @@ if __name__ == '__main__':
                     r = camera.pixel_accumulated_radiance(scene, random, image, x, y, aspect, num_samples)
 
                     #accumulation of stored values (can be easily moved to a separate loop over x and y (and the results from radiance calculations)
-                    image.add_to_pixel( x, y, r )
+                    image.add_to_pixel(x, y, r)
 
                     curPass += 1
 
                     if curPass % passUpdateDelta == 0:
                         stdout.write('\r                                          ')
-                        stdout.write('\rProgress: {} %'.format( float( curPass ) * 100.0 / totalPasses ) )
+                        stdout.write('\rProgress: {} %'.format(float(curPass) * 100.0 / totalPasses))
                         stdout.flush()
 
             # image_file = open(image_file_pathname, 'wb')
@@ -144,13 +144,13 @@ if __name__ == '__main__':
             scene = Scene(model_file, camera.view_position)
             model_file.close()
 
-            #render_orig( image, image_file_pathname, camera, scene, iterations )
-            duration = render_taskable( image, image_file_pathname, camera, scene, iterations )
+            #render_orig(image, image_file_pathname, camera, scene, iterations)
+            duration = render_taskable(image, image_file_pathname, camera, scene, iterations)
 
             numSamples = image.width * image.height * iterations
             print "\nSummary:"
-            print "    Rendering scene with {} rays took {} seconds".format( numSamples, duration )
-            print "    giving an average speed of {} rays/s".format( float( numSamples ) / duration )
+            print "    Rendering scene with {} rays took {} seconds".format(numSamples, duration)
+            print "    giving an average speed of {} rays/s".format(float(numSamples) / duration)
             # cfg_file = open('minilight.ini', 'w')
             cfg_file = open('..\\..\\examples\\gnr\\node_data\\minilight.ini', 'w')
             average = float(numSamples) / duration

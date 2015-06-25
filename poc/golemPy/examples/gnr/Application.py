@@ -6,13 +6,13 @@ logger = logging.getLogger(__name__)
 
 class GNRGui:
     ############################
-    def __init__( self, appLogic, mainWindowClass ):
-        self.app            = QApplication( sys.argv )
+    def __init__(self, appLogic, mainWindowClass):
+        self.app            = QApplication(sys.argv)
         self.mainWindow     = mainWindowClass()
         self.appLogic       = appLogic
 
     ############################
-    def execute( self, usingqt4Reactor = True ):
+    def execute(self, usingqt4Reactor = True):
         self.mainWindow.show()
         if not usingqt4Reactor:
             res = self.app.exec_()
@@ -21,10 +21,10 @@ class GNRGui:
             except Exception as err:
                 logger.error("{}".format(err))
             finally:
-                sys.exit( res )
+                sys.exit(res)
 
     ############################
-    def getMainWindow( self ):
+    def getMainWindow(self):
         return self.mainWindow
 
 

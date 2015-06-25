@@ -1,35 +1,35 @@
 class SimpleRank:
-    def __init__( self ):
+    def __init__(self):
         self.ranking = {}
         self.basicRank = 0.5
         self.maxRank = 1.0
         self.minRank = 0.0
         self.seedRank = 1.0
 
-    def __str__( self ):
-        return "Ranking {}".format( self.ranking )
+    def __str__(self):
+        return "Ranking {}".format(self.ranking)
 
-    def getNodeRank( self, nodeId ):
+    def getNodeRank(self, nodeId):
         if nodeId in self.ranking:
             return self.ranking[ nodeId ]
         else:
             return None
 
-    def setNodeRank( self, nodeId, rank ):
+    def setNodeRank(self, nodeId, rank):
         if rank > self.maxRank:
             rank = self.maxRank
         if rank < self.minRank:
             rank = self.minRank
         self.ranking[ nodeId ] = rank
 
-    def setBasicNodeRank( self, nodeId ):
+    def setBasicNodeRank(self, nodeId):
         if nodeId not in self.ranking:
             self.ranking[ nodeId ] = self.basicRank
 
-    def setSeedRank( self, nodeId ):
+    def setSeedRank(self, nodeId):
         self.ranking[ nodeId ] = self.seedRank
 
-    def globalNodeRank( self, nodeId, otherRanks ):
+    def globalNodeRank(self, nodeId, otherRanks):
         weightSum = 0.0
         rankSum = 0.0
         for nId, rank in otherRanks.iteritems():

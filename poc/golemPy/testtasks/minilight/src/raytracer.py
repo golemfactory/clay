@@ -21,7 +21,7 @@ class RayTracer(object):
                 surface_point.get_emission(ray_origin, -ray_direction, False)
             illumination = self.sample_emitters(ray_direction, surface_point,
                 random)
-            next_direction, color = surface_point.get_next_direction( random,
+            next_direction, color = surface_point.get_next_direction(random,
                 -ray_direction)
             reflection = ZERO if next_direction.is_zero() else color * \
                 self.get_radiance(surface_point.position, next_direction,
@@ -34,12 +34,12 @@ class RayTracer(object):
         emitter_position, emitter_ref = self.scene_ref.get_emitter(random)
         if emitter_ref:
             emit_direction = (emitter_position - surface_point.position
-                ).unitize()
+               ).unitize()
             hit_ref, p = self.scene_ref.get_intersection(
                 surface_point.position, emit_direction,
                 surface_point.triangle_ref)
             emission_in = SurfacePoint(emitter_ref, emitter_position
-                ).get_emission(surface_point.position, -emit_direction, True) \
+               ).get_emission(surface_point.position, -emit_direction, True) \
                 if not hit_ref or emitter_ref == hit_ref else ZERO
             return surface_point.get_reflection(emit_direction,
                 emission_in * self.scene_ref.emitters_count(), -ray_direction)

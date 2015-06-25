@@ -166,6 +166,7 @@ class Client:
         #NETWORK
         self.node = Node(self.configDesc.clientUid, self.keysAuth.getKeyId())
         self.node.collectNetworkInfo(self.configDesc.seedHost, useIp6=self.configDesc.useIp6)
+        print self.node.prvAddresses
         logger.debug("Is super node? {}".format(self.node.isSuperNode()))
         self.p2service = None
 
@@ -206,7 +207,7 @@ class Client:
         logger.info("Starting network ...")
 
         logger.info("Starting p2p server ...")
-        self.p2pservice = P2PService(self.node.prvAddr, self.configDesc, self.keysAuth, useIp6=self.configDesc.useIp6)
+        self.p2pservice = P2PService(self.node, self.configDesc, self.keysAuth, useIp6=self.configDesc.useIp6)
         time.sleep(1.0)
 
         logger.info("Starting resource server...")
@@ -215,7 +216,7 @@ class Client:
         self.p2pservice.setResourceServer(self.resourceServer)
 
         logger.info("Starting task server ...")
-        self.taskServer = TaskServer(self.node.prvAddr, self.configDesc, self.keysAuth, self,
+        self.taskServer = TaskServer(self.node, self.configDesc, self.keysAuth, self,
                                      useIp6=self.configDesc.useIp6)
 
         self.p2pservice.setTaskServer(self.taskServer)
@@ -598,8 +599,8 @@ class Client:
                 "Wrong app version - app version {}, required version {}".format(
                     self.configDesc.appVersion,
                     minV
-               )
-           )
+              )
+          )
             return False
 
     ############################
@@ -634,12 +635,12 @@ class Client:
             remoteTasksProgresses   = self.taskServer.taskComputer.getProgresses()
             localTasksProgresses    = self.taskServer.taskManager.getProgresses()
             lastTaskMessages        = self.taskServer.getLastMessages()
-            self.lastNodeStateSnapshot = NodeStateSnapshot(    isRunning
+            self.lastNodeStateSnapshot = NodeStateSnapshot(   isRunning
                                                            ,    self.configDesc.clientUid
                                                            ,    peersNum
                                                            ,    tasksNum
-                                                           ,    self.p2pservice.hostAddress
-                                                           ,    self.p2pservice.p2pServer.curPort
+                                                           ,    self.p2pservice.node.pubAddr
+                                                           ,    self.p2pservice.node.pubPort
                                                            ,    lastNetworkMessages
                                                            ,    lastTaskMessages
                                                            ,    remoteTasksProgresses  

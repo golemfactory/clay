@@ -19,35 +19,35 @@ class TaskSpecDialog(QtGui.QDialog):
 
         self.recreateFileName()
 
-        QtCore.QObject.connect(self.ui.widthSpinBox, QtCore.SIGNAL("valueChanged(int)"), self.recreateFileName )
-        QtCore.QObject.connect(self.ui.heightSpinBox, QtCore.SIGNAL("valueChanged(int)"), self.recreateFileName )
-        QtCore.QObject.connect(self.ui.samplesPerPixelSpinBox, QtCore.SIGNAL("valueChanged(int)"), self.recreateFileName )
+        QtCore.QObject.connect(self.ui.widthSpinBox, QtCore.SIGNAL("valueChanged(int)"), self.recreateFileName)
+        QtCore.QObject.connect(self.ui.heightSpinBox, QtCore.SIGNAL("valueChanged(int)"), self.recreateFileName)
+        QtCore.QObject.connect(self.ui.samplesPerPixelSpinBox, QtCore.SIGNAL("valueChanged(int)"), self.recreateFileName)
 
         QtCore.QObject.connect(self.ui.buttonBox, QtCore.SIGNAL("accepted()"), self.accept)
         QtCore.QObject.connect(self.ui.buttonBox, QtCore.SIGNAL("rejected()"), self.reject)
 
     ########################
-    def recreateFileName( self ):
+    def recreateFileName(self):
         w = self.getWidth()
         h = self.getHeight()
         spp = self.getNumSamplesPerPixel()
 
-        fn = "default_{}_{}_{}".format( w, h, spp )
+        fn = "default_{}_{}_{}".format(w, h, spp)
 
-        self.ui.imgNameInput.setText( fn )
+        self.ui.imgNameInput.setText(fn)
 
     ########################
-    def getWidth( self ):
+    def getWidth(self):
         return self.ui.widthSpinBox.value()
 
     ########################
-    def getHeight( self ):
+    def getHeight(self):
         return self.ui.heightSpinBox.value()
 
     ########################
-    def getNumSamplesPerPixel( self ):
+    def getNumSamplesPerPixel(self):
         return self.ui.samplesPerPixelSpinBox.value()
 
     ########################
-    def getFileName( self ):
+    def getFileName(self):
         return self.ui.imgNameInput.text()
