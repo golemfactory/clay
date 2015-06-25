@@ -54,9 +54,6 @@ class Network:
     def __connectionToHostEstablished(cls, session, hostInfos, SessionType, establishedCallback,
                                       failureCallback, *args):
 
-        print "hostInfos {}".format(hostInfos)
-        print "session {}".format(session)
-
         establishedCallback(session, *args)
 
     ######################

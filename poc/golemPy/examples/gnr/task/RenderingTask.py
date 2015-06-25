@@ -207,6 +207,7 @@ class RenderingTask(GNRTask):
         ctd.extraData           = extraData
         ctd.returnAddress       = self.header.taskOwnerAddress
         ctd.returnPort          = self.header.taskOwnerPort
+        ctd.taskOwner           = self.header.taskOwner
         ctd.shortDescription    = self._shortExtraDataRepr(perfIndex, extraData)
         ctd.srcCode             = self.srcCode
         ctd.performance         = perfIndex

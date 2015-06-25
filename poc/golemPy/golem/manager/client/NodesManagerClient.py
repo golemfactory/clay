@@ -77,6 +77,7 @@ class NodesManagerUidClient (NodesManagerClient):
         elif self.taskManager:
             task.returnAddress  = self.taskManager.listenAddress
             task.returnPort     = self.taskManager.listenPort
+            task.taskOwner = self.taskManager.node
             self.taskManager.addNewTask(task)
         else:
             logger.error("No logic and no taskManager defined.")

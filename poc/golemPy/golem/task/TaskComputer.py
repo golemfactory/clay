@@ -51,7 +51,8 @@ class TaskComputer:
             self.assignedSubTasks[ ctd.subtaskId ] = ctd
             self.assignedSubTasks[ ctd.subtaskId ].timeout = subtaskTimeout
             self.taskToSubTaskMapping[ ctd.taskId ] = ctd.subtaskId
-            self.__requestResource(ctd.taskId, self.resourceManager.getResourceHeader(ctd.taskId), ctd.returnAddress, ctd.returnPort, ctd.keyId)
+            self.__requestResource(ctd.taskId, self.resourceManager.getResourceHeader(ctd.taskId), ctd.returnAddress,
+                                   ctd.returnPort, ctd.keyId, ctd.taskOwner)
             return True
         else:
             return False
@@ -114,20 +115,27 @@ class TaskComputer:
 
             subtaskId   = taskThread.subtaskId
 
-            print taskThread.error
+            subtask = self.assignedSubTasks.get(subtaskId)
+            if subtask:
+                del self.assignedSubTasks[subtaskId]
+            else:
+                logger.error("No subtask with id {}".format(subtaskId))
+                return
+
             if taskThread.error:
-                self.taskServer.sendTaskFailed(subtaskId, self.assignedSubTasks[subtaskId].taskId, taskThread.errorMsg, self.assignedSubTasks[ subtaskId ].returnAddress, self.assignedSubTasks[ subtaskId ].returnPort, self.assignedSubTasks[subtaskId].keyId, self.clientUid)
+                self.taskServer.sendTaskFailed(subtaskId, subtask.taskId, taskThread.errorMsg,
+                                               subtask.returnAddress, subtask.returnPort, subtask.keyId,
+                                               subtask.taskOwner, self.clientUid)
             elif taskThread.result and 'data' in taskThread.result and 'resultType' in taskThread.result:
                 logger.info ("Task {} computed".format(subtaskId))
-                subtask = self.assignedSubTasks.get(subtaskId)
-                self.taskServer.sendResults(subtaskId, subtask.taskId, taskThread.result, subtask.returnAddress, subtask.returnPort, subtask.keyId, self.clientUid)
+                self.taskServer.sendResults(subtaskId, subtask.taskId, taskThread.result, subtask.returnAddress,
+                                            subtask.returnPort, subtask.keyId, subtask.taskOwner, self.clientUid)
             else:
-                subtask = self.assignedSubTasks.get(subtaskId)
-                self.taskServer.sendTaskFailed(subtaskId, subtask.taskId, "Wrong result format", subtask.returnAddress, subtask.returnPort, subtask.keyId, self.clientUid)
+                self.taskServer.sendTaskFailed(subtaskId, subtask.taskId, "Wrong result format",
+                                               subtask.returnAddress, subtask.returnPort, subtask.keyId,
+                                               subtask.taskOwner, self.clientUid)
 
 
-            if subtaskId in self.assignedSubTasks:
-                del self.assignedSubTasks[ subtaskId ]
     ######################
     def run(self):
 
@@ -186,11 +194,12 @@ class TaskComputer:
         self.waitingForTask = self.taskServer.requestTask()
 
     ######################
-    def __requestResource(self, taskId, resourceHeader, returnAddress, returnPort, keyId):
+    def __requestResource(self, taskId, resourceHeader, returnAddress, returnPort, keyId, taskOwner):
         self.waitingTtl = self.waitingForTaskTimeout
         self.lastChecking = time.time()
         self.waitingForTask = 1
-        self.waitingForTask = self.taskServer.requestResource(taskId, resourceHeader, returnAddress, returnPort, keyId)
+        self.waitingForTask = self.taskServer.requestResource(taskId, resourceHeader, returnAddress, returnPort, keyId,
+                                                              taskOwner)
 
     ######################
     def __computeTask(self, subtaskId, srcCode, extraData, shortDescr, taskTimeout):

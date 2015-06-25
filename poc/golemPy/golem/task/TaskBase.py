@@ -38,6 +38,7 @@ class ComputeTaskDef(object):
         self.shortDescription   = ""
         self.returnAddress      = ""
         self.returnPort         = 0
+        self.taskOwner          = None
         self.keyId              = 0
         self.workingDirectory   = ""
         self.performance        = 0.0

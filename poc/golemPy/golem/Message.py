@@ -532,12 +532,15 @@ class MessageReportComputedTask(Message):
     RESULT_TYPE_STR = u"RESULT_TYPE"
     NODE_ID_STR = u"NODE_ID"
     ADDR_STR = u"ADDR"
+    NODE_INFO_STR = u"NODE_INFO"
     PORT_STR = u"PORT"
     KEY_ID_STR = u"KEY_ID"
     EXTRA_DATA_STR = u"EXTRA_DATA"
     ETH_ACCOUNT_STR = u"ETH_ACCOUNT"
 
-    def __init__(self, subtaskId = 0, resultType = None, nodeId = '', address = '', port = '', keyId = '', ethAccount = '', extraData = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, subtaskId = 0, resultType = None, nodeId = '', address = '',
+                 port = '', keyId = '', nodeInfo=None, ethAccount = '', extraData = None,
+                 sig = "", timestamp = None, dictRepr = None):
         Message.__init__(self, MessageReportComputedTask.Type, sig, timestamp)
 
         self.subtaskId  = subtaskId
@@ -548,6 +551,7 @@ class MessageReportComputedTask(Message):
         self.port = port
         self.keyId = keyId
         self.ethAccount = ethAccount
+        self.nodeInfo = nodeInfo
 
         if dictRepr:
             self.subtaskId  = dictRepr[MessageReportComputedTask.SUB_TASK_ID_STR ]
@@ -558,6 +562,7 @@ class MessageReportComputedTask(Message):
             self.keyId = dictRepr[MessageReportComputedTask.KEY_ID_STR ]
             self.ethAccount = dictRepr[MessageReportComputedTask.ETH_ACCOUNT_STR ]
             self.extraData = dictRepr[MessageReportComputedTask.EXTRA_DATA_STR ]
+            self.nodeInfo = dictRepr[MessageReportComputedTask.NODE_INFO_STR]
 
     def dictRepr(self):
         return {    MessageReportComputedTask.SUB_TASK_ID_STR : self.subtaskId,
@@ -567,7 +572,8 @@ class MessageReportComputedTask(Message):
                     MessageReportComputedTask.PORT_STR: self.port,
                     MessageReportComputedTask.KEY_ID_STR: self.keyId,
                     MessageReportComputedTask.ETH_ACCOUNT_STR: self.ethAccount,
-                    MessageReportComputedTask.EXTRA_DATA_STR: self.extraData }
+                    MessageReportComputedTask.EXTRA_DATA_STR: self.extraData,
+                    MessageReportComputedTask.NODE_INFO_STR: self.nodeInfo }
 
 class MessageGetTaskResult(Message):
 

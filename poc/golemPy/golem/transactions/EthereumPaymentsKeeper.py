@@ -31,7 +31,7 @@ class EthereumPaymentInfo:
 ################################################################
 class EthAccountInfo(AccountInfo):
     ################################
-    def __init__(self, keyId, port, addr, nodeId, ethAccount):
-        AccountInfo.__init__(self, keyId, port, addr, nodeId)
+    def __init__(self, keyId, port, addr, nodeId, nodeInfo, ethAccount):
+        AccountInfo.__init__(self, keyId, port, addr, nodeId, nodeInfo)
         self.ethAccount = ethAccount
 

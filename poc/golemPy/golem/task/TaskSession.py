@@ -50,7 +50,7 @@ class TaskSession(NetSession):
         self._send(MessageGetResource(taskId, pickle.dumps(resourceHeader)))
 
     ##########################
-    def sendReportComputedTask(self, taskResult, address, port, ethAccount):
+    def sendReportComputedTask(self, taskResult, address, port, ethAccount, nodeInfo):
         if taskResult.resultType == resultTypes['data']:
             extraData = []
         elif taskResult.resultType == resultTypes['files']:
@@ -60,7 +60,8 @@ class TaskSession(NetSession):
             return
         nodeId = self.taskServer.getClientId()
 
-        self._send(MessageReportComputedTask(taskResult.subtaskId, taskResult.resultType, nodeId, address, port, self.taskServer.getKeyId(), ethAccount, extraData))
+        self._send(MessageReportComputedTask(taskResult.subtaskId, taskResult.resultType, nodeId, address, port,
+                                             self.taskServer.getKeyId(), nodeInfo, ethAccount, extraData))
 
     ##########################
     def sendResultRejected(self, subtaskId):
@@ -221,7 +222,8 @@ class TaskSession(NetSession):
                 self.dropped()
             elif delay == 0.0:
                 self._send(MessageGetTaskResult(msg.subtaskId, delay))
-                self.resultOwner = EthAccountInfo(msg.keyId, msg.port, msg.address, msg.nodeId, msg.ethAccount)
+                self.resultOwner = EthAccountInfo(msg.keyId, msg.port, msg.address, msg.nodeId, msg.nodeInfo,
+                                                  msg.ethAccount)
 
                 if msg.resultType == resultTypes['data']:
                     self.__receiveDataResult(msg)

@@ -76,8 +76,8 @@ class TaskServer:
         return 0
 
     #############################
-    def requestResource(self, subtaskId, resourceHeader, address, port, keyId):
-        self.__connectAndSendResourceRequest(address, port, keyId, subtaskId, resourceHeader)
+    def requestResource(self, subtaskId, resourceHeader, address, port, keyId, taskOwner):
+        self.__connectAndSendResourceRequest(address, port, keyId, taskOwner, subtaskId, resourceHeader)
         return subtaskId
 
     #############################
@@ -85,7 +85,7 @@ class TaskServer:
         self.client.pullResources(taskId, listFiles)
 
     #############################
-    def sendResults(self, subtaskId, taskId, result, ownerAddress, ownerPort, ownerKeyId, nodeId):
+    def sendResults(self, subtaskId, taskId, result, ownerAddress, ownerPort, ownerKeyId, owner, nodeId):
 
         if 'data' not in result or 'resultType' not in result:
             logger.error("Wrong result format")
@@ -95,17 +95,19 @@ class TaskServer:
 
         if subtaskId not in self.resultsToSend:
             self.taskKeeper.addToVerification(subtaskId, taskId)
-            self.resultsToSend[subtaskId] = WaitingTaskResult(subtaskId, result['data'], result['resultType'], 0.0, 0.0, ownerAddress, ownerPort, ownerKeyId)
+            self.resultsToSend[subtaskId] = WaitingTaskResult(subtaskId, result['data'], result['resultType'], 0.0, 0.0,
+                                                              ownerAddress, ownerPort, ownerKeyId, owner)
         else:
             assert False
 
         return True
 
     #############################
-    def sendTaskFailed(self, subtaskId, taskId, errMsg, ownerAddress, ownerPort, ownerKeyId, nodeId):
+    def sendTaskFailed(self, subtaskId, taskId, errMsg, ownerAddress, ownerPort, ownerKeyId, owner, nodeId):
         self.client.decreaseTrust(nodeId, RankingStats.requested)
         if subtaskId not in self.failuresToSend:
-            self.failuresToSend[subtaskId] = WaitingTaskFailure(subtaskId, errMsg, ownerAddress, ownerPort, ownerKeyId)
+            self.failuresToSend[subtaskId] = WaitingTaskFailure(subtaskId, errMsg, ownerAddress, ownerPort, ownerKeyId,
+                                                                owner)
 
     #############################
     def newConnection(self, session):
@@ -274,8 +276,7 @@ class TaskServer:
 
     ###########################
     def acceptResult(self, subtaskId, accountInfo):
-        price_mod = self.taskManager.getPriceMod(subtaskId)
-        priceMod = price_mod
+        priceMod = self.taskManager.getPriceMod(subtaskId)
         taskId = self.taskManager.getTaskId(subtaskId)
         self.client.acceptResult(taskId, subtaskId, priceMod, accountInfo)
 
@@ -299,9 +300,9 @@ class TaskServer:
         self.client.decreaseTrust(nodeId, RankingStats.payment, self.maxTrust)
 
     ###########################
-    def localPayForTask(self, taskId, address, port, keyId, price):
+    def localPayForTask(self, taskId, address, port, keyId, nodeInfo, price):
         logger.info("Paying {} for task {}".format(price, taskId))
-        self.__connectAndPayForTask(address, port, keyId, taskId, price)
+        self.__connectAndPayForTask(address, port, keyId, nodeInfo, taskId, price)
 
     ###########################
     def globalPayForTask(self, taskId, payments):
@@ -316,7 +317,8 @@ class TaskServer:
         mod = min(max(self.taskManager.getTrustMod(subtaskId), self.minTrust), self.maxTrust)
         self.client.decreaseTrust(accountInfo.nodeId, RankingStats.wrongComputed, mod)
 
-        self.__connectAndSendResultRejected(subtaskId, accountInfo.address, accountInfo.port, accountInfo.keyId)
+        self.__connectAndSendResultRejected(subtaskId, accountInfo.address, accountInfo.port, accountInfo.keyId,
+                                            accountInfo.nodeInfo)
 
     ###########################
     def unpackDelta(self, destDir, delta, taskId):
@@ -352,10 +354,11 @@ class TaskServer:
     #############################   
     def __connectAndSendTaskRequest(self, clientId, port, keyId, taskOwner, taskId,
                                     estimatedPerformance, maxResourceSize, maxMemorySize, numCores):
-#Test innej metody
-#        Network.connect(address, port, TaskSession, self.__connectionForTaskRequestEstablished,
-#                        self.__connectionForTaskRequestFailure, clientId, keyId, taskId,
-#                        estimatedPerformance, maxResourceSize, maxMemorySize, numCores)
+
+        #Test innej metody
+        # Network.connect(address, port, TaskSession, self.__connectionForTaskRequestEstablished,
+        #                 self.__connectionForTaskRequestFailure, clientId, keyId, taskId,
+        #                 estimatedPerformance, maxResourceSize, maxMemorySize, numCores)
         hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
         hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
         Network.connectToHost(hostInfos, TaskSession, self.__connectionForTaskRequestEstablished,
@@ -363,18 +366,34 @@ class TaskServer:
                               maxResourceSize, maxMemorySize, numCores)
 
     #############################   
-    def __connectAndSendResourceRequest(self, address, port, keyId, subtaskId, resourceHeader):
-        Network.connect(address, port, TaskSession, self.__connectionForResourceRequestEstablished,
-                        self.__connectionForResourceRequestFailure, keyId, subtaskId, resourceHeader)
+    def __connectAndSendResourceRequest(self, address, port, keyId, taskOwner, subtaskId, resourceHeader):
+        #Test Innej metody
+        # Network.connect(address, port, TaskSession, self.__connectionForResourceRequestEstablished,
+        #                 self.__connectionForResourceRequestFailure, keyId, subtaskId, resourceHeader)
+
+        hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
+        hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
+        Network.connectToHost(hostInfos, TaskSession, self.__connectionForResourceRequestEstablished,
+                              self.__connectionForResourceRequestFailure, keyId, subtaskId, resourceHeader)
 
     #############################
-    def __connectAndSendResultRejected(self, subtaskId, address, port, keyId):
-        Network.connect(address, port, TaskSession, self.__connectionForSendResultRejectedEstablished,
-                        self.__connectionForResultRejectedFailure, keyId, subtaskId)
+    def __connectAndSendResultRejected(self, subtaskId, address, port, keyId, taskOwner):
+        #Test innej metody
+        # Network.connect(address, port, TaskSession, self.__connectionForSendResultRejectedEstablished,
+        #                 self.__connectionForResultRejectedFailure, keyId, subtaskId)
+        hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
+        hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
+        Network.connectToHost(hostInfos, TaskSession, self.__connectionForSendResultRejectedEstablished,
+                         self.__connectionForResultRejectedFailure, keyId, subtaskId)
 
     #############################
-    def __connectAndPayForTask(self, address, port, keyId, taskId, price):
-        Network.connect(address, port, TaskSession, self.__connectionForPayForTaskEstablished,
+    def __connectAndPayForTask(self, address, port, keyId, taskOwner, taskId, price):
+        #Test innej metody
+        # Network.connect(address, port, TaskSession, self.__connectionForPayForTaskEstablished,
+        #                 self.__connectionForPayForTaskFailure, keyId, taskId, price)
+        hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
+        hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
+        Network.connectToHost(hostInfos, TaskSession, self.__connectionForPayForTaskEstablished,
                         self.__connectionForPayForTaskFailure, keyId, taskId, price)
 
     #############################
@@ -399,14 +418,24 @@ class TaskServer:
         self.taskKeeper.requestFailure(taskId)
 
     #############################   
-    def __connectAndSendTaskResults(self, address, port, keyId, waitingTaskResult):
-        Network.connect(address, port, TaskSession, self.__connectionForTaskResultEstablished,
-                        self.__connectionForTaskResultFailure, keyId, waitingTaskResult)
+    def __connectAndSendTaskResults(self, address, port, keyId, taskOwner, waitingTaskResult):
+        #Test innej metody
+        # Network.connect(address, port, TaskSession, self.__connectionForTaskResultEstablished,
+        #                 self.__connectionForTaskResultFailure, keyId, waitingTaskResult)
+        hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
+        hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
+        Network.connectToHost(hostInfos, TaskSession, self.__connectionForTaskResultEstablished,
+                         self.__connectionForTaskResultFailure, keyId, waitingTaskResult)
 
     #############################
-    def __connectAndSendTaskFailure(self, address, port, keyId, subtaskId, errMsg):
-        Network.connect(address, port, TaskSession, self.__connectionForTaskFailureEstablished,
-                        self.__connectionForTaskFailureFailure, keyId, subtaskId, errMsg)
+    def __connectAndSendTaskFailure(self, address, port, keyId, taskOwner, subtaskId, errMsg):
+        #Test innej metody
+        # Network.connect(address, port, TaskSession, self.__connectionForTaskFailureEstablished,
+        #                 self.__connectionForTaskFailureFailure, keyId, subtaskId, errMsg)
+        hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
+        hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
+        Network.connectToHost(hostInfos, TaskSession, self.__connectionForTaskFailureEstablished,
+                              self.__connectionForTaskFailureFailure, keyId, subtaskId, errMsg)
 
     #############################
     def __connectionForTaskResultEstablished(self, session, keyId, waitingTaskResult):
@@ -418,7 +447,8 @@ class TaskServer:
         self.taskSessions[waitingTaskResult.subtaskId] = session
 
         session.sendHello()
-        session.sendReportComputedTask(waitingTaskResult, self.node.prvAddr, self.curPort, self.client.getEthAccount())
+        session.sendReportComputedTask(waitingTaskResult, self.node.prvAddr, self.curPort, self.client.getEthAccount(),
+                                       self.node)
 
     #############################
     def __connectionForTaskResultFailure(self, keyId, waitingTaskResult):
@@ -519,10 +549,13 @@ class TaskServer:
             if not waitingTaskResult.alreadySending:
                 if time.time() - waitingTaskResult.lastSendingTrial > waitingTaskResult.delayTime:
                     waitingTaskResult.alreadySending = True
-                    self.__connectAndSendTaskResults(waitingTaskResult.ownerAddress, waitingTaskResult.ownerPort, waitingTaskResult.ownerKeyId, waitingTaskResult)
+                    self.__connectAndSendTaskResults(waitingTaskResult.ownerAddress, waitingTaskResult.ownerPort,
+                                                     waitingTaskResult.ownerKeyId, waitingTaskResult.owner,
+                                                     waitingTaskResult)
 
         for wtf in self.failuresToSend.itervalues():
-            self.__connectAndSendTaskFailure(wtf.ownerAddress, wtf.ownerPort, wtf.ownerKeyId, wtf.subtaskId, wtf.errMsg,)
+            self.__connectAndSendTaskFailure(wtf.ownerAddress, wtf.ownerPort, wtf.ownerKeyId, wtf.owner,
+                                             wtf.subtaskId, wtf.errMsg)
         self.failuresToSend.clear()
 
     #############################
@@ -532,7 +565,8 @@ class TaskServer:
             self.globalPayForTask(taskId, payments)
             for payment in payments.itervalues():
                 for idx,account in enumerate(payment.accounts):
-                    self.localPayForTask(taskId, account.addr, account.port, account.keyId, payment.accountsPayments[idx])
+                    self.localPayForTask(taskId, account.addr, account.port, account.keyId, account.nodeInfo,
+                                         payment.accountsPayments[idx])
 
     #############################
     def __checkPayments(self):
@@ -548,7 +582,8 @@ class TaskServer:
 
 class WaitingTaskResult:
     #############################
-    def __init__(self, subtaskId, result, resultType, lastSendingTrial, delayTime, ownerAddress, ownerPort, ownerKeyId):
+    def __init__(self, subtaskId, result, resultType, lastSendingTrial, delayTime, ownerAddress, ownerPort, ownerKeyId,
+                 owner):
         self.subtaskId          = subtaskId
         self.result             = result
         self.resultType         = resultType
@@ -557,17 +592,19 @@ class WaitingTaskResult:
         self.ownerAddress       = ownerAddress
         self.ownerPort          = ownerPort
         self.ownerKeyId         = ownerKeyId
+        self.owner              = owner
         self.alreadySending     = False
 
 ##########################################################
 
 class WaitingTaskFailure:
     #############################
-    def __init__(self, subtaskId, errMsg, ownerAddress, ownerPort, ownerKeyId):
+    def __init__(self, subtaskId, errMsg, ownerAddress, ownerPort, ownerKeyId, owner):
         self.subtaskId = subtaskId
         self.ownerAddress = ownerAddress
         self.ownerPort = ownerPort
         self.ownerKeyId = ownerKeyId
+        self.owner = owner
         self.errMsg = errMsg
 
 ##########################################################

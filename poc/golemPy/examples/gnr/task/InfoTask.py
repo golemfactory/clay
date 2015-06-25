@@ -88,6 +88,7 @@ class InfoTask(GNRTask):
                           "endTask": self.lastTask + 1 }
         ctd.returnAddress = self.header.taskOwnerAddress
         ctd.returnPort = self.header.taskOwnerPort
+        ctd.taskOwner = self.header.taskOwner
         ctd.shortDescription = "Standard info Task"
         ctd.srcCode = self.srcCode
         ctd.performance = perfIndex
