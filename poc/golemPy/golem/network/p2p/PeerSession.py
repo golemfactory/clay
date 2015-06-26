@@ -33,6 +33,7 @@ class PeerSession(NetSession):
         self.id = 0
         self.state = PeerSession.StateInitialize
         self.degree = 0
+        self.nodeId = None
 
         self.canBeUnverified.extend([ MessageHello.Type, MessageRandVal.Type ])
         self.canBeUnsigned.extend([ MessageHello.Type ])
@@ -151,8 +152,9 @@ class PeerSession(NetSession):
 
     ##########################
     def _reactToHello(self, msg):
-        self.port = msg.port
+   #     self.port = msg.port
         self.id = msg.clientUID
+        self.nodeInfo = msg.nodeInfo
         self.clientKeyId = msg.clientKeyId
 
         if not self.verify(msg):
@@ -163,7 +165,7 @@ class PeerSession(NetSession):
         enoughPeers = self.p2pService.enoughPeers()
         p = self.p2pService.findPeer(self.id)
 
-        self.p2pService.addToPeerKeeper(self.id, self.clientKeyId, self.address, self.port)
+        self.p2pService.addToPeerKeeper(self.id, self.clientKeyId, self.address, self.port, self.nodeInfo)
 
         if enoughPeers:
             loggerMsg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.id, self.address, self.port)
@@ -251,6 +253,7 @@ class PeerSession(NetSession):
     def _reactToRandVal(self, msg):
         if self.randVal == msg.randVal:
             self.verified = True
+            self.p2pService.setSuggestedAddr(self.clientKeyId, self.address, self.port)
 
     ##########################
     # PRIVATE SECTION
@@ -272,7 +275,7 @@ class PeerSession(NetSession):
     def __sendPeers(self):
         peersInfo = []
         for p in self.p2pService.peers.values():
-            peersInfo.append({"address" : p.address, "port" : p.port, "id" : p.id})
+            peersInfo.append({"address" : p.address, "port" : p.port, "id" : p.id, "node": p.nodeInfo})
         self._send(MessagePeers(peersInfo))
 
     ##########################

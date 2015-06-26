@@ -224,7 +224,6 @@ class Client:
         time.sleep(0.5)
         self.taskServer.taskManager.registerListener(ClientTaskManagerEventListener(self))
 
-
     ############################
     def runAddTaskServer(self):
         from PluginServer import startTaskAdderServer
@@ -314,6 +313,10 @@ class Client:
     ############################
     def getNeighboursDegree(self):
         return self.p2pservice.getPeersDegree()
+
+    ############################
+    def getSuggestedAddr(self, keyId):
+        return self.p2pservice.suggestedAddrs.get(keyId)
 
     #TRANSACTION SYSTEM OPERATIONS
     ############################
@@ -473,8 +476,8 @@ class Client:
         self.getResourcePeers()
 
     ############################
-    def addResourcePeer(self, clientId, addr, port, keyId):
-        self.resourceServer.addResourcePeer(clientId, addr, port, keyId)
+    def addResourcePeer(self, clientId, addr, port, keyId, nodeInfo):
+        self.resourceServer.addResourcePeer(clientId, addr, port, keyId, nodeInfo)
 
     ############################
     def supportedTask(self, thDictRepr):

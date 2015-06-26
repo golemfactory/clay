@@ -4,7 +4,7 @@ import random
 
 from copy import copy
 
-from golem.network.transport.Tcp import Network
+from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
 from golem.network.p2p.PeerSession import PeerSession
 from golem.network.p2p.P2PServer import P2PServer
 from PeerKeeper import PeerKeeper
@@ -43,6 +43,7 @@ class P2PService:
 
         self.keysAuth               = keysAuth
         self.peerKeeper             = PeerKeeper(keysAuth.getKeyId())
+        self.suggestedAddrs         = {}
 
         self.connectToNetwork()
 
@@ -120,8 +121,8 @@ class P2PService:
         self.__sendDegree()
 
     #############################
-    def addToPeerKeeper(self, id, peerKeyId, address, port):
-        peerToPingInfo = self.peerKeeper.addPeer(peerKeyId, id, address, port)
+    def addToPeerKeeper(self, id, peerKeyId, address, port, nodeInfo):
+        peerToPingInfo = self.peerKeeper.addPeer(peerKeyId, id, address, port, nodeInfo)
         if peerToPingInfo and peerToPingInfo.nodeId in self.peers:
             peerToPing = self.peers[peerToPingInfo.nodeId]
             if peerToPing:
@@ -140,6 +141,7 @@ class P2PService:
                                                              peerInfo["port"]))
             self.incommingPeers[peerInfo["id"]] = { "address" : peerInfo["address"],
                                                     "port" : peerInfo["port"],
+                                                    "node": peerInfo["node"],
                                                     "conn_trials" : 0 }
             self.freePeers.append(peerInfo["id"])
             logger.debug(self.incommingPeers)
@@ -219,7 +221,7 @@ class P2PService:
 
     ############################
     def getListenParams(self):
-        return (self.p2pServer.curPort, self.configDesc.clientUid, self.keysAuth.getKeyId())
+        return (self.p2pServer.curPort, self.configDesc.clientUid, self.keysAuth.getKeyId(), self.node)
 
     ############################
     def getPeersDegree(self):
@@ -247,6 +249,9 @@ class P2PService:
     def verifySig(self, sig, data, publicKey):
         return self.keysAuth.verify(sig, data, publicKey)
 
+    def setSuggestedAddr(self, clientKeyId, addr, port):
+        self.suggestedAddrs[clientKeyId] = addr
+
     #Kademlia functions
     #############################
     def sendFindNodes(self, nodesToFind):
@@ -262,7 +267,7 @@ class P2PService:
         neighbours = self.peerKeeper.neighbours(nodeKeyId)
         nodesInfo = []
         for n in neighbours:
-            nodesInfo.append({ "address": n.ip, "port": n.port, "id": n.nodeId })
+            nodesInfo.append({ "address": n.ip, "port": n.port, "id": n.nodeId, "node": n.nodeInfo})
         return nodesInfo
 
 
@@ -274,7 +279,7 @@ class P2PService:
     ############################
     def setResourcePeer(self, addr, port):
         self.resourcePort = port
-        self.resourcePeers[self.clientUid] = [addr, port, self.keysAuth.getKeyId()]
+        self.resourcePeers[self.clientUid] = [addr, port, self.keysAuth.getKeyId(), self.node]
 
     #############################
     def sendGetResourcePeers(self):
@@ -284,8 +289,9 @@ class P2PService:
     ############################
     def getResourcePeers(self):
         resourcePeersInfo = []
-        for clientId, [addr, port, keyId] in self.resourcePeers.iteritems():
-            resourcePeersInfo.append({ 'clientId': clientId, 'addr': addr, 'port': port, 'keyId': keyId })
+        for clientId, [addr, port, keyId, nodeInfo] in self.resourcePeers.iteritems():
+            resourcePeersInfo.append({ 'clientId': clientId, 'addr': addr, 'port': port, 'keyId': keyId,
+                                       'node': nodeInfo })
 
         return resourcePeersInfo
 
@@ -294,7 +300,7 @@ class P2PService:
         for peer in resourcePeers:
             try:
                 if peer['clientId'] != self.clientUid:
-                    self.resourcePeers[peer['clientId']]  = [peer['addr'], peer['port'], peer['keyId']]
+                    self.resourcePeers[peer['clientId']]  = [peer['addr'], peer['port'], peer['keyId'], peer['node']]
             except Exception, err:
                 logger.error("Wrong set peer message (peer: {}): {}".format(peer, str(err)))
         resourcePeersCopy = self.resourcePeers.copy()
@@ -312,7 +318,6 @@ class P2PService:
     #############################
     def putResource(self, resource, addr, port, copies):
         self.resourceServer.putResource(resource, addr, port, copies)
-
 
     #TASK FUNCTIONS
     ############################
@@ -385,8 +390,15 @@ class P2PService:
     #PRIVATE SECTION
     #############################
     def __connect(self, address, port):
-
         Network.connect(address, port, PeerSession, self.__connectionEstablished, self.__connectionFailure)
+
+    #############################
+    def __connectToHost(self, peer):
+        hostInfos = nodeInfoToHostInfos(peer['node'], peer['port'])
+        addr = self.suggestedAddrs.get(peer['node'].key)
+        if addr:
+            hostInfos = [HostData(addr, peer['port'])] + hostInfos
+        Network.connectToHost(hostInfos, PeerSession, self.__connectionEstablished, self.__connectionFailure)
 
     #############################
     def __sendMessageGetPeers(self):
@@ -399,14 +411,16 @@ class P2PService:
                         for p in self.peers.values():
                             p.sendGetPeers()
                 else:
-                    self.tryToAddPeer({"id": peer.nodeId, "address": peer.ip, "port": peer.port })
+                    self.tryToAddPeer({"id": peer.nodeId, "address": peer.ip, "port": peer.port, "node": peer.nodeInfo })
                 break
 
             x = int(time.time()) % len(self.freePeers) # get some random peer from freePeers
+            peer = self.freePeers[x]
             self.incommingPeers[self.freePeers[x]]["conn_trials"] += 1 # increment connection trials
-            logger.info("Connecting to peer {}".format(self.freePeers[x]))
-            self.__connect(self.incommingPeers[self.freePeers[x]]["address"], self.incommingPeers[self.freePeers[x]]["port"])
-            self.freePeers.remove(self.freePeers[x])
+            logger.info("Connecting to peer {}".format(peer))
+            # self.__connect(self.incommingPeers[peer]["address"], self.incommingPeers[peer]["port"])
+            self.__connectToHost(self.incommingPeers[peer])
+            self.freePeers.remove(peer)
 
     #############################
     def __sendMessageGetTasks(self):
@@ -419,6 +433,7 @@ class P2PService:
     def __connectionEstablished(self, session):
         session.p2pService = self
         self.allPeers.append(session)
+
         logger.debug("Connection to peer established. {}: {}".format(session.conn.transport.getPeer().host, session.conn.transport.getPeer().port))
 
     #############################

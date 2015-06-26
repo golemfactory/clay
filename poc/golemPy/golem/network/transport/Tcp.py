@@ -10,6 +10,14 @@ class HostData:
         self.addr = addr
         self.port = port
 
+def nodeInfoToHostInfos(nodeInfo, port):
+    hostInfos = [HostData(i, port) for i in nodeInfo.prvAddresses]
+    if nodeInfo.pubPort:
+        hostInfos.append(HostData(nodeInfo.pubAddr, nodeInfo.pubPort))
+    else:
+        hostInfos.append(HostData(nodeInfo.pubAddr, port))
+    return hostInfos
+
 class Network:
 
     ######################

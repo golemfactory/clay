@@ -302,7 +302,7 @@ class TaskSession(NetSession):
     def _reactToDeltaParts(self, msg):
         self.taskComputer.waitForResources(self.taskId, msg.deltaHeader)
         self.taskServer.pullResources(self.taskId, msg.parts)
-        self.taskServer.addResourcePeer(msg.clientId, msg.addr, msg.port, self.clientKeyId)
+        self.taskServer.addResourcePeer(msg.clientId, msg.addr, msg.port, self.clientKeyId, msg.nodeInfo)
         self.dropped()
 
     ##########################
@@ -363,7 +363,9 @@ class TaskSession(NetSession):
     ##########################
     def __sendResourcePartsList(self, msg):
         deltaHeader, partsList = self.taskManager.getResourcePartsList(msg.taskId, pickle.loads(msg.resourceHeader))
-        self._send(MessageDeltaParts(self.taskId, deltaHeader, partsList, self.taskServer.getClientId(), self.taskServer.getResourceAddr(), self.taskServer.getResourcePort()))
+        self._send(MessageDeltaParts(self.taskId, deltaHeader, partsList,
+                                     self.taskServer.getClientId(), self.taskServer.node,
+                                     self.taskServer.getResourceAddr(), self.taskServer.getResourcePort()))
 
     ##########################
     def __sendResourceFormat(self, useDistributedResource):

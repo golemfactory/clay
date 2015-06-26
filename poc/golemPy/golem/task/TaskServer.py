@@ -7,7 +7,7 @@ from TaskComputer import TaskComputer
 from TaskSession import TaskSession
 from TaskKeeper import TaskKeeper
 
-from golem.network.transport.Tcp import Network, HostData
+from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
 from golem.ranking.Ranking import RankingStats
 from golem.core.hostaddress import getExternalAddress
 
@@ -216,8 +216,8 @@ class TaskServer:
         return self.taskKeeper.getSubtaskTtl(taskId)
 
     #############################
-    def addResourcePeer(self, clientId, addr, port, keyId):
-        self.client.addResourcePeer(clientId, addr, port, keyId)
+    def addResourcePeer(self, clientId, addr, port, keyId, nodeInfo):
+        self.client.addResourcePeer(clientId, addr, port, keyId, nodeInfo)
 
     #############################
     def taskResultSent(self, subtaskId):
@@ -359,8 +359,7 @@ class TaskServer:
         # Network.connect(address, port, TaskSession, self.__connectionForTaskRequestEstablished,
         #                 self.__connectionForTaskRequestFailure, clientId, keyId, taskId,
         #                 estimatedPerformance, maxResourceSize, maxMemorySize, numCores)
-        hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
-        hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
+        hostInfos = self.__getHostInfos(taskOwner, port, keyId)
         Network.connectToHost(hostInfos, TaskSession, self.__connectionForTaskRequestEstablished,
                               self.__connectionForTaskRequestFailure, clientId, keyId, taskId, estimatedPerformance,
                               maxResourceSize, maxMemorySize, numCores)
@@ -370,9 +369,7 @@ class TaskServer:
         #Test Innej metody
         # Network.connect(address, port, TaskSession, self.__connectionForResourceRequestEstablished,
         #                 self.__connectionForResourceRequestFailure, keyId, subtaskId, resourceHeader)
-
-        hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
-        hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
+        hostInfos = self.__getHostInfos(taskOwner, port, keyId)
         Network.connectToHost(hostInfos, TaskSession, self.__connectionForResourceRequestEstablished,
                               self.__connectionForResourceRequestFailure, keyId, subtaskId, resourceHeader)
 
@@ -381,8 +378,7 @@ class TaskServer:
         #Test innej metody
         # Network.connect(address, port, TaskSession, self.__connectionForSendResultRejectedEstablished,
         #                 self.__connectionForResultRejectedFailure, keyId, subtaskId)
-        hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
-        hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
+        hostInfos = self.__getHostInfos(taskOwner, port, keyId)
         Network.connectToHost(hostInfos, TaskSession, self.__connectionForSendResultRejectedEstablished,
                          self.__connectionForResultRejectedFailure, keyId, subtaskId)
 
@@ -391,8 +387,7 @@ class TaskServer:
         #Test innej metody
         # Network.connect(address, port, TaskSession, self.__connectionForPayForTaskEstablished,
         #                 self.__connectionForPayForTaskFailure, keyId, taskId, price)
-        hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
-        hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
+        hostInfos = self.__getHostInfos(taskOwner, port, keyId)
         Network.connectToHost(hostInfos, TaskSession, self.__connectionForPayForTaskEstablished,
                         self.__connectionForPayForTaskFailure, keyId, taskId, price)
 
@@ -422,8 +417,7 @@ class TaskServer:
         #Test innej metody
         # Network.connect(address, port, TaskSession, self.__connectionForTaskResultEstablished,
         #                 self.__connectionForTaskResultFailure, keyId, waitingTaskResult)
-        hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
-        hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
+        hostInfos = self.__getHostInfos(taskOwner, port, keyId)
         Network.connectToHost(hostInfos, TaskSession, self.__connectionForTaskResultEstablished,
                          self.__connectionForTaskResultFailure, keyId, waitingTaskResult)
 
@@ -432,8 +426,7 @@ class TaskServer:
         #Test innej metody
         # Network.connect(address, port, TaskSession, self.__connectionForTaskFailureEstablished,
         #                 self.__connectionForTaskFailureFailure, keyId, subtaskId, errMsg)
-        hostInfos = [HostData(i, port) for i in taskOwner.prvAddresses]
-        hostInfos.append(HostData(taskOwner.pubAddr, taskOwner.pubPort))
+        hostInfos = self.__getHostInfos(taskOwner, port, keyId)
         Network.connectToHost(hostInfos, TaskSession, self.__connectionForTaskFailureEstablished,
                               self.__connectionForTaskFailureFailure, keyId, subtaskId, errMsg)
 
@@ -577,6 +570,14 @@ class TaskServer:
     #############################
     def __getTaskManagerRoot(self, configDesc):
         return os.path.join(configDesc.rootPath, "res")
+
+    #############################
+    def __getHostInfos(self, nodeInfo, port, keyId):
+        hostInfos = nodeInfoToHostInfos(nodeInfo, port)
+        addr = self.client.getSuggestedAddr(keyId)
+        if addr:
+            hostInfos = [HostData(addr, port)] + hostInfos
+        return hostInfos
 
 ##########################################################
 

@@ -135,8 +135,11 @@ class MessageHello(Message):
     CLIENT_UID_STR  = u"clientUID"
     CLIENT_KEY_ID_STR = u"clientKeyId"
     RAND_VAL_STR    = u"randVal"
+    NODE_INFO_STR   = u"nodeInfo"
 
-    def __init__(self, port = 0, clientUID = None, clientKeyId = None,  randVal = 0, protoId = 0, cliVer = 0, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, port = 0, clientUID = None, clientKeyId = None, nodeInfo = None,
+                 randVal = 0, protoId = 0, cliVer = 0, sig = "", timestamp = None,
+                 dictRepr = None):
         Message.__init__(self, MessageHello.Type, sig, timestamp)
         
         self.protoId    = protoId
@@ -145,6 +148,7 @@ class MessageHello(Message):
         self.clientUID  = clientUID
         self.clientKeyId = clientKeyId
         self.randVal    = randVal
+        self.nodeInfo   = nodeInfo
 
         if dictRepr:
             self.protoId    = dictRepr[MessageHello.PROTO_ID_STR ]
@@ -153,6 +157,7 @@ class MessageHello(Message):
             self.clientUID  = dictRepr[MessageHello.CLIENT_UID_STR ]
             self.clientKeyId = dictRepr[MessageHello.CLIENT_KEY_ID_STR ]
             self.randVal    = dictRepr[MessageHello.RAND_VAL_STR ]
+            self.nodeInfo   = dictRepr[MessageHello.NODE_INFO_STR]
 
     def dictRepr(self):
         return {    MessageHello.PROTO_ID_STR : self.protoId,
@@ -160,7 +165,8 @@ class MessageHello(Message):
                     MessageHello.PORT_STR : self.port,
                     MessageHello.CLIENT_UID_STR : self.clientUID,
                     MessageHello.CLIENT_KEY_ID_STR: self.clientKeyId,
-                    MessageHello.RAND_VAL_STR: self.randVal
+                    MessageHello.RAND_VAL_STR: self.randVal,
+                    MessageHello.NODE_INFO_STR: self.nodeInfo
                     }
 
 class MessagePing(Message):
@@ -712,8 +718,11 @@ class MessageDeltaParts(Message):
     CLIENT_ID_STR = u"CLIENT_ID"
     ADDR_STR = u"ADDR"
     PORT_STR = u"PORT"
+    NODE_INFO_STR   = u"nodeInfo"
 
-    def __init__(self, taskId = 0, deltaHeader = None, parts = None, clientId = '', addr  = '', port = '', sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, taskId = 0, deltaHeader = None, parts = None, clientId = '',
+                 nodeInfo = None, addr  = '', port = '', sig = "", timestamp = None,
+                 dictRepr = None):
         Message.__init__(self, MessageDeltaParts.Type, sig, timestamp)
 
         self.taskId = taskId
@@ -722,6 +731,7 @@ class MessageDeltaParts(Message):
         self.clientId = clientId
         self.addr = addr
         self.port = port
+        self.nodeInfo = nodeInfo
 
         if dictRepr:
             self.taskId = dictRepr[MessageDeltaParts.TASK_ID_STR ]
@@ -730,6 +740,7 @@ class MessageDeltaParts(Message):
             self.clientId = dictRepr[MessageDeltaParts.CLIENT_ID_STR ]
             self.addr = dictRepr[MessageDeltaParts.ADDR_STR ]
             self.port = dictRepr[MessageDeltaParts.PORT_STR ]
+            self.nodeInfo = dictRepr[MessageDeltaParts.NODE_INFO_STR]
 
     def dictRepr(self):
         return {
@@ -738,7 +749,8 @@ class MessageDeltaParts(Message):
             MessageDeltaParts.PARTS_STR: self.parts,
             MessageDeltaParts.CLIENT_ID_STR: self.clientId,
             MessageDeltaParts.ADDR_STR: self.addr,
-            MessageDeltaParts.PORT_STR: self.port
+            MessageDeltaParts.PORT_STR: self.port,
+            MessageDeltaParts.NODE_INFO_STR: self.nodeInfo
         }
 
 class MessageResourceFormat(Message):

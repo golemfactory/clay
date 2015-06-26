@@ -3,7 +3,7 @@ import random
 import os
 import time
 
-from golem.network.transport.Tcp import Network
+from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
 from golem.network.GNRServer import GNRServer
 from golem.network.NetAndFilesConnState import NetAndFilesConnState
 from golem.resource.DirManager import DirManager
@@ -57,8 +57,8 @@ class ResourceServer(GNRServer):
     def addFilesToSend(self, files, taskId, num):
         resFiles = {}
         for file_ in files:
-            resFiles[ file_ ] = self.resourceManager.splitFile(file_)
-            for res in resFiles[ file_ ]:
+            resFiles[file_] = self.resourceManager.splitFile(file_)
+            for res in resFiles[file_]:
                 self.addResourceToSend(res, num, taskId)
         return resFiles
 
@@ -71,20 +71,20 @@ class ResourceServer(GNRServer):
                 self.addResourceToGet(file_, taskId)
 
         if (num > 0):
-            self.waitingTasksToCompute[ taskId ] = num
+            self.waitingTasksToCompute[taskId] = num
         else:
             self.client.taskResourcesCollected(taskId)
 
     ############################
     def addResourceToSend(self, name, num, taskId = None):
         if taskId not in self.waitingTasks:
-            self.waitingTasks[ taskId ] = 0
-        self.resourcesToSend.append([ name, taskId, num ])
-        self.waitingTasks[ taskId ] += 1
+            self.waitingTasks[taskId] = 0
+        self.resourcesToSend.append([name, taskId, num])
+        self.waitingTasks[taskId] += 1
 
     ############################
     def addResourceToGet(self, name, taskId):
-        self.resourcesToGet.append([ name, taskId ])
+        self.resourcesToGet.append([name, taskId])
 
     ############################
     def newConnection(self, session):
@@ -92,21 +92,22 @@ class ResourceServer(GNRServer):
         self.sessions.append(session)
 
     ############################
-    def addResourcePeer(self, clientId, addr, port, keyId):
+    def addResourcePeer(self, clientId, addr, port, keyId, nodeInfo):
         if clientId in self.resourcePeers:
-            if self.resourcePeers[ clientId ]['addr'] == addr and self.resourcePeers[clientId]['port'] == port and self.resourcePeers[clientId]['keyId']:
+            if self.resourcePeers[clientId]['addr'] == addr and self.resourcePeers[clientId]['port'] == port and self.resourcePeers[clientId]['keyId']:
                 return
 
-        self.resourcePeers[ clientId ] = { 'addr': addr, 'port': port, 'keyId': keyId, 'state': 'free', 'posResource': 0 }
+        self.resourcePeers[clientId] = { 'addr': addr, 'port': port, 'keyId': keyId, 'state': 'free', 'posResource': 0,
+                                           'node': nodeInfo}
 
     ############################
     def setResourcePeers(self, resourcePeers):
 
         if self.configDesc.clientUid in resourcePeers:
-            del resourcePeers[ self.configDesc.clientUid ]
+            del resourcePeers[self.configDesc.clientUid]
 
-        for clientId, [addr, port, keyId] in resourcePeers.iteritems():
-            self.addResourcePeer(clientId, addr, port, keyId)
+        for clientId, [addr, port, keyId, nodeInfo] in resourcePeers.iteritems():
+            self.addResourcePeer(clientId, addr, port, keyId, nodeInfo)
 
     ############################
     def syncNetwork(self):
@@ -123,7 +124,7 @@ class ResourceServer(GNRServer):
     def getResources(self):
         if len (self.resourcesToGet) == 0:
             return
-        resourcePeers = [ peer for peer in self.resourcePeers.values() if peer['state'] == 'free' ]
+        resourcePeers = [peer for peer in self.resourcePeers.values() if peer['state'] == 'free']
         random.shuffle(resourcePeers)
 
         if len (self.resourcePeers) == 0:
@@ -131,7 +132,7 @@ class ResourceServer(GNRServer):
 
         for peer in resourcePeers:
             peer['state'] = 'waiting'
-            self.pullResource(self.resourcesToGet[0][0], peer['addr'], peer['port'], peer['keyId'])
+            self.pullResource(self.resourcesToGet[0][0], peer['addr'], peer['port'], peer['keyId'], peer['node'])
 
 
     ############################
@@ -142,23 +143,29 @@ class ResourceServer(GNRServer):
         if self.resSendIt >= len(self.resourcesToSend):
             self.resSendIt = len(self.resourcesToSend) - 1
 
-        resourcePeers = [ peer for peer in self.resourcePeers.values() if peer['state'] == 'free' ]
+        resourcePeers = [peer for peer in self.resourcePeers.values() if peer['state'] == 'free']
 
         for peer in resourcePeers:
-            name = self.resourcesToSend[ self.resSendIt ][0]
-            num = self.resourcesToSend[ self.resSendIt ][2]
+            name = self.resourcesToSend[self.resSendIt][0]
+            num = self.resourcesToSend[self.resSendIt][2]
             peer['state'] = 'waiting'
-            self.pushResource(name , peer['addr'], peer['port'] , peer['keyId'], num)
+            self.pushResource(name , peer['addr'], peer['port'] , peer['keyId'], peer['node'], num)
             self.resSendIt = (self.resSendIt + 1) % len(self.resourcesToSend)
 
     ############################
-    def pullResource(self, resource, addr, port, keyId):
-        Network.connect(addr, port, ResourceSession, self.__connectionPullResourceEstablished,
+    def pullResource(self, resource, addr, port, keyId, nodeInfo):
+        # Network.connect(addr, port, ResourceSession, self.__connectionPullResourceEstablished,
+        #                 self.__connectionPullResourceFailure, resource, addr, port, keyId)
+        hostInfos = nodeInfoToHostInfos(nodeInfo, port)
+        addr = self.client.getSuggestedAddr(keyId)
+        if addr:
+            hostInfos = [HostData(addr, port)] + hostInfos
+        Network.connectToHost(hostInfos, ResourceSession, self.__connectionPullResourceEstablished,
                         self.__connectionPullResourceFailure, resource, addr, port, keyId)
 
     ############################
     def pullAnswer(self, resource, hasResource, session):
-        if not hasResource or resource not in [ res[0] for res in self.resourcesToGet]:
+        if not hasResource or resource not in [res[0] for res in self.resourcesToGet]:
             self.__freePeer(session.address, session.port)
             session.dropped()
         else:
@@ -177,8 +184,15 @@ class ResourceServer(GNRServer):
                 self.sessions.append(session)
 
     ############################
-    def pushResource(self, resource, addr, port, keyId, copies):
-        Network.connect(addr, port, ResourceSession, self.__connectionPushResourceEstablished,
+    def pushResource(self, resource, addr, port, keyId, nodeInfo, copies):
+        hostInfos = nodeInfoToHostInfos(nodeInfo, port)
+        addr = self.client.getSuggestedAddr(keyId)
+        if addr:
+            hostInfos = [HostData(addr, port)] + hostInfos
+        # Network.connect(addr, port, ResourceSession, self.__connectionPushResourceEstablished,
+        #                 self.__connectionPushResourceFailure, resource, copies,
+        #                 addr, port, keyId)
+        Network.connectToHost(hostInfos, ResourceSession, self.__connectionPushResourceEstablished,
                         self.__connectionPushResourceFailure, resource, copies,
                         addr, port, keyId)
 
@@ -203,12 +217,12 @@ class ResourceServer(GNRServer):
             self.resourcePeers[clientId]['posResource'] += 1
             if (self.resourcePeers[clientId]['posResource'] % 50) == 0:
                 self.client.increaseTrust(clientId, RankingStats.resource, 50)
-        for taskId in self.waitingResources[ resource ]:
+        for taskId in self.waitingResources[resource]:
             self.waitingTasksToCompute[taskId] -= 1
-            if self.waitingTasksToCompute[ taskId ] == 0:
+            if self.waitingTasksToCompute[taskId] == 0:
                 self.client.taskResourcesCollected(taskId)
-                del self.waitingTasksToCompute[ taskId ]
-        del self.waitingResources[ resource ]
+                del self.waitingTasksToCompute[taskId]
+        del self.waitingResources[resource]
 
     ############################
     def hasResource(self, resource, addr, port):
@@ -221,8 +235,8 @@ class ResourceServer(GNRServer):
                     removeRes = True
                     taskId = res[1]
                     self.waitingTasks[taskId] -= 1
-                    if self.waitingTasks[ taskId ] == 0:
-                        del self.waitingTasks[ taskId ]
+                    if self.waitingTasks[taskId] == 0:
+                        del self.waitingTasks[taskId]
                         if taskId is not None:
                             self.client.taskResourcesSend(taskId)
                     break
@@ -279,7 +293,7 @@ class ResourceServer(GNRServer):
     def __freePeer(self, addr, port):
         for clientId, value in self.resourcePeers.iteritems():
             if value['addr'] == addr and value['port'] == port:
-                self.resourcePeers[ clientId ]['state'] = 'free'
+                self.resourcePeers[clientId]['state'] = 'free'
                 return clientId
 
 
@@ -331,7 +345,7 @@ class ResourceServer(GNRServer):
                 break
 
         if badClient is not None:
-            self.resourcePeers[ badClient ]
+            self.resourcePeers[badClient]
 
     ############################
     def __removeOldSessions(self):

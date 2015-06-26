@@ -30,7 +30,7 @@ class PeerKeeper:
         return "\n".join([ str(bucket) for bucket in self.buckets ])
 
     #############################
-    def addPeer(self, peerKey, peerId, ip, port):
+    def addPeer(self, peerKey, peerId, ip, port, nodeInfo):
         if peerKey == self.peerKey:
             logger.warning("Trying to add self to Routing table")
             return
@@ -40,13 +40,13 @@ class PeerKeeper:
 
         peerKeyId = long(peerKey, 16)
 
-        peerInfo = PeerInfo(peerId, peerKey, ip, port)
+        peerInfo = PeerInfo(peerId, peerKey, ip, port, nodeInfo)
         bucket = self.bucketForNode(peerKeyId)
         peerToRemove = bucket.addNode(peerInfo)
         if peerToRemove:
             if bucket.start <= self.peerKeyId <= bucket.end:
                 self.splitBucket(bucket)
-                return self.addPeer(peerKey, peerId, ip, port)
+                return self.addPeer(peerKey, peerId, ip, port, nodeInfo)
             else:
                 self.expectedPongs[peerToRemove.nodeKeyId] = (peerInfo, time.time())
                 return peerToRemove
@@ -119,7 +119,8 @@ class PeerKeeper:
                 if peerId:
                     self.sessionsToEnd.append(peerId)
                 if replacement:
-                    self.addPeer(replacement.nodeKey, replacement.nodeId,  replacement.ip, replacement.port)
+                    self.addPeer(replacement.nodeKey, replacement.nodeId,  replacement.ip, replacement.port,
+                                 replacement.nodeInfo)
 
                 del self.expectedPongs[peerKeyId]
 
@@ -164,12 +165,13 @@ class PeerKeeper:
 
 class PeerInfo:
     #############################
-    def __init__(self, nodeId, nodeKey, ip, port):
+    def __init__(self, nodeId, nodeKey, ip, port, nodeInfo):
         self.nodeId = nodeId
         self.nodeKey = nodeKey
         self.nodeKeyId = long(nodeKey, 16)
         self.ip = ip
         self.port = port
+        self.nodeInfo = nodeInfo
 
     #############################
     def idDistance(self, nodeKeyId):
