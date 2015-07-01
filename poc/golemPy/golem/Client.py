@@ -318,6 +318,10 @@ class Client:
     def getSuggestedAddr(self, keyId):
         return self.p2pservice.suggestedAddrs.get(keyId)
 
+    ############################
+    def wantToStartTaskSession(self, keyId, nodeId):
+        self.p2pservice.wantToStartTaskSession(keyId, nodeId)
+
     #TRANSACTION SYSTEM OPERATIONS
     ############################
     def acceptResult(self, taskId, subtaskId, priceMod, accountInfo):

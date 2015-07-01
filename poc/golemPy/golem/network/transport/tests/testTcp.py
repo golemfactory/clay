@@ -56,30 +56,30 @@ class TestNetwork(unittest.TestCase):
 #        sleep(1)
  #       self.assertTrue(self.listenSuccess)
 
-    # def test2(self):
-    #     from twisted.internet import reactor
-    #
-    #     th = Thread(target=reactor.run, args=(False,))
-    #     th.deamon = True
-    #     th.start()
-    #     sleep(5)
-    #     Network.connect('127.0.0.1', 8007, QOTDClientSession, self.__connectSuccess, self.__connectFailure)
-    #     sleep(5)
-    #     reactor.stop()
-    #     self.assertTrue(self.connectSuccess)
-
-    def test3(self):
+    def test2(self):
         from twisted.internet import reactor
 
         th = Thread(target=reactor.run, args=(False,))
         th.deamon = True
         th.start()
         sleep(5)
-        hd = [HostData('127.0.0.1', 8009), HostData('109.31.31.32', 9999), HostData('127.0.0.1', 8007)]
-        Network.connectToHost(hd, QOTDClientSession, self.__connectSuccess, self.__connectFailure)
-        sleep(25)
+        Network.connect('127.0.0.1', 8007, QOTDClientSession, self.__connectSuccess, self.__connectFailure)
+        sleep(5)
         reactor.stop()
         self.assertTrue(self.connectSuccess)
+
+    # def test3(self):
+    #     from twisted.internet import reactor
+    #
+    #     th = Thread(target=reactor.run, args=(False,))
+    #     th.deamon = True
+    #     th.start()
+    #     sleep(5)
+    #     hd = [HostData('127.0.0.1', 8009), HostData('109.31.31.32', 9999), HostData('127.0.0.1', 8007)]
+    #     Network.connectToHost(hd, QOTDClientSession, self.__connectSuccess, self.__connectFailure)
+    #     sleep(25)
+    #     reactor.stop()
+    #     self.assertTrue(self.connectSuccess)
 
 #     def test3(self):
 #         from twisted.internet import reactor

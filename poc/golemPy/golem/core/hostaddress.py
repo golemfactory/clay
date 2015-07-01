@@ -19,14 +19,18 @@ def ipAddresses(useIp6=False):
         addrFamily = netifaces.AF_INET
     addresses = []
     for inter in netifaces.interfaces():
-        ipv4 = netifaces.ifaddresses(inter).get(addrFamily)
-        if ipv4 is None:
+        ip = netifaces.ifaddresses(inter).get(addrFamily)
+        if ip is None:
             continue
-        for addrInfo in ipv4:
+        for addrInfo in ip:
             addr = addrInfo.get('addr')
             if addr is not None:
                 addresses.append(addr)
-    return addresses
+        #FIXME Tej instrukcji w ogole nie powinno byc, gdy bedziemy umieli kontynuowac nieprawdilowe lokalne polaczenia
+        # Lokalny adres odpowiada, ale nie jest tym poszukiwanym
+        if '127.0.0.1' in addresses:
+            addresses.remove('127.0.0.1')
+    return []
 
 ip4Addresses = ipAddresses
 getHostAddresses = ipAddresses

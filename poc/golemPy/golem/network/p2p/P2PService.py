@@ -337,6 +337,18 @@ class P2PService:
         for p in self.peers.values():
             p.sendRemoveTask(taskId)
 
+    ############################
+    def wantToStartTaskSession(self, keyId, nodeInfo):
+        for peer in self.peers.values():
+            if peer.clientKeyId == keyId:
+                peer.sendWantToStartTaskSession(nodeInfo)
+            else:
+                print peer.clientKeyId
+
+    ############################
+    def peerWantTaskSession(self, nodeInfo):
+        self.taskServer.startTaskSession(nodeInfo)
+
     #############################
     #RANKING FUNCTIONS          #
     #############################

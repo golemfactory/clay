@@ -2,6 +2,8 @@ import time
 import os
 import logging
 
+from collections import deque
+
 from TaskManager import TaskManager
 from TaskComputer import TaskComputer
 from TaskSession import TaskSession
@@ -22,7 +24,7 @@ class TaskServer:
         self.configDesc         = configDesc
 
         self.node               = node
-        self.curPort            = configDesc.startPort
+        self.curPort            = configDesc.startPort + 2
         self.taskKeeper         = TaskKeeper()
         self.taskManager        = TaskManager(configDesc.clientUid, self.node, keyId = self.keysAuth.getKeyId(), rootPath = self.__getTaskManagerRoot(configDesc), useDistributedResources = self.configDesc.useDistributedResourceManagement)
         self.taskComputer       = TaskComputer(configDesc.clientUid, self)
@@ -39,6 +41,9 @@ class TaskServer:
         self.failuresToSend     = {}
 
         self.useIp6=useIp6
+
+        self.responseList = {}
+
         self.__startAccepting()
 
     #############################
@@ -329,6 +334,22 @@ class TaskServer:
         return self.client.getComputingTrust(nodeId)
 
     #############################
+    def startTaskSession(self, nodeInfo):
+        #FIXME Jaki port i adres startowy?
+        Network.connect(nodeInfo.prvAddr, nodeInfo.prvPort, TaskSession, self.__startSessionEstablished,
+                        self.__startSessionFailure, nodeInfo.key)
+
+    #############################
+    def respondTo(self, keyId, session):
+        responses = self.responseList.get(keyId)
+        if responses is None or len(responses) == 0:
+            session.dropped()
+            return
+
+        res = responses.popleft()
+        res(session)
+
+    #############################
     # PRIVATE SECTION
     #############################
     def __startAccepting(self):
@@ -340,6 +361,7 @@ class TaskServer:
         port = iListeningPort.getHost().port
         self.curPort = port
         logger.info("Port {} opened - listening".format(port))
+        self.node.prvPort = self.curPort
         self.taskManager.listenAddress = self.node.prvAddr
         self.taskManager.listenPort = self.curPort
         self.taskManager.node = self.node
@@ -405,12 +427,24 @@ class TaskServer:
         session.requestTask(clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores)
 
     #############################
-    def __connectionForTaskRequestFailure(self, clientId, keyId, taskId, estimatedPerformance, *args):
+    def __connectionForTaskRequestFailure(self, clientId, keyId, taskId, estimatedPerformance, maxResourceSize,
+                                          maxMemorySize, numCores, *args):
         logger.warning("Cannot connect to task {} owner".format(taskId))
         logger.warning("Removing task {} from task list".format(taskId))
 
-        self.taskComputer.taskRequestRejected(taskId, "Connection failed")
-        self.taskKeeper.requestFailure(taskId)
+        response = lambda session: self.__connectionForTaskRequestEstablished(session, clientId, keyId, taskId,
+                                                                                estimatedPerformance, maxResourceSize,
+                                                                                maxMemorySize, numCores)
+        if keyId in self.responseList:
+            self.responseList[keyId].append(response)
+        else:
+            self.responseList[keyId] = deque([response])
+
+        self.client.wantToStartTaskSession(keyId, self.node)
+
+        # FIXME Co zrobic jak ponowne polaczenie sie nie powiedzie
+#        self.taskComputer.taskRequestRejected(taskId, "Connection failed")
+#        self.taskKeeper.requestFailure(taskId)
 
     #############################   
     def __connectAndSendTaskResults(self, address, port, keyId, taskOwner, waitingTaskResult):
@@ -446,11 +480,20 @@ class TaskServer:
     #############################
     def __connectionForTaskResultFailure(self, keyId, waitingTaskResult):
         logger.warning("Cannot connect to task {} owner".format(waitingTaskResult.subtaskId))
-        logger.warning("Removing task {} from task list".format(waitingTaskResult.subtaskId))
-        
-        waitingTaskResult.lastSendingTrial  = time.time()
-        waitingTaskResult.delayTime         = self.configDesc.maxResultsSendingDelay
-        waitingTaskResult.alreadySending    = False
+
+        response = lambda session: self.__connectionForTaskResultEstablished(session, keyId, waitingTaskResult)
+
+        if keyId in self.responseList:
+            self.responseList[keyId].append(response)
+        else:
+            self.responseList[keyId] = deque([response])
+
+        self.client.wantToStartTaskSession(keyId, self.node)
+
+# FIXME Do przelozenia w jakies miejsce w momencie, gdy kolejne proby polaczenia sie nie powioda
+#        waitingTaskResult.lastSendingTrial  = time.time()
+#        waitingTaskResult.delayTime         = self.configDesc.maxResultsSendingDelay
+#        waitingTaskResult.alreadySending    = False
 
     #############################
     def __connectionForTaskFailureEstablished(self, session, keyId, subtaskId, errMsg):
@@ -463,6 +506,16 @@ class TaskServer:
     #############################
     def __connectionForTaskFailureFailure(self, keyId, subtaskId, errMsg):
         logger.warning("Cannot connect to task {} owner".format(subtaskId))
+
+        response = lambda session: self.__connectionForTaskFailureEstablished(session, keyId, subtaskId, errMsg)
+
+        if keyId in self.responseList:
+            self.responseList[keyId].append(response)
+        else:
+            self.responseList[keyId] = deque([response])
+
+        self.client.wantToStartTaskSession(keyId, self.node)
+
 
     #############################
     def __connectionForResourceRequestEstablished(self, session, keyId, subtaskId, resourceHeader):
@@ -477,13 +530,22 @@ class TaskServer:
         session.requestResource(subtaskId, resourceHeader)
 
     #############################
-    def __connectionForResourceRequestFailure(self, session, keyId, subtaskId, resourceHeader):
+    def __connectionForResourceRequestFailure(self, keyId, subtaskId, resourceHeader):
         logger.warning("Cannot connect to task {} owner".format(subtaskId))
-        logger.warning("Removing task {} from task list".format(subtaskId))
+   #     logger.warning("Removing task {} from task list".format(subtaskId))
+
+        response = lambda session: self.__connectionForResourceRequestEstablished(session, keyId, subtaskId,
+                                                                                  resourceHeader)
+        if keyId in self.responseList:
+            self.responseList[keyId].append(response)
+        else:
+            self.responseList[keyId] = deque([response])
+
+        self.client.wantToStartTaskSession(keyId, self.node)
+        #FIXME do przelozenia w jakies miejsce po zareagowaniu na blad
+        #self.taskComputer.resourceRequestRejected(subtaskId, "Connection failed")
         
-        self.taskComputer.resourceRequestRejected(subtaskId, "Connection failed")
-        
-        self.removeTaskHeader(subtaskId)
+        #self.removeTaskHeader(subtaskId)
 
     #############################
     def __connectionForResultRejectedFailure(self, keyId, subtaskId):
@@ -514,6 +576,19 @@ class TaskServer:
         session.sendHello()
         session.sendRewardForTask(taskId, price)
         self.client.taskRewardPaid(taskId, price)
+
+    #############################
+    def __startSessionEstablished(self, session, keyId):
+        session.taskServer = self
+        session.taskManager = self.taskManager
+        session.taskComputer = self.taskComputer
+        session.clientKeyId = keyId
+        session.sendHello()
+        session.sendStartSessionResponse()
+
+    #############################
+    def __startSessionFailure(self, keyId):
+        logger.info("Failed to start requested task session for node {}".format(keyId))
 
     #############################
     def __removeOldTasks(self):

@@ -449,6 +449,39 @@ class MessageRandVal(Message):
     def dictRepr(self):
         return { MessageRandVal.RAND_VAL_STR: self.randVal }
 
+class MessageWantToStartTaskSession(Message):
+
+    Type = 17
+
+    NODE_INFO_STR = u"nodeInfo"
+
+    def __init__(self, nodeInfo=None, sig="", timestamp=None, dictRepr=None):
+        Message.__init__(self, MessageWantToStartTaskSession.Type, sig, timestamp)
+
+        self.nodeInfo = nodeInfo
+
+        if dictRepr:
+            self.nodeInfo = dictRepr[MessageWantToStartTaskSession.NODE_INFO_STR]
+
+    def dictRepr(self):
+        return {
+            MessageWantToStartTaskSession.NODE_INFO_STR: self.nodeInfo
+        }
+
+class MessageStartSessionResponse(Message):
+
+    Type = 18
+
+    RESPONSE_STR = u"RESPONSE"
+
+    def __init__(self, sig="", timestamp=None, dictRepr=None):
+        Message.__init__(self, MessageStartSessionResponse.Type, sig, timestamp)
+
+        if dictRepr:
+            assert dictRepr.get(MessageStartSessionResponse.RESPONSE_STR)
+
+    def dictRepr(self):
+        return { MessageStartSessionResponse.RESPONSE_STR: True }
 
 TASK_MSG_BASE = 2000
 
@@ -1023,6 +1056,8 @@ def initMessages():
     MessageLocRank()
     MessageFindNode()
     MessageRandVal()
+    MessageWantToStartTaskSession()
+    MessageStartSessionResponse()
 
     MessageTaskToCompute()
     MessageWantToComputeTask()

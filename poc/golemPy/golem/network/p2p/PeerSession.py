@@ -6,7 +6,7 @@ from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconn
                           MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks, \
                           MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
                           MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
-                          MessageRandVal
+                          MessageRandVal, MessageWantToStartTaskSession
 from golem.network.p2p.NetConnState import NetConnState
 from golem.network.p2p.Session import NetSession
 
@@ -142,6 +142,9 @@ class PeerSession(NetSession):
     def sendFindNode(self, nodeId):
         self._send(MessageFindNode(nodeId))
 
+    def sendWantToStartTaskSession(self, nodeInfo):
+        self._send(MessageWantToStartTaskSession(nodeInfo))
+
     ##########################
     def _reactToPing(self, msg):
         self.__sendPong()
@@ -256,6 +259,10 @@ class PeerSession(NetSession):
             self.p2pService.setSuggestedAddr(self.clientKeyId, self.address, self.port)
 
     ##########################
+    def _reactToWantToStartTaskSession(self, msg):
+        self.p2pService.peerWantTaskSession(msg.nodeInfo)
+
+    ##########################
     # PRIVATE SECTION
     ##########################
     def __sendHello(self):
@@ -305,7 +312,8 @@ class PeerSession(NetSession):
                                         MessageTasks.Type: self._reactToTasks,
                                         MessageRemoveTask.Type: self._reactToRemoveTask,
                                         MessageFindNode.Type: self._reactToFindNode,
-                                        MessageRandVal.Type: self._reactToRandVal
+                                        MessageRandVal.Type: self._reactToRandVal,
+                                        MessageWantToStartTaskSession.Type: self._reactToWantToStartTaskSession
                                    })
 
     ##########################

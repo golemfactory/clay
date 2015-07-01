@@ -126,6 +126,7 @@ class NetSession(Session, NetSessionInterface):
     DCROldMessage       = "Message expired"
     DCRWrongTimestamp   = "Wrong timestamp"
     DCRUnverified       = "Unverifed connection"
+    DCRWrongEncryption  = "Wrong encryption"
 
     ##########################
     def __init__(self, conn):

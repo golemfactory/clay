@@ -94,6 +94,9 @@ class RenderingTask(GNRTask):
         self.advanceVerification    = False
         self.verifiedClients        = set()
 
+        if isWindows():
+            self.__getPath = self.__getPathWindows
+
     #######################
     def restart(self):
         GNRTask.restart(self)
@@ -235,24 +238,23 @@ class RenderingTask(GNRTask):
     def _getWorkingDirectory(self):
         commonPathPrefix = os.path.commonprefix(self.taskResources)
         commonPathPrefix = os.path.dirname(commonPathPrefix)
-        print "common path prefix {}".format(commonPathPrefix)
-        print "main program file {}".format(self.mainProgramFile)
-        workingDirectory    = os.path.relpath(commonPathPrefix, self.mainProgramFile)
-        print "workingDirctory {}".format(workingDirectory)
+        workingDirectory    = os.path.relpath(self.mainProgramFile, commonPathPrefix)
         workingDirectory    = os.path.dirname(workingDirectory)
         logger.debug("Working directory {}".format(workingDirectory))
-        return workingDirectory
+        return self.__getPath(workingDirectory)
+
 
     #######################
     def _getSceneFileRelPath(self):
         sceneFile = os.path.relpath(os.path.dirname(self.mainSceneFile) , os.path.dirname(self.mainProgramFile))
         sceneFile = os.path.normpath(os.path.join(sceneFile, os.path.basename(self.mainSceneFile)))
-        return sceneFile
+        return self.__getPath(sceneFile)
 
     ########################
     def _shortExtraDataRepr(self, perfIndex, extraData):
         l = extraData
-        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, outfilebasename: {}, sceneFile: {}".format(l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["outfilebasename"], l["sceneFile"])
+        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, outfilebasename: {}, sceneFile: {}".format(
+            l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["outfilebasename"], l["sceneFile"])
 
     #######################
     def _verifyImg(self, file_, resX, resY):
@@ -268,7 +270,6 @@ class RenderingTask(GNRTask):
             img.save(self.previewFilePath, "BMP")
 
         return Image.open(self.previewFilePath)
-
 
     #######################
     def _useOuterTaskCollector(self):
@@ -365,3 +366,11 @@ class RenderingTask(GNRTask):
             return self.loadTaskResults(scope['output']['data'], scope['output']['resultType'], self.tmpDir)[0]
         else:
             return None
+
+    #######################
+    def __getPath(self, path):
+        return path
+
+    #######################
+    def __getPathWindows(self, path):
+        return path.replace("\\", "/")

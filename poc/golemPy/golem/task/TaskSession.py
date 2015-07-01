@@ -4,7 +4,11 @@ import struct
 import logging
 import os
 
-from golem.Message import MessageHello, MessageRandVal, MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure
+from golem.Message import MessageHello, MessageRandVal, MessageWantToComputeTask, MessageTaskToCompute, \
+    MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, \
+    MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
+    MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
+    MessageStartSessionResponse
 from golem.network.FileProducer import EncryptFileProducer
 from golem.network.FileConsumer import DecryptFileConsumer
 from golem.network.DataProducer import DataProducer
@@ -80,6 +84,10 @@ class TaskSession(NetSession):
         self._send(MessageHello(clientKeyId = self.taskServer.getKeyId(), randVal = self.randVal), sendUnverified=True)
 
     ##########################
+    def sendStartSessionResponse(self):
+        self._send(MessageStartSessionResponse())
+
+    ##########################
     def interpret(self, msg):
        # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
 
@@ -115,9 +123,11 @@ class TaskSession(NetSession):
             msg =  self.taskServer.decrypt(msg)
         except AssertionError:
             logger.warning("Failed to decrypt message, maybe it's not encrypted?")
+        except Exception, err:
+            logger.warning("Fail to decrypt message {}".format(str(err)))
+            self.disconnect(TaskSession.DCRWrongEncryption)
 
         return msg
-
 
     ##########################
     def sign(self, msg):
@@ -338,6 +348,9 @@ class TaskSession(NetSession):
         else:
             self.disconnect(TaskSession.DCRUnverified)
 
+    ##########################
+    def _reactToStartSessionResponse(self, msg):
+        self.taskServer.respondTo(self.clientKeyId, self)
 
     ##########################
     def _send(self, msg, sendUnverified=False):
@@ -419,11 +432,12 @@ class TaskSession(NetSession):
                                 MessageDeltaParts.Type: self._reactToDeltaParts,
                                 MessageResourceFormat.Type: self._reactToResourceFormat,
                                 MessageHello.Type: self._reactToHello,
-                                MessageRandVal.Type: self._reactToRandVal
+                                MessageRandVal.Type: self._reactToRandVal,
+                                MessageStartSessionResponse.Type: self._reactToStartSessionResponse
                             })
 
 
-        self.canBeNotEncrypted.append(MessageHello.Type)
+       # self.canBeNotEncrypted.append(MessageHello.Type)
         self.canBeUnsigned.append(MessageHello.Type)
         self.canBeUnverified.extend([MessageHello.Type, MessageRandVal.Type])
 
