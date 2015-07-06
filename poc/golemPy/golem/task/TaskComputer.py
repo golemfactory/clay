@@ -295,11 +295,11 @@ class TaskThread(Thread):
     def __doWork(self):
         extraData = copy(self.extraData)
 
-        absResPath = os.path.abspath(self.resPath)
-        absTmpPath = os.path.abspath(self.tmpPath)
+        absResPath = os.path.abspath(os.path.normpath(self.resPath))
+        absTmpPath = os.path.abspath(os.path.normpath(self.tmpPath))
 
         self.prevWorkingDirectory = os.getcwd()
-        os.chdir(os.path.join(absResPath, self.workingDirectory))
+        os.chdir(os.path.join(absResPath, os.path.normpath(self.workingDirectory)))
         try:
             extraData[ "resourcePath" ] = absResPath
             extraData[ "tmpPath" ] = absTmpPath

@@ -17,7 +17,7 @@ class Message:
 
     def __init__(self, type, sig = '', timestamp = None):
         if type not in Message.registeredMessageTypes:
-            Message.registeredMessageTypes[type ] = self.__class__
+            Message.registeredMessageTypes[type] = self.__class__
 
         self.type = type
         self.sig = sig
@@ -42,7 +42,7 @@ class Message:
         return self.serializer.readAll()
 
     def serialize(self):
-        return SimpleSerializer.dumps([self.type, self.sig, self.timestamp, self.dictRepr() ])
+        return SimpleSerializer.dumps([self.type, self.sig, self.timestamp, self.dictRepr()])
 
     def serializeToBuffer(self, db):
         assert isinstance(db, DataBuffer)
@@ -100,13 +100,13 @@ class Message:
     def deserializeMessage(cls, msg):
         msgRepr = SimpleSerializer.loads(msg)
 
-        msgType = msgRepr[0 ]
-        msgSig = msgRepr[1 ]
-        msgTimestamp = msgRepr[2 ]
-        dRepr   = msgRepr[3 ]
+        msgType = msgRepr[0]
+        msgSig = msgRepr[1]
+        msgTimestamp = msgRepr[2]
+        dRepr   = msgRepr[3]
 
         if msgType in cls.registeredMessageTypes:
-            return cls.registeredMessageTypes[msgType ](sig = msgSig, timestamp = msgTimestamp, dictRepr = dRepr)
+            return cls.registeredMessageTypes[msgType](sig = msgSig, timestamp = msgTimestamp, dictRepr = dRepr)
 
         return None
 
@@ -151,12 +151,12 @@ class MessageHello(Message):
         self.nodeInfo   = nodeInfo
 
         if dictRepr:
-            self.protoId    = dictRepr[MessageHello.PROTO_ID_STR ]
-            self.clientVer  = dictRepr[MessageHello.CLI_VER_STR ]
-            self.port       = dictRepr[MessageHello.PORT_STR ]
-            self.clientUID  = dictRepr[MessageHello.CLIENT_UID_STR ]
-            self.clientKeyId = dictRepr[MessageHello.CLIENT_KEY_ID_STR ]
-            self.randVal    = dictRepr[MessageHello.RAND_VAL_STR ]
+            self.protoId    = dictRepr[MessageHello.PROTO_ID_STR]
+            self.clientVer  = dictRepr[MessageHello.CLI_VER_STR]
+            self.port       = dictRepr[MessageHello.PORT_STR]
+            self.clientUID  = dictRepr[MessageHello.CLIENT_UID_STR]
+            self.clientKeyId = dictRepr[MessageHello.CLIENT_KEY_ID_STR]
+            self.randVal    = dictRepr[MessageHello.RAND_VAL_STR]
             self.nodeInfo   = dictRepr[MessageHello.NODE_INFO_STR]
 
     def dictRepr(self):
@@ -211,7 +211,7 @@ class MessageDisconnect(Message):
         self.reason = reason
 
         if dictRepr:
-            self.reason = dictRepr[MessageDisconnect.DISCONNECT_REASON_STR ]
+            self.reason = dictRepr[MessageDisconnect.DISCONNECT_REASON_STR]
 
     def dictRepr(self):
         return { MessageDisconnect.DISCONNECT_REASON_STR : self.reason }
@@ -246,13 +246,13 @@ class MessagePeers(Message):
         self.peersArray = peersArray
 
         if dictRepr:
-            self.peersArray = dictRepr[MessagePeers.PEERS_STR ]
+            self.peersArray = dictRepr[MessagePeers.PEERS_STR]
 
     def dictRepr(self):
         return { MessagePeers.PEERS_STR : self.peersArray }
 
     def getShortHash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer.items()) for peer in self.peersArray ]))
+        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer.items()) for peer in self.peersArray]))
 
 class MessageGetTasks(Message):
 
@@ -284,13 +284,13 @@ class MessageTasks(Message):
         self.tasksArray = tasksArray
 
         if dictRepr:
-            self.tasksArray = dictRepr[MessageTasks.TASKS_STR ]
+            self.tasksArray = dictRepr[MessageTasks.TASKS_STR]
 
     def dictRepr(self):
         return { MessageTasks.TASKS_STR : self.tasksArray }
 
     def getShortHash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(task.items()) for task in self.tasksArray ]))
+        return SimpleHash.hash(SimpleSerializer.dumps([sorted(task.items()) for task in self.tasksArray]))
 
 
 class MessageRemoveTask(Message):
@@ -305,7 +305,7 @@ class MessageRemoveTask(Message):
         self.taskId = taskId
 
         if dictRepr:
-            self.taskId = dictRepr[MessageRemoveTask.REMOVE_TASK_STR ]
+            self.taskId = dictRepr[MessageRemoveTask.REMOVE_TASK_STR]
 
     def dictRepr(self):
         return { MessageRemoveTask.REMOVE_TASK_STR : self.taskId }
@@ -340,13 +340,13 @@ class MessageResourcePeers(Message):
         self.resourcePeers = resourcePeers
 
         if dictRepr:
-            self.resourcePeers = dictRepr[MessageResourcePeers.RESOURCE_PEERS_STR ]
+            self.resourcePeers = dictRepr[MessageResourcePeers.RESOURCE_PEERS_STR]
 
     def dictRepr(self):
         return { MessageResourcePeers.RESOURCE_PEERS_STR: self.resourcePeers }
 
     def getShortHash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer.items()) for peer in self.resourcePeers ]))
+        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer.items()) for peer in self.resourcePeers]))
 
 
 class MessageDegree(Message):
@@ -360,7 +360,7 @@ class MessageDegree(Message):
         self.degree = degree
 
         if dictRepr:
-            self.degree = dictRepr[MessageDegree.DEGREE_STR ]
+            self.degree = dictRepr[MessageDegree.DEGREE_STR]
 
     def dictRepr(self):
         return { MessageDegree.DEGREE_STR: self.degree }
@@ -376,7 +376,7 @@ class MessageGossip(Message):
         self.gossip = gossip
 
         if dictRepr:
-            self.gossip = dictRepr[MessageGossip.GOSSIP_STR ]
+            self.gossip = dictRepr[MessageGossip.GOSSIP_STR]
 
     def dictRepr(self):
         return { MessageGossip.GOSSIP_STR: self.gossip }
@@ -408,8 +408,8 @@ class MessageLocRank(Message):
         self.locRank = locRank
 
         if dictRepr:
-            self.nodeId = dictRepr[MessageLocRank.NODE_ID_STR ]
-            self.locRank = dictRepr[MessageLocRank.LOC_RANK_STR ]
+            self.nodeId = dictRepr[MessageLocRank.NODE_ID_STR]
+            self.locRank = dictRepr[MessageLocRank.LOC_RANK_STR]
 
     def dictRepr(self):
         return { MessageLocRank.NODE_ID_STR: self.nodeId,
@@ -427,7 +427,7 @@ class MessageFindNode(Message):
         self.nodeKeyId = nodeKeyId
 
         if dictRepr:
-            self.nodeKeyId = dictRepr[MessageFindNode.NODE_KEY_ID_STR ]
+            self.nodeKeyId = dictRepr[MessageFindNode.NODE_KEY_ID_STR]
 
     def dictRepr(self):
         return { MessageFindNode.NODE_KEY_ID_STR: self.nodeKeyId }
@@ -444,7 +444,7 @@ class MessageRandVal(Message):
         self.randVal = randVal
 
         if dictRepr:
-            self.randVal = dictRepr[MessageRandVal.RAND_VAL_STR ]
+            self.randVal = dictRepr[MessageRandVal.RAND_VAL_STR]
 
     def dictRepr(self):
         return { MessageRandVal.RAND_VAL_STR: self.randVal }
@@ -453,35 +453,63 @@ class MessageWantToStartTaskSession(Message):
 
     Type = 17
 
-    NODE_INFO_STR = u"nodeInfo"
+    NODE_INFO_STR = u"NODE_INFO"
+    CONN_ID_STR = u"CONN_ID"
+    SUPER_NODE_INFO_STR = u"SUPER_NODE_INFO"
 
-    def __init__(self, nodeInfo=None, sig="", timestamp=None, dictRepr=None):
+    def __init__(self, nodeInfo=None, connId=None, superNodeInfo=None, sig="", timestamp=None,
+                 dictRepr=None):
         Message.__init__(self, MessageWantToStartTaskSession.Type, sig, timestamp)
 
         self.nodeInfo = nodeInfo
+        self.connId = connId
+        self.superNodeInfo = superNodeInfo
 
         if dictRepr:
             self.nodeInfo = dictRepr[MessageWantToStartTaskSession.NODE_INFO_STR]
+            self.connId = dictRepr[MessageWantToStartTaskSession.CONN_ID_STR]
+            self.superNodeInfo = dictRepr[MessageWantToStartTaskSession.SUPER_NODE_INFO_STR]
 
     def dictRepr(self):
         return {
-            MessageWantToStartTaskSession.NODE_INFO_STR: self.nodeInfo
+            MessageWantToStartTaskSession.NODE_INFO_STR: self.nodeInfo,
+            MessageWantToStartTaskSession.CONN_ID_STR: self.connId,
+            MessageWantToStartTaskSession.SUPER_NODE_INFO_STR: self.superNodeInfo
         }
 
-class MessageStartSessionResponse(Message):
+
+class MessageSetTaskSession(Message):
 
     Type = 18
 
-    RESPONSE_STR = u"RESPONSE"
+    KEY_ID_STR = u"KEY_ID"
+    NODE_INFO_STR = u"NODE_INFO"
+    CONN_ID_STR = u"CONN_ID"
+    SUPER_NODE_INFO_STR = u"SUPER_NODE_INFO"
 
-    def __init__(self, sig="", timestamp=None, dictRepr=None):
-        Message.__init__(self, MessageStartSessionResponse.Type, sig, timestamp)
+    def __init__(self, keyId=None, nodeInfo=None, connId=None, superNodeInfo=None, sig="", timestamp=None,
+                 dictRepr=None):
+        Message.__init__(self, MessageSetTaskSession.Type, sig, timestamp)
+
+        self.keyId = keyId
+        self.nodeInfo = nodeInfo
+        self.connId = connId
+        self.superNodeInfo = superNodeInfo
 
         if dictRepr:
-            assert dictRepr.get(MessageStartSessionResponse.RESPONSE_STR)
+            self.keyId = dictRepr[MessageSetTaskSession.KEY_ID_STR]
+            self.nodeInfo = dictRepr[MessageSetTaskSession.NODE_INFO_STR]
+            self.connId = dictRepr[MessageSetTaskSession.CONN_ID_STR]
+            self.superNodeInfo = dictRepr[MessageSetTaskSession.SUPER_NODE_INFO_STR]
 
     def dictRepr(self):
-        return { MessageStartSessionResponse.RESPONSE_STR: True }
+        return {
+            MessageSetTaskSession.KEY_ID_STR: self.keyId,
+            MessageSetTaskSession.NODE_INFO_STR: self.nodeInfo,
+            MessageSetTaskSession.CONN_ID_STR: self.connId,
+            MessageSetTaskSession.SUPER_NODE_INFO_STR: self.superNodeInfo
+        }
+
 
 TASK_MSG_BASE = 2000
 
@@ -507,12 +535,12 @@ class MessageWantToComputeTask(Message):
         self.numCores           = numCores
 
         if dictRepr:
-            self.clientId           = dictRepr[MessageWantToComputeTask.CLIENT_ID_STR ]
-            self.taskId             = dictRepr[MessageWantToComputeTask.TASK_ID_STR ]
-            self.perfIndex          = dictRepr[MessageWantToComputeTask.PERF_INDEX_STR ]
-            self.maxResourceSize    = dictRepr[MessageWantToComputeTask.MAX_RES_STR ]
-            self.maxMemorySize      = dictRepr[MessageWantToComputeTask.MAX_MEM_STR ]
-            self.numCores           = dictRepr[MessageWantToComputeTask.NUM_CORES_STR ]
+            self.clientId           = dictRepr[MessageWantToComputeTask.CLIENT_ID_STR]
+            self.taskId             = dictRepr[MessageWantToComputeTask.TASK_ID_STR]
+            self.perfIndex          = dictRepr[MessageWantToComputeTask.PERF_INDEX_STR]
+            self.maxResourceSize    = dictRepr[MessageWantToComputeTask.MAX_RES_STR]
+            self.maxMemorySize      = dictRepr[MessageWantToComputeTask.MAX_MEM_STR]
+            self.numCores           = dictRepr[MessageWantToComputeTask.NUM_CORES_STR]
 
     def dictRepr(self):
         return {    MessageWantToComputeTask.CLIENT_ID_STR : self.clientId,
@@ -534,7 +562,7 @@ class MessageTaskToCompute(Message):
         self.ctd = ctd
 
         if dictRepr:
-            self.ctd  = dictRepr[MessageTaskToCompute.COMPUTE_TASK_DEF_STR ]
+            self.ctd  = dictRepr[MessageTaskToCompute.COMPUTE_TASK_DEF_STR]
 
     def dictRepr(self):
         return { MessageTaskToCompute.COMPUTE_TASK_DEF_STR : self.ctd }
@@ -556,8 +584,8 @@ class MessageCannotAssignTask(Message):
         self.reason = reason
 
         if dictRepr:
-            self.taskId      = dictRepr[MessageCannotAssignTask.TASK_ID_STR ]
-            self.reason     = dictRepr[MessageCannotAssignTask.REASON_STR ]
+            self.taskId      = dictRepr[MessageCannotAssignTask.TASK_ID_STR]
+            self.reason     = dictRepr[MessageCannotAssignTask.REASON_STR]
 
     def dictRepr(self):
         return {    MessageCannotAssignTask.TASK_ID_STR : self.taskId,
@@ -593,14 +621,14 @@ class MessageReportComputedTask(Message):
         self.nodeInfo = nodeInfo
 
         if dictRepr:
-            self.subtaskId  = dictRepr[MessageReportComputedTask.SUB_TASK_ID_STR ]
-            self.resultType = dictRepr[MessageReportComputedTask.RESULT_TYPE_STR ]
-            self.nodeId = dictRepr[MessageReportComputedTask.NODE_ID_STR ]
-            self.address = dictRepr[MessageReportComputedTask.ADDR_STR ]
-            self.port = dictRepr[MessageReportComputedTask.PORT_STR ]
-            self.keyId = dictRepr[MessageReportComputedTask.KEY_ID_STR ]
-            self.ethAccount = dictRepr[MessageReportComputedTask.ETH_ACCOUNT_STR ]
-            self.extraData = dictRepr[MessageReportComputedTask.EXTRA_DATA_STR ]
+            self.subtaskId  = dictRepr[MessageReportComputedTask.SUB_TASK_ID_STR]
+            self.resultType = dictRepr[MessageReportComputedTask.RESULT_TYPE_STR]
+            self.nodeId = dictRepr[MessageReportComputedTask.NODE_ID_STR]
+            self.address = dictRepr[MessageReportComputedTask.ADDR_STR]
+            self.port = dictRepr[MessageReportComputedTask.PORT_STR]
+            self.keyId = dictRepr[MessageReportComputedTask.KEY_ID_STR]
+            self.ethAccount = dictRepr[MessageReportComputedTask.ETH_ACCOUNT_STR]
+            self.extraData = dictRepr[MessageReportComputedTask.EXTRA_DATA_STR]
             self.nodeInfo = dictRepr[MessageReportComputedTask.NODE_INFO_STR]
 
     def dictRepr(self):
@@ -628,8 +656,8 @@ class MessageGetTaskResult(Message):
         self.delay      = delay
 
         if dictRepr:
-            self.subtaskId  = dictRepr[MessageGetTaskResult.SUB_TASK_ID_STR ]
-            self.delay      = dictRepr[MessageGetTaskResult.DELAY_STR ]
+            self.subtaskId  = dictRepr[MessageGetTaskResult.SUB_TASK_ID_STR]
+            self.delay      = dictRepr[MessageGetTaskResult.DELAY_STR]
 
     def dictRepr(self):
         return {    MessageGetTaskResult.SUB_TASK_ID_STR : self.subtaskId,
@@ -649,8 +677,8 @@ class MessageTaskResult(Message):
         self.result     = result
 
         if dictRepr:
-            self.subtaskId  = dictRepr[MessageTaskResult.SUB_TASK_ID_STR ]
-            self.result     = dictRepr[MessageTaskResult.RESULT_STR ]
+            self.subtaskId  = dictRepr[MessageTaskResult.SUB_TASK_ID_STR]
+            self.result     = dictRepr[MessageTaskResult.RESULT_STR]
 
     def dictRepr(self):
         return {    MessageTaskResult.SUB_TASK_ID_STR   : self.subtaskId,
@@ -670,8 +698,8 @@ class MessageGetResource(Message):
         self.resourceHeader = resourceHeader
 
         if dictRepr:
-            self.taskId         = dictRepr[MessageGetResource.TASK_ID_STR ]
-            self.resourceHeader = dictRepr[MessageGetResource.RESOURCE_HEADER_STR ]
+            self.taskId         = dictRepr[MessageGetResource.TASK_ID_STR]
+            self.resourceHeader = dictRepr[MessageGetResource.RESOURCE_HEADER_STR]
 
     def dictRepr(self):
         return {    MessageGetResource.TASK_ID_STR : self.taskId,
@@ -692,8 +720,8 @@ class MessageResource(Message):
         self.resource       = resource
 
         if dictRepr:
-            self.subtaskId      = dictRepr[MessageResource.SUB_TASK_ID_STR ]
-            self.resource       = dictRepr[MessageResource.RESOURCE_STR ]
+            self.subtaskId      = dictRepr[MessageResource.SUB_TASK_ID_STR]
+            self.resource       = dictRepr[MessageResource.RESOURCE_STR]
 
     def dictRepr(self):
         return {    MessageResource.SUB_TASK_ID_STR : self.subtaskId,
@@ -714,8 +742,8 @@ class MessageSubtaskResultAccepted(Message):
         self.reward     = reward
 
         if dictRepr:
-            self.subtaskId  = dictRepr[MessageSubtaskResultAccepted.SUB_TASK_ID_STR ]
-            self.reward     = dictRepr[MessageSubtaskResultAccepted.REWARD_STR ]
+            self.subtaskId  = dictRepr[MessageSubtaskResultAccepted.SUB_TASK_ID_STR]
+            self.reward     = dictRepr[MessageSubtaskResultAccepted.REWARD_STR]
 
     def dictRepr(self):
         return {
@@ -734,7 +762,7 @@ class MessageSubtaskResultRejected(Message):
         self.subtaskId = subtaskId
 
         if dictRepr:
-            self.subtaskId = dictRepr[MessageSubtaskResultRejected.SUB_TASK_ID_STR ]
+            self.subtaskId = dictRepr[MessageSubtaskResultRejected.SUB_TASK_ID_STR]
 
 
     def dictRepr(self):
@@ -767,12 +795,12 @@ class MessageDeltaParts(Message):
         self.nodeInfo = nodeInfo
 
         if dictRepr:
-            self.taskId = dictRepr[MessageDeltaParts.TASK_ID_STR ]
-            self.deltaHeader = dictRepr[MessageDeltaParts.DELTA_HEADER_STR ]
-            self.parts = dictRepr[MessageDeltaParts.PARTS_STR ]
-            self.clientId = dictRepr[MessageDeltaParts.CLIENT_ID_STR ]
-            self.addr = dictRepr[MessageDeltaParts.ADDR_STR ]
-            self.port = dictRepr[MessageDeltaParts.PORT_STR ]
+            self.taskId = dictRepr[MessageDeltaParts.TASK_ID_STR]
+            self.deltaHeader = dictRepr[MessageDeltaParts.DELTA_HEADER_STR]
+            self.parts = dictRepr[MessageDeltaParts.PARTS_STR]
+            self.clientId = dictRepr[MessageDeltaParts.CLIENT_ID_STR]
+            self.addr = dictRepr[MessageDeltaParts.ADDR_STR]
+            self.port = dictRepr[MessageDeltaParts.PORT_STR]
             self.nodeInfo = dictRepr[MessageDeltaParts.NODE_INFO_STR]
 
     def dictRepr(self):
@@ -797,7 +825,7 @@ class MessageResourceFormat(Message):
         self.useDistributedResource = useDistributedResource
 
         if dictRepr:
-            self.useDistributedResource = dictRepr[MessageResourceFormat.USE_DISTRIBUTED_RESOURCE_STR ]
+            self.useDistributedResource = dictRepr[MessageResourceFormat.USE_DISTRIBUTED_RESOURCE_STR]
 
     def dictRepr(self):
         return {
@@ -832,14 +860,80 @@ class MessageTaskFailure(Message):
         self.err = err
 
         if dictRepr:
-            self.subtaskId = dictRepr[MessageTaskFailure.SUBTASK_ID_STR ]
-            self.err = dictRepr[MessageTaskFailure.ERR_STR ]
+            self.subtaskId = dictRepr[MessageTaskFailure.SUBTASK_ID_STR]
+            self.err = dictRepr[MessageTaskFailure.ERR_STR]
 
     def dictRepr(self):
         return {
             MessageTaskFailure.SUBTASK_ID_STR: self.subtaskId,
             MessageTaskFailure.ERR_STR: self.err
         }
+
+class MessageStartSessionResponse(Message):
+
+    Type = TASK_MSG_BASE + 16
+
+    CONN_ID_STR = u"CONN_ID"
+
+    def __init__(self, connId=None, sig="", timestamp=None, dictRepr=None):
+        Message.__init__(self, MessageStartSessionResponse.Type, sig, timestamp)
+
+        self.connId = connId
+
+        if dictRepr:
+            self.connId = dictRepr[MessageStartSessionResponse.CONN_ID_STR]
+
+    def dictRepr(self):
+        return { MessageStartSessionResponse.CONN_ID_STR: self.connId }
+
+class MessageMiddleman(Message):
+
+    Type = TASK_MSG_BASE + 17
+
+    ASKING_NODE_STR = u"ASKING_NODE"
+    DEST_NODE_STR = u"DEST_NODE"
+    ASK_CONN_ID_STR = u"ASK_CONN_ID"
+
+    def __init__(self, askingNode=None, destNode=None, askConnId=None, sig="", timestamp=None,
+                 dictRepr=None):
+        Message.__init__(self, MessageMiddleman.Type, sig, timestamp)
+
+        self.askingNode = askingNode
+        self.destNode = destNode
+        self.askConnId = askConnId
+
+        if dictRepr:
+            self.askingNode = dictRepr[MessageMiddleman.ASKING_NODE_STR]
+            self.destNode = dictRepr[MessageMiddleman.DEST_NODE_STR]
+            self.askConnId = dictRepr[MessageMiddleman.ASK_CONN_ID_STR]
+
+    def dictRepr(self):
+        return {
+            MessageMiddleman.ASKING_NODE_STR: self.askingNode,
+            MessageMiddleman.DEST_NODE_STR: self.destNode,
+            MessageMiddleman.ASK_CONN_ID_STR: self.askConnId
+        }
+
+class MessageMiddlemanReady(Message):
+
+    Type = TASK_MSG_BASE + 18
+
+    CONN_ID_STR = u"CONN_ID"
+    KEY_ID_STR = u"KEY_ID"
+
+    def __init__(self, keyId=None, connId=None, sig="", timestamp=None, dictRepr=None):
+        Message.__init__(self, MessageMiddleman.Type, sig, timestamp)
+
+        self.connId = connId
+        self.keyId = keyId
+
+        if dictRepr:
+            self.connId = dictRepr[MessageMiddlemanReady.CONN_ID_STR]
+            self.keyId = dictRepr[MessageMiddlemanReady.KEY_ID_STR]
+
+    def dictRepr(self):
+        return { MessageMiddlemanReady.CONN_ID_STR: self.connId,
+                 MessageMiddlemanReady.KEY_ID_STR: self.keyId }
 
 RESOURCE_MSG_BASE = 3000
 
@@ -856,8 +950,8 @@ class MessagePushResource(Message):
         self.copies = copies
 
         if dictRepr:
-            self.resource = dictRepr[MessagePushResource.RESOURCE_STR ]
-            self.copies = dictRepr[MessagePushResource.COPIES_STR ]
+            self.resource = dictRepr[MessagePushResource.RESOURCE_STR]
+            self.copies = dictRepr[MessagePushResource.COPIES_STR]
 
     def dictRepr(self):
         return {    MessagePushResource.RESOURCE_STR: self.resource,
@@ -874,7 +968,7 @@ class MessageHasResource(Message):
         self.resource = resource
 
         if dictRepr:
-            self.resource = dictRepr[MessageHasResource.RESOURCE_STR ]
+            self.resource = dictRepr[MessageHasResource.RESOURCE_STR]
 
     def dictRepr(self):
         return { MessageHasResource.RESOURCE_STR: self.resource }
@@ -890,7 +984,7 @@ class MessageWantResource(Message):
         self.resource = resource
 
         if dictRepr:
-            self.resource = dictRepr[MessageWantResource.RESOURCE_STR ]
+            self.resource = dictRepr[MessageWantResource.RESOURCE_STR]
 
     def dictRepr(self):
         return { MessageWantResource.RESOURCE_STR : self.resource }
@@ -907,7 +1001,7 @@ class MessagePullResource(Message):
         self.resource = resource
 
         if dictRepr:
-            self.resource = dictRepr[MessagePullResource.RESOURCE_STR ]
+            self.resource = dictRepr[MessagePullResource.RESOURCE_STR]
 
     def dictRepr(self):
         return { MessagePullResource.RESOURCE_STR : self.resource }
@@ -925,8 +1019,8 @@ class MessagePullAnswer(Message):
         self.hasReource = hasResource
 
         if dictRepr:
-            self.resource = dictRepr[MessagePullAnswer.RESOURCE_STR ]
-            self.hasResource = dictRepr[MessagePullAnswer.HAS_RESOURCE_STR ]
+            self.resource = dictRepr[MessagePullAnswer.RESOURCE_STR]
+            self.hasResource = dictRepr[MessagePullAnswer.HAS_RESOURCE_STR]
 
     def dictRepr(self):
         return { MessagePullAnswer.RESOURCE_STR: self.resource,
@@ -943,7 +1037,7 @@ class MessageSendResource(Message):
         self.resource = resource
 
         if dictRepr:
-            self.resource = dictRepr[MessageSendResource.RESOURCE_STR ]
+            self.resource = dictRepr[MessageSendResource.RESOURCE_STR]
 
     def dictRepr(self):
         return { MessageSendResource.RESOURCE_STR: self.resource }
@@ -964,8 +1058,8 @@ class MessagePeerStatus(Message):
         self.data = data
 
         if dictRepr:
-            self.id = dictRepr[self.ID_STR ]
-            self.data = dictRepr[self.DATA_STR ]
+            self.id = dictRepr[self.ID_STR]
+            self.data = dictRepr[self.DATA_STR]
 
     def dictRepr(self):
         return { self.ID_STR : self.id, self.DATA_STR : self.data } 
@@ -984,7 +1078,7 @@ class MessageNewTask(Message):
         self.data = data
 
         if dictRepr:
-            self.data = dictRepr[self.DATA_STR ]
+            self.data = dictRepr[self.DATA_STR]
 
     def dictRepr(self):
         return { self.DATA_STR : self.data } 
@@ -1057,7 +1151,7 @@ def initMessages():
     MessageFindNode()
     MessageRandVal()
     MessageWantToStartTaskSession()
-    MessageStartSessionResponse()
+    MessageSetTaskSession()
 
     MessageTaskToCompute()
     MessageWantToComputeTask()
@@ -1071,6 +1165,10 @@ def initMessages():
     MessageTaskResult()
     MessageTaskFailure()
     MessageGetTaskResult()
+    MessageStartSessionResponse()
+    MessageMiddleman()
+    MessageMiddlemanReady()
+
     MessageNewNodes()
     MessageSubtaskResultAccepted()
     MessageSubtaskResultRejected()

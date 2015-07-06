@@ -64,6 +64,8 @@ class NetConnState(ConnectionState):
         messages = []
         for msg in msgs:
             decMsg = self.session.decrypt(msg)
+            if decMsg is None:
+                return None
             m = Message.deserializeMessage(decMsg)
             m.encrypted = decMsg != msg
             messages.append(m)

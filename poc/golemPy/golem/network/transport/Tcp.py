@@ -5,10 +5,14 @@ import ipaddr
 
 logger = logging.getLogger(__name__)
 
+
 class HostData:
     def __init__(self, addr, port):
         self.addr = addr
         self.port = port
+
+    def __eq__(self, other):
+        return self.addr == other.addr and self.port == other.port
 
 def nodeInfoToHostInfos(nodeInfo, port):
     hostInfos = [HostData(i, port) for i in nodeInfo.prvAddresses]
@@ -17,6 +21,7 @@ def nodeInfoToHostInfos(nodeInfo, port):
     else:
         hostInfos.append(HostData(nodeInfo.pubAddr, port))
     return hostInfos
+
 
 class Network:
 

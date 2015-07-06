@@ -8,7 +8,7 @@ from golem.Message import MessageHello, MessageRandVal, MessageWantToComputeTask
     MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, \
     MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
-    MessageStartSessionResponse
+    MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady
 from golem.network.FileProducer import EncryptFileProducer
 from golem.network.FileConsumer import DecryptFileConsumer
 from golem.network.DataProducer import DataProducer
@@ -34,6 +34,7 @@ class TaskSession(NetSession):
         self.taskManager    = None
         self.taskComputer   = None
         self.taskId         = 0
+        self.connId         = None
 
         self.msgsToSend = []
 
@@ -84,8 +85,16 @@ class TaskSession(NetSession):
         self._send(MessageHello(clientKeyId = self.taskServer.getKeyId(), randVal = self.randVal), sendUnverified=True)
 
     ##########################
-    def sendStartSessionResponse(self):
-        self._send(MessageStartSessionResponse())
+    def sendStartSessionResponse(self, connId):
+        self._send(MessageStartSessionResponse(connId))
+
+    ##########################
+    def sendMiddleman(self, askingNode, destNode, askConnId):
+        self._send(MessageMiddleman(askingNode, destNode, askConnId))
+
+    ##########################
+    def sendMiddlemanReady(self, keyId, connId):
+        self._send(MessageMiddlemanReady(keyId, connId))
 
     ##########################
     def interpret(self, msg):
@@ -126,6 +135,7 @@ class TaskSession(NetSession):
         except Exception, err:
             logger.warning("Fail to decrypt message {}".format(str(err)))
             self.disconnect(TaskSession.DCRWrongEncryption)
+            return None
 
         return msg
 
@@ -342,6 +352,7 @@ class TaskSession(NetSession):
     def _reactToRandVal(self, msg):
         if self.randVal == msg.randVal:
             self.verified = True
+            self.taskServer.verifiedConn(self.connId)
             for msg in self.msgsToSend:
                 self._send(msg)
             self.msgsToSend = []
@@ -350,7 +361,16 @@ class TaskSession(NetSession):
 
     ##########################
     def _reactToStartSessionResponse(self, msg):
-        self.taskServer.respondTo(self.clientKeyId, self)
+        self.taskServer.respondTo(self.clientKeyId, self, msg.connId)
+
+    ##########################
+    def _reactToMiddleman(self, msg):
+        self.taskServer.beAMiddleman(self.clientKeyId, self, self.connId, msg.askingNode, msg.destNode,
+                                     msg.askConnId)
+
+    ##########################
+    def _reactToMiddlemanReady(self, msg):
+        self.taskServer.respondToMiddleman(msg.keyId, self, msg.connId)
 
     ##########################
     def _send(self, msg, sendUnverified=False):
@@ -433,7 +453,9 @@ class TaskSession(NetSession):
                                 MessageResourceFormat.Type: self._reactToResourceFormat,
                                 MessageHello.Type: self._reactToHello,
                                 MessageRandVal.Type: self._reactToRandVal,
-                                MessageStartSessionResponse.Type: self._reactToStartSessionResponse
+                                MessageStartSessionResponse.Type: self._reactToStartSessionResponse,
+                                MessageMiddleman.Type: self._reactToMiddleman,
+                                MessageMiddlemanReady.Type: self._reactToMiddlemanReady
                             })
 
 

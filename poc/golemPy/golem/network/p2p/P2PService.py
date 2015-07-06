@@ -45,6 +45,8 @@ class P2PService:
         self.peerKeeper             = PeerKeeper(keysAuth.getKeyId())
         self.suggestedAddrs         = {}
 
+        self.connectionsToSet = {}
+
         self.connectToNetwork()
 
     #############################
@@ -338,16 +340,42 @@ class P2PService:
             p.sendRemoveTask(taskId)
 
     ############################
-    def wantToStartTaskSession(self, keyId, nodeInfo):
-        for peer in self.peers.values():
+    def wantToStartTaskSession(self, keyId, nodeInfo, connId, superNodeInfo=None):
+        print "WANT TO START TASK SESSION {}".format(keyId)
+        for peer in self.peers.itervalues():
             if peer.clientKeyId == keyId:
-                peer.sendWantToStartTaskSession(nodeInfo)
-            else:
-                print peer.clientKeyId
+                print "SENDT START TASK SESSION TO THE RIGHT PEER"
+                peer.sendWantToStartTaskSession(nodeInfo, connId, superNodeInfo)
+                return
+
+        print "NO RIGHT PEER FOUND, SENDING TO OTHERS"
+        for peer in self.peers.itervalues():
+            if peer.clientKeyId != nodeInfo.key:
+                print "SENDING SET TASK SESSIOn"
+                peer.sendSetTaskSession(keyId, nodeInfo, connId, superNodeInfo)
+        #TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
 
     ############################
-    def peerWantTaskSession(self, nodeInfo):
-        self.taskServer.startTaskSession(nodeInfo)
+    def peerWantTaskSession(self, nodeInfo, superNodeInfo):
+        self.taskServer.startTaskSession(nodeInfo, superNodeInfo)
+
+    ############################
+    def peerWantToSetTaskSession(self, keyId, nodeInfo, connId, superNodeInfo):
+        print "PEER WANT TO SET TASK SESSION KEY ID{}".format(keyId)
+        print "CONN ID {}".format(connId)
+        print "CONNECTION TO SET {}".format(self.connectionsToSet)
+        print "SUPERNODE INFO {}".format(superNodeInfo)
+        if connId in self.connectionsToSet:
+            print "CONN ID IN SELF CONNECTIONS TO SET"
+            return
+
+        if superNodeInfo is None and self.node.isSuperNode():
+            print "I'M THE SUPERNODE !"
+            superNodeInfo = self.node
+
+        #TODO Te informacje powinny wygasac (byc usuwane po jakims czasie)
+        self.connectionsToSet[connId] = (keyId, nodeInfo, time.time())
+        self.wantToStartTaskSession(keyId, nodeInfo, connId, superNodeInfo)
 
     #############################
     #RANKING FUNCTIONS          #

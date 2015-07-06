@@ -319,8 +319,8 @@ class Client:
         return self.p2pservice.suggestedAddrs.get(keyId)
 
     ############################
-    def wantToStartTaskSession(self, keyId, nodeId):
-        self.p2pservice.wantToStartTaskSession(keyId, nodeId)
+    def wantToStartTaskSession(self, keyId, nodeId, connId):
+        self.p2pservice.wantToStartTaskSession(keyId, nodeId, connId)
 
     #TRANSACTION SYSTEM OPERATIONS
     ############################

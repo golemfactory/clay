@@ -6,7 +6,7 @@ from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconn
                           MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks, \
                           MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
                           MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
-                          MessageRandVal, MessageWantToStartTaskSession
+                          MessageRandVal, MessageWantToStartTaskSession, MessageSetTaskSession
 from golem.network.p2p.NetConnState import NetConnState
 from golem.network.p2p.Session import NetSession
 
@@ -142,8 +142,13 @@ class PeerSession(NetSession):
     def sendFindNode(self, nodeId):
         self._send(MessageFindNode(nodeId))
 
-    def sendWantToStartTaskSession(self, nodeInfo):
-        self._send(MessageWantToStartTaskSession(nodeInfo))
+    ##########################
+    def sendWantToStartTaskSession(self, nodeInfo, connId, superNodeInfo):
+        self._send(MessageWantToStartTaskSession(nodeInfo, connId, superNodeInfo))
+
+    ##########################
+    def sendSetTaskSession(self, keyId, nodeInfo, connId, superNodeInfo):
+        self._send(MessageSetTaskSession(keyId, nodeInfo, connId, superNodeInfo))
 
     ##########################
     def _reactToPing(self, msg):
@@ -168,7 +173,7 @@ class PeerSession(NetSession):
         enoughPeers = self.p2pService.enoughPeers()
         p = self.p2pService.findPeer(self.id)
 
-        self.p2pService.addToPeerKeeper(self.id, self.clientKeyId, self.address, self.port, self.nodeInfo)
+        self.p2pService.addToPeerKeeper(self.id, self.clientKeyId, self.address, msg.port, self.nodeInfo)
 
         if enoughPeers:
             loggerMsg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.id, self.address, self.port)
@@ -260,7 +265,13 @@ class PeerSession(NetSession):
 
     ##########################
     def _reactToWantToStartTaskSession(self, msg):
-        self.p2pService.peerWantTaskSession(msg.nodeInfo)
+        print "GOT WANT TASK SESSION {}:{}".format(msg.nodeInfo.prvAddr, msg.nodeInfo.prvPort)
+        self.p2pService.peerWantTaskSession(msg.nodeInfo, msg.superNodeInfo)
+
+    ##########################
+    def _reactToSetTaskSession(self, msg):
+        print "GOT SET TASK SESSION {}".format(msg.keyId)
+        self.p2pService.peerWantToSetTaskSession(msg.keyId, msg.nodeInfo, msg.connId, msg.superNodeInfo)
 
     ##########################
     # PRIVATE SECTION
@@ -303,18 +314,19 @@ class PeerSession(NetSession):
     ##########################
     def __setBasicMsgInterpretations(self):
         self.interpretation.update({
-                                        MessagePing.Type: self._reactToPing,
-                                        MessagePong.Type: self._reactToPong,
-                                        MessageHello.Type: self._reactToHello,
-                                        MessageGetPeers.Type: self._reactToGetPeers,
-                                        MessagePeers.Type: self._reactToPeers,
-                                        MessageGetTasks.Type: self._reactToGetTasks,
-                                        MessageTasks.Type: self._reactToTasks,
-                                        MessageRemoveTask.Type: self._reactToRemoveTask,
-                                        MessageFindNode.Type: self._reactToFindNode,
-                                        MessageRandVal.Type: self._reactToRandVal,
-                                        MessageWantToStartTaskSession.Type: self._reactToWantToStartTaskSession
-                                   })
+            MessagePing.Type: self._reactToPing,
+            MessagePong.Type: self._reactToPong,
+            MessageHello.Type: self._reactToHello,
+            MessageGetPeers.Type: self._reactToGetPeers,
+            MessagePeers.Type: self._reactToPeers,
+            MessageGetTasks.Type: self._reactToGetTasks,
+            MessageTasks.Type: self._reactToTasks,
+            MessageRemoveTask.Type: self._reactToRemoveTask,
+            MessageFindNode.Type: self._reactToFindNode,
+            MessageRandVal.Type: self._reactToRandVal,
+            MessageWantToStartTaskSession.Type: self._reactToWantToStartTaskSession,
+            MessageSetTaskSession.Type: self._reactToSetTaskSession
+       })
 
     ##########################
     def __setResourceMsgInterpretations(self):
