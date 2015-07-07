@@ -155,13 +155,10 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def removeTaskSession(self, taskSession):
-        print "REMOVE TASK SESSION"
         pc = self.pendingConnections.get(taskSession.connId)
         if pc is not None:
-            print "PC FOUND, status = failure"
             pc.status = PenConnStatus.Failure
-            print self.pendingConnections[taskSession.connId].status
-            print self.pendingConnections[taskSession.connId]
+
         for tsk in self.taskSessions.keys():
             if self.taskSessions[tsk] == taskSession:
                 del self.taskSessions[tsk]
@@ -340,7 +337,6 @@ class TaskServer(PendingConnectionsServer):
     def startTaskSession(self, nodeInfo, superNodeInfo):
         #FIXME Jaki port i adres startowy?
         args = (nodeInfo.key, nodeInfo, superNodeInfo)
-        print "ADD PENDING REQUEST {}:{} KEY ID {}".format(nodeInfo.pubAddr, nodeInfo.pubPort, nodeInfo.key)
         self._addPendingRequest(TaskConnTypes.StartSession, nodeInfo, nodeInfo.prvPort, nodeInfo.key, args)
 
     #############################
@@ -354,13 +350,18 @@ class TaskServer(PendingConnectionsServer):
         res(session)
 
     #############################
-    def respondToMiddleman(self, keyId, session, connId):
-        print "RESPOND TO MIDDLEMAN!!!!"
+    def respondToMiddleman(self, keyId, session, connId, destKeyId):
+        if destKeyId in self.responseList:
+            self.respondTo(destKeyId, session, connId)
+        else:
+            logger.warning("No response for {}".format(destKeyId))
+            session.dropped()
+
 
     #############################
-    def beAMiddleman(self, keyId, session, connId, askingNode, destNode, askConnId):
+    def beAMiddleman(self, keyId, openSession, connId, askingNode, destNode, askConnId):
         keyId = askingNode.key
-        response = lambda session: self.__askingNodeForMiddlemanConnectionEstablished(session, connId, keyId, session,
+        response = lambda session: self.__askingNodeForMiddlemanConnectionEstablished(session, connId, keyId, openSession,
                                                                                       askingNode, destNode, askConnId)
         if keyId in self.responseList:
             self.responseList[keyId].append(response)
@@ -368,6 +369,7 @@ class TaskServer(PendingConnectionsServer):
             self.responseList[keyId] = deque([response])
 
         self.client.wantToStartTaskSession(keyId, self.node, connId)
+        openSession.isMiddleman = True
 
     #############################
     def _getFactory(self):
@@ -555,7 +557,7 @@ class TaskServer(PendingConnectionsServer):
         logger.warning("Cannot connect to pay for task {} ".format(taskId))
         self.client.taskRewardPaymentFailure(taskId, price)
 
-        response = lambda session: self.__connectionForResultRejectedFailure(session, connId, keyId, taskId,
+        response = lambda session: self.__connectionForPayForTaskFailure(session, connId, keyId, taskId,
                                                                              price)
 
         if keyId in self.responseList:
@@ -570,7 +572,6 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def __connectionForStartSessionEstablished(self, session, connId, keyId, nodeInfo, superNodeInfo):
-        print "START SESSION ESTABLISHED"
         session.taskServer = self
         session.taskManager = self.taskManager
         session.taskComputer = self.taskComputer
@@ -605,12 +606,13 @@ class TaskServer(PendingConnectionsServer):
         session.sendMiddleman(askingNodeInfo, selfNodeInfo, askConnId)
 
     #############################
-    def __connectionForMiddlemanFailure(self, connId):
+    def __connectionForMiddlemanFailure(self, connId, keyId, askingNodeInfo, selfNodeInfo, askConnID):
         #TODO CO w takiej sytuacji? Usuniecie jakichs portow?
         logger.info("Permanently can't connect to node {}".format(keyId))
         return
 
-    def __askingNodeForMiddlemanConnectionEstablished(self, session, connId, keyId, sesison, askingNode, destNode,
+    #############################
+    def __askingNodeForMiddlemanConnectionEstablished(self, session, connId, keyId, openSession,  askingNode, destNode,
                                                       askConnId):
         session.taskServer = self
         session.taskManager = self.taskManager
@@ -618,7 +620,9 @@ class TaskServer(PendingConnectionsServer):
         session.clientKeyId = keyId
         session.connId = connId
         session.sendHello()
-        session.sendMiddlemanReady(keyId, askConnId)
+        session.sendJoinMiddlemanConn(keyId, askConnId, destNode.key)
+        session.openSession = openSession
+        openSession.openSession = session
 
     #SYNC METHODS
     #############################
@@ -746,7 +750,7 @@ class WaitingTaskFailure:
 ##########################################################
 
 from twisted.internet.protocol import Factory
-from golem.network.NetAndFilesConnState import NetAndFilesConnState
+from golem.network.NetAndFilesConnState import MidNetAndFilesConnState
 from TaskSession import TaskSessionFactory
 
 class TaskServerFactory(Factory):
@@ -757,7 +761,7 @@ class TaskServerFactory(Factory):
     #############################
     def buildProtocol(self, addr):
         logger.info("Protocol build for {}".format(addr))
-        protocol = NetAndFilesConnState(self.server)
+        protocol = MidNetAndFilesConnState(self.server)
         protocol.setSessionFactory(TaskSessionFactory())
         return protocol
 

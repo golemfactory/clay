@@ -117,11 +117,9 @@ class PendingConnectionsServer(GNRServer):
             pc.status = PenConnStatus.Connected
             try:
                 idx = pc.hostInfos.index(hd)
-                print pc.hostInfos
                 pc.hostInfos = pc.hostInfos[idx+1:]
-                print pc.hostInfos
             except ValueError:
-                logger.error("{}:{} not in connection hostinfos".format(addr, port))
+                logger.warning("{}:{} not in connection hostinfos".format(addr, port))
 
 
 #######################################################################################

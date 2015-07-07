@@ -26,11 +26,7 @@ def ipAddresses(useIp6=False):
             addr = addrInfo.get('addr')
             if addr is not None:
                 addresses.append(addr)
-        #FIXME Tej instrukcji w ogole nie powinno byc, gdy bedziemy umieli kontynuowac nieprawdilowe lokalne polaczenia
-        # Lokalny adres odpowiada, ale nie jest tym poszukiwanym
-        if '127.0.0.1' in addresses:
-            addresses.remove('127.0.0.1')
-    return []
+    return addresses
 
 ip4Addresses = ipAddresses
 getHostAddresses = ipAddresses

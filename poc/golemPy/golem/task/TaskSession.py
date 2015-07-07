@@ -8,28 +8,29 @@ from golem.Message import MessageHello, MessageRandVal, MessageWantToComputeTask
     MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, \
     MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
-    MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady
+    MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
+    MessageMiddlemanAccepted, MessageJoinMiddlemanConn
 from golem.network.FileProducer import EncryptFileProducer
 from golem.network.FileConsumer import DecryptFileConsumer
 from golem.network.DataProducer import DataProducer
 from golem.network.DataConsumer import DataConsumer
 from golem.network.MultiFileProducer import EncryptMultiFileProducer
 from golem.network.MultiFileConsumer import DecryptMultiFileConsumer
-from golem.network.NetAndFilesConnState import NetAndFilesConnState
-from golem.network.p2p.Session import NetSession
+from golem.network.NetAndFilesConnState import MidNetAndFilesConnState
+from golem.network.p2p.Session import MidNetSession
 from golem.task.TaskBase import resultTypes
 from golem.resource.Resource import decompressDir
 from golem.transactions.EthereumPaymentsKeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 
-class TaskSession(NetSession):
+class TaskSession(MidNetSession):
 
-    ConnectionStateType = NetAndFilesConnState
+    ConnectionStateType = MidNetAndFilesConnState
 
     ##########################
     def __init__(self, conn):
-        NetSession.__init__(self, conn)
+        MidNetSession.__init__(self, conn)
         self.taskServer     = None
         self.taskManager    = None
         self.taskComputer   = None
@@ -90,11 +91,12 @@ class TaskSession(NetSession):
 
     ##########################
     def sendMiddleman(self, askingNode, destNode, askConnId):
+        self.askingNodeKeyId = askingNode.key
         self._send(MessageMiddleman(askingNode, destNode, askConnId))
 
     ##########################
-    def sendMiddlemanReady(self, keyId, connId):
-        self._send(MessageMiddlemanReady(keyId, connId))
+    def sendJoinMiddlemanConn(self, keyId, connId, destNodeKeyId):
+        self._send(MessageJoinMiddlemanConn(keyId, connId, destNodeKeyId))
 
     ##########################
     def interpret(self, msg):
@@ -102,7 +104,7 @@ class TaskSession(NetSession):
 
         self.taskServer.setLastMessage("<-", time.localtime(), msg, self.address, self.port)
 
-        NetSession.interpret(self, msg)
+        MidNetSession.interpret(self, msg)
 
     ##########################
     def dropped(self):
@@ -365,20 +367,39 @@ class TaskSession(NetSession):
 
     ##########################
     def _reactToMiddleman(self, msg):
+        self._send(MessageBeingMiddlemanAccepted())
         self.taskServer.beAMiddleman(self.clientKeyId, self, self.connId, msg.askingNode, msg.destNode,
                                      msg.askConnId)
 
     ##########################
+    def _reactToJoinMiddlemanConn(self, msg):
+        self.middlemanConnData = {'keyId': msg.keyId, 'connId': msg.connId, 'destNodeKeyId': msg.destNodeKeyId }
+        self._send(MessageMiddlemanAccepted())
+
+    ##########################
     def _reactToMiddlemanReady(self, msg):
-        self.taskServer.respondToMiddleman(msg.keyId, self, msg.connId)
+        keyId = self.middlemanConnData['keyId']
+        connId = self.middlemanConnData['connId']
+        destNodeKeyId = self.middlemanConnData['destNodeKeyId']
+        self.taskServer.respondToMiddleman(keyId, self, connId, destNodeKeyId)
+
+    ##########################
+    def _reactToBeingMiddlemanAccepted(self, msg):
+        self.clientKeyId = self.askingNodeKeyId
+
+    ##########################
+    def _reactToMiddlemanAccepted(self, msg):
+        self._send(MessageMiddlemanReady())
+        self.isMiddleman = True
+        self.openSession.isMiddleman = True
 
     ##########################
     def _send(self, msg, sendUnverified=False):
-        if not self.verified and not sendUnverified:
+        if not self.isMiddleman and not self.verified and not sendUnverified:
             self.msgsToSend.append(msg)
             return
-        NetSession._send(self, msg, sendUnverified=sendUnverified)
-       #print "Task Session Sending to {}:{}: {}".format(self.address, self.port, msg)
+        MidNetSession._send(self, msg, sendUnverified=sendUnverified)
+        #print "Task Session Sending to {}:{}: {}".format(self.address, self.port, msg)
         self.taskServer.setLastMessage("->", time.localtime(), msg, self.address, self.port)
 
     ##########################
@@ -455,7 +476,10 @@ class TaskSession(NetSession):
                                 MessageRandVal.Type: self._reactToRandVal,
                                 MessageStartSessionResponse.Type: self._reactToStartSessionResponse,
                                 MessageMiddleman.Type: self._reactToMiddleman,
-                                MessageMiddlemanReady.Type: self._reactToMiddlemanReady
+                                MessageMiddlemanReady.Type: self._reactToMiddlemanReady,
+                                MessageBeingMiddlemanAccepted.Type: self._reactToBeingMiddlemanAccepted,
+                                MessageMiddlemanAccepted.Type: self._reactToMiddlemanAccepted,
+                                MessageJoinMiddlemanConn.Type: self._reactToJoinMiddlemanConn
                             })
 
 

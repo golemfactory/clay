@@ -914,26 +914,75 @@ class MessageMiddleman(Message):
             MessageMiddleman.ASK_CONN_ID_STR: self.askConnId
         }
 
-class MessageMiddlemanReady(Message):
+class MessageJoinMiddlemanConn(Message):
 
     Type = TASK_MSG_BASE + 18
 
     CONN_ID_STR = u"CONN_ID"
     KEY_ID_STR = u"KEY_ID"
+    DEST_NODE_KEY_ID_STR = u"DEST_NODE_KEY_ID"
 
-    def __init__(self, keyId=None, connId=None, sig="", timestamp=None, dictRepr=None):
-        Message.__init__(self, MessageMiddleman.Type, sig, timestamp)
+    def __init__(self, keyId=None, connId=None, destNodeKeyId=None, sig="", timestamp=None, dictRepr=None):
+        Message.__init__(self, MessageJoinMiddlemanConn.Type, sig, timestamp)
 
         self.connId = connId
         self.keyId = keyId
+        self.destNodeKeyId = destNodeKeyId
 
         if dictRepr:
-            self.connId = dictRepr[MessageMiddlemanReady.CONN_ID_STR]
-            self.keyId = dictRepr[MessageMiddlemanReady.KEY_ID_STR]
+            self.connId = dictRepr[MessageJoinMiddlemanConn.CONN_ID_STR]
+            self.keyId = dictRepr[MessageJoinMiddlemanConn.KEY_ID_STR]
+            self.destNodeKeyId = dictRepr[MessageJoinMiddlemanConn.DEST_NODE_KEY_ID_STR]
 
     def dictRepr(self):
-        return { MessageMiddlemanReady.CONN_ID_STR: self.connId,
-                 MessageMiddlemanReady.KEY_ID_STR: self.keyId }
+        return { MessageJoinMiddlemanConn.CONN_ID_STR: self.connId,
+                 MessageJoinMiddlemanConn.KEY_ID_STR: self.keyId,
+                 MessageJoinMiddlemanConn.DEST_NODE_KEY_ID_STR: self.destNodeKeyId }
+
+class MessageBeingMiddlemanAccepted(Message):
+
+    Type = TASK_MSG_BASE + 19
+
+    MIDDLEMAN_STR = u"MIDDLEMAN"
+
+    def __init__(self, sig="", timestamp=None, dictRepr=None):
+        Message.__init__(self, MessageBeingMiddlemanAccepted.Type, sig, timestamp)
+
+        if dictRepr:
+            assert dictRepr.get(MessageBeingMiddlemanAccepted.MIDDLEMAN_STR)
+
+    def dictRepr(self):
+        return { MessageBeingMiddlemanAccepted.MIDDLEMAN_STR: True }
+
+class MessageMiddlemanAccepted(Message):
+
+    Type = TASK_MSG_BASE + 20
+
+    MIDDLEMAN_STR = u"MIDDLEMAN"
+
+    def __init__(self, sig="", timestamp=None, dictRepr=None):
+        Message.__init__(self, MessageMiddlemanAccepted.Type, sig, timestamp)
+
+        if dictRepr:
+            assert dictRepr.get(MessageMiddlemanAccepted.MIDDLEMAN_STR)
+
+    def dictRepr(self):
+        return { MessageMiddlemanAccepted.MIDDLEMAN_STR: True }
+
+class MessageMiddlemanReady(Message):
+
+    Type = TASK_MSG_BASE + 21
+
+    MIDDLEMAN_STR = u"MIDDLEMAN"
+
+    def __init__(self, sig="", timestamp=None, dictRepr=None):
+        Message.__init__(self, MessageMiddlemanReady.Type, sig, timestamp)
+
+        if dictRepr:
+            assert dictRepr.get(MessageMiddlemanReady.MIDDLEMAN_STR)
+
+    def dictRepr(self):
+        return { MessageMiddlemanReady.MIDDLEMAN_STR: True }
 
 RESOURCE_MSG_BASE = 3000
 
@@ -1167,6 +1216,9 @@ def initMessages():
     MessageGetTaskResult()
     MessageStartSessionResponse()
     MessageMiddleman()
+    MessageJoinMiddlemanConn()
+    MessageBeingMiddlemanAccepted()
+    MessageMiddlemanAccepted()
     MessageMiddlemanReady()
 
     MessageNewNodes()
