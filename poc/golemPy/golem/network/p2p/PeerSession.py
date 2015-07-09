@@ -35,6 +35,7 @@ class PeerSession(NetSession):
         self.state = PeerSession.StateInitialize
         self.degree = 0
         self.nodeId = None
+        self.listenPort = None
 
         self.canBeUnverified.extend([ MessageHello.Type, MessageRandVal.Type ])
         self.canBeUnsigned.extend([ MessageHello.Type ])
@@ -169,6 +170,7 @@ class PeerSession(NetSession):
         self.id = msg.clientUID
         self.nodeInfo = msg.nodeInfo
         self.clientKeyId = msg.clientKeyId
+        self.listenPort = msg.port
 
         if not self.verify(msg):
             logger.error("Wrong signature for Hello msg")
@@ -178,7 +180,7 @@ class PeerSession(NetSession):
         enoughPeers = self.p2pService.enoughPeers()
         p = self.p2pService.findPeer(self.id)
 
-        self.p2pService.addToPeerKeeper(self.id, self.clientKeyId, self.address, msg.port, self.nodeInfo)
+        self.p2pService.addToPeerKeeper(self.id, self.clientKeyId, self.address, self.listenPort, self.nodeInfo)
 
         if enoughPeers:
             loggerMsg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.id, self.address, self.port)
@@ -299,7 +301,7 @@ class PeerSession(NetSession):
     def __sendPeers(self):
         peersInfo = []
         for p in self.p2pService.peers.values():
-            peersInfo.append({"address" : p.address, "port" : p.port, "id" : p.id, "node": p.nodeInfo})
+            peersInfo.append({"address" : p.address, "port" : p.listenPort, "id" : p.id, "node": p.nodeInfo})
         self._send(MessagePeers(peersInfo))
 
     ##########################

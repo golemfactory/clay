@@ -26,8 +26,8 @@ def ipAddresses(useIp6=False):
             addr = addrInfo.get('addr')
             if addr is not None:
                 addresses.append(addr)
-            # if '127.0.0.1' in addresses:
-            #     addresses.remove('127.0.0.1')
+            if '127.0.0.1' in addresses:
+                addresses.remove('127.0.0.1')
     return addresses
 
 
