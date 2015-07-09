@@ -12,7 +12,6 @@ from TaskKeeper import TaskKeeper
 from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
 from golem.ranking.Ranking import RankingStats
 from golem.network.GNRServer import PendingConnectionsServer, PendingConnection, PenConnStatus
-from golem.core.hostaddress import getExternalAddress
 
 logger = logging.getLogger(__name__)
 
@@ -372,6 +371,22 @@ class TaskServer(PendingConnectionsServer):
         openSession.isMiddleman = True
 
     #############################
+    def waitForNatTraverse(self, port, session):
+        session.closeNow()
+        args = (session.extraData['superNode'], session.extraData['askingNode'], session.extraData['destNode'],
+                session.extraData['askConnId'])
+        self._addPendingListening(TaskListenTypes.StartSession, port, args)
+
+    #############################
+    def organizeNatPunch(self, addr, port, clientKeyId, askingNode, destNode, askConnId):
+        self.client.informAboutTaskNatHole(askingNode.key, clientKeyId, addr, port)
+
+
+    def traverseNat(self, keyId, addr, port):
+        Network.connect(addr, port, self.sessionClass, self.__connectionForTraverseNatEstablished,
+                        self.__connectionForTraverseNatFailure, keyId)
+
+    #############################
     def _getFactory(self):
         return self.factory(self)
 
@@ -390,6 +405,15 @@ class TaskServer(PendingConnectionsServer):
         logger.error("Listening on ports {} to {} failure".format(self.configDesc.startPort, self.configDesc.endPort))
         #FIXME: some graceful terminations should take place here
         # sys.exit(0)
+
+    #############################
+    def _listeningForStartSessionEstablished(self, listeningPort):
+        logger.debug("Listening on port {}".format(listeningPort.getHost().port))
+
+    #############################
+    def _listeningForStartSessionFailure(self, p, superNode, askingNode, destNode, askConnId):
+        logger.error("Listening failure {}".format(p))
+        self.__connectionForNatPunchFailure(None, superNode, askingNode, destNode, askConnId)
 
     #############################
     #   CONNECTION REACTIONS    #
@@ -557,7 +581,7 @@ class TaskServer(PendingConnectionsServer):
         logger.warning("Cannot connect to pay for task {} ".format(taskId))
         self.client.taskRewardPaymentFailure(taskId, price)
 
-        response = lambda session: self.__connectionForPayForTaskFailure(session, connId, keyId, taskId,
+        response = lambda session: self.__connectionForPayForTaskEstablished(session, connId, keyId, taskId,
                                                                              price)
 
         if keyId in self.responseList:
@@ -589,11 +613,44 @@ class TaskServer(PendingConnectionsServer):
             logger.info("Permanently can't connect to node {}".format(keyId))
             return
 
-        args = (superNodeInfo.key, nodeInfo, self.node, connId)
-        self._addPendingRequest(TaskConnTypes.Middleman, superNodeInfo, superNodeInfo.prvPort,
-                                superNodeInfo.key, args)
+        #FIXME To powinno zostac przeniesione do jakiejs wyzszej polaczeniowej instalncji
+        if self.node.natType in TaskServer.supportedNatTypes:
+            args = (superNodeInfo, nodeInfo, self.node, connId)
+            self._addPendingRequest(TaskConnTypes.NatPunch, superNodeInfo, superNodeInfo.prvPort, superNodeInfo.key,
+                                    args)
+        else:
+            args = (superNodeInfo.key, nodeInfo, self.node, connId)
+            self._addPendingRequest(TaskConnTypes.Middleman, superNodeInfo, superNodeInfo.prvPort, superNodeInfo.key,
+                                    args)
 
         #TODO Dodatkowe usuniecie tego zadania (bo zastapione innym)
+
+    #############################
+    def __connectionForNatPunchEstablished(self, session, connId, superNode, askingNode, destNode, askConnId):
+        session.taskServer = self
+        session.taskManager = self.taskManager
+        session.taskComputer = self.taskComputer
+        session.clientKeyId = superNode.key
+        session.connId = connId
+        session.extraData = {'superNode': superNode, 'askingNode': askingNode, 'destNode': destNode,
+                             'askConnId': askConnId}
+        session.sendHello()
+        session.sendNatPunch(askingNode, destNode, askConnId)
+
+    #############################
+    def __connectionForNatPunchFailure(self, connId, superNode, askingNode, destNode, askConnId):
+        args = (superNode.key, askingNode, destNode, askConnId)
+        self._addPendingRequest(TaskConnTypes.Middleman, superNode, superNode.prvPort,
+                                superNode.key, args)
+
+    #############################
+    def __connectionForTraverseNatEstablished(self, session, clientKeyId):
+        self.respondTo(clientKeyId, session, None) #FIXME
+
+    #############################
+    def __connectionForTraverseNatFailure(self, clientKeyId):
+        logger.error("Connection for traverse nat failure")
+        pass #TODO Powinnismy powiadomic serwer o nieudanej probie polaczenia
 
     #############################
     def __connectionForMiddlemanEstablished(self, session, connId, keyId, askingNodeInfo, selfNodeInfo, askConnId):
@@ -655,7 +712,7 @@ class TaskServer(PendingConnectionsServer):
                     self._addPendingRequest(TaskConnTypes.TaskResult, wtr.owner, wtr.ownerPort, wtr.ownerKeyId, args)
 
         for wtf in self.failuresToSend.itervalues():
-            args = (wtf.ownerKeId, wtf.subtaskId, wtf.errMsg)
+            args = (wtf.ownerKeyId, wtf.subtaskId, wtf.errMsg)
             self._addPendingRequest(TaskConnTypes.TaskFailure, wtf.owner, wtf.ownerPort, wtf.ownerKeyId, args)
 
         self.failuresToSend.clear()
@@ -702,7 +759,8 @@ class TaskServer(PendingConnectionsServer):
             TaskConnTypes.TaskResult: self.__connectionForTaskResultEstablished,
             TaskConnTypes.TaskFailure: self.__connectionForTaskFailureEstablished,
             TaskConnTypes.StartSession: self.__connectionForStartSessionEstablished,
-            TaskConnTypes.Middleman: self.__connectionForMiddlemanEstablished
+            TaskConnTypes.Middleman: self.__connectionForMiddlemanEstablished,
+            TaskConnTypes.NatPunch: self.__connectionForNatPunchEstablished, #NATPUNADD
         })
 
     #############################
@@ -715,7 +773,20 @@ class TaskServer(PendingConnectionsServer):
             TaskConnTypes.TaskResult: self.__connectionForTaskResultFailure,
             TaskConnTypes.TaskFailure: self.__connectionForTaskFailureFailure,
             TaskConnTypes.StartSession: self.__connectionForStartSessionFailure,
-            TaskConnTypes.Middleman: self.__connectionForMiddlemanFailure
+            TaskConnTypes.Middleman: self.__connectionForMiddlemanFailure,
+            TaskConnTypes.NatPunch: self.__connectionForNatPunchFailure
+        })
+
+    #############################
+    def _setListenEstablished(self):
+        self.listenEstablishedForType.update({
+          TaskListenTypes.StartSession: self._listeningForStartSessionEstablished
+        })
+
+    #############################
+    def _setListenFailure(self):
+        self.listenFailureForType.update({
+          TaskListenTypes.StartSession: self._listeningForStartSessionFailure
         })
 
 ##########################################################
@@ -775,5 +846,9 @@ class TaskConnTypes:
     TaskFailure = 6
     StartSession = 7
     Middleman = 8
+    NatPunch = 9
+
+class TaskListenTypes:
+    StartSession = 1
 
 

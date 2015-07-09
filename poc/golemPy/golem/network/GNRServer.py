@@ -3,6 +3,7 @@ import time
 import uuid
 
 from collections import deque
+from stun import FullCone, OpenInternet
 
 from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
 
@@ -16,6 +17,7 @@ class GNRServer:
         self.factory = factory
 
         self.curPort = 0
+        self.useIp6 = useIp6
         self.iListeningPort = None
 
         self._startAccepting(useIp6)
@@ -43,6 +45,11 @@ class GNRServer:
         Network.listen(self.configDesc.startPort, self.configDesc.endPort, self._getFactory(), None, self._listeningEstablished, self._listeningFailure, useIp6)
 
     #############################
+    def _listenOnPort(self, port, listeningEstablished, listeningFailure, extraData):
+        Network.listen(port, port, self._getFactory(), None,listeningEstablished, listeningFailure, self.useIp6,
+                       extraData)
+
+    #############################
     def _getFactory(self):
         return self.factory()
 
@@ -58,6 +65,9 @@ class GNRServer:
 
 #######################################################################################
 class PendingConnectionsServer(GNRServer):
+
+    supportedNatTypes = [FullCone, OpenInternet]
+
     #############################
     def __init__(self, configDesc, factory, sessionClass, useIp6=False):
         self.pendingConnections = {}
@@ -66,6 +76,15 @@ class PendingConnectionsServer(GNRServer):
         self.sessionClass = sessionClass
         self._setConnEstablished()
         self._setConnFailure()
+
+        self.pendingListenings = deque([])
+        self.openListenings = {}
+        self.listenWaitTime = 1
+        self.listenEstablishedForType = {}
+        self.listenFailureForType = {}
+        self._setListenEstablished()
+        self._setListenFailure()
+
         GNRServer.__init__(self, configDesc, factory, useIp6)
 
     #############################
@@ -83,7 +102,21 @@ class PendingConnectionsServer(GNRServer):
         self.pendingConnections[pc.id] = pc
 
     #############################
+    def _addPendingListening(self, type, port, args):
+        pl = PendingListening(type, port, self.listenEstablishedForType[type],
+                              self.listenFailureForType[type], args)
+        self.pendingListenings.append(pl)
+
+    #############################
     def _syncPending(self):
+        cntTime = time.time()
+        while len(self.pendingListenings) > 0:
+            if cntTime - self.pendingListenings[0].time < self.listenWaitTime:
+                break
+            pl = self.pendingListenings.popleft()
+            self._listenOnPort(pl.port, pl.established, pl.failure, pl.args)
+            self.openListenings[pl.id] = pl #TODO Powinny umierac jesli zbyt dlugo sa aktywne
+
         conns = [pen for pen in self.pendingConnections.itervalues() if pen.status in PendingConnection.connectStatuses]
         #TODO Zmiany dla innych statusow
         for conn in conns:
@@ -107,6 +140,14 @@ class PendingConnectionsServer(GNRServer):
 
     #############################
     def _setConnFailure(self):
+        pass
+
+    #############################
+    def _setListenEstablished(self):
+        pass
+
+    #############################
+    def _setListenFailure(self):
         pass
 
     #############################
@@ -146,3 +187,16 @@ class PendingConnection:
         self.type = type
         self.status = PenConnStatus.Inactive
 
+        self.rendezvousPorts = []
+
+class PendingListening:
+
+    #############################
+    def __init__(self, type=None, port=None, established=None, failure=None, args=None):
+        self.id = uuid.uuid4()
+        self.time = time.time()
+        self.established = established
+        self.failure = failure
+        self.args = args
+        self.port = port
+        self.type = type

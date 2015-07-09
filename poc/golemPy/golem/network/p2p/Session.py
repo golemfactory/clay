@@ -64,6 +64,8 @@ class Session(SessionInterface):
         self.lastDisconnectTime = None
         self.interpretation = { MessageDisconnect.Type: self._reactToDisconnect }
 
+        self.extraData = {}
+
     ##########################
     def interpret(self, msg):
         self.lastMessageTime = time.time()
@@ -82,6 +84,10 @@ class Session(SessionInterface):
     ##########################
     def dropped(self):
         self.conn.close()
+
+    ##########################
+    def closeNow(self):
+        self.conn.closeNow()
 
     ##########################
     def disconnect(self, reason):

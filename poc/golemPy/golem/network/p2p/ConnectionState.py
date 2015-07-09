@@ -40,6 +40,11 @@ class ConnectionState(Protocol):
         self.transport.loseConnection()
 
     ############################
+    def closeNow(self):
+        self.opened = False
+        self.transport.abortConnection()
+
+    ############################
     def isOpen(self):
         return self.opened
 

@@ -6,7 +6,8 @@ from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconn
                           MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks, \
                           MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
                           MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
-                          MessageRandVal, MessageWantToStartTaskSession, MessageSetTaskSession
+                          MessageRandVal, MessageWantToStartTaskSession, MessageSetTaskSession, \
+                          MessageNatHole
 from golem.network.p2p.NetConnState import NetConnState
 from golem.network.p2p.Session import NetSession
 
@@ -151,6 +152,10 @@ class PeerSession(NetSession):
         self._send(MessageSetTaskSession(keyId, nodeInfo, connId, superNodeInfo))
 
     ##########################
+    def sendTaskNatHole(self, keyId, addr, port):
+        self._send(MessageNatHole(keyId, addr, port))
+
+    ##########################
     def _reactToPing(self, msg):
         self.__sendPong()
 
@@ -265,13 +270,14 @@ class PeerSession(NetSession):
 
     ##########################
     def _reactToWantToStartTaskSession(self, msg):
-        print "GOT WANT TASK SESSION {}:{}".format(msg.nodeInfo.prvAddr, msg.nodeInfo.prvPort)
         self.p2pService.peerWantTaskSession(msg.nodeInfo, msg.superNodeInfo)
 
     ##########################
     def _reactToSetTaskSession(self, msg):
-        print "GOT SET TASK SESSION {}".format(msg.keyId)
         self.p2pService.peerWantToSetTaskSession(msg.keyId, msg.nodeInfo, msg.connId, msg.superNodeInfo)
+
+    def _reactToNatHole(self, msg):
+        self.p2pService.traverseNat(msg.keyId, msg.addr, msg.port)
 
     ##########################
     # PRIVATE SECTION
@@ -325,7 +331,8 @@ class PeerSession(NetSession):
             MessageFindNode.Type: self._reactToFindNode,
             MessageRandVal.Type: self._reactToRandVal,
             MessageWantToStartTaskSession.Type: self._reactToWantToStartTaskSession,
-            MessageSetTaskSession.Type: self._reactToSetTaskSession
+            MessageSetTaskSession.Type: self._reactToSetTaskSession,
+            MessageNatHole.Type: self._reactToNatHole
        })
 
     ##########################

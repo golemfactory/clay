@@ -29,7 +29,7 @@ class P2PService:
         self.taskServer             = None
         self.node                   = node
         self.lastMessageTimeThreshold = self.configDesc.p2pSessionTimeout
-        self.refreshPeersTimeout    = 900
+        self.refreshPeersTimeout    = 1200 #FIXME
         self.lastRefreshPeers       = time.time()
 
         self.lastMessages           = []
@@ -341,19 +341,28 @@ class P2PService:
 
     ############################
     def wantToStartTaskSession(self, keyId, nodeInfo, connId, superNodeInfo=None):
-        print "WANT TO START TASK SESSION {}".format(keyId)
+        logger.debug("Try to start task sesion {}".format(keyId))
         for peer in self.peers.itervalues():
             if peer.clientKeyId == keyId:
-                print "SENDT START TASK SESSION TO THE RIGHT PEER"
                 peer.sendWantToStartTaskSession(nodeInfo, connId, superNodeInfo)
                 return
 
-        print "NO RIGHT PEER FOUND, SENDING TO OTHERS"
         for peer in self.peers.itervalues():
             if peer.clientKeyId != nodeInfo.key:
-                print "SENDING SET TASK SESSIOn"
                 peer.sendSetTaskSession(keyId, nodeInfo, connId, superNodeInfo)
         #TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
+
+    ############################
+    def informAboutTaskNatHole(self, keyId, rvKeyId, addr, port):
+        logger.debug("Nat hole ready {}:{}".format(addr,port))
+        for peer in self.peers.itervalues():
+            if peer.clientKeyId == keyId:
+                peer.sendTaskNatHole(rvKeyId, addr, port)
+                return
+
+    ############################
+    def traverseNat(self, keyId, addr, port):
+        self.taskServer.traverseNat(keyId, addr, port)
 
     ############################
     def peerWantTaskSession(self, nodeInfo, superNodeInfo):
@@ -361,16 +370,12 @@ class P2PService:
 
     ############################
     def peerWantToSetTaskSession(self, keyId, nodeInfo, connId, superNodeInfo):
-        print "PEER WANT TO SET TASK SESSION KEY ID{}".format(keyId)
-        print "CONN ID {}".format(connId)
-        print "CONNECTION TO SET {}".format(self.connectionsToSet)
-        print "SUPERNODE INFO {}".format(superNodeInfo)
+        logger.debug("Peer want to set task session with {}".format(keyId))
         if connId in self.connectionsToSet:
-            print "CONN ID IN SELF CONNECTIONS TO SET"
             return
 
+        #TODO Lepszy mechanizm wyznaczania supernode'a
         if superNodeInfo is None and self.node.isSuperNode():
-            print "I'M THE SUPERNODE !"
             superNodeInfo = self.node
 
         #TODO Te informacje powinny wygasac (byc usuwane po jakims czasie)
@@ -444,7 +449,8 @@ class P2PService:
     def __sendMessageGetPeers(self):
         while len(self.peers) < self.configDesc.optNumPeers:
             if len(self.freePeers) == 0:
-                peer = self.peerKeeper.getRandomKnownNode()
+                peer = None #FIXME
+#                peer = self.peerKeeper.getRandomKnownNode()
                 if not peer or peer.nodeId in self.peers:
                     if time.time() - self.lastPeersRequest > 2:
                         self.lastPeersRequest = time.time()

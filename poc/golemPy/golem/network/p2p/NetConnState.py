@@ -65,8 +65,11 @@ class NetConnState(ConnectionState):
         for msg in msgs:
             decMsg = self.session.decrypt(msg)
             if decMsg is None:
+                logger.warning("Decryption of message failed")
                 return None
             m = Message.deserializeMessage(decMsg)
+            if m is None:
+                return None
             m.encrypted = decMsg != msg
             messages.append(m)
         return messages

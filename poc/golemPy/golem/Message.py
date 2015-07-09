@@ -510,6 +510,34 @@ class MessageSetTaskSession(Message):
             MessageSetTaskSession.SUPER_NODE_INFO_STR: self.superNodeInfo
         }
 
+class MessageNatHole(Message):
+
+    Type = 19
+
+    KEY_ID_STR = u"KEY_ID"
+    ADDR_STR = u"ADDR"
+    PORT_STR = u"PORT"
+
+    def __init__(self, keyId=None, addr=None, port=None, sig="", timestamp=None,
+                 dictRepr=None):
+        Message.__init__(self, MessageNatHole.Type, sig, timestamp)
+
+        self.keyId = keyId
+        self.addr = addr
+        self.port = port
+
+        if dictRepr:
+            self.keyId = dictRepr[MessageNatHole.KEY_ID_STR]
+            self.addr = dictRepr[MessageNatHole.ADDR_STR]
+            self.port = dictRepr[MessageNatHole.PORT_STR]
+
+    def dictRepr(self):
+        return {
+            MessageNatHole.KEY_ID_STR: self.keyId,
+            MessageNatHole.ADDR_STR: self.addr,
+            MessageNatHole.PORT_STR: self.port
+        }
+
 
 TASK_MSG_BASE = 2000
 
@@ -984,6 +1012,66 @@ class MessageMiddlemanReady(Message):
     def dictRepr(self):
         return { MessageMiddlemanReady.MIDDLEMAN_STR: True }
 
+class MessageNatPunch(Message):
+
+    Type = TASK_MSG_BASE + 22
+
+    ASKING_NODE_STR = u"ASKING_NODE"
+    DEST_NODE_STR = u"DEST_NODE"
+    ASK_CONN_ID_STR = u"ASK_CONN_ID"
+
+    def __init__(self, askingNode=None, destNode=None, askConnId=None, sig="", timestamp=None,
+                 dictRepr=None):
+        Message.__init__(self, MessageNatPunch.Type, sig, timestamp)
+
+        self.askingNode = askingNode
+        self.destNode = destNode
+        self.askConnId = askConnId
+
+        if dictRepr:
+            self.askingNode = dictRepr[MessageNatPunch.ASKING_NODE_STR]
+            self.destNode = dictRepr[MessageNatPunch.DEST_NODE_STR]
+            self.askConnId = dictRepr[MessageNatPunch.ASK_CONN_ID_STR]
+
+    def dictRepr(self):
+        return {
+            MessageNatPunch.ASKING_NODE_STR: self.askingNode,
+            MessageNatPunch.DEST_NODE_STR: self.destNode,
+            MessageNatPunch.ASK_CONN_ID_STR: self.askConnId
+        }
+
+class MessageWaitForNatTraverse(Message):
+
+    Type = TASK_MSG_BASE + 23
+
+    PORT_STR = u"PORT"
+
+    def __init__(self, port=None, sig="", timestamp=None, dictRepr=None):
+        Message.__init__(self, MessageWaitForNatTraverse.Type, sig, timestamp)
+
+        self.port = port
+
+        if dictRepr:
+            self.port = dictRepr[MessageWaitForNatTraverse.PORT_STR]
+
+    def dictRepr(self):
+        return {MessageWaitForNatTraverse.PORT_STR: self.port}
+
+class MessageNatPunchFailure(Message):
+
+    Type = TASK_MSG_BASE + 24
+
+    RENDEZVOUS_FAILURE_STR = u"RENDEZVOUS_FAILURE"
+
+    def __init__(self, sig="", timestamp=None, dictRepr=None):
+        Message.__init__(self, MessageNatPunchFailure.Type, sig, timestamp)
+
+        if dictRepr:
+            assert dictRepr.get(MessageNatPunchFailure.RENDEZVOUS_FAILURE_STR)
+
+    def dictRepr(self):
+        return {MessageNatPunchFailure.RENDEZVOUS_FAILURE_STR: True}
+
 RESOURCE_MSG_BASE = 3000
 
 class MessagePushResource(Message):
@@ -1201,6 +1289,7 @@ def initMessages():
     MessageRandVal()
     MessageWantToStartTaskSession()
     MessageSetTaskSession()
+    MessageNatHole()
 
     MessageTaskToCompute()
     MessageWantToComputeTask()
@@ -1220,6 +1309,9 @@ def initMessages():
     MessageBeingMiddlemanAccepted()
     MessageMiddlemanAccepted()
     MessageMiddlemanReady()
+    MessageNatPunch()
+    MessageWaitForNatTraverse()
+    MessageNatPunchFailure()
 
     MessageNewNodes()
     MessageSubtaskResultAccepted()

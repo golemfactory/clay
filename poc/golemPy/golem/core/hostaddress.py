@@ -26,7 +26,10 @@ def ipAddresses(useIp6=False):
             addr = addrInfo.get('addr')
             if addr is not None:
                 addresses.append(addr)
+            # if '127.0.0.1' in addresses:
+            #     addresses.remove('127.0.0.1')
     return addresses
+
 
 ip4Addresses = ipAddresses
 getHostAddresses = ipAddresses
@@ -51,13 +54,12 @@ def getExternalAddress(sourcePort=None):
     else:
         natType, externalIp, externalPort = stun.get_ip_info()
     logger.debug("natType {}, externalIp {}, externalPort {}".format(natType, externalIp, externalPort))
-    return (externalIp, externalPort)
+    return (externalIp, externalPort, natType)
 
 #######################################################################################
 def getHostAddress(seedAddr = None, useIp6=False):
     try:
         ip = getHostAddressFromConnection(useIp6=useIp6)
-        print "IP {}".format(ip)
         if ip is not None:
             return ip
     except Exception, err:
