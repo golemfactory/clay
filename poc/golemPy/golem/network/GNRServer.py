@@ -84,6 +84,9 @@ class PendingConnectionsServer(GNRServer):
         self.listenFailureForType = {}
         self._setListenEstablished()
         self._setListenFailure()
+        self.lastCheckListeningTime = time.time()
+        self.listeningRefreshTime = 120
+        self.listenPortTTL = 3600
 
         GNRServer.__init__(self, configDesc, factory, useIp6)
 
@@ -105,6 +108,7 @@ class PendingConnectionsServer(GNRServer):
     def _addPendingListening(self, type, port, args):
         pl = PendingListening(type, port, self.listenEstablishedForType[type],
                               self.listenFailureForType[type], args)
+        pl.args = (pl.id, ) + pl.args
         self.pendingListenings.append(pl)
 
     #############################
@@ -129,6 +133,20 @@ class PendingConnectionsServer(GNRServer):
                 conn.lastTryTime = time.time()
                 Network.connectToHost(conn.hostInfos, self.sessionClass, conn.established, conn.failure,
                                       conn.id, *conn.args)
+
+    #############################
+    def _removeOldListenings(self):
+        cntTime = time.time()
+        if cntTime - self.lastCheckListeningTime > self.listeningRefreshTime:
+            self.lastCheckListeningTime = time.time()
+            listeningsToRemove = []
+            for olId, listening in self.openListenings.iteritems():
+                if cntTime - listening.time > self.listenPortTTL:
+                    if listening.listenPort:
+                       listening.listenPort.stopListening()
+                    listeningsToRemove.append(olId)
+            for olId in listeningsToRemove:
+                del self.openListenings[olId]
 
     #############################
     def _getHostInfos(self, nodeInfo, port, keyId):
@@ -200,3 +218,5 @@ class PendingListening:
         self.args = args
         self.port = port
         self.type = type
+        self.tries = 0
+        self.listeningPort = None

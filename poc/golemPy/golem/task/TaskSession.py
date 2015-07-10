@@ -360,7 +360,7 @@ class TaskSession(MidNetSession):
     def _reactToRandVal(self, msg):
         if self.randVal == msg.randVal:
             self.verified = True
-            self.taskServer.verifiedConn(self.connId)
+            self.taskServer.verifiedConn(self.connId, )
             for msg in self.msgsToSend:
                 self._send(msg)
             self.msgsToSend = []

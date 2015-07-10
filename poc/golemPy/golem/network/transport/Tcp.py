@@ -103,7 +103,7 @@ class Network:
 
         d = ep.listen(factory)
 
-        d.addCallback(cls.__listeningEstablished, establishedCallback)
+        d.addCallback(cls.__listeningEstablished, establishedCallback, *args)
         d.addErrback(cls.__listeningFailure, port, portEnd, factory, ownReactor, establishedCallback, failureCallback, useIp6, *args)
 
     ######################
@@ -134,9 +134,14 @@ class Network:
 
     ######################
     @classmethod
-    def __listeningEstablished(cls, iListeningPort, establishedCallback):
-        if establishedCallback:
-            establishedCallback(iListeningPort)
+    def __listeningEstablished(cls, listeningPort, establishedCallback, *args):
+        if establishedCallback is None:
+            return
+
+        if len(args) == 0:
+            establishedCallback(listeningPort)
+        else:
+            establishedCallback(listeningPort, args)
 
     ######################
     @classmethod

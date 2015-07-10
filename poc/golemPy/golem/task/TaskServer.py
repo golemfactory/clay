@@ -51,6 +51,7 @@ class TaskServer(PendingConnectionsServer):
         self.__removeOldTasks()
         self.__sendWaitingResults()
         self.__removeOldSessions()
+        self._removeOldListenings()
         self.__sendPayments()
         self.__checkPayments()
 
@@ -382,6 +383,7 @@ class TaskServer(PendingConnectionsServer):
         self.client.informAboutTaskNatHole(askingNode.key, clientKeyId, addr, port)
 
 
+    #############################
     def traverseNat(self, keyId, addr, port):
         Network.connect(addr, port, self.sessionClass, self.__connectionForTraverseNatEstablished,
                         self.__connectionForTraverseNatFailure, keyId)
@@ -407,13 +409,22 @@ class TaskServer(PendingConnectionsServer):
         # sys.exit(0)
 
     #############################
-    def _listeningForStartSessionEstablished(self, listeningPort):
+    def _listeningForStartSessionEstablished(self, listeningPort, listenId, superNode, askingNode, destNode, askConnId):
         logger.debug("Listening on port {}".format(listeningPort.getHost().port))
+        listening = self.openListenings.get(listenId)
+        if listening:
+            self.listening.time = time.time()
+            self.listening.listeningPort = listeningPort
+        else:
+            logger.warning("Listening {} not in open listenings list".format(listenId))
 
     #############################
-    def _listeningForStartSessionFailure(self, p, superNode, askingNode, destNode, askConnId):
-        logger.error("Listening failure {}".format(p))
-        self.__connectionForNatPunchFailure(None, superNode, askingNode, destNode, askConnId)
+    def _listeningForStartSessionFailure(self, err, listenId, superNode, askingNode, destNode, askConnId):
+        logger.error("Listening failure {}".format(err))
+        if listenId in self.openListenings:
+            del self.openListenings['listenId']
+
+        self.__connectionForNatPunchFailure(listenId, superNode, askingNode, destNode, askConnId)
 
     #############################
     #   CONNECTION REACTIONS    #
