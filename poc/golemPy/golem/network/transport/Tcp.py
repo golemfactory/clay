@@ -141,7 +141,7 @@ class Network:
         if len(args) == 0:
             establishedCallback(listeningPort)
         else:
-            establishedCallback(listeningPort, args)
+            establishedCallback(listeningPort, *args)
 
     ######################
     @classmethod

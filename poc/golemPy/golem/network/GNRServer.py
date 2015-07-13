@@ -46,8 +46,8 @@ class GNRServer:
 
     #############################
     def _listenOnPort(self, port, listeningEstablished, listeningFailure, extraData):
-        Network.listen(port, port, self._getFactory(), None,listeningEstablished, listeningFailure, self.useIp6,
-                       extraData)
+        Network.listen(port, port, self._getFactory(), None, listeningEstablished, listeningFailure, self.useIp6,
+                      *extraData)
 
     #############################
     def _getFactory(self):
@@ -73,9 +73,11 @@ class PendingConnectionsServer(GNRServer):
         self.pendingConnections = {}
         self.connEstablishedForType = {}
         self.connFailureForType = {}
+        self.connFinalFailureForType = {}
         self.sessionClass = sessionClass
         self._setConnEstablished()
         self._setConnFailure()
+        self._setConnFinalFailure()
 
         self.pendingListenings = deque([])
         self.openListenings = {}
@@ -93,6 +95,15 @@ class PendingConnectionsServer(GNRServer):
     #############################
     def verifiedConn(self, connId):
         if connId in self.pendingConnections:
+            del self.pendingConnections[connId]
+        else:
+            logger.error("Connection {} is unknown".format(connId))
+
+    #############################
+    def finalConnFailure(self, connId):
+        conn = self.pendingConnections.get(connId)
+        if conn:
+            self.connFinalFailureForType[conn.type](connId, *conn.args)
             del self.pendingConnections[connId]
         else:
             logger.error("Connection {} is unknown".format(connId))
@@ -125,7 +136,7 @@ class PendingConnectionsServer(GNRServer):
         #TODO Zmiany dla innych statusow
         for conn in conns:
             if len(conn.hostInfos) == 0:
-                conn.status = PenConnStatus.WaitingGlobal
+                conn.status = PenConnStatus.WaitingAlt
                 conn.failure(conn.id, *conn.args)
                 #TODO Dalsze dzialanie w razie neipowodzenia
             else:
@@ -161,6 +172,10 @@ class PendingConnectionsServer(GNRServer):
         pass
 
     #############################
+    def _setConnFinalFailure(self):
+        pass
+
+    #############################
     def _setListenEstablished(self):
         pass
 
@@ -187,7 +202,7 @@ class PenConnStatus:
     Waiting = 2
     Connected = 3
     Failure = 4
-    WaitingGlobal = 5
+    WaitingAlt = 5
 
 #######################################################################################
 class PendingConnection:
@@ -204,8 +219,6 @@ class PendingConnection:
         self.args = args
         self.type = type
         self.status = PenConnStatus.Inactive
-
-        self.rendezvousPorts = []
 
 class PendingListening:
 

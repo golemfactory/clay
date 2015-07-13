@@ -517,27 +517,72 @@ class MessageNatHole(Message):
     KEY_ID_STR = u"KEY_ID"
     ADDR_STR = u"ADDR"
     PORT_STR = u"PORT"
+    CONN_ID_STR = u"CONN_ID"
 
-    def __init__(self, keyId=None, addr=None, port=None, sig="", timestamp=None,
+    def __init__(self, keyId=None, addr=None, port=None, connId=None, sig="", timestamp=None,
                  dictRepr=None):
         Message.__init__(self, MessageNatHole.Type, sig, timestamp)
 
         self.keyId = keyId
         self.addr = addr
         self.port = port
+        self.connId = connId
 
         if dictRepr:
             self.keyId = dictRepr[MessageNatHole.KEY_ID_STR]
             self.addr = dictRepr[MessageNatHole.ADDR_STR]
             self.port = dictRepr[MessageNatHole.PORT_STR]
+            self.connId = dictRepr[MessageNatHole.CONN_ID_STR]
 
     def dictRepr(self):
         return {
             MessageNatHole.KEY_ID_STR: self.keyId,
             MessageNatHole.ADDR_STR: self.addr,
-            MessageNatHole.PORT_STR: self.port
+            MessageNatHole.PORT_STR: self.port,
+            MessageNatHole.CONN_ID_STR: self.connId
         }
 
+class MessageNatTraverseFailure(Message):
+
+    Type = 20
+
+    CONN_ID_STR = u"CONN_ID"
+
+    def __init__(self, connId=None, sig="", timestamp=None, dictRepr=None):
+        Message.__init__(self, MessageNatTraverseFailure.Type, sig, timestamp)
+
+        self.connId = connId
+
+        if dictRepr:
+            self.connId = dictRepr[MessageNatTraverseFailure.connId]
+
+    def dictRepr(self):
+        return {
+            MessageNatTraverseFailure.CONN_ID_STR: self.connId
+        }
+
+class MessageInformAboutNatTraverseFailure(Message):
+
+    Type = 21
+
+    KEY_ID_STR = u"KEY_ID"
+    CONN_ID_STR = u"CONN_ID"
+
+    def __init__(self, keyId=None, connId=None, sig="", timestamp=None, dictRepr=None):
+        Message.__init__(self, MessageNatTraverseFailure.Type, sig, timestamp)
+
+        self.keyId = keyId
+        self.connId = connId
+
+        if dictRepr:
+            self.keyId = dictRepr[MessageNatTraverseFailure.keyId]
+            self.connId = dictRepr[MessageNatTraverseFailure.connId]
+
+    def dictRepr(self):
+        return {
+            MessageNatTraverseFailure.KEY_ID_STR: self.keyId,
+            MessageNatTraverseFailure.CONN_ID_STR: self.connId
+        }
 
 TASK_MSG_BASE = 2000
 
@@ -1290,6 +1335,8 @@ def initMessages():
     MessageWantToStartTaskSession()
     MessageSetTaskSession()
     MessageNatHole()
+    MessageNatTraverseFailure()
+    MessageInformAboutNatTraverseFailure()
 
     MessageTaskToCompute()
     MessageWantToComputeTask()
@@ -1312,6 +1359,7 @@ def initMessages():
     MessageNatPunch()
     MessageWaitForNatTraverse()
     MessageNatPunchFailure()
+    MessageNatTraverseFailure()
 
     MessageNewNodes()
     MessageSubtaskResultAccepted()

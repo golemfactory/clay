@@ -342,6 +342,7 @@ class P2PService:
     ############################
     def wantToStartTaskSession(self, keyId, nodeInfo, connId, superNodeInfo=None):
         logger.debug("Try to start task sesion {}".format(keyId))
+        msgSnd = False
         for peer in self.peers.itervalues():
             if peer.clientKeyId == keyId:
                 peer.sendWantToStartTaskSession(nodeInfo, connId, superNodeInfo)
@@ -350,23 +351,47 @@ class P2PService:
         for peer in self.peers.itervalues():
             if peer.clientKeyId != nodeInfo.key:
                 peer.sendSetTaskSession(keyId, nodeInfo, connId, superNodeInfo)
+                msgSnd = True
+
         #TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
 
+        if not msgSnd and nodeInfo.key == self.getKeyId():
+            self.taskServer.finalConnFailure(connId)
+
     ############################
-    def informAboutTaskNatHole(self, keyId, rvKeyId, addr, port):
+    def informAboutTaskNatHole(self, keyId, rvKeyId, addr, port, ansConnId):
         logger.debug("Nat hole ready {}:{}".format(addr,port))
         for peer in self.peers.itervalues():
             if peer.clientKeyId == keyId:
-                peer.sendTaskNatHole(rvKeyId, addr, port)
+                peer.sendTaskNatHole(rvKeyId, addr, port, ansConnId)
                 return
 
     ############################
-    def traverseNat(self, keyId, addr, port):
-        self.taskServer.traverseNat(keyId, addr, port)
+    def traverseNat(self, keyId, addr, port, connId, superKeyId):
+        self.taskServer.traverseNat(keyId, addr, port, connId, superKeyId)
 
     ############################
-    def peerWantTaskSession(self, nodeInfo, superNodeInfo):
-        self.taskServer.startTaskSession(nodeInfo, superNodeInfo)
+    def informAboutNatTraverseFailure(self, keyId, resKeyId, connId):
+        for peer in self.peers.itervalues():
+            if peer.clientKeyId == keyId:
+                peer.sendInformAboutNatTraverseFailure(resKeyId, connId)
+        #TODO CO jak juz nie ma polaczenia?
+
+    ############################
+    def sendNatTraverseFailure(self, keyId, connId):
+        for peer in self.peers.itervalues():
+            if peer.clientKeyId == keyId:
+                peer.sendNatTraverseFailure(connId)
+        #TODO Co jak nie ma tego polaczenia
+
+    ############################
+    def traverseNatFailure(self, connId):
+        self.taskServer.traverseNatFailure(connId)
+
+    ############################
+    def peerWantTaskSession(self, nodeInfo, superNodeInfo, connId):
+        #TODO Reakcja powinna nastapic tylko na pierwszy taki komunikat
+        self.taskServer.startTaskSession(nodeInfo, superNodeInfo, connId)
 
     ############################
     def peerWantToSetTaskSession(self, keyId, nodeInfo, connId, superNodeInfo):

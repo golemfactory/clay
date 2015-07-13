@@ -321,10 +321,13 @@ class Client:
     def wantToStartTaskSession(self, keyId, nodeId, connId):
         self.p2pservice.wantToStartTaskSession(keyId, nodeId, connId)
 
-    #FIXME
     ############################
-    def informAboutTaskNatHole(self, keyId, rvKeyId, addr, port):
-        self.p2pservice.informAboutTaskNatHole(keyId, rvKeyId, addr, port)
+    def informAboutTaskNatHole(self, keyId, rvKeyId, addr, port, ansConnId):
+        self.p2pservice.informAboutTaskNatHole(keyId, rvKeyId, addr, port, ansConnId)
+
+    ############################
+    def informAboutNatTraverseFailure(self, keyId, resKeyId, connId):
+        self.p2pservice.informAboutNatTraverseFailure(keyId, resKeyId, connId)
 
     #TRANSACTION SYSTEM OPERATIONS
     ############################
