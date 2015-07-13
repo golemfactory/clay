@@ -60,14 +60,14 @@ def __readFromEnvironment():
 def isWindows():
     return sys.platform == 'win32'
 
-def execCmd(cmd, nice = 20):
+def execCmd(cmd, nice=20):
     pc = subprocess.Popen(cmd)
     if isWindows():
         import win32process
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
     else:
         p = psutil.Process(pc.pid)
-        p.set_nice(nice)
+        p.nice(nice)
 
     pc.wait()
 

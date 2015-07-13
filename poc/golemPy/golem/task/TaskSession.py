@@ -4,32 +4,38 @@ import struct
 import logging
 import os
 
-from golem.Message import MessageHello, MessageRandVal, MessageWantToComputeTask, MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure
+from golem.Message import MessageHello, MessageRandVal, MessageWantToComputeTask, MessageTaskToCompute, \
+    MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, \
+    MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
+    MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
+    MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
+    MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse
 from golem.network.FileProducer import EncryptFileProducer
 from golem.network.FileConsumer import DecryptFileConsumer
 from golem.network.DataProducer import DataProducer
 from golem.network.DataConsumer import DataConsumer
 from golem.network.MultiFileProducer import EncryptMultiFileProducer
 from golem.network.MultiFileConsumer import DecryptMultiFileConsumer
-from golem.network.NetAndFilesConnState import NetAndFilesConnState
-from golem.network.p2p.Session import NetSession
+from golem.network.NetAndFilesConnState import MidNetAndFilesConnState
+from golem.network.p2p.Session import MidNetSession
 from golem.task.TaskBase import resultTypes
 from golem.resource.Resource import decompressDir
 from golem.transactions.EthereumPaymentsKeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 
-class TaskSession(NetSession):
+class TaskSession(MidNetSession):
 
-    ConnectionStateType = NetAndFilesConnState
+    ConnectionStateType = MidNetAndFilesConnState
 
     ##########################
     def __init__(self, conn):
-        NetSession.__init__(self, conn)
+        MidNetSession.__init__(self, conn)
         self.taskServer     = None
         self.taskManager    = None
         self.taskComputer   = None
         self.taskId         = 0
+        self.connId         = None
 
         self.msgsToSend = []
 
@@ -80,12 +86,30 @@ class TaskSession(NetSession):
         self._send(MessageHello(clientKeyId = self.taskServer.getKeyId(), randVal = self.randVal), sendUnverified=True)
 
     ##########################
+    def sendStartSessionResponse(self, connId):
+        self._send(MessageStartSessionResponse(connId))
+
+    ##########################
+    def sendMiddleman(self, askingNode, destNode, askConnId):
+        self.askingNodeKeyId = askingNode.key
+        self._send(MessageMiddleman(askingNode, destNode, askConnId))
+
+    ##########################
+    def sendJoinMiddlemanConn(self, keyId, connId, destNodeKeyId):
+        self._send(MessageJoinMiddlemanConn(keyId, connId, destNodeKeyId))
+
+    ##########################
+    def sendNatPunch(self, askingNode, destNode, askConnId):
+        self.askingNodeKeyId = askingNode.key
+        self._send(MessageNatPunch(askingNode, destNode, askConnId))
+
+    ##########################
     def interpret(self, msg):
-       # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
+        # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
 
         self.taskServer.setLastMessage("<-", time.localtime(), msg, self.address, self.port)
 
-        NetSession.interpret(self, msg)
+        MidNetSession.interpret(self, msg)
 
     ##########################
     def dropped(self):
@@ -115,9 +139,13 @@ class TaskSession(NetSession):
             msg =  self.taskServer.decrypt(msg)
         except AssertionError:
             logger.warning("Failed to decrypt message, maybe it's not encrypted?")
+        except Exception, err:
+            logger.warning("Fail to decrypt message {}".format(str(err)))
+            self.dropped()
+            #self.disconnect(TaskSession.DCRWrongEncryption)
+            return None
 
         return msg
-
 
     ##########################
     def sign(self, msg):
@@ -332,20 +360,67 @@ class TaskSession(NetSession):
     def _reactToRandVal(self, msg):
         if self.randVal == msg.randVal:
             self.verified = True
+            self.taskServer.verifiedConn(self.connId, )
             for msg in self.msgsToSend:
                 self._send(msg)
             self.msgsToSend = []
         else:
             self.disconnect(TaskSession.DCRUnverified)
 
+    ##########################
+    def _reactToStartSessionResponse(self, msg):
+        self.taskServer.respondTo(self.clientKeyId, self, msg.connId)
+
+    ##########################
+    def _reactToMiddleman(self, msg):
+        self._send(MessageBeingMiddlemanAccepted())
+        self.taskServer.beAMiddleman(self.clientKeyId, self, self.connId, msg.askingNode, msg.destNode,
+                                     msg.askConnId)
+
+    ##########################
+    def _reactToJoinMiddlemanConn(self, msg):
+        self.middlemanConnData = {'keyId': msg.keyId, 'connId': msg.connId, 'destNodeKeyId': msg.destNodeKeyId }
+        self._send(MessageMiddlemanAccepted())
+
+    ##########################
+    def _reactToMiddlemanReady(self, msg):
+        keyId = self.middlemanConnData['keyId']
+        connId = self.middlemanConnData['connId']
+        destNodeKeyId = self.middlemanConnData['destNodeKeyId']
+        self.taskServer.respondToMiddleman(keyId, self, connId, destNodeKeyId)
+
+    ##########################
+    def _reactToBeingMiddlemanAccepted(self, msg):
+        self.clientKeyId = self.askingNodeKeyId
+
+    ##########################
+    def _reactToMiddlemanAccepted(self, msg):
+        self._send(MessageMiddlemanReady())
+        self.isMiddleman = True
+        self.openSession.isMiddleman = True
+
+    ##########################
+    def _reactToNatPunch(self, msg):
+        self.taskServer.organizeNatPunch(self.address, self.port, self.clientKeyId, msg.askingNode, msg.destNode,
+                                           msg.askConnId)
+        self._send(MessageWaitForNatTraverse(self.port))
+        self.dropped()
+
+    ##########################
+    def _reactToWaitForNatTraverse(self, msg):
+        self.taskServer.waitForNatTraverse(msg.port, self)
+
+    ##########################
+    def _reactToNatPunchFailure(self, msg):
+        pass #TODO Powiadomienie drugiego wierzcholka o nieudanym rendezvous
 
     ##########################
     def _send(self, msg, sendUnverified=False):
-        if not self.verified and not sendUnverified:
+        if not self.isMiddleman and not self.verified and not sendUnverified:
             self.msgsToSend.append(msg)
             return
-        NetSession._send(self, msg, sendUnverified=sendUnverified)
-       #print "Task Session Sending to {}:{}: {}".format(self.address, self.port, msg)
+        MidNetSession._send(self, msg, sendUnverified=sendUnverified)
+        # print "Task Session Sending to {}:{}: {}".format(self.address, self.port, msg)
         self.taskServer.setLastMessage("->", time.localtime(), msg, self.address, self.port)
 
     ##########################
@@ -419,11 +494,19 @@ class TaskSession(NetSession):
                                 MessageDeltaParts.Type: self._reactToDeltaParts,
                                 MessageResourceFormat.Type: self._reactToResourceFormat,
                                 MessageHello.Type: self._reactToHello,
-                                MessageRandVal.Type: self._reactToRandVal
+                                MessageRandVal.Type: self._reactToRandVal,
+                                MessageStartSessionResponse.Type: self._reactToStartSessionResponse,
+                                MessageMiddleman.Type: self._reactToMiddleman,
+                                MessageMiddlemanReady.Type: self._reactToMiddlemanReady,
+                                MessageBeingMiddlemanAccepted.Type: self._reactToBeingMiddlemanAccepted,
+                                MessageMiddlemanAccepted.Type: self._reactToMiddlemanAccepted,
+                                MessageJoinMiddlemanConn.Type: self._reactToJoinMiddlemanConn,
+                                MessageNatPunch.Type: self._reactToNatPunch,
+                                MessageWaitForNatTraverse.Type: self._reactToWaitForNatTraverse
                             })
 
 
-        self.canBeNotEncrypted.append(MessageHello.Type)
+       # self.canBeNotEncrypted.append(MessageHello.Type)
         self.canBeUnsigned.append(MessageHello.Type)
         self.canBeUnverified.extend([MessageHello.Type, MessageRandVal.Type])
 

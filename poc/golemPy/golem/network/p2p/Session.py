@@ -64,6 +64,8 @@ class Session(SessionInterface):
         self.lastDisconnectTime = None
         self.interpretation = { MessageDisconnect.Type: self._reactToDisconnect }
 
+        self.extraData = {}
+
     ##########################
     def interpret(self, msg):
         self.lastMessageTime = time.time()
@@ -82,6 +84,10 @@ class Session(SessionInterface):
     ##########################
     def dropped(self):
         self.conn.close()
+
+    ##########################
+    def closeNow(self):
+        self.conn.closeNow()
 
     ##########################
     def disconnect(self, reason):
@@ -126,6 +132,7 @@ class NetSession(Session, NetSessionInterface):
     DCROldMessage       = "Message expired"
     DCRWrongTimestamp   = "Wrong timestamp"
     DCRUnverified       = "Unverifed connection"
+    DCRWrongEncryption  = "Wrong encryption"
 
     ##########################
     def __init__(self, conn):
@@ -203,3 +210,51 @@ class NetSession(Session, NetSessionInterface):
             return False
 
         return True
+
+##############################################################################
+class MidNetSession(NetSession):
+    ##########################
+    def __init__(self, conn):
+        NetSession.__init__(self, conn)
+
+        self.isMiddleman = False
+        self.openSession = None
+        self.askingNodeKeyId = None
+        self.middlemanConnData = None
+
+    ##########################
+    def _send(self, message, sendUnverified=False):
+        if not self.isMiddleman:
+            NetSession._send(self, message, sendUnverified)
+        else:
+            Session._send(self, message)
+
+    ##########################
+    def _checkMsg(self, msg):
+        if not self.isMiddleman:
+            return NetSession._checkMsg(self, msg)
+        else:
+            return Session._checkMsg(self, msg)
+
+    ##########################
+    def interpret(self, msg):
+        if not self.isMiddleman:
+            NetSession.interpret(self, msg)
+        else:
+            self.lastMessageTime = time.time()
+
+            if self.openSession is None:
+                logger.error("Destination session for middleman don't exist")
+                self.dropped()
+            self.openSession._send(msg)
+
+    ##########################
+    def dropped(self):
+        if not self.isMiddleman:
+            NetSession.dropped(self)
+        else:
+            if self.openSession:
+                openSession = self.openSession
+                self.openSession = None
+                openSession.dropped()
+            NetSession.dropped(self)

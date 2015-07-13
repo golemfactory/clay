@@ -73,7 +73,7 @@ class TaskManager:
         task.header.taskOwnerAddress = self.listenAddress
         task.header.taskOwnerPort = self.listenPort
         task.header.taskOwnerKeyId = self.keyId
-        self.node.pubAddr, self.node.pubPort = getExternalAddress(self.listenPort)
+        self.node.pubAddr, self.node.pubPort, self.node.natType = getExternalAddress(self.listenPort)
         task.header.taskOwner = self.node
 
         task.initialize()

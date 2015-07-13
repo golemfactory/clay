@@ -3,22 +3,23 @@ from golem.core.hostaddress import getHostAddress, getExternalAddress, getHostAd
 ##########################################################
 class Node:
     #############################
-    def __init__(self, nodeId=None, key=None, prvAddr=None, prvPort=None, pubAddr=None, pubPort=None):
+    def __init__(self, nodeId=None, key=None, prvAddr=None, prvPort=None, pubAddr=None, pubPort=None, natType=None):
         self.nodeId = nodeId
         self.key = key
         self.prvAddr = prvAddr
         self.prvPort = prvPort
         self.pubAddr = pubAddr
         self.pubPort = pubPort
+        self.natType = natType
         self.prvAddresses = []
 
     #############################
     def collectNetworkInfo(self, seedHost=None, useIp6=False):
         self.prvAddr = getHostAddress(seedHost, useIp6)
         if self.prvPort:
-            self.pubAddr, self.pubPort = getExternalAddress(self.prvPort)
+            self.pubAddr, self.pubPort, self.natType = getExternalAddress(self.prvPort)
         else:
-            self.pubAddr, _ = getExternalAddress()
+            self.pubAddr, _, self.natType = getExternalAddress()
         self.prvAddresses = getHostAddresses(useIp6)
 
     #############################

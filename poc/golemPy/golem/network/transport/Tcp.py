@@ -5,10 +5,14 @@ import ipaddr
 
 logger = logging.getLogger(__name__)
 
+
 class HostData:
     def __init__(self, addr, port):
         self.addr = addr
         self.port = port
+
+    def __eq__(self, other):
+        return self.addr == other.addr and self.port == other.port
 
 def nodeInfoToHostInfos(nodeInfo, port):
     hostInfos = [HostData(i, port) for i in nodeInfo.prvAddresses]
@@ -18,6 +22,7 @@ def nodeInfoToHostInfos(nodeInfo, port):
         hostInfos.append(HostData(nodeInfo.pubAddr, port))
     return hostInfos
 
+
 class Network:
 
     ######################
@@ -25,6 +30,7 @@ class Network:
     def connect(cls, address, port, SessionType, establishedCallback=None, failureCallback=None, *args):
         logger.debug("Connecting to host {} : {}".format(address, port))
         useIp6 = False
+
         from twisted.internet import reactor
         try:
             ip = ipaddr.IPAddress(address)
@@ -75,12 +81,14 @@ class Network:
 
     ######################
     @classmethod
-    def listen(cls, portStart, portEnd, factory, ownReactor=None, establishedCallback=None, failureCallback=None, useIp6=True):
-        Network.__listenOnce(portStart, portEnd, factory, ownReactor, establishedCallback, failureCallback, useIp6)
+    def listen(cls, portStart, portEnd, factory, ownReactor=None, establishedCallback=None, failureCallback=None,
+               useIp6=True, *args):
+        Network.__listenOnce(portStart, portEnd, factory, ownReactor, establishedCallback, failureCallback,
+                             useIp6, *args)
 
     ######################
     @classmethod
-    def __listenOnce(cls, port, portEnd, factory, ownReactor=None, establishedCallback=None, failureCallback=None, useIp6=False):
+    def __listenOnce(cls, port, portEnd, factory, ownReactor=None, establishedCallback=None, failureCallback=None, useIp6=False, *args):
         if ownReactor:
             if useIp6:
                 ep = TCP6ServerEndpoint(ownReactor, port)
@@ -95,8 +103,8 @@ class Network:
 
         d = ep.listen(factory)
 
-        d.addCallback(cls.__listeningEstablished, establishedCallback)
-        d.addErrback(cls.__listeningFailure, port, portEnd, factory, ownReactor, establishedCallback, failureCallback, useIp6)
+        d.addCallback(cls.__listeningEstablished, establishedCallback, *args)
+        d.addErrback(cls.__listeningFailure, port, portEnd, factory, ownReactor, establishedCallback, failureCallback, useIp6, *args)
 
     ######################
     @classmethod
@@ -126,16 +134,21 @@ class Network:
 
     ######################
     @classmethod
-    def __listeningEstablished(cls, iListeningPort, establishedCallback):
-        if establishedCallback:
-            establishedCallback(iListeningPort)
+    def __listeningEstablished(cls, listeningPort, establishedCallback, *args):
+        if establishedCallback is None:
+            return
+
+        if len(args) == 0:
+            establishedCallback(listeningPort)
+        else:
+            establishedCallback(listeningPort, *args)
 
     ######################
     @classmethod
-    def __listeningFailure(cls, p, curPort, endPort, factory, ownReactor, establishedCallback, failureCallback, useIp6=False):
+    def __listeningFailure(cls, p, curPort, endPort, factory, ownReactor, establishedCallback, failureCallback, useIp6=False, *args):
         if curPort < endPort:
             curPort += 1
-            Network.__listenOnce(curPort, endPort, factory, ownReactor, establishedCallback, failureCallback, useIp6)
+            Network.__listenOnce(curPort, endPort, factory, ownReactor, establishedCallback, failureCallback, useIp6, *args)
         else:
             if failureCallback:
-                failureCallback(p)
+                failureCallback(p, *args)

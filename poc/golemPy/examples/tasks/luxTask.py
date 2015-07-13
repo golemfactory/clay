@@ -11,7 +11,7 @@ import shutil
 
 def formatLuxRendererCmd(cmdFile, startTask, outputFile, outfilebasename, scenefile, numThreads):
     cmd = ["{}".format(cmdFile), "{}".format(scenefile), "-o",
-           "{}\{}{}.png".format(outputFile, outfilebasename, startTask), "-q", "-t", "{}".format(numThreads) ]
+           "{}/{}{}.png".format(outputFile, outfilebasename, startTask), "-t", "{}".format(numThreads) ]
     print cmd
     return cmd
 
@@ -64,14 +64,14 @@ def returnFiles(files):
 def isWindows():
     return sys.platform == 'win32'
 
-def execCmd(cmd, nice = 20):
+def execCmd(cmd, nice=20):
     pc = subprocess.Popen(cmd)
     if isWindows():
         import win32process
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
     else:
         p = psutil.Process(pc.pid)
-        p.set_nice(nice)
+        p.nice(nice)
 
     pc.wait()
 
@@ -97,20 +97,19 @@ def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, numCo
     print 'LuxRenderer Task'
 
     outputFiles = tmpPath
-    print "outputFiles " + str(outputFiles)
 
     files = glob.glob(outputFiles + "/*.png") + glob.glob(outputFiles + "/*.flm")
 
     for f in files:
         os.remove(f)
 
+    sceneDir = os.path.normpath(os.path.join(os.getcwd(), sceneDir))
     tmpSceneFile = makeTmpFile(sceneDir, sceneFileSrc)
 
     if ownBinaries:
         cmdFile = luxConsole
     else:
         cmdFile = __readFromEnvironment()
-    print "cmdFile " + cmdFile
     if os.path.exists(tmpSceneFile):
         print tmpSceneFile
         cmd = formatLuxRendererCmd(cmdFile, startTask, outputFiles, outfilebasename, tmpSceneFile, numThreads)

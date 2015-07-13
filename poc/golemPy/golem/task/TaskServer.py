@@ -2,6 +2,8 @@ import time
 import os
 import logging
 
+from collections import deque
+
 from TaskManager import TaskManager
 from TaskComputer import TaskComputer
 from TaskSession import TaskSession
@@ -9,22 +11,20 @@ from TaskKeeper import TaskKeeper
 
 from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
 from golem.ranking.Ranking import RankingStats
-from golem.core.hostaddress import getExternalAddress
+from golem.network.GNRServer import PendingConnectionsServer, PendingConnection, PenConnStatus
 
 logger = logging.getLogger(__name__)
 
-class TaskServer:
+class TaskServer(PendingConnectionsServer):
     #############################
     def __init__(self, node, configDesc, keysAuth, client, useIp6=False):
         self.client             = client
         self.keysAuth           = keysAuth
-
         self.configDesc         = configDesc
 
         self.node               = node
-        self.curPort            = configDesc.startPort
         self.taskKeeper         = TaskKeeper()
-        self.taskManager        = TaskManager(configDesc.clientUid, self.node, keyId = self.keysAuth.getKeyId(), rootPath = self.__getTaskManagerRoot(configDesc), useDistributedResources = self.configDesc.useDistributedResourceManagement)
+        self.taskManager        = TaskManager(configDesc.clientUid, self.node, keyId = self.keysAuth.getKeyId(), rootPath = self.__getTaskManagerRoot(configDesc), useDistributedResources = configDesc.useDistributedResourceManagement)
         self.taskComputer       = TaskComputer(configDesc.clientUid, self)
         self.taskSessions       = {}
         self.taskSessionsIncoming = []
@@ -39,14 +39,19 @@ class TaskServer:
         self.failuresToSend     = {}
 
         self.useIp6=useIp6
-        self.__startAccepting()
+
+        self.responseList = {}
+
+        PendingConnectionsServer.__init__(self, configDesc, TaskServerFactory, TaskSession, useIp6)
 
     #############################
     def syncNetwork(self):
         self.taskComputer.run()
+        self._syncPending()
         self.__removeOldTasks()
         self.__sendWaitingResults()
         self.__removeOldSessions()
+        self._removeOldListenings()
         self.__sendPayments()
         self.__checkPayments()
 
@@ -59,17 +64,11 @@ class TaskServer:
             trust = self.client.getRequestingTrust(theader.clientId)
             logger.debug("Requesting trust level: {}".format(trust))
             if trust >= self.configDesc.requestingTrust:
-                self.__connectAndSendTaskRequest(self.configDesc.clientUid,
-                                              theader.taskOwnerPort,
-                                              theader.taskOwnerKeyId,
-                                              theader.taskOwner,
-                                              theader.taskId,
-                                              self.configDesc.estimatedPerformance,
-                                              self.configDesc.maxResourceSize,
-                                              self.configDesc.maxMemorySize,
-                                              self.configDesc.numCores)
-
-
+                args = (self.configDesc.clientUid, theader.taskOwnerKeyId, theader.taskId,
+                        self.configDesc.estimatedPerformance, self.configDesc.maxResourceSize,
+                        self.configDesc.maxMemorySize, self.configDesc.numCores)
+                self._addPendingRequest(TaskConnTypes.TaskRequest, theader.taskOwner, theader.taskOwnerPort,
+                                         theader.taskOwnerKeyId, args)
 
                 return theader.taskId
 
@@ -77,7 +76,8 @@ class TaskServer:
 
     #############################
     def requestResource(self, subtaskId, resourceHeader, address, port, keyId, taskOwner):
-        self.__connectAndSendResourceRequest(address, port, keyId, taskOwner, subtaskId, resourceHeader)
+        args = (keyId, subtaskId, resourceHeader)
+        self._addPendingRequest(TaskConnTypes.ResourceRequest, taskOwner, port, keyId, args)
         return subtaskId
 
     #############################
@@ -155,6 +155,10 @@ class TaskServer:
 
     #############################
     def removeTaskSession(self, taskSession):
+        pc = self.pendingConnections.get(taskSession.connId)
+        if pc:
+            pc.status = PenConnStatus.Failure
+
         for tsk in self.taskSessions.keys():
             if self.taskSessions[tsk] == taskSession:
                 del self.taskSessions[tsk]
@@ -228,6 +232,7 @@ class TaskServer:
 
     #############################
     def changeConfig(self, configDesc):
+        PendingConnectionsServer.changeConfig(self, configDesc)
         self.configDesc = configDesc
         self.lastMessageTimeThreshold = configDesc.taskSessionTimeout
         self.taskManager.changeConfig(self.__getTaskManagerRoot(configDesc), configDesc.useDistributedResourceManagement)
@@ -302,7 +307,8 @@ class TaskServer:
     ###########################
     def localPayForTask(self, taskId, address, port, keyId, nodeInfo, price):
         logger.info("Paying {} for task {}".format(price, taskId))
-        self.__connectAndPayForTask(address, port, keyId, nodeInfo, taskId, price)
+        args = (keyId, taskId, price)
+        self._addPendingRequest(TaskConnTypes.PayForTask, nodeInfo, port, keyId, args)
 
     ###########################
     def globalPayForTask(self, taskId, payments):
@@ -311,14 +317,13 @@ class TaskServer:
         for ethAccount, v in globalPayments.iteritems():
             print "Global paying {} to {}".format(v, ethAccount)
 
-
     ###########################
     def rejectResult(self, subtaskId, accountInfo):
         mod = min(max(self.taskManager.getTrustMod(subtaskId), self.minTrust), self.maxTrust)
         self.client.decreaseTrust(accountInfo.nodeId, RankingStats.wrongComputed, mod)
-
-        self.__connectAndSendResultRejected(subtaskId, accountInfo.address, accountInfo.port, accountInfo.keyId,
-                                            accountInfo.nodeInfo)
+        args = (accountInfo.keyId, subtaskId)
+        self._addPendingRequest(TaskConnTypes.ResultRejected, accountInfo.nodeInfo, accountInfo.port,
+                                 accountInfo.keyId, args)
 
     ###########################
     def unpackDelta(self, destDir, delta, taskId):
@@ -329,70 +334,110 @@ class TaskServer:
         return self.client.getComputingTrust(nodeId)
 
     #############################
-    # PRIVATE SECTION
-    #############################
-    def __startAccepting(self):
-        logger.info("Enabling tasks accepting state")
-        Network.listen(self.configDesc.startPort, self.configDesc.endPort, TaskServerFactory(self), None, self.__listeningEstablished, self.__listeningFailure, self.useIp6)
+    def startTaskSession(self, nodeInfo, superNodeInfo, connId):
+        #FIXME Jaki port i adres startowy?
+        args = (nodeInfo.key, nodeInfo, superNodeInfo, connId)
+        self._addPendingRequest(TaskConnTypes.StartSession, nodeInfo, nodeInfo.prvPort, nodeInfo.key, args)
 
     #############################
-    def __listeningEstablished(self, iListeningPort):
-        port = iListeningPort.getHost().port
-        self.curPort = port
-        logger.info("Port {} opened - listening".format(port))
+    def respondTo(self, keyId, session, connId):
+        if connId in self.pendingConnections:
+            del self.pendingConnections[connId]
+
+        responses = self.responseList.get(keyId)
+        if responses is None or len(responses) == 0:
+            session.dropped()
+            return
+
+        res = responses.popleft()
+        res(session)
+
+    #############################
+    def respondToMiddleman(self, keyId, session, connId, destKeyId):
+        if destKeyId in self.responseList:
+            self.respondTo(destKeyId, session, connId)
+        else:
+            logger.warning("No response for {}".format(destKeyId))
+            session.dropped()
+
+
+    #############################
+    def beAMiddleman(self, keyId, openSession, connId, askingNode, destNode, askConnId):
+        keyId = askingNode.key
+        response = lambda session: self.__askingNodeForMiddlemanConnectionEstablished(session, connId, keyId, openSession,
+                                                                                      askingNode, destNode, askConnId)
+        if keyId in self.responseList:
+            self.responseList[keyId].append(response)
+        else:
+            self.responseList[keyId] = deque([response])
+
+        self.client.wantToStartTaskSession(keyId, self.node, connId)
+        openSession.isMiddleman = True
+
+    #############################
+    def waitForNatTraverse(self, port, session):
+        session.closeNow()
+        args = (session.extraData['superNode'], session.extraData['askingNode'], session.extraData['destNode'],
+                session.extraData['ansConnId'])
+        self._addPendingListening(TaskListenTypes.StartSession, port, args)
+
+    #############################
+    def organizeNatPunch(self, addr, port, clientKeyId, askingNode, destNode, ansConnId):
+        self.client.informAboutTaskNatHole(askingNode.key, clientKeyId, addr, port, ansConnId)
+
+    #############################
+    def traverseNat(self, keyId, addr, port, connId, superKeyId):
+        Network.connect(addr, port, self.sessionClass, self.__connectionForTraverseNatEstablished,
+                        self.__connectionForTraverseNatFailure, keyId, connId, superKeyId)
+
+    #############################
+    def traverseNatFailure(self, connId):
+        pc = self.pendingConnections.get(connId)
+        if pc:
+            pc.failure(connId, *pc.args)
+
+    #############################
+    def _getFactory(self):
+        return self.factory(self)
+
+    #############################
+    def _listeningEstablished(self, iListeningPort):
+        self.curPort = iListeningPort.getHost().port
+        self.iListeningPort = iListeningPort
+        logger.info(" Port {} opened - listening".format(self.curPort))
+        self.node.prvPort = self.curPort
         self.taskManager.listenAddress = self.node.prvAddr
         self.taskManager.listenPort = self.curPort
         self.taskManager.node = self.node
 
     #############################
-    def __listeningFailure(self, p):
-        self.curPort = 0
-        logger.error("Task server not listening")
+    def _listeningFailure(self, *args):
+        logger.error("Listening on ports {} to {} failure".format(self.configDesc.startPort, self.configDesc.endPort))
         #FIXME: some graceful terminations should take place here
         # sys.exit(0)
 
-    #############################   
-    def __connectAndSendTaskRequest(self, clientId, port, keyId, taskOwner, taskId,
-                                    estimatedPerformance, maxResourceSize, maxMemorySize, numCores):
-
-        #Test innej metody
-        # Network.connect(address, port, TaskSession, self.__connectionForTaskRequestEstablished,
-        #                 self.__connectionForTaskRequestFailure, clientId, keyId, taskId,
-        #                 estimatedPerformance, maxResourceSize, maxMemorySize, numCores)
-        hostInfos = self.__getHostInfos(taskOwner, port, keyId)
-        Network.connectToHost(hostInfos, TaskSession, self.__connectionForTaskRequestEstablished,
-                              self.__connectionForTaskRequestFailure, clientId, keyId, taskId, estimatedPerformance,
-                              maxResourceSize, maxMemorySize, numCores)
-
-    #############################   
-    def __connectAndSendResourceRequest(self, address, port, keyId, taskOwner, subtaskId, resourceHeader):
-        #Test Innej metody
-        # Network.connect(address, port, TaskSession, self.__connectionForResourceRequestEstablished,
-        #                 self.__connectionForResourceRequestFailure, keyId, subtaskId, resourceHeader)
-        hostInfos = self.__getHostInfos(taskOwner, port, keyId)
-        Network.connectToHost(hostInfos, TaskSession, self.__connectionForResourceRequestEstablished,
-                              self.__connectionForResourceRequestFailure, keyId, subtaskId, resourceHeader)
+    #############################
+    def _listeningForStartSessionEstablished(self, listeningPort, listenId, superNode, askingNode, destNode, askConnId):
+        logger.debug("Listening on port {}".format(listeningPort.getHost().port))
+        listening = self.openListenings.get(listenId)
+        if listening:
+            self.listening.time = time.time()
+            self.listening.listeningPort = listeningPort
+        else:
+            logger.warning("Listening {} not in open listenings list".format(listenId))
 
     #############################
-    def __connectAndSendResultRejected(self, subtaskId, address, port, keyId, taskOwner):
-        #Test innej metody
-        # Network.connect(address, port, TaskSession, self.__connectionForSendResultRejectedEstablished,
-        #                 self.__connectionForResultRejectedFailure, keyId, subtaskId)
-        hostInfos = self.__getHostInfos(taskOwner, port, keyId)
-        Network.connectToHost(hostInfos, TaskSession, self.__connectionForSendResultRejectedEstablished,
-                         self.__connectionForResultRejectedFailure, keyId, subtaskId)
+    def _listeningForStartSessionFailure(self, err, listenId, superNode, askingNode, destNode, askConnId):
+        logger.error("Listening failure {}".format(err))
+        if listenId in self.openListenings:
+            del self.openListenings['listenId']
+
+        self.__connectionForNatPunchFailure(listenId, superNode, askingNode, destNode, askConnId)
 
     #############################
-    def __connectAndPayForTask(self, address, port, keyId, taskOwner, taskId, price):
-        #Test innej metody
-        # Network.connect(address, port, TaskSession, self.__connectionForPayForTaskEstablished,
-        #                 self.__connectionForPayForTaskFailure, keyId, taskId, price)
-        hostInfos = self.__getHostInfos(taskOwner, port, keyId)
-        Network.connectToHost(hostInfos, TaskSession, self.__connectionForPayForTaskEstablished,
-                        self.__connectionForPayForTaskFailure, keyId, taskId, price)
-
+    #   CONNECTION REACTIONS    #
     #############################
-    def __connectionForTaskRequestEstablished(self, session, clientId, keyId, taskId, estimatedPerformance,
+    def __connectionForTaskRequestEstablished(self, session, connId, clientId, keyId, taskId, estimatedPerformance,
                                               maxResourceSize, maxMemorySize, numCores):
 
         session.taskId = taskId
@@ -400,43 +445,39 @@ class TaskServer:
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
+        session.connId = connId
+        self._markConnected(connId, session.address, session.port)
         self.taskSessions[taskId] = session
         session.sendHello()
         session.requestTask(clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores)
 
     #############################
-    def __connectionForTaskRequestFailure(self, clientId, keyId, taskId, estimatedPerformance, *args):
-        logger.warning("Cannot connect to task {} owner".format(taskId))
-        logger.warning("Removing task {} from task list".format(taskId))
+    def __connectionForTaskRequestFailure(self, connId, clientId, keyId, taskId, estimatedPerformance, maxResourceSize,
+                                          maxMemorySize, numCores, *args):
 
-        self.taskComputer.taskRequestRejected(taskId, "Connection failed")
-        self.taskKeeper.requestFailure(taskId)
+        response = lambda session: self.__connectionForTaskRequestEstablished(session, connId, clientId, keyId, taskId,
+                                                                                estimatedPerformance, maxResourceSize,
+                                                                                maxMemorySize, numCores)
+        if keyId in self.responseList:
+            self.responseList[keyId].append(response)
+        else:
+            self.responseList[keyId] = deque([response])
 
-    #############################   
-    def __connectAndSendTaskResults(self, address, port, keyId, taskOwner, waitingTaskResult):
-        #Test innej metody
-        # Network.connect(address, port, TaskSession, self.__connectionForTaskResultEstablished,
-        #                 self.__connectionForTaskResultFailure, keyId, waitingTaskResult)
-        hostInfos = self.__getHostInfos(taskOwner, port, keyId)
-        Network.connectToHost(hostInfos, TaskSession, self.__connectionForTaskResultEstablished,
-                         self.__connectionForTaskResultFailure, keyId, waitingTaskResult)
+        self.client.wantToStartTaskSession(keyId, self.node, connId)
 
-    #############################
-    def __connectAndSendTaskFailure(self, address, port, keyId, taskOwner, subtaskId, errMsg):
-        #Test innej metody
-        # Network.connect(address, port, TaskSession, self.__connectionForTaskFailureEstablished,
-        #                 self.__connectionForTaskFailureFailure, keyId, subtaskId, errMsg)
-        hostInfos = self.__getHostInfos(taskOwner, port, keyId)
-        Network.connectToHost(hostInfos, TaskSession, self.__connectionForTaskFailureEstablished,
-                              self.__connectionForTaskFailureFailure, keyId, subtaskId, errMsg)
+        pc = self.pendingConnections.get(connId)
+        if pc:
+            pc.status = PenConnStatus.WaitingAlt
+            pc.time = time.time()
 
     #############################
-    def __connectionForTaskResultEstablished(self, session, keyId, waitingTaskResult):
+    def __connectionForTaskResultEstablished(self, session, connId, keyId, waitingTaskResult):
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
         session.clientKeyId = keyId
-
+        session.connId = connId
+        self._markConnected(connId, session.address, session.port)
         self.taskSessions[waitingTaskResult.subtaskId] = session
 
         session.sendHello()
@@ -444,77 +485,269 @@ class TaskServer:
                                        self.node)
 
     #############################
-    def __connectionForTaskResultFailure(self, keyId, waitingTaskResult):
-        logger.warning("Cannot connect to task {} owner".format(waitingTaskResult.subtaskId))
-        logger.warning("Removing task {} from task list".format(waitingTaskResult.subtaskId))
-        
-        waitingTaskResult.lastSendingTrial  = time.time()
-        waitingTaskResult.delayTime         = self.configDesc.maxResultsSendingDelay
-        waitingTaskResult.alreadySending    = False
+    def __connectionForTaskResultFailure(self, connId, keyId, waitingTaskResult):
+
+        response = lambda session: self.__connectionForTaskResultEstablished(session, connId, keyId, waitingTaskResult)
+
+        if keyId in self.responseList:
+            self.responseList[keyId].append(response)
+        else:
+            self.responseList[keyId] = deque([response])
+
+        self.client.wantToStartTaskSession(keyId, self.node, connId)
+
+        pc = self.pendingConnections.get(connId)
+        if pc:
+            pc.status = PenConnStatus.WaitingAlt
+            pc.time = time.time()
+
 
     #############################
-    def __connectionForTaskFailureEstablished(self, session, keyId, subtaskId, errMsg):
+    def __connectionForTaskFailureEstablished(self, session, connId, keyId, subtaskId, errMsg):
         session.taskServer = self
         session.clientKeyId = keyId
+        session.connId = connId
+        self._markConnected(connId, session.address, session.port)
         self.taskSessions[subtaskId] = session
         session.sendHello()
         session.sendTaskFailure(subtaskId, errMsg)
 
     #############################
-    def __connectionForTaskFailureFailure(self, keyId, subtaskId, errMsg):
-        logger.warning("Cannot connect to task {} owner".format(subtaskId))
+    def __connectionForTaskFailureFailure(self, connId, keyId, subtaskId, errMsg):
+
+        response = lambda session: self.__connectionForTaskFailureEstablished(session, connId, keyId, subtaskId, errMsg)
+
+        if keyId in self.responseList:
+            self.responseList[keyId].append(response)
+        else:
+            self.responseList[keyId] = deque([response])
+
+        self.client.wantToStartTaskSession(keyId, self.node, connId)
+
+        pc = self.pendingConnections.get(connId)
+        if pc:
+            pc.status = PenConnStatus.WaitingAlt
+            pc.time = time.time()
 
     #############################
-    def __connectionForResourceRequestEstablished(self, session, keyId, subtaskId, resourceHeader):
+    def __connectionForResourceRequestEstablished(self, session, connId, keyId, subtaskId, resourceHeader):
 
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
         session.clientKeyId = keyId
         session.taskId = subtaskId
+        session.connId = connId
+        self._markConnected(connId, session.address, session.port)
         self.taskSessions[subtaskId] = session
         session.sendHello()
         session.requestResource(subtaskId, resourceHeader)
 
     #############################
-    def __connectionForResourceRequestFailure(self, session, keyId, subtaskId, resourceHeader):
-        logger.warning("Cannot connect to task {} owner".format(subtaskId))
-        logger.warning("Removing task {} from task list".format(subtaskId))
-        
-        self.taskComputer.resourceRequestRejected(subtaskId, "Connection failed")
-        
-        self.removeTaskHeader(subtaskId)
+    def __connectionForResourceRequestFailure(self, connId, keyId, subtaskId, resourceHeader):
+
+        response = lambda session: self.__connectionForResourceRequestEstablished(session, connId, keyId, subtaskId,
+                                                                                  resourceHeader)
+        if keyId in self.responseList:
+            self.responseList[keyId].append(response)
+        else:
+            self.responseList[keyId] = deque([response])
+
+        self.client.wantToStartTaskSession(keyId, self.node, connId)
+
+        pc = self.pendingConnections.get(connId)
+        if pc:
+            pc.status = PenConnStatus.WaitingAlt
+            pc.time = time.time()
 
     #############################
-    def __connectionForResultRejectedFailure(self, keyId, subtaskId):
-        logger.warning("Cannot connect to deliver information about rejected result for task {}".format(subtaskId))
-
-    #############################
-    def __connectionForPayForTaskFailure(self, keyId, taskId, price):
-        logger.warning("Cannot connect to pay for task {} ".format(taskId))
-        self.client.taskRewardPaymentFailure(taskId, price)
-        #TODO
-        # Taka informacja powinna byc przechowywana i proba oplaty powinna byc wysylana po jakims czasie
-
-    #############################
-    def __connectionForSendResultRejectedEstablished(self, session, keyId, subtaskId):
+    def __connectionForResultRejectedEstablished(self, session, connId, keyId, subtaskId):
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
         session.clientKeyId = keyId
+        session.connId = connId
+        self._markConnected(connId, session.address, session.port)
         session.sendHello()
         session.sendResultRejected(subtaskId)
 
     #############################
-    def __connectionForPayForTaskEstablished(self, session, keyId, taskId, price):
+    def __connectionForResultRejectedFailure(self, connId, keyId, subtaskId):
+
+        response = lambda session: self.__connectionForResultRejectedFailure(session, connId, keyId, subtaskId)
+
+        if keyId in self.responseList:
+            self.responseList[keyId].append(response)
+        else:
+            self.responseList[keyId] = deque([response])
+
+        self.client.wantToStartTaskSession(keyId, self.node, connId)
+        pc = self.pendingConnections.get(connId)
+        if pc:
+            pc.status = PenConnStatus.WaitingAlt
+            pc.time = time.time()
+
+    #############################
+    def __connectionForPayForTaskEstablished(self, session, connId, keyId, taskId, price):
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
         session.clientKeyId = keyId
+        session.connId = connId
+        self._markConnected(connId, session.address, session.port)
         session.sendHello()
         session.sendRewardForTask(taskId, price)
         self.client.taskRewardPaid(taskId, price)
 
+    #############################
+    def __connectionForPayForTaskFailure(self, connId, keyId, taskId, price):
+
+        response = lambda session: self.__connectionForPayForTaskEstablished(session, connId, keyId, taskId,
+                                                                             price)
+
+        if keyId in self.responseList:
+            self.responseList[keyId].append(response)
+        else:
+            self.responseList[keyId] = deque([response])
+
+        self.client.wantToStartTaskSession(keyId, self.node, connId)
+
+        pc = self.pendingConnections.get(connId)
+        if pc:
+            pc.status = PenConnStatus.WaitingAlt
+            pc.time = time.time()
+
+    #############################
+    def __connectionForStartSessionEstablished(self, session, connId, keyId, nodeInfo, superNodeInfo, ansConnId):
+        session.taskServer = self
+        session.taskManager = self.taskManager
+        session.taskComputer = self.taskComputer
+        session.clientKeyId = keyId
+        session.connId = connId
+        self._markConnected(connId, session.address, session.port)
+        session.sendHello()
+        session.sendStartSessionResponse(ansConnId)
+
+    #############################
+    def __connectionForStartSessionFailure(self, connId, keyId, nodeInfo, superNodeInfo, ansConnId):
+        logger.info("Failed to start requested task session for node {}".format(keyId))
+        self.finalConnFailure(connId)
+        #TODO CO w takiej sytuacji?
+        if superNodeInfo is None:
+            logger.info("Permanently can't connect to node {}".format(keyId))
+            return
+
+        #FIXME To powinno zostac przeniesione do jakiejs wyzszej polaczeniowej instalncji
+        if self.node.natType in TaskServer.supportedNatTypes:
+            args = (superNodeInfo, nodeInfo, self.node, ansConnId)
+            self._addPendingRequest(TaskConnTypes.NatPunch, superNodeInfo, superNodeInfo.prvPort, superNodeInfo.key,
+                                    args)
+        else:
+            args = (superNodeInfo.key, nodeInfo, self.node, ansConnId)
+            self._addPendingRequest(TaskConnTypes.Middleman, superNodeInfo, superNodeInfo.prvPort, superNodeInfo.key,
+                                    args)
+        #TODO Dodatkowe usuniecie tego zadania (bo zastapione innym)
+
+    #############################
+    def __connectionForNatPunchEstablished(self, session, connId, superNode, askingNode, destNode, ansConnId):
+        session.taskServer = self
+        session.taskManager = self.taskManager
+        session.taskComputer = self.taskComputer
+        session.clientKeyId = superNode.key
+        session.connId = connId
+        session.extraData = {'superNode': superNode, 'askingNode': askingNode, 'destNode': destNode,
+                             'ansConnId': ansConnId}
+        session.sendHello()
+        session.sendNatPunch(askingNode, destNode, ansConnId)
+
+    #############################
+    def __connectionForNatPunchFailure(self, connId, superNode, askingNode, destNode, ansConnId):
+        self.finalConnFailure(connId)
+        args = (superNode.key, askingNode, destNode, ansConnId)
+        self._addPendingRequest(TaskConnTypes.Middleman, superNode, superNode.prvPort,
+                                superNode.key, args)
+
+    #############################
+    def __connectionForTraverseNatEstablished(self, session, clientKeyId, connId, superKeyId):
+        self.respondTo(clientKeyId, session, connId) #FIXME
+
+    #############################
+    def __connectionForTraverseNatFailure(self, clientKeyId, connId, superKeyId):
+        logger.error("Connection for traverse nat failure")
+        self.client.informAboutNatTraverseFailure(superKeyId, clientKeyId, connId)
+        pass #TODO Powinnismy powiadomic serwer o nieudanej probie polaczenia
+
+    #############################
+    def __connectionForMiddlemanEstablished(self, session, connId, keyId, askingNodeInfo, selfNodeInfo, ansConnId):
+        session.taskServer = self
+        session.taskManager = self.taskManager
+        session.taskComputer = self.taskComputer
+        session.clientKeyId = keyId
+        session.connId = connId
+        session.sendHello()
+        session.sendMiddleman(askingNodeInfo, selfNodeInfo, ansConnId)
+
+    #############################
+    def __connectionForMiddlemanFailure(self, connId, keyId, askingNodeInfo, selfNodeInfo, ansConnId):
+        self.finalConnFailure(connId)
+        logger.info("Permanently can't connect to node {}".format(keyId))
+        return
+
+    #############################
+    def __askingNodeForMiddlemanConnectionEstablished(self, session, connId, keyId, openSession,  askingNode, destNode,
+                                                      ansConnId):
+        session.taskServer = self
+        session.taskManager = self.taskManager
+        session.taskComputer = self.taskComputer
+        session.clientKeyId = keyId
+        session.connId = connId
+        session.sendHello()
+        session.sendJoinMiddlemanConn(keyId, ansConnId, destNode.key)
+        session.openSession = openSession
+        openSession.openSession = session
+
+    def __connectionForTaskRequestFinalFailure(self, connId, clientId, keyId, taskId, estimatedPerformance,
+                                               maxResourceSize, maxMemorySize, numCores, *args):
+        logger.warning("Cannot connect to task {} owner".format(taskId))
+        logger.warning("Removing task {} from task list".format(taskId))
+
+        self.taskComputer.taskRequestRejected(taskId, "Connection failed")
+        self.taskKeeper.requestFailure(taskId)
+
+    def __connectionForPayForTaskFinalFailure(self, connId, keyId, taskId, price):
+        logger.warning("Cannot connect to pay for task {} ".format(taskId))
+        self.client.taskRewardPaymentFailure(taskId, price)
+
+    def __connectionForResourceRequestFinalFailure(self, connId, keyId, subtaskId, resourceHeader):
+        logger.warning("Cannot connect to task {} owner".format(subtaskId))
+        logger.warning("Removing task {} from task list".format(subtaskId))
+
+        self.taskComputer.resourceRequestRejected(subtaskId, "Connection failed")
+        self.removeTaskHeader(subtaskId)
+
+    def __connectionForResultRejectedFinalFailure(self, connId, keyId, subtaskId):
+        logger.warning("Cannot connect to deliver information about rejected result for task {}".format(subtaskId))
+
+    def __connectionForTaskResultFinalFailure(self, connId, keyId, waitingTaskResult):
+        logger.warning("Cannot connect to task {} owner".format(waitingTaskResult.subtaskId))
+
+        waitingTaskResult.lastSendingTrial  = time.time()
+        waitingTaskResult.delayTime         = self.configDesc.maxResultsSendingDelay
+        waitingTaskResult.alreadySending    = False
+
+    def __connectionForTaskFailureFinalFailure(self, connId, keyId, subtaskId, errMsg):
+       logger.warning("Cannot connect to task {} owner".format(subtaskId))
+
+    def __connectionForStartSessionFinalFailure(self, connId, keyId, nodeInfo, superNodeInfo, ansConnId):
+        logger.warning("Starting sesion for {} impossible".format(keyId))
+
+    def __connectionForMiddlemanFinalFailure(self, *args):
+        pass
+
+    def __connectionForNatPunchFinalFailure(self, *args):
+        pass
+
+    #SYNC METHODS
     #############################
     def __removeOldTasks(self):
         self.taskKeeper.removeOldTasks()
@@ -536,19 +769,18 @@ class TaskServer:
 
     #############################
     def __sendWaitingResults(self):
-        for wtr in self.resultsToSend:
-            waitingTaskResult = self.resultsToSend[wtr]
+        for wtr in self.resultsToSend.itervalues():
 
-            if not waitingTaskResult.alreadySending:
-                if time.time() - waitingTaskResult.lastSendingTrial > waitingTaskResult.delayTime:
-                    waitingTaskResult.alreadySending = True
-                    self.__connectAndSendTaskResults(waitingTaskResult.ownerAddress, waitingTaskResult.ownerPort,
-                                                     waitingTaskResult.ownerKeyId, waitingTaskResult.owner,
-                                                     waitingTaskResult)
+            if not wtr.alreadySending:
+                if time.time() - wtr.lastSendingTrial > wtr.delayTime:
+                    wtr.alreadySending = True
+                    args = (wtr.ownerKeyId, wtr)
+                    self._addPendingRequest(TaskConnTypes.TaskResult, wtr.owner, wtr.ownerPort, wtr.ownerKeyId, args)
 
         for wtf in self.failuresToSend.itervalues():
-            self.__connectAndSendTaskFailure(wtf.ownerAddress, wtf.ownerPort, wtf.ownerKeyId, wtf.owner,
-                                             wtf.subtaskId, wtf.errMsg)
+            args = (wtf.ownerKeyId, wtf.subtaskId, wtf.errMsg)
+            self._addPendingRequest(TaskConnTypes.TaskFailure, wtf.owner, wtf.ownerPort, wtf.ownerKeyId, args)
+
         self.failuresToSend.clear()
 
     #############################
@@ -567,17 +799,74 @@ class TaskServer:
         for taskId in afterDeadline:
             self.decreaseTrustPayment(taskId)
 
+    #CONFIGURATION METHODS
     #############################
     def __getTaskManagerRoot(self, configDesc):
         return os.path.join(configDesc.rootPath, "res")
 
     #############################
-    def __getHostInfos(self, nodeInfo, port, keyId):
-        hostInfos = nodeInfoToHostInfos(nodeInfo, port)
+    def _getHostInfos(self, nodeInfo, port, keyId):
+        hostInfos = PendingConnectionsServer._getHostInfos(self, nodeInfo, port, keyId)
         addr = self.client.getSuggestedAddr(keyId)
         if addr:
+            hostData = HostData(addr, port)
+            if hostData in hostInfos:
+                hostInfos.remove(hostData)
             hostInfos = [HostData(addr, port)] + hostInfos
         return hostInfos
+
+    #############################
+    def _setConnEstablished(self):
+        self.connEstablishedForType.update({
+            TaskConnTypes.TaskRequest: self.__connectionForTaskRequestEstablished,
+            TaskConnTypes.PayForTask: self.__connectionForPayForTaskEstablished,
+            TaskConnTypes.ResourceRequest: self.__connectionForResourceRequestEstablished,
+            TaskConnTypes.ResultRejected: self.__connectionForResultRejectedEstablished,
+            TaskConnTypes.TaskResult: self.__connectionForTaskResultEstablished,
+            TaskConnTypes.TaskFailure: self.__connectionForTaskFailureEstablished,
+            TaskConnTypes.StartSession: self.__connectionForStartSessionEstablished,
+            TaskConnTypes.Middleman: self.__connectionForMiddlemanEstablished,
+            TaskConnTypes.NatPunch: self.__connectionForNatPunchEstablished, #NATPUNADD
+        })
+
+    #############################
+    def _setConnFailure(self):
+        self.connFailureForType.update({
+            TaskConnTypes.TaskRequest: self.__connectionForTaskRequestFailure,
+            TaskConnTypes.PayForTask: self.__connectionForPayForTaskFailure,
+            TaskConnTypes.ResourceRequest: self.__connectionForResourceRequestFailure,
+            TaskConnTypes.ResultRejected: self.__connectionForResultRejectedFailure,
+            TaskConnTypes.TaskResult: self.__connectionForTaskResultFailure,
+            TaskConnTypes.TaskFailure: self.__connectionForTaskFailureFailure,
+            TaskConnTypes.StartSession: self.__connectionForStartSessionFailure,
+            TaskConnTypes.Middleman: self.__connectionForMiddlemanFailure,
+            TaskConnTypes.NatPunch: self.__connectionForNatPunchFailure
+        })
+
+    def _setConnFinalFailure(self):
+        self.connFinalFailureForType.update({
+            TaskConnTypes.TaskRequest: self.__connectionForTaskRequestFinalFailure,
+            TaskConnTypes.PayForTask: self.__connectionForPayForTaskFinalFailure,
+            TaskConnTypes.ResourceRequest: self.__connectionForResourceRequestFinalFailure,
+            TaskConnTypes.ResultRejected: self.__connectionForResultRejectedFinalFailure,
+            TaskConnTypes.TaskResult: self.__connectionForTaskResultFinalFailure,
+            TaskConnTypes.TaskFailure: self.__connectionForTaskFailureFinalFailure,
+            TaskConnTypes.StartSession: self.__connectionForStartSessionFinalFailure,
+            TaskConnTypes.Middleman: self.__connectionForMiddlemanFinalFailure,
+            TaskConnTypes.NatPunch: self.__connectionForNatPunchFinalFailure
+        })
+
+    #############################
+    def _setListenEstablished(self):
+        self.listenEstablishedForType.update({
+          TaskListenTypes.StartSession: self._listeningForStartSessionEstablished
+        })
+
+    #############################
+    def _setListenFailure(self):
+        self.listenFailureForType.update({
+          TaskListenTypes.StartSession: self._listeningForStartSessionFailure
+        })
 
 ##########################################################
 
@@ -611,7 +900,7 @@ class WaitingTaskFailure:
 ##########################################################
 
 from twisted.internet.protocol import Factory
-from golem.network.NetAndFilesConnState import NetAndFilesConnState
+from golem.network.NetAndFilesConnState import MidNetAndFilesConnState
 from TaskSession import TaskSessionFactory
 
 class TaskServerFactory(Factory):
@@ -622,6 +911,23 @@ class TaskServerFactory(Factory):
     #############################
     def buildProtocol(self, addr):
         logger.info("Protocol build for {}".format(addr))
-        protocol = NetAndFilesConnState(self.server)
+        protocol = MidNetAndFilesConnState(self.server)
         protocol.setSessionFactory(TaskSessionFactory())
         return protocol
+
+##########################################################
+class TaskConnTypes:
+    TaskRequest = 1
+    ResourceRequest = 2
+    ResultRejected = 3
+    PayForTask = 4
+    TaskResult = 5
+    TaskFailure = 6
+    StartSession = 7
+    Middleman = 8
+    NatPunch = 9
+
+class TaskListenTypes:
+    StartSession = 1
+
+

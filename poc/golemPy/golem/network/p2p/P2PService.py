@@ -29,7 +29,7 @@ class P2PService:
         self.taskServer             = None
         self.node                   = node
         self.lastMessageTimeThreshold = self.configDesc.p2pSessionTimeout
-        self.refreshPeersTimeout    = 900
+        self.refreshPeersTimeout    = 1200 #FIXME
         self.lastRefreshPeers       = time.time()
 
         self.lastMessages           = []
@@ -44,6 +44,8 @@ class P2PService:
         self.keysAuth               = keysAuth
         self.peerKeeper             = PeerKeeper(keysAuth.getKeyId())
         self.suggestedAddrs         = {}
+
+        self.connectionsToSet = {}
 
         self.connectToNetwork()
 
@@ -337,6 +339,74 @@ class P2PService:
         for p in self.peers.values():
             p.sendRemoveTask(taskId)
 
+    ############################
+    def wantToStartTaskSession(self, keyId, nodeInfo, connId, superNodeInfo=None):
+        logger.debug("Try to start task sesion {}".format(keyId))
+        msgSnd = False
+        for peer in self.peers.itervalues():
+            if peer.clientKeyId == keyId:
+                peer.sendWantToStartTaskSession(nodeInfo, connId, superNodeInfo)
+                return
+
+        for peer in self.peers.itervalues():
+            if peer.clientKeyId != nodeInfo.key:
+                peer.sendSetTaskSession(keyId, nodeInfo, connId, superNodeInfo)
+                msgSnd = True
+
+        #TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
+
+        if not msgSnd and nodeInfo.key == self.getKeyId():
+            self.taskServer.finalConnFailure(connId)
+
+    ############################
+    def informAboutTaskNatHole(self, keyId, rvKeyId, addr, port, ansConnId):
+        logger.debug("Nat hole ready {}:{}".format(addr,port))
+        for peer in self.peers.itervalues():
+            if peer.clientKeyId == keyId:
+                peer.sendTaskNatHole(rvKeyId, addr, port, ansConnId)
+                return
+
+    ############################
+    def traverseNat(self, keyId, addr, port, connId, superKeyId):
+        self.taskServer.traverseNat(keyId, addr, port, connId, superKeyId)
+
+    ############################
+    def informAboutNatTraverseFailure(self, keyId, resKeyId, connId):
+        for peer in self.peers.itervalues():
+            if peer.clientKeyId == keyId:
+                peer.sendInformAboutNatTraverseFailure(resKeyId, connId)
+        #TODO CO jak juz nie ma polaczenia?
+
+    ############################
+    def sendNatTraverseFailure(self, keyId, connId):
+        for peer in self.peers.itervalues():
+            if peer.clientKeyId == keyId:
+                peer.sendNatTraverseFailure(connId)
+        #TODO Co jak nie ma tego polaczenia
+
+    ############################
+    def traverseNatFailure(self, connId):
+        self.taskServer.traverseNatFailure(connId)
+
+    ############################
+    def peerWantTaskSession(self, nodeInfo, superNodeInfo, connId):
+        #TODO Reakcja powinna nastapic tylko na pierwszy taki komunikat
+        self.taskServer.startTaskSession(nodeInfo, superNodeInfo, connId)
+
+    ############################
+    def peerWantToSetTaskSession(self, keyId, nodeInfo, connId, superNodeInfo):
+        logger.debug("Peer want to set task session with {}".format(keyId))
+        if connId in self.connectionsToSet:
+            return
+
+        #TODO Lepszy mechanizm wyznaczania supernode'a
+        if superNodeInfo is None and self.node.isSuperNode():
+            superNodeInfo = self.node
+
+        #TODO Te informacje powinny wygasac (byc usuwane po jakims czasie)
+        self.connectionsToSet[connId] = (keyId, nodeInfo, time.time())
+        self.wantToStartTaskSession(keyId, nodeInfo, connId, superNodeInfo)
+
     #############################
     #RANKING FUNCTIONS          #
     #############################
@@ -404,7 +474,8 @@ class P2PService:
     def __sendMessageGetPeers(self):
         while len(self.peers) < self.configDesc.optNumPeers:
             if len(self.freePeers) == 0:
-                peer = self.peerKeeper.getRandomKnownNode()
+                peer = None #FIXME
+#                peer = self.peerKeeper.getRandomKnownNode()
                 if not peer or peer.nodeId in self.peers:
                     if time.time() - self.lastPeersRequest > 2:
                         self.lastPeersRequest = time.time()

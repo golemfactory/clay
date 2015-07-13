@@ -166,7 +166,6 @@ class Client:
         #NETWORK
         self.node = Node(self.configDesc.clientUid, self.keysAuth.getKeyId())
         self.node.collectNetworkInfo(self.configDesc.seedHost, useIp6=self.configDesc.useIp6)
-        print self.node.prvAddresses
         logger.debug("Is super node? {}".format(self.node.isSuperNode()))
         self.p2service = None
 
@@ -317,6 +316,18 @@ class Client:
     ############################
     def getSuggestedAddr(self, keyId):
         return self.p2pservice.suggestedAddrs.get(keyId)
+
+    ############################
+    def wantToStartTaskSession(self, keyId, nodeId, connId):
+        self.p2pservice.wantToStartTaskSession(keyId, nodeId, connId)
+
+    ############################
+    def informAboutTaskNatHole(self, keyId, rvKeyId, addr, port, ansConnId):
+        self.p2pservice.informAboutTaskNatHole(keyId, rvKeyId, addr, port, ansConnId)
+
+    ############################
+    def informAboutNatTraverseFailure(self, keyId, resKeyId, connId):
+        self.p2pservice.informAboutNatTraverseFailure(keyId, resKeyId, connId)
 
     #TRANSACTION SYSTEM OPERATIONS
     ############################

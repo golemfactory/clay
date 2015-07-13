@@ -58,3 +58,23 @@ class NetAndFilesConnState(NetConnState):
 
         if self.fileProducer is not None:
             self.fileProducer.close()
+
+####################################################################################
+class MidNetAndFilesConnState(NetAndFilesConnState):
+    ############################
+    def _interpret(self, data):
+        if self.session.isMiddleman:
+            self.session.lastMessageTime = time.time()
+            self.db.appendString(data)
+            self.session.interpret(self.db.readAll())
+        else:
+            NetAndFilesConnState._interpret(self, data)
+
+    ############################
+    def _prepareMsgToSend(self, msg):
+        if self.session.isMiddleman:
+            return msg
+        else:
+            return NetAndFilesConnState._prepareMsgToSend(self, msg)
+
+

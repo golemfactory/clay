@@ -12,7 +12,7 @@ def execCmd(cmd, nice = 20, wait = True):
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
     else:
         p = psutil.Process(pc.pid)
-        p.set_nice(nice)
+        p.nice(nice)
 
     if wait:
         pc.wait()

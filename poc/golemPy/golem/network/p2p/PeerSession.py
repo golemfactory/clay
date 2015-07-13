@@ -6,7 +6,8 @@ from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconn
                           MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks, \
                           MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
                           MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
-                          MessageRandVal
+                          MessageRandVal, MessageWantToStartTaskSession, MessageSetTaskSession, \
+                          MessageNatHole, MessageNatTraverseFailure, MessageInformAboutNatTraverseFailure
 from golem.network.p2p.NetConnState import NetConnState
 from golem.network.p2p.Session import NetSession
 
@@ -34,6 +35,7 @@ class PeerSession(NetSession):
         self.state = PeerSession.StateInitialize
         self.degree = 0
         self.nodeId = None
+        self.listenPort = None
 
         self.canBeUnverified.extend([ MessageHello.Type, MessageRandVal.Type ])
         self.canBeUnsigned.extend([ MessageHello.Type ])
@@ -143,6 +145,26 @@ class PeerSession(NetSession):
         self._send(MessageFindNode(nodeId))
 
     ##########################
+    def sendWantToStartTaskSession(self, nodeInfo, connId, superNodeInfo):
+        self._send(MessageWantToStartTaskSession(nodeInfo, connId, superNodeInfo))
+
+    ##########################
+    def sendSetTaskSession(self, keyId, nodeInfo, connId, superNodeInfo):
+        self._send(MessageSetTaskSession(keyId, nodeInfo, connId, superNodeInfo))
+
+    ##########################
+    def sendTaskNatHole(self, keyId, addr, port, connId):
+        self._send(MessageNatHole(keyId, addr, port, connId))
+
+    ##########################
+    def sendInformAboutNatTraverseFailure(self, keyId, connId):
+        self._send(MessageInformAboutNatTraverseFailure(keyId, connId))
+
+    ##########################
+    def sendNatTraverseFailure(self, connId):
+        self._send(MessageNatTraverseFailure(connId))
+
+    ##########################
     def _reactToPing(self, msg):
         self.__sendPong()
 
@@ -156,6 +178,7 @@ class PeerSession(NetSession):
         self.id = msg.clientUID
         self.nodeInfo = msg.nodeInfo
         self.clientKeyId = msg.clientKeyId
+        self.listenPort = msg.port
 
         if not self.verify(msg):
             logger.error("Wrong signature for Hello msg")
@@ -165,7 +188,7 @@ class PeerSession(NetSession):
         enoughPeers = self.p2pService.enoughPeers()
         p = self.p2pService.findPeer(self.id)
 
-        self.p2pService.addToPeerKeeper(self.id, self.clientKeyId, self.address, self.port, self.nodeInfo)
+        self.p2pService.addToPeerKeeper(self.id, self.clientKeyId, self.address, self.listenPort, self.nodeInfo)
 
         if enoughPeers:
             loggerMsg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.id, self.address, self.port)
@@ -256,6 +279,26 @@ class PeerSession(NetSession):
             self.p2pService.setSuggestedAddr(self.clientKeyId, self.address, self.port)
 
     ##########################
+    def _reactToWantToStartTaskSession(self, msg):
+        self.p2pService.peerWantTaskSession(msg.nodeInfo, msg.superNodeInfo, msg.connId)
+
+    ##########################
+    def _reactToSetTaskSession(self, msg):
+        self.p2pService.peerWantToSetTaskSession(msg.keyId, msg.nodeInfo, msg.connId, msg.superNodeInfo)
+
+    ##########################
+    def _reactToNatHole(self, msg):
+        self.p2pService.traverseNat(msg.keyId, msg.addr, msg.port, msg.connId, self.clientKeyId)
+
+    ##########################
+    def _reactToNatTraverseFailure(self, msg):
+        self.p2pService.traverseNatFailure(msg.connId)
+
+    ##########################
+    def _reactToInformAboutNatTraverseFailure(self, msg):
+        self.p2pService.sendNatTraverseFailure(msg.keyId, msg.connId)
+
+    ##########################
     # PRIVATE SECTION
     ##########################
     def __sendHello(self):
@@ -275,7 +318,7 @@ class PeerSession(NetSession):
     def __sendPeers(self):
         peersInfo = []
         for p in self.p2pService.peers.values():
-            peersInfo.append({"address" : p.address, "port" : p.port, "id" : p.id, "node": p.nodeInfo})
+            peersInfo.append({"address" : p.address, "port" : p.listenPort, "id" : p.id, "node": p.nodeInfo})
         self._send(MessagePeers(peersInfo))
 
     ##########################
@@ -296,17 +339,22 @@ class PeerSession(NetSession):
     ##########################
     def __setBasicMsgInterpretations(self):
         self.interpretation.update({
-                                        MessagePing.Type: self._reactToPing,
-                                        MessagePong.Type: self._reactToPong,
-                                        MessageHello.Type: self._reactToHello,
-                                        MessageGetPeers.Type: self._reactToGetPeers,
-                                        MessagePeers.Type: self._reactToPeers,
-                                        MessageGetTasks.Type: self._reactToGetTasks,
-                                        MessageTasks.Type: self._reactToTasks,
-                                        MessageRemoveTask.Type: self._reactToRemoveTask,
-                                        MessageFindNode.Type: self._reactToFindNode,
-                                        MessageRandVal.Type: self._reactToRandVal
-                                   })
+            MessagePing.Type: self._reactToPing,
+            MessagePong.Type: self._reactToPong,
+            MessageHello.Type: self._reactToHello,
+            MessageGetPeers.Type: self._reactToGetPeers,
+            MessagePeers.Type: self._reactToPeers,
+            MessageGetTasks.Type: self._reactToGetTasks,
+            MessageTasks.Type: self._reactToTasks,
+            MessageRemoveTask.Type: self._reactToRemoveTask,
+            MessageFindNode.Type: self._reactToFindNode,
+            MessageRandVal.Type: self._reactToRandVal,
+            MessageWantToStartTaskSession.Type: self._reactToWantToStartTaskSession,
+            MessageSetTaskSession.Type: self._reactToSetTaskSession,
+            MessageNatHole.Type: self._reactToNatHole,
+            MessageNatTraverseFailure.Type: self._reactToNatTraverseFailure,
+            MessageInformAboutNatTraverseFailure.Type: self._reactToInformAboutNatTraverseFailure
+       })
 
     ##########################
     def __setResourceMsgInterpretations(self):

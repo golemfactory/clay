@@ -2,6 +2,8 @@ import os
 import logging
 import shutil
 
+from golem.core.simpleexccmd import isWindows
+
 logger = logging.getLogger(__name__)
 
 def splitPath(path):
@@ -21,6 +23,8 @@ class DirManager:
         self.res = res
         self.output = output
         self.globalResource = globalResource
+        if isWindows():
+            self.__getPath = self.__getPathWindows
 
     ######################
     def clearDir(self, d):
@@ -43,10 +47,10 @@ class DirManager:
     ######################
     def getDir(self, fullPath, create, errMsg):
         if os.path.isdir(fullPath):
-            return fullPath
+            return self.__getPath(fullPath)
         elif create:
             self.createDir(fullPath)
-            return fullPath
+            return self.__getPath(fullPath)
         else:
             logger.error(errMsg)
             return ""
@@ -94,3 +98,10 @@ class DirManager:
 
     def __getGlobalResourcePath(self):
         return os.path.join(self.rootPath, self.globalResource)
+
+    ######################
+    def __getPath(self, path):
+        return path
+
+    def __getPathWindows(self, path):
+        return path.replace("\\", "/")
