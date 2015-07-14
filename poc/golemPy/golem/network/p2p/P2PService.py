@@ -5,8 +5,8 @@ import random
 from copy import copy
 
 from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
-from golem.network.p2p.PeerSession import PeerSession
-from golem.network.p2p.P2PServer import P2PServer
+from golem.network.p2p.PeerSession import PeerSession, PeerSessionFactory
+from golem.network.p2p.P2PServer import P2PServer, NetServerFactory
 from PeerKeeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
@@ -14,8 +14,6 @@ logger = logging.getLogger(__name__)
 class P2PService:
     ########################
     def __init__(self, node, configDesc, keysAuth, useIp6=False):
-
-        self.p2pServer              = P2PServer(configDesc, self, useIp6)
 
         self.configDesc             = configDesc
 
@@ -46,11 +44,16 @@ class P2PService:
         self.suggestedAddrs         = {}
 
         self.connectionsToSet = {}
+        self.p2pServer              = P2PServer(configDesc, self, useIp6)
+
+        self.network = Network(None, PeerSessionFactory(), useIp6)
 
         self.connectToNetwork()
 
     #############################
     def connectToNetwork(self):
+        self.p2pServer.startAccepting()
+        self.network.protocolFactory = NetServerFactory(self.p2pServer)
         if not self.wrongSeedData():
             self.__connect(self.configDesc.seedHost, self.configDesc.seedHostPort)
 
@@ -460,7 +463,7 @@ class P2PService:
     #PRIVATE SECTION
     #############################
     def __connect(self, address, port):
-        Network.connect(address, port, PeerSession, self.__connectionEstablished, self.__connectionFailure)
+        self.network.connect(address, port, self.__connectionEstablished, self.__connectionFailure)
 
     #############################
     def __connectToHost(self, peer):
@@ -468,7 +471,7 @@ class P2PService:
         addr = self.suggestedAddrs.get(peer['node'].key)
         if addr:
             hostInfos = [HostData(addr, peer['port'])] + hostInfos
-        Network.connectToHost(hostInfos, PeerSession, self.__connectionEstablished, self.__connectionFailure)
+        self.network.connectToHost(hostInfos, self.__connectionEstablished, self.__connectionFailure)
 
     #############################
     def __sendMessageGetPeers(self):

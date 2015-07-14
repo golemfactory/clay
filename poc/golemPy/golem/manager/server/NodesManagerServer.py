@@ -1,5 +1,6 @@
 from golem.network.transport.Tcp import Network
 from golem.manager.NodeStateSnapshot import NodeStateSnapshot
+from ServerManagerSession import  ServerManagerSessionFactory
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,6 +14,8 @@ class NodesManagerServer:
         self.reactor            = reactor
         self.nodesManager       = nodesManager
 
+        self.network = Network(ManagerServerFactory(self), ServerManagerSessionFactory(self))
+
         self.__startAccepting()
 
     #############################
@@ -21,11 +24,11 @@ class NodesManagerServer:
 
     #############################
     def __startAccepting(self):
-        Network.listen(self.port, self.port, ManagerServerFactory(self), self.reactor, self.__listeningEstablished, self.__listeningFailure)
+        self.network.listen(self.port, self.port, self.__listeningEstablished, self.__listeningFailure)
 
 
     #############################
-    def __listeningEstablished(self, iListeningPort):
+    def __listeningEstablished(self, iListeningPort, *args):
         port = iListeningPort.getHost().port
         assert port == self.port
         logger.info("Manager server - port {} opened, listening".format(port))

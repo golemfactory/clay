@@ -12,15 +12,24 @@ logger = logging.getLogger(__name__)
 #######################################################################################
 class GNRServer:
     #############################
-    def __init__(self, configDesc, factory, useIp6=False):
+    def __init__(self, configDesc, protocolFactory, sessionFactory, useIp6=False):
         self.configDesc = configDesc
-        self.factory = factory
+        self.protocolFactory = protocolFactory
+        self.sessionFactory = sessionFactory
 
         self.curPort = 0
         self.useIp6 = useIp6
         self.iListeningPort = None
 
-        self._startAccepting(useIp6)
+        self.network = Network(protocolFactory, sessionFactory, useIp6)
+
+    #############################
+    def setProtocolFactory(self, protocolFactory):
+        self.network.protocolFactory = protocolFactory
+
+    #############################
+    def setSessionFactory(self, sessionFactory):
+        self.network.sessionFactory = sessionFactory
 
     #############################
     def newConnection(self, session):
@@ -31,30 +40,27 @@ class GNRServer:
         self.configDesc = configDesc
 
         if self.iListeningPort is None:
-            self._startAccepting()
+            self.startAccepting()
             return
 
         if self.iListeningPort and (configDesc.startPort > self.curPort or configDesc.endPort < self.curPort):
             self.iListeningPort.stopListening()
-            self._startAccepting()
+            self.startAccepting()
 
     #############################
-    def _startAccepting(self, useIp6=False):
+    def startAccepting(self):
         logger.info("Enabling network accepting state")
 
-        Network.listen(self.configDesc.startPort, self.configDesc.endPort, self._getFactory(), None, self._listeningEstablished, self._listeningFailure, useIp6)
+        self.network.listen(self.configDesc.startPort, self.configDesc.endPort, self._listeningEstablished,
+                            self._listeningFailure)
 
     #############################
     def _listenOnPort(self, port, listeningEstablished, listeningFailure, extraData):
-        Network.listen(port, port, self._getFactory(), None, listeningEstablished, listeningFailure, self.useIp6,
-                      *extraData)
+        self.network.listen(port, port, listeningEstablished, listeningFailure, *extraData)
+
 
     #############################
-    def _getFactory(self):
-        return self.factory()
-
-    #############################
-    def _listeningEstablished(self, iListeningPort):
+    def _listeningEstablished(self, iListeningPort, *args):
         self.curPort = iListeningPort.getHost().port
         self.iListeningPort = iListeningPort
         logger.info(" Port {} opened - listening".format(self.curPort))
@@ -69,12 +75,11 @@ class PendingConnectionsServer(GNRServer):
     supportedNatTypes = [FullCone, OpenInternet]
 
     #############################
-    def __init__(self, configDesc, factory, sessionClass, useIp6=False):
+    def __init__(self, configDesc, protocolFactory, sessionFactory, useIp6=False):
         self.pendingConnections = {}
         self.connEstablishedForType = {}
         self.connFailureForType = {}
         self.connFinalFailureForType = {}
-        self.sessionClass = sessionClass
         self._setConnEstablished()
         self._setConnFailure()
         self._setConnFinalFailure()
@@ -90,7 +95,7 @@ class PendingConnectionsServer(GNRServer):
         self.listeningRefreshTime = 120
         self.listenPortTTL = 3600
 
-        GNRServer.__init__(self, configDesc, factory, useIp6)
+        GNRServer.__init__(self, configDesc, protocolFactory, sessionFactory, useIp6)
 
     #############################
     def verifiedConn(self, connId):
@@ -142,8 +147,7 @@ class PendingConnectionsServer(GNRServer):
             else:
                 conn.status = PenConnStatus.Waiting
                 conn.lastTryTime = time.time()
-                Network.connectToHost(conn.hostInfos, self.sessionClass, conn.established, conn.failure,
-                                      conn.id, *conn.args)
+                self.network.connectToHost(conn.hostInfos, conn.established, conn.failure, conn.id, *conn.args)
 
     #############################
     def _removeOldListenings(self):

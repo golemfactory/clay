@@ -211,12 +211,14 @@ class Client:
 
         logger.info("Starting resource server...")
         self.resourceServer = ResourceServer(self.configDesc, self.keysAuth, self, useIp6=self.configDesc.useIp6)
+        self.resourceServer.startAccepting()
         time.sleep(1.0)
         self.p2pservice.setResourceServer(self.resourceServer)
 
         logger.info("Starting task server ...")
         self.taskServer = TaskServer(self.node, self.configDesc, self.keysAuth, self,
                                      useIp6=self.configDesc.useIp6)
+        self.taskServer.startAccepting()
 
         self.p2pservice.setTaskServer(self.taskServer)
 

@@ -24,14 +24,18 @@ def nodeInfoToHostInfos(nodeInfo, port):
 
 
 class Network:
+    def __init__(self, protocolFactory, sessionFactory, useIp6=False, timeout=30):
+        from twisted.internet import reactor
+        self.protocolFactory = protocolFactory
+        self.sessionFactory = sessionFactory
+        self.timeout = timeout
+        self.reactor = reactor
+        self.useIp6 = useIp6
 
-    ######################
-    @classmethod
-    def connect(cls, address, port, SessionType, establishedCallback=None, failureCallback=None, *args):
+    def connect(self, address, port, establishedCallback=None, failureCallback=None, *args):
         logger.debug("Connecting to host {} : {}".format(address, port))
         useIp6 = False
 
-        from twisted.internet import reactor
         try:
             ip = ipaddr.IPAddress(address)
             useIp6 = ip.version == 6
@@ -39,92 +43,67 @@ class Network:
             logger.warning("{} is invalid".format(address))
 
         if useIp6:
-            endpoint = TCP6ClientEndpoint(reactor, address, port)
+            endpoint = TCP6ClientEndpoint(self.reactor, address, port, self.timeout)
         else:
-            endpoint = TCP4ClientEndpoint(reactor, address, port)
-        connection = SessionType.ConnectionStateType()
+            endpoint = TCP4ClientEndpoint(self.reactor, address, port, self.timeout)
 
-        d = connectProtocol(endpoint, connection)
+        defer = endpoint.connect(self.protocolFactory)
 
-        d.addCallback(Network.__connectionEstablished, SessionType, establishedCallback, *args)
-        d.addErrback(Network.__connectionFailure, failureCallback, *args)
-
-    ######################
-    @classmethod
-    def connectToHost(cls, hostInfos, SessionType, establishedCallback, failureCallback, *args):
-        Network.__connectToOneHost(hostInfos, SessionType, establishedCallback, failureCallback, *args)
+        defer.addCallback(self.__connectionEstablished, establishedCallback, *args)
+        defer.addErrback(self.__connectionFailure, failureCallback, *args)
 
     ######################
-    @classmethod
-    def __connectToHostFailure(cls, hostInfos, SessionType, establishedCallback, failureCallback, *args):
+    def connectToHost(self, hostInfos, establishedCallback, failureCallback, *args):
+        self.__connectToOneHost(hostInfos, establishedCallback, failureCallback, *args)
+
+    ######################
+    def __connectToHostFailure(self, hostInfos, establishedCallback, failureCallback, *args):
         if len(hostInfos) > 1:
-            Network.__connectToOneHost(hostInfos[1:], SessionType, establishedCallback, failureCallback, *args)
+            self.__connectToOneHost(hostInfos[1:], establishedCallback, failureCallback, *args)
         else:
             if failureCallback:
                 failureCallback(*args)
 
     ######################
-    @classmethod
-    def __connectionToHostEstablished(cls, session, hostInfos, SessionType, establishedCallback,
-                                      failureCallback, *args):
-
+    def __connectionToHostEstablished(self, session, hostInfos, establishedCallback, failureCallback, *args):
         establishedCallback(session, *args)
 
     ######################
-    @classmethod
-    def __connectToOneHost(cls, hostInfos, SessionType, establishedCallback, failureCallback, *args):
+    def __connectToOneHost(self, hostInfos, establishedCallback, failureCallback, *args):
         address = hostInfos[0].addr
         port = hostInfos[0].port
-        Network.connect(address, port, SessionType, Network.__connectionToHostEstablished,
-                        Network.__connectToHostFailure, hostInfos, SessionType, establishedCallback,
-                        failureCallback, *args)
+        self.connect(address, port, self.__connectionToHostEstablished, self.__connectToHostFailure, hostInfos,
+                     establishedCallback, failureCallback, *args)
 
     ######################
-    @classmethod
-    def listen(cls, portStart, portEnd, factory, ownReactor=None, establishedCallback=None, failureCallback=None,
-               useIp6=True, *args):
-        Network.__listenOnce(portStart, portEnd, factory, ownReactor, establishedCallback, failureCallback,
-                             useIp6, *args)
+    def listen(self, portStart, portEnd, establishedCallback=None, failureCallback=None, useIp6=True, *args):
+        self.__listenOnce(portStart, portEnd, establishedCallback, failureCallback, useIp6, *args)
 
     ######################
-    @classmethod
-    def __listenOnce(cls, port, portEnd, factory, ownReactor=None, establishedCallback=None, failureCallback=None, useIp6=False, *args):
-        if ownReactor:
-            if useIp6:
-                ep = TCP6ServerEndpoint(ownReactor, port)
-            else:
-                ep = TCP4ServerEndpoint(ownReactor, port)
+    def __listenOnce(self, port, portEnd, establishedCallback=None, failureCallback=None, *args):
+        if self.useIp6:
+            ep = TCP6ServerEndpoint(self.reactor, port)
         else:
-            from twisted.internet import reactor
-            if useIp6:
-                ep = TCP6ServerEndpoint(reactor, port)
+            ep = TCP4ServerEndpoint(self.reactor, port)
+
+        defer = ep.listen(self.protocolFactory)
+
+        defer.addCallback(self.__listeningEstablished, establishedCallback, *args)
+        defer.addErrback(self.__listeningFailure, port, portEnd, establishedCallback, failureCallback, *args)
+
+    ######################
+    def __connectionEstablished(self, conn, establishedCallback, *args):
+        pp = conn.transport.getPeer()
+        logger.debug("ConnectionEstablished {} {}".format(pp.host, pp.port))
+
+        if establishedCallback:
+            if len(args) == 0:
+                establishedCallback(conn.session)
             else:
-                ep = TCP4ServerEndpoint(reactor, port)
-
-        d = ep.listen(factory)
-
-        d.addCallback(cls.__listeningEstablished, establishedCallback, *args)
-        d.addErrback(cls.__listeningFailure, port, portEnd, factory, ownReactor, establishedCallback, failureCallback, useIp6, *args)
+                establishedCallback(conn.session, *args)
 
     ######################
-    @classmethod
-    def __connectionEstablished(cls, conn, SessionType, establishedCallback, *args):
-        if conn:
-            session = SessionType(conn)
-            conn.setSession(session)
-
-            pp = conn.transport.getPeer()
-            logger.debug("ConnectionEstablished {} {}".format(pp.host, pp.port))
-
-            if establishedCallback:
-                if len(args) == 0:
-                    establishedCallback(session)
-                else:
-                    establishedCallback(session, *args)
-
-    ######################
-    @classmethod
-    def __connectionFailure(cls, conn, failureCallback, *args):
+    def __connectionFailure(self, conn, failureCallback, *args):
         logger.info("Connection failure. {}".format(conn))
         if failureCallback:
             if len(args) == 0:
@@ -133,8 +112,7 @@ class Network:
                 failureCallback(*args)
 
     ######################
-    @classmethod
-    def __listeningEstablished(cls, listeningPort, establishedCallback, *args):
+    def __listeningEstablished(self, listeningPort, establishedCallback, *args):
         if establishedCallback is None:
             return
 
@@ -144,11 +122,10 @@ class Network:
             establishedCallback(listeningPort, *args)
 
     ######################
-    @classmethod
-    def __listeningFailure(cls, p, curPort, endPort, factory, ownReactor, establishedCallback, failureCallback, useIp6=False, *args):
+    def __listeningFailure(self, err, curPort, endPort, establishedCallback, failureCallback, *args):
         if curPort < endPort:
             curPort += 1
-            Network.__listenOnce(curPort, endPort, factory, ownReactor, establishedCallback, failureCallback, useIp6, *args)
+            self.__listenOnce(curPort, endPort, establishedCallback, failureCallback, *args)
         else:
             if failureCallback:
-                failureCallback(p, *args)
+                failureCallback(err, *args)

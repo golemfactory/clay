@@ -42,7 +42,12 @@ class TaskServer(PendingConnectionsServer):
 
         self.responseList = {}
 
-        PendingConnectionsServer.__init__(self, configDesc, TaskServerFactory, TaskSession, useIp6)
+        PendingConnectionsServer.__init__(self, configDesc, None, TaskSessionFactory(), useIp6)
+
+    #############################
+    def startAccepting(self):
+        self.setProtocolFactory(TaskServerFactory(self))
+        PendingConnectionsServer.startAccepting(self)
 
     #############################
     def syncNetwork(self):
@@ -387,8 +392,8 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def traverseNat(self, keyId, addr, port, connId, superKeyId):
-        Network.connect(addr, port, self.sessionClass, self.__connectionForTraverseNatEstablished,
-                        self.__connectionForTraverseNatFailure, keyId, connId, superKeyId)
+        self.network.connect(addr, port, self.__connectionForTraverseNatEstablished,
+                             self.__connectionForTraverseNatFailure, keyId, connId, superKeyId)
 
     #############################
     def traverseNatFailure(self, connId):
@@ -401,7 +406,7 @@ class TaskServer(PendingConnectionsServer):
         return self.factory(self)
 
     #############################
-    def _listeningEstablished(self, iListeningPort):
+    def _listeningEstablished(self, iListeningPort, *args):
         self.curPort = iListeningPort.getHost().port
         self.iListeningPort = iListeningPort
         logger.info(" Port {} opened - listening".format(self.curPort))

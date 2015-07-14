@@ -64,6 +64,13 @@ class ServerManagerSession:
         if self.conn and self.conn.isOpen():
             self.conn.sendMessage(MessageNewNodes(numNodes))
 
+class ServerManagerSessionFactory:
+    def __init__(self, server):
+        self.server = server
+
+    def getSession(self, conn):
+        return ServerManagerSession(conn, self.server, '127.0.0.1', self.server.port)
+
 if __name__ == "__main__":
 
     def main():

@@ -1,5 +1,5 @@
 
-from ClientManagerSession import ClientManagerSession
+from ClientManagerSession import ClientManagerSessionFactory
 from golem.network.transport.Tcp import Network
 
 import logging
@@ -13,6 +13,8 @@ class NodesManagerClient:
         self.managerServerAddress    = managerServerAddress
         self.managerServerPort       = managerServerPort
         self.clientManagerSession   = None
+
+        self.network = Network(None, ClientManagerSessionFactory())
 
     ######################
     def start(self):
@@ -52,7 +54,7 @@ class NodesManagerClient:
 
         assert not self.clientManagerSession # connection already established
 
-        Network.connect(self.managerServerAddress, self.managerServerPort, ClientManagerSession, self.__connectionEstablished, self.__connectionFailure)
+        self.network.connect(self.managerServerAddress, self.managerServerPort, self.__connectionEstablished, self.__connectionFailure)
 
     #############################
     def __connectionEstablished(self, session):

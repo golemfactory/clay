@@ -70,7 +70,7 @@ class Session(SessionInterface):
     def interpret(self, msg):
         self.lastMessageTime = time.time()
 
-        #print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
+        # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
 
         if not self._checkMsg(msg):
             return
@@ -105,7 +105,7 @@ class Session(SessionInterface):
 
     ##########################
     def _send(self, message):
-        #print "Sending to {}:{}: {}".format(self.address, self.port, message)
+        # print "Sending to {}:{}: {}".format(self.address, self.port, message)
 
         if not self.conn.sendMessage(message):
             self.dropped()
@@ -140,7 +140,7 @@ class NetSession(Session, NetSessionInterface):
         self.clientKeyId = 0
         self.messageTTL = 600
         self.futureTimeTolerance = 300
-        self.unverifiedCnt = 10
+        self.unverifiedCnt = 15
         self.randVal = random.random()
         self.verified = False
         self.canBeUnverified = [MessageDisconnect]

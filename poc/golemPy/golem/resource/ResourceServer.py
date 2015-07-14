@@ -26,7 +26,7 @@ class ResourceServer(GNRServer):
         self.dirManager = DirManager(configDesc.rootPath, configDesc.clientUid)
         self.resourceManager = DistributedResourceManager(self.dirManager.getResourceDir())
         self.useIp6=useIp6
-        GNRServer.__init__(self, configDesc, ResourceServerFactory, useIp6)
+        GNRServer.__init__(self, configDesc, None, ResourceSessionFactory(), useIp6)
 
         self.resourcePeers = {}
         self.waitingTasks = {}
@@ -38,6 +38,11 @@ class ResourceServer(GNRServer):
         self.sessions = []
 
         self.lastMessageTimeThreshold = configDesc.resourceSessionTimeout
+
+    ############################
+    def startAccepting(self):
+        self.setProtocolFactory(ResourceServerFactory(self))
+        GNRServer.startAccepting(self)
 
     ############################
     def changeResourceDir(self, configDesc):
@@ -160,7 +165,7 @@ class ResourceServer(GNRServer):
         addr = self.client.getSuggestedAddr(keyId)
         if addr:
             hostInfos = [HostData(addr, port)] + hostInfos
-        Network.connectToHost(hostInfos, ResourceSession, self.__connectionPullResourceEstablished,
+        self.network.connectToHost(hostInfos, self.__connectionPullResourceEstablished,
                         self.__connectionPullResourceFailure, resource, addr, port, keyId)
 
     ############################
@@ -192,7 +197,7 @@ class ResourceServer(GNRServer):
         # Network.connect(addr, port, ResourceSession, self.__connectionPushResourceEstablished,
         #                 self.__connectionPushResourceFailure, resource, copies,
         #                 addr, port, keyId)
-        Network.connectToHost(hostInfos, ResourceSession, self.__connectionPushResourceEstablished,
+        self.network.connectToHost(hostInfos, self.__connectionPushResourceEstablished,
                         self.__connectionPushResourceFailure, resource, copies,
                         addr, port, keyId)
 
@@ -358,13 +363,10 @@ class ResourceServer(GNRServer):
             self.removeSession(session)
 
     ############################
-    def _listeningEstablished(self, iListeningPort):
-        GNRServer._listeningEstablished(self, iListeningPort)
+    def _listeningEstablished(self, iListeningPort, *args):
+        GNRServer._listeningEstablished(self, iListeningPort, *args)
         self.client.setResourcePort(self.curPort)
 
-    ############################
-    def _getFactory(self):
-        return self.factory(self)
 
 ##########################################################
 from twisted.internet.protocol import Factory

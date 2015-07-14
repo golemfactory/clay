@@ -67,3 +67,8 @@ class ClientManagerSession:
     def sendClientStateSnapshot(self, snapshot):
         if self.conn and self.conn.isOpen():
             self.conn.sendMessage(MessagePeerStatus(snapshot.uid, pickle.dumps(snapshot)))
+
+
+class ClientManagerSessionFactory:
+    def getSession(self, conn):
+        return ClientManagerSession(conn)

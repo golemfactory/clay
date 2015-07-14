@@ -6,17 +6,41 @@ from golem.network.GNRServer import GNRServer
 
 logger = logging.getLogger(__name__)
 
+
+from twisted.internet.protocol import Factory
+
+from golem.network.p2p.PeerSession import PeerSessionFactory
+
+#######################################################################################
+class NetServerFactory(Factory):
+    #############################
+    def __init__(self, p2pserver):
+        self.p2pserver = p2pserver
+
+    #############################
+    def buildProtocol(self, addr):
+        logger.info("Protocol build for {}".format(addr))
+        protocol = NetConnState(self.p2pserver)
+        protocol.setSessionFactory(PeerSessionFactory())
+        return protocol
+
+
 #######################################################################################
 class P2PServer(GNRServer):
     #############################
     def __init__(self, configDesc, p2pService=None, useIp6=False):
 
         self.p2pService = p2pService
-        GNRServer.__init__(self, configDesc, NetServerFactory, useIp6)
+        GNRServer.__init__(self, configDesc, None, None, useIp6)
 
     #############################
     def newConnection(self, session):
         self.p2pService.newSession(session)
+
+    #############################
+    def startAccepting(self):
+        self.setProtocolFactory(NetServerFactory(self))
+        GNRServer.startAccepting(self)
 
     #############################
     def encrypt(self, msg, publicKey):
@@ -29,22 +53,4 @@ class P2PServer(GNRServer):
     #############################
     def _getFactory(self):
         return self.factory(self)
-
-#######################################################################################
-
-from twisted.internet.protocol import Factory
-
-from golem.network.p2p.PeerSession import PeerSessionFactory
-
-class NetServerFactory(Factory):
-    #############################
-    def __init__(self, p2pserver):
-        self.p2pserver = p2pserver
-
-    #############################
-    def buildProtocol(self, addr):
-        logger.info("Protocol build for {}".format(addr))
-        protocol = NetConnState(self.p2pserver)
-        protocol.setSessionFactory(PeerSessionFactory())
-        return protocol
 
