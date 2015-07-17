@@ -24,7 +24,7 @@ def nodeInfoToHostInfos(nodeInfo, port):
 
 
 class Network:
-    def __init__(self, protocolFactory, sessionFactory, useIp6=False, timeout=30):
+    def __init__(self, protocolFactory, sessionFactory, useIp6=False, timeout=5):
         from twisted.internet import reactor
         self.protocolFactory = protocolFactory
         self.sessionFactory = sessionFactory
