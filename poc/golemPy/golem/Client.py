@@ -18,7 +18,7 @@ from golem.AppConfig import AppConfig
 
 from golem.Model import Database
 from golem.Message import initMessages
-from golem.ClientConfigDescriptor import ClientConfigDescriptor
+from golem.ClientConfigDescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.environments.EnvironmentsManager import EnvironmentsManager
 from golem.resource.ResourceServer import ResourceServer
 from golem.resource.DirManager import DirManager
@@ -162,6 +162,7 @@ class Client:
     def __init__(self, configDesc, rootPath = "", config = ""):
         self.configDesc     = configDesc
         self.keysAuth       = EllipticalKeysAuth(configDesc.clientUid)
+        self.configApprover = ConfigApprover(configDesc)
 
         #NETWORK
         self.node = Node(self.configDesc.clientUid, self.keysAuth.getKeyId())
@@ -364,101 +365,9 @@ class Client:
 
     ############################
     def changeConfig(self, newConfigDesc):
-        self.cfg.changeConfig(newConfigDesc)
-        self.configDesc.seedHost = newConfigDesc.seedHost
-        self.configDesc.seedHostPort = self.__tryChangeToNumber(self.configDesc.seedHostPort, newConfigDesc.seedHostPort,
-                                                           toInt = True, name = 'Seed host port')
-
-        if self.configDesc.rootPath != newConfigDesc.rootPath:
-            self.resourceServer.changeResourceDir(newConfigDesc)
-        self.configDesc.rootPath = newConfigDesc.rootPath
-        self.configDesc.managerPort = self.__tryChangeToNumber(self.configDesc.managerPort, newConfigDesc.managerPort,
-                                                               toInt = True, name = 'Manager port')
-
-        self.configDesc.numCores = newConfigDesc.numCores
-        self.configDesc.estimatedPerformance = newConfigDesc.estimatedPerformance
-        self.configDesc.maxResourceSize = newConfigDesc.maxResourceSize
-        self.configDesc.maxMemorySize   = newConfigDesc.maxMemorySize
-
-        self.configDesc.optNumPeers = self.__tryChangeToNumber(self.configDesc.optNumPeers, newConfigDesc.optNumPeers,
-                                                              toInt = True, name='Opt peers number')
-
-        self.configDesc.useDistributedResourceManagement = newConfigDesc.useDistributedResourceManagement
-
-        self.configDesc.distResNum = self.__tryChangeToNumber(self.configDesc.distResNum,
-                                                                      newConfigDesc.distResNum,
-                                                                      toInt = True,
-                                                                      name = 'Distributed resource number')
-
-        self.configDesc.useWaitingForTaskTimeout = newConfigDesc.useWaitingForTaskTimeout
-
-        self.configDesc.waitingForTaskTimeout = self.__tryChangeToNumber(self.configDesc.waitingForTaskTimeout,
-                                                                          newConfigDesc.waitingForTaskTimeout,
-                                                                          toFloat = True,
-                                                                          name = "Waiting for task timeout")
-
-        self.configDesc.p2pSessionTimeout = self.__tryChangeToNumber(self.configDesc.p2pSessionTimeout,
-                                                                      newConfigDesc.p2pSessionTimeout,
-                                                                      toInt = True,
-                                                                      name = 'P2p session timeout')
-
-        self.configDesc.taskSessionTimeout = self.__tryChangeToNumber(self.configDesc.taskSessionTimeout,
-                                                                      newConfigDesc.taskSessionTimeout,
-                                                                      toInt = True,
-                                                                      name = 'Task session timeout')
-
-        self.configDesc.resourceSessionTimeout = self.__tryChangeToNumber(self.configDesc.resourceSessionTimeout,
-                                                                      newConfigDesc.resourceSessionTimeout,
-                                                                      toInt = True,
-                                                                      name = 'Resource session timeout')
-
-
-        self.configDesc.sendPings = newConfigDesc.sendPings
-
-
-        self.configDesc.pingsInterval = self.__tryChangeToNumber(self.configDesc.pingsInterval,
-                                                                  newConfigDesc.pingsInterval,
-                                                                  toFloat = True,
-                                                                  name = 'Ping interval')
-
-
-        self.configDesc.gettingPeersInterval = self.__tryChangeToNumber(self.configDesc.gettingPeersInterval,
-                                                                           newConfigDesc.gettingPeersInterval,
-                                                                           toFloat = True,
-                                                                           name = "Getting peers interval")
-
-
-        self.configDesc.gettingTasksInterval = self.__tryChangeToNumber(self.configDesc.gettingTasksInterval,
-                                                                           newConfigDesc.gettingTasksInterval,
-                                                                           toFloat = True,
-                                                                           name = "Getting tasks interval")
-
-        self.configDesc.nodeSnapshotInterval = self.__tryChangeToNumber(self.configDesc.nodeSnapshotInterval,
-                                                                      newConfigDesc.nodeSnapshotInterval,
-                                                                      toFloat = True,
-                                                                      name = "Node snapshot interval")
-
-        self.configDesc.maxResultsSendingDelay = self.__tryChangeToNumber(self.configDesc.maxResultsSendingDelay,
-                                                                      newConfigDesc.maxResultsSendingDelay,
-                                                                      toFloat = True,
-                                                                      name = "Max result sending delay")
-
-
-        self.configDesc.computingTrust = self.__tryChangeToNumber(self.configDesc.computingTrust,
-                                                                      newConfigDesc.computingTrust,
-                                                                      toFloat = True,
-                                                                      name = "Minimum trust for computing node")
-
-
-        self.configDesc.requestingTrust = self.__tryChangeToNumber(self.configDesc.requestingTrust,
-                                                                      newConfigDesc.requestingTrust,
-                                                                      toFloat = True,
-                                                                      name = "Minimum trust for requesting node")
-
-        self.configDesc.useIp6 = newConfigDesc.useIp6
-
-        self.configDesc.ethAccount = newConfigDesc.ethAccount
-
+        self.configDesc = self.configApprover.changeConfig(newConfigDesc)
+        self.cfg.changeConfig(self.configDesc)
+        self.resourceServer.changeResourceDir(self.configDesc)
         self.p2pservice.changeConfig(self.configDesc)
         self.taskServer.changeConfig(self.configDesc)
 

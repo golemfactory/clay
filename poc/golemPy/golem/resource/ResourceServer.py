@@ -46,6 +46,8 @@ class ResourceServer(GNRServer):
 
     ############################
     def changeResourceDir(self, configDesc):
+        if self.dirManager.rootPath == configDesc.rootPath:
+            return
         self.dirManager.rootPath = configDesc.rootPath
         self.dirManager.nodeId = configDesc.clientUid
         self.resourceManager.changeResourceDir(self.dirManager.getResourceDir())

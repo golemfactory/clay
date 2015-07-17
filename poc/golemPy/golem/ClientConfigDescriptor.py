@@ -1,4 +1,6 @@
+import logging
 
+logger = logging.getLogger(__name__)
 
 class ClientConfigDescriptor:
 
@@ -46,3 +48,54 @@ class ClientConfigDescriptor:
 
         self.ethAccount= ""
 
+class ConfigApprover:
+
+    def __init__(self, configDesc):
+        self.configDesc = configDesc
+        self.actions = {}
+        self.optsToChange = []
+        self.initActions()
+
+    def changeConfig(self, newConfigDesc):
+        ncdDict = newConfigDesc.__dict__
+        changeDict = {k: ncdDict[k] for k in self.optsToChange if k in self.optsToChange}
+        for key, val in changeDict.iteritems():
+            changeDict[key] = self.actions[key](val, key)
+        self.configDesc.__dict__.update(changeDict)
+        return self.configDesc
+
+    def initActions(self):
+
+        dontChangeOpt = ['seedHost', 'rootPath', 'maxResourceSize', 'maxMemorySize', 'useDistributedResourceManagement',
+                         'useWaitingForTaskTimeout', 'sendPings', 'useIp6', 'ethAccount', 'rootPath']
+        toIntOpt = ['seedHostPort', 'managerPort', 'numCores', 'optNumPeers', 'distResNum', 'waitingForTaskTimeout',
+                    'p2pSessionTimeout', 'taskSessionTimeout', 'resourceSessionTimeout', 'pingsInterval',
+                    'maxResultsSendingDelay', ]
+        toFloatOpt = ['estimatedPerformance', 'gettingPeersInterval', 'gettingTasksInterval', 'nodeSnapshotInterval',
+                      'computingTrust', 'requestingTrust']
+        self.optsToChange = dontChangeOpt + toIntOpt + toFloatOpt
+        for opt in dontChangeOpt:
+           self.actions[opt] = self._emptyAction
+        for opt in toIntOpt:
+            self.actions[opt] = self._toInt
+        for opt in toFloatOpt:
+            self.actions[opt] = self._toFloat
+
+    def _emptyAction(self, val, name):
+        return val
+
+    def _toInt(self, val, name):
+        try:
+            nval = int(val)
+        except ValueError:
+            logger.warning("{} value '{}' is not a number".format(name, val))
+            return val
+        return nval
+
+    def _toFloat(self, val, name):
+        try:
+            nval = float(val)
+        except ValueError:
+            logger.warning("{} value '{}' is not a number".format(name, val))
+            return val
+        return nval

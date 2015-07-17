@@ -113,7 +113,7 @@ class SimpleConfig:
                 logger.info("Writing {}'s configuration to {}".format(self.getNodeConfig().section(), cfgFile))
                 self.__writeConfig(cfg, cfgFile, checkUid)
         except Exception as ex:
-            logger.warning("{} ... failed with an exception".format(loggerMsg))
+            logger.warning("{} ... failed with an exception: {}".format(loggerMsg, str(ex)))
             #no additional try catch because this cannot fail (if it fails then the program shouldn't start anyway)
             logger.info("Failed to write configuration file. Creating fresh config.")
             self.__writeConfig(self.__createFreshConfig(), cfgFile, checkUid)
