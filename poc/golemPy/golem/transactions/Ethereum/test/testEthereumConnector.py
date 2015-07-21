@@ -5,7 +5,7 @@ import os
 
 sys.path.append(os.environ.get('GOLEM'))
 
-from golem.transactions.EthereumConnector import EthereumConnector, EthJSON
+from golem.transactions.Ethereum.EthereumConnector import EthereumConnector, EthJSON
 
 sys.path.append(os.environ.get('GOLEM'))
 

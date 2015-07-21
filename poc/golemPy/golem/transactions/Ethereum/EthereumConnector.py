@@ -1,6 +1,9 @@
 import json
 import requests
 import logging
+from sha3 import sha3_256
+
+from EthereumAbi import encode_abi
 
 logger = logging.getLogger(__name__)
 
@@ -44,22 +47,21 @@ class EthereumConnector:
         dataDesc.setId(1)
         return self.sendJsonRpc(dataDesc.getData())
 
+    def uuidToLong(self, uuid):
+        return int(sha3_256(str(uuid)).hexdigest(), 16)
+
     def payForTask(self, ethAccount, taskId, payments):
         gas = "0x76c0"
-        gasPrice =  "0x9184e72a000"
-        tranVal = 9000
-        addresses = []
-        values = []
-        if len(taskId) > 32:
-            logger.warning("Too long task, cropping...")
-            taskId = taskId[:32]
-        for ethAddr, val in payments.iteritems():
-            addresses.append(ethAddr.zfill(32))
-            values.append(str(val).zfill(32))
-            val += tranVal
-        data = PAY_HASH + taskId.zfill(32) + str(len(addresses)).zfill(32) + str(len(values)).zfill(32) + \
-                "".join(addresses) + "".join(values)
+        gasPrice = "0x9184e72a000"
+        tranVal = 9000 + sum(payments.values())
+        taskId = self.uuidToLong(taskId)
+        values = payments.values()
+        keys = payments.keys()
+        addresses = [str(bytearray.fromhex(key[2:])) for key in keys]
+
+        data = PAY_HASH
+        data += encode_abi(['uint256', 'address[]', 'uint256[]'],  [taskId, addresses, values]).encode('hex')
         logger.debug("Transaction data {}".format(data))
-        #Tymczasowo wykomentowane, zeby nie spalac etheru na prozno
-       # self.sendTransaction(ethAccount, gas, gasPrice, hex(tranVal), data)
+
+        #self.sendTransaction(ethAccount, gas, gasPrice, tranVal, data)
 

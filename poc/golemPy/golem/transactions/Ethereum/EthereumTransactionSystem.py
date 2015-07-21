@@ -1,4 +1,4 @@
-from TransactionSystem import TransactionSystem
+from golem.transactions.TransactionSystem import TransactionSystem
 from EthereumConnector import EthereumConnector
 
 from golem.core.variables import ETH_CONN_ADDR

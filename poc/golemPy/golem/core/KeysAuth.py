@@ -3,8 +3,13 @@ from random import random
 
 from Crypto.PublicKey import RSA
 from simplehash import SimpleHash
-from simpleauth import SimpleAuth
 from crypto import mk_privkey, privtopub, ECCx
+from sha3 import sha3_256
+
+from golem.core.variables import KEYS_PATH, PRIVATE_KEY_PREF, PUBLIC_KEY_PREF
+
+def sha3(seed):
+    return sha3_256(seed).digest()
 
 class KeysAuth:
     def __init__(self, uuid = None):
@@ -41,17 +46,19 @@ class RSAKeysAuth(KeysAuth):
 
     def _getPrivateKeyLoc(self, uuid):
         if uuid is None:
-            return os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/gnr/node_data/golem_private_key.pem'))
+            return os.path.normpath(os.path.join(os.environ.get('GOLEM'), KEYS_PATH, "{}.pem".format(PRIVATE_KEY_PREF)))
         else:
-            return os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/gnr/node_data/golem_private_key{}.pem'.format(uuid)))
+            return os.path.normpath(os.path.join(os.environ.get('GOLEM'), KEYS_PATH,
+                                                 "{}{}.pem".format(PRIVATE_KEY_PREF, uuid)))
 
     def _getPublicKeyLoc(self, uuid):
         if uuid is None:
-            os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/gnr/node_data/golem_public_key.pubkey'))
+            os.path.normpath(os.path.join(os.environ.get('GOLEM'), KEYS_PATH, "{}.pubkey".format(PUBLIC_KEY_PREF)))
         else:
-            return os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/gnr/node_data/golem_public_key{}.pubkey'.format(uuid)))
+            return os.path.normpath(os.path.join(os.environ.get('GOLEM'), KEYS_PATH,
+                                                 "{}{}.pubkey".format(PUBLIC_KEY_PREF, uuid)))
 
-    def _loadPrivateKey(self, uuid = None):
+    def _loadPrivateKey(self, uuid=None):
         privateKey = self._getPrivateKeyLoc(uuid)
         publicKey = self._getPublicKeyLoc(uuid)
         if not os.path.isfile(privateKey) or not os.path.isfile(publicKey):
@@ -175,13 +182,15 @@ class EllipticalKeysAuth(KeysAuth):
 
 if __name__ == "__main__":
   #  auth = RSAKeysAuth()
-    auth = EllipticalKeysAuth()
-    print auth.getKeyId()
+    auth = EllipticalKeysAuth("BLA")
+    print sha3(auth.getKeyId())
+    print len(auth._privateKey)
+    print len(auth.publicKey)
     print len(auth.getKeyId())
     print len(auth.getKeyId().decode('hex'))
     print len(auth.getPublicKey())
-  #  print len(auth.getPublicKey())
-  #  print len(auth._privateKey)
+    print len(auth.getPublicKey())
+    print len(auth._privateKey)
     #print auth.cntKeyId()
 
 

@@ -20,7 +20,7 @@ from golem.network.NetAndFilesConnState import MidNetAndFilesConnState
 from golem.network.p2p.Session import MidNetSession
 from golem.task.TaskBase import resultTypes
 from golem.resource.Resource import decompressDir
-from golem.transactions.EthereumPaymentsKeeper import EthAccountInfo
+from golem.transactions.Ethereum.EthereumPaymentsKeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 
