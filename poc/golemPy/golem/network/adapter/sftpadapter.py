@@ -38,11 +38,9 @@ class SFTPResourceInfo(object):
         self.name = name
         self.path = path
 
-    def to_file(self, extra_data=None):
+    def to_file(self):
         """
         Translate resource info to remote file path
-        :param dict|None extra_data:
-            For future development / meta class info
         :return: str full name of the resource to receive with sftp connection
         """
         file_to_get = os.path.normpath(os.path.join(self.path, self.name))
@@ -57,12 +55,10 @@ class SFTPAdapter(Adapter):
         self.opened = False
         self.sftp = None
 
-    def connect(self, host_info, extra_data=None):
+    def connect(self, host_info, **kwargs):
         """ Connect to host specified in host_info
         :param SFTPHostInfo host_info:
             All information needed for connection
-        :param dict None extra_data: *Default: None*
-            For future development / meta class specification
         :return: bool return true true if connection was opened
         """
         assert isinstance(host_info, SFTPHostInfo)
@@ -77,38 +73,32 @@ class SFTPAdapter(Adapter):
             logger.error("Can't connect to {}: {}".format(host_info.address, ex))
         return self.opened
 
-    def send_resource(self, resource, extra_data=None):
+    def send_resource(self, resource, **kwargs):
         """
         Copies a file :resource: between local host nad remote host
         :param str resource: file to send to remote host
-        :param None extra_data:
-            For future development / metaclass specification
         :return None:
         """
         if not self.opened or self.sftp is None:
             raise ClosedAdapterError
         self.sftp.put(resource)
 
-    def get_resource(self, resource_info, extra_data=None):
+    def get_resource(self, resource_info, **kwargs):
         """
         Copies a file described in resource_info between remote host and local host
         :param SFTPResourceInfo  resource_info:
-        :param None extra_data:
-            For future development / metaclass specification
         :return None:
         """
         assert isinstance(resource_info, SFTPResourceInfo)
 
         if not self.opened or self.sftp is None:
             raise ClosedAdapterError
-        file_to_get = resource_info.to_file(extra_data)
+        file_to_get = resource_info.to_file()
         self.sftp.get(file_to_get)
 
-    def close(self, extra_data=None):
+    def close(self, *kwargs):
         """
         Closes the connect
-        :param None extra_data: *Default: None*
-            For future development / metaclass specification
         :return bool: Return True if connection was closed
         """
         if self.sftp and self.opened:

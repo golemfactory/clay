@@ -10,17 +10,17 @@ class Adapter(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def connect(self, host_info, extra_data=None):
+    def connect(self, host_info, **kwargs):
         return
 
     @abc.abstractmethod
-    def send_resource(self, resource, extra_data=None):
+    def send_resource(self, resource, **kwargs):
         return
 
     @abc.abstractmethod
-    def get_resource(self, resource_info, extra_data=None):
+    def get_resource(self, resource_info, **kwargs):
         return
 
     @abc.abstractmethod
-    def close(self, extra_data=None):
+    def close(self, **kwargs):
         return

@@ -1,0 +1,10 @@
+[ ] SFTP Adapter
+    [ ] Mo¿liwoœæ zapisywania plików w ustalonym katalogu na maszynie zdalnej
+    [ ] Mo¿liwoœæ zapisywania plików w ustalonym katalogu na maszynie gospodarza
+    [ ] Mo¿liwoœæ sprawdzenia czy dany plik istnieje na maszynie zalnej
+    [ ] Mo¿liwoœæ zapisywania katalogów na maszynie zdalnej
+    [ ] Mo¿liwoœæ zapisywania katalogów na maszynie gospodarza
+
+[ ] HTTP Adapter
+[ ] FTP Adapter
+[ ] IPFS Adapter (?)
