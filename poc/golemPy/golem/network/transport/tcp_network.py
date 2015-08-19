@@ -4,8 +4,12 @@ import ipaddr
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
     TCP6ClientEndpoint
 from twisted.internet.defer import maybeDeferred
+from twisted.internet.protocol import connectionDone
 
-from network import Network
+from network import Network, SessionProtocol
+
+from golem.core.databuffer import DataBuffer
+from golem.Message import Message
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +93,7 @@ class TCPConnectInfo(object):
 class TCPNetwork(Network):
     def __init__(self, protocol_factory, use_ipv6=False, timeout=5):
         """
-        TCP network information,
+        TCP network information
         :param ProtocolFactory protocol_factory:
         :param bool use_ipv6: *Default: False* should network use IPv6 server endpoint?
         :param int timeout: *Default: 5*
@@ -257,3 +261,159 @@ class TCPNetwork(Network):
     def __stop_listening_failure(fail, errback, **kwargs):
         logger.error("Can't stop listening {}".format(fail))
         TCPNetwork.__call_failure_callback(errback, **kwargs)
+
+
+class BasicProtocol(SessionProtocol):
+    """ Connection-oriented basic protocol for twisted, support message serialization"""
+    def __init__(self):
+        SessionProtocol.__init__(self)
+        self.opened = False
+        self.db = DataBuffer()
+
+    def send_message(self, msg):
+        """
+        Serialize and send message
+        :param Message msg: message to send
+        :return bool: return True if message has been send, False if an error has
+        """
+        if not self.opened:
+            logger.error(msg)
+            logger.error("Send message failed - connection closed.")
+            return False
+
+        msg_to_send = self._prepare_msg_to_send(msg)
+
+        if msg_to_send is None:
+            return False
+
+        self.transport.getHandle()
+        self.transport.write(msg_to_send)
+
+        return True
+
+    def close(self):
+        """
+        Close connection, after writing all pending  (flush the write buffer and wait for producer to finish).
+        :return None:
+        """
+        self.transport.loseConnection()
+
+    def close_now(self):
+        """
+        Close connection ASAP, doesn't flush the write buffer or wait for the producer to finish
+        :return:
+        """
+        self.opened = False
+        self.transport.abortConnection()
+
+    # Protocol functions
+    def connectionMade(self):
+        """Called when new connection is successfully opened"""
+        SessionProtocol.connectionMade(self)
+        self.opened = True
+
+    def dataReceived(self, data):
+        """Called when additional chunk of data is received from another peer"""
+        if not self._can_receive():
+            return None
+
+        if not self.session:
+            logger.warning("No session argument in connection state")
+            return None
+
+        self._interpret(data)
+
+    def connectionLost(self, reason=connectionDone):
+        """Called when connection is lost (for whatever reason)"""
+        self.opened = False
+        if self.session:
+            self.session.dropped()
+
+    # Protected functions
+    def _prepare_msg_to_send(self, msg):
+        ser_msg = msg.serialize()
+
+        db = DataBuffer()
+        db.appendLenPrefixedString(ser_msg)
+        return db.readAll()
+
+    def _can_receive(self):
+        return self.opened and isinstance(self.db, DataBuffer)
+
+    def _interpret(self, data):
+        self.db.appendString(data)
+        mess = self._data_to_messages()
+        if mess is None or len(mess) == 0:
+            logger.error("Deserialization message failed")
+            return None
+
+        for m in mess:
+            self.session.interpret(m)
+
+    def _data_to_messages(self):
+        return Message.deserialize(self.db)
+
+
+class ServerProtocol(BasicProtocol):
+    """ Basic protocol connected to server instance
+    """
+    def __init__(self, server):
+        """
+        :param Server server: server respon
+        :return None:
+        """
+        BasicProtocol.__init__(self)
+        self.server = server
+
+    # Protocol functions
+    def connectionMade(self):
+        """Called when new connection is successfully opened"""
+        BasicProtocol.connectionMade(self)
+        self.server.new_connection(self.session)
+
+    def _can_receive(self):
+        assert self.opened
+        assert isinstance(self.db, DataBuffer)
+
+        if not self.session and self.server:
+            self.opened = False
+            raise Exception('Peer for connection is None')
+
+        return True
+
+
+class SafeProtocol(ServerProtocol):
+    """More advanced version of server protocol, support for serialization, encryption, decryption and signing
+    messages """
+
+    def _prepare_msg_to_send(self, msg):
+        if self.session is None:
+            logger.error("Wrong session, not sending message")
+            return None
+
+        msg = self.session.sign(msg)
+        if not msg:
+            logger.error("Wrong session, not sending message")
+            return None
+        ser_msg = msg.serialize()
+        enc_msg = self.session.encrypt(ser_msg)
+
+        db = DataBuffer()
+        db.appendLenPrefixedString(enc_msg)
+        return db.readAll()
+
+    def _data_to_messages(self):
+        assert isinstance(self.db, DataBuffer)
+        msgs = [msg for msg in self.db.getLenPrefixedString()]
+        messages = []
+        for msg in msgs:
+            dec_msg = self.session.decrypt(msg)
+            if dec_msg is None:
+                logger.warning("Decryption of message failed")
+                return None
+            m = Message.deserializeMessage(dec_msg)
+            if m is None:
+                return None
+            m.encrypted = dec_msg != msg
+            messages.append(m)
+        return messages

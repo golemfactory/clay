@@ -46,6 +46,7 @@ class SessionProtocol(Protocol):
     def set_session_factory(self, session_factory):
         self.session_factory = session_factory
 
+    # Protocol function
     def connectionMade(self):
         Protocol.connectionMade(self)
         self.session = self.session_factory.get_session(self)
