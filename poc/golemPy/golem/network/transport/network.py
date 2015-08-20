@@ -40,14 +40,17 @@ class ProtocolFactory(Factory):
 
 class SessionProtocol(Protocol):
     def __init__(self):
+        """Connection-oriented basic protocol for twisted"""
         self.session_factory = None
         self.session = None
 
     def set_session_factory(self, session_factory):
+        """ :param SessionFactory session_factory: """
         self.session_factory = session_factory
 
     # Protocol function
     def connectionMade(self):
+        """Called when new connection is successfully opened"""
         Protocol.connectionMade(self)
         self.session = self.session_factory.get_session(self)
 

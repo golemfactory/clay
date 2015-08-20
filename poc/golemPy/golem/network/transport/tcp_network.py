@@ -94,7 +94,7 @@ class TCPNetwork(Network):
     def __init__(self, protocol_factory, use_ipv6=False, timeout=5):
         """
         TCP network information
-        :param ProtocolFactory protocol_factory:
+        :param ProtocolFactory protocol_factory: Protocols should be at least ServerProtocol implementation
         :param bool use_ipv6: *Default: False* should network use IPv6 server endpoint?
         :param int timeout: *Default: 5*
         :return None:

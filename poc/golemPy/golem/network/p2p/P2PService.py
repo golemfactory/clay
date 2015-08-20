@@ -5,8 +5,10 @@ import random
 from copy import copy
 
 from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
+from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress
+from golem.network.transport.network import ProtocolFactory
 from golem.network.p2p.PeerSession import PeerSession, PeerSessionFactory
-from golem.network.p2p.P2PServer import P2PServer, NetServerFactory
+from golem.network.p2p.P2PServer import P2PServer
 from PeerKeeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
@@ -47,13 +49,13 @@ class P2PService:
         self.p2pServer              = P2PServer(configDesc, self, useIp6)
 
         self.network = Network(None, PeerSessionFactory(), useIp6)
+        self.network = self.p2pServer.network
 
         self.connectToNetwork()
 
     #############################
     def connectToNetwork(self):
-        self.p2pServer.startAccepting()
-        self.network.protocolFactory = NetServerFactory(self.p2pServer)
+        self.p2pServer.start_accepting()
         if not self.wrongSeedData():
             self.__connect(self.configDesc.seedHost, self.configDesc.seedHostPort)
 
@@ -199,7 +201,7 @@ class P2PService:
     #############################
     def changeConfig(self, configDesc):
         self.configDesc = configDesc
-        self.p2pServer.changeConfig(configDesc)
+        self.p2pServer.change_config(configDesc)
 
         self.lastMessageTimeThreshold = self.configDesc.p2pSessionTimeout
 
@@ -226,7 +228,7 @@ class P2PService:
 
     ############################
     def getListenParams(self):
-        return (self.p2pServer.curPort, self.configDesc.clientUid, self.keysAuth.getKeyId(), self.node)
+        return (self.p2pServer.cur_port, self.configDesc.clientUid, self.keysAuth.getKeyId(), self.node)
 
     ############################
     def getPeersDegree(self):
@@ -459,19 +461,39 @@ class P2PService:
         self.neighbourLocRankBuff = []
         return nrb
 
+    new_connection = newSession
+
     #############################
     #PRIVATE SECTION
     #############################
     def __connect(self, address, port):
-        self.network.connect(address, port, self.__connectionEstablished, self.__connectionFailure)
+        connect_info = TCPConnectInfo([TCPAddress(address, port)], self.__connectionEstablished, self.__connectionFailure)
+        self.network.connect(connect_info)
+        #self.network.connect(address, port, self.__connectionEstablished, self.__connectionFailure)
 
     #############################
     def __connectToHost(self, peer):
-        hostInfos = nodeInfoToHostInfos(peer['node'], peer['port'])
+        #hostInfos = nodeInfoToHostInfos(peer['node'], peer['port'])
         addr = self.suggestedAddrs.get(peer['node'].key)
+        #if addr:
+         #   hostInfos = [HostData(addr, peer['port'])] + hostInfos
+        tcp_addresses = P2PService.__nodeInfoToTCPAddresses(peer['node'], peer['port'])
         if addr:
-            hostInfos = [HostData(addr, peer['port'])] + hostInfos
-        self.network.connectToHost(hostInfos, self.__connectionEstablished, self.__connectionFailure)
+            tcp_addresses = [TCPAddress(addr, peer['port'])] + tcp_addresses
+        #self.network.connectToHost(hostInfos, self.__connectionEstablished, self.__connectionFailure)
+        connect_info = TCPConnectInfo(tcp_addresses, self.__connectionEstablished, self.__connectionFailure)
+        self.network.connect(connect_info)
+
+    # Tmp function: to be remove
+    @staticmethod
+    def __nodeInfoToTCPAddresses(nodeInfo, port):
+        tcp_addresses = [TCPAddress(i, port) for i in nodeInfo.prvAddresses]
+        if nodeInfo.pubPort:
+            tcp_addresses.append(TCPAddress(nodeInfo.pubAddr, nodeInfo.pubPort))
+        else:
+            tcp_addresses.append(TCPAddress(nodeInfo.pubAddr, port))
+        return tcp_addresses
+
 
     #############################
     def __sendMessageGetPeers(self):

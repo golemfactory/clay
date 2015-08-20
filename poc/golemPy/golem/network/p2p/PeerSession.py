@@ -14,13 +14,25 @@ from golem.network.p2p.Session import NetSession
 logger = logging.getLogger(__name__)
 
 
-class PeerSession(NetSession):
+class PeerSessionFactory:
+    ##########################
+    def getSession(self, connection):
+        return PeerSession(connection)
 
-    ConnectionStateType = NetConnState
+    def get_session(self, connection):
+        return PeerSession(connection)
+
+from golem.network.transport.tcp_network import SafeProtocol
+from golem.network.transport.session import BasicSafeSession
+
+
+class PeerSession(BasicSafeSession):
+
+    ConnectionStateType = SafeProtocol
 
     StateInitialize = 0
     StateConnecting = 1
-    StateConnected  = 2 
+    StateConnected  = 2
 
     DCRDuplicatePeers   = "Duplicate peers"
     DCRTooManyPeers     = "Too many peers"
@@ -29,8 +41,8 @@ class PeerSession(NetSession):
     ##########################
     def __init__(self, conn):
 
-        NetSession.__init__(self, conn)
-        self.p2pService = None
+        BasicSafeSession.__init__(self, conn)
+        self.p2pService = self.conn.server
         self.id = 0
         self.state = PeerSession.StateInitialize
         self.degree = 0
@@ -47,7 +59,7 @@ class PeerSession(NetSession):
     ##########################
     def __str__(self):
         return "{} : {}".format(self.address, self.port)
-     
+
     ##########################
     def start(self):
         logger.info("Starting peer session {} : {}".format(self.address, self.port))
@@ -56,7 +68,7 @@ class PeerSession(NetSession):
 
     ##########################
     def dropped(self):
-        NetSession.dropped(self)
+        BasicSafeSession.dropped(self)
         self.p2pService.removePeer(self)
 
     ##########################
@@ -67,7 +79,7 @@ class PeerSession(NetSession):
     ##########################
     def interpret(self, msg):
         self.p2pService.setLastMessage("<-", self.clientKeyId, time.localtime(), msg, self.address, self.port)
-        NetSession.interpret(self, msg)
+        BasicSafeSession.interpret(self, msg)
 
        # type = msg.getType()
 
@@ -110,63 +122,63 @@ class PeerSession(NetSession):
 
     ##########################
     def sendGetPeers(self):
-        self._send(MessageGetPeers())
+        self.send(MessageGetPeers())
 
     ##########################
     def sendGetTasks(self):
-        self._send(MessageGetTasks())
+        self.send(MessageGetTasks())
 
     ##########################
     def sendRemoveTask(self, taskId):
-        self._send(MessageRemoveTask(taskId))
+        self.send(MessageRemoveTask(taskId))
 
     ##########################
     def sendGetResourcePeers(self):
-        self._send(MessageGetResourcePeers())
+        self.send(MessageGetResourcePeers())
 
     ##########################
     def sendDegree(self, degree):
-        self._send(MessageDegree(degree))
+        self.send(MessageDegree(degree))
 
     ##########################
     def sendGossip(self, gossip):
-        self._send(MessageGossip(gossip))
+        self.send(MessageGossip(gossip))
 
     ##########################
     def sendStopGossip(self):
-        self._send(MessageStopGossip())
+        self.send(MessageStopGossip())
 
     ##########################
     def sendLocRank(self, nodeId, locRank):
-        self._send(MessageLocRank(nodeId, locRank))
+        self.send(MessageLocRank(nodeId, locRank))
 
     ##########################
     def sendFindNode(self, nodeId):
-        self._send(MessageFindNode(nodeId))
+        self.send(MessageFindNode(nodeId))
 
     ##########################
     def sendWantToStartTaskSession(self, nodeInfo, connId, superNodeInfo):
-        self._send(MessageWantToStartTaskSession(nodeInfo, connId, superNodeInfo))
+        self.send(MessageWantToStartTaskSession(nodeInfo, connId, superNodeInfo))
 
     ##########################
     def sendSetTaskSession(self, keyId, nodeInfo, connId, superNodeInfo):
-        self._send(MessageSetTaskSession(keyId, nodeInfo, connId, superNodeInfo))
+        self.send(MessageSetTaskSession(keyId, nodeInfo, connId, superNodeInfo))
 
     ##########################
     def sendTaskNatHole(self, keyId, addr, port, connId):
-        self._send(MessageNatHole(keyId, addr, port, connId))
+        self.send(MessageNatHole(keyId, addr, port, connId))
 
     ##########################
     def sendInformAboutNatTraverseFailure(self, keyId, connId):
-        self._send(MessageInformAboutNatTraverseFailure(keyId, connId))
+        self.send(MessageInformAboutNatTraverseFailure(keyId, connId))
 
     ##########################
     def sendNatTraverseFailure(self, connId):
-        self._send(MessageNatTraverseFailure(connId))
+        self.send(MessageNatTraverseFailure(connId))
 
     ##########################
     def _reactToPing(self, msg):
-        self.__sendPong()
+        self._sendPong()
 
     ##########################
     def _reactToPong(self, msg):
@@ -194,12 +206,12 @@ class PeerSession(NetSession):
             loggerMsg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.id, self.address, self.port)
             logger.info(loggerMsg)
             nodesInfo = self.p2pService.findNode(self.p2pService.getKeyId())
-            self._send(MessagePeers(nodesInfo))
+            self.send(MessagePeers(nodesInfo))
             self.disconnect(PeerSession.DCRTooManyPeers)
             return
 
-        if p and p != self and p.conn.isOpen():
-        #   self._sendPing()
+        if p and p != self and p.conn.opened:
+        #   self.sendPing()
             loggerMsg = "PEER DUPLICATED: {} {} : {}".format(p.id, p.address, p.port)
             logger.warning("{} AND {} : {}".format(loggerMsg, msg.clientUID, msg.port))
             self.disconnect(PeerSession.DCRDuplicatePeers)
@@ -207,13 +219,13 @@ class PeerSession(NetSession):
         if not p:
             self.p2pService.addPeer(self.id, self)
             self.__sendHello()
-            self._send(MessageRandVal(msg.randVal), sendUnverified = True)
+            self.send(MessageRandVal(msg.randVal), sendUnverified = True)
 
         #print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)
 
     ##########################
-    def _send(self, message, sendUnverified = False):
-        NetSession._send(self, message, sendUnverified)
+    def send(self, message, sendUnverified = False):
+        BasicSafeSession.send(self, message, sendUnverified)
         self.p2pService.setLastMessage("->", self.clientKeyId, time.localtime(), message, self.address, self.port)
 
 
@@ -270,7 +282,7 @@ class PeerSession(NetSession):
     ##########################
     def _reactToFindNode(self, msg):
         nodesInfo = self.p2pService.findNode(msg.nodeKeyId)
-        self.__send(MessagePeers(nodesInfo))
+        self.send(MessagePeers(nodesInfo))
 
     ##########################
     def _reactToRandVal(self, msg):
@@ -304,31 +316,31 @@ class PeerSession(NetSession):
     def __sendHello(self):
         listenParams = self.p2pService.getListenParams()
         listenParams += (self.randVal,)
-        self._send(MessageHello(*listenParams), sendUnverified = True)
+        self.send(MessageHello(*listenParams), sendUnverified = True)
 
     ##########################
     def __sendPing(self):
-        self._send(MessagePing())
+        self.send(MessagePing())
 
     ##########################
     def __sendPong(self):
-        self._send(MessagePong())
+        self.send(MessagePong())
 
     ##########################
     def __sendPeers(self):
         peersInfo = []
         for p in self.p2pService.peers.values():
             peersInfo.append({"address" : p.address, "port" : p.listenPort, "id" : p.id, "node": p.nodeInfo})
-        self._send(MessagePeers(peersInfo))
+        self.send(MessagePeers(peersInfo))
 
     ##########################
     def __sendTasks(self, tasks):
-        self._send(MessageTasks(tasks))
+        self.send(MessageTasks(tasks))
 
     ##########################
     def __sendResourcePeers(self):
         resourcePeersInfo = self.p2pService.getResourcePeers()
-        self._send(MessageResourcePeers(resourcePeersInfo))
+        self.send(MessageResourcePeers(resourcePeersInfo))
 
     ##########################
     def __setMsgInterprations(self):
@@ -371,12 +383,3 @@ class PeerSession(NetSession):
                                         MessageLocRank.Type: self._reactToLocRank,
                                         MessageStopGossip.Type: self._reactToStopGossip,
                                    })
-
-
-
-##############################################################################
-
-class PeerSessionFactory:
-    ##########################
-    def getSession(self, connection):
-        return PeerSession(connection)
