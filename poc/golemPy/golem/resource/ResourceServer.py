@@ -3,30 +3,31 @@ import random
 import os
 import time
 
-from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
-from golem.network.GNRServer import GNRServer
+from golem.network.transport.network import ProtocolFactory
+from golem.network.transport.tcp_server import TCPServer
+from golem.network.transport.tcp_network import TCPConnectInfo, TCPAddress, TCPListenInfo, TCPNetwork
 from golem.network.NetAndFilesConnState import NetAndFilesConnState
 from golem.resource.DirManager import DirManager
 from golem.resource.ResourcesManager import DistributedResourceManager
-from golem.resource.ResourceSession import ResourceSession
 from golem.ranking.Ranking import RankingStats
 
 logger = logging.getLogger(__name__)
 
 ##########################################################
-class ResourceServer(GNRServer):
+class ResourceServer(TCPServer):
     ############################
-    def __init__(self, configDesc, keysAuth, client, useIp6=False):
+    def __init__(self, config_desc, keysAuth, client, useIp6=False):
         self.client = client
         self.keysAuth = keysAuth
         self.resourcesToSend = []
         self.resourcesToGet = []
         self.resSendIt = 0
         self.peersIt = 0
-        self.dirManager = DirManager(configDesc.rootPath, configDesc.clientUid)
+        self.dirManager = DirManager(config_desc.rootPath, config_desc.clientUid)
         self.resourceManager = DistributedResourceManager(self.dirManager.getResourceDir())
         self.useIp6=useIp6
-        GNRServer.__init__(self, configDesc, None, ResourceSessionFactory(), useIp6)
+        network = TCPNetwork(ProtocolFactory(NetAndFilesConnState, self, ResourceSessionFactory()),  useIp6)
+        TCPServer.__init__(self, config_desc, network)
 
         self.resourcePeers = {}
         self.waitingTasks = {}
@@ -37,19 +38,18 @@ class ResourceServer(GNRServer):
         self.getResourcePeersInterval = 5.0
         self.sessions = []
 
-        self.lastMessageTimeThreshold = configDesc.resourceSessionTimeout
+        self.lastMessageTimeThreshold = config_desc.resourceSessionTimeout
 
     ############################
     def startAccepting(self):
-        self.setProtocolFactory(ResourceServerFactory(self))
-        GNRServer.startAccepting(self)
+        TCPServer.start_accepting(self)
 
     ############################
-    def changeResourceDir(self, configDesc):
-        if self.dirManager.rootPath == configDesc.rootPath:
+    def changeResourceDir(self, config_desc):
+        if self.dirManager.rootPath == config_desc.rootPath:
             return
-        self.dirManager.rootPath = configDesc.rootPath
-        self.dirManager.nodeId = configDesc.clientUid
+        self.dirManager.rootPath = config_desc.rootPath
+        self.dirManager.nodeId = config_desc.clientUid
         self.resourceManager.changeResourceDir(self.dirManager.getResourceDir())
 
     ############################
@@ -98,6 +98,8 @@ class ResourceServer(GNRServer):
         session.resourceServer = self
         self.sessions.append(session)
 
+    new_connection = newConnection
+
     ############################
     def addResourcePeer(self, clientId, addr, port, keyId, nodeInfo):
         if clientId in self.resourcePeers:
@@ -109,9 +111,8 @@ class ResourceServer(GNRServer):
 
     ############################
     def setResourcePeers(self, resourcePeers):
-
-        if self.configDesc.clientUid in resourcePeers:
-            del resourcePeers[self.configDesc.clientUid]
+        if self.config_desc.clientUid in resourcePeers:
+            del resourcePeers[self.config_desc.clientUid]
 
         for clientId, [addr, port, keyId, nodeInfo] in resourcePeers.iteritems():
             self.addResourcePeer(clientId, addr, port, keyId, nodeInfo)
@@ -161,14 +162,14 @@ class ResourceServer(GNRServer):
 
     ############################
     def pullResource(self, resource, addr, port, keyId, nodeInfo):
-        # Network.connect(addr, port, ResourceSession, self.__connectionPullResourceEstablished,
-        #                 self.__connectionPullResourceFailure, resource, addr, port, keyId)
-        hostInfos = nodeInfoToHostInfos(nodeInfo, port)
+        tcp_addresses = self.__nodeInfoToTCPAddresses(nodeInfo, port)
         addr = self.client.getSuggestedAddr(keyId)
         if addr:
-            hostInfos = [HostData(addr, port)] + hostInfos
-        self.network.connectToHost(hostInfos, self.__connectionPullResourceEstablished,
-                        self.__connectionPullResourceFailure, resource, addr, port, keyId)
+            tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
+        connect_info = TCPConnectInfo(tcp_addresses, self.__connectionPullResourceEstablished,
+                                      self.__connectionPullResourceFailure)
+        self.network.connect(connect_info, resource=resource, resource_address=addr, resource_port=port, keyId=keyId)
+
 
     ############################
     def pullAnswer(self, resource, hasResource, session):
@@ -192,16 +193,15 @@ class ResourceServer(GNRServer):
 
     ############################
     def pushResource(self, resource, addr, port, keyId, nodeInfo, copies):
-        hostInfos = nodeInfoToHostInfos(nodeInfo, port)
+
+        tcp_addresses = self.__nodeInfoToTCPAddresses(nodeInfo, port)
         addr = self.client.getSuggestedAddr(keyId)
         if addr:
-            hostInfos = [HostData(addr, port)] + hostInfos
-        # Network.connect(addr, port, ResourceSession, self.__connectionPushResourceEstablished,
-        #                 self.__connectionPushResourceFailure, resource, copies,
-        #                 addr, port, keyId)
-        self.network.connectToHost(hostInfos, self.__connectionPushResourceEstablished,
-                        self.__connectionPushResourceFailure, resource, copies,
-                        addr, port, keyId)
+            tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
+        connect_info = TCPConnectInfo(tcp_addresses, self.__connectionPushResourceEstablished,
+                                      self.__connectionPushResourceFailure)
+        self.network.connect(connect_info, resource=resource, copies=copies, resource_address=addr, resource_port=port,
+                             keyId=keyId)
 
     ############################
     def checkResource(self, resource):
@@ -293,8 +293,17 @@ class ResourceServer(GNRServer):
 
 
     ############################
-    def changeConfig(self, configDesc):
-        self.lastMessageTimeThreshold = configDesc.resourceSessionTimeout
+    def changeConfig(self, config_desc):
+        self.lastMessageTimeThreshold = config_desc.resourceSessionTimeout
+
+    @staticmethod
+    def __nodeInfoToTCPAddresses(nodeInfo, port):
+        tcp_addresses = [TCPAddress(i, port) for i in nodeInfo.prvAddresses]
+        if nodeInfo.pubPort:
+            tcp_addresses.append(TCPAddress(nodeInfo.pubAddr, nodeInfo.pubPort))
+        else:
+            tcp_addresses.append(TCPAddress(nodeInfo.pubAddr, port))
+        return tcp_addresses
 
     ############################
     def __freePeer(self, addr, port):
@@ -305,7 +314,7 @@ class ResourceServer(GNRServer):
 
 
     ############################
-    def __connectionPushResourceEstablished(self, session, resource, copies, addr, port, keyId):
+    def __connectionPushResourceEstablished(self, session, resource, copies, resource_address, resource_port, keyId):
         session.resourceServer = self
         session.clientKeyId = keyId
         session.sendHello()
@@ -313,12 +322,12 @@ class ResourceServer(GNRServer):
         self.sessions.append(session)
 
     ############################
-    def __connectionPushResourceFailure(self, resource, copies, addr, port, keyId):
-        self.__removeClient(addr, port)
+    def __connectionPushResourceFailure(self, resource, copies, resource_address, resource_port, keyId):
+        self.__removeClient(resource_address, resource_port)
         logger.error("Connection to resource server failed")
 
     ############################
-    def __connectionPullResourceEstablished(self, session, resource, addr, port, keyId):
+    def __connectionPullResourceEstablished(self, session, resource, resource_address, resource_port, keyId):
         session.resourceServer = self
         session.clientKeyId = keyId
         session.sendHello()
@@ -326,12 +335,12 @@ class ResourceServer(GNRServer):
         self.sessions.append(session)
 
     ############################
-    def __connectionPullResourceFailure(self, resource, addr, port, keyId):
-        self.__removeClient(addr, port)
+    def __connectionPullResourceFailure(self, resource, resource_address, resource_port, keyId):
+        self.__removeClient(resource_address, resource_port)
         logger.error("Connection to resource server failed")
 
     ############################
-    def __connectionForResourceEstablished(self, session, resource, addr, port, keyId):
+    def __connectionForResourceEstablished(self, session, resource, resource_address, resource_port, keyId):
         session.resourceServer = self
         session.clientKeyId = keyId
         session.sendHello()
@@ -339,8 +348,8 @@ class ResourceServer(GNRServer):
         self.sessions.append(session)
 
     ############################
-    def __connectionForResourceFailure(self, resource, addr, port):
-        self.__removeClient(addr, port)
+    def __connectionForResourceFailure(self, resource, resource_address, resource_port):
+        self.__removeClient(resource_address, resource_port)
         logger.error("Connection to resource server failed")
 
     ############################
@@ -365,9 +374,9 @@ class ResourceServer(GNRServer):
             self.removeSession(session)
 
     ############################
-    def _listeningEstablished(self, iListeningPort, *args):
-        GNRServer._listeningEstablished(self, iListeningPort, *args)
-        self.client.setResourcePort(self.curPort)
+    def _listening_established(self, port, **kwargs):
+        TCPServer._listening_established(self, port, **kwargs)
+        self.client.setResourcePort(self.cur_port)
 
 
 ##########################################################

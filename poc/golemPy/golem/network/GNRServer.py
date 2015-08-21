@@ -5,71 +5,70 @@ import uuid
 from collections import deque
 from stun import FullCone, OpenInternet
 
-from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
 from golem.network.transport.tcp_server import TCPServer
 from golem.network.transport.tcp_network import TCPConnectInfo, TCPAddress, TCPListenInfo
 
 logger = logging.getLogger(__name__)
 
-#######################################################################################
-class GNRServer:
-    #############################
-    def __init__(self, configDesc, protocolFactory, sessionFactory, useIp6=False):
-        self.configDesc = configDesc
-        self.protocolFactory = protocolFactory
-        self.sessionFactory = sessionFactory
-
-        self.curPort = 0
-        self.useIp6 = useIp6
-        self.iListeningPort = None
-
-        self.network = Network(protocolFactory, sessionFactory, useIp6)
-
-    #############################
-    def setProtocolFactory(self, protocolFactory):
-        self.network.protocolFactory = protocolFactory
-
-    #############################
-    def setSessionFactory(self, sessionFactory):
-        self.network.sessionFactory = sessionFactory
-
-    #############################
-    def newConnection(self, session):
-        pass
-
-    #############################
-    def changeConfig(self, configDesc):
-        self.configDesc = configDesc
-
-        if self.iListeningPort is None:
-            self.startAccepting()
-            return
-
-        if self.iListeningPort and (configDesc.startPort > self.curPort or configDesc.endPort < self.curPort):
-            self.iListeningPort.stopListening()
-            self.startAccepting()
-
-    #############################
-    def startAccepting(self):
-        logger.info("Enabling network accepting state")
-
-        self.network.listen(self.configDesc.startPort, self.configDesc.endPort, self._listeningEstablished,
-                            self._listeningFailure)
-
-    #############################
-    def _listenOnPort(self, port, listeningEstablished, listeningFailure, extraData):
-        self.network.listen(port, port, listeningEstablished, listeningFailure, *extraData)
-
-
-    #############################
-    def _listeningEstablished(self, iListeningPort, *args):
-        self.curPort = iListeningPort.getHost().port
-        self.iListeningPort = iListeningPort
-        logger.info(" Port {} opened - listening".format(self.curPort))
-
-    #############################
-    def _listeningFailure(self, *args):
-        logger.error("Listening on ports {} to {} failure".format(self.configDesc.startPort, self.configDesc.endPort))
+# #######################################################################################
+# class GNRServer:
+#     #############################
+#     def __init__(self, configDesc, protocolFactory, sessionFactory, useIp6=False):
+#         self.configDesc = configDesc
+#         self.protocolFactory = protocolFactory
+#         self.sessionFactory = sessionFactory
+#
+#         self.curPort = 0
+#         self.useIp6 = useIp6
+#         self.iListeningPort = None
+#
+#         self.network = Network(protocolFactory, sessionFactory, useIp6)
+#
+#     #############################
+#     def setProtocolFactory(self, protocolFactory):
+#         self.network.protocolFactory = protocolFactory
+#
+#     #############################
+#     def setSessionFactory(self, sessionFactory):
+#         self.network.sessionFactory = sessionFactory
+#
+#     #############################
+#     def newConnection(self, session):
+#         pass
+#
+#     #############################
+#     def changeConfig(self, configDesc):
+#         self.configDesc = configDesc
+#
+#         if self.iListeningPort is None:
+#             self.startAccepting()
+#             return
+#
+#         if self.iListeningPort and (configDesc.startPort > self.curPort or configDesc.endPort < self.curPort):
+#             self.iListeningPort.stopListening()
+#             self.startAccepting()
+#
+#     #############################
+#     def startAccepting(self):
+#         logger.info("Enabling network accepting state")
+#
+#         self.network.listen(self.configDesc.startPort, self.configDesc.endPort, self._listeningEstablished,
+#                             self._listeningFailure)
+#
+#     #############################
+#     def _listenOnPort(self, port, listeningEstablished, listeningFailure, extraData):
+#         self.network.listen(port, port, listeningEstablished, listeningFailure, *extraData)
+#
+#
+#     #############################
+#     def _listeningEstablished(self, iListeningPort, *args):
+#         self.curPort = iListeningPort.getHost().port
+#         self.iListeningPort = iListeningPort
+#         logger.info(" Port {} opened - listening".format(self.curPort))
+#
+#     #############################
+#     def _listeningFailure(self, *args):
+#         logger.error("Listening on ports {} to {} failure".format(self.configDesc.startPort, self.configDesc.endPort))
 
 #######################################################################################
 class PendingConnectionsServer(TCPServer):
@@ -77,7 +76,6 @@ class PendingConnectionsServer(TCPServer):
     supportedNatTypes = [FullCone, OpenInternet]
 
     #############################
-    #def __init__(self, configDesc, protocolFactory, sessionFactory, useIp6=False):
     def __init__(self, configDesc, network):
         self.pendingConnections = {}
         self.connEstablishedForType = {}
@@ -99,7 +97,6 @@ class PendingConnectionsServer(TCPServer):
         self.listenPortTTL = 3600
 
         TCPServer.__init__(self, configDesc, network)
-        #GNRServer.__init__(self, configDesc, protocolFactory, sessionFactory, useIp6)
 
     #############################
     def changeConfig(self, configDesc):
@@ -125,7 +122,6 @@ class PendingConnectionsServer(TCPServer):
 
     #############################
     def _addPendingRequest(self, type, taskOwner, port, keyId, args):
-        #hostInfos = self._getHostInfos(taskOwner, port, keyId)
         tcp_addresses = self._getTCPAddresses(taskOwner, port, keyId)
         pc = PendingConnection(type, tcp_addresses, self.connEstablishedForType[type],
                                self.connFailureForType[type], args)
@@ -178,10 +174,6 @@ class PendingConnectionsServer(TCPServer):
                     listeningsToRemove.append(olId)
             for olId in listeningsToRemove:
                 del self.openListenings[olId]
-
-    #############################
-    def _getHostInfos(self, nodeInfo, port, keyId):
-        return nodeInfoToHostInfos(nodeInfo, port)
 
     def _getTCPAddresses(self, nodeInfo, port, keyId):
         return PendingConnectionsServer.__nodeInfoToTCPAddresses(nodeInfo, port)

@@ -2,11 +2,7 @@ import time
 import logging
 import random
 
-from copy import copy
-
-from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
 from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress
-from golem.network.transport.network import ProtocolFactory
 from golem.network.p2p.PeerSession import PeerSession, PeerSessionFactory
 from golem.network.p2p.P2PServer import P2PServer
 from PeerKeeper import PeerKeeper
@@ -48,7 +44,6 @@ class P2PService:
         self.connectionsToSet = {}
         self.p2pServer              = P2PServer(configDesc, self, useIp6)
 
-        self.network = Network(None, PeerSessionFactory(), useIp6)
         self.network = self.p2pServer.network
 
         self.connectToNetwork()
@@ -304,6 +299,7 @@ class P2PService:
 
     ############################
     def setResourcePeers(self, resourcePeers):
+        print "P2P SET RESOURCE PEERS {}".format(resourcePeers)
         for peer in resourcePeers:
             try:
                 if peer['clientId'] != self.clientUid:
@@ -473,14 +469,10 @@ class P2PService:
 
     #############################
     def __connectToHost(self, peer):
-        #hostInfos = nodeInfoToHostInfos(peer['node'], peer['port'])
         addr = self.suggestedAddrs.get(peer['node'].key)
-        #if addr:
-         #   hostInfos = [HostData(addr, peer['port'])] + hostInfos
         tcp_addresses = P2PService.__nodeInfoToTCPAddresses(peer['node'], peer['port'])
         if addr:
             tcp_addresses = [TCPAddress(addr, peer['port'])] + tcp_addresses
-        #self.network.connectToHost(hostInfos, self.__connectionEstablished, self.__connectionFailure)
         connect_info = TCPConnectInfo(tcp_addresses, self.__connectionEstablished, self.__connectionFailure)
         self.network.connect(connect_info)
 

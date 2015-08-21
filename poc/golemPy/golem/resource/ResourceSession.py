@@ -5,25 +5,26 @@ import struct
 
 from golem.Message import MessageHello, MessageRandVal, MessageHasResource, MessageWantResource, MessagePushResource, MessageDisconnect,\
     MessagePullResource, MessagePullAnswer, MessageSendResource
-from golem.network.p2p.Session import NetSession
 from golem.network.FileProducer import EncryptFileProducer
 from golem.network.FileConsumer import DecryptFileConsumer
 from golem.network.NetAndFilesConnState import NetAndFilesConnState
+from golem.network.transport.session import BasicSafeSession
 
 logger = logging.getLogger(__name__)
 
-class ResourceSession(NetSession):
+class ResourceSession(BasicSafeSession):
 
     ConnectionStateType = NetAndFilesConnState
 
     ##########################
     def __init__(self, conn):
-        NetSession.__init__(self, conn)
+        BasicSafeSession.__init__(self, conn)
         self.resourceServer = None
 
         self.fileName = None
         self.confirmation = False
         self.copies = 0
+        self.msgsToSend = []
         self.msgsToSend = []
 
         self.__setMsgInterpretations()
@@ -40,23 +41,23 @@ class ResourceSession(NetSession):
 
     ##########################
     def sendHasResource(self, resource):
-        self._send(MessageHasResource(resource))
+        self.send(MessageHasResource(resource))
 
     ##########################
     def sendWantResource(self, resource):
-        self._send(MessageWantResource(resource))
+        self.send(MessageWantResource(resource))
 
     ##########################
     def sendPushResource(self, resource, copies = 1):
-        self._send(MessagePushResource(resource, copies))
+        self.send(MessagePushResource(resource, copies))
 
     ##########################
     def sendPullResource(self, resource):
-         self._send(MessagePullResource(resource))
+         self.send(MessagePullResource(resource))
 
     ##########################
     def sendPullAnswer(self, resource, hasResource):
-        self._send(MessagePullAnswer(resource, hasResource))
+        self.send(MessagePullAnswer(resource, hasResource))
 
     ##########################
     def encrypt(self, msg):
@@ -70,7 +71,7 @@ class ResourceSession(NetSession):
         if not self.resourceServer:
             return msg
         try:
-            msg =  self.resourceServer.decrypt(msg)
+            msg = self.resourceServer.decrypt(msg)
         except AssertionError:
             logger.warning("Failed to decrypt message, maybe it's not encrypted?")
         except Exception as err:
@@ -96,12 +97,12 @@ class ResourceSession(NetSession):
 
     ##########################
     def sendHello(self):
-        self._send(MessageHello(clientKeyId = self.resourceServer.getKeyId(), randVal = self.randVal), sendUnverified=True)
+        self.send(MessageHello(clientKeyId = self.resourceServer.getKeyId(), randVal = self.randVal), send_unverified=True)
 
     ##########################
     def fullFileReceived(self, extraData):
         if self.confirmation:
-            self._send(MessageHasResource(self.fileName))
+            self.send(MessageHasResource(self.fileName))
             self.confirmation = False
             if self.copies > 0:
                 self.resourceServer.addResourceToSend(self.fileName, self.copies)
@@ -117,11 +118,11 @@ class ResourceSession(NetSession):
         self.conn.fileProducer = None
 
     ##########################
-    def _send(self, msg, sendUnverified=False):
-        if not self.verified and not sendUnverified:
+    def send(self, msg, send_unverified=False):
+        if not self.verified and not send_unverified:
             self.msgsToSend.append(msg)
             return
-        NetSession._send(self, msg, sendUnverified=sendUnverified)
+        BasicSafeSession.send(self, msg, send_unverified=send_unverified)
 
     ##########################
     def _reactToPushResource(self, msg):
@@ -170,7 +171,7 @@ class ResourceSession(NetSession):
             self.disconnect(ResourceSession.DCRUnverified)
             return
 
-        self._send(MessageRandVal(msg.randVal), sendUnverified=True)
+        self.send(MessageRandVal(msg.randVal), send_unverified=True)
 
 
     ##########################
@@ -178,7 +179,7 @@ class ResourceSession(NetSession):
         if self.randVal == msg.randVal:
             self.verified = True
             for msg in self.msgsToSend:
-                self._send(msg)
+                self.send(msg)
             self.msgsToSend = []
         else:
             self.disconnect(ResourceSession.DCRUnverified)
@@ -204,4 +205,7 @@ class ResourceSession(NetSession):
 
 class ResourceSessionFactory:
     def getSession(self, connection):
+        return ResourceSession(connection)
+
+    def get_session(self, connection):
         return ResourceSession(connection)

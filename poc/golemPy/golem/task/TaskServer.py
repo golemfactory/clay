@@ -6,10 +6,8 @@ from collections import deque
 
 from TaskManager import TaskManager
 from TaskComputer import TaskComputer
-from TaskSession import TaskSession
 from TaskKeeper import TaskKeeper
 
-from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
 from golem.ranking.Ranking import RankingStats
 from golem.network.GNRServer import PendingConnectionsServer, PendingConnection, PenConnStatus
 from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress
@@ -46,11 +44,9 @@ class TaskServer(PendingConnectionsServer):
 
         network = TCPNetwork(ProtocolFactory(MidNetAndFilesConnState, self, TaskSessionFactory()),  useIp6)
         PendingConnectionsServer.__init__(self, configDesc, network)
-        #PendingConnectionsServer.__init__(self, configDesc, None, TaskSessionFactory(), useIp6)
 
     #############################
     def startAccepting(self):
-      #  self.setProtocolFactory(TaskServerFactory(self))
         PendingConnectionsServer.startAccepting(self)
 
     #############################
@@ -413,8 +409,6 @@ class TaskServer(PendingConnectionsServer):
         connect_info = TCPConnectInfo([TCPAddress(addr, port)], self.__connectionForTraverseNatEstablished,
                                       self.__connectionForTraverseNatFailure)
         self.network.connect(connect_info, clientKeyId=keyId, connId=connId, superKeyId=superKeyId)
-        #self.network.connect(addr, port, self.__connectionForTraverseNatEstablished,
-#                             self.__connectionForTraverseNatFailure, keyId, connId, superKeyId)
 
     #############################
     def traverseNatFailure(self, connId):
@@ -428,8 +422,6 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def _listening_established(self, port, **kwargs):
-        #self.cur_port = iListeningPort.getHost().port
-        #self.iListeningPort = iListeningPort
         self.cur_port = port
         logger.info(" Port {} opened - listening".format(self.cur_port))
         self.node.prvPort = self.cur_port
@@ -844,17 +836,6 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def __getTaskManagerRoot(self, configDesc):
         return os.path.join(configDesc.rootPath, "res")
-
-    #############################
-    def _getHostInfos(self, nodeInfo, port, keyId):
-        hostInfos = PendingConnectionsServer._getHostInfos(self, nodeInfo, port, keyId)
-        addr = self.client.getSuggestedAddr(keyId)
-        if addr:
-            hostData = HostData(addr, port)
-            if hostData in hostInfos:
-                hostInfos.remove(hostData)
-            hostInfos = [HostData(addr, port)] + hostInfos
-        return hostInfos
 
     #############################
     def _setConnEstablished(self):

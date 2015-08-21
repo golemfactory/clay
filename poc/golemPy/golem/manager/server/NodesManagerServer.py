@@ -1,4 +1,5 @@
-from golem.network.transport.Tcp import Network
+from golem.network.transport.tcp_network import TCPNetwork, TCPListenInfo
+from golem.network.transport.network import ProtocolFactory
 from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 from ServerManagerSession import  ServerManagerSessionFactory
 import logging
@@ -14,7 +15,7 @@ class NodesManagerServer:
         self.reactor            = reactor
         self.nodesManager       = nodesManager
 
-        self.network = Network(ManagerServerFactory(self), ServerManagerSessionFactory(self))
+        self.network = TCPNetwork(ProtocolFactory(ManagerConnState, self, ServerManagerSessionFactory(self)))
 
         self.__startAccepting()
 
@@ -24,17 +25,17 @@ class NodesManagerServer:
 
     #############################
     def __startAccepting(self):
-        self.network.listen(self.port, self.port, self.__listeningEstablished, self.__listeningFailure)
+        listen_info = TCPListenInfo(self.port, established_callback=self.__listeningEstablished,
+                      failure_callback=self.__listeningFailure)
+        self.network.listen(listen_info)
 
 
     #############################
-    def __listeningEstablished(self, iListeningPort, *args):
-        port = iListeningPort.getHost().port
-        assert port == self.port
+    def __listeningEstablished(self, port, **kwargs):
         logger.info("Manager server - port {} opened, listening".format(port))
 
     #############################
-    def __listeningFailure(self):
+    def __listeningFailure(self, **kwargs):
         logger.error("Opening {} port for listening failed - bailign out".format(self.port))
 
     #############################

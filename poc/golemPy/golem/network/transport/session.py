@@ -83,7 +83,7 @@ class BasicSession(Session):
         self.send(MessageDisconnect(reason))
 
     def send(self, message):
-        # print "Sending to {}:{}: {}".format(self.address, self.port, message)
+        #  "Sending to {}:{}: {}".format(self.address, self.port, message)
 
         if not self.conn.send_message(message):
             self.dropped()
