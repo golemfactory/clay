@@ -17,20 +17,21 @@ from golem.network.DataConsumer import DataConsumer
 from golem.network.MultiFileProducer import EncryptMultiFileProducer
 from golem.network.MultiFileConsumer import DecryptMultiFileConsumer
 from golem.network.NetAndFilesConnState import MidNetAndFilesConnState
-from golem.network.p2p.Session import MidNetSession
+#from golem.network.p2p.Session import MidNetSession
+from golem.network.transport.session import MiddlemanSafeSession
 from golem.task.TaskBase import resultTypes
 from golem.resource.Resource import decompressDir
 from golem.transactions.Ethereum.EthereumPaymentsKeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 
-class TaskSession(MidNetSession):
 
+class TaskSession(MiddlemanSafeSession):
     ConnectionStateType = MidNetAndFilesConnState
 
     ##########################
     def __init__(self, conn):
-        MidNetSession.__init__(self, conn)
+        MiddlemanSafeSession.__init__(self, conn)
         self.taskServer     = None
         self.taskManager    = None
         self.taskComputer   = None
@@ -49,11 +50,11 @@ class TaskSession(MidNetSession):
 
     ##########################
     def requestTask(self, clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores):
-        self._send(MessageWantToComputeTask(clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores))
+        self.send(MessageWantToComputeTask(clientId, taskId, performenceIndex, maxResourceSize, maxMemorySize, numCores))
 
     ##########################
     def requestResource(self, taskId, resourceHeader):
-        self._send(MessageGetResource(taskId, pickle.dumps(resourceHeader)))
+        self.send(MessageGetResource(taskId, pickle.dumps(resourceHeader)))
 
     ##########################
     def sendReportComputedTask(self, taskResult, address, port, ethAccount, nodeInfo):
@@ -66,42 +67,42 @@ class TaskSession(MidNetSession):
             return
         nodeId = self.taskServer.getClientId()
 
-        self._send(MessageReportComputedTask(taskResult.subtaskId, taskResult.resultType, nodeId, address, port,
+        self.send(MessageReportComputedTask(taskResult.subtaskId, taskResult.resultType, nodeId, address, port,
                                              self.taskServer.getKeyId(), nodeInfo, ethAccount, extraData))
 
     ##########################
     def sendResultRejected(self, subtaskId):
-        self._send(MessageSubtaskResultRejected(subtaskId))
+        self.send(MessageSubtaskResultRejected(subtaskId))
 
     ##########################
     def sendRewardForTask(self, subtaskId, reward):
-        self._send(MessageSubtaskResultAccepted(subtaskId, reward))
+        self.send(MessageSubtaskResultAccepted(subtaskId, reward))
 
     ##########################
     def sendTaskFailure(self, subtaskId, errMsg):
-        self._send(MessageTaskFailure(subtaskId, errMsg))
+        self.send(MessageTaskFailure(subtaskId, errMsg))
 
     ##########################
     def sendHello(self):
-        self._send(MessageHello(clientKeyId = self.taskServer.getKeyId(), randVal = self.randVal), sendUnverified=True)
+        self.send(MessageHello(clientKeyId = self.taskServer.getKeyId(), randVal = self.randVal), send_unverified=True)
 
     ##########################
     def sendStartSessionResponse(self, connId):
-        self._send(MessageStartSessionResponse(connId))
+        self.send(MessageStartSessionResponse(connId))
 
     ##########################
     def sendMiddleman(self, askingNode, destNode, askConnId):
         self.askingNodeKeyId = askingNode.key
-        self._send(MessageMiddleman(askingNode, destNode, askConnId))
+        self.send(MessageMiddleman(askingNode, destNode, askConnId))
 
     ##########################
     def sendJoinMiddlemanConn(self, keyId, connId, destNodeKeyId):
-        self._send(MessageJoinMiddlemanConn(keyId, connId, destNodeKeyId))
+        self.send(MessageJoinMiddlemanConn(keyId, connId, destNodeKeyId))
 
     ##########################
     def sendNatPunch(self, askingNode, destNode, askConnId):
         self.askingNodeKeyId = askingNode.key
-        self._send(MessageNatPunch(askingNode, destNode, askConnId))
+        self.send(MessageNatPunch(askingNode, destNode, askConnId))
 
     ##########################
     def interpret(self, msg):
@@ -109,7 +110,7 @@ class TaskSession(MidNetSession):
 
         self.taskServer.setLastMessage("<-", time.localtime(), msg, self.address, self.port)
 
-        MidNetSession.interpret(self, msg)
+        MiddlemanSafeSession.interpret(self, msg)
 
     ##########################
     def dropped(self):
@@ -223,12 +224,12 @@ class TaskSession(MidNetSession):
             ctd, wrongTask = None, False
 
         if wrongTask:
-            self._send(MessageCannotAssignTask(msg.taskId, "Not my task  {}".format(msg.taskId)))
-            self._send(MessageRemoveTask(msg.taskId))
+            self.send(MessageCannotAssignTask(msg.taskId, "Not my task  {}".format(msg.taskId)))
+            self.send(MessageRemoveTask(msg.taskId))
         elif ctd:
-            self._send(MessageTaskToCompute(ctd))
+            self.send(MessageTaskToCompute(ctd))
         else:
-            self._send(MessageCannotAssignTask(msg.taskId, "No more subtasks in {}".format(msg.taskId)))
+            self.send(MessageCannotAssignTask(msg.taskId, "No more subtasks in {}".format(msg.taskId)))
 
     ##########################
     def _reactToTaskToCompute(self, msg):
@@ -249,7 +250,7 @@ class TaskSession(MidNetSession):
             if delay == -1.0:
                 self.dropped()
             elif delay == 0.0:
-                self._send(MessageGetTaskResult(msg.subtaskId, delay))
+                self.send(MessageGetTaskResult(msg.subtaskId, delay))
                 self.resultOwner = EthAccountInfo(msg.keyId, msg.port, msg.address, msg.nodeId, msg.nodeInfo,
                                                   msg.ethAccount)
 
@@ -261,7 +262,7 @@ class TaskSession(MidNetSession):
                     logger.error("Unknown result type {}".format(msg.resultType))
                     self.dropped()
             else:
-                self._send(MessageGetTaskResult(msg.subtaskId, delay))
+                self.send(MessageGetTaskResult(msg.subtaskId, delay))
                 self.dropped()
         else:
             self.dropped()
@@ -354,7 +355,7 @@ class TaskSession(MidNetSession):
             self.disconnect(TaskSession.DCRUnverified)
             return
 
-        self._send(MessageRandVal(msg.randVal), sendUnverified=True)
+        self.send(MessageRandVal(msg.randVal), send_unverified=True)
 
     ##########################
     def _reactToRandVal(self, msg):
@@ -362,7 +363,7 @@ class TaskSession(MidNetSession):
             self.verified = True
             self.taskServer.verifiedConn(self.connId, )
             for msg in self.msgsToSend:
-                self._send(msg)
+                self.send(msg)
             self.msgsToSend = []
         else:
             self.disconnect(TaskSession.DCRUnverified)
@@ -373,14 +374,14 @@ class TaskSession(MidNetSession):
 
     ##########################
     def _reactToMiddleman(self, msg):
-        self._send(MessageBeingMiddlemanAccepted())
+        self.send(MessageBeingMiddlemanAccepted())
         self.taskServer.beAMiddleman(self.clientKeyId, self, self.connId, msg.askingNode, msg.destNode,
                                      msg.askConnId)
 
     ##########################
     def _reactToJoinMiddlemanConn(self, msg):
         self.middlemanConnData = {'keyId': msg.keyId, 'connId': msg.connId, 'destNodeKeyId': msg.destNodeKeyId }
-        self._send(MessageMiddlemanAccepted())
+        self.send(MessageMiddlemanAccepted())
 
     ##########################
     def _reactToMiddlemanReady(self, msg):
@@ -395,7 +396,7 @@ class TaskSession(MidNetSession):
 
     ##########################
     def _reactToMiddlemanAccepted(self, msg):
-        self._send(MessageMiddlemanReady())
+        self.send(MessageMiddlemanReady())
         self.isMiddleman = True
         self.openSession.isMiddleman = True
 
@@ -403,7 +404,7 @@ class TaskSession(MidNetSession):
     def _reactToNatPunch(self, msg):
         self.taskServer.organizeNatPunch(self.address, self.port, self.clientKeyId, msg.askingNode, msg.destNode,
                                            msg.askConnId)
-        self._send(MessageWaitForNatTraverse(self.port))
+        self.send(MessageWaitForNatTraverse(self.port))
         self.dropped()
 
     ##########################
@@ -415,11 +416,11 @@ class TaskSession(MidNetSession):
         pass #TODO Powiadomienie drugiego wierzcholka o nieudanym rendezvous
 
     ##########################
-    def _send(self, msg, sendUnverified=False):
-        if not self.isMiddleman and not self.verified and not sendUnverified:
+    def send(self, msg, send_unverified=False):
+        if not self.isMiddleman and not self.verified and not send_unverified:
             self.msgsToSend.append(msg)
             return
-        MidNetSession._send(self, msg, sendUnverified=sendUnverified)
+        MiddlemanSafeSession.send(self, msg, send_unverified=send_unverified)
         # print "Task Session Sending to {}:{}: {}".format(self.address, self.port, msg)
         self.taskServer.setLastMessage("->", time.localtime(), msg, self.address, self.port)
 
@@ -438,17 +439,17 @@ class TaskSession(MidNetSession):
     ##########################
     def __sendResourcePartsList(self, msg):
         deltaHeader, partsList = self.taskManager.getResourcePartsList(msg.taskId, pickle.loads(msg.resourceHeader))
-        self._send(MessageDeltaParts(self.taskId, deltaHeader, partsList,
+        self.send(MessageDeltaParts(self.taskId, deltaHeader, partsList,
                                      self.taskServer.getClientId(), self.taskServer.node,
                                      self.taskServer.getResourceAddr(), self.taskServer.getResourcePort()))
 
     ##########################
     def __sendResourceFormat(self, useDistributedResource):
-        self._send(MessageResourceFormat(useDistributedResource))
+        self.send(MessageResourceFormat(useDistributedResource))
 
     ##########################
     def __sendAcceptResourceFormat(self):
-        self._send(MessageAcceptResourceFormat())
+        self.send(MessageAcceptResourceFormat())
 
     ##########################
     def __sendDataResults(self, res):
@@ -515,3 +516,5 @@ class TaskSession(MidNetSession):
 class TaskSessionFactory:
     def getSession(self, connection):
         return TaskSession(connection)
+
+    get_session = getSession

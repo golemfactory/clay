@@ -41,27 +41,27 @@ class ServerManagerSession:
     ##########################
     def sendClientStateSnapshot(self, snapshot):
 
-        if self.conn and self.conn.isOpen():
+        if self.conn and self.conn.opened:
             self.conn.sendMessage(MessagePeerStatus(snapshot.uid, pickle.dumps(snapshot)))
 
     def sendKillNode(self):
-        if self.conn and self.conn.isOpen():
+        if self.conn and self.conn.opened:
             self.conn.sendMessage(MessageKillNode())
 
     def sendKillAllNodes(self):
-        if self.conn and self.conn.isOpen():
+        if self.conn and self.conn.opened:
             self.conn.sendMessage(MessageKillAllNodes())
 
 
     ##########################
     def sendNewTask(self, task):
-        if self.conn and self.conn.isOpen():
+        if self.conn and self.conn.opened:
             tp = pickle.dumps(task)
             self.conn.sendMessage(MessageNewTask(tp))
 
     ##########################
     def sendNewNodes(self, numNodes):
-        if self.conn and self.conn.isOpen():
+        if self.conn and self.conn.opened:
             self.conn.sendMessage(MessageNewNodes(numNodes))
 
 class ServerManagerSessionFactory:

@@ -1,20 +1,16 @@
-
 import logging
-from golem.network.p2p.ConnectionState import ConnectionState
+
+from golem.network.transport.tcp_network import ServerProtocol
 from golem.Message import Message
-from golem.core.databuffer import DataBuffer
+
 
 logger = logging.getLogger(__name__)
 
-class ManagerConnState(ConnectionState):
 
-    ############################
-    def __init__(self, server = None):
-        ConnectionState.__init__(self)
-        self.server = server
-        self.session = None
+class ManagerConnState(ServerProtocol):
+    def __init__(self, server=None):
+        ServerProtocol.__init__(self, server)
 
-    ############################
     def setSession(self, session):
         self.session = session
 

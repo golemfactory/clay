@@ -6,6 +6,8 @@ from collections import deque
 from stun import FullCone, OpenInternet
 
 from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
+from golem.network.transport.tcp_server import TCPServer
+from golem.network.transport.tcp_network import TCPConnectInfo, TCPAddress, TCPListenInfo
 
 logger = logging.getLogger(__name__)
 
@@ -70,12 +72,13 @@ class GNRServer:
         logger.error("Listening on ports {} to {} failure".format(self.configDesc.startPort, self.configDesc.endPort))
 
 #######################################################################################
-class PendingConnectionsServer(GNRServer):
+class PendingConnectionsServer(TCPServer):
 
     supportedNatTypes = [FullCone, OpenInternet]
 
     #############################
-    def __init__(self, configDesc, protocolFactory, sessionFactory, useIp6=False):
+    #def __init__(self, configDesc, protocolFactory, sessionFactory, useIp6=False):
+    def __init__(self, configDesc, network):
         self.pendingConnections = {}
         self.connEstablishedForType = {}
         self.connFailureForType = {}
@@ -95,9 +98,16 @@ class PendingConnectionsServer(GNRServer):
         self.listeningRefreshTime = 120
         self.listenPortTTL = 3600
 
-        GNRServer.__init__(self, configDesc, protocolFactory, sessionFactory, useIp6)
+        TCPServer.__init__(self, configDesc, network)
+        #GNRServer.__init__(self, configDesc, protocolFactory, sessionFactory, useIp6)
 
     #############################
+    def changeConfig(self, configDesc):
+        TCPServer.change_config(self, configDesc)
+
+    def startAccepting(self):
+        TCPServer.start_accepting(self)
+
     def verifiedConn(self, connId):
         if connId in self.pendingConnections:
             del self.pendingConnections[connId]
@@ -115,8 +125,9 @@ class PendingConnectionsServer(GNRServer):
 
     #############################
     def _addPendingRequest(self, type, taskOwner, port, keyId, args):
-        hostInfos = self._getHostInfos(taskOwner, port, keyId)
-        pc = PendingConnection(type, hostInfos, self.connEstablishedForType[type],
+        #hostInfos = self._getHostInfos(taskOwner, port, keyId)
+        tcp_addresses = self._getTCPAddresses(taskOwner, port, keyId)
+        pc = PendingConnection(type, tcp_addresses, self.connEstablishedForType[type],
                                self.connFailureForType[type], args)
         self.pendingConnections[pc.id] = pc
 
@@ -134,20 +145,25 @@ class PendingConnectionsServer(GNRServer):
             if cntTime - self.pendingListenings[0].time < self.listenWaitTime:
                 break
             pl = self.pendingListenings.popleft()
-            self._listenOnPort(pl.port, pl.established, pl.failure, pl.args)
+            listen_info = TCPListenInfo(pl.port, established_callback=pl.established, failure_callback=pl.failure)
+            self.network.listen(listen_info, **pl.args)
+            #self._listenOnPort(pl.port, pl.established, pl.failure, pl.args)
             self.openListenings[pl.id] = pl #TODO Powinny umierac jesli zbyt dlugo sa aktywne
 
         conns = [pen for pen in self.pendingConnections.itervalues() if pen.status in PendingConnection.connectStatuses]
         #TODO Zmiany dla innych statusow
         for conn in conns:
-            if len(conn.hostInfos) == 0:
+            if len(conn.tcp_addresses) == 0:
                 conn.status = PenConnStatus.WaitingAlt
-                conn.failure(conn.id, *conn.args)
+                conn.failure(conn.id, **conn.args)
                 #TODO Dalsze dzialanie w razie neipowodzenia
             else:
                 conn.status = PenConnStatus.Waiting
                 conn.lastTryTime = time.time()
-                self.network.connectToHost(conn.hostInfos, conn.established, conn.failure, conn.id, *conn.args)
+           #     self.network.connectToHost(conn.hostInfos, conn.established, conn.failure, conn.id, *conn.args)
+
+                connect_info = TCPConnectInfo(conn.tcp_addresses, conn.established, conn.failure)
+                self.network.connect(connect_info, connId=conn.id, **conn.args)
 
     #############################
     def _removeOldListenings(self):
@@ -166,6 +182,18 @@ class PendingConnectionsServer(GNRServer):
     #############################
     def _getHostInfos(self, nodeInfo, port, keyId):
         return nodeInfoToHostInfos(nodeInfo, port)
+
+    def _getTCPAddresses(self, nodeInfo, port, keyId):
+        return PendingConnectionsServer.__nodeInfoToTCPAddresses(nodeInfo, port)
+
+    @staticmethod
+    def __nodeInfoToTCPAddresses(nodeInfo, port):
+        tcp_addresses = [TCPAddress(i, port) for i in nodeInfo.prvAddresses]
+        if nodeInfo.pubPort:
+            tcp_addresses.append(TCPAddress(nodeInfo.pubAddr, nodeInfo.pubPort))
+        else:
+            tcp_addresses.append(TCPAddress(nodeInfo.pubAddr, port))
+        return tcp_addresses
 
     #############################
     def _setConnEstablished(self):
@@ -189,13 +217,13 @@ class PendingConnectionsServer(GNRServer):
 
     #############################
     def _markConnected(self, connId, addr, port):
-        hd = HostData(addr, port)
+        ad = TCPAddress(addr, port)
         pc = self.pendingConnections.get(connId)
         if pc is not None:
             pc.status = PenConnStatus.Connected
             try:
-                idx = pc.hostInfos.index(hd)
-                pc.hostInfos = pc.hostInfos[idx+1:]
+                idx = pc.tcp_addresses.index(ad)
+                pc.tcp_addresses = pc.tcp_addresses[idx+1:]
             except ValueError:
                 logger.warning("{}:{} not in connection hostinfos".format(addr, port))
 
@@ -214,9 +242,10 @@ class PendingConnection:
     connectStatuses = [PenConnStatus.Inactive, PenConnStatus.Failure]
 
     #############################
-    def __init__(self, type=None, hostInfos=None, established=None, failure=None, args=None):
+    def __init__(self, type=None, tcp_addresses=None, established=None, failure=None, args=None):
         self.id = uuid.uuid4()
-        self.hostInfos = hostInfos
+        #self.hostInfos = hostInfos
+        self.tcp_addresses = tcp_addresses
         self.lastTryTime = time.time()
         self.established = established
         self.failure = failure

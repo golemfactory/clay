@@ -12,6 +12,8 @@ from TaskKeeper import TaskKeeper
 from golem.network.transport.Tcp import Network, HostData, nodeInfoToHostInfos
 from golem.ranking.Ranking import RankingStats
 from golem.network.GNRServer import PendingConnectionsServer, PendingConnection, PenConnStatus
+from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress
+from golem.network.transport.network import ProtocolFactory
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +44,13 @@ class TaskServer(PendingConnectionsServer):
 
         self.responseList = {}
 
-        PendingConnectionsServer.__init__(self, configDesc, None, TaskSessionFactory(), useIp6)
+        network = TCPNetwork(ProtocolFactory(MidNetAndFilesConnState, self, TaskSessionFactory()),  useIp6)
+        PendingConnectionsServer.__init__(self, configDesc, network)
+        #PendingConnectionsServer.__init__(self, configDesc, None, TaskSessionFactory(), useIp6)
 
     #############################
     def startAccepting(self):
-        self.setProtocolFactory(TaskServerFactory(self))
+      #  self.setProtocolFactory(TaskServerFactory(self))
         PendingConnectionsServer.startAccepting(self)
 
     #############################
@@ -69,9 +73,15 @@ class TaskServer(PendingConnectionsServer):
             trust = self.client.getRequestingTrust(theader.clientId)
             logger.debug("Requesting trust level: {}".format(trust))
             if trust >= self.configDesc.requestingTrust:
-                args = (self.configDesc.clientUid, theader.taskOwnerKeyId, theader.taskId,
-                        self.configDesc.estimatedPerformance, self.configDesc.maxResourceSize,
-                        self.configDesc.maxMemorySize, self.configDesc.numCores)
+                args = {
+                        'clientId': self.configDesc.clientUid,
+                        'keyId':  theader.taskOwnerKeyId,
+                        'taskId': theader.taskId,
+                        'estimatedPerformance': self.configDesc.estimatedPerformance,
+                        'maxResourceSize': self.configDesc.maxResourceSize,
+                        'maxMemorySize': self.configDesc.maxMemorySize,
+                        'numCores': self.configDesc.numCores
+                }
                 self._addPendingRequest(TaskConnTypes.TaskRequest, theader.taskOwner, theader.taskOwnerPort,
                                          theader.taskOwnerKeyId, args)
 
@@ -81,7 +91,11 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def requestResource(self, subtaskId, resourceHeader, address, port, keyId, taskOwner):
-        args = (keyId, subtaskId, resourceHeader)
+        args = {
+            'keyId': keyId,
+            'subtaskId': subtaskId,
+            'resourceHeader': resourceHeader
+        }
         self._addPendingRequest(TaskConnTypes.ResourceRequest, taskOwner, port, keyId, args)
         return subtaskId
 
@@ -122,6 +136,8 @@ class TaskServer(PendingConnectionsServer):
         session.taskManager = self.taskManager
 
         self.taskSessionsIncoming.append(session)
+
+    new_connection = newConnection
 
     #############################
     def getTasksHeaders(self):
@@ -312,7 +328,7 @@ class TaskServer(PendingConnectionsServer):
     ###########################
     def localPayForTask(self, taskId, address, port, keyId, nodeInfo, price):
         logger.info("Paying {} for task {}".format(price, taskId))
-        args = (keyId, taskId, price)
+        args = {'keyId': keyId, 'taskId': taskId, 'price': price}
         self._addPendingRequest(TaskConnTypes.PayForTask, nodeInfo, port, keyId, args)
 
     ###########################
@@ -326,7 +342,7 @@ class TaskServer(PendingConnectionsServer):
     def rejectResult(self, subtaskId, accountInfo):
         mod = min(max(self.taskManager.getTrustMod(subtaskId), self.minTrust), self.maxTrust)
         self.client.decreaseTrust(accountInfo.nodeId, RankingStats.wrongComputed, mod)
-        args = (accountInfo.keyId, subtaskId)
+        args = {'keyId': accountInfo.keyId, 'subtaskId': subtaskId}
         self._addPendingRequest(TaskConnTypes.ResultRejected, accountInfo.nodeInfo, accountInfo.port,
                                  accountInfo.keyId, args)
 
@@ -341,7 +357,7 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def startTaskSession(self, nodeInfo, superNodeInfo, connId):
         #FIXME Jaki port i adres startowy?
-        args = (nodeInfo.key, nodeInfo, superNodeInfo, connId)
+        args = {'keyId': nodeInfo.key, 'nodeInfo': nodeInfo, 'superNodeInfo': superNodeInfo, 'ansConnId': connId}
         self._addPendingRequest(TaskConnTypes.StartSession, nodeInfo, nodeInfo.prvPort, nodeInfo.key, args)
 
     #############################
@@ -382,8 +398,10 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def waitForNatTraverse(self, port, session):
         session.closeNow()
-        args = (session.extraData['superNode'], session.extraData['askingNode'], session.extraData['destNode'],
-                session.extraData['ansConnId'])
+        args = {'superNode': session.extraData['superNode'],
+                'askingNode': session.extraData['askingNode'],
+                'destNode': session.extraData['destNode'],
+                'askConnId': session.extraData['ansConnId']}
         self._addPendingListening(TaskListenTypes.StartSession, port, args)
 
     #############################
@@ -392,8 +410,11 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def traverseNat(self, keyId, addr, port, connId, superKeyId):
-        self.network.connect(addr, port, self.__connectionForTraverseNatEstablished,
-                             self.__connectionForTraverseNatFailure, keyId, connId, superKeyId)
+        connect_info = TCPConnectInfo([TCPAddress(addr, port)], self.__connectionForTraverseNatEstablished,
+                                      self.__connectionForTraverseNatFailure)
+        self.network.connect(connect_info, clientKeyId=keyId, connId=connId, superKeyId=superKeyId)
+        #self.network.connect(addr, port, self.__connectionForTraverseNatEstablished,
+#                             self.__connectionForTraverseNatFailure, keyId, connId, superKeyId)
 
     #############################
     def traverseNatFailure(self, connId):
@@ -406,17 +427,18 @@ class TaskServer(PendingConnectionsServer):
         return self.factory(self)
 
     #############################
-    def _listeningEstablished(self, iListeningPort, *args):
-        self.curPort = iListeningPort.getHost().port
-        self.iListeningPort = iListeningPort
-        logger.info(" Port {} opened - listening".format(self.curPort))
-        self.node.prvPort = self.curPort
+    def _listening_established(self, port, **kwargs):
+        #self.cur_port = iListeningPort.getHost().port
+        #self.iListeningPort = iListeningPort
+        self.cur_port = port
+        logger.info(" Port {} opened - listening".format(self.cur_port))
+        self.node.prvPort = self.cur_port
         self.taskManager.listenAddress = self.node.prvAddr
-        self.taskManager.listenPort = self.curPort
+        self.taskManager.listenPort = self.cur_port
         self.taskManager.node = self.node
 
     #############################
-    def _listeningFailure(self, *args):
+    def _listening_failure(self, **kwargs):
         logger.error("Listening on ports {} to {} failure".format(self.configDesc.startPort, self.configDesc.endPort))
         #FIXME: some graceful terminations should take place here
         # sys.exit(0)
@@ -444,7 +466,6 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def __connectionForTaskRequestEstablished(self, session, connId, clientId, keyId, taskId, estimatedPerformance,
                                               maxResourceSize, maxMemorySize, numCores):
-
         session.taskId = taskId
         session.clientKeyId = keyId
         session.taskServer = self
@@ -486,7 +507,7 @@ class TaskServer(PendingConnectionsServer):
         self.taskSessions[waitingTaskResult.subtaskId] = session
 
         session.sendHello()
-        session.sendReportComputedTask(waitingTaskResult, self.node.prvAddr, self.curPort, self.client.getEthAccount(),
+        session.sendReportComputedTask(waitingTaskResult, self.node.prvAddr, self.cur_port, self.client.getEthAccount(),
                                        self.node)
 
     #############################
@@ -644,11 +665,21 @@ class TaskServer(PendingConnectionsServer):
 
         #FIXME To powinno zostac przeniesione do jakiejs wyzszej polaczeniowej instalncji
         if self.node.natType in TaskServer.supportedNatTypes:
-            args = (superNodeInfo, nodeInfo, self.node, ansConnId)
+            args = {
+                'superNode': superNodeInfo,
+                'askingNode': nodeInfo,
+                'destNode': self.node,
+                'ansConnId': ansConnId
+            }
             self._addPendingRequest(TaskConnTypes.NatPunch, superNodeInfo, superNodeInfo.prvPort, superNodeInfo.key,
                                     args)
         else:
-            args = (superNodeInfo.key, nodeInfo, self.node, ansConnId)
+            args = {
+                'keyId': superNodeInfo.key,
+                'askingNodeInfo': nodeInfo,
+                'selfNodeInfo': self.node,
+                'ansConnId': ansConnId
+            }
             self._addPendingRequest(TaskConnTypes.Middleman, superNodeInfo, superNodeInfo.prvPort, superNodeInfo.key,
                                     args)
         #TODO Dodatkowe usuniecie tego zadania (bo zastapione innym)
@@ -668,7 +699,12 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def __connectionForNatPunchFailure(self, connId, superNode, askingNode, destNode, ansConnId):
         self.finalConnFailure(connId)
-        args = (superNode.key, askingNode, destNode, ansConnId)
+        args = {
+            'keyId': superNode.key,
+            'askingNodeInfo': askingNode,
+            'selfNodeInfo': destNode,
+            'ansConnId': ansConnId
+        }
         self._addPendingRequest(TaskConnTypes.Middleman, superNode, superNode.prvPort,
                                 superNode.key, args)
 
@@ -779,11 +815,11 @@ class TaskServer(PendingConnectionsServer):
             if not wtr.alreadySending:
                 if time.time() - wtr.lastSendingTrial > wtr.delayTime:
                     wtr.alreadySending = True
-                    args = (wtr.ownerKeyId, wtr)
+                    args = {'keyId': wtr.ownerKeyId, 'waitingTaskResult': wtr}
                     self._addPendingRequest(TaskConnTypes.TaskResult, wtr.owner, wtr.ownerPort, wtr.ownerKeyId, args)
 
         for wtf in self.failuresToSend.itervalues():
-            args = (wtf.ownerKeyId, wtf.subtaskId, wtf.errMsg)
+            args = {'keyId': wtf.ownerKeyId, 'subtaskId': wtf.subtaskId, 'errMsg': wtf.errMsg}
             self._addPendingRequest(TaskConnTypes.TaskFailure, wtf.owner, wtf.ownerPort, wtf.ownerKeyId, args)
 
         self.failuresToSend.clear()

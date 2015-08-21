@@ -1,15 +1,17 @@
 import logging
 import time
 
-from golem.network.p2p.NetConnState import NetConnState
+#from golem.network.p2p.NetConnState import NetConnState
+from golem.network.transport.tcp_network import SafeProtocol
 from golem.core.variables import LONG_STANDARD_SIZE
 
 logger = logging.getLogger(__name__)
 
-class NetAndFilesConnState(NetConnState):
+
+class NetAndFilesConnState(SafeProtocol):
     ############################
     def __init__(self, server = None):
-        NetConnState.__init__(self, server)
+        SafeProtocol.__init__(self, server)
 
         self.fileMode = False
         self.fileConsumer = None
@@ -32,7 +34,7 @@ class NetAndFilesConnState(NetConnState):
             self.resultDataReceived(data)
             return
 
-        NetConnState._interpret(self, data)
+        SafeProtocol._interpret(self, data)
 
     ############################
     def fileDataReceived(self, data ):
@@ -71,10 +73,15 @@ class MidNetAndFilesConnState(NetAndFilesConnState):
             NetAndFilesConnState._interpret(self, data)
 
     ############################
-    def _prepareMsgToSend(self, msg):
+    def _prepare_msg_to_send(self, msg):
         if self.session.isMiddleman:
             return msg
         else:
-            return NetAndFilesConnState._prepareMsgToSend(self, msg)
+            return NetAndFilesConnState._prepare_msg_to_send(self, msg)
+
+
+
+
+
 
 

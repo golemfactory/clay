@@ -78,7 +78,7 @@ class GNRApplicationLogic(QtCore.QObject):
     ######################
     def checkNetworkState(self):
         listenPort = self.client.p2pservice.p2pServer.cur_port
-        taskServerPort = self.client.taskServer.curPort
+        taskServerPort = self.client.taskServer.cur_port
         if listenPort == 0 or taskServerPort == 0:
             self.customizer.gui.ui.errorLabel.setText("Application not listening, check config file.")
             return

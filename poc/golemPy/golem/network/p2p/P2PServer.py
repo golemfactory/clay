@@ -1,18 +1,12 @@
 import logging
 
-from golem.network.p2p.NetConnState import NetConnState
-from golem.network.GNRServer import GNRServer
 from golem.network.transport.tcp_server import TCPServer
 from golem.network.transport.tcp_network import TCPNetwork, SafeProtocol
 from golem.network.transport.network import ProtocolFactory
-
+from golem.network.p2p.PeerSession import PeerSessionFactory
 
 logger = logging.getLogger(__name__)
 
-
-from twisted.internet.protocol import Factory
-
-from golem.network.p2p.PeerSession import PeerSessionFactory
 
 class P2PServer(TCPServer):
     def __init__(self, config_desc, p2p_service=None, use_ipv6=False):

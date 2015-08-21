@@ -8,8 +8,8 @@ from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconn
                           MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
                           MessageRandVal, MessageWantToStartTaskSession, MessageSetTaskSession, \
                           MessageNatHole, MessageNatTraverseFailure, MessageInformAboutNatTraverseFailure
-from golem.network.p2p.NetConnState import NetConnState
-from golem.network.p2p.Session import NetSession
+from golem.network.transport.tcp_network import SafeProtocol
+from golem.network.transport.session import BasicSafeSession
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,7 @@ class PeerSessionFactory:
     def get_session(self, connection):
         return PeerSession(connection)
 
-from golem.network.transport.tcp_network import SafeProtocol
-from golem.network.transport.session import BasicSafeSession
+
 
 
 class PeerSession(BasicSafeSession):

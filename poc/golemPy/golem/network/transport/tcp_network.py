@@ -156,7 +156,7 @@ class TCPNetwork(Network):
         port = addresses[0].port
 
         self.__try_to_connect_to_address(address, port, self.__connection_to_address_established,
-                                         self.__connection_to_address_failure, addresses_to_arg=addresses[1:],
+                                         self.__connection_to_address_failure, addresses_to_arg=addresses,
                                          established_callback_to_arg=established_callback,
                                          failure_callback_to_arg=failure_callback, **kwargs)
 

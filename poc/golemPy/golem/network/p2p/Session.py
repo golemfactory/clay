@@ -101,13 +101,13 @@ class Session(SessionInterface):
 
     ##########################
     def _sendDisconnect(self, reason):
-        self._send(MessageDisconnect(reason))
+        self.send(MessageDisconnect(reason))
 
     ##########################
-    def _send(self, message):
+    def send(self, message):
         # print "Sending to {}:{}: {}".format(self.address, self.port, message)
 
-        if not self.conn.sendMessage(message):
+        if not self.conn.send_message(message):
             self.dropped()
             return
 
@@ -165,7 +165,7 @@ class NetSession(Session, NetSessionInterface):
         return msg
 
     #########################
-    def _send(self, message, sendUnverified = False):
+    def send(self, message, sendUnverified = False):
         if not self.verified and not sendUnverified :
             logger.info("Connection hasn't been verified yet, not sending message")
             self.unverifiedCnt -= 1
@@ -173,7 +173,7 @@ class NetSession(Session, NetSessionInterface):
                 self.disconnect(NetSession.DCRUnverified)
             return
 
-        Session._send(self, message)
+        Session.send(self, message)
 
     ##########################
     def _checkMsg(self, msg):
@@ -223,11 +223,11 @@ class MidNetSession(NetSession):
         self.middlemanConnData = None
 
     ##########################
-    def _send(self, message, sendUnverified=False):
+    def send(self, message, sendUnverified=False):
         if not self.isMiddleman:
-            NetSession._send(self, message, sendUnverified)
+            NetSession.send(self, message, sendUnverified)
         else:
-            Session._send(self, message)
+            Session.send(self, message)
 
     ##########################
     def _checkMsg(self, msg):
@@ -246,7 +246,7 @@ class MidNetSession(NetSession):
             if self.openSession is None:
                 logger.error("Destination session for middleman don't exist")
                 self.dropped()
-            self.openSession._send(msg)
+            self.openSession.send(msg)
 
     ##########################
     def dropped(self):

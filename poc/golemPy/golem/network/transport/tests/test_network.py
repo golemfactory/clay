@@ -11,9 +11,10 @@ from golem.network.transport.tcp_network import TCPNetwork, TCPListenInfo, TCPLi
 from golem.network.transport.network import ProtocolFactory, SessionFactory, SessionProtocol
 from golem.Message import Message, MessageHello
 from golem.core.databuffer import DataBuffer
-from twisted.internet.task import deferLater
+
 from threading import Thread
 
+help(SafeProtocol)
 
 class ASession(object):
     def __init__(self, conn):
@@ -165,6 +166,7 @@ class Server:
     def new_connection(self, session):
         self.new_connection_called += 1
         self.sessions.append(session)
+
 
 class Transport:
     def __init__(self):
