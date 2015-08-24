@@ -27,13 +27,13 @@ class Peer:
         self.sendGetPeersCalledCnt = 0
         self.last_message_time = time.time()
 
-    def sendRemoveTask(self, taskId):
+    def send_remove_task(self, taskId):
         self.taskToRemove = taskId
 
     def ping(self, interval):
         self.interval = interval
 
-    def sendGetPeers(self):
+    def send_get_peers(self):
         self.sendGetPeersCalledCnt += 1
 
 class TaskServer:

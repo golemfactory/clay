@@ -3,13 +3,14 @@ import random
 import os
 import time
 
-from golem.network.transport.network import ProtocolFactory
+from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcp_server import TCPServer
 from golem.network.transport.tcp_network import TCPConnectInfo, TCPAddress, TCPListenInfo, TCPNetwork, FilesProtocol
 from golem.resource.DirManager import DirManager
 from golem.resource.ResourcesManager import DistributedResourceManager
-from golem.resource.ResourceSession import ResourceSessionFactory
+from golem.resource.ResourceSession import ResourceSession
 from golem.ranking.Ranking import RankingStats
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class ResourceServer(TCPServer):
         self.dirManager = DirManager(config_desc.rootPath, config_desc.clientUid)
         self.resourceManager = DistributedResourceManager(self.dirManager.getResourceDir())
         self.useIp6=useIp6
-        network = TCPNetwork(ProtocolFactory(FilesProtocol, self, ResourceSessionFactory()),  useIp6)
+        network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(ResourceSession)),  useIp6)
         TCPServer.__init__(self, config_desc, network)
 
         self.resourcePeers = {}
@@ -316,7 +317,7 @@ class ResourceServer(TCPServer):
     ############################
     def __connectionPushResourceEstablished(self, session, resource, copies, resource_address, resource_port, keyId):
         session.resourceServer = self
-        session.clientKeyId = keyId
+        session.key_id = keyId
         session.sendHello()
         session.sendPushResource(resource, copies)
         self.sessions.append(session)
@@ -329,7 +330,7 @@ class ResourceServer(TCPServer):
     ############################
     def __connectionPullResourceEstablished(self, session, resource, resource_address, resource_port, keyId):
         session.resourceServer = self
-        session.clientKeyId = keyId
+        session.key_id = keyId
         session.sendHello()
         session.sendPullResource(resource)
         self.sessions.append(session)
@@ -342,7 +343,7 @@ class ResourceServer(TCPServer):
     ############################
     def __connectionForResourceEstablished(self, session, resource, resource_address, resource_port, keyId):
         session.resourceServer = self
-        session.clientKeyId = keyId
+        session.key_id = keyId
         session.sendHello()
         session.sendWantResource(resource)
         self.sessions.append(session)

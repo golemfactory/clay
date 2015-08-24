@@ -7,14 +7,14 @@ import time
 sys.path.append(os.environ.get('GOLEM'))
 
 from golem.network.transport.tcp_network import TCPNetwork, TCPListenInfo, TCPListeningInfo, TCPConnectInfo, \
-                                                TCPAddress, BasicProtocol, ServerProtocol, SafeProtocol
+                                                TCPAddress, BasicProtocol, ServerProtocol, SafeProtocol, FilesProtocol,\
+                                                MidAndFilesProtocol
 from golem.network.transport.network import ProtocolFactory, SessionFactory, SessionProtocol
 from golem.Message import Message, MessageHello
 from golem.core.databuffer import DataBuffer
 
 from threading import Thread
 
-help(SafeProtocol)
 
 class ASession(object):
     def __init__(self, conn):

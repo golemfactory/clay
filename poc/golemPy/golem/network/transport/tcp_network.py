@@ -99,6 +99,7 @@ class TCPConnectInfo(object):
 # TCP Network #
 ###############
 
+
 class TCPNetwork(Network):
     def __init__(self, protocol_factory, use_ipv6=False, timeout=5):
         """
@@ -270,6 +271,10 @@ class TCPNetwork(Network):
     def __stop_listening_failure(fail, errback, **kwargs):
         logger.error("Can't stop listening {}".format(fail))
         TCPNetwork.__call_failure_callback(errback, **kwargs)
+
+#############
+# Protocols #
+#############
 
 
 class BasicProtocol(SessionProtocol):

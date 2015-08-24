@@ -6,13 +6,13 @@ from collections import deque
 
 from TaskManager import TaskManager
 from TaskComputer import TaskComputer
-from TaskSession import TaskSessionFactory
+from TaskSession import TaskSession
 from TaskKeeper import TaskKeeper
 
 from golem.ranking.Ranking import RankingStats
 from golem.network.GNRServer import PendingConnectionsServer, PendingConnection, PenConnStatus
 from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress, MidAndFilesProtocol
-from golem.network.transport.network import ProtocolFactory
+from golem.network.transport.network import ProtocolFactory, SessionFactory
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class TaskServer(PendingConnectionsServer):
 
         self.responseList = {}
 
-        network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, TaskSessionFactory()),  useIp6)
+        network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, SessionFactory(TaskSession)),  useIp6)
         PendingConnectionsServer.__init__(self, configDesc, network)
 
     #############################
@@ -461,7 +461,7 @@ class TaskServer(PendingConnectionsServer):
     def __connectionForTaskRequestEstablished(self, session, connId, clientId, keyId, taskId, estimatedPerformance,
                                               maxResourceSize, maxMemorySize, numCores):
         session.taskId = taskId
-        session.clientKeyId = keyId
+        session.key_id = keyId
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
@@ -495,7 +495,7 @@ class TaskServer(PendingConnectionsServer):
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
-        session.clientKeyId = keyId
+        session.key_id = keyId
         session.connId = connId
         self._markConnected(connId, session.address, session.port)
         self.taskSessions[waitingTaskResult.subtaskId] = session
@@ -525,7 +525,7 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def __connectionForTaskFailureEstablished(self, session, connId, keyId, subtaskId, errMsg):
         session.taskServer = self
-        session.clientKeyId = keyId
+        session.key_id = keyId
         session.connId = connId
         self._markConnected(connId, session.address, session.port)
         self.taskSessions[subtaskId] = session
@@ -555,7 +555,7 @@ class TaskServer(PendingConnectionsServer):
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
-        session.clientKeyId = keyId
+        session.key_id = keyId
         session.taskId = subtaskId
         session.connId = connId
         self._markConnected(connId, session.address, session.port)
@@ -585,7 +585,7 @@ class TaskServer(PendingConnectionsServer):
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
-        session.clientKeyId = keyId
+        session.key_id = keyId
         session.connId = connId
         self._markConnected(connId, session.address, session.port)
         session.sendHello()
@@ -612,7 +612,7 @@ class TaskServer(PendingConnectionsServer):
         session.taskServer = self
         session.taskComputer = self.taskComputer
         session.taskManager = self.taskManager
-        session.clientKeyId = keyId
+        session.key_id = keyId
         session.connId = connId
         self._markConnected(connId, session.address, session.port)
         session.sendHello()
@@ -642,7 +642,7 @@ class TaskServer(PendingConnectionsServer):
         session.taskServer = self
         session.taskManager = self.taskManager
         session.taskComputer = self.taskComputer
-        session.clientKeyId = keyId
+        session.key_id = keyId
         session.connId = connId
         self._markConnected(connId, session.address, session.port)
         session.sendHello()
@@ -683,7 +683,7 @@ class TaskServer(PendingConnectionsServer):
         session.taskServer = self
         session.taskManager = self.taskManager
         session.taskComputer = self.taskComputer
-        session.clientKeyId = superNode.key
+        session.key_id = superNode.key
         session.connId = connId
         session.extraData = {'superNode': superNode, 'askingNode': askingNode, 'destNode': destNode,
                              'ansConnId': ansConnId}
@@ -717,7 +717,7 @@ class TaskServer(PendingConnectionsServer):
         session.taskServer = self
         session.taskManager = self.taskManager
         session.taskComputer = self.taskComputer
-        session.clientKeyId = keyId
+        session.key_id = keyId
         session.connId = connId
         session.sendHello()
         session.sendMiddleman(askingNodeInfo, selfNodeInfo, ansConnId)
@@ -734,7 +734,7 @@ class TaskServer(PendingConnectionsServer):
         session.taskServer = self
         session.taskManager = self.taskManager
         session.taskComputer = self.taskComputer
-        session.clientKeyId = keyId
+        session.key_id = keyId
         session.connId = connId
         session.sendHello()
         session.sendJoinMiddlemanConn(keyId, ansConnId, destNode.key)

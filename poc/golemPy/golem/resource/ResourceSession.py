@@ -62,7 +62,7 @@ class ResourceSession(BasicSafeSession):
     ##########################
     def encrypt(self, msg):
         if self.resourceServer:
-            return self.resourceServer.encrypt(msg, self.clientKeyId)
+            return self.resourceServer.encrypt(msg, self.key_id)
         logger.warning("Can't encrypt message - no resourceServer")
         return msg
 
@@ -92,12 +92,12 @@ class ResourceSession(BasicSafeSession):
 
     ##########################
     def verify(self, msg):
-        verify = self.resourceServer.verifySig(msg.sig, msg.getShortHash(), self.clientKeyId)
+        verify = self.resourceServer.verifySig(msg.sig, msg.getShortHash(), self.key_id)
         return verify
 
     ##########################
     def sendHello(self):
-        self.send(MessageHello(clientKeyId = self.resourceServer.getKeyId(), randVal = self.randVal), send_unverified=True)
+        self.send(MessageHello(clientKeyId = self.resourceServer.getKeyId(), randVal = self.rand_val), send_unverified=True)
 
     ##########################
     def fullFileReceived(self, extraData):
@@ -162,8 +162,8 @@ class ResourceSession(BasicSafeSession):
 
     ##########################
     def _reactToHello(self, msg):
-        if self.clientKeyId == 0:
-            self.clientKeyId = msg.clientKeyId
+        if self.key_id == 0:
+            self.key_id = msg.clientKeyId
             self.sendHello()
 
         if not self.verify(msg):
@@ -176,7 +176,7 @@ class ResourceSession(BasicSafeSession):
 
     ##########################
     def _reactToRandVal(self, msg):
-        if self.randVal == msg.randVal:
+        if self.rand_val == msg.randVal:
             self.verified = True
             for msg in self.msgsToSend:
                 self.send(msg)
@@ -186,7 +186,7 @@ class ResourceSession(BasicSafeSession):
 
     ##########################
     def __setMsgInterpretations(self):
-        self.interpretation.update({
+        self._interpretation.update({
                                         MessagePushResource.Type: self._reactToPushResource,
                                         MessageHasResource.Type: self._reactToHasResource,
                                         MessageWantResource.Type: self._reactToWantResource,
@@ -196,16 +196,6 @@ class ResourceSession(BasicSafeSession):
                                         MessageRandVal.Type: self._reactToRandVal
                                     })
 
-        self.canBeNotEncrypted.append(MessageHello.Type)
-        self.canBeUnsigned.append(MessageHello.Type)
-        self.canBeUnverified.extend([MessageHello.Type, MessageRandVal.Type])
-
-
-##############################################################################
-
-class ResourceSessionFactory:
-    def getSession(self, connection):
-        return ResourceSession(connection)
-
-    def get_session(self, connection):
-        return ResourceSession(connection)
+        self.can_be_not_encrypted.append(MessageHello.Type)
+        self.can_be_unsigned.append(MessageHello.Type)
+        self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type])

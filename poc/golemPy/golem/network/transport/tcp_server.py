@@ -37,4 +37,3 @@ class TCPServer(Server):
     def _listening_failure(self):
         logger.error("Listening on ports {} to {} failure.").format(self.config_desc.startPort,
                                                                     self.config_desc.endPort)
-

@@ -84,7 +84,7 @@ class TaskSession(MiddlemanSafeSession):
 
     ##########################
     def sendHello(self):
-        self.send(MessageHello(clientKeyId = self.taskServer.getKeyId(), randVal = self.randVal), send_unverified=True)
+        self.send(MessageHello(clientKeyId = self.taskServer.getKeyId(), randVal = self.rand_val), send_unverified=True)
 
     ##########################
     def sendStartSessionResponse(self, connId):
@@ -128,7 +128,7 @@ class TaskSession(MiddlemanSafeSession):
     ##########################
     def encrypt(self, msg):
         if self.taskServer:
-            return self.taskServer.encrypt(msg, self.clientKeyId)
+            return self.taskServer.encrypt(msg, self.key_id)
         logger.warning("Can't encrypt message - no taskServer")
         return msg
 
@@ -159,7 +159,7 @@ class TaskSession(MiddlemanSafeSession):
 
     ##########################
     def verify(self, msg):
-        verify = self.taskServer.verifySig(msg.sig, msg.getShortHash(), self.clientKeyId)
+        verify = self.taskServer.verifySig(msg.sig, msg.getShortHash(), self.key_id)
         return verify
 
     ##########################
@@ -331,7 +331,7 @@ class TaskSession(MiddlemanSafeSession):
     def _reactToDeltaParts(self, msg):
         self.taskComputer.waitForResources(self.taskId, msg.deltaHeader)
         self.taskServer.pullResources(self.taskId, msg.parts)
-        self.taskServer.addResourcePeer(msg.clientId, msg.addr, msg.port, self.clientKeyId, msg.nodeInfo)
+        self.taskServer.addResourcePeer(msg.clientId, msg.addr, msg.port, self.key_id, msg.nodeInfo)
         self.dropped()
 
     ##########################
@@ -346,8 +346,8 @@ class TaskSession(MiddlemanSafeSession):
 
     ##########################
     def _reactToHello(self, msg):
-        if self.clientKeyId == 0:
-            self.clientKeyId = msg.clientKeyId
+        if self.key_id == 0:
+            self.key_id = msg.clientKeyId
             self.sendHello()
 
         if not self.verify(msg):
@@ -359,7 +359,7 @@ class TaskSession(MiddlemanSafeSession):
 
     ##########################
     def _reactToRandVal(self, msg):
-        if self.randVal == msg.randVal:
+        if self.rand_val == msg.randVal:
             self.verified = True
             self.taskServer.verifiedConn(self.connId, )
             for msg in self.msgsToSend:
@@ -370,12 +370,12 @@ class TaskSession(MiddlemanSafeSession):
 
     ##########################
     def _reactToStartSessionResponse(self, msg):
-        self.taskServer.respondTo(self.clientKeyId, self, msg.connId)
+        self.taskServer.respondTo(self.key_id, self, msg.connId)
 
     ##########################
     def _reactToMiddleman(self, msg):
         self.send(MessageBeingMiddlemanAccepted())
-        self.taskServer.beAMiddleman(self.clientKeyId, self, self.connId, msg.askingNode, msg.destNode,
+        self.taskServer.beAMiddleman(self.key_id, self, self.connId, msg.askingNode, msg.destNode,
                                      msg.askConnId)
 
     ##########################
@@ -392,7 +392,7 @@ class TaskSession(MiddlemanSafeSession):
 
     ##########################
     def _reactToBeingMiddlemanAccepted(self, msg):
-        self.clientKeyId = self.askingNodeKeyId
+        self.key_id = self.askingNodeKeyId
 
     ##########################
     def _reactToMiddlemanAccepted(self, msg):
@@ -402,7 +402,7 @@ class TaskSession(MiddlemanSafeSession):
 
     ##########################
     def _reactToNatPunch(self, msg):
-        self.taskServer.organizeNatPunch(self.address, self.port, self.clientKeyId, msg.askingNode, msg.destNode,
+        self.taskServer.organizeNatPunch(self.address, self.port, self.key_id, msg.askingNode, msg.destNode,
                                            msg.askConnId)
         self.send(MessageWaitForNatTraverse(self.port))
         self.dropped()
@@ -479,7 +479,7 @@ class TaskSession(MiddlemanSafeSession):
 
     ##########################
     def __setMsgInterpretations(self):
-        self.interpretation.update({
+        self._interpretation.update({
                                 MessageWantToComputeTask.Type: self._reactToWantToComputeTask,
                                 MessageTaskToCompute.Type: self._reactToTaskToCompute,
                                 MessageCannotAssignTask.Type: self._reactToCannotAssignTask,
@@ -507,14 +507,6 @@ class TaskSession(MiddlemanSafeSession):
                             })
 
 
-       # self.canBeNotEncrypted.append(MessageHello.Type)
-        self.canBeUnsigned.append(MessageHello.Type)
-        self.canBeUnverified.extend([MessageHello.Type, MessageRandVal.Type])
-
-##############################################################################
-
-class TaskSessionFactory:
-    def getSession(self, connection):
-        return TaskSession(connection)
-
-    get_session = getSession
+       # self.can_be_not_encrypted.append(MessageHello.Type)
+        self.can_be_unsigned.append(MessageHello.Type)
+        self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type])

@@ -61,8 +61,8 @@ class Session(SessionInterface):
         self.port = pp.port
 
         self.last_message_time = time.time()
-        self.lastDisconnectTime = None
-        self.interpretation = { MessageDisconnect.Type: self._reactToDisconnect }
+        self.last_disconnect_time = None
+        self._interpretation = { MessageDisconnect.Type: self._reactToDisconnect }
 
         self.extraData = {}
 
@@ -75,7 +75,7 @@ class Session(SessionInterface):
         if not self._checkMsg(msg):
             return
 
-        action = self.interpretation.get(msg.getType())
+        action = self._interpretation.get(msg.getType())
         if action:
             action(msg)
         else:
@@ -93,10 +93,10 @@ class Session(SessionInterface):
     def disconnect(self, reason):
         logger.info("Disconnecting {} : {} reason: {}".format(self.address, self.port, reason))
         if self.conn.isOpen():
-            if self.lastDisconnectTime:
+            if self.last_disconnect_time:
                 self.dropped()
             else:
-                self.lastDisconnectTime = time.time()
+                self.last_disconnect_time = time.time()
                 self._sendDisconnect(reason)
 
     ##########################
@@ -143,9 +143,9 @@ class NetSession(Session, NetSessionInterface):
         self.unverifiedCnt = 15
         self.randVal = random.random()
         self.verified = False
-        self.canBeUnverified = [MessageDisconnect]
-        self.canBeUnsigned = [MessageDisconnect]
-        self.canBeNotEncrypted = [MessageDisconnect]
+        self.can_be_unverified = [MessageDisconnect]
+        self.can_be_unsigned = [MessageDisconnect]
+        self.can_be_not_encrypted = [MessageDisconnect]
 
     #Simple session with no encryption and no signing
     ##########################
@@ -185,15 +185,15 @@ class NetSession(Session, NetSessionInterface):
 
         type = msg.getType()
 
-        if not self.verified and type not in self.canBeUnverified:
+        if not self.verified and type not in self.can_be_unverified:
             self.disconnect(NetSession.DCRUnverified)
             return False
 
-        if not msg.encrypted and type not in self.canBeNotEncrypted:
+        if not msg.encrypted and type not in self.can_be_not_encrypted:
             self.disconnect(NetSession.DCRBadProtocol)
             return False
 
-        if (not type in self.canBeUnsigned) and (not self.verify(msg)):
+        if (not type in self.can_be_unsigned) and (not self.verify(msg)):
             logger.error("Failed to verify message signature")
             self.disconnect(NetSession.DCRUnverified)
             return False

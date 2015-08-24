@@ -70,7 +70,5 @@ class ClientManagerSession:
 
 
 class ClientManagerSessionFactory:
-    def getSession(self, conn):
+    def get_session(self, conn):
         return ClientManagerSession(conn)
-
-    get_session = getSession

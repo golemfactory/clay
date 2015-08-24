@@ -68,7 +68,7 @@ class ServerManagerSessionFactory:
     def __init__(self, server):
         self.server = server
 
-    def getSession(self, conn):
+    def get_session(self, conn):
         return ServerManagerSession(conn, self.server, '127.0.0.1', self.server.port)
 
 if __name__ == "__main__":

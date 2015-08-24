@@ -1,384 +1,396 @@
 import time
 import logging
-import random
 
-from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, \
-                          MessageGetPeers, MessagePeers, MessageGetTasks, MessageTasks, \
-                          MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
-                          MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
-                          MessageRandVal, MessageWantToStartTaskSession, MessageSetTaskSession, \
-                          MessageNatHole, MessageNatTraverseFailure, MessageInformAboutNatTraverseFailure
+from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, \
+    MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, MessageDegree, \
+    MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, MessageRandVal, MessageWantToStartTaskSession, \
+    MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, MessageInformAboutNatTraverseFailure
 from golem.network.transport.tcp_network import SafeProtocol
 from golem.network.transport.session import BasicSafeSession
 
 logger = logging.getLogger(__name__)
 
 
-class PeerSessionFactory:
-    ##########################
-    def getSession(self, connection):
-        return PeerSession(connection)
-
-    def get_session(self, connection):
-        return PeerSession(connection)
-
-
-
-
 class PeerSession(BasicSafeSession):
+    """ Session for Golem P2P Network.
+    """
 
     ConnectionStateType = SafeProtocol
 
-    StateInitialize = 0
-    StateConnecting = 1
-    StateConnected  = 2
+    # Disconnect reason
+    DCRDuplicatePeers = "Duplicate peers"
+    DCRTooManyPeer = "Too many peers"
+    DCRRefresh = "Refresh"
 
-    DCRDuplicatePeers   = "Duplicate peers"
-    DCRTooManyPeers     = "Too many peers"
-    DCRRefresh          = "Refresh"
-
-    ##########################
     def __init__(self, conn):
-
+        """
+        Create new session
+        :param Protocol conn: connection protocol implementation that this session should enhance
+        :return None:
+        """
         BasicSafeSession.__init__(self, conn)
-        self.p2pService = self.conn.server
-        self.id = 0
-        self.state = PeerSession.StateInitialize
+        self.p2p_service = self.conn.server
+
+        # Information about peer
         self.degree = 0
-        self.nodeId = None
-        self.listenPort = None
+        self.node_id = None
+        self.node_info = None
+        self.listen_port = None
 
-        self.canBeUnverified.extend([ MessageHello.Type, MessageRandVal.Type ])
-        self.canBeUnsigned.extend([ MessageHello.Type ])
-        self.canBeNotEncrypted.extend([ MessageHello.Type ])
+        self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type])
+        self.can_be_unsigned.extend([MessageHello.Type])
+        self.can_be_not_encrypted.extend([MessageHello.Type])
 
-        logger.info("CREATING PEER SESSION {} {}".format(self.address, self.port))
-        self.__setMsgInterprations()
+        self.__set_msg_interpretations()
 
-    ##########################
     def __str__(self):
         return "{} : {}".format(self.address, self.port)
 
-    ##########################
-    def start(self):
-        logger.info("Starting peer session {} : {}".format(self.address, self.port))
-        self.state = PeerSession.StateConnecting
-        self.__sendHello()
-
-    ##########################
     def dropped(self):
+        """
+        Close connection and inform p2p service about disconnection
+        """
         BasicSafeSession.dropped(self)
-        self.p2pService.removePeer(self)
+        self.p2p_service.removePeer(self)
 
-    ##########################
-    def ping(self, interval):
-        if time.time() - self.last_message_time > interval:
-            self.__sendPing()
-
-    ##########################
     def interpret(self, msg):
-        self.p2pService.setLastMessage("<-", self.clientKeyId, time.localtime(), msg, self.address, self.port)
+        """
+        React to specific message. Disconnect, if message type is unknown for that session.
+        Inform p2p service about last message.
+        :param Message msg: Message to interpret and react to.
+        :return None:
+        """
+        self.p2p_service.setLastMessage("<-", self.key_id, time.localtime(), msg, self.address, self.port)
         BasicSafeSession.interpret(self, msg)
 
-       # type = msg.getType()
+    def send(self, message, send_unverified=False):
+        """ Send given message if connection was verified or send_unverified option is set to True.
+        :param Message message: message to be sent.
+        :param boolean send_unverified: should message be sent even if the connection hasn't been verified yet?
+        """
+        BasicSafeSession.send(self, message, send_unverified)
+        self.p2p_service.setLastMessage("->", self.key_id, time.localtime(), message, self.address, self.port)
 
-        #localtime   = time.localtime()
-       # timeString  = time.strftime("%H:%M:%S", localtime)
-       # print "{} at {}".format(msg.serialize(), timeString)
-
-
-    ##########################
     def sign(self, msg):
-        if self.p2pService is None:
+        """ Sign given message
+        :param Message msg: message to be signed
+        :return Message: signed message
+        """
+        if self.p2p_service is None:
             logger.error("P2PService is None, can't sign a message.")
             return None
 
-        msg.sign(self.p2pService)
+        msg.sign(self.p2p_service)
         return msg
 
-    ##########################
     def verify(self, msg):
-        return self.p2pService.verifySig(msg.sig, msg.getShortHash(), self.clientKeyId)
+        """ Verify signature on given message. Check if message was signed with key_id from this connection.
+        :param Message msg: message to be verified
+        :return boolean: True if message was signed with key_id from this connection
+        """
+        return self.p2p_service.verifySig(msg.sig, msg.getShortHash(), self.key_id)
 
-    ##########################
-    def encrypt(self, msg):
-        return self.p2pService.encrypt(msg, self.clientKeyId)
+    def encrypt(self, data):
+        """ Encrypt given data using key_id from this connection.
+        :param str data: serialized message to be encrypted
+        :return str: encrypted message
+        """
+        return self.p2p_service.encrypt(data, self.key_id)
 
-    ##########################
-    def decrypt(self, msg):
-        if not self.p2pService:
-            return msg
+    def decrypt(self, data):
+        """
+        Decrypt given data using private key. If during decryption AssertionError occured this may mean that
+        data is not encrypted simple serialized message. In that case unaltered data are returned.
+        :param str data: data to be decrypted
+        :return str msg: decrypted message
+        """
+        if not self.p2p_service:
+            return data
 
         try:
-            msg = self.p2pService.decrypt(msg)
+            msg = self.p2p_service.decrypt(data)
         except AssertionError:
             logger.warning("Failed to decrypt message, maybe it's not encrypted?")
+            msg = data
         except Exception as err:
             logger.error("Failed to decrypt message {}".format(str(err)))
             assert False
 
         return msg
 
-    ##########################
-    def sendGetPeers(self):
+    def start(self):
+        """
+        Send first hello message
+        """
+        logger.info("Starting peer session {} : {}".format(self.address, self.port))
+        self.__send_hello()
+
+    def ping(self, interval):
+        """ Will send ping message if time from last message was longer than interval
+        :param float interval: number of seconds that should pass until ping message may be send
+        """
+        if time.time() - self.last_message_time > interval:
+            self.__send_ping()
+
+    def send_get_peers(self):
+        """  Send get peers message """
         self.send(MessageGetPeers())
 
-    ##########################
-    def sendGetTasks(self):
+    def send_get_tasks(self):
+        """  Send get tasks message """
         self.send(MessageGetTasks())
 
-    ##########################
-    def sendRemoveTask(self, taskId):
-        self.send(MessageRemoveTask(taskId))
+    def send_remove_task(self, task_id):
+        """  Send remove task  message
+         :param uuid task_id: task to be removed
+        """
+        self.send(MessageRemoveTask(task_id))
 
-    ##########################
-    def sendGetResourcePeers(self):
+    def send_get_resource_peers(self):
+        """ Send get resource peers message """
         self.send(MessageGetResourcePeers())
 
-    ##########################
-    def sendDegree(self, degree):
+    def send_degree(self, degree):
+        """ Send degree message
+         :param int degree: degree of this node
+        """
         self.send(MessageDegree(degree))
 
-    ##########################
-    def sendGossip(self, gossip):
+    def send_gossip(self, gossip):
+        """ Send message with gossip
+         :param list gossip: gossip to be send
+        """
         self.send(MessageGossip(gossip))
 
-    ##########################
-    def sendStopGossip(self):
+    def send_stop_gossip(self):
+        """ Send stop gossip message """
         self.send(MessageStopGossip())
 
-    ##########################
-    def sendLocRank(self, nodeId, locRank):
-        self.send(MessageLocRank(nodeId, locRank))
+    def send_loc_rank(self, node_id, loc_rank):
+        """ Send local opinion about given node
+        :param uuid node_id: send opinion about node with this id
+        :param LocalRank loc_rank: opinion bout node
+        :return:
+        """
+        self.send(MessageLocRank(node_id, loc_rank))
 
-    ##########################
-    def sendFindNode(self, nodeId):
-        self.send(MessageFindNode(nodeId))
+    def send_find_node(self, node_id):
+        """ Send find node message
+        :param uuid node_id: node to be find """
+        self.send(MessageFindNode(node_id))
 
-    ##########################
-    def sendWantToStartTaskSession(self, nodeInfo, connId, superNodeInfo):
-        self.send(MessageWantToStartTaskSession(nodeInfo, connId, superNodeInfo))
+    def send_want_to_start_task_session(self, node_info, conn_id, super_node_info):
+        """ Send request for starting task session with given node
+        :param Node node_info: information about this node.
+        :param uuid conn_id: connection id for reference
+        :param Node|None super_node_info: information about known supernode
+        """
+        self.send(MessageWantToStartTaskSession(node_info, conn_id, super_node_info))
 
-    ##########################
-    def sendSetTaskSession(self, keyId, nodeInfo, connId, superNodeInfo):
-        self.send(MessageSetTaskSession(keyId, nodeInfo, connId, superNodeInfo))
+    def send_set_task_session(self, key_id, node_info, conn_id, super_node_info):
+        """ Send information that node from node_info want to start task session with key_id node
+        :param key_id: target node key
+        :param Node node_info: information about requester
+        :param uuid conn_id: connection id for reference
+        :param Node|None super_node_info: information about known supernode
+        """
+        self.send(MessageSetTaskSession(key_id, node_info, conn_id, super_node_info))
 
-    ##########################
-    def sendTaskNatHole(self, keyId, addr, port, connId):
-        self.send(MessageNatHole(keyId, addr, port, connId))
+    def send_task_nat_hole(self, key_id, address, port, conn_id):
+        """
+        Send information about nat hole
+        :param key_id: key of the node behind nat hole
+        :param str address: address of the nat hole
+        :param int port: port of the nat hole
+        :param uuid conn_id: connection id for reference
+        """
+        self.send(MessageNatHole(key_id, address, port, conn_id))
 
-    ##########################
-    def sendInformAboutNatTraverseFailure(self, keyId, connId):
-        self.send(MessageInformAboutNatTraverseFailure(keyId, connId))
+    def send_inform_about_nat_traverse_failure(self, key_id, conn_id):
+        """
+        Send request to inform node with key_id about unsuccessful nat traverse.
+        :param key_id: key of the node that should be inform about failure
+        :param uuid conn_id: connection id for reference
+        """
+        self.send(MessageInformAboutNatTraverseFailure(key_id, conn_id))
 
-    ##########################
-    def sendNatTraverseFailure(self, connId):
-        self.send(MessageNatTraverseFailure(connId))
+    def send_nat_traverse_failure(self, conn_id):
+        """
+        Send information about unsuccessful nat traverse
+        :param uuid conn_id: connection id for reference
+        :return:
+        """
+        self.send(MessageNatTraverseFailure(conn_id))
 
-    ##########################
-    def _reactToPing(self, msg):
+    def _react_to_ping(self, msg):
         self._sendPong()
 
-    ##########################
-    def _reactToPong(self, msg):
-        self.p2pService.pongReceived(self.id, self.clientKeyId, self.address, self.port)
+    def _react_to_pong(self, msg):
+        self.p2p_service.pongReceived(self.node_id, self.key_id, self.address, self.port)
 
-    ##########################
-    def _reactToHello(self, msg):
-   #     self.port = msg.port
-        self.id = msg.clientUID
-        self.nodeInfo = msg.nodeInfo
-        self.clientKeyId = msg.clientKeyId
-        self.listenPort = msg.port
+    def _react_to_hello(self, msg):
+        self.node_id = msg.clientUID
+        self.node_info = msg.nodeInfo
+        self.key_id = msg.clientKeyId
+        self.listen_port = msg.port
 
         if not self.verify(msg):
             logger.error("Wrong signature for Hello msg")
             self.disconnect(PeerSession.DCRUnverified)
             return
 
-        enoughPeers = self.p2pService.enoughPeers()
-        p = self.p2pService.findPeer(self.id)
+        enough_peers = self.p2p_service.enoughPeers()
+        p = self.p2p_service.findPeer(self.node_id)
 
-        self.p2pService.addToPeerKeeper(self.id, self.clientKeyId, self.address, self.listenPort, self.nodeInfo)
+        self.p2p_service.addToPeerKeeper(self.node_id, self.key_id, self.address, self.listen_port, self.node_info)
 
-        if enoughPeers:
-            loggerMsg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.id, self.address, self.port)
-            logger.info(loggerMsg)
-            nodesInfo = self.p2pService.findNode(self.p2pService.getKeyId())
-            self.send(MessagePeers(nodesInfo))
+        if enough_peers:
+            logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.node_id, self.address, self.port)
+            logger.info(logger_msg)
+            nodes_info = self.p2p_service.findNode(self.p2p_service.getKeyId())
+            self.send(MessagePeers(nodes_info))
             self.disconnect(PeerSession.DCRTooManyPeers)
             return
 
         if p and p != self and p.conn.opened:
-        #   self.sendPing()
-            loggerMsg = "PEER DUPLICATED: {} {} : {}".format(p.id, p.address, p.port)
-            logger.warning("{} AND {} : {}".format(loggerMsg, msg.clientUID, msg.port))
+            # self.sendPing()
+            logger_msg = "PEER DUPLICATED: {} {} : {}".format(p.node_id, p.address, p.port)
+            logger.warning("{} AND {} : {}".format(logger_msg, msg.clientUID, msg.port))
             self.disconnect(PeerSession.DCRDuplicatePeers)
 
         if not p:
-            self.p2pService.addPeer(self.id, self)
-            self.__sendHello()
-            self.send(MessageRandVal(msg.randVal), sendUnverified = True)
+            self.p2p_service.addPeer(self.node_id, self)
+            self.__send_hello()
+            self.send(MessageRandVal(msg.randVal), send_unverified=True)
 
-        #print "Add peer to client uid:{} address:{} port:{}".format(self.id, self.address, self.port)
+        # print "Add peer to client uid:{} address:{} port:{}".format(self.node_id, self.address, self.port)
 
-    ##########################
-    def send(self, message, sendUnverified = False):
-        BasicSafeSession.send(self, message, sendUnverified)
-        self.p2pService.setLastMessage("->", self.clientKeyId, time.localtime(), message, self.address, self.port)
+    def _react_to_get_peers(self, msg):
+        self.__send_peers()
 
+    def _react_to_peers(self, msg):
+        peers_info = msg.peersArray
+        self.degree = len(peers_info)
+        for pi in peers_info:
+            self.p2p_service.tryToAddPeer(pi)
 
-    ##########################
-    def _reactToGetPeers(self, msg):
-        self.__sendPeers()
+    def _react_to_get_tasks(self, msg):
+        tasks = self.p2p_service.getTasksHeaders()
+        self.__send_tasks(tasks)
 
-    ##########################
-    def _reactToPeers(self, msg):
-        peersInfo = msg.peersArray
-        self.degree = len(peersInfo)
-        for pi in peersInfo:
-            self.p2pService.tryToAddPeer(pi)
-
-    ##########################
-    def _reactToGetTasks(self, msg):
-        tasks = self.p2pService.getTasksHeaders()
-        self.__sendTasks(tasks)
-
-    ##########################
-    def _reactToTasks(self, msg):
+    def _react_to_tasks(self, msg):
         for t in msg.tasksArray:
-            if not self.p2pService.addTaskHeader(t):
+            if not self.p2p_service.addTaskHeader(t):
                 self.disconnect(PeerSession.DCRBadProtocol)
 
-    ##########################
-    def _reactToRemoveTask(self, msg):
-        self.p2pService.removeTaskHeader(msg.taskId)
+    def _react_to_remove_task(self, msg):
+        self.p2p_service.removeTaskHeader(msg.taskId)
 
-    ##########################
-    def _reactToGetResourcePeers(self, msg):
-        self.__sendResourcePeers()
+    def _react_to_get_resource_peers(self, msg):
+        self.__send_resource_peers()
 
-    ##########################
-    def _reactToResourcePeers(self, msg):
-        self.p2pService.setResourcePeers(msg.resourcePeers)
+    def _react_to_resource_peers(self, msg):
+        self.p2p_service.setResourcePeers(msg.resourcePeers)
 
-    ##########################
-    def _reactToDegree(self, msg):
+    def _react_to_degree(self, msg):
         self.degree = msg.degree
 
-    ##########################
-    def _reactToGossip(self, msg):
-        self.p2pService.hearGossip(msg.gossip)
+    def _react_to_gossip(self, msg):
+        self.p2p_service.hearGossip(msg.gossip)
 
-    ##########################
-    def _reactToStopGossip(self, msg):
-        self.p2pService.stopGossip(self.id)
+    def _react_to_stop_gossip(self, msg):
+        self.p2p_service.stopGossip(self.node_id)
 
-    ##########################
-    def _reactToLocRank(self, msg):
-        self.p2pService.safeNeighbourLocRank(self.id, msg.nodeId, msg.locRank)
+    def _react_to_loc_rank(self, msg):
+        self.p2p_service.safeNeighbourLocRank(self.node_id, msg.nodeId, msg.locRank)
 
-    ##########################
-    def _reactToFindNode(self, msg):
-        nodesInfo = self.p2pService.findNode(msg.nodeKeyId)
-        self.send(MessagePeers(nodesInfo))
+    def _react_to_find_node(self, msg):
+        nodes_info = self.p2p_service.findNode(msg.nodeKeyId)
+        self.send(MessagePeers(nodes_info))
 
-    ##########################
-    def _reactToRandVal(self, msg):
-        if self.randVal == msg.randVal:
+    def _react_to_rand_val(self, msg):
+        if self.rand_val == msg.randVal:
             self.verified = True
-            self.p2pService.setSuggestedAddr(self.clientKeyId, self.address, self.port)
+            self.p2p_service.setSuggestedAddr(self.key_id, self.address, self.port)
 
-    ##########################
-    def _reactToWantToStartTaskSession(self, msg):
-        self.p2pService.peerWantTaskSession(msg.nodeInfo, msg.superNodeInfo, msg.connId)
+    def _react_to_want_to_start_task_session(self, msg):
+        self.p2p_service.peerWantTaskSession(msg.nodeInfo, msg.superNodeInfo, msg.connId)
 
-    ##########################
-    def _reactToSetTaskSession(self, msg):
-        self.p2pService.peerWantToSetTaskSession(msg.keyId, msg.nodeInfo, msg.connId, msg.superNodeInfo)
+    def _react_to_set_task_session(self, msg):
+        self.p2p_service.peerWantToSetTaskSession(msg.keyId, msg.nodeInfo, msg.connId, msg.superNodeInfo)
 
-    ##########################
-    def _reactToNatHole(self, msg):
-        self.p2pService.traverseNat(msg.keyId, msg.addr, msg.port, msg.connId, self.clientKeyId)
+    def _react_to_nat_hole(self, msg):
+        self.p2p_service.traverseNat(msg.keyId, msg.addr, msg.port, msg.connId, self.key_id)
 
-    ##########################
-    def _reactToNatTraverseFailure(self, msg):
-        self.p2pService.traverseNatFailure(msg.connId)
+    def _react_to_nat_traverse_failure(self, msg):
+        self.p2p_service.traverseNatFailure(msg.connId)
 
-    ##########################
-    def _reactToInformAboutNatTraverseFailure(self, msg):
-        self.p2pService.sendNatTraverseFailure(msg.keyId, msg.connId)
+    def _react_to_inform_about_nat_traverse_failure(self, msg):
+        self.p2p_service.sendNatTraverseFailure(msg.keyId, msg.connId)
 
-    ##########################
-    # PRIVATE SECTION
-    ##########################
-    def __sendHello(self):
-        listenParams = self.p2pService.getListenParams()
-        listenParams += (self.randVal,)
-        self.send(MessageHello(*listenParams), sendUnverified = True)
+    def __send_hello(self):
+        listen_params = self.p2p_service.getListenParams()
+        listen_params += (self.rand_val,)
+        self.send(MessageHello(*listen_params), send_unverified=True)
 
-    ##########################
-    def __sendPing(self):
+    def __send_ping(self):
         self.send(MessagePing())
 
-    ##########################
-    def __sendPong(self):
+    def __send_pong(self):
         self.send(MessagePong())
 
-    ##########################
-    def __sendPeers(self):
-        peersInfo = []
-        for p in self.p2pService.peers.values():
-            peersInfo.append({"address" : p.address, "port" : p.listenPort, "id" : p.id, "node": p.nodeInfo})
-        self.send(MessagePeers(peersInfo))
+    def __send_peers(self):
+        peers_info = []
+        for p in self.p2p_service.peers.values():
+            peers_info.append({
+                "address": p.address,
+                "port": p.listen_port,
+                "id": p.node_id,
+                "node": p.node_info
+            })
+        self.send(MessagePeers(peers_info))
 
-    ##########################
-    def __sendTasks(self, tasks):
+    def __send_tasks(self, tasks):
         self.send(MessageTasks(tasks))
 
-    ##########################
-    def __sendResourcePeers(self):
-        resourcePeersInfo = self.p2pService.getResourcePeers()
-        self.send(MessageResourcePeers(resourcePeersInfo))
+    def __send_resource_peers(self):
+        resource_peers = self.p2p_service.getResourcePeers()
+        self.send(MessageResourcePeers(resource_peers))
 
-    ##########################
-    def __setMsgInterprations(self):
-        self.__setBasicMsgInterpretations()
-        self.__setResourceMsgInterpretations()
-        self.__setRankingMsgInterpretations()
+    def __set_msg_interpretations(self):
+        self.__set_basic_msg_interpretations()
+        self.__set_resource_msg_interpretations()
+        self.__set_ranking_msg_interpretations()
 
-    ##########################
-    def __setBasicMsgInterpretations(self):
-        self.interpretation.update({
-            MessagePing.Type: self._reactToPing,
-            MessagePong.Type: self._reactToPong,
-            MessageHello.Type: self._reactToHello,
-            MessageGetPeers.Type: self._reactToGetPeers,
-            MessagePeers.Type: self._reactToPeers,
-            MessageGetTasks.Type: self._reactToGetTasks,
-            MessageTasks.Type: self._reactToTasks,
-            MessageRemoveTask.Type: self._reactToRemoveTask,
-            MessageFindNode.Type: self._reactToFindNode,
-            MessageRandVal.Type: self._reactToRandVal,
-            MessageWantToStartTaskSession.Type: self._reactToWantToStartTaskSession,
-            MessageSetTaskSession.Type: self._reactToSetTaskSession,
-            MessageNatHole.Type: self._reactToNatHole,
-            MessageNatTraverseFailure.Type: self._reactToNatTraverseFailure,
-            MessageInformAboutNatTraverseFailure.Type: self._reactToInformAboutNatTraverseFailure
-       })
+    def __set_basic_msg_interpretations(self):
+        self._interpretation.update({
+            MessagePing.Type: self._react_to_ping,
+            MessagePong.Type: self._react_to_pong,
+            MessageHello.Type: self._react_to_hello,
+            MessageGetPeers.Type: self._react_to_get_peers,
+            MessagePeers.Type: self._react_to_peers,
+            MessageGetTasks.Type: self._react_to_get_tasks,
+            MessageTasks.Type: self._react_to_tasks,
+            MessageRemoveTask.Type: self._react_to_remove_task,
+            MessageFindNode.Type: self._react_to_find_node,
+            MessageRandVal.Type: self._react_to_rand_val,
+            MessageWantToStartTaskSession.Type: self._react_to_want_to_start_task_session,
+            MessageSetTaskSession.Type: self._react_to_set_task_session,
+            MessageNatHole.Type: self._react_to_nat_hole,
+            MessageNatTraverseFailure.Type: self._react_to_nat_traverse_failure,
+            MessageInformAboutNatTraverseFailure.Type: self._react_to_inform_about_nat_traverse_failure
+        })
 
-    ##########################
-    def __setResourceMsgInterpretations(self):
-        self.interpretation.update({
-                                        MessageGetResourcePeers.Type: self._reactToGetResourcePeers,
-                                        MessageResourcePeers.Type: self._reactToResourcePeers,
-                                   })
+    def __set_resource_msg_interpretations(self):
+        self._interpretation.update({
+            MessageGetResourcePeers.Type: self._react_to_get_resource_peers,
+            MessageResourcePeers.Type: self._react_to_resource_peers,
+        })
 
-    ##########################
-    def __setRankingMsgInterpretations(self):
-        self.interpretation.update({
-                                        MessageDegree.Type: self._reactToDegree,
-                                        MessageGossip.Type: self._reactToGossip,
-                                        MessageLocRank.Type: self._reactToLocRank,
-                                        MessageStopGossip.Type: self._reactToStopGossip,
-                                   })
+    def __set_ranking_msg_interpretations(self):
+        self._interpretation.update({
+            MessageDegree.Type: self._react_to_degree,
+            MessageGossip.Type: self._react_to_gossip,
+            MessageLocRank.Type: self._react_to_loc_rank,
+            MessageStopGossip.Type: self._react_to_stop_gossip,
+        })

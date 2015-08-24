@@ -3,7 +3,7 @@ import logging
 import random
 
 from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress
-from golem.network.p2p.PeerSession import PeerSession, PeerSessionFactory
+from golem.network.p2p.PeerSession import PeerSession
 from golem.network.p2p.P2PServer import P2PServer
 from PeerKeeper import PeerKeeper
 
@@ -99,7 +99,7 @@ class P2PService:
 
     #############################
     def newSession(self, session):
-        session.p2pService = self
+        #session.p2pService = self
         self.allPeers.append(session)
         session.start()
  
@@ -261,7 +261,7 @@ class P2PService:
             for neighbour in neighbours:
                 peer =  self.peers.get(neighbour.nodeId)
                 if peer:
-                    peer.sendFindNode(nodeKeyId)
+                    peer.send_find_node(nodeKeyId)
 
     #Find node
     #############################
@@ -286,7 +286,7 @@ class P2PService:
     #############################
     def sendGetResourcePeers(self):
         for p in self.peers.values():
-            p.sendGetResourcePeers()
+            p.send_get_resource_peers()
 
     ############################
     def getResourcePeers(self):
@@ -338,20 +338,20 @@ class P2PService:
     ############################
     def removeTask(self, taskId):
         for p in self.peers.values():
-            p.sendRemoveTask(taskId)
+            p.send_remove_task(taskId)
 
     ############################
     def wantToStartTaskSession(self, keyId, nodeInfo, connId, superNodeInfo=None):
         logger.debug("Try to start task sesion {}".format(keyId))
         msgSnd = False
         for peer in self.peers.itervalues():
-            if peer.clientKeyId == keyId:
-                peer.sendWantToStartTaskSession(nodeInfo, connId, superNodeInfo)
+            if peer.key_id == keyId:
+                peer.send_want_to_start_task_session(nodeInfo, connId, superNodeInfo)
                 return
 
         for peer in self.peers.itervalues():
-            if peer.clientKeyId != nodeInfo.key:
-                peer.sendSetTaskSession(keyId, nodeInfo, connId, superNodeInfo)
+            if peer.key_id != nodeInfo.key:
+                peer.send_set_task_session(keyId, nodeInfo, connId, superNodeInfo)
                 msgSnd = True
 
         #TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
@@ -363,8 +363,8 @@ class P2PService:
     def informAboutTaskNatHole(self, keyId, rvKeyId, addr, port, ansConnId):
         logger.debug("Nat hole ready {}:{}".format(addr,port))
         for peer in self.peers.itervalues():
-            if peer.clientKeyId == keyId:
-                peer.sendTaskNatHole(rvKeyId, addr, port, ansConnId)
+            if peer.key_id == keyId:
+                peer.send_task_nat_hole(rvKeyId, addr, port, ansConnId)
                 return
 
     ############################
@@ -374,15 +374,15 @@ class P2PService:
     ############################
     def informAboutNatTraverseFailure(self, keyId, resKeyId, connId):
         for peer in self.peers.itervalues():
-            if peer.clientKeyId == keyId:
-                peer.sendInformAboutNatTraverseFailure(resKeyId, connId)
+            if peer.key_id == keyId:
+                peer.send_inform_about_nat_traverse_failure(resKeyId, connId)
         #TODO CO jak juz nie ma polaczenia?
 
     ############################
     def sendNatTraverseFailure(self, keyId, connId):
         for peer in self.peers.itervalues():
-            if peer.clientKeyId == keyId:
-                peer.sendNatTraverseFailure(connId)
+            if peer.key_id == keyId:
+                peer.send_nat_traverse_failure(connId)
         #TODO Co jak nie ma tego polaczenia
 
     ############################
@@ -415,7 +415,7 @@ class P2PService:
         for peerId in sendTo:
             peer = self.findPeer(peerId)
             if peer is not None:
-                peer.sendGossip(gossip)
+                peer.send_gossip(gossip)
 
     #############################
     def hearGossip(self, gossip):
@@ -430,7 +430,7 @@ class P2PService:
     #############################
     def sendStopGossip(self):
         for peer in self.peers.values():
-            peer.sendStopGossip()
+            peer.send_stop_gossip()
 
     #############################
     def stopGossip(self, id):
@@ -445,7 +445,7 @@ class P2PService:
     #############################
     def pushLocalRank(self, nodeId, locRank):
         for peer in self.peers.values():
-            peer.sendLocRank(nodeId, locRank)
+            peer.send_loc_rank(nodeId, locRank)
 
     #############################
     def safeNeighbourLocRank(self, neighId, aboutId, rank):
@@ -497,7 +497,7 @@ class P2PService:
                     if time.time() - self.lastPeersRequest > 2:
                         self.lastPeersRequest = time.time()
                         for p in self.peers.values():
-                            p.sendGetPeers()
+                            p.send_get_peers()
                 else:
                     self.tryToAddPeer({"id": peer.nodeId, "address": peer.ip, "port": peer.port, "node": peer.nodeInfo })
                 break
@@ -515,11 +515,11 @@ class P2PService:
         if time.time() - self.lastGetTasksRequest > 2:
             self.lastGetTasksRequest = time.time()
             for p in self.peers.values():
-                p.sendGetTasks()
+                p.send_get_tasks()
 
     #############################
     def __connectionEstablished(self, session):
-        session.p2pService = self
+#        session.p2pService = self
         self.allPeers.append(session)
 
         logger.debug("Connection to peer established. {}: {}".format(session.conn.transport.getPeer().host, session.conn.transport.getPeer().port))
@@ -553,4 +553,4 @@ class P2PService:
     def __sendDegree(self):
         degree = len(self.peers)
         for p in self.peers.values():
-            p.sendDegree(degree)
+            p.send_degree(degree)

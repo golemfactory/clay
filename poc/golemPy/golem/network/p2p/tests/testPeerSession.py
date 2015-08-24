@@ -107,8 +107,8 @@ class TestPeerSession(unittest.TestCase):
     def testInterpret(self):
         self.peerSession.interpret(None)
         self.assertIsInstance(self.conn.messages[0], MessageDisconnect)
-        self.assertIsNotNone(self.peerSession.lastDisconnectTime)
-        self.peerSession.lastDisconnectTime = None
+        self.assertIsNotNone(self.peerSession.last_disconnect_time)
+        self.peerSession.last_disconnect_time = None
 
         self.peerSession.interpret(MessagePing())
         self.assertIsInstance(self.conn.messages[1], MessagePong)
@@ -145,9 +145,9 @@ class TestPeerSession(unittest.TestCase):
 
 
     def testSendGetPeers(self):
-        self.peerSession.sendGetPeers()
+        self.peerSession.send_get_peers()
         self.assertIsInstance(self.conn.messages[0], MessageGetPeers)
 
     def testSendGetTasks(self):
-        self.peerSession.sendGetTasks()
+        self.peerSession.send_get_tasks()
         self.assertIsInstance(self.conn.messages[0], MessageGetTasks)
