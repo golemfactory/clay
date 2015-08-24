@@ -61,7 +61,7 @@ class FileConsumer:
 
     ###################
     def _endReceiving(self):
-        self.session.conn.fileMode = False
+        self.session.conn.file_mode = False
         self.fh.close()
         self.fh = None
         self.extraData['fileSize'] = self.fileSize

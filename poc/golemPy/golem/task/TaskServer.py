@@ -6,14 +6,16 @@ from collections import deque
 
 from TaskManager import TaskManager
 from TaskComputer import TaskComputer
+from TaskSession import TaskSessionFactory
 from TaskKeeper import TaskKeeper
 
 from golem.ranking.Ranking import RankingStats
 from golem.network.GNRServer import PendingConnectionsServer, PendingConnection, PenConnStatus
-from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress
+from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress, MidAndFilesProtocol
 from golem.network.transport.network import ProtocolFactory
 
 logger = logging.getLogger(__name__)
+
 
 class TaskServer(PendingConnectionsServer):
     #############################
@@ -42,7 +44,7 @@ class TaskServer(PendingConnectionsServer):
 
         self.responseList = {}
 
-        network = TCPNetwork(ProtocolFactory(MidNetAndFilesConnState, self, TaskSessionFactory()),  useIp6)
+        network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, TaskSessionFactory()),  useIp6)
         PendingConnectionsServer.__init__(self, configDesc, network)
 
     #############################
@@ -389,7 +391,7 @@ class TaskServer(PendingConnectionsServer):
             self.responseList[keyId] = deque([response])
 
         self.client.wantToStartTaskSession(keyId, self.node, connId)
-        openSession.isMiddleman = True
+        openSession.is_middleman = True
 
     #############################
     def waitForNatTraverse(self, port, session):
@@ -793,7 +795,7 @@ class TaskServer(PendingConnectionsServer):
         curTime = time.time()
         sessionsToRemove = []
         for subtaskId, session in self.taskSessions.iteritems():
-            if curTime - session.lastMessageTime > self.lastMessageTimeThreshold:
+            if curTime - session.last_message_time > self.lastMessageTimeThreshold:
                 sessionsToRemove.append(subtaskId)
         for subtaskId in sessionsToRemove:
             if self.taskSessions[subtaskId].taskComputer is not None:
@@ -919,23 +921,6 @@ class WaitingTaskFailure:
         self.owner = owner
         self.errMsg = errMsg
 
-##########################################################
-
-from twisted.internet.protocol import Factory
-from golem.network.NetAndFilesConnState import MidNetAndFilesConnState
-from TaskSession import TaskSessionFactory
-
-class TaskServerFactory(Factory):
-    #############################
-    def __init__(self, server):
-        self.server = server
-
-    #############################
-    def buildProtocol(self, addr):
-        logger.info("Protocol build for {}".format(addr))
-        protocol = MidNetAndFilesConnState(self.server)
-        protocol.setSessionFactory(TaskSessionFactory())
-        return protocol
 
 ##########################################################
 class TaskConnTypes:

@@ -60,7 +60,7 @@ class Session(SessionInterface):
         self.address = pp.host
         self.port = pp.port
 
-        self.lastMessageTime = time.time()
+        self.last_message_time = time.time()
         self.lastDisconnectTime = None
         self.interpretation = { MessageDisconnect.Type: self._reactToDisconnect }
 
@@ -68,7 +68,7 @@ class Session(SessionInterface):
 
     ##########################
     def interpret(self, msg):
-        self.lastMessageTime = time.time()
+        self.last_message_time = time.time()
 
         # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
 
@@ -202,10 +202,10 @@ class NetSession(Session, NetSessionInterface):
 
     ##########################
     def _verifyTime(self, msg):
-        if self.lastMessageTime - msg.timestamp > self.messageTTL:
+        if self.last_message_time - msg.timestamp > self.messageTTL:
             self.disconnect(NetSession.DCROldMessage)
             return False
-        elif msg.timestamp - self.lastMessageTime > self.futureTimeTolerance:
+        elif msg.timestamp - self.last_message_time > self.futureTimeTolerance:
             self.disconnect(NetSession.DCRWrongTimestamp)
             return False
 
@@ -217,31 +217,31 @@ class MidNetSession(NetSession):
     def __init__(self, conn):
         NetSession.__init__(self, conn)
 
-        self.isMiddleman = False
+        self.is_middleman = False
         self.openSession = None
         self.askingNodeKeyId = None
         self.middlemanConnData = None
 
     ##########################
     def send(self, message, sendUnverified=False):
-        if not self.isMiddleman:
+        if not self.is_middleman:
             NetSession.send(self, message, sendUnverified)
         else:
             Session.send(self, message)
 
     ##########################
     def _checkMsg(self, msg):
-        if not self.isMiddleman:
+        if not self.is_middleman:
             return NetSession._checkMsg(self, msg)
         else:
             return Session._checkMsg(self, msg)
 
     ##########################
     def interpret(self, msg):
-        if not self.isMiddleman:
+        if not self.is_middleman:
             NetSession.interpret(self, msg)
         else:
-            self.lastMessageTime = time.time()
+            self.last_message_time = time.time()
 
             if self.openSession is None:
                 logger.error("Destination session for middleman don't exist")
@@ -250,7 +250,7 @@ class MidNetSession(NetSession):
 
     ##########################
     def dropped(self):
-        if not self.isMiddleman:
+        if not self.is_middleman:
             NetSession.dropped(self)
         else:
             if self.openSession:

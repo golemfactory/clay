@@ -5,10 +5,10 @@ import time
 
 from golem.network.transport.network import ProtocolFactory
 from golem.network.transport.tcp_server import TCPServer
-from golem.network.transport.tcp_network import TCPConnectInfo, TCPAddress, TCPListenInfo, TCPNetwork
-from golem.network.NetAndFilesConnState import NetAndFilesConnState
+from golem.network.transport.tcp_network import TCPConnectInfo, TCPAddress, TCPListenInfo, TCPNetwork, FilesProtocol
 from golem.resource.DirManager import DirManager
 from golem.resource.ResourcesManager import DistributedResourceManager
+from golem.resource.ResourceSession import ResourceSessionFactory
 from golem.ranking.Ranking import RankingStats
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class ResourceServer(TCPServer):
         self.dirManager = DirManager(config_desc.rootPath, config_desc.clientUid)
         self.resourceManager = DistributedResourceManager(self.dirManager.getResourceDir())
         self.useIp6=useIp6
-        network = TCPNetwork(ProtocolFactory(NetAndFilesConnState, self, ResourceSessionFactory()),  useIp6)
+        network = TCPNetwork(ProtocolFactory(FilesProtocol, self, ResourceSessionFactory()),  useIp6)
         TCPServer.__init__(self, config_desc, network)
 
         self.resourcePeers = {}
@@ -185,7 +185,7 @@ class ResourceServer(TCPServer):
             for taskId in self.waitingResources[resource]:
                     self.resourcesToGet.remove([resource, taskId])
             session.fileName = resource
-            session.conn.fileMode = True
+            session.conn.file_mode = True
             session.conn.confirmation = False
             session.sendWantResource(resource)
             if session not in self.sessions:
@@ -368,7 +368,7 @@ class ResourceServer(TCPServer):
         curTime = time.time()
         sessionsToRemove = []
         for session in self.sessions:
-            if curTime - session.lastMessageTime > self.lastMessageTimeThreshold:
+            if curTime - session.last_message_time > self.lastMessageTimeThreshold:
                 sessionsToRemove.append(session)
         for session in sessionsToRemove:
             self.removeSession(session)
@@ -378,19 +378,3 @@ class ResourceServer(TCPServer):
         TCPServer._listening_established(self, port, **kwargs)
         self.client.setResourcePort(self.cur_port)
 
-
-##########################################################
-from twisted.internet.protocol import Factory
-
-from golem.resource.ResourceSession import ResourceSessionFactory
-
-class ResourceServerFactory(Factory):
-    #############################
-    def __init__(self, server):
-        self.server = server
-
-    #############################
-    def buildProtocol(self, addr):
-        protocol = NetAndFilesConnState(self.server)
-        protocol.setSessionFactory(ResourceSessionFactory())
-        return protocol

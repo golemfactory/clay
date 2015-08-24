@@ -1,5 +1,6 @@
 import logging
 import ipaddr
+import time
 
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
     TCP6ClientEndpoint
@@ -9,9 +10,14 @@ from twisted.internet.protocol import connectionDone
 from network import Network, SessionProtocol
 
 from golem.core.databuffer import DataBuffer
+from golem.core.variables import LONG_STANDARD_SIZE
 from golem.Message import Message
 
 logger = logging.getLogger(__name__)
+
+##########################
+# Network helper classes #
+##########################
 
 
 class TCPAddress(object):
@@ -89,6 +95,9 @@ class TCPConnectInfo(object):
                                                                                           self.established_callback,
                                                                                           self.failure_callback)
 
+###############
+# TCP Network #
+###############
 
 class TCPNetwork(Network):
     def __init__(self, protocol_factory, use_ipv6=False, timeout=5):
@@ -417,3 +426,95 @@ class SafeProtocol(ServerProtocol):
             m.encrypted = dec_msg != msg
             messages.append(m)
         return messages
+
+
+class FilesProtocol(SafeProtocol):
+    """ Connection-oriented protocol for twisted. Allows to send messages (support for message serialization)
+    encryption, decryption and signing), files or stream data."""
+    def __init__(self, server=None):
+        SafeProtocol.__init__(self, server)
+
+        self.file_mode = False
+        self.file_consumer = None
+
+        self.data_mode = False
+        self.data_consumer = None
+
+        self.file_producer = None
+
+    def clean(self):
+        """ Clean the protocol state. Close existing consumers and producents."""
+        if self.data_consumer is not None:
+            self.data_consumer.close()
+
+        if self.file_consumer is not None:
+            self.file_consumer.close()
+
+        if self.file_producer is not None:
+            self.file_producer.close()
+
+    def close(self):
+        """ Close connection, after writing all pending  (flush the write buffer and wait for producer to finish).
+        Close file consumer, data consumer or file producer if they are active.
+        :return None: """
+        self.clean()
+        SafeProtocol.close(self)
+
+    def close_now(self):
+        """ Close connection ASAP, doesn't flush the write buffer or wait for the producer to finish.
+        Close file consumer, data consumer or file producer if they are active. """
+        self.opened = False
+        self.clean()
+        SafeProtocol.close_now(self)
+
+    def _interpret(self, data):
+        self.session.last_message_time = time.time()
+
+        if self.file_mode:
+            self._file_data_received(data)
+            return
+
+        if self.data_mode:
+            self._result_data_received(data)
+            return
+
+        SafeProtocol._interpret(self, data)
+
+    def _file_data_received(self, data):
+        assert self.file_consumer
+        if self._check_stream(data):
+            self.file_consumer.dataReceived(data)
+        else:
+            logger.error("Wrong stream received")
+            self.close_now()
+
+    def _result_data_received(self, data):
+        assert self.data_consumer
+        if self._check_stream(data):
+            self.data_consumer.dataReceived(data)
+        else:
+            logger.error("Wrong stream received")
+            self.close_now()
+
+    def _check_stream(self, data):
+        return len(data) >= LONG_STANDARD_SIZE
+
+
+class MidAndFilesProtocol(FilesProtocol):
+    """ Connection-oriented protocol for twisted. In the Middleman mode pass message to session without
+    decrypting or deserializing it. In normal mode allows to send messages (support for message serialization)
+    encryption, decryption and signing), files or stream data."""
+    def _interpret(self, data):
+        if self.session.is_middleman:
+            self.session.last_message_time = time.time()
+            self.db.appendString(data)
+            self.session.interpret(self.db.readAll())
+        else:
+            FilesProtocol._interpret(self, data)
+
+    ############################
+    def _prepare_msg_to_send(self, msg):
+        if self.session.is_middleman:
+            return msg
+        else:
+            return FilesProtocol._prepare_msg_to_send(self, msg)

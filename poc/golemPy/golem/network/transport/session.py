@@ -44,14 +44,14 @@ class BasicSession(Session):
         self.address = pp.host
         self.port = pp.port
 
-        self.lastMessageTime = time.time()
+        self.last_message_time = time.time()
         self.lastDisconnectTime = None
         self.interpretation = {MessageDisconnect.Type: self._react_to_disconnect}
 
         self.extraData = {}
 
     def interpret(self, msg):
-        self.lastMessageTime = time.time()
+        self.last_message_time = time.time()
 
         # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
 
@@ -168,10 +168,10 @@ class BasicSafeSession(BasicSession, SafeSession):
         return True
 
     def _verify_time(self, msg):
-        if self.lastMessageTime - msg.timestamp > self.messageTTL:
+        if self.last_message_time - msg.timestamp > self.messageTTL:
             self.disconnect(BasicSafeSession.DCROldMessage)
             return False
-        elif msg.timestamp - self.lastMessageTime > self.futureTimeTolerance:
+        elif msg.timestamp - self.last_message_time > self.futureTimeTolerance:
             self.disconnect(BasicSafeSession.DCRWrongTimestamp)
             return False
 
@@ -182,28 +182,28 @@ class MiddlemanSafeSession(BasicSafeSession):
     def __init__(self, conn):
         BasicSafeSession.__init__(self, conn)
 
-        self.isMiddleman = False
+        self.is_middleman = False
         self.open_session = None
         self.askingNodeKeyId = None
         self.middlemanConnData = None
 
     def send(self, message, send_unverified=False):
-        if not self.isMiddleman:
+        if not self.is_middleman:
             BasicSafeSession.send(self, message, send_unverified)
         else:
             BasicSession.send(self, message)
 
     def _check_msg(self, msg):
-        if not self.isMiddleman:
+        if not self.is_middleman:
             return BasicSafeSession._check_msg(self, msg)
         else:
             return BasicSession._check_msg(self, msg)
 
     def interpret(self, msg):
-        if not self.isMiddleman:
+        if not self.is_middleman:
             BasicSafeSession.interpret(self, msg)
         else:
-            self.lastMessageTime = time.time()
+            self.last_message_time = time.time()
 
             if self.open_session is None:
                 logger.error("Destination session for middleman don't exist")
@@ -211,7 +211,7 @@ class MiddlemanSafeSession(BasicSafeSession):
             self.open_session.send(msg)
 
     def dropped(self):
-        if not self.isMiddleman:
+        if not self.is_middleman:
             BasicSafeSession.dropped(self)
         else:
             if self.open_session:

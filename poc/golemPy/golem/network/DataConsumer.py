@@ -48,7 +48,7 @@ class DataConsumer:
 
     ###################
     def __endReceiving(self):
-        self.session.conn.dataMode = False
+        self.session.conn.data_mode = False
         self.dataSize = -1
         self.recvSize = 0
         self.session.fullDataReceived("".join(self.locData), self.extraData)

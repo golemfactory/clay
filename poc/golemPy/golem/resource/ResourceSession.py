@@ -7,14 +7,14 @@ from golem.Message import MessageHello, MessageRandVal, MessageHasResource, Mess
     MessagePullResource, MessagePullAnswer, MessageSendResource
 from golem.network.FileProducer import EncryptFileProducer
 from golem.network.FileConsumer import DecryptFileConsumer
-from golem.network.NetAndFilesConnState import NetAndFilesConnState
 from golem.network.transport.session import BasicSafeSession
+from golem.network.transport.tcp_network import FilesProtocol
 
 logger = logging.getLogger(__name__)
 
 class ResourceSession(BasicSafeSession):
 
-    ConnectionStateType = NetAndFilesConnState
+    ConnectionStateType = FilesProtocol
 
     ##########################
     def __init__(self, conn):
@@ -114,8 +114,8 @@ class ResourceSession(BasicSafeSession):
 
     ##########################
     def fileSent(self, fileName):
-        self.conn.fileProducer.clean()
-        self.conn.fileProducer = None
+        self.conn.file_producer.clean()
+        self.conn.file_producer = None
 
     ##########################
     def send(self, msg, send_unverified=False):
@@ -135,8 +135,8 @@ class ResourceSession(BasicSafeSession):
         else:
             self.sendWantResource(msg.resource)
             self.fileName = msg.resource
-            self.conn.fileMode = True
-            self.conn.fileConsumer = DecryptFileConsumer(self.resourceServer.prepareResource(self.fileName), None, self, {})
+            self.conn.file_mode = True
+            self.conn.file_consumer = DecryptFileConsumer(self.resourceServer.prepareResource(self.fileName), None, self, {})
             self.confirmation = True
             self.copies = copies
 
@@ -147,7 +147,7 @@ class ResourceSession(BasicSafeSession):
 
     ##########################
     def _reactToWantResource(self, msg):
-        self.conn.fileProducer = EncryptFileProducer(self.resourceServer.prepareResource(msg.resource), self)
+        self.conn.file_producer = EncryptFileProducer(self.resourceServer.prepareResource(msg.resource), self)
 
     ##########################
     def _reactToPullResource(self, msg):

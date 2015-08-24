@@ -16,7 +16,7 @@ from golem.network.DataProducer import DataProducer
 from golem.network.DataConsumer import DataConsumer
 from golem.network.MultiFileProducer import EncryptMultiFileProducer
 from golem.network.MultiFileConsumer import DecryptMultiFileConsumer
-from golem.network.NetAndFilesConnState import MidNetAndFilesConnState
+from golem.network.transport.tcp_network import MidAndFilesProtocol
 #from golem.network.p2p.Session import MidNetSession
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.task.TaskBase import resultTypes
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class TaskSession(MiddlemanSafeSession):
-    ConnectionStateType = MidNetAndFilesConnState
+    ConnectionStateType = MidAndFilesProtocol
 
     ##########################
     def __init__(self, conn):
@@ -340,8 +340,8 @@ class TaskSession(MiddlemanSafeSession):
             tmpFile = os.path.join(self.taskComputer.resourceManager.getTemporaryDir(self.taskId), "res" + self.taskId)
             outputDir = self.taskComputer.resourceManager.getResourceDir(self.taskId)
             extraData = { "taskId": self.taskId }
-            self.conn.fileConsumer = DecryptFileConsumer(tmpFile, outputDir, self, extraData)
-            self.conn.fileMode = True
+            self.conn.file_consumer = DecryptFileConsumer(tmpFile, outputDir, self, extraData)
+            self.conn.file_mode = True
         self.__sendAcceptResourceFormat()
 
     ##########################
@@ -397,8 +397,8 @@ class TaskSession(MiddlemanSafeSession):
     ##########################
     def _reactToMiddlemanAccepted(self, msg):
         self.send(MessageMiddlemanReady())
-        self.isMiddleman = True
-        self.openSession.isMiddleman = True
+        self.is_middleman = True
+        self.openSession.is_middleman = True
 
     ##########################
     def _reactToNatPunch(self, msg):
@@ -417,7 +417,7 @@ class TaskSession(MiddlemanSafeSession):
 
     ##########################
     def send(self, msg, send_unverified=False):
-        if not self.isMiddleman and not self.verified and not send_unverified:
+        if not self.is_middleman and not self.verified and not send_unverified:
             self.msgsToSend.append(msg)
             return
         MiddlemanSafeSession.send(self, msg, send_unverified=send_unverified)
@@ -465,16 +465,16 @@ class TaskSession(MiddlemanSafeSession):
     ##########################
     def __receiveDataResult(self, msg):
         extraData = {"subtaskId": msg.subtaskId, "resultType": msg.resultType}
-        self.conn.dataConsumer = DataConsumer(self, extraData)
-        self.conn.dataMode = True
+        self.conn.data_consumer = DataConsumer(self, extraData)
+        self.conn.data_mode = True
         self.subtaskId = msg.subtaskId
 
     ##########################
     def __receiveFilesResult(self, msg):
         extraData = { "subtaskId": msg.subtaskId, "resultType": msg.resultType }
         outputDir = self.taskServer.taskManager.dirManager.getTaskTemporaryDir(self.taskManager.getTaskId(msg.subtaskId), create=False)
-        self.conn.dataConsumer = DecryptMultiFileConsumer(msg.extraData, outputDir, self, extraData)
-        self.conn.dataMode = True
+        self.conn.data_consumer = DecryptMultiFileConsumer(msg.extraData, outputDir, self, extraData)
+        self.conn.data_mode = True
         self.subtaskId = msg.subtaskId
 
     ##########################

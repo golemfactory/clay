@@ -25,7 +25,7 @@ class Peer:
         self.port = None
         self.interval = None
         self.sendGetPeersCalledCnt = 0
-        self.lastMessageTime = time.time()
+        self.last_message_time = time.time()
 
     def sendRemoveTask(self, taskId):
         self.taskToRemove = taskId

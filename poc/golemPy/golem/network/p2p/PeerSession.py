@@ -72,7 +72,7 @@ class PeerSession(BasicSafeSession):
 
     ##########################
     def ping(self, interval):
-        if time.time() - self.lastMessageTime > interval:
+        if time.time() - self.last_message_time > interval:
             self.__sendPing()
 
     ##########################

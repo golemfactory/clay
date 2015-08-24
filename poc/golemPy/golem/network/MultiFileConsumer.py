@@ -79,7 +79,7 @@ class MultiFileConsumer:
         self.recvSize = 0
         self.fileSize = -1
         if len(self.fileList) == 0:
-            self.session.conn.fileMode = False
+            self.session.conn.file_mode = False
             self.session.fullDataReceived(self.finalFileList, self.extraData)
 
 #########################################################

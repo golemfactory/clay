@@ -539,7 +539,7 @@ class P2PService:
     def __removeOldPeers(self):
         curTime = time.time()
         for peerId in self.peers.keys():
-            if curTime - self.peers[peerId].lastMessageTime > self.lastMessageTimeThreshold:
+            if curTime - self.peers[peerId].last_message_time > self.lastMessageTimeThreshold:
                 self.peers[peerId].disconnect(PeerSession.DCRTimeout)
 
         if curTime - self.lastRefreshPeers > self.refreshPeersTimeout:
