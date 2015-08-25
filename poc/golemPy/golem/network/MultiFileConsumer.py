@@ -80,7 +80,7 @@ class MultiFileConsumer:
         self.fileSize = -1
         if len(self.fileList) == 0:
             self.session.conn.file_mode = False
-            self.session.fullDataReceived(self.finalFileList, self.extraData)
+            self.session.full_data_received(self.finalFileList, self.extraData)
 
 #########################################################
 class DecryptMultiFileConsumer(MultiFileConsumer):

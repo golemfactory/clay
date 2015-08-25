@@ -51,4 +51,4 @@ class DataConsumer:
         self.session.conn.data_mode = False
         self.dataSize = -1
         self.recvSize = 0
-        self.session.fullDataReceived("".join(self.locData), self.extraData)
+        self.session.full_data_received("".join(self.locData), self.extraData)

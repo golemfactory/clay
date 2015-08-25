@@ -37,7 +37,7 @@ class FileProducer:
         else:
             self.fh.close()
             self.fh =  None
-            self.session.fileSent(self.file_)
+            self.session.file_sent(self.file_)
             self.session.conn.transport.unregisterProducer()
 
     ###################

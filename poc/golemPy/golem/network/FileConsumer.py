@@ -67,7 +67,7 @@ class FileConsumer:
         self.extraData['fileSize'] = self.fileSize
         self.extraData['outputDir'] = self.outputDir
         self.extraData['tmpFile'] = self.tmpFile
-        self.session.fullFileReceived(self.extraData)
+        self.session.full_file_received(self.extraData)
         self.fileSize = -1
         self.recvSize = 0
 

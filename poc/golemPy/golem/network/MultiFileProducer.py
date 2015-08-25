@@ -48,7 +48,7 @@ class MultiFileProducer:
         else:
             if self.fh is not None:
                 self.fh.close()
-            self.session.dataSent(self.extraData)
+            self.session.data_sent(self.extraData)
             self.session.conn.transport.unregisterProducer()
 
     ###################

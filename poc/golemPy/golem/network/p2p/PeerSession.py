@@ -12,8 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class PeerSession(BasicSafeSession):
-    """ Session for Golem P2P Network.
-    """
+    """ Session for Golem P2P Network. """
 
     ConnectionStateType = SafeProtocol
 

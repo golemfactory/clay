@@ -41,7 +41,7 @@ class DataProducer:
                 self.it += self.buffSize
             else:
                 self.data = None
-                self.session.dataSent(self.extraData)
+                self.session.data_sent(self.extraData)
 #                self.session.taskServer.taskResultSent(self.subtaskId)
                 self.session.conn.transport.unregisterProducer()
 

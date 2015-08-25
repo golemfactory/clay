@@ -96,7 +96,6 @@ class ResourceServer(TCPServer):
 
     ############################
     def newConnection(self, session):
-        session.resourceServer = self
         self.sessions.append(session)
 
     new_connection = newConnection
@@ -188,7 +187,7 @@ class ResourceServer(TCPServer):
             session.fileName = resource
             session.conn.file_mode = True
             session.conn.confirmation = False
-            session.sendWantResource(resource)
+            session.send_want_resource(resource)
             if session not in self.sessions:
                 self.sessions.append(session)
 
@@ -316,10 +315,9 @@ class ResourceServer(TCPServer):
 
     ############################
     def __connectionPushResourceEstablished(self, session, resource, copies, resource_address, resource_port, keyId):
-        session.resourceServer = self
         session.key_id = keyId
-        session.sendHello()
-        session.sendPushResource(resource, copies)
+        session.send_hello()
+        session.send_push_resource(resource, copies)
         self.sessions.append(session)
 
     ############################
@@ -329,10 +327,9 @@ class ResourceServer(TCPServer):
 
     ############################
     def __connectionPullResourceEstablished(self, session, resource, resource_address, resource_port, keyId):
-        session.resourceServer = self
         session.key_id = keyId
-        session.sendHello()
-        session.sendPullResource(resource)
+        session.send_hello()
+        session.send_pull_resource(resource)
         self.sessions.append(session)
 
     ############################
@@ -342,10 +339,9 @@ class ResourceServer(TCPServer):
 
     ############################
     def __connectionForResourceEstablished(self, session, resource, resource_address, resource_port, keyId):
-        session.resourceServer = self
         session.key_id = keyId
-        session.sendHello()
-        session.sendWantResource(resource)
+        session.send_hello()
+        session.send_want_resource(resource)
         self.sessions.append(session)
 
     ############################

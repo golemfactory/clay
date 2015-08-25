@@ -128,11 +128,6 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def newConnection(self, session):
-
-        session.taskServer = self
-        session.taskComputer = self.taskComputer
-        session.taskManager = self.taskManager
-
         self.taskSessionsIncoming.append(session)
 
     new_connection = newConnection
@@ -174,7 +169,7 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def removeTaskSession(self, taskSession):
-        pc = self.pendingConnections.get(taskSession.connId)
+        pc = self.pendingConnections.get(taskSession.conn_id)
         if pc:
             pc.status = PenConnStatus.Failure
 
@@ -396,10 +391,10 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def waitForNatTraverse(self, port, session):
         session.closeNow()
-        args = {'superNode': session.extraData['superNode'],
-                'askingNode': session.extraData['askingNode'],
-                'destNode': session.extraData['destNode'],
-                'askConnId': session.extraData['ansConnId']}
+        args = {'superNode': session.extra_data['superNode'],
+                'askingNode': session.extra_data['askingNode'],
+                'destNode': session.extra_data['destNode'],
+                'askConnId': session.extra_data['ansConnId']}
         self._addPendingListening(TaskListenTypes.StartSession, port, args)
 
     #############################
@@ -460,16 +455,13 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def __connectionForTaskRequestEstablished(self, session, connId, clientId, keyId, taskId, estimatedPerformance,
                                               maxResourceSize, maxMemorySize, numCores):
-        session.taskId = taskId
+        session.task_id = taskId
         session.key_id = keyId
-        session.taskServer = self
-        session.taskComputer = self.taskComputer
-        session.taskManager = self.taskManager
-        session.connId = connId
+        session.conn_id = connId
         self._markConnected(connId, session.address, session.port)
         self.taskSessions[taskId] = session
-        session.sendHello()
-        session.requestTask(clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores)
+        session.send_hello()
+        session.request_task(clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores)
 
     #############################
     def __connectionForTaskRequestFailure(self, connId, clientId, keyId, taskId, estimatedPerformance, maxResourceSize,
@@ -492,16 +484,13 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def __connectionForTaskResultEstablished(self, session, connId, keyId, waitingTaskResult):
-        session.taskServer = self
-        session.taskComputer = self.taskComputer
-        session.taskManager = self.taskManager
         session.key_id = keyId
-        session.connId = connId
+        session.conn_id = connId
         self._markConnected(connId, session.address, session.port)
         self.taskSessions[waitingTaskResult.subtaskId] = session
 
-        session.sendHello()
-        session.sendReportComputedTask(waitingTaskResult, self.node.prvAddr, self.cur_port, self.client.getEthAccount(),
+        session.send_hello()
+        session.send_report_computed_task(waitingTaskResult, self.node.prvAddr, self.cur_port, self.client.getEthAccount(),
                                        self.node)
 
     #############################
@@ -524,13 +513,12 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def __connectionForTaskFailureEstablished(self, session, connId, keyId, subtaskId, errMsg):
-        session.taskServer = self
         session.key_id = keyId
-        session.connId = connId
+        session.conn_id = connId
         self._markConnected(connId, session.address, session.port)
         self.taskSessions[subtaskId] = session
-        session.sendHello()
-        session.sendTaskFailure(subtaskId, errMsg)
+        session.send_hello()
+        session.send_task_failure(subtaskId, errMsg)
 
     #############################
     def __connectionForTaskFailureFailure(self, connId, keyId, subtaskId, errMsg):
@@ -552,16 +540,13 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def __connectionForResourceRequestEstablished(self, session, connId, keyId, subtaskId, resourceHeader):
 
-        session.taskServer = self
-        session.taskComputer = self.taskComputer
-        session.taskManager = self.taskManager
         session.key_id = keyId
-        session.taskId = subtaskId
-        session.connId = connId
+        session.task_id = subtaskId
+        session.conn_id = connId
         self._markConnected(connId, session.address, session.port)
         self.taskSessions[subtaskId] = session
-        session.sendHello()
-        session.requestResource(subtaskId, resourceHeader)
+        session.send_hello()
+        session.request_resource(subtaskId, resourceHeader)
 
     #############################
     def __connectionForResourceRequestFailure(self, connId, keyId, subtaskId, resourceHeader):
@@ -582,14 +567,11 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def __connectionForResultRejectedEstablished(self, session, connId, keyId, subtaskId):
-        session.taskServer = self
-        session.taskComputer = self.taskComputer
-        session.taskManager = self.taskManager
         session.key_id = keyId
-        session.connId = connId
+        session.conn_id = connId
         self._markConnected(connId, session.address, session.port)
-        session.sendHello()
-        session.sendResultRejected(subtaskId)
+        session.send_hello()
+        session.send_result_rejected(subtaskId)
 
     #############################
     def __connectionForResultRejectedFailure(self, connId, keyId, subtaskId):
@@ -609,14 +591,11 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def __connectionForPayForTaskEstablished(self, session, connId, keyId, taskId, price):
-        session.taskServer = self
-        session.taskComputer = self.taskComputer
-        session.taskManager = self.taskManager
         session.key_id = keyId
-        session.connId = connId
+        session.conn_id = connId
         self._markConnected(connId, session.address, session.port)
-        session.sendHello()
-        session.sendRewardForTask(taskId, price)
+        session.send_hello()
+        session.send_get_tasks(taskId, price)
         self.client.taskRewardPaid(taskId, price)
 
     #############################
@@ -639,14 +618,11 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def __connectionForStartSessionEstablished(self, session, connId, keyId, nodeInfo, superNodeInfo, ansConnId):
-        session.taskServer = self
-        session.taskManager = self.taskManager
-        session.taskComputer = self.taskComputer
         session.key_id = keyId
-        session.connId = connId
+        session.conn_id = connId
         self._markConnected(connId, session.address, session.port)
-        session.sendHello()
-        session.sendStartSessionResponse(ansConnId)
+        session.send_hello()
+        session.send_start_session_response(ansConnId)
 
     #############################
     def __connectionForStartSessionFailure(self, connId, keyId, nodeInfo, superNodeInfo, ansConnId):
@@ -680,15 +656,12 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def __connectionForNatPunchEstablished(self, session, connId, superNode, askingNode, destNode, ansConnId):
-        session.taskServer = self
-        session.taskManager = self.taskManager
-        session.taskComputer = self.taskComputer
         session.key_id = superNode.key
-        session.connId = connId
-        session.extraData = {'superNode': superNode, 'askingNode': askingNode, 'destNode': destNode,
+        session.conn_id = connId
+        session.extra_data = {'superNode': superNode, 'askingNode': askingNode, 'destNode': destNode,
                              'ansConnId': ansConnId}
-        session.sendHello()
-        session.sendNatPunch(askingNode, destNode, ansConnId)
+        session.send_hello()
+        session.send_nat_punch(askingNode, destNode, ansConnId)
 
     #############################
     def __connectionForNatPunchFailure(self, connId, superNode, askingNode, destNode, ansConnId):
@@ -714,13 +687,10 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def __connectionForMiddlemanEstablished(self, session, connId, keyId, askingNodeInfo, selfNodeInfo, ansConnId):
-        session.taskServer = self
-        session.taskManager = self.taskManager
-        session.taskComputer = self.taskComputer
         session.key_id = keyId
-        session.connId = connId
-        session.sendHello()
-        session.sendMiddleman(askingNodeInfo, selfNodeInfo, ansConnId)
+        session.conn_id = connId
+        session.send_hello()
+        session.send_middleman(askingNodeInfo, selfNodeInfo, ansConnId)
 
     #############################
     def __connectionForMiddlemanFailure(self, connId, keyId, askingNodeInfo, selfNodeInfo, ansConnId):
@@ -731,15 +701,12 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def __askingNodeForMiddlemanConnectionEstablished(self, session, connId, keyId, openSession,  askingNode, destNode,
                                                       ansConnId):
-        session.taskServer = self
-        session.taskManager = self.taskManager
-        session.taskComputer = self.taskComputer
         session.key_id = keyId
-        session.connId = connId
-        session.sendHello()
-        session.sendJoinMiddlemanConn(keyId, ansConnId, destNode.key)
-        session.openSession = openSession
-        openSession.openSession = session
+        session.conn_id = connId
+        session.send_hello()
+        session.send_join_middleman_conn(keyId, ansConnId, destNode.key)
+        session.open_session = openSession
+        openSession.open_session = session
 
     def __connectionForTaskRequestFinalFailure(self, connId, clientId, keyId, taskId, estimatedPerformance,
                                                maxResourceSize, maxMemorySize, numCores, *args):
@@ -798,8 +765,8 @@ class TaskServer(PendingConnectionsServer):
             if curTime - session.last_message_time > self.lastMessageTimeThreshold:
                 sessionsToRemove.append(subtaskId)
         for subtaskId in sessionsToRemove:
-            if self.taskSessions[subtaskId].taskComputer is not None:
-                self.taskSessions[subtaskId].taskComputer.sessionTimeout()
+            if self.taskSessions[subtaskId].task_computer is not None:
+                self.taskSessions[subtaskId].task_computer.sessionTimeout()
             self.taskSessions[subtaskId].dropped()
 
     #############################
