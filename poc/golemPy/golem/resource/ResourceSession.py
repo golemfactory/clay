@@ -1,7 +1,7 @@
 import logging
 
 
-from golem.Message import MessageHello, MessageRandVal, MessageHasResource, MessageWantResource, MessagePushResource, MessageDisconnect,\
+from golem.Message import MessageHello, MessageRandVal, MessageHasResource, MessageWantResource, MessagePushResource,\
     MessagePullResource, MessagePullAnswer, MessageSendResource
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcp_network import FilesProtocol, EncryptFileProducer, DecryptFileConsumer
@@ -17,79 +17,96 @@ class ResourceSession(BasicSafeSession):
     def __init__(self, conn):
         """
         Create new session
-        :param Protocol conn: connection protocol implementation that this session should enhance
+        :param FilesProtocol conn: connection protocol implementation that this session should enhance
         :return None:
         """
         BasicSafeSession.__init__(self, conn)
         self.resource_server = self.conn.server
 
         self.file_name = None  # file to send right now
-        self.confirmation = False
-        self.copies = 0
-        self.msgsToSend = []
-        self.msgsToSend = []
+        self.confirmation = False  # should it send confirmation after receiving current file?
+        self.copies = 0  # how many copies of current file should be pushed into network
+        self.msgs_to_send = []  # messages waiting to be send (because connection hasn't been verified yet)
 
         self.__set_msg_interpretations()
 
-    def clean(self):
-        self.conn.clean()
+    ########################
+    # BasicSession methods #
+    ########################
 
     def dropped(self):
-        self.clean()
-        self.conn.close()
+        """ Close connection """
+        BasicSafeSession.dropped(self)
         self.resource_server.removeSession(self)
 
-    def send_has_resource(self, resource):
-        self.send(MessageHasResource(resource))
+    #######################
+    # SafeSession methods #
+    #######################
 
-    def send_want_resource(self, resource):
-        self.send(MessageWantResource(resource))
-
-    def send_push_resource(self, resource, copies=1):
-        self.send(MessagePushResource(resource, copies))
-
-    def send_pull_resource(self, resource):
-        self.send(MessagePullResource(resource))
-
-    def send_pull_answer(self, resource, has_resource):
-        self.send(MessagePullAnswer(resource, has_resource))
-
-    def encrypt(self, msg):
+    def encrypt(self, data):
+        """ Encrypt given data using key_id from this connection
+        :param str data: data to be encrypted
+        :return str: encrypted data or unchanged message (if resource server doesn't exist)
+        """
         if self.resource_server:
-            return self.resource_server.encrypt(msg, self.key_id)
+            return self.resource_server.encrypt(data, self.key_id)
         logger.warning("Can't encrypt message - no resource_server")
-        return msg
+        return data
 
-    def decrypt(self, msg):
-        if not self.resource_server:
-            return msg
+    def decrypt(self, data):
+        """ Decrypt given data using private key. If during decryption AssertionError occurred this may mean that
+        data is not encrypted simple serialized message. In that case unaltered data are returned.
+        :param str data: data to be decrypted
+        :return str: decrypted data
+        """
+        if self.resource_server is None:
+            return data
         try:
-            msg = self.resource_server.decrypt(msg)
+            data = self.resource_server.decrypt(data)
         except AssertionError:
             logger.warning("Failed to decrypt message, maybe it's not encrypted?")
         except Exception as err:
             logger.error("Failed to decrypt message {}".format(str(err)))
             assert False
 
-        return msg
+        return data
 
     def sign(self, msg):
-        if self.resource_server is None:
-            logger.error("Task Server is None, can't sign a message.")
-            return None
-
+        """ Sign given message
+        :param Message msg: message to be signed
+        :return Message: signed message
+        """
         msg.sign(self.resource_server)
         return msg
 
     def verify(self, msg):
+        """ Verify signature on given message. Check if message was signed with key_id from this connection.
+        :param Message msg: message to be verified
+        :return boolean: True if message was signed with key_id from this connection
+        """
         verify = self.resource_server.verifySig(msg.sig, msg.getShortHash(), self.key_id)
         return verify
 
-    def send_hello(self):
-        self.send(MessageHello(clientKeyId=self.resource_server.getKeyId(), randVal=self.rand_val),
-                  send_unverified=True)
+    def send(self, msg, send_unverified=False):
+        """ Send given message if connection was verified or send_unverified option is set to True. Collect other
+        message in the list (they should be send after verification).
+        :param Message message: message to be sent.
+        :param boolean send_unverified: should message be sent even if the connection hasn't been verified yet?
+        """
+        if not self.verified and not send_unverified:
+            self.msgs_to_send.append(msg)
+            return
+        BasicSafeSession.send(self, msg, send_unverified=send_unverified)
+
+    #######################
+    # FileSession methods #
+    #######################
 
     def full_data_received(self, extra_data=None):
+        """ Received all data in a stream mode. Send confirmation, if other user expects it (after push).
+        If more copies should be pushed to the network add resource to the resource server list.
+        :param dict|None extra_data: additional information that may be needed
+        """
         if self.confirmation:
             self.send(MessageHasResource(self.file_name))
             self.confirmation = False
@@ -102,17 +119,58 @@ class ResourceSession(BasicSafeSession):
         self.file_name = None
 
     def data_sent(self, extra_data=None):
+        """ All data that should be send in stream mode has been send.
+        :param dict|None extra_data: additional information that may be needed
+        """
         self.conn.producer.close()
         self.conn.producer = None
 
     def production_failed(self, extra_data=None):
+        """ Producer encounter error and stopped sending data in stream mode
+        :param dict|None extra_data: additional information that may be needed
+        """
         self.dropped()
 
-    def send(self, msg, send_unverified=False):
-        if not self.verified and not send_unverified:
-            self.msgsToSend.append(msg)
-            return
-        BasicSafeSession.send(self, msg, send_unverified=send_unverified)
+    def send_has_resource(self, resource):
+        """ Send has resource message
+        :param str resource: resource name
+        """
+        self.send(MessageHasResource(resource))
+
+    def send_want_resource(self, resource):
+        """ Send want resource message
+        :param str resource: resource name
+        """
+        self.send(MessageWantResource(resource))
+
+    def send_push_resource(self, resource, copies=1):
+        """ Send information that expected number of copies of given resource should be pushed to the network
+        :param str resource: resource name
+        :param int copies: number of copies
+        """
+        self.send(MessagePushResource(resource, copies))
+
+    def send_pull_resource(self, resource):
+        """ Send information that given resource is needed.
+        :param resource: resource name
+        """
+        self.send(MessagePullResource(resource))
+
+    def send_pull_answer(self, resource, has_resource):
+        """ Send information if current peer has given resource and may send it
+        :param str resource: resource name
+        :param bool has_resource: information if user has resource
+        """
+        self.send(MessagePullAnswer(resource, has_resource))
+
+    def send_hello(self):
+        """ Send first hello message, that should begin the communication """
+        self.send(MessageHello(clientKeyId=self.resource_server.getKeyId(), randVal=self.rand_val),
+                  send_unverified=True)
+
+    #########################
+    # Reactions to messages #
+    #########################
 
     def _react_to_push_resource(self, msg):
         copies = msg.copies - 1
@@ -125,8 +183,8 @@ class ResourceSession(BasicSafeSession):
             self.send_want_resource(msg.resource)
             self.file_name = msg.resource
             self.conn.stream_mode = True
-            self.conn.consumer = DecryptFileConsumer([self.resource_server.prepareResource(self.file_name)],
-                                                          None, self, {})
+            self.conn.consumer = DecryptFileConsumer([self.resource_server.prepareResource(self.file_name)], None,
+                                                     self, {})
             self.confirmation = True
             self.copies = copies
 
@@ -161,9 +219,9 @@ class ResourceSession(BasicSafeSession):
     def _react_to_rand_val(self, msg):
         if self.rand_val == msg.randVal:
             self.verified = True
-            for msg in self.msgsToSend:
+            for msg in self.msgs_to_send:
                 self.send(msg)
-            self.msgsToSend = []
+            self.msgs_to_send = []
         else:
             self.disconnect(ResourceSession.DCRUnverified)
 

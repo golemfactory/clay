@@ -35,100 +35,77 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server = self.conn.server
         self.task_manager = self.task_server.taskManager
         self.task_computer = self.task_server.taskComputer
-        self.task_id = None
-        self.subtask_id = None
-        self.conn_id = None
-        self.asking_node_key_id = None
+        self.task_id = None  # current task id
+        self.subtask_id = None  # current subtask id
+        self.conn_id = None  # connection id
+        self.asking_node_key_id = None  # key of a peer that communicates with us through middleman session
 
-        self.msgs_to_send = []
+        self.msgs_to_send = []  # messages waiting to be send (because connection hasn't been verified yet)
 
-        self.last_resource_msg = None
+        self.last_resource_msg = None  # last message about resource
 
-        self.result_owner = None
+        self.result_owner = None  # information about user that should be rewarded (or punished) for the result
 
         self.__set_msg_interpretations()
 
-    def request_task(self, client_id, task_id, performance_index, max_resource_size, max_memory_size, num_cores):
-        self.send(MessageWantToComputeTask(client_id, task_id, performance_index, max_resource_size, max_memory_size,
-                                           num_cores))
-
-    def request_resource(self, task_id, resource_header):
-        self.send(MessageGetResource(task_id, pickle.dumps(resource_header)))
-
-    def send_report_computed_task(self, task_result, address, port, eth_account, node_info):
-        if task_result.resultType == resultTypes['data']:
-            extra_data = []
-        elif task_result.resultType == resultTypes['files']:
-            extra_data = [os.path.basename(x) for x in task_result.result]
-        else:
-            logger.error("Unknown result type {}".format(task_result.resultType))
-            return
-        node_id = self.task_server.getClientId()
-
-        self.send(MessageReportComputedTask(task_result.subtaskId, task_result.resultType, node_id, address, port,
-                                            self.task_server.getKeyId(), node_info, eth_account, extra_data))
-
-    def send_result_rejected(self, subtask_id):
-        self.send(MessageSubtaskResultRejected(subtask_id))
-
-    def send_reward_for_task(self, subtask_id, reward):
-        self.send(MessageSubtaskResultAccepted(subtask_id, reward))
-
-    def send_task_failure(self, subtask_id, err_msg):
-        self.send(MessageTaskFailure(subtask_id, err_msg))
-
-    def send_hello(self):
-        self.send(MessageHello(clientKeyId=self.task_server.getKeyId(), randVal=self.rand_val), send_unverified=True)
-
-    def send_start_session_response(self, conn_id):
-        self.send(MessageStartSessionResponse(conn_id))
-
-    def send_middleman(self, asking_node, dest_node, ask_conn_id):
-        self.asking_node_key_id = asking_node.key
-        self.send(MessageMiddleman(asking_node, dest_node, ask_conn_id))
-
-    def send_join_middleman_conn(self, key_id, conn_id, dest_node_key_id):
-        self.send(MessageJoinMiddlemanConn(key_id, conn_id, dest_node_key_id))
-
-    def send_nat_punch(self, asking_node, dest_node, ask_conn_id):
-        self.asking_node_key_id = asking_node.key
-        self.send(MessageNatPunch(asking_node, dest_node, ask_conn_id))
+    ########################
+    # BasicSession methods #
+    ########################
 
     def interpret(self, msg):
+        """ React to specific message. Disconnect, if message type is unknown for that session.
+        In middleman mode doesn't react to message, just sends it to other open session.
+        :param Message msg: Message to interpret and react to.
+        :return None:
+        """
         # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
-
         self.task_server.setLastMessage("<-", time.localtime(), msg, self.address, self.port)
-
         MiddlemanSafeSession.interpret(self, msg)
 
     def dropped(self):
-        self.conn.clean()
-        self.conn.close()
+        """ Close connection """
+        MiddlemanSafeSession.dropped(self)
         if self.task_server:
             self.task_server.removeTaskSession(self)
 
-    def encrypt(self, msg):
-        if self.task_server:
-            return self.task_server.encrypt(msg, self.key_id)
-        logger.warning("Can't encrypt message - no task server")
-        return msg
+    #######################
+    # SafeSession methods #
+    #######################
 
-    def decrypt(self, msg):
-        if not self.task_server:
-            return msg
+    def encrypt(self, data):
+        """ Encrypt given data using key_id from this connection
+        :param str data: data to be encrypted
+        :return str: encrypted data or unchanged message (if server doesn't exist)
+        """
+        if self.task_server:
+            return self.task_server.encrypt(data, self.key_id)
+        logger.warning("Can't encrypt message - no task server")
+        return data
+
+    def decrypt(self, data):
+        """ Decrypt given data using private key. If during decryption AssertionError occurred this may mean that
+        data is not encrypted simple serialized message. In that case unaltered data are returned.
+        :param str data: data to be decrypted
+        :return str|None: decrypted data
+        """
+        if self.task_server is None:
+            return data
         try:
-            msg = self.task_server.decrypt(msg)
+            data = self.task_server.decrypt(data)
         except AssertionError:
             logger.warning("Failed to decrypt message, maybe it's not encrypted?")
         except Exception, err:
             logger.warning("Fail to decrypt message {}".format(str(err)))
             self.dropped()
-            # self.disconnect(TaskSession.DCRWrongEncryption)
             return None
 
-        return msg
+        return data
 
     def sign(self, msg):
+        """ Sign given message
+        :param Message msg: message to be signed
+        :return Message: signed message
+        """
         if self.task_server is None:
             logger.error("Task Server is None, can't sign a message.")
             return None
@@ -137,16 +114,31 @@ class TaskSession(MiddlemanSafeSession):
         return msg
 
     def verify(self, msg):
+        """ Verify signature on given message. Check if message was signed with key_id from this connection.
+        :param Message msg: message to be verified
+        :return boolean: True if message was signed with key_id from this connection
+        """
         verify = self.task_server.verifySig(msg.sig, msg.getShortHash(), self.key_id)
         return verify
 
+    #######################
+    # FileSession methods #
+    #######################
+
     def data_sent(self, extra_data):
+        """ All data that should be send in a stream mode has been send.
+        :param dict extra_data: additional information that may be needed
+        """
         if extra_data and "subtask_id" in extra_data:
             self.task_server.taskResultSent(extra_data["subtask_id"])
+        self.conn.producer.close()
         self.conn.producer = None
         self.dropped()
 
     def full_data_received(self, extra_data):
+        """ Received all data in a stream mode (it may be task result or resources for the task).
+        :param dict extra_data: additional information that may be needed
+        """
         data_type = extra_data.get('data_type')
         if data_type is None:
             logger.error("Wrong full data received type")
@@ -162,9 +154,15 @@ class TaskSession(MiddlemanSafeSession):
             self.dropped()
 
     def production_failed(self, extra_data=None):
+        """ Producer encounter error and stopped sending data in stream mode
+        :param dict|None extra_data: additional information that may be needed
+        """
         self.dropped()
 
     def resource_received(self, extra_data):
+        """ Inform server about received resource
+        :param dict extra_data: dictionary with information about received resource
+        """
         file_sizes = extra_data.get('file_sizes')
         if file_sizes is None:
             logger.error("No file sizes given")
@@ -182,6 +180,9 @@ class TaskSession(MiddlemanSafeSession):
         self.dropped()
 
     def result_received(self, extra_data):
+        """ Inform server about received result
+        :param dict extra_data: dictionary with information about received result
+        """
         result = extra_data.get('result')
         result_type = extra_data.get("result_type")
         if result_type is None:
@@ -206,6 +207,115 @@ class TaskSession(MiddlemanSafeSession):
         else:
             logger.error("No taskId value in extra_data for received data ")
         self.dropped()
+
+    # TODO Wszystkie parametry klienta powinny zostac zapisane w jednej spojnej klasie
+    def request_task(self, node_id, task_id, performance_index, max_resource_size, max_memory_size, num_cores):
+        """ Inform that node wants to compute given task
+        :param str node_id: id of that node
+        :param uuid task_id: if of a task that node wants to compute
+        :param float performance_index: benchmark result for this task type
+        :param int max_resource_size: how much disk space can this node offer
+        :param int max_memory_size: how much ram can this node offer
+        :param int num_cores: how many cpu cores this node can offer
+        :return:
+        """
+        self.send(MessageWantToComputeTask(node_id, task_id, performance_index, max_resource_size, max_memory_size,
+                                           num_cores))
+
+    def request_resource(self, task_id, resource_header):
+        """ Ask for a resources for a given task. Task owner should compare given resource header with
+         resources for that task and send only lacking / changed resources
+        :param uuid task_id:
+        :param ResourceHeader resource_header: description of resources that current node has
+        :return:
+        """
+        self.send(MessageGetResource(task_id, pickle.dumps(resource_header)))
+
+    # TODO address, port oraz eth_account powinny byc w node_info (albo w ogole niepotrzebne)
+    def send_report_computed_task(self, task_result, address, port, eth_account, node_info):
+        """ Send task results after finished computations
+        :param WaitingTaskResult task_result: finished computations result with additional information
+        :param str address: task result owner address
+        :param int port: task result owner port
+        :param str eth_account: ethereum address (bytes20) of task result owner
+        :param Node node_info: information about this node
+        :return:
+        """
+        if task_result.resultType == resultTypes['data']:
+            extra_data = []
+        elif task_result.resultType == resultTypes['files']:
+            extra_data = [os.path.basename(x) for x in task_result.result]
+        else:
+            logger.error("Unknown result type {}".format(task_result.resultType))
+            return
+        node_id = self.task_server.getClientId()
+
+        self.send(MessageReportComputedTask(task_result.subtaskId, task_result.resultType, node_id, address, port,
+                                            self.task_server.getKeyId(), node_info, eth_account, extra_data))
+
+    def send_task_failure(self, subtask_id, err_msg):
+        """ Inform task owner that an error occurred during task computation
+        :param str subtask_id:
+        :param err_msg: error message that occurred during computation
+        """
+        self.send(MessageTaskFailure(subtask_id, err_msg))
+
+    def send_result_rejected(self, subtask_id):
+        """ Inform that result don't pass verification
+        :param str subtask_id: subtask that has wrong result
+        """
+        self.send(MessageSubtaskResultRejected(subtask_id))
+
+    # TODO Trzeba zmienic nazwe tej metody
+    def send_reward_for_task(self, subtask_id, reward):
+        """ Inform that results pass verification and confirm reward
+        :param str subtask_id:
+        :param int reward: how high is the payment
+        """
+        self.send(MessageSubtaskResultAccepted(subtask_id, reward))
+
+    def send_hello(self):
+        """ Send first hello message, that should begin the communication """
+        self.send(MessageHello(clientKeyId=self.task_server.getKeyId(), randVal=self.rand_val), send_unverified=True)
+
+    def send_start_session_response(self, conn_id):
+        """ Inform that this session was started as an answer for a request to start task session
+        :param uuid conn_id: connection id for reference
+        """
+        self.send(MessageStartSessionResponse(conn_id))
+
+    # TODO Moze dest_node nie jest potrzebne i mozna je pobierac z polaczenia?
+    def send_middleman(self, asking_node, dest_node, ask_conn_id):
+        """ Ask node to become middleman in the communication with other node
+        :param Node asking_node: other node information. Middleman should connect with that node.
+        :param Node dest_node: information about this node
+        :param ask_conn_id: connection id that asking node gave for reference
+        """
+        self.asking_node_key_id = asking_node.key
+        self.send(MessageMiddleman(asking_node, dest_node, ask_conn_id))
+
+    def send_join_middleman_conn(self, key_id, conn_id, dest_node_key_id):
+        """ Ask node communicate with other through middleman connection (this node is the middleman and connection
+            with other node is already opened
+        :param key_id:  this node public key
+        :param conn_id: connection id for reference
+        :param dest_node_key_id: public key of the other node of the middleman connection
+        """
+        self.send(MessageJoinMiddlemanConn(key_id, conn_id, dest_node_key_id))
+
+    def send_nat_punch(self, asking_node, dest_node, ask_conn_id):
+        """ Ask node to inform other node about nat hole that this node will prepare with this connection
+        :param Node asking_node: node that should be informed about potential hole based on this connection
+        :param Node dest_node: node that will try to end this connection and open hole in it's NAT
+        :param uuid ask_conn_id: connection id that asking node gave for reference
+        :return:
+        """
+        self.asking_node_key_id = asking_node.key
+        self.send(MessageNatPunch(asking_node, dest_node, ask_conn_id))
+
+    #########################
+    # Reactions to messages #
+    #########################
 
     def _react_to_want_to_compute_task(self, msg):
         trust = self.task_server.getComputingTrust(msg.clientId)
@@ -242,7 +352,7 @@ class TaskSession(MiddlemanSafeSession):
             elif delay == 0.0:
                 self.send(MessageGetTaskResult(msg.subtaskId, delay))
                 self.result_owner = EthAccountInfo(msg.keyId, msg.port, msg.address, msg.nodeId, msg.nodeInfo,
-                                                  msg.ethAccount)
+                                                   msg.ethAccount)
 
                 if msg.resultType == resultTypes['data']:
                     self.__receive_data_result(msg)
