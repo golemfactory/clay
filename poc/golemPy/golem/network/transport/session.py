@@ -34,7 +34,25 @@ class SafeSession(Session):
         return
 
 
-class BasicSession(Session):
+class FileSession(Session):
+    """ Abstract class that represents session interface with additional operations for
+    receiving files """
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def data_sent(self, extra_data=None):
+        return
+
+    @abc.abstractmethod
+    def full_data_received(self, extra_data=None):
+        return
+
+    @abc.abstractmethod
+    def production_failed(self, extra_data=None):
+        return
+
+
+class BasicSession(FileSession):
     """ Basic session responsible for managing the connection and reacting to different types
     of messages.
     """
@@ -110,6 +128,15 @@ class BasicSession(Session):
         if not self.conn.send_message(message):
             self.dropped()
             return
+
+    def data_sent(self, extra_data=None):
+        pass
+
+    def production_failed(self, extra_data=None):
+        pass
+
+    def full_data_received(self, extra_data=None):
+        pass
 
     def _send_disconnect(self, reason):
         """ :param string reason: reason to disconnect """
@@ -261,7 +288,6 @@ class MiddlemanSafeSession(BasicSafeSession):
         """ If it's called for the first time, send "disconnect" message to the peer. Otherwise, drops
         connection.
         In middleman mode additionally drops the other open session.
-        :param string reason: Reason for disconnecting. Should use global class disconnect reasons, eg. DCRBadProtocol
         """
         if self.is_middleman and self.open_session:
             open_session = self.open_session

@@ -1,17 +1,22 @@
 import logging
 import ipaddr
 import time
+import os
+import struct
 
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
     TCP6ClientEndpoint
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.protocol import connectionDone
+from twisted.internet.interfaces import IPullProducer
 
-from network import Network, SessionProtocol
+from zope.interface import implements
 
 from golem.core.databuffer import DataBuffer
-from golem.core.variables import LONG_STANDARD_SIZE
+from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE
 from golem.Message import Message
+
+from network import Network, SessionProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +143,7 @@ class TCPNetwork(Network):
 
     def stop_listening(self, listening_info, **kwargs):
         """
-        Stop listening on a TCP socket specified by litening_info
+        Stop listening on a TCP socket specified by listening_info
         :param TCPListeningInfo listening_info:
         :param kwargs: any additional parameters
         :return None|Deferred:
@@ -373,7 +378,7 @@ class ServerProtocol(BasicProtocol):
     """
     def __init__(self, server):
         """
-        :param Server server: server respon
+        :param Server server: server instance
         :return None:
         """
         BasicProtocol.__init__(self)
@@ -439,24 +444,17 @@ class FilesProtocol(SafeProtocol):
     def __init__(self, server=None):
         SafeProtocol.__init__(self, server)
 
-        self.file_mode = False
-        self.file_consumer = None
-
-        self.data_mode = False
-        self.data_consumer = None
-
-        self.file_producer = None
+        self.stream_mode = False
+        self.consumer = None
+        self.producer = None
 
     def clean(self):
-        """ Clean the protocol state. Close existing consumers and producents."""
-        if self.data_consumer is not None:
-            self.data_consumer.close()
+        """ Clean the protocol state. Close existing consumers and producers."""
+        if self.consumer is not None:
+            self.consumer.close()
 
-        if self.file_consumer is not None:
-            self.file_consumer.close()
-
-        if self.file_producer is not None:
-            self.file_producer.close()
+        if self.producer is not None:
+            self.producer.close()
 
     def close(self):
         """ Close connection, after writing all pending  (flush the write buffer and wait for producer to finish).
@@ -475,28 +473,16 @@ class FilesProtocol(SafeProtocol):
     def _interpret(self, data):
         self.session.last_message_time = time.time()
 
-        if self.file_mode:
-            self._file_data_received(data)
-            return
-
-        if self.data_mode:
-            self._result_data_received(data)
+        if self.stream_mode:
+            self._stream_data_received(data)
             return
 
         SafeProtocol._interpret(self, data)
 
-    def _file_data_received(self, data):
-        assert self.file_consumer
+    def _stream_data_received(self, data):
+        assert self.consumer
         if self._check_stream(data):
-            self.file_consumer.dataReceived(data)
-        else:
-            logger.error("Wrong stream received")
-            self.close_now()
-
-    def _result_data_received(self, data):
-        assert self.data_consumer
-        if self._check_stream(data):
-            self.data_consumer.dataReceived(data)
+            self.consumer.dataReceived(data)
         else:
             logger.error("Wrong stream received")
             self.close_now()
@@ -523,3 +509,474 @@ class MidAndFilesProtocol(FilesProtocol):
             return msg
         else:
             return FilesProtocol._prepare_msg_to_send(self, msg)
+
+#############
+# Producers #
+#############
+
+
+class FileProducer(object):
+    """ Files producer that helps to send list of files to consumer in chunks"""
+
+    implements(IPullProducer)
+
+    def __init__(self, file_list, session, buff_size=BUFF_SIZE, extra_data=None):
+        """ Create file producer
+        :param list file_list: list of files that should be sent
+        :param FileSession session:  session that uses this file producer
+        :param int buff_size: size of the buffer
+        :param dict extra_data: additional information that should be return to the session
+        """
+        self.file_list = file_list
+        self.session = session
+        self.buff_size = buff_size
+
+        if extra_data:
+            self.extra_data = extra_data
+        else:
+            self.extra_data = {}
+        self.extra_data['file_sent'] = []
+        self.extra_data['file_sizes'] = []
+        self.cnt = 0
+
+        self.fh = None  # Current file descriptor
+        self.data = None  # Current chunk of data
+        self.size = 0  # Size of current file
+
+        self.init_data()
+        self.register()
+
+    # IPullProducer methods
+    def resumeProducing(self):
+        """ Produce data for the consumer a single time. Send a chunk of file, open new file or finish productions.
+        """
+
+        if self.data:
+            self.session.conn.transport.write(self.data)
+            self._print_progress()
+            self._prepare_data()
+        elif len(self.file_list) > 1:
+            if self.fh is not None:
+                self.fh.close()
+                self.fh = None
+            self.extra_data['file_sent'].append(self.file_list[-1])
+            self.file_list.pop()
+            self.init_data()
+            self.resumeProducing()
+        else:
+            if self.fh is not None:
+                self.fh.close()
+                self.fh = None
+            self.session.data_sent(self.extra_data)
+            self.session.conn.transport.unregisterProducer()
+
+    def stopProducing(self):
+        """ Stop producing data. This tells a producer that its consumer has died, so it must stop producing data
+        for good. """
+        self.close()
+        self.session.production_failed(self.extra_data)
+
+    def init_data(self):
+        """  Open first file from list and read first chunk of data """
+        if len(self.file_list) == 0:
+            logger.warning("Empty file list to send")
+            self.data = None
+            return
+        self.fh = open(self.file_list[-1], 'rb')
+        self.size = os.path.getsize(self.file_list[-1])
+        self.extra_data['file_sizes'].append(self.size)
+        logger.info("Sending file {}, size:{}".format(self.file_list[-1], self.size))
+        self._prepare_init_data()
+
+    def register(self):
+        """ Register producer """
+        self.session.conn.transport.registerProducer(self, False)
+
+    def close(self):
+        """ Close file descriptor"""
+        if self.fh is not None:
+            self.fh.close()
+            self.fh = None
+
+    def _prepare_init_data(self):
+        self.data = struct.pack("!L", self.size) + self.fh.read(self.buff_size)
+
+    def _prepare_data(self):
+        self.data = self.fh.read(self.buff_size)
+
+    def _print_progress(self):
+        print "\rSending progress {} %                       ".format(int(100 * float(self.fh.tell()) / self.size)),
+
+
+class EncryptFileProducer(FileProducer):
+    """ Files producer that encrypt data chunks """
+
+    def _prepare_init_data(self):
+        data = self.session.encrypt(self.fh.read(self.buff_size))
+        self.data = struct.pack("!L", self.size) + struct.pack("!L", len(data)) + data
+
+    def _prepare_data(self):
+        data = self.fh.read(self.buff_size)
+        if data:
+            data = self.session.encrypt(data)
+            self.data = struct.pack("!L", len(data)) + data
+        else:
+            self.data = ""
+
+
+class FileConsumer(object):
+    """ File consumer that receives list of files in chunks"""
+
+    def __init__(self, file_list, output_dir, session, extra_data=None):
+        """
+        Create file consumer
+        :param list file_list: names of files to received
+        :param str output_dir: name of the directory where received files should be saved
+        :param FileSession session: session that uses this file consumer
+        :param dict extra_data: additional information that should be return to the session
+        :return:
+        """
+        self.file_list = file_list
+
+        self.final_file_list = [os.path.normpath(os.path.join(output_dir, f)) for f in file_list]
+        self.fh = None  # Current file descriptor
+        self.file_size = -1  # Current file expected size
+        self.recv_size = 0  # Received data size
+
+        self.output_dir = output_dir
+
+        self.session = session
+        if extra_data:
+            self.extra_data = extra_data
+        else:
+            self.extra_data = {}
+        self.extra_data["file_received"] = []
+        self.extra_data["file_sizes"] = []
+        self.extra_data["result"] = self.final_file_list
+
+        self.last_percent = 0
+        self.last_data = ""
+
+    def dataReceived(self, data):
+        """ Receive new chunk of data
+        :param data: data received with transport layer
+        """
+        loc_data = data
+        if self.file_size == -1:
+            loc_data = self._get_first_chunk(self.last_data + data)
+
+        assert self.fh
+
+        self.recv_size += len(loc_data)
+        if self.recv_size <= self.file_size:
+            self.fh.write(loc_data)
+            self.last_data = ""
+        else:
+            last_data = len(loc_data) - (self.recv_size - self.file_size)
+            self.fh.write(loc_data[:last_data])
+            self.last_data = loc_data[last_data:]
+
+        self._print_progress()
+
+        if self.recv_size >= self.file_size:
+            self._end_receiving_file()
+
+    def close(self):
+        """ Close file descriptor and remove file if not all data were received
+        """
+        if self.fh is not None:
+            self.fh.close()
+            self.fh = None
+            if self.recv_size < self.file_size and len(self.file_list) > 0:
+                os.remove(self.file_list[-1])
+
+    def _get_first_chunk(self, data):
+        self.last_percent = 0
+        (self.file_size,) = struct.unpack("!L", data[:LONG_STANDARD_SIZE])
+        logger.info("Receiving file {}, size {}".format(self.file_list[-1], self.file_size))
+        assert self.fh is None
+
+        self.extra_data["file_sizes"].append(self.file_size)
+        self.fh = open(os.path.join(self.output_dir, self.file_list[-1]), "wb")
+        return data[LONG_STANDARD_SIZE:]
+
+    def _print_progress(self):
+        percent = int(100 * self.recv_size / float(self.file_size))
+        if percent > 100:
+            percent = 100
+        if percent > self.last_percent:
+            print "\rFile data receiving {} %                       ".format(percent),
+            self.last_percent = percent
+
+    def _end_receiving_file(self):
+        self.fh.close()
+        self.fh = None
+        self.extra_data["file_received"].append(self.file_list[-1])
+        self.file_list.pop()
+        self.recv_size = 0
+        self.file_size = -1
+        if len(self.file_list) == 0:
+            self.session.conn.file_mode = False
+            self.session.full_data_received(self.extra_data)
+
+
+class DecryptFileConsumer(FileConsumer):
+    """ File consumer that receives list of files in encrypted chunks """
+
+    def __init__(self, file_list, output_dir, session, extra_data=None):
+        """
+        Create file consumer
+        :param list file_list: names of files to received
+        :param str output_dir: name of the directory where received files should be saved
+        :param FileSession session: session that uses this file consumer
+        :param dict extra_data: additional information that should be return to the session
+        :return:
+        """
+        FileConsumer.__init__(self, file_list, output_dir, session, extra_data)
+        self.chunk_size = 0
+        self.recv_chunk_size = 0
+
+    def dataReceived(self, data):
+        """ Receive new chunk of data
+        :param data: data received with transport layer
+        """
+        loc_data = self.last_data + data
+        if self.file_size == -1:
+            loc_data = self._get_first_chunk(loc_data)
+
+        assert self.fh
+
+        receive_next = False
+        while not receive_next:
+            if self.chunk_size == 0:
+                (self.chunk_size,) = struct.unpack("!L", loc_data[:LONG_STANDARD_SIZE])
+                loc_data = loc_data[LONG_STANDARD_SIZE:]
+
+            self.recv_chunk_size = len(loc_data)
+            if self.recv_chunk_size >= self.chunk_size:
+                data = self.session.decrypt(loc_data[:self.chunk_size])
+                self.fh.write(data)
+                self.recv_size += len(data)
+                self.last_data = loc_data[self.chunk_size:]
+                self.recv_chunk_size = 0
+                self.chunk_size = 0
+                loc_data = self.last_data
+
+                if len(self.last_data) <= LONG_STANDARD_SIZE:
+                    receive_next = True
+            else:
+                self.last_data = loc_data
+                receive_next = True
+
+            self._print_progress()
+
+            if self.recv_size >= self.file_size:
+                self._end_receiving_file()
+                receive_next = True
+
+    def _end_receiving_file(self):
+        self.chunk_size = 0
+        self.recv_chunk_size = 0
+        FileConsumer._end_receiving_file(self)
+
+
+class DataProducer(object):
+    """ Data producer that helps to receive stream of data in chunks"""
+
+    implements(IPullProducer)
+
+    def __init__(self, data_to_send, session, buff_size=BUFF_SIZE, extra_data=None):
+        print "inti data producer"
+        """ Create data producer
+        :param str data_to_send: data that should be send
+        :param FileSession session:  session that uses this file producer
+        :param int buff_size: size of the buffer
+        :param dict extra_data: additional information that should be return to the session
+        """
+        self.data_to_send = data_to_send
+        self.session = session
+        self.data = None  # current chunk of data
+        self.size = 0  # size of data that will be send
+        self.it = 0  # data to send iterator
+        self.num_send = 0  # size of sent data
+        self.extra_data = extra_data
+        self.buff_size = buff_size
+        self.last_percent = 0
+        self.load_data()
+        self.register()
+
+    def load_data(self):
+        """ Load first chunk of data """
+        self.size = len(self.data_to_send)
+        logger.info("Sending file size:{}".format(self.size))
+        self._prepare_init_data()
+        self.it = self.buff_size
+
+    def register(self):
+        """ Register producer """
+        self.session.conn.transport.registerProducer(self, False)
+
+    def end_producing(self):
+        """ Inform session about finished production and unregister producer """
+        self.session.data_sent(self.extra_data)
+        self.session.conn.transport.unregisterProducer()
+
+    def close(self):
+        """ Additional cleaning before production ending """
+        pass
+
+    # IPullProducer methods
+    def resumeProducing(self):
+        """ Produce data for the consumer a single time. Send a chunk of data or finish productions. """
+        if self.data:
+            self.session.conn.transport.write(self.data)
+            self.num_send += self.buff_size
+            self._print_progress()
+
+            if self.it < len(self.data_to_send):
+                self._prepare_data()
+                self.it += self.buff_size
+            else:
+                self.data = None
+                self.end_producing()
+        else:
+            self.end_producing()
+
+    def stopProducing(self):
+        """ Stop producing data. This tells a producer that its consumer has died, so it must stop producing data
+        for good. """
+        self.close()
+        self.session.production_failed(self.extra_data)
+
+    def _print_progress(self):
+        percent = min(int(100 * float(self.num_send) / self.size), 100)
+        if percent > self.last_percent:
+            print "\rSending progress {} %                       ".format(percent),
+        self.last_percent = percent
+
+    def _prepare_init_data(self):
+        self.data = struct.pack("!L", self.size) + self.data_to_send[:self.buff_size]
+
+    def _prepare_data(self):
+        self.data = self.data_to_send[self.it:self.it + self.buff_size]
+
+
+class DataConsumer(object):
+    """ Data consumer that receive stream of data in chunks """
+
+    def __init__(self, session, extra_data):
+        """ Create data consumer
+        :param FileSession session: session that uses this file consumer
+        :param dict extra_data: additional information that should be return to the session
+        :return:
+        """
+        self.loc_data = []  # received data chunks
+        self.data_size = -1  # size of file to receive
+        self.recv_size = 0  # size of received data
+
+        self.session = session
+        self.extra_data = extra_data
+
+        self.last_percent = 0
+
+    def dataReceived(self, data):
+        """ Receive new chunk of data
+        :param data: data received with transport layer
+        """
+        if self.data_size == -1:
+            self.loc_data.append(self._get_first_chunk(data))
+            self.recv_size = len(data) - LONG_STANDARD_SIZE
+        else:
+            self.loc_data.append(data)
+            self.recv_size += len(data)
+
+        self._print_progress()
+
+        if self.recv_size == self.data_size:
+            self._end_receiving()
+
+    def close(self):
+        """ Clean data if it's needed """
+        pass
+
+    def _get_first_chunk(self, data):
+        self.last_percent = 0
+        (self.data_size,) = struct.unpack("!L", data[:LONG_STANDARD_SIZE])
+        logger.debug("Receiving data size {}".format(self.data_size))
+        return data[LONG_STANDARD_SIZE:]
+
+    def _print_progress(self):
+        percent = int(100 * self.recv_size / float(self.data_size))
+        if percent > self.last_percent:
+            print "\rFile data receiving {} %                       ".format(percent),
+            self.last_percent = percent
+
+    def _end_receiving(self):
+        self.session.conn.data_mode = False
+        self.data_size = -1
+        self.recv_size = 0
+        self.extra_data["result"] = "".join(self.loc_data)
+        self.loc_data = []
+        self.session.full_data_received(self.extra_data)
+
+
+class EncryptDataProducer(DataProducer):
+    """ Data producer that encrypt data chunks """
+
+    def _prepare_init_data(self):
+        data = self.session.encrypt(self.data_to_send[:self.buff_size])
+        self.data = struct.pack("!L", self.size) + struct.pack("!L", len(data)) + data
+
+    def _prepare_data(self):
+        data = self.session.encrypt(self.data_to_send[self.it:self.it + self.buff_size])
+        self.data = struct.pack("!L", len(data)) + data
+
+
+class DecryptDataConsumer(DataConsumer):
+    """ Data consumer that receives data in encrypted chunks """
+    def __init__(self, session, extra_data):
+        self.chunk_size = 0
+        self.recv_chunk_size = 0
+        self.last_data = ""
+        DataConsumer.__init__(self, session, extra_data)
+
+    def dataReceived(self, data):
+        """ Receive new chunk of encrypted data
+        :param data: data received with transport layer
+        """
+
+        loc_data = self.last_data + data
+        if self.data_size == -1:
+            loc_data = self._get_first_chunk(data)
+
+        receive_next = False
+        while not receive_next:
+            if self.chunk_size == 0:
+                (self.chunk_size,) = struct.unpack("!L", loc_data[:LONG_STANDARD_SIZE])
+                loc_data = loc_data[LONG_STANDARD_SIZE:]
+
+            self.recv_chunk_size = len(loc_data)
+            if self.recv_chunk_size >= self.chunk_size:
+                data = self.session.decrypt(loc_data[:self.chunk_size])
+                self.loc_data.append(data)
+                self.recv_size += len(data)
+                self.last_data = loc_data[self.chunk_size:]
+                self.recv_chunk_size = 0
+                self.chunk_size = 0
+                loc_data = self.last_data
+                if len(self.last_data) <= LONG_STANDARD_SIZE:
+                    receive_next = True
+            else:
+                self.last_data = loc_data
+                receive_next = True
+
+            self._print_progress()
+
+            if self.recv_size >= self.data_size:
+                self._end_receiving()
+                break
+
+    def _end_receiving(self):
+        self.chunk_size = 0
+        self.recv_chunk_size = 0
+        DataConsumer._end_receiving(self)

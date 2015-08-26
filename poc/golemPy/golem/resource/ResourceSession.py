@@ -3,10 +3,8 @@ import logging
 
 from golem.Message import MessageHello, MessageRandVal, MessageHasResource, MessageWantResource, MessagePushResource, MessageDisconnect,\
     MessagePullResource, MessagePullAnswer, MessageSendResource
-from golem.network.FileProducer import EncryptFileProducer
-from golem.network.FileConsumer import DecryptFileConsumer
 from golem.network.transport.session import BasicSafeSession
-from golem.network.transport.tcp_network import FilesProtocol
+from golem.network.transport.tcp_network import FilesProtocol, EncryptFileProducer, DecryptFileConsumer
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +89,7 @@ class ResourceSession(BasicSafeSession):
         self.send(MessageHello(clientKeyId=self.resource_server.getKeyId(), randVal=self.rand_val),
                   send_unverified=True)
 
-    def full_file_received(self, extra_data):
+    def full_data_received(self, extra_data=None):
         if self.confirmation:
             self.send(MessageHasResource(self.file_name))
             self.confirmation = False
@@ -103,9 +101,12 @@ class ResourceSession(BasicSafeSession):
             self.dropped()
         self.file_name = None
 
-    def file_sent(self, file_name):
-        self.conn.file_producer.clean()
-        self.conn.file_producer = None
+    def data_sent(self, extra_data=None):
+        self.conn.producer.close()
+        self.conn.producer = None
+
+    def production_failed(self, extra_data=None):
+        self.dropped()
 
     def send(self, msg, send_unverified=False):
         if not self.verified and not send_unverified:
@@ -123,8 +124,8 @@ class ResourceSession(BasicSafeSession):
         else:
             self.send_want_resource(msg.resource)
             self.file_name = msg.resource
-            self.conn.file_mode = True
-            self.conn.file_consumer = DecryptFileConsumer(self.resource_server.prepareResource(self.file_name),
+            self.conn.stream_mode = True
+            self.conn.consumer = DecryptFileConsumer([self.resource_server.prepareResource(self.file_name)],
                                                           None, self, {})
             self.confirmation = True
             self.copies = copies
@@ -134,7 +135,7 @@ class ResourceSession(BasicSafeSession):
         self.dropped()
 
     def _react_to_want_resource(self, msg):
-        self.conn.file_producer = EncryptFileProducer(self.resource_server.prepareResource(msg.resource), self)
+        self.conn.producer = EncryptFileProducer([self.resource_server.prepareResource(msg.resource)], self)
 
     def _react_to_pull_resource(self, msg):
         has_resource = self.resource_server.checkResource(msg.resource)

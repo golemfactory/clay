@@ -10,13 +10,8 @@ from golem.Message import MessageHello, MessageRandVal, MessageWantToComputeTask
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
     MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse
-from golem.network.FileProducer import EncryptFileProducer
-from golem.network.FileConsumer import DecryptFileConsumer
-from golem.network.DataProducer import DataProducer
-from golem.network.DataConsumer import DataConsumer
-from golem.network.MultiFileProducer import EncryptMultiFileProducer
-from golem.network.MultiFileConsumer import DecryptMultiFileConsumer
-from golem.network.transport.tcp_network import MidAndFilesProtocol
+from golem.network.transport.tcp_network import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
+    EncryptDataProducer, DecryptDataConsumer
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.task.TaskBase import resultTypes
 from golem.resource.Resource import decompressDir
@@ -45,13 +40,11 @@ class TaskSession(MiddlemanSafeSession):
         self.conn_id = None
         self.asking_node_key_id = None
 
-        self.msgsToSend = []
+        self.msgs_to_send = []
 
-        self.lastResourceMsg = None
+        self.last_resource_msg = None
 
-        self.resultOwner = None
-
-        self.producer = None
+        self.result_owner = None
 
         self.__set_msg_interpretations()
 
@@ -109,15 +102,10 @@ class TaskSession(MiddlemanSafeSession):
         MiddlemanSafeSession.interpret(self, msg)
 
     def dropped(self):
-        self.clean()
         self.conn.clean()
         self.conn.close()
         if self.task_server:
             self.task_server.removeTaskSession(self)
-
-    def clean(self):
-        if self.producer is not None:
-            self.producer.clean()
 
     def encrypt(self, msg):
         if self.task_server:
@@ -152,31 +140,50 @@ class TaskSession(MiddlemanSafeSession):
         verify = self.task_server.verifySig(msg.sig, msg.getShortHash(), self.key_id)
         return verify
 
-    def file_sent(self, file_):
-        self.dropped()
-
     def data_sent(self, extra_data):
-        if 'subtaskId' in extra_data:
-            self.task_server.taskResultSent(extra_data['subtaskId'])
-        else:
-            logger.error("No subtaskId in extra_data for sent data")
-        self.producer = None
+        if extra_data and "subtask_id" in extra_data:
+            self.task_server.taskResultSent(extra_data["subtask_id"])
+        self.conn.producer = None
         self.dropped()
 
-    def full_file_received(self, extra_data):
-        file_size = extra_data.get('fileSize')
+    def full_data_received(self, extra_data):
+        data_type = extra_data.get('data_type')
+        if data_type is None:
+            logger.error("Wrong full data received type")
+            self.dropped()
+            return
+        if data_type == "resource":
+            self.resource_received(extra_data)
+        elif data_type == "result":
+            self.result_received(extra_data)
+        else:
+            logger.error("Unknown data type {}".format(data_type))
+            self.conn.producer = None
+            self.dropped()
+
+    def production_failed(self, extra_data=None):
+        self.dropped()
+
+    def resource_received(self, extra_data):
+        file_sizes = extra_data.get('file_sizes')
+        if file_sizes is None:
+            logger.error("No file sizes given")
+            self.dropped()
+        file_size = file_sizes[0]
+        tmp_file = extra_data.get('file_received')[0]
         if file_size > 0:
-            decompressDir(extra_data.get('outputDir'), extra_data.get('tmpFile'))
-        task_id = extra_data.get('taskId')
+            decompressDir(extra_data.get('output_dir'), tmp_file)
+        task_id = extra_data.get('task_id')
         if task_id:
             self.task_computer.resourceGiven(task_id)
         else:
             logger.error("No taskId in extra_data for received File")
-        self.producer = None
+        self.conn.producer = None
         self.dropped()
 
-    def full_data_received(self, result, extra_data):
-        result_type = extra_data.get('resultType')
+    def result_received(self, extra_data):
+        result = extra_data.get('result')
+        result_type = extra_data.get("result_type")
         if result_type is None:
             logger.error("No information about result_type for received data ")
             self.dropped()
@@ -189,13 +196,13 @@ class TaskSession(MiddlemanSafeSession):
             except Exception, err:
                 logger.error("Can't unpickle result data {}".format(str(err)))
 
-        subtask_id = extra_data.get('subtaskId')
+        subtask_id = extra_data.get("subtask_id")
         if subtask_id:
             self.task_manager.computedTaskReceived(subtask_id, result, result_type)
             if self.task_manager.verifySubtask(subtask_id):
-                self.task_server.acceptResult(subtask_id, self.resultOwner)
+                self.task_server.acceptResult(subtask_id, self.result_owner)
             else:
-                self.task_server.rejectResult(subtask_id, self.resultOwner)
+                self.task_server.rejectResult(subtask_id, self.result_owner)
         else:
             logger.error("No taskId value in extra_data for received data ")
         self.dropped()
@@ -234,7 +241,7 @@ class TaskSession(MiddlemanSafeSession):
                 self.dropped()
             elif delay == 0.0:
                 self.send(MessageGetTaskResult(msg.subtaskId, delay))
-                self.resultOwner = EthAccountInfo(msg.keyId, msg.port, msg.address, msg.nodeId, msg.nodeInfo,
+                self.result_owner = EthAccountInfo(msg.keyId, msg.port, msg.address, msg.nodeId, msg.nodeInfo,
                                                   msg.ethAccount)
 
                 if msg.resultType == resultTypes['data']:
@@ -272,16 +279,16 @@ class TaskSession(MiddlemanSafeSession):
         self.__receiveTaskResult(msg.subtaskId, msg.result)
 
     def _react_to_get_resource(self, msg):
-        self.lastResourceMsg = msg
+        self.last_resource_msg = msg
         self.__send_resource_format(self.task_server.configDesc.useDistributedResourceManagement)
 
     def _react_to_accept_resource_format(self, msg):
-        if self.lastResourceMsg is not None:
+        if self.last_resource_msg is not None:
             if self.task_server.configDesc.useDistributedResourceManagement:
-                self.__send_resource_parts_list(self.lastResourceMsg)
+                self.__send_resource_parts_list(self.last_resource_msg)
             else:
-                self.__send_delta_resource(self.lastResourceMsg)
-            self.lastResourceMsg = None
+                self.__send_delta_resource(self.last_resource_msg)
+            self.last_resource_msg = None
         else:
             logger.error("Unexpected MessageAcceptResource message")
             self.dropped()
@@ -313,9 +320,9 @@ class TaskSession(MiddlemanSafeSession):
             tmp_file = os.path.join(self.task_computer.resourceManager.getTemporaryDir(self.task_id),
                                     "res" + self.task_id)
             output_dir = self.task_computer.resourceManager.getResourceDir(self.task_id)
-            extra_data = {"taskId": self.task_id}
-            self.conn.file_consumer = DecryptFileConsumer(tmp_file, output_dir, self, extra_data)
-            self.conn.file_mode = True
+            extra_data = {"task_id": self.task_id, "data_type": 'resource', 'output_dir': output_dir}
+            self.conn.consumer = DecryptFileConsumer([tmp_file], output_dir, self, extra_data)
+            self.conn.stream_mode = True
         self.__send_accept_resource_format()
 
     def _react_to_hello(self, msg):
@@ -334,9 +341,9 @@ class TaskSession(MiddlemanSafeSession):
         if self.rand_val == msg.randVal:
             self.verified = True
             self.task_server.verifiedConn(self.conn_id, )
-            for msg in self.msgsToSend:
+            for msg in self.msgs_to_send:
                 self.send(msg)
-            self.msgsToSend = []
+            self.msgs_to_send = []
         else:
             self.disconnect(TaskSession.DCRUnverified)
 
@@ -379,7 +386,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def send(self, msg, send_unverified=False):
         if not self.is_middleman and not self.verified and not send_unverified:
-            self.msgsToSend.append(msg)
+            self.msgs_to_send.append(msg)
             return
         MiddlemanSafeSession.send(self, msg, send_unverified=send_unverified)
         # print "Task Session Sending to {}:{}: {}".format(self.address, self.port, msg)
@@ -394,7 +401,7 @@ class TaskSession(MiddlemanSafeSession):
             self.dropped()
             return
 
-        self.producer = EncryptFileProducer(res_file_path, self)
+        self.conn.producer = EncryptFileProducer([res_file_path], self)
 
     def __send_resource_parts_list(self, msg):
         delta_header, parts_list = self.task_manager.getResourcePartsList(msg.taskId, pickle.loads(msg.resourceHeader))
@@ -411,26 +418,26 @@ class TaskSession(MiddlemanSafeSession):
 
     def __send_data_results(self, res):
         result = pickle.dumps(res.result)
-        extra_data = {'subtaskId': res.subtaskId}
-        self.producer = DataProducer(self.encrypt(result), self, extraData=extra_data)
+        extra_data = {"subtask_id": res.subtaskId, "data_type": "result"}
+        self.conn.producer = EncryptDataProducer(self.encrypt(result), self, extra_data=extra_data)
 
     def __send_files_results(self, res):
-        extra_data = {'subtaskId': res.subtaskId}
-        self.producer = EncryptMultiFileProducer(res.result, self, extraData=extra_data)
+        extra_data = {"subtask_id": res.subtaskId}
+        self.conn.producer = EncryptFileProducer(res.result, self, extra_data=extra_data)
 
     def __receive_data_result(self, msg):
-        extra_data = {"subtaskId": msg.subtaskId, "resultType": msg.resultType}
-        self.conn.data_consumer = DataConsumer(self, extra_data)
-        self.conn.data_mode = True
+        extra_data = {"subtask_id": msg.subtaskId, "result_type": msg.resultType, "data_type": "result"}
+        self.conn.consumer = DecryptDataConsumer(self, extra_data)
+        self.conn.stream_mode = True
         self.subtask_id = msg.subtaskId
 
     def __receive_files_result(self, msg):
-        extra_data = {"subtaskId": msg.subtaskId, "resultType": msg.resultType}
+        extra_data = {"subtask_id": msg.subtaskId, "result_type": msg.resultType, "data_type": "result"}
         output_dir = self.task_manager.dirManager.getTaskTemporaryDir(
             self.task_manager.getTaskId(msg.subtaskId), create=False
         )
-        self.conn.data_consumer = DecryptMultiFileConsumer(msg.extraData, output_dir, self, extra_data)
-        self.conn.data_mode = True
+        self.conn.consumer = DecryptFileConsumer(msg.extraData, output_dir, self, extra_data)
+        self.conn.stream_mode = True
         self.subtask_id = msg.subtaskId
 
     def __set_msg_interpretations(self):

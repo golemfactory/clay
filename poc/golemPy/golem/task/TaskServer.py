@@ -595,7 +595,7 @@ class TaskServer(PendingConnectionsServer):
         session.conn_id = connId
         self._markConnected(connId, session.address, session.port)
         session.send_hello()
-        session.send_get_tasks(taskId, price)
+        session.send_reward_for_task(taskId, price)
         self.client.taskRewardPaid(taskId, price)
 
     #############################
