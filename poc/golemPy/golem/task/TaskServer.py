@@ -6,7 +6,7 @@ from collections import deque
 
 from TaskManager import TaskManager
 from TaskComputer import TaskComputer
-from TaskSession import TaskSession
+from tasksession import TaskSession
 from TaskKeeper import TaskKeeper
 
 from golem.ranking.Ranking import RankingStats
