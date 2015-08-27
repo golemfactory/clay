@@ -8,12 +8,16 @@ contract LotteryAgent {
     }
     
     mapping (bytes32 => LotteryData) lotteries;
+    
+	event Init(address indexed owner, bytes32 indexed descritionHash, uint value);
+	event Winner(address indexed winner, bytes32 indexed descriptionHash);
 	
 	function initLottery(bytes32 descriptionHash, uint maturity, uint deposit) {
 		LotteryData lottery = lotteries[descriptionHash];
 		if (lottery.value != 0) 
 		    return;
 		lotteries[descriptionHash] = LotteryData(msg.value, maturity, deposit, 0);
+		Init(msg.sender, descriptionHash, msg.value);
 	}
 	
 	function winnerLottery(bytes32 descriptionHash) {
@@ -23,6 +27,7 @@ contract LotteryAgent {
 	    lotteries[descriptionHash].deposit = msg.value;
 	    lotteries[descriptionHash].winner = msg.sender;
 	    lotteries[descriptionHash].timeout = block.number + 7200;
+	    Winner(msg.sender, descriptionHash);
 	}
 	
 	function payoutLottery(bytes32 descriptionHash) {
