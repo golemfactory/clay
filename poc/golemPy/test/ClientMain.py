@@ -8,7 +8,7 @@ from twisted.internet import reactor
 
 from golem.AppConfig import AppConfig
 from golem.Client import Client
-from golem.Message import init_messages
+from golem.network.transport.Message import init_messages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
 
 

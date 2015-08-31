@@ -4,7 +4,7 @@ import struct
 import logging
 import os
 
-from golem.Message import MessageHello, MessageRandVal, MessageWantToComputeTask, MessageTaskToCompute, \
+from golem.network.transport.Message import MessageHello, MessageRandVal, MessageWantToComputeTask, MessageTaskToCompute, \
     MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, \
     MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \

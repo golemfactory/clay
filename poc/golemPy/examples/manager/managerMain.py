@@ -8,7 +8,7 @@ genUiFiles("./../../golem/ui")
 from golem.AppConfig import AppConfig
 from golem.manager.NodesManager import  NodesManager
 from GNRManagerLogic import GNRManagerLogic
-from golem.Message import init_manager_messages
+from golem.network.transport.Message import init_manager_messages
 import logging.config
 
 

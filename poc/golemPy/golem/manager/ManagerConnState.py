@@ -1,7 +1,7 @@
 import logging
 
 from golem.network.transport.tcp_network import ServerProtocol
-from golem.Message import Message
+from golem.network.transport.Message import Message
 
 
 logger = logging.getLogger(__name__)

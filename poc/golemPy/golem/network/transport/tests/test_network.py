@@ -10,7 +10,7 @@ from golem.network.transport.tcp_network import TCPNetwork, TCPListenInfo, TCPLi
                                                 TCPAddress, BasicProtocol, ServerProtocol, SafeProtocol, FilesProtocol,\
                                                 MidAndFilesProtocol
 from golem.network.transport.network import ProtocolFactory, SessionFactory, SessionProtocol
-from golem.Message import Message, MessageHello
+from golem.network.transport.Message import Message, MessageHello
 from golem.core.databuffer import DataBuffer
 
 from threading import Thread

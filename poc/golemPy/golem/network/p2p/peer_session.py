@@ -1,7 +1,7 @@
 import time
 import logging
 
-from golem.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, \
+from golem.network.transport.Message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, \
     MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, MessageDegree, \
     MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, MessageRandVal, MessageWantToStartTaskSession, \
     MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, MessageInformAboutNatTraverseFailure
