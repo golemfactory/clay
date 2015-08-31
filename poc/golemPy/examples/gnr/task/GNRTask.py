@@ -1,4 +1,4 @@
-from golem.task.TaskBase import Task, TaskHeader, TaskBuilder, resultTypes
+from golem.task.TaskBase import Task, TaskHeader, TaskBuilder, result_types
 from golem.task.TaskState import SubtaskStatus
 from golem.resource.Resource import prepareDeltaZip, TaskResourceHeader
 from golem.environments.Environment import Environment
@@ -191,9 +191,9 @@ class GNRTask(Task):
 
     #######################
     def loadTaskResults(self, taskResult, resultType, tmpDir):
-        if resultType == resultTypes['data']:
+        if resultType == result_types['data']:
             return  [ self._unpackTaskResult(trp, tmpDir) for trp in taskResult ]
-        elif resultType == resultTypes['files']:
+        elif resultType == result_types['files']:
             return taskResult
         else:
             logger.error("Task result type not supported {}".format(resultType))

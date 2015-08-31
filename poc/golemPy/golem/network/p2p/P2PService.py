@@ -3,7 +3,7 @@ import logging
 import random
 
 from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress
-from golem.network.p2p.PeerSession import PeerSession
+from golem.network.p2p.peer_session import PeerSession
 from golem.network.p2p.P2PServer import P2PServer
 from PeerKeeper import PeerKeeper
 

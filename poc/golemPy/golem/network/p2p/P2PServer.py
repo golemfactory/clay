@@ -3,7 +3,7 @@ import logging
 from golem.network.transport.tcp_server import TCPServer
 from golem.network.transport.tcp_network import TCPNetwork, SafeProtocol
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from PeerSession import PeerSession
+from peer_session import PeerSession
 
 logger = logging.getLogger(__name__)
 

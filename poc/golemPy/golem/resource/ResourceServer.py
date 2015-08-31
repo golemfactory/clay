@@ -8,7 +8,7 @@ from golem.network.transport.tcp_server import TCPServer
 from golem.network.transport.tcp_network import TCPConnectInfo, TCPAddress, TCPListenInfo, TCPNetwork, FilesProtocol
 from golem.resource.DirManager import DirManager
 from golem.resource.ResourcesManager import DistributedResourceManager
-from golem.resource.resourcesession import ResourceSession
+from golem.resource.resource_session import ResourceSession
 from golem.ranking.Ranking import RankingStats
 
 

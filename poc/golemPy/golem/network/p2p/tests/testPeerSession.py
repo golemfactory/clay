@@ -6,7 +6,7 @@ import os
 
 sys.path.append(os.environ.get('GOLEM'))
 
-from golem.network.p2p.PeerSession import PeerSession
+from golem.network.p2p.peer_session import PeerSession
 from golem.network.p2p.NetConnState import NetConnState
 from golem.Message import MessageHello, MessagePing, MessageGetTasks, MessageGetPeers, \
                           MessagePing, MessageDisconnect, MessagePong, MessagePeers, \

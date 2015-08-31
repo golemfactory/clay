@@ -4,7 +4,7 @@ import cPickle as pickle
 
 from golem.manager.client.NodesManagerClient import NodesManagerClient
 from golem.environments.Environment import Environment
-from golem.task.TaskBase import ComputeTaskDef, resultTypes
+from golem.task.TaskBase import ComputeTaskDef, result_types
 from GNRTask import GNRTask, GNRTaskBuilder
 
 logger = logging.getLogger(__name__)
@@ -99,7 +99,7 @@ class InfoTask(GNRTask):
 
     #######################
     def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
-        if resultType != resultTypes['data']:
+        if resultType != result_types['data']:
             logger.error("Only data result format supported")
             return
         try:
