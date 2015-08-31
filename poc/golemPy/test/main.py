@@ -19,11 +19,11 @@ genUiFiles("./../src")
 from golem.AppConfig import AppConfig
 from golem.manager.NodesManager import  NodesManager
 from golem.manager.NodesManagerLogic import EmptyManagerLogic
-from golem.Message import initMessages
+from golem.Message import init_messages
 
 def main():
 
-    initMessages()
+    init_messages()
 
     port = AppConfig.managerPort()
     manager = NodesManager(None)

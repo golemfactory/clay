@@ -28,7 +28,7 @@ class ServerManagerSession:
     ##########################
     def interpret(self, msg):
 
-        type = msg.getType()
+        type = msg.get_type()
 
         if type == MessagePeerStatus.Type:
             nss = pickle.loads(msg.data)

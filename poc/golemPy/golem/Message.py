@@ -1,8 +1,5 @@
 import time
-import sys
 import abc
-
-from collections import OrderedDict
 
 from golem.core.simpleserializer import SimpleSerializer
 from golem.core.databuffer import DataBuffer
@@ -11,110 +8,129 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class Message:
+    """ Communication message that is sent in all networks """
 
-    registeredMessageTypes = {}
+    registered_message_types = {} # Message types that are allowed to be sent in the network """
 
-    def __init__(self, type, sig = '', timestamp = None):
-        if type not in Message.registeredMessageTypes:
-            Message.registeredMessageTypes[type] = self.__class__
+    def __init__(self, type_, sig="", timestamp=None):
+        """ Create new message. If this message type hasn't been registered yet, add this class to registered message
+        collection. """
+        if type_ not in Message.registered_message_types:
+            Message.registered_message_types[type_] = self.__class__
 
-        self.type = type
-        self.sig = sig
+        self.type = type_  # message type (class identifier)
+        self.sig = sig  # signature (short data representation signed with private key)
         if timestamp is None:
             timestamp = time.time()
         self.timestamp = timestamp
-        self.serializer = DataBuffer()
-        self.encrypted = True
-        self.signed = True
+        self.encrypted = False  # inform if message was encrypted
 
-    def getType(self):
+    def get_type(self):
+        """ Return message type
+        :return int: Message type
+        """
         return self.type
 
-    def getShortHash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps(sorted(self.dictRepr().items())))
-
-    def sign(self, server):
-        self.sig = server.signData(self.getShortHash())
-
-    def serializeWithHeader(self):
-        self.serializeToBuffer(self.serializer)
-        return self.serializer.readAll()
+    def get_short_hash(self):
+        """ Return short message representation for signature
+        :return str: short hash of serialized and sorted message dictionary representation """
+        return SimpleHash.hash(SimpleSerializer.dumps(sorted(self.dict_repr().items())))
 
     def serialize(self):
-        return SimpleSerializer.dumps([self.type, self.sig, self.timestamp, self.dictRepr()])
+        """ Return serialized message
+        :return str: serialized message """
+        return SimpleSerializer.dumps([self.type, self.sig, self.timestamp, self.dict_repr()])
 
-    def serializeToBuffer(self, db):
-        assert isinstance(db, DataBuffer)
-        db.appendLenPrefixedString(self.serialize())
+    def serialize_to_buffer(self, db_):
+        """
+        Append serialized message to given data buffer
+        :param DataBuffer db_: data buffer that message should be attached to
+        """
+        assert isinstance(db_, DataBuffer)
+        db_.appendLenPrefixedString(self.serialize())
 
     @classmethod
-    def decryptAndDeserialize(cls, db, server, publicKey):
-        assert isinstance(db, DataBuffer)
-        messages = []
-        msg = db.readLenPrefixedString()
-        while msg:
+    def decrypt_and_deserialize(cls, db_, server):
+        """
+        Take out messages from data buffer, decrypt them using server if they are encrypted and deserialize them
+        :param DataBuffer db_: data buffer containing messages
+        :param SafeServer server: server that is able to decrypt data
+        :return list: list of decrypted and deserialized messages
+        """
+        assert isinstance(db_, DataBuffer)
+        messages_ = []
+        msg_ = db_.readLenPrefixedString()
+        while msg_:
             encrypted = True
             try:
-                msg = server.decrypt(msg)
+                msg_ = server.decrypt(msg_)
             except AssertionError:
                 logger.warning("Failed to decrypt message, maybe it's not encrypted?")
                 encrypted = False
             except Exception as err:
                 logger.error("Failed to decrypt message {}".format(str(err)))
                 assert False
-            m = cls.deserializeMessage(msg)
-
+            m = cls.deserialize_message(msg_)
 
             if m is None:
-                logger.error("Failed to deserialize message {}".format(msg))
+                logger.error("Failed to deserialize message {}".format(msg_))
                 assert False
 
             m.encrypted = encrypted
 
+            messages_.append(m)
+            msg_ = db_.readLenPrefixedString()
 
-            messages.append(m)
-            msg = db.readLenPrefixedString()
-
-        return messages
+        return messages_
 
     @classmethod
-    def deserialize(cls, db):
-        assert isinstance(db, DataBuffer)
-        messages = []
-        msg = db.readLenPrefixedString()
+    def deserialize(cls, db_):
+        """
+        Take out messages from data buffer and deserialize them
+        :param DataBuffer db_: data buffer containing messages
+        :return list: list of deserialized messages
+        """
+        assert isinstance(db_, DataBuffer)
+        messages_ = []
+        msg_ = db_.readLenPrefixedString()
 
-        while msg:
-            m = cls.deserializeMessage(msg)
-            
+        while msg_:
+            m = cls.deserialize_message(msg_)
+
             if m is None:
-                logger.error("Failed to deserialize message {}".format(msg))
+                logger.error("Failed to deserialize message {}".format(msg_))
                 assert False
- 
-            messages.append(m)
-            msg = db.readLenPrefixedString()
 
-        return messages
-  
+            messages_.append(m)
+            msg_ = db_.readLenPrefixedString()
+
+        return messages_
+
     @classmethod
-    def deserializeMessage(cls, msg):
-        msgRepr = SimpleSerializer.loads(msg)
+    def deserialize_message(cls, msg_):
+        """
+        Deserialize single message
+        :param str msg_: serialized message
+        :return Message|None: deserialized message or none if this message type is unknown
+        """
+        msg_repr = SimpleSerializer.loads(msg_)
 
-        msgType = msgRepr[0]
-        msgSig = msgRepr[1]
-        msgTimestamp = msgRepr[2]
-        dRepr   = msgRepr[3]
+        msg_type = msg_repr[0]
+        msg_sig = msg_repr[1]
+        msg_timestamp = msg_repr[2]
+        d_repr = msg_repr[3]
 
-        if msgType in cls.registeredMessageTypes:
-            return cls.registeredMessageTypes[msgType](sig = msgSig, timestamp = msgTimestamp, dictRepr = dRepr)
+        if msg_type in cls.registered_message_types:
+            return cls.registered_message_types[msg_type](sig=msg_sig, timestamp=msg_timestamp, dict_repr=d_repr)
 
         return None
 
     @abc.abstractmethod
-    def dictRepr(self):
+    def dict_repr(self):
         """
-        Returns dictionary/list representation of 
-        any subclassed message
+        Returns dictionary/list representation of  any subclassed message
         """
         return
 
@@ -125,547 +141,750 @@ class Message:
         return "{}".format(self.__class__)
 
 
-class MessageHello(Message):
+##################
+# Basic Messages #
+##################
 
+
+class MessageHello(Message):
     Type = 0
 
-    PROTO_ID_STR    = u"protoId"
-    CLI_VER_STR     = u"clientVer"
-    PORT_STR        = u"port"
-    CLIENT_UID_STR  = u"clientUID"
-    CLIENT_KEY_ID_STR = u"clientKeyId"
-    RAND_VAL_STR    = u"randVal"
-    NODE_INFO_STR   = u"nodeInfo"
+    PROTO_ID_STR = u"PROTO_ID"
+    CLI_VER_STR = u"CLI_VER"
+    PORT_STR = u"PORT"
+    CLIENT_UID_STR = u"CLIENT_UID"
+    CLIENT_KEY_ID_STR = u"CLIENT_KEY_ID"
+    RAND_VAL_STR = u"RAND_VAL"
+    NODE_INFO_STR = u"NODE_INFO"
 
-    def __init__(self, port = 0, clientUID = None, clientKeyId = None, nodeInfo = None,
-                 randVal = 0, protoId = 0, cliVer = 0, sig = "", timestamp = None,
-                 dictRepr = None):
+    def __init__(self, port=0, client_uid=None, client_key_id=None, node_info=None,
+                 rand_val=0, proto_id=0, client_ver=0, sig="", timestamp=None,
+                 dict_repr=None):
+        """
+        Create new introduction message
+        :param int port: listening port
+        :param uuid client_uid: uid
+        :param str client_key_id: public key
+        :param NodeInfo node_info: information about node
+        :param float rand_val: random value that should be signed by other site
+        :param int proto_id: protocol id
+        :param str client_ver: application version
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageHello.Type, sig, timestamp)
-        
-        self.protoId    = protoId
-        self.clientVer  = cliVer
-        self.port       = port
-        self.clientUID  = clientUID
-        self.clientKeyId = clientKeyId
-        self.randVal    = randVal
-        self.nodeInfo   = nodeInfo
 
-        if dictRepr:
-            self.protoId    = dictRepr[MessageHello.PROTO_ID_STR]
-            self.clientVer  = dictRepr[MessageHello.CLI_VER_STR]
-            self.port       = dictRepr[MessageHello.PORT_STR]
-            self.clientUID  = dictRepr[MessageHello.CLIENT_UID_STR]
-            self.clientKeyId = dictRepr[MessageHello.CLIENT_KEY_ID_STR]
-            self.randVal    = dictRepr[MessageHello.RAND_VAL_STR]
-            self.nodeInfo   = dictRepr[MessageHello.NODE_INFO_STR]
+        self.proto_id = proto_id
+        self.client_ver = client_ver
+        self.port = port
+        self.client_uid = client_uid
+        self.client_key_id = client_key_id
+        self.rand_val = rand_val
+        self.node_info = node_info
 
-    def dictRepr(self):
-        return {    MessageHello.PROTO_ID_STR : self.protoId,
-                    MessageHello.CLI_VER_STR : self.clientVer,
-                    MessageHello.PORT_STR : self.port,
-                    MessageHello.CLIENT_UID_STR : self.clientUID,
-                    MessageHello.CLIENT_KEY_ID_STR: self.clientKeyId,
-                    MessageHello.RAND_VAL_STR: self.randVal,
-                    MessageHello.NODE_INFO_STR: self.nodeInfo
-                    }
+        if dict_repr:
+            self.proto_id = dict_repr[MessageHello.PROTO_ID_STR]
+            self.client_ver = dict_repr[MessageHello.CLI_VER_STR]
+            self.port = dict_repr[MessageHello.PORT_STR]
+            self.client_uid = dict_repr[MessageHello.CLIENT_UID_STR]
+            self.client_key_id = dict_repr[MessageHello.CLIENT_KEY_ID_STR]
+            self.rand_val = dict_repr[MessageHello.RAND_VAL_STR]
+            self.node_info = dict_repr[MessageHello.NODE_INFO_STR]
 
-class MessagePing(Message):
+    def dict_repr(self):
+        return {MessageHello.PROTO_ID_STR: self.proto_id,
+                MessageHello.CLI_VER_STR: self.client_ver,
+                MessageHello.PORT_STR: self.port,
+                MessageHello.CLIENT_UID_STR: self.client_uid,
+                MessageHello.CLIENT_KEY_ID_STR: self.client_key_id,
+                MessageHello.RAND_VAL_STR: self.rand_val,
+                MessageHello.NODE_INFO_STR: self.node_info
+                }
 
+
+class MessageRandVal(Message):
     Type = 1
 
-    PING_STR = u"PING"
+    RAND_VAL_STR = u"RAND_VAL"
 
-    def __init__(self, sig="", timestamp=None, dictRepr=None):
-        Message.__init__(self, MessagePing.Type, sig, timestamp)
-        
-        if dictRepr:
-            assert dictRepr.get(MessagePing.PING_STR)
+    def __init__(self, rand_val=0, sig="", timestamp=None, dict_repr=None):
+        """
+        Create a message with signed random value.
+        :param float rand_val: random value received from other side
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessageRandVal.Type, sig, timestamp)
 
-    def dictRepr(self):
-        return {MessagePing.PING_STR: True}
+        self.rand_val = rand_val
 
-class MessagePong(Message):
+        if dict_repr:
+            self.rand_val = dict_repr[MessageRandVal.RAND_VAL_STR]
 
-    Type = 2
+    def dict_repr(self):
+        return {MessageRandVal.RAND_VAL_STR: self.rand_val}
 
-    PONG_STR = u"PONG"
-
-    def __init__(self, sig="", timestamp=None, dictRepr=None):
-        Message.__init__(self, MessagePong.Type, sig, timestamp)
-        
-        if dictRepr:
-            assert dictRepr.get(MessagePong.PONG_STR)
-
-    def dictRepr(self):
-        return {MessagePong.PONG_STR: True}
 
 class MessageDisconnect(Message):
-
-    Type = 3
+    Type = 2
 
     DISCONNECT_REASON_STR = u"DISCONNECT_REASON"
 
-    def __init__(self, reason = -1, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, reason=-1, sig="", timestamp=None, dict_repr=None):
+        """
+        Create a disconnect message
+        :param int reason: disconnection reason
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageDisconnect.Type, sig, timestamp)
 
         self.reason = reason
 
-        if dictRepr:
-            self.reason = dictRepr[MessageDisconnect.DISCONNECT_REASON_STR]
+        if dict_repr:
+            self.reason = dict_repr[MessageDisconnect.DISCONNECT_REASON_STR]
 
-    def dictRepr(self):
-        return { MessageDisconnect.DISCONNECT_REASON_STR : self.reason }
+    def dict_repr(self):
+        return {MessageDisconnect.DISCONNECT_REASON_STR: self.reason}
+
+################
+# P2P Messages #
+################
+
+P2P_MESSAGE_BASE = 1000
+
+
+class MessagePing(Message):
+    Type = P2P_MESSAGE_BASE + 1
+
+    PING_STR = u"PING"
+
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Create ping message
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessagePing.Type, sig, timestamp)
+
+        if dict_repr:
+            assert dict_repr.get(MessagePing.PING_STR)
+
+    def dict_repr(self):
+        return {MessagePing.PING_STR: True}
+
+
+class MessagePong(Message):
+    Type = P2P_MESSAGE_BASE + 2
+
+    PONG_STR = u"PONG"
+
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Create pong message
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessagePong.Type, sig, timestamp)
+
+        if dict_repr:
+            assert dict_repr.get(MessagePong.PONG_STR)
+
+    def dict_repr(self):
+        return {MessagePong.PONG_STR: True}
+
 
 class MessageGetPeers(Message):
-
-    Type = 4
+    Type = P2P_MESSAGE_BASE + 3
 
     GET_PEERS_STR = u"GET_PEERS"
 
-    def __init__(self, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Create request peers message
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageGetPeers.Type, sig, timestamp)
-        
-        if dictRepr:
-            assert dictRepr.get(MessageGetPeers.GET_PEERS_STR)
 
-    def dictRepr(self):
-        return { MessageGetPeers.GET_PEERS_STR: True }
+        if dict_repr:
+            assert dict_repr.get(MessageGetPeers.GET_PEERS_STR)
+
+    def dict_repr(self):
+        return {MessageGetPeers.GET_PEERS_STR: True}
+
 
 class MessagePeers(Message):
-
-    Type = 5
+    Type = P2P_MESSAGE_BASE + 4
 
     PEERS_STR = u"PEERS"
 
-    def __init__(self, peersArray = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, peers_array=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message containing information about peers
+        :param list peers_array: list of peers information
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessagePeers.Type, sig, timestamp)
 
-        if peersArray is None:
-            peersArray = []
+        if peers_array is None:
+            peers_array = []
 
-        self.peersArray = peersArray
+        self.peers_array = peers_array
 
-        if dictRepr:
-            self.peersArray = dictRepr[MessagePeers.PEERS_STR]
+        if dict_repr:
+            self.peers_array = dict_repr[MessagePeers.PEERS_STR]
 
-    def dictRepr(self):
-        return { MessagePeers.PEERS_STR : self.peersArray }
+    def dict_repr(self):
+        return {MessagePeers.PEERS_STR: self.peers_array}
 
-    def getShortHash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer.items()) for peer in self.peersArray]))
+    def get_short_hash(self):
+        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer.items()) for peer in self.peers_array]))
+
 
 class MessageGetTasks(Message):
+    Type = P2P_MESSAGE_BASE + 5
 
-    Type = 6
+    GET_TASKS_STR = u"GET_TASKS"
 
-    GET_TASTKS_STR = u"GET_TASKS"
-
-    def __init__(self, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """ Create request task message
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageGetTasks.Type, sig, timestamp)
 
-        if dictRepr:
-            assert dictRepr.get(MessageGetTasks.GET_TASTKS_STR)
+        if dict_repr:
+            assert dict_repr.get(MessageGetTasks.GET_TASKS_STR)
 
-    def dictRepr(self):
-        return { MessageGetTasks.GET_TASTKS_STR: True }
+    def dict_repr(self):
+        return {MessageGetTasks.GET_TASKS_STR: True}
+
 
 class MessageTasks(Message):
-
-    Type = 7
+    Type = P2P_MESSAGE_BASE + 6
 
     TASKS_STR = u"TASKS"
 
-    def __init__(self, tasksArray = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, tasks_array=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message containing information about tasks
+        :param list tasks_array: list of peers information
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageTasks.Type, sig, timestamp)
 
-        if tasksArray is None:
-            tasksArray = []
+        if tasks_array is None:
+            tasks_array = []
 
-        self.tasksArray = tasksArray
+        self.tasks_array = tasks_array
 
-        if dictRepr:
-            self.tasksArray = dictRepr[MessageTasks.TASKS_STR]
+        if dict_repr:
+            self.tasks_array = dict_repr[MessageTasks.TASKS_STR]
 
-    def dictRepr(self):
-        return { MessageTasks.TASKS_STR : self.tasksArray }
+    def dict_repr(self):
+        return {MessageTasks.TASKS_STR: self.tasks_array}
 
-    def getShortHash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(task.items()) for task in self.tasksArray]))
+    def get_short_hash(self):
+        return SimpleHash.hash(SimpleSerializer.dumps([sorted(task.items()) for task in self.tasks_array]))
 
 
 class MessageRemoveTask(Message):
-
-    Type = 8
+    Type = P2P_MESSAGE_BASE + 7
 
     REMOVE_TASK_STR = u"REMOVE_TASK"
 
-    def __init__(self, taskId = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, task_id=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with request to remove given task
+        :param str task_id: task to be removed
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageRemoveTask.Type, sig, timestamp)
 
-        self.taskId = taskId
+        self.task_id = task_id
 
-        if dictRepr:
-            self.taskId = dictRepr[MessageRemoveTask.REMOVE_TASK_STR]
+        if dict_repr:
+            self.task_id = dict_repr[MessageRemoveTask.REMOVE_TASK_STR]
 
-    def dictRepr(self):
-        return { MessageRemoveTask.REMOVE_TASK_STR : self.taskId }
+    def dict_repr(self):
+        return {MessageRemoveTask.REMOVE_TASK_STR: self.task_id}
+
 
 class MessageGetResourcePeers(Message):
-
-    Type = 9
+    Type = P2P_MESSAGE_BASE + 8
 
     WANT_RESOURCE_PEERS_STR = u"WANT_RESOURCE_PEERS"
 
-    def __init__(self, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Create request for resource peers
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageGetResourcePeers.Type, sig, timestamp)
 
-        if dictRepr:
-            assert dictRepr.get(MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR)
+        if dict_repr:
+            assert dict_repr.get(MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR)
 
-    def dictRepr(self):
-        return { MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR: True }
+    def dict_repr(self):
+        return {MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR: True}
+
 
 class MessageResourcePeers(Message):
-
-    Type = 10
+    Type = P2P_MESSAGE_BASE + 9
 
     RESOURCE_PEERS_STR = u"RESOURCE_PEERS"
 
-    def __init__(self, resourcePeers = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, resource_peers=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message containing information about resource peers
+        :param list resource_peers: list of peers information
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageResourcePeers.Type, sig, timestamp)
 
-        if resourcePeers is None:
-            resourcePeers = []
+        if resource_peers is None:
+            resource_peers = []
 
-        self.resourcePeers = resourcePeers
+        self.resource_peers = resource_peers
 
-        if dictRepr:
-            self.resourcePeers = dictRepr[MessageResourcePeers.RESOURCE_PEERS_STR]
+        if dict_repr:
+            self.resource_peers = dict_repr[MessageResourcePeers.RESOURCE_PEERS_STR]
 
-    def dictRepr(self):
-        return { MessageResourcePeers.RESOURCE_PEERS_STR: self.resourcePeers }
+    def dict_repr(self):
+        return {MessageResourcePeers.RESOURCE_PEERS_STR: self.resource_peers}
 
-    def getShortHash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer.items()) for peer in self.resourcePeers]))
+    def get_short_hash(self):
+        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer.items()) for peer in self.resource_peers]))
 
 
 class MessageDegree(Message):
-    Type = 11
+    Type = P2P_MESSAGE_BASE + 10
 
     DEGREE_STR = u"DEGREE"
 
-    def __init__(self, degree = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, degree=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information about node degree
+        :param int degree: node degree in golem network
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageDegree.Type, sig, timestamp)
 
         self.degree = degree
 
-        if dictRepr:
-            self.degree = dictRepr[MessageDegree.DEGREE_STR]
+        if dict_repr:
+            self.degree = dict_repr[MessageDegree.DEGREE_STR]
 
-    def dictRepr(self):
-        return { MessageDegree.DEGREE_STR: self.degree }
+    def dict_repr(self):
+        return {MessageDegree.DEGREE_STR: self.degree}
+
 
 class MessageGossip(Message):
-    Type = 12
+    Type = P2P_MESSAGE_BASE + 11
 
     GOSSIP_STR = u"GOSSIP"
 
-    def __init__(self, gossip = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, gossip=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create gossip message
+        :param list gossip: gossip to be send
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageGossip.Type, sig, timestamp)
 
         self.gossip = gossip
 
-        if dictRepr:
-            self.gossip = dictRepr[MessageGossip.GOSSIP_STR]
+        if dict_repr:
+            self.gossip = dict_repr[MessageGossip.GOSSIP_STR]
 
-    def dictRepr(self):
-        return { MessageGossip.GOSSIP_STR: self.gossip }
+    def dict_repr(self):
+        return {MessageGossip.GOSSIP_STR: self.gossip}
+
 
 class MessageStopGossip(Message):
-    Type = 13
+    Type = P2P_MESSAGE_BASE + 12
 
     STOP_GOSSIP_STR = u"STOP_GOSSIP"
 
-    def __init__(self, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """ Create stop gossip message
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageStopGossip.Type, sig, timestamp)
 
-        if dictRepr:
-            assert dictRepr.get(MessageStopGossip.STOP_GOSSIP_STR)
+        if dict_repr:
+            assert dict_repr.get(MessageStopGossip.STOP_GOSSIP_STR)
 
-    def dictRepr(self):
-        return { MessageStopGossip.STOP_GOSSIP_STR: True }
+    def dict_repr(self):
+        return {MessageStopGossip.STOP_GOSSIP_STR: True}
+
 
 class MessageLocRank(Message):
-    Type = 14
+    Type = P2P_MESSAGE_BASE + 13
 
     NODE_ID_STR = u"NODE_ID"
     LOC_RANK_STR = u"LOC_RANK"
 
-    def __init__(self, nodeId = '', locRank = '', sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, node_id='', loc_rank='', sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with local opinion about given node
+        :param uuid node_id: message contain opinion about node with this id
+        :param LocalRank loc_rank: opinion about node
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageLocRank.Type, sig, timestamp)
 
-        self.nodeId = nodeId
-        self.locRank = locRank
+        self.node_id = node_id
+        self.loc_rank = loc_rank
 
-        if dictRepr:
-            self.nodeId = dictRepr[MessageLocRank.NODE_ID_STR]
-            self.locRank = dictRepr[MessageLocRank.LOC_RANK_STR]
+        if dict_repr:
+            self.node_id = dict_repr[MessageLocRank.NODE_ID_STR]
+            self.loc_rank = dict_repr[MessageLocRank.LOC_RANK_STR]
 
-    def dictRepr(self):
-        return { MessageLocRank.NODE_ID_STR: self.nodeId,
-                 MessageLocRank.LOC_RANK_STR: self.locRank }
+    def dict_repr(self):
+        return {MessageLocRank.NODE_ID_STR: self.node_id,
+                MessageLocRank.LOC_RANK_STR: self.loc_rank}
+
 
 class MessageFindNode(Message):
-
-    Type = 15
+    Type = P2P_MESSAGE_BASE + 14
 
     NODE_KEY_ID_STR = u"NODE_KEY_ID"
 
-    def __init__(self, nodeKeyId = '', sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, node_key_id='', sig="", timestamp=None, dict_repr=None):
+        """
+        Create find node message
+        :param str node_key_id: key of a node to be find
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageFindNode.Type, sig, timestamp)
 
-        self.nodeKeyId = nodeKeyId
+        self.node_key_id = node_key_id
 
-        if dictRepr:
-            self.nodeKeyId = dictRepr[MessageFindNode.NODE_KEY_ID_STR]
+        if dict_repr:
+            self.node_key_id = dict_repr[MessageFindNode.NODE_KEY_ID_STR]
 
-    def dictRepr(self):
-        return { MessageFindNode.NODE_KEY_ID_STR: self.nodeKeyId }
+    def dict_repr(self):
+        return {MessageFindNode.NODE_KEY_ID_STR: self.node_key_id}
 
-class MessageRandVal(Message):
-
-    Type = 16
-
-    RAND_VAL_STR = u"RAND_VAL"
-
-    def __init__(self, randVal = 0, sig = "", timestamp = None, dictRepr = None):
-        Message.__init__(self, MessageRandVal.Type, sig, timestamp)
-
-        self.randVal = randVal
-
-        if dictRepr:
-            self.randVal = dictRepr[MessageRandVal.RAND_VAL_STR]
-
-    def dictRepr(self):
-        return { MessageRandVal.RAND_VAL_STR: self.randVal }
 
 class MessageWantToStartTaskSession(Message):
-
-    Type = 17
+    Type = P2P_MESSAGE_BASE + 15
 
     NODE_INFO_STR = u"NODE_INFO"
     CONN_ID_STR = u"CONN_ID"
     SUPER_NODE_INFO_STR = u"SUPER_NODE_INFO"
 
-    def __init__(self, nodeInfo=None, connId=None, superNodeInfo=None, sig="", timestamp=None,
-                 dictRepr=None):
+    def __init__(self, node_info=None, conn_id=None, super_node_info=None, sig="", timestamp=None,
+                 dict_repr=None):
+        """
+        Create request for starting task session with given node
+        :param Node node_info: information about this node
+        :param uuid conn_id: connection id for refrence
+        :param Node|None super_node_info: information about known supernode
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageWantToStartTaskSession.Type, sig, timestamp)
 
-        self.nodeInfo = nodeInfo
-        self.connId = connId
-        self.superNodeInfo = superNodeInfo
+        self.node_info = node_info
+        self.conn_id = conn_id
+        self.super_node_info = super_node_info
 
-        if dictRepr:
-            self.nodeInfo = dictRepr[MessageWantToStartTaskSession.NODE_INFO_STR]
-            self.connId = dictRepr[MessageWantToStartTaskSession.CONN_ID_STR]
-            self.superNodeInfo = dictRepr[MessageWantToStartTaskSession.SUPER_NODE_INFO_STR]
+        if dict_repr:
+            self.node_info = dict_repr[MessageWantToStartTaskSession.NODE_INFO_STR]
+            self.conn_id = dict_repr[MessageWantToStartTaskSession.CONN_ID_STR]
+            self.super_node_info = dict_repr[MessageWantToStartTaskSession.SUPER_NODE_INFO_STR]
 
-    def dictRepr(self):
+    def dict_repr(self):
         return {
-            MessageWantToStartTaskSession.NODE_INFO_STR: self.nodeInfo,
-            MessageWantToStartTaskSession.CONN_ID_STR: self.connId,
-            MessageWantToStartTaskSession.SUPER_NODE_INFO_STR: self.superNodeInfo
+            MessageWantToStartTaskSession.NODE_INFO_STR: self.node_info,
+            MessageWantToStartTaskSession.CONN_ID_STR: self.conn_id,
+            MessageWantToStartTaskSession.SUPER_NODE_INFO_STR: self.super_node_info
         }
 
 
 class MessageSetTaskSession(Message):
-
-    Type = 18
+    Type = P2P_MESSAGE_BASE + 16
 
     KEY_ID_STR = u"KEY_ID"
     NODE_INFO_STR = u"NODE_INFO"
     CONN_ID_STR = u"CONN_ID"
     SUPER_NODE_INFO_STR = u"SUPER_NODE_INFO"
 
-    def __init__(self, keyId=None, nodeInfo=None, connId=None, superNodeInfo=None, sig="", timestamp=None,
-                 dictRepr=None):
+    def __init__(self, key_id=None, node_info=None, conn_id=None, super_node_info=None, sig="", timestamp=None,
+                 dict_repr=None):
+        """
+        Create message with information that node from node_info want to start task session with key_id node
+        :param key_id: target node key
+        :param Node node_info: information about requester
+        :param uuid conn_id: connection id for reference
+        :param Node|None super_node_info: information about known supernode
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageSetTaskSession.Type, sig, timestamp)
 
-        self.keyId = keyId
-        self.nodeInfo = nodeInfo
-        self.connId = connId
-        self.superNodeInfo = superNodeInfo
+        self.key_id = key_id
+        self.node_info = node_info
+        self.conn_id = conn_id
+        self.super_node_info = super_node_info
 
-        if dictRepr:
-            self.keyId = dictRepr[MessageSetTaskSession.KEY_ID_STR]
-            self.nodeInfo = dictRepr[MessageSetTaskSession.NODE_INFO_STR]
-            self.connId = dictRepr[MessageSetTaskSession.CONN_ID_STR]
-            self.superNodeInfo = dictRepr[MessageSetTaskSession.SUPER_NODE_INFO_STR]
+        if dict_repr:
+            self.key_id = dict_repr[MessageSetTaskSession.KEY_ID_STR]
+            self.node_info = dict_repr[MessageSetTaskSession.NODE_INFO_STR]
+            self.conn_id = dict_repr[MessageSetTaskSession.CONN_ID_STR]
+            self.super_node_info = dict_repr[MessageSetTaskSession.SUPER_NODE_INFO_STR]
 
-    def dictRepr(self):
+    def dict_repr(self):
         return {
-            MessageSetTaskSession.KEY_ID_STR: self.keyId,
-            MessageSetTaskSession.NODE_INFO_STR: self.nodeInfo,
-            MessageSetTaskSession.CONN_ID_STR: self.connId,
-            MessageSetTaskSession.SUPER_NODE_INFO_STR: self.superNodeInfo
+            MessageSetTaskSession.KEY_ID_STR: self.key_id,
+            MessageSetTaskSession.NODE_INFO_STR: self.node_info,
+            MessageSetTaskSession.CONN_ID_STR: self.conn_id,
+            MessageSetTaskSession.SUPER_NODE_INFO_STR: self.super_node_info
         }
 
-class MessageNatHole(Message):
 
-    Type = 19
+class MessageNatHole(Message):
+    Type = P2P_MESSAGE_BASE + 17
 
     KEY_ID_STR = u"KEY_ID"
     ADDR_STR = u"ADDR"
     PORT_STR = u"PORT"
     CONN_ID_STR = u"CONN_ID"
 
-    def __init__(self, keyId=None, addr=None, port=None, connId=None, sig="", timestamp=None,
-                 dictRepr=None):
+    def __init__(self, key_id=None, addr=None, port=None, conn_id=None, sig="", timestamp=None,
+                 dict_repr=None):
+        """
+        Create message with information about nat hole
+        :param key_id: key of the node behind nat hole
+        :param str addr: address of the nat hole
+        :param int port: port of the nat hole
+        :param uuid conn_id: connection id for reference
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageNatHole.Type, sig, timestamp)
 
-        self.keyId = keyId
+        self.key_id = key_id
         self.addr = addr
         self.port = port
-        self.connId = connId
+        self.conn_id = conn_id
 
-        if dictRepr:
-            self.keyId = dictRepr[MessageNatHole.KEY_ID_STR]
-            self.addr = dictRepr[MessageNatHole.ADDR_STR]
-            self.port = dictRepr[MessageNatHole.PORT_STR]
-            self.connId = dictRepr[MessageNatHole.CONN_ID_STR]
+        if dict_repr:
+            self.key_id = dict_repr[MessageNatHole.KEY_ID_STR]
+            self.addr = dict_repr[MessageNatHole.ADDR_STR]
+            self.port = dict_repr[MessageNatHole.PORT_STR]
+            self.conn_id = dict_repr[MessageNatHole.CONN_ID_STR]
 
-    def dictRepr(self):
+    def dict_repr(self):
         return {
-            MessageNatHole.KEY_ID_STR: self.keyId,
+            MessageNatHole.KEY_ID_STR: self.key_id,
             MessageNatHole.ADDR_STR: self.addr,
             MessageNatHole.PORT_STR: self.port,
-            MessageNatHole.CONN_ID_STR: self.connId
+            MessageNatHole.CONN_ID_STR: self.conn_id
         }
 
-class MessageNatTraverseFailure(Message):
 
-    Type = 20
+class MessageNatTraverseFailure(Message):
+    Type = P2P_MESSAGE_BASE + 18
 
     CONN_ID_STR = u"CONN_ID"
 
-    def __init__(self, connId=None, sig="", timestamp=None, dictRepr=None):
+    def __init__(self, conn_id=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information about unsuccessful nat traverse
+        :param uuid conn_id: connection id for reference
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageNatTraverseFailure.Type, sig, timestamp)
 
-        self.connId = connId
+        self.conn_id = conn_id
 
-        if dictRepr:
-            self.connId = dictRepr[MessageNatTraverseFailure.connId]
+        if dict_repr:
+            self.conn_id = dict_repr[MessageNatTraverseFailure.CONN_ID_STR]
 
-    def dictRepr(self):
+    def dict_repr(self):
         return {
-            MessageNatTraverseFailure.CONN_ID_STR: self.connId
+            MessageNatTraverseFailure.CONN_ID_STR: self.conn_id
         }
 
-class MessageInformAboutNatTraverseFailure(Message):
 
-    Type = 21
+class MessageInformAboutNatTraverseFailure(Message):
+    Type = P2P_MESSAGE_BASE + 19
 
     KEY_ID_STR = u"KEY_ID"
     CONN_ID_STR = u"CONN_ID"
 
-    def __init__(self, keyId=None, connId=None, sig="", timestamp=None, dictRepr=None):
-        Message.__init__(self, MessageNatTraverseFailure.Type, sig, timestamp)
+    def __init__(self, key_id=None, conn_id=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create request to inform node with key_id about unsuccessful nat traverse.
+        :param key_id: key of the node that should be inform about failure
+        :param uuid conn_id: connection id for reference
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessageInformAboutNatTraverseFailure.Type, sig, timestamp)
 
-        self.keyId = keyId
-        self.connId = connId
+        self.key_id = key_id
+        self.conn_id = conn_id
 
-        if dictRepr:
-            self.keyId = dictRepr[MessageNatTraverseFailure.keyId]
-            self.connId = dictRepr[MessageNatTraverseFailure.connId]
+        if dict_repr:
+            self.key_id = dict_repr[MessageInformAboutNatTraverseFailure.KEY_ID_STR]
+            self.conn_id = dict_repr[MessageInformAboutNatTraverseFailure.CONN_ID_STR]
 
-    def dictRepr(self):
+    def dict_repr(self):
         return {
-            MessageNatTraverseFailure.KEY_ID_STR: self.keyId,
-            MessageNatTraverseFailure.CONN_ID_STR: self.connId
+            MessageInformAboutNatTraverseFailure.KEY_ID_STR: self.key_id,
+            MessageInformAboutNatTraverseFailure.CONN_ID_STR: self.conn_id
         }
+
 
 TASK_MSG_BASE = 2000
 
-class MessageWantToComputeTask(Message):
 
+class MessageWantToComputeTask(Message):
     Type = TASK_MSG_BASE + 1
 
-    CLIENT_ID_STR   = u"CLIENT_ID"
-    TASK_ID_STR     = u"TASK_ID"
-    PERF_INDEX_STR  = u"PERF_INDEX"
-    MAX_RES_STR     = u"MAX_RES"
-    MAX_MEM_STR     = u"MAX_MEM"
-    NUM_CORES_STR   = u"NUM_CORES"
+    CLIENT_ID_STR = u"CLIENT_ID"
+    TASK_ID_STR = u"TASK_ID"
+    PERF_INDEX_STR = u"PERF_INDEX"
+    MAX_RES_STR = u"MAX_RES"
+    MAX_MEM_STR = u"MAX_MEM"
+    NUM_CORES_STR = u"NUM_CORES"
 
-    def __init__(self, clientId = 0, taskId = 0, perfIndex = 0, maxResourceSize = 0, maxMemorySize = 0, numCores = 0, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, client_id=0, task_id=0, perf_index=0, max_resource_size=0, max_memory_size=0, num_cores=0,
+                 sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information that node wants to compute given task
+        :param str client_id: id of that node
+        :param uuid task_id: if of a task that node wants to compute
+        :param float perf_index: benchmark result for this task type
+        :param int max_resource_size: how much disk space can this node offer
+        :param int max_memory_size: how much ram can this node offer
+        :param int num_cores: how many cpu cores this node can offer
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageWantToComputeTask.Type, sig, timestamp)
 
-        self.clientId           = clientId
-        self.taskId             = taskId
-        self.perfIndex          = perfIndex
-        self.maxResourceSize    = maxResourceSize
-        self.maxMemorySize      = maxMemorySize
-        self.numCores           = numCores
+        self.client_id = client_id
+        self.task_id = task_id
+        self.perf_index = perf_index
+        self.max_resource_size = max_resource_size
+        self.max_memory_size = max_memory_size
+        self.num_cores = num_cores
 
-        if dictRepr:
-            self.clientId           = dictRepr[MessageWantToComputeTask.CLIENT_ID_STR]
-            self.taskId             = dictRepr[MessageWantToComputeTask.TASK_ID_STR]
-            self.perfIndex          = dictRepr[MessageWantToComputeTask.PERF_INDEX_STR]
-            self.maxResourceSize    = dictRepr[MessageWantToComputeTask.MAX_RES_STR]
-            self.maxMemorySize      = dictRepr[MessageWantToComputeTask.MAX_MEM_STR]
-            self.numCores           = dictRepr[MessageWantToComputeTask.NUM_CORES_STR]
+        if dict_repr:
+            self.client_id = dict_repr[MessageWantToComputeTask.CLIENT_ID_STR]
+            self.task_id = dict_repr[MessageWantToComputeTask.TASK_ID_STR]
+            self.perf_index = dict_repr[MessageWantToComputeTask.PERF_INDEX_STR]
+            self.max_resource_size = dict_repr[MessageWantToComputeTask.MAX_RES_STR]
+            self.max_memory_size = dict_repr[MessageWantToComputeTask.MAX_MEM_STR]
+            self.num_cores = dict_repr[MessageWantToComputeTask.NUM_CORES_STR]
 
-    def dictRepr(self):
-        return {    MessageWantToComputeTask.CLIENT_ID_STR : self.clientId,
-                    MessageWantToComputeTask.TASK_ID_STR : self.taskId,
-                    MessageWantToComputeTask.PERF_INDEX_STR: self.perfIndex,
-                    MessageWantToComputeTask.MAX_RES_STR: self.maxResourceSize,
-                    MessageWantToComputeTask.MAX_MEM_STR: self.maxMemorySize,
-                    MessageWantToComputeTask.NUM_CORES_STR: self.numCores }
+    def dict_repr(self):
+        return {MessageWantToComputeTask.CLIENT_ID_STR: self.client_id,
+                MessageWantToComputeTask.TASK_ID_STR: self.task_id,
+                MessageWantToComputeTask.PERF_INDEX_STR: self.perf_index,
+                MessageWantToComputeTask.MAX_RES_STR: self.max_resource_size,
+                MessageWantToComputeTask.MAX_MEM_STR: self.max_memory_size,
+                MessageWantToComputeTask.NUM_CORES_STR: self.num_cores}
+
 
 class MessageTaskToCompute(Message):
-
     Type = TASK_MSG_BASE + 2
 
     COMPUTE_TASK_DEF_STR = u"COMPUTE_TASK_DEF"
 
-    def __init__(self, ctd = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, ctd=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information about subtask to compute
+        :param ComputeTaskDef ctd: definition of a subtask that should be computed
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageTaskToCompute.Type, sig, timestamp)
 
         self.ctd = ctd
 
-        if dictRepr:
-            self.ctd  = dictRepr[MessageTaskToCompute.COMPUTE_TASK_DEF_STR]
+        if dict_repr:
+            self.ctd = dict_repr[MessageTaskToCompute.COMPUTE_TASK_DEF_STR]
 
-    def dictRepr(self):
-        return { MessageTaskToCompute.COMPUTE_TASK_DEF_STR : self.ctd }
+    def dict_repr(self):
+        return {MessageTaskToCompute.COMPUTE_TASK_DEF_STR: self.ctd}
 
-    def getShortHash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps(sorted([(k, v) for k, v in self.ctd.__dict__.items() if k != 'extraData'])))
+    def get_short_hash(self):
+        return SimpleHash.hash(
+            SimpleSerializer.dumps(sorted([(k, v) for k, v in self.ctd.__dict__.items() if k != "extraData"])))
+
 
 class MessageCannotAssignTask(Message):
-    
     Type = TASK_MSG_BASE + 3
 
-    REASON_STR      = u"REASON"
-    TASK_ID_STR     = u"TASK_ID"
+    REASON_STR = u"REASON"
+    TASK_ID_STR = u"TASK_ID"
 
-    def __init__(self, taskId = 0, reason = "", sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, task_id=0, reason="", sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information that node can't get task to compute
+        :param task_id: task that cannot be assigned
+        :param str reason: reason why task cannot be assigned to asking node
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageCannotAssignTask.Type, sig, timestamp)
 
-        self.taskId = taskId
+        self.task_id = task_id
         self.reason = reason
 
-        if dictRepr:
-            self.taskId      = dictRepr[MessageCannotAssignTask.TASK_ID_STR]
-            self.reason     = dictRepr[MessageCannotAssignTask.REASON_STR]
+        if dict_repr:
+            self.task_id = dict_repr[MessageCannotAssignTask.TASK_ID_STR]
+            self.reason = dict_repr[MessageCannotAssignTask.REASON_STR]
 
-    def dictRepr(self):
-        return {    MessageCannotAssignTask.TASK_ID_STR : self.taskId,
-                    MessageCannotAssignTask.REASON_STR: self.reason }
+    def dict_repr(self):
+        return {MessageCannotAssignTask.TASK_ID_STR: self.task_id,
+                MessageCannotAssignTask.REASON_STR: self.reason}
+
 
 class MessageReportComputedTask(Message):
-
     Type = TASK_MSG_BASE + 4
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
@@ -678,170 +897,237 @@ class MessageReportComputedTask(Message):
     EXTRA_DATA_STR = u"EXTRA_DATA"
     ETH_ACCOUNT_STR = u"ETH_ACCOUNT"
 
-    def __init__(self, subtaskId = 0, resultType = None, nodeId = '', address = '',
-                 port = '', keyId = '', nodeInfo=None, ethAccount = '', extraData = None,
-                 sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, subtask_id=0, result_type=None, node_id='', address='',
+                 port='', key_id='', node_info=None, eth_account='', extra_data=None,
+                 sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information about finished computation
+        :param str subtask_id: finished subtask id
+        :param int result_type: type of a result (from result_types dict)
+        :param uuid node_id: task result owner uid
+        :param str address: task result owner address
+        :param int port: task result owner port
+        :param key_id: task result owner key
+        :param Node node_info: information about this node
+        :param str eth_account: ethereum address (bytes20) of task result owner
+        :param extra_data: additional information, eg. list of files
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageReportComputedTask.Type, sig, timestamp)
 
-        self.subtaskId  = subtaskId
-        self.resultType = resultType
-        self.extraData = extraData
-        self.nodeId = nodeId
+        self.subtask_id = subtask_id
+        self.result_type = result_type
+        self.extra_data = extra_data
+        self.node_id = node_id
         self.address = address
         self.port = port
-        self.keyId = keyId
-        self.ethAccount = ethAccount
-        self.nodeInfo = nodeInfo
+        self.key_id = key_id
+        self.eth_account = eth_account
+        self.node_info = node_info
 
-        if dictRepr:
-            self.subtaskId  = dictRepr[MessageReportComputedTask.SUB_TASK_ID_STR]
-            self.resultType = dictRepr[MessageReportComputedTask.RESULT_TYPE_STR]
-            self.nodeId = dictRepr[MessageReportComputedTask.NODE_ID_STR]
-            self.address = dictRepr[MessageReportComputedTask.ADDR_STR]
-            self.port = dictRepr[MessageReportComputedTask.PORT_STR]
-            self.keyId = dictRepr[MessageReportComputedTask.KEY_ID_STR]
-            self.ethAccount = dictRepr[MessageReportComputedTask.ETH_ACCOUNT_STR]
-            self.extraData = dictRepr[MessageReportComputedTask.EXTRA_DATA_STR]
-            self.nodeInfo = dictRepr[MessageReportComputedTask.NODE_INFO_STR]
+        if dict_repr:
+            self.subtask_id = dict_repr[MessageReportComputedTask.SUB_TASK_ID_STR]
+            self.result_type = dict_repr[MessageReportComputedTask.RESULT_TYPE_STR]
+            self.node_id = dict_repr[MessageReportComputedTask.NODE_ID_STR]
+            self.address = dict_repr[MessageReportComputedTask.ADDR_STR]
+            self.port = dict_repr[MessageReportComputedTask.PORT_STR]
+            self.key_id = dict_repr[MessageReportComputedTask.KEY_ID_STR]
+            self.eth_account = dict_repr[MessageReportComputedTask.ETH_ACCOUNT_STR]
+            self.extra_data = dict_repr[MessageReportComputedTask.EXTRA_DATA_STR]
+            self.node_info = dict_repr[MessageReportComputedTask.NODE_INFO_STR]
 
-    def dictRepr(self):
-        return {    MessageReportComputedTask.SUB_TASK_ID_STR : self.subtaskId,
-                    MessageReportComputedTask.RESULT_TYPE_STR: self.resultType,
-                    MessageReportComputedTask.NODE_ID_STR: self.nodeId,
-                    MessageReportComputedTask.ADDR_STR: self.address,
-                    MessageReportComputedTask.PORT_STR: self.port,
-                    MessageReportComputedTask.KEY_ID_STR: self.keyId,
-                    MessageReportComputedTask.ETH_ACCOUNT_STR: self.ethAccount,
-                    MessageReportComputedTask.EXTRA_DATA_STR: self.extraData,
-                    MessageReportComputedTask.NODE_INFO_STR: self.nodeInfo }
+    def dict_repr(self):
+        return {MessageReportComputedTask.SUB_TASK_ID_STR: self.subtask_id,
+                MessageReportComputedTask.RESULT_TYPE_STR: self.result_type,
+                MessageReportComputedTask.NODE_ID_STR: self.node_id,
+                MessageReportComputedTask.ADDR_STR: self.address,
+                MessageReportComputedTask.PORT_STR: self.port,
+                MessageReportComputedTask.KEY_ID_STR: self.key_id,
+                MessageReportComputedTask.ETH_ACCOUNT_STR: self.eth_account,
+                MessageReportComputedTask.EXTRA_DATA_STR: self.extra_data,
+                MessageReportComputedTask.NODE_INFO_STR: self.node_info}
+
 
 class MessageGetTaskResult(Message):
-
     Type = TASK_MSG_BASE + 5
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    DELAY_STR       = u"DELAY"
+    DELAY_STR = u"DELAY"
 
-    def __init__(self, subtaskId = 0, delay = 0.0, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, subtask_id="", delay=0.0, sig="", timestamp=None, dict_repr=None):
+        """
+        Create request for task result
+        :param str subtask_id: finished subtask id
+        :param float delay: if delay is 0, than subtask should be send right know. Otherwise other node should wait
+            <delay> seconds before sending result.
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageGetTaskResult.Type, sig, timestamp)
 
-        self.subtaskId  = subtaskId
-        self.delay      = delay
+        self.subtask_id = subtask_id
+        self.delay = delay
 
-        if dictRepr:
-            self.subtaskId  = dictRepr[MessageGetTaskResult.SUB_TASK_ID_STR]
-            self.delay      = dictRepr[MessageGetTaskResult.DELAY_STR]
+        if dict_repr:
+            self.subtask_id = dict_repr[MessageGetTaskResult.SUB_TASK_ID_STR]
+            self.delay = dict_repr[MessageGetTaskResult.DELAY_STR]
 
-    def dictRepr(self):
-        return {    MessageGetTaskResult.SUB_TASK_ID_STR : self.subtaskId,
-                    MessageGetTaskResult.DELAY_STR: self.delay  }
+    def dict_repr(self):
+        return {MessageGetTaskResult.SUB_TASK_ID_STR: self.subtask_id,
+                MessageGetTaskResult.DELAY_STR: self.delay}
 
+
+# It's an old form of sending task result (don't use if it isn't necessary)
 class MessageTaskResult(Message):
-
     Type = TASK_MSG_BASE + 6
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    RESULT_STR      = u"RESULT"
+    RESULT_STR = u"RESULT"
 
-    def __init__(self, subtaskId = 0, result = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, subtask_id=0, result=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with task results
+        :param str subtask_id: id of finished subtask
+        :param result: task result in binary form
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageTaskResult.Type, sig, timestamp)
 
-        self.subtaskId  = subtaskId
-        self.result     = result
+        self.subtask_id = subtask_id
+        self.result = result
 
-        if dictRepr:
-            self.subtaskId  = dictRepr[MessageTaskResult.SUB_TASK_ID_STR]
-            self.result     = dictRepr[MessageTaskResult.RESULT_STR]
+        if dict_repr:
+            self.subtask_id = dict_repr[MessageTaskResult.SUB_TASK_ID_STR]
+            self.result = dict_repr[MessageTaskResult.RESULT_STR]
 
-    def dictRepr(self):
-        return {    MessageTaskResult.SUB_TASK_ID_STR   : self.subtaskId,
-                    MessageTaskResult.RESULT_STR        : self.result }
+    def dict_repr(self):
+        return {MessageTaskResult.SUB_TASK_ID_STR: self.subtask_id,
+                MessageTaskResult.RESULT_STR: self.result}
+
 
 class MessageGetResource(Message):
-
     Type = TASK_MSG_BASE + 8
 
-    TASK_ID_STR         = u"SUB_TASK_ID"
+    TASK_ID_STR = u"SUB_TASK_ID"
     RESOURCE_HEADER_STR = u"RESOURCE_HEADER"
 
-    def __init__(self, taskId = "", resourceHeader = None , sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, task_id="", resource_header=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Send request for resource to given task
+        :param uuid task_id: given task id
+        :param ResourceHeader resource_header: description of resources that current node has
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageGetResource.Type, sig, timestamp)
 
-        self.taskId         = taskId
-        self.resourceHeader = resourceHeader
+        self.task_id = task_id
+        self.resource_header = resource_header
 
-        if dictRepr:
-            self.taskId         = dictRepr[MessageGetResource.TASK_ID_STR]
-            self.resourceHeader = dictRepr[MessageGetResource.RESOURCE_HEADER_STR]
+        if dict_repr:
+            self.task_id = dict_repr[MessageGetResource.TASK_ID_STR]
+            self.resource_header = dict_repr[MessageGetResource.RESOURCE_HEADER_STR]
 
-    def dictRepr(self):
-        return {    MessageGetResource.TASK_ID_STR : self.taskId,
-                    MessageGetResource.RESOURCE_HEADER_STR: self.resourceHeader
-               }
+    def dict_repr(self):
+        return {MessageGetResource.TASK_ID_STR: self.task_id,
+                MessageGetResource.RESOURCE_HEADER_STR: self.resource_header
+                }
 
+
+# Old method of sending resource. Don't use if it isn't necessary.
 class MessageResource(Message):
-
     Type = TASK_MSG_BASE + 9
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    RESOURCE_STR    = u"RESOURCE"
+    RESOURCE_STR = u"RESOURCE"
 
-    def __init__(self, subtaskId = 0, resource = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, subtask_id=0, resource=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with resource
+        :param str subtask_id: attached resource is needed for this subtask computation
+        :param resource: resource in binary for
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageResource.Type, sig, timestamp)
 
-        self.subtaskId      = subtaskId
-        self.resource       = resource
+        self.subtask_id = subtask_id
+        self.resource = resource
 
-        if dictRepr:
-            self.subtaskId      = dictRepr[MessageResource.SUB_TASK_ID_STR]
-            self.resource       = dictRepr[MessageResource.RESOURCE_STR]
+        if dict_repr:
+            self.subtask_id = dict_repr[MessageResource.SUB_TASK_ID_STR]
+            self.resource = dict_repr[MessageResource.RESOURCE_STR]
 
-    def dictRepr(self):
-        return {    MessageResource.SUB_TASK_ID_STR : self.subtaskId,
-                    MessageResource.RESOURCE_STR: self.resource
-               }
+    def dict_repr(self):
+        return {MessageResource.SUB_TASK_ID_STR: self.subtask_id,
+                MessageResource.RESOURCE_STR: self.resource
+                }
+
 
 class MessageSubtaskResultAccepted(Message):
     Type = TASK_MSG_BASE + 10
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    NODE_ID_STR     = u"NODE_ID"
-    REWARD_STR      = u"REWARD"
+    NODE_ID_STR = u"NODE_ID"
+    REWARD_STR = u"REWARD"
 
-    def __init__(self, subtaskId = 0, reward = 0, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, subtask_id=0, reward=0, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information that subtask result was accepted
+        :param str subtask_id: accepted subtask id
+        :param float reward: payment for computations
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageSubtaskResultAccepted.Type, sig, timestamp)
 
-        self.subtaskId  = subtaskId
-        self.reward     = reward
+        self.subtask_id = subtask_id
+        self.reward = reward
 
-        if dictRepr:
-            self.subtaskId  = dictRepr[MessageSubtaskResultAccepted.SUB_TASK_ID_STR]
-            self.reward     = dictRepr[MessageSubtaskResultAccepted.REWARD_STR]
+        if dict_repr:
+            self.subtask_id = dict_repr[MessageSubtaskResultAccepted.SUB_TASK_ID_STR]
+            self.reward = dict_repr[MessageSubtaskResultAccepted.REWARD_STR]
 
-    def dictRepr(self):
+    def dict_repr(self):
         return {
-            MessageSubtaskResultAccepted.SUB_TASK_ID_STR: self.subtaskId,
+            MessageSubtaskResultAccepted.SUB_TASK_ID_STR: self.subtask_id,
             MessageSubtaskResultAccepted.REWARD_STR: self.reward
         }
+
 
 class MessageSubtaskResultRejected(Message):
     Type = TASK_MSG_BASE + 11
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
 
-    def __init__(self, subtaskId = 0, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, subtask_id=0, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information that subtask result was rejected
+        :param str subtask_id: id of rejected subtask
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageSubtaskResultRejected.Type, sig, timestamp)
 
-        self.subtaskId = subtaskId
+        self.subtask_id = subtask_id
 
-        if dictRepr:
-            self.subtaskId = dictRepr[MessageSubtaskResultRejected.SUB_TASK_ID_STR]
+        if dict_repr:
+            self.subtask_id = dict_repr[MessageSubtaskResultRejected.SUB_TASK_ID_STR]
 
-
-    def dictRepr(self):
+    def dict_repr(self):
         return {
-            MessageSubtaskResultRejected.SUB_TASK_ID_STR: self.subtaskId
+            MessageSubtaskResultRejected.SUB_TASK_ID_STR: self.subtask_id
         }
+
 
 class MessageDeltaParts(Message):
     Type = TASK_MSG_BASE + 12
@@ -852,73 +1138,102 @@ class MessageDeltaParts(Message):
     CLIENT_ID_STR = u"CLIENT_ID"
     ADDR_STR = u"ADDR"
     PORT_STR = u"PORT"
-    NODE_INFO_STR   = u"nodeInfo"
+    NODE_INFO_STR = u"node info"
 
-    def __init__(self, taskId = 0, deltaHeader = None, parts = None, clientId = '',
-                 nodeInfo = None, addr  = '', port = '', sig = "", timestamp = None,
-                 dictRepr = None):
+    def __init__(self, task_id=0, delta_header=None, parts=None, client_id='',
+                 node_info=None, addr='', port='', sig="", timestamp=None,
+                 dict_repr=None):
+        """
+        Create message with resource description in form of "delta parts".
+        :param task_id: resources are for task with this id
+        :param TaskResourceHeader delta_header: resource header containing only parts that computing node doesn't have
+        :param list parts: list of all files that are needed to create resources
+        :param uuid client_id: resource owner id
+        :param Node node_info: information about resource owner
+        :param addr: resource owner address
+        :param port: resource owner port
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageDeltaParts.Type, sig, timestamp)
 
-        self.taskId = taskId
-        self.deltaHeader = deltaHeader
+        self.task_id = task_id
+        self.delta_header = delta_header
         self.parts = parts
-        self.clientId = clientId
+        self.client_id = client_id
         self.addr = addr
         self.port = port
-        self.nodeInfo = nodeInfo
+        self.node_info = node_info
 
-        if dictRepr:
-            self.taskId = dictRepr[MessageDeltaParts.TASK_ID_STR]
-            self.deltaHeader = dictRepr[MessageDeltaParts.DELTA_HEADER_STR]
-            self.parts = dictRepr[MessageDeltaParts.PARTS_STR]
-            self.clientId = dictRepr[MessageDeltaParts.CLIENT_ID_STR]
-            self.addr = dictRepr[MessageDeltaParts.ADDR_STR]
-            self.port = dictRepr[MessageDeltaParts.PORT_STR]
-            self.nodeInfo = dictRepr[MessageDeltaParts.NODE_INFO_STR]
+        if dict_repr:
+            self.task_id = dict_repr[MessageDeltaParts.TASK_ID_STR]
+            self.delta_header = dict_repr[MessageDeltaParts.DELTA_HEADER_STR]
+            self.parts = dict_repr[MessageDeltaParts.PARTS_STR]
+            self.client_id = dict_repr[MessageDeltaParts.CLIENT_ID_STR]
+            self.addr = dict_repr[MessageDeltaParts.ADDR_STR]
+            self.port = dict_repr[MessageDeltaParts.PORT_STR]
+            self.node_info = dict_repr[MessageDeltaParts.NODE_INFO_STR]
 
-    def dictRepr(self):
+    def dict_repr(self):
         return {
-            MessageDeltaParts.TASK_ID_STR: self.taskId,
-            MessageDeltaParts.DELTA_HEADER_STR: self.deltaHeader,
+            MessageDeltaParts.TASK_ID_STR: self.task_id,
+            MessageDeltaParts.DELTA_HEADER_STR: self.delta_header,
             MessageDeltaParts.PARTS_STR: self.parts,
-            MessageDeltaParts.CLIENT_ID_STR: self.clientId,
+            MessageDeltaParts.CLIENT_ID_STR: self.client_id,
             MessageDeltaParts.ADDR_STR: self.addr,
             MessageDeltaParts.PORT_STR: self.port,
-            MessageDeltaParts.NODE_INFO_STR: self.nodeInfo
+            MessageDeltaParts.NODE_INFO_STR: self.node_info
         }
+
 
 class MessageResourceFormat(Message):
     Type = TASK_MSG_BASE + 13
 
     USE_DISTRIBUTED_RESOURCE_STR = u"USE_DISTRIBUTED_RESOURCE"
 
-    def __init__(self, useDistributedResource = 0, sig = "", timestamp = None,  dictRepr = None):
+    def __init__(self, use_distributed_resource=0, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information about resource format
+        :param bool use_distributed_resource: false if resource will be sent directly, true if resource should be pulled
+            from network  with resource server
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageResourceFormat.Type, sig, timestamp)
 
-        self.useDistributedResource = useDistributedResource
+        self.use_distributed_resource = use_distributed_resource
 
-        if dictRepr:
-            self.useDistributedResource = dictRepr[MessageResourceFormat.USE_DISTRIBUTED_RESOURCE_STR]
+        if dict_repr:
+            self.use_distributed_resource = dict_repr[MessageResourceFormat.USE_DISTRIBUTED_RESOURCE_STR]
 
-    def dictRepr(self):
+    def dict_repr(self):
         return {
-            MessageResourceFormat.USE_DISTRIBUTED_RESOURCE_STR: self.useDistributedResource
+            MessageResourceFormat.USE_DISTRIBUTED_RESOURCE_STR: self.use_distributed_resource
         }
+
 
 class MessageAcceptResourceFormat(Message):
     Type = TASK_MSG_BASE + 14
 
     ACCEPT_RESOURCE_FORMAT_STR = u"ACCEPT_RESOURCE_FORMAT"
 
-    def __init__(self, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with resource format confirmation
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageAcceptResourceFormat.Type, sig, timestamp)
 
-        if dictRepr:
-            assert dictRepr.get(MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR)
+        if dict_repr:
+            assert dict_repr.get(MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR)
 
+    def dict_repr(self):
+        return {MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR: True}
 
-    def dictRepr(self):
-        return { MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR: True }
 
 class MessageTaskFailure(Message):
     Type = TASK_MSG_BASE + 15
@@ -926,375 +1241,527 @@ class MessageTaskFailure(Message):
     SUBTASK_ID_STR = u"SUBTASK_ID"
     ERR_STR = u"ERR"
 
-    def __init__(self, subtaskId = "", err = "", sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, subtask_id="", err="", sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information about task computation failure
+        :param str subtask_id: id of a failed subtask
+        :param str err: error message that occur during computations
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageTaskFailure.Type, sig, timestamp)
 
-        self.subtaskId = subtaskId
+        self.subtask_id = subtask_id
         self.err = err
 
-        if dictRepr:
-            self.subtaskId = dictRepr[MessageTaskFailure.SUBTASK_ID_STR]
-            self.err = dictRepr[MessageTaskFailure.ERR_STR]
+        if dict_repr:
+            self.subtask_id = dict_repr[MessageTaskFailure.SUBTASK_ID_STR]
+            self.err = dict_repr[MessageTaskFailure.ERR_STR]
 
-    def dictRepr(self):
+    def dict_repr(self):
         return {
-            MessageTaskFailure.SUBTASK_ID_STR: self.subtaskId,
+            MessageTaskFailure.SUBTASK_ID_STR: self.subtask_id,
             MessageTaskFailure.ERR_STR: self.err
         }
 
-class MessageStartSessionResponse(Message):
 
+class MessageStartSessionResponse(Message):
     Type = TASK_MSG_BASE + 16
 
     CONN_ID_STR = u"CONN_ID"
 
-    def __init__(self, connId=None, sig="", timestamp=None, dictRepr=None):
+    def __init__(self, conn_id=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information that this session was started as an answer for a request to start task session
+        :param uuid conn_id: connection id for reference
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageStartSessionResponse.Type, sig, timestamp)
 
-        self.connId = connId
+        self.conn_id = conn_id
 
-        if dictRepr:
-            self.connId = dictRepr[MessageStartSessionResponse.CONN_ID_STR]
+        if dict_repr:
+            self.conn_id = dict_repr[MessageStartSessionResponse.CONN_ID_STR]
 
-    def dictRepr(self):
-        return { MessageStartSessionResponse.CONN_ID_STR: self.connId }
+    def dict_repr(self):
+        return {MessageStartSessionResponse.CONN_ID_STR: self.conn_id}
+
 
 class MessageMiddleman(Message):
-
     Type = TASK_MSG_BASE + 17
 
     ASKING_NODE_STR = u"ASKING_NODE"
     DEST_NODE_STR = u"DEST_NODE"
     ASK_CONN_ID_STR = u"ASK_CONN_ID"
 
-    def __init__(self, askingNode=None, destNode=None, askConnId=None, sig="", timestamp=None,
-                 dictRepr=None):
+    def __init__(self, asking_node=None, dest_node=None, ask_conn_id=None, sig="", timestamp=None,
+                 dict_repr=None):
+        """
+        Create message that is used to ask node to become middleman in the communication with other node
+        :param Node asking_node: other node information. Middleman should connect with that node.
+        :param Node dest_node: information about this node
+        :param ask_conn_id: connection id that asking node gave for reference
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageMiddleman.Type, sig, timestamp)
 
-        self.askingNode = askingNode
-        self.destNode = destNode
-        self.askConnId = askConnId
+        self.asking_node = asking_node
+        self.dest_node = dest_node
+        self.ask_conn_id = ask_conn_id
 
-        if dictRepr:
-            self.askingNode = dictRepr[MessageMiddleman.ASKING_NODE_STR]
-            self.destNode = dictRepr[MessageMiddleman.DEST_NODE_STR]
-            self.askConnId = dictRepr[MessageMiddleman.ASK_CONN_ID_STR]
+        if dict_repr:
+            self.asking_node = dict_repr[MessageMiddleman.ASKING_NODE_STR]
+            self.dest_node = dict_repr[MessageMiddleman.DEST_NODE_STR]
+            self.ask_conn_id = dict_repr[MessageMiddleman.ASK_CONN_ID_STR]
 
-    def dictRepr(self):
+    def dict_repr(self):
         return {
-            MessageMiddleman.ASKING_NODE_STR: self.askingNode,
-            MessageMiddleman.DEST_NODE_STR: self.destNode,
-            MessageMiddleman.ASK_CONN_ID_STR: self.askConnId
+            MessageMiddleman.ASKING_NODE_STR: self.asking_node,
+            MessageMiddleman.DEST_NODE_STR: self.dest_node,
+            MessageMiddleman.ASK_CONN_ID_STR: self.ask_conn_id
         }
 
-class MessageJoinMiddlemanConn(Message):
 
+class MessageJoinMiddlemanConn(Message):
     Type = TASK_MSG_BASE + 18
 
     CONN_ID_STR = u"CONN_ID"
     KEY_ID_STR = u"KEY_ID"
     DEST_NODE_KEY_ID_STR = u"DEST_NODE_KEY_ID"
 
-    def __init__(self, keyId=None, connId=None, destNodeKeyId=None, sig="", timestamp=None, dictRepr=None):
+    def __init__(self, key_id=None, conn_id=None, dest_node_key_id=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message that is used to ask node communicate with other through middleman connection (this node
+        is the middleman and connection with other node is already opened
+        :param key_id:  this node public key
+        :param conn_id: connection id for reference
+        :param dest_node_key_id: public key of the other node of the middleman connection
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageJoinMiddlemanConn.Type, sig, timestamp)
 
-        self.connId = connId
-        self.keyId = keyId
-        self.destNodeKeyId = destNodeKeyId
+        self.conn_id = conn_id
+        self.key_id = key_id
+        self.dest_node_key_id = dest_node_key_id
 
-        if dictRepr:
-            self.connId = dictRepr[MessageJoinMiddlemanConn.CONN_ID_STR]
-            self.keyId = dictRepr[MessageJoinMiddlemanConn.KEY_ID_STR]
-            self.destNodeKeyId = dictRepr[MessageJoinMiddlemanConn.DEST_NODE_KEY_ID_STR]
+        if dict_repr:
+            self.conn_id = dict_repr[MessageJoinMiddlemanConn.CONN_ID_STR]
+            self.key_id = dict_repr[MessageJoinMiddlemanConn.KEY_ID_STR]
+            self.dest_node_key_id = dict_repr[MessageJoinMiddlemanConn.DEST_NODE_KEY_ID_STR]
 
-    def dictRepr(self):
-        return { MessageJoinMiddlemanConn.CONN_ID_STR: self.connId,
-                 MessageJoinMiddlemanConn.KEY_ID_STR: self.keyId,
-                 MessageJoinMiddlemanConn.DEST_NODE_KEY_ID_STR: self.destNodeKeyId }
+    def dict_repr(self):
+        return {MessageJoinMiddlemanConn.CONN_ID_STR: self.conn_id,
+                MessageJoinMiddlemanConn.KEY_ID_STR: self.key_id,
+                MessageJoinMiddlemanConn.DEST_NODE_KEY_ID_STR: self.dest_node_key_id}
+
 
 class MessageBeingMiddlemanAccepted(Message):
-
     Type = TASK_MSG_BASE + 19
 
     MIDDLEMAN_STR = u"MIDDLEMAN"
 
-    def __init__(self, sig="", timestamp=None, dictRepr=None):
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information that node accepted being a middleman
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageBeingMiddlemanAccepted.Type, sig, timestamp)
 
-        if dictRepr:
-            assert dictRepr.get(MessageBeingMiddlemanAccepted.MIDDLEMAN_STR)
+        if dict_repr:
+            assert dict_repr.get(MessageBeingMiddlemanAccepted.MIDDLEMAN_STR)
 
-    def dictRepr(self):
-        return { MessageBeingMiddlemanAccepted.MIDDLEMAN_STR: True }
+    def dict_repr(self):
+        return {MessageBeingMiddlemanAccepted.MIDDLEMAN_STR: True}
+
 
 class MessageMiddlemanAccepted(Message):
-
     Type = TASK_MSG_BASE + 20
 
     MIDDLEMAN_STR = u"MIDDLEMAN"
 
-    def __init__(self, sig="", timestamp=None, dictRepr=None):
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information that this node accepted connection with middleman.
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageMiddlemanAccepted.Type, sig, timestamp)
 
-        if dictRepr:
-            assert dictRepr.get(MessageMiddlemanAccepted.MIDDLEMAN_STR)
+        if dict_repr:
+            assert dict_repr.get(MessageMiddlemanAccepted.MIDDLEMAN_STR)
 
-    def dictRepr(self):
-        return { MessageMiddlemanAccepted.MIDDLEMAN_STR: True }
+    def dict_repr(self):
+        return {MessageMiddlemanAccepted.MIDDLEMAN_STR: True}
+
 
 class MessageMiddlemanReady(Message):
-
     Type = TASK_MSG_BASE + 21
 
     MIDDLEMAN_STR = u"MIDDLEMAN"
 
-    def __init__(self, sig="", timestamp=None, dictRepr=None):
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information that other node connected and middleman session may be started
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageMiddlemanReady.Type, sig, timestamp)
 
-        if dictRepr:
-            assert dictRepr.get(MessageMiddlemanReady.MIDDLEMAN_STR)
+        if dict_repr:
+            assert dict_repr.get(MessageMiddlemanReady.MIDDLEMAN_STR)
 
-    def dictRepr(self):
-        return { MessageMiddlemanReady.MIDDLEMAN_STR: True }
+    def dict_repr(self):
+        return {MessageMiddlemanReady.MIDDLEMAN_STR: True}
+
 
 class MessageNatPunch(Message):
-
     Type = TASK_MSG_BASE + 22
 
     ASKING_NODE_STR = u"ASKING_NODE"
     DEST_NODE_STR = u"DEST_NODE"
     ASK_CONN_ID_STR = u"ASK_CONN_ID"
 
-    def __init__(self, askingNode=None, destNode=None, askConnId=None, sig="", timestamp=None,
-                 dictRepr=None):
+    def __init__(self, asking_node=None, dest_node=None, ask_conn_id=None, sig="", timestamp=None,
+                 dict_repr=None):
+        """
+        Create message that is used to ask node to inform other node about nat hole that this node will prepare
+        with this connection
+        :param Node asking_node: node that should be informed about potential hole based on this connection
+        :param Node dest_node: node that will try to end this connection and open hole in it's NAT
+        :param uuid ask_conn_id: connection id that asking node gave for reference
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageNatPunch.Type, sig, timestamp)
 
-        self.askingNode = askingNode
-        self.destNode = destNode
-        self.askConnId = askConnId
+        self.asking_node = asking_node
+        self.dest_node = dest_node
+        self.ask_conn_id = ask_conn_id
 
-        if dictRepr:
-            self.askingNode = dictRepr[MessageNatPunch.ASKING_NODE_STR]
-            self.destNode = dictRepr[MessageNatPunch.DEST_NODE_STR]
-            self.askConnId = dictRepr[MessageNatPunch.ASK_CONN_ID_STR]
+        if dict_repr:
+            self.asking_node = dict_repr[MessageNatPunch.ASKING_NODE_STR]
+            self.dest_node = dict_repr[MessageNatPunch.DEST_NODE_STR]
+            self.ask_conn_id = dict_repr[MessageNatPunch.ASK_CONN_ID_STR]
 
-    def dictRepr(self):
+    def dict_repr(self):
         return {
-            MessageNatPunch.ASKING_NODE_STR: self.askingNode,
-            MessageNatPunch.DEST_NODE_STR: self.destNode,
-            MessageNatPunch.ASK_CONN_ID_STR: self.askConnId
+            MessageNatPunch.ASKING_NODE_STR: self.asking_node,
+            MessageNatPunch.DEST_NODE_STR: self.dest_node,
+            MessageNatPunch.ASK_CONN_ID_STR: self.ask_conn_id
         }
 
-class MessageWaitForNatTraverse(Message):
 
+class MessageWaitForNatTraverse(Message):
     Type = TASK_MSG_BASE + 23
 
     PORT_STR = u"PORT"
 
-    def __init__(self, port=None, sig="", timestamp=None, dictRepr=None):
+    def __init__(self, port=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message that inform node that it should start listening on given port (to open nat hole)
+        :param int port: this connection goes out from this port, other node should listen on this port
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageWaitForNatTraverse.Type, sig, timestamp)
 
         self.port = port
 
-        if dictRepr:
-            self.port = dictRepr[MessageWaitForNatTraverse.PORT_STR]
+        if dict_repr:
+            self.port = dict_repr[MessageWaitForNatTraverse.PORT_STR]
 
-    def dictRepr(self):
+    def dict_repr(self):
         return {MessageWaitForNatTraverse.PORT_STR: self.port}
 
-class MessageNatPunchFailure(Message):
 
+class MessageNatPunchFailure(Message):
     Type = TASK_MSG_BASE + 24
 
-    RENDEZVOUS_FAILURE_STR = u"RENDEZVOUS_FAILURE"
+    NAT_PUNCH_FAILURE_STR = u"NAT_PUNCH_FAILURE"
 
-    def __init__(self, sig="", timestamp=None, dictRepr=None):
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Create messsage that informs node about unsuccessful nat punch
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageNatPunchFailure.Type, sig, timestamp)
 
-        if dictRepr:
-            assert dictRepr.get(MessageNatPunchFailure.RENDEZVOUS_FAILURE_STR)
+        if dict_repr:
+            assert dict_repr.get(MessageNatPunchFailure.NAT_PUNCH_FAILURE_STR)
 
-    def dictRepr(self):
-        return {MessageNatPunchFailure.RENDEZVOUS_FAILURE_STR: True}
+    def dict_repr(self):
+        return {MessageNatPunchFailure.NAT_PUNCH_FAILURE_STR: True}
+
 
 RESOURCE_MSG_BASE = 3000
 
-class MessagePushResource(Message):
 
+class MessagePushResource(Message):
     Type = RESOURCE_MSG_BASE + 1
 
     RESOURCE_STR = u"resource"
     COPIES_STR = u"copies"
 
-    def __init__(self, resource = None, copies = 0, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, resource=None, copies=0, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information that expected number of copies of given resource should be pushed to the network
+        :param str resource: resource name
+        :param int copies: number of copies
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessagePushResource.Type, sig, timestamp)
         self.resource = resource
         self.copies = copies
 
-        if dictRepr:
-            self.resource = dictRepr[MessagePushResource.RESOURCE_STR]
-            self.copies = dictRepr[MessagePushResource.COPIES_STR]
+        if dict_repr:
+            self.resource = dict_repr[MessagePushResource.RESOURCE_STR]
+            self.copies = dict_repr[MessagePushResource.COPIES_STR]
 
-    def dictRepr(self):
-        return {    MessagePushResource.RESOURCE_STR: self.resource,
-                    MessagePushResource.COPIES_STR: self.copies
-        }
+    def dict_repr(self):
+        return {MessagePushResource.RESOURCE_STR: self.resource,
+                MessagePushResource.COPIES_STR: self.copies
+                }
+
+
 class MessageHasResource(Message):
-
     Type = RESOURCE_MSG_BASE + 2
 
     RESOURCE_STR = u"resource"
 
-    def __init__(self, resource = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, resource=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information about having given resource
+        :param str resource: resource name
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageHasResource.Type, sig, timestamp)
         self.resource = resource
 
-        if dictRepr:
-            self.resource = dictRepr[MessageHasResource.RESOURCE_STR]
+        if dict_repr:
+            self.resource = dict_repr[MessageHasResource.RESOURCE_STR]
 
-    def dictRepr(self):
-        return { MessageHasResource.RESOURCE_STR: self.resource }
+    def dict_repr(self):
+        return {MessageHasResource.RESOURCE_STR: self.resource}
+
 
 class MessageWantResource(Message):
-
     Type = RESOURCE_MSG_BASE + 3
 
     RESOURCE_STR = u"resource"
 
-    def __init__(self, resource = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, resource=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Send information that node want to receive given resource
+        :param str resource: resource name
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageWantResource.Type, sig, timestamp)
         self.resource = resource
 
-        if dictRepr:
-            self.resource = dictRepr[MessageWantResource.RESOURCE_STR]
+        if dict_repr:
+            self.resource = dict_repr[MessageWantResource.RESOURCE_STR]
 
-    def dictRepr(self):
-        return { MessageWantResource.RESOURCE_STR : self.resource }
+    def dict_repr(self):
+        return {MessageWantResource.RESOURCE_STR: self.resource}
 
 
 class MessagePullResource(Message):
-
     Type = RESOURCE_MSG_BASE + 4
 
     RESOURCE_STR = u"resource"
 
-    def __init__(self, resource = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, resource=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information that given resource is needed
+        :param str resource: resource name
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessagePullResource.Type, sig, timestamp)
         self.resource = resource
 
-        if dictRepr:
-            self.resource = dictRepr[MessagePullResource.RESOURCE_STR]
+        if dict_repr:
+            self.resource = dict_repr[MessagePullResource.RESOURCE_STR]
 
-    def dictRepr(self):
-        return { MessagePullResource.RESOURCE_STR : self.resource }
+    def dict_repr(self):
+        return {MessagePullResource.RESOURCE_STR: self.resource}
+
 
 class MessagePullAnswer(Message):
-
     Type = RESOURCE_MSG_BASE + 5
 
     RESOURCE_STR = u"resource"
-    HAS_RESOURCE_STR = u"hasResource"
+    HAS_RESOURCE_STR = u"has resource"
 
-    def __init__(self, resource = None, hasResource = False, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, resource=None, has_resource=False, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information whether current peer has given resource and may send it
+        :param str resource: resource name
+        :param bool has_resource: information if user has resource
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessagePullAnswer.Type, sig, timestamp)
         self.resource = resource
-        self.hasReource = hasResource
+        self.has_resource = has_resource
 
-        if dictRepr:
-            self.resource = dictRepr[MessagePullAnswer.RESOURCE_STR]
-            self.hasResource = dictRepr[MessagePullAnswer.HAS_RESOURCE_STR]
+        if dict_repr:
+            self.resource = dict_repr[MessagePullAnswer.RESOURCE_STR]
+            self.has_resource = dict_repr[MessagePullAnswer.HAS_RESOURCE_STR]
 
-    def dictRepr(self):
-        return { MessagePullAnswer.RESOURCE_STR: self.resource,
-                 MessagePullAnswer.HAS_RESOURCE_STR: self.hasReource }
+    def dict_repr(self):
+        return {MessagePullAnswer.RESOURCE_STR: self.resource,
+                MessagePullAnswer.HAS_RESOURCE_STR: self.has_resource}
 
+
+# Old message. Don't use if it isn't necessary.
 class MessageSendResource(Message):
-
     Type = RESOURCE_MSG_BASE + 6
 
     RESOURCE_STR = u"resource"
 
-    def __init__(self, resource = None, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, resource=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with resource request
+        :param str resource: resource name
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageSendResource.Type, sig, timestamp)
         self.resource = resource
 
-        if dictRepr:
-            self.resource = dictRepr[MessageSendResource.RESOURCE_STR]
+        if dict_repr:
+            self.resource = dict_repr[MessageSendResource.RESOURCE_STR]
 
-    def dictRepr(self):
-        return { MessageSendResource.RESOURCE_STR: self.resource }
+    def dict_repr(self):
+        return {MessageSendResource.RESOURCE_STR: self.resource}
 
-MANAGER_MSG_BASE = 1000
+
+MANAGER_MSG_BASE = 5000
+
 
 class MessagePeerStatus(Message):
-
     Type = MANAGER_MSG_BASE + 1
 
-    ID_STR      = u"ID"
-    DATA_STR    = u"DATA"
+    ID_STR = u"ID"
+    DATA_STR = u"DATA"
 
-    def __init__(self, id = "", data = "", sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, id_="", data="", sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with peer status
+        :param uuid id_: peer id
+        :param str data: serialized status snapshot
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessagePeerStatus.Type, sig, timestamp)
 
-        self.id = id
+        self.id = id_
         self.data = data
 
-        if dictRepr:
-            self.id = dictRepr[self.ID_STR]
-            self.data = dictRepr[self.DATA_STR]
+        if dict_repr:
+            self.id = dict_repr[self.ID_STR]
+            self.data = dict_repr[self.DATA_STR]
 
-    def dictRepr(self):
-        return { self.ID_STR : self.id, self.DATA_STR : self.data } 
+    def dict_repr(self):
+        return {self.ID_STR: self.id, self.DATA_STR: self.data}
 
     def __str__(self):
         return "{} {}".format(self.id, self.data)
 
+
 class MessageNewTask(Message):
     Type = MANAGER_MSG_BASE + 2
 
-    DATA_STR    = u"DATA"
+    DATA_STR = u"DATA"
 
-    def __init__(self, data = "", sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, data="", sig="", timestamp=None, dict_repr=None):
+        """
+        Create message that adds new task to network
+        :param str data: serialized Task
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageNewTask.Type, sig, timestamp)
 
         self.data = data
 
-        if dictRepr:
-            self.data = dictRepr[self.DATA_STR]
+        if dict_repr:
+            self.data = dict_repr[self.DATA_STR]
 
-    def dictRepr(self):
-        return { self.DATA_STR : self.data } 
+    def dict_repr(self):
+        return {self.DATA_STR: self.data}
 
     def __str__(self):
         return "{}".format(self.data)
 
+
 class MessageKillNode(Message):
     Type = MANAGER_MSG_BASE + 3
 
-    KILL_STR    = u"KILL"
+    KILL_STR = u"KILL"
 
-    def __init__(self, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information that this node should be killed
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageKillNode.Type, sig, timestamp)
 
-        if dictRepr:
-            assert dictRepr.get(MessageKillNode.KILL_STR)
+        if dict_repr:
+            assert dict_repr.get(MessageKillNode.KILL_STR)
 
-    def dictRepr(self):
-        return { MessageKillNode.KILL_STR: True }
+    def dict_repr(self):
+        return {MessageKillNode.KILL_STR: True}
+
 
 class MessageKillAllNodes(Message):
     Type = MANAGER_MSG_BASE + 4
 
     KILLALL_STR = u"KILLALL"
 
-    def __init__(self, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with information that all nodes on this machine should be killed
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageKillAllNodes.Type, sig, timestamp)
 
-        if dictRepr:
-            assert dictRepr.get (MessageKillAllNodes.KILLALL_STR)
+        if dict_repr:
+            assert dict_repr.get(MessageKillAllNodes.KILLALL_STR)
 
-    def dictRepr(self):
-        return { MessageKillAllNodes.KILLALL_STR: True }
+    def dict_repr(self):
+        return {MessageKillAllNodes.KILLALL_STR: True}
 
 
 class MessageNewNodes(Message):
@@ -1302,50 +1769,58 @@ class MessageNewNodes(Message):
 
     NUM_STR = u"NUM"
 
-    def __init__(self, num = 0, sig = "", timestamp = None, dictRepr = None):
+    def __init__(self, num=0, sig="", timestamp=None, dict_repr=None):
+        """
+        Create request to start new nodes on this machine
+        :param int num: how many nodes should be started
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageNewNodes.Type, sig, timestamp)
 
         self.num = num
 
-        if dictRepr:
-            self.num = dictRepr[self.NUM_STR]
+        if dict_repr:
+            self.num = dict_repr[self.NUM_STR]
 
-    def dictRepr(self):
-        return { MessageNewNodes.NUM_STR : self.num }
+    def dict_repr(self):
+        return {MessageNewNodes.NUM_STR: self.num}
 
-def initMessages():
+
+def init_messages():
+    """ Add supported messages to register messages list """
+    # Basic messages
     MessageHello()
+    MessageRandVal()
+    MessageDisconnect()
+
+    # P2P messages
     MessagePing()
     MessagePong()
-    MessageDisconnect()
-    MessageCannotAssignTask()
     MessageGetPeers()
     MessageGetTasks()
     MessagePeers()
     MessageTasks()
     MessageRemoveTask()
+    MessageFindNode()
     MessageGetResourcePeers()
     MessageResourcePeers()
-    MessageDegree()
-    MessageGossip()
-    MessageStopGossip()
-    MessageLocRank()
-    MessageFindNode()
-    MessageRandVal()
     MessageWantToStartTaskSession()
     MessageSetTaskSession()
     MessageNatHole()
     MessageNatTraverseFailure()
     MessageInformAboutNatTraverseFailure()
+    # Ranking messages
+    MessageDegree()
+    MessageGossip()
+    MessageStopGossip()
+    MessageLocRank()
 
+    # Task messages
+    MessageCannotAssignTask()
     MessageTaskToCompute()
     MessageWantToComputeTask()
-    MessagePeerStatus()
-    MessageNewTask()
-    MessageKillNode()
-    MessageKillAllNodes()
-    MessageGetResource()
-    MessageResource()
     MessageReportComputedTask()
     MessageTaskResult()
     MessageTaskFailure()
@@ -1359,15 +1834,15 @@ def initMessages():
     MessageNatPunch()
     MessageWaitForNatTraverse()
     MessageNatPunchFailure()
-    MessageNatTraverseFailure()
-
-    MessageNewNodes()
     MessageSubtaskResultAccepted()
     MessageSubtaskResultRejected()
     MessageDeltaParts()
     MessageResourceFormat()
     MessageAcceptResourceFormat()
 
+    # Resource messages
+    MessageGetResource()
+    MessageResource()
     MessagePushResource()
     MessageHasResource()
     MessageWantResource()
@@ -1375,13 +1850,21 @@ def initMessages():
     MessagePullAnswer()
     MessageSendResource()
 
-def initManagerMessages():
+    # Manager messages
+    MessagePeerStatus()
+    MessageNewTask()
+    MessageKillNode()
+    MessageKillAllNodes()
+    MessageNewNodes()
+
+
+def init_manager_messages():
+    """ Add manager messages to registed messages list"""
     MessagePeerStatus()
     MessageKillNode()
     MessageKillAllNodes()
     MessageNewTask()
     MessageNewNodes()
-
 
 
 if __name__ == "__main__":

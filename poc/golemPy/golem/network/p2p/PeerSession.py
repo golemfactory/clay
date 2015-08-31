@@ -79,7 +79,7 @@ class PeerSession(BasicSafeSession):
             logger.error("P2PService is None, can't sign a message.")
             return None
 
-        msg.sign(self.p2p_service)
+        msg.sig = self.p2p_service.sign(msg.get_short_hash())
         return msg
 
     def verify(self, msg):
@@ -87,7 +87,7 @@ class PeerSession(BasicSafeSession):
         :param Message msg: message to be verified
         :return boolean: True if message was signed with key_id from this connection
         """
-        return self.p2p_service.verifySig(msg.sig, msg.getShortHash(), self.key_id)
+        return self.p2p_service.verifySig(msg.sig, msg.get_short_hash(), self.key_id)
 
     def encrypt(self, data):
         """ Encrypt given data using key_id from this connection.
@@ -175,7 +175,7 @@ class PeerSession(BasicSafeSession):
 
     def send_find_node(self, node_id):
         """ Send find node message
-        :param uuid node_id: node to be find """
+        :param str node_id: key of a node to be find """
         self.send(MessageFindNode(node_id))
 
     def send_want_to_start_task_session(self, node_info, conn_id, super_node_info):
@@ -228,9 +228,9 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.pongReceived(self.node_id, self.key_id, self.address, self.port)
 
     def _react_to_hello(self, msg):
-        self.node_id = msg.clientUID
-        self.node_info = msg.nodeInfo
-        self.key_id = msg.clientKeyId
+        self.node_id = msg.client_uid
+        self.node_info = msg.node_info
+        self.key_id = msg.client_key_id
         self.listen_port = msg.port
 
         if not self.verify(msg):
@@ -254,13 +254,13 @@ class PeerSession(BasicSafeSession):
         if p and p != self and p.conn.opened:
             # self.sendPing()
             logger_msg = "PEER DUPLICATED: {} {} : {}".format(p.node_id, p.address, p.port)
-            logger.warning("{} AND {} : {}".format(logger_msg, msg.clientUID, msg.port))
+            logger.warning("{} AND {} : {}".format(logger_msg, msg.client_uid, msg.port))
             self.disconnect(PeerSession.DCRDuplicatePeers)
 
         if not p:
             self.p2p_service.addPeer(self.node_id, self)
             self.__send_hello()
-            self.send(MessageRandVal(msg.randVal), send_unverified=True)
+            self.send(MessageRandVal(msg.rand_val), send_unverified=True)
 
         # print "Add peer to client uid:{} address:{} port:{}".format(self.node_id, self.address, self.port)
 
@@ -268,7 +268,7 @@ class PeerSession(BasicSafeSession):
         self.__send_peers()
 
     def _react_to_peers(self, msg):
-        peers_info = msg.peersArray
+        peers_info = msg.peers_array
         self.degree = len(peers_info)
         for pi in peers_info:
             self.p2p_service.tryToAddPeer(pi)
@@ -278,18 +278,18 @@ class PeerSession(BasicSafeSession):
         self.__send_tasks(tasks)
 
     def _react_to_tasks(self, msg):
-        for t in msg.tasksArray:
+        for t in msg.tasks_array:
             if not self.p2p_service.addTaskHeader(t):
                 self.disconnect(PeerSession.DCRBadProtocol)
 
     def _react_to_remove_task(self, msg):
-        self.p2p_service.removeTaskHeader(msg.taskId)
+        self.p2p_service.removeTaskHeader(msg.task_id)
 
     def _react_to_get_resource_peers(self, msg):
         self.__send_resource_peers()
 
     def _react_to_resource_peers(self, msg):
-        self.p2p_service.setResourcePeers(msg.resourcePeers)
+        self.p2p_service.setResourcePeers(msg.resource_peers)
 
     def _react_to_degree(self, msg):
         self.degree = msg.degree
@@ -301,31 +301,31 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.stopGossip(self.node_id)
 
     def _react_to_loc_rank(self, msg):
-        self.p2p_service.safeNeighbourLocRank(self.node_id, msg.nodeId, msg.locRank)
+        self.p2p_service.safeNeighbourLocRank(self.node_id, msg.node_id, msg.loc_rank)
 
     def _react_to_find_node(self, msg):
-        nodes_info = self.p2p_service.findNode(msg.nodeKeyId)
+        nodes_info = self.p2p_service.findNode(msg.node_key_id)
         self.send(MessagePeers(nodes_info))
 
     def _react_to_rand_val(self, msg):
-        if self.rand_val == msg.randVal:
+        if self.rand_val == msg.rand_val:
             self.verified = True
             self.p2p_service.setSuggestedAddr(self.key_id, self.address, self.port)
 
     def _react_to_want_to_start_task_session(self, msg):
-        self.p2p_service.peerWantTaskSession(msg.nodeInfo, msg.superNodeInfo, msg.connId)
+        self.p2p_service.peerWantTaskSession(msg.node_info, msg.super_node_info, msg.conn_id)
 
     def _react_to_set_task_session(self, msg):
-        self.p2p_service.peerWantToSetTaskSession(msg.keyId, msg.nodeInfo, msg.connId, msg.superNodeInfo)
+        self.p2p_service.peerWantToSetTaskSession(msg.key_id, msg.node_info, msg.conn_id, msg.super_node_info)
 
     def _react_to_nat_hole(self, msg):
-        self.p2p_service.traverseNat(msg.keyId, msg.addr, msg.port, msg.connId, self.key_id)
+        self.p2p_service.traverseNat(msg.key_id, msg.addr, msg.port, msg.conn_id, self.key_id)
 
     def _react_to_nat_traverse_failure(self, msg):
-        self.p2p_service.traverseNatFailure(msg.connId)
+        self.p2p_service.traverseNatFailure(msg.conn_id)
 
     def _react_to_inform_about_nat_traverse_failure(self, msg):
-        self.p2p_service.sendNatTraverseFailure(msg.keyId, msg.connId)
+        self.p2p_service.sendNatTraverseFailure(msg.key_id, msg.conn_id)
 
     def __send_hello(self):
         listen_params = self.p2p_service.getListenParams()

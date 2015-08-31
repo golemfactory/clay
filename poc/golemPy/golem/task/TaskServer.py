@@ -189,11 +189,8 @@ class TaskServer(PendingConnectionsServer):
         return self.lastMessages
 
     #############################
-    def getWaitingTaskResult(self, subtaskId):
-        if subtaskId in self.resultsToSend:
-            return self.resultsToSend[subtaskId]
-        else:
-            return None
+    def getWaitingTaskResult(self, subtask_id):
+        return self.resultsToSend.get(subtask_id)
 
     #############################
     def getClientId(self):
@@ -214,7 +211,7 @@ class TaskServer(PendingConnectionsServer):
         return self.keysAuth.decrypt(message)
 
     #############################
-    def signData(self, data):
+    def sign(self, data):
         return self.keysAuth.sign(data)
 
     #############################
@@ -487,7 +484,7 @@ class TaskServer(PendingConnectionsServer):
         session.key_id = keyId
         session.conn_id = connId
         self._markConnected(connId, session.address, session.port)
-        self.taskSessions[waitingTaskResult.subtaskId] = session
+        self.taskSessions[waitingTaskResult.subtask_id] = session
 
         session.send_hello()
         session.send_report_computed_task(waitingTaskResult, self.node.prvAddr, self.cur_port, self.client.getEthAccount(),
@@ -773,11 +770,11 @@ class TaskServer(PendingConnectionsServer):
     def __sendWaitingResults(self):
         for wtr in self.resultsToSend.itervalues():
 
-            if not wtr.alreadySending:
-                if time.time() - wtr.lastSendingTrial > wtr.delayTime:
-                    wtr.alreadySending = True
-                    args = {'keyId': wtr.ownerKeyId, 'waitingTaskResult': wtr}
-                    self._addPendingRequest(TaskConnTypes.TaskResult, wtr.owner, wtr.ownerPort, wtr.ownerKeyId, args)
+            if not wtr.already_sending:
+                if time.time() - wtr.last_sending_trial > wtr.delay_time:
+                    wtr.already_sending = True
+                    args = {'keyId': wtr.owner_key_id, 'waitingTaskResult': wtr}
+                    self._addPendingRequest(TaskConnTypes.TaskResult, wtr.owner, wtr.owner_port, wtr.owner_key_id, args)
 
         for wtf in self.failuresToSend.itervalues():
             args = {'keyId': wtf.ownerKeyId, 'subtaskId': wtf.subtaskId, 'errMsg': wtf.errMsg}
@@ -863,18 +860,18 @@ class TaskServer(PendingConnectionsServer):
 
 class WaitingTaskResult:
     #############################
-    def __init__(self, subtaskId, result, resultType, lastSendingTrial, delayTime, ownerAddress, ownerPort, ownerKeyId,
-                 owner):
-        self.subtaskId          = subtaskId
-        self.result             = result
-        self.resultType         = resultType
-        self.lastSendingTrial   = lastSendingTrial
-        self.delayTime          = delayTime
-        self.ownerAddress       = ownerAddress
-        self.ownerPort          = ownerPort
-        self.ownerKeyId         = ownerKeyId
-        self.owner              = owner
-        self.alreadySending     = False
+    def __init__(self, subtask_id, result, result_type, last_sending_trial, delay_time, owner_address, owner_port,
+                 owner_key_id, owner):
+        self.subtask_id = subtask_id
+        self.result = result
+        self.result_type = result_type
+        self.last_sending_trial = last_sending_trial
+        self.delay_time = delay_time
+        self.owner_address = owner_address
+        self.owner_port = owner_port
+        self.owner_key_id = owner_key_id
+        self.owner = owner
+        self.already_sending = False
 
 ##########################################################
 

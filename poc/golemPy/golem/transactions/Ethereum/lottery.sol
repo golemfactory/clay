@@ -5,6 +5,7 @@ contract LotteryAgent {
         uint timeout;
         uint deposit;
         address winner;
+        uint random;
     }
     
     mapping (bytes32 => LotteryData) lotteries;
@@ -19,7 +20,14 @@ contract LotteryAgent {
 		lotteries[descriptionHash] = LotteryData(msg.value, maturity, deposit, 0);
 		Init(msg.sender, descriptionHash, msg.value);
 	}
-	
+
+	function getRandom(bytes32 descriptionHash) {
+		LotteryData lottery = lotteries[descriptionHash];
+	    if (lottery.value == 0 || lottery.winner != 0 | lottery.random != 0 ||
+	    	block.number <= lottery.timeout)
+	        return;
+	}
+
 	function winnerLottery(bytes32 descriptionHash) {
 	    LotteryData lottery = lotteries[descriptionHash];
 	    if (lottery.value == 0 || lottery.winner != 0 || block.number <= lottery.timeout || msg.value < lottery.deposit)

@@ -8,7 +8,7 @@ from twisted.internet import reactor
 
 from golem.AppConfig import AppConfig
 from golem.Client import Client
-from golem.Message import initMessages
+from golem.Message import init_messages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
 
 
@@ -16,7 +16,7 @@ def main():
 
     
 
-    initMessages()
+    init_messages()
 
     cfg = AppConfig.loadConfig()
 

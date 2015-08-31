@@ -430,7 +430,7 @@ class SafeProtocol(ServerProtocol):
             if dec_msg is None:
                 logger.warning("Decryption of message failed")
                 return None
-            m = Message.deserializeMessage(dec_msg)
+            m = Message.deserialize_message(dec_msg)
             if m is None:
                 return None
             m.encrypted = dec_msg != msg

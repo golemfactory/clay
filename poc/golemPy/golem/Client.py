@@ -17,7 +17,7 @@ from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 from golem.AppConfig import AppConfig
 
 from golem.Model import Database
-from golem.Message import initMessages
+from golem.Message import init_messages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.environments.EnvironmentsManager import EnvironmentsManager
 from golem.resource.ResourceServer import ResourceServer
@@ -32,7 +32,7 @@ def emptyAddNodes(*args):
     pass
 
 def startClient():
-    initMessages()
+    init_messages()
 
     cfg = AppConfig.loadConfig()
 

@@ -92,7 +92,7 @@ class BasicSession(FileSession):
         if not self._check_msg(msg):
             return
 
-        action = self._interpretation.get(msg.getType())
+        action = self._interpretation.get(msg.get_type())
         if action:
             action(msg)
         else:
@@ -212,7 +212,7 @@ class BasicSafeSession(BasicSession, SafeSession):
         if not self._verify_time(msg):
             return False
 
-        type_ = msg.getType()
+        type_ = msg.get_type()
 
         if not self.verified and type_ not in self.can_be_unverified:
             self.disconnect(BasicSafeSession.DCRUnverified)
@@ -255,8 +255,7 @@ class MiddlemanSafeSession(BasicSafeSession):
 
         self.is_middleman = False
         self.open_session = None  # transfer data to that session in middleman mode
-        self.askingNodeKeyId = None
-        self.middlemanConnData = None
+        self.middleman_conn_data = None
 
     def send(self, message, send_unverified=False):
         """ Send given message if connection was verified or send_unverified option is set to True.

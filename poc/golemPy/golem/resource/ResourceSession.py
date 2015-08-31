@@ -76,7 +76,7 @@ class ResourceSession(BasicSafeSession):
         :param Message msg: message to be signed
         :return Message: signed message
         """
-        msg.sign(self.resource_server)
+        msg.sig = self.resource_server.sign(msg.get_short_hash())
         return msg
 
     def verify(self, msg):
@@ -84,7 +84,7 @@ class ResourceSession(BasicSafeSession):
         :param Message msg: message to be verified
         :return boolean: True if message was signed with key_id from this connection
         """
-        verify = self.resource_server.verifySig(msg.sig, msg.getShortHash(), self.key_id)
+        verify = self.resource_server.verifySig(msg.sig, msg.get_short_hash(), self.key_id)
         return verify
 
     def send(self, msg, send_unverified=False):
@@ -165,7 +165,7 @@ class ResourceSession(BasicSafeSession):
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
-        self.send(MessageHello(clientKeyId=self.resource_server.getKeyId(), randVal=self.rand_val),
+        self.send(MessageHello(client_key_id=self.resource_server.getKeyId(), rand_val=self.rand_val),
                   send_unverified=True)
 
     #########################
@@ -202,11 +202,11 @@ class ResourceSession(BasicSafeSession):
         self.send_pull_answer(msg.resource, has_resource)
 
     def _react_to_pull_answer(self, msg):
-        self.resource_server.pullAnswer(msg.resource, msg.hasResource, self)
+        self.resource_server.pullAnswer(msg.resource, msg.has_resource, self)
 
     def _react_to_hello(self, msg):
         if self.key_id == 0:
-            self.key_id = msg.clientKeyId
+            self.key_id = msg.client_key_id
             self.send_hello()
 
         if not self.verify(msg):
@@ -214,10 +214,10 @@ class ResourceSession(BasicSafeSession):
             self.disconnect(ResourceSession.DCRUnverified)
             return
 
-        self.send(MessageRandVal(msg.randVal), send_unverified=True)
+        self.send(MessageRandVal(msg.rand_val), send_unverified=True)
 
     def _react_to_rand_val(self, msg):
-        if self.rand_val == msg.randVal:
+        if self.rand_val == msg.rand_val:
             self.verified = True
             for msg in self.msgs_to_send:
                 self.send(msg)

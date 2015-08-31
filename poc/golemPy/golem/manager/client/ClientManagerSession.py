@@ -26,7 +26,7 @@ class ClientManagerSession:
     ##########################
     def interpret(self, msg):
 
-        type = msg.getType()
+        type = msg.get_type()
 
         if type == MessageNewTask.Type:
             task = pickle.loads(msg.data)

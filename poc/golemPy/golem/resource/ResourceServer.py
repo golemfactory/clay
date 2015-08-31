@@ -284,7 +284,7 @@ class ResourceServer(TCPServer):
         return self.keysAuth.decrypt(message)
 
     #############################
-    def signData(self, data):
+    def sign(self, data):
         return self.keysAuth.sign(data)
 
     #############################

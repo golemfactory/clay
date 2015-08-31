@@ -483,106 +483,106 @@ def prepareDeltaZip(rootDir, header, outputDir, choosenFiles = None):
     return compressDir(rootDir, deltaHeader, outputDir)
 
 
-if __name__ == "__main__":
-
-    def walk_test(root):
-        for root, dirs, files in os.walk(root, topdown=True):
-            for name in dirs:
-                #print("D", os.path.join(root, name))
-                print("D", root, name)
-            #for name in files:
-            #    print("F", os.path.join(root, name))
-
-    def printAndPause(i):
-        import msvcrt as m
-        def wait():
-            m.getch()
-
-        print "{}".format(i)
-        wait()
-    
-    def main():
-        t = TaskResourceHeader("test", "resource_test_dir\\test")
-        print t
-        t = 0
-
-    import glob
-    files = glob.glob(os.path.join("input_64", "*.exr"))
-
-    print files
-    from golem.databuffer import DataBuffer
-
-    db = DataBuffer()
-    import gc
-    while True:
-        for f in files:
-            if True:
-                import cPickle
-                import Compress
-                from golem.Message import MessageTaskComputed, Message
-                fh = open(f, 'rb')
-                printAndPause(0)
-                fileData = Compress.compress(fh.read())
-                printAndPause(1)
-                #fileData = fh.read()
-                #data = cPickle.dumps((f, fileData))
-                data = fileData
-                printAndPause(2)
-                m = MessageTaskComputed("", {}, data)
-                printAndPause(3)
-                serializedMess = m.serializeWithHeader()
-                printAndPause(4)
-                db.appendString(serializedMess)
-                printAndPause(5)
-                desMess = Message.deserialize(db)
-                printAndPause(6)
-                data = desMess[0].result
-                printAndPause(7)
-                #(name, data) = cPickle.loads(desMess[0].result)
-                d = Compress.decompress(data)
-                printAndPause(8)
-                out = open("resdupa", 'wb')
-                printAndPause(9)
-                out.write(d)
-                printAndPause(10)
-                out.close()
-                printAndPause(11)
-            
-            gc.collect()
-            printAndPause(12)
-
-        #tr = pickle.loads(trp)
-        #fh = open(os.path.join(tmpDir, tr[ 0 ]), "wb")
-        #fh.write(decompress(tr[ 1 ]))
-        #fh.close()
-
-    #th = TaskResourceHeader.build("test", "resource_test_dir\\test_empty")
-
-    #prepareDeltaZip("resource_test_dir\\test", th, "resource_test_dir.zip")
-
-    #print th
-    
-    #print "Entering task testing zone"
-    #v, m = TaskResource.validateHeader(th, "resource_test_dir\\test" )
-
-    #if not v:
-    #    print m
-    #else:
-    #    tr = TaskResource.buildFromHeader(th, "resource_test_dir\\test")
-    #    print tr
-
-    #    trd = TaskResource.buildDeltaFromHeader(th, "resource_test_dir\\test")
-
-    #    trd.extract("out")
-
-    #    save(trd, "trd.zip")
-
-    #    loadedTrd = load("trd.zip")
-    #    print trd
-
-    #    loadedTrd.extract("out")
-
-        
-
-    #walk_test(".")
-    #main()
+# if __name__ == "__main__":
+#
+#     def walk_test(root):
+#         for root, dirs, files in os.walk(root, topdown=True):
+#             for name in dirs:
+#                 #print("D", os.path.join(root, name))
+#                 print("D", root, name)
+#             #for name in files:
+#             #    print("F", os.path.join(root, name))
+#
+#     def printAndPause(i):
+#         import msvcrt as m
+#         def wait():
+#             m.getch()
+#
+#         print "{}".format(i)
+#         wait()
+#
+#     def main():
+#         t = TaskResourceHeader("test", "resource_test_dir\\test")
+#         print t
+#         t = 0
+#
+#     import glob
+#     files = glob.glob(os.path.join("input_64", "*.exr"))
+#
+#     print files
+#     from golem.databuffer import DataBuffer
+#
+#     db = DataBuffer()
+#     import gc
+#     while True:
+#         for f in files:
+#             if True:
+#                 import cPickle
+#                 import Compress
+#                 from golem.Message import MessageTaskComputed, Message
+#                 fh = open(f, 'rb')
+#                 printAndPause(0)
+#                 fileData = Compress.compress(fh.read())
+#                 printAndPause(1)
+#                 #fileData = fh.read()
+#                 #data = cPickle.dumps((f, fileData))
+#                 data = fileData
+#                 printAndPause(2)
+#                 m = MessageTaskComputed("", {}, data)
+#                 printAndPause(3)
+#                 serializedMess = m.serialize_with_header()
+#                 printAndPause(4)
+#                 db.appendString(serializedMess)
+#                 printAndPause(5)
+#                 desMess = Message.deserialize(db)
+#                 printAndPause(6)
+#                 data = desMess[0].result
+#                 printAndPause(7)
+#                 #(name, data) = cPickle.loads(desMess[0].result)
+#                 d = Compress.decompress(data)
+#                 printAndPause(8)
+#                 out = open("resdupa", 'wb')
+#                 printAndPause(9)
+#                 out.write(d)
+#                 printAndPause(10)
+#                 out.close()
+#                 printAndPause(11)
+#
+#             gc.collect()
+#             printAndPause(12)
+#
+#         #tr = pickle.loads(trp)
+#         #fh = open(os.path.join(tmpDir, tr[ 0 ]), "wb")
+#         #fh.write(decompress(tr[ 1 ]))
+#         #fh.close()
+#
+#     #th = TaskResourceHeader.build("test", "resource_test_dir\\test_empty")
+#
+#     #prepareDeltaZip("resource_test_dir\\test", th, "resource_test_dir.zip")
+#
+#     #print th
+#
+#     #print "Entering task testing zone"
+#     #v, m = TaskResource.validateHeader(th, "resource_test_dir\\test" )
+#
+#     #if not v:
+#     #    print m
+#     #else:
+#     #    tr = TaskResource.buildFromHeader(th, "resource_test_dir\\test")
+#     #    print tr
+#
+#     #    trd = TaskResource.buildDeltaFromHeader(th, "resource_test_dir\\test")
+#
+#     #    trd.extract("out")
+#
+#     #    save(trd, "trd.zip")
+#
+#     #    loadedTrd = load("trd.zip")
+#     #    print trd
+#
+#     #    loadedTrd.extract("out")
+#
+#
+#
+#     #walk_test(".")
+#     #main()

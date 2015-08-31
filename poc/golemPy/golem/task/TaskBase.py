@@ -161,4 +161,4 @@ class Task:
         assert isinstance(taskBuilder, TaskBuilder)
         return taskBuilder.build()
 
-resultTypes = { 'data': 0, 'files': 1 }
+result_types = { 'data': 0, 'files': 1 }
