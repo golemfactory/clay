@@ -1,5 +1,5 @@
 
-from golem.network.transport.Message import MessagePeerStatus, MessageNewTask, MessageKillNode, MessageKillAllNodes, MessageNewNodes
+from golem.network.transport.message import MessagePeerStatus, MessageNewTask, MessageKillNode, MessageKillAllNodes, MessageNewNodes
 import cPickle as pickle
 from golem.manager.ManagerConnState import ManagerConnState
 

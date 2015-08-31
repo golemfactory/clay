@@ -14,7 +14,7 @@ from zope.interface import implements
 
 from golem.core.databuffer import DataBuffer
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE
-from golem.network.transport.Message import Message
+from golem.network.transport.message import Message
 
 from network import Network, SessionProtocol
 

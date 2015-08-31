@@ -1,5 +1,5 @@
 
-from golem.network.transport.Message import MessagePeerStatus, MessageKillNode, MessageNewTask, MessageKillAllNodes, \
+from golem.network.transport.message import MessagePeerStatus, MessageKillNode, MessageNewTask, MessageKillAllNodes, \
     MessageNewNodes
 from golem.manager.ManagerConnState import ManagerConnState
 from golem.core.prochelper import ProcessService

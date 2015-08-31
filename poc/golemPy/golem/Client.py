@@ -17,7 +17,7 @@ from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 from golem.AppConfig import AppConfig
 
 from golem.Model import Database
-from golem.network.transport.Message import init_messages
+from golem.network.transport.message import init_messages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.environments.EnvironmentsManager import EnvironmentsManager
 from golem.resource.ResourceServer import ResourceServer

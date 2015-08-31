@@ -3,7 +3,7 @@ import random
 import time
 import logging
 
-from golem.network.transport.Message import MessageDisconnect, Message
+from golem.network.transport.message import MessageDisconnect, Message
 from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
 
 logger = logging.getLogger(__name__)
