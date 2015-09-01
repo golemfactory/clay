@@ -483,7 +483,7 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_middleman_accepted(self, msg):
         self.send(MessageMiddlemanReady())
         self.is_middleman = True
-        self.openSession.is_middleman = True
+        self.open_session.is_middleman = True
 
     def _react_to_nat_punch(self, msg):
         self.task_server.organizeNatPunch(self.address, self.port, self.key_id, msg.asking_node, msg.dest_node,

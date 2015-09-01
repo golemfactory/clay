@@ -387,7 +387,7 @@ class TaskServer(PendingConnectionsServer):
 
     #############################
     def waitForNatTraverse(self, port, session):
-        session.closeNow()
+        session.close_now()
         args = {'superNode': session.extra_data['superNode'],
                 'askingNode': session.extra_data['askingNode'],
                 'destNode': session.extra_data['destNode'],
@@ -430,18 +430,17 @@ class TaskServer(PendingConnectionsServer):
         # sys.exit(0)
 
     #############################
-    def _listeningForStartSessionEstablished(self, listeningPort, listenId, superNode, askingNode, destNode, askConnId):
-        logger.debug("Listening on port {}".format(listeningPort.getHost().port))
+    def _listeningForStartSessionEstablished(self, port, listenId, superNode, askingNode, destNode, askConnId):
+        logger.debug("Listening on port {}".format(port))
         listening = self.openListenings.get(listenId)
         if listening:
             self.listening.time = time.time()
-            self.listening.listeningPort = listeningPort
+            self.listening.listeningPort = port
         else:
             logger.warning("Listening {} not in open listenings list".format(listenId))
 
     #############################
-    def _listeningForStartSessionFailure(self, err, listenId, superNode, askingNode, destNode, askConnId):
-        logger.error("Listening failure {}".format(err))
+    def _listeningForStartSessionFailure(self, listenId, superNode, askingNode, destNode, askConnId):
         if listenId in self.openListenings:
             del self.openListenings['listenId']
 
