@@ -131,7 +131,7 @@ class PendingConnectionsServer(TCPServer):
     def _addPendingListening(self, type, port, args):
         pl = PendingListening(type, port, self.listenEstablishedForType[type],
                               self.listenFailureForType[type], args)
-        pl.args = (pl.id, ) + pl.args
+        pl.args["listenId"] = pl.id
         self.pendingListenings.append(pl)
 
     #############################
