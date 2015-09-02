@@ -6,7 +6,7 @@ import struct
 import logging
 
 from golem.core.databuffer import DataBuffer
-from golem.core.filesHelper import copy_file_tree
+from golem.core.fileshelper import copy_file_tree
 from golem.resource.ResourceHash import ResourceHash
 
 logger = logging.getLogger(__name__)
