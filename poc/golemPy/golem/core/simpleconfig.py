@@ -80,7 +80,7 @@ class SimpleConfig:
         self._commonConfig  = commonConfig
         self._nodeConfig    = nodeConfig
 
-        cfgFile = SimpleEnv.envFileName(cfgFile)
+        cfgFile = SimpleEnv.__env_file_name(cfgFile)
 
         loggerMsg = "Reading config from file {}".format(cfgFile)
 

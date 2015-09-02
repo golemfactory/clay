@@ -17,7 +17,7 @@ class ProcessService:
     #################################
     def __init__(self, ctlFileName = DEFAULT_PROC_FILE):
 
-        ctlFile = SimpleEnv.envFileName(ctlFileName)
+        ctlFile = SimpleEnv.__env_file_name(ctlFileName)
 
         self.maxFileSize = 1024 * 1024
         self.fd = -1

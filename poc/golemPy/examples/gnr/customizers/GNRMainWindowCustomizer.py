@@ -27,7 +27,7 @@ from examples.gnr.customizers.AboutWindowCustomizer import AboutWindowCustomizer
 from examples.gnr.customizers.ConfigurationDialogCustomizer import ConfigurationDialogCustomizer
 from examples.gnr.customizers.EnvironmentsDialogCustomizer import EnvironmentsDialogCustomizer
 
-from golem.core.simpleexccmd import isWindows, execCmd
+from golem.core.simpleexccmd import is_windows, exec_cmd
 
 class GNRMainWindowCustomizer:
     ############################
@@ -118,11 +118,11 @@ class GNRMainWindowCustomizer:
 
     ############################
     def _showFile(self, fileName):
-        if isWindows():
+        if is_windows():
             os.startfile(fileName)
         else:
             opener = "see"
-            execCmd([opener, fileName ], wait=False)
+            exec_cmd([opener, fileName ], wait=False)
 
 
     ############################

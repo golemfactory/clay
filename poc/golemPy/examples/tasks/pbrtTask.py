@@ -35,12 +35,12 @@ def returnFiles(files):
     return {'data': files, 'resultType': 1 }
 
 ############################
-def isWindows():
+def is_windows():
     return sys.platform == 'win32'
 
-def execCmd(cmd, nice=20):
+def exec_cmd(cmd, nice=20):
     pc = subprocess.Popen(cmd)
-    if isWindows():
+    if is_windows():
         import win32process
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
     else:
@@ -50,7 +50,7 @@ def execCmd(cmd, nice=20):
     pc.wait()
 
 def makeTmpFile(sceneDir, sceneSrc):
-    if isWindows():
+    if is_windows():
         tmpSceneFile = tempfile.TemporaryFile(suffix = ".pbrt", dir = sceneDir)
         tmpSceneFile.close()
         f = open(tmpSceneFile.name, 'w')
@@ -90,7 +90,7 @@ def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, numCore
     prevDir = os.getcwd()
     os.chdir(sceneDir)
 
-    execCmd(cmd)
+    exec_cmd(cmd)
 
     os.chdir(prevDir)
 

@@ -11,16 +11,16 @@ class TestSimpleEnv(unittest.TestCase):
     def testEnvFileName(self):
         shutil.rmtree(DATA_DIRECTORY)
         self.assertFalse(os.path.isdir(DATA_DIRECTORY))
-        fname = SimpleEnv.envFileName('testFile.txt')
+        fname = SimpleEnv.__env_file_name('testFile.txt')
         self.assertTrue(os.path.isdir(DATA_DIRECTORY))
         self.assertTrue(DATA_DIRECTORY in fname)
-        fname2 = SimpleEnv.envFileName(os.path.join(DATA_DIRECTORY, 'testFile.txt'))
+        fname2 = SimpleEnv.__env_file_name(os.path.join(DATA_DIRECTORY, 'testFile.txt'))
         self.assertTrue(os.path.isdir(DATA_DIRECTORY))
         self.assertTrue(DATA_DIRECTORY in fname2)
         shutil.rmtree(DATA_DIRECTORY)
 
     def testOpenEnvFile(self):
-        f = SimpleEnv.openEnvFile('testFile.txt')
+        f = SimpleEnv.open_env_file('testFile.txt')
         self.assertTrue(os.path.isdir(DATA_DIRECTORY))
         self.assertFalse(f.closed)
         self.assertTrue(os.path.isfile(os.path.join(DATA_DIRECTORY, 'testFile.txt')))

@@ -31,7 +31,7 @@ class ThreeDSMaxEnvironment(Environment):
 
     #########################
     def checkSoftware(self):
-        if not self.isWindows():
+        if not self.is_windows():
             return False
         for var in self.softwareEnvVar:
             if os.environ.get(var):
@@ -110,7 +110,7 @@ class VRayEnvironment(Environment):
         self.software.append('V-Ray standalone')
         self.shortDescription = "V-Ray Renderer (http://www.vray.com/)"
         self.softwareEnvVariable = 'VRAY_PATH'
-        if self.isWindows():
+        if self.is_windows():
             self.softwareName = 'vray.exe'
         else:
             self.softwareName = 'vray'
@@ -149,7 +149,7 @@ class LuxRenderEnvironment(Environment):
         self.software.append('LuxRender')
         self.shortDescription = "LuxRenderer Renderer (http://www.luxrender.net/)"
         self.softwareEnvVariables = ['LUXRENDER_ROOT']
-        if self.isWindows():
+        if self.is_windows():
             self.softwareName = ['luxconsole.exe', 'luxmerger.exe']
         else:
             self.softwareName = ['luxconsole', 'luxmerger']

@@ -57,12 +57,12 @@ def __readFromEnvironment():
         return defaultCmdFile
 
 ############################
-def isWindows():
+def is_windows():
     return sys.platform == 'win32'
 
-def execCmd(cmd, nice=20):
+def exec_cmd(cmd, nice=20):
     pc = subprocess.Popen(cmd)
-    if isWindows():
+    if is_windows():
         import win32process
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
     else:
@@ -102,7 +102,7 @@ def runBlenderTask(outfilebasename, sceneFile, scriptSrc, startTask, engine, fra
     for frame in frames:
         cmd = formatBlenderRenderCmd(cmdFile, outputFiles, outfilebasename, sceneFile, scriptFile.name, startTask, engine, frame)
         print cmd
-        execCmd(cmd)
+        exec_cmd(cmd)
 
     return returnFiles(getFiles())
 

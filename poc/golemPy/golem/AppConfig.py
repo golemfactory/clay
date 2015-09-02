@@ -56,7 +56,7 @@ class NodeConfig:
 
     @classmethod
     def readEstimatedPerformance(cls):
-        estmFile = SimpleEnv.envFileName(ESTM_FILENAME)
+        estmFile = SimpleEnv.__env_file_name(ESTM_FILENAME)
         res = 0
         if os.path.isfile(estmFile):
             try:

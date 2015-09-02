@@ -42,7 +42,7 @@ class Environment:
             desc += "Additional informations:\n" + self.longDescription
         return desc
 
-    def isWindows(self):
+    def is_windows(self):
         return sys.platform == 'win32'
 
     def isLinux(self):

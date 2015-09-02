@@ -6,7 +6,7 @@ import tempfile
 from collections import OrderedDict
 from PIL import Image, ImageChops
 
-from golem.core.simpleexccmd import execCmd
+from golem.core.simpleexccmd import exec_cmd
 from golem.task.TaskState import SubtaskStatus
 from golem.environments.Environment import Environment
 
@@ -286,7 +286,7 @@ class LuxTask(RenderingTask):
             cmd = "{} -o {}.flm {}".format(luxMerger, self.outputFile, files)
 
             logger.debug("Lux Merger cmd: {}".format(cmd))
-            execCmd(cmd)
+            exec_cmd(cmd)
 
     #######################
     def __generateFinalFile(self):
@@ -317,7 +317,7 @@ class LuxTask(RenderingTask):
         logger.debug("Last flm cmd {}".format(cmd))
         prevPath = os.getcwd()
         os.chdir(os.path.dirname(self.mainSceneFile))
-        execCmd(cmd)
+        exec_cmd(cmd)
         os.chdir(prevPath)
 
     #######################

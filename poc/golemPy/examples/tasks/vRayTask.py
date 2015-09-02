@@ -63,7 +63,7 @@ def __readFromEnvironment():
     path = os.environ.get(GOLEM_ENV)
     if not path:
         print "No Golem environment variable found... Assuming that exec is in working folder"
-        if isWindows():
+        if is_windows():
             return 'vray.exe'
         else:
             return 'vray'
@@ -77,7 +77,7 @@ def __readFromEnvironment():
         return cmdFile
     else:
         print "Environment not supported... Assuming that exec is in working folder"
-        if isWindows():
+        if is_windows():
             return 'vray.exe'
         else:
             return 'vray'
@@ -99,12 +99,12 @@ def returnData(files):
     return { 'data': res, 'resultType': 0 }
 
 ############################
-def isWindows():
+def is_windows():
     return sys.platform == 'win32'
 
-def execCmd(cmd, nice=20):
+def exec_cmd(cmd, nice=20):
     pc = subprocess.Popen(cmd)
-    if isWindows():
+    if is_windows():
         import win32process
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
     else:
@@ -161,7 +161,7 @@ def runVRayTask(pathRoot, startTask, endTask, hTask, totalTasks, outfilebasename
 
     print cmd
 
-    execCmd(cmd)
+    exec_cmd(cmd)
 
     files = glob.glob(outputFiles + "/*.exr")
 

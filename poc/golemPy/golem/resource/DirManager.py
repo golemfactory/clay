@@ -2,7 +2,7 @@ import os
 import logging
 import shutil
 
-from golem.core.simpleexccmd import isWindows
+from golem.core.simpleexccmd import is_windows
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class DirManager:
         self.res = res
         self.output = output
         self.globalResource = globalResource
-        if isWindows():
+        if is_windows():
             self.__getPath = self.__getPathWindows
 
     ######################

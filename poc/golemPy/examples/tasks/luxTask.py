@@ -20,7 +20,7 @@ def __readFromEnvironment():
     path = os.environ.get(GOLEM_ENV)
     if not path:
         print "No Golem environment variable found... Assuming that exec is in working folder"
-        if isWindows():
+        if is_windows():
             return 'luxconsole.exe'
         else:
             return 'luxconsole'
@@ -34,7 +34,7 @@ def __readFromEnvironment():
         return cmdFile
     else:
         print "Environment not supported... Assuming that exec is in working folder"
-        if isWindows():
+        if is_windows():
             return 'luxconsole.exe'
         else:
             return 'luxconsole'
@@ -61,12 +61,12 @@ def returnFiles(files):
 
 
 ############################
-def isWindows():
+def is_windows():
     return sys.platform == 'win32'
 
-def execCmd(cmd, nice=20):
+def exec_cmd(cmd, nice=20):
     pc = subprocess.Popen(cmd)
-    if isWindows():
+    if is_windows():
         import win32process
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
     else:
@@ -76,7 +76,7 @@ def execCmd(cmd, nice=20):
     pc.wait()
 
 def makeTmpFile(sceneDir, sceneSrc):
-    if isWindows():
+    if is_windows():
         tmpSceneFile = tempfile.TemporaryFile(suffix = ".lxs", dir = sceneDir)
         tmpSceneFile.close()
         f = open(tmpSceneFile.name, 'w')
@@ -120,7 +120,7 @@ def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, numCo
     prevDir = os.getcwd()
     os.chdir(sceneDir)
 
-    execCmd(cmd)
+    exec_cmd(cmd)
 
     os.chdir(prevDir)
     files = glob.glob(outputFiles + "/*.png") + glob.glob(outputFiles + "/*.flm")
