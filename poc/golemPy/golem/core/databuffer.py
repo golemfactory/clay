@@ -1,5 +1,6 @@
 import struct
 
+
 class DataBuffer:
 
     def __init__(self):

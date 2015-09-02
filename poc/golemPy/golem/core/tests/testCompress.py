@@ -5,7 +5,7 @@ import os
 
 sys.path.append(os.environ.get('GOLEM'))
 
-from golem.core.Compress import compress, decompress, load, save
+from golem.core.compress import compress, decompress, load, save
 
 
 class TestCompress(unittest.TestCase):

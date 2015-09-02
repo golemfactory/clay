@@ -6,7 +6,7 @@ import struct
 import logging
 
 from golem.core.databuffer import DataBuffer
-from golem.core.filesHelper import copyFileTree
+from golem.core.filesHelper import copy_file_tree
 from golem.resource.ResourceHash import ResourceHash
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class DistributedResourceManager:
 
     ###################
     def copyResources(self, newResourceDir):
-        copyFileTree(self.resourceDir, newResourceDir)
+        copy_file_tree(self.resourceDir, newResourceDir)
         filenames = next(os.walk(self.resourceDir))[2]
         for f in filenames:
             os.remove(os.path.join(self.resourceDir, f))

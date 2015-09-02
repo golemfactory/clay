@@ -8,7 +8,7 @@ from PyQt4.QtGui import QMessageBox
 
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
-from golem.core.filesHelper import getDirSize
+from golem.core.filesHelper import get_dir_size
 from MemoryHelper import resourceSizeToDisplay, translateResourceIndex, dirSizeToDisplay
 
 logger = logging.getLogger(__name__)
@@ -159,7 +159,7 @@ class ConfigurationDialogCustomizer:
             return subprocess.check_output(['du', '-sh', path]).split()[0]
         except:
             try:
-                size = getDirSize(path)
+                size = get_dir_size(path)
                 humanReadableSize, idx = dirSizeToDisplay(size)
                 return "{} {}".format(humanReadableSize, translateResourceIndex(idx))
             except Exception as err:
