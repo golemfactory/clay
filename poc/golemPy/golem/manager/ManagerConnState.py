@@ -28,7 +28,7 @@ class ManagerConnState(ServerProtocol):
     def dataReceived(self, data):
         assert self.opened
 
-        self.db.appendString(data)
+        self.db.append_string(data)
         mess = Message.deserialize(self.db)
         if mess is None:
             logger.error("Deserialization message failed")

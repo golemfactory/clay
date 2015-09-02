@@ -532,7 +532,7 @@ def prepareDeltaZip(rootDir, header, outputDir, choosenFiles = None):
 #                 printAndPause(3)
 #                 serializedMess = m.serialize_with_header()
 #                 printAndPause(4)
-#                 db.appendString(serializedMess)
+#                 db.append_string(serializedMess)
 #                 printAndPause(5)
 #                 desMess = Message.deserialize(db)
 #                 printAndPause(6)

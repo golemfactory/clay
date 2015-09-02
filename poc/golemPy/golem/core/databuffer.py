@@ -1,121 +1,156 @@
 import struct
 
+from variables import LONG_STANDARD_SIZE
+
 
 class DataBuffer:
-
+    """ Data buffer that helps with network communication. """
     def __init__(self):
-        self.bufferedData = ""
+        """ Create new data buffer """
+        self.buffered_data = ""
    
-    def appendUInt(self, num):
+    def append_ulong(self, num):
+        """
+        Append given number to data buffer written as unsigned long in network order
+        :param long num: number to append (must be higher than 0)
+        """
         assert num >= 0
-        strNumRep = struct.pack("!L", num)
-        self.bufferedData = "".join([ self.bufferedData, strNumRep ])
+        str_num_rep = struct.pack("!L", num)
+        self.buffered_data = "".join([self.buffered_data, str_num_rep])
 
-    def appendString(self, data):
-        self.bufferedData = "".join([ self.bufferedData, data ])
+    def append_string(self, data):
+        """ Append given string to data buffer
+        :param str data: string to append
+        """
+        self.buffered_data = "".join([self.buffered_data, data])
 
-    def dataSize(self):
-        return len(self.bufferedData)
+    def data_size(self):
+        """ Return size of data in buffer
+        :return int: size of data in buffer
+        """
+        return len(self.buffered_data)
 
-    def peekUInt(self):
-        assert len(self.bufferedData) >= 4
+    def peek_ulong(self):
+        """ Check long number that is located at the beginning of this data buffer
+        :return long: number at the beginning of the buffer
+        """
+        assert len(self.buffered_data) >= LONG_STANDARD_SIZE
 
-        (retVal,) = struct.unpack("!L", self.bufferedData[0:4])
-        return retVal
+        (ret_val,) = struct.unpack("!L", self.buffered_data[0:LONG_STANDARD_SIZE])
+        return ret_val
 
-    def readUInt(self):
-        val = self.peekUInt()
-        self.bufferedData = self.bufferedData[4:]
+    def read_ulong(self):
+        """ Remove long number at the beginning of this data buffer and return it.
+        :return long: long number removed from the beginning of buffer
+        """
+        val_ = self.peek_ulong()
+        self.buffered_data = self.buffered_data[4:]
 
-        return val
+        return val_
 
-    def peekString(self, numChars):
-        assert numChars <= len(self.bufferedData)
+    def peek_string(self, num_chars):
+        """ Return first <num_chars> chars from buffer. Doesn't change the buffer.
+        :param long num_chars: how many chars should be read from buffer
+        :return str: first <num_chars> chars from buffer
+        """
+        assert num_chars <= len(self.buffered_data)
 
-        retStr = self.bufferedData[:numChars]
-        return retStr
+        ret_str = self.buffered_data[:num_chars]
+        return ret_str
 
-    def readString(self, numChars):
-        val = self.peekString(numChars)
-        self.bufferedData = self.bufferedData[numChars:]
+    def read_string(self, num_chars):
+        """ Remove first <num_chars> chars from buffer and return them.
+        :param long num_chars: how many chars should be read and removed from buffer
+        :return str: string removed form buffer
+        """
+        val_ = self.peek_string(num_chars)
+        self.buffered_data = self.buffered_data[num_chars:]
 
-        return val
+        return val_
         
-    def readAll(self):
-        retData = self.bufferedData
-        self.bufferedData = ""
+    def read_all(self):
+        """ Return all data from buffer and clear the buffer.
+        :return str: all data that was in the buffer.
+        """
+        ret_data = self.buffered_data
+        self.buffered_data = ""
 
-        return retData
+        return ret_data
 
-    def readLenPrefixedString(self):
-        retStr = None
+    def read_len_prefixed_string(self):
+        """ Read long number from the buffer and then read string with that length from the buffer
+        :return str: first string from the buffer (after long)
+        """
+        ret_str = None
 
-        if self.dataSize() > 4 and self.dataSize() >= (self.peekUInt() + 4):
-            numChars = self.readUInt()
-            retStr = self.readString(numChars)
+        if self.data_size() > LONG_STANDARD_SIZE and self.data_size() >= (self.peek_ulong() + LONG_STANDARD_SIZE):
+            num_chars = self.read_ulong()
+            ret_str = self.read_string(num_chars)
 
-        return retStr
+        return ret_str
 
-    def getLenPrefixedString(self):
+    def get_len_prefixed_string(self):
+        """Generator function that return from buffer strings preceded with their length (long) """
+        while self.data_size() > LONG_STANDARD_SIZE and self.data_size() >= (self.peek_ulong() + LONG_STANDARD_SIZE):
+            num_chars = self.read_ulong()
+            yield self.read_string(num_chars)
 
-        while self.dataSize() > 4 and self.dataSize() >= (self.peekUInt() + 4):
-            numChars = self.readUInt()
-            yield self.readString(numChars)
+    def append_len_prefixed_string(self, data):
+        """ Append length of a given data and then given data to the buffer
+        :param str data: data to append
+        """
+        self.append_ulong(len(data))
+        self.append_string(data)
 
-
-    def appendLenPrefixedString(self, data):
-        self.appendUInt(len(data))
-        self.appendString(data)
-
-    def clearBuffer(self):
-        self.bufferedData = ""
+    def clear_buffer(self):
+        """ Remove all data from the buffer """
+        self.buffered_data = ""
 
 if __name__ == "__main__":
 
     db = DataBuffer()
 
-    val = 1512
-    db.appendUInt(val)
-    print "Written {} Buffer len {}".format(val, db.dataSize())
+    val__ = 1512
+    db.append_ulong(val__)
+    print "Written {} Buffer len {}".format(val__, db.data_size())
 
-    val = 27815
-    db.appendUInt(val)
-    print "Written {} Buffer len {}".format(val, db.dataSize())
+    val__ = 27815
+    db.append_ulong(val__)
+    print "Written {} Buffer len {}".format(val__, db.data_size())
 
-    val = "string0"
-    s1l = len(val)
-    db.appendString(val )
-    print "Written '{}' Buffer len {}".format(val, db.dataSize())
+    val__ = "string0"
+    s1l = len(val__)
+    db.append_string(val__)
+    print "Written '{}' Buffer len {}".format(val__, db.data_size())
 
-    val = "stringofsizegreaterthan1"
-    s2l = len(val)
-    db.appendString(val)
-    print "Buffer '{}' len {}".format(val, db.dataSize())
+    val__ = "stringofsizegreaterthan1"
+    s2l = len(val__)
+    db.append_string(val__)
+    print "Buffer '{}' len {}".format(val__, db.data_size())
 
-    val = db.readUInt()
-    print "Read uint {} len remaining {}".format(val, db.dataSize())
+    val__ = db.read_ulong()
+    print "Read uint {} len remaining {}".format(val__, db.data_size())
 
-    val = db.readUInt()
-    print "Read uint {} len remaining {}".format(val, db.dataSize())
+    val__ = db.read_ulong()
+    print "Read uint {} len remaining {}".format(val__, db.data_size())
 
-    val = db.readString(s1l)
-    print "Read string '{}' len remaining {}".format(val, db.dataSize())
+    val__ = db.read_string(s1l)
+    print "Read string '{}' len remaining {}".format(val__, db.data_size())
 
-    val = db.readString(s2l)
-    print "Read string '{}' len remaining {}".format(val, db.dataSize())
+    val__ = db.read_string(s2l)
+    print "Read string '{}' len remaining {}".format(val__, db.data_size())
 
-    print "{}".format(db.readString(0))
-    #expected to fail on assert
-    #print "{}".format(db.readUInt())
-
+    print "{}".format(db.read_string(0))
+    # expected to fail on assert
+    # print "{}".format(db.read_ulong())
 
     s3 = "test string 3"
     s4 = "not a very test string"
 
-    db.appendLenPrefixedString(s3)
-    db.appendLenPrefixedString(s4)
+    db.append_len_prefixed_string(s3)
+    db.append_len_prefixed_string(s4)
 
-    print db.readLenPrefixedString()
-    print db.dataSize()
-    print db.readLenPrefixedString()
-    print db.dataSize()
+    print db.read_len_prefixed_string()
+    print db.data_size()
+    print db.read_len_prefixed_string()
+    print db.data_size()

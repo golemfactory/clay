@@ -353,14 +353,14 @@ class BasicProtocol(SessionProtocol):
         ser_msg = msg.serialize()
 
         db = DataBuffer()
-        db.appendLenPrefixedString(ser_msg)
-        return db.readAll()
+        db.append_len_prefixed_string(ser_msg)
+        return db.read_all()
 
     def _can_receive(self):
         return self.opened and isinstance(self.db, DataBuffer)
 
     def _interpret(self, data):
-        self.db.appendString(data)
+        self.db.append_string(data)
         mess = self._data_to_messages()
         if mess is None or len(mess) == 0:
             logger.error("Deserialization message failed")
@@ -418,12 +418,12 @@ class SafeProtocol(ServerProtocol):
         enc_msg = self.session.encrypt(ser_msg)
 
         db = DataBuffer()
-        db.appendLenPrefixedString(enc_msg)
-        return db.readAll()
+        db.append_len_prefixed_string(enc_msg)
+        return db.read_all()
 
     def _data_to_messages(self):
         assert isinstance(self.db, DataBuffer)
-        msgs = [msg for msg in self.db.getLenPrefixedString()]
+        msgs = [msg for msg in self.db.get_len_prefixed_string()]
         messages = []
         for msg in msgs:
             dec_msg = self.session.decrypt(msg)
@@ -498,8 +498,8 @@ class MidAndFilesProtocol(FilesProtocol):
     def _interpret(self, data):
         if self.session.is_middleman:
             self.session.last_message_time = time.time()
-            self.db.appendString(data)
-            self.session.interpret(self.db.readAll())
+            self.db.append_string(data)
+            self.session.interpret(self.db.read_all())
         else:
             FilesProtocol._interpret(self, data)
 

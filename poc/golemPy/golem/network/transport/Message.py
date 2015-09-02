@@ -49,7 +49,7 @@ class Message:
         :param DataBuffer db_: data buffer that message should be attached to
         """
         assert isinstance(db_, DataBuffer)
-        db_.appendLenPrefixedString(self.serialize())
+        db_.append_len_prefixed_string(self.serialize())
 
     @classmethod
     def decrypt_and_deserialize(cls, db_, server):
@@ -61,7 +61,7 @@ class Message:
         """
         assert isinstance(db_, DataBuffer)
         messages_ = []
-        msg_ = db_.readLenPrefixedString()
+        msg_ = db_.read_len_prefixed_string()
         while msg_:
             encrypted = True
             try:
@@ -81,7 +81,7 @@ class Message:
             m.encrypted = encrypted
 
             messages_.append(m)
-            msg_ = db_.readLenPrefixedString()
+            msg_ = db_.read_len_prefixed_string()
 
         return messages_
 
@@ -94,7 +94,7 @@ class Message:
         """
         assert isinstance(db_, DataBuffer)
         messages_ = []
-        msg_ = db_.readLenPrefixedString()
+        msg_ = db_.read_len_prefixed_string()
 
         while msg_:
             m = cls.deserialize_message(msg_)
@@ -104,7 +104,7 @@ class Message:
                 assert False
 
             messages_.append(m)
-            msg_ = db_.readLenPrefixedString()
+            msg_ = db_.read_len_prefixed_string()
 
         return messages_
 
@@ -1880,16 +1880,16 @@ if __name__ == "__main__":
     print dcm
 
     db = DataBuffer()
-    db.appendLenPrefixedString(hem.serialize())
-    db.appendLenPrefixedString(pim.serialize())
-    db.appendLenPrefixedString(pom.serialize())
-    db.appendLenPrefixedString(dcm.serialize())
+    db.append_len_prefixed_string(hem.serialize())
+    db.append_len_prefixed_string(pim.serialize())
+    db.append_len_prefixed_string(pom.serialize())
+    db.append_len_prefixed_string(dcm.serialize())
 
-    print db.dataSize()
-    streamedData = db.readAll()
+    print db.data_size()
+    streamedData = db.read_all()
     print len(streamedData)
 
-    db.appendString(streamedData)
+    db.append_string(streamedData)
 
     messages = Message.deserialize(db)
 

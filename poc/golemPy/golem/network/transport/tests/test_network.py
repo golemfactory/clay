@@ -267,7 +267,7 @@ class TestBasicProtocol(unittest.TestCase):
         self.assertTrue(p.send_message(msg))
         self.assertEqual(len(p.transport.buff), 2)
         db = DataBuffer()
-        db.appendString(p.transport.buff[1])
+        db.append_string(p.transport.buff[1])
         m = Message.deserialize(db)[0]
         self.assertEqual(m.timestamp, msg.timestamp)
 
