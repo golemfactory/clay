@@ -124,8 +124,8 @@ class NodeSimulator(QtCore.QThread):
         self.remTask = 0
         self.remTaskStartTime = startTime
 
-        loggerMsg = "Starting node '{}' local tasks: {} remote tasks: {}".format(self.uid, self.numLocalTasks, self.numRemoteTasks)
-        logger.info("{} ->local task dura: {} secs, remote task dura: {} secs".format(loggerMsg, self.localTaskDuration, self.remoteTaskDuration))
+        logger_msg = "Starting node '{}' local tasks: {} remote tasks: {}".format(self.uid, self.numLocalTasks, self.numRemoteTasks)
+        logger.info("{} ->local task dura: {} secs, remote task dura: {} secs".format(logger_msg, self.localTaskDuration, self.remoteTaskDuration))
 
         while time.time() - startTime < self.totalDuration:
                 

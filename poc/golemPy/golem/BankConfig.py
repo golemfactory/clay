@@ -17,7 +17,7 @@ class CommonConfig:
 
         self._section = section
 
-        ConfigEntry.createProperty(section, "price base", priceBase, self, "PriceBase")
+        ConfigEntry.create_property(section, "price base", priceBase, self, "PriceBase")
 
     ##############################
     def section(self):
@@ -29,7 +29,7 @@ class NodeConfig:
     def __init__(self, nodeId, budget = START_BUDGET):
         self._section = "Node {}".format(nodeId)
 
-        ConfigEntry.createProperty(self.section(), "budget", budget, self, "Budget")
+        ConfigEntry.create_property(self.section(), "budget", budget, self, "Budget")
 
     ##############################
     def section(self):
@@ -54,18 +54,18 @@ class BankConfig:
 
     ##############################
     def getPriceBase(self):
-        return self._cfg.getCommonConfig().getPriceBase()
+        return self._cfg.get_common_config().getPriceBase()
 
     ##############################
     def getBudget(self):
-        return self._cfg.getNodeConfig().getBudget()
+        return self._cfg.get_node_config().getBudget()
 
     ##############################
     def addToBudget(self, amount, cfgFile = CONFIG_FILENAME):
-        budget = self._cfg.getNodeConfig().getBudget()
+        budget = self._cfg.get_node_config().getBudget()
         budget += amount
-        self._cfg.getNodeConfig().setBudget(budget)
-        SimpleConfig(self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile, True, False)
+        self._cfg.get_node_config().setBudget(budget)
+        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), cfgFile, True, False)
 
     ##############################
         def __str__(self):

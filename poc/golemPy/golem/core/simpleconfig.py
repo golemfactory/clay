@@ -17,12 +17,12 @@ class ConfigEntry(object):
         """ Create new config entry
         :param str section: section name
         :param str key: config entry name
-        :param st value: config entry value
+        :param value: config entry value
         """
         self._key = key
         self._value = value
         self._section = section
-        self._valueType = type(value)
+        self._value_type = type(value)
 
     def section(self):
         """ Return config entry section """
@@ -36,140 +36,165 @@ class ConfigEntry(object):
         """ Return config entry value """
         return self._value
 
-    def setKey(self, k):
+    def set_key(self, k):
         self._key = k
 
-    def setValue(self, v):
+    def set_value(self, v):
         self._value = v
 
-    def setValueFromStr(self, val):
-        self.setValue(self._valueType(val))
+    def set_value_from_str(self, val):
+        """Change string to the value type and save it as a value
+        :param str val: string to be converse to value
+        """
+        self.set_value(self._value_type(val))
 
     def __str__(self):
-        return "Section {0._section:7} prop: {0._key:17} -> {0._value:10} {0._valueType}".format(self)
+        return "Section {0._section:7} prop: {0._key:17} -> {0._value:10} {0._value_type}".format(self)
 
     @classmethod
-    def createProperty(cls, section, key, value, other, propName):
+    def create_property(cls, section, key, value, other, prop_name):
+        """ Create new property: config entry with getter and setter method for this property in other object.
+        Append this entry to property list in other object.
+        :param str section: config entry section name
+        :param str key: config entry name
+        :param value: config entry value
+        :param other: object instance for which new setter, getter and property entry should be created
+        :param str prop_name: property name
+        :return:
+        """
         property_ = ConfigEntry(section, key, value)
 
-        getterName = "get{}".format(propName)
-        setterName = "set{}".format(propName)
+        getter_name = "get{}".format(prop_name)
+        setter_name = "set{}".format(prop_name)
 
-        def getProp(_self):
-            return getattr(_self, propName).value()
+        def get_prop(_self):
+            return getattr(_self, prop_name).value()
 
-        def setProp(_self, val):
-            return getattr(_self, propName).setValue(val)
+        def set_prop(_self, val):
+            return getattr(_self, prop_name).set_value(val)
 
-        def getProperties(_self):
+        def get_properties(_self):
             return getattr(_self, '_properties')
 
-        setattr(other.__class__, propName, property_)
-        setattr(other.__class__, getterName, getProp)
-        setattr(other.__class__, setterName, setProp)
+        setattr(other.__class__, prop_name, property_)
+        setattr(other.__class__, getter_name, get_prop)
+        setattr(other.__class__, setter_name, set_prop)
 
         if not hasattr(other.__class__, 'properties'):
             setattr(other.__class__, '_properties', [])
-            setattr(other.__class__, 'properties', getProperties)
+            setattr(other.__class__, 'properties', get_properties)
 
-        getattr(other.__class__, '_properties').append(getattr(other.__class__, propName))
+        getattr(other.__class__, '_properties').append(getattr(other.__class__, prop_name))
 
 
-class SimpleConfig:
+class SimpleConfig(object):
+    """ Simple configuration manager"""
 
-    def __init__(self, commonConfig, nodeConfig, cfgFile, refresh = False, checkUid = True):
+    def __init__(self, common_config, node_config, cfg_file, refresh=False, check_uid=True):
+        """ Read existing configuration or creat new one if it doesn't exist or refresh option is set to True.
+        :param common_config: configuration that is common for all nodes
+        :param node_config: node specific configuration
+        :param str cfg_file: configuration file name
+        :param bool refresh: *Default: False*  if set to True, than configuration for given node should be written
+        even if it already exists.
+        :param bool check_uid: *Default: True* if node configuration is rewritten and this option is set to True, then
+        new uuid for a node will be generated
+        """
+        self._common_config = common_config
+        self._node_config = node_config
 
-        self._commonConfig  = commonConfig
-        self._nodeConfig    = nodeConfig
+        cfg_file = SimpleEnv.env_file_name(cfg_file)
 
-        cfgFile = SimpleEnv.env_file_name(cfgFile)
-
-        loggerMsg = "Reading config from file {}".format(cfgFile)
+        logger_msg = "Reading config from file {}".format(cfg_file)
 
         try:
-            writeConfig = True
+            write_config = True
             cfg = ConfigParser.ConfigParser()
-            files = cfg.read(cfgFile)
+            files = cfg.read(cfg_file)
 
-            if len(files) == 1 and self._commonConfig.section() in cfg.sections():
-                if self._nodeConfig.section() in cfg.sections():
+            if len(files) == 1 and self._common_config.section() in cfg.sections():
+                if self._node_config.section() in cfg.sections():
                     if refresh:
-                        cfg.remove_section(self._nodeConfig.section())
-                        cfg.add_section(self._nodeConfig.section())
+                        cfg.remove_section(self._node_config.section())
+                        cfg.add_section(self._node_config.section())
                     else:
-                        self.__readOptions(cfg)
+                        self.__read_options(cfg)
 
-                        if not checkUid:
-                            writeConfig = False
-                        elif len(self._nodeConfig.getClientUid()) > 0:
-                            writeConfig = False
+                        if not check_uid:
+                            write_config = False
+                        elif len(self._node_config.getClientUid()) > 0:
+                            write_config = False
                 else:
-                    cfg.add_section(self._nodeConfig.section())
+                    cfg.add_section(self._node_config.section())
 
-                logger.info("{} ... successfully".format(loggerMsg))
+                logger.info("{} ... successfully".format(logger_msg))
             else:
-                logger.info("{} ... failed".format(loggerMsg))
-                cfg = self.__createFreshConfig()
+                logger.info("{} ... failed".format(logger_msg))
+                cfg = self.__create_fresh_config()
 
-            if writeConfig:
-                logger.info("Writing {}'s configuration to {}".format(self.getNodeConfig().section(), cfgFile))
-                self.__writeConfig(cfg, cfgFile, checkUid)
+            if write_config:
+                logger.info("Writing {}'s configuration to {}".format(self.get_node_config().section(), cfg_file))
+                self.__write_config(cfg, cfg_file, check_uid)
         except Exception as ex:
-            logger.warning("{} ... failed with an exception: {}".format(loggerMsg, str(ex)))
-            #no additional try catch because this cannot fail (if it fails then the program shouldn't start anyway)
+            logger.warning("{} ... failed with an exception: {}".format(logger_msg, str(ex)))
+            # no additional try catch because this cannot fail (if it fails then the program shouldn't start anyway)
             logger.info("Failed to write configuration file. Creating fresh config.")
-            self.__writeConfig(self.__createFreshConfig(), cfgFile, checkUid)
+            self.__write_config(self.__create_fresh_config(), cfg_file, check_uid)
 
-    def getCommonConfig(self):
-        return self._commonConfig
+    def get_common_config(self):
+        """ Return common configuration (common for all nodes) """
+        return self._common_config
 
-    def getNodeConfig(self):
-        return self._nodeConfig
+    def get_node_config(self):
+        """ Return node specific configuration """
+        return self._node_config
 
-    def __createFreshConfig(self):
+    def __create_fresh_config(self):
         cfg = ConfigParser.ConfigParser()
-        cfg.add_section(self.getCommonConfig().section())
-        cfg.add_section(self.getNodeConfig().section())
+        cfg.add_section(self.get_common_config().section())
+        cfg.add_section(self.get_node_config().section())
 
         return cfg
 
-    def __writeConfig(self, cfg, cfgFile, uuid):
+    def __write_config(self, cfg, cfg_file, uuid):
         if uuid:
-            loggerMsg = "Generating fresh UUID for {} ->".format(self.getNodeConfig().section())
+            logger_msg = "Generating fresh UUID for {} ->".format(self.get_node_config().section())
             new_uuid = SimpleAuth.generate_uuid()
-            logger.info("{} {}".format(loggerMsg, new_uuid.get_hex()))
-            self.getNodeConfig().setClientUid(new_uuid.get_hex())
+            logger.info("{} {}".format(logger_msg, new_uuid.get_hex()))
+            self.get_node_config().setClientUid(new_uuid.get_hex())
 
-        self.__writeOptions(cfg)
-   
-        if os.path.exists(cfgFile):
-            backupFileName = "{}.bak".format(cfgFile)
-            logger.info("Creating backup configuration file {}".format(backupFileName))
-            shutil.copy(cfgFile, backupFileName)
+        self.__write_options(cfg)
 
-        with open(cfgFile, 'w') as f:
+        if os.path.exists(cfg_file):
+            backup_file_name = "{}.bak".format(cfg_file)
+            logger.info("Creating backup configuration file {}".format(backup_file_name))
+            shutil.copy(cfg_file, backup_file_name)
+
+        with open(cfg_file, 'w') as f:
             cfg.write(f)
 
-    def __readOption(self, cfg, property_):
+    @staticmethod
+    def __read_option(cfg, property_):
         return cfg.get(property_.section(), property_.key())
 
-    def __writeOption(self, cfg, property_):
+    @staticmethod
+    def __write_option(cfg, property_):
         return cfg.set(property_.section(), property_.key(), property_.value())
 
-    def __readOptions(self, cfg):
+    def __read_options(self, cfg):
 
-        for prop in self.getCommonConfig().properties() + self.getNodeConfig().properties():
-            prop.setValueFromStr(self.__readOption(cfg, prop))
+        for prop in self.get_common_config().properties() + self.get_node_config().properties():
+            prop.set_value_from_str(self.__read_option(cfg, prop))
 
-    def __writeOptions(self, cfg):
+    def __write_options(self, cfg):
 
-        for prop in self.getCommonConfig().properties() + self.getNodeConfig().properties():
-            self.__writeOption(cfg, prop)
+        for prop in self.get_common_config().properties() + self.get_node_config().properties():
+            self.__write_option(cfg, prop)
 
     def __str__(self):
         rs = "DefaultConfig\n"
 
-        for prop in self.getCommonConfig().properties() + self.getNodeConfig().properties():
+        for prop in self.get_common_config().properties() + self.get_node_config().properties():
             rs += "{}\n".format(str(prop))
 
         return rs

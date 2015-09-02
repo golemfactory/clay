@@ -16,7 +16,7 @@ class CommonConfig:
 
         self._section = section
 
-        ConfigEntry.createProperty(section, "environment version", envVersion, self, "envVersion")
+        ConfigEntry.create_property(section, "environment version", envVersion, self, "envVersion")
 
     ##############################
     def section(self):
@@ -29,7 +29,7 @@ class NodeConfig:
         self._section = "Node {}".format(nodeId)
 
         for envId, (envName, supported) in environments.iteritems():
-            ConfigEntry.createProperty(self.section(), envId.lower(), int(supported), self, envName)
+            ConfigEntry.create_property(self.section(), envId.lower(), int(supported), self, envName)
 
     ##############################
     def section(self):
@@ -42,7 +42,7 @@ class EnvironmentsConfig:
     @classmethod
     def loadConfig(cls, nodeId, environments, cfgFile = CONFIG_FILENAME):
 
-        cfg  = SimpleConfig(CommonConfig(), NodeConfig(nodeId, environments), cfgFile, refresh = False, checkUid = False)
+        cfg  = SimpleConfig(CommonConfig(), NodeConfig(nodeId, environments), cfgFile, refresh = False, check_uid = False)
 
         return EnvironmentsConfig(cfg)
 
@@ -52,11 +52,11 @@ class EnvironmentsConfig:
 
     ##############################
     def getConfigEntries(self):
-        return self._cfg.getNodeConfig()
+        return self._cfg.get_node_config()
 
     ##############################
     def changeConfig(self, cfgFile = CONFIG_FILENAME):
-        return EnvironmentsConfig(SimpleConfig(self._cfg.getCommonConfig(), self._cfg.getNodeConfig(), cfgFile,  refresh = True, checkUid = False))
+        return EnvironmentsConfig(SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), cfgFile,  refresh = True, check_uid = False))
 
     ##############################
     def __str__(self):
