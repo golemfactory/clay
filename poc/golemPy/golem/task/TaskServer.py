@@ -26,7 +26,7 @@ class TaskServer(PendingConnectionsServer):
 
         self.node               = node
         self.taskKeeper         = TaskKeeper()
-        self.taskManager        = TaskManager(configDesc.clientUid, self.node, keyId = self.keysAuth.getKeyId(), rootPath = self.__getTaskManagerRoot(configDesc), useDistributedResources = configDesc.useDistributedResourceManagement)
+        self.taskManager        = TaskManager(configDesc.clientUid, self.node, keyId = self.keysAuth.get_key_id(), rootPath = self.__getTaskManagerRoot(configDesc), useDistributedResources = configDesc.useDistributedResourceManagement)
         self.taskComputer       = TaskComputer(configDesc.clientUid, self)
         self.taskSessions       = {}
         self.taskSessionsIncoming = []
@@ -197,8 +197,8 @@ class TaskServer(PendingConnectionsServer):
         return self.configDesc.clientUid
 
     #############################
-    def getKeyId(self):
-        return self.keysAuth.getKeyId()
+    def get_key_id(self):
+        return self.keysAuth.get_key_id()
 
     #############################
     def encrypt(self, message, publicKey):

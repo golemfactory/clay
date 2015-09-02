@@ -38,7 +38,7 @@ class P2PService:
         self.neighbourLocRankBuff   = []
 
         self.keysAuth               = keysAuth
-        self.peerKeeper             = PeerKeeper(keysAuth.getKeyId())
+        self.peerKeeper             = PeerKeeper(keysAuth.get_key_id())
         self.suggestedAddrs         = {}
 
         self.connectionsToSet = {}
@@ -223,14 +223,14 @@ class P2PService:
 
     ############################
     def getListenParams(self):
-        return (self.p2pServer.cur_port, self.configDesc.clientUid, self.keysAuth.getKeyId(), self.node)
+        return (self.p2pServer.cur_port, self.configDesc.clientUid, self.keysAuth.get_key_id(), self.node)
 
     ############################
     def getPeersDegree(self):
         return  { peer.id: peer.degree for peer in self.peers.values() }
 
     #############################
-    def getKeyId(self):
+    def get_key_id(self):
         return self.peerKeeper.peerKeyId
 
     #############################
@@ -281,7 +281,7 @@ class P2PService:
     ############################
     def setResourcePeer(self, addr, port):
         self.resourcePort = port
-        self.resourcePeers[self.clientUid] = [addr, port, self.keysAuth.getKeyId(), self.node]
+        self.resourcePeers[self.clientUid] = [addr, port, self.keysAuth.get_key_id(), self.node]
 
     #############################
     def sendGetResourcePeers(self):
@@ -356,7 +356,7 @@ class P2PService:
 
         #TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
 
-        if not msgSnd and nodeInfo.key == self.getKeyId():
+        if not msgSnd and nodeInfo.key == self.get_key_id():
             self.taskServer.finalConnFailure(connId)
 
     ############################

@@ -165,7 +165,7 @@ class Client:
         self.configApprover = ConfigApprover(configDesc)
 
         #NETWORK
-        self.node = Node(self.configDesc.clientUid, self.keysAuth.getKeyId())
+        self.node = Node(self.configDesc.clientUid, self.keysAuth.get_key_id())
         self.node.collectNetworkInfo(self.configDesc.seedHost, useIp6=self.configDesc.useIp6)
         logger.debug("Is super node? {}".format(self.node.isSuperNode()))
         self.p2service = None

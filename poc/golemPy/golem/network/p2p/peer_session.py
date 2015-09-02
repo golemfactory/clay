@@ -246,7 +246,7 @@ class PeerSession(BasicSafeSession):
         if enough_peers:
             logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.node_id, self.address, self.port)
             logger.info(logger_msg)
-            nodes_info = self.p2p_service.findNode(self.p2p_service.getKeyId())
+            nodes_info = self.p2p_service.findNode(self.p2p_service.get_key_id())
             self.send(MessagePeers(nodes_info))
             self.disconnect(PeerSession.DCRTooManyPeers)
             return

@@ -9,26 +9,33 @@ import logging
 from simpleauth import SimpleAuth
 from simpleenv import SimpleEnv
 
-##############################
-##############################
 logger = logging.getLogger(__name__)
 
-##############################
-class ConfigEntry:
+
+class ConfigEntry(object):
+    """ Simple config entry representation """
 
     def __init__(self, section, key, value):
+        """ Create new config entry
+        :param str section: section name
+        :param str key: config entry name
+        :param st value: config entry value
+        """
         self._key = key
         self._value = value
         self._section = section
         self._valueType = type(value)
 
     def section(self):
+        """ Return config entry section """
         return self._section
 
     def key(self):
+        """ Return config entry name """
         return self._key
 
     def value(self):
+        """ Return config entry value """
         return self._value
 
     def setKey(self, k):
@@ -70,17 +77,14 @@ class ConfigEntry:
         getattr(other.__class__, '_properties').append(getattr(other.__class__, propName))
 
 
-##############################
-##############################
 class SimpleConfig:
 
-    ##############################
     def __init__(self, commonConfig, nodeConfig, cfgFile, refresh = False, checkUid = True):
 
         self._commonConfig  = commonConfig
         self._nodeConfig    = nodeConfig
 
-        cfgFile = SimpleEnv.__env_file_name(cfgFile)
+        cfgFile = SimpleEnv.env_file_name(cfgFile)
 
         loggerMsg = "Reading config from file {}".format(cfgFile)
 
@@ -118,15 +122,12 @@ class SimpleConfig:
             logger.info("Failed to write configuration file. Creating fresh config.")
             self.__writeConfig(self.__createFreshConfig(), cfgFile, checkUid)
 
-    ##############################
     def getCommonConfig(self):
         return self._commonConfig
 
-    ##############################
     def getNodeConfig(self):
         return self._nodeConfig
 
-    ##############################
     def __createFreshConfig(self):
         cfg = ConfigParser.ConfigParser()
         cfg.add_section(self.getCommonConfig().section())
@@ -134,11 +135,10 @@ class SimpleConfig:
 
         return cfg
 
-    ##############################
     def __writeConfig(self, cfg, cfgFile, uuid):
         if uuid:
             loggerMsg = "Generating fresh UUID for {} ->".format(self.getNodeConfig().section())
-            uajdi = SimpleAuth.generateUUID()
+            uajdi = SimpleAuth.generate_uuid()
             logger.info("{} {}".format(loggerMsg, uajdi.get_hex()))
             self.getNodeConfig().setClientUid(uajdi.get_hex())
 
@@ -152,27 +152,22 @@ class SimpleConfig:
         with open(cfgFile, 'w') as f:
             cfg.write(f)
 
-    ##############################
     def __readOption(self, cfg, property):
         return cfg.get(property.section(), property.key())
 
-    ##############################
     def __writeOption(self, cfg, property):
         return cfg.set(property.section(), property.key(), property.value())
 
-    ##############################
     def __readOptions(self, cfg):
 
         for prop in self.getCommonConfig().properties() + self.getNodeConfig().properties():
             prop.setValueFromStr(self.__readOption(cfg, prop))
 
-    ##############################
     def __writeOptions(self, cfg):
 
         for prop in self.getCommonConfig().properties() + self.getNodeConfig().properties():
             self.__writeOption(cfg, prop)
 
-    ##############################
     def __str__(self):
         rs = "DefaultConfig\n"
 
@@ -181,27 +176,27 @@ class SimpleConfig:
 
         return rs
 
-if __name__ == "__main__":
-
-    # get a list of a class's method type attributes
-    def listattr(c):
-        for m in [(n, v) for n, v in inspect.getmembers(c, inspect.ismethod) if isinstance(v,types.MethodType)]:
-            print m[0], m[1]
-
-    #c = DefaultConfig(0)
-    #print c
-    #c = DefaultConfig(1)
-    #print c
-    #c = DefaultConfig(2)
-    #print c
-#    c = GlobalConfig()
-    
-#    listattr(c)
-
-#    print c.getOptimalPeerNum()
-#    c.setOptimalPeerNum(20)
-#    print c.getOptimalPeerNum()
-
-#    cfg = DefaultConfig(0, "some_test_cfg.ini")
-#    cfg1 = DefaultConfig(1, "some_test_cfg.ini")
-#    cfg2 = DefaultConfig(2, "some_test_cfg.ini")
+# if __name__ == "__main__":
+#
+#     # get a list of a class's method type attributes
+#     def listattr(c):
+#         for m in [(n, v) for n, v in inspect.getmembers(c, inspect.ismethod) if isinstance(v,types.MethodType)]:
+#             print m[0], m[1]
+#
+#     c = DefaultConfig(0)
+#     print c
+#     c = DefaultConfig(1)
+#     print c
+#     c = DefaultConfig(2)
+#     print c
+#     c = GlobalConfig()
+#
+#     listattr(c)
+#
+#     print c.getOptimalPeerNum()
+#     c.setOptimalPeerNum(20)
+#     print c.getOptimalPeerNum()
+#
+#     cfg = DefaultConfig(0, "some_test_cfg.ini")
+#     cfg1 = DefaultConfig(1, "some_test_cfg.ini")
+#     cfg2 = DefaultConfig(2, "some_test_cfg.ini")

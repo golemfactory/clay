@@ -13,7 +13,7 @@ class SimpleEnv(object):
         :param str options: python open file mode options, eg. 'r', 'w' 'a'
         :return:
         """
-        f_name = cls.__env_file_name(filename)
+        f_name = cls.env_file_name(filename)
 
         if not os.path.exists(f_name):
             with open(f_name, 'a'):
@@ -22,15 +22,21 @@ class SimpleEnv(object):
         return open(f_name, options)
 
     @classmethod
-    def __env_dir_guard(cls):
-        if not os.path.exists(DATA_DIRECTORY):
-            os.makedirs(DATA_DIRECTORY)
-
-    @classmethod
-    def __env_file_name(cls, filename):
+    def env_file_name(cls, filename):
+        """ Return full configuration file name adding configuration files location to the filename
+        :param str filename: name of a file
+        :return str: name of a file connected with path
+        """
         cls.__env_dir_guard()
 
         if DATA_DIRECTORY in filename:
             return filename
 
         return os.path.join(DATA_DIRECTORY, filename)
+
+    @classmethod
+    def __env_dir_guard(cls):
+        if not os.path.exists(DATA_DIRECTORY):
+            os.makedirs(DATA_DIRECTORY)
+
+

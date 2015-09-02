@@ -251,7 +251,7 @@ class TaskSession(MiddlemanSafeSession):
         node_id = self.task_server.getClientId()
 
         self.send(MessageReportComputedTask(task_result.subtask_id, task_result.result_type, node_id, address, port,
-                                            self.task_server.getKeyId(), node_info, eth_account, extra_data))
+                                            self.task_server.get_key_id(), node_info, eth_account, extra_data))
 
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
@@ -276,7 +276,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
-        self.send(MessageHello(client_key_id=self.task_server.getKeyId(), rand_val=self.rand_val), send_unverified=True)
+        self.send(MessageHello(client_key_id=self.task_server.get_key_id(), rand_val=self.rand_val), send_unverified=True)
 
     def send_start_session_response(self, conn_id):
         """ Inform that this session was started as an answer for a request to start task session

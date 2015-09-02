@@ -165,7 +165,7 @@ class ResourceSession(BasicSafeSession):
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
-        self.send(MessageHello(client_key_id=self.resource_server.getKeyId(), rand_val=self.rand_val),
+        self.send(MessageHello(client_key_id=self.resource_server.get_key_id(), rand_val=self.rand_val),
                   send_unverified=True)
 
     #########################

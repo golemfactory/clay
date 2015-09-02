@@ -270,8 +270,8 @@ class ResourceServer(TCPServer):
             self.sessions.remove(session)
 
     #############################
-    def getKeyId(self):
-        return self.keysAuth.getKeyId()
+    def get_key_id(self):
+        return self.keysAuth.get_key_id()
 
     #############################
     def encrypt(self, message, publicKey):
