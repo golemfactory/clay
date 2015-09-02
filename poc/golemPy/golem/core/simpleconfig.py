@@ -2,8 +2,6 @@ import ConfigParser
 
 import os
 import shutil
-import types
-import inspect
 import logging
 
 from simpleauth import SimpleAuth
@@ -52,7 +50,7 @@ class ConfigEntry(object):
 
     @classmethod
     def createProperty(cls, section, key, value, other, propName):
-        property = ConfigEntry(section, key, value)
+        property_ = ConfigEntry(section, key, value)
 
         getterName = "get{}".format(propName)
         setterName = "set{}".format(propName)
@@ -66,7 +64,7 @@ class ConfigEntry(object):
         def getProperties(_self):
             return getattr(_self, '_properties')
 
-        setattr(other.__class__, propName, property)
+        setattr(other.__class__, propName, property_)
         setattr(other.__class__, getterName, getProp)
         setattr(other.__class__, setterName, setProp)
 
@@ -138,9 +136,9 @@ class SimpleConfig:
     def __writeConfig(self, cfg, cfgFile, uuid):
         if uuid:
             loggerMsg = "Generating fresh UUID for {} ->".format(self.getNodeConfig().section())
-            uajdi = SimpleAuth.generate_uuid()
-            logger.info("{} {}".format(loggerMsg, uajdi.get_hex()))
-            self.getNodeConfig().setClientUid(uajdi.get_hex())
+            new_uuid = SimpleAuth.generate_uuid()
+            logger.info("{} {}".format(loggerMsg, new_uuid.get_hex()))
+            self.getNodeConfig().setClientUid(new_uuid.get_hex())
 
         self.__writeOptions(cfg)
    
@@ -152,11 +150,11 @@ class SimpleConfig:
         with open(cfgFile, 'w') as f:
             cfg.write(f)
 
-    def __readOption(self, cfg, property):
-        return cfg.get(property.section(), property.key())
+    def __readOption(self, cfg, property_):
+        return cfg.get(property_.section(), property_.key())
 
-    def __writeOption(self, cfg, property):
-        return cfg.set(property.section(), property.key(), property.value())
+    def __writeOption(self, cfg, property_):
+        return cfg.set(property_.section(), property_.key(), property_.value())
 
     def __readOptions(self, cfg):
 

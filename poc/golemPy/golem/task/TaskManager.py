@@ -4,7 +4,7 @@ import logging
 from golem.manager.NodeStateSnapshot import LocalTaskStateSnapshot
 from golem.task.TaskState import TaskState, TaskStatus, SubtaskStatus, SubtaskState, ComputerState
 from golem.resource.DirManager import DirManager
-from golem.core.hostaddress import getExternalAddress
+from golem.core.hostaddress import get_external_address
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class TaskManager:
         task.header.taskOwnerAddress = self.listenAddress
         task.header.taskOwnerPort = self.listenPort
         task.header.taskOwnerKeyId = self.keyId
-        self.node.pubAddr, self.node.pubPort, self.node.natType = getExternalAddress(self.listenPort)
+        self.node.pubAddr, self.node.pubPort, self.node.natType = get_external_address(self.listenPort)
         task.header.taskOwner = self.node
 
         task.initialize()

@@ -166,7 +166,7 @@ class AppConfig:
         logger.info("Generic process service started")
 
         logger.info("Trying to register current process")
-        localId = ps.registerSelf()
+        localId = ps.register_self()
 
         if localId < 0:
             logger.error("Failed to register current process - bailing out")

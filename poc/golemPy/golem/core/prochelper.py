@@ -1,147 +1,156 @@
 import os
 import psutil
 import fnmatch
-import filelock
 import time
 import logging
 
 from simpleserializer import SimpleSerializer
 from simpleenv import SimpleEnv
-
-DEFAULT_PROC_FILE = "node_processes.ctl"
+from variables import DEFAULT_PROC_FILE, MAX_PROC_FILE_SIZE
 
 logger = logging.getLogger(__name__)
 
-class ProcessService:
 
-    #################################
-    def __init__(self, ctlFileName = DEFAULT_PROC_FILE):
+class ProcessService(object):
+    """ Keeps information about active application instances and gives them adequate numbers that may be used
+    to combine them with proper configuration options."""
 
-        ctlFile = SimpleEnv.env_file_name(ctlFileName)
+    def __init__(self, ctl_file_name=DEFAULT_PROC_FILE):
+        """ Create new process service instance
+        :param str ctl_file_name: process working file were information about active applications is written
+        """
+        ctl_file = SimpleEnv.env_file_name(ctl_file_name)
 
-        self.maxFileSize = 1024 * 1024
+        self.maxFileSize = MAX_PROC_FILE_SIZE
         self.fd = -1
-        self.ctlFile = ctlFile
+        self.ctl_file = ctl_file
         self.state = {}
 
-        if not os.path.exists(ctlFile) or os.path.getsize(ctlFile) < 2:
-            if self.__acquireLock():
-                self.__writeStateSnapshot()
+        if not os.path.exists(ctl_file) or os.path.getsize(ctl_file) < 2:
+            if self.__acquire_lock():
+                self.__write_state_snapshot()
 
-    #################################
-    def __acquireLock(self, flags = os.O_EXCL):
+    def lock_state(self):
+        """ Acquire access to the process control file and read process state
+        :return bool: True if access was acquired, False otherwise
+        """
+        if self.__acquire_lock():
+            self.__read_state_snapshot()
+            return True
+
+        return False
+
+    def unlock_state(self):
+        """ Write process state in the process control file
+        :return:
+        """
+        if self.fd > 0:
+            self.__write_state_snapshot()
+
+    def register_self(self, extra_data=None):
+        """ Register new application instance in process control file. Remove inactive process and get earliest
+        available number
+        :param extra_data: additional informations thath should be saved
+        :return int: process number
+        """
+        spid = int(os.getpid())
+        timestamp = time.time()
+
+        if self.lock_state():
+            id_ = self.__update_state()
+            self.state[spid] = [timestamp, id_, extra_data]
+            self.unlock_state()
+            logger.info("Registering new process - PID {} at time {} at location {}".format(spid, timestamp, id_))
+
+            return id_
+
+        return -1
+
+    @staticmethod
+    def list_all(filter_=None):
+        """ Return list of all active program instances on this machine
+        :param str filter_: pattern for the unix shell-style wildcard
+        :return:
+        """
+        ret_list = []
+
+        if not filter_:
+            filter_ = "*"
+
+        for p in psutil.process_iter():
+            if fnmatch.fnmatch(p.__str__(), filter_):
+                ret_list.append(p)
+
+        return ret_list
+
+    def __acquire_lock(self, flags=os.O_EXCL):
         flags |= os.O_EXCL | os.O_RDWR
 
         try:
-            if not os.path.exists(self.ctlFile):
+            if not os.path.exists(self.ctl_file):
                 flags |= os.O_CREAT
 
-            self.fd = os.open(self.ctlFile, flags)
+            self.fd = os.open(self.ctl_file, flags)
 
             return True
         except Exception as ex:
             logger.error("Failed to acquire lock due to {}".format(ex))
             return False
 
-    #################################
-    def __releaseLock(self):
+    def __release_lock(self):
         if self.fd > 0:
             os.close(self.fd)
             self.fd = -1
 
-    #################################
-    def __readStateSnapshot(self):
+    def __read_state_snapshot(self):
         os.lseek(self.fd, 0, 0)
         data = os.read(self.fd, self.maxFileSize)
         self.state = SimpleSerializer.loads(data)
 
-    #################################
-    def __writeStateSnapshot(self):
+    def __write_state_snapshot(self):
         data = SimpleSerializer.dumps(self.state)
 
         os.lseek(self.fd, 0, 0)
 
-        #FIXME: one hell of a hack but its pretty hard to truncate a file on Windows using low level API
+        # FIXME: one hell of a hack but its pretty hard to truncate a file on Windows using low level API
         hack = os.fdopen(self.fd, "w")
         hack.truncate(len(data))
         os.write(self.fd, data)
 
         hack.close()
 
-    #################################
-    def lockState(self):
-        if self.__acquireLock():
-            self.__readStateSnapshot()
-            return True
-            
-        return False
-
-    #################################
-    def unlockState(self):
-        if self.fd > 0:
-            self.__writeStateSnapshot()
-     
-    #################################
-    def __updateState(self):
+    def __update_state(self):
         pids = psutil.pids()
-        updatedState = {}
+        updated_state = {}
         ids = []
 
         for p in self.state:
             if int(p) in pids:
-                updatedState[ p ] = self.state[ p ]
-                ids.append(self.state[ p ][ 1 ]) #localId
+                updated_state[p] = self.state[p]
+                ids.append(self.state[p][1])  # localId
             else:
                 logger.info("Process PID {} is inactive - removing".format(p))
 
-        self.state = updatedState
+        self.state = updated_state
 
         if len(ids) > 0:
-            sids = sorted(ids, key = int)
+            sids = sorted(ids, key=int)
             for i in range(len(sids)):
-                if i < sids[ i ]:
+                if i < sids[i]:
                     return i
 
         return len(ids)
 
-    #################################
-    def registerSelf(self, extraData = None):
-        spid = int(os.getpid())
-        timestamp = time.time()
-
-        if self.lockState():
-            id = self.__updateState()
-            self.state[ spid ] = [ timestamp, id, extraData ]
-            self.unlockState()
-            logger.info("Registering new process - PID {} at time {} at location {}".format(spid, timestamp, id))
-
-            return id
-
-        return -1
-
-    #################################
-    def listAll(self, filter = None):
-        retList = []
-
-        if not filter:
-            filter = "*"
-
-        for p in psutil.process_iter():
-            if fnmatch.fnmatch(p.__str__(), filter):
-                retList.append(p)
-
-        return retList
 
 if __name__ == "__main__":
-
     ps = ProcessService("test_ctl.ctl")
-    #print os.getpid()
+    # print os.getpid()
 
-    #for p in ps.listAll(filter = "*python.exe*"):
-    #    print p
+    # for p in ps.list_all(filter_ = "*python.exe*"):
+    #     print p
 
     import random
 
-    id = ps.registerSelf()
-    print "Registered id {}".format(id)
+    id__ = ps.register_self()
+    print "Registered id {}".format(id__)
     time.sleep(5.0 + 10.0 * random.random())

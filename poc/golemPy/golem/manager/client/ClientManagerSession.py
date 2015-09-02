@@ -41,10 +41,10 @@ class ClientManagerSession:
 
         elif type == MessageKillAllNodes.Type:
             processService = ProcessService()
-            if processService.lockState():
+            if processService.lock_state():
                 pids = processService.state.keys()
                 logger.debug("Active processes with pids: {}".format(pids))
-                processService.unlockState()
+                processService.unlock_state()
 
             curPid = os.getpid()
             if curPid in pids:

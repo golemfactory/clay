@@ -7,6 +7,8 @@ LONG_STANDARD_SIZE = 4
 KEYS_PATH = "examples/gnr/node_data/"
 PRIVATE_KEY_PREF = "golem_private_key"
 PUBLIC_KEY_PREF = "golem_public_key"
+DEFAULT_PROC_FILE = "node_processes.ctl"
+MAX_PROC_FILE_SIZE = 1024 * 1024
 
 #####################
 # NETWORK VARIABLES #
@@ -15,6 +17,9 @@ BUFF_SIZE = 1024 * 1024
 # KADEMLIA BUCKET SIZE
 K = 16
 CONCURRENCY = 3
+# CONNECT TO
+DEFAULT_CONNECT_TO = '8.8.8.8'
+DEFAULT_CONNECT_TO_PORT = 80
 
 #####################
 # SESSION VARIABLES #
