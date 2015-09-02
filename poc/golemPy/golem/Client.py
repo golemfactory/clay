@@ -10,7 +10,7 @@ from golem.network.p2p.Node import Node
 from golem.task.TaskServer import TaskServer
 from golem.task.TaskManager import TaskManagerEventListener
 
-from golem.core.KeysAuth import EllipticalKeysAuth
+from golem.core.keys_auth import EllipticalKeysAuth
 
 from golem.manager.NodeStateSnapshot import NodeStateSnapshot
 
