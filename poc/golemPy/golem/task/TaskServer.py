@@ -430,21 +430,21 @@ class TaskServer(PendingConnectionsServer):
         # sys.exit(0)
 
     #############################
-    def _listeningForStartSessionEstablished(self, port, listenId, superNode, askingNode, destNode, askConnId):
+    def _listeningForStartSessionEstablished(self, port, listen_id, superNode, askingNode, destNode, askConnId):
         logger.debug("Listening on port {}".format(port))
-        listening = self.open_listenings.get(listenId)
+        listening = self.open_listenings.get(listen_id)
         if listening:
             self.listening.time = time.time()
             self.listening.listening_port = port
         else:
-            logger.warning("Listening {} not in open listenings list".format(listenId))
+            logger.warning("Listening {} not in open listenings list".format(listen_id))
 
     #############################
-    def _listeningForStartSessionFailure(self, listenId, superNode, askingNode, destNode, askConnId):
-        if listenId in self.open_listenings:
-            del self.open_listenings['listenId']
+    def _listeningForStartSessionFailure(self, listen_id, superNode, askingNode, destNode, askConnId):
+        if listen_id in self.open_listenings:
+            del self.open_listenings['listen_id']
 
-        self.__connectionForNatPunchFailure(listenId, superNode, askingNode, destNode, askConnId)
+        self.__connectionForNatPunchFailure(listen_id, superNode, askingNode, destNode, askConnId)
 
     #############################
     #   CONNECTION REACTIONS    #

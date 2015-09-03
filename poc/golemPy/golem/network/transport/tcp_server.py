@@ -7,16 +7,28 @@ from collections import deque
 
 from server import Server
 from tcp_network import TCPListeningInfo, TCPListenInfo, TCPAddress, TCPConnectInfo
+from golem.core.variables import LISTEN_WAIT_TIME, LISTENING_REFRESH_TIME, LISTEN_PORT_TTL
 
 logger = logging.getLogger(__name__)
 
 
 class TCPServer(Server):
+    """ Basic tcp server that can start listening on given port """
+
     def __init__(self, config_desc, network):
+        """
+        Create new server
+        :param ClientConfigDescriptor config_desc: config descriptor for listening port
+        :param TCPNetwork network: network that server will use
+        """
         Server.__init__(self, config_desc, network)
-        self.cur_port = 0
+        self.cur_port = 0  # current listening port
 
     def change_config(self, config_desc):
+        """ Change configuration descriptor. If listening port is changed, than stop listening on old port and start
+        listening on a new one.
+        :param ClientConfigDescriptor config_desc: new config descriptor
+        """
         Server.change_config(self, config_desc)
         if self.cur_port != 0:
             listening_info = TCPListeningInfo(self.cur_port, self._stopped_callback, self._stopped_errback)
@@ -25,6 +37,7 @@ class TCPServer(Server):
         self.start_accepting()
 
     def start_accepting(self):
+        """ Start listening and accept connections """
         listen_info = TCPListenInfo(self.config_desc.startPort, self.config_desc.endPort,
                                     self._listening_established, self._listening_failure)
         self.network.listen(listen_info)
@@ -45,43 +58,54 @@ class TCPServer(Server):
 
 
 class PendingConnectionsServer(TCPServer):
-    supported_nat_types = [FullCone, OpenInternet]
+    """ TCP Server that keeps a list of pending connections and tries different methods
+    if connection attempt is unsuccessful."""
+    supported_nat_types = [FullCone, OpenInternet]  # NAT Types that supports Nat Punching
 
     def __init__(self, config_desc, network):
-        self.pending_connections = {}
-        self.conn_established_for_type = {}
-        self.conn_failure_for_type = {}
-        self.conn_final_failure_for_type = {}
+        """ Create new server
+        :param ClientConfigDescriptor config_desc: config descriptor for listening port
+        :param TCPNetwork network: network that server will use
+        """
+        # Pending connections
+        self.pending_connections = {}  # Connections that should be accomplished
+        self.conn_established_for_type = {}  # Reactions for established connections of certain types
+        self.conn_failure_for_type = {}  # Reactions for failed connection attempts of certain types
+        self.conn_final_failure_for_type = {}  # Reactions for final connection attempts failure
+
+        # Pending listenings
+        self.pending_listenings = deque([])  # Ports that should be open for listenings
+        self.listenEstablishedForType = {}  # Reactions for established listenings of certain types
+        self.listenFailureForType = {}  # Reactions for failed listenings of certain types
+        self.open_listenings = {}  # Open ports
+        self.listen_wait_time = LISTEN_WAIT_TIME  # How long should server wait before first try to listen
+        self.last_check_listening_time = time.time()  # When was the last time when open port where checked
+        self.listening_refresh_time = LISTENING_REFRESH_TIME  # How often should open ports be checked
+        self.listen_port_ttl = LISTEN_PORT_TTL  # How long should port stay open
+
+        # Set reactions
         self._set_conn_established()
         self._set_conn_failure()
         self._set_conn_final_failure()
 
-        self.pending_listenings = deque([])
-        self.open_listenings = {}
-        self.listen_wait_time = 1
-        self.listenEstablishedForType = {}
-        self.listenFailureForType = {}
         self._set_listen_established()
         self._set_listen_failure()
-        self.last_check_listening_time = time.time()
-        self.listening_refresh_time = 120
-        self.listen_port_ttl = 3600
 
         TCPServer.__init__(self, config_desc, network)
 
-    def change_config(self, config_desc):
-        TCPServer.change_config(self, config_desc)
-
-    def start_accepting(self):
-        TCPServer.start_accepting(self)
-
     def verified_conn(self, conn_id):
+        """ React to the information that connection was established and verified, remove given connection from
+        pending connections list.
+        :param uuid|None conn_id: id of verified connection
+        """
         if conn_id in self.pending_connections:
             del self.pending_connections[conn_id]
-        else:
-            logger.error("Connection {} is unknown".format(conn_id))
 
     def final_conn_failure(self, conn_id):
+        """ React to the information that all connection attempts failed. Call specific for this connection type
+        method and then remove it from pending connections list.
+        :param uuid|None conn_id: id of verified connection
+        """
         conn = self.pending_connections.get(conn_id)
         if conn:
             self.conn_final_failure_for_type[conn.type](conn_id, *conn.args)
@@ -98,7 +122,7 @@ class PendingConnectionsServer(TCPServer):
     def _add_pending_listening(self, type_, port, args):
         pl = PendingListening(type_, port, self.listenEstablishedForType[type_],
                               self.listenFailureForType[type_], args)
-        pl.args["listenId"] = pl.id
+        pl.args["listen_id"] = pl.id
         self.pending_listenings.append(pl)
 
     def _sync_pending(self):
@@ -134,23 +158,13 @@ class PendingConnectionsServer(TCPServer):
             listenings_to_remove = []
             for ol_id, listening in self.open_listenings.iteritems():
                 if cnt_time - listening.time > self.listen_port_ttl:
-                    if listening.listenPort:
-                        listening.listenPort.stopListening()
+                    self.network.stop_listening(TCPListeningInfo(listening.port))
                     listenings_to_remove.append(ol_id)
             for ol_id in listenings_to_remove:
                 del self.open_listenings[ol_id]
 
     def _get_tcp_addresses(self, node_info, port, key_id):
         return PendingConnectionsServer.__node_info_to_tcp_addresses(node_info, port)
-
-    @staticmethod
-    def __node_info_to_tcp_addresses(node_info, port):
-        tcp_addresses = [TCPAddress(i, port) for i in node_info.prvAddresses]
-        if node_info.pubPort:
-            tcp_addresses.append(TCPAddress(node_info.pubAddr, node_info.pubPort))
-        else:
-            tcp_addresses.append(TCPAddress(node_info.pubAddr, port))
-        return tcp_addresses
 
     def _set_conn_established(self):
         pass
@@ -178,8 +192,18 @@ class PendingConnectionsServer(TCPServer):
             except ValueError:
                 logger.warning("{}:{} not in connection tcp_addresses".format(addr, port))
 
+    @staticmethod
+    def __node_info_to_tcp_addresses(node_info, port):
+        tcp_addresses = [TCPAddress(i, port) for i in node_info.prvAddresses]
+        if node_info.pubPort:
+            tcp_addresses.append(TCPAddress(node_info.pubAddr, node_info.pubPort))
+        else:
+            tcp_addresses.append(TCPAddress(node_info.pubAddr, port))
+        return tcp_addresses
+
 
 class PenConnStatus(object):
+    """ Pending Connection Status """
     Inactive = 1
     Waiting = 2
     Connected = 3
@@ -188,9 +212,17 @@ class PenConnStatus(object):
 
 
 class PendingConnection(object):
+    """ Describe pending connections parameters for PendingConnectionsServer  """
     connect_statuses = [PenConnStatus.Inactive, PenConnStatus.Failure]
 
-    def __init__(self, type_=None, tcp_addresses=None, established=None, failure=None, args=None):
+    def __init__(self, type_, tcp_addresses, established=None, failure=None, args=None):
+        """ Create new pending connection
+        :param int type_: connection type that allows to select proper reactions
+        :param list tcp_addresses: list of tcp_addresses that the node should try to connect to
+        :param func|None established: established connection callback
+        :param func|None failure: connection errback
+        :param dict args: arguments that should be passed to established or failure function
+        """
         self.id = uuid.uuid4()
         self.tcp_addresses = tcp_addresses
         self.last_try_time = time.time()
@@ -202,7 +234,15 @@ class PendingConnection(object):
 
 
 class PendingListening(object):
-    def __init__(self, type_=None, port=None, established=None, failure=None, args=None):
+    """ Describe pending listenings parameters for PendingConnectionsServer  """
+    def __init__(self, type_, port, established=None, failure=None, args=None):
+        """
+        :param type_: listening type that allows to select proper reactions
+        :param int port: port that should be open for listening
+        :param func|None established: established listening callback
+        :param func|None failure: listening errback
+        :param dict args: arguments that should be passed to established or failure function
+        """
         self.id = uuid.uuid4()
         self.time = time.time()
         self.established = established
@@ -211,4 +251,3 @@ class PendingListening(object):
         self.port = port
         self.type = type_
         self.tries = 0
-        self.listening_port = None
