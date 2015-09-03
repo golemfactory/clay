@@ -8,8 +8,8 @@ class EnvironmentsManager:
         self.envConfig = None
 
     ############################
-    def loadConfig(self, clientId):
-        self.envConfig = EnvironmentsConfig.loadConfig(clientId, self.getEnvironmentsToConfig())
+    def loadConfig(self, client_id):
+        self.envConfig = EnvironmentsConfig.loadConfig(client_id, self.getEnvironmentsToConfig())
         configEntries = self.envConfig.getConfigEntries()
         for env in self.environments:
             getterForEnv = getattr(configEntries, "get" + env.getId())

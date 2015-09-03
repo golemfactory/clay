@@ -41,113 +41,113 @@ class Peer():
 
 class P2PService():
     def __init__(self):
-        self.addPeerCalled = False
+        self.add_peer_called = False
         self.peers = {}
         self.tasksHeaders = []
         self.peersToAdd = set()
         self.taskHeaderToRemove = None
 
-    def getListenParams(self):
+    def get_listen_params(self):
         return 12345, 'ABC'
 
-    def setLastMessage(self, *args):
+    def set_last_message(self, *args):
         pass
 
-    def removePeer(self, peer):
+    def remove_peer(self, peer):
         pass
 
-    def findPeer(self, id):
+    def find_peer(self, id):
         return None
 
-    def addPeer(self, id, peer):
-        self.addPeerCalled = True
+    def add_peer(self, id, peer):
+        self.add_peer_called = True
 
-    def getTasksHeaders(self):
+    def get_tasks_headers(self):
         return self.tasksHeaders
 
-    def addTaskHeader(self, thDict):
+    def add_task_header(self, thDict):
         self.tasksHeaders.append(thDict)
         return True
 
-    def tryToAddPeer(self, peer):
+    def try_to_add_peer(self, peer):
         self.peersToAdd.add(peer[ "id" ])
 
-    def removeTaskHeader(self, taskId):
+    def remove_task_header(self, taskId):
         self.taskHeaderToRemove = taskId
 
 class TestPeerSession(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level = logging.DEBUG)
         self.conn = Conn()
-        self.peerSession = PeerSession(self.conn)
-        self.peerSession.p2pService = P2PService()
+        self.peer_session = PeerSession(self.conn)
+        self.peer_session.p2pService = P2PService()
 
     def testInit(self):
-        self.assertEquals(self.peerSession.state, PeerSession.StateInitialize)
+        self.assertEquals(self.peer_session.state, PeerSession.StateInitialize)
 
     def testConnectionStateType(self):
         self.assertEquals(PeerSession.ConnectionStateType, NetConnState)
 
     def testStart(self):
-        self.peerSession.start()
-        self.assertEquals(self.peerSession.state, PeerSession.StateConnecting)
+        self.peer_session.start()
+        self.assertEquals(self.peer_session.state, PeerSession.StateConnecting)
         self.assertIsInstance(self.conn.messages[0], MessageHello)
         self.assertIsInstance(self.conn.messages[1], MessagePing)
 
     def testDropped (self):
-        self.peerSession.dropped()
-        self.assertEquals(self.peerSession.state, PeerSession.StateInitialize)
+        self.peer_session.dropped()
+        self.assertEquals(self.peer_session.state, PeerSession.StateInitialize)
         self.assertEquals(self.conn.closedCalled, True)
 
     def testPing(self):
-        self.peerSession.ping(1)
+        self.peer_session.ping(1)
         time.sleep(2)
         self.assertIsInstance(self.conn.messages[0], MessagePing)
 
     def testInterpret(self):
-        self.peerSession.interpret(None)
+        self.peer_session.interpret(None)
         self.assertIsInstance(self.conn.messages[0], MessageDisconnect)
-        self.assertIsNotNone(self.peerSession.last_disconnect_time)
-        self.peerSession.last_disconnect_time = None
+        self.assertIsNotNone(self.peer_session.last_disconnect_time)
+        self.peer_session.last_disconnect_time = None
 
-        self.peerSession.interpret(MessagePing())
+        self.peer_session.interpret(MessagePing())
         self.assertIsInstance(self.conn.messages[1], MessagePong)
 
-        self.peerSession.interpret(MessagePong())
+        self.peer_session.interpret(MessagePong())
 
-        self.peerSession.interpret(MessageHello())
-        self.assertTrue(self.peerSession.p2pService.addPeerCalled)
+        self.peer_session.interpret(MessageHello())
+        self.assertTrue(self.peer_session.p2pService.add_peer_called)
         self.assertIsInstance(self.conn.messages[2], MessageHello)
         self.assertIsInstance(self.conn.messages[3], MessagePing)
 
-        self.peerSession.interpret(MessageGetPeers())
+        self.peer_session.interpret(MessageGetPeers())
         self.assertIsInstance(self.conn.messages[4], MessagePeers)
 
-        self.peerSession.interpret(MessagePeers([ {"id": 1} , {"id": 2} ]))
-        self.assertSetEqual(self.peerSession.p2pService.peersToAdd, set([1, 2]))
+        self.peer_session.interpret(MessagePeers([ {"id": 1} , {"id": 2} ]))
+        self.assertSetEqual(self.peer_session.p2pService.peersToAdd, set([1, 2]))
 
-        self.peerSession.interpret(MessageTasks([ 1, 2 ]))
-        self.assertEquals(len(self.peerSession.p2pService.tasksHeaders), 2)
+        self.peer_session.interpret(MessageTasks([ 1, 2 ]))
+        self.assertEquals(len(self.peer_session.p2pService.tasksHeaders), 2)
 
-        self.peerSession.interpret(MessageGetTasks())
+        self.peer_session.interpret(MessageGetTasks())
         self.assertIsInstance(self.conn.messages[5], MessageTasks)
 
-        self.peerSession.interpret(MessageWantToComputeTask())
+        self.peer_session.interpret(MessageWantToComputeTask())
         self.assertIsInstance(self.conn.messages[6], MessageDisconnect)
 
-        self.peerSession.interpret(MessageRemoveTask('12345'))
-        self.assertEqual(self.peerSession.p2pService.taskHeaderToRemove, '12345')
+        self.peer_session.interpret(MessageRemoveTask('12345'))
+        self.assertEqual(self.peer_session.p2pService.taskHeaderToRemove, '12345')
 
-        self.peerSession.interpret(MessageDisconnect())
+        self.peer_session.interpret(MessageDisconnect())
         self.assertEquals(self.conn.closedCalled, True)
 
 
 
 
     def testSendGetPeers(self):
-        self.peerSession.send_get_peers()
+        self.peer_session.send_get_peers()
         self.assertIsInstance(self.conn.messages[0], MessageGetPeers)
 
     def testSendGetTasks(self):
-        self.peerSession.send_get_tasks()
+        self.peer_session.send_get_tasks()
         self.assertIsInstance(self.conn.messages[0], MessageGetTasks)

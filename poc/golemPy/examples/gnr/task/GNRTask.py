@@ -28,9 +28,9 @@ def checkSubtaskIdWrapper(func):
 ##############################################
 class GNRTaskBuilder(TaskBuilder):
     #######################
-    def __init__(self, clientId, taskDefinition, rootPath):
+    def __init__(self, client_id, taskDefinition, rootPath):
         self.taskDefinition = taskDefinition
-        self.clientId       = clientId
+        self.client_id       = client_id
         self.rootPath       = rootPath
 
     #######################
@@ -62,9 +62,9 @@ class GNROptions:
 ##############################################
 class GNRTask(Task):
     #####################
-    def __init__(self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+    def __init__(self, srcCode, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
                   ttl, subtaskTtl, resourceSize, estimatedMemory):
-        th = TaskHeader(clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment, Node(),
+        th = TaskHeader(client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment, Node(),
                          ttl, subtaskTtl, resourceSize, estimatedMemory)
         Task.__init__(self, th, srcCode)
 
@@ -174,8 +174,8 @@ class GNRTask(Task):
     def __getTaskDirParams(self):
         commonPathPrefix = os.path.commonprefix(self.taskResources)
         commonPathPrefix = os.path.dirname(commonPathPrefix)
-        dirName = commonPathPrefix #os.path.join("res", self.header.clientId, self.header.taskId, "resources")
-        tmpDir = getTmpPath(self.header.clientId, self.header.taskId, self.rootPath)
+        dirName = commonPathPrefix #os.path.join("res", self.header.client_id, self.header.taskId, "resources")
+        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.rootPath)
         if not os.path.exists(tmpDir):
                 os.makedirs(tmpDir)
 
@@ -240,7 +240,7 @@ class GNRTask(Task):
     @checkSubtaskIdWrapper
     def _markSubtaskFailed(self, subtaskId):
         self.subTasksGiven[ subtaskId ]['status'] = SubtaskStatus.failure
-        self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'clientId' ] ] = -1
+        self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'client_id' ] ] = -1
         self.numFailedSubtasks += 1
 
     #######################

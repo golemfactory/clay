@@ -55,7 +55,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuiler):
     def build(self):
         mainSceneDir = os.path.dirname(self.taskDefinition.mainSceneFile)
 
-        vRayTask = BlenderRenderTask(      self.clientId,
+        vRayTask = BlenderRenderTask(      self.client_id,
                                    self.taskDefinition.taskId,
                                    mainSceneDir,
                                    self.taskDefinition.mainSceneFile,
@@ -90,7 +90,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuiler):
 class BlenderRenderTask(FrameRenderingTask):
     #######################
     def __init__(self,
-                  clientId,
+                  client_id,
                   taskId,
                   mainSceneDir,
                   mainSceneFile,
@@ -113,7 +113,7 @@ class BlenderRenderTask(FrameRenderingTask):
                   returnPort = 0,
                   keyId = ""):
 
-        FrameRenderingTask.__init__(self, clientId, taskId, returnAddress, returnPort, keyId,
+        FrameRenderingTask.__init__(self, client_id, taskId, returnAddress, returnPort, keyId,
                           BlenderEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
@@ -134,10 +134,10 @@ class BlenderRenderTask(FrameRenderingTask):
             self.framesGiven[ frame ] = {}
 
     #######################
-    def queryExtraData(self, perfIndex, numCores = 0, clientId = None):
+    def queryExtraData(self, perfIndex, numCores = 0, client_id = None):
 
-        if not self._acceptClient(clientId):
-            logger.warning(" Client {} banned from this task ".format(clientId))
+        if not self._acceptClient(client_id):
+            logger.warning(" Client {} banned from this task ".format(client_id))
             return None
 
         startTask, endTask = self._getNextTask()
@@ -178,7 +178,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subTasksGiven[ hash ] = extraData
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
         self.subTasksGiven[ hash ][ 'perf' ] = perfIndex
-        self.subTasksGiven[ hash ][ 'clientId' ] = clientId
+        self.subTasksGiven[ hash ][ 'client_id' ] = client_id
         self.subTasksGiven[ hash ][ 'parts' ] = parts
 
 
@@ -278,7 +278,7 @@ class BlenderRenderTask(FrameRenderingTask):
         except Exception, err:
             logger.error("Can't generate preview {}".format(str(err)))
 
-        tmpDir = getTmpPath(self.header.clientId, self.header.taskId, self.rootPath)
+        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.rootPath)
 
         self.previewFilePath = "{}".format(os.path.join(tmpDir, "current_preview"))
 

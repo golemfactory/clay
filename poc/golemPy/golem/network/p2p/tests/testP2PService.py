@@ -11,7 +11,7 @@ from golem.network.p2p.P2PService import P2PService
 
 class ConfigDesc:
     def __init__(self):
-        self.clientUid = 1
+        self.client_uid = 1
         self.seedHost = 'localhost'
         self.seedHostPort = 1233
         self.startPort = 1234
@@ -41,13 +41,13 @@ class TaskServer:
         self.taskHeader = None
         self.taskHeaderToRemove = None
 
-    def getTasksHeaders(self):
+    def get_tasks_headers(self):
         return 'taskserver taskheaders'
 
-    def addTaskHeader(self, thDictRepr):
-        self.taskHeader = thDictRepr
+    def add_task_header(self, th_dict_repr):
+        self.taskHeader = th_dict_repr
 
-    def removeTaskHeader(self, taskId):
+    def remove_task_header(self, taskId):
         self.taskHeaderToRemove = taskId
 
 class Session():
@@ -67,51 +67,51 @@ class TestP2PService(unittest.TestCase):
         self.assertIsNotNone(self.p2pservice)
 
     def testWrongSeedData(self):
-        self.assertFalse(self.p2pservice.wrongSeedData())
+        self.assertFalse(self.p2pservice.wrong_seed_data())
         self.p2pservice.configDesc.seedHostPort = 0
-        self.assertTrue(self.p2pservice.wrongSeedData())
+        self.assertTrue(self.p2pservice.wrong_seed_data())
         self.p2pservice.configDesc.seedHostPort = 66666
-        self.assertTrue(self.p2pservice.wrongSeedData())
+        self.assertTrue(self.p2pservice.wrong_seed_data())
         self.p2pservice.configDesc.seedHostPort = 33333
-        self.assertFalse(self.p2pservice.wrongSeedData())
+        self.assertFalse(self.p2pservice.wrong_seed_data())
         self.p2pservice.configDesc.seedHost = ''
-        self.assertTrue(self.p2pservice.wrongSeedData())
+        self.assertTrue(self.p2pservice.wrong_seed_data())
 
     def testSetTaskServer(self):
         newTaskServer = 'new task server'
-        self.p2pservice.setTaskServer(newTaskServer)
-        self.assertEquals(self.p2pservice.taskServer, newTaskServer)
+        self.p2pservice.set_task_server(newTaskServer)
+        self.assertEquals(self.p2pservice.task_server, newTaskServer)
 
     def testSyncNetwork(self):
         self.p2pservice.lastPeerRequest = time.time()
         time.sleep(2.5)
         peer1 = Peer()
         self.p2pservice.peers['1'] = Peer()
-        self.p2pservice.syncNetwork()
+        self.p2pservice.sync_network()
         peer1 = self.p2pservice.peers['1']
         self.assertEquals(peer1.sendGetPeersCalledCnt , 1)
         time.sleep(2.5)
-        self.p2pservice.syncNetwork()
+        self.p2pservice.sync_network()
         peer1 = self.p2pservice.peers['1']
         self.assertEquals(peer1.sendGetPeersCalledCnt, 2)
         self.p2pservice.peers['2'] = Peer()
         time.sleep(2.5)
-        self.p2pservice.syncNetwork()
+        self.p2pservice.sync_network()
         peer1 = self.p2pservice.peers['1']
         self.assertEquals(peer1.sendGetPeersCalledCnt, 2)
-        self.p2pservice.incommingPeers[1] = { "address": "address1", "port": 1234, "conn_trials": 0 }
-        self.p2pservice.incommingPeers[2] = { "address": "address2", "port": 5678, "conn_trials": 0 }
-        self.p2pservice.freePeers.append(1)
-        self.p2pservice.freePeers.append(2)
+        self.p2pservice.incoming_peers[1] = { "address": "address1", "port": 1234, "conn_trials": 0 }
+        self.p2pservice.incoming_peers[2] = { "address": "address2", "port": 5678, "conn_trials": 0 }
+        self.p2pservice.free_peers.append(1)
+        self.p2pservice.free_peers.append(2)
         del self.p2pservice.peers['2']
-        self.p2pservice.syncNetwork()
-        self.assertGreaterEqual(sum([ x["conn_trials"] for x in self.p2pservice.incommingPeers.values() ]), 1)
+        self.p2pservice.sync_network()
+        self.assertGreaterEqual(sum([ x["conn_trials"] for x in self.p2pservice.incoming_peers.values() ]), 1)
 
 
 
     def testNewSession(self):
         session = Session()
-        self.p2pservice.newSession(session)
+        self.p2pservice.new_connection(session)
         self.assertTrue(session.startCalled)
 
     def testPingPeers(self):
@@ -119,68 +119,68 @@ class TestP2PService(unittest.TestCase):
         p2 = Peer()
         self.p2pservice.peers['1'] = p1
         self.p2pservice.peers['2'] = p2
-        self.p2pservice.pingPeers(5)
+        self.p2pservice.ping_peers(5)
         for peer in self.p2pservice.peers.values():
             self.assertEquals(peer.interval, 5)
 
     def testFindPeer(self):
-        self.assertIsNone(self.p2pservice.findPeer('testPeerId'))
+        self.assertIsNone(self.p2pservice.find_peer('testPeerId'))
         self.p2pservice.peers['testPeer2Id'] = 'testPeer2'
         self.p2pservice.peers['testPeerId'] = 'testPeer'
         self.p2pservice.peers['testPeer3Id'] = 'testPeer3'
-        self.assertEquals(self.p2pservice.findPeer('testPeerId'), 'testPeer')
+        self.assertEquals(self.p2pservice.find_peer('testPeerId'), 'testPeer')
 
     def testGetPeers(self):
         self.p2pservice.peers = 'testPeers'
-        self.assertEquals(self.p2pservice.getPeers(), 'testPeers')
+        self.assertEquals(self.p2pservice.get_peers(), 'testPeers')
 
     def testAddPeer(self):
-        self.p2pservice.addPeer('543', 'testPeer')
+        self.p2pservice.add_peer('543', 'testPeer')
         self.assertEquals(self.p2pservice.peers['543'], 'testPeer')
 
     def testTryToAddPeer (self):
-        peerInfo = {}
-        peerInfo['id'] = 'peerId'
-        peerInfo['address'] = 'address'
-        peerInfo['port'] = 'port'
-        self.p2pservice.tryToAddPeer(peerInfo)
-        self.assertEquals(self.p2pservice.incommingPeers['peerId']['conn_trials'], 0)
-        self.assertTrue('peerId' in self.p2pservice.freePeers)
-        peerInfo2 = {}
-        peerInfo2['id'] = 'peerId'
-        peerInfo2['address'] = 'address2'
-        peerInfo2['port'] = 'port2'
-        self.p2pservice.tryToAddPeer(peerInfo2)
-        self.assertNotEqual(self.p2pservice.incommingPeers['peerId']['address'], 'address2')
+        peer_info = {}
+        peer_info['id'] = 'peerId'
+        peer_info['address'] = 'address'
+        peer_info['port'] = 'port'
+        self.p2pservice.try_to_add_peer(peer_info)
+        self.assertEquals(self.p2pservice.incoming_peers['peerId']['conn_trials'], 0)
+        self.assertTrue('peerId' in self.p2pservice.free_peers)
+        peer_info2 = {}
+        peer_info2['id'] = 'peerId'
+        peer_info2['address'] = 'address2'
+        peer_info2['port'] = 'port2'
+        self.p2pservice.try_to_add_peer(peer_info2)
+        self.assertNotEqual(self.p2pservice.incoming_peers['peerId']['address'], 'address2')
 
     def testRemovePeer(self):
-        self.p2pservice.allPeers.append('345')
+        self.p2pservice.all_peers.append('345')
         self.p2pservice.peers['123'] = '345'
 
-        self.assertTrue('345' in self.p2pservice.allPeers)
+        self.assertTrue('345' in self.p2pservice.all_peers)
         self.assertTrue('123' in self.p2pservice.peers.keys())
-        self.p2pservice.removePeer('345')
-        self.assertFalse('345' in self.p2pservice.allPeers)
+        self.p2pservice.remove_peer('345')
+        self.assertFalse('345' in self.p2pservice.all_peers)
         self.assertFalse('123' in self.p2pservice.peers.keys())
 
     def testSetLastMessage(self):
-        self.p2pservice.setLastMessage('type', 't', 'msg', 'addr', 1)
-        self.p2pservice.setLastMessage('type', 't', 'msg', 'addr', 2)
-        self.p2pservice.setLastMessage('type', 't', 'msg', 'addr', 3)
-        self.p2pservice.setLastMessage('type', 't', 'msg', 'addr', 4)
-        self.p2pservice.setLastMessage('type', 't', 'msg', 'addr', 5)
-        self.p2pservice.setLastMessage('type', 't', 'msg', 'addr', 6)
-        self.assertLessEqual(len(self.p2pservice.lastMessages), 5)
-        self.assertEquals(self.p2pservice.lastMessages[0][3], 2)
-        self.assertEquals(self.p2pservice.lastMessages[4][3], 6)
+        self.p2pservice.set_last_message('type', 't', 'msg', 'addr', 1)
+        self.p2pservice.set_last_message('type', 't', 'msg', 'addr', 2)
+        self.p2pservice.set_last_message('type', 't', 'msg', 'addr', 3)
+        self.p2pservice.set_last_message('type', 't', 'msg', 'addr', 4)
+        self.p2pservice.set_last_message('type', 't', 'msg', 'addr', 5)
+        self.p2pservice.set_last_message('type', 't', 'msg', 'addr', 6)
+        self.assertLessEqual(len(self.p2pservice.last_messages), 5)
+        self.assertEquals(self.p2pservice.last_messages[0][3], 2)
+        self.assertEquals(self.p2pservice.last_messages[4][3], 6)
 
     def testGetLastMessages(self):
-        self.p2pservice.lastMessages = 'testlastmessages'
-        self.assertEquals(self.p2pservice.getLastMessages(), 'testlastmessages')
+        self.p2pservice.last_messages = 'testlastmessages'
+        self.assertEquals(self.p2pservice.get_last_messages(), 'testlastmessages')
 
     def testManagerSessionDisconnect(self):
-        self.p2pservice.managerSessionDisconnect('uid')
-        self.assertIsNone(self.p2pservice.managerSession)
+        self.p2pservice.manager_session_disconnect('uid')
+        self.assertIsNone(self.p2pservice.manager_session)
 
     def testChangeConfig(self):
         configDesc = ConfigDesc()
@@ -191,39 +191,39 @@ class TestP2PService(unittest.TestCase):
 
     def testChangeAddress(self):
         with LogCapture() as l:
-            self.p2pservice.changeAddress('bla')
+            self.p2pservice.change_address('bla')
             self.assertTrue('ERROR' in [ rec.levelname for rec in l.records ])
 
-        thDictRepr = { 'clientId': 124, 'address': 'ADDR', 'port' : 'PORT' }
-        thDictReprCopy =  thDictRepr.copy()
-        self.p2pservice.changeAddress(thDictRepr)
-        self.assertDictEqual(thDictRepr , thDictReprCopy)
+        th_dict_repr = { 'client_id': 124, 'address': 'ADDR', 'port' : 'PORT' }
+        th_dict_reprCopy =  th_dict_repr.copy()
+        self.p2pservice.change_address(th_dict_repr)
+        self.assertDictEqual(th_dict_repr , th_dict_reprCopy)
         self.p2pservice.peers[ 124 ] = Peer()
-        self.p2pservice.changeAddress(thDictRepr)
-        self.assertEquals( thDictRepr['clientId'] , thDictReprCopy['clientId'])
-        self.assertNotEquals( thDictRepr['address'] , thDictReprCopy['address'])
+        self.p2pservice.change_address(th_dict_repr)
+        self.assertEquals( th_dict_repr['client_id'] , th_dict_reprCopy['client_id'])
+        self.assertNotEquals( th_dict_repr['address'] , th_dict_reprCopy['address'])
 
     def testGetListenParams(self):
-        expectedListenParams = (self.p2pservice.p2pServer.curPort, self.p2pservice.configDesc.clientUid)
-        self.assertEquals(self.p2pservice.getListenParams(), expectedListenParams)
+        expectedListenParams = (self.p2pservice.curPort, self.p2pservice.client_uid)
+        self.assertEquals(self.p2pservice.get_listen_params(), expectedListenParams)
 
     def testGetTasksHeaders(self):
-        self.p2pservice.taskServer = TaskServer()
-        self.assertEquals(self.p2pservice.getTasksHeaders(), 'taskserver taskheaders')
+        self.p2pservice.task_server = TaskServer()
+        self.assertEquals(self.p2pservice.get_tasks_headers(), 'taskserver taskheaders')
 
     def testAddTaskHeader(self):
-        self.p2pservice.taskServer = TaskServer()
-        self.p2pservice.addTaskHeader('testHeader')
-        self.assertEquals(self.p2pservice.taskServer.taskHeader, 'testHeader')
+        self.p2pservice.task_server = TaskServer()
+        self.p2pservice.add_task_header('testHeader')
+        self.assertEquals(self.p2pservice.task_server.taskHeader, 'testHeader')
 
     def testRemoveTaskHeader(self):
-        self.p2pservice.taskServer = TaskServer()
-        self.p2pservice.removeTaskHeader('testHeader')
-        self.assertEquals(self.p2pservice.taskServer.taskHeaderToRemove, 'testHeader')
+        self.p2pservice.task_server = TaskServer()
+        self.p2pservice.remove_task_header('testHeader')
+        self.assertEquals(self.p2pservice.task_server.taskHeaderToRemove, 'testHeader')
 
     def testRemoveTask(self):
         self.p2pservice.peers['1'] = Peer()
         self.p2pservice.peers['2'] = Peer()
-        self.p2pservice.removeTask('555')
+        self.p2pservice.remove_task('555')
         for peer in self.p2pservice.peers.values():
             self.assertEquals(peer.taskToRemove, '555')

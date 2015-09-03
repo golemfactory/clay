@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 ##########################################################
 class ResourceServer(TCPServer):
     ############################
-    def __init__(self, config_desc, keysAuth, client, useIp6=False):
+    def __init__(self, config_desc, keys_auth, client, useIp6=False):
         self.client = client
-        self.keysAuth = keysAuth
+        self.keys_auth = keys_auth
         self.resourcesToSend = []
         self.resourcesToGet = []
         self.resSendIt = 0
@@ -30,7 +30,7 @@ class ResourceServer(TCPServer):
         network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(ResourceSession)),  useIp6)
         TCPServer.__init__(self, config_desc, network)
 
-        self.resourcePeers = {}
+        self.resource_peers = {}
         self.waitingTasks = {}
         self.waitingTasksToCompute = {}
         self.waitingResources = {}
@@ -39,7 +39,7 @@ class ResourceServer(TCPServer):
         self.getResourcePeersInterval = 5.0
         self.sessions = []
 
-        self.lastMessageTimeThreshold = config_desc.resourceSessionTimeout
+        self.last_message_time_threshold = config_desc.resourceSessionTimeout
 
     ############################
     def start_accepting(self):
@@ -58,8 +58,8 @@ class ResourceServer(TCPServer):
         return self.dirManager.getResourceDir()
 
     ############################
-    def getPeers(self):
-        self.client.getResourcePeers()
+    def get_peers(self):
+        self.client.get_resource_peers()
 
     ############################
     def addFilesToSend(self, files, taskId, num):
@@ -101,28 +101,28 @@ class ResourceServer(TCPServer):
     new_connection = newConnection
 
     ############################
-    def addResourcePeer(self, clientId, addr, port, keyId, nodeInfo):
-        if clientId in self.resourcePeers:
-            if self.resourcePeers[clientId]['addr'] == addr and self.resourcePeers[clientId]['port'] == port and self.resourcePeers[clientId]['keyId']:
+    def addResourcePeer(self, client_id, addr, port, keyId, node_info):
+        if client_id in self.resource_peers:
+            if self.resource_peers[client_id]['addr'] == addr and self.resource_peers[client_id]['port'] == port and self.resource_peers[client_id]['keyId']:
                 return
 
-        self.resourcePeers[clientId] = { 'addr': addr, 'port': port, 'keyId': keyId, 'state': 'free', 'posResource': 0,
-                                           'node': nodeInfo}
+        self.resource_peers[client_id] = { 'addr': addr, 'port': port, 'keyId': keyId, 'state': 'free', 'posResource': 0,
+                                           'node': node_info}
 
     ############################
-    def setResourcePeers(self, resourcePeers):
-        if self.config_desc.clientUid in resourcePeers:
-            del resourcePeers[self.config_desc.clientUid]
+    def set_resource_peers(self, resource_peers):
+        if self.config_desc.clientUid in resource_peers:
+            del resource_peers[self.config_desc.clientUid]
 
-        for clientId, [addr, port, keyId, nodeInfo] in resourcePeers.iteritems():
-            self.addResourcePeer(clientId, addr, port, keyId, nodeInfo)
+        for client_id, [addr, port, keyId, node_info] in resource_peers.iteritems():
+            self.addResourcePeer(client_id, addr, port, keyId, node_info)
 
     ############################
-    def syncNetwork(self):
+    def sync_network(self):
         if len(self.resourcesToGet) + len(self.resourcesToSend) > 0:
-            curTime = time.time()
-            if curTime - self.lastGetResourcePeersTime > self.getResourcePeersInterval:
-                self.client.getResourcePeers()
+            cur_time = time.time()
+            if cur_time - self.lastGetResourcePeersTime > self.getResourcePeersInterval:
+                self.client.get_resource_peers()
                 self.lastGetResourcePeersTime = time.time()
         self.sendResources()
         self.getResources()
@@ -132,13 +132,13 @@ class ResourceServer(TCPServer):
     def getResources(self):
         if len (self.resourcesToGet) == 0:
             return
-        resourcePeers = [peer for peer in self.resourcePeers.values() if peer['state'] == 'free']
-        random.shuffle(resourcePeers)
+        resource_peers = [peer for peer in self.resource_peers.values() if peer['state'] == 'free']
+        random.shuffle(resource_peers)
 
-        if len (self.resourcePeers) == 0:
+        if len (self.resource_peers) == 0:
             return
 
-        for peer in resourcePeers:
+        for peer in resource_peers:
             peer['state'] = 'waiting'
             self.pullResource(self.resourcesToGet[0][0], peer['addr'], peer['port'], peer['keyId'], peer['node'])
 
@@ -151,9 +151,9 @@ class ResourceServer(TCPServer):
         if self.resSendIt >= len(self.resourcesToSend):
             self.resSendIt = len(self.resourcesToSend) - 1
 
-        resourcePeers = [peer for peer in self.resourcePeers.values() if peer['state'] == 'free']
+        resource_peers = [peer for peer in self.resource_peers.values() if peer['state'] == 'free']
 
-        for peer in resourcePeers:
+        for peer in resource_peers:
             name = self.resourcesToSend[self.resSendIt][0]
             num = self.resourcesToSend[self.resSendIt][2]
             peer['state'] = 'waiting'
@@ -161,8 +161,8 @@ class ResourceServer(TCPServer):
             self.resSendIt = (self.resSendIt + 1) % len(self.resourcesToSend)
 
     ############################
-    def pullResource(self, resource, addr, port, keyId, nodeInfo):
-        tcp_addresses = self.__node_info_to_tcp_addresses(nodeInfo, port)
+    def pullResource(self, resource, addr, port, keyId, node_info):
+        tcp_addresses = self.__node_info_to_tcp_addresses(node_info, port)
         addr = self.client.getSuggestedAddr(keyId)
         if addr:
             tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
@@ -192,9 +192,9 @@ class ResourceServer(TCPServer):
                 self.sessions.append(session)
 
     ############################
-    def pushResource(self, resource, addr, port, keyId, nodeInfo, copies):
+    def pushResource(self, resource, addr, port, keyId, node_info, copies):
 
-        tcp_addresses = self.__node_info_to_tcp_addresses(nodeInfo, port)
+        tcp_addresses = self.__node_info_to_tcp_addresses(node_info, port)
         addr = self.client.getSuggestedAddr(keyId)
         if addr:
             tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
@@ -213,17 +213,17 @@ class ResourceServer(TCPServer):
 
     ############################
     def resourceDownloaded(self, resource, address, port):
-        clientId = self.__freePeer(address, port)
+        client_id = self.__freePeer(address, port)
         if not self.resourceManager.checkResource(resource):
             logger.error("Wrong resource downloaded\n")
-            if clientId is not None:
-                self.client.decreaseTrust(clientId, RankingStats.resource)
+            if client_id is not None:
+                self.client.decreaseTrust(client_id, RankingStats.resource)
             return
-        if clientId is not None:
+        if client_id is not None:
             # Uaktualniamy ranking co 100 zasobow, zeby specjalnie nie zasmiecac sieci
-            self.resourcePeers[clientId]['posResource'] += 1
-            if (self.resourcePeers[clientId]['posResource'] % 50) == 0:
-                self.client.increaseTrust(clientId, RankingStats.resource, 50)
+            self.resource_peers[client_id]['posResource'] += 1
+            if (self.resource_peers[client_id]['posResource'] % 50) == 0:
+                self.client.increaseTrust(client_id, RankingStats.resource, 50)
         for taskId in self.waitingResources[resource]:
             self.waitingTasksToCompute[taskId] -= 1
             if self.waitingTasksToCompute[taskId] == 0:
@@ -271,46 +271,46 @@ class ResourceServer(TCPServer):
 
     #############################
     def get_key_id(self):
-        return self.keysAuth.get_key_id()
+        return self.keys_auth.get_key_id()
 
     #############################
     def encrypt(self, message, publicKey):
         if publicKey == 0:
             return message
-        return self.keysAuth.encrypt(message, publicKey)
+        return self.keys_auth.encrypt(message, publicKey)
 
     #############################
     def decrypt(self, message):
-        return self.keysAuth.decrypt(message)
+        return self.keys_auth.decrypt(message)
 
     #############################
     def sign(self, data):
-        return self.keysAuth.sign(data)
+        return self.keys_auth.sign(data)
 
     #############################
-    def verifySig(self, sig, data, publicKey):
-        return self.keysAuth.verify(sig, data, publicKey)
+    def verify_sig(self, sig, data, publicKey):
+        return self.keys_auth.verify(sig, data, publicKey)
 
 
     ############################
     def change_config(self, config_desc):
-        self.lastMessageTimeThreshold = config_desc.resourceSessionTimeout
+        self.last_message_time_threshold = config_desc.resourceSessionTimeout
 
     @staticmethod
-    def __node_info_to_tcp_addresses(nodeInfo, port):
-        tcp_addresses = [TCPAddress(i, port) for i in nodeInfo.prvAddresses]
-        if nodeInfo.pubPort:
-            tcp_addresses.append(TCPAddress(nodeInfo.pubAddr, nodeInfo.pubPort))
+    def __node_info_to_tcp_addresses(node_info, port):
+        tcp_addresses = [TCPAddress(i, port) for i in node_info.prvAddresses]
+        if node_info.pubPort:
+            tcp_addresses.append(TCPAddress(node_info.pubAddr, node_info.pubPort))
         else:
-            tcp_addresses.append(TCPAddress(nodeInfo.pubAddr, port))
+            tcp_addresses.append(TCPAddress(node_info.pubAddr, port))
         return tcp_addresses
 
     ############################
     def __freePeer(self, addr, port):
-        for clientId, value in self.resourcePeers.iteritems():
+        for client_id, value in self.resource_peers.iteritems():
             if value['addr'] == addr and value['port'] == port:
-                self.resourcePeers[clientId]['state'] = 'free'
-                return clientId
+                self.resource_peers[client_id]['state'] = 'free'
+                return client_id
 
 
     ############################
@@ -352,20 +352,20 @@ class ResourceServer(TCPServer):
     ############################
     def __removeClient(self, addr, port):
         badClient = None
-        for clientId, peer in self.resourcePeers.iteritems():
+        for client_id, peer in self.resource_peers.iteritems():
             if peer['addr'] == addr and peer['port'] == port:
-                badClient = clientId
+                badClient = client_id
                 break
 
         if badClient is not None:
-            self.resourcePeers[badClient]
+            self.resource_peers[badClient]
 
     ############################
     def __removeOldSessions(self):
-        curTime = time.time()
+        cur_time = time.time()
         sessionsToRemove = []
         for session in self.sessions:
-            if curTime - session.last_message_time > self.lastMessageTimeThreshold:
+            if cur_time - session.last_message_time > self.last_message_time_threshold:
                 sessionsToRemove.append(session)
         for session in sessionsToRemove:
             self.removeSession(session)

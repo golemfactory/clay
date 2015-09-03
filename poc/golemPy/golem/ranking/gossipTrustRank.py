@@ -101,11 +101,11 @@ class GossipTrustTest:
 
         while True:
             self.gossipStep()
-            if self.stopGossip():
+            if self.stop_gossip():
                 break
 
 
-    def stopGossip (self):
+    def stop_gossip (self):
         stop = 0
         if self.gossipScoreSteps >=  self.gossipScoreMaxSteps:
             return True
@@ -206,13 +206,13 @@ class GossipPositiveNegativeTrustRank:
             stopNeg = self.negative.stopAggregation()
         return [ stopPos, stopNeg ]
 
-    def stopGossip(self, finPos, finNeg):
+    def stop_gossip(self, finPos, finNeg):
         stopPos = finPos
         stopNeg = finNeg
         if not stopPos:
-            stopPos = self.positive.stopGossip()
+            stopPos = self.positive.stop_gossip()
         if not stopNeg:
-            stopNeg = self.negative.stopGossip()
+            stopNeg = self.negative.stop_gossip()
         return [ stopPos, stopNeg ]
 
     def prepAggregation(self, finPos, finNeg):
@@ -318,7 +318,7 @@ class GossipTrustRank:
     def stopAggregation(self):
         return self.compareVec(self.globVec, self.prevVec) <= self.delta
 
-    def stopGossip(self):
+    def stop_gossip(self):
         return self.compareVec(self.globVec, self.prevGossipVec) <= self.epsilon
 
     def compareVec(self, vec1, vec2):
@@ -365,7 +365,7 @@ class GossipTrustRank:
 
         return [ vecToSend, self.nodeId]
 
-    def hearGossip(self, gossip):
+    def hear_gossip(self, gossip):
         if self.printData:
             print "NODE {} hear gossip {}".format(self.nodeId, gossip)
         self.collectedVecs.append(gossip)

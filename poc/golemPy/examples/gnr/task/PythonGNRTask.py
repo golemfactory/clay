@@ -21,7 +21,7 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
             resourceSize += os.stat(resource).st_size
 
         return PythonGNRTask(   srcCode,
-                            self.clientId,
+                            self.client_id,
                             self.taskDefinition.taskId,
                             "",
                             0,
@@ -37,10 +37,10 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
 
 class PythonGNRTask(GNRTask):
     #####################
-    def __init__(self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+    def __init__(self, srcCode, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
                   ttl, subtaskTtl, resourceSize, estimatedMemory, totalTasks, rootPath):
 
-        GNRTask.__init__(self, srcCode, clientId, taskId,ownerAddress, ownerPort, ownerKeyId, environment, ttl, subtaskTtl,
+        GNRTask.__init__(self, srcCode, client_id, taskId,ownerAddress, ownerPort, ownerKeyId, environment, ttl, subtaskTtl,
                   resourceSize, estimatedMemory)
 
         self.totalTasks = totalTasks
@@ -48,7 +48,7 @@ class PythonGNRTask(GNRTask):
 
 
 
-    def queryExtraData(self, perfIndex, numCores = 1, clientId = None):
+    def queryExtraData(self, perfIndex, numCores = 1, client_id = None):
         ctd = ComputeTaskDef()
         ctd.taskId = self.header.taskId
         hash = "{}".format(random.getrandbits(128))
@@ -66,7 +66,7 @@ class PythonGNRTask(GNRTask):
 
         self.subTasksGiven[ hash ] = ctd.extraData
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
-        self.subTasksGiven[ hash ][ 'clientId' ] = clientId
+        self.subTasksGiven[ hash ][ 'client_id' ] = client_id
 
         return ctd
 

@@ -2,555 +2,477 @@ import time
 import logging
 import random
 
-from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress
+from golem.network.transport.network import ProtocolFactory, SessionFactory
+from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress, SafeProtocol
+from golem.network.transport.tcp_server import TCPServer
+from golem.network.transport.server import Server
 from golem.network.p2p.peer_session import PeerSession
-from golem.network.p2p.P2PServer import P2PServer
+
 from PeerKeeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
 
-class P2PService:
-    ########################
-    def __init__(self, node, configDesc, keysAuth, useIp6=False):
 
-        self.configDesc             = configDesc
+class P2PService(TCPServer):
+    def __init__(self, node, config_desc, keys_auth, use_ipv6=False):
+        network = TCPNetwork(ProtocolFactory(SafeProtocol, self, SessionFactory(PeerSession)), use_ipv6)
+        TCPServer.__init__(self, config_desc, network)
 
-        self.peers                  = {}
-        self.allPeers               = []
-        self.clientUid              = self.configDesc.clientUid
-        self.lastPeersRequest       = time.time()
-        self.lastGetTasksRequest    = time.time()
-        self.incommingPeers         = {}
-        self.freePeers              = []
-        self.taskServer             = None
-        self.node                   = node
-        self.lastMessageTimeThreshold = self.configDesc.p2pSessionTimeout
-        self.refreshPeersTimeout    = 1200 #FIXME
-        self.lastRefreshPeers       = time.time()
+        self.peers = {}
+        self.all_peers = []
+        self.client_uid = self.config_desc.clientUid
+        self.last_peers_request = time.time()
+        self.last_get_tasks_request = time.time()
+        self.incoming_peers = {}
+        self.free_peers = []
+        self.task_server = None
+        self.node = node
+        self.last_message_time_threshold = self.config_desc.p2pSessionTimeout
+        self.refresh_peers_timeout = 1200  # FIXME
+        self.last_refresh_peers = time.time()
 
-        self.lastMessages           = []
+        self.last_messages = []
 
-        self.resourcePort           = 0
-        self.resourcePeers          = {}
-        self.resourceServer         = None
-        self.gossip                 = []
-        self.stopGossipFromPeers    = set()
-        self.neighbourLocRankBuff   = []
+        self.resourcePort = 0
+        self.resource_peers = {}
+        self.resource_server = None
+        self.gossip = []
+        self.stop_gossip_from_peers = set()
+        self.neighbour_loc_rank_buff = []
 
-        self.keysAuth               = keysAuth
-        self.peerKeeper             = PeerKeeper(keysAuth.get_key_id())
-        self.suggestedAddrs         = {}
+        self.keys_auth = keys_auth
+        self.peer_keeper = PeerKeeper(keys_auth.get_key_id())
+        self.suggested_address = {}
 
-        self.connectionsToSet = {}
-        self.p2pServer              = P2PServer(configDesc, self, useIp6)
+        self.connections_to_set = {}
 
-        self.network = self.p2pServer.network
+        self.manager_session = None
 
-        self.connectToNetwork()
+        self.connect_to_network()
 
-    #############################
-    def connectToNetwork(self):
-        self.p2pServer.start_accepting()
-        if not self.wrongSeedData():
-            self.__connect(self.configDesc.seedHost, self.configDesc.seedHostPort)
+    def connect_to_network(self):
+        """ Start listening on the port from configuration and try to connect to the seed node """
+        self.start_accepting()
+        tcp_address = TCPAddress(self.config_desc.seedHost, self.config_desc.seedHostPort)
+        if tcp_address.is_proper():
+            self.__connect(tcp_address)
 
-    #############################
-    def wrongSeedData(self):
-        try:
-            if (int(self.configDesc.seedHostPort) < 1) or (int(self.configDesc.seedHostPort) > 65535):
-                logger.warning(u"Seed port number out of range [1, 65535]: {}".format(self.configDesc.seedHostPort))
-                return True
-        except Exception, e:
-            logger.error(u"Wrong seed port number {}: {}".format(self.configDesc.seedHostPort, str(e)))
-            return True
+    def set_task_server(self, task_server):
+        self.task_server = task_server
 
-        if len(self.configDesc.seedHost) <= 0 :
-            return True
-        return False
+    def sync_network(self):
 
-    #############################
-    def setTaskServer(self, taskServer):
-        self.taskServer = taskServer
+        self.__send_get_peers()
 
-    #############################
-    def syncNetwork(self):
+        if self.task_server:
+            self.__send_message_get_tasks()
 
-        self.__sendMessageGetPeers()
+        self.__remove_old_peers()
+        self.__sync_peer_keeper()
 
-        if self.taskServer:
-            self.__sendMessageGetTasks()
+    def __sync_peer_keeper(self):
+        self.__remove_sessions_to_end_from_peer_keeper()
+        nodes_to_find = self.peer_keeper.sync_network()
+        self.__remove_sessions_to_end_from_peer_keeper()
+        if nodes_to_find:
+            self.send_find_nodes(nodes_to_find)
 
-        self.__removeOldPeers()
-        self.__syncPeerKeeper()
+    def __remove_sessions_to_end_from_peer_keeper(self):
+        for peer_id in self.peer_keeper.sessionsToEnd:
+            self.remove_peer_by_id(peer_id)
+        self.peer_keeper.sessionsToEnd = []
 
-    #############################
-    def __syncPeerKeeper(self):
-        self.__removeSessionsToEndFromPeerKeeper()
-        nodesToFind = self.peerKeeper.syncNetwork()
-        self.__removeSessionsToEndFromPeerKeeper()
-        if nodesToFind:
-            self.sendFindNodes(nodesToFind)
-
-    #############################
-    def __removeSessionsToEndFromPeerKeeper(self):
-        for peerId in self.peerKeeper.sessionsToEnd:
-            self.removePeerById(peerId)
-        self.peerKeeper.sessionsToEnd = []
-
-    #############################
-    def newSession(self, session):
-        #session.p2pService = self
-        self.allPeers.append(session)
+    def new_connection(self, session):
+        self.all_peers.append(session)
         session.start()
- 
-    #############################
-    def pingPeers(self, interval):
+
+    def ping_peers(self, interval):
         for p in self.peers.values():
             p.ping(interval)
-    
-    #############################
-    def findPeer(self, peerID):
-        return self.peers.get(peerID)
 
-    #############################
-    def getPeers(self):
+    def find_peer(self, peer_id):
+        return self.peers.get(peer_id)
+
+    def get_peers(self):
         return self.peers
 
-    #############################
-    def addPeer(self, id, peer):
+    def add_peer(self, id_, peer):
 
-        self.peers[id] = peer
-        self.__sendDegree()
+        self.peers[id_] = peer
+        self.__send_degree()
 
-    #############################
-    def addToPeerKeeper(self, id, peerKeyId, address, port, nodeInfo):
-        peerToPingInfo = self.peerKeeper.addPeer(peerKeyId, id, address, port, nodeInfo)
-        if peerToPingInfo and peerToPingInfo.nodeId in self.peers:
-            peerToPing = self.peers[peerToPingInfo.nodeId]
-            if peerToPing:
-                peerToPing.ping(0)
+    def add_to_peer_keeper(self, id_, peer_key_id, address, port, node_info):
+        peer_to_ping_info = self.peer_keeper.add_peer(peer_key_id, id_, address, port, node_info)
+        if peer_to_ping_info and peer_to_ping_info.nodeId in self.peers:
+            peer_to_ping = self.peers[peer_to_ping_info.nodeId]
+            if peer_to_ping:
+                peer_to_ping.ping(0)
 
+    def pong_received(self, id_, peer_key_id, address, port):
+        self.peer_keeper.pong_received(peer_key_id, id_, address, port)
 
-    #############################
-    def pongReceived(self, id, peerKeyId, address, port):
-        self.peerKeeper.pongReceived(peerKeyId, id, address, port)
+    def try_to_add_peer(self, peer_info):
+        if self.__is_new_peer(peer_info["id"]):
+            logger.info("add peer to incoming {} {} {}".format(peer_info["id"],
+                                                               peer_info["address"],
+                                                               peer_info["port"]))
+            self.incoming_peers[peer_info["id"]] = {"address": peer_info["address"],
+                                                    "port": peer_info["port"],
+                                                    "node": peer_info["node"],
+                                                    "conn_trials": 0}
+            self.free_peers.append(peer_info["id"])
+            logger.debug(self.incoming_peers)
 
-    #############################
-    def tryToAddPeer(self, peerInfo):
-        if self.__isNewPeer(peerInfo["id"]):
-            logger.info("add peer to incoming {} {} {}".format(peerInfo["id"],
-                                                             peerInfo["address"],
-                                                             peerInfo["port"]))
-            self.incommingPeers[peerInfo["id"]] = { "address" : peerInfo["address"],
-                                                    "port" : peerInfo["port"],
-                                                    "node": peerInfo["node"],
-                                                    "conn_trials" : 0 }
-            self.freePeers.append(peerInfo["id"])
-            logger.debug(self.incommingPeers)
+    def remove_peer(self, peer_session):
 
-
-    #############################
-    def removePeer(self, peerSession):
-
-        if peerSession in self.allPeers:
-            self.allPeers.remove(peerSession)
+        if peer_session in self.all_peers:
+            self.all_peers.remove(peer_session)
 
         for p in self.peers.keys():
-            if self.peers[p] == peerSession:
+            if self.peers[p] == peer_session:
                 del self.peers[p]
 
-        self.__sendDegree()
+        self.__send_degree()
 
-    #############################
-    def removePeerById(self, peerId):
-        peer = self.peers.get(peerId)
+    def remove_peer_by_id(self, peer_id):
+        peer = self.peers.get(peer_id)
         if not peer:
-            logger.info("Can't remove peer {}, unknown peer".format(peerId))
+            logger.info("Can't remove peer {}, unknown peer".format(peer_id))
             return
-        if peer in self.allPeers:
-            self.allPeers.remove(peer)
-        del self.peers[peerId]
+        if peer in self.all_peers:
+            self.all_peers.remove(peer)
+        del self.peers[peer_id]
 
-        self.__sendDegree()
+        self.__send_degree()
 
-    #############################
-    def enoughPeers(self):
-        return len(self.peers) >= self.configDesc.optNumPeers
+    def enough_peers(self):
+        return len(self.peers) >= self.config_desc.optNumPeers
 
-    #############################
-    def setLastMessage(self, type, clientKeyId, t, msg, address, port):
-        self.peerKeeper.setLastMessageTime(clientKeyId)
-        if len(self.lastMessages) >= 5:
-            self.lastMessages = self.lastMessages[-4:]
+    def set_last_message(self, type_, client_key_id, t, msg, address, port):
+        self.peer_keeper.setLastMessageTime(client_key_id)
+        if len(self.last_messages) >= 5:
+            self.last_messages = self.last_messages[-4:]
 
-        self.lastMessages.append([type, t, address, port, msg])
+        self.last_messages.append([type_, t, address, port, msg])
 
-    #############################
-    def getLastMessages(self):
-        return self.lastMessages
-    
-    ############################# 
-    def managerSessionDisconnect(self, uid):
-        self.managerSession = None
+    def get_last_messages(self):
+        return self.last_messages
 
-    #############################
-    def change_config(self, configDesc):
-        self.configDesc = configDesc
-        self.p2pServer.change_config(configDesc)
+    def manager_session_disconnect(self, uid):
+        self.manager_session = None
 
-        self.lastMessageTimeThreshold = self.configDesc.p2pSessionTimeout
+    def change_config(self, config_desc):
+        """ Change configuration descriptor. If listening port is changed, than stop listening on old port and start
+        listening on a new one. If seed address is changed, connect to a new seed.
+        Change configuration for resource server.
+        :param ClientConfigDescriptor config_desc: new config descriptor
+        """
+
+        TCPServer.change_config(self, config_desc)
+
+        self.last_message_time_threshold = self.config_desc.p2pSessionTimeout
 
         for peer in self.peers.values():
-            if (peer.port == self.configDesc.seedHostPort) and (peer.address == self.configDesc.seedHostPort):
+            if (peer.port == self.config_desc.seedHostPort) and (peer.address == self.config_desc.seedHostPort):
                 return
 
-        if not self.wrongSeedData():
-            self.__connect(self.configDesc.seedHost, self.configDesc.seedHostPort)
+        tcp_address = TCPAddress(self.config_desc.seedHost, self.config_desc.seedHostPort)
+        if tcp_address.is_proper():
+            self.__connect(tcp_address)
 
-        if self.resourceServer:
-            self.resourceServer.change_config(configDesc)
+        if self.resource_server:
+            self.resource_server.change_config(config_desc)
 
-    #############################
-    def changeAddress(self, thDictRepr):
+    def change_address(self, th_dict_repr):
         try:
-            id = thDictRepr["clientId"]
+            id_ = th_dict_repr["client_id"]
 
-            if self.peers[id]:
-                thDictRepr ["address"] = self.peers[id].address
-                thDictRepr ["port"] = self.peers[id].port
+            if self.peers[id_]:
+                th_dict_repr["address"] = self.peers[id_].address
+                th_dict_repr["port"] = self.peers[id_].port
         except Exception, err:
             logger.error("Wrong task representation: {}".format(str(err)))
 
-    ############################
-    def getListenParams(self):
-        return (self.p2pServer.cur_port, self.configDesc.clientUid, self.keysAuth.get_key_id(), self.node)
+    def get_listen_params(self):
+        return self.cur_port, self.client_uid, self.keys_auth.get_key_id(), self.node
 
-    ############################
-    def getPeersDegree(self):
-        return  { peer.id: peer.degree for peer in self.peers.values() }
+    def get_peers_degree(self):
+        return {peer.id: peer.degree for peer in self.peers.values()}
 
-    #############################
     def get_key_id(self):
-        return self.peerKeeper.peerKeyId
+        return self.peer_keeper.pper_key_id
 
-    #############################
-    def encrypt(self, message, publicKey):
-        if publicKey == 0:
+    def encrypt(self, message, public_key):
+        if public_key == 0:
             return message
-        return self.keysAuth.encrypt(message, publicKey)
+        return self.keys_auth.encrypt(message, public_key)
 
-    #############################
     def decrypt(self, message):
-        return self.keysAuth.decrypt(message)
+        return self.keys_auth.decrypt(message)
 
-    #############################
     def sign(self, data):
-        return self.keysAuth.sign(data)
+        return self.keys_auth.sign(data)
 
+    def verify_sig(self, sig, data, public_key):
+        return self.keys_auth.verify(sig, data, public_key)
+
+    def set_suggested_address(self, client_key_id, addr, port):
+        self.suggested_address[client_key_id] = addr
+
+    # Kademlia functions
     #############################
-    def verifySig(self, sig, data, publicKey):
-        return self.keysAuth.verify(sig, data, publicKey)
-
-    def setSuggestedAddr(self, clientKeyId, addr, port):
-        self.suggestedAddrs[clientKeyId] = addr
-
-    #Kademlia functions
-    #############################
-    def sendFindNodes(self, nodesToFind):
-        for nodeKeyId, neighbours in nodesToFind.iteritems():
+    def send_find_nodes(self, nodes_to_find):
+        for node_key_id, neighbours in nodes_to_find.iteritems():
             for neighbour in neighbours:
-                peer =  self.peers.get(neighbour.nodeId)
+                peer = self.peers.get(neighbour.nodeId)
                 if peer:
-                    peer.send_find_node(nodeKeyId)
+                    peer.send_find_node(node_key_id)
 
-    #Find node
+    # Find node
     #############################
-    def findNode(self, nodeKeyId):
-        neighbours = self.peerKeeper.neighbours(nodeKeyId)
-        nodesInfo = []
+    def find_node(self, node_key_id):
+        neighbours = self.peer_keeper.neighbours(node_key_id)
+        nodes_info = []
         for n in neighbours:
-            nodesInfo.append({ "address": n.ip, "port": n.port, "id": n.nodeId, "node": n.nodeInfo})
-        return nodesInfo
+            nodes_info.append({"address": n.ip, "port": n.port, "id": n.nodeId, "node": n.node_info})
+        return nodes_info
 
-
-    #Resource functions
+    # Resource functions
     #############################
-    def setResourceServer (self, resourceServer):
-        self.resourceServer = resourceServer
+    def set_resource_server(self, resource_server):
+        self.resource_server = resource_server
 
-    ############################
-    def setResourcePeer(self, addr, port):
+    def set_resource_peer(self, addr, port):
         self.resourcePort = port
-        self.resourcePeers[self.clientUid] = [addr, port, self.keysAuth.get_key_id(), self.node]
+        self.resource_peers[self.client_uid] = [addr, port, self.keys_auth.get_key_id(), self.node]
 
-    #############################
-    def sendGetResourcePeers(self):
+    def send_get_resource_peers(self):
         for p in self.peers.values():
             p.send_get_resource_peers()
 
-    ############################
-    def getResourcePeers(self):
-        resourcePeersInfo = []
-        for clientId, [addr, port, keyId, nodeInfo] in self.resourcePeers.iteritems():
-            resourcePeersInfo.append({ 'clientId': clientId, 'addr': addr, 'port': port, 'keyId': keyId,
-                                       'node': nodeInfo })
+    def get_resource_peers(self):
+        resource_peers_info = []
+        for client_id, [addr, port, key_id, node_info] in self.resource_peers.iteritems():
+            resource_peers_info.append({'client_id': client_id, 'addr': addr, 'port': port, 'key_id': key_id,
+                                        'node': node_info})
 
-        return resourcePeersInfo
+        return resource_peers_info
 
-    ############################
-    def setResourcePeers(self, resourcePeers):
-        print "P2P SET RESOURCE PEERS {}".format(resourcePeers)
-        for peer in resourcePeers:
+    def set_resource_peers(self, resource_peers):
+        for peer in resource_peers:
             try:
-                if peer['clientId'] != self.clientUid:
-                    self.resourcePeers[peer['clientId']]  = [peer['addr'], peer['port'], peer['keyId'], peer['node']]
+                if peer['client_id'] != self.client_uid:
+                    self.resource_peers[peer['client_id']] = [peer['addr'], peer['port'], peer['key_id'], peer['node']]
             except Exception, err:
                 logger.error("Wrong set peer message (peer: {}): {}".format(peer, str(err)))
-        resourcePeersCopy = self.resourcePeers.copy()
-        if self.clientUid in resourcePeersCopy:
-            del resourcePeersCopy[self.clientUid]
-        self.resourceServer.setResourcePeers(resourcePeersCopy)
+        resource_peers_copy = self.resource_peers.copy()
+        if self.client_uid in resource_peers_copy:
+            del resource_peers_copy[self.client_uid]
+        self.resource_server.set_resource_peers(resource_peers_copy)
 
-    #############################
-    def sendPutResource(self, resource, addr, port, copies):
+    def put_resource(self, resource, addr, port, copies):
+        self.resource_server.put_resource(resource, addr, port, copies)
 
-        if len (self.peers) > 0:
-            p = self.peers.itervalues().next()
-            p.sendPutResource(resource, addr, port, copies)
-
-    #############################
-    def putResource(self, resource, addr, port, copies):
-        self.resourceServer.putResource(resource, addr, port, copies)
-
-    #TASK FUNCTIONS
+    # TASK FUNCTIONS
     ############################
-    def getTasksHeaders(self):
-        return self.taskServer.getTasksHeaders()
+    def get_tasks_headers(self):
+        return self.task_server.get_tasks_headers()
 
-    ############################
-    def addTaskHeader(self, thDictRepr):
-        return self.taskServer.addTaskHeader(thDictRepr)
+    def add_task_header(self, th_dict_repr):
+        return self.task_server.add_task_header(th_dict_repr)
 
-    ############################
-    def removeTaskHeader(self, taskId):
-        return self.taskServer.removeTaskHeader(taskId)
+    def remove_task_header(self, task_id):
+        return self.task_server.remove_task_header(task_id)
 
-    ############################
-    def removeTask(self, taskId):
+    def remove_task(self, task_id):
         for p in self.peers.values():
-            p.send_remove_task(taskId)
+            p.send_remove_task(task_id)
 
-    ############################
-    def wantToStartTaskSession(self, keyId, nodeInfo, connId, superNodeInfo=None):
-        logger.debug("Try to start task sesion {}".format(keyId))
-        msgSnd = False
+    def want_to_start_task_session(self, key_id, node_info, conn_id, super_node_info=None):
+        logger.debug("Try to start task session {}".format(key_id))
+        msg_snd = False
         for peer in self.peers.itervalues():
-            if peer.key_id == keyId:
-                peer.send_want_to_start_task_session(nodeInfo, connId, superNodeInfo)
+            if peer.key_id == key_id:
+                peer.send_want_to_start_task_session(node_info, conn_id, super_node_info)
                 return
 
         for peer in self.peers.itervalues():
-            if peer.key_id != nodeInfo.key:
-                peer.send_set_task_session(keyId, nodeInfo, connId, superNodeInfo)
-                msgSnd = True
+            if peer.key_id != node_info.key:
+                peer.send_set_task_session(key_id, node_info, conn_id, super_node_info)
+                msg_snd = True
 
-        #TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
+        # TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
 
-        if not msgSnd and nodeInfo.key == self.get_key_id():
-            self.taskServer.final_conn_failure(connId)
+        if not msg_snd and node_info.key == self.get_key_id():
+            self.task_server.final_conn_failure(conn_id)
 
-    ############################
-    def informAboutTaskNatHole(self, keyId, rvKeyId, addr, port, ansConnId):
-        logger.debug("Nat hole ready {}:{}".format(addr,port))
+    def inform_about_task_nat_hole(self, key_id, rv_key_id, addr, port, ans_conn_id):
+        logger.debug("Nat hole ready {}:{}".format(addr, port))
         for peer in self.peers.itervalues():
-            if peer.key_id == keyId:
-                peer.send_task_nat_hole(rvKeyId, addr, port, ansConnId)
+            if peer.key_id == key_id:
+                peer.send_task_nat_hole(rv_key_id, addr, port, ans_conn_id)
                 return
 
-    ############################
-    def traverseNat(self, keyId, addr, port, connId, superKeyId):
-        self.taskServer.traverseNat(keyId, addr, port, connId, superKeyId)
+    def traverse_nat(self, key_id, addr, port, conn_id, super_key_id):
+        self.task_server.traverse_nat(key_id, addr, port, conn_id, super_key_id)
 
-    ############################
-    def informAboutNatTraverseFailure(self, keyId, resKeyId, connId):
+    def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
         for peer in self.peers.itervalues():
-            if peer.key_id == keyId:
-                peer.send_inform_about_nat_traverse_failure(resKeyId, connId)
-        #TODO CO jak juz nie ma polaczenia?
+            if peer.key_id == key_id:
+                peer.send_inform_about_nat_traverse_failure(res_key_id, conn_id)
+                # TODO CO jak juz nie ma polaczenia?
 
-    ############################
-    def sendNatTraverseFailure(self, keyId, connId):
+    def send_nat_traverse_failure(self, key_id, conn_id):
         for peer in self.peers.itervalues():
-            if peer.key_id == keyId:
-                peer.send_nat_traverse_failure(connId)
-        #TODO Co jak nie ma tego polaczenia
+            if peer.key_id == key_id:
+                peer.send_nat_traverse_failure(conn_id)
+                # TODO Co jak nie ma tego polaczenia
 
-    ############################
-    def traverseNatFailure(self, connId):
-        self.taskServer.traverseNatFailure(connId)
+    def traverse_nat_failure(self, conn_id):
+        self.task_server.traverse_nat_failure(conn_id)
 
-    ############################
-    def peerWantTaskSession(self, nodeInfo, superNodeInfo, connId):
-        #TODO Reakcja powinna nastapic tylko na pierwszy taki komunikat
-        self.taskServer.startTaskSession(nodeInfo, superNodeInfo, connId)
+    def peer_want_task_session(self, node_info, super_node_info, conn_id):
+        # TODO Reakcja powinna nastapic tylko na pierwszy taki komunikat
+        self.task_server.startTaskSession(node_info, super_node_info, conn_id)
 
-    ############################
-    def peerWantToSetTaskSession(self, keyId, nodeInfo, connId, superNodeInfo):
-        logger.debug("Peer want to set task session with {}".format(keyId))
-        if connId in self.connectionsToSet:
+    def peer_want_to_set_task_session(self, key_id, node_info, conn_id, super_node_info):
+        logger.debug("Peer want to set task session with {}".format(key_id))
+        if conn_id in self.connections_to_set:
             return
 
-        #TODO Lepszy mechanizm wyznaczania supernode'a
-        if superNodeInfo is None and self.node.isSuperNode():
-            superNodeInfo = self.node
+        # TODO Lepszy mechanizm wyznaczania supernode'a
+        if super_node_info is None and self.node.isSuperNode():
+            super_node_info = self.node
 
-        #TODO Te informacje powinny wygasac (byc usuwane po jakims czasie)
-        self.connectionsToSet[connId] = (keyId, nodeInfo, time.time())
-        self.wantToStartTaskSession(keyId, nodeInfo, connId, superNodeInfo)
+        # TODO Te informacje powinny wygasac (byc usuwane po jakims czasie)
+        self.connections_to_set[conn_id] = (key_id, node_info, time.time())
+        self.want_to_start_task_session(key_id, node_info, conn_id, super_node_info)
 
     #############################
-    #RANKING FUNCTIONS          #
+    # RANKING FUNCTIONS          #
     #############################
-    def sendGossip(self, gossip, sendTo):
-        for peerId in sendTo:
-            peer = self.findPeer(peerId)
+    def send_gossip(self, gossip, send_to):
+        for peer_id in send_to:
+            peer = self.find_peer(peer_id)
             if peer is not None:
                 peer.send_gossip(gossip)
 
-    #############################
-    def hearGossip(self, gossip):
+    def hear_gossip(self, gossip):
         self.gossip.append(gossip)
 
-    #############################
-    def popGossip(self):
+    def pop_gossip(self):
         gossip = self.gossip
         self.gossip = []
         return gossip
 
-    #############################
-    def sendStopGossip(self):
+    def send_stop_gossip(self):
         for peer in self.peers.values():
             peer.send_stop_gossip()
 
-    #############################
-    def stopGossip(self, id):
-        self.stopGossipFromPeers.add(id)
+    def stop_gossip(self, id_):
+        self.stop_gossip_from_peers.add(id_)
 
-    #############################
-    def popStopGossipFromPeers(self):
-        stop = self.stopGossipFromPeers
-        self.stopGossipFromPeers = set()
+    def pop_stop_gossip_form_peers(self):
+        stop = self.stop_gossip_from_peers
+        self.stop_gossip_from_peers = set()
         return stop
 
-    #############################
-    def pushLocalRank(self, nodeId, locRank):
+    def push_local_rank(self, node_id, loc_rank):
         for peer in self.peers.values():
-            peer.send_loc_rank(nodeId, locRank)
+            peer.send_loc_rank(node_id, loc_rank)
 
-    #############################
-    def safeNeighbourLocRank(self, neighId, aboutId, rank):
-        self.neighbourLocRankBuff.append([neighId, aboutId, rank])
+    def safe_neighbour_loc_rank(self, neigh_id, about_id, rank):
+        self.neighbour_loc_rank_buff.append([neigh_id, about_id, rank])
 
-    #############################
-    def popNeighboursLocRanks(self):
-        nrb = self.neighbourLocRankBuff
-        self.neighbourLocRankBuff = []
+    def pop_neighbours_loc_ranks(self):
+        nrb = self.neighbour_loc_rank_buff
+        self.neighbour_loc_rank_buff = []
         return nrb
 
-    new_connection = newSession
-
     #############################
-    #PRIVATE SECTION
+    # PRIVATE SECTION
     #############################
-    def __connect(self, address, port):
-        connect_info = TCPConnectInfo([TCPAddress(address, port)], self.__connectionEstablished, self.__connectionFailure)
+    def __connect(self, tcp_address):
+        connect_info = TCPConnectInfo([tcp_address], self.__connection_established,
+                                      P2PService.__connection_failure)
         self.network.connect(connect_info)
-        #self.network.connect(address, port, self.__connectionEstablished, self.__connectionFailure)
 
-    #############################
-    def __connectToHost(self, peer):
-        addr = self.suggestedAddrs.get(peer['node'].key)
+    def __connect_to_host(self, peer):
+        addr = self.suggested_address.get(peer['node'].key)
         tcp_addresses = P2PService.__node_info_to_tcp_addresses(peer['node'], peer['port'])
         if addr:
             tcp_addresses = [TCPAddress(addr, peer['port'])] + tcp_addresses
-        connect_info = TCPConnectInfo(tcp_addresses, self.__connectionEstablished, self.__connectionFailure)
+        connect_info = TCPConnectInfo(tcp_addresses, self.__connection_established, self.__connection_failure)
         self.network.connect(connect_info)
 
     # Tmp function: to be remove
     @staticmethod
-    def __node_info_to_tcp_addresses(nodeInfo, port):
-        tcp_addresses = [TCPAddress(i, port) for i in nodeInfo.prvAddresses]
-        if nodeInfo.pubPort:
-            tcp_addresses.append(TCPAddress(nodeInfo.pubAddr, nodeInfo.pubPort))
+    def __node_info_to_tcp_addresses(node_info, port):
+        tcp_addresses = [TCPAddress(i, port) for i in node_info.prvAddresses]
+        if node_info.pubPort:
+            tcp_addresses.append(TCPAddress(node_info.pubAddr, node_info.pubPort))
         else:
-            tcp_addresses.append(TCPAddress(nodeInfo.pubAddr, port))
+            tcp_addresses.append(TCPAddress(node_info.pubAddr, port))
         return tcp_addresses
 
-
-    #############################
-    def __sendMessageGetPeers(self):
-        while len(self.peers) < self.configDesc.optNumPeers:
-            if len(self.freePeers) == 0:
-                peer = None #FIXME
-#                peer = self.peerKeeper.getRandomKnownNode()
+    def __send_get_peers(self):
+        while len(self.peers) < self.config_desc.optNumPeers:
+            if len(self.free_peers) == 0:
+                peer = None  # FIXME
+                #                peer = self.peer_keeper.getRandomKnownNode()
                 if not peer or peer.nodeId in self.peers:
-                    if time.time() - self.lastPeersRequest > 2:
-                        self.lastPeersRequest = time.time()
+                    if time.time() - self.last_peers_request > 2:
+                        self.last_peers_request = time.time()
                         for p in self.peers.values():
                             p.send_get_peers()
                 else:
-                    self.tryToAddPeer({"id": peer.nodeId, "address": peer.ip, "port": peer.port, "node": peer.nodeInfo })
+                    self.try_to_add_peer({"id": peer.nodeId, "address": peer.ip, "port": peer.port,
+                                          "node": peer.node_info})
                 break
 
-            x = int(time.time()) % len(self.freePeers) # get some random peer from freePeers
-            peer = self.freePeers[x]
-            self.incommingPeers[self.freePeers[x]]["conn_trials"] += 1 # increment connection trials
+            x = int(time.time()) % len(self.free_peers)  # get some random peer from free_peers
+            peer = self.free_peers[x]
+            self.incoming_peers[self.free_peers[x]]["conn_trials"] += 1  # increment connection trials
             logger.info("Connecting to peer {}".format(peer))
-            # self.__connect(self.incommingPeers[peer]["address"], self.incommingPeers[peer]["port"])
-            self.__connectToHost(self.incommingPeers[peer])
-            self.freePeers.remove(peer)
+            # self.__connect(self.incoming_peers[peer]["address"], self.incoming_peers[peer]["port"])
+            self.__connect_to_host(self.incoming_peers[peer])
+            self.free_peers.remove(peer)
 
-    #############################
-    def __sendMessageGetTasks(self):
-        if time.time() - self.lastGetTasksRequest > 2:
-            self.lastGetTasksRequest = time.time()
+    def __send_message_get_tasks(self):
+        if time.time() - self.last_get_tasks_request > 2:
+            self.last_get_tasks_request = time.time()
             for p in self.peers.values():
                 p.send_get_tasks()
 
-    #############################
-    def __connectionEstablished(self, session):
-#        session.p2pService = self
-        self.allPeers.append(session)
+    def __connection_established(self, session):
+        self.all_peers.append(session)
 
-        logger.debug("Connection to peer established. {}: {}".format(session.conn.transport.getPeer().host, session.conn.transport.getPeer().port))
+        logger.debug("Connection to peer established. {}: {}".format(session.conn.transport.getPeer().host,
+                                                                     session.conn.transport.getPeer().port))
 
-    #############################
-    def __connectionFailure(self):
+    @staticmethod
+    def __connection_failure():
         logger.error("Connection to peer failure.")
 
-    #############################
-    def __isNewPeer (self, id):
-        if id in self.incommingPeers or id in self.peers or id == self.configDesc.clientUid:
+    def __is_new_peer(self, id_):
+        if id_ in self.incoming_peers or id_ in self.peers or id_ == self.client_uid:
             return False
         else:
             return True
 
-    #############################
-    def __removeOldPeers(self):
-        curTime = time.time()
-        for peerId in self.peers.keys():
-            if curTime - self.peers[peerId].last_message_time > self.lastMessageTimeThreshold:
-                self.peers[peerId].disconnect(PeerSession.DCRTimeout)
+    def __remove_old_peers(self):
+        cur_time = time.time()
+        for peer_id in self.peers.keys():
+            if cur_time - self.peers[peer_id].last_message_time > self.last_message_time_threshold:
+                self.peers[peer_id].disconnect(PeerSession.DCRTimeout)
 
-        if curTime - self.lastRefreshPeers > self.refreshPeersTimeout:
-            self.lastRefreshPeers = time.time()
+        if cur_time - self.last_refresh_peers > self.refresh_peers_timeout:
+            self.last_refresh_peers = time.time()
             if len(self.peers) > 1:
-                peerId = random.choice(self.peers.keys())
-                self.peers[peerId].disconnect(PeerSession.DCRRefresh)
+                peer_id = random.choice(self.peers.keys())
+                self.peers[peer_id].disconnect(PeerSession.DCRRefresh)
 
-
-    #############################
-    def __sendDegree(self):
+    def __send_degree(self):
         degree = len(self.peers)
         for p in self.peers.values():
             p.send_degree(degree)

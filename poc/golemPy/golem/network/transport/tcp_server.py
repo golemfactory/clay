@@ -30,6 +30,9 @@ class TCPServer(Server):
         :param ClientConfigDescriptor config_desc: new config descriptor
         """
         Server.change_config(self, config_desc)
+        if self.config_desc.startPort < self.cur_port < self.config_desc.endPort:
+            return
+
         if self.cur_port != 0:
             listening_info = TCPListeningInfo(self.cur_port, self._stopped_callback, self._stopped_errback)
             self.network.stop_listening(listening_info)

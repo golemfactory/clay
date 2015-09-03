@@ -48,11 +48,11 @@ class FrameRenderingTaskBuiler(RenderingTaskBuilder):
 ##############################################
 class FrameRenderingTask(RenderingTask):
     #######################
-    def __init__(self, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
+    def __init__(self, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                   totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, rootPath,
                   estimatedMemory, useFrames, frames):
-        RenderingTask.__init__(self, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
+        RenderingTask.__init__(self, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                   totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, rootPath,
                   estimatedMemory)
@@ -79,7 +79,7 @@ class FrameRenderingTask(RenderingTask):
         else:
             img = Image.open(newChunkFilePath)
 
-        tmpDir = getTmpPath(self.header.clientId, self.header.taskId, self.rootPath)
+        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.rootPath)
         if self.previewFilePath[ num ] is None:
             self.previewFilePath[ num ] = "{}{}".format(os.path.join(tmpDir, "current_preview"), num)
         if self.previewTaskFilePath[ num ] is None:
@@ -133,7 +133,7 @@ class FrameRenderingTask(RenderingTask):
 
     #######################
     def __markSubFrame(self, sub, frame, color ):
-        tmpDir = getTmpPath(self.header.clientId, self.header.taskId, self.rootPath)
+        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.rootPath)
         idx = self.frames.index(frame)
         previewTaskFilePath = "{}{}".format(os.path.join(tmpDir, "current_task_preview") , idx)
         previewFilePath = "{}{}".format(os.path.join(tmpDir, "current_preview"), idx)
@@ -207,7 +207,7 @@ class FrameRenderingTask(RenderingTask):
                     self._updateFrameTaskPreview()
                 return
 
-            self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'clientId' ] ] = 1
+            self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'client_id' ] ] = 1
 
             for trFile in trFiles:
 

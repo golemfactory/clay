@@ -57,7 +57,7 @@ class EmptyManagerLogic:
 
     ########################
     def terminateAllNodes(self):
-        for node in self.managerServer.managerSessions:
+        for node in self.managerServer.manager_sessions:
             try:
                 self.managerServer.sendTerminate(node.uid)
             except:

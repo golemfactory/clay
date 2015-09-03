@@ -89,12 +89,12 @@ class SubtaskPaymentInfo:
 ################################################################
 class AccountInfo:
     ################################
-    def __init__(self, keyId, port, addr, nodeId, nodeInfo):
+    def __init__(self, keyId, port, addr, nodeId, node_info):
         self.keyId = keyId
         self.port = port
         self.addr = addr
         self.nodeId = nodeId
-        self.nodeInfo = nodeInfo
+        self.node_info = node_info
 
     ################################
     def __eq__(self, other):

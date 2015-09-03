@@ -42,13 +42,13 @@ class GossipTrustNodeRank:
         if stopNeg:
             stop[3] += 1
 
-    def stopGossip(self, finished, stop):
-        [stopPos, stopNeg] = self.computing.stopGossip(finished[0], finished[1])
+    def stop_gossip(self, finished, stop):
+        [stopPos, stopNeg] = self.computing.stop_gossip(finished[0], finished[1])
         if stopPos:
             stop[0] += 1
         if stopNeg:
             stop[1] += 1
-        [stopPos, stopNeg] = self.computing.stopGossip(finished[2], finished[3])
+        [stopPos, stopNeg] = self.computing.stop_gossip(finished[2], finished[3])
         if stopPos:
             stop[2] += 1
         if stopNeg:
@@ -149,7 +149,7 @@ class GossipTrustSimulator(RankSimulator):
 
         while True:
             self.doGossip()
-            if self.stopGossip():
+            if self.stop_gossip():
                 break
             self.gossipSteps += 1
             if self.gossipSteps >= self.gossipMaxSteps:
@@ -157,10 +157,10 @@ class GossipTrustSimulator(RankSimulator):
         print "GOSSIP STEP {}".format(self.gossipSteps)
         self.gossipSteps = 0
 
-    def stopGossip(self):
+    def stop_gossip(self):
         stop = [0, 0, 0, 0]
         for nodeId, node in self.nodes.iteritems():
-            node['ranking'].stopGossip(self.finishedGossips, stop)
+            node['ranking'].stop_gossip(self.finishedGossips, stop)
         same = self.sameVec()
         for i in range(0, 4):
             if stop[i] == len(self.nodes) and same[i]:
@@ -222,32 +222,32 @@ class GossipTrustSimulator(RankSimulator):
         for nodeId, node in self.nodes.iteritems():
             gossips.append(node['ranking'].doGossip(self.finishedGossips))
 
-        self.sendGossips(gossips)
+        self.send_gossips(gossips)
 
-    def sendGossips(self, gossips):
+    def send_gossips(self, gossips):
         for gossip in gossips:
             if gossip[0] is not None:
                 if gossip[0][0] is not None:
                     gossipVec, node1 = gossip[0][0]
                     node2 = self.getSecondNode(node1)
-                    self.nodes[node1]['ranking'].computing.positive.hearGossip(gossipVec)
-                    self.nodes[node2]['ranking'].computing.positive.hearGossip(gossipVec)
+                    self.nodes[node1]['ranking'].computing.positive.hear_gossip(gossipVec)
+                    self.nodes[node2]['ranking'].computing.positive.hear_gossip(gossipVec)
                 if gossip[0][1] is not None:
                     gossipVec, node1 = gossip[0][1]
                     node2 = self.getSecondNode(node1)
-                    self.nodes[node1]['ranking'].computing.negative.hearGossip(gossipVec)
-                    self.nodes[node2]['ranking'].computing.negative.hearGossip(gossipVec)
+                    self.nodes[node1]['ranking'].computing.negative.hear_gossip(gossipVec)
+                    self.nodes[node2]['ranking'].computing.negative.hear_gossip(gossipVec)
             if gossip[1] is not None:
                 if gossip[1][0] is not None:
                     gossipVec, node1 = gossip[1][0]
                     node2 = self.getSecondNode(node1)
-                    self.nodes[node1]['ranking'].delegating.positive.hearGossip(gossipVec)
-                    self.nodes[node2]['ranking'].delegating.positive.hearGossip(gossipVec)
+                    self.nodes[node1]['ranking'].delegating.positive.hear_gossip(gossipVec)
+                    self.nodes[node2]['ranking'].delegating.positive.hear_gossip(gossipVec)
                 if gossip[1][1] is not None:
                     gossipVec, node1 = gossip[1][1]
                     node2 = self.getSecondNode(node1)
-                    self.nodes[node1]['ranking'].delegating.negative.hearGossip(gossipVec)
-                    self.nodes[node2]['ranking'].delegating.negative.hearGossip(gossipVec)
+                    self.nodes[node1]['ranking'].delegating.negative.hear_gossip(gossipVec)
+                    self.nodes[node2]['ranking'].delegating.negative.hear_gossip(gossipVec)
 
     def getSecondNode(self, node1):
         r = random.sample(self.nodes.keys(), 1)

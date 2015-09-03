@@ -30,7 +30,7 @@ class InfoTaskBuilder(GNRTaskBuilder):
         with open(self.taskDefinition.srcFile) as f:
             srcCode = f.read()
         return InfoTask(   srcCode,
-                            self.clientId,
+                            self.client_id,
                             self.taskDefinition.taskId,
                             "",
                             0,
@@ -50,7 +50,7 @@ class InfoTask(GNRTask):
 
     def __init__(self,
                   srcCode,
-                  clientId,
+                  client_id,
                   taskId,
                   ownerAddress,
                   ownerPort,
@@ -65,7 +65,7 @@ class InfoTask(GNRTask):
                   iterations):
 
 
-        GNRTask.__init__(self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+        GNRTask.__init__(self, srcCode, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
                             ttl, subtaskTtl, resourceSize, estimatedMemory)
 
         self.totalTasks = iterations
@@ -78,7 +78,7 @@ class InfoTask(GNRTask):
         self.nodesManagerClient.dropConnection()
 
     #######################
-    def queryExtraData(self, perfIndex, numCores, clientId = None):
+    def queryExtraData(self, perfIndex, numCores, client_id = None):
         ctd = ComputeTaskDef()
         ctd.taskId = self.header.taskId
         hash = "{}".format(random.getrandbits(128))

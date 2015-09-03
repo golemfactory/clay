@@ -81,7 +81,7 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
     def build(self):
         mainSceneDir = os.path.dirname(self.taskDefinition.mainSceneFile)
 
-        luxTask = LuxTask( self.clientId,
+        luxTask = LuxTask( self.client_id,
                             self.taskDefinition.taskId,
                             mainSceneDir,
                             self.taskDefinition.mainSceneFile,
@@ -109,7 +109,7 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
 class LuxTask(RenderingTask):
     #######################
     def __init__(  self,
-                    clientId,
+                    client_id,
                     taskId,
                     mainSceneDir,
                     mainSceneFile,
@@ -133,7 +133,7 @@ class LuxTask(RenderingTask):
                     returnPort = 0,
                     keyId = ""):
 
-        RenderingTask.__init__(self, clientId, taskId, returnAddress, returnPort, keyId,
+        RenderingTask.__init__(self, client_id, taskId, returnAddress, returnPort, keyId,
                                  LuxRenderEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                                  mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                                  totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
@@ -159,9 +159,9 @@ class LuxTask(RenderingTask):
             self.header.environment = Environment.getId()
 
     #######################
-    def queryExtraData(self, perfIndex, numCores = 0, clientId = None):
-        if not self._acceptClient(clientId):
-            logger.warning(" Client {} banned from this task ".format(clientId))
+    def queryExtraData(self, perfIndex, numCores = 0, client_id = None):
+        if not self._acceptClient(client_id):
+            logger.warning(" Client {} banned from this task ".format(client_id))
             return None
 
         startTask, endTask = self._getNextTask()
@@ -205,7 +205,7 @@ class LuxTask(RenderingTask):
         self.subTasksGiven[ hash ] = extraData
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
         self.subTasksGiven[ hash ][ 'perf' ] = perfIndex
-        self.subTasksGiven[ hash ][ 'clientId' ] = clientId
+        self.subTasksGiven[ hash ][ 'client_id' ] = client_id
 
         return self._newComputeTaskDef(hash, extraData, workingDirectory, perfIndex)
 
@@ -264,7 +264,7 @@ class LuxTask(RenderingTask):
                 if ext == '.flm':
                     self.collectedFileNames[ numStart ] = trFile
                     self.numTasksReceived += 1
-                    self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'clientId' ] ] = 1
+                    self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'client_id' ] ] = 1
                 else:
                     self.subTasksGiven[ subtaskId ][ 'previewFile' ] = trFile
                     self._updatePreview(trFile, numStart)

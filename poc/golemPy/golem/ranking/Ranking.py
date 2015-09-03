@@ -115,19 +115,19 @@ class RankingDatabase:
         return LocalRank.select()
 
     ############################
-    def insertOrUpdateNeighbourLocRank(self, neighbourId, aboutId, locRank):
+    def insertOrUpdateNeighbourLocRank(self, neighbourId, about_id, locRank):
         try:
-            if neighbourId == aboutId:
-                logger.warning("Removing {} selftrust".format(aboutId))
+            if neighbourId == about_id:
+                logger.warning("Removing {} selftrust".format(about_id))
                 return
             with self.db.transaction():
-                NeighbourLocRank.create(nodeId = neighbourId, aboutNodeId = aboutId, requestingTrustValue = locRank[1], computingTrustValue = locRank[0])
+                NeighbourLocRank.create(nodeId = neighbourId, aboutNodeId = about_id, requestingTrustValue = locRank[1], computingTrustValue = locRank[0])
         except IntegrityError:
-            NeighbourLocRank.update(requestingTrustValue = locRank[1], computingTrustValue = locRank[0]).where(NeighbourLocRank.aboutNodeId == aboutId and NeighbourLocRank.nodeId == neighbourId).execute()
+            NeighbourLocRank.update(requestingTrustValue = locRank[1], computingTrustValue = locRank[0]).where(NeighbourLocRank.aboutNodeId == about_id and NeighbourLocRank.nodeId == neighbourId).execute()
 
     ############################
-    def getNeighbourLocRank(self, neighbourId, aboutId):
-        return NeighbourLocRank.select().where(NeighbourLocRank.nodeId == neighbourId and NeighbourLocRank.aboutNodeId == aboutId).first()
+    def getNeighbourLocRank(self, neighbourId, about_id):
+        return NeighbourLocRank.select().where(NeighbourLocRank.nodeId == neighbourId and NeighbourLocRank.aboutNodeId == about_id).first()
 
 POS_PAR = 1.0
 NEG_PAR = 2.0
@@ -180,7 +180,7 @@ class Ranking:
     def initStage(self):
         try:
             logger.debug("New gossip stage")
-            self.__pushLocalRanks()
+            self.__push_local_ranks()
             self.finished = False
             self.globalFinished = False
             self.step = 0
@@ -207,8 +207,8 @@ class Ranking:
             self.step += 1
             gossip = self.__prepareGossip()
             if len(self.neighbours) > 0:
-                sendTo = random.sample(self.neighbours, self.k)
-                self.client.sendGossip(gossip, sendTo)
+                send_to = random.sample(self.neighbours, self.k)
+                self.client.send_gossip(gossip, send_to)
             self.receivedGossip = [ gossip ]
         finally:
             deferLater(self.reactor, self.roundOracle.secToEndRound(), self.endRound)
@@ -356,13 +356,14 @@ class Ranking:
             locTrust = self.unknownTrust
         return self.neighbourWeightBase() ** (self.neighbourWeightPower(nodeId) * locTrust)
 
-    def syncNetwork(self):
+    def sync_network(self):
         neighboursLocRanks = self.client.collectNeighboursLocRanks()
-        for [ neighbourId, aboutId, locRank ] in neighboursLocRanks:
-            self.db.insertOrUpdateNeighbourLocRank(neighbourId, aboutId, locRank)
+        for [ neighbourId, about_id, locRank ] in neighboursLocRanks:
+            self.db.insertOrUpdateNeighbourLocRank(neighbourId,
+                                                   about_id, locRank)
 
     ############################
-    def __pushLocalRanks(self):
+    def __push_local_ranks(self):
         for locRank in self.db.getAllLocalRank():
             if locRank.nodeId in self.prevLocRank:
                 prevTrust = self.prevLocRank[ locRank.nodeId ]
@@ -375,7 +376,7 @@ class Ranking:
             else:
                 prevTrust = [float("inf")] * 2
             if max(map(abs, map(operator.sub, prevTrust, trust))) > self.locRankPushDelta:
-                self.client.pushLocalRank(locRank.nodeId, trust)
+                self.client.push_local_rank(locRank.nodeId, trust)
                 self.prevLocRank[locRank.nodeId] = trust
 
 
@@ -523,7 +524,7 @@ class Ranking:
 
     ############################
     def __sendFinished(self):
-        self.client.sendStopGossip()
+        self.client.send_stop_gossip()
 
     ############################
     def __markFinished(self, finished):

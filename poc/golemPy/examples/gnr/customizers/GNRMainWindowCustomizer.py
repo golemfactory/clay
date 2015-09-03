@@ -140,7 +140,7 @@ class GNRMainWindowCustomizer:
         self.updateTaskAdditionalInfo(self.logic.getTask(taskId))
 
     ############################
-    def removeTask(self, taskId):
+    def remove_task(self, taskId):
         for row in range(0, self.gui.ui.taskTableWidget.rowCount()):
             if self.gui.ui.taskTableWidget.item(row, 0).text() == taskId:
                 self.gui.ui.taskTableWidget.removeRow(row)

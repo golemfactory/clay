@@ -34,7 +34,7 @@ class NetworkSimulator:
         self.nodes[ seedNode ].add(node)
         self.nodes[ node ].add(seedNode)
 
-    def syncNetwork(self, optPeers = 4):
+    def sync_network(self, optPeers = 4):
         for node in self.nodes.keys():
             if len (self.nodes[node]) < optPeers:
                 newPeers = set()

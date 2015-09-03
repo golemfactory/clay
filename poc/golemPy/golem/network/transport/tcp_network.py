@@ -13,7 +13,7 @@ from twisted.internet.interfaces import IPullProducer
 from zope.interface import implements
 
 from golem.core.databuffer import DataBuffer
-from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE
+from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
 from golem.network.transport.message import Message
 
 from network import Network, SessionProtocol
@@ -35,6 +35,16 @@ class TCPAddress(object):
         """
         self.address = address
         self.port = port
+
+    def is_proper(self):
+        try:
+            if self.port < MIN_PORT or self.port > MAX_PORT:
+                logger.warning(u"Port number out of range ({},{}):{}".format(MIN_PORT, MAX_PORT, self.port))
+                return False
+        except Exception, e:
+            logger.error(u"Wrong port number {}: {}".format(self.port, str(e)))
+            return False
+        return len(self.address) > 0
 
     def __eq__(self, other):
         return self.address == other.address and self.port == other.port

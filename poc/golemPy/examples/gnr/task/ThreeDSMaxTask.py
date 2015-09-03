@@ -63,7 +63,7 @@ class ThreeDSMaxTaskBuilder(FrameRenderingTaskBuiler):
     def build(self):
         mainSceneDir = os.path.dirname(self.taskDefinition.mainSceneFile)
 
-        threeDSMaxTask = ThreeDSMaxTask(self.clientId,
+        threeDSMaxTask = ThreeDSMaxTask(self.client_id,
                                    self.taskDefinition.taskId,
                                    mainSceneDir,
                                    self.taskDefinition.mainSceneFile,
@@ -93,7 +93,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
 
     #######################
     def __init__(self,
-                  clientId,
+                  client_id,
                   taskId,
                   mainSceneDir,
                   mainSceneFile,
@@ -117,7 +117,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
                   returnPort = 0,
                  ):
 
-        FrameRenderingTask.__init__(self, clientId, taskId, returnAddress, returnPort,
+        FrameRenderingTask.__init__(self, client_id, taskId, returnAddress, returnPort,
                           ThreeDSMaxEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
@@ -129,10 +129,10 @@ class ThreeDSMaxTask(FrameRenderingTask):
         self.framesGiven = {}
 
     #######################
-    def queryExtraData(self, perfIndex, numCores = 0, clientId = None):
+    def queryExtraData(self, perfIndex, numCores = 0, client_id = None):
 
-        if not self._acceptClient(clientId):
-            logger.warning(" Client {} banned from this task ".format(clientId))
+        if not self._acceptClient(client_id):
+            logger.warning(" Client {} banned from this task ".format(client_id))
             return None
 
         startTask, endTask = self._getNextTask()
@@ -171,7 +171,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
         self.subTasksGiven[ hash ] = extraData
         self.subTasksGiven[ hash ]['status' ] = SubtaskStatus.starting
         self.subTasksGiven[ hash ]['perf'] = perfIndex
-        self.subTasksGiven[ hash ][ 'clientId' ] = clientId
+        self.subTasksGiven[ hash ][ 'client_id' ] = client_id
 
         for frame in frames:
             self.framesGiven[ frame ] = {}
@@ -255,7 +255,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
         except Exception, err:
             logger.error("Can't generate preview {}".format(str(err)))
 
-        tmpDir = getTmpPath(self.header.clientId, self.header.taskId, self.rootPath)
+        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.rootPath)
 
         self.previewFilePath = "{}".format(os.path.join(tmpDir, "current_preview"))
 

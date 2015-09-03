@@ -13,7 +13,7 @@ class P2PService():
     def __init__(self):
         self.session = None
 
-    def newSession(self, session):
+    def new_connection(self, session):
         self.session = session
 
 class ConfigDesc:

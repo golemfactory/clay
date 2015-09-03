@@ -59,7 +59,7 @@ class TaskSession(MiddlemanSafeSession):
         :return None:
         """
         # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
-        self.task_server.setLastMessage("<-", time.localtime(), msg, self.address, self.port)
+        self.task_server.set_last_message("<-", time.localtime(), msg, self.address, self.port)
         MiddlemanSafeSession.interpret(self, msg)
 
     def dropped(self):
@@ -118,7 +118,7 @@ class TaskSession(MiddlemanSafeSession):
         :param Message msg: message to be verified
         :return boolean: True if message was signed with key_id from this connection
         """
-        verify = self.task_server.verifySig(msg.sig, msg.get_short_hash(), self.key_id)
+        verify = self.task_server.verify_sig(msg.sig, msg.get_short_hash(), self.key_id)
         return verify
 
     #######################
@@ -131,8 +131,9 @@ class TaskSession(MiddlemanSafeSession):
         """
         if extra_data and "subtask_id" in extra_data:
             self.task_server.taskResultSent(extra_data["subtask_id"])
-        self.conn.producer.close()
-        self.conn.producer = None
+        if self.conn.producer:
+            self.conn.producer.close()
+            self.conn.producer = None
         self.dropped()
 
     def full_data_received(self, extra_data):
@@ -341,7 +342,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_cannot_assign_task(self, msg):
         self.task_computer.taskRequestRejected(msg.task_id, msg.reason)
-        self.task_server.removeTaskHeader(msg.task_id)
+        self.task_server.remove_task_header(msg.task_id)
         self.dropped()
 
     def _react_to_report_computed_task(self, msg):
@@ -503,7 +504,7 @@ class TaskSession(MiddlemanSafeSession):
             return
         MiddlemanSafeSession.send(self, msg, send_unverified=send_unverified)
         # print "Task Session Sending to {}:{}: {}".format(self.address, self.port, msg)
-        self.task_server.setLastMessage("->", time.localtime(), msg, self.address, self.port)
+        self.task_server.set_last_message("->", time.localtime(), msg, self.address, self.port)
 
     def __send_delta_resource(self, msg):
         res_file_path = self.task_manager.prepareResource(msg.task_id, pickle.loads(msg.resource_header))

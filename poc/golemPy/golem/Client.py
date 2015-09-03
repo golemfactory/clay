@@ -161,16 +161,16 @@ class Client:
     ############################
     def __init__(self, configDesc, rootPath = "", config = ""):
         self.configDesc     = configDesc
-        self.keysAuth       = EllipticalKeysAuth(configDesc.clientUid)
+        self.keys_auth       = EllipticalKeysAuth(configDesc.clientUid)
         self.configApprover = ConfigApprover(configDesc)
 
         #NETWORK
-        self.node = Node(self.configDesc.clientUid, self.keysAuth.get_key_id())
+        self.node = Node(self.configDesc.clientUid, self.keys_auth.get_key_id())
         self.node.collectNetworkInfo(self.configDesc.seedHost, useIp6=self.configDesc.useIp6)
         logger.debug("Is super node? {}".format(self.node.isSuperNode()))
         self.p2service = None
 
-        self.taskServer = None
+        self.task_server = None
         self.taskAdderServer = None
         self.lastNSSTime = time.time()
 
@@ -197,7 +197,7 @@ class Client:
 
         self.environmentsManager = EnvironmentsManager()
 
-        self.resourceServer = None
+        self.resource_server = None
         self.resourcePort   = 0
         self.lastGetResourcePeersTime  = time.time()
         self.getResourcePeersInterval = 5.0
@@ -207,24 +207,24 @@ class Client:
         logger.info("Starting network ...")
 
         logger.info("Starting p2p server ...")
-        self.p2pservice = P2PService(self.node, self.configDesc, self.keysAuth, useIp6=self.configDesc.useIp6)
+        self.p2pservice = P2PService(self.node, self.configDesc, self.keys_auth, use_ipv6=self.configDesc.useIp6)
         time.sleep(1.0)
 
         logger.info("Starting resource server...")
-        self.resourceServer = ResourceServer(self.configDesc, self.keysAuth, self, useIp6=self.configDesc.useIp6)
-        self.resourceServer.start_accepting()
+        self.resource_server = ResourceServer(self.configDesc, self.keys_auth, self, useIp6=self.configDesc.useIp6)
+        self.resource_server.start_accepting()
         time.sleep(1.0)
-        self.p2pservice.setResourceServer(self.resourceServer)
+        self.p2pservice.set_resource_server(self.resource_server)
 
         logger.info("Starting task server ...")
-        self.taskServer = TaskServer(self.node, self.configDesc, self.keysAuth, self,
+        self.task_server = TaskServer(self.node, self.configDesc, self.keys_auth, self,
                                      useIp6=self.configDesc.useIp6)
-        self.taskServer.start_accepting()
+        self.task_server.start_accepting()
 
-        self.p2pservice.setTaskServer(self.taskServer)
+        self.p2pservice.set_task_server(self.task_server)
 
         time.sleep(0.5)
-        self.taskServer.taskManager.registerListener(ClientTaskManagerEventListener(self))
+        self.task_server.taskManager.registerListener(ClientTaskManagerEventListener(self))
 
     ############################
     def runAddTaskServer(self):
@@ -243,58 +243,58 @@ class Client:
     def stopNetwork(self):
         #FIXME: Pewnie cos tu trzeba jeszcze dodac. Zamykanie serwera i wysylanie DisconnectPackege
         self.p2pservice         = None
-        self.taskServer         = None
+        self.task_server         = None
         self.nodesManagerClient = None
 
     ############################
     def enqueueNewTask(self, task):
-        self.taskServer.taskManager.addNewTask(task)
+        self.task_server.taskManager.addNewTask(task)
         if self.configDesc.useDistributedResourceManagement:
-            self.getResourcePeers()
-            resFiles = self.resourceServer.addFilesToSend(task.taskResources, task.header.taskId, self.configDesc.distResNum)
+            self.get_resource_peers()
+            resFiles = self.resource_server.addFilesToSend(task.taskResources, task.header.taskId, self.configDesc.distResNum)
             task.setResFiles(resFiles)
 
     ############################
-    def getResourcePeers(self):
-        self.p2pservice.sendGetResourcePeers()
+    def get_resource_peers(self):
+        self.p2pservice.send_get_resource_peers()
 
     ############################
     def taskResourcesSend(self, taskId):
-        self.taskServer.taskManager.resourcesSend(taskId)
+        self.task_server.taskManager.resourcesSend(taskId)
 
     ############################
     def taskResourcesCollected(self, taskId):
-        self.taskServer.taskComputer.taskResourceCollected(taskId)
+        self.task_server.taskComputer.taskResourceCollected(taskId)
 
     ############################
     def setResourcePort (self, resourcePort):
         self.resourcePort = resourcePort
-        self.p2pservice.setResourcePeer(self.node.prvAddr, self.resourcePort)
+        self.p2pservice.set_resource_peer(self.node.prvAddr, self.resourcePort)
 
     ############################
     def abortTask(self, taskId):
-        self.taskServer.taskManager.abortTask(taskId)
+        self.task_server.taskManager.abortTask(taskId)
 
     ############################
     def restartTask(self, taskId):
-        self.taskServer.taskManager.restartTask(taskId)
+        self.task_server.taskManager.restartTask(taskId)
 
     ############################
     def restartSubtask(self, subtaskId):
-        self.taskServer.taskManager.restartSubtask(subtaskId)
+        self.task_server.taskManager.restartSubtask(subtaskId)
 
     ############################
     def pauseTask(self, taskId):
-        self.taskServer.taskManager.pauseTask(taskId)
+        self.task_server.taskManager.pauseTask(taskId)
 
     ############################
     def resumeTask(self, taskId):
-        self.taskServer.taskManager.resumeTask(taskId)
+        self.task_server.taskManager.resumeTask(taskId)
 
     ############################
     def deleteTask(self, taskId):
-        self.taskServer.removeTaskHeader(taskId)
-        self.taskServer.taskManager.deleteTask(taskId)
+        self.task_server.remove_task_header(taskId)
+        self.task_server.taskManager.deleteTask(taskId)
 
     ############################
     def getId(self):
@@ -314,23 +314,23 @@ class Client:
 
     ############################
     def getNeighboursDegree(self):
-        return self.p2pservice.getPeersDegree()
+        return self.p2pservice.get_peers_degree()
 
     ############################
     def getSuggestedAddr(self, keyId):
-        return self.p2pservice.suggestedAddrs.get(keyId)
+        return self.p2pservice.suggested_address.get(keyId)
 
     ############################
-    def wantToStartTaskSession(self, keyId, nodeId, connId):
-        self.p2pservice.wantToStartTaskSession(keyId, nodeId, connId)
+    def want_to_start_task_session(self, keyId, nodeId, conn_id):
+        self.p2pservice.want_to_start_task_session(keyId, nodeId, conn_id)
 
     ############################
-    def informAboutTaskNatHole(self, keyId, rvKeyId, addr, port, ansConnId):
-        self.p2pservice.informAboutTaskNatHole(keyId, rvKeyId, addr, port, ansConnId)
+    def inform_about_task_nat_hole(self, keyId, rvKeyId, addr, port, ansConnId):
+        self.p2pservice.inform_about_task_nat_hole(keyId, rvKeyId, addr, port, ansConnId)
 
     ############################
-    def informAboutNatTraverseFailure(self, keyId, resKeyId, connId):
-        self.p2pservice.informAboutNatTraverseFailure(keyId, resKeyId, connId)
+    def inform_about_nat_traverse_failure(self, keyId, resKeyId, conn_id):
+        self.p2pservice.inform_about_nat_traverse_failure(keyId, resKeyId, conn_id)
 
     #TRANSACTION SYSTEM OPERATIONS
     ############################
@@ -367,9 +367,9 @@ class Client:
     def change_config(self, newConfigDesc):
         self.configDesc = self.configApprover.change_config(newConfigDesc)
         self.cfg.change_config(self.configDesc)
-        self.resourceServer.changeResourceDir(self.configDesc)
+        self.resource_server.changeResourceDir(self.configDesc)
         self.p2pservice.change_config(self.configDesc)
-        self.taskServer.change_config(self.configDesc)
+        self.task_server.change_config(self.configDesc)
 
     ############################
     def registerNodesManagerClient(self, nodesManagerClient):
@@ -377,7 +377,7 @@ class Client:
 
     ############################
     def changeTimeouts(self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime):
-        self.taskServer.changeTimeouts(taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime)
+        self.task_server.changeTimeouts(taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime)
 
     ############################
     def unregisterListener(self, listener):
@@ -390,21 +390,21 @@ class Client:
 
     ############################
     def querryTaskState(self, taskId):
-        return self.taskServer.taskManager.querryTaskState(taskId)
+        return self.task_server.taskManager.querryTaskState(taskId)
 
     ############################
     def pullResources(self, taskId, listFiles):
-        self.resourceServer.addFilesToGet(listFiles, taskId)
-        self.getResourcePeers()
+        self.resource_server.addFilesToGet(listFiles, taskId)
+        self.get_resource_peers()
 
     ############################
-    def addResourcePeer(self, clientId, addr, port, keyId, nodeInfo):
-        self.resourceServer.addResourcePeer(clientId, addr, port, keyId, nodeInfo)
+    def addResourcePeer(self, client_id, addr, port, keyId, node_info):
+        self.resource_server.addResourcePeer(client_id, addr, port, keyId, node_info)
 
     ############################
-    def supportedTask(self, thDictRepr):
-        supported = self.__checkSupportedEnvironment(thDictRepr)
-        return supported and self.__checkSupportedVersion(thDictRepr)
+    def supportedTask(self, th_dict_repr):
+        supported = self.__checkSupportedEnvironment(th_dict_repr)
+        return supported and self.__checkSupportedVersion(th_dict_repr)
 
     ############################
     def getResDirs(self):
@@ -415,13 +415,13 @@ class Client:
         return dirs
 
     def getComputedFilesDir(self):
-        return self.taskServer.getTaskComputerRoot()
+        return self.task_server.getTaskComputerRoot()
 
     def getReceivedFilesDir(self):
-        return self.taskServer.taskManager.getTaskManagerRoot()
+        return self.task_server.taskManager.getTaskManagerRoot()
 
     def getDistributedFilesDir(self):
-        return self.resourceServer.getDistributedResourceRoot()
+        return self.resource_server.getDistributedResourceRoot()
 
     ############################
     def removeComputedFiles(self):
@@ -451,12 +451,12 @@ class Client:
         return self.ranking.getComputingTrust(nodeId)
 
     ############################
-    def sendGossip(self, gossip, sendTo):
-        return self.p2pservice.sendGossip(gossip, sendTo)
+    def send_gossip(self, gossip, send_to):
+        return self.p2pservice.send_gossip(gossip, send_to)
 
     ############################
-    def sendStopGossip(self):
-        return self.p2pservice.sendStopGossip()
+    def send_stop_gossip(self):
+        return self.p2pservice.send_stop_gossip()
 
     ############################
     def getRequestingTrust(self, nodeId):
@@ -464,19 +464,19 @@ class Client:
 
     ############################
     def collectGossip(self):
-        return self.p2pservice.popGossip()
+        return self.p2pservice.pop_gossip()
 
     ############################
     def collectStoppedPeers(self):
-        return self.p2pservice.popStopGossipFromPeers()
+        return self.p2pservice.pop_stop_gossip_form_peers()
 
     ############################
     def collectNeighboursLocRanks(self):
-        return self.p2pservice.popNeighboursLocRanks()
+        return self.p2pservice.pop_neighbours_loc_ranks()
 
     ############################
-    def pushLocalRank(self, nodeId, locRank):
-        self.p2pservice.pushLocalRank(nodeId, locRank)
+    def push_local_rank(self, nodeId, locRank):
+        self.p2pservice.push_local_rank(nodeId, locRank)
 
     ############################
     def getPluginPort(self):
@@ -503,8 +503,8 @@ class Client:
         return newValue
 
     ############################
-    def __checkSupportedEnvironment(self, thDictRepr):
-        env = thDictRepr.get("environment")
+    def __checkSupportedEnvironment(self, th_dict_repr):
+        env = th_dict_repr.get("environment")
         if not env:
             return False
         if not self.environmentsManager.supported(env):
@@ -512,8 +512,8 @@ class Client:
         return self.environmentsManager.acceptTasks(env)
 
     #############################
-    def __checkSupportedVersion(self, thDictRepr):
-        minV = thDictRepr.get("minVersion")
+    def __checkSupportedVersion(self, th_dict_repr):
+        minV = th_dict_repr.get("minVersion")
         if not minV:
             return True
         try:
@@ -532,12 +532,12 @@ class Client:
     def __doWork(self):
         if self.p2pservice:
             if self.configDesc.sendPings:
-                self.p2pservice.pingPeers(self.configDesc.pingsInterval)
+                self.p2pservice.ping_peers(self.configDesc.pingsInterval)
 
-            self.p2pservice.syncNetwork()
-            self.taskServer.syncNetwork()
-            self.resourceServer.syncNetwork()
-            self.ranking.syncNetwork()
+            self.p2pservice.sync_network()
+            self.task_server.sync_network()
+            self.resource_server.sync_network()
+            self.ranking.sync_network()
 
 
             if time.time() - self.lastNSSTime > self.configDesc.nodeSnapshotInterval:
@@ -553,13 +553,13 @@ class Client:
     def __makeNodeStateSnapshot(self, isRunning = True):
 
         peersNum            = len(self.p2pservice.peers)
-        lastNetworkMessages = self.p2pservice.getLastMessages()
+        lastNetworkMessages = self.p2pservice.get_last_messages()
 
-        if self.taskServer:
-            tasksNum                = len(self.taskServer.taskKeeper.taskHeaders)
-            remoteTasksProgresses   = self.taskServer.taskComputer.getProgresses()
-            localTasksProgresses    = self.taskServer.taskManager.getProgresses()
-            lastTaskMessages        = self.taskServer.getLastMessages()
+        if self.task_server:
+            tasksNum                = len(self.task_server.taskKeeper.taskHeaders)
+            remoteTasksProgresses   = self.task_server.taskComputer.getProgresses()
+            localTasksProgresses    = self.task_server.taskManager.getProgresses()
+            lastTaskMessages        = self.task_server.get_last_messages()
             self.lastNodeStateSnapshot = NodeStateSnapshot(   isRunning
                                                            ,    self.configDesc.clientUid
                                                            ,    peersNum
@@ -578,7 +578,7 @@ class Client:
             self.nodesManagerClient.sendClientStateSnapshot(self.lastNodeStateSnapshot)
 
     def getStatus(self):
-        progress = self.taskServer.taskComputer.getProgresses()
+        progress = self.task_server.taskComputer.getProgresses()
         if len(progress) > 0:
             msg =  "Counting {} subtask(s):".format(len(progress))
             for k, v in progress.iteritems():
@@ -586,7 +586,7 @@ class Client:
         else:
             msg = "Waiting for tasks...\n"
 
-        peers = self.p2pservice.getPeers()
+        peers = self.p2pservice.get_peers()
 
         msg += "Active peers in network: {}\n".format(len(peers))
         msg += "Budget: {}\n".format(self.transactionSystem.budget)

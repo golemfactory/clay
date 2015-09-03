@@ -48,7 +48,7 @@ class RenderingTaskBuilder(GNRTaskBuilder):
 ##############################################
 class RenderingTask(GNRTask):
     #######################
-    def __init__(self, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
+    def __init__(self, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                   totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, rootPath,
                   estimatedMemory):
@@ -65,7 +65,7 @@ class RenderingTask(GNRTask):
         for resource in taskResources:
             resourceSize += os.stat(resource).st_size
 
-        GNRTask.__init__(self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+        GNRTask.__init__(self, srcCode, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
                           ttl, subtaskTtl, resourceSize, estimatedMemory)
 
         self.fullTaskTimeout        = ttl
@@ -170,7 +170,7 @@ class RenderingTask(GNRTask):
         sentColor = (0, 255, 0)
         failedColor = (255, 0, 0)
 
-        tmpDir = getTmpPath(self.header.clientId, self.header.taskId, self.rootPath)
+        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.rootPath)
         self.previewTaskFilePath = "{}".format(os.path.join(tmpDir, "current_task_preview"))
 
         imgTask = self._openPreview()
@@ -262,7 +262,7 @@ class RenderingTask(GNRTask):
 
     #######################
     def _openPreview(self):
-        tmpDir = getTmpPath(self.header.clientId, self.header.taskId, self.rootPath)
+        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.rootPath)
 
         if self.previewFilePath is None or not os.path.exists(self.previewFilePath):
             self.previewFilePath = "{}".format(os.path.join(tmpDir, "current_preview"))
@@ -279,18 +279,18 @@ class RenderingTask(GNRTask):
         return False
 
     #######################
-    def _acceptClient(self, clientId):
-        if clientId in self.countingNodes:
-            if self.countingNodes[ clientId ] > 0: # client with accepted task
+    def _acceptClient(self, client_id):
+        if client_id in self.countingNodes:
+            if self.countingNodes[ client_id ] > 0: # client with accepted task
                 return True
-            elif self.countingNodes[ clientId ] == 0: # client took task but hasn't return result yet
-                self.countingNodes[ clientId ] = -1
+            elif self.countingNodes[ client_id ] == 0: # client took task but hasn't return result yet
+                self.countingNodes[ client_id ] = -1
                 return True
             else:
-                self.countingNodes[ clientId ] = -1 # client with failed task or client that took more than one task without returning any results
+                self.countingNodes[ client_id ] = -1 # client with failed task or client that took more than one task without returning any results
                 return False
         else:
-            self.countingNodes[ clientId ] = 0
+            self.countingNodes[ client_id ] = 0
             return True #new node
 
     #######################
@@ -298,7 +298,7 @@ class RenderingTask(GNRTask):
     def __useAdvVerification(self, subtaskId):
         if self.verificationOptions.type == 'forAll':
             return True
-        if self.verificationOptions.type == 'forFirst'and self.subTasksGiven[subtaskId]['clientId'] not in self.verifiedClients:
+        if self.verificationOptions.type == 'forFirst'and self.subTasksGiven[subtaskId]['client_id'] not in self.verifiedClients:
             return True
         if self.verificationOptions.type == 'random' and random.random() < self.verificationOptions.probability:
             return True
@@ -329,7 +329,7 @@ class RenderingTask(GNRTask):
                 if not advanceVerifyImg(trFile, resX, resY, startBox, self.verificationOptions.boxSize, cmpFile, cmpStartBox):
                     return False
                 else:
-                    self.verifiedClients.add(self.subTasksGiven[subtaskId][ 'clientId' ])
+                    self.verifiedClients.add(self.subTasksGiven[subtaskId][ 'client_id' ])
             if not self._verifyImg(trFile, resX, resY):
                 return False
 

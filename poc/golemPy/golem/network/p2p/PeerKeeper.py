@@ -13,7 +13,7 @@ class PeerKeeper:
     def __init__(self, peerKey, kSize = 512):
 
         self.peerKey = peerKey
-        self.peerKeyId = long(peerKey, 16)
+        self.pper_key_id = long(peerKey, 16)
         self.k                      = K
         self.concurrency            = CONCURRENCY
         self.kSize = kSize
@@ -30,7 +30,7 @@ class PeerKeeper:
         return "\n".join([ str(bucket) for bucket in self.buckets ])
 
     #############################
-    def addPeer(self, peerKey, peerId, ip, port, nodeInfo):
+    def add_peer(self, peerKey, peerId, ip, port, node_info):
         if peerKey == self.peerKey:
             logger.warning("Trying to add self to Routing table")
             return
@@ -38,17 +38,17 @@ class PeerKeeper:
         if not peerKey:
             return
 
-        peerKeyId = long(peerKey, 16)
+        pper_key_id = long(peerKey, 16)
 
-        peerInfo = PeerInfo(peerId, peerKey, ip, port, nodeInfo)
-        bucket = self.bucketForNode(peerKeyId)
-        peerToRemove = bucket.addNode(peerInfo)
+        peer_info = PeerInfo(peerId, peerKey, ip, port, node_info)
+        bucket = self.bucketForNode(pper_key_id)
+        peerToRemove = bucket.addNode(peer_info)
         if peerToRemove:
-            if bucket.start <= self.peerKeyId <= bucket.end:
+            if bucket.start <= self.pper_key_id <= bucket.end:
                 self.splitBucket(bucket)
-                return self.addPeer(peerKey, peerId, ip, port, nodeInfo)
+                return self.add_peer(peerKey, peerId, ip, port, node_info)
             else:
-                self.expectedPongs[peerToRemove.nodeKeyId] = (peerInfo, time.time())
+                self.expectedPongs[peerToRemove.nodeKeyId] = (peer_info, time.time())
                 return peerToRemove
 
 
@@ -74,19 +74,19 @@ class PeerKeeper:
             return bucket.nodes[random.randint(0, len(bucket.nodes) - 1)]
 
     #############################
-    def pongReceived(self, peerKey, peerId, ip, port):
+    def pong_received(self, peerKey, peerId, ip, port):
         if not peerKey:
             return
-        peerKeyId = long(peerKey, 16)
-        if peerKeyId in self.expectedPongs:
+        pper_key_id = long(peerKey, 16)
+        if pper_key_id in self.expectedPongs:
             self.sessionsToEnd.append(peerId)
-            del self.expectedPongs[peerKeyId]
+            del self.expectedPongs[pper_key_id]
 
 
     #############################
-    def bucketForNode(self, peerKeyId):
+    def bucketForNode(self, pper_key_id):
         for bucket in self.buckets:
-            if bucket.start <= peerKeyId < bucket.end:
+            if bucket.start <= pper_key_id < bucket.end:
                 return bucket
 
     #############################
@@ -101,10 +101,10 @@ class PeerKeeper:
     #############################
     def cntDistance(self, peerKey):
 
-        return self.peerKeyId ^ long(peerKey, 16)
+        return self.pper_key_id ^ long(peerKey, 16)
 
     #############################
-    def syncNetwork(self):
+    def sync_network(self):
         self.__removeOldExpectedPongs()
         self.__removeOldRequests()
         nodesToFind = self.__sendNewRequests()
@@ -113,16 +113,16 @@ class PeerKeeper:
     #############################
     def __removeOldExpectedPongs(self):
         currentTime = time.time()
-        for peerKeyId, (replacement, time_) in self.expectedPongs.items():
+        for pper_key_id, (replacement, time_) in self.expectedPongs.items():
             if currentTime - time_ > self.pongTimeout:
-                peerId = self.bucketForNode(peerKeyId).removeNode(peerKeyId)
+                peerId = self.bucketForNode(pper_key_id).removeNode(pper_key_id)
                 if peerId:
                     self.sessionsToEnd.append(peerId)
                 if replacement:
-                    self.addPeer(replacement.nodeKey, replacement.nodeId,  replacement.ip, replacement.port,
-                                 replacement.nodeInfo)
+                    self.add_peer(replacement.nodeKey, replacement.nodeId,  replacement.ip, replacement.port,
+                                 replacement.node_info)
 
-                del self.expectedPongs[peerKeyId]
+                del self.expectedPongs[pper_key_id]
 
     #############################
     def __sendNewRequests(self):
@@ -157,21 +157,21 @@ class PeerKeeper:
     #############################
     def __removeOldRequests(self):
         currentTime = time.time()
-        for peerKeyId, time_ in self.findRequests.items():
+        for pper_key_id, time_ in self.findRequests.items():
             if currentTime - time.time() > self.requestTimeout:
-                del self.findRequests[peerKeyId]
+                del self.findRequests[pper_key_id]
 
 ##########################################################
 
 class PeerInfo:
     #############################
-    def __init__(self, nodeId, nodeKey, ip, port, nodeInfo):
+    def __init__(self, nodeId, nodeKey, ip, port, node_info):
         self.nodeId = nodeId
         self.nodeKey = nodeKey
         self.nodeKeyId = long(nodeKey, 16)
         self.ip = ip
         self.port = port
-        self.nodeInfo = nodeInfo
+        self.node_info = node_info
 
     #############################
     def idDistance(self, nodeKeyId):

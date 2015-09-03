@@ -77,9 +77,9 @@ class GNRApplicationLogic(QtCore.QObject):
 
     ######################
     def checkNetworkState(self):
-        listenPort = self.client.p2pservice.p2pServer.cur_port
-        taskServerPort = self.client.taskServer.cur_port
-        if listenPort == 0 or taskServerPort == 0:
+        listenPort = self.client.p2pservice.cur_port
+        task_server_port = self.client.task_server.cur_port
+        if listenPort == 0 or task_server_port == 0:
             self.customizer.gui.ui.errorLabel.setText("Application not listening, check config file.")
             return
         peersNum = len(self.client.p2pservice.peers)
@@ -201,7 +201,7 @@ class GNRApplicationLogic(QtCore.QObject):
     ######################
     def deleteTask(self, taskId):
         self.client.deleteTask(taskId)
-        self.customizer.removeTask(taskId)
+        self.customizer.remove_task(taskId)
 
     ######################
     def showTaskDetails(self, taskId):
@@ -336,8 +336,8 @@ class GNRApplicationLogic(QtCore.QObject):
             self.tasks[taskId].taskState = ts
             self.customizer.updateTasks(self.tasks)
             if ts.status in taskToRemoveStatus:
-                self.client.taskServer.removeTaskHeader(taskId)
-                self.client.p2pservice.removeTask(taskId)
+                self.client.task_server.remove_task_header(taskId)
+                self.client.p2pservice.remove_task(taskId)
         else:
             assert False, "Should never be here!"
 

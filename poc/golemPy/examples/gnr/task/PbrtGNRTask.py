@@ -67,7 +67,7 @@ class PbrtGNRTaskBuilder(GNRTaskBuilder):
         else:
             rtd = self.__translateTaskDefinition()
 
-        pbrtTaskBuilder = PbrtTaskBuilder(self.clientId, rtd, self.rootPath)
+        pbrtTaskBuilder = PbrtTaskBuilder(self.client_id, rtd, self.rootPath)
         return pbrtTaskBuilder.build()
 
     def __translateTaskDefinition(self):
@@ -105,7 +105,7 @@ class PbrtTaskBuilder(RenderingTaskBuilder):
     def build(self):
         mainSceneDir = os.path.dirname(self.taskDefinition.mainSceneFile)
 
-        pbrtTask = PbrtRenderTask(self.clientId,
+        pbrtTask = PbrtRenderTask(self.client_id,
                                    self.taskDefinition.taskId,
                                    mainSceneDir,
                                    self.taskDefinition.mainProgramFile,
@@ -164,7 +164,7 @@ class PbrtRenderTask(RenderingTask):
 
     #######################
     def __init__(self,
-                  clientId,
+                  client_id,
                   taskId,
                   mainSceneDir,
                   mainProgramFile,
@@ -192,7 +192,7 @@ class PbrtRenderTask(RenderingTask):
                  ):
 
 
-        RenderingTask.__init__(self, clientId, taskId, returnAddress, returnPort, keyId,
+        RenderingTask.__init__(self, client_id, taskId, returnAddress, returnPort, keyId,
                                 PBRTEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                                 mainProgramFile, taskResources, mainSceneDir, sceneFile,
                                 totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
@@ -219,9 +219,9 @@ class PbrtRenderTask(RenderingTask):
         self.nx, self.ny, self.taskResX, self.taskResY = countSubtaskReg(self.totalTasks, self.numSubtasks, self.resX, self.resY)
 
     #######################
-    def queryExtraData(self, perfIndex, numCores = 0, clientId = None):
-        if not self._acceptClient(clientId):
-            logger.warning(" Client {} banned from this task ".format(clientId))
+    def queryExtraData(self, perfIndex, numCores = 0, client_id = None):
+        if not self._acceptClient(client_id):
+            logger.warning(" Client {} banned from this task ".format(client_id))
             return None
 
 
@@ -257,7 +257,7 @@ class PbrtRenderTask(RenderingTask):
         self.subTasksGiven[ hash ] = extraData
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
         self.subTasksGiven[ hash ][ 'perf' ] = perfIndex
-        self.subTasksGiven[ hash ][ 'clientId' ] = clientId
+        self.subTasksGiven[ hash ][ 'client_id' ] = client_id
 
         self._updateTaskPreview()
 
@@ -316,7 +316,7 @@ class PbrtRenderTask(RenderingTask):
 
                 self.collectedFileNames.add(trFile)
                 self.numTasksReceived += 1
-                self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'clientId' ] ] = 1
+                self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'client_id' ] ] = 1
 
                 self._updatePreview(trFile)
                 self._updateTaskPreview()

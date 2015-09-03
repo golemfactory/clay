@@ -26,8 +26,8 @@ class UpdateOtherGolemsTaskDefinition:
 ##############################################
 class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
     #######################
-    def __init__(self, clientId, taskDefinition, rootPath, srcDir):
-        GNRTaskBuilder.__init__(self, clientId, taskDefinition, rootPath)
+    def __init__(self, client_id, taskDefinition, rootPath, srcDir):
+        GNRTaskBuilder.__init__(self, client_id, taskDefinition, rootPath)
         self.srcDir = srcDir
 
     def build(self):
@@ -47,7 +47,7 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
             resourceSize += os.stat(resource).st_size
 
         return UpdateOtherGolemsTask(   srcCode,
-                            self.clientId,
+                            self.client_id,
                             self.taskDefinition.taskId,
                             "",
                             0,
@@ -67,7 +67,7 @@ class UpdateOtherGolemsTask(GNRTask):
 
     def __init__(self,
                   srcCode,
-                  clientId,
+                  client_id,
                   taskId,
                   ownerAddress,
                   ownerPort,
@@ -82,7 +82,7 @@ class UpdateOtherGolemsTask(GNRTask):
                   totalTasks):
 
 
-        GNRTask.__init__(self, srcCode, clientId, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+        GNRTask.__init__(self, srcCode, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
                             ttl, subtaskTtl, resourceSize, estimatedMemory)
 
         self.totalTasks = totalTasks
@@ -98,9 +98,9 @@ class UpdateOtherGolemsTask(GNRTask):
         self.active = False
 
     #######################
-    def queryExtraData(self, perfIndex, numCores, clientId):
+    def queryExtraData(self, perfIndex, numCores, client_id):
 
-        if clientId in self.updated:
+        if client_id in self.updated:
             return None
 
         ctd = ComputeTaskDef()
@@ -117,11 +117,11 @@ class UpdateOtherGolemsTask(GNRTask):
         ctd.performance = perfIndex
         if self.lastTask + 1 <= self.totalTasks:
             self.lastTask += 1
-        self.updated[ clientId ] = True
+        self.updated[ client_id ] = True
 
         self.subTasksGiven[ hash ] = ctd.extraData
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
-        self.subTasksGiven[ hash ][ 'clientId' ] = clientId
+        self.subTasksGiven[ hash ][ 'client_id' ] = client_id
 
         return ctd
 

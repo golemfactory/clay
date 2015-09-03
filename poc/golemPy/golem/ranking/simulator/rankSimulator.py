@@ -29,13 +29,13 @@ class RankSimulator:
 
     def fullAddNode(self, goodNode = True):
         self.addNode(goodNode)
-        self.syncNetwork()
+        self.sync_network()
 
     def connectNode(self, node):
         self.network.connectNode(node)
 
-    def syncNetwork(self):
-        self.network.syncNetwork(self.optPeers)
+    def sync_network(self):
+        self.network.sync_network(self.optPeers)
 
     def printState(self):
         for node, nodeData in self.network.nodes.iteritems():

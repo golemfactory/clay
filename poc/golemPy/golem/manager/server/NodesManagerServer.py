@@ -11,7 +11,7 @@ class NodesManagerServer:
     #############################
     def __init__(self, nodesManager, port, reactor = None):
         self.port               = port
-        self.managerSessions    = []
+        self.manager_sessions    = []
         self.reactor            = reactor
         self.nodesManager       = nodesManager
 
@@ -40,37 +40,37 @@ class NodesManagerServer:
 
     #############################
     def newConnection(self, session):
-        self.managerSessions.append(session)
+        self.manager_sessions.append(session)
 
     #############################
     def nodeStateSnapshotReceived(self, nss):
         self.nodesManager.appendStateUpdate(nss)
         
     #############################
-    def managerSessionDisconnect(self, uid):
+    def manager_session_disconnect(self, uid):
         self.nodesManager.appendStateUpdate(NodeStateSnapshot(False, uid))
 
     #############################
     def sendTerminate(self, uid):
-        for ms in self.managerSessions:
+        for ms in self.manager_sessions:
             if ms.uid == uid:
                 ms.sendKillNode()
 
     def sendTerminateAll(self, uid):
-        for ms in self.managerSessions:
+        for ms in self.manager_sessions:
             if ms.uid == uid:
                 ms.sendKillAllNodes()
 
     #############################
     def sendNewTask(self, uid, task):
-        for ms in self.managerSessions:
+        for ms in self.manager_sessions:
             if ms.uid == uid:
                 ms.sendNewTask(task)
 
 
     #############################
     def sendNewNodes(self, uid, numNodes):
-        for ms in self.managerSessions:
+        for ms in self.manager_sessions:
             if ms.uid == uid:
                 ms.sendNewNodes(numNodes)
 

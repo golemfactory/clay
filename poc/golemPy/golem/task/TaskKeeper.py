@@ -40,16 +40,16 @@ class TaskKeeper:
         return self.taskHeaders.values()
 
     #############################
-    def addTaskHeader(self, thDictRepr, isSupported):
+    def add_task_header(self, th_dict_repr, isSupported):
         try:
-            id = thDictRepr["id"]
+            id = th_dict_repr["id"]
             if id not in self.taskHeaders.keys(): # dont have it
                 if id not in self.removedTasks.keys(): # not removed recently
                     logger.info("Adding task {}".format(id))
-                    self.taskHeaders[id] = TaskHeader(thDictRepr["clientId"], id, thDictRepr["address"], 
-                                                      thDictRepr["port"], thDictRepr["keyId"], 
-                                                      thDictRepr["environment"], thDictRepr["taskOwner"],
-                                                      thDictRepr[ "ttl" ], thDictRepr["subtaskTimeout"])
+                    self.taskHeaders[id] = TaskHeader(th_dict_repr["client_id"], id, th_dict_repr["address"],
+                                                      th_dict_repr["port"], th_dict_repr["keyId"],
+                                                      th_dict_repr["environment"], th_dict_repr["taskOwner"],
+                                                      th_dict_repr[ "ttl" ], th_dict_repr["subtaskTimeout"])
                     if isSupported:
                         self.supportedTasks.append(id)
             return True
@@ -58,7 +58,7 @@ class TaskKeeper:
             return False
 
     ###########################
-    def removeTaskHeader(self, taskId):
+    def remove_task_header(self, taskId):
         if taskId in self.taskHeaders:
             del self.taskHeaders[taskId]
         if taskId in self.supportedTasks:
@@ -113,7 +113,7 @@ class TaskKeeper:
             t.lastChecking = currTime
             if t.ttl <= 0:
                 logger.warning("Task {} dies".format(t.taskId))
-                self.removeTaskHeader(t.taskId)
+                self.remove_task_header(t.taskId)
 
         for taskId, removeTime in self.removedTasks.items():
             currTime = time.time()
@@ -124,13 +124,13 @@ class TaskKeeper:
     def requestFailure(self, taskId):
         if taskId in self.activeRequests:
             self.activeRequests[taskId] -= 1
-        self.removeTaskHeader(taskId)
+        self.remove_task_header(taskId)
 
     ###########################
     def getReceiverForTaskVerificationResult(self, taskId):
         if taskId not in self.activeTasks:
             return None
-        return self.activeTasks[taskId].clientId
+        return self.activeTasks[taskId].client_id
 
     ###########################
     def addToVerification(self, subtaskId, taskId):

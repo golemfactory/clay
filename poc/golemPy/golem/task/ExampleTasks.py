@@ -348,8 +348,8 @@ class PbrtRenderTask(Task):
     #######################
     def prepareResourceDelta(self, subtaskId, taskId, resourceHeader):
         if subtaskId in self.subTasksGiven:
-            dirName = os.path.join("res", self.header.clientId, self.header.taskId, "resources")
-            tmpDir = os.path.join("res", self.header.clientId, self.header.taskId, "tmp")
+            dirName = os.path.join("res", self.header.client_id, self.header.taskId, "resources")
+            tmpDir = os.path.join("res", self.header.client_id, self.header.taskId, "tmp")
 
             if os.path.exists(dirName):
                 return prepareDeltaZip(dirName, resourceHeader, tmpDir)

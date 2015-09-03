@@ -22,8 +22,8 @@ class ServerManagerSession:
     ##########################
     def dropped(self):
         self.conn.close()
-        self.server.managerSession = None
-        self.server.managerSessionDisconnect(self.uid)
+        self.server.manager_session = None
+        self.server.manager_session_disconnect(self.uid)
 
     ##########################
     def interpret(self, msg):

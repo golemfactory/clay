@@ -140,7 +140,7 @@ class DiffGossipTrustRank:
         return [ vecToSend, self.nodeId ]
 
 
-    def hearGossip(self, gossip):
+    def hear_gossip(self, gossip):
         self.collectedVecs.append(gossip)
 
     def getGlobalVal(self, nodeId):
@@ -148,7 +148,7 @@ class DiffGossipTrustRank:
             return self.globVec[ nodeId ]
         return None
 
-    def stopGossip(self):
+    def stop_gossip(self):
         if self.stop:
             return True
         else:

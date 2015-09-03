@@ -103,18 +103,18 @@ class TaskManager:
         logger.info("Resources for task {} send".format(taskId))
 
     #######################
-    def getNextSubTask(self, clientId, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores = 0):
+    def getNextSubTask(self, client_id, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores = 0):
         if taskId in self.tasks:
             task = self.tasks[taskId]
             ts = self.tasksStates[taskId]
             th = task.header
             if self.__hasSubtasks(ts, task, maxResourceSize, maxMemorySize):
-                ctd  = task.queryExtraData(estimatedPerformance, numCores, clientId)
+                ctd  = task.queryExtraData(estimatedPerformance, numCores, client_id)
                 if ctd is None or ctd.subtaskId is None:
                     return None, False
                 ctd.keyId = th.taskOwnerKeyId
                 self.subTask2TaskMapping[ctd.subtaskId] = taskId
-                self.__addSubtaskToTasksStates(clientId, ctd)
+                self.__addSubtaskToTasksStates(client_id, ctd)
                 self.__noticeTaskUpdated(taskId)
                 return ctd, False
             logger.info("Cannot get next task for estimated performence {}".format(estimatedPerformance))
@@ -124,7 +124,7 @@ class TaskManager:
             return None, True
 
     #######################
-    def getTasksHeaders(self):
+    def get_tasks_headers(self):
         ret = []
         for t in self.tasks.values():
             if t.needsComputation() and t.taskStatus in self.activeStatus:
@@ -420,7 +420,7 @@ class TaskManager:
 
 
     #######################
-    def __addSubtaskToTasksStates(self, clientId, ctd):
+    def __addSubtaskToTasksStates(self, client_id, ctd):
 
         if ctd.taskId not in self.tasksStates:
             assert False, "Should never be here!"
@@ -428,7 +428,7 @@ class TaskManager:
             ts = self.tasksStates[ctd.taskId]
 
             ss                      = SubtaskState()
-            ss.computer.nodeId      = clientId
+            ss.computer.nodeId      = client_id
             ss.computer.performance = ctd.performance
             ss.timeStarted      = time.time()
             ss.ttl              = self.tasks[ctd.taskId].header.subtaskTimeout

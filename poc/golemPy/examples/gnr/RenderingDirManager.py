@@ -18,5 +18,5 @@ def getTestTaskPath(rootPath):
 def getTestTaskTmpPath(rootPath):
     return os.path.join(rootPath, TEST_TMP_DIRECTORY)
 
-def getTmpPath(clientId, taskId, rootPath):
-    return os.path.join(rootPath, RES_DIRECTORY, clientId, taskId, TMP_DIRECTORY)
+def getTmpPath(client_id, taskId, rootPath):
+    return os.path.join(rootPath, RES_DIRECTORY, client_id, taskId, TMP_DIRECTORY)

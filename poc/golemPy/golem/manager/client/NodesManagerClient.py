@@ -56,15 +56,15 @@ class NodesManagerClient:
 
         assert not self.clientManagerSession # connection already established
 
-        connect_info = TCPConnectInfo([TCPAddress(self.managerServerAddress, self.managerServerPort)], self.__connectionEstablished, self.__connectionFailure)
+        connect_info = TCPConnectInfo([TCPAddress(self.managerServerAddress, self.managerServerPort)], self.__connection_established, self.__connection_failure)
         self.network.connect(connect_info)
 
     #############################
-    def __connectionEstablished(self, session):
+    def __connection_established(self, session):
         session.client = self
         self.clientManagerSession = session
 
-    def __connectionFailure(self):
+    def __connection_failure(self):
         logger.error("Connection to nodes manager failure.")
 
 class NodesManagerUidClient (NodesManagerClient):

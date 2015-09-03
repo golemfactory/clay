@@ -67,9 +67,9 @@ class NodeSimulator(QtCore.QThread):
 
     ########################
     def getStateSnapshot(self):
-        addPeers = 1 if random.random() >= 0.45 else -1
+        add_peers = 1 if random.random() >= 0.45 else -1
 
-        self.peersNum += addPeers
+        self.peersNum += add_peers
 
         if self.peersNum < 0:
             self.peersNum = 0
@@ -85,9 +85,9 @@ class NodeSimulator(QtCore.QThread):
         if self.tasksNum > 200:
             self.tasksNum = 200
 
-        curTime = time.time()
+        cur_time = time.time()
 
-        ctl = self.remoteTaskDuration - (curTime - self.remTaskStartTime)
+        ctl = self.remoteTaskDuration - (cur_time - self.remTaskStartTime)
         ctl = max(0.0, ctl)
         tcss = TaskChunkStateSnapshot('0xbaadf00d', 1600.0, ctl, self.remProgress, "chunk data: {}".format(self.remTask))
 
@@ -139,25 +139,25 @@ class NodeSimulator(QtCore.QThread):
 
             time.sleep(self.innerUpdateDelay)
 
-            curTime = time.time()
+            cur_time = time.time()
 
             if self.locTask < self.numLocalTasks:
-                dt = curTime - self.locTaskStartTime
+                dt = cur_time - self.locTaskStartTime
 
                 if dt <= self.localTaskDuration:
                     self.locProgress = dt / self.localTaskDuration
                 else:
-                    self.locTaskStartTime = curTime
+                    self.locTaskStartTime = cur_time
                     self.locTask += 1
                     self.locProgress = 0.0
 
             if self.remTask < self.numRemoteTasks:
-                dt = curTime - self.remTaskStartTime
+                dt = cur_time - self.remTaskStartTime
 
                 if dt <= self.remoteTaskDuration:
                     self.remProgress = dt / self.remoteTaskDuration
                 else:
-                    self.remTaskStartTime = curTime
+                    self.remTaskStartTime = cur_time
                     self.remTask += 1
                     self.remProgress = 0.0
 
@@ -250,7 +250,7 @@ class LocalNetworkSimulator(Thread):
     def run(self):
         time.sleep(1) #just out of decency
 
-        curTime = time.time()
+        cur_time = time.time()
 
         logger.info("Starting node simulator for {} nodes".format(self.numNodes))
 

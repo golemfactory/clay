@@ -84,7 +84,7 @@ class ResourceSession(BasicSafeSession):
         :param Message msg: message to be verified
         :return boolean: True if message was signed with key_id from this connection
         """
-        verify = self.resource_server.verifySig(msg.sig, msg.get_short_hash(), self.key_id)
+        verify = self.resource_server.verify_sig(msg.sig, msg.get_short_hash(), self.key_id)
         return verify
 
     def send(self, msg, send_unverified=False):
@@ -177,13 +177,13 @@ class ResourceSession(BasicSafeSession):
         if self.resource_server.checkResource(msg.resource):
             self.send_has_resource(msg.resource)
             if copies > 0:
-                self.resource_server.getPeers()
+                self.resource_server.get_peers()
                 self.resource_server.addResourceToSend(msg.resource, copies)
         else:
             self.send_want_resource(msg.resource)
             self.file_name = msg.resource
             self.conn.stream_mode = True
-            self.conn.consumer = DecryptFileConsumer([self.resource_server.prepareResource(self.file_name)], None,
+            self.conn.consumer = DecryptFileConsumer([self.resource_server.prepareResource(self.file_name)], "",
                                                      self, {})
             self.confirmation = True
             self.copies = copies
@@ -198,7 +198,7 @@ class ResourceSession(BasicSafeSession):
     def _react_to_pull_resource(self, msg):
         has_resource = self.resource_server.checkResource(msg.resource)
         if not has_resource:
-            self.resource_server.getPeers()
+            self.resource_server.get_peers()
         self.send_pull_answer(msg.resource, has_resource)
 
     def _react_to_pull_answer(self, msg):

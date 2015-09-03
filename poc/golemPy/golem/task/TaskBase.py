@@ -3,7 +3,7 @@ import abc
 
 class TaskHeader:
     #######################
-    def __init__(self, clientId, taskId, taskOwnerAddress, taskOwnerPort, taskOwnerKeyId, environment, taskOwner = None, ttl = 0.0, subtaskTimeout = 0.0, resourceSize = 0, estimatedMemory = 0, minVersion = 1.0):
+    def __init__(self, client_id, taskId, taskOwnerAddress, taskOwnerPort, taskOwnerKeyId, environment, taskOwner = None, ttl = 0.0, subtaskTimeout = 0.0, resourceSize = 0, estimatedMemory = 0, minVersion = 1.0):
         self.taskId = taskId
         self.taskOwnerKeyId = taskOwnerKeyId
         self.taskOwnerAddress = taskOwnerAddress
@@ -12,7 +12,7 @@ class TaskHeader:
         self.lastChecking = time.time()
         self.ttl = ttl
         self.subtaskTimeout = subtaskTimeout
-        self.clientId = clientId
+        self.client_id = client_id
         self.resourceSize = resourceSize
         self.environment = environment
         self.estimatedMemory = estimatedMemory
@@ -57,7 +57,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def queryExtraData(self, perfIndex, numCores = 1, clientId = None):
+    def queryExtraData(self, perfIndex, numCores = 1, client_id = None):
         return # Implement in derived class
 
     #######################
