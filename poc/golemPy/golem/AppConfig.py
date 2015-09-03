@@ -292,7 +292,7 @@ class AppConfig:
         return self._cfg.get_node_config().getUseIp6()
 
     ##############################
-    def changeConfig(self, cfgDesc , cfgFile = CONFIG_FILENAME,):
+    def change_config(self, cfgDesc , cfgFile = CONFIG_FILENAME,):
         assert isinstance(cfgDesc, ClientConfigDescriptor)
 
         self._cfg.get_node_config().setSeedHost(cfgDesc.seedHost)

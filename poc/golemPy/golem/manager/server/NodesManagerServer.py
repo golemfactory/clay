@@ -17,14 +17,14 @@ class NodesManagerServer:
 
         self.network = TCPNetwork(ProtocolFactory(ManagerConnState, self, ServerManagerSessionFactory(self)))
 
-        self.__startAccepting()
+        self.__start_accepting()
 
     #############################
     def setReactor(self, reactor):
         self.reactor = reactor
 
     #############################
-    def __startAccepting(self):
+    def __start_accepting(self):
         listen_info = TCPListenInfo(self.port, established_callback=self.__listeningEstablished,
                       failure_callback=self.__listeningFailure)
         self.network.listen(listen_info)

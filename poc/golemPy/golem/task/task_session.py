@@ -452,7 +452,7 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_rand_val(self, msg):
         if self.rand_val == msg.rand_val:
             self.verified = True
-            self.task_server.verifiedConn(self.conn_id, )
+            self.task_server.verified_conn(self.conn_id, )
             for msg in self.msgs_to_send:
                 self.send(msg)
             self.msgs_to_send = []

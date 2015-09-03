@@ -391,7 +391,7 @@ class TaskManager:
             return None
 
     #######################
-    def changeConfig(self, rootPath, useDistributedResourceManagement):
+    def change_config(self, rootPath, useDistributedResourceManagement):
         self.dirManager = DirManager(rootPath, self.clientUid)
         self.useDistributedResources = useDistributedResourceManagement
 

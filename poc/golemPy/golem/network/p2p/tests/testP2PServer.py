@@ -43,7 +43,7 @@ class testP2PServer(unittest.TestCase):
         configDesc2 = ConfigDesc()
         configDesc2.startPort = 1334
         configDesc2.endPort = 1335
-        p2pServer.changeConfig(configDesc2)
+        p2pServer.change_config(configDesc2)
         time.sleep(1)
         self.assertEquals(p2pServer.configDesc.startPort, 1334)
         self.assertEquals(p2pServer.configDesc.endPort, 1335)

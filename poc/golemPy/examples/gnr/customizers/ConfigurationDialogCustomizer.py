@@ -169,7 +169,7 @@ class ConfigurationDialogCustomizer:
     #############################
     def __setupConnections(self):
         self.gui.ui.recountButton.clicked.connect(self.__recountPerformance)
-        self.gui.ui.buttonBox.accepted.connect (self.__changeConfig)
+        self.gui.ui.buttonBox.accepted.connect (self.__change_config)
 
         QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"), self.__recountPerformance)
 
@@ -242,13 +242,13 @@ class ConfigurationDialogCustomizer:
             return
 
     #############################
-    def __changeConfig (self):
+    def __change_config (self):
         cfgDesc = ClientConfigDescriptor()
         self.__readBasicConfig(cfgDesc)
         self.__readAdvanceConfig(cfgDesc)
         self.__readManagerConfig(cfgDesc)
         self.__readPaymentConfig(cfgDesc)
-        self.logic.changeConfig (cfgDesc)
+        self.logic.change_config (cfgDesc)
 
     #############################
     def __readBasicConfig(self, cfgDesc):

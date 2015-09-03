@@ -138,7 +138,7 @@ class GNRApplicationLogic(QtCore.QObject):
             assert False, "Task {} not registered".format(name)
 
     ######################
-    def changeConfig ( self, cfgDesc):
+    def change_config ( self, cfgDesc):
         oldCfgDesc = self.client.configDesc
         if (oldCfgDesc.managerAddress != cfgDesc.managerAddress) or (oldCfgDesc.managerPort != cfgDesc.managerPort):
             if self.nodesManagerClient is not None:
@@ -152,7 +152,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
             self.nodesManagerClient.start()
             self.client.registerNodesManagerClient(self.nodesManagerClient)
-        self.client.changeConfig(cfgDesc)
+        self.client.change_config(cfgDesc)
 
     ######################
     def _getNewTaskState(self):

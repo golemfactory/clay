@@ -167,7 +167,7 @@ class TaskComputer:
         return ret
 
     ######################
-    def changeConfig(self):
+    def change_config(self):
         self.dirManager = DirManager(self.taskServer.getTaskComputerRoot(), self.clientUid)
         self.resourceManager = ResourcesManager(self.dirManager, self)
         self.taskRequestFrequency   = self.taskServer.configDesc.taskRequestInterval

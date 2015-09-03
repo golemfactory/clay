@@ -50,5 +50,5 @@ class EnvironmentsManager:
                 configEntries = self.envConfig.getConfigEntries()
                 setterForEnv = getattr(configEntries, "set" + env.getId())
                 setterForEnv(int (state))
-                self.envConfig = self.envConfig.changeConfig()
+                self.envConfig = self.envConfig.change_config()
                 return

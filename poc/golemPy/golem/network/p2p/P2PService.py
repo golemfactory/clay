@@ -194,7 +194,7 @@ class P2PService:
         self.managerSession = None
 
     #############################
-    def changeConfig(self, configDesc):
+    def change_config(self, configDesc):
         self.configDesc = configDesc
         self.p2pServer.change_config(configDesc)
 
@@ -208,7 +208,7 @@ class P2PService:
             self.__connect(self.configDesc.seedHost, self.configDesc.seedHostPort)
 
         if self.resourceServer:
-            self.resourceServer.changeConfig(configDesc)
+            self.resourceServer.change_config(configDesc)
 
     #############################
     def changeAddress(self, thDictRepr):
@@ -357,7 +357,7 @@ class P2PService:
         #TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
 
         if not msgSnd and nodeInfo.key == self.get_key_id():
-            self.taskServer.finalConnFailure(connId)
+            self.taskServer.final_conn_failure(connId)
 
     ############################
     def informAboutTaskNatHole(self, keyId, rvKeyId, addr, port, ansConnId):
@@ -470,7 +470,7 @@ class P2PService:
     #############################
     def __connectToHost(self, peer):
         addr = self.suggestedAddrs.get(peer['node'].key)
-        tcp_addresses = P2PService.__nodeInfoToTCPAddresses(peer['node'], peer['port'])
+        tcp_addresses = P2PService.__node_info_to_tcp_addresses(peer['node'], peer['port'])
         if addr:
             tcp_addresses = [TCPAddress(addr, peer['port'])] + tcp_addresses
         connect_info = TCPConnectInfo(tcp_addresses, self.__connectionEstablished, self.__connectionFailure)
@@ -478,7 +478,7 @@ class P2PService:
 
     # Tmp function: to be remove
     @staticmethod
-    def __nodeInfoToTCPAddresses(nodeInfo, port):
+    def __node_info_to_tcp_addresses(nodeInfo, port):
         tcp_addresses = [TCPAddress(i, port) for i in nodeInfo.prvAddresses]
         if nodeInfo.pubPort:
             tcp_addresses.append(TCPAddress(nodeInfo.pubAddr, nodeInfo.pubPort))

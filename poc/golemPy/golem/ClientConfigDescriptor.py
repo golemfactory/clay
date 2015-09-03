@@ -56,7 +56,7 @@ class ConfigApprover:
         self.optsToChange = []
         self.initActions()
 
-    def changeConfig(self, newConfigDesc):
+    def change_config(self, newConfigDesc):
         ncdDict = newConfigDesc.__dict__
         changeDict = {k: ncdDict[k] for k in self.optsToChange if k in self.optsToChange}
         for key, val in changeDict.iteritems():

@@ -42,7 +42,7 @@ class ResourceServer(TCPServer):
         self.lastMessageTimeThreshold = config_desc.resourceSessionTimeout
 
     ############################
-    def startAccepting(self):
+    def start_accepting(self):
         TCPServer.start_accepting(self)
 
     ############################
@@ -162,7 +162,7 @@ class ResourceServer(TCPServer):
 
     ############################
     def pullResource(self, resource, addr, port, keyId, nodeInfo):
-        tcp_addresses = self.__nodeInfoToTCPAddresses(nodeInfo, port)
+        tcp_addresses = self.__node_info_to_tcp_addresses(nodeInfo, port)
         addr = self.client.getSuggestedAddr(keyId)
         if addr:
             tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
@@ -194,7 +194,7 @@ class ResourceServer(TCPServer):
     ############################
     def pushResource(self, resource, addr, port, keyId, nodeInfo, copies):
 
-        tcp_addresses = self.__nodeInfoToTCPAddresses(nodeInfo, port)
+        tcp_addresses = self.__node_info_to_tcp_addresses(nodeInfo, port)
         addr = self.client.getSuggestedAddr(keyId)
         if addr:
             tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
@@ -293,11 +293,11 @@ class ResourceServer(TCPServer):
 
 
     ############################
-    def changeConfig(self, config_desc):
+    def change_config(self, config_desc):
         self.lastMessageTimeThreshold = config_desc.resourceSessionTimeout
 
     @staticmethod
-    def __nodeInfoToTCPAddresses(nodeInfo, port):
+    def __node_info_to_tcp_addresses(nodeInfo, port):
         tcp_addresses = [TCPAddress(i, port) for i in nodeInfo.prvAddresses]
         if nodeInfo.pubPort:
             tcp_addresses.append(TCPAddress(nodeInfo.pubAddr, nodeInfo.pubPort))

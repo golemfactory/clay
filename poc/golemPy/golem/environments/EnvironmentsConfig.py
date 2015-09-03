@@ -55,7 +55,7 @@ class EnvironmentsConfig:
         return self._cfg.get_node_config()
 
     ##############################
-    def changeConfig(self, cfgFile = CONFIG_FILENAME):
+    def change_config(self, cfgFile = CONFIG_FILENAME):
         return EnvironmentsConfig(SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), cfgFile,  refresh = True, check_uid = False))
 
     ##############################

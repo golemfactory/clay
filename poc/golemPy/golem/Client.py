@@ -212,14 +212,14 @@ class Client:
 
         logger.info("Starting resource server...")
         self.resourceServer = ResourceServer(self.configDesc, self.keysAuth, self, useIp6=self.configDesc.useIp6)
-        self.resourceServer.startAccepting()
+        self.resourceServer.start_accepting()
         time.sleep(1.0)
         self.p2pservice.setResourceServer(self.resourceServer)
 
         logger.info("Starting task server ...")
         self.taskServer = TaskServer(self.node, self.configDesc, self.keysAuth, self,
                                      useIp6=self.configDesc.useIp6)
-        self.taskServer.startAccepting()
+        self.taskServer.start_accepting()
 
         self.p2pservice.setTaskServer(self.taskServer)
 
@@ -364,12 +364,12 @@ class Client:
         self.listeners.append(listener)
 
     ############################
-    def changeConfig(self, newConfigDesc):
-        self.configDesc = self.configApprover.changeConfig(newConfigDesc)
-        self.cfg.changeConfig(self.configDesc)
+    def change_config(self, newConfigDesc):
+        self.configDesc = self.configApprover.change_config(newConfigDesc)
+        self.cfg.change_config(self.configDesc)
         self.resourceServer.changeResourceDir(self.configDesc)
-        self.p2pservice.changeConfig(self.configDesc)
-        self.taskServer.changeConfig(self.configDesc)
+        self.p2pservice.change_config(self.configDesc)
+        self.taskServer.change_config(self.configDesc)
 
     ############################
     def registerNodesManagerClient(self, nodesManagerClient):

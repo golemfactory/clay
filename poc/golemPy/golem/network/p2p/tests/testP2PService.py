@@ -185,7 +185,7 @@ class TestP2PService(unittest.TestCase):
     def testChangeConfig(self):
         configDesc = ConfigDesc()
         configDesc.seedPort = '43215'
-        self.p2pservice.changeConfig(configDesc)
+        self.p2pservice.change_config(configDesc)
         self.assertEquals(self.p2pservice.configDesc.seedPort, configDesc.seedPort)
 
 
