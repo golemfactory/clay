@@ -4,7 +4,7 @@ import random
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress, SafeProtocol
-from golem.network.transport.tcp_server import TCPServer, PendingConnectionsServer
+from golem.network.transport.tcp_server import TCPServer, PendingConnectionsServer, PenConnStatus
 from golem.network.p2p.peer_session import PeerSession
 from golem.core.variables import REFRESH_PEERS_TIMEOUT, LAST_MESSAGE_BUFFER_LEN
 from golem.ranking.gossip_keeper import GossipKeeper
@@ -162,6 +162,9 @@ class P2PService(PendingConnectionsServer):
         """ Remove given peer session
         :param PeerSession peer_session: remove peer session
         """
+        pc = self.pending_connections.get(peer_session.conn_id)
+        if pc:
+            pc.status = PenConnStatus.Failure
         if peer_session in self.all_peers:
             self.all_peers.remove(peer_session)
 
@@ -564,9 +567,11 @@ class P2PService(PendingConnectionsServer):
 
     def __connection_established(self, session, conn_id=None):
         self.all_peers.append(session)
-
+        session.conn_id = conn_id
+        self._mark_connected(conn_id, session.address, session.port)
         logger.debug("Connection to peer established. {}: {}, conn_id {}".format(session.conn.transport.getPeer().host,
-                                                                     session.conn.transport.getPeer().port, conn_id))
+                                                                                 session.conn.transport.getPeer().port,
+                                                                                 conn_id))
 
     @staticmethod
     def __connection_failure(conn_id=None):

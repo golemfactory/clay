@@ -36,6 +36,8 @@ class PeerSession(BasicSafeSession):
         self.node_info = None
         self.listen_port = None
 
+        self.conn_id = None
+
         self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type])
         self.can_be_unsigned.extend([MessageHello.Type])
         self.can_be_not_encrypted.extend([MessageHello.Type])
@@ -222,7 +224,7 @@ class PeerSession(BasicSafeSession):
         self.send(MessageNatTraverseFailure(conn_id))
 
     def _react_to_ping(self, msg):
-        self._sendPong()
+        self._send_pong()
 
     def _react_to_pong(self, msg):
         self.p2p_service.pong_received(self.node_id, self.key_id, self.address, self.port)
@@ -310,6 +312,7 @@ class PeerSession(BasicSafeSession):
     def _react_to_rand_val(self, msg):
         if self.rand_val == msg.rand_val:
             self.verified = True
+            self.p2p_service.verified_conn(self.conn_id)
             self.p2p_service.set_suggested_address(self.key_id, self.address, self.port)
 
     def _react_to_want_to_start_task_session(self, msg):
