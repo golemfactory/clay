@@ -127,12 +127,12 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def acceptResultsDelay(self):
+    def accept_results_delay(self):
         return 0.0
 
     #######################
     @abc.abstractmethod
-    def prepareResourceDelta(self, taskId, resourceHeader):
+    def prepare_resourceDelta(self, taskId, resourceHeader):
         return None
 
     #######################

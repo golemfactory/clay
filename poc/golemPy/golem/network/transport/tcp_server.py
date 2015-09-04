@@ -78,8 +78,8 @@ class PendingConnectionsServer(TCPServer):
 
         # Pending listenings
         self.pending_listenings = deque([])  # Ports that should be open for listenings
-        self.listenEstablishedForType = {}  # Reactions for established listenings of certain types
-        self.listenFailureForType = {}  # Reactions for failed listenings of certain types
+        self.listen_established_for_type = {}  # Reactions for established listenings of certain types
+        self.listen_failure_for_type = {}  # Reactions for failed listenings of certain types
         self.open_listenings = {}  # Open ports
         self.listen_wait_time = LISTEN_WAIT_TIME  # How long should server wait before first try to listen
         self.last_check_listening_time = time.time()  # When was the last time when open port where checked
@@ -117,14 +117,14 @@ class PendingConnectionsServer(TCPServer):
             logger.error("Connection {} is unknown".format(conn_id))
 
     def _add_pending_request(self, type_, task_owner, port, key_id, args):
-        tcp_addresses = self._get_tcp_addresses(task_owner, port, key_id)
+        tcp_addresses = self.get_tcp_addresses(task_owner, port, key_id)
         pc = PendingConnection(type_, tcp_addresses, self.conn_established_for_type[type_],
                                self.conn_failure_for_type[type_], args)
         self.pending_connections[pc.id] = pc
 
     def _add_pending_listening(self, type_, port, args):
-        pl = PendingListening(type_, port, self.listenEstablishedForType[type_],
-                              self.listenFailureForType[type_], args)
+        pl = PendingListening(type_, port, self.listen_established_for_type[type_],
+                              self.listen_failure_for_type[type_], args)
         pl.args["listen_id"] = pl.id
         self.pending_listenings.append(pl)
 
@@ -166,8 +166,8 @@ class PendingConnectionsServer(TCPServer):
             for ol_id in listenings_to_remove:
                 del self.open_listenings[ol_id]
 
-    def _get_tcp_addresses(self, node_info, port, key_id):
-        return PendingConnectionsServer.__node_info_to_tcp_addresses(node_info, port)
+    def get_tcp_addresses(self, node_info, port, key_id):
+        return PendingConnectionsServer._node_info_to_tcp_addresses(node_info, port)
 
     def _set_conn_established(self):
         pass
@@ -196,7 +196,7 @@ class PendingConnectionsServer(TCPServer):
                 logger.warning("{}:{} not in connection tcp_addresses".format(addr, port))
 
     @staticmethod
-    def __node_info_to_tcp_addresses(node_info, port):
+    def _node_info_to_tcp_addresses(node_info, port):
         tcp_addresses = [TCPAddress(i, port) for i in node_info.prvAddresses]
         if node_info.pubPort:
             tcp_addresses.append(TCPAddress(node_info.pubAddr, node_info.pubPort))

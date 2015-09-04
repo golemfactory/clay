@@ -45,14 +45,14 @@ class DirManager:
         os.makedirs(fullPath)
 
     ######################
-    def getDir(self, fullPath, create, errMsg):
+    def getDir(self, fullPath, create, err_msg):
         if os.path.isdir(fullPath):
             return self.__getPath(fullPath)
         elif create:
             self.createDir(fullPath)
             return self.__getPath(fullPath)
         else:
-            logger.error(errMsg)
+            logger.error(err_msg)
             return ""
 
     ######################

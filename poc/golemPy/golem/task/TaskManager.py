@@ -24,7 +24,7 @@ class TaskManagerEventListener:
 
 class TaskManager:
     #######################
-    def __init__(self, clientUid, node, listenAddress = "", listenPort = 0, keyId = "", rootPath = "res", useDistributedResources=True):
+    def __init__(self, clientUid, node, listenAddress = "", listenPort = 0, key_id = "", rootPath = "res", useDistributedResources=True):
         self.clientUid      = clientUid
         self.node = node
 
@@ -33,7 +33,7 @@ class TaskManager:
 
         self.listenAddress  = listenAddress
         self.listenPort     = listenPort
-        self.keyId          = keyId
+        self.keyId          = key_id
 
         self.rootPath = rootPath
         self.dirManager     = DirManager(self.getTaskManagerRoot(), self.clientUid)
@@ -103,12 +103,12 @@ class TaskManager:
         logger.info("Resources for task {} send".format(taskId))
 
     #######################
-    def getNextSubTask(self, client_id, taskId, estimatedPerformance, maxResourceSize, maxMemorySize, numCores = 0):
+    def getNextSubTask(self, client_id, taskId, estimatedPerformance, max_resource_size, maxMemorySize, numCores = 0):
         if taskId in self.tasks:
             task = self.tasks[taskId]
             ts = self.tasksStates[taskId]
             th = task.header
-            if self.__hasSubtasks(ts, task, maxResourceSize, maxMemorySize):
+            if self.__hasSubtasks(ts, task, max_resource_size, maxMemorySize):
                 ctd  = task.queryExtraData(estimatedPerformance, numCores, client_id)
                 if ctd is None or ctd.subtaskId is None:
                     return None, False
@@ -207,7 +207,7 @@ class TaskManager:
             return False
 
     #######################
-    def taskComputationFailure(self, subtaskId, err):
+    def taskComputation_failure(self, subtaskId, err):
         if subtaskId in self.subTask2TaskMapping:
             taskId = self.subTask2TaskMapping[subtaskId]
             subtaskStatus = self.tasksStates[taskId].subtaskStates[subtaskId].subtaskStatus
@@ -230,7 +230,7 @@ class TaskManager:
 
     #######################
     def removeOldTasks(self):
-        nodesWithTimeouts = []
+        nodes_with_timeouts = []
         for t in self.tasks.values():
             th = t.header
             if self.tasksStates[th.taskId].status not in self.activeStatus:
@@ -250,10 +250,10 @@ class TaskManager:
                     if s.ttl <= 0:
                         logger.info("Subtask {} dies".format(s.subtaskId))
                         s.subtaskStatus        = SubtaskStatus.failure
-                        nodesWithTimeouts.append(s.computer.nodeId)
+                        nodes_with_timeouts.append(s.computer.nodeId)
                         t.computationFailed(s.subtaskId)
                         self.__noticeTaskUpdated(th.taskId)
-        return nodesWithTimeouts
+        return nodes_with_timeouts
 
 
 
@@ -269,10 +269,10 @@ class TaskManager:
         return tasksProgresses
 
     #######################
-    def prepareResource(self, taskId, resourceHeader):
+    def prepare_resource(self, taskId, resourceHeader):
         if taskId in self.tasks:
             task = self.tasks[taskId]
-            return task.prepareResourceDelta(taskId, resourceHeader)
+            return task.prepare_resourceDelta(taskId, resourceHeader)
 
     #######################
     def getResourcePartsList(self, taskId, resourceHeader):
@@ -281,9 +281,9 @@ class TaskManager:
             return task.getResourcePartsList(taskId, resourceHeader)
 
     #######################
-    def acceptResultsDelay(self, taskId):
+    def accept_results_delay(self, taskId):
         if taskId in self.tasks:
-            return self.tasks[taskId].acceptResultsDelay()
+            return self.tasks[taskId].accept_results_delay()
         else:
             return -1.0
 
@@ -396,7 +396,7 @@ class TaskManager:
         self.useDistributedResources = useDistributedResourceManagement
 
     #######################
-    def changeTimeouts(self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime):
+    def change_timeouts(self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime):
         if taskId in self.tasks:
             task = self.tasks[taskId]
             task.header.ttl = fullTaskTimeout
@@ -452,12 +452,12 @@ class TaskManager:
             l.taskFinished(taskId)
 
     #######################
-    def __hasSubtasks(self, taskState, task, maxResourceSize, maxMemorySize):
+    def __hasSubtasks(self, taskState, task, max_resource_size, maxMemorySize):
         if taskState.status not in self.activeStatus:
             return False
         if not task.needsComputation():
             return False
-        if task.header.resourceSize > (long(maxResourceSize) * 1024):
+        if task.header.resourceSize > (long(max_resource_size) * 1024):
             return False
         if task.header.estimatedMemory > (long(maxMemorySize) * 1024):
             return False

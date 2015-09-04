@@ -68,12 +68,12 @@ class TaskKeeper:
             self.__delActiveTask(taskId)
 
     #############################
-    def getSubtaskTtl(self, taskId):
+    def get_subtask_ttl(self, taskId):
         if taskId in self.taskHeaders:
             return self.taskHeaders[taskId].subtaskTimeout
 
     ###########################
-    def receiveTaskVerification(self, taskId):
+    def receive_task_verification(self, taskId):
         if taskId not in self.activeTasks:
             logger.warning("Wasn't waiting for verification result for {}").format(taskId)
             return
@@ -121,7 +121,7 @@ class TaskKeeper:
                 del self.removedTasks[taskId]
 
     ############################
-    def requestFailure(self, taskId):
+    def request_failure(self, taskId):
         if taskId in self.activeRequests:
             self.activeRequests[taskId] -= 1
         self.remove_task_header(taskId)

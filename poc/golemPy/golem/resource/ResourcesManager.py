@@ -20,7 +20,7 @@ class DistributedResourceManager:
         self.addResources()
 
     ###################
-    def changeResourceDir(self, resourceDir):
+    def change_resource_dir(self, resourceDir):
         self.resourceHash.setResourceDir(resourceDir)
         self.copyResources(resourceDir)
         self.resources = set()
@@ -53,7 +53,7 @@ class DistributedResourceManager:
         self.resources = set(filenames)
 
     ###################
-    def checkResource(self, resource):
+    def check_resource(self, resource):
         resPath = os.path.join(self.resourceDir, os.path.basename(resource))
         if os.path.isfile(resPath) and self.resourceHash.getFileHash(resPath) == resource:
             return True
@@ -111,7 +111,7 @@ class ResourcesManager:
         return taskResHeader
 
     ###################
-    def prepareResourceDelta(self, taskId, resourceHeader):
+    def prepare_resourceDelta(self, taskId, resourceHeader):
 
         dirName = self.getResourceDir(taskId)
 

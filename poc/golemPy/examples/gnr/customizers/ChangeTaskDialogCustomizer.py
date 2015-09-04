@@ -27,7 +27,7 @@ class ChangeTaskDialogCustomizer:
     ############################
     def __saveButtonClicked(self):
         fullTaskTimeout, subtaskTimeout, minSubtaskTime = getTimeValues(self.gui)
-        self.logic.changeTimeouts(u"{}".format(self.gui.ui.taskIdLabel.text()), fullTaskTimeout, subtaskTimeout, minSubtaskTime)
+        self.logic.change_timeouts(u"{}".format(self.gui.ui.taskIdLabel.text()), fullTaskTimeout, subtaskTimeout, minSubtaskTime)
         self.gui.window.close()
 
     ############################

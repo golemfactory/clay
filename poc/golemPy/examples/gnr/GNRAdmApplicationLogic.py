@@ -63,8 +63,8 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         infoTaskDefinition.totalSubtasks    = iterations
         infoTaskDefinition.fullTaskTimeout  = fullTaskTimeout
         infoTaskDefinition.subtaskTimeout   = subtaskTimeout
-        infoTaskDefinition.managerAddress   = self.client.configDesc.managerAddress
-        infoTaskDefinition.managerPort      = self.client.configDesc.managerPort
+        infoTaskDefinition.managerAddress   = self.client.config_desc.managerAddress
+        infoTaskDefinition.managerPort      = self.client.config_desc.managerPort
 
         taskBuilder = InfoTaskBuilder(self.client.getId(),
                                           infoTaskDefinition,

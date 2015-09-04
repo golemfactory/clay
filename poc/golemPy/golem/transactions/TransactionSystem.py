@@ -21,9 +21,9 @@ class TransactionSystem:
         Bank.update(val = self.budget, modified_date = str(datetime.datetime.now())).where(Bank.nodeId == self.nodeId).execute()
 
     ############################
-    def taskRewardPaymentFailure(self, taskId, price):
+    def taskRewardPayment_failure(self, taskId, price):
         self.budget += price
-        self.paymentsKeeper.paymentFailure(taskId)
+        self.paymentsKeeper.payment_failure(taskId)
 
     ################################
     def getReward(self, reward):
@@ -49,7 +49,7 @@ class TransactionSystem:
             self.budget -= task.value
             return task.taskId, payments
         else:
-            self.paymentsKeeper.paymentFailure(task.taskId)
+            self.paymentsKeeper.payment_failure(task.taskId)
             logger.warning("Can't paid for the task, not enough money")
             return None, None
 

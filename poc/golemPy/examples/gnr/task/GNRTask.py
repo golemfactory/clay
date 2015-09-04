@@ -143,7 +143,7 @@ class GNRTask(Task):
         self.resFiles = resFiles
 
     #######################
-    def prepareResourceDelta(self, taskId, resourceHeader):
+    def prepare_resourceDelta(self, taskId, resourceHeader):
         if taskId == self.header.taskId:
             commonPathPrefix, dirName, tmpDir = self.__getTaskDirParams()
 

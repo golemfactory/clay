@@ -37,7 +37,7 @@ class ResourceSession(BasicSafeSession):
     def dropped(self):
         """ Close connection """
         BasicSafeSession.dropped(self)
-        self.resource_server.removeSession(self)
+        self.resource_server.remove_session(self)
 
     #######################
     # SafeSession methods #
@@ -111,10 +111,10 @@ class ResourceSession(BasicSafeSession):
             self.send(MessageHasResource(self.file_name))
             self.confirmation = False
             if self.copies > 0:
-                self.resource_server.addResourceToSend(self.file_name, self.copies)
+                self.resource_server.add_resource_to_send(self.file_name, self.copies)
             self.copies = 0
         else:
-            self.resource_server.resourceDownloaded(self.file_name, self.address, self.port)
+            self.resource_server.resource_downloaded(self.file_name, self.address, self.port)
             self.dropped()
         self.file_name = None
 
@@ -174,35 +174,35 @@ class ResourceSession(BasicSafeSession):
 
     def _react_to_push_resource(self, msg):
         copies = msg.copies - 1
-        if self.resource_server.checkResource(msg.resource):
+        if self.resource_server.check_resource(msg.resource):
             self.send_has_resource(msg.resource)
             if copies > 0:
                 self.resource_server.get_peers()
-                self.resource_server.addResourceToSend(msg.resource, copies)
+                self.resource_server.add_resource_to_send(msg.resource, copies)
         else:
             self.send_want_resource(msg.resource)
             self.file_name = msg.resource
             self.conn.stream_mode = True
-            self.conn.consumer = DecryptFileConsumer([self.resource_server.prepareResource(self.file_name)], "",
+            self.conn.consumer = DecryptFileConsumer([self.resource_server.prepare_resource(self.file_name)], "",
                                                      self, {})
             self.confirmation = True
             self.copies = copies
 
     def _react_to_has_resource(self, msg):
-        self.resource_server.hasResource(msg.resource, self.address, self.port)
+        self.resource_server.has_resource(msg.resource, self.address, self.port)
         self.dropped()
 
     def _react_to_want_resource(self, msg):
-        self.conn.producer = EncryptFileProducer([self.resource_server.prepareResource(msg.resource)], self)
+        self.conn.producer = EncryptFileProducer([self.resource_server.prepare_resource(msg.resource)], self)
 
     def _react_to_pull_resource(self, msg):
-        has_resource = self.resource_server.checkResource(msg.resource)
+        has_resource = self.resource_server.check_resource(msg.resource)
         if not has_resource:
             self.resource_server.get_peers()
         self.send_pull_answer(msg.resource, has_resource)
 
     def _react_to_pull_answer(self, msg):
-        self.resource_server.pullAnswer(msg.resource, msg.has_resource, self)
+        self.resource_server.pull_answer(msg.resource, msg.has_resource, self)
 
     def _react_to_hello(self, msg):
         if self.key_id == 0:

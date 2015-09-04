@@ -27,7 +27,7 @@ class TaskTester:
     #########################
     def run(self):
         try:
-            success = self.__prepareResources()
+            success = self.__prepare_resources()
             self.__prepareTmpDir()
 
             if not success:
@@ -67,7 +67,7 @@ class TaskTester:
         return None
 
     #########################
-    def __prepareResources(self):
+    def __prepare_resources(self):
 
         self.testTaskResPath = getTestTaskPath(self.rootPath)
         if not os.path.exists(self.testTaskResPath):
@@ -78,7 +78,7 @@ class TaskTester:
 
         self.testTaskResDir = getTestTaskDirectory()
         rh = TaskResourceHeader(self.testTaskResDir)
-        resFile = self.task.prepareResourceDelta(self.task.header.taskId, rh)
+        resFile = self.task.prepare_resourceDelta(self.task.header.taskId, rh)
 
         if resFile:
             decompressDir(self.testTaskResPath, resFile)

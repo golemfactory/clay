@@ -92,10 +92,10 @@ class GNRApplicationLogic(QtCore.QObject):
     ######################
     def startNodesManagerClient(self):
         if self.client:
-            configDesc = self.client.configDesc
-            self.nodesManagerClient = NodesManagerUidClient (configDesc.clientUid,
-                                                           configDesc.managerAddress,
-                                                           configDesc.managerPort,
+            config_desc = self.client.config_desc
+            self.nodesManagerClient = NodesManagerUidClient (config_desc.clientUid,
+                                                           config_desc.managerAddress,
+                                                           config_desc.managerPort,
                                                            None,
                                                            self)
             self.nodesManagerClient.start()
@@ -123,7 +123,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
     ######################
     def getConfig(self):
-        return self.client.configDesc
+        return self.client.config_desc
 
     ######################
     def quit(self):
@@ -139,7 +139,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
     ######################
     def change_config ( self, cfgDesc):
-        oldCfgDesc = self.client.configDesc
+        oldCfgDesc = self.client.config_desc
         if (oldCfgDesc.managerAddress != cfgDesc.managerAddress) or (oldCfgDesc.managerPort != cfgDesc.managerPort):
             if self.nodesManagerClient is not None:
                 self.nodesManagerClient.dropConnection()
@@ -224,13 +224,13 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.showTaskResult(taskId)
 
     ######################
-    def changeTimeouts (self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime):
+    def change_timeouts (self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime):
         if taskId in self.tasks:
             task = self.tasks[taskId]
             task.definition.fullTaskTimeout = fullTaskTimeout
             task.definition.minSubtaskTime = minSubtaskTime
             task.definition.subtaskTimeout = subtaskTimeout
-            self.client.changeTimeouts(taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime)
+            self.client.change_timeouts(taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime)
             self.customizer.updateTaskAdditionalInfo(task)
         else:
             logger.error("It's not my task: {} ", taskId)

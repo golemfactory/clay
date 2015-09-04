@@ -69,23 +69,23 @@ class NodesManagerClient:
 
 class NodesManagerUidClient (NodesManagerClient):
     ######################
-    def __init__(self, clientUid, managerServerAddress, managerServerPort, taskManager, logic = None):
+    def __init__(self, clientUid, managerServerAddress, managerServerPort, task_manager, logic = None):
         NodesManagerClient.__init__(self, managerServerAddress, managerServerPort)
         self.clientUid              = clientUid
         self.logic                  = logic
-        self.taskManager            = taskManager
+        self.task_manager            = task_manager
 
     ######################
     def addNewTask(self, task):
         if self.logic:
             self.logic.addTaskFromDefinition(task)
-        elif self.taskManager:
-            task.returnAddress  = self.taskManager.listenAddress
-            task.returnPort     = self.taskManager.listenPort
-            task.taskOwner = self.taskManager.node
-            self.taskManager.addNewTask(task)
+        elif self.task_manager:
+            task.returnAddress  = self.task_manager.listenAddress
+            task.returnPort     = self.task_manager.listenPort
+            task.taskOwner = self.task_manager.node
+            self.task_manager.addNewTask(task)
         else:
-            logger.error("No logic and no taskManager defined.")
+            logger.error("No logic and no task_manager defined.")
 
     ######################
     def runNewNodes(self, num):

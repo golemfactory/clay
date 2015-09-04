@@ -110,5 +110,5 @@ class InfoTask(GNRTask):
             logger.error("Error while interpreting results: {}".format(str(ex)))
 
     #######################
-    def prepareResourceDelta(self, taskId, resourceHeader):
+    def prepare_resourceDelta(self, taskId, resourceHeader):
         return None

@@ -60,21 +60,21 @@ class Session():
 class TestP2PService(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level = logging.DEBUG)
-        self.configDesc = ConfigDesc()
-        self.p2pservice = P2PService('hostaddr', self.configDesc)
+        self.config_desc = ConfigDesc()
+        self.p2pservice = P2PService('hostaddr', self.config_desc)
 
     def testInit(self):
         self.assertIsNotNone(self.p2pservice)
 
     def testWrongSeedData(self):
         self.assertFalse(self.p2pservice.wrong_seed_data())
-        self.p2pservice.configDesc.seedHostPort = 0
+        self.p2pservice.config_desc.seedHostPort = 0
         self.assertTrue(self.p2pservice.wrong_seed_data())
-        self.p2pservice.configDesc.seedHostPort = 66666
+        self.p2pservice.config_desc.seedHostPort = 66666
         self.assertTrue(self.p2pservice.wrong_seed_data())
-        self.p2pservice.configDesc.seedHostPort = 33333
+        self.p2pservice.config_desc.seedHostPort = 33333
         self.assertFalse(self.p2pservice.wrong_seed_data())
-        self.p2pservice.configDesc.seedHost = ''
+        self.p2pservice.config_desc.seedHost = ''
         self.assertTrue(self.p2pservice.wrong_seed_data())
 
     def testSetTaskServer(self):
@@ -183,10 +183,10 @@ class TestP2PService(unittest.TestCase):
         self.assertIsNone(self.p2pservice.manager_session)
 
     def testChangeConfig(self):
-        configDesc = ConfigDesc()
-        configDesc.seedPort = '43215'
-        self.p2pservice.change_config(configDesc)
-        self.assertEquals(self.p2pservice.configDesc.seedPort, configDesc.seedPort)
+        config_desc = ConfigDesc()
+        config_desc.seedPort = '43215'
+        self.p2pservice.change_config(config_desc)
+        self.assertEquals(self.p2pservice.config_desc.seedPort, config_desc.seedPort)
 
 
     def testChangeAddress(self):

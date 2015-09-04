@@ -33,8 +33,8 @@ class TaskSession(MiddlemanSafeSession):
         """
         MiddlemanSafeSession.__init__(self, conn)
         self.task_server = self.conn.server
-        self.task_manager = self.task_server.taskManager
-        self.task_computer = self.task_server.taskComputer
+        self.task_manager = self.task_server.task_manager
+        self.task_computer = self.task_server.task_computer
         self.task_id = None  # current task id
         self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
@@ -66,7 +66,7 @@ class TaskSession(MiddlemanSafeSession):
         """ Close connection """
         MiddlemanSafeSession.dropped(self)
         if self.task_server:
-            self.task_server.removeTaskSession(self)
+            self.task_server.remove_task_session(self)
 
     #######################
     # SafeSession methods #
@@ -130,7 +130,7 @@ class TaskSession(MiddlemanSafeSession):
         :param dict extra_data: additional information that may be needed
         """
         if extra_data and "subtask_id" in extra_data:
-            self.task_server.taskResultSent(extra_data["subtask_id"])
+            self.task_server.task_result_sent(extra_data["subtask_id"])
         if self.conn.producer:
             self.conn.producer.close()
             self.conn.producer = None
@@ -202,9 +202,9 @@ class TaskSession(MiddlemanSafeSession):
         if subtask_id:
             self.task_manager.computedTaskReceived(subtask_id, result, result_type)
             if self.task_manager.verifySubtask(subtask_id):
-                self.task_server.acceptResult(subtask_id, self.result_owner)
+                self.task_server.accept_result(subtask_id, self.result_owner)
             else:
-                self.task_server.rejectResult(subtask_id, self.result_owner)
+                self.task_server.reject_result(subtask_id, self.result_owner)
         else:
             logger.error("No task_id value in extra_data for received data ")
         self.dropped()
@@ -249,7 +249,7 @@ class TaskSession(MiddlemanSafeSession):
         else:
             logger.error("Unknown result type {}".format(task_result.result_type))
             return
-        node_id = self.task_server.getClientId()
+        node_id = self.task_server.get_client_id()
 
         self.send(MessageReportComputedTask(task_result.subtask_id, task_result.result_type, node_id, address, port,
                                             self.task_server.get_key_id(), node_info, eth_account, extra_data))
@@ -319,9 +319,9 @@ class TaskSession(MiddlemanSafeSession):
     #########################
 
     def _react_to_want_to_compute_task(self, msg):
-        trust = self.task_server.getComputingTrust(msg.client_id)
+        trust = self.task_server.get_computing_trust(msg.client_id)
         logger.debug("Computing trust level: {}".format(trust))
-        if trust >= self.task_server.configDesc.computingTrust:
+        if trust >= self.task_server.config_desc.computingTrust:
             ctd, wrong_task = self.task_manager.getNextSubTask(msg.client_id, msg.task_id, msg.perf_index,
                                                                msg.max_resource_size, msg.max_memory_size,
                                                                msg.num_cores)
@@ -337,7 +337,7 @@ class TaskSession(MiddlemanSafeSession):
             self.send(MessageCannotAssignTask(msg.task_id, "No more subtasks in {}".format(msg.task_id)))
 
     def _react_to_task_to_compute(self, msg):
-        self.task_computer.taskGiven(msg.ctd, self.task_server.getSubtaskTtl(msg.ctd.taskId))
+        self.task_computer.taskGiven(msg.ctd, self.task_server.get_subtask_ttl(msg.ctd.taskId))
         self.dropped()
 
     def _react_to_cannot_assign_task(self, msg):
@@ -347,7 +347,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_report_computed_task(self, msg):
         if msg.subtask_id in self.task_manager.subTask2TaskMapping:
-            delay = self.task_manager.acceptResultsDelay(self.task_manager.subTask2TaskMapping[msg.subtask_id])
+            delay = self.task_manager.accept_results_delay(self.task_manager.subTask2TaskMapping[msg.subtask_id])
 
             if delay == -1.0:
                 self.dropped()
@@ -370,7 +370,7 @@ class TaskSession(MiddlemanSafeSession):
             self.dropped()
 
     def _react_to_get_task_result(self, msg):
-        res = self.task_server.getWaitingTaskResult(msg.subtask_id)
+        res = self.task_server.get_waiting_task_result(msg.subtask_id)
         if res is None:
             return
         if msg.delay == 0.0:
@@ -393,11 +393,11 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_get_resource(self, msg):
         self.last_resource_msg = msg
-        self.__send_resource_format(self.task_server.configDesc.useDistributedResourceManagement)
+        self.__send_resource_format(self.task_server.config_desc.useDistributedResourceManagement)
 
     def _react_to_accept_resource_format(self, msg):
         if self.last_resource_msg is not None:
-            if self.task_server.configDesc.useDistributedResourceManagement:
+            if self.task_server.config_desc.useDistributedResourceManagement:
                 self.__send_resource_parts_list(self.last_resource_msg)
             else:
                 self.__send_delta_resource(self.last_resource_msg)
@@ -411,21 +411,21 @@ class TaskSession(MiddlemanSafeSession):
         self.dropped()
 
     def _react_to_subtask_result_accepted(self, msg):
-        self.task_server.subtaskAccepted(msg.subtask_id, msg.reward)
+        self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
         self.dropped()
 
     def _react_to_subtask_result_rejected(self, msg):
-        self.task_server.subtaskRejected(msg.subtask_id)
+        self.task_server.subtask_rejected(msg.subtask_id)
         self.dropped()
 
     def _react_to_task_failure(self, msg):
-        self.task_server.subtaskFailure(msg.subtask_id, msg.err)
+        self.task_server.subtask_failure(msg.subtask_id, msg.err)
         self.dropped()
 
     def _react_to_delta_parts(self, msg):
         self.task_computer.waitForResources(self.task_id, msg.delta_header)
-        self.task_server.pullResources(self.task_id, msg.parts)
-        self.task_server.addResourcePeer(msg.client_id, msg.addr, msg.port, self.key_id, msg.node_info)
+        self.task_server.pull_resources(self.task_id, msg.parts)
+        self.task_server.add_resource_peer(msg.client_id, msg.addr, msg.port, self.key_id, msg.node_info)
         self.dropped()
 
     def _react_to_resource_format(self, msg):
@@ -461,11 +461,11 @@ class TaskSession(MiddlemanSafeSession):
             self.disconnect(TaskSession.DCRUnverified)
 
     def _react_to_start_session_response(self, msg):
-        self.task_server.respondTo(self.key_id, self, msg.conn_id)
+        self.task_server.respond_to(self.key_id, self, msg.conn_id)
 
     def _react_to_middleman(self, msg):
         self.send(MessageBeingMiddlemanAccepted())
-        self.task_server.beAMiddleman(self.key_id, self, self.conn_id, msg.asking_node, msg.dest_node, msg.ask_conn_id)
+        self.task_server.be_a_middleman(self.key_id, self, self.conn_id, msg.asking_node, msg.dest_node, msg.ask_conn_id)
 
     def _react_to_join_middleman_conn(self, msg):
         self.middleman_conn_data = {'key_id': msg.key_id, 'conn_id': msg.conn_id,
@@ -476,7 +476,7 @@ class TaskSession(MiddlemanSafeSession):
         key_id = self.middleman_conn_data.get('key_id')
         conn_id = self.middleman_conn_data.get('conn_id')
         dest_node_key_id = self.middleman_conn_data.get('dest_node_key_id')
-        self.task_server.respondToMiddleman(key_id, self, conn_id, dest_node_key_id)
+        self.task_server.respond_to_middleman(key_id, self, conn_id, dest_node_key_id)
 
     def _react_to_being_middleman_accepted(self, msg):
         self.key_id = self.asking_node_key_id
@@ -487,13 +487,13 @@ class TaskSession(MiddlemanSafeSession):
         self.open_session.is_middleman = True
 
     def _react_to_nat_punch(self, msg):
-        self.task_server.organizeNatPunch(self.address, self.port, self.key_id, msg.asking_node, msg.dest_node,
+        self.task_server.organize_nat_punch(self.address, self.port, self.key_id, msg.asking_node, msg.dest_node,
                                           msg.ask_conn_id)
         self.send(MessageWaitForNatTraverse(self.port))
         self.dropped()
 
     def _react_to_wait_for_nat_traverse(self, msg):
-        self.task_server.waitForNatTraverse(msg.port, self)
+        self.task_server.wait_for_nat_traverse(msg.port, self)
 
     def _react_to_nat_punch_failure(self, msg):
         pass  # TODO Powiadomienie drugiego wierzcholka o nieudanym rendezvous
@@ -507,7 +507,7 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.set_last_message("->", time.localtime(), msg, self.address, self.port)
 
     def __send_delta_resource(self, msg):
-        res_file_path = self.task_manager.prepareResource(msg.task_id, pickle.loads(msg.resource_header))
+        res_file_path = self.task_manager.prepare_resource(msg.task_id, pickle.loads(msg.resource_header))
 
         if not res_file_path:
             logger.error("Task {} has no resource".format(msg.task_id))
@@ -519,9 +519,9 @@ class TaskSession(MiddlemanSafeSession):
 
     def __send_resource_parts_list(self, msg):
         delta_header, parts_list = self.task_manager.getResourcePartsList(msg.task_id, pickle.loads(msg.resource_header))
-        self.send(MessageDeltaParts(self.task_id, delta_header, parts_list, self.task_server.getClientId(),
-                                    self.task_server.node, self.task_server.getResourceAddr(),
-                                    self.task_server.getResourcePort())
+        self.send(MessageDeltaParts(self.task_id, delta_header, parts_list, self.task_server.get_client_id(),
+                                    self.task_server.node, self.task_server.get_resource_addr(),
+                                    self.task_server.get_resource_port())
                   )
 
     def __send_resource_format(self, use_distributed_resource):

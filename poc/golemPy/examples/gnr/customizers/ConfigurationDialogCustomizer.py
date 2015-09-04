@@ -28,50 +28,50 @@ class ConfigurationDialogCustomizer:
 
     #############################
     def loadConfig(self):
-        configDesc = self.logic.getConfig()
-        self.__loadBasicConfig(configDesc)
-        self.__loadAdvanceConfig(configDesc)
-        self.__loadManagerConfig(configDesc)
+        config_desc = self.logic.getConfig()
+        self.__loadBasicConfig(config_desc)
+        self.__loadAdvanceConfig(config_desc)
+        self.__loadManagerConfig(config_desc)
         self.__loadResourceConfig()
-        self.__loadPaymentConfig(configDesc)
+        self.__loadPaymentConfig(config_desc)
 
     #############################
-    def __loadBasicConfig(self, configDesc):
-        self.gui.ui.hostAddressLineEdit.setText(u"{}".format(configDesc.seedHost))
-        self.gui.ui.hostIPLineEdit.setText(u"{}".format(configDesc.seedHostPort))
-        self.gui.ui.workingDirectoryLineEdit.setText(u"{}".format(configDesc.rootPath))
-        self.gui.ui.performanceLabel.setText(u"{}".format(configDesc.estimatedPerformance))
-        self.gui.ui.useIp6CheckBox.setChecked(configDesc.useIp6)
-        self.__loadNumCores(configDesc)
-        self.__loadMemoryConfig(configDesc)
-        self.__loadTrustConfig(configDesc)
+    def __loadBasicConfig(self, config_desc):
+        self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seedHost))
+        self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seedHostPort))
+        self.gui.ui.workingDirectoryLineEdit.setText(u"{}".format(config_desc.rootPath))
+        self.gui.ui.performanceLabel.setText(u"{}".format(config_desc.estimatedPerformance))
+        self.gui.ui.useIp6CheckBox.setChecked(config_desc.useIp6)
+        self.__loadNumCores(config_desc)
+        self.__loadMemoryConfig(config_desc)
+        self.__loadTrustConfig(config_desc)
 
     #############################
-    def __loadNumCores(self, configDesc):
+    def __loadNumCores(self, config_desc):
         maxNumCores = multiprocessing.cpu_count()
         self.gui.ui.numCoresSlider.setMaximum(maxNumCores)
         self.gui.ui.coresMaxLabel.setText(u"{}".format(maxNumCores))
 
         try:
-            numCores = int (configDesc.numCores)
+            numCores = int (config_desc.numCores)
         except Exception, e:
             numCores = 1
             logger.error("Wrong value for number of cores: {}".format(str(e)))
         self.gui.ui.numCoresSlider.setValue(numCores)
 
     #############################
-    def __loadMemoryConfig (self, configDesc):
+    def __loadMemoryConfig (self, config_desc):
         memTab = ["kB","MB", "GB"]
         self.gui.ui.maxResourceSizeComboBox.addItems(memTab)
         self.gui.ui.maxMemoryUsageComboBox.addItems(memTab)
         try:
-            maxResourceSize = long(configDesc.maxResourceSize)
+            maxResourceSize = long(config_desc.maxResourceSize)
         except Exception, e:
             maxResourceSize = 250 * 1024
             logger.error("Wrong value for maximum resource size: {}".format(str(e)))
 
         try:
-            maxMemorySize = long(configDesc.maxMemorySize)
+            maxMemorySize = long(config_desc.maxMemorySize)
         except Exception, e:
             maxMemorySize = 250 * 1024
             logger.error("Wrong value for maximum memory usage: {}".format(str(e)))
@@ -85,9 +85,9 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.maxMemoryUsageSpinBox.setValue(maxMemorySize)
 
     #############################
-    def __loadTrustConfig(self, configDesc):
-        self.__loadTrust(configDesc.computingTrust, self.gui.ui.computingTrustLineEdit, self.gui.ui.computingTrustSlider)
-        self.__loadTrust(configDesc.requestingTrust, self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)
+    def __loadTrustConfig(self, config_desc):
+        self.__loadTrust(config_desc.computingTrust, self.gui.ui.computingTrustLineEdit, self.gui.ui.computingTrustSlider)
+        self.__loadTrust(config_desc.requestingTrust, self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)
 
     #############################
     def __loadTrust(self, value, lineEdit, slider):
@@ -100,29 +100,29 @@ class ConfigurationDialogCustomizer:
         slider.setValue(trust)
 
     #############################
-    def __loadAdvanceConfig(self, configDesc):
-        self.gui.ui.optimalPeerNumLineEdit.setText(u"{}".format(configDesc.optNumPeers))
+    def __loadAdvanceConfig(self, config_desc):
+        self.gui.ui.optimalPeerNumLineEdit.setText(u"{}".format(config_desc.optNumPeers))
 
-        self.__loadCheckBoxParam(configDesc.useDistributedResourceManagement, self.gui.ui.useDistributedResCheckBox, 'use distributed res')
-        self.gui.ui.distributedResNumLineEdit.setText(u"{}".format(configDesc.distResNum))
+        self.__loadCheckBoxParam(config_desc.useDistributedResourceManagement, self.gui.ui.useDistributedResCheckBox, 'use distributed res')
+        self.gui.ui.distributedResNumLineEdit.setText(u"{}".format(config_desc.distResNum))
 
-        self.__loadCheckBoxParam(configDesc.useWaitingForTaskTimeout, self.gui.ui.useWaitingForTaskTimeoutCheckBox, 'waiting for task timeout')
-        self.gui.ui.waitingForTaskTimeoutLineEdit.setText(u"{}".format(configDesc.waitingForTaskTimeout))
+        self.__loadCheckBoxParam(config_desc.useWaitingForTaskTimeout, self.gui.ui.useWaitingForTaskTimeoutCheckBox, 'waiting for task timeout')
+        self.gui.ui.waitingForTaskTimeoutLineEdit.setText(u"{}".format(config_desc.waitingForTaskTimeout))
 
-        self.__loadCheckBoxParam(configDesc.sendPings, self.gui.ui.sendPingsCheckBox, 'send pings''')
-        self.gui.ui.sendPingsLineEdit.setText(u"{}".format(configDesc.pingsInterval))
+        self.__loadCheckBoxParam(config_desc.sendPings, self.gui.ui.sendPingsCheckBox, 'send pings''')
+        self.gui.ui.sendPingsLineEdit.setText(u"{}".format(config_desc.pingsInterval))
 
-        self.gui.ui.gettingPeersLineEdit.setText(u"{}".format(configDesc.gettingPeersInterval))
-        self.gui.ui.gettingTasksIntervalLineEdit.setText(u"{}".format(configDesc.gettingTasksInterval))
-        self.gui.ui.nodeSnapshotIntervalLineEdit.setText(u"{}".format(configDesc.nodeSnapshotInterval))
-        self.gui.ui.maxSendingDelayLineEdit.setText(u"{}".format(configDesc.maxResultsSendingDelay))
+        self.gui.ui.gettingPeersLineEdit.setText(u"{}".format(config_desc.gettingPeersInterval))
+        self.gui.ui.gettingTasksIntervalLineEdit.setText(u"{}".format(config_desc.gettingTasksInterval))
+        self.gui.ui.nodeSnapshotIntervalLineEdit.setText(u"{}".format(config_desc.nodeSnapshotInterval))
+        self.gui.ui.maxSendingDelayLineEdit.setText(u"{}".format(config_desc.maxResultsSendingDelay))
 
-        self.gui.ui.p2pSessionTimeoutLineEdit.setText(u"{}".format(configDesc.p2pSessionTimeout))
-        self.gui.ui.taskSessionTimeoutLineEdit.setText(u"{}".format(configDesc.taskSessionTimeout))
-        self.gui.ui.resourceSessionTimeoutLineEdit.setText(u"{}".format(configDesc.resourceSessionTimeout))
+        self.gui.ui.p2pSessionTimeoutLineEdit.setText(u"{}".format(config_desc.p2pSessionTimeout))
+        self.gui.ui.taskSessionTimeoutLineEdit.setText(u"{}".format(config_desc.taskSessionTimeout))
+        self.gui.ui.resourceSessionTimeoutLineEdit.setText(u"{}".format(config_desc.resourceSessionTimeout))
 
-        self.gui.ui.pluginPortLineEdit.setText(u"{}".format(configDesc.pluginPort))
-        self.oldPluginPort = u"{}".format(configDesc.pluginPort)
+        self.gui.ui.pluginPortLineEdit.setText(u"{}".format(config_desc.pluginPort))
+        self.oldPluginPort = u"{}".format(config_desc.pluginPort)
 
     #############################
     def __loadCheckBoxParam(self, param, checkBox, paramName = ''):
@@ -138,13 +138,13 @@ class ConfigurationDialogCustomizer:
         checkBox.setChecked(checked)
 
     #############################
-    def __loadManagerConfig(self, configDesc):
-        self.gui.ui.managerAddressLineEdit.setText(u"{}".format(configDesc.managerAddress))
-        self.gui.ui.managerPortLineEdit.setText(u"{}".format(configDesc.managerPort))
+    def __loadManagerConfig(self, config_desc):
+        self.gui.ui.managerAddressLineEdit.setText(u"{}".format(config_desc.managerAddress))
+        self.gui.ui.managerPortLineEdit.setText(u"{}".format(config_desc.managerPort))
 
     #############################
-    def __loadPaymentConfig(self, configDesc):
-        self.gui.ui.ethAccountLineEdit.setText(u"{}".format(configDesc.ethAccount))
+    def __loadPaymentConfig(self, config_desc):
+        self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.ethAccount))
 
     #############################
     def __loadResourceConfig(self):

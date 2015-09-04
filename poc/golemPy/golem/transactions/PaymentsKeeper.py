@@ -19,7 +19,7 @@ class PaymentsKeeper:
         self.finishedTasks.append(taskId)
 
     ###############################
-    def paymentFailure(self, taskId):
+    def payment_failure(self, taskId):
         task = self.settledTasks.get(taskId)
         if task is None:
             logger.error("Unknown payment for task {}".format(taskId))

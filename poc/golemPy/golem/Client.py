@@ -62,7 +62,7 @@ def startClient():
     useWaitingForTaskTimeout    = cfg.getUseWaitingForTaskTimeout()
     waitingForTaskTimeout       = cfg.getWaitingForTaskTimeout()
     p2pSessionTimeout           = cfg.getP2pSessionTimeout()
-    taskSessionTimeout          = cfg.getTaskSessionTimeout()
+    task_sessionTimeout          = cfg.getTaskSessionTimeout()
     resourceSessionTimeout      = cfg.getResourceSessionTimeout()
 
     estimatedPerformance        = cfg.getEstimatedPerformance()
@@ -72,56 +72,56 @@ def startClient():
     computingTrust              = cfg.getComputingTrust()
 
     ethAccount                  = cfg.getEthAccount()
-    useIp6                      = cfg.getUseIp6()
+    use_ipv6                      = cfg.getUseIp6()
 
-    configDesc = ClientConfigDescriptor()
+    config_desc = ClientConfigDescriptor()
 
-    configDesc.clientUid        = clientUid
-    configDesc.startPort        = startPort
-    configDesc.endPort          = endPort
-    configDesc.managerAddress   = managerAddress
-    configDesc.managerPort      = managerPort
-    configDesc.optNumPeers      = optNumPeers
-    configDesc.sendPings        = sendPings
-    configDesc.pingsInterval    = pingsInterval
-    configDesc.addTasks         = addTasks
-    configDesc.clientVersion    = 1
-    configDesc.rootPath         = rootPath
-    configDesc.numCores         = numCores
-    configDesc.maxResourceSize  = maxResourceSize
-    configDesc.maxMemorySize    = maxMemorySize
-    configDesc.distResNum       = distResNum
+    config_desc.clientUid        = clientUid
+    config_desc.startPort        = startPort
+    config_desc.endPort          = endPort
+    config_desc.managerAddress   = managerAddress
+    config_desc.managerPort      = managerPort
+    config_desc.optNumPeers      = optNumPeers
+    config_desc.sendPings        = sendPings
+    config_desc.pingsInterval    = pingsInterval
+    config_desc.addTasks         = addTasks
+    config_desc.clientVersion    = 1
+    config_desc.rootPath         = rootPath
+    config_desc.numCores         = numCores
+    config_desc.maxResourceSize  = maxResourceSize
+    config_desc.maxMemorySize    = maxMemorySize
+    config_desc.distResNum       = distResNum
 
-    configDesc.seedHost               = seedHost
-    configDesc.seedHostPort           = seedHostPort
+    config_desc.seedHost               = seedHost
+    config_desc.seedHostPort           = seedHostPort
 
-    configDesc.appVersion             = appVersion
-    configDesc.appName                = appName
+    config_desc.appVersion             = appVersion
+    config_desc.appName                = appName
 
-    configDesc.pluginPort               = pluginPort
-    configDesc.gettingPeersInterval     = gettingPeersInterval
-    configDesc.gettingTasksInterval     = gettingTasksInterval
-    configDesc.taskRequestInterval      = taskRequestInterval
-    configDesc.useWaitingForTaskTimeout = useWaitingForTaskTimeout
-    configDesc.waitingForTaskTimeout    = waitingForTaskTimeout
-    configDesc.p2pSessionTimeout        = p2pSessionTimeout
-    configDesc.taskSessionTimeout       = taskSessionTimeout
-    configDesc.resourceSessionTimeout   = resourceSessionTimeout
+    config_desc.pluginPort               = pluginPort
+    config_desc.gettingPeersInterval     = gettingPeersInterval
+    config_desc.gettingTasksInterval     = gettingTasksInterval
+    config_desc.taskRequestInterval      = taskRequestInterval
+    config_desc.useWaitingForTaskTimeout = useWaitingForTaskTimeout
+    config_desc.waitingForTaskTimeout    = waitingForTaskTimeout
+    config_desc.p2pSessionTimeout        = p2pSessionTimeout
+    config_desc.taskSessionTimeout       = task_sessionTimeout
+    config_desc.resourceSessionTimeout   = resourceSessionTimeout
 
-    configDesc.estimatedPerformance     = estimatedPerformance
-    configDesc.nodeSnapshotInterval     = nodeSnapshotInterval
-    configDesc.maxResultsSendingDelay   = cfg.getMaxResultsSendingDelay()
-    configDesc.useDistributedResourceManagement = useDistributedResourceManagement
-    configDesc.requestingTrust          = requestingTrust
-    configDesc.computingTrust           = computingTrust
+    config_desc.estimatedPerformance     = estimatedPerformance
+    config_desc.nodeSnapshotInterval     = nodeSnapshotInterval
+    config_desc.maxResultsSendingDelay   = cfg.getMaxResultsSendingDelay()
+    config_desc.useDistributedResourceManagement = useDistributedResourceManagement
+    config_desc.requestingTrust          = requestingTrust
+    config_desc.computingTrust           = computingTrust
 
-    configDesc.ethAccount               = ethAccount
-    configDesc.useIp6                   = useIp6
+    config_desc.ethAccount               = ethAccount
+    config_desc.useIp6                   = use_ipv6
 
 
     logger.info("Adding tasks {}".format(addTasks))
     logger.info("Creating public client interface with uuid: {}".format(clientUid))
-    c = Client(configDesc, config = cfg)
+    c = Client(config_desc, config = cfg)
 
     logger.info("Starting all asynchronous services")
     c.startNetwork()
@@ -159,14 +159,14 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 class Client:
 
     ############################
-    def __init__(self, configDesc, rootPath = "", config = ""):
-        self.configDesc     = configDesc
-        self.keys_auth       = EllipticalKeysAuth(configDesc.clientUid)
-        self.configApprover = ConfigApprover(configDesc)
+    def __init__(self, config_desc, rootPath = "", config = ""):
+        self.config_desc     = config_desc
+        self.keys_auth       = EllipticalKeysAuth(config_desc.clientUid)
+        self.configApprover = ConfigApprover(config_desc)
 
         #NETWORK
-        self.node = Node(self.configDesc.clientUid, self.keys_auth.get_key_id())
-        self.node.collectNetworkInfo(self.configDesc.seedHost, useIp6=self.configDesc.useIp6)
+        self.node = Node(self.config_desc.clientUid, self.keys_auth.get_key_id())
+        self.node.collectNetworkInfo(self.config_desc.seedHost, use_ipv6=self.config_desc.useIp6)
         logger.debug("Is super node? {}".format(self.node.isSuperNode()))
         self.p2service = None
 
@@ -189,11 +189,11 @@ class Client:
         self.snapshotLock = Lock()
 
         self.db = Database()
-        self.db.checkNode(self.configDesc.clientUid)
+        self.db.checkNode(self.config_desc.clientUid)
 
         self.ranking = Ranking(self, RankingDatabase(self.db))
 
-        self.transactionSystem = EthereumTransactionSystem(self.configDesc.clientUid, self.configDesc.ethAccount)
+        self.transactionSystem = EthereumTransactionSystem(self.config_desc.clientUid, self.config_desc.ethAccount)
 
         self.environmentsManager = EnvironmentsManager()
 
@@ -207,24 +207,24 @@ class Client:
         logger.info("Starting network ...")
 
         logger.info("Starting p2p server ...")
-        self.p2pservice = P2PService(self.node, self.configDesc, self.keys_auth, use_ipv6=self.configDesc.useIp6)
+        self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth, use_ipv6=self.config_desc.useIp6)
         time.sleep(1.0)
 
         logger.info("Starting resource server...")
-        self.resource_server = ResourceServer(self.configDesc, self.keys_auth, self, useIp6=self.configDesc.useIp6)
+        self.resource_server = ResourceServer(self.config_desc, self.keys_auth, self, use_ipv6=self.config_desc.useIp6)
         self.resource_server.start_accepting()
         time.sleep(1.0)
         self.p2pservice.set_resource_server(self.resource_server)
 
         logger.info("Starting task server ...")
-        self.task_server = TaskServer(self.node, self.configDesc, self.keys_auth, self,
-                                     useIp6=self.configDesc.useIp6)
+        self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
+                                     use_ipv6=self.config_desc.useIp6)
         self.task_server.start_accepting()
 
         self.p2pservice.set_task_server(self.task_server)
 
         time.sleep(0.5)
-        self.task_server.taskManager.registerListener(ClientTaskManagerEventListener(self))
+        self.task_server.task_manager.registerListener(ClientTaskManagerEventListener(self))
 
     ############################
     def runAddTaskServer(self):
@@ -248,10 +248,10 @@ class Client:
 
     ############################
     def enqueueNewTask(self, task):
-        self.task_server.taskManager.addNewTask(task)
-        if self.configDesc.useDistributedResourceManagement:
+        self.task_server.task_manager.addNewTask(task)
+        if self.config_desc.useDistributedResourceManagement:
             self.get_resource_peers()
-            resFiles = self.resource_server.addFilesToSend(task.taskResources, task.header.taskId, self.configDesc.distResNum)
+            resFiles = self.resource_server.add_files_to_send(task.taskResources, task.header.taskId, self.config_desc.distResNum)
             task.setResFiles(resFiles)
 
     ############################
@@ -260,11 +260,11 @@ class Client:
 
     ############################
     def taskResourcesSend(self, taskId):
-        self.task_server.taskManager.resourcesSend(taskId)
+        self.task_server.task_manager.resourcesSend(taskId)
 
     ############################
     def taskResourcesCollected(self, taskId):
-        self.task_server.taskComputer.taskResourceCollected(taskId)
+        self.task_server.task_computer.taskResourceCollected(taskId)
 
     ############################
     def setResourcePort (self, resourcePort):
@@ -273,36 +273,36 @@ class Client:
 
     ############################
     def abortTask(self, taskId):
-        self.task_server.taskManager.abortTask(taskId)
+        self.task_server.task_manager.abortTask(taskId)
 
     ############################
     def restartTask(self, taskId):
-        self.task_server.taskManager.restartTask(taskId)
+        self.task_server.task_manager.restartTask(taskId)
 
     ############################
     def restartSubtask(self, subtaskId):
-        self.task_server.taskManager.restartSubtask(subtaskId)
+        self.task_server.task_manager.restartSubtask(subtaskId)
 
     ############################
     def pauseTask(self, taskId):
-        self.task_server.taskManager.pauseTask(taskId)
+        self.task_server.task_manager.pauseTask(taskId)
 
     ############################
     def resumeTask(self, taskId):
-        self.task_server.taskManager.resumeTask(taskId)
+        self.task_server.task_manager.resumeTask(taskId)
 
     ############################
     def deleteTask(self, taskId):
         self.task_server.remove_task_header(taskId)
-        self.task_server.taskManager.deleteTask(taskId)
+        self.task_server.task_manager.deleteTask(taskId)
 
     ############################
     def getId(self):
-        return self.configDesc.clientUid
+        return self.config_desc.clientUid
 
     ############################
     def getRootPath(self):
-        return self.configDesc.rootPath
+        return self.config_desc.rootPath
 
     ############################
     def increaseTrust(self, nodeId, stat, mod = 1.0):
@@ -334,7 +334,7 @@ class Client:
 
     #TRANSACTION SYSTEM OPERATIONS
     ############################
-    def acceptResult(self, taskId, subtaskId, priceMod, accountInfo):
+    def accept_result(self, taskId, subtaskId, priceMod, accountInfo):
         self.transactionSystem.addPaymentInfo(taskId, subtaskId, priceMod, accountInfo)
 
     ############################
@@ -342,12 +342,12 @@ class Client:
         return self.transactionSystem.taskRewardPaid(taskId, price)
 
     ############################
-    def taskRewardPaymentFailure(self, taskId, price):
-        return self.transactionSystem.taskRewardPaymentFailure(taskId, price)
+    def taskRewardPayment_failure(self, taskId, price):
+        return self.transactionSystem.taskRewardPayment_failure(taskId, price)
 
     ############################
-    def globalPayForTask(self, taskId, payments):
-        self.transactionSystem.globalPayForTask(taskId, payments)
+    def global_pay_for_task(self, taskId, payments):
+        self.transactionSystem.global_pay_for_task(taskId, payments)
 
     ############################
     def getReward(self, reward):
@@ -365,19 +365,19 @@ class Client:
 
     ############################
     def change_config(self, newConfigDesc):
-        self.configDesc = self.configApprover.change_config(newConfigDesc)
-        self.cfg.change_config(self.configDesc)
-        self.resource_server.changeResourceDir(self.configDesc)
-        self.p2pservice.change_config(self.configDesc)
-        self.task_server.change_config(self.configDesc)
+        self.config_desc = self.configApprover.change_config(newConfigDesc)
+        self.cfg.change_config(self.config_desc)
+        self.resource_server.change_resource_dir(self.config_desc)
+        self.p2pservice.change_config(self.config_desc)
+        self.task_server.change_config(self.config_desc)
 
     ############################
     def registerNodesManagerClient(self, nodesManagerClient):
         self.nodesManagerClient = nodesManagerClient
 
     ############################
-    def changeTimeouts(self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime):
-        self.task_server.changeTimeouts(taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime)
+    def change_timeouts(self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime):
+        self.task_server.change_timeouts(taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime)
 
     ############################
     def unregisterListener(self, listener):
@@ -390,16 +390,16 @@ class Client:
 
     ############################
     def querryTaskState(self, taskId):
-        return self.task_server.taskManager.querryTaskState(taskId)
+        return self.task_server.task_manager.querryTaskState(taskId)
 
     ############################
-    def pullResources(self, taskId, listFiles):
-        self.resource_server.addFilesToGet(listFiles, taskId)
+    def pull_resources(self, taskId, listFiles):
+        self.resource_server.add_files_to_get(listFiles, taskId)
         self.get_resource_peers()
 
     ############################
-    def addResourcePeer(self, client_id, addr, port, keyId, node_info):
-        self.resource_server.addResourcePeer(client_id, addr, port, keyId, node_info)
+    def add_resource_peer(self, client_id, addr, port, keyId, node_info):
+        self.resource_server.add_resource_peer(client_id, addr, port, keyId, node_info)
 
     ############################
     def supportedTask(self, th_dict_repr):
@@ -415,27 +415,27 @@ class Client:
         return dirs
 
     def getComputedFilesDir(self):
-        return self.task_server.getTaskComputerRoot()
+        return self.task_server.get_task_computer_root()
 
     def getReceivedFilesDir(self):
-        return self.task_server.taskManager.getTaskManagerRoot()
+        return self.task_server.task_manager.getTaskManagerRoot()
 
     def getDistributedFilesDir(self):
-        return self.resource_server.getDistributedResourceRoot()
+        return self.resource_server.get_distributed_resource_root()
 
     ############################
     def removeComputedFiles(self):
-        dirManager = DirManager(self.configDesc.rootPath, self.configDesc.clientUid)
+        dirManager = DirManager(self.config_desc.rootPath, self.config_desc.clientUid)
         dirManager.clearDir(self.getComputedFilesDir())
 
    ############################
     def removeDistributedFiles(self):
-        dirManager = DirManager(self.configDesc.rootPath, self.configDesc.clientUid)
+        dirManager = DirManager(self.config_desc.rootPath, self.config_desc.clientUid)
         dirManager.clearDir(self.getDistributedFilesDir())
 
    ############################
     def removeReceivedFiles(self):
-        dirManager = DirManager(self.configDesc.rootPath, self.configDesc.clientUid)
+        dirManager = DirManager(self.config_desc.rootPath, self.config_desc.clientUid)
         dirManager.clearDir(self.getReceivedFilesDir())
 
     ############################
@@ -447,8 +447,8 @@ class Client:
         self.environmentsManager.changeAcceptTasks(envId, state)
 
     ############################
-    def getComputingTrust(self, nodeId):
-        return self.ranking.getComputingTrust(nodeId)
+    def get_computing_trust(self, nodeId):
+        return self.ranking.get_computing_trust(nodeId)
 
     ############################
     def send_gossip(self, gossip, send_to):
@@ -480,11 +480,11 @@ class Client:
 
     ############################
     def getPluginPort(self):
-        return self.configDesc.pluginPort
+        return self.config_desc.pluginPort
 
     ############################
     def getEthAccount(self):
-        return self.configDesc.ethAccount
+        return self.config_desc.ethAccount
 
     ############################
     def taskFinished(self, taskId):
@@ -517,12 +517,12 @@ class Client:
         if not minV:
             return True
         try:
-            supported =  float(self.configDesc.appVersion) >= float(minV)
+            supported =  float(self.config_desc.appVersion) >= float(minV)
             return supported
         except ValueError:
             logger.error(
                 "Wrong app version - app version {}, required version {}".format(
-                    self.configDesc.appVersion,
+                    self.config_desc.appVersion,
                     minV
               )
           )
@@ -531,8 +531,8 @@ class Client:
     ############################
     def __doWork(self):
         if self.p2pservice:
-            if self.configDesc.sendPings:
-                self.p2pservice.ping_peers(self.configDesc.pingsInterval)
+            if self.config_desc.sendPings:
+                self.p2pservice.ping_peers(self.config_desc.pingsInterval)
 
             self.p2pservice.sync_network()
             self.task_server.sync_network()
@@ -540,7 +540,7 @@ class Client:
             self.ranking.sync_network()
 
 
-            if time.time() - self.lastNSSTime > self.configDesc.nodeSnapshotInterval:
+            if time.time() - self.lastNSSTime > self.config_desc.nodeSnapshotInterval:
                 with self.snapshotLock:
                     self.__makeNodeStateSnapshot()
                 self.lastNSSTime = time.time()
@@ -556,12 +556,12 @@ class Client:
         lastNetworkMessages = self.p2pservice.get_last_messages()
 
         if self.task_server:
-            tasksNum                = len(self.task_server.taskKeeper.taskHeaders)
-            remoteTasksProgresses   = self.task_server.taskComputer.getProgresses()
-            localTasksProgresses    = self.task_server.taskManager.getProgresses()
+            tasksNum                = len(self.task_server.task_keeper.taskHeaders)
+            remoteTasksProgresses   = self.task_server.task_computer.getProgresses()
+            localTasksProgresses    = self.task_server.task_manager.getProgresses()
             lastTaskMessages        = self.task_server.get_last_messages()
             self.lastNodeStateSnapshot = NodeStateSnapshot(   isRunning
-                                                           ,    self.configDesc.clientUid
+                                                           ,    self.config_desc.clientUid
                                                            ,    peersNum
                                                            ,    tasksNum
                                                            ,    self.p2pservice.node.pubAddr
@@ -571,14 +571,14 @@ class Client:
                                                            ,    remoteTasksProgresses  
                                                            ,    localTasksProgresses)
         else:
-            self.lastNodeStateSnapshot = NodeStateSnapshot(self.configDesc.clientUid, peersNum)
+            self.lastNodeStateSnapshot = NodeStateSnapshot(self.config_desc.clientUid, peersNum)
 
 
         if self.nodesManagerClient:
             self.nodesManagerClient.sendClientStateSnapshot(self.lastNodeStateSnapshot)
 
     def getStatus(self):
-        progress = self.task_server.taskComputer.getProgresses()
+        progress = self.task_server.task_computer.getProgresses()
         if len(progress) > 0:
             msg =  "Counting {} subtask(s):".format(len(progress))
             for k, v in progress.iteritems():
@@ -593,4 +593,4 @@ class Client:
         return msg
 
     def getAboutInfo(self):
-        return self.configDesc.appName, self.configDesc.appVersion
+        return self.config_desc.appName, self.config_desc.appVersion

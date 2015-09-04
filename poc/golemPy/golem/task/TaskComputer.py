@@ -27,12 +27,12 @@ class TaskComputer:
         self.currentComputations    = []
         self.lock                   = Lock()
         self.lastTaskRequest        = time.time()
-        self.taskRequestFrequency   = task_server.configDesc.taskRequestInterval
-        self.useWaitingTtl          = task_server.configDesc.useWaitingForTaskTimeout
-        self.waitingForTaskTimeout  = task_server.configDesc.waitingForTaskTimeout
+        self.taskRequestFrequency   = task_server.config_desc.taskRequestInterval
+        self.useWaitingTtl          = task_server.config_desc.useWaitingForTaskTimeout
+        self.waitingForTaskTimeout  = task_server.config_desc.waitingForTaskTimeout
         self.waitingTtl             = 0
         self.lastChecking           = time.time()
-        self.dirManager             = DirManager (task_server.getTaskComputerRoot(), self.clientUid)
+        self.dirManager             = DirManager (task_server.get_task_computer_root(), self.clientUid)
 
         self.resourceManager        = ResourcesManager(self.dirManager, self)
 
@@ -51,7 +51,7 @@ class TaskComputer:
             self.assignedSubTasks[ ctd.subtaskId ] = ctd
             self.assignedSubTasks[ ctd.subtaskId ].timeout = subtaskTimeout
             self.taskToSubTaskMapping[ ctd.taskId ] = ctd.subtaskId
-            self.__requestResource(ctd.taskId, self.resourceManager.getResourceHeader(ctd.taskId), ctd.returnAddress,
+            self.__request_resource(ctd.taskId, self.resourceManager.getResourceHeader(ctd.taskId), ctd.returnAddress,
                                    ctd.returnPort, ctd.keyId, ctd.taskOwner)
             return True
         else:
@@ -79,7 +79,7 @@ class TaskComputer:
                 self.countingTask = True
                 self.taskTimeout = self.assignedSubTasks[ subtaskId ].timeout
                 self.lastTaskTimeoutChecking = time.time()
-                self.task_server.unpackDelta(self.dirManager.getTaskResourceDir(taskId), self.delta, taskId)
+                self.task_server.unpack_delta(self.dirManager.getTaskResourceDir(taskId), self.delta, taskId)
                 self.__computeTask(subtaskId, self.assignedSubTasks[ subtaskId ].srcCode, self.assignedSubTasks[ subtaskId ].extraData, self.assignedSubTasks[ subtaskId ].shortDescription, self.assignedSubTasks[subtaskId].timeout )
                 self.waitingForTask = None
                 self.delta = None
@@ -123,15 +123,15 @@ class TaskComputer:
                 return
 
             if taskThread.error:
-                self.task_server.sendTaskFailed(subtaskId, subtask.taskId, taskThread.errorMsg,
+                self.task_server.send_task_failed(subtaskId, subtask.taskId, taskThread.errorMsg,
                                                subtask.returnAddress, subtask.returnPort, subtask.keyId,
                                                subtask.taskOwner, self.clientUid)
             elif taskThread.result and 'data' in taskThread.result and 'resultType' in taskThread.result:
                 logger.info ("Task {} computed".format(subtaskId))
-                self.task_server.sendResults(subtaskId, subtask.taskId, taskThread.result, subtask.returnAddress,
+                self.task_server.send_results(subtaskId, subtask.taskId, taskThread.result, subtask.returnAddress,
                                             subtask.returnPort, subtask.keyId, subtask.taskOwner, self.clientUid)
             else:
-                self.task_server.sendTaskFailed(subtaskId, subtask.taskId, "Wrong result format",
+                self.task_server.send_task_failed(subtaskId, subtask.taskId, "Wrong result format",
                                                subtask.returnAddress, subtask.returnPort, subtask.keyId,
                                                subtask.taskOwner, self.clientUid)
 
@@ -148,7 +148,7 @@ class TaskComputer:
             if time.time() - self.lastTaskRequest > self.taskRequestFrequency:
                 if len(self.currentComputations) == 0:
                     self.lastTaskRequest = time.time()
-                    self.__requestTask()
+                    self.__request_task()
         elif self.useWaitingTtl:
             time_ = time.time()
             self.waitingTtl -= time_ - self.lastChecking
@@ -168,11 +168,11 @@ class TaskComputer:
 
     ######################
     def change_config(self):
-        self.dirManager = DirManager(self.task_server.getTaskComputerRoot(), self.clientUid)
+        self.dirManager = DirManager(self.task_server.get_task_computer_root(), self.clientUid)
         self.resourceManager = ResourcesManager(self.dirManager, self)
-        self.taskRequestFrequency   = self.task_server.configDesc.taskRequestInterval
-        self.useWaitingTtl          = self.task_server.configDesc.useWaitingForTaskTimeout
-        self.waitingForTaskTimeout  = self.task_server.configDesc.waitingForTaskTimeout
+        self.taskRequestFrequency   = self.task_server.config_desc.taskRequestInterval
+        self.useWaitingTtl          = self.task_server.config_desc.useWaitingForTaskTimeout
+        self.waitingForTaskTimeout  = self.task_server.config_desc.waitingForTaskTimeout
 
     ######################
     def sessionTimeout(self):
@@ -188,17 +188,17 @@ class TaskComputer:
             self.increaseTrustVal = True
 
     ######################
-    def __requestTask(self):
+    def __request_task(self):
         self.waitingTtl  = self.waitingForTaskTimeout
         self.lastChecking = time.time()
-        self.waitingForTask = self.task_server.requestTask()
+        self.waitingForTask = self.task_server.request_task()
 
     ######################
-    def __requestResource(self, taskId, resourceHeader, returnAddress, returnPort, keyId, taskOwner):
+    def __request_resource(self, taskId, resourceHeader, returnAddress, returnPort, keyId, taskOwner):
         self.waitingTtl = self.waitingForTaskTimeout
         self.lastChecking = time.time()
         self.waitingForTask = 1
-        self.waitingForTask = self.task_server.requestResource(taskId, resourceHeader, returnAddress, returnPort, keyId,
+        self.waitingForTask = self.task_server.request_resource(taskId, resourceHeader, returnAddress, returnPort, keyId,
                                                               taskOwner)
 
     ######################
@@ -222,10 +222,10 @@ class AssignedSubTask:
 
 class TaskThread(Thread):
     ######################
-    def __init__(self, taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath, timeout = 0):
+    def __init__(self, task_computer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath, timeout = 0):
         super(TaskThread, self).__init__()
 
-        self.taskComputer   = taskComputer
+        self.task_computer   = task_computer
         self.vm             = None
         self.subtaskId      = subtaskId
         self.srcCode        = srcCode
@@ -279,13 +279,13 @@ class TaskThread(Thread):
         logger.info("RUNNING ")
         try:
             self.__doWork()
-            self.taskComputer.taskComputed(self)
+            self.task_computer.taskComputed(self)
         except Exception as exc:
             logger.error("Task computing error: {}".format(exc))
             self.error = True
             self.errorMsg = str(exc)
             self.done = True
-            self.taskComputer.taskComputed(self)
+            self.task_computer.taskComputed(self)
 
     ######################
     def endComp(self):
@@ -309,12 +309,12 @@ class TaskThread(Thread):
 
 class PyTaskThread(TaskThread):
     ######################
-    def __init__(self, taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath, timeout):
-        super(PyTaskThread, self).__init__(taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath, timeout)
+    def __init__(self, task_computer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath, timeout):
+        super(PyTaskThread, self).__init__(task_computer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath, timeout)
         self.vm = PythonProcVM()
 
 class PyTestTaskThread(PyTaskThread):
     ######################
-    def __init__(self, taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath, timeout):
-        super(PyTestTaskThread, self).__init__(taskComputer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath, timeout)
+    def __init__(self, task_computer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath, timeout):
+        super(PyTestTaskThread, self).__init__(task_computer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath, timeout)
         self.vm = PythonTestVM()

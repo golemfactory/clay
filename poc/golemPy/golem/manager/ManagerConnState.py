@@ -22,7 +22,7 @@ class ManagerConnState(ServerProtocol):
             from golem.manager.server.ServerManagerSession import ServerManagerSession
             pp = self.transport.getPeer()
             self.session = ServerManagerSession(self, pp.host, pp.port, self.server)
-            self.server.newConnection(self.session)
+            self.server.new_connection(self.session)
 
     ############################
     def dataReceived(self, data):

@@ -37,31 +37,31 @@ def main():
     estimatedPerformance    = cfg.getEstimatedPerformance()
     nodeSnapshotInterval    = cfg.getNodeSnapshotInterval()
 
-    configDesc = ClientConfigDescriptor()
+    config_desc = ClientConfigDescriptor()
 
-    configDesc.clientUid      = clientUid
-    configDesc.startPort      = startPort
-    configDesc.endPort        = endPort
-    configDesc.managerPort    = managerPort
-    configDesc.optNumPeers    = optNumPeers
-    configDesc.sendPings      = sendPings
-    configDesc.pingsInterval  = pingsInterval
-    configDesc.addTasks       = addTasks
-    configDesc.clientVersion  = 1
+    config_desc.clientUid      = clientUid
+    config_desc.startPort      = startPort
+    config_desc.endPort        = endPort
+    config_desc.managerPort    = managerPort
+    config_desc.optNumPeers    = optNumPeers
+    config_desc.sendPings      = sendPings
+    config_desc.pingsInterval  = pingsInterval
+    config_desc.addTasks       = addTasks
+    config_desc.clientVersion  = 1
 
-    configDesc.seedHost               = seedHost
-    configDesc.seedHostPort           = seedHostPort
+    config_desc.seedHost               = seedHost
+    config_desc.seedHostPort           = seedHostPort
 
-    configDesc.gettingPeersInterval   = gettingPeersInterval
-    configDesc.gettingTasksInterval   = gettingTasksInterval
-    configDesc.taskRequestInterval    = taskRequestInterval 
-    configDesc.estimatedPerformance   = estimatedPerformance
-    configDesc.nodeSnapshotInterval   = nodeSnapshotInterval
-    configDesc.maxResultsSendignDelay = cfg.getMaxResultsSendingDelay()
+    config_desc.gettingPeersInterval   = gettingPeersInterval
+    config_desc.gettingTasksInterval   = gettingTasksInterval
+    config_desc.taskRequestInterval    = taskRequestInterval
+    config_desc.estimatedPerformance   = estimatedPerformance
+    config_desc.nodeSnapshotInterval   = nodeSnapshotInterval
+    config_desc.maxResultsSendignDelay = cfg.getMaxResultsSendingDelay()
 
     print "Adding tasks {}".format(addTasks)
     print "Creating public client interface with uuid: {}".format(clientUid)
-    c = Client(configDesc)
+    c = Client(config_desc)
 
     print "Starting all asynchronous services"
     c.startNetwork()

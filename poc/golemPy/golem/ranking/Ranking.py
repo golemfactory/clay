@@ -281,7 +281,7 @@ class Ranking:
         return None
 
     ############################
-    def getComputingTrust(self, nodeId):
+    def get_computing_trust(self, nodeId):
         localRank = self.getLocComputingTrust(nodeId)
         if localRank is not None:
             logger.debug("Using local rank {}".format(localRank))

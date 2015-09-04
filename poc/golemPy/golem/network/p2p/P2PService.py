@@ -4,7 +4,7 @@ import random
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress, SafeProtocol
-from golem.network.transport.tcp_server import TCPServer
+from golem.network.transport.tcp_server import TCPServer, PendingConnectionsServer
 from golem.network.transport.server import Server
 from golem.network.p2p.peer_session import PeerSession
 
@@ -13,10 +13,10 @@ from PeerKeeper import PeerKeeper
 logger = logging.getLogger(__name__)
 
 
-class P2PService(TCPServer):
+class P2PService(PendingConnectionsServer):
     def __init__(self, node, config_desc, keys_auth, use_ipv6=False):
         network = TCPNetwork(ProtocolFactory(SafeProtocol, self, SessionFactory(PeerSession)), use_ipv6)
-        TCPServer.__init__(self, config_desc, network)
+        PendingConnectionsServer.__init__(self, config_desc, network)
 
         self.peers = {}
         self.all_peers = []
@@ -333,7 +333,7 @@ class P2PService(TCPServer):
 
     def peer_want_task_session(self, node_info, super_node_info, conn_id):
         # TODO Reakcja powinna nastapic tylko na pierwszy taki komunikat
-        self.task_server.startTaskSession(node_info, super_node_info, conn_id)
+        self.task_server.start_task_session(node_info, super_node_info, conn_id)
 
     def peer_want_to_set_task_session(self, key_id, node_info, conn_id, super_node_info):
         logger.debug("Peer want to set task session with {}".format(key_id))
@@ -399,7 +399,7 @@ class P2PService(TCPServer):
 
     def __connect_to_host(self, peer):
         addr = self.suggested_address.get(peer['node'].key)
-        tcp_addresses = P2PService.__node_info_to_tcp_addresses(peer['node'], peer['port'])
+        tcp_addresses = P2PService._node_info_to_tcp_addresses(peer['node'], peer['port'])
         if addr:
             tcp_addresses = [TCPAddress(addr, peer['port'])] + tcp_addresses
         connect_info = TCPConnectInfo(tcp_addresses, self.__connection_established, self.__connection_failure)
@@ -407,7 +407,7 @@ class P2PService(TCPServer):
 
     # Tmp function: to be remove
     @staticmethod
-    def __node_info_to_tcp_addresses(node_info, port):
+    def _node_info_to_tcp_addresses(node_info, port):
         tcp_addresses = [TCPAddress(i, port) for i in node_info.prvAddresses]
         if node_info.pubPort:
             tcp_addresses.append(TCPAddress(node_info.pubAddr, node_info.pubPort))

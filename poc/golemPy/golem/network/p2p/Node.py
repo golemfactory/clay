@@ -14,13 +14,13 @@ class Node:
         self.prvAddresses = []
 
     #############################
-    def collectNetworkInfo(self, seedHost=None, useIp6=False):
-        self.prvAddr = get_host_address(seedHost, useIp6)
+    def collectNetworkInfo(self, seedHost=None, use_ipv6=False):
+        self.prvAddr = get_host_address(seedHost, use_ipv6)
         if self.prvPort:
             self.pubAddr, self.pubPort, self.natType = get_external_address(self.prvPort)
         else:
             self.pubAddr, _, self.natType = get_external_address()
-        self.prvAddresses = get_host_addresses(useIp6)
+        self.prvAddresses = get_host_addresses(use_ipv6)
 
     #############################
     def isSuperNode(self):

@@ -25,21 +25,21 @@ class NodesManagerServer:
 
     #############################
     def __start_accepting(self):
-        listen_info = TCPListenInfo(self.port, established_callback=self.__listeningEstablished,
-                      failure_callback=self.__listeningFailure)
+        listen_info = TCPListenInfo(self.port, established_callback=self.__listening_established,
+                      failure_callback=self.__listening_failure)
         self.network.listen(listen_info)
 
 
     #############################
-    def __listeningEstablished(self, port, **kwargs):
+    def __listening_established(self, port, **kwargs):
         logger.info("Manager server - port {} opened, listening".format(port))
 
     #############################
-    def __listeningFailure(self, **kwargs):
+    def __listening_failure(self, **kwargs):
         logger.error("Opening {} port for listening failed - bailign out".format(self.port))
 
     #############################
-    def newConnection(self, session):
+    def new_connection(self, session):
         self.manager_sessions.append(session)
 
     #############################

@@ -17,7 +17,7 @@ class ClientConfigDescriptor:
         self.addTasks       = 0
         self.distResNum = 0
         self.clientVersion  = 0
-        self.useIp6 = 0
+        self.use_ipv6 = 0
 
         self.seedHost               = u""
         self.seedHostPort           = 0
@@ -30,7 +30,7 @@ class ClientConfigDescriptor:
         self.useWaitingForTaskTimeout   = 0
         self.waitingForTaskTimeout      = 0.0
         self.p2pSessionTimeout          = 0
-        self.taskSessionTimeout         = 0
+        self.task_sessionTimeout         = 0
         self.resourceSessionTimeout     = 0
 
         self.estimatedPerformance       = 0.0
@@ -50,8 +50,8 @@ class ClientConfigDescriptor:
 
 class ConfigApprover:
 
-    def __init__(self, configDesc):
-        self.configDesc = configDesc
+    def __init__(self, config_desc):
+        self.config_desc = config_desc
         self.actions = {}
         self.optsToChange = []
         self.initActions()
@@ -61,8 +61,8 @@ class ConfigApprover:
         changeDict = {k: ncdDict[k] for k in self.optsToChange if k in self.optsToChange}
         for key, val in changeDict.iteritems():
             changeDict[key] = self.actions[key](val, key)
-        self.configDesc.__dict__.update(changeDict)
-        return self.configDesc
+        self.config_desc.__dict__.update(changeDict)
+        return self.config_desc
 
     def initActions(self):
 

@@ -11,6 +11,6 @@ class EthereumTransactionSystem(TransactionSystem):
         self.ethAccount = ethAccount
 
     ############################
-    def globalPayForTask(self, taskId, payments):
+    def global_pay_for_task(self, taskId, payments):
         ethConnector = EthereumConnector(ETH_CONN_ADDR)
         ethConnector.payForTask(self.ethAccount, taskId, payments)
