@@ -168,7 +168,7 @@ class Client:
         self.node = Node(self.config_desc.clientUid, self.keys_auth.get_key_id())
         self.node.collectNetworkInfo(self.config_desc.seedHost, use_ipv6=self.config_desc.useIp6)
         logger.debug("Is super node? {}".format(self.node.isSuperNode()))
-        self.p2service = None
+        self.p2pservice = None
 
         self.task_server = None
         self.taskAdderServer = None
@@ -198,7 +198,7 @@ class Client:
         self.environmentsManager = EnvironmentsManager()
 
         self.resource_server = None
-        self.resourcePort   = 0
+        self.resource_port   = 0
         self.lastGetResourcePeersTime  = time.time()
         self.getResourcePeersInterval = 5.0
 
@@ -207,7 +207,7 @@ class Client:
         logger.info("Starting network ...")
 
         logger.info("Starting p2p server ...")
-        self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth, use_ipv6=self.config_desc.useIp6)
+        self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth)
         time.sleep(1.0)
 
         logger.info("Starting resource server...")
@@ -267,9 +267,9 @@ class Client:
         self.task_server.task_computer.taskResourceCollected(taskId)
 
     ############################
-    def setResourcePort (self, resourcePort):
-        self.resourcePort = resourcePort
-        self.p2pservice.set_resource_peer(self.node.prvAddr, self.resourcePort)
+    def setResourcePort (self, resource_port):
+        self.resource_port = resource_port
+        self.p2pservice.set_resource_peer(self.node.prvAddr, self.resource_port)
 
     ############################
     def abortTask(self, taskId):

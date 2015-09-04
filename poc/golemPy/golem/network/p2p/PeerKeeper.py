@@ -13,7 +13,7 @@ class PeerKeeper:
     def __init__(self, peerKey, kSize = 512):
 
         self.peerKey = peerKey
-        self.pper_key_id = long(peerKey, 16)
+        self.peer_key_id = long(peerKey, 16)
         self.k                      = K
         self.concurrency            = CONCURRENCY
         self.kSize = kSize
@@ -38,13 +38,13 @@ class PeerKeeper:
         if not peerKey:
             return
 
-        pper_key_id = long(peerKey, 16)
+        peer_key_id = long(peerKey, 16)
 
         peer_info = PeerInfo(peerId, peerKey, ip, port, node_info)
-        bucket = self.bucketForNode(pper_key_id)
+        bucket = self.bucketForNode(peer_key_id)
         peerToRemove = bucket.addNode(peer_info)
         if peerToRemove:
-            if bucket.start <= self.pper_key_id <= bucket.end:
+            if bucket.start <= self.peer_key_id <= bucket.end:
                 self.splitBucket(bucket)
                 return self.add_peer(peerKey, peerId, ip, port, node_info)
             else:
@@ -77,16 +77,16 @@ class PeerKeeper:
     def pong_received(self, peerKey, peerId, ip, port):
         if not peerKey:
             return
-        pper_key_id = long(peerKey, 16)
-        if pper_key_id in self.expectedPongs:
+        peer_key_id = long(peerKey, 16)
+        if peer_key_id in self.expectedPongs:
             self.sessionsToEnd.append(peerId)
-            del self.expectedPongs[pper_key_id]
+            del self.expectedPongs[peer_key_id]
 
 
     #############################
-    def bucketForNode(self, pper_key_id):
+    def bucketForNode(self, peer_key_id):
         for bucket in self.buckets:
-            if bucket.start <= pper_key_id < bucket.end:
+            if bucket.start <= peer_key_id < bucket.end:
                 return bucket
 
     #############################
@@ -101,7 +101,7 @@ class PeerKeeper:
     #############################
     def cntDistance(self, peerKey):
 
-        return self.pper_key_id ^ long(peerKey, 16)
+        return self.peer_key_id ^ long(peerKey, 16)
 
     #############################
     def sync_network(self):
@@ -113,16 +113,16 @@ class PeerKeeper:
     #############################
     def __removeOldExpectedPongs(self):
         currentTime = time.time()
-        for pper_key_id, (replacement, time_) in self.expectedPongs.items():
+        for peer_key_id, (replacement, time_) in self.expectedPongs.items():
             if currentTime - time_ > self.pongTimeout:
-                peerId = self.bucketForNode(pper_key_id).removeNode(pper_key_id)
+                peerId = self.bucketForNode(peer_key_id).removeNode(peer_key_id)
                 if peerId:
                     self.sessionsToEnd.append(peerId)
                 if replacement:
                     self.add_peer(replacement.nodeKey, replacement.nodeId,  replacement.ip, replacement.port,
                                  replacement.node_info)
 
-                del self.expectedPongs[pper_key_id]
+                del self.expectedPongs[peer_key_id]
 
     #############################
     def __sendNewRequests(self):
@@ -157,9 +157,9 @@ class PeerKeeper:
     #############################
     def __removeOldRequests(self):
         currentTime = time.time()
-        for pper_key_id, time_ in self.findRequests.items():
+        for peer_key_id, time_ in self.findRequests.items():
             if currentTime - time.time() > self.requestTimeout:
-                del self.findRequests[pper_key_id]
+                del self.findRequests[peer_key_id]
 
 ##########################################################
 

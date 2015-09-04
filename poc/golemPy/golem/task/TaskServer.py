@@ -200,7 +200,7 @@ class TaskServer(PendingConnectionsServer):
         return self.client.node.prvAddr
 
     def get_resource_port(self):
-        return self.client.resourcePort
+        return self.client.resource_port
 
     def get_subtask_ttl(self, task_id):
         return self.task_keeper.get_subtask_ttl(task_id)
