@@ -4,32 +4,55 @@ contract LotteryAgent {
         uint value;
         uint timeout;
         uint deposit;
-        address winner;
         uint random;
+        address payer;
+        address winner;
     }
 
     mapping (bytes32 => LotteryData) lotteries;
 
 	event Init(address indexed owner, bytes32 indexed descritionHash, uint value);
 	event Winner(address indexed winner, bytes32 indexed descriptionHash);
+	event MaturityCaptured(address indexed sender, bytes32 indexed descriptionHash, uint random);
 
 	function initLottery(bytes32 descriptionHash, uint maturity, uint deposit) {
 		LotteryData lottery = lotteries[descriptionHash];
 		if (lottery.value != 0)
 		    return;
-		lotteries[descriptionHash] = LotteryData(msg.value, maturity, deposit, 0, 0);
+		lotteries[descriptionHash] = LotteryData(msg.value, maturity, deposit, 0, msg.sender, 0);
 		Init(msg.sender, descriptionHash, msg.value);
+	}
+
+	function captureMaturityHash(bytes32 descriptionHash) {
+	    LotteryData lottery = lotteries[descriptionHash];
+	    if (lottery.value == 0 || lottery.random != 0 || block.number <= lottery.timeout) {
+	        return;
+	    }
+	    address sendTo = msg.sender;
+	    if ((lottery.timeout + 128 <= block.number) && (msg.sender != lottery.payer)) {
+	        sendTo = lottery.winner;
+	    }
+	   lottery.random = random(lottery.timeout);
+	   uint reward = lottery.value/20;
+	   lottery.value -= reward;
+	   sendTo.send(reward);
+	   MaturityCaptured(msg.sender, descriptionHash, lottery.random);
 	}
 
 	function winnerLottery(bytes32 descriptionHash) {
 	    LotteryData lottery = lotteries[descriptionHash];
-	    if (lottery.value == 0 || lottery.random != 0 || block.number <= lottery.timeout || msg.value < lottery.deposit)
+	    if (lottery.value == 0 || msg.value < lottery.deposit)
 	        return;
-	    lotteries[descriptionHash].deposit = msg.value;
-	    lotteries[descriptionHash].winner = msg.sender;
-	    lotteries[descriptionHash].random = random(lottery.timeout);
-	    lotteries[descriptionHash].timeout = block.number + 7200;
+	    if (lottery.random == 0 && block.number <= lottery.timeout + 128) {
+	        return;
+	    }
+	    lottery.deposit = msg.value;
+	    lottery.winner = msg.sender;
 
+	    if (lottery.random == 0) {
+	        lottery.random = random(lottery.timeout);
+	    }
+	    lottery.timeout = block.number + 7200;
 	    Winner(msg.sender, descriptionHash);
 	}
 
@@ -41,11 +64,15 @@ contract LotteryAgent {
 	    delete lotteries[descriptionHash];
 	}
 
-	function checkLottery(uint maturity, uint lotteryId, address[] participants, uint[] probabilities) external {
-	    bytes32 descriptionHash = sha3(maturity, lotteryId, participants, probabilities);
+	function checkLottery(uint maturity, uint lotteryId, uint startValue, address[] participants, uint[] probabilities) external {
+	    bytes32 descriptionHash = sha3(maturity, lotteryId, startValue, participants, probabilities);
 	    LotteryData lottery = lotteries[descriptionHash];
-	    if (lottery.value == 0 || (lottery.random == 0 && block.number <= lottery.timeout))
+	    if (lottery.value == 0 || (lottery.random == 0 && block.number <= lottery.timeout + 128))
 	        return;
+
+	    if (lottery.random == 0) {
+	        lottery.random = random(lottery.timeout);
+	    }
 
 		address winner;
 		uint target = 0;
@@ -79,4 +106,9 @@ contract LotteryAgent {
 
 		return uint(block.blockhash(maturity));
 	}
+
+	function verifyLottery(bytes32 descriptionHash) returns (bool) {
+	    return lotteries[descriptionHash].value == 0;
+	}
 }
+
