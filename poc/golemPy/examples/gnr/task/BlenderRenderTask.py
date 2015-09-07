@@ -70,7 +70,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuiler):
                                    self.taskDefinition.subtaskTimeout,
                                    self.taskDefinition.resources,
                                    self.taskDefinition.estimatedMemory,
-                                   self.rootPath,
+                                   self.root_path,
                                    self.taskDefinition.rendererOptions.useFrames,
                                    self.taskDefinition.rendererOptions.frames,
                                    self.taskDefinition.rendererOptions.engine
@@ -105,7 +105,7 @@ class BlenderRenderTask(FrameRenderingTask):
                   subtaskTimeout,
                   taskResources,
                   estimatedMemory,
-                  rootPath,
+                  root_path,
                   useFrames,
                   frames,
                   engine,
@@ -117,7 +117,7 @@ class BlenderRenderTask(FrameRenderingTask):
                           BlenderEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
-                          rootPath, estimatedMemory, useFrames, frames)
+                          root_path, estimatedMemory, useFrames, frames)
 
         cropTask = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples\\tasks\\blenderCrop.py'))
         try:
@@ -134,7 +134,7 @@ class BlenderRenderTask(FrameRenderingTask):
             self.framesGiven[ frame ] = {}
 
     #######################
-    def queryExtraData(self, perfIndex, numCores = 0, client_id = None):
+    def queryExtraData(self, perfIndex, num_cores = 0, client_id = None):
 
         if not self._acceptClient(client_id):
             logger.warning(" Client {} banned from this task ".format(client_id))
@@ -220,7 +220,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
         hash = "{}".format(random.getrandbits(128))
 
-        self.testTaskResPath = getTestTaskPath(self.rootPath)
+        self.testTaskResPath = getTestTaskPath(self.root_path)
         logger.debug(self.testTaskResPath)
         if not os.path.exists(self.testTaskResPath):
             os.makedirs(self.testTaskResPath)
@@ -278,7 +278,7 @@ class BlenderRenderTask(FrameRenderingTask):
         except Exception, err:
             logger.error("Can't generate preview {}".format(str(err)))
 
-        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.rootPath)
+        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.root_path)
 
         self.previewFilePath = "{}".format(os.path.join(tmpDir, "current_preview"))
 

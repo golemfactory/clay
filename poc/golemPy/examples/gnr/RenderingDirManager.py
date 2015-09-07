@@ -12,11 +12,11 @@ def getTestTaskDirectory():
 def getPreviewFile ():
     return PREV_FILE
 
-def getTestTaskPath(rootPath):
-    return os.path.join(rootPath, TEST_RES_DIRECTORY)
+def getTestTaskPath(root_path):
+    return os.path.join(root_path, TEST_RES_DIRECTORY)
 
-def getTestTaskTmpPath(rootPath):
-    return os.path.join(rootPath, TEST_TMP_DIRECTORY)
+def getTestTaskTmpPath(root_path):
+    return os.path.join(root_path, TEST_TMP_DIRECTORY)
 
-def getTmpPath(client_id, taskId, rootPath):
-    return os.path.join(rootPath, RES_DIRECTORY, client_id, taskId, TMP_DIRECTORY)
+def getTmpPath(client_id, taskId, root_path):
+    return os.path.join(root_path, RES_DIRECTORY, client_id, taskId, TMP_DIRECTORY)

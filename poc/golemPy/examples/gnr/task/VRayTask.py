@@ -71,7 +71,7 @@ class VRayTaskBuilder(FrameRenderingTaskBuiler):
                                    self.taskDefinition.subtaskTimeout,
                                    self.taskDefinition.resources,
                                    self.taskDefinition.estimatedMemory,
-                                   self.rootPath,
+                                   self.root_path,
                                    self.taskDefinition.rendererOptions.rtEngine,
                                    self.taskDefinition.rendererOptions.useFrames,
                                    self.taskDefinition.rendererOptions.frames
@@ -97,7 +97,7 @@ class VRayTask(FrameRenderingTask):
                   subtaskTimeout,
                   taskResources,
                   estimatedMemory,
-                  rootPath,
+                  root_path,
                   rtEngine,
                   useFrames,
                   frames,
@@ -109,7 +109,7 @@ class VRayTask(FrameRenderingTask):
                           VRayEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
-                          rootPath, estimatedMemory, useFrames, frames)
+                          root_path, estimatedMemory, useFrames, frames)
 
         self.rtEngine = rtEngine
         self.collectedAlphaFiles = {}
@@ -119,7 +119,7 @@ class VRayTask(FrameRenderingTask):
 
 
     #######################
-    def queryExtraData(self, perfIndex, numCores = 0, client_id = None):
+    def queryExtraData(self, perfIndex, num_cores = 0, client_id = None):
 
         if not self._acceptClient(client_id):
             logger.warning(" Client {} banned from this task ".format(client_id))
@@ -147,7 +147,7 @@ class VRayTask(FrameRenderingTask):
                                     "width" : self.resX,
                                     "height": self.resY,
                                     "rtEngine": self.rtEngine,
-                                    "numThreads": numCores,
+                                    "numThreads": num_cores,
                                     "useFrames": self.useFrames,
                                     "frames": frames,
                                     "parts": parts
@@ -201,7 +201,7 @@ class VRayTask(FrameRenderingTask):
 
         hash = "{}".format(random.getrandbits(128))
 
-        self.testTaskResPath = getTestTaskPath(self.rootPath)
+        self.testTaskResPath = getTestTaskPath(self.root_path)
         logger.debug(self.testTaskResPath)
         if not os.path.exists(self.testTaskResPath):
             os.makedirs(self.testTaskResPath)

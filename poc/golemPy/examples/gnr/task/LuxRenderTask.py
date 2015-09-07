@@ -96,7 +96,7 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                             self.taskDefinition.subtaskTimeout,
                             self.taskDefinition.resources,
                             self.taskDefinition.estimatedMemory,
-                            self.rootPath,
+                            self.root_path,
                             self.taskDefinition.rendererOptions.halttime,
                             self.taskDefinition.rendererOptions.haltspp,
                             self.taskDefinition.rendererOptions.sendBinaries,
@@ -124,7 +124,7 @@ class LuxTask(RenderingTask):
                     subtaskTimeout,
                     taskResources,
                     estimatedMemory,
-                    rootPath,
+                    root_path,
                     halttime,
                     haltspp,
                     ownBinaries,
@@ -137,7 +137,7 @@ class LuxTask(RenderingTask):
                                  LuxRenderEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                                  mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                                  totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
-                                 rootPath, estimatedMemory)
+                                 root_path, estimatedMemory)
 
         self.halttime = halttime
         self.haltspp = haltspp
@@ -159,7 +159,7 @@ class LuxTask(RenderingTask):
             self.header.environment = Environment.getId()
 
     #######################
-    def queryExtraData(self, perfIndex, numCores = 0, client_id = None):
+    def queryExtraData(self, perfIndex, num_cores = 0, client_id = None):
         if not self._acceptClient(client_id):
             logger.warning(" Client {} banned from this task ".format(client_id))
             return None
@@ -187,7 +187,7 @@ class LuxTask(RenderingTask):
         else:
             luxConsole = 'luxconsole.exe'
 
-        numThreads = max(numCores, 1)
+        numThreads = max(num_cores, 1)
 
         extraData =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
@@ -212,7 +212,7 @@ class LuxTask(RenderingTask):
 
     #######################
     def queryExtraDataForTestTask(self):
-        self.testTaskResPath = getTestTaskPath(self.rootPath)
+        self.testTaskResPath = getTestTaskPath(self.root_path)
         logger.debug(self.testTaskResPath)
         if not os.path.exists(self.testTaskResPath):
             os.makedirs(self.testTaskResPath)

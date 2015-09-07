@@ -25,7 +25,7 @@ def main():
     qt4reactor.install()
     from twisted.internet import reactor
 
-    port = AppConfig.managerPort()
+    port = AppConfig.manager_port()
     manager = NodesManager(None, port)
     logic = GNRManagerLogic( manager.managerServer, "../gnr")
     manager.setManagerLogic(logic)

@@ -78,7 +78,7 @@ class ThreeDSMaxTaskBuilder(FrameRenderingTaskBuiler):
                                    self.taskDefinition.subtaskTimeout,
                                    self.taskDefinition.resources,
                                    self.taskDefinition.estimatedMemory,
-                                   self.rootPath,
+                                   self.root_path,
                                    self.taskDefinition.rendererOptions.preset,
                                    self.taskDefinition.rendererOptions.cmd,
                                    self.taskDefinition.rendererOptions.useFrames,
@@ -108,7 +108,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
                   subtaskTimeout,
                   taskResources,
                   estimatedMemory,
-                  rootPath,
+                  root_path,
                   presetFile,
                   cmdFile,
                   useFrames,
@@ -121,7 +121,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
                           ThreeDSMaxEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
-                          rootPath, estimatedMemory, useFrames, frames)
+                          root_path, estimatedMemory, useFrames, frames)
 
 
         self.presetFile = presetFile
@@ -129,7 +129,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
         self.framesGiven = {}
 
     #######################
-    def queryExtraData(self, perfIndex, numCores = 0, client_id = None):
+    def queryExtraData(self, perfIndex, num_cores = 0, client_id = None):
 
         if not self._acceptClient(client_id):
             logger.warning(" Client {} banned from this task ".format(client_id))
@@ -158,7 +158,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
                                     "height": self.resY,
                                     "presetFile": presetFile,
                                     "cmdFile": cmdFile,
-                                    "numCores": numCores,
+                                    "num_cores": num_cores,
                                     "useFrames": self.useFrames,
                                     "frames": frames,
                                     "parts": parts,
@@ -206,7 +206,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
                                     "height": self.totalTasks,
                                     "presetFile": presetFile,
                                     "cmdFile": cmdFile,
-                                    "numCores": 0,
+                                    "num_cores": 0,
                                     "useFrames": self.useFrames,
                                     "frames": frames, 
                                     "parts": 1,
@@ -215,7 +215,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
 
         hash = "{}".format(random.getrandbits(128))
 
-        self.testTaskResPath = getTestTaskPath(self.rootPath)
+        self.testTaskResPath = getTestTaskPath(self.root_path)
         logger.debug(self.testTaskResPath)
         if not os.path.exists(self.testTaskResPath):
             os.makedirs(self.testTaskResPath)
@@ -255,7 +255,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
         except Exception, err:
             logger.error("Can't generate preview {}".format(str(err)))
 
-        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.rootPath)
+        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.root_path)
 
         self.previewFilePath = "{}".format(os.path.join(tmpDir, "current_preview"))
 

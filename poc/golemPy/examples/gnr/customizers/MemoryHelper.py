@@ -20,16 +20,16 @@ def dirSizeToDisplay(dirSize):
         index = 0
     return dirSize, index
 
-def resourceSizeToDisplay(maxResourceSize):
-    if maxResourceSize / (1024 * 1024) > 0:
-        maxResourceSize /= (1024 * 1024)
+def resourceSizeToDisplay(max_resource_size):
+    if max_resource_size / (1024 * 1024) > 0:
+        max_resource_size /= (1024 * 1024)
         index = 2
-    elif maxResourceSize / 1024 > 0:
-        maxResourceSize /= 1024
+    elif max_resource_size / 1024 > 0:
+        max_resource_size /= 1024
         index = 1
     else:
         index = 0
-    return maxResourceSize, index
+    return max_resource_size, index
 
 def translateResourceIndex(index):
     if index in options:

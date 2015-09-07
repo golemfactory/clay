@@ -24,8 +24,8 @@ class TaskManagerEventListener:
 
 class TaskManager:
     #######################
-    def __init__(self, clientUid, node, listenAddress = "", listenPort = 0, key_id = "", rootPath = "res", useDistributedResources=True):
-        self.clientUid      = clientUid
+    def __init__(self, client_uid, node, listenAddress = "", listenPort = 0, key_id = "", root_path = "res", useDistributedResources=True):
+        self.client_uid      = client_uid
         self.node = node
 
         self.tasks          = {}
@@ -35,8 +35,8 @@ class TaskManager:
         self.listenPort     = listenPort
         self.keyId          = key_id
 
-        self.rootPath = rootPath
-        self.dirManager     = DirManager(self.getTaskManagerRoot(), self.clientUid)
+        self.root_path = root_path
+        self.dirManager     = DirManager(self.getTaskManagerRoot(), self.client_uid)
 
         self.subTask2TaskMapping = {}
 
@@ -47,7 +47,7 @@ class TaskManager:
 
     #######################
     def getTaskManagerRoot(self):
-        return self.rootPath
+        return self.root_path
 
     #######################
     def registerListener(self, listener):
@@ -103,13 +103,13 @@ class TaskManager:
         logger.info("Resources for task {} send".format(taskId))
 
     #######################
-    def getNextSubTask(self, client_id, taskId, estimatedPerformance, max_resource_size, maxMemorySize, numCores = 0):
+    def getNextSubTask(self, client_id, taskId, estimated_performance, max_resource_size, max_memory_size, num_cores = 0):
         if taskId in self.tasks:
             task = self.tasks[taskId]
             ts = self.tasksStates[taskId]
             th = task.header
-            if self.__hasSubtasks(ts, task, max_resource_size, maxMemorySize):
-                ctd  = task.queryExtraData(estimatedPerformance, numCores, client_id)
+            if self.__hasSubtasks(ts, task, max_resource_size, max_memory_size):
+                ctd  = task.queryExtraData(estimated_performance, num_cores, client_id)
                 if ctd is None or ctd.subtaskId is None:
                     return None, False
                 ctd.keyId = th.taskOwnerKeyId
@@ -117,7 +117,7 @@ class TaskManager:
                 self.__addSubtaskToTasksStates(client_id, ctd)
                 self.__noticeTaskUpdated(taskId)
                 return ctd, False
-            logger.info("Cannot get next task for estimated performence {}".format(estimatedPerformance))
+            logger.info("Cannot get next task for estimated performence {}".format(estimated_performance))
             return None, False
         else:
             logger.info("Cannot find task {} in my tasks".format(taskId))
@@ -391,9 +391,9 @@ class TaskManager:
             return None
 
     #######################
-    def change_config(self, rootPath, useDistributedResourceManagement):
-        self.dirManager = DirManager(rootPath, self.clientUid)
-        self.useDistributedResources = useDistributedResourceManagement
+    def change_config(self, root_path, use_distributed_resource_management):
+        self.dirManager = DirManager(root_path, self.client_uid)
+        self.useDistributedResources = use_distributed_resource_management
 
     #######################
     def change_timeouts(self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime):
@@ -452,13 +452,13 @@ class TaskManager:
             l.taskFinished(taskId)
 
     #######################
-    def __hasSubtasks(self, taskState, task, max_resource_size, maxMemorySize):
+    def __hasSubtasks(self, taskState, task, max_resource_size, max_memory_size):
         if taskState.status not in self.activeStatus:
             return False
         if not task.needsComputation():
             return False
         if task.header.resourceSize > (long(max_resource_size) * 1024):
             return False
-        if task.header.estimatedMemory > (long(maxMemorySize) * 1024):
+        if task.header.estimatedMemory > (long(max_memory_size) * 1024):
             return False
         return True

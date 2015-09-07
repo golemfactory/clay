@@ -32,23 +32,23 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
                             resourceSize,
                             0,
                             self.taskDefinition.totalSubtasks,
-                            self.rootPath
+                            self.root_path
                           )
 
 class PythonGNRTask(GNRTask):
     #####################
     def __init__(self, srcCode, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
-                  ttl, subtaskTtl, resourceSize, estimatedMemory, totalTasks, rootPath):
+                  ttl, subtaskTtl, resourceSize, estimatedMemory, totalTasks, root_path):
 
         GNRTask.__init__(self, srcCode, client_id, taskId,ownerAddress, ownerPort, ownerKeyId, environment, ttl, subtaskTtl,
                   resourceSize, estimatedMemory)
 
         self.totalTasks = totalTasks
-        self.rootPath = rootPath
+        self.root_path = root_path
 
 
 
-    def queryExtraData(self, perfIndex, numCores = 1, client_id = None):
+    def queryExtraData(self, perfIndex, num_cores = 1, client_id = None):
         ctd = ComputeTaskDef()
         ctd.taskId = self.header.taskId
         hash = "{}".format(random.getrandbits(128))

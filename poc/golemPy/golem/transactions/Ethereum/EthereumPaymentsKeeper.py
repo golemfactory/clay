@@ -6,7 +6,7 @@ class EthereumPaymentsKeeper(PaymentsKeeper):
     def getListOfPayments(self, task):
         payments = {}
         for subtask in task.subtasks.itervalues():
-            payment = payments.setdefault(subtask.computer.ethAccount, EthereumPaymentInfo())
+            payment = payments.setdefault(subtask.computer.eth_account, EthereumPaymentInfo())
             payment.addSubtaskPayment(subtask)
         return payments
 
@@ -31,7 +31,7 @@ class EthereumPaymentInfo:
 ################################################################
 class EthAccountInfo(AccountInfo):
     ################################
-    def __init__(self, keyId, port, addr, nodeId, node_info, ethAccount):
+    def __init__(self, keyId, port, addr, nodeId, node_info, eth_account):
         AccountInfo.__init__(self, keyId, port, addr, nodeId, node_info)
-        self.ethAccount = ethAccount
+        self.eth_account = eth_account
 

@@ -20,47 +20,47 @@ def main():
 
     cfg = AppConfig.loadConfig()
 
-    optNumPeers     = cfg.getOptimalPeerNum()
-    managerPort     = cfg.getManagerListenPort()
-    startPort       = cfg.getStartPort()
-    endPort         = cfg.getEndPort()
-    seedHost        = cfg.getSeedHost()
-    seedHostPort    = cfg.getSeedHostPort()
-    sendPings       = cfg.getSendPings()
-    pingsInterval   = cfg.getPingsInterval()
-    clientUid       = cfg.getClientUid()
-    addTasks        = cfg.getAddTasks()
+    opt_num_peers     = cfg.getOptimalPeerNum()
+    manager_port     = cfg.getManagerListenPort()
+    start_port       = cfg.getStartPort()
+    end_port         = cfg.getEndPort()
+    seed_host        = cfg.getSeedHost()
+    seed_host_port    = cfg.getSeedHostPort()
+    send_pings       = cfg.getSendPings()
+    pings_interval   = cfg.getPingsInterval()
+    client_uid       = cfg.getClientUid()
+    add_tasks        = cfg.getAddTasks()
 
-    gettingPeersInterval    = cfg.getGettingPeersInterval()
-    gettingTasksInterval    = cfg.getGettingTasksInterval()
-    taskRequestInterval     = cfg.getTaskRequestInterval()
-    estimatedPerformance    = cfg.getEstimatedPerformance()
-    nodeSnapshotInterval    = cfg.getNodeSnapshotInterval()
+    getting_peers_interval    = cfg.getGettingPeersInterval()
+    getting_tasks_interval    = cfg.getGettingTasksInterval()
+    task_request_interval     = cfg.getTaskRequestInterval()
+    estimated_performance    = cfg.getEstimatedPerformance()
+    node_snapshot_interval    = cfg.getNodeSnapshotInterval()
 
     config_desc = ClientConfigDescriptor()
 
-    config_desc.clientUid      = clientUid
-    config_desc.startPort      = startPort
-    config_desc.endPort        = endPort
-    config_desc.managerPort    = managerPort
-    config_desc.optNumPeers    = optNumPeers
-    config_desc.sendPings      = sendPings
-    config_desc.pingsInterval  = pingsInterval
-    config_desc.addTasks       = addTasks
-    config_desc.clientVersion  = 1
+    config_desc.client_uid      = client_uid
+    config_desc.start_port      = start_port
+    config_desc.end_port        = end_port
+    config_desc.manager_port    = manager_port
+    config_desc.opt_num_peers    = opt_num_peers
+    config_desc.send_pings      = send_pings
+    config_desc.pings_interval  = pings_interval
+    config_desc.add_tasks       = add_tasks
+    config_desc.client_version = 1
 
-    config_desc.seedHost               = seedHost
-    config_desc.seedHostPort           = seedHostPort
+    config_desc.seed_host               = seed_host
+    config_desc.seed_host_port           = seed_host_port
 
-    config_desc.gettingPeersInterval   = gettingPeersInterval
-    config_desc.gettingTasksInterval   = gettingTasksInterval
-    config_desc.taskRequestInterval    = taskRequestInterval
-    config_desc.estimatedPerformance   = estimatedPerformance
-    config_desc.nodeSnapshotInterval   = nodeSnapshotInterval
-    config_desc.maxResultsSendignDelay = cfg.getMaxResultsSendingDelay()
+    config_desc.getting_peers_interval   = getting_peers_interval
+    config_desc.getting_tasks_interval   = getting_tasks_interval
+    config_desc.task_request_interval    = task_request_interval
+    config_desc.estimated_performance   = estimated_performance
+    config_desc.node_snapshot_interval   = node_snapshot_interval
+    config_desc.max_results_sending_delay = cfg.getMaxResultsSendingDelay()
 
-    print "Adding tasks {}".format(addTasks)
-    print "Creating public client interface with uuid: {}".format(clientUid)
+    print "Adding tasks {}".format(add_tasks)
+    print "Creating public client interface with uuid: {}".format(client_uid)
     c = Client(config_desc)
 
     print "Starting all asynchronous services"

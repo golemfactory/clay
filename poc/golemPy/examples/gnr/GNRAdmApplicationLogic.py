@@ -63,8 +63,8 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         infoTaskDefinition.totalSubtasks    = iterations
         infoTaskDefinition.fullTaskTimeout  = fullTaskTimeout
         infoTaskDefinition.subtaskTimeout   = subtaskTimeout
-        infoTaskDefinition.managerAddress   = self.client.config_desc.managerAddress
-        infoTaskDefinition.managerPort      = self.client.config_desc.managerPort
+        infoTaskDefinition.manager_address   = self.client.config_desc.manager_address
+        infoTaskDefinition.manager_port      = self.client.config_desc.manager_port
 
         taskBuilder = InfoTaskBuilder(self.client.getId(),
                                           infoTaskDefinition,
@@ -97,7 +97,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
             except Exception as ex:
                 logger.error("Wrong task file {}, {}".format(taskFile, str(ex)))
 
-        self.addTasks (tasks)
+        self.add_tasks (tasks)
         for task in tasks:
             self.startTask(task.definition.taskId)
 

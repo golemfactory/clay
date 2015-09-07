@@ -321,7 +321,7 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_want_to_compute_task(self, msg):
         trust = self.task_server.get_computing_trust(msg.client_id)
         logger.debug("Computing trust level: {}".format(trust))
-        if trust >= self.task_server.config_desc.computingTrust:
+        if trust >= self.task_server.config_desc.computing_trust:
             ctd, wrong_task = self.task_manager.getNextSubTask(msg.client_id, msg.task_id, msg.perf_index,
                                                                msg.max_resource_size, msg.max_memory_size,
                                                                msg.num_cores)
@@ -393,11 +393,11 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_get_resource(self, msg):
         self.last_resource_msg = msg
-        self.__send_resource_format(self.task_server.config_desc.useDistributedResourceManagement)
+        self.__send_resource_format(self.task_server.config_desc.use_distributed_resource_management)
 
     def _react_to_accept_resource_format(self, msg):
         if self.last_resource_msg is not None:
-            if self.task_server.config_desc.useDistributedResourceManagement:
+            if self.task_server.config_desc.use_distributed_resource_management:
                 self.__send_resource_parts_list(self.last_resource_msg)
             else:
                 self.__send_delta_resource(self.last_resource_msg)

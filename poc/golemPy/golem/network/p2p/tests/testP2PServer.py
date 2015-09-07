@@ -18,8 +18,8 @@ class P2PService():
 
 class ConfigDesc:
     def __init__(self):
-        self.startPort = 1332
-        self.endPort = 1333
+        self.start_port = 1332
+        self.end_port = 1333
 
 class testP2PServer(unittest.TestCase):
     def setUp(self):
@@ -29,8 +29,8 @@ class testP2PServer(unittest.TestCase):
         config_desc = ConfigDesc()
         p2pServer = P2PServer(config_desc, 'p2pService')
         self.assertIsNotNone(p2pServer)
-        self.assertGreaterEqual(p2pServer.curPort, config_desc.startPort)
-        self.assertLessEqual(p2pServer.curPort, config_desc.endPort)
+        self.assertGreaterEqual(p2pServer.curPort, config_desc.start_port)
+        self.assertLessEqual(p2pServer.curPort, config_desc.end_port)
 
     def testNewConnection(self):
         p2pService = P2PService()
@@ -41,14 +41,14 @@ class testP2PServer(unittest.TestCase):
     def testChangeConfig(self):
         p2pServer = P2PServer(ConfigDesc(), 'p2pService')
         config_desc2 = ConfigDesc()
-        config_desc2.startPort = 1334
-        config_desc2.endPort = 1335
+        config_desc2.start_port = 1334
+        config_desc2.end_port = 1335
         p2pServer.change_config(config_desc2)
         time.sleep(1)
-        self.assertEquals(p2pServer.config_desc.startPort, 1334)
-        self.assertEquals(p2pServer.config_desc.endPort, 1335)
-        self.assertGreaterEqual(p2pServer.curPort, config_desc2.startPort)
-        self.assertLessEqual(p2pServer.curPort, config_desc2.endPort)
+        self.assertEquals(p2pServer.config_desc.start_port, 1334)
+        self.assertEquals(p2pServer.config_desc.end_port, 1335)
+        self.assertGreaterEqual(p2pServer.curPort, config_desc2.start_port)
+        self.assertLessEqual(p2pServer.curPort, config_desc2.end_port)
 
 
 class testNetServerFactory(unittest.TestCase):

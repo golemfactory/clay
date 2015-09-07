@@ -37,8 +37,8 @@ class P2PService(PendingConnectionsServer):
         self.manager_session = None
 
         # Useful config options
-        self.client_uid = self.config_desc.clientUid
-        self.last_message_time_threshold = self.config_desc.p2pSessionTimeout
+        self.client_uid = self.config_desc.client_uid
+        self.last_message_time_threshold = self.config_desc.p2p_session_timeout
         self.last_message_buffer_len = LAST_MESSAGE_BUFFER_LEN
         self.refresh_peers_timeout = REFRESH_PEERS_TIMEOUT
 
@@ -68,7 +68,7 @@ class P2PService(PendingConnectionsServer):
     def connect_to_network(self):
         """ Start listening on the port from configuration and try to connect to the seed node """
         self.start_accepting()
-        tcp_address = TCPAddress(self.config_desc.seedHost, self.config_desc.seedHostPort)
+        tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_host_port)
         if tcp_address.is_proper():
             self.__connect(tcp_address)
 
@@ -192,7 +192,7 @@ class P2PService(PendingConnectionsServer):
         """ Inform whether peer has optimal or more open connections with other peers
         :return bool: True if peer has enough open connections with other peers, False otherwise
         """
-        return len(self.peers) >= self.config_desc.optNumPeers
+        return len(self.peers) >= self.config_desc.opt_num_peers
 
     def set_last_message(self, type_, client_key_id, t, msg, address, port):
         """ Add given message to last message buffer and inform peer keeper about it
@@ -229,13 +229,13 @@ class P2PService(PendingConnectionsServer):
 
         TCPServer.change_config(self, config_desc)
 
-        self.last_message_time_threshold = self.config_desc.p2pSessionTimeout
+        self.last_message_time_threshold = self.config_desc.p2p_session_timeout
 
         for peer in self.peers.values():
-            if (peer.port == self.config_desc.seedHostPort) and (peer.address == self.config_desc.seedHostPort):
+            if (peer.port == self.config_desc.seed_host_port) and (peer.address == self.config_desc.seed_host_port):
                 return
 
-        tcp_address = TCPAddress(self.config_desc.seedHost, self.config_desc.seedHostPort)
+        tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_host_port)
         if tcp_address.is_proper():
             self.__connect(tcp_address)
 
@@ -371,10 +371,14 @@ class P2PService(PendingConnectionsServer):
         self.resource_peers[self.client_uid] = [addr, port, self.keys_auth.get_key_id(), self.node]
 
     def send_get_resource_peers(self):
+        """ Request information about resource peers from peers"""
         for p in self.peers.values():
             p.send_get_resource_peers()
 
     def get_resource_peers(self):
+        """ Prepare information about resource peers
+        :return list: list of rsource peers information
+        """
         resource_peers_info = []
         for client_id, [addr, port, key_id, node_info] in self.resource_peers.iteritems():
             resource_peers_info.append({'client_id': client_id, 'addr': addr, 'port': port, 'key_id': key_id,
@@ -383,6 +387,10 @@ class P2PService(PendingConnectionsServer):
         return resource_peers_info
 
     def set_resource_peers(self, resource_peers):
+        """ Add new resource peers information to resource server
+        :param dict resource_peers: dictionary resource peers known by
+        :return:
+        """
         for peer in resource_peers:
             try:
                 if peer['client_id'] != self.client_uid:
@@ -394,25 +402,49 @@ class P2PService(PendingConnectionsServer):
             del resource_peers_copy[self.client_uid]
         self.resource_server.set_resource_peers(resource_peers_copy)
 
-    def put_resource(self, resource, addr, port, copies):
-        self.resource_server.put_resource(resource, addr, port, copies)
-
     # TASK FUNCTIONS
     ############################
     def get_tasks_headers(self):
+        """ Return a list of a known tasks headers
+        :return list: list of task header
+        """
         return self.task_server.get_tasks_headers()
 
     def add_task_header(self, th_dict_repr):
+        """ Add new task header to a list of known task headers
+        :param dict th_dict_repr: new task header dictionary representation
+        :return bool: True if a task header was in a right format, False otherwise
+        """
         return self.task_server.add_task_header(th_dict_repr)
 
     def remove_task_header(self, task_id):
-        return self.task_server.remove_task_header(task_id)
+        """ Remove header of a task with given id from a list of a known tasks
+        :param str task_id: id of a task that should be removed
+        """
+        self.task_server.remove_task_header(task_id)
 
     def remove_task(self, task_id):
+        """ Ask all peers to remove information about given task
+        :param str task_id: id of a task that should be removed
+        """
         for p in self.peers.values():
             p.send_remove_task(task_id)
 
     def want_to_start_task_session(self, key_id, node_info, conn_id, super_node_info=None):
+        """ Inform task with public key <key_id> that node from node info want to start task session with him. If
+        peer with given id is on a list of peers that this message will be send directly. Otherwise all peers will
+        receive a request to pass this message.
+        :param str key_id: key id of a node that should open a task session
+        :param Node node_info: information about node that requested session
+        :param str conn_id: connection id for reference
+        :param Node|None super_node_info: *Default: None* information about node with public ip that took part
+        in message transport
+        """
+        if conn_id in self.connections_to_set:
+            return
+
+        self.connections_to_set[conn_id] = (key_id, node_info, time.time())
+
         logger.debug("Try to start task session {}".format(key_id))
         msg_snd = False
         for peer in self.peers.itervalues():
@@ -431,6 +463,14 @@ class P2PService(PendingConnectionsServer):
             self.task_server.final_conn_failure(conn_id)
 
     def inform_about_task_nat_hole(self, key_id, rv_key_id, addr, port, ans_conn_id):
+        """
+        :param key_id:
+        :param rv_key_id:
+        :param addr:
+        :param port:
+        :param ans_conn_id:
+        :return:
+        """
         logger.debug("Nat hole ready {}:{}".format(addr, port))
         for peer in self.peers.itervalues():
             if peer.key_id == key_id:
@@ -460,6 +500,13 @@ class P2PService(PendingConnectionsServer):
         self.task_server.start_task_session(node_info, super_node_info, conn_id)
 
     def peer_want_to_set_task_session(self, key_id, node_info, conn_id, super_node_info):
+        """
+        :param key_id:
+        :param node_info:
+        :param conn_id:
+        :param super_node_info:
+        :return:
+        """
         logger.debug("Peer want to set task session with {}".format(key_id))
         if conn_id in self.connections_to_set:
             return
@@ -476,35 +523,68 @@ class P2PService(PendingConnectionsServer):
     # RANKING FUNCTIONS          #
     #############################
     def send_gossip(self, gossip, send_to):
+        """ send gossip to given peers
+        :param list gossip: list of gossips that should be sent
+        :param list send_to: list of ids of peers that should receive gossip
+        """
         for peer_id in send_to:
             peer = self.find_peer(peer_id)
             if peer is not None:
                 peer.send_gossip(gossip)
 
     def hear_gossip(self, gossip):
+        """ Add newly heard gossip to the gossip list
+        :param list gossip: list of gossips from one peer
+        """
         self.gossip_keeper.add_gossip(gossip)
 
     def pop_gossip(self):
+        """ Return all gathered gossips and clear gossip buffer
+        :return list: list of all gossips
+        """
         return self.gossip_keeper.pop_gossip(())
 
     def send_stop_gossip(self):
+        """ Send stop gossip message to all peers
+        """
         for peer in self.peers.values():
             peer.send_stop_gossip()
 
     def stop_gossip(self, id_):
+        """ Register that peer with given id has stopped gossiping
+        :param str id_: id of a string that has stopped gossiping
+        """
         self.peer_keeper.stop_gossip(id_)
 
     def pop_stop_gossip_form_peers(self):
+        """ Return set of all peers that has stopped gossing
+        :return set: set of peers id's
+        """
         return self.gossip_keeper.pop_stop_gossip_from_peers()
 
     def push_local_rank(self, node_id, loc_rank):
+        """ Send local rank to peers
+        :param str node_id: id of anode that this opinion is about
+        :param list loc_rank: opinion about this node
+        :return:
+        """
         for peer in self.peers.values():
             peer.send_loc_rank(node_id, loc_rank)
 
     def safe_neighbour_loc_rank(self, neigh_id, about_id, rank):
+        """
+        Add local rank from neighbour to the collection
+        :param str neigh_id: id of a neighbour - opinion giver
+        :param str about_id: opinion is about a node with this id
+        :param list rank: opinion that node <neigh_id> have about node <about_id>
+        :return:
+        """
         self.gossip_keeper.add_neighbour_loc_rank(neigh_id, about_id, rank)
 
     def pop_neighbours_loc_ranks(self):
+        """ Return all local ranks that was collected in that round and clear the rank list
+        :return list: list of all neighbours local rank sent to this node
+        """
         return self.gossip_keeper.pop_neighbour_loc_ranks()
 
     def _set_conn_established(self):
@@ -530,13 +610,8 @@ class P2PService(PendingConnectionsServer):
                                       P2PService.__connection_failure)
         self.network.connect(connect_info)
 
-#    def __connect_to_host(self, peer):
-#        tcp_addresses = self.get_tcp_addresses(peer['node'], peer['port'], peer['node'].key)
-#        connect_info = TCPConnectInfo(tcp_addresses, self.__connection_established, self.__connection_failure)
-#        self.network.connect(connect_info)
-
     def __send_get_peers(self):
-        while len(self.peers) < self.config_desc.optNumPeers:
+        while len(self.peers) < self.config_desc.opt_num_peers:
             if len(self.free_peers) == 0:
                 peer = None  # FIXME
                 #                peer = self.peer_keeper.getRandomKnownNode()

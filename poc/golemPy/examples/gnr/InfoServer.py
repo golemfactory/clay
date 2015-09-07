@@ -44,13 +44,13 @@ class SnapshotGetter:
 
 
 class InfoServer(Thread):
-    def __init__(self, client, mainPort, startPort, endPort):
+    def __init__(self, client, mainPort, start_port, end_port):
         Thread.__init__(self)
         self.client = client
         self.daemon = True
         self.mainPort = mainPort
-        self.startPort = startPort
-        self.endPort = endPort
+        self.start_port = start_port
+        self.end_port = end_port
         self.server = None
 
     def __bindPort(self, port):
@@ -66,7 +66,7 @@ class InfoServer(Thread):
 
     def __connectToAdditionalPorts(self):
         infoClient = None
-        for port in range(self.startPort, self.endPort):
+        for port in range(self.start_port, self.end_port):
             try:
                 self.__bindPort(port)
                 infoClient = zerorpc.Client()

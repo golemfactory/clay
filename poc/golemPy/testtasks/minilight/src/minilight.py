@@ -64,7 +64,7 @@ with a newline. E.g.:
 '''
 MODEL_FORMAT_ID = '#MiniLight'
 
-def makePerfTest(filename, cfgFilename, numCores):
+def makePerfTest(filename, cfgFilename, num_cores):
     model_file_pathname = filename
     image_file_pathname = model_file_pathname + '.ppm'
     model_file = open(model_file_pathname, 'r')
@@ -88,7 +88,7 @@ def makePerfTest(filename, cfgFilename, numCores):
     print "    giving an average speed of {} rays/s".format(float(numSamples) / duration)
     cfg_file = open(cfgFilename, 'w')
     average = float(numSamples) / duration
-    average = average * numCores
+    average = average * num_cores
     cfg_file.write("{0:.1f}".format(average))
     cfg_file.close()
     return average

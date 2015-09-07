@@ -45,10 +45,10 @@ class DiffGossipTrustNodeRank:
 
 
 class DifferentialGossipTrustSimulator(RankSimulator):
-    def __init__(self, computingTrustThreshold = -0.9, delegatingTrustThreshold = -0.9, gossipMaxSteps = 100):
+    def __init__(self, computing_trustThreshold = -0.9, delegatingTrustThreshold = -0.9, gossipMaxSteps = 100):
         RankSimulator.__init__(self, DiffGossipTrustNodeRank)
         self.delegatingTrustThreshold = delegatingTrustThreshold
-        self.computingTrustThreshold = computingTrustThreshold
+        self.computing_trustThreshold = computing_trustThreshold
 
         self.gossipMaxSteps = gossipMaxSteps
         self.finished = [ False, False ]
@@ -78,7 +78,7 @@ class DifferentialGossipTrustSimulator(RankSimulator):
             opinion = self.getGlobalComputingOpinion(cntNode, dntNode)
         else:
             opinion =  self.selfComputingOpinion(cntNode,dntNode)
-        return opinion > self.computingTrustThreshold
+        return opinion > self.computing_trustThreshold
 
     def getGlobalComputingOpinion(self, cntNode, dntNode):
         opinion = self.ranking[ dntNode ].computing.getGlobalVal(cntNode)
@@ -93,7 +93,7 @@ class DifferentialGossipTrustSimulator(RankSimulator):
         return opinion
 
     def selfComputingOpinion(self, cntNode, dntNode):
-        return self.ranking[ dntNode ].computing.getNodeTrust(cntNode) > self.computingTrustThreshold
+        return self.ranking[ dntNode ].computing.getNodeTrust(cntNode) > self.computing_trustThreshold
 
     def askForNodeDelegating(self, cntNode, dntNode):
         if self.ranking[ cntNode ].delegating.getNodePositive(cntNode) is None and self.ranking[cntNode].delegating.getNodeNegative(dntNode) is None:

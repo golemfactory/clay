@@ -21,7 +21,7 @@ def format3dsMaxCmdWithParts(cmdFile, frames, parts, startTask, outputFile, outf
     cmd = '{} -outputName:{}\\{}.exr -frames:{} -strip:{},{},{} "{}" -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile, outputFile, outfilebasename, frames, parts, overlap, part, sceneFile, width, height, presetFile)
     return cmd
 
-def __readFromEnvironment(defaultCmdFile, numCores):
+def __readFromEnvironment(defaultCmdFile, num_cores):
     GOLEM_ENV = 'GOLEM'
     path = os.environ.get(GOLEM_ENV)
     if not path:
@@ -34,7 +34,7 @@ def __readFromEnvironment(defaultCmdFile, numCores):
     env = ThreeDSMaxEnvironment()
     cmdFile = env.get3dsmaxcmdPath()
     if cmdFile:
-    #    env.setNThreads(numCores)
+    #    env.setNThreads(num_cores)
         return cmdFile
     else:
         print "Environment not supported... Assuming that exec is in working folder"
@@ -63,7 +63,7 @@ def returnFiles(files):
 
 
 ############################f =
-def run3dsMaxTask(pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, preset, cmdFile, useFrames, frames, parts, numCores, overlap):
+def run3dsMaxTask(pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, preset, cmdFile, useFrames, frames, parts, num_cores, overlap):
     print 'run3dsMaxTask'
     outputFiles = tmpPath
 
@@ -83,7 +83,7 @@ def run3dsMaxTask(pathRoot, startTask, endTask, totalTasks, outfilebasename, sce
         presetFile = os.path.join(dsmaxpath,  'renderpresets\mental.ray.daylighting.high.rps')
 
 
-    cmdFile = __readFromEnvironment(cmdFile, numCores)
+    cmdFile = __readFromEnvironment(cmdFile, num_cores)
     if os.path.exists(sceneFile):
         if useFrames:
             frames = parseFrames(frames)
@@ -114,4 +114,4 @@ def run3dsMaxTask(pathRoot, startTask, endTask, totalTasks, outfilebasename, sce
 def parseFrames(frames):
     return ",".join([ u"{}".format(frame) for frame in frames ])
 
-output = run3dsMaxTask (pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, presetFile, cmdFile, useFrames, frames, parts, numCores, overlap)
+output = run3dsMaxTask (pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, presetFile, cmdFile, useFrames, frames, parts, num_cores, overlap)

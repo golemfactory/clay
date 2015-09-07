@@ -28,10 +28,10 @@ def checkSubtaskIdWrapper(func):
 ##############################################
 class GNRTaskBuilder(TaskBuilder):
     #######################
-    def __init__(self, client_id, taskDefinition, rootPath):
+    def __init__(self, client_id, taskDefinition, root_path):
         self.taskDefinition = taskDefinition
         self.client_id       = client_id
-        self.rootPath       = rootPath
+        self.root_path       = root_path
 
     #######################
     def build(self):
@@ -175,7 +175,7 @@ class GNRTask(Task):
         commonPathPrefix = os.path.commonprefix(self.taskResources)
         commonPathPrefix = os.path.dirname(commonPathPrefix)
         dirName = commonPathPrefix #os.path.join("res", self.header.client_id, self.header.taskId, "resources")
-        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.rootPath)
+        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.root_path)
         if not os.path.exists(tmpDir):
                 os.makedirs(tmpDir)
 

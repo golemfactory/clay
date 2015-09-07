@@ -50,7 +50,7 @@ class RenderingTask(GNRTask):
     #######################
     def __init__(self, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                  totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, rootPath,
+                  totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, root_path,
                   estimatedMemory):
 
         try:
@@ -83,7 +83,7 @@ class RenderingTask(GNRTask):
         self.resX                   = resX
         self.resY                   = resY
 
-        self.rootPath               = rootPath
+        self.root_path               = root_path
         self.previewFilePath        = None
         self.previewTaskFilePath    = None
 
@@ -170,7 +170,7 @@ class RenderingTask(GNRTask):
         sentColor = (0, 255, 0)
         failedColor = (255, 0, 0)
 
-        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.rootPath)
+        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.root_path)
         self.previewTaskFilePath = "{}".format(os.path.join(tmpDir, "current_task_preview"))
 
         imgTask = self._openPreview()
@@ -262,7 +262,7 @@ class RenderingTask(GNRTask):
 
     #######################
     def _openPreview(self):
-        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.rootPath)
+        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.root_path)
 
         if self.previewFilePath is None or not os.path.exists(self.previewFilePath):
             self.previewFilePath = "{}".format(os.path.join(tmpDir, "current_preview"))

@@ -183,7 +183,7 @@ class NewTaskDialogCustomizer:
 
     #############################
     def _addCurrentTask(self):
-        self.logic.addTasks([ self.taskState ])
+        self.logic.add_tasks([ self.taskState ])
         self.gui.window.close()
 
     #############################

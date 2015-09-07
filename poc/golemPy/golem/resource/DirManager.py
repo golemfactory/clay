@@ -16,8 +16,8 @@ def splitPath(path):
 
 class DirManager:
     ######################
-    def __init__(self, rootPath, nodeId, tmp = 'tmp', res = 'resources', output = 'output', globalResource = 'golemres'):
-        self.rootPath = rootPath
+    def __init__(self, root_path, nodeId, tmp = 'tmp', res = 'resources', output = 'output', globalResource = 'golemres'):
+        self.root_path = root_path
         self.nodeId = nodeId
         self.tmp = tmp
         self.res = res
@@ -88,16 +88,16 @@ class DirManager:
 
     ######################
     def __getTmpPath(self, taskId):
-        return os.path.join(self.rootPath, self.nodeId, taskId, self.tmp)
+        return os.path.join(self.root_path, self.nodeId, taskId, self.tmp)
 
     def __getResPath(self, taskId):
-        return os.path.join(self.rootPath, self.nodeId, taskId, self.res)
+        return os.path.join(self.root_path, self.nodeId, taskId, self.res)
 
     def __getOutPath(self, taskId):
-        return os.path.join(self.rootPath, self.nodeId, taskId, self.output)
+        return os.path.join(self.root_path, self.nodeId, taskId, self.output)
 
     def __getGlobalResourcePath(self):
-        return os.path.join(self.rootPath, self.globalResource)
+        return os.path.join(self.root_path, self.globalResource)
 
     ######################
     def __getPath(self, path):

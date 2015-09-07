@@ -14,8 +14,8 @@ class Node:
         self.prvAddresses = []
 
     #############################
-    def collectNetworkInfo(self, seedHost=None, use_ipv6=False):
-        self.prvAddr = get_host_address(seedHost, use_ipv6)
+    def collectNetworkInfo(self, seed_host=None, use_ipv6=False):
+        self.prvAddr = get_host_address(seed_host, use_ipv6)
         if self.prvPort:
             self.pubAddr, self.pubPort, self.natType = get_external_address(self.prvPort)
         else:

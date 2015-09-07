@@ -25,10 +25,10 @@ class TaskServer(PendingConnectionsServer):
 
         self.node = node
         self.task_keeper = TaskKeeper()
-        self.task_manager = TaskManager(config_desc.clientUid, self.node, key_id=self.keys_auth.get_key_id(),
-                                       rootPath=TaskServer.__get_task_manager_root(config_desc),
-                                       useDistributedResources=config_desc.useDistributedResourceManagement)
-        self.task_computer = TaskComputer(config_desc.clientUid, self)
+        self.task_manager = TaskManager(config_desc.client_uid, self.node, key_id=self.keys_auth.get_key_id(),
+                                       root_path=TaskServer.__get_task_manager_root(config_desc),
+                                       useDistributedResources=config_desc.use_distributed_resource_management)
+        self.task_computer = TaskComputer(config_desc.client_uid, self)
         self.task_sessions = {}
         self.task_sessions_incoming = []
 
@@ -36,7 +36,7 @@ class TaskServer(PendingConnectionsServer):
         self.min_trust = 0.0
 
         self.last_messages = []
-        self.last_message_time_threshold = config_desc.taskSessionTimeout
+        self.last_message_time_threshold = config_desc.task_session_timeout
 
         self.results_to_send = {}
         self.failures_to_send = {}
@@ -68,15 +68,15 @@ class TaskServer(PendingConnectionsServer):
         if theader is not None:
             trust = self.client.getRequestingTrust(theader.client_id)
             logger.debug("Requesting trust level: {}".format(trust))
-            if trust >= self.config_desc.requestingTrust:
+            if trust >= self.config_desc.requesting_trust:
                 args = {
-                    'client_id': self.config_desc.clientUid,
+                    'client_id': self.config_desc.client_uid,
                     'key_id': theader.taskOwnerKeyId,
                     'task_id': theader.taskId,
-                    'estimated_performance': self.config_desc.estimatedPerformance,
-                    'max_resource_size': self.config_desc.maxResourceSize,
-                    'max_memory_size': self.config_desc.maxMemorySize,
-                    'num_cores': self.config_desc.numCores
+                    'estimated_performance': self.config_desc.estimated_performance,
+                    'max_resource_size': self.config_desc.max_resource_size,
+                    'max_memory_size': self.config_desc.max_memory_size,
+                    'num_cores': self.config_desc.num_cores
                 }
                 self._add_pending_request(TaskConnTypes.TaskRequest, theader.taskOwner, theader.taskOwnerPort,
                                           theader.taskOwnerKeyId, args)
@@ -177,7 +177,7 @@ class TaskServer(PendingConnectionsServer):
         return self.results_to_send.get(subtask_id)
 
     def get_client_id(self):
-        return self.config_desc.clientUid
+        return self.config_desc.client_uid
 
     def get_key_id(self):
         return self.keys_auth.get_key_id()
@@ -217,16 +217,16 @@ class TaskServer(PendingConnectionsServer):
     def change_config(self, config_desc):
         PendingConnectionsServer.change_config(self, config_desc)
         self.config_desc = config_desc
-        self.last_message_time_threshold = config_desc.taskSessionTimeout
+        self.last_message_time_threshold = config_desc.task_session_timeout
         self.task_manager.change_config(self.__get_task_manager_root(config_desc),
-                                       config_desc.useDistributedResourceManagement)
+                                       config_desc.use_distributed_resource_management)
         self.task_computer.change_config()
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
         self.task_manager.change_timeouts(task_id, full_task_timeout, subtask_timeout, min_subtask_time)
 
     def get_task_computer_root(self):
-        return os.path.join(self.config_desc.rootPath, "ComputerRes")
+        return os.path.join(self.config_desc.root_path, "ComputerRes")
 
     def subtask_rejected(self, subtask_id):
         logger.debug("Subtask {} result rejected".format(subtask_id))
@@ -285,10 +285,10 @@ class TaskServer(PendingConnectionsServer):
         self._add_pending_request(TaskConnTypes.PayForTask, node_info, port, key_id, args)
 
     def global_pay_for_task(self, task_id, payments):
-        global_payments = {ethAccount: desc.value for ethAccount, desc in payments.items()}
+        global_payments = {eth_account: desc.value for eth_account, desc in payments.items()}
         self.client.global_pay_for_task(task_id, global_payments)
-        for ethAccount, v in global_payments.iteritems():
-            print "Global paying {} to {}".format(v, ethAccount)
+        for eth_account, v in global_payments.iteritems():
+            print "Global paying {} to {}".format(v, eth_account)
 
     def reject_result(self, subtask_id, account_info):
         mod = min(max(self.task_manager.getTrustMod(subtask_id), self.min_trust), self.max_trust)
@@ -381,7 +381,7 @@ class TaskServer(PendingConnectionsServer):
         self.task_manager.node = self.node
 
     def _listening_failure(self, **kwargs):
-        logger.error("Listening on ports {} to {} failure".format(self.config_desc.startPort, self.config_desc.endPort))
+        logger.error("Listening on ports {} to {} failure".format(self.config_desc.start_port, self.config_desc.end_port))
         # FIXME: some graceful terminations should take place here
         # sys.exit(0)
 
@@ -673,7 +673,7 @@ class TaskServer(PendingConnectionsServer):
         logger.warning("Cannot connect to task {} owner".format(waiting_task_result.subtask_id))
 
         waiting_task_result.lastSendingTrial = time.time()
-        waiting_task_result.delayTime = self.config_desc.maxResultsSendingDelay
+        waiting_task_result.delayTime = self.config_desc.max_results_sending_delay
         waiting_task_result.alreadySending = False
 
     def __connection_for_task_failure_final_failure(self, conn_id, key_id, subtask_id, err_msg):
@@ -741,7 +741,7 @@ class TaskServer(PendingConnectionsServer):
     #############################
     @staticmethod
     def __get_task_manager_root(config_desc):
-        return os.path.join(config_desc.rootPath, "res")
+        return os.path.join(config_desc.root_path, "res")
 
     def _set_conn_established(self):
         self.conn_established_for_type.update({

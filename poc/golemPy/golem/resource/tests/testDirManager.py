@@ -40,7 +40,7 @@ class TestDirManager(unittest.TestCase):
         self.assertTrue(os.path.isfile(file3))
         self.assertTrue(os.path.isdir(dir1))
         dm = DirManager(path, node1)
-        dm.clearDir(dm.rootPath)
+        dm.clearDir(dm.root_path)
         self.assertFalse(os.path.isfile(file1))
         self.assertFalse(os.path.isfile(file2))
         self.assertFalse(os.path.isfile (file3))

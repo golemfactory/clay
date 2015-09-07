@@ -76,9 +76,9 @@ class NodeSimulator(QtCore.QThread):
         if self.peersNum > 10:
             self.peersNum = 10
 
-        addTasks = 1 if random.random() >= 0.5 else -1
+        add_tasks = 1 if random.random() >= 0.5 else -1
 
-        self.tasksNum += addTasks
+        self.tasksNum += add_tasks
 
         if self.tasksNum < 0:
             self.tasksNum = 0

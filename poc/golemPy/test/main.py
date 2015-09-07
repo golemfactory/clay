@@ -25,7 +25,7 @@ def main():
 
     init_messages()
 
-    port = AppConfig.managerPort()
+    port = AppConfig.manager_port()
     manager = NodesManager(None)
     logic = EmptyManagerLogic(port, manager.managerServer)
     manager.setManagerLogic(logic)

@@ -53,21 +53,21 @@ class ThreeDSMaxEnvironment(Environment):
             return ""
 
     #########################
-    def setNThreads(self, numCores):
+    def setNThreads(self, num_cores):
         for var in self.softwareEnvVar:
             if os.environ.get(var):
-                self.__rewriteCfgFile(var, numCores)
+                self.__rewriteCfgFile(var, num_cores)
 
     #########################
-    def __rewriteCfgFile(self, var, numCores):
+    def __rewriteCfgFile(self, var, num_cores):
         path = os.path.join(os.environ.get(var), self.configFileName)
         backupPath = os.path.join(os.environ.get(var), self.configFileBackup)
-        logger.debug("Cfg file: {}, numThreads = {}".format(path, numCores))
+        logger.debug("Cfg file: {}, numThreads = {}".format(path, num_cores))
         if os.path.isfile(path):
             with open(path, 'r') as f:
                 cfgSrc = f.read()
             shutil.copy2(path, backupPath)
-            newCfg = regenerateFile(cfgSrc, numCores)
+            newCfg = regenerateFile(cfgSrc, num_cores)
             with open(path, 'w') as f:
                 f.write(newCfg)
             return

@@ -30,7 +30,7 @@ class TCPServer(Server):
         :param ClientConfigDescriptor config_desc: new config descriptor
         """
         Server.change_config(self, config_desc)
-        if self.config_desc.startPort < self.cur_port < self.config_desc.endPort:
+        if self.config_desc.start_port < self.cur_port < self.config_desc.end_port:
             return
 
         if self.cur_port != 0:
@@ -41,7 +41,7 @@ class TCPServer(Server):
 
     def start_accepting(self):
         """ Start listening and accept connections """
-        listen_info = TCPListenInfo(self.config_desc.startPort, self.config_desc.endPort,
+        listen_info = TCPListenInfo(self.config_desc.start_port, self.config_desc.end_port,
                                     self._listening_established, self._listening_failure)
         self.network.listen(listen_info)
 
@@ -56,8 +56,8 @@ class TCPServer(Server):
         logger.info("Port {} opened - listening.".format(self.cur_port))
 
     def _listening_failure(self):
-        logger.error("Listening on ports {} to {} failure.").format(self.config_desc.startPort,
-                                                                    self.config_desc.endPort)
+        logger.error("Listening on ports {} to {} failure.").format(self.config_desc.start_port,
+                                                                    self.config_desc.end_port)
 
 
 class PendingConnectionsServer(TCPServer):

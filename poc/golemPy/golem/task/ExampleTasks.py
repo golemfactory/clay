@@ -240,7 +240,7 @@ from golem.core.compress import decompress
 class PbrtRenderTask(Task):
 
     #######################
-    def __init__(self, header, pathRoot, totalTasks, numSubtasks, numCores, outfilebasename, sceneFile, returnAddress = "", returnPort = 0):
+    def __init__(self, header, pathRoot, totalTasks, numSubtasks, num_cores, outfilebasename, sceneFile, returnAddress = "", returnPort = 0):
 
         srcFile = open("../testtasks/pbrt/pbrt_compact.py", "r")
         srcCode = srcFile.read()
@@ -253,7 +253,7 @@ class PbrtRenderTask(Task):
         self.lastTask           = 0
         self.totalTasks         = totalTasks
         self.numSubtasks        = numSubtasks
-        self.numCores           = numCores
+        self.num_cores           = num_cores
         self.outfilebasename    = outfilebasename
         self.sceneFile          = sceneFile
 
@@ -278,7 +278,7 @@ class PbrtRenderTask(Task):
                                     "endTask" : endTask,
                                     "totalTasks" : self.totalTasks,
                                     "numSubtasks" : self.numSubtasks,
-                                    "numCores" : self.numCores,
+                                    "num_cores" : self.num_cores,
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFile" : self.sceneFile
                                 }
@@ -291,7 +291,7 @@ class PbrtRenderTask(Task):
     #######################
     def __shortExtraDataRepr(self, perfIndex, extraData):
         l = extraData
-        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFile: {}".format(l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFile"])
+        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, num_cores: {}, outfilebasename: {}, sceneFile: {}".format(l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["num_cores"], l["outfilebasename"], l["sceneFile"])
 
 
     #######################

@@ -438,7 +438,7 @@ def removeDisallowedFilenameChars(filename):
     return ''.join(c for c in cleanedFilename if c in validFilenameChars)
 
 ####################
-def compressDir(rootPath, header, outputDir):
+def compressDir(root_path, header, outputDir):
 
     outputFile = removeDisallowedFilenameChars(header.hash().strip().decode('unicode-escape') + ".zip")
 
@@ -447,7 +447,7 @@ def compressDir(rootPath, header, outputDir):
     zipf = zipfile.ZipFile(outputFile, 'w', compression = zipfile.ZIP_DEFLATED, allowZip64 = True)
 
     currWorkingDir = os.getcwd()
-    os.chdir(rootPath)
+    os.chdir(root_path)
     logger.debug("Working directory {}".format(os.getcwd()))
 
     try:
@@ -461,20 +461,20 @@ def compressDir(rootPath, header, outputDir):
     return outputFile
 
 ####################
-def decompressDir(rootPath, zipFile):
+def decompressDir(root_path, zipFile):
 
     zipf = zipfile.ZipFile(zipFile, 'r', allowZip64 = True)
 
-    zipf.extractall(rootPath)
+    zipf.extractall(root_path)
 
 ####################
-def compressDirImpl(rootPath, header, zipf):
+def compressDirImpl(root_path, header, zipf):
 
     for sdh in header.subDirHeaders:
-        compressDirImpl(os.path.join(rootPath, sdh.dirName), sdh, zipf)
+        compressDirImpl(os.path.join(root_path, sdh.dirName), sdh, zipf)
         
     for fdata in header.filesData:
-        zipf.write(os.path.join(rootPath, fdata[ 0 ]))
+        zipf.write(os.path.join(root_path, fdata[ 0 ]))
 
 ####################
 def prepareDeltaZip(rootDir, header, outputDir, choosenFiles = None):

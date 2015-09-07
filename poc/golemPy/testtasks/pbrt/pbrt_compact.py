@@ -8,11 +8,11 @@ import win32api, win32process
 import tempfile
 
 ############################
-def format_pbrt_cmd(renderer, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, scenefile):
-    return "{} --starttask {} --endtask {} --outresultbasename {} --totaltasks {} --ncores {} --subtasks {} {}".format(renderer, startTask, endTask, outfilebasename, totalTasks, numCores, numSubtasks, scenefile)
+def format_pbrt_cmd(renderer, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, scenefile):
+    return "{} --starttask {} --endtask {} --outresultbasename {} --totaltasks {} --ncores {} --subtasks {} {}".format(renderer, startTask, endTask, outfilebasename, totalTasks, num_cores, numSubtasks, scenefile)
 
 ############################
-def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneSrc):
+def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, sceneSrc):
     pbrt = os.path.join(resourcePath, "pbrt.exe")
 
     outputFiles = os.path.join(tmpPath, outfilebasename)
@@ -32,7 +32,7 @@ def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, numCore
     print tmpSceneFile.name
 
     if os.path.exists(tmpSceneFile.name):
-        cmd = format_pbrt_cmd(pbrt, startTask, endTask, totalTasks, numSubtasks, numCores, outputFiles, tmpSceneFile.name)
+        cmd = format_pbrt_cmd(pbrt, startTask, endTask, totalTasks, numSubtasks, num_cores, outputFiles, tmpSceneFile.name)
     else:
         print "Scene file does not exist"
         
@@ -64,5 +64,5 @@ def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, numCore
     return res
 
 
-output = run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneFileSrc)
+output = run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, sceneFileSrc)
         

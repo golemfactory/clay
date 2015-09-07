@@ -63,7 +63,7 @@ def startAndConfigureClient(logic, environments):
     for env in environments:
         client.environmentsManager.addEnvironment(env)
 
-    client.environmentsManager.loadConfig(client.config_desc.clientUid)
+    client.environmentsManager.loadConfig(client.config_desc.client_uid)
 
     logic.registerClient(client)
     logic.checkNetworkState()
@@ -83,12 +83,12 @@ def runManager(logic, client):
     logic.registerStartNewNodeFunction(runGNRNodes)
     logic.registerStartNodesManagerFunction(runGNRManager)
 
-    client.environmentsManager.loadConfig(client.config_desc.clientUid)
+    client.environmentsManager.loadConfig(client.config_desc.client_uid)
 
 ############################
-def runInfoServer(client, startPort = 55555, nextPort = 55556, endPort = 59999):
+def runInfoServer(client, start_port = 55555, nextPort = 55556, end_port = 59999):
     from examples.gnr.InfoServer import InfoServer
-    infoServer = InfoServer(client, startPort, nextPort, endPort)
+    infoServer = InfoServer(client, start_port, nextPort, end_port)
     infoServer.start()
 
 ############################

@@ -24,7 +24,7 @@ class ResourceServer(TCPServer):
         self.resourcesToGet = []
         self.resSendIt = 0
         self.peersIt = 0
-        self.dirManager = DirManager(config_desc.rootPath, config_desc.clientUid)
+        self.dirManager = DirManager(config_desc.root_path, config_desc.client_uid)
         self.resourceManager = DistributedResourceManager(self.dirManager.getResourceDir())
         self.use_ipv6 = use_ipv6
         network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(ResourceSession)),  use_ipv6)
@@ -39,16 +39,16 @@ class ResourceServer(TCPServer):
         self.getResourcePeersInterval = 5.0
         self.sessions = []
 
-        self.last_message_time_threshold = config_desc.resourceSessionTimeout
+        self.last_message_time_threshold = config_desc.resource_session_timeout
 
     def start_accepting(self):
         TCPServer.start_accepting(self)
 
     def change_resource_dir(self, config_desc):
-        if self.dirManager.rootPath == config_desc.rootPath:
+        if self.dirManager.root_path == config_desc.root_path:
             return
-        self.dirManager.rootPath = config_desc.rootPath
-        self.dirManager.nodeId = config_desc.clientUid
+        self.dirManager.root_path = config_desc.root_path
+        self.dirManager.nodeId = config_desc.client_uid
         self.resourceManager.change_resource_dir(self.dirManager.getResourceDir())
 
     def get_distributed_resource_root(self):
@@ -100,8 +100,8 @@ class ResourceServer(TCPServer):
                                            'node': node_info}
 
     def set_resource_peers(self, resource_peers):
-        if self.config_desc.clientUid in resource_peers:
-            del resource_peers[self.config_desc.clientUid]
+        if self.config_desc.client_uid in resource_peers:
+            del resource_peers[self.config_desc.client_uid]
 
         for client_id, [addr, port, key_id, node_info] in resource_peers.iteritems():
             self.add_resource_peer(client_id, addr, port, key_id, node_info)
@@ -262,7 +262,7 @@ class ResourceServer(TCPServer):
         return self.keys_auth.verify(sig, data, public_key)
 
     def change_config(self, config_desc):
-        self.last_message_time_threshold = config_desc.resourceSessionTimeout
+        self.last_message_time_threshold = config_desc.resource_session_timeout
 
     @staticmethod
     def _node_info_to_tcp_addresses(node_info, port):

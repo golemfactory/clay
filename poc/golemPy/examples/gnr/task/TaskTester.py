@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class TaskTester:
     #########################
-    def __init__(self, task, rootPath, finishedCallback):
+    def __init__(self, task, root_path, finishedCallback):
         assert isinstance(task, Task)
         self.task               = task
         self.testTaskResPath    = None
@@ -21,7 +21,7 @@ class TaskTester:
         self.success            = False
         self.lock               = Lock()
         self.tt                 = None
-        self.rootPath           = rootPath
+        self.root_path           = root_path
         self.finishedCallback   = finishedCallback
 
     #########################
@@ -69,7 +69,7 @@ class TaskTester:
     #########################
     def __prepare_resources(self):
 
-        self.testTaskResPath = getTestTaskPath(self.rootPath)
+        self.testTaskResPath = getTestTaskPath(self.root_path)
         if not os.path.exists(self.testTaskResPath):
             os.makedirs(self.testTaskResPath)
         else:
@@ -87,7 +87,7 @@ class TaskTester:
     #########################
     def __prepareTmpDir(self):
 
-        self.tmpDir = getTestTaskTmpPath(self.rootPath)
+        self.tmpDir = getTestTaskTmpPath(self.root_path)
         if not os.path.exists(self.tmpDir):
             os.makedirs(self.tmpDir)
         else:

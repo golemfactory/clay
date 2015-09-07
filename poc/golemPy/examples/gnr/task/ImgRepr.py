@@ -105,7 +105,6 @@ def advanceVerifyImg(file_, resX, resY, startBox, boxSize, compareFile, cmpStart
         return __compareImgs(img, cmpImg, start1 = startBox, start2 = cmpStartBox, box = boxSize)
     else:
         return __compareImgs(img, cmpImg, maxCol = 1, start1 = startBox, start2 = cmpStartBox, box = boxSize)
-    return True
 
 ############################
 def verifyImg(file_, resX, resY):

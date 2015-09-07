@@ -67,7 +67,7 @@ class PbrtGNRTaskBuilder(GNRTaskBuilder):
         else:
             rtd = self.__translateTaskDefinition()
 
-        pbrtTaskBuilder = PbrtTaskBuilder(self.client_id, rtd, self.rootPath)
+        pbrtTaskBuilder = PbrtTaskBuilder(self.client_id, rtd, self.root_path)
         return pbrtTaskBuilder.build()
 
     def __translateTaskDefinition(self):
@@ -126,7 +126,7 @@ class PbrtTaskBuilder(RenderingTaskBuilder):
                                    self.taskDefinition.estimatedMemory,
                                    self.taskDefinition.outputFile,
                                    self.taskDefinition.outputFormat,
-                                   self.rootPath
+                                   self.root_path
                                  )
 
         return self._setVerificationOptions(pbrtTask)
@@ -170,7 +170,7 @@ class PbrtRenderTask(RenderingTask):
                   mainProgramFile,
                   totalTasks,
                   numSubtasks,
-                  numCores,
+                  num_cores,
                   resX,
                   resY,
                   pixelFilter,
@@ -185,7 +185,7 @@ class PbrtRenderTask(RenderingTask):
                   estimatedMemory,
                   outputFile,
                   outputFormat,
-                  rootPath,
+                  root_path,
                   returnAddress = "",
                   returnPort = 0,
                   keyId = ""
@@ -196,12 +196,12 @@ class PbrtRenderTask(RenderingTask):
                                 PBRTEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
                                 mainProgramFile, taskResources, mainSceneDir, sceneFile,
                                 totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
-                                rootPath, estimatedMemory)
+                                root_path, estimatedMemory)
 
         self.collectedFileNames = set()
 
         self.numSubtasks        = numSubtasks
-        self.numCores           = numCores
+        self.num_cores           = num_cores
 
         try:
             with open(sceneFile) as f:
@@ -219,7 +219,7 @@ class PbrtRenderTask(RenderingTask):
         self.nx, self.ny, self.taskResX, self.taskResY = countSubtaskReg(self.totalTasks, self.numSubtasks, self.resX, self.resY)
 
     #######################
-    def queryExtraData(self, perfIndex, numCores = 0, client_id = None):
+    def queryExtraData(self, perfIndex, num_cores = 0, client_id = None):
         if not self._acceptClient(client_id):
             logger.warning(" Client {} banned from this task ".format(client_id))
             return None
@@ -230,8 +230,8 @@ class PbrtRenderTask(RenderingTask):
             logger.error("Task already computed")
             return None
 
-        if numCores == 0:
-            numCores = self.numCores
+        if num_cores == 0:
+            num_cores = self.num_cores
 
         workingDirectory = self._getWorkingDirectory()
         sceneSrc = regeneratePbrtFile(self.sceneFileSrc, self.resX, self.resY, self.pixelFilter,
@@ -246,7 +246,7 @@ class PbrtRenderTask(RenderingTask):
                                     "endTask" : endTask,
                                     "totalTasks" : self.totalTasks,
                                     "numSubtasks" : self.numSubtasks,
-                                    "numCores" : numCores,
+                                    "num_cores" : num_cores,
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFileSrc" : sceneSrc,
                                     "sceneDir": sceneDir,
@@ -279,7 +279,7 @@ class PbrtRenderTask(RenderingTask):
                                     "endTask" : 1,
                                     "totalTasks" : self.totalTasks,
                                     "numSubtasks" : self.numSubtasks,
-                                    "numCores" : self.numCores,
+                                    "num_cores" : self.num_cores,
                                     "outfilebasename" : self.outfilebasename,
                                     "sceneFileSrc" : sceneSrc,
                                     "sceneDir": sceneDir,
@@ -288,7 +288,7 @@ class PbrtRenderTask(RenderingTask):
 
         hash = "{}".format(random.getrandbits(128))
 
-        self.testTaskResPath = getTestTaskPath(self.rootPath)
+        self.testTaskResPath = getTestTaskPath(self.root_path)
         logger.debug(self.testTaskResPath)
         if not os.path.exists(self.testTaskResPath):
             os.makedirs(self.testTaskResPath)
@@ -377,7 +377,7 @@ class PbrtRenderTask(RenderingTask):
     #######################
     def _shortExtraDataRepr(self, perfIndex, extraData):
         l = extraData
-        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, numCores: {}, outfilebasename: {}, sceneFileSrc: {}".format(l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["numCores"], l["outfilebasename"], l["sceneFileSrc"])
+        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, num_cores: {}, outfilebasename: {}, sceneFileSrc: {}".format(l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["num_cores"], l["outfilebasename"], l["sceneFileSrc"])
 
     #######################
     def _getPartImgSize(self, subtaskId, advTestFile):

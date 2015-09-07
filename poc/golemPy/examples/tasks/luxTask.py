@@ -93,7 +93,7 @@ def makeTmpFile(sceneDir, sceneSrc):
 
 
 ############################
-def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, numCores, ownBinaries, luxConsole):
+def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, num_cores, ownBinaries, luxConsole):
     print 'LuxRenderer Task'
 
     outputFiles = tmpPath

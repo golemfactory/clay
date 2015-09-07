@@ -26,8 +26,8 @@ class UpdateOtherGolemsTaskDefinition:
 ##############################################
 class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
     #######################
-    def __init__(self, client_id, taskDefinition, rootPath, srcDir):
-        GNRTaskBuilder.__init__(self, client_id, taskDefinition, rootPath)
+    def __init__(self, client_id, taskDefinition, root_path, srcDir):
+        GNRTaskBuilder.__init__(self, client_id, taskDefinition, root_path)
         self.srcDir = srcDir
 
     def build(self):
@@ -52,7 +52,7 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
                             "",
                             0,
                             "",
-                            self.rootPath,
+                            self.root_path,
                             Environment.getId(),
                             self.taskDefinition.fullTaskTimeout,
                             self.taskDefinition.subtaskTimeout,
@@ -72,7 +72,7 @@ class UpdateOtherGolemsTask(GNRTask):
                   ownerAddress,
                   ownerPort,
                   ownerKeyId,
-                  rootPath,
+                  root_path,
                   environment,
                   ttl,
                   subtaskTtl,
@@ -86,7 +86,7 @@ class UpdateOtherGolemsTask(GNRTask):
                             ttl, subtaskTtl, resourceSize, estimatedMemory)
 
         self.totalTasks = totalTasks
-        self.rootPath = rootPath
+        self.root_path = root_path
 
         self.taskResources = resources
         self.active = True
@@ -98,7 +98,7 @@ class UpdateOtherGolemsTask(GNRTask):
         self.active = False
 
     #######################
-    def queryExtraData(self, perfIndex, numCores, client_id):
+    def queryExtraData(self, perfIndex, num_cores, client_id):
 
         if client_id in self.updated:
             return None

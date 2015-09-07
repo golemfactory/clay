@@ -19,20 +19,20 @@ logger = logging.getLogger(__name__)
 class TaskComputer:
 
     ######################
-    def __init__(self, clientUid, task_server):
-        self.clientUid              = clientUid
+    def __init__(self, client_uid, task_server):
+        self.client_uid              = client_uid
         self.task_server             = task_server
         self.waitingForTask         = None
         self.countingTask           = False
         self.currentComputations    = []
         self.lock                   = Lock()
         self.lastTaskRequest        = time.time()
-        self.taskRequestFrequency   = task_server.config_desc.taskRequestInterval
-        self.useWaitingTtl          = task_server.config_desc.useWaitingForTaskTimeout
-        self.waitingForTaskTimeout  = task_server.config_desc.waitingForTaskTimeout
+        self.taskRequestFrequency   = task_server.config_desc.task_request_interval
+        self.useWaitingTtl          = task_server.config_desc.use_waiting_for_task_timeout
+        self.waiting_for_task_timeout  = task_server.config_desc.waiting_for_task_timeout
         self.waitingTtl             = 0
         self.lastChecking           = time.time()
-        self.dirManager             = DirManager (task_server.get_task_computer_root(), self.clientUid)
+        self.dirManager             = DirManager (task_server.get_task_computer_root(), self.client_uid)
 
         self.resourceManager        = ResourcesManager(self.dirManager, self)
 
@@ -125,15 +125,15 @@ class TaskComputer:
             if taskThread.error:
                 self.task_server.send_task_failed(subtaskId, subtask.taskId, taskThread.errorMsg,
                                                subtask.returnAddress, subtask.returnPort, subtask.keyId,
-                                               subtask.taskOwner, self.clientUid)
+                                               subtask.taskOwner, self.client_uid)
             elif taskThread.result and 'data' in taskThread.result and 'resultType' in taskThread.result:
                 logger.info ("Task {} computed".format(subtaskId))
                 self.task_server.send_results(subtaskId, subtask.taskId, taskThread.result, subtask.returnAddress,
-                                            subtask.returnPort, subtask.keyId, subtask.taskOwner, self.clientUid)
+                                            subtask.returnPort, subtask.keyId, subtask.taskOwner, self.client_uid)
             else:
                 self.task_server.send_task_failed(subtaskId, subtask.taskId, "Wrong result format",
                                                subtask.returnAddress, subtask.returnPort, subtask.keyId,
-                                               subtask.taskOwner, self.clientUid)
+                                               subtask.taskOwner, self.client_uid)
 
 
     ######################
@@ -168,11 +168,11 @@ class TaskComputer:
 
     ######################
     def change_config(self):
-        self.dirManager = DirManager(self.task_server.get_task_computer_root(), self.clientUid)
+        self.dirManager = DirManager(self.task_server.get_task_computer_root(), self.client_uid)
         self.resourceManager = ResourcesManager(self.dirManager, self)
-        self.taskRequestFrequency   = self.task_server.config_desc.taskRequestInterval
-        self.useWaitingTtl          = self.task_server.config_desc.useWaitingForTaskTimeout
-        self.waitingForTaskTimeout  = self.task_server.config_desc.waitingForTaskTimeout
+        self.taskRequestFrequency   = self.task_server.config_desc.task_request_interval
+        self.useWaitingTtl          = self.task_server.config_desc.use_waiting_for_task_timeout
+        self.waiting_for_task_timeout  = self.task_server.config_desc.waiting_for_task_timeout
 
     ######################
     def sessionTimeout(self):
@@ -189,13 +189,13 @@ class TaskComputer:
 
     ######################
     def __request_task(self):
-        self.waitingTtl  = self.waitingForTaskTimeout
+        self.waitingTtl  = self.waiting_for_task_timeout
         self.lastChecking = time.time()
         self.waitingForTask = self.task_server.request_task()
 
     ######################
     def __request_resource(self, taskId, resourceHeader, returnAddress, returnPort, keyId, taskOwner):
-        self.waitingTtl = self.waitingForTaskTimeout
+        self.waitingTtl = self.waiting_for_task_timeout
         self.lastChecking = time.time()
         self.waitingForTask = 1
         self.waitingForTask = self.task_server.request_resource(taskId, resourceHeader, returnAddress, returnPort, keyId,

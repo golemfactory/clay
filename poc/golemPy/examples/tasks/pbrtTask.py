@@ -9,10 +9,10 @@ import shutil
 import sys
 
 ############################
-def format_pbrt_cmd(renderer, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, scenefile):
+def format_pbrt_cmd(renderer, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, scenefile):
     return ["{}".format(renderer), "--starttask", "{}".format(startTask), "--endtask", "{}".format(endTask),
             "--outresultbasename", "{}".format(outfilebasename),  "--totaltasks",  "{}".format(totalTasks),
-            "--ncores", "{}".format(numCores), "--subtasks", "{}".format(numSubtasks), "{}".format(scenefile)]
+            "--ncores", "{}".format(num_cores), "--subtasks", "{}".format(numSubtasks), "{}".format(scenefile)]
 
 ############################
 def returnData(files):
@@ -67,7 +67,7 @@ def makeTmpFile(sceneDir, sceneSrc):
 
 
 ############################f = 
-def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneSrc, sceneDir, pbrtPath):
+def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, sceneSrc, sceneDir, pbrtPath):
     pbrt = pbrtPath
 
     outputFiles = os.path.join(tmpPath, outfilebasename)
@@ -81,7 +81,7 @@ def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, numCore
     tmpSceneFile = makeTmpFile(sceneDir, sceneSrc)
 
     if os.path.exists(tmpSceneFile):
-        cmd = format_pbrt_cmd(pbrt, startTask, endTask, totalTasks, numSubtasks, numCores, outputFiles, tmpSceneFile)
+        cmd = format_pbrt_cmd(pbrt, startTask, endTask, totalTasks, numSubtasks, num_cores, outputFiles, tmpSceneFile)
     else:
         print "Scene file does not exist"
         return {'data': [], 'resultType': 0 }
@@ -101,5 +101,5 @@ def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, numCore
     return returnData(files)
 
 
-output = run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, numCores, outfilebasename, sceneFileSrc, sceneDir, pbrtPath)
+output = run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, sceneFileSrc, sceneDir, pbrtPath)
         

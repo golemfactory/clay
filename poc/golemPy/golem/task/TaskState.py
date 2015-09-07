@@ -38,7 +38,7 @@ class ComputerState:
     #########################
     def __init__(self):
         self.nodeId             = ""
-        self.ethAccount         = ""
+        self.eth_account         = ""
         self.performance        = 0
         self.ipAddress          = ""
         self.port               = 0

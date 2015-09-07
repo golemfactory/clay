@@ -37,10 +37,10 @@ class ConfigurationDialogCustomizer:
 
     #############################
     def __loadBasicConfig(self, config_desc):
-        self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seedHost))
-        self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seedHostPort))
-        self.gui.ui.workingDirectoryLineEdit.setText(u"{}".format(config_desc.rootPath))
-        self.gui.ui.performanceLabel.setText(u"{}".format(config_desc.estimatedPerformance))
+        self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
+        self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_host_port))
+        self.gui.ui.workingDirectoryLineEdit.setText(u"{}".format(config_desc.root_path))
+        self.gui.ui.performanceLabel.setText(u"{}".format(config_desc.estimated_performance))
         self.gui.ui.useIp6CheckBox.setChecked(config_desc.useIp6)
         self.__loadNumCores(config_desc)
         self.__loadMemoryConfig(config_desc)
@@ -53,11 +53,11 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.coresMaxLabel.setText(u"{}".format(maxNumCores))
 
         try:
-            numCores = int (config_desc.numCores)
+            num_cores = int (config_desc.num_cores)
         except Exception, e:
-            numCores = 1
+            num_cores = 1
             logger.error("Wrong value for number of cores: {}".format(str(e)))
-        self.gui.ui.numCoresSlider.setValue(numCores)
+        self.gui.ui.numCoresSlider.setValue(num_cores)
 
     #############################
     def __loadMemoryConfig (self, config_desc):
@@ -65,29 +65,29 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.maxResourceSizeComboBox.addItems(memTab)
         self.gui.ui.maxMemoryUsageComboBox.addItems(memTab)
         try:
-            maxResourceSize = long(config_desc.maxResourceSize)
+            max_resource_size = long(config_desc.max_resource_size)
         except Exception, e:
-            maxResourceSize = 250 * 1024
+            max_resource_size = 250 * 1024
             logger.error("Wrong value for maximum resource size: {}".format(str(e)))
 
         try:
-            maxMemorySize = long(config_desc.maxMemorySize)
+            max_memory_size = long(config_desc.max_memory_size)
         except Exception, e:
-            maxMemorySize = 250 * 1024
+            max_memory_size = 250 * 1024
             logger.error("Wrong value for maximum memory usage: {}".format(str(e)))
 
-        maxResourceSize, index = resourceSizeToDisplay(maxResourceSize)
+        max_resource_size, index = resourceSizeToDisplay(max_resource_size)
         self.gui.ui.maxResourceSizeComboBox.setCurrentIndex(index)
-        self.gui.ui.maxResourceSizeSpinBox.setValue(maxResourceSize)
+        self.gui.ui.maxResourceSizeSpinBox.setValue(max_resource_size)
 
-        maxMemorySize, index = resourceSizeToDisplay(maxMemorySize)
+        max_memory_size, index = resourceSizeToDisplay(max_memory_size)
         self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex(index)
-        self.gui.ui.maxMemoryUsageSpinBox.setValue(maxMemorySize)
+        self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
 
     #############################
     def __loadTrustConfig(self, config_desc):
-        self.__loadTrust(config_desc.computingTrust, self.gui.ui.computingTrustLineEdit, self.gui.ui.computingTrustSlider)
-        self.__loadTrust(config_desc.requestingTrust, self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)
+        self.__loadTrust(config_desc.computing_trust, self.gui.ui.computingTrustLineEdit, self.gui.ui.computingTrustSlider)
+        self.__loadTrust(config_desc.requesting_trust, self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)
 
     #############################
     def __loadTrust(self, value, lineEdit, slider):
@@ -101,28 +101,28 @@ class ConfigurationDialogCustomizer:
 
     #############################
     def __loadAdvanceConfig(self, config_desc):
-        self.gui.ui.optimalPeerNumLineEdit.setText(u"{}".format(config_desc.optNumPeers))
+        self.gui.ui.optimalPeerNumLineEdit.setText(u"{}".format(config_desc.opt_num_peers))
 
-        self.__loadCheckBoxParam(config_desc.useDistributedResourceManagement, self.gui.ui.useDistributedResCheckBox, 'use distributed res')
-        self.gui.ui.distributedResNumLineEdit.setText(u"{}".format(config_desc.distResNum))
+        self.__loadCheckBoxParam(config_desc.use_distributed_resource_management, self.gui.ui.useDistributedResCheckBox, 'use distributed res')
+        self.gui.ui.distributedResNumLineEdit.setText(u"{}".format(config_desc.dist_res_num))
 
-        self.__loadCheckBoxParam(config_desc.useWaitingForTaskTimeout, self.gui.ui.useWaitingForTaskTimeoutCheckBox, 'waiting for task timeout')
-        self.gui.ui.waitingForTaskTimeoutLineEdit.setText(u"{}".format(config_desc.waitingForTaskTimeout))
+        self.__loadCheckBoxParam(config_desc.use_waiting_for_task_timeout, self.gui.ui.useWaitingForTaskTimeoutCheckBox, 'waiting for task timeout')
+        self.gui.ui.waitingForTaskTimeoutLineEdit.setText(u"{}".format(config_desc.waiting_for_task_timeout))
 
-        self.__loadCheckBoxParam(config_desc.sendPings, self.gui.ui.sendPingsCheckBox, 'send pings''')
-        self.gui.ui.sendPingsLineEdit.setText(u"{}".format(config_desc.pingsInterval))
+        self.__loadCheckBoxParam(config_desc.send_pings, self.gui.ui.sendPingsCheckBox, 'send pings''')
+        self.gui.ui.sendPingsLineEdit.setText(u"{}".format(config_desc.pings_interval))
 
-        self.gui.ui.gettingPeersLineEdit.setText(u"{}".format(config_desc.gettingPeersInterval))
-        self.gui.ui.gettingTasksIntervalLineEdit.setText(u"{}".format(config_desc.gettingTasksInterval))
-        self.gui.ui.nodeSnapshotIntervalLineEdit.setText(u"{}".format(config_desc.nodeSnapshotInterval))
-        self.gui.ui.maxSendingDelayLineEdit.setText(u"{}".format(config_desc.maxResultsSendingDelay))
+        self.gui.ui.gettingPeersLineEdit.setText(u"{}".format(config_desc.getting_peers_interval))
+        self.gui.ui.gettingTasksIntervalLineEdit.setText(u"{}".format(config_desc.getting_tasks_interval))
+        self.gui.ui.nodeSnapshotIntervalLineEdit.setText(u"{}".format(config_desc.node_snapshot_interval))
+        self.gui.ui.maxSendingDelayLineEdit.setText(u"{}".format(config_desc.max_results_sending_delay))
 
-        self.gui.ui.p2pSessionTimeoutLineEdit.setText(u"{}".format(config_desc.p2pSessionTimeout))
-        self.gui.ui.taskSessionTimeoutLineEdit.setText(u"{}".format(config_desc.taskSessionTimeout))
-        self.gui.ui.resourceSessionTimeoutLineEdit.setText(u"{}".format(config_desc.resourceSessionTimeout))
+        self.gui.ui.p2pSessionTimeoutLineEdit.setText(u"{}".format(config_desc.p2p_session_timeout))
+        self.gui.ui.taskSessionTimeoutLineEdit.setText(u"{}".format(config_desc.task_session_timeout))
+        self.gui.ui.resourceSessionTimeoutLineEdit.setText(u"{}".format(config_desc.resource_session_timeout))
 
-        self.gui.ui.pluginPortLineEdit.setText(u"{}".format(config_desc.pluginPort))
-        self.oldPluginPort = u"{}".format(config_desc.pluginPort)
+        self.gui.ui.pluginPortLineEdit.setText(u"{}".format(config_desc.plugin_port))
+        self.oldPluginPort = u"{}".format(config_desc.plugin_port)
 
     #############################
     def __loadCheckBoxParam(self, param, checkBox, paramName = ''):
@@ -139,12 +139,12 @@ class ConfigurationDialogCustomizer:
 
     #############################
     def __loadManagerConfig(self, config_desc):
-        self.gui.ui.managerAddressLineEdit.setText(u"{}".format(config_desc.managerAddress))
-        self.gui.ui.managerPortLineEdit.setText(u"{}".format(config_desc.managerPort))
+        self.gui.ui.managerAddressLineEdit.setText(u"{}".format(config_desc.manager_address))
+        self.gui.ui.managerPortLineEdit.setText(u"{}".format(config_desc.manager_port))
 
     #############################
     def __loadPaymentConfig(self, config_desc):
-        self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.ethAccount))
+        self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.eth_account))
 
     #############################
     def __loadResourceConfig(self):
@@ -252,59 +252,59 @@ class ConfigurationDialogCustomizer:
 
     #############################
     def __readBasicConfig(self, cfgDesc):
-        cfgDesc.seedHost = u"{}".format(self.gui.ui.hostAddressLineEdit.text())
+        cfgDesc.seed_host = u"{}".format(self.gui.ui.hostAddressLineEdit.text())
         try:
-            cfgDesc.seedHostPort = int(self.gui.ui.hostIPLineEdit.text())
+            cfgDesc.seed_host_port = int(self.gui.ui.hostIPLineEdit.text())
         except ValueError:
-            cfgDesc.seedHostPort = u"{}".format (self.gui.ui.hostIPLineEdit.text())
-        cfgDesc.rootPath = u"{}".format(self.gui.ui.workingDirectoryLineEdit.text())
+            cfgDesc.seed_host_port = u"{}".format (self.gui.ui.hostIPLineEdit.text())
+        cfgDesc.root_path = u"{}".format(self.gui.ui.workingDirectoryLineEdit.text())
 
-        cfgDesc.numCores = u"{}".format(self.gui.ui.numCoresSlider.value())
-        cfgDesc.estimatedPerformance = u"{}".format(self.gui.ui.performanceLabel.text())
-        maxResourceSize = int(self.gui.ui.maxResourceSizeSpinBox.value())
+        cfgDesc.num_cores = u"{}".format(self.gui.ui.numCoresSlider.value())
+        cfgDesc.estimated_performance = u"{}".format(self.gui.ui.performanceLabel.text())
+        max_resource_size = int(self.gui.ui.maxResourceSizeSpinBox.value())
         index = self.gui.ui.maxResourceSizeComboBox.currentIndex()
-        cfgDesc.maxResourceSize = u"{}".format(self.__countResourceSize(maxResourceSize, index))
-        maxMemorySize = int(self.gui.ui.maxMemoryUsageSpinBox.value())
+        cfgDesc.max_resource_size = u"{}".format(self.__countResourceSize(max_resource_size, index))
+        max_memory_size = int(self.gui.ui.maxMemoryUsageSpinBox.value())
         index = self.gui.ui.maxMemoryUsageComboBox.currentIndex()
-        cfgDesc.maxMemorySize = u"{}".format(self.__countResourceSize(maxMemorySize, index))
+        cfgDesc.max_memory_size = u"{}".format(self.__countResourceSize(max_memory_size, index))
         self.__readTrustConfig(cfgDesc)
         cfgDesc.useIp6 = int(self.gui.ui.useIp6CheckBox.isChecked())
 
     #############################
     def __readAdvanceConfig(self, cfgDesc):
-        cfgDesc.optNumPeers = u"{}".format(self.gui.ui.optimalPeerNumLineEdit.text())
-        cfgDesc.useDistributedResourceManagement = int(self.gui.ui.useDistributedResCheckBox.isChecked())
-        cfgDesc.distResNum = u"{}".format(self.gui.ui.distributedResNumLineEdit.text())
-        cfgDesc.useWaitingForTaskTimeout = int(self.gui.ui.useWaitingForTaskTimeoutCheckBox.isChecked())
-        cfgDesc.waitingForTaskTimeout = u"{}".format(self.gui.ui.waitingForTaskTimeoutLineEdit.text())
-        cfgDesc.p2pSessionTimeout = u"{}".format(self.gui.ui.p2pSessionTimeoutLineEdit.text())
-        cfgDesc.taskSessionTimeout = u"{}".format(self.gui.ui.taskSessionTimeoutLineEdit.text())
-        cfgDesc.resourceSessionTimeout = u"{}".format(self.gui.ui.resourceSessionTimeoutLineEdit.text())
-        cfgDesc.sendPings = int(self.gui.ui.sendPingsCheckBox.isChecked())
-        cfgDesc.pingsInterval = u"{}".format(self.gui.ui.sendPingsLineEdit.text())
-        cfgDesc.gettingPeersInterval = u"{}".format(self.gui.ui.gettingPeersLineEdit.text())
-        cfgDesc.gettingTasksInterval = u"{}".format(self.gui.ui.gettingTasksIntervalLineEdit.text())
-        cfgDesc.nodeSnapshotInterval = u"{}".format(self.gui.ui.nodeSnapshotIntervalLineEdit.text())
-        cfgDesc.maxResultsSendingDelay = u"{}".format(self.gui.ui.maxSendingDelayLineEdit.text())
-        cfgDesc.pluginPort = u"{}".format(self.gui.ui.pluginPortLineEdit.text())
+        cfgDesc.opt_num_peers = u"{}".format(self.gui.ui.optimalPeerNumLineEdit.text())
+        cfgDesc.use_distributed_resource_management = int(self.gui.ui.useDistributedResCheckBox.isChecked())
+        cfgDesc.dist_res_num = u"{}".format(self.gui.ui.distributedResNumLineEdit.text())
+        cfgDesc.use_waiting_for_task_timeout = int(self.gui.ui.useWaitingForTaskTimeoutCheckBox.isChecked())
+        cfgDesc.waiting_for_task_timeout = u"{}".format(self.gui.ui.waitingForTaskTimeoutLineEdit.text())
+        cfgDesc.p2p_session_timeout = u"{}".format(self.gui.ui.p2pSessionTimeoutLineEdit.text())
+        cfgDesc.task_session_timeout = u"{}".format(self.gui.ui.taskSessionTimeoutLineEdit.text())
+        cfgDesc.resource_session_timeout = u"{}".format(self.gui.ui.resourceSessionTimeoutLineEdit.text())
+        cfgDesc.send_pings = int(self.gui.ui.sendPingsCheckBox.isChecked())
+        cfgDesc.pings_interval = u"{}".format(self.gui.ui.sendPingsLineEdit.text())
+        cfgDesc.getting_peers_interval = u"{}".format(self.gui.ui.gettingPeersLineEdit.text())
+        cfgDesc.getting_tasks_interval = u"{}".format(self.gui.ui.gettingTasksIntervalLineEdit.text())
+        cfgDesc.node_snapshot_interval = u"{}".format(self.gui.ui.nodeSnapshotIntervalLineEdit.text())
+        cfgDesc.max_results_sending_delay = u"{}".format(self.gui.ui.maxSendingDelayLineEdit.text())
+        cfgDesc.plugin_port = u"{}".format(self.gui.ui.pluginPortLineEdit.text())
 
-        if self.oldPluginPort != cfgDesc.pluginPort:
+        if self.oldPluginPort != cfgDesc.plugin_port:
             self.__showPluginPortWarning()
 
     #############################
     def __readManagerConfig(self, cfgDesc):
-        cfgDesc.managerAddress = u"{}".format(self.gui.ui.managerAddressLineEdit.text())
+        cfgDesc.manager_address = u"{}".format(self.gui.ui.managerAddressLineEdit.text())
         try:
-            cfgDesc.managerPort = int(self.gui.ui.managerPortLineEdit.text())
+            cfgDesc.manager_port = int(self.gui.ui.managerPortLineEdit.text())
         except ValueError:
-            cfgDesc.managerPort = u"{}".format(self.gui.ui.managerPortLineEdit.text())
+            cfgDesc.manager_port = u"{}".format(self.gui.ui.managerPortLineEdit.text())
 
     #############################
     def __readTrustConfig(self, cfgDesc):
-        requestingTrust = self.__readTrust(self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)
-        computingTrust = self.__readTrust(self.gui.ui.computingTrustLineEdit, self.gui.ui.computingTrustSlider)
-        cfgDesc.requestingTrust = self.__trustToConfigTrust(requestingTrust)
-        cfgDesc.computingTrust = self.__trustToConfigTrust(computingTrust)
+        requesting_trust = self.__readTrust(self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)
+        computing_trust = self.__readTrust(self.gui.ui.computingTrustLineEdit, self.gui.ui.computingTrustSlider)
+        cfgDesc.requesting_trust = self.__trustToConfigTrust(requesting_trust)
+        cfgDesc.computing_trust = self.__trustToConfigTrust(computing_trust)
 
     #############################
     def __trustToConfigTrust(self, trust):
@@ -327,14 +327,14 @@ class ConfigurationDialogCustomizer:
     #############################
     def __recountPerformance(self):
         try:
-            numCores = int(self.gui.ui.numCoresSlider.value())
+            num_cores = int(self.gui.ui.numCoresSlider.value())
         except:
-            numCores = 1
-        self.gui.ui.performanceLabel.setText(str(self.logic.recountPerformance(numCores)))
+            num_cores = 1
+        self.gui.ui.performanceLabel.setText(str(self.logic.recountPerformance(num_cores)))
 
     #############################
     def __readPaymentConfig(self, cfgDesc):
-        cfgDesc.ethAccount = u"{}".format(self.gui.ui.ethAccountLineEdit.text())
+        cfgDesc.eth_account = u"{}".format(self.gui.ui.ethAccountLineEdit.text())
 
     #############################
     def __showPluginPortWarning(self):

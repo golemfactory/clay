@@ -20,8 +20,8 @@ class InfoTaskDefinition:
         self.srcFile            = ""
         self.totalSubtasks      = 0
 
-        self.managerAddress     = ""
-        self.managerPort        = 0
+        self.manager_address     = ""
+        self.manager_port        = 0
 
 ##############################################
 class InfoTaskBuilder(GNRTaskBuilder):
@@ -40,8 +40,8 @@ class InfoTaskBuilder(GNRTaskBuilder):
                             self.taskDefinition.subtaskTimeout,
                             0,
                             0,
-                            self.taskDefinition.managerAddress,
-                            self.taskDefinition.managerPort,
+                            self.taskDefinition.manager_address,
+                            self.taskDefinition.manager_port,
                             self.taskDefinition.totalSubtasks
                           )
 
@@ -78,7 +78,7 @@ class InfoTask(GNRTask):
         self.nodesManagerClient.dropConnection()
 
     #######################
-    def queryExtraData(self, perfIndex, numCores, client_id = None):
+    def queryExtraData(self, perfIndex, num_cores, client_id = None):
         ctd = ComputeTaskDef()
         ctd.taskId = self.header.taskId
         hash = "{}".format(random.getrandbits(128))

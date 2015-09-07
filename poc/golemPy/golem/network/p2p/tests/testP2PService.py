@@ -12,11 +12,11 @@ from golem.network.p2p.P2PService import P2PService
 class ConfigDesc:
     def __init__(self):
         self.client_uid = 1
-        self.seedHost = 'localhost'
-        self.seedHostPort = 1233
-        self.startPort = 1234
-        self.endPort = 1265
-        self.optNumPeers = 2
+        self.seed_host = 'localhost'
+        self.seed_host_port = 1233
+        self.start_port = 1234
+        self.end_port = 1265
+        self.opt_num_peers = 2
 
 class Peer:
     def __init__(self):
@@ -68,13 +68,13 @@ class TestP2PService(unittest.TestCase):
 
     def testWrongSeedData(self):
         self.assertFalse(self.p2pservice.wrong_seed_data())
-        self.p2pservice.config_desc.seedHostPort = 0
+        self.p2pservice.config_desc.seed_host_port = 0
         self.assertTrue(self.p2pservice.wrong_seed_data())
-        self.p2pservice.config_desc.seedHostPort = 66666
+        self.p2pservice.config_desc.seed_host_port = 66666
         self.assertTrue(self.p2pservice.wrong_seed_data())
-        self.p2pservice.config_desc.seedHostPort = 33333
+        self.p2pservice.config_desc.seed_host_port = 33333
         self.assertFalse(self.p2pservice.wrong_seed_data())
-        self.p2pservice.config_desc.seedHost = ''
+        self.p2pservice.config_desc.seed_host = ''
         self.assertTrue(self.p2pservice.wrong_seed_data())
 
     def testSetTaskServer(self):

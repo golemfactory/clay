@@ -42,7 +42,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.testTasks          = {}
         self.taskTypes          = {}
         self.customizer         = None
-        self.rootPath           = os.path.join(os.environ.get('GOLEM'), 'examples/gnr')
+        self.root_path           = os.path.join(os.environ.get('GOLEM'), 'examples/gnr')
         self.nodesManagerClient = None
         self.addNewNodesFunction = lambda x: None
 
@@ -93,9 +93,9 @@ class GNRApplicationLogic(QtCore.QObject):
     def startNodesManagerClient(self):
         if self.client:
             config_desc = self.client.config_desc
-            self.nodesManagerClient = NodesManagerUidClient (config_desc.clientUid,
-                                                           config_desc.managerAddress,
-                                                           config_desc.managerPort,
+            self.nodesManagerClient = NodesManagerUidClient (config_desc.client_uid,
+                                                           config_desc.manager_address,
+                                                           config_desc.manager_port,
                                                            None,
                                                            self)
             self.nodesManagerClient.start()
@@ -140,13 +140,13 @@ class GNRApplicationLogic(QtCore.QObject):
     ######################
     def change_config ( self, cfgDesc):
         oldCfgDesc = self.client.config_desc
-        if (oldCfgDesc.managerAddress != cfgDesc.managerAddress) or (oldCfgDesc.managerPort != cfgDesc.managerPort):
+        if (oldCfgDesc.manager_address != cfgDesc.manager_address) or (oldCfgDesc.manager_port != cfgDesc.manager_port):
             if self.nodesManagerClient is not None:
                 self.nodesManagerClient.dropConnection()
                 del self.nodesManagerClient
-            self.nodesManagerClient = NodesManagerUidClient(cfgDesc.clientUid,
-                                                          cfgDesc.managerAddress,
-                                                          cfgDesc.managerPort,
+            self.nodesManagerClient = NodesManagerUidClient(cfgDesc.client_uid,
+                                                          cfgDesc.manager_address,
+                                                          cfgDesc.manager_port,
                                                           None,
                                                           self)
 
@@ -246,10 +246,10 @@ class GNRApplicationLogic(QtCore.QObject):
 
         taskState.definition = definition
 
-        self.addTasks([taskState])
+        self.add_tasks([taskState])
 
     ######################
-    def addTasks(self, tasks):
+    def add_tasks(self, tasks):
 
         if len(tasks) == 0:
             return
@@ -284,10 +284,10 @@ class GNRApplicationLogic(QtCore.QObject):
             f.write(tspickled)
 
     ######################
-    def recountPerformance(self, numCores):
+    def recountPerformance(self, num_cores):
         testFile = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'testtasks/minilight/cornellbox.ml.txt'))
         resultFile = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/gnr/node_data/minilight.ini'))
-        estimatedPerf =  makePerfTest(testFile, resultFile, numCores)
+        estimatedPerf =  makePerfTest(testFile, resultFile, num_cores)
         return estimatedPerf
 
 
