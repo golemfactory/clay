@@ -18,13 +18,13 @@ class TaskManagerEventListener:
         pass
 
     #######################
-    def subtaskStatusUpdated(self, subtask_id):
+    def subtask_statusUpdated(self, subtask_id):
         pass
 
 
 class TaskManager:
     #######################
-    def __init__(self, client_uid, node, listenAddress = "", listenPort = 0, key_id = "", root_path = "res", useDistributedResources=True):
+    def __init__(self, client_uid, node, listenAddress = "", listenPort = 0, key_id = "", root_path = "res", use_distributed_resources=True):
         self.client_uid      = client_uid
         self.node = node
 
@@ -36,17 +36,17 @@ class TaskManager:
         self.key_id          = key_id
 
         self.root_path = root_path
-        self.dir_manager     = DirManager(self.getTaskManagerRoot(), self.client_uid)
+        self.dir_manager     = DirManager(self.get_taskManagerRoot(), self.client_uid)
 
         self.subTask2TaskMapping = {}
 
         self.listeners      = []
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
 
-        self.useDistributedResources = useDistributedResources
+        self.use_distributed_resources = use_distributed_resources
 
     #######################
-    def getTaskManagerRoot(self):
+    def get_taskManagerRoot(self):
         return self.root_path
 
     #######################
@@ -83,13 +83,13 @@ class TaskManager:
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create = True)
 
         ts              = TaskState()
-        if self.useDistributedResources:
+        if self.use_distributed_resources:
             task.taskStatus = TaskStatus.sending
             ts.status       = TaskStatus.sending
         else:
             task.taskStatus = TaskStatus.waiting
             ts.status       = TaskStatus.waiting
-        ts.timeStarted  = time.time()
+        ts.time_started  = time.time()
 
         self.tasksStates[task.header.task_id] = ts
 
@@ -161,7 +161,7 @@ class TaskManager:
     #######################
     def getNodeIdForSubtask(self, subtask_id):
         if subtask_id in self.subTask2TaskMapping:
-            subtaskState = self.tasksStates[self.subTask2TaskMapping[subtask_id]].subtaskStates[subtask_id]
+            subtaskState = self.tasksStates[self.subTask2TaskMapping[subtask_id]].subtask_states[subtask_id]
             return subtaskState.computer.node_id
         else:
             return None
@@ -171,21 +171,21 @@ class TaskManager:
         if subtask_id in self.subTask2TaskMapping:
             task_id = self.subTask2TaskMapping[subtask_id]
 
-            subtaskStatus = self.tasksStates[task_id].subtaskStates[subtask_id].subtaskStatus
-            if  subtaskStatus != SubtaskStatus.starting:
-                logger.warning("Result for subtask {} when subtask state is {}".format(subtask_id, subtaskStatus))
+            subtask_status= self.tasksStates[task_id].subtask_states[subtask_id].subtask_status
+            if  subtask_status!= SubtaskStatus.starting:
+                logger.warning("Result for subtask {} when subtask state is {}".format(subtask_id, subtask_status))
                 self.__noticeTaskUpdated(task_id)
                 return False
 
             self.tasks[task_id].computationFinished(subtask_id, result, self.dir_manager, resultType)
-            ss = self.tasksStates[task_id].subtaskStates[subtask_id]
+            ss = self.tasksStates[task_id].subtask_states[subtask_id]
             ss.subtaskProgress  = 1.0
-            ss.subtaskRemTime   = 0.0
-            ss.subtaskStatus    = SubtaskStatus.finished
+            ss.subtask_rem_time   = 0.0
+            ss.subtask_status   = SubtaskStatus.finished
 
             if not self.tasks [task_id].verifySubtask(subtask_id):
                 logger.debug("Subtask {} not accepted\n".format(subtask_id))
-                ss.subtaskStatus = SubtaskStatus.failure
+                ss.subtask_status= SubtaskStatus.failure
                 self.__noticeTaskUpdated(task_id)
                 return False
 
@@ -193,7 +193,7 @@ class TaskManager:
                 if not self.tasks[task_id].finishedComputation():
                     self.tasksStates[task_id].status = TaskStatus.computing
                 else:
-                    if self.tasks[task_id].verifyTask():
+                    if self.tasks[task_id].verify_task():
                         logger.debug("Task {} accepted".format(task_id))
                         self.tasksStates[task_id].status = TaskStatus.finished
                     else:
@@ -207,20 +207,20 @@ class TaskManager:
             return False
 
     #######################
-    def taskComputation_failure(self, subtask_id, err):
+    def task_computation_failure(self, subtask_id, err):
         if subtask_id in self.subTask2TaskMapping:
             task_id = self.subTask2TaskMapping[subtask_id]
-            subtaskStatus = self.tasksStates[task_id].subtaskStates[subtask_id].subtaskStatus
-            if  subtaskStatus != SubtaskStatus.starting:
-                logger.warning("Result for subtask {} when subtask state is {}".format(subtask_id, subtaskStatus))
+            subtask_status= self.tasksStates[task_id].subtask_states[subtask_id].subtask_status
+            if  subtask_status!= SubtaskStatus.starting:
+                logger.warning("Result for subtask {} when subtask state is {}".format(subtask_id, subtask_status))
                 self.__noticeTaskUpdated(task_id)
                 return False
 
             self.tasks[task_id].computationFailed(subtask_id)
-            ss = self.tasksStates[task_id].subtaskStates[subtask_id]
+            ss = self.tasksStates[task_id].subtask_states[subtask_id]
             ss.subtaskProgress = 1.0
-            ss.subtaskRemTime = 0.0
-            ss.subtaskStatus = SubtaskStatus.failure
+            ss.subtask_rem_time = 0.0
+            ss.subtask_status= SubtaskStatus.failure
 
             self.__noticeTaskUpdated(task_id)
             return True
@@ -243,13 +243,13 @@ class TaskManager:
                 del self.tasks[th.task_id]
                 continue
             ts = self.tasksStates[th.task_id]
-            for s in ts.subtaskStates.values():
-                if s.subtaskStatus == SubtaskStatus.starting:
+            for s in ts.subtask_states.values():
+                if s.subtask_status== SubtaskStatus.starting:
                     s.ttl = s.ttl - (currTime - s.last_checking)
                     s.last_checking = currTime
                     if s.ttl <= 0:
                         logger.info("Subtask {} dies".format(s.subtask_id))
-                        s.subtaskStatus        = SubtaskStatus.failure
+                        s.subtask_status       = SubtaskStatus.failure
                         nodes_with_timeouts.append(s.computer.node_id)
                         t.computationFailed(s.subtask_id)
                         self.__noticeTaskUpdated(th.task_id)
@@ -269,16 +269,16 @@ class TaskManager:
         return tasksProgresses
 
     #######################
-    def prepare_resource(self, task_id, resourceHeader):
+    def prepare_resource(self, task_id, resource_header):
         if task_id in self.tasks:
             task = self.tasks[task_id]
-            return task.prepare_resourceDelta(task_id, resourceHeader)
+            return task.prepare_resource_delta(task_id, resource_header)
 
     #######################
-    def getResourcePartsList(self, task_id, resourceHeader):
+    def get_resource_parts_list(self, task_id, resource_header):
         if task_id in self.tasks:
             task = self.tasks[task_id]
-            return task.getResourcePartsList(task_id, resourceHeader)
+            return task.get_resource_parts_list(task_id, resource_header)
 
     #######################
     def accept_results_delay(self, task_id):
@@ -296,11 +296,11 @@ class TaskManager:
             self.tasks[task_id].restart()
             self.tasks[task_id].taskStatus = TaskStatus.waiting
             self.tasksStates[task_id].status = TaskStatus.waiting
-            self.tasksStates[task_id].timeStarted = time.time()
+            self.tasksStates[task_id].time_started = time.time()
 
-            for sub in self.tasksStates[task_id].subtaskStates.values():
+            for sub in self.tasksStates[task_id].subtask_states.values():
                 del self.subTask2TaskMapping[sub.subtask_id]
-            self.tasksStates[task_id].subtaskStates.clear()
+            self.tasksStates[task_id].subtask_states.clear()
 
             self.__noticeTaskUpdated(task_id)
         else:
@@ -315,7 +315,7 @@ class TaskManager:
         task_id = self.subTask2TaskMapping[subtask_id]
         self.tasks[task_id].restartSubtask(subtask_id)
         self.tasksStates[task_id].status = TaskStatus.computing
-        self.tasksStates[task_id].subtaskStates[subtask_id].subtaskStatus = SubtaskStatus.failure
+        self.tasksStates[task_id].subtask_states[subtask_id].subtask_status= SubtaskStatus.failure
 
         self.__noticeTaskUpdated(task_id)
 
@@ -325,9 +325,9 @@ class TaskManager:
             self.tasks[task_id].abort()
             self.tasks[task_id].taskStatus = TaskStatus.aborted
             self.tasksStates[task_id].status = TaskStatus.aborted
-            for sub in self.tasksStates[task_id].subtaskStates.values():
+            for sub in self.tasksStates[task_id].subtask_states.values():
                 del self.subTask2TaskMapping[sub.subtask_id]
-            self.tasksStates[task_id].subtaskStates.clear()
+            self.tasksStates[task_id].subtask_states.clear()
 
             self.__noticeTaskUpdated(task_id)
         else:
@@ -358,9 +358,9 @@ class TaskManager:
     def deleteTask(self, task_id):
         if task_id in self.tasks:
 
-            for sub in self.tasksStates[task_id].subtaskStates.values():
+            for sub in self.tasksStates[task_id].subtask_states.values():
                 del self.subTask2TaskMapping[sub.subtask_id]
-            self.tasksStates[task_id].subtaskStates.clear()
+            self.tasksStates[task_id].subtask_states.clear()
 
             del self.tasks[task_id]
             del self.tasksStates[task_id]
@@ -376,12 +376,12 @@ class TaskManager:
             t   = self.tasks[task_id]
 
             ts.progress = t.getProgress()
-            ts.elapsedTime = time.time() - ts.timeStarted
+            ts.elapsed_time = time.time() - ts.time_started
 
             if ts.progress > 0.0:
-                ts.remainingTime =  (ts.elapsedTime / ts.progress) - ts.elapsedTime
+                ts.remaining_time =  (ts.elapsed_time / ts.progress) - ts.elapsed_time
             else:
-                ts.remainingTime = -0.0
+                ts.remaining_time = -0.0
 
             t.updateTaskState(ts)
 
@@ -393,7 +393,7 @@ class TaskManager:
     #######################
     def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path, self.client_uid)
-        self.useDistributedResources = use_distributed_resource_management
+        self.use_distributed_resources = use_distributed_resource_management
 
     #######################
     def change_timeouts(self, task_id, fullTaskTimeout, subtask_timeout, minSubtaskTime):
@@ -406,7 +406,7 @@ class TaskManager:
             task.fullTaskTimeout = fullTaskTimeout
             task.header.last_checking = time.time()
             ts = self.tasksStates[task_id]
-            for s in ts.subtaskStates.values():
+            for s in ts.subtask_states.values():
                 s.ttl = subtask_timeout
                 s.last_checking = time.time()
             return True
@@ -415,7 +415,7 @@ class TaskManager:
             return False
 
     #######################
-    def getTaskId(self, subtask_id):
+    def get_task_id(self, subtask_id):
         return self.subTask2TaskMapping[subtask_id]
 
 
@@ -430,16 +430,16 @@ class TaskManager:
             ss                      = SubtaskState()
             ss.computer.node_id      = client_id
             ss.computer.performance = ctd.performance
-            ss.timeStarted      = time.time()
+            ss.time_started      = time.time()
             ss.ttl              = self.tasks[ctd.task_id].header.subtask_timeout
             # TODO: read node ip address
             ss.subtaskDefinition    = ctd.shortDescription
             ss.subtask_id            = ctd.subtask_id
-            ss.extraData            = ctd.extraData
-            ss.subtaskStatus        = TaskStatus.starting
+            ss.extra_data            = ctd.extra_data
+            ss.subtask_status       = TaskStatus.starting
             ss.value                = 0
 
-            ts.subtaskStates[ctd.subtask_id] = ss
+            ts.subtask_states[ctd.subtask_id] = ss
 
     #######################
     def __noticeTaskUpdated(self, task_id):
@@ -459,6 +459,6 @@ class TaskManager:
             return False
         if task.header.resourceSize > (long(max_resource_size) * 1024):
             return False
-        if task.header.estimatedMemory > (long(max_memory_size) * 1024):
+        if task.header.estimated_memory > (long(max_memory_size) * 1024):
             return False
         return True

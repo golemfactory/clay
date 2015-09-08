@@ -108,11 +108,11 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
 
         dir = os.path.dirname(u"{}".format(self.gui.ui.mainSceneFileLineEdit.text()) )
 
-        fileName = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
+        file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
             "Choose main scene file", dir, filter))
 
-        if fileName != '':
-            self.gui.ui.mainSceneFileLineEdit.setText(fileName)
+        if file_name != '':
+            self.gui.ui.mainSceneFileLineEdit.setText(file_name)
 
 
     #############################
@@ -212,11 +212,11 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
 
         dir = os.path.dirname(u"{}".format(self.gui.ui.outputFileLineEdit.text()) )
 
-        fileName = u"{}".format(QFileDialog.getSaveFileName(self.gui.window,
+        file_name = u"{}".format(QFileDialog.getSaveFileName(self.gui.window,
             "Choose output file", dir, filter))
 
-        if fileName != '':
-            self.gui.ui.outputFileLineEdit.setText(fileName)
+        if file_name != '':
+            self.gui.ui.outputFileLineEdit.setText(file_name)
             self._changeFinishState(False)
 
     def _changeFinishState(self, state):
@@ -228,11 +228,11 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
 
         dir = os.path.dirname(u"{}".format(self.gui.ui.mainProgramFileLineEdit.text()))
 
-        fileName = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
+        file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
             "Choose main program file", dir, "Python (*.py)"))
 
-        if fileName != '':
-            self.gui.ui.mainProgramFileLineEdit.setText(fileName)
+        if file_name != '':
+            self.gui.ui.mainProgramFileLineEdit.setText(file_name)
             self._changeFinishState(False)
 
     ############################
@@ -272,7 +272,7 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
 
         self.gui.ui.outputResXSpinBox.setValue(definition.resolution[ 0 ])
         self.gui.ui.outputResYSpinBox.setValue(definition.resolution[ 1 ])
-        self.gui.ui.outputFileLineEdit.setText(definition.outputFile)
+        self.gui.ui.outputFileLineEdit.setText(definition.output_file)
 
         outputFormatItem = self.gui.ui.outputFormatsComboBox.findText(definition.outputFormat)
 
@@ -323,7 +323,7 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
     #############################
     def testTaskComputationFinished(self, success, estMem):
         if success:
-            self.taskState.definition.estimatedMemory  = estMem
+            self.taskState.definition.estimated_memory  = estMem
             self._changeFinishState(True)
 
     #############################
@@ -363,7 +363,7 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
         definition.renderer          = self.__getCurrentRenderer().name
         definition.rendererOptions   = deepcopy(self.rendererOptions)
         definition.resolution        = [ self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value() ]
-        definition.outputFile        = u"{}".format(self.gui.ui.outputFileLineEdit.text())
+        definition.output_file        = u"{}".format(self.gui.ui.outputFileLineEdit.text())
         definition.outputFormat      = u"{}".format(self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
 
         if self.addTaskResourcesDialogCustomizer:

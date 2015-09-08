@@ -9,13 +9,13 @@ class SubtaskTableElem:
         self.subtask_id          = subtask_id
         self.subtask_idItem      = None
         self.status             = status
-        self.remainingTime      = 0
-        self.remainingTimeItem  = None
+        self.remaining_time      = 0
+        self.remaining_timeItem  = None
         self.progress           = 0.0
         self.node_idItem         = None
         self.progressBar        = None
         self.progressBarInBoxLayoutWidget = None
-        self.subtaskStatusItem  = None
+        self.subtask_statusItem  = None
         self.__buildRow()
 
     ############################
@@ -27,9 +27,9 @@ class SubtaskTableElem:
         self.subtask_idItem = QTableWidgetItem()
         self.subtask_idItem.setText(self.subtask_id)
 
-        self.remainingTimeItem = QTableWidgetItem()
+        self.remaining_timeItem = QTableWidgetItem()
 
-        self.subtaskStatusItem = QTableWidgetItem()
+        self.subtask_statusItem = QTableWidgetItem()
 
         self.progressBar = QProgressBar()
         self.progressBar.geometry().setHeight(20)
@@ -59,12 +59,12 @@ class SubtaskTableElem:
     ############################
     def setStatus(self, status):
         self.status = status
-        self.subtaskStatusItem.setText(status)
+        self.subtask_statusItem.setText(status)
 
     ############################
     def setRemainingTime(self, time):
-        self.remainingTime = time
-        self.remainingTimeItem.setText(str(datetime.timedelta(seconds = time)))
+        self.remaining_time = time
+        self.remaining_timeItem.setText(str(datetime.timedelta(seconds = time)))
 
     ############################
     def getColumnItem(self, col):
@@ -73,8 +73,8 @@ class SubtaskTableElem:
         if col == 1:
             return self.subtask_idItem
         if col == 2:
-            return self.remainingTimeItem
+            return self.remaining_timeItem
         if col == 3:
-            return self.subtaskStatusItem
+            return self.subtask_statusItem
 
         assert False, "Wrong column index"

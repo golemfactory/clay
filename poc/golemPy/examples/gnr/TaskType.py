@@ -30,7 +30,7 @@ def buildPBRTTaskType():
     options.maxSubtasks = renderer.defaults.maxSubtasks
     options.defaultSubtasks = renderer.defaults.defaultSubtasks
     options.mainSceneFile = ''
-    options.outputFile = ''
+    options.output_file = ''
     options.verificationOptions = None
 
     return TaskType("PBRT", PbrtGNRTaskBuilder, options, PbrtTaskDialog, PbrtTaskDialogCustomizer)

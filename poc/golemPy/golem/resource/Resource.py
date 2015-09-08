@@ -1,4 +1,3 @@
-
 import logging
 
 from golem.core.simplehash import SimpleHash
@@ -9,283 +8,269 @@ import zipfile
 
 logger = logging.getLogger(__name__)
 
-class TaskResourceHeader:
 
+class TaskResourceHeader(object):
     def __eq__(self, other):
-        if self.dirName != other.dirName:
+        if self.dir_name != other.dir_name:
             return False
-        if self.filesData != other.filesData:
+        if self.files_data != other.files_data:
             return False
-        if len(self.subDirHeaders) != len(other.subDirHeaders):
+        if len(self.sub_dir_headers) != len(other.sub_dir_headers):
             return False
-        sub1 = sorted(self.subDirHeaders, lambda x: x.dirName)
-        sub2 = sorted(other.subDirHeaders, lambda x: x.dirName)
-        for i in range(len(self.subDirHeaders)):
+        sub1 = sorted(self.sub_dir_headers, lambda x: x.dir_name)
+        sub2 = sorted(other.sub_dir_headers, lambda x: x.dir_name)
+        for i in range(len(self.sub_dir_headers)):
             if not (sub1[i] == sub2[i]):
                 return False
         return True
 
-
-    ####################
     @classmethod
-    def build(cls, relativeRoot, absoluteRoot):
-        return cls.__build(relativeRoot, absoluteRoot)
+    def build(cls, relative_root, absolute_root):
+        return cls.__build(relative_root, absolute_root)
 
-    ####################
     @classmethod
-    def buildFromChosen(cls, dirName, absoluteRoot, choosenFiles = None):
-        curTh = TaskResourceHeader(dirName)
+    def build_from_chosen(cls, dir_name, absolute_root, chosen_files=None):
+        cur_th = TaskResourceHeader(dir_name)
 
-        absDirs = split_path(absoluteRoot)
+        abs_dirs = split_path(absolute_root)
 
-        for f in choosenFiles:
+        for f in chosen_files:
 
-            dir, fileName = os.path.split(f)
-            dirs = split_path(dir)[len(absDirs):]
+            dir_, file_name = os.path.split(f)
+            dirs = split_path(dir_)[len(abs_dirs):]
 
-            lastHeader = curTh
+            last_header = cur_th
 
             for d in dirs:
 
-                childSubDirHeader = TaskResourceHeader(d)
-                if lastHeader.__hasSubHeader(d):
-                    lastHeader = lastHeader.__getSubHeader(d)
+                child_sub_dir_header = TaskResourceHeader(d)
+                if last_header.__has_sub_header(d):
+                    last_header = last_header.__get_sub_header(d)
                 else:
-                    lastHeader.subDirHeaders.append(childSubDirHeader)
-                    lastHeader = childSubDirHeader
+                    last_header.sub_dir_headers.append(child_sub_dir_header)
+                    last_header = child_sub_dir_header
 
             hsh = SimpleHash.hash_file_base64(f)
-            lastHeader.filesData.append((fileName, hsh))
+            last_header.files_data.append((file_name, hsh))
 
-        return curTh
+        return cur_th
 
-    ####################
     @classmethod
-    def __build(cls, dirName, absoluteRoot, choosenFiles = None):
-        curTh = TaskResourceHeader(dirName)
+    def __build(cls, dir_name, absolute_root, chosen_files=None):
+        cur_th = TaskResourceHeader(dir_name)
 
-        dirs  = [ name for name in os.listdir(absoluteRoot) if os.path.isdir(os.path.join(absoluteRoot, name)) ]
-        files = [ name for name in os.listdir(absoluteRoot) if os.path.isfile(os.path.join(absoluteRoot, name)) ]
+        dirs = [name for name in os.listdir(absolute_root) if os.path.isdir(os.path.join(absolute_root, name))]
+        files = [name for name in os.listdir(absolute_root) if os.path.isfile(os.path.join(absolute_root, name))]
 
-        filesData = []
+        files_data = []
         for f in files:
-            if choosenFiles and os.path.join(absoluteRoot, f) not in  choosenFiles:
+            if chosen_files and os.path.join(absolute_root, f) not in chosen_files:
                 continue
-            hsh = SimpleHash.hash_file_base64(os.path.join(absoluteRoot, f))
+            hsh = SimpleHash.hash_file_base64(os.path.join(absolute_root, f))
 
-            filesData.append((f, hsh))
+            files_data.append((f, hsh))
 
-        #print "{}, {}, {}".format(relativeRoot, absoluteRoot, filesData)
+        # print "{}, {}, {}".format(relative_root, absolute_root, files_data)
 
-        curTh.filesData = filesData
+        cur_th.files_data = files_data
 
-        subDirHeaders = []
+        sub_dir_headers = []
         for d in dirs:
-            childSubDirHeader = cls.__build(d, os.path.join(absoluteRoot, d), choosenFiles)
-            subDirHeaders.append(childSubDirHeader)
+            child_sub_dir_header = cls.__build(d, os.path.join(absolute_root, d), chosen_files)
+            sub_dir_headers.append(child_sub_dir_header)
 
-        curTh.subDirHeaders = subDirHeaders
-        #print "{} {} {}\n".format(absoluteRoot, len(subDirHeaders), len(filesData))
+        cur_th.sub_dir_headers = sub_dir_headers
+        # print "{} {} {}\n".format(absolute_root, len(sub_dir_headers), len(files_data))
 
-        return curTh
+        return cur_th
 
-    ####################
     @classmethod
-    def buildHeaderDeltaFromChosen(cls, header, absoluteRoot, chosenFiles = None):
+    def build_header_delta_from_chosen(cls, header, absolute_root, chosen_files=None):
         assert isinstance(header, TaskResourceHeader)
-        curTh = TaskResourceHeader(header.dirName)
+        cur_th = TaskResourceHeader(header.dir_name)
 
-        absDirs = split_path(absoluteRoot)
+        abs_dirs = split_path(absolute_root)
 
-        for file in chosenFiles:
+        for file_ in chosen_files:
 
-            dir, fileName = os.path.split(file)
-            dirs = split_path(dir)[len(absDirs):]
+            dir_, file_name = os.path.split(file_)
+            dirs = split_path(dir_)[len(abs_dirs):]
 
-            lastHeader = curTh
-            lastRefHeader = header
+            last_header = cur_th
+            last_ref_header = header
 
-            lastHeader, lastRefHeader, refHeaderFound = cls.__resolveDirs(dirs, lastHeader, lastRefHeader)
-
-            hsh = SimpleHash.hash_file_base64(file)
-            if refHeaderFound:
-                if lastRefHeader.__hasFile(fileName):
-                    if hsh == lastRefHeader.__getFileHash(fileName):
-                        continue
-            lastHeader.filesData.append((fileName, hsh))
-
-        return curTh
-
-    ####################
-    @classmethod
-    def buildPartsHeaderDeltaFromChosen(cls, header, absoluteRoot, resParts):
-        assert isinstance(header, TaskResourceHeader)
-        curTh = TaskResourceHeader(header.dirName)
-        absDirs = split_path (absoluteRoot)
-        deltaParts = []
-
-        for file_, parts in resParts.iteritems():
-            dir, fileName = os.path.split(file_)
-            dirs = split_path(dir) [ len(absDirs): ]
-
-            lastHeader = curTh
-            lastRefHeader = header
-
-            lastHeader, lastRefHeader, refHeaderFound = cls.__resolveDirs(dirs, lastHeader, lastRefHeader)
+            last_header, last_ref_header, ref_header_found = cls.__resolve_dirs(dirs, last_header, last_ref_header)
 
             hsh = SimpleHash.hash_file_base64(file_)
-            if refHeaderFound:
-                if lastRefHeader.__hasFile(fileName):
-                    if hsh == lastRefHeader.__getFileHash(fileName):
+            if ref_header_found:
+                if last_ref_header.__has_file(file_name):
+                    if hsh == last_ref_header.__get_file_hash(file_name):
                         continue
-            lastHeader.filesData.append((fileName, hsh, parts))
-            deltaParts += parts
+            last_header.files_data.append((file_name, hsh))
 
-        return curTh, deltaParts
+        return cur_th
 
-    ####################
+    @classmethod
+    def build_parts_header_delta_from_chosen(cls, header, absolute_root, res_parts):
+        assert isinstance(header, TaskResourceHeader)
+        cur_th = TaskResourceHeader(header.dir_name)
+        abs_dirs = split_path(absolute_root)
+        delta_parts = []
+
+        for file_, parts in res_parts.iteritems():
+            dir_, file_name = os.path.split(file_)
+            dirs = split_path(dir_)[len(abs_dirs):]
+
+            last_header = cur_th
+            last_ref_header = header
+
+            last_header, last_ref_header, ref_header_found = cls.__resolve_dirs(dirs, last_header, last_ref_header)
+
+            hsh = SimpleHash.hash_file_base64(file_)
+            if ref_header_found:
+                if last_ref_header.__has_file(file_name):
+                    if hsh == last_ref_header.__get_file_hash(file_name):
+                        continue
+            last_header.files_data.append((file_name, hsh, parts))
+            delta_parts += parts
+
+        return cur_th, delta_parts
+
     # Dodaje tylko te pola, ktorych nie ma w headerze (i/lub nie zgadzaj? si? hasze)
     @classmethod
-    def buildHeaderDeltaFromHeader(cls, header, absoluteRoot, choosenFiles):
+    def build_header_delta_from_header(cls, header, absolute_root, chosen_files):
         assert isinstance(header, TaskResourceHeader)
 
-        curTr = TaskResourceHeader(header.dirName)
+        cur_tr = TaskResourceHeader(header.dir_name)
 
-        dirs  = [ name for name in os.listdir(absoluteRoot) if os.path.isdir(os.path.join(absoluteRoot, name)) ]
-        files = [ name for name in os.listdir(absoluteRoot) if os.path.isfile(os.path.join(absoluteRoot, name)) ]
+        dirs = [name for name in os.listdir(absolute_root) if os.path.isdir(os.path.join(absolute_root, name))]
+        files = [name for name in os.listdir(absolute_root) if os.path.isfile(os.path.join(absolute_root, name))]
 
         for d in dirs:
-            if header.__hasSubHeader(d):
-                curTr.subDirHeaders.append(
-                    cls.buildHeaderDeltaFromHeader(header.__getSubHeader(d), os.path.join(absoluteRoot, d), choosenFiles))
+            if header.__has_sub_header(d):
+                cur_tr.sub_dir_headers.append(
+                    cls.build_header_delta_from_header(header.__get_sub_header(d), os.path.join(absolute_root, d),
+                                                       chosen_files))
             else:
-                curTr.subDirHeaders.append(cls.__build(d, os.path.join(absoluteRoot, d), choosenFiles))
+                cur_tr.sub_dir_headers.append(cls.__build(d, os.path.join(absolute_root, d), chosen_files))
 
         for f in files:
-            if choosenFiles and os.path.join(absoluteRoot, f) not in choosenFiles:
+            if chosen_files and os.path.join(absolute_root, f) not in chosen_files:
                 continue
 
-            fileHash = 0
-            if header.__hasFile(f):
-                fileHash = SimpleHash.hash_file_base64(os.path.join(absoluteRoot, f))
+            file_hash = 0
+            if header.__has_file(f):
+                file_hash = SimpleHash.hash_file_base64(os.path.join(absolute_root, f))
 
-                if fileHash == header.__getFileHash(f):
+                if file_hash == header.__get_file_hash(f):
                     continue
 
-            if not fileHash:
-                fileHash = SimpleHash.hash_file_base64(os.path.join(absoluteRoot, f))
+            if not file_hash:
+                file_hash = SimpleHash.hash_file_base64(os.path.join(absolute_root, f))
 
-            curTr.filesData.append((f, fileHash))
+            cur_tr.files_data.append((f, file_hash))
 
-        return curTr
+        return cur_tr
 
     @classmethod
-    def __resolveDirs(self, dirs, lastHeader, lastRefHeader):
-        refHeaderFound = True
+    def __resolve_dirs(cls, dirs, last_header, last_ref_header):
+        ref_header_found = True
         for d in dirs:
 
-            childSubDirHeader = TaskResourceHeader(d)
+            child_sub_dir_header = TaskResourceHeader(d)
 
-            if lastHeader.__hasSubHeader(d):
-                lastHeader = lastHeader.__getSubHeader(d)
+            if last_header.__has_sub_header(d):
+                last_header = last_header.__get_sub_header(d)
             else:
-                lastHeader.subDirHeaders.append(childSubDirHeader)
-                lastHeader = childSubDirHeader
+                last_header.sub_dir_headers.append(child_sub_dir_header)
+                last_header = child_sub_dir_header
 
-            if refHeaderFound:
-                if lastRefHeader.__hasSubHeader(d):
-                    lastRefHeader = lastRefHeader.__getSubHeader(d)
+            if ref_header_found:
+                if last_ref_header.__has_sub_header(d):
+                    last_ref_header = last_ref_header.__get_sub_header(d)
                 else:
-                    refHeaderFound = False
-        return lastHeader, lastRefHeader, refHeaderFound
+                    ref_header_found = False
+        return last_header, last_ref_header, ref_header_found
 
+    def __init__(self, dir_name):
+        self.sub_dir_headers = []
+        self.files_data = []
+        self.dir_name = dir_name
 
-    ####################
-    def __init__(self, dirName):
-        self.subDirHeaders  = []
-        self.filesData      = []
-        self.dirName        = dirName
+    def to_string(self):
+        out = u"\nROOT '{}' \n".format(self.dir_name)
 
-    ####################
-    def toString(self):
-        out = u"\nROOT '{}' \n".format(self.dirName)
-
-        if len(self.subDirHeaders) > 0:
+        if len(self.sub_dir_headers) > 0:
             out += u"DIRS \n"
-            for d in self.subDirHeaders:
-                out += u"    {}\n".format(d.dirName)
+            for d in self.sub_dir_headers:
+                out += u"    {}\n".format(d.dir_name)
 
-        if len(self.filesData) > 0:
+        if len(self.files_data) > 0:
             out += u"FILES \n"
-            for f in self.filesData:
+            for f in self.files_data:
                 if len(f) > 2:
-                    out += u"    {} {} {}".format(f[ 0 ], f[ 1 ], f[2])
+                    out += u"    {} {} {}".format(f[0], f[1], f[2])
                 else:
-                    out += u"    {} {}".format(f[ 0 ], f[ 1 ])
+                    out += u"    {} {}".format(f[0], f[1])
 
-        for d in self.subDirHeaders:
-            out += d.toString()
+        for d in self.sub_dir_headers:
+            out += d.to_string()
 
         return out
 
-
-    ####################
     def __str__(self):
-        return self.toString()
+        return self.to_string()
 
-    ####################
     def hash(self):
-        return SimpleHash.hash_base64(self.toString().encode('utf-8'))
+        return SimpleHash.hash_base64(self.to_string().encode('utf-8'))
 
-    def __hasSubHeader(self, dirName):
-        return dirName in [ sh.dirName for sh in self.subDirHeaders ]
+    def __has_sub_header(self, dir_name):
+        return dir_name in [sh.dir_name for sh in self.sub_dir_headers]
 
-    def __hasFile(self, file):
-        return file in [ f[0] for f in self.filesData ]
+    def __has_file(self, file_):
+        return file_ in [f[0] for f in self.files_data]
 
-    def __getSubHeader(self, dirName):
-        idx = [ sh.dirName for sh in self.subDirHeaders ].index(dirName)
-        return self.subDirHeaders[ idx ]
+    def __get_sub_header(self, dir_name):
+        idx = [sh.dir_name for sh in self.sub_dir_headers].index(dir_name)
+        return self.sub_dir_headers[idx]
 
-    def __getFileHash(self, file):
-        idx = [ f[0] for f in self.filesData ].index(file)
-        return self.filesData[ idx ][1]
+    def __get_file_hash(self, file_):
+        idx = [f[0] for f in self.files_data].index(file_)
+        return self.files_data[idx][1]
 
-class TaskResource:
 
-    ####################
+class TaskResource(object):
     @classmethod
-    def __build(cls, dirName, absoluteRoot):
-        curTh = TaskResource(dirName)
+    def __build(cls, dir_name, absolute_root):
+        cur_th = TaskResource(dir_name)
 
-        dirs  = [ name for name in os.listdir(absoluteRoot) if os.path.isdir(os.path.join(absoluteRoot, name)) ]
-        files = [ name for name in os.listdir(absoluteRoot) if os.path.isfile(os.path.join(absoluteRoot, name)) ]
+        dirs = [name for name in os.listdir(absolute_root) if os.path.isdir(os.path.join(absolute_root, name))]
+        files = [name for name in os.listdir(absolute_root) if os.path.isfile(os.path.join(absolute_root, name))]
 
-        filesData = []
+        files_data = []
         for f in files:
-            fileData = cls.readFile(os.path.join(absoluteRoot, f))
-            hsh = SimpleHash.hash_base64(fileData)
-            filesData.append((f, hsh, fileData))
+            file_data = cls.read_file(os.path.join(absolute_root, f))
+            hsh = SimpleHash.hash_base64(file_data)
+            files_data.append((f, hsh, file_data))
 
-        #print "{}, {}, {}".format(relativeRoot, absoluteRoot, filesData)
+        # print "{}, {}, {}".format(relative_root, absolute_root, files_data)
 
-        curTh.filesData = filesData
+        cur_th.files_data = files_data
 
-        subDirResources = []
+        sub_dir_resources = []
         for d in dirs:
-            childSubDirHeader = cls.__build(d, os.path.join(absoluteRoot, d))
-            subDirResources.append(childSubDirHeader)
+            child_sub_dir_header = cls.__build(d, os.path.join(absolute_root, d))
+            sub_dir_resources.append(child_sub_dir_header)
 
-        curTh.subDirResources = subDirResources
-        #print "{} {} {}\n".format(absoluteRoot, len(subDirHeaders), len(filesData))
+        cur_th.sub_dir_resources = sub_dir_resources
+        # print "{} {} {}\n".format(absolute_root, len(sub_dir_headers), len(files_data))
 
-        return curTh
+        return cur_th
 
-    ####################
     @classmethod
-    def readFile(cls, fileName):
+    def read_file(cls, file_name):
         try:
-            f = open(fileName, "rb")
+            f = open(file_name, "rb")
             data = f.read()
         except Exception as ex:
             logger.error(str(ex))
@@ -293,22 +278,20 @@ class TaskResource:
 
         return data
 
-    ####################
     @classmethod
-    def writeFile(cls, fileName, data):
+    def write_file(cls, file_name, data):
         try:
-            f = open(fileName, "wb")
+            f = open(file_name, "wb")
             f.write(data)
         except Exception as ex:
             logger.error(str(ex))
 
-    ####################
     @classmethod
-    def validateHeader(cls, header, absoluteRoot):
+    def validate_header(cls, header, absolute_root):
         assert isinstance(header, TaskResourceHeader)
 
-        for f in header.filesData:
-            fname = os.path.join(absoluteRoot, f[ 0 ])
+        for f in header.files_data:
+            fname = os.path.join(absolute_root, f[0])
 
             if not os.path.exists(fname):
                 return False, "File {} does not exist".format(fname)
@@ -316,172 +299,168 @@ class TaskResource:
             if not os.path.isfile(fname):
                 return False, "Entry {} is not a file".format(fname)
 
-        for dh in header.subDirHeaders:
-            validated, msg = cls.validateHeader(dh, os.path.join(absoluteRoot, dh.dirName))
+        for dh in header.sub_dir_headers:
+            validated, msg = cls.validate_header(dh, os.path.join(absolute_root, dh.dir_name))
 
             if not validated:
                 return validated, msg
 
         return True, None
 
-    ####################
     @classmethod
-    def buildFromHeader(cls, header, absoluteRoot):
+    def build_from_header(cls, header, absolute_root):
         assert isinstance(header, TaskResourceHeader)
 
-        curTr = TaskResource(header.dirName)
+        cur_tr = TaskResource(header.dir_name)
 
-        filesData = []
-        for f in header.filesData:
-            fname = os.path.join(absoluteRoot, f[ 0 ])
-            fdata = cls.readFile(fname)
-            
+        files_data = []
+        for f in header.files_data:
+            fname = os.path.join(absolute_root, f[0])
+            fdata = cls.read_file(fname)
+
             if fdata is None:
                 return None
 
-            filesData.append((f[ 0 ], f[ 1 ], fdata))
+            files_data.append((f[0], f[1], fdata))
 
-        curTr.filesData = filesData
+        cur_tr.files_data = files_data
 
-        subDirResources = []
-        for sdh in header.subDirHeaders:
-            subDirRes = cls.buildFromHeader(sdh, os.path.join(absoluteRoot, sdh.dirName))
+        sub_dir_resources = []
+        for sdh in header.sub_dir_headers:
+            sub_dir_res = cls.build_from_header(sdh, os.path.join(absolute_root, sdh.dir_name))
 
-            if subDirRes is None:
+            if sub_dir_res is None:
                 return None
-            
-            subDirResources.append(subDirRes)
 
-        curTr.subDirResources = subDirResources
+            sub_dir_resources.append(sub_dir_res)
 
-        return curTr         ####################
+        cur_tr.sub_dir_resources = sub_dir_resources
+
+        return cur_tr
+
     # Dodaje tylko te pola, ktorych nie ma w headerze (i/lub nie zgadzaj? si? hasze)
     @classmethod
-    def buildDeltaFromHeader(cls, header, absoluteRoot):
+    def build_delta_from_header(cls, header, absolute_root):
         assert isinstance(header, TaskResourceHeader)
 
-        curTr = TaskResource(header.dirName)
+        cur_tr = TaskResource(header.dir_name)
 
-        dirs  = [ name for name in os.listdir(absoluteRoot) if os.path.isdir(os.path.join(absoluteRoot, name)) ]
-        files = [ name for name in os.listdir(absoluteRoot) if os.path.isfile(os.path.join(absoluteRoot, name)) ]
+        dirs = [name for name in os.listdir(absolute_root) if os.path.isdir(os.path.join(absolute_root, name))]
+        files = [name for name in os.listdir(absolute_root) if os.path.isfile(os.path.join(absolute_root, name))]
 
         for d in dirs:
-            if d in [ sdh.dirName for sdh in header.subDirHeaders ]:
-                idx = [ sdh.dirName for sdh in header.subDirHeaders ].index(d)
-                curTr.subDirResources.append(cls.buildDeltaFromHeader(header.subDirHeaders[ idx ], os.path.join(absoluteRoot, d)))
+            if d in [sdh.dir_name for sdh in header.sub_dir_headers]:
+                idx = [sdh.dir_name for sdh in header.sub_dir_headers].index(d)
+                cur_tr.sub_dir_resources.append(
+                    cls.build_delta_from_header(header.sub_dir_headers[idx], os.path.join(absolute_root, d)))
             else:
-                curTr.subDirResources.append(cls.__build(d, os.path.join(absoluteRoot, d)))
+                cur_tr.sub_dir_resources.append(cls.__build(d, os.path.join(absolute_root, d)))
 
         for f in files:
-            if f in [ file[ 0 ] for file in header.filesData ]:
-                idx = [ file[ 0 ] for file in header.filesData ].index(f)
-                if SimpleHash.hash_file_base64(os.path.join(absoluteRoot, f)) == header.filesData[ idx ][ 1 ]:
+            if f in [file_[0] for file_ in header.files_data]:
+                idx = [file_[0] for file_ in header.files_data].index(f)
+                if SimpleHash.hash_file_base64(os.path.join(absolute_root, f)) == header.files_data[idx][1]:
                     continue
 
-            fdata = cls.readFile(os.path.join(absoluteRoot, f))
-            
+            fdata = cls.read_file(os.path.join(absolute_root, f))
+
             if fdata is None:
                 return None
 
-            curTr.filesData.append((f, SimpleHash.hash_base64(fdata), fdata))
+            cur_tr.files_data.append((f, SimpleHash.hash_base64(fdata), fdata))
 
-        return curTr
+        return cur_tr
 
-    ####################
-    def extract(self, toPath):
-        for dir in self.subDirResources:
-            if not os.path.exists(os.path.join(toPath, dir.dirName)):
-                os.makedirs(os.path.join(toPath, dir.dirName))
+    def extract(self, to_path):
+        for dir_ in self.sub_dir_resources:
+            if not os.path.exists(os.path.join(to_path, dir_.dir_name)):
+                os.makedirs(os.path.join(to_path, dir_.dir_name))
 
-            dir.extract(os.path.join(toPath, dir.dirName))
+            dir_.extract(os.path.join(to_path, dir_.dir_name))
 
-        for f in self.filesData:
-            if not os.path.exists(os.path.join(toPath, f[ 0 ])) or SimpleHash.hash_file_base64(os.path.join(toPath, f[ 0 ])) != f[ 1 ]:
-                self.writeFile(os.path.join(toPath, f[ 0 ]), f[ 2 ])
+        for f in self.files_data:
+            if not os.path.exists(os.path.join(to_path, f[0])) or SimpleHash.hash_file_base64(
+                    os.path.join(to_path, f[0])) != f[1]:
+                self.write_file(os.path.join(to_path, f[0]), f[2])
 
-    ####################
-    def __init__(self, dirName):
-        self.filesData          = []
-        self.subDirResources    = []
-        self.dirName            = dirName
+    def __init__(self, dir_name):
+        self.files_data = []
+        self.sub_dir_resources = []
+        self.dir_name = dir_name
 
-    ####################
-    def toString(self):
-        out = "\nROOT '{}' \n".format(self.dirName)
+    def to_string(self):
+        out = "\nROOT '{}' \n".format(self.dir_name)
 
-        if len(self.subDirResources) > 0:
+        if len(self.sub_dir_resources) > 0:
             out += "DIRS \n"
-            for d in self.subDirResources:
-                out += "    {}\n".format(d.dirName)
+            for d in self.sub_dir_resources:
+                out += "    {}\n".format(d.dir_name)
 
-        if len(self.filesData) > 0:
+        if len(self.files_data) > 0:
             out += "FILES \n"
-            for f in self.filesData:
-                out += "    {:10} {} {}".format(len(f[ 2 ]), f[ 0 ], f[ 1 ])
+            for f in self.files_data:
+                out += "    {:10} {} {}".format(len(f[2]), f[0], f[1])
 
-        for d in self.subDirResources:
-            out += d.toString()
+        for d in self.sub_dir_resources:
+            out += d.to_string()
 
         return out
 
-    ####################
     def __str__(self):
-        return self.toString()
+        return self.to_string()
+
 
 import unicodedata
 import string
 
-validFilenameChars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+valid_filename_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
 
-def removeDisallowedFilenameChars(filename):
-    cleanedFilename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore')
-    return ''.join(c for c in cleanedFilename if c in validFilenameChars)
 
-####################
-def compressDir(root_path, header, outputDir):
+def remove_disallowed_filename_chars(filename):
+    cleaned_filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore')
+    return ''.join(c for c in cleaned_filename if c in valid_filename_chars)
 
-    outputFile = removeDisallowedFilenameChars(header.hash().strip().decode('unicode-escape') + ".zip")
 
-    outputFile = os.path.join(outputDir, outputFile)
+def compress_dir(root_path, header, output_dir):
+    output_file = remove_disallowed_filename_chars(header.hash().strip().decode('unicode-escape') + ".zip")
 
-    zipf = zipfile.ZipFile(outputFile, 'w', compression = zipfile.ZIP_DEFLATED, allowZip64 = True)
+    output_file = os.path.join(output_dir, output_file)
 
-    currWorkingDir = os.getcwd()
+    zipf = zipfile.ZipFile(output_file, 'w', compression=zipfile.ZIP_DEFLATED, allowZip64=True)
+
+    cur_working_dir = os.getcwd()
     os.chdir(root_path)
     logger.debug("Working directory {}".format(os.getcwd()))
 
     try:
-        compressDirImpl("", header, zipf)
+        compress_dir_impl("", header, zipf)
 
         zipf.close()
     finally:
-        os.chdir(currWorkingDir)
+        os.chdir(cur_working_dir)
         logger.debug("Return to prev working directory {}".format(os.getcwd()))
 
-    return outputFile
+    return output_file
 
-####################
-def decompressDir(root_path, zipFile):
 
-    zipf = zipfile.ZipFile(zipFile, 'r', allowZip64 = True)
+def decompress_dir(root_path, zip_file):
+    zipf = zipfile.ZipFile(zip_file, 'r', allowZip64=True)
 
     zipf.extractall(root_path)
 
-####################
-def compressDirImpl(root_path, header, zipf):
 
-    for sdh in header.subDirHeaders:
-        compressDirImpl(os.path.join(root_path, sdh.dirName), sdh, zipf)
-        
-    for fdata in header.filesData:
-        zipf.write(os.path.join(root_path, fdata[ 0 ]))
+def compress_dir_impl(root_path, header, zipf):
+    for sdh in header.sub_dir_headers:
+        compress_dir_impl(os.path.join(root_path, sdh.dir_name), sdh, zipf)
 
-####################
-def prepareDeltaZip(rootDir, header, outputDir, choosenFiles = None):
-    #deltaHeader = TaskResourceHeader.buildHeaderDeltaFromHeader(header, rootDir, choosenFiles)
-    deltaHeader = TaskResourceHeader.buildHeaderDeltaFromChosen(header, rootDir, choosenFiles)
-    return compressDir(rootDir, deltaHeader, outputDir)
+    for fdata in header.files_data:
+        zipf.write(os.path.join(root_path, fdata[0]))
 
+
+def prepare_delta_zip(root_dir, header, output_dir, chosen_files=None):
+    # delta_header = TaskResourceHeader.build_header_delta_from_header(header, root_dir, chosen_files)
+    delta_header = TaskResourceHeader.build_header_delta_from_chosen(header, root_dir, chosen_files)
+    return compress_dir(root_dir, delta_header, output_dir)
 
 # if __name__ == "__main__":
 #
@@ -522,11 +501,11 @@ def prepareDeltaZip(rootDir, header, outputDir, choosenFiles = None):
 #                 from golem.Message import MessageTaskComputed, Message
 #                 fh = open(f, 'rb')
 #                 printAndPause(0)
-#                 fileData = Compress.compress(fh.read())
+#                 file_data = Compress.compress(fh.read())
 #                 printAndPause(1)
-#                 #fileData = fh.read()
-#                 #data = cPickle.dumps((f, fileData))
-#                 data = fileData
+#                 #file_data = fh.read()
+#                 #data = cPickle.dumps((f, file_data))
+#                 data = file_data
 #                 printAndPause(2)
 #                 m = MessageTaskComputed("", {}, data)
 #                 printAndPause(3)
@@ -558,20 +537,20 @@ def prepareDeltaZip(rootDir, header, outputDir, choosenFiles = None):
 #
 #     #th = TaskResourceHeader.build("test", "resource_test_dir\\test_empty")
 #
-#     #prepareDeltaZip("resource_test_dir\\test", th, "resource_test_dir.zip")
+#     #prepare_delta_zip("resource_test_dir\\test", th, "resource_test_dir.zip")
 #
 #     #print th
 #
 #     #print "Entering task testing zone"
-#     #v, m = TaskResource.validateHeader(th, "resource_test_dir\\test" )
+#     #v, m = TaskResource.validate_header(th, "resource_test_dir\\test" )
 #
 #     #if not v:
 #     #    print m
 #     #else:
-#     #    tr = TaskResource.buildFromHeader(th, "resource_test_dir\\test")
+#     #    tr = TaskResource.build_from_header(th, "resource_test_dir\\test")
 #     #    print tr
 #
-#     #    trd = TaskResource.buildDeltaFromHeader(th, "resource_test_dir\\test")
+#     #    trd = TaskResource.build_delta_from_header(th, "resource_test_dir\\test")
 #
 #     #    trd.extract("out")
 #

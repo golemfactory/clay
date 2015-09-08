@@ -50,14 +50,14 @@ class GolemVM(IGolemVM):
         return self.progress.get()
       
     #######################  
-    def runTask(self, srcCode, extraData):
+    def runTask(self, srcCode, extra_data):
         self.srcCode = srcCode
-        self.scope = extraData
+        self.scope = extra_data
         self.scope[ "taskProgress" ] = self.progress
 
         return self._interpret()
 
-    def endComp(self):
+    def end_comp(self):
         pass
 
     #######################
@@ -82,7 +82,7 @@ class PythonProcVM(GolemVM):
         GolemVM.__init__(self)
         self.proc = None
 
-    def endComp(self):
+    def end_comp(self):
         if self.proc:
             self.proc.terminate()
 
@@ -110,7 +110,7 @@ class PythonTestVM(GolemVM):
         except Exception, e:
             logger.error("Execution failure {}".format(str(e)))
         finally:
-            estimatedMem = mc.stop()
-        logger.info("Estimated memory for taks: {}".format(estimatedMem))
-        return self.scope[ "output" ], estimatedMem
+            estimated_mem = mc.stop()
+        logger.info("Estimated memory for taks: {}".format(estimated_mem))
+        return self.scope[ "output" ], estimated_mem
 

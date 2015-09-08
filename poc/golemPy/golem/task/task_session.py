@@ -14,7 +14,7 @@ from golem.network.transport.tcp_network import MidAndFilesProtocol, EncryptFile
     EncryptDataProducer, DecryptDataConsumer
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.task.TaskBase import result_types
-from golem.resource.Resource import decompressDir
+from golem.resource.Resource import decompress_dir
 from golem.transactions.Ethereum.ethereum_payments_keeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
@@ -171,7 +171,7 @@ class TaskSession(MiddlemanSafeSession):
         file_size = file_sizes[0]
         tmp_file = extra_data.get('file_received')[0]
         if file_size > 0:
-            decompressDir(extra_data.get('output_dir'), tmp_file)
+            decompress_dir(extra_data.get('output_dir'), tmp_file)
         task_id = extra_data.get('task_id')
         if task_id:
             self.task_computer.resource_given(task_id)
@@ -518,7 +518,7 @@ class TaskSession(MiddlemanSafeSession):
         self.conn.producer = EncryptFileProducer([res_file_path], self)
 
     def __send_resource_parts_list(self, msg):
-        delta_header, parts_list = self.task_manager.getResourcePartsList(msg.task_id, pickle.loads(msg.resource_header))
+        delta_header, parts_list = self.task_manager.get_resource_parts_list(msg.task_id, pickle.loads(msg.resource_header))
         self.send(MessageDeltaParts(self.task_id, delta_header, parts_list, self.task_server.get_client_id(),
                                     self.task_server.node, self.task_server.get_resource_addr(),
                                     self.task_server.get_resource_port())
@@ -548,7 +548,7 @@ class TaskSession(MiddlemanSafeSession):
     def __receive_files_result(self, msg):
         extra_data = {"subtask_id": msg.subtask_id, "result_type": msg.result_type, "data_type": "result"}
         output_dir = self.task_manager.dir_manager.get_task_temporary_dir(
-            self.task_manager.getTaskId(msg.subtask_id), create=False
+            self.task_manager.get_task_id(msg.subtask_id), create=False
         )
         self.conn.consumer = DecryptFileConsumer(msg.extra_data, output_dir, self, extra_data)
         self.conn.stream_mode = True

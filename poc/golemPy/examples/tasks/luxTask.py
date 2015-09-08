@@ -9,9 +9,9 @@ import subprocess
 import psutil
 import shutil
 
-def formatLuxRendererCmd(cmdFile, startTask, outputFile, outfilebasename, scenefile, numThreads):
+def formatLuxRendererCmd(cmdFile, startTask, output_file, outfilebasename, scenefile, numThreads):
     cmd = ["{}".format(cmdFile), "{}".format(scenefile), "-o",
-           "{}/{}{}.png".format(outputFile, outfilebasename, startTask), "-t", "{}".format(numThreads) ]
+           "{}/{}{}.png".format(output_file, outfilebasename, startTask), "-t", "{}".format(numThreads) ]
     print cmd
     return cmd
 
@@ -44,9 +44,9 @@ def returnData(files):
     res = []
     for f in files:
         with open(f, "rb") as fh:
-            fileData = fh.read()
-        fileData = zlib.compress(fileData, 9)
-        res.append(pickle.dumps((os.path.basename(f), fileData)))
+            file_data = fh.read()
+        file_data = zlib.compress(file_data, 9)
+        res.append(pickle.dumps((os.path.basename(f), file_data)))
 
     return { 'data': res, 'resultType': 0 }
 
@@ -96,9 +96,9 @@ def makeTmpFile(sceneDir, sceneSrc):
 def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, num_cores, ownBinaries, luxConsole):
     print 'LuxRenderer Task'
 
-    outputFiles = tmpPath
+    output_files = tmpPath
 
-    files = glob.glob(outputFiles + "/*.png") + glob.glob(outputFiles + "/*.flm")
+    files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm")
 
     for f in files:
         os.remove(f)
@@ -112,7 +112,7 @@ def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, num_c
         cmdFile = __readFromEnvironment()
     if os.path.exists(tmpSceneFile):
         print tmpSceneFile
-        cmd = formatLuxRendererCmd(cmdFile, startTask, outputFiles, outfilebasename, tmpSceneFile, numThreads)
+        cmd = formatLuxRendererCmd(cmdFile, startTask, output_files, outfilebasename, tmpSceneFile, numThreads)
     else:
          print "Scene file does not exist"
          return {'data': [], 'resultType': 0 }
@@ -123,7 +123,7 @@ def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, num_c
     exec_cmd(cmd)
 
     os.chdir(prevDir)
-    files = glob.glob(outputFiles + "/*.png") + glob.glob(outputFiles + "/*.flm")
+    files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm")
 
     return returnFiles(files)
 

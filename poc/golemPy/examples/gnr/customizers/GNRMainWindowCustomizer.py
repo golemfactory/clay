@@ -106,23 +106,23 @@ class GNRMainWindowCustomizer:
 
     #############################
     def showTaskResult(self, task_id):
-        t = self.logic.getTask(task_id)
-        if hasattr(t.definition, 'outputFile') and os.path.isfile(t.definition.outputFile):
-            self._showFile(t.definition.outputFile)
-        elif hasattr(t.definition.options, 'outputFile') and os.path.isfile(t.definition.options.outputFile):
-            self._showFile(t.definition.options.outputFile)
+        t = self.logic.get_task(task_id)
+        if hasattr(t.definition, 'output_file') and os.path.isfile(t.definition.output_file):
+            self._showFile(t.definition.output_file)
+        elif hasattr(t.definition.options, 'output_file') and os.path.isfile(t.definition.options.output_file):
+            self._showFile(t.definition.options.output_file)
         else:
             msgBox = QMessageBox()
             msgBox.setText("No output file defined.")
             msgBox.exec_()
 
     ############################
-    def _showFile(self, fileName):
+    def _showFile(self, file_name):
         if is_windows():
-            os.startfile(fileName)
+            os.startfile(file_name)
         else:
             opener = "see"
-            exec_cmd([opener, fileName ], wait=False)
+            exec_cmd([opener, file_name ], wait=False)
 
 
     ############################
@@ -137,7 +137,7 @@ class GNRMainWindowCustomizer:
         self.gui.ui.taskTableWidget.setCellWidget(currentRowCount, 2, taskTableElem.progressBarInBoxLayoutWidget)
 
         self.gui.ui.taskTableWidget.setCurrentItem(self.gui.ui.taskTableWidget.item(currentRowCount, 1))
-        self.updateTaskAdditionalInfo(self.logic.getTask(task_id))
+        self.updateTaskAdditionalInfo(self.logic.get_task(task_id))
 
     ############################
     def remove_task(self, task_id):
@@ -161,7 +161,7 @@ class GNRMainWindowCustomizer:
 
     #############################
     def showNewTaskDialog(self, task_id):
-        ts = self.logic.getTask(task_id)
+        ts = self.logic.get_task(task_id)
         if ts is not None:
             self._showNewTaskDialog(ts.definition)
         else:
@@ -185,10 +185,10 @@ class GNRMainWindowCustomizer:
             if os.path.isdir(saveDir):
                 dir = saveDir
 
-        fileName = QFileDialog.getOpenFileName(self.gui.window,
+        file_name = QFileDialog.getOpenFileName(self.gui.window,
             "Choose task file", dir, "Golem Task (*.gt)")
-        if os.path.exists(fileName):
-            self._loadTask(fileName)
+        if os.path.exists(file_name):
+            self._loadTask(file_name)
 
    ############################
     def _loadTask(self, filePath):
@@ -214,7 +214,7 @@ class GNRMainWindowCustomizer:
 
         idItem = self.gui.ui.taskTableWidget.item(row, 0)
         task_id = "{}".format(idItem.text())
-        gnrTaskState = self.logic.getTask(task_id)
+        gnrTaskState = self.logic.get_task(task_id)
 
         menu = QMenu()
         self.taskContextMenuCustomizer =  TaskContextMenuCustomizer(menu, self.logic, gnrTaskState)
@@ -230,7 +230,7 @@ class GNRMainWindowCustomizer:
         if row < self.gui.ui.taskTableWidget.rowCount():
             task_id = self.gui.ui.taskTableWidget.item(row, 0).text()
             task_id = "{}".format(task_id)
-            t = self.logic.getTask(task_id)
+            t = self.logic.get_task(task_id)
             self.updateTaskAdditionalInfo(t)
 
     #############################
@@ -241,7 +241,7 @@ class GNRMainWindowCustomizer:
 
     #############################
     def showDetailsDialog(self, task_id):
-        ts = self.logic.getTask(task_id)
+        ts = self.logic.get_task(task_id)
         self.taskDetailsDialog = TaskDetailsDialog(self.gui.window)
         self.taskDetailsDialogCustomizer = TaskDetailsDialogCustomizer(self.taskDetailsDialog, self.logic, ts)
         self.taskDetailsDialog.show()
@@ -256,7 +256,7 @@ class GNRMainWindowCustomizer:
     def showChangeTaskDialog(self, task_id):
         self.changeTaskDialog = ChangeTaskDialog(self.gui.window)
         self.changeTaskDialogCustomizer = ChangeTaskDialogCustomizer(self.changeTaskDialog, self.logic)
-        ts = self.logic.getTask(task_id)
+        ts = self.logic.get_task(task_id)
         self.changeTaskDialogCustomizer.loadTaskDefinition(ts.definition)
         self.changeTaskDialog.show()
 

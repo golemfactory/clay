@@ -60,6 +60,6 @@ class PbrtDialogCustomizer:
     #############################
     def __choosePbrtPath(self):
         dir = os.path.dirname(u"{}".format(self.gui.ui.pbrtPathLineEdit.text()))
-        fileName = u"{}".format(QFileDialog.getOpenFileName(self.gui.window, "Choose pbrt file", dir, ""))
-        if fileName != '':
-            self.gui.ui.pbrtPathLineEdit.setText(fileName)
+        file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window, "Choose pbrt file", dir, ""))
+        if file_name != '':
+            self.gui.ui.pbrtPathLineEdit.setText(file_name)

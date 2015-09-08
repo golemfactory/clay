@@ -65,7 +65,7 @@ class NewTaskDialogCustomizer:
     def _init(self):
         self._setUid()
 
-        taskTypes = self.logic.getTaskTypes()
+        taskTypes = self.logic.get_taskTypes()
         for t in taskTypes.values():
             self.gui.ui.taskTypeComboBox.addItem(t.name)
 
@@ -74,11 +74,11 @@ class NewTaskDialogCustomizer:
 
         dir = os.path.dirname(u"{}".format(self.gui.ui.mainProgramFileLineEdit.text()))
 
-        fileName = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
+        file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
             "Choose main program file", dir, "Python (*.py)"))
 
-        if fileName != '':
-            self.gui.ui.mainProgramFileLineEdit.setText(fileName)
+        if file_name != '':
+            self.gui.ui.mainProgramFileLineEdit.setText(file_name)
 
     ############################
     def _showAddResourcesDialog(self):
@@ -90,11 +90,11 @@ class NewTaskDialogCustomizer:
 
     ############################
     def _saveTaskButtonClicked(self):
-        fileName = QFileDialog.getSaveFileName(self.gui.window,
+        file_name = QFileDialog.getSaveFileName(self.gui.window,
             "Choose save file", "", "Golem Task (*.gt)")
 
-        if fileName != '':
-            self._saveTask(fileName)
+        if file_name != '':
+            self._saveTask(file_name)
 
     ############################
     def _saveTask(self, filePath):
@@ -235,7 +235,7 @@ class NewTaskDialogCustomizer:
     #############################
     def _openOptions(self):
         taskName =  u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
-        task = self.logic.getTaskType(taskName)
+        task = self.logic.get_taskType(taskName)
         dialog = task.dialog
         dialogCustomizer = task.dialogCustomizer
         if dialog is not None and dialogCustomizer is not None:
@@ -247,6 +247,6 @@ class NewTaskDialogCustomizer:
 
     def _taskTypeValueChanged(self, name):
         taskName =  u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
-        task = self.logic.getTaskType(taskName)
+        task = self.logic.get_taskType(taskName)
         self.gui.ui.optionsButton.setEnabled(task.dialog is not None and task.dialogCustomizer is not None)
         self.options = deepcopy(task.options)

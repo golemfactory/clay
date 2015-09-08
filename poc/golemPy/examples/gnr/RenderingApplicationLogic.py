@@ -68,7 +68,7 @@ class AbsRenderingApplicationLogic(object):
                 self._showErrorWindow("Main program file does not exist: {}".format(td.mainProgramFile))
                 return False
 
-            if not self.__checkOutputFile(td.outputFile):
+            if not self.__checkOutputFile(td.output_file):
                 return False
 
             if not os.path.exists(td.mainSceneFile):
@@ -83,17 +83,17 @@ class AbsRenderingApplicationLogic(object):
 
 
     ######################
-    def __checkOutputFile(self, outputFile):
+    def __checkOutputFile(self, output_file):
         try:
-            fileExist = os.path.exists(outputFile)
+            fileExist = os.path.exists(output_file)
 
-            with open(outputFile, 'a'):
+            with open(output_file, 'a'):
                 pass
             if not fileExist:
-                os.remove(outputFile)
+                os.remove(output_file)
             return True
         except IOError:
-            self._showErrorWindow("Cannot open file: {}".format(outputFile))
+            self._showErrorWindow("Cannot open file: {}".format(output_file))
             return False
         except:
             self._showErrorWindow("Output file is not properly set")

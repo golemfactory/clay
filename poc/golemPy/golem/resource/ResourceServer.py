@@ -166,7 +166,7 @@ class ResourceServer(TCPServer):
                     self.waitingResources[resource].append(res[1])
             for task_id in self.waitingResources[resource]:
                     self.resourcesToGet.remove([resource, task_id])
-            session.fileName = resource
+            session.file_name = resource
             session.conn.file_mode = True
             session.conn.confirmation = False
             session.send_want_resource(resource)
@@ -233,11 +233,11 @@ class ResourceServer(TCPServer):
     def unpack_delta(self, dest_dir, delta, task_id):
         if not os.path.isdir(dest_dir):
             os.mkdir(dest_dir)
-        for dirHeader in delta.subDirHeaders:
-            self.unpack_delta(os.path.join(dest_dir, dirHeader.dirName), dirHeader, task_id)
+        for dirHeader in delta.sub_dir_headers:
+            self.unpack_delta(os.path.join(dest_dir, dirHeader.dir_name), dirHeader, task_id)
 
-        for filesData in delta.filesData:
-            self.resource_manager.connectFile(filesData[2], os.path.join(dest_dir, filesData[0]))
+        for files_data in delta.files_data:
+            self.resource_manager.connectFile(files_data[2], os.path.join(dest_dir, files_data[0]))
 
     def remove_session(self, session):
         if session in self.sessions:

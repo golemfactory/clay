@@ -85,7 +85,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
     def checkNetworkState(self):
         GNRApplicationLogic.checkNetworkState(self)
         if self.addTasksClient:
-            self.addAndStartTasksFromFiles(self.addTasksClient.getTasks())
+            self.addAndStartTasksFromFiles(self.addTasksClient.get_tasks())
 
     ######################
     def addAndStartTasksFromFiles(self, files):

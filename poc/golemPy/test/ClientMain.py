@@ -33,7 +33,7 @@ def main():
 
     getting_peers_interval    = cfg.getGettingPeersInterval()
     getting_tasks_interval    = cfg.getGettingTasksInterval()
-    task_request_interval     = cfg.getTaskRequestInterval()
+    task_request_interval     = cfg.get_taskRequestInterval()
     estimated_performance    = cfg.getEstimatedPerformance()
     node_snapshot_interval    = cfg.getNodeSnapshotInterval()
 

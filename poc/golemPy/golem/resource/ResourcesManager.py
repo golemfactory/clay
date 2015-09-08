@@ -1,4 +1,4 @@
-from Resource import TaskResource, TaskResourceHeader, prepareDeltaZip, decompressDir
+from Resource import TaskResource, TaskResourceHeader, prepare_delta_zip, decompress_dir
 
 import os
 from os.path import join, isdir, isfile
@@ -21,7 +21,7 @@ class DistributedResourceManager:
 
     ###################
     def change_resource_dir(self, resourceDir):
-        self.resourceHash.setResourceDir(resourceDir)
+        self.resourceHash.set_resource_dir(resourceDir)
         self.copyResources(resourceDir)
         self.resources = set()
         self.resourceDir = resourceDir
@@ -35,17 +35,17 @@ class DistributedResourceManager:
             os.remove(os.path.join(self.resourceDir, f))
 
     ###################
-    def splitFile(self, fileName, blockSize = 2 ** 20):
+    def splitFile(self, file_name, blockSize = 2 ** 20):
         resourceHash = ResourceHash(self.resourceDir)
-        listFiles = [ os.path.basename(file_) for file_ in resourceHash.splitFile(fileName, blockSize) ]
+        listFiles = [ os.path.basename(file_) for file_ in resourceHash.splitFile(file_name, blockSize) ]
         self.resources |= set(listFiles)
         return listFiles
 
     ###################
-    def connectFile (self, partsList, fileName):
+    def connectFile (self, partsList, file_name):
         resourceHash = ResourceHash(self.resourceDir)
         resList = [ os.path.join(self.resourceDir, p) for p in partsList ]
-        resourceHash.connectFiles(resList, fileName)
+        resourceHash.connectFiles(resList, file_name)
 
     ###################
     def addResources(self):
@@ -54,8 +54,8 @@ class DistributedResourceManager:
 
     ###################
     def check_resource(self, resource):
-        resPath = os.path.join(self.resourceDir, os.path.basename(resource))
-        if os.path.isfile(resPath) and self.resourceHash.getFileHash(resPath) == resource:
+        res_path = os.path.join(self.resourceDir, os.path.basename(resource))
+        if os.path.isfile(res_path) and self.resourceHash.getFileHash(res_path) == resource:
             return True
         else:
             return False
@@ -84,48 +84,48 @@ class ResourcesManager:
 
         taskResHeader = None
 
-        dirName = self.get_resource_dir(task_id)
+        dir_name = self.get_resource_dir(task_id)
 
-        if os.path.exists(dirName):
-            taskResHeader = TaskResourceHeader.build("resources", dirName)
+        if os.path.exists(dir_name):
+            taskResHeader = TaskResourceHeader.build("resources", dir_name)
         else:
             taskResHeader = TaskResourceHeader("resources")
 
         return taskResHeader
 
     ###################
-    def getResourceDelta(self, task_id, resourceHeader):
+    def getResourceDelta(self, task_id, resource_header):
 
-        dirName = self.get_resource_dir(task_id)
+        dir_name = self.get_resource_dir(task_id)
 
         taskResHeader = None
 
-        logger.info("Getting resource for delta dir: {} header:{}".format(dirName, resourceHeader))
+        logger.info("Getting resource for delta dir: {} header:{}".format(dir_name, resource_header))
 
-        if os.path.exists(dirName):
-            taskResHeader = TaskResource.buildDeltaFromHeader(resourceHeader, dirName)
+        if os.path.exists(dir_name):
+            taskResHeader = TaskResource.build_delta_from_header(resource_header, dir_name)
         else:
             taskResHeader = TaskResource("resources")
 
-        logger.info("Getting resource for delta dir: {} header:{} FINISHED".format(dirName, resourceHeader))
+        logger.info("Getting resource for delta dir: {} header:{} FINISHED".format(dir_name, resource_header))
         return taskResHeader
 
     ###################
-    def prepare_resourceDelta(self, task_id, resourceHeader):
+    def prepare_resource_delta(self, task_id, resource_header):
 
-        dirName = self.get_resource_dir(task_id)
+        dir_name = self.get_resource_dir(task_id)
 
-        if os.path.exists(dirName):
-            return prepareDeltaZip(dirName, resourceHeader, self.getTemporaryDir(task_id))
+        if os.path.exists(dir_name):
+            return prepare_delta_zip(dir_name, resource_header, self.getTemporaryDir(task_id))
         else:
             return ""
 
     ###################
     def updateResource(self, task_id, resource):
 
-        dirName = self.get_resource_dir(task_id)
+        dir_name = self.get_resource_dir(task_id)
 
-        resource.extract(dirName)
+        resource.extract(dir_name)
 
     ###################
     def get_resource_dir(self, task_id):

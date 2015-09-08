@@ -74,7 +74,7 @@ class NodesManager:
     def updateNodeState(self, ns):
         assert isinstance(ns, NodeStateSnapshot)
 
-        tcss = ns.getTaskChunkStateSnapshot()
+        tcss = ns.get_taskChunkStateSnapshot()
 
         ndslt = {}
         for sp in tcss.values():
@@ -88,19 +88,19 @@ class NodesManager:
 
         ltss = ns.getLocalTaskStateSnapshot()
         for sp in ltss.values():
-            ndscs[ sp.getTaskId() ] = {   "taskProgress" : sp.getProgress(),
+            ndscs[ sp.get_task_id() ] = {   "taskProgress" : sp.getProgress(),
                                             "allocTasks" : "{}".format(sp.getTotalTasks()),
                                             "allocChunks" : "{}".format(sp.getTotalChunks()),
                                             "activeTasks" : "{}".format(sp.getActiveTasks()),
                                             "activeChunks" : "{}".format(sp.getActiveChunks()),
                                             "chunksLeft" : "{}".format(sp.getChunksLeft()),
-                                            "ltshd" : sp.getTaskShortDescr()
+                                            "ltshd" : sp.get_taskShortDescr()
                                        }
 
         ep = "{}:{}".format(ns.endpointAddr, ns.endpointPort)
         ts = ns.getFormattedTimestamp()
         pn = "{}".format(ns.getPeersNum())
-        tn = "{}".format(ns.getTasksNum())
+        tn = "{}".format(ns.get_tasksNum())
         lm = ""
         if len(ns.getLastNetworkMessages()) > 0:
             lm = ns.getLastNetworkMessages()[-1][ 0 ] + str(ns.getLastNetworkMessages()[-1][ 4 ])
@@ -137,8 +137,8 @@ class NodesManager:
         self.managerLogic.loadTask(uid, filePath)
 
     ########################
-    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, fileName):
-        self.managerLogic.enqueueNewTask(uid, w, h, numSamplesPerPixel, fileName)
+    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, file_name):
+        self.managerLogic.enqueueNewTask(uid, w, h, numSamplesPerPixel, file_name)
 
 if __name__ == "__main__":
 

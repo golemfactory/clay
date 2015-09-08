@@ -59,14 +59,14 @@ class InfoTask(GNRTask):
                   ttl,
                   subtaskTtl,
                   resourceSize,
-                  estimatedMemory,
+                  estimated_memory,
                   nodesManagerAddress,
                   nodesManagerPort,
                   iterations):
 
 
         GNRTask.__init__(self, srcCode, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment,
-                            ttl, subtaskTtl, resourceSize, estimatedMemory)
+                            ttl, subtaskTtl, resourceSize, estimated_memory)
 
         self.totalTasks = iterations
 
@@ -83,7 +83,7 @@ class InfoTask(GNRTask):
         ctd.task_id = self.header.task_id
         hash = "{}".format(random.getrandbits(128))
         ctd.subtask_id = hash
-        ctd.extraData = {
+        ctd.extra_data = {
                           "startTask" : self.lastTask,
                           "endTask": self.lastTask + 1 }
         ctd.returnAddress = self.header.taskOwnerAddress
@@ -110,5 +110,5 @@ class InfoTask(GNRTask):
             logger.error("Error while interpreting results: {}".format(str(ex)))
 
     #######################
-    def prepare_resourceDelta(self, task_id, resourceHeader):
+    def prepare_resource_delta(self, task_id, resource_header):
         return None

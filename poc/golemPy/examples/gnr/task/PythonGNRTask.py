@@ -38,10 +38,10 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
 class PythonGNRTask(GNRTask):
     #####################
     def __init__(self, srcCode, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment,
-                  ttl, subtaskTtl, resourceSize, estimatedMemory, totalTasks, root_path):
+                  ttl, subtaskTtl, resourceSize, estimated_memory, totalTasks, root_path):
 
         GNRTask.__init__(self, srcCode, client_id, task_id,ownerAddress, ownerPort, ownerKeyId, environment, ttl, subtaskTtl,
-                  resourceSize, estimatedMemory)
+                  resourceSize, estimated_memory)
 
         self.totalTasks = totalTasks
         self.root_path = root_path
@@ -53,7 +53,7 @@ class PythonGNRTask(GNRTask):
         ctd.task_id = self.header.task_id
         hash = "{}".format(random.getrandbits(128))
         ctd.subtask_id = hash
-        ctd.extraData = { "startTask" : self.lastTask,
+        ctd.extra_data = { "startTask" : self.lastTask,
                           "endTask": self.lastTask + 1 }
         ctd.returnAddress = self.header.taskOwnerAddress
         ctd.returnPort = self.header.taskOwnerPort
@@ -64,7 +64,7 @@ class PythonGNRTask(GNRTask):
         if self.lastTask + 1 <= self.totalTasks:
             self.lastTask += 1
 
-        self.subTasksGiven[ hash ] = ctd.extraData
+        self.subTasksGiven[ hash ] = ctd.extra_data
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
         self.subTasksGiven[ hash ][ 'client_id' ] = client_id
 

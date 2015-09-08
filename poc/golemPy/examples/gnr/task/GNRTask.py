@@ -1,6 +1,6 @@
 from golem.task.TaskBase import Task, TaskHeader, TaskBuilder, result_types
 from golem.task.TaskState import SubtaskStatus
-from golem.resource.Resource import prepareDeltaZip, TaskResourceHeader
+from golem.resource.Resource import prepare_delta_zip, TaskResourceHeader
 from golem.environments.Environment import Environment
 from golem.network.p2p.Node import Node
 from golem.core.compress import decompress
@@ -63,9 +63,9 @@ class GNROptions:
 class GNRTask(Task):
     #####################
     def __init__(self, srcCode, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment,
-                  ttl, subtaskTtl, resourceSize, estimatedMemory):
+                  ttl, subtaskTtl, resourceSize, estimated_memory):
         th = TaskHeader(client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment, Node(),
-                         ttl, subtaskTtl, resourceSize, estimatedMemory)
+                         ttl, subtaskTtl, resourceSize, estimated_memory)
         Task.__init__(self, th, srcCode)
 
         self.taskResources = []
@@ -115,7 +115,7 @@ class GNRTask(Task):
         return self.numTasksReceived == self.totalTasks
 
     #######################
-    def computationStarted(self, extraData):
+    def computationStarted(self, extra_data):
         pass
 
     #######################
@@ -143,43 +143,43 @@ class GNRTask(Task):
         self.resFiles = resFiles
 
     #######################
-    def prepare_resourceDelta(self, task_id, resourceHeader):
+    def prepare_resource_delta(self, task_id, resource_header):
         if task_id == self.header.task_id:
-            commonPathPrefix, dirName, tmpDir = self.__getTaskDirParams()
+            commonPathPrefix, dir_name, tmpDir = self.__get_taskDirParams()
 
             if not os.path.exists(tmpDir):
                 os.makedirs(tmpDir)
 
-            if os.path.exists(dirName):
-                return prepareDeltaZip(dirName, resourceHeader, tmpDir, self.taskResources)
+            if os.path.exists(dir_name):
+                return prepare_delta_zip(dir_name, resource_header, tmpDir, self.taskResources)
             else:
                 return None
         else:
             return None
 
     #######################
-    def getResourcePartsList(self, task_id, resourceHeader):
+    def get_resource_parts_list(self, task_id, resource_header):
         if task_id == self.header.task_id:
-            commonPathPrefix, dirName, tmpDir = self.__getTaskDirParams()
+            commonPathPrefix, dir_name, tmpDir = self.__get_taskDirParams()
 
-            if os.path.exists(dirName):
-                deltaHeader, parts = TaskResourceHeader.buildPartsHeaderDeltaFromChosen(resourceHeader, dirName, self.resFiles)
-                return deltaHeader, parts
+            if os.path.exists(dir_name):
+                delta_header, parts = TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name, self.resFiles)
+                return delta_header, parts
             else:
                 return None
         else:
             return None
 
     #######################
-    def __getTaskDirParams(self):
+    def __get_taskDirParams(self):
         commonPathPrefix = os.path.commonprefix(self.taskResources)
         commonPathPrefix = os.path.dirname(commonPathPrefix)
-        dirName = commonPathPrefix #os.path.join("res", self.header.client_id, self.header.task_id, "resources")
+        dir_name = commonPathPrefix #os.path.join("res", self.header.client_id, self.header.task_id, "resources")
         tmpDir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
         if not os.path.exists(tmpDir):
                 os.makedirs(tmpDir)
 
-        return commonPathPrefix, dirName, tmpDir
+        return commonPathPrefix, dir_name, tmpDir
 
     #######################
     def abort (self):
@@ -205,7 +205,7 @@ class GNRTask(Task):
        return self.subTasksGiven[ subtask_id ]['status'] == SubtaskStatus.finished
 
     #######################
-    def verifyTask(self):
+    def verify_task(self):
         return self.finishedComputation()
 
     #######################

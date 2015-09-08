@@ -50,8 +50,8 @@ class RenderingTask(GNRTask):
     #######################
     def __init__(self, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                  totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, root_path,
-                  estimatedMemory):
+                  totalTasks, resX, resY, outfilebasename, output_file, outputFormat, root_path,
+                  estimated_memory):
 
         try:
             with open(mainProgramFile, "r") as srcFile:
@@ -66,7 +66,7 @@ class RenderingTask(GNRTask):
             resourceSize += os.stat(resource).st_size
 
         GNRTask.__init__(self, srcCode, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment,
-                          ttl, subtaskTtl, resourceSize, estimatedMemory)
+                          ttl, subtaskTtl, resourceSize, estimated_memory)
 
         self.fullTaskTimeout        = ttl
         self.header.ttl             = self.fullTaskTimeout
@@ -76,7 +76,7 @@ class RenderingTask(GNRTask):
         self.mainSceneFile          = mainSceneFile
         self.mainSceneDir           = mainSceneDir
         self.outfilebasename        = outfilebasename
-        self.outputFile             = outputFile
+        self.output_file             = output_file
         self.outputFormat           = outputFormat
 
         self.totalTasks             = totalTasks
@@ -108,9 +108,9 @@ class RenderingTask(GNRTask):
     #######################
     def updateTaskState(self, taskState):
         if not self.finishedComputation() and self.previewTaskFilePath:
-            taskState.extraData['resultPreview'] = self.previewTaskFilePath
+            taskState.extra_data['resultPreview'] = self.previewTaskFilePath
         elif self.previewFilePath:
-            taskState.extraData['resultPreview'] = self.previewFilePath
+            taskState.extra_data['resultPreview'] = self.previewFilePath
 
     #######################
     @checkSubtask_idWrapper
@@ -193,25 +193,25 @@ class RenderingTask(GNRTask):
 
 
     #######################
-    def _putCollectedFilesTogether(self, outputFileName, files, arg):
+    def _putCollectedFilesTogether(self, output_file_name, files, arg):
         if is_windows():
             taskCollectorPath = os.path.normpath(os.path.join(os.environ.get('GOLEM'), "tools/taskcollector/Release/taskcollector.exe"))
         else:
             taskCollectorPath = os.path.normpath(os.path.join(os.environ.get('GOLEM'), "tools/taskcollector/Release/taskcollector"))
-        cmd = [ "{}".format(taskCollectorPath), "{}".format(arg), "{}".format(outputFileName) ] + files
+        cmd = [ "{}".format(taskCollectorPath), "{}".format(arg), "{}".format(output_file_name) ] + files
         logger.debug(cmd)
         exec_cmd(cmd)
 
     #######################
-    def _newComputeTaskDef(self, hash, extraData, workingDirectory, perfIndex):
+    def _newComputeTaskDef(self, hash, extra_data, workingDirectory, perfIndex):
         ctd = ComputeTaskDef()
         ctd.task_id              = self.header.task_id
         ctd.subtask_id           = hash
-        ctd.extraData           = extraData
+        ctd.extra_data           = extra_data
         ctd.returnAddress       = self.header.taskOwnerAddress
         ctd.returnPort          = self.header.taskOwnerPort
         ctd.taskOwner           = self.header.taskOwner
-        ctd.shortDescription    = self._shortExtraDataRepr(perfIndex, extraData)
+        ctd.shortDescription    = self._shortExtraDataRepr(perfIndex, extra_data)
         ctd.srcCode             = self.srcCode
         ctd.performance         = perfIndex
         ctd.workingDirectory    = workingDirectory
@@ -251,8 +251,8 @@ class RenderingTask(GNRTask):
         return self.__get_path(sceneFile)
 
     ########################
-    def _shortExtraDataRepr(self, perfIndex, extraData):
-        l = extraData
+    def _shortExtraDataRepr(self, perfIndex, extra_data):
+        l = extra_data
         return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, outfilebasename: {}, sceneFile: {}".format(
             l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["outfilebasename"], l["sceneFile"])
 
@@ -337,8 +337,8 @@ class RenderingTask(GNRTask):
 
     #######################
     def _getCmpFile(self, trFile, startBox, subtask_id):
-        extraData, newStartBox = self._changeScope(subtask_id, startBox, trFile)
-        cmpFile = self._runTask(self.srcCode, extraData)
+        extra_data, newStartBox = self._changeScope(subtask_id, startBox, trFile)
+        cmpFile = self._runTask(self.srcCode, extra_data)
         return cmpFile, newStartBox
 
     #######################
@@ -352,12 +352,12 @@ class RenderingTask(GNRTask):
     #######################
     @checkSubtask_idWrapper
     def _changeScope(self, subtask_id, startBox, trFile):
-        extraData = copy(self.subTasksGiven[ subtask_id ])
-        extraData['outfilebasename'] = uuid.uuid4()
-        extraData['tmpPath'] = os.path.join(self.tmpDir, str(self.subTasksGiven[subtask_id]['startTask']))
-        if not os.path.isdir(extraData['tmpPath']):
-            os.mkdir(extraData['tmpPath'])
-        return extraData, startBox
+        extra_data = copy(self.subTasksGiven[ subtask_id ])
+        extra_data['outfilebasename'] = uuid.uuid4()
+        extra_data['tmpPath'] = os.path.join(self.tmpDir, str(self.subTasksGiven[subtask_id]['startTask']))
+        if not os.path.isdir(extra_data['tmpPath']):
+            os.mkdir(extra_data['tmpPath'])
+        return extra_data, startBox
 
     #######################
     def _runTask(self, srcCode, scope):

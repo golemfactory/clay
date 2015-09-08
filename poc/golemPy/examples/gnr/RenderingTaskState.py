@@ -40,7 +40,7 @@ class RenderingTaskDefinition(GNRTaskDefinition):
         self.rendererOptions    = None
 
         self.mainSceneFile      = ""
-        self.outputFile         = ""
+        self.output_file         = ""
         self.outputFormat       = ""
 
 ###########################################################################

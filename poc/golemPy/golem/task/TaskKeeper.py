@@ -21,7 +21,7 @@ class TaskKeeper:
         self.removedTaskTimeout = removeTaskTimeout
 
     #############################
-    def getTask(self):
+    def get_task(self):
         if  len(self.supported_tasks) > 0:
             tn = random.randrange(0, len(self.supported_tasks))
             task_id = self.supported_tasks[tn]
@@ -40,7 +40,7 @@ class TaskKeeper:
         return self.taskHeaders.values()
 
     #############################
-    def add_task_header(self, th_dict_repr, isSupported):
+    def add_task_header(self, th_dict_repr, is_supported):
         try:
             id = th_dict_repr["id"]
             if id not in self.taskHeaders.keys(): # dont have it
@@ -50,7 +50,7 @@ class TaskKeeper:
                                                       th_dict_repr["port"], th_dict_repr["key_id"],
                                                       th_dict_repr["environment"], th_dict_repr["taskOwner"],
                                                       th_dict_repr[ "ttl" ], th_dict_repr["subtask_timeout"])
-                    if isSupported:
+                    if is_supported:
                         self.supported_tasks.append(id)
             return True
         except Exception, err:

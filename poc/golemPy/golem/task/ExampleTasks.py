@@ -2,7 +2,7 @@
 from TaskBase import Task, TaskHeader
 
 from taskablerenderer import TaskableRenderer, RenderTaskResult, RenderTaskDesc
-from Resource import prepareDeltaZip
+from Resource import prepare_delta_zip
 from simplehash import SimpleHash
 
 from takscollector import PbrtTaksCollector
@@ -57,7 +57,7 @@ class RayTracingTask(Task):
             return False
 
     #######################
-    def computationStarted(self, extraData):
+    def computationStarted(self, extra_data):
         self.splitIndex += 1
 
     #######################
@@ -126,7 +126,7 @@ task_data = u'''
 
 class VRayTracingTask(Task):
     #######################
-    def __init__(self, width, height, num_samples, header, fileName, returnAddress = "", returnPort = 0):
+    def __init__(self, width, height, num_samples, header, file_name, returnAddress = "", returnPort = 0):
 
         srcFile = open("../testtasks/minilight/compact_src/renderer.py", "r")
         srcCode = srcFile.read()
@@ -142,7 +142,7 @@ class VRayTracingTask(Task):
         self.num_samples = num_samples
 
         self.lastExtraData = ""
-        self.fileName = fileName
+        self.file_name = file_name
         self.returnAddress = returnAddress
         self.returnPort = returnPort
 
@@ -184,16 +184,16 @@ class VRayTracingTask(Task):
         return self.taskableRenderer.hasMoreTasks()
 
     #######################
-    def computationStarted(self, extraData):
+    def computationStarted(self, extra_data):
         pass
 
     #######################
     def computationFinished(self, subtask_id, taskResult, env = None):
-        #dest = RenderTaskDesc(0, extraData[ "x" ], extraData[ "y" ], extraData[ "w" ], extraData[ "h" ], extraData[ "num_pixels" ] ,extraData[ "num_samples" ])
+        #dest = RenderTaskDesc(0, extra_data[ "x" ], extra_data[ "y" ], extra_data[ "w" ], extra_data[ "h" ], extra_data[ "num_pixels" ] ,extra_data[ "num_samples" ])
         #res = RenderTaskResult(dest, taskResult)
         #self.taskableRenderer.task_finished(res)
         #if self.taskableRenderer.isFinished():
-        #    VRayTracingTask.__save_image(self.fileName + ".ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples) #FIXME: change file name here
+        #    VRayTracingTask.__save_image(self.file_name + ".ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples) #FIXME: change file name here
         pass
 
     #######################
@@ -289,8 +289,8 @@ class PbrtRenderTask(Task):
         return self.lastExtraData, hash, self.returnAddress, self.returnPort
 
     #######################
-    def __shortExtraDataRepr(self, perfIndex, extraData):
-        l = extraData
+    def __shortExtraDataRepr(self, perfIndex, extra_data):
+        l = extra_data
         return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, num_cores: {}, outfilebasename: {}, sceneFile: {}".format(l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["num_cores"], l["outfilebasename"], l["sceneFile"])
 
 
@@ -299,7 +299,7 @@ class PbrtRenderTask(Task):
         return self.lastTask != self.totalTasks
 
     #######################
-    def computationStarted(self, extraData):
+    def computationStarted(self, extra_data):
         pass
 
     #######################
@@ -346,13 +346,13 @@ class PbrtRenderTask(Task):
         return float(self.lastTask) / self.totalTasks
 
     #######################
-    def prepare_resourceDelta(self, subtask_id, task_id, resourceHeader):
+    def prepare_resource_delta(self, subtask_id, task_id, resource_header):
         if subtask_id in self.subTasksGiven:
-            dirName = os.path.join("res", self.header.client_id, self.header.task_id, "resources")
+            dir_name = os.path.join("res", self.header.client_id, self.header.task_id, "resources")
             tmpDir = os.path.join("res", self.header.client_id, self.header.task_id, "tmp")
 
-            if os.path.exists(dirName):
-                return prepareDeltaZip(dirName, resourceHeader, tmpDir)
+            if os.path.exists(dir_name):
+                return prepare_delta_zip(dir_name, resource_header, tmpDir)
             else:
                 return None
         else:

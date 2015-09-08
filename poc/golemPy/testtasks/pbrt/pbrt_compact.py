@@ -15,9 +15,9 @@ def format_pbrt_cmd(renderer, startTask, endTask, totalTasks, numSubtasks, num_c
 def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, sceneSrc):
     pbrt = os.path.join(resourcePath, "pbrt.exe")
 
-    outputFiles = os.path.join(tmpPath, outfilebasename)
+    output_files = os.path.join(tmpPath, outfilebasename)
 
-    files = glob.glob(outputFiles + "*.exr")
+    files = glob.glob(output_files + "*.exr")
 
     for f in files:
         os.remove(f)
@@ -32,7 +32,7 @@ def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cor
     print tmpSceneFile.name
 
     if os.path.exists(tmpSceneFile.name):
-        cmd = format_pbrt_cmd(pbrt, startTask, endTask, totalTasks, numSubtasks, num_cores, outputFiles, tmpSceneFile.name)
+        cmd = format_pbrt_cmd(pbrt, startTask, endTask, totalTasks, numSubtasks, num_cores, output_files, tmpSceneFile.name)
     else:
         print "Scene file does not exist"
         
@@ -44,9 +44,9 @@ def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cor
 
     pc.wait()
 
-    print outputFiles
+    print output_files
 
-    files = glob.glob(outputFiles + "*.exr")
+    files = glob.glob(output_files + "*.exr")
 
     print files
 
@@ -54,9 +54,9 @@ def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cor
 
     for f in files:
         fh = open(f, "rb")
-        fileData = fh.read()
-        fileData = zlib.compress(fileData, 9)
-        res.append(pickle.dumps((os.path.basename(f), fileData)))
+        file_data = fh.read()
+        file_data = zlib.compress(file_data, 9)
+        res.append(pickle.dumps((os.path.basename(f), file_data)))
         fh.close()
 
     #os.remove(tmpSceneFile.name)

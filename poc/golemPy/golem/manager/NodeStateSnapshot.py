@@ -36,7 +36,7 @@ class LocalTaskStateSnapshot:
         self.progress = progress
         self.taskShortDescr = taskShortDescr
 
-    def getTaskId(self):
+    def get_task_id(self):
         return self.task_id
 
     def getTotalTasks(self):
@@ -57,7 +57,7 @@ class LocalTaskStateSnapshot:
     def getProgress(self):
         return self.progress
 
-    def getTaskShortDescr(self):
+    def get_taskShortDescr(self):
         return self.taskShortDescr
 
 #FIXME: REGISTER number of local and remote tasks processed by current node (and number of successes and failures as well) - and show it in this manager
@@ -95,7 +95,7 @@ class NodeStateSnapshot:
     def getPeersNum(self):
         return self.peersNum
 
-    def getTasksNum(self):
+    def get_tasksNum(self):
         return self.tasksNum
 
     def getLastNetworkMessages(self):
@@ -104,7 +104,7 @@ class NodeStateSnapshot:
     def getLastTaskMessages(self):
         return self.lastTaskMessages
 
-    def getTaskChunkStateSnapshot(self):
+    def get_taskChunkStateSnapshot(self):
         return self.taskChunkState
 
     def getLocalTaskStateSnapshot(self):
@@ -112,7 +112,7 @@ class NodeStateSnapshot:
 
     def __str__(self):
         return "Nothing here"
-        #ret = str(self.getUID())+ " ----- \n" + "peers count: " + str(self.getPeersNum()) + "\n" + "tasks count: " + str(self.getTasksNum()) + "\n"
+        #ret = str(self.getUID())+ " ----- \n" + "peers count: " + str(self.getPeersNum()) + "\n" + "tasks count: " + str(self.get_tasksNum()) + "\n"
         #ret += "remote progress: " + str(self.getRemoteProgress()) + "\n" + "lockal progress: " + str(self.getLocalProgress()) + "\n"
         #ret += "last net comunication: " + str(self.getLastNetworkMessages()) + "\n"
         #ret += "last task comunication: " + str(self.getLastTaskMessages())

@@ -50,12 +50,12 @@ class NodeSimulator(QtCore.QThread):
         self.forcedQuit = True
 
     ########################
-    def enqueueTask(self, w, h, numSamplesPerPixel, fileName):
+    def enqueueTask(self, w, h, numSamplesPerPixel, file_name):
         self.numLocalTasks += 1
         self.totalDuration += self.localTaskDuration
-        extraData = "w: {}, h: {}, spp: {}, file: {}".format(w, h, numSamplesPerPixel, fileName)
+        extra_data = "w: {}, h: {}, spp: {}, file: {}".format(w, h, numSamplesPerPixel, file_name)
 
-        self.addedTasks.append(extraData)
+        self.addedTasks.append(extra_data)
 
     ########################
     def getId(self):
@@ -208,11 +208,11 @@ class LocalNetworkSimulator(Thread):
                     break
 
     ########################
-    def enqueueNodeTask(self, uid, w, h, numSamplesPerPixel, fileName):
+    def enqueueNodeTask(self, uid, w, h, numSamplesPerPixel, file_name):
         with self.lock:
             for node in self.nodes:
                 if node.getUid() == uid:
-                    node.enqueueTask(w, h, numSamplesPerPixel, fileName)
+                    node.enqueueTask(w, h, numSamplesPerPixel, file_name)
 
     ########################
     def addNewNode(self):

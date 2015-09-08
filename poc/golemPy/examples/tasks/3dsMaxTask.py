@@ -8,17 +8,17 @@ import subprocess
 import win32process
 import shutil
 
-def format3dsMaxCmd(cmdFile, startTask, endTask, totalTasks, outputFile, outfilebasename, scenefile, width, height, presetFile, overlap):
-    cmd = '{} -outputName:{}\\{}.exr -strip:{},{},{} "{}" -frames:0 -stillFrame -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile,outputFile,  outfilebasename, totalTasks, overlap, startTask, scenefile, width, height, presetFile)
+def format3dsMaxCmd(cmdFile, startTask, endTask, totalTasks, output_file, outfilebasename, scenefile, width, height, presetFile, overlap):
+    cmd = '{} -outputName:{}\\{}.exr -strip:{},{},{} "{}" -frames:0 -stillFrame -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile,output_file,  outfilebasename, totalTasks, overlap, startTask, scenefile, width, height, presetFile)
     return cmd
 
-def format3dsMaxCmdWithFrames(cmdFile, frames, outputFile, outfilebasename, scenefile, width, height, presetFile):
-    cmd = '{} -outputName:{}\\{}.exr -frames:{} "{}" -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile, outputFile, outfilebasename, frames, scenefile, width, height, presetFile)
+def format3dsMaxCmdWithFrames(cmdFile, frames, output_file, outfilebasename, scenefile, width, height, presetFile):
+    cmd = '{} -outputName:{}\\{}.exr -frames:{} "{}" -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile, output_file, outfilebasename, frames, scenefile, width, height, presetFile)
     return cmd
 
-def format3dsMaxCmdWithParts(cmdFile, frames, parts, startTask, outputFile, outfilebasename, sceneFile, width, height, presetFile, overlap):
+def format3dsMaxCmdWithParts(cmdFile, frames, parts, startTask, output_file, outfilebasename, sceneFile, width, height, presetFile, overlap):
     part = ((startTask - 1) % parts) + 1
-    cmd = '{} -outputName:{}\\{}.exr -frames:{} -strip:{},{},{} "{}" -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile, outputFile, outfilebasename, frames, parts, overlap, part, sceneFile, width, height, presetFile)
+    cmd = '{} -outputName:{}\\{}.exr -frames:{} -strip:{},{},{} "{}" -rfw:0 -width={} -height={} -rps:"{}"'.format(cmdFile, output_file, outfilebasename, frames, parts, overlap, part, sceneFile, width, height, presetFile)
     return cmd
 
 def __readFromEnvironment(defaultCmdFile, num_cores):
@@ -45,9 +45,9 @@ def returnData(files):
     res = []
     for f in files:
         with open(f, "rb") as fh:
-            fileData = fh.read()
-        fileData = zlib.compress(fileData, 9)
-        res.append(pickle.dumps((os.path.basename(f), fileData)))
+            file_data = fh.read()
+        file_data = zlib.compress(file_data, 9)
+        res.append(pickle.dumps((os.path.basename(f), file_data)))
 
     return { 'data': res, 'resultType': 0 }
 
@@ -65,9 +65,9 @@ def returnFiles(files):
 ############################f =
 def run3dsMaxTask(pathRoot, startTask, endTask, totalTasks, outfilebasename, sceneFile, width, height, preset, cmdFile, useFrames, frames, parts, num_cores, overlap):
     print 'run3dsMaxTask'
-    outputFiles = tmpPath
+    output_files = tmpPath
 
-    files = glob.glob(outputFiles + "*.exr")
+    files = glob.glob(output_files + "*.exr")
 
     for f in files:
         os.remove(f)
@@ -88,11 +88,11 @@ def run3dsMaxTask(pathRoot, startTask, endTask, totalTasks, outfilebasename, sce
         if useFrames:
             frames = parseFrames(frames)
             if parts == 1:
-                cmd = format3dsMaxCmdWithFrames(cmdFile, frames, outputFiles, outfilebasename, sceneFile, width, height, presetFile)
+                cmd = format3dsMaxCmdWithFrames(cmdFile, frames, output_files, outfilebasename, sceneFile, width, height, presetFile)
             else:
-                cmd = format3dsMaxCmdWithParts(cmdFile, frames, parts, startTask, outputFiles, outfilebasename, sceneFile, width, height, presetFile, overlap)
+                cmd = format3dsMaxCmdWithParts(cmdFile, frames, parts, startTask, output_files, outfilebasename, sceneFile, width, height, presetFile, overlap)
         else:
-            cmd = format3dsMaxCmd(cmdFile, startTask, endTask, totalTasks, outputFiles, outfilebasename, sceneFile, width, height, presetFile, overlap)
+            cmd = format3dsMaxCmd(cmdFile, startTask, endTask, totalTasks, output_files, outfilebasename, sceneFile, width, height, presetFile, overlap)
 
     else:
         print "Scene file does not exist"
@@ -107,7 +107,7 @@ def run3dsMaxTask(pathRoot, startTask, endTask, totalTasks, outfilebasename, sce
 
     pc.wait()
 
-    files = glob.glob(outputFiles + "\*.exr")
+    files = glob.glob(output_files + "\*.exr")
 
     return returnData(files)
 

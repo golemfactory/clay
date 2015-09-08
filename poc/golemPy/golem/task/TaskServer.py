@@ -27,7 +27,7 @@ class TaskServer(PendingConnectionsServer):
         self.task_keeper = TaskKeeper()
         self.task_manager = TaskManager(config_desc.client_uid, self.node, key_id=self.keys_auth.get_key_id(),
                                        root_path=TaskServer.__get_task_manager_root(config_desc),
-                                       useDistributedResources=config_desc.use_distributed_resource_management)
+                                       use_distributed_resources=config_desc.use_distributed_resource_management)
         self.task_computer = TaskComputer(config_desc.client_uid, self)
         self.task_sessions = {}
         self.task_sessions_incoming = []
@@ -64,7 +64,7 @@ class TaskServer(PendingConnectionsServer):
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
 
-        theader = self.task_keeper.getTask()
+        theader = self.task_keeper.get_task()
         if theader is not None:
             trust = self.client.getRequestingTrust(theader.client_id)
             logger.debug("Requesting trust level: {}".format(trust))
@@ -256,11 +256,11 @@ class TaskServer(PendingConnectionsServer):
         logger.info("Computation for task {} failed: {}.".format(subtask_id, err))
         node_id = self.task_manager.getNodeIdForSubtask(subtask_id)
         self.client.decreaseTrust(node_id, RankingStats.computed)
-        self.task_manager.taskComputation_failure(subtask_id, err)
+        self.task_manager.task_computation_failure(subtask_id, err)
 
     def accept_result(self, subtask_id, account_info):
         price_mod = self.task_manager.getPriceMod(subtask_id)
-        task_id = self.task_manager.getTaskId(subtask_id)
+        task_id = self.task_manager.get_task_id(subtask_id)
         self.client.accept_result(task_id, subtask_id, price_mod, account_info)
 
         mod = min(max(self.task_manager.getTrustMod(subtask_id), self.min_trust), self.max_trust)

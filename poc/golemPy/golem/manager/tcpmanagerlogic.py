@@ -53,5 +53,5 @@ class TcpManagerLogic(QObject):
         pass
 
     ########################
-    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, fileName):
+    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, file_name):
         pass

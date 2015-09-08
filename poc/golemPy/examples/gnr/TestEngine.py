@@ -38,8 +38,8 @@ class TestEngine(QtCore.QObject):
         args = []
 
         for i in range(poolSize):
-            extraData = t.queryExtraData(1.0)
-            args.append([ (t.srcCode, extraData, None) ])
+            extra_data = t.queryExtraData(1.0)
+            args.append([ (t.srcCode, extra_data, None) ])
 
         res = p.map(runTask, args)
 
@@ -56,9 +56,9 @@ class TestEngine(QtCore.QObject):
 
 
 #######################
-def runTask(self, srcCode, extraData, progress):
-    extraData = copy(extraData)
-    scope = extraData
+def runTask(self, srcCode, extra_data, progress):
+    extra_data = copy(extra_data)
+    scope = extra_data
     scope[ "taskProgress" ] = progress
 
     exec srcCode in scope

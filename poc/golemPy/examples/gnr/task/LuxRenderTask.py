@@ -34,12 +34,12 @@ def buildLuxRenderInfo():
     renderer = RendererInfo("LuxRender", defaults, LuxRenderTaskBuilder, LuxRenderDialog, LuxRenderDialogCustomizer, LuxRenderOptions)
     renderer.outputFormats = ["EXR", "PNG", "TGA"]
     renderer.sceneFileExt = [ "lxs" ]
-    renderer.getTaskNumFromPixels = getTaskNumFromPixels
-    renderer.getTaskBoarder = getTaskBoarder
+    renderer.get_taskNumFromPixels = get_taskNumFromPixels
+    renderer.get_taskBoarder = get_taskBoarder
 
     return renderer
 
-def getTaskBoarder(startTask, endTask, totalTasks, resX = 300 , resY = 200, numSubtasks = 20):
+def get_taskBoarder(startTask, endTask, totalTasks, resX = 300 , resY = 200, numSubtasks = 20):
     boarder = []
     for i in range(0, resY):
         boarder.append((0, i))
@@ -49,7 +49,7 @@ def getTaskBoarder(startTask, endTask, totalTasks, resX = 300 , resY = 200, numS
         boarder.append((i, resY - 1))
     return boarder
 
-def getTaskNumFromPixels(pX, pY, totalTasks, resX = 300, resY = 200):
+def get_taskNumFromPixels(pX, pY, totalTasks, resX = 300, resY = 200):
     return 1
 
 ##############################################
@@ -89,13 +89,13 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                             self._calculateTotal(buildLuxRenderInfo(), self.taskDefinition),
                             self.taskDefinition.resolution[0],
                             self.taskDefinition.resolution[1],
-                            os.path.splitext(os.path.basename(self.taskDefinition.outputFile))[0],
-                            self.taskDefinition.outputFile,
+                            os.path.splitext(os.path.basename(self.taskDefinition.output_file))[0],
+                            self.taskDefinition.output_file,
                             self.taskDefinition.outputFormat,
                             self.taskDefinition.fullTaskTimeout,
                             self.taskDefinition.subtask_timeout,
                             self.taskDefinition.resources,
-                            self.taskDefinition.estimatedMemory,
+                            self.taskDefinition.estimated_memory,
                             self.root_path,
                             self.taskDefinition.rendererOptions.halttime,
                             self.taskDefinition.rendererOptions.haltspp,
@@ -118,12 +118,12 @@ class LuxTask(RenderingTask):
                     resX,
                     resY,
                     outfilebasename,
-                    outputFile,
+                    output_file,
                     outputFormat,
                     fullTaskTimeout,
                     subtask_timeout,
                     taskResources,
-                    estimatedMemory,
+                    estimated_memory,
                     root_path,
                     halttime,
                     haltspp,
@@ -136,8 +136,8 @@ class LuxTask(RenderingTask):
         RenderingTask.__init__(self, client_id, task_id, returnAddress, returnPort, key_id,
                                  LuxRenderEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                                  mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                                 totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
-                                 root_path, estimatedMemory)
+                                 totalTasks, resX, resY, outfilebasename, output_file, outputFormat,
+                                 root_path, estimated_memory)
 
         self.halttime = halttime
         self.haltspp = haltspp
@@ -151,7 +151,7 @@ class LuxTask(RenderingTask):
             logger.error("Wrong scene file: {}".format(str(err)))
             self.sceneFileSrc = ""
 
-        self.outputFile, _ = os.path.splitext(self.outputFile)
+        self.output_file, _ = os.path.splitext(self.output_file)
         self.numAdd = 0
 
         self.previewEXR = None
@@ -189,7 +189,7 @@ class LuxTask(RenderingTask):
 
         numThreads = max(num_cores, 1)
 
-        extraData =          {      "pathRoot" : self.mainSceneDir,
+        extra_data =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
                                     "endTask" : endTask,
                                     "totalTasks" : self.totalTasks,
@@ -202,12 +202,12 @@ class LuxTask(RenderingTask):
                                 }
 
         hash = "{}".format(random.getrandbits(128))
-        self.subTasksGiven[ hash ] = extraData
+        self.subTasksGiven[ hash ] = extra_data
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
         self.subTasksGiven[ hash ][ 'perf' ] = perfIndex
         self.subTasksGiven[ hash ][ 'client_id' ] = client_id
 
-        return self._newComputeTaskDef(hash, extraData, workingDirectory, perfIndex)
+        return self._newComputeTaskDef(hash, extra_data, workingDirectory, perfIndex)
 
 
     #######################
@@ -226,7 +226,7 @@ class LuxTask(RenderingTask):
         else:
             luxConsole = 'luxconsole.exe'
 
-        extraData = {
+        extra_data = {
             "pathRoot" : self.mainSceneDir,
             "startTask": 1,
             "endTask": 1,
@@ -242,11 +242,11 @@ class LuxTask(RenderingTask):
         hash = "{}".format(random.getrandbits(128))
 
 
-        return self._newComputeTaskDef(hash, extraData, workingDirectory, 0)
+        return self._newComputeTaskDef(hash, extra_data, workingDirectory, 0)
 
     #######################
-    def _shortExtraDataRepr(self, perfIndex, extraData):
-        l = extraData
+    def _shortExtraDataRepr(self, perfIndex, extra_data):
+        l = extra_data
         return "startTask: {}, outfilebasename: {}, sceneFileSrc: {}".format(l['startTask'], l['outfilebasename'], l['sceneFileSrc'])
 
     #######################
@@ -277,13 +277,13 @@ class LuxTask(RenderingTask):
 
     #######################
     def __generateFinalFLM(self):
-        outputFileName = u"{}".format(self.outputFile, self.outputFormat)
+        output_file_name = u"{}".format(self.output_file, self.outputFormat)
         self.collectedFileNames = OrderedDict(sorted(self.collectedFileNames.items()))
         files = " ".join(self.collectedFileNames.values())
         env = LuxRenderEnvironment()
         luxMerger = env.getLuxMerger()
         if luxMerger is not None:
-            cmd = "{} -o {}.flm {}".format(luxMerger, self.outputFile, files)
+            cmd = "{} -o {}.flm {}".format(luxMerger, self.output_file, files)
 
             logger.debug("Lux Merger cmd: {}".format(cmd))
             exec_cmd(cmd)
@@ -312,8 +312,8 @@ class LuxTask(RenderingTask):
     #######################
     def __formatLuxRenderCmd(self, sceneFile):
         cmdFile = LuxRenderEnvironment().getLuxConsole()
-        outputFLM = "{}.flm".format(self.outputFile)
-        cmd = '"{}" "{}" -R "{}" -o "{}" '.format(cmdFile, sceneFile, outputFLM, self.outputFile)
+        outputFLM = "{}.flm".format(self.output_file)
+        cmd = '"{}" "{}" -R "{}" -o "{}" '.format(cmdFile, sceneFile, outputFLM, self.output_file)
         logger.debug("Last flm cmd {}".format(cmd))
         prevPath = os.getcwd()
         os.chdir(os.path.dirname(self.mainSceneFile))

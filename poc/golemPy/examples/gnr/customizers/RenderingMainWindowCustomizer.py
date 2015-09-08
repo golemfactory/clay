@@ -33,7 +33,7 @@ def subtasksPriority(sub):
         SubtaskStatus.starting: 2,
         SubtaskStatus.waiting: 1 }
 
-    return priority[ sub.subtaskStatus ]
+    return priority[ sub.subtask_status]
 
 #######################################################################################
 def insertItem(root, pathTable):
@@ -102,11 +102,11 @@ class AbsRenderingMainWindowCustomizer (object):
 
     #############################
     def showTaskResult(self, task_id):
-        t = self.logic.getTask(task_id)
+        t = self.logic.get_task(task_id)
         if t.definition.renderer in frameRenderers and t.definition.rendererOptions.useFrames:
             file_ = self.__getFrameName(t.definition, 0)
         else:
-            file_ = t.definition.outputFile
+            file_ = t.definition.output_file
         if os.path.isfile(file_):
                 self._showFile(file_)
         else:
@@ -118,14 +118,14 @@ class AbsRenderingMainWindowCustomizer (object):
     def __setTimeParams(self, t):
         self.gui.ui.subtaskTimeout.setText("{} minutes".format(int(t.definition.subtask_timeout / 60.0)))
         self.gui.ui.fullTaskTimeout.setText(str(datetime.timedelta(seconds = t.definition.fullTaskTimeout)))
-        if t.taskState.timeStarted != 0.0:
-            lt = time.localtime(t.taskState.timeStarted)
+        if t.taskState.time_started != 0.0:
+            lt = time.localtime(t.taskState.time_started)
             timeString  = time.strftime("%Y.%m.%d  %H:%M:%S", lt)
             self.gui.ui.timeStarted.setText(timeString)
 
     ############################
     def __setRendererParams(self, t):
-        mem, index = resourceSizeToDisplay(t.definition.estimatedMemory / 1024)
+        mem, index = resourceSizeToDisplay(t.definition.estimated_memory / 1024)
         self.gui.ui.estimatedMemoryLabel.setText("{} {}".format(mem, translateResourceIndex(index)))
         self.gui.ui.resolution.setText("{} x {}".format(t.definition.resolution[ 0 ], t.definition.resolution[ 1 ]))
         self.gui.ui.renderer.setText("{}".format(t.definition.renderer))
@@ -146,8 +146,8 @@ class AbsRenderingMainWindowCustomizer (object):
 
     ############################
     def __setFramePreview(self, t):
-        if "resultPreview" in t.taskState.extraData:
-            self.sliderPreviews = t.taskState.extraData[ "resultPreview" ]
+        if "resultPreview" in t.taskState.extra_data:
+            self.sliderPreviews = t.taskState.extra_data[ "resultPreview" ]
         self.gui.ui.frameSlider.setVisible(True)
         self.gui.ui.frameSlider.setRange(1, len(t.definition.rendererOptions.frames))
         self.gui.ui.frameSlider.setSingleStep(1)
@@ -158,10 +158,10 @@ class AbsRenderingMainWindowCustomizer (object):
 
     ############################
     def __setPreview(self, t):
-        self.gui.ui.outputFile.setText(u"{}".format(t.definition.outputFile))
+        self.gui.ui.outputFile.setText(u"{}".format(t.definition.output_file))
         self.gui.ui.frameSlider.setVisible(False)
-        if "resultPreview" in t.taskState.extraData:
-            filePath = os.path.abspath(t.taskState.extraData["resultPreview"])
+        if "resultPreview" in t.taskState.extra_data:
+            filePath = os.path.abspath(t.taskState.extra_data["resultPreview"])
             time.sleep(0.5)
             if os.path.exists(filePath):
                 self.gui.ui.previewLabel.setPixmap(QPixmap(filePath))
@@ -173,7 +173,7 @@ class AbsRenderingMainWindowCustomizer (object):
 
     ############################
     def __getFrameName(self, definition, num):
-        outputName, ext = os.path.splitext(definition.outputFile)
+        outputName, ext = os.path.splitext(definition.output_file)
         frameNum = definition.rendererOptions.frames[ num ]
         outputName += str(frameNum).zfill(4)
         return outputName + ext
@@ -232,7 +232,7 @@ class AbsRenderingMainWindowCustomizer (object):
             self._showFile(file_)
 
     #############################
-    def __getTaskNumFromPixels(self, x, y):
+    def __get_taskNumFromPixels(self, x, y):
         num = None
 
         t = self.currentTaskHighlighted
@@ -242,30 +242,30 @@ class AbsRenderingMainWindowCustomizer (object):
         if t.definition.renderer:
             definition = t.definition
             task_id = definition.task_id
-            task =  self.logic.getTask(task_id)
+            task =  self.logic.get_task(task_id)
             renderer = self.logic.getRenderer(definition.renderer)
-            if len(task.taskState.subtaskStates) > 0:
-                totalTasks = task.taskState.subtaskStates.values()[0].extraData['totalTasks']
+            if len(task.taskState.subtask_states) > 0:
+                totalTasks = task.taskState.subtask_states.values()[0].extra_data['totalTasks']
                 if definition.renderer in frameRenderers and definition.rendererOptions.useFrames:
                     frames = len (definition.rendererOptions.frames)
                     frameNum = self.gui.ui.frameSlider.value()
-                    num = renderer.getTaskNumFromPixels(x, y, totalTasks, useFrames = True, frames = frames, frameNum = frameNum)
+                    num = renderer.get_taskNumFromPixels(x, y, totalTasks, useFrames = True, frames = frames, frameNum = frameNum)
                 else:
-                    num = renderer.getTaskNumFromPixels(x, y, totalTasks)
+                    num = renderer.get_taskNumFromPixels(x, y, totalTasks)
         return num
 
     #############################
     def __getSubtask(self, num):
         subtask = None
-        task = self.logic.getTask(self.currentTaskHighlighted.definition.task_id)
-        subtasks = [ sub  for sub in task.taskState.subtaskStates.values() if sub.extraData['startTask']  <= num <= sub.extraData['endTask']  ]
+        task = self.logic.get_task(self.currentTaskHighlighted.definition.task_id)
+        subtasks = [ sub  for sub in task.taskState.subtask_states.values() if sub.extra_data['startTask']  <= num <= sub.extra_data['endTask']  ]
         if len(subtasks) > 0:
                 subtask = min(subtasks, key=lambda x: subtasksPriority(x))
         return subtask
 
     #############################
     def __pixmapClicked(self, x, y, *args):
-        num = self.__getTaskNumFromPixels(x, y)
+        num = self.__get_taskNumFromPixels(x, y)
         if num is not None:
             subtask = self.__getSubtask(num)
             if subtask is not None:
@@ -273,7 +273,7 @@ class AbsRenderingMainWindowCustomizer (object):
 
     #############################
     def __mouseOnPixmapMoved(self, x, y, *args):
-        num = self.__getTaskNumFromPixels(x, y)
+        num = self.__get_taskNumFromPixels(x, y)
         if num is not None:
             definition = self.currentTaskHighlighted.definition
             if not isinstance(definition, RenderingTaskDefinition):
@@ -284,18 +284,18 @@ class AbsRenderingMainWindowCustomizer (object):
                 if definition.renderer in frameRenderers and definition.rendererOptions.useFrames:
                     frames = len (definition.rendererOptions.frames)
                     frameNum = self.gui.ui.frameSlider.value()
-                    border = renderer.getTaskBoarder(subtask.extraData['startTask'],
-                                                       subtask.extraData['endTask'],
-                                                       subtask.extraData['totalTasks'],
+                    border = renderer.get_taskBoarder(subtask.extra_data['startTask'],
+                                                       subtask.extra_data['endTask'],
+                                                       subtask.extra_data['totalTasks'],
                                                        self.currentTaskHighlighted.definition.resolution[0],
                                                        self.currentTaskHighlighted.definition.resolution[1],
                                                        useFrames = True,
                                                        frames = frames,
                                                        frameNum = frameNum)
                 else:
-                    border = renderer.getTaskBoarder(subtask.extraData['startTask'],
-                                                       subtask.extraData['endTask'],
-                                                       subtask.extraData['totalTasks'],
+                    border = renderer.get_taskBoarder(subtask.extra_data['startTask'],
+                                                       subtask.extra_data['endTask'],
+                                                       subtask.extra_data['totalTasks'],
                                                        self.currentTaskHighlighted.definition.resolution[0],
                                                        self.currentTaskHighlighted.definition.resolution[1])
 

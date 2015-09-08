@@ -3,7 +3,7 @@ import abc
 
 class TaskHeader:
     #######################
-    def __init__(self, client_id, task_id, taskOwnerAddress, taskOwnerPort, taskOwnerKeyId, environment, taskOwner = None, ttl = 0.0, subtask_timeout = 0.0, resourceSize = 0, estimatedMemory = 0, min_version = 1.0):
+    def __init__(self, client_id, task_id, taskOwnerAddress, taskOwnerPort, taskOwnerKeyId, environment, taskOwner = None, ttl = 0.0, subtask_timeout = 0.0, resourceSize = 0, estimated_memory = 0, min_version = 1.0):
         self.task_id = task_id
         self.taskOwnerKeyId = taskOwnerKeyId
         self.taskOwnerAddress = taskOwnerAddress
@@ -15,7 +15,7 @@ class TaskHeader:
         self.client_id = client_id
         self.resourceSize = resourceSize
         self.environment = environment
-        self.estimatedMemory = estimatedMemory
+        self.estimated_memory = estimated_memory
         self.min_version = min_version
 
 class TaskBuilder:
@@ -34,7 +34,7 @@ class ComputeTaskDef(object):
         self.task_id             = ""
         self.subtask_id          = ""
         self.srcCode            = ""
-        self.extraData          = {}
+        self.extra_data          = {}
         self.shortDescription   = ""
         self.returnAddress      = ""
         self.returnPort         = 0
@@ -72,7 +72,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def computationStarted(self, extraData):
+    def computationStarted(self, extra_data):
         return # Implement in derived class
 
     #######################
@@ -92,7 +92,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def verifyTask(self):
+    def verify_task(self):
         return # Implement in derived class
 
     #######################
@@ -132,7 +132,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def prepare_resourceDelta(self, task_id, resourceHeader):
+    def prepare_resource_delta(self, task_id, resource_header):
         return None
 
     #######################

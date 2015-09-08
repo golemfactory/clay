@@ -4,17 +4,17 @@ from golem.task.TaskState import SubtaskStatus
 
 class SubtaskContextMenuCustomizer:
     ##########################
-    def __init__(self, ui, logic, subtask_id, subtaskStatus):
+    def __init__(self, ui, logic, subtask_id, subtask_status):
         self.ui             = ui
         self.logic          = logic
         self.subtask_id      = subtask_id
-        self.subtaskStatus  = subtaskStatus
+        self.subtask_status = subtask_status
 
         self.__buildContextMenu()
 
     ##########################
     def __buildContextMenu(self):
-        enabledActions = self.__getEnabledActions(self.subtaskStatus)
+        enabledActions = self.__getEnabledActions(self.subtask_status)
         self.__buildAndConnectAction("Restart", self.__restartSubtask, enabledActions)
 
     ##########################
@@ -32,22 +32,22 @@ class SubtaskContextMenuCustomizer:
         self.logic.restartSubtask(self.subtask_id)
 
     ##########################
-    def __getEnabledActions(self, subtaskStatus):
+    def __getEnabledActions(self, subtask_status):
         enabled = {}
 
-        if subtaskStatus == SubtaskStatus.starting:
+        if subtask_status== SubtaskStatus.starting:
             enabled [ "Restart" ] = True
 
-        if subtaskStatus == SubtaskStatus.waiting:
+        if subtask_status== SubtaskStatus.waiting:
             enabled[ "Restart" ] = False
 
-        if subtaskStatus == SubtaskStatus.failure:
+        if subtask_status== SubtaskStatus.failure:
             enabled [ "Restart" ] = False
 
-        if subtaskStatus == SubtaskStatus.finished:
+        if subtask_status== SubtaskStatus.finished:
             enabled [ "Restart" ] = True
 
-        if subtaskStatus == SubtaskStatus.resent:
+        if subtask_status== SubtaskStatus.resent:
             enabled[ "Restart" ] = False
 
         return enabled

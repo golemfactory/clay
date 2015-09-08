@@ -58,11 +58,11 @@ def startClient():
 
     getting_peers_interval        = cfg.getGettingPeersInterval()
     getting_tasks_interval        = cfg.getGettingTasksInterval()
-    task_request_interval         = cfg.getTaskRequestInterval()
+    task_request_interval         = cfg.get_taskRequestInterval()
     use_waiting_for_task_timeout    = cfg.getUseWaitingForTaskTimeout()
     waiting_for_task_timeout       = cfg.getWaitingForTaskTimeout()
     p2p_session_timeout           = cfg.getP2pSessionTimeout()
-    task_session_timeout          = cfg.getTaskSessionTimeout()
+    task_session_timeout          = cfg.get_taskSessionTimeout()
     resource_session_timeout      = cfg.getResourceSessionTimeout()
 
     estimated_performance        = cfg.getEstimatedPerformance()
@@ -418,7 +418,7 @@ class Client:
         return self.task_server.get_task_computer_root()
 
     def getReceivedFilesDir(self):
-        return self.task_server.task_manager.getTaskManagerRoot()
+        return self.task_server.task_manager.get_taskManagerRoot()
 
     def getDistributedFilesDir(self):
         return self.resource_server.get_distributed_resource_root()

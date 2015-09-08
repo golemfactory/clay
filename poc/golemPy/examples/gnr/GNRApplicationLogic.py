@@ -104,13 +104,13 @@ class GNRApplicationLogic(QtCore.QObject):
             logger.error("Can't register nodes manager client. No client instance.")
 
     ######################
-    def getTask(self, task_id):
+    def get_task(self, task_id):
         assert task_id in self.tasks, "GNRApplicationLogic: task {} not added".format(task_id)
 
         return self.tasks[ task_id ]
 
     ######################
-    def getTaskTypes(self):
+    def get_taskTypes(self):
         return self.taskTypes
 
     ######################
@@ -130,7 +130,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.quit()
 
     ######################
-    def getTaskType(self, name):
+    def get_taskType(self, name):
         taskType = self.tasksType[ name ]
         if taskType:
             return taskType
@@ -160,7 +160,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
     ######################
     def startTask(self, task_id):
-        ts = self.getTask(task_id)
+        ts = self.get_task(task_id)
 
         if ts.taskState.status != TaskStatus.notStarted:
             errorMsg = "Task already started"

@@ -6,32 +6,32 @@ class TaskState:
 
         self.status         = TaskStatus.notStarted
         self.progress       = 0.0
-        self.remainingTime  = 0
-        self.elapsedTime    = 0
-        self.timeStarted    = 0
-        self.paymentBooked  = False
-        self.paymentSettled = False
+        self.remaining_time  = 0
+        self.elapsed_time    = 0
+        self.time_started    = 0
+        self.payment_booked  = False
+        self.payment_settled = False
 
-        self.subtaskStates  = {}
+        self.subtask_states  = {}
 
-        self.extraData      = {}
+        self.extra_data      = {}
 
     #########################
-    def getSubtaskState(self, subtask_id):
-        if subtask_id in self.subtaskStates:
-            return self.subtaskStates[ subtask_id ]
+    def get_subtask_state(self, subtask_id):
+        if subtask_id in self.subtask_states:
+            return self.subtask_states[ subtask_id ]
         else:
             return None
 
     #########################
-    def getSubtaskStateForComputer(self, node_id):
+    def get_subtask_state_for_computer(self, node_id):
 
-        subtasksStates = []
+        subtasks_states = []
 
-        for k in self.subtaskStates:
-            ss = self.subtaskStates[ k ]
+        for k in self.subtask_states:
+            ss = self.subtask_states[ k ]
             if ss.computer.node_id == node_id:
-                subtasksStates.append(ss)
+                subtasks_states.append(ss)
 
 
 class ComputerState:
@@ -40,7 +40,7 @@ class ComputerState:
         self.node_id             = ""
         self.eth_account         = ""
         self.performance        = 0
-        self.ipAddress          = ""
+        self.ip_address          = ""
         self.port               = 0
         self.key_id              = 0
 
@@ -50,12 +50,12 @@ class SubtaskState:
         self.subtaskDefinition  = ""
         self.subtask_id          = ""
         self.subtaskProgress    = 0.0
-        self.timeStarted        = 0
+        self.time_started        = 0
         self.ttl                = 0
         self.last_checking       = time.time()
-        self.extraData          = {}
-        self.subtaskRemTime     = 0
-        self.subtaskStatus      = ""
+        self.extra_data          = {}
+        self.subtask_rem_time     = 0
+        self.subtask_status     = ""
         self.value              = 0
 
 

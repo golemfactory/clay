@@ -19,9 +19,9 @@ def returnData(files):
     res = []
     for f in files:
         with open(f, "rb") as fh:
-            fileData = fh.read()
-        fileData = zlib.compress(fileData, 9)
-        res.append(pickle.dumps((os.path.basename(f), fileData)))
+            file_data = fh.read()
+        file_data = zlib.compress(file_data, 9)
+        res.append(pickle.dumps((os.path.basename(f), file_data)))
 
     return { 'data': res, 'resultType': 0 }
 
@@ -70,9 +70,9 @@ def makeTmpFile(sceneDir, sceneSrc):
 def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, sceneSrc, sceneDir, pbrtPath):
     pbrt = pbrtPath
 
-    outputFiles = os.path.join(tmpPath, outfilebasename)
+    output_files = os.path.join(tmpPath, outfilebasename)
 
-    files = glob.glob(outputFiles + "*.exr")
+    files = glob.glob(output_files + "*.exr")
 
     for f in files:
         os.remove(f)
@@ -81,7 +81,7 @@ def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cor
     tmpSceneFile = makeTmpFile(sceneDir, sceneSrc)
 
     if os.path.exists(tmpSceneFile):
-        cmd = format_pbrt_cmd(pbrt, startTask, endTask, totalTasks, numSubtasks, num_cores, outputFiles, tmpSceneFile)
+        cmd = format_pbrt_cmd(pbrt, startTask, endTask, totalTasks, numSubtasks, num_cores, output_files, tmpSceneFile)
     else:
         print "Scene file does not exist"
         return {'data': [], 'resultType': 0 }
@@ -94,9 +94,9 @@ def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cor
 
     os.chdir(prevDir)
 
-    print outputFiles
+    print output_files
 
-    files = glob.glob(outputFiles + "*.exr")
+    files = glob.glob(output_files + "*.exr")
 
     return returnData(files)
 

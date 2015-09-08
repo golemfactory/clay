@@ -64,7 +64,7 @@ class PbrtTaskDialogCustomizer:
             if outputFormat == self.options.outputFormat:
                 self.gui.ui.outputFormatsComboBox.setCurrentIndex(idx)
 
-        self.gui.ui.outputFileLineEdit.setText(self.options.outputFile)
+        self.gui.ui.outputFileLineEdit.setText(self.options.output_file)
 
     #############################
     def __setVerificationParameters(self):
@@ -105,7 +105,7 @@ class PbrtTaskDialogCustomizer:
     #############################
     def __readOutputParams(self):
         self.options.resolution        = [ self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value() ]
-        self.options.outputFile        = u"{}".format(self.gui.ui.outputFileLineEdit.text())
+        self.options.output_file        = u"{}".format(self.gui.ui.outputFileLineEdit.text())
         self.options.outputFormat      = u"{}".format(self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
 
     #############################
@@ -120,11 +120,11 @@ class PbrtTaskDialogCustomizer:
 
         dir = os.path.dirname(u"{}".format(self.gui.ui.mainSceneLineEdit.text()) )
 
-        fileName = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
+        file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
             "Choose main scene file", dir, filter))
 
-        if fileName != '':
-            self.gui.ui.mainSceneLineEdit.setText(fileName)
+        if file_name != '':
+            self.gui.ui.mainSceneLineEdit.setText(file_name)
 
 
     #############################
@@ -134,18 +134,18 @@ class PbrtTaskDialogCustomizer:
 
         dir = os.path.dirname(u"{}".format(self.gui.ui.outputFileLineEdit.text()) )
 
-        fileName = u"{}".format(QFileDialog.getSaveFileName(self.gui.window,
+        file_name = u"{}".format(QFileDialog.getSaveFileName(self.gui.window,
             "Choose output file", dir, filter))
 
-        if fileName != '':
-            self.gui.ui.outputFileLineEdit.setText(fileName)
+        if file_name != '':
+            self.gui.ui.outputFileLineEdit.setText(file_name)
 
     #############################
     def __choosePbrtPath(self):
         dir = os.path.dirname(u"{}".format(self.gui.ui.pbrtPathLineEdit.text()))
-        fileName = u"{}".format(QFileDialog.getOpenFileName(self.gui.window, "Choose pbrt file", dir, ""))
-        if fileName != '':
-            self.gui.ui.pbrtPathLineEdit.setText(fileName)
+        file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window, "Choose pbrt file", dir, ""))
+        if file_name != '':
+            self.gui.ui.pbrtPathLineEdit.setText(file_name)
 
     #############################
     def __verificationRandomChanged(self):

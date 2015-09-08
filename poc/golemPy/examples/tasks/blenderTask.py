@@ -13,9 +13,9 @@ def returnData(files):
     res = []
     for f in files:
         with open(f, "rb") as fh:
-            fileData = fh.read()
-        fileData = zlib.compress(fileData, 9)
-        res.append(pickle.dumps((os.path.basename(f), fileData)))
+            file_data = fh.read()
+        file_data = zlib.compress(file_data, 9)
+        res.append(pickle.dumps((os.path.basename(f), file_data)))
 
     return { 'data': res, 'resultType': 0 }
 
@@ -30,8 +30,8 @@ def returnFiles(files):
 
 ############################
 def getFiles():
-    outputFiles = tmpPath
-    return glob.glob(outputFiles + "/*.exr")
+    output_files = tmpPath
+    return glob.glob(output_files + "/*.exr")
 
 ############################
 def removeOldFiles():
@@ -72,9 +72,9 @@ def exec_cmd(cmd, nice=20):
     pc.wait()
 
 ############################
-def formatBlenderRenderCmd(cmdFile, outputFiles, outfilebasename, sceneFile, scriptFile, startTask, engine, frame):
+def formatBlenderRenderCmd(cmdFile, output_files, outfilebasename, sceneFile, scriptFile, startTask, engine, frame):
     cmd = ["{}".format(cmdFile), "-b", "{}".format(sceneFile), "-P", "{}".format(scriptFile),
-           "-o", "{}\{}{}".format(outputFiles, outfilebasename, startTask), "-E", "{}".format(engine), "-F", "EXR",
+           "-o", "{}\{}{}".format(output_files, outfilebasename, startTask), "-E", "{}".format(engine), "-F", "EXR",
            "-f", "{}".format(frame) ]
     return cmd
 
@@ -82,7 +82,7 @@ def formatBlenderRenderCmd(cmdFile, outputFiles, outfilebasename, sceneFile, scr
 def runBlenderTask(outfilebasename, sceneFile, scriptSrc, startTask, engine, frames):
     print "Blender Render Task"
 
-    outputFiles = tmpPath
+    output_files = tmpPath
 
     removeOldFiles()
 
@@ -100,7 +100,7 @@ def runBlenderTask(outfilebasename, sceneFile, scriptSrc, startTask, engine, fra
 
 
     for frame in frames:
-        cmd = formatBlenderRenderCmd(cmdFile, outputFiles, outfilebasename, sceneFile, scriptFile.name, startTask, engine, frame)
+        cmd = formatBlenderRenderCmd(cmdFile, output_files, outfilebasename, sceneFile, scriptFile.name, startTask, engine, frame)
         print cmd
         exec_cmd(cmd)
 

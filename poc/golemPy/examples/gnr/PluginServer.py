@@ -13,7 +13,7 @@ class TaskAdder():
     def __init__(self):
         self.taskList = []
 
-    def getTasks(self):
+    def get_tasks(self):
         list = self.taskList
         self.taskList = []
         return list

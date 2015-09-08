@@ -9,7 +9,7 @@ from golem.task.TaskState import SubtaskStatus
 
 from examples.gnr.task.GNRTask import  GNROptions, checkSubtask_idWrapper
 from examples.gnr.task.RenderingTaskCollector import exr_to_pil
-from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
+from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, get_taskBoarder, get_taskNumFromPixels
 from examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
 from examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
@@ -30,8 +30,8 @@ def build3dsMaxRendererInfo():
     renderer                = RendererInfo("3ds Max Renderer", defaults, ThreeDSMaxTaskBuilder, ThreeDSMaxDialog, ThreeDSMaxDialogCustomizer, ThreeDSMaxRendererOptions)
     renderer.outputFormats  = [ "BMP", "EXR", "GIF", "IM", "JPEG", "PCD", "PCX", "PNG", "PPM", "PSD", "TIFF", "XBM", "XPM" ]
     renderer.sceneFileExt   = [ "max",  "zip" ]
-    renderer.getTaskNumFromPixels = getTaskNumFromPixels
-    renderer.getTaskBoarder = getTaskBoarder
+    renderer.get_taskNumFromPixels = get_taskNumFromPixels
+    renderer.get_taskBoarder = get_taskBoarder
 
     return renderer
 
@@ -71,13 +71,13 @@ class ThreeDSMaxTaskBuilder(FrameRenderingTaskBuiler):
                                    self._calculateTotal(build3dsMaxRendererInfo(), self.taskDefinition),
                                    self.taskDefinition.resolution[0],
                                    self.taskDefinition.resolution[1],
-                                   os.path.splitext(os.path.basename(self.taskDefinition.outputFile))[0],
-                                   self.taskDefinition.outputFile,
+                                   os.path.splitext(os.path.basename(self.taskDefinition.output_file))[0],
+                                   self.taskDefinition.output_file,
                                    self.taskDefinition.outputFormat,
                                    self.taskDefinition.fullTaskTimeout,
                                    self.taskDefinition.subtask_timeout,
                                    self.taskDefinition.resources,
-                                   self.taskDefinition.estimatedMemory,
+                                   self.taskDefinition.estimated_memory,
                                    self.root_path,
                                    self.taskDefinition.rendererOptions.preset,
                                    self.taskDefinition.rendererOptions.cmd,
@@ -102,12 +102,12 @@ class ThreeDSMaxTask(FrameRenderingTask):
                   resX,
                   resY,
                   outfilebasename,
-                  outputFile,
+                  output_file,
                   outputFormat,
                   fullTaskTimeout,
                   subtask_timeout,
                   taskResources,
-                  estimatedMemory,
+                  estimated_memory,
                   root_path,
                   presetFile,
                   cmdFile,
@@ -120,8 +120,8 @@ class ThreeDSMaxTask(FrameRenderingTask):
         FrameRenderingTask.__init__(self, client_id, task_id, returnAddress, returnPort,
                           ThreeDSMaxEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                          totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
-                          root_path, estimatedMemory, useFrames, frames)
+                          totalTasks, resX, resY, outfilebasename, output_file, outputFormat,
+                          root_path, estimated_memory, useFrames, frames)
 
 
         self.presetFile = presetFile
@@ -148,7 +148,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
             frames = []
             parts = 1
 
-        extraData =          {      "pathRoot" : self.mainSceneDir,
+        extra_data =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
                                     "endTask" : endTask,
                                     "totalTasks" : self.totalTasks,
@@ -168,7 +168,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
 
 
         hash = "{}".format(random.getrandbits(128))
-        self.subTasksGiven[ hash ] = extraData
+        self.subTasksGiven[ hash ] = extra_data
         self.subTasksGiven[ hash ]['status' ] = SubtaskStatus.starting
         self.subTasksGiven[ hash ]['perf'] = perfIndex
         self.subTasksGiven[ hash ][ 'client_id' ] = client_id
@@ -181,7 +181,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
         else:
             self._updateFrameTaskPreview()
 
-        return self._newComputeTaskDef(hash, extraData, workingDirectory, perfIndex)
+        return self._newComputeTaskDef(hash, extra_data, workingDirectory, perfIndex)
 
     #######################
     def queryExtraDataForTestTask(self):
@@ -196,7 +196,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
         else:
             frames = []
 
-        extraData =          {      "pathRoot" : self.mainSceneDir,
+        extra_data =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : 1,
                                     "endTask" : 1,
                                     "totalTasks" : self.totalTasks,
@@ -220,7 +220,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
         if not os.path.exists(self.testTaskResPath):
             os.makedirs(self.testTaskResPath)
 
-        return self._newComputeTaskDef(hash, extraData, workingDirectory, 0)
+        return self._newComputeTaskDef(hash, extra_data, workingDirectory, 0)
 
 
     #######################
@@ -268,8 +268,8 @@ class ThreeDSMaxTask(FrameRenderingTask):
 
 
     #######################
-    def _shortExtraDataRepr(self, perfIndex, extraData):
-        l = extraData
+    def _shortExtraDataRepr(self, perfIndex, extra_data):
+        l = extra_data
         msg = []
         msg.append("scene file: {} ".format(l [ "sceneFile" ]))
         msg.append("preset: {} ".format(l [ "presetFile" ]))
@@ -314,30 +314,30 @@ class ThreeDSMaxTask(FrameRenderingTask):
     #######################
     @checkSubtask_idWrapper
     def _changeScope(self, subtask_id, startBox, trFile):
-        extraData, _ = FrameRenderingTask._changeScope(self, subtask_id, startBox, trFile)
+        extra_data, _ = FrameRenderingTask._changeScope(self, subtask_id, startBox, trFile)
         if not self.useFrames:
-            startY = startBox[1] + (extraData['startTask'] - 1) * self.resY / extraData['totalTasks']
+            startY = startBox[1] + (extra_data['startTask'] - 1) * self.resY / extra_data['totalTasks']
         elif self.totalTasks <= len(self.frames):
             startY = startBox[1]
-            extraData['frames'] = [ self.__getFrameNumFromOutputFile(trFile) ]
-            extraData['parts'] = extraData['totalTasks']
+            extra_data['frames'] = [ self.__getFrameNumFromOutputFile(trFile) ]
+            extra_data['parts'] = extra_data['totalTasks']
         else:
-            part = ((extraData['startTask'] - 1) % extraData['parts']) + 1
-            startY = startBox[1] + (part - 1) * self.resY / extraData['parts']
-        extraData['totalTasks'] = self.resY / self.verificationOptions.boxSize[1]
-        extraData['parts'] = extraData['totalTasks']
-        extraData['startTask'] = startY / self.verificationOptions.boxSize[1]  + 1
-        extraData['endTask'] = (startY + self.verificationOptions.boxSize[1]) / self.verificationOptions.boxSize[1]  + 1
-        extraData['overlap'] = ((extraData['endTask'] - extraData['startTask']) * self.verificationOptions.boxSize[1])
-        if extraData['startTask'] != 1:
-            newStartY = extraData['overlap']
+            part = ((extra_data['startTask'] - 1) % extra_data['parts']) + 1
+            startY = startBox[1] + (part - 1) * self.resY / extra_data['parts']
+        extra_data['totalTasks'] = self.resY / self.verificationOptions.boxSize[1]
+        extra_data['parts'] = extra_data['totalTasks']
+        extra_data['startTask'] = startY / self.verificationOptions.boxSize[1]  + 1
+        extra_data['endTask'] = (startY + self.verificationOptions.boxSize[1]) / self.verificationOptions.boxSize[1]  + 1
+        extra_data['overlap'] = ((extra_data['endTask'] - extra_data['startTask']) * self.verificationOptions.boxSize[1])
+        if extra_data['startTask'] != 1:
+            newStartY = extra_data['overlap']
         else:
             newStartY = 0
         newStartY += startY % self.verificationOptions.boxSize[1]
-        return extraData, (startBox[0], newStartY)
+        return extra_data, (startBox[0], newStartY)
 
     def __getFrameNumFromOutputFile(self, file_):
-        fileName = os.path.basename(file_)
-        fileName, ext = os.path.splitext(fileName)
-        idx = fileName.find(self.outfilebasename)
-        return int(fileName[ idx + len(self.outfilebasename):])
+        file_name = os.path.basename(file_)
+        file_name, ext = os.path.splitext(file_name)
+        idx = file_name.find(self.outfilebasename)
+        return int(file_name[ idx + len(self.outfilebasename):])

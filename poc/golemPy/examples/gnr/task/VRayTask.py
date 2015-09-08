@@ -9,7 +9,7 @@ from collections import OrderedDict
 from  examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 from  examples.gnr.task.GNRTask import GNROptions, checkSubtask_idWrapper
 from  examples.gnr.task.RenderingTask import RenderingTask
-from  examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
+from  examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, get_taskBoarder, get_taskNumFromPixels
 from  examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
 
 from examples.gnr.task.RenderingTaskCollector import exr_to_pil, RenderingTaskCollector
@@ -34,8 +34,8 @@ def buildVRayRendererInfo():
     renderer = RendererInfo("VRay Standalone", defaults, VRayTaskBuilder, VRayDialog, VRayDialogCustomizer, VRayRendererOptions)
     renderer.outputFormats = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF" ]
     renderer.sceneFileExt = [ "vrscene" ]
-    renderer.getTaskNumFromPixels = getTaskNumFromPixels
-    renderer.getTaskBoarder = getTaskBoarder
+    renderer.get_taskNumFromPixels = get_taskNumFromPixels
+    renderer.get_taskBoarder = get_taskBoarder
 
     return renderer
 
@@ -64,13 +64,13 @@ class VRayTaskBuilder(FrameRenderingTaskBuiler):
                                    self._calculateTotal(buildVRayRendererInfo(), self.taskDefinition),
                                    self.taskDefinition.resolution[0],
                                    self.taskDefinition.resolution[1],
-                                   os.path.splitext(os.path.basename(self.taskDefinition.outputFile))[0],
-                                   self.taskDefinition.outputFile,
+                                   os.path.splitext(os.path.basename(self.taskDefinition.output_file))[0],
+                                   self.taskDefinition.output_file,
                                    self.taskDefinition.outputFormat,
                                    self.taskDefinition.fullTaskTimeout,
                                    self.taskDefinition.subtask_timeout,
                                    self.taskDefinition.resources,
-                                   self.taskDefinition.estimatedMemory,
+                                   self.taskDefinition.estimated_memory,
                                    self.root_path,
                                    self.taskDefinition.rendererOptions.rtEngine,
                                    self.taskDefinition.rendererOptions.useFrames,
@@ -91,12 +91,12 @@ class VRayTask(FrameRenderingTask):
                   resX,
                   resY,
                   outfilebasename,
-                  outputFile,
+                  output_file,
                   outputFormat,
                   fullTaskTimeout,
                   subtask_timeout,
                   taskResources,
-                  estimatedMemory,
+                  estimated_memory,
                   root_path,
                   rtEngine,
                   useFrames,
@@ -108,8 +108,8 @@ class VRayTask(FrameRenderingTask):
         FrameRenderingTask.__init__(self, client_id, task_id, returnAddress, returnPort, key_id,
                           VRayEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                          totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
-                          root_path, estimatedMemory, useFrames, frames)
+                          totalTasks, resX, resY, outfilebasename, output_file, outputFormat,
+                          root_path, estimated_memory, useFrames, frames)
 
         self.rtEngine = rtEngine
         self.collectedAlphaFiles = {}
@@ -137,7 +137,7 @@ class VRayTask(FrameRenderingTask):
             frames = []
             parts = 1
 
-        extraData =          {      "pathRoot" : self.mainSceneDir,
+        extra_data =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : startTask,
                                     "endTask" : endTask,
                                     "hTask": self.totalTasks,
@@ -155,7 +155,7 @@ class VRayTask(FrameRenderingTask):
 
 
         hash = "{}".format(random.getrandbits(128))
-        self.subTasksGiven[ hash ] = extraData
+        self.subTasksGiven[ hash ] = extra_data
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
         self.subTasksGiven[ hash ][ 'perf' ] = perfIndex
         self.subTasksGiven[ hash ][ 'client_id' ] = client_id
@@ -170,7 +170,7 @@ class VRayTask(FrameRenderingTask):
         else:
             self._updateFrameTaskPreview()
 
-        return self._newComputeTaskDef(hash, extraData, workingDirectory, perfIndex)
+        return self._newComputeTaskDef(hash, extra_data, workingDirectory, perfIndex)
 
     #######################
     def queryExtraDataForTestTask(self):
@@ -183,7 +183,7 @@ class VRayTask(FrameRenderingTask):
         else:
             frames = []
 
-        extraData =          {      "pathRoot" : self.mainSceneDir,
+        extra_data =          {      "pathRoot" : self.mainSceneDir,
                                     "startTask" : 0,
                                     "endTask" : 1,
                                     "hTask": self.totalTasks,
@@ -206,7 +206,7 @@ class VRayTask(FrameRenderingTask):
         if not os.path.exists(self.testTaskResPath):
             os.makedirs(self.testTaskResPath)
 
-        return self._newComputeTaskDef(hash, extraData, workingDirectory, 0)
+        return self._newComputeTaskDef(hash, extra_data, workingDirectory, 0)
 
   #######################
     @checkSubtask_idWrapper
@@ -264,8 +264,8 @@ class VRayTask(FrameRenderingTask):
             if self.useFrames:
                 self.__copyFrames()
             else:
-                outputFileName = u"{}".format(self.outputFile, self.outputFormat)
-                self.__putImageTogether(outputFileName)
+                output_file_name = u"{}".format(self.output_file, self.outputFormat)
+                self.__putImageTogether(output_file_name)
 
     #######################
     @checkSubtask_idWrapper
@@ -276,8 +276,8 @@ class VRayTask(FrameRenderingTask):
         return perf
 
     #######################
-    def _shortExtraDataRepr(self, perfIndex, extraData):
-        l = extraData
+    def _shortExtraDataRepr(self, perfIndex, extra_data):
+        l = extra_data
         msg = []
         msg.append(" scene file: {} ".format(l [ "sceneFile" ]))
         msg.append("total tasks: {}".format(l[ "totalTasks" ]))
@@ -302,9 +302,9 @@ class VRayTask(FrameRenderingTask):
     #######################
     @checkSubtask_idWrapper
     def _changeScope(self, subtask_id, startBox, trFile):
-        extraData, _ = FrameRenderingTask._changeScope(self, subtask_id, startBox, trFile)
-        extraData['isAlpha'] = self.__isAlphaFile(trFile)
-        extraData['generateStartBox'] = True
+        extra_data, _ = FrameRenderingTask._changeScope(self, subtask_id, startBox, trFile)
+        extra_data['isAlpha'] = self.__isAlphaFile(trFile)
+        extra_data['generateStartBox'] = True
         if startBox[0] == 0:
             newStartBoxX = 0
             newBoxX = self.verificationOptions.boxSize[0] + 1
@@ -317,36 +317,36 @@ class VRayTask(FrameRenderingTask):
         else:
             newStartBoxY = startBox[1] - 1
             newBoxY = self.verificationOptions.boxSize[1] + 2
-        extraData['startBox'] = (newStartBoxX, newStartBoxY)
-        extraData['box'] = (newBoxX, newBoxY)
+        extra_data['startBox'] = (newStartBoxX, newStartBoxY)
+        extra_data['box'] = (newBoxX, newBoxY)
         if self.useFrames:
-            extraData['frames'] = [ self.__getFrameNumFromOutputFile(trFile) ]
-            extraData['parts'] = extraData['totalTasks']
+            extra_data['frames'] = [ self.__getFrameNumFromOutputFile(trFile) ]
+            extra_data['parts'] = extra_data['totalTasks']
 
 
-        return extraData, startBox
+        return extra_data, startBox
 
     #######################
     def __getFrameNumFromOutputFile(self, file_):
-        fileName = os.path.basename(file_)
-        fileName, ext = os.path.splitext(fileName)
-        idx = fileName.find(self.outfilebasename)
-        if self.__isAlphaFile(fileName):
-            idxAlpha = fileName.find("Alpha")
+        file_name = os.path.basename(file_)
+        file_name, ext = os.path.splitext(file_name)
+        idx = file_name.find(self.outfilebasename)
+        if self.__isAlphaFile(file_name):
+            idxAlpha = file_name.find("Alpha")
             if self.useFrames and self.totalTasks == len(self.frames):
-                return int (fileName[ idx + len(self.outfilebasename) + 1: idxAlpha - 1])
+                return int (file_name[ idx + len(self.outfilebasename) + 1: idxAlpha - 1])
             elif self.useFrames and self.totalTasks < len(self.frames):
-                return int (fileName[ idxAlpha + len("Alpha") + 1: ])
+                return int (file_name[ idxAlpha + len("Alpha") + 1: ])
             else:
-                return int(fileName.split(".")[-3])
+                return int(file_name.split(".")[-3])
 
         else:
             if self.useFrames and self.totalTasks > len(self.frames):
-                suf = fileName[ idx + len(self.outfilebasename) + 1:]
+                suf = file_name[ idx + len(self.outfilebasename) + 1:]
                 idxDot = suf.find(".")
                 return int (suf[ idxDot + 1: ])
             else:
-                return int(fileName[ idx + len(self.outfilebasename) + 1:])
+                return int(file_name[ idx + len(self.outfilebasename) + 1:])
 
 
     #######################
@@ -358,11 +358,11 @@ class VRayTask(FrameRenderingTask):
 
 
     #######################
-    def __isAlphaFile(self, fileName):
-        return fileName.find('Alpha') != -1
+    def __isAlphaFile(self, file_name):
+        return file_name.find('Alpha') != -1
 
     #######################
-    def __putImageTogether(self, outputFileName ):
+    def __putImageTogether(self, output_file_name ):
         collector = RenderingTaskCollector()
 
         if not self._useOuterTaskCollector():
@@ -370,14 +370,14 @@ class VRayTask(FrameRenderingTask):
                 collector.addImgFile(file)
             for file in self.collectedAlphaFiles.values():
                 collector.acceptAlphaFile(file)
-            collector.finalize().save(outputFileName, self.outputFormat)
+            collector.finalize().save(output_file_name, self.outputFormat)
 #            if not self.useFrames:
-#                self.previewFilePath = outputFileName
+#                self.previewFilePath = output_file_name
         else:
             self.collectedFileNames = OrderedDict(sorted(self.collectedFileNames.items()))
             self.collectedAlphaFiles = OrderedDict(sorted(self.collectedAlphaFiles.items()))
             files = self.collectedFileNames.values() + self.collectedAlphaFiles.values()
-            self._putCollectedFilesTogether(outputFileName, files, "add")
+            self._putCollectedFilesTogether(output_file_name, files, "add")
 
     #######################
     def __collectImagePart(self, numStart, trFile):
@@ -421,29 +421,29 @@ class VRayTask(FrameRenderingTask):
 
     #######################
     def __copyFrames(self):
-        outpuDir = os.path.dirname(self.outputFile)
+        outpuDir = os.path.dirname(self.output_file)
         for file in self.collectedFileNames.values():
             shutil.copy(file, os.path.join(outpuDir, os.path.basename(file)))
 
     #######################
     def __putFrameTogether(self, tmpDir, frameNum, numStart):
-        outputFileName = os.path.join(tmpDir, self.__getOutputName(frameNum))
+        output_file_name = os.path.join(tmpDir, self.__getOutputName(frameNum))
         if self._useOuterTaskCollector():
             collected = self.framesParts[ frameNum ]
             collected = OrderedDict(sorted(collected.items()))
             collectedAlphas = self.framesAlphaParts[ frameNum ]
             collectedAlphas = OrderedDict(sorted(collectedAlphas.items()))
             files = collected.values() + collectedAlphas.values()
-            self._putCollectedFilesTogether(outputFileName, files, "add")
+            self._putCollectedFilesTogether(output_file_name, files, "add")
         else:
             collector = RenderingTaskCollector()
             for part in self.framesParts[ frameNum ].values():
                 collector.addImgFile(part)
             for part in self.framesAlphaParts[ frameNum ].values():
                 collector.addAlphaFile(part)
-            collector.finalize().save(outputFileName, self.outputFormat)
-        self.collectedFileNames[ numStart ] = outputFileName
-        self._updateFramePreview(outputFileName, frameNum, final=True)
+            collector.finalize().save(output_file_name, self.outputFormat)
+        self.collectedFileNames[ numStart ] = output_file_name
+        self._updateFramePreview(output_file_name, frameNum, final=True)
 
     #######################
     def __getFrameNumberFromName(self, frameName):

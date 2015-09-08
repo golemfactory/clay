@@ -17,7 +17,7 @@ class ResourceHash:
                     break
 
 
-                filehash = os.path.join(self.resourceDir, self.__countHash(data))
+                filehash = os.path.join(self.resourceDir, self.__count_hash(data))
                 filehash = os.path.normpath(filehash)
 
                 with open(filehash, "wb") as fwb:
@@ -29,8 +29,8 @@ class ResourceHash:
     ##################################
     def connectFiles(self, fileList, resFile):
         with open(resFile, 'wb') as f:
-            for fileHash in fileList:
-                with open(fileHash, "rb") as fh:
+            for file_hash in fileList:
+                with open(file_hash, "rb") as fh:
                     while True:
                         data = fh.read()
                         if not data:
@@ -41,15 +41,15 @@ class ResourceHash:
     def getFileHash(self, filename):
         with open(filename, "rb") as f:
             data = f.read()
-            hash = self.__countHash(data)
+            hash = self.__count_hash(data)
         return hash
 
     ##################################
-    def setResourceDir(self, resourceDir):
+    def set_resource_dir(self, resourceDir):
         self.resourceDir = resourceDir
 
     ##################################
-    def __countHash(self, data):
+    def __count_hash(self, data):
             sha = hashlib.sha1()
             sha.update(data)
             return base64.urlsafe_b64encode(sha.digest())

@@ -4,7 +4,7 @@ import shutil
 import logging
 
 from golem.task.TaskBase import Task
-from golem.resource.Resource import TaskResourceHeader, decompressDir
+from golem.resource.Resource import TaskResourceHeader, decompress_dir
 from golem.task.TaskComputer import PyTestTaskThread
 
 from examples.gnr.RenderingDirManager import getTestTaskPath, getTestTaskDirectory, getTestTaskTmpPath
@@ -40,7 +40,7 @@ class TaskTester:
                                 ctd.subtask_id,
                                 ctd.workingDirectory,
                                 ctd.srcCode,
-                                ctd.extraData,
+                                ctd.extra_data,
                                 ctd.shortDescription,
                                 self.testTaskResPath,
                                 self.tmpDir,
@@ -78,10 +78,10 @@ class TaskTester:
 
         self.testTaskResDir = getTestTaskDirectory()
         rh = TaskResourceHeader(self.testTaskResDir)
-        resFile = self.task.prepare_resourceDelta(self.task.header.task_id, rh)
+        resFile = self.task.prepare_resource_delta(self.task.header.task_id, rh)
 
         if resFile:
-            decompressDir(self.testTaskResPath, resFile)
+            decompress_dir(self.testTaskResPath, resFile)
 
         return True
     #########################

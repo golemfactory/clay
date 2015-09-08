@@ -9,7 +9,7 @@ class GNRTaskDefinition:
         self.minSubtaskTime     = 0
 
         self.resources = set()
-        self.estimatedMemory    = 0
+        self.estimated_memory    = 0
 
         self.totalSubtasks      = 0
         self.optimizeTotal      = False

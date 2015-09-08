@@ -13,7 +13,7 @@ from examples.gnr.RenderingEnvironment import BlenderEnvironment
 from examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 
 from examples.gnr.task.GNRTask import GNROptions, checkSubtask_idWrapper
-from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
+from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, get_taskBoarder, get_taskNumFromPixels
 from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
 from examples.gnr.task.SceneFileEditor import regenerateBlenderCropFile
 
@@ -34,8 +34,8 @@ def buildBlenderRendererInfo():
     renderer = RendererInfo("Blender", defaults, BlenderRenderTaskBuilder, BlenderRenderDialog, BlenderRenderDialogCustomizer, BlenderRendererOptions)
     renderer.outputFormats = [ "PNG", "TGA", "EXR" ]
     renderer.sceneFileExt = [ "blend" ]
-    renderer.getTaskNumFromPixels = getTaskNumFromPixels
-    renderer.getTaskBoarder = getTaskBoarder
+    renderer.get_taskNumFromPixels = get_taskNumFromPixels
+    renderer.get_taskBoarder = get_taskBoarder
 
     return renderer
 
@@ -63,13 +63,13 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuiler):
                                    self._calculateTotal(buildBlenderRendererInfo(), self.taskDefinition),
                                    self.taskDefinition.resolution[0],
                                    self.taskDefinition.resolution[1],
-                                   os.path.splitext(os.path.basename(self.taskDefinition.outputFile))[0],
-                                   self.taskDefinition.outputFile,
+                                   os.path.splitext(os.path.basename(self.taskDefinition.output_file))[0],
+                                   self.taskDefinition.output_file,
                                    self.taskDefinition.outputFormat,
                                    self.taskDefinition.fullTaskTimeout,
                                    self.taskDefinition.subtask_timeout,
                                    self.taskDefinition.resources,
-                                   self.taskDefinition.estimatedMemory,
+                                   self.taskDefinition.estimated_memory,
                                    self.root_path,
                                    self.taskDefinition.rendererOptions.useFrames,
                                    self.taskDefinition.rendererOptions.frames,
@@ -99,12 +99,12 @@ class BlenderRenderTask(FrameRenderingTask):
                   resX,
                   resY,
                   outfilebasename,
-                  outputFile,
+                  output_file,
                   outputFormat,
                   fullTaskTimeout,
                   subtask_timeout,
                   taskResources,
-                  estimatedMemory,
+                  estimated_memory,
                   root_path,
                   useFrames,
                   frames,
@@ -116,8 +116,8 @@ class BlenderRenderTask(FrameRenderingTask):
         FrameRenderingTask.__init__(self, client_id, task_id, returnAddress, returnPort, key_id,
                           BlenderEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                          totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
-                          root_path, estimatedMemory, useFrames, frames)
+                          totalTasks, resX, resY, outfilebasename, output_file, outputFormat,
+                          root_path, estimated_memory, useFrames, frames)
 
         cropTask = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples\\tasks\\blenderCrop.py'))
         try:
@@ -162,7 +162,7 @@ class BlenderRenderTask(FrameRenderingTask):
             maxY = 1.0
 
         scriptSrc = regenerateBlenderCropFile(self.scriptSrc, self.resX, self.resY, 0.0, 1.0, minY, maxY)
-        extraData =          {      "pathRoot": self.mainSceneDir,
+        extra_data =          {      "pathRoot": self.mainSceneDir,
                                     "startTask" : startTask,
                                     "endTask": endTask,
                                     "totalTasks": self.totalTasks,
@@ -175,7 +175,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
 
         hash = "{}".format(random.getrandbits(128))
-        self.subTasksGiven[ hash ] = extraData
+        self.subTasksGiven[ hash ] = extra_data
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
         self.subTasksGiven[ hash ][ 'perf' ] = perfIndex
         self.subTasksGiven[ hash ][ 'client_id' ] = client_id
@@ -187,7 +187,7 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._updateFrameTaskPreview()
 
-        return self._newComputeTaskDef(hash, extraData, workingDirectory, perfIndex)
+        return self._newComputeTaskDef(hash, extra_data, workingDirectory, perfIndex)
 
     #######################
     def queryExtraDataForTestTask(self):
@@ -207,7 +207,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
         scriptSrc = regenerateBlenderCropFile(self.scriptSrc, 8, 8, 0.0, 1.0, 0.0, 1.0)
 
-        extraData =          {      "pathRoot": self.mainSceneDir,
+        extra_data =          {      "pathRoot": self.mainSceneDir,
                                     "startTask" : 1,
                                     "endTask": 1,
                                     "totalTasks": self.totalTasks,
@@ -225,7 +225,7 @@ class BlenderRenderTask(FrameRenderingTask):
         if not os.path.exists(self.testTaskResPath):
             os.makedirs(self.testTaskResPath)
 
-        return self._newComputeTaskDef(hash, extraData, workingDirectory, 0)
+        return self._newComputeTaskDef(hash, extra_data, workingDirectory, 0)
 
     #######################
     def _getPartSize(self) :
@@ -247,21 +247,21 @@ class BlenderRenderTask(FrameRenderingTask):
     #######################
     @checkSubtask_idWrapper
     def _changeScope(self, subtask_id, startBox, trFile):
-        extraData, _ = FrameRenderingTask._changeScope(self, subtask_id, startBox, trFile)
+        extra_data, _ = FrameRenderingTask._changeScope(self, subtask_id, startBox, trFile)
         minX = startBox[0]/float(self.resX)
         maxX = (startBox[0] + self.verificationOptions.boxSize[0] + 1) / float(self.resX)
-        startY = startBox[1]+ (extraData['startTask'] - 1) * (self.resY / float(extraData['totalTasks']))
+        startY = startBox[1]+ (extra_data['startTask'] - 1) * (self.resY / float(extra_data['totalTasks']))
         maxY = float(self.resY - startY) /self.resY
         minY = max(float(self.resY - startY - self.verificationOptions.boxSize[1] - 1) /self.resY, 0.0)
         scriptSrc = regenerateBlenderCropFile(self.scriptSrc, self.resX, self.resY, minX, maxX, minY, maxY)
-        extraData['scriptSrc'] = scriptSrc
-        return extraData, (0, 0)
+        extra_data['scriptSrc'] = scriptSrc
+        return extra_data, (0, 0)
 
     def __getFrameNumFromOutputFile(self, file_):
-        fileName = os.path.basename(file_)
-        fileName, ext = os.path.splitext(fileName)
-        idx = fileName.find(self.outfilebasename)
-        return int(fileName[ idx + len(self.outfilebasename):])
+        file_name = os.path.basename(file_)
+        file_name, ext = os.path.splitext(file_name)
+        idx = file_name.find(self.outfilebasename)
+        return int(file_name[ idx + len(self.outfilebasename):])
 
     #######################
     def _updatePreview(self, newChunkFilePath, chunkNum):

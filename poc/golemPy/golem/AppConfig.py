@@ -231,7 +231,7 @@ class AppConfig:
     def getGettingTasksInterval(self):
         return self._cfg.get_node_config().getGettingTasksInterval()
 
-    def getTaskRequestInterval(self):
+    def get_taskRequestInterval(self):
         return self._cfg.get_node_config().getTaskRequestInterval()
 
     def getWaitingForTaskTimeout(self):
@@ -276,7 +276,7 @@ class AppConfig:
     def getP2pSessionTimeout(self):
         return self._cfg.get_node_config().getP2pSessionTimeout()
 
-    def getTaskSessionTimeout(self):
+    def get_taskSessionTimeout(self):
         return self._cfg.get_node_config().getTaskSessionTimeout()
 
     def getResourceSessionTimeout(self):

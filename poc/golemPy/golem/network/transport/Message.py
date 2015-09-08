@@ -852,7 +852,7 @@ class MessageTaskToCompute(Message):
 
     def get_short_hash(self):
         return SimpleHash.hash(
-            SimpleSerializer.dumps(sorted([(k, v) for k, v in self.ctd.__dict__.items() if k != "extraData"])))
+            SimpleSerializer.dumps(sorted([(k, v) for k, v in self.ctd.__dict__.items() if k != "extra_data"])))
 
 
 class MessageCannotAssignTask(Message):

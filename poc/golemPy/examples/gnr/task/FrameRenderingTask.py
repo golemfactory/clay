@@ -50,12 +50,12 @@ class FrameRenderingTask(RenderingTask):
     #######################
     def __init__(self, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                  totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, root_path,
-                  estimatedMemory, useFrames, frames):
+                  totalTasks, resX, resY, outfilebasename, output_file, outputFormat, root_path,
+                  estimated_memory, useFrames, frames):
         RenderingTask.__init__(self, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                  totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, root_path,
-                  estimatedMemory)
+                  totalTasks, resX, resY, outfilebasename, output_file, outputFormat, root_path,
+                  estimated_memory)
 
         self.useFrames = useFrames
         self.frames = frames
@@ -243,35 +243,35 @@ class FrameRenderingTask(RenderingTask):
 
         #######################
     def _putImageTogether(self, tmpDir):
-        outputFileName = u"{}".format(self.outputFile, self.outputFormat)
+        output_file_name = u"{}".format(self.output_file, self.outputFormat)
         self.collectedFileNames = OrderedDict(sorted(self.collectedFileNames.items()))
         if not self._useOuterTaskCollector():
             collector = RenderingTaskCollector(paste = True, width = self.resX, height = self.resY)
             for file in self.collectedFileNames.values():
                 collector.addImgFile(file)
-            collector.finalize().save(outputFileName, self.outputFormat)
+            collector.finalize().save(output_file_name, self.outputFormat)
         else:
-            self._putCollectedFilesTogether (os.path.join(tmpDir, outputFileName), self.collectedFileNames.values(), "paste")
+            self._putCollectedFilesTogether (os.path.join(tmpDir, output_file_name), self.collectedFileNames.values(), "paste")
 
     #######################
     def _putFrameTogether(self, tmpDir, frameNum, numStart):
-        outputFileName = os.path.join(tmpDir, self._getOutputName(frameNum, numStart))
+        output_file_name = os.path.join(tmpDir, self._getOutputName(frameNum, numStart))
         collected = self.framesGiven[ frameNum ]
         collected = OrderedDict(sorted(collected.items()))
         if not self._useOuterTaskCollector():
             collector = RenderingTaskCollector(paste = True, width = self.resX, height = self.resY)
             for file in collected.values():
                 collector.addImgFile(file)
-            collector.finalize().save(outputFileName, self.outputFormat)
+            collector.finalize().save(output_file_name, self.outputFormat)
         else:
-            self._putCollectedFilesTogether(outputFileName, collected.values(), "paste")
-        self.collectedFileNames[ frameNum ] = outputFileName
-        self._updateFramePreview(outputFileName, frameNum, final = True)
+            self._putCollectedFilesTogether(output_file_name, collected.values(), "paste")
+        self.collectedFileNames[ frameNum ] = output_file_name
+        self._updateFramePreview(output_file_name, frameNum, final = True)
         self._updateFrameTaskPreview()
 
     #######################
     def _copyFrames(self):
-        outpuDir = os.path.dirname(self.outputFile)
+        outpuDir = os.path.dirname(self.output_file)
         for file in self.collectedFileNames.values():
             shutil.copy(file, os.path.join(outpuDir, os.path.basename(file)))
 
@@ -310,7 +310,7 @@ class FrameRenderingTask(RenderingTask):
         return ((startNum - 1) % parts) + 1
 
 ##############################################
-def getTaskBoarder(startTask, endTask, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):
+def get_taskBoarder(startTask, endTask, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):
     if not useFrames:
         boarder = __getBoarder(startTask, endTask, totalTasks, resX, resY)
     elif totalTasks > frames:
@@ -322,7 +322,7 @@ def getTaskBoarder(startTask, endTask, totalTasks, resX = 300, resY = 200, useFr
     return boarder
 
 ##############################################
-def getTaskNumFromPixels(pX, pY, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):
+def get_taskNumFromPixels(pX, pY, totalTasks, resX = 300, resY = 200, useFrames = False, frames = 100, frameNum = 1):
     if not useFrames:
         num = __numFromPixel(pY, resY, totalTasks)
     else:

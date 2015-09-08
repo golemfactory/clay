@@ -24,8 +24,8 @@ class NodesManagerLogicTest:
         self.simulator.terminateAllNodes()
 
     ########################
-    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, fileName):
-        self.simulator.enqueueNodeTask(uid, w, h, numSamplesPerPixel, fileName)
+    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, file_name):
+        self.simulator.enqueueNodeTask(uid, w, h, numSamplesPerPixel, file_name)
 
 class EmptyManagerLogic:
 
@@ -64,8 +64,8 @@ class EmptyManagerLogic:
                 logger.warning("Can't send terminate signal to node {}".format(node.uid))
 
     ########################
-    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, fileName):
+    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, file_name):
         hash = random.getrandbits(128)
         th = TaskHeader(uid, "222222", "", 0)
         self.managerServer.sendNewTask(uid, PbrtRenderTask(th, "", 32, 16, 2, "test_chunk_", "resources/city-env.pbrt"))
-        #self.managerServer.sendNewTask(uid, VRayTracingTask(w, h, numSamplesPerPixel, th, fileName))
+        #self.managerServer.sendNewTask(uid, VRayTracingTask(w, h, numSamplesPerPixel, th, file_name))
