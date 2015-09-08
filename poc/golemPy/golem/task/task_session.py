@@ -432,7 +432,7 @@ class TaskSession(MiddlemanSafeSession):
         if not msg.use_distributed_resource:
             tmp_file = os.path.join(self.task_computer.resource_manager.getTemporaryDir(self.task_id),
                                     "res" + self.task_id)
-            output_dir = self.task_computer.resource_manager.getResourceDir(self.task_id)
+            output_dir = self.task_computer.resource_manager.get_resource_dir(self.task_id)
             extra_data = {"task_id": self.task_id, "data_type": 'resource', 'output_dir': output_dir}
             self.conn.consumer = DecryptFileConsumer([tmp_file], output_dir, self, extra_data)
             self.conn.stream_mode = True
@@ -547,7 +547,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def __receive_files_result(self, msg):
         extra_data = {"subtask_id": msg.subtask_id, "result_type": msg.result_type, "data_type": "result"}
-        output_dir = self.task_manager.dir_manager.getTaskTemporaryDir(
+        output_dir = self.task_manager.dir_manager.get_task_temporary_dir(
             self.task_manager.getTaskId(msg.subtask_id), create=False
         )
         self.conn.consumer = DecryptFileConsumer(msg.extra_data, output_dir, self, extra_data)

@@ -95,7 +95,7 @@ class RenderingTask(GNRTask):
         self.verifiedClients        = set()
 
         if is_windows():
-            self.__getPath = self.__getPathWindows
+            self.__get_path = self.__get_path_windows
 
     #######################
     def restart(self):
@@ -241,14 +241,14 @@ class RenderingTask(GNRTask):
         workingDirectory    = os.path.relpath(self.mainProgramFile, commonPathPrefix)
         workingDirectory    = os.path.dirname(workingDirectory)
         logger.debug("Working directory {}".format(workingDirectory))
-        return self.__getPath(workingDirectory)
+        return self.__get_path(workingDirectory)
 
 
     #######################
     def _getSceneFileRelPath(self):
         sceneFile = os.path.relpath(os.path.dirname(self.mainSceneFile) , os.path.dirname(self.mainProgramFile))
         sceneFile = os.path.normpath(os.path.join(sceneFile, os.path.basename(self.mainSceneFile)))
-        return self.__getPath(sceneFile)
+        return self.__get_path(sceneFile)
 
     ########################
     def _shortExtraDataRepr(self, perfIndex, extraData):
@@ -368,9 +368,9 @@ class RenderingTask(GNRTask):
             return None
 
     #######################
-    def __getPath(self, path):
+    def __get_path(self, path):
         return path
 
     #######################
-    def __getPathWindows(self, path):
+    def __get_path_windows(self, path):
         return path.replace("\\", "/")

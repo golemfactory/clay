@@ -6,28 +6,44 @@ from golem.core.simpleexccmd import is_windows
 
 logger = logging.getLogger(__name__)
 
-def splitPath(path):
+
+def split_path(path):
+    """ Split given path into a list of directories
+    :param str path: path that should be split
+    :return list: list of directories on a given path
+    """
     head, tail = os.path.split(path)
     if not tail:
         return []
     if not head:
-        return [ tail ]
-    return splitPath(head) + [ tail ]
+        return [tail]
+    return split_path(head) + [tail]
 
-class DirManager:
-    ######################
-    def __init__(self, root_path, node_id, tmp = 'tmp', res = 'resources', output = 'output', globalResource = 'golemres'):
+
+class DirManager(object):
+    """ Manage working directories for application. Return paths, create them if it's needed """
+    def __init__(self, root_path, node_id, tmp="tmp", res="resources", output="output", global_resource="golemres"):
+        """ Creates new dir manager instance
+        :param str root_path: path to the main directory where all other working directories are placed
+        :param node_id: current node id
+        :param str tmp: temporary directory name
+        :param res: resource directory name
+        :param output: output directory name
+        :param global_resource: global resources directory name
+        """
         self.root_path = root_path
         self.node_id = node_id
         self.tmp = tmp
         self.res = res
         self.output = output
-        self.globalResource = globalResource
+        self.global_resource = global_resource
         if is_windows():
-            self.__getPath = self.__getPathWindows
+            self.__get_path = self.__get_path_windows
 
-    ######################
-    def clearDir(self, d):
+    def clear_dir(self, d):
+        """ Remove everything form given directory
+        :param str d: directory that should be cleared
+        """
         if not os.path.isdir(d):
             return
         for i in os.listdir(d):
@@ -37,71 +53,97 @@ class DirManager:
             if os.path.isdir(path):
                 shutil.rmtree(path, ignore_errors=True)
 
-    ######################
-    def createDir(self, fullPath):
-        if os.path.exists(fullPath):
-            os.remove(fullPath)
+    def create_dir(self, full_path):
+        """ Create new directory, remove old directory if it exists.
+        :param str full_path: path to directory that should be created
+        """
+        if os.path.exists(full_path):
+            os.remove(full_path)
 
-        os.makedirs(fullPath)
+        os.makedirs(full_path)
 
-    ######################
-    def getDir(self, fullPath, create, err_msg):
-        if os.path.isdir(fullPath):
-            return self.__getPath(fullPath)
+    def get_dir(self, full_path, create, err_msg):
+        """ Return path to a give directory if it exists. If it doesn't exist and option create is set to False
+        than return nothing and write given error message to a log. If it's set to True, create a directory and return
+        it's path
+        :param str full_path: path to directory should be checked or created
+        :param bool create: if directory doesn't exist, should it be created?
+        :param str err_msg: what should be written to a log if directory doesn't exists and create is set to False?
+        :return:
+        """
+        if os.path.isdir(full_path):
+            return self.__get_path(full_path)
         elif create:
-            self.createDir(fullPath)
-            return self.__getPath(fullPath)
+            self.create_dir(full_path)
+            return self.__get_path(full_path)
         else:
             logger.error(err_msg)
             return ""
 
-    ######################
-    def getResourceDir (self, create = True):
-        fullPath = self.__getGlobalResourcePath()
-        return self.getDir(fullPath, create, "resource dir does not exist")
+    def get_resource_dir(self, create=True):
+        """ Get global resource directory
+        :param bool create: *Default: True* should directory be created if it doesn't exist
+        :return str: path to directory
+        """
+        full_path = self.__get_global_resource_path()
+        return self.get_dir(full_path, create, "resource dir does not exist")
 
-    ######################
-    def getTaskTemporaryDir(self, task_id, create = True):
-        fullPath = self.__getTmpPath(task_id)
-        return self.getDir(fullPath, create, "temporary dir does not exist")
+    def get_task_temporary_dir(self, task_id, create=True):
+        """ Get temporary directory
+        :param bool create: *Default: True* should directory be created if it doesn't exist
+        :return str: path to directory
+        """
+        full_path = self.__get_tmp_path(task_id)
+        return self.get_dir(full_path, create, "temporary dir does not exist")
 
-    ######################
-    def getTaskResourceDir(self, task_id, create = True):
-        fullPath = self.__getResPath(task_id)
-        return self.getDir(fullPath, create, "resource dir does not exist")
+    def get_task_resource_dir(self, task_id, create=True):
+        """ Get task resource directory
+        :param bool create: *Default: True* should directory be created if it doesn't exist
+        :return str: path to directory
+        """
+        full_path = self.__get_res_path(task_id)
+        return self.get_dir(full_path, create, "resource dir does not exist")
 
-    ######################
-    def getTaskOutputDir(self, task_id, create = True):
-        fullPath = self.__getOutPath(task_id)
-        return self.getDir(fullPath, create, "output dir does not exist")
+    def get_task_output_dir(self, task_id, create=True):
+        """ Get task output directory
+        :param bool create: *Default: True* should directory be created if it doesn't exist
+        :return str: path to directory
+        """
+        full_path = self.__get_out_path(task_id)
+        return self.get_dir(full_path, create, "output dir does not exist")
 
-    ######################
-    def clearTemporary(self, task_id):
-        self.clearDir(self.__getTmpPath(task_id))
+    def clear_temporary(self, task_id):
+        """ Remove everything from temporary directory for given task
+        :param task_id: temporary directory of a task with that id should be cleared
+        """
+        self.clear_dir(self.__get_tmp_path(task_id))
 
-    ######################
-    def clearResource(self, task_id):
-        self.clearDir(self.__getResPath(task_id))
+    def clear_resource(self, task_id):
+        """ Remove everything from resource directory for given task
+        :param task_id: resource directory of a task with that id should be cleared
+        """
+        self.clear_dir(self.__get_res_path(task_id))
 
-    def clearOutput(self, task_id):
-        self.clearDir(self.__getOutPath(task_id))
+    def clear_output(self, task_id):
+        """ Remove everything from output directory for given task
+        :param task_id: output directory of a task with that id should be cleared
+        """
+        self.clear_dir(self.__get_out_path(task_id))
 
-    ######################
-    def __getTmpPath(self, task_id):
+    def __get_tmp_path(self, task_id):
         return os.path.join(self.root_path, self.node_id, task_id, self.tmp)
 
-    def __getResPath(self, task_id):
+    def __get_res_path(self, task_id):
         return os.path.join(self.root_path, self.node_id, task_id, self.res)
 
-    def __getOutPath(self, task_id):
+    def __get_out_path(self, task_id):
         return os.path.join(self.root_path, self.node_id, task_id, self.output)
 
-    def __getGlobalResourcePath(self):
-        return os.path.join(self.root_path, self.globalResource)
+    def __get_global_resource_path(self):
+        return os.path.join(self.root_path, self.global_resource)
 
-    ######################
-    def __getPath(self, path):
+    def __get_path(self, path):
         return path
 
-    def __getPathWindows(self, path):
+    def __get_path_windows(self, path):
         return path.replace("\\", "/")

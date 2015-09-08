@@ -83,7 +83,7 @@ class TaskComputer(object):
                 self.counting_task = True
                 self.taskTimeout = self.assigned_subtasks[subtask_id].timeout
                 self.lastTaskTimeoutChecking = time.time()
-                self.task_server.unpack_delta(self.dir_manager.getTaskResourceDir(task_id), self.delta, task_id)
+                self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
                 self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].srcCode,
                                     self.assigned_subtasks[subtask_id].extraData,
                                     self.assigned_subtasks[subtask_id].shortDescription,
@@ -201,9 +201,9 @@ class TaskComputer(object):
     def __compute_task(self, subtask_id, srcCode, extraData, shortDescr, taskTimeout):
         task_id = self.assigned_subtasks[subtask_id].task_id
         workingDirectory = self.assigned_subtasks[subtask_id].workingDirectory
-        self.dir_manager.clearTemporary(task_id)
+        self.dir_manager.clear_temporary(task_id)
         tt = PyTaskThread(self, subtask_id, workingDirectory, srcCode, extraData, shortDescr,
-                          self.resource_manager.getResourceDir(task_id), self.resource_manager.getTemporaryDir(task_id),
+                          self.resource_manager.get_resource_dir(task_id), self.resource_manager.getTemporaryDir(task_id),
                           taskTimeout)
         self.current_computations.append(tt)
         tt.start()

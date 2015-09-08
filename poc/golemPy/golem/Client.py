@@ -426,17 +426,17 @@ class Client:
     ############################
     def removeComputedFiles(self):
         dir_manager = DirManager(self.config_desc.root_path, self.config_desc.client_uid)
-        dir_manager.clearDir(self.getComputedFilesDir())
+        dir_manager.clear_dir(self.getComputedFilesDir())
 
    ############################
     def removeDistributedFiles(self):
         dir_manager = DirManager(self.config_desc.root_path, self.config_desc.client_uid)
-        dir_manager.clearDir(self.getDistributedFilesDir())
+        dir_manager.clear_dir(self.getDistributedFilesDir())
 
    ############################
     def removeReceivedFiles(self):
         dir_manager = DirManager(self.config_desc.root_path, self.config_desc.client_uid)
-        dir_manager.clearDir(self.getReceivedFilesDir())
+        dir_manager.clear_dir(self.getReceivedFilesDir())
 
     ############################
     def getEnvironments(self):

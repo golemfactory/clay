@@ -79,8 +79,8 @@ class TaskManager:
         task.initialize()
         self.tasks[task.header.task_id] = task
 
-        self.dir_manager.clearTemporary(task.header.task_id)
-        self.dir_manager.getTaskTemporaryDir(task.header.task_id, create = True)
+        self.dir_manager.clear_temporary(task.header.task_id)
+        self.dir_manager.get_task_temporary_dir(task.header.task_id, create = True)
 
         ts              = TaskState()
         if self.useDistributedResources:
@@ -291,7 +291,7 @@ class TaskManager:
     def restartTask(self, task_id):
         if task_id in self.tasks:
             logger.info("restarting task")
-            self.dir_manager.clearTemporary(task_id)
+            self.dir_manager.clear_temporary(task_id)
 
             self.tasks[task_id].restart()
             self.tasks[task_id].taskStatus = TaskStatus.waiting
@@ -365,7 +365,7 @@ class TaskManager:
             del self.tasks[task_id]
             del self.tasksStates[task_id]
 
-            self.dir_manager.clearTemporary(task_id)
+            self.dir_manager.clear_temporary(task_id)
         else:
             logger.error("Task {} not in the active tasks queue ".format(task_id))
 

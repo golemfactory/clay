@@ -84,7 +84,7 @@ class ResourcesManager:
 
         taskResHeader = None
 
-        dirName = self.getResourceDir(task_id)
+        dirName = self.get_resource_dir(task_id)
 
         if os.path.exists(dirName):
             taskResHeader = TaskResourceHeader.build("resources", dirName)
@@ -96,7 +96,7 @@ class ResourcesManager:
     ###################
     def getResourceDelta(self, task_id, resourceHeader):
 
-        dirName = self.getResourceDir(task_id)
+        dirName = self.get_resource_dir(task_id)
 
         taskResHeader = None
 
@@ -113,7 +113,7 @@ class ResourcesManager:
     ###################
     def prepare_resourceDelta(self, task_id, resourceHeader):
 
-        dirName = self.getResourceDir(task_id)
+        dirName = self.get_resource_dir(task_id)
 
         if os.path.exists(dirName):
             return prepareDeltaZip(dirName, resourceHeader, self.getTemporaryDir(task_id))
@@ -123,20 +123,20 @@ class ResourcesManager:
     ###################
     def updateResource(self, task_id, resource):
 
-        dirName = self.getResourceDir(task_id)
+        dirName = self.get_resource_dir(task_id)
 
         resource.extract(dirName)
 
     ###################
-    def getResourceDir(self, task_id):
-        return self.dir_manager.getTaskResourceDir(task_id)
+    def get_resource_dir(self, task_id):
+        return self.dir_manager.get_task_resource_dir(task_id)
 
     ###################
     def getTemporaryDir(self, task_id):
-        return self.dir_manager.getTaskTemporaryDir(task_id)
+        return self.dir_manager.get_task_temporary_dir(task_id)
 
     ###################
     def getOutputDir(self, task_id):
-        return self.dir_manager.getTaskOutputDir(task_id)
+        return self.dir_manager.get_task_output_dir(task_id)
 
             

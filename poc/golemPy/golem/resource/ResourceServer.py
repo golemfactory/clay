@@ -25,7 +25,7 @@ class ResourceServer(TCPServer):
         self.resSendIt = 0
         self.peersIt = 0
         self.dir_manager = DirManager(config_desc.root_path, config_desc.client_uid)
-        self.resource_manager = DistributedResourceManager(self.dir_manager.getResourceDir())
+        self.resource_manager = DistributedResourceManager(self.dir_manager.get_resource_dir())
         self.use_ipv6 = use_ipv6
         network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(ResourceSession)),  use_ipv6)
         TCPServer.__init__(self, config_desc, network)
@@ -49,10 +49,10 @@ class ResourceServer(TCPServer):
             return
         self.dir_manager.root_path = config_desc.root_path
         self.dir_manager.node_id = config_desc.client_uid
-        self.resource_manager.change_resource_dir(self.dir_manager.getResourceDir())
+        self.resource_manager.change_resource_dir(self.dir_manager.get_resource_dir())
 
     def get_distributed_resource_root(self):
-        return self.dir_manager.getResourceDir()
+        return self.dir_manager.get_resource_dir()
 
     def get_peers(self):
         self.client.get_resource_peers()

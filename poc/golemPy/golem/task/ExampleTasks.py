@@ -305,7 +305,7 @@ class PbrtRenderTask(Task):
     #######################
     def computationFinished(self, subtask_id, taskResult, env = None):
 
-        tmpDir = env.getTaskTemporaryDir(self.header.task_id)
+        tmpDir = env.get_task_temporary_dir(self.header.task_id)
 
         if len(taskResult) > 0:
             for trp in taskResult:
@@ -319,7 +319,7 @@ class PbrtRenderTask(Task):
                 
 
         if self.numTasksReceived == self.totalTasks:
-            self.collector.finalize().save("{}.png".format(os.path.join(env.getTaskOutputDir(self.header.task_id), "test")), "PNG")
+            self.collector.finalize().save("{}.png".format(os.path.join(env.get_task_output_dir(self.header.task_id), "test")), "PNG")
 
     #######################
     def getTotalTasks(self):

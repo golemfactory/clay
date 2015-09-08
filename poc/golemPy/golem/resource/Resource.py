@@ -2,7 +2,7 @@
 import logging
 
 from golem.core.simplehash import SimpleHash
-from golem.resource.DirManager import splitPath
+from golem.resource.DirManager import split_path
 
 import os
 import zipfile
@@ -36,12 +36,12 @@ class TaskResourceHeader:
     def buildFromChosen(cls, dirName, absoluteRoot, choosenFiles = None):
         curTh = TaskResourceHeader(dirName)
 
-        absDirs = splitPath(absoluteRoot)
+        absDirs = split_path(absoluteRoot)
 
         for f in choosenFiles:
 
             dir, fileName = os.path.split(f)
-            dirs = splitPath(dir)[len(absDirs):]
+            dirs = split_path(dir)[len(absDirs):]
 
             lastHeader = curTh
 
@@ -95,12 +95,12 @@ class TaskResourceHeader:
         assert isinstance(header, TaskResourceHeader)
         curTh = TaskResourceHeader(header.dirName)
 
-        absDirs = splitPath(absoluteRoot)
+        absDirs = split_path(absoluteRoot)
 
         for file in chosenFiles:
 
             dir, fileName = os.path.split(file)
-            dirs = splitPath(dir)[len(absDirs):]
+            dirs = split_path(dir)[len(absDirs):]
 
             lastHeader = curTh
             lastRefHeader = header
@@ -121,12 +121,12 @@ class TaskResourceHeader:
     def buildPartsHeaderDeltaFromChosen(cls, header, absoluteRoot, resParts):
         assert isinstance(header, TaskResourceHeader)
         curTh = TaskResourceHeader(header.dirName)
-        absDirs = splitPath (absoluteRoot)
+        absDirs = split_path (absoluteRoot)
         deltaParts = []
 
         for file_, parts in resParts.iteritems():
             dir, fileName = os.path.split(file_)
-            dirs = splitPath(dir) [ len(absDirs): ]
+            dirs = split_path(dir) [ len(absDirs): ]
 
             lastHeader = curTh
             lastRefHeader = header

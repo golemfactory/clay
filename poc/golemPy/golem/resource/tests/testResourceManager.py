@@ -19,7 +19,7 @@ class TestResourcesManager(unittest.TestCase):
             os.mkdir(path)
 
         self.dir_manager = DirManager(path, 'node2')
-        resPath = self.dir_manager.getTaskResourceDir('task2')
+        resPath = self.dir_manager.get_task_resource_dir('task2')
 
         file1 = os.path.join(resPath, 'file1')
         file2 = os.path.join(resPath, 'file2')
@@ -58,7 +58,7 @@ class TestResourcesManager(unittest.TestCase):
         delta2 = rm.getResourceDelta('task2', header2)
         self.assertEquals(len(delta2.filesData), 2)
         self.assertEquals(len (delta2.subDirResources[0].filesData), 1)
-        resPath = self.dir_manager.getTaskResourceDir('task2')
+        resPath = self.dir_manager.get_task_resource_dir('task2')
         file5 = os.path.join(resPath, 'file5')
         open(file5, 'w').close()
         dir1 = os.path.join(resPath, 'dir1')
@@ -79,21 +79,21 @@ class TestResourcesManager(unittest.TestCase):
     #
     def testGetResourceDir(self):
         rm = ResourcesManager(self.dir_manager, 'owner')
-        resDir = rm.getResourceDir('task2')
+        resDir = rm.get_resource_dir('task2')
         self.assertTrue(os.path.isdir(resDir))
-        self.assertEqual(resDir, self.dir_manager.getTaskResourceDir('task2'))
+        self.assertEqual(resDir, self.dir_manager.get_task_resource_dir('task2'))
 
     def testGetTemporaryDir(self):
         rm = ResourcesManager(self.dir_manager, 'owner')
         tmpDir = rm.getTemporaryDir('task2')
         self.assertTrue(os.path.isdir(tmpDir))
-        self.assertEqual(tmpDir, self.dir_manager.getTaskTemporaryDir('task2'))
+        self.assertEqual(tmpDir, self.dir_manager.get_task_temporary_dir('task2'))
 
     def testGetOutputDir(self):
         rm = ResourcesManager(self.dir_manager, 'owner')
         outDir = rm.getOutputDir('task2')
         self.assertTrue(os.path.isdir(outDir))
-        self.assertEqual(outDir, self.dir_manager.getTaskOutputDir('task2'))
+        self.assertEqual(outDir, self.dir_manager.get_task_output_dir('task2'))
 
 
     # def testFileDataReceived(self):

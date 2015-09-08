@@ -251,7 +251,7 @@ class LuxTask(RenderingTask):
 
     #######################
     def computationFinished(self, subtask_id, taskResult, dir_manager = None, resultType = 0):
-        tmpDir = dir_manager.getTaskTemporaryDir(self.header.task_id, create = False)
+        tmpDir = dir_manager.get_task_temporary_dir(self.header.task_id, create = False)
         self.tmpDir = tmpDir
 
         trFiles = self.loadTaskResults(taskResult, resultType, tmpDir)

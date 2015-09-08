@@ -18,7 +18,7 @@ class TestTaskResourceHeader(unittest.TestCase):
             os.mkdir(path)
 
         self.dir_manager = DirManager(path, 'node3')
-        resPath = self.dir_manager.getTaskResourceDir('task2')
+        resPath = self.dir_manager.get_task_resource_dir('task2')
 
         self.file1 = os.path.join(resPath, 'file1')
         self.file2 = os.path.join(resPath, 'file2')
@@ -36,13 +36,13 @@ class TestTaskResourceHeader(unittest.TestCase):
            shutil.rmtree(path)
 
     def testBuild(self):
-        dirName = self.dir_manager.getTaskResourceDir("task2")
+        dirName = self.dir_manager.get_task_resource_dir("task2")
         header = TaskResourceHeader.build("resource", dirName)
         self.assertEquals(len(header.filesData), 2)
         self.assertEquals(len(header.subDirHeaders[0].filesData), 1)
 
     def testBuildFromChosen(self):
-        dirName = self.dir_manager.getTaskResourceDir('task2')
+        dirName = self.dir_manager.get_task_resource_dir('task2')
         header = TaskResourceHeader.buildFromChosen("resource", dirName, [self.file1, self.file3])
         header2 = TaskResourceHeader.buildHeaderDeltaFromHeader(TaskResourceHeader("resource"), dirName, [self.file1, self.file3])
         self.assertTrue(header == header2)
