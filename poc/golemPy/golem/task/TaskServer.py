@@ -132,7 +132,7 @@ class TaskServer(PendingConnectionsServer):
             ret.append({"id": th.task_id,
                         "address": th.taskOwnerAddress,
                         "port": th.taskOwnerPort,
-                        "keyId": th.taskOwnerKeyId,
+                        "key_id": th.taskOwnerKeyId,
                         "taskOwner": th.taskOwner,
                         "ttl": th.ttl,
                         "subtask_timeout": th.subtask_timeout,
@@ -729,7 +729,7 @@ class TaskServer(PendingConnectionsServer):
             self.global_pay_for_task(task_id, payments)
             for payment in payments.itervalues():
                 for idx, account in enumerate(payment.accounts):
-                    self.local_pay_for_task(task_id, account.addr, account.port, account.keyId, account.node_info,
+                    self.local_pay_for_task(task_id, account.addr, account.port, account.key_id, account.node_info,
                                             payment.accountsPayments[idx])
 
     def __check_payments(self):

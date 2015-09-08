@@ -55,7 +55,7 @@ class TaskComputer(object):
             self.assigned_subtasks[ctd.subtask_id].timeout = subtask_timeout
             self.task_to_subtask_mapping[ctd.task_id] = ctd.subtask_id
             self.__request_resource(ctd.task_id, self.resource_manager.getResourceHeader(ctd.task_id), ctd.returnAddress,
-                                    ctd.returnPort, ctd.keyId, ctd.taskOwner)
+                                    ctd.returnPort, ctd.key_id, ctd.taskOwner)
             return True
         else:
             return False
@@ -127,15 +127,15 @@ class TaskComputer(object):
 
             if taskThread.error:
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, taskThread.errorMsg,
-                                                  subtask.returnAddress, subtask.returnPort, subtask.keyId,
+                                                  subtask.returnAddress, subtask.returnPort, subtask.key_id,
                                                   subtask.taskOwner, self.client_uid)
             elif taskThread.result and 'data' in taskThread.result and 'resultType' in taskThread.result:
                 logger.info("Task {} computed".format(subtask_id))
                 self.task_server.send_results(subtask_id, subtask.task_id, taskThread.result, subtask.returnAddress,
-                                              subtask.returnPort, subtask.keyId, subtask.taskOwner, self.client_uid)
+                                              subtask.returnPort, subtask.key_id, subtask.taskOwner, self.client_uid)
             else:
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",
-                                                  subtask.returnAddress, subtask.returnPort, subtask.keyId,
+                                                  subtask.returnAddress, subtask.returnPort, subtask.key_id,
                                                   subtask.taskOwner, self.client_uid)
 
     def run(self):
@@ -190,12 +190,12 @@ class TaskComputer(object):
         self.last_checking = time.time()
         self.waiting_for_task = self.task_server.request_task()
 
-    def __request_resource(self, task_id, resourceHeader, returnAddress, returnPort, keyId, taskOwner):
+    def __request_resource(self, task_id, resourceHeader, returnAddress, returnPort, key_id, taskOwner):
         self.waiting_ttl = self.waiting_for_task_timeout
         self.last_checking = time.time()
         self.waiting_for_task = 1
         self.waiting_for_task = self.task_server.request_resource(task_id, resourceHeader, returnAddress, returnPort,
-                                                                  keyId,
+                                                                  key_id,
                                                                   taskOwner)
 
     def __compute_task(self, subtask_id, srcCode, extraData, shortDescr, taskTimeout):

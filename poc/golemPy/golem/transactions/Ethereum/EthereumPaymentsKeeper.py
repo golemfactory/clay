@@ -3,7 +3,7 @@ from golem.transactions.PaymentsKeeper import AccountInfo, PaymentsKeeper
 ################################################################
 class EthereumPaymentsKeeper(PaymentsKeeper):
     ################################
-    def getListOfPayments(self, task):
+    def get_list_of_payments(self, task):
         payments = {}
         for subtask in task.subtasks.itervalues():
             payment = payments.setdefault(subtask.computer.eth_account, EthereumPaymentInfo())
@@ -31,7 +31,7 @@ class EthereumPaymentInfo:
 ################################################################
 class EthAccountInfo(AccountInfo):
     ################################
-    def __init__(self, keyId, port, addr, node_id, node_info, eth_account):
-        AccountInfo.__init__(self, keyId, port, addr, node_id, node_info)
+    def __init__(self, key_id, port, addr, node_id, node_info, eth_account):
+        AccountInfo.__init__(self, key_id, port, addr, node_id, node_info)
         self.eth_account = eth_account
 

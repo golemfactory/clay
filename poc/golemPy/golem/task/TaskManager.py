@@ -33,7 +33,7 @@ class TaskManager:
 
         self.listenAddress  = listenAddress
         self.listenPort     = listenPort
-        self.keyId          = key_id
+        self.key_id          = key_id
 
         self.root_path = root_path
         self.dir_manager     = DirManager(self.getTaskManagerRoot(), self.client_uid)
@@ -72,7 +72,7 @@ class TaskManager:
 
         task.header.taskOwnerAddress = self.listenAddress
         task.header.taskOwnerPort = self.listenPort
-        task.header.taskOwnerKeyId = self.keyId
+        task.header.taskOwnerKeyId = self.key_id
         self.node.pubAddr, self.node.pubPort, self.node.natType = get_external_address(self.listenPort)
         task.header.taskOwner = self.node
 
@@ -112,7 +112,7 @@ class TaskManager:
                 ctd  = task.queryExtraData(estimated_performance, num_cores, client_id)
                 if ctd is None or ctd.subtask_id is None:
                     return None, False
-                ctd.keyId = th.taskOwnerKeyId
+                ctd.key_id = th.taskOwnerKeyId
                 self.subTask2TaskMapping[ctd.subtask_id] = task_id
                 self.__addSubtaskToTasksStates(client_id, ctd)
                 self.__noticeTaskUpdated(task_id)

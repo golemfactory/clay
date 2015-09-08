@@ -1,102 +1,115 @@
 import logging
 from collections import deque
 
-
 logger = logging.getLogger(__name__)
 
-#################################################################
-class PaymentsKeeper:
-    ################################
+
+class PaymentsKeeper(object):
+    """ Keeps information about payments for tasks that should be processed and send or received. """
+
     def __init__(self):
-        self.computingTasks = {}
-        self.finishedTasks = []
-        self.tasksToPay = deque()
-        self.waitingForPayments = {}
-        self.settledTasks = {}
+        """ Create new payments keeper instance"""
+        self.computing_tasks = {}  # tasks that are computed right now
+        self.finished_tasks = []  # tasks that are finished and all payments connected with them are processed
+        self.tasks_to_pay = deque()  # finished tasks with payments that haven't been processed yet
+        self.waiting_for_payments = {}  # should receive payments from this dict
+        self.settled_tasks = {}  # finished tasks with payments that has been pass to task server
 
-    ################################
     def task_finished(self, task_id):
-        self.finishedTasks.append(task_id)
+        """ Add id of a task to the list of finished tasks
+        :param task_id: finished task id
+        """
+        self.finished_tasks.append(task_id)
 
-    ###############################
     def payment_failure(self, task_id):
-        task = self.settledTasks.get(task_id)
+        """ React to the fact that payment operation for task with given id failed. Remove given task form list of
+        settled tasks
+        :param task_id: payment for this task failed
+        """
+        task = self.settled_tasks.get(task_id)
         if task is None:
             logger.error("Unknown payment for task {}".format(task_id))
             return
-        self.tasksToPay.append(task)
-        del self.settledTasks[task_id]
+        self.tasks_to_pay.append(task)
+        del self.settled_tasks[task_id]
 
-    ################################
     def get_new_payments_task(self, budget):
-        if len(self.tasksToPay) > 0:
-            task = self.tasksToPay.popleft()
+        """ Return new payment for a computed task that hasn't been processed yet and that is not higer than node's
+        budget
+        :param int budget: current node's budget
+        :return tuple: return task id and list of payments for this task or a pair with two None
+        """
+        if len(self.tasks_to_pay) > 0:
+            task = self.tasks_to_pay.popleft()
             if task.value < budget:
-                self.settledTasks[task.task_id] = task
-                return task, self.getListOfPayments(task)
+                self.settled_tasks[task.task_id] = task
+                return task, self.get_list_of_payments(task)
             else:
-                self.tasksToPay.append(task)
+                self.tasks_to_pay.append(task)
         else:
             return None, None
 
-    ################################
-    def getListOfPayments(self, task):
+    def get_list_of_payments(self, task):
+        """ Extract information about subtask payment from given task payment info
+        :param TaskPaymentInfo task: information about payments for a task
+        :return dict: dictionary with information about sbutask payments
+        """
         return task.subtasks
 
-    ################################
-    def addPayment(self, payment_info):
-        task = self.computingTasks.setdefault(payment_info.task_id, TaskPaymentInfo(payment_info.task_id))
-        task.subtasks[payment_info.subtask_id]  = SubtaskPaymentInfo(payment_info.value, payment_info.computer)
+    def finished_tasks(self, payment_info):
+        """ Add new information about finished subtask
+        :param PaymentInfo payment_info: full inormation about payment for givne subtask
+        """
+        task = self.computing_tasks.setdefault(payment_info.task_id, TaskPaymentInfo(payment_info.task_id))
+        task.subtasks[payment_info.subtask_id] = SubtaskPaymentInfo(payment_info.value, payment_info.computer)
         task.value += payment_info.value
-        if payment_info.task_id in self.finishedTasks:
-            self.finishedTasks.remove(payment_info.task_id)
-            self.__putTaskInTasksToPay(payment_info.task_id)
+        if payment_info.task_id in self.finished_tasks:
+            self.finished_tasks.remove(payment_info.task_id)
+            self.__put_task_in_tasks_to_pay(payment_info.task_id)
 
-    ################################
-    def __putTaskInTasksToPay(self, task_id):
-        task = self.computingTasks.get(task_id)
+    def __put_task_in_tasks_to_pay(self, task_id):
+        task = self.computing_tasks.get(task_id)
         if task is None:
             logger.error("No information about payments for task {}".format(task_id))
             return
-        self.tasksToPay.append(task)
-        del self.computingTasks[task_id]
+        self.tasks_to_pay.append(task)
+        del self.computing_tasks[task_id]
 
 
-################################################################
-class PaymentInfo:
-    ################################
+class PaymentInfo(object):
+    """ Full information about payment for a subtask. Include task id, subtask payment information and
+    account information about node that has computed this task. """
     def __init__(self, task_id, subtask_id, value, computer):
         self.task_id = task_id
         self.subtask_id = subtask_id
         self.value = value
         self.computer = computer
 
-################################################################
-class TaskPaymentInfo:
-    ################################
+
+class TaskPaymentInfo(object):
+    """ Information about reward for task """
     def __init__(self, task_id):
         self.task_id = task_id
         self.subtasks = {}
         self.value = 0
 
-################################################################
-class SubtaskPaymentInfo:
-    ################################
+
+class SubtaskPaymentInfo(object):
+    """ Information about reward for subtask """
     def __init__(self, value, computer):
         self.value = value
         self.computer = computer
 
-################################################################
-class AccountInfo:
-    ################################
-    def __init__(self, keyId, port, addr, node_id, node_info):
-        self.keyId = keyId
+
+class AccountInfo(object):
+    """ Information about node's payment account """
+    def __init__(self, key_id, port, addr, node_id, node_info):
+        self.key_id = key_id
         self.port = port
         self.addr = addr
         self.node_id = node_id
         self.node_info = node_info
 
-    ################################
     def __eq__(self, other):
         if type(other) is type(self):
             return self.__dict__ == other.__dict__

@@ -317,20 +317,20 @@ class Client:
         return self.p2pservice.get_peers_degree()
 
     ############################
-    def getSuggestedAddr(self, keyId):
-        return self.p2pservice.suggested_address.get(keyId)
+    def getSuggestedAddr(self, key_id):
+        return self.p2pservice.suggested_address.get(key_id)
 
     ############################
-    def want_to_start_task_session(self, keyId, node_id, conn_id):
-        self.p2pservice.want_to_start_task_session(keyId, node_id, conn_id)
+    def want_to_start_task_session(self, key_id, node_id, conn_id):
+        self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
 
     ############################
-    def inform_about_task_nat_hole(self, keyId, rvKeyId, addr, port, ansConnId):
-        self.p2pservice.inform_about_task_nat_hole(keyId, rvKeyId, addr, port, ansConnId)
+    def inform_about_task_nat_hole(self, key_id, rvKeyId, addr, port, ansConnId):
+        self.p2pservice.inform_about_task_nat_hole(key_id, rvKeyId, addr, port, ansConnId)
 
     ############################
-    def inform_about_nat_traverse_failure(self, keyId, resKeyId, conn_id):
-        self.p2pservice.inform_about_nat_traverse_failure(keyId, resKeyId, conn_id)
+    def inform_about_nat_traverse_failure(self, key_id, resKeyId, conn_id):
+        self.p2pservice.inform_about_nat_traverse_failure(key_id, resKeyId, conn_id)
 
     #TRANSACTION SYSTEM OPERATIONS
     ############################
@@ -398,8 +398,8 @@ class Client:
         self.get_resource_peers()
 
     ############################
-    def add_resource_peer(self, client_id, addr, port, keyId, node_info):
-        self.resource_server.add_resource_peer(client_id, addr, port, keyId, node_info)
+    def add_resource_peer(self, client_id, addr, port, key_id, node_info):
+        self.resource_server.add_resource_peer(client_id, addr, port, key_id, node_info)
 
     ############################
     def supported_task(self, th_dict_repr):

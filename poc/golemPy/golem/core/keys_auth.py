@@ -28,7 +28,7 @@ class KeysAuth(object):
         """
         self._private_key = self._load_private_key(str(uuid))
         self.public_key = self._load_public_key(str(uuid))
-        self.keyId = self.cnt_key_id(self.public_key)
+        self.key_id = self.cnt_key_id(self.public_key)
 
     def get_public_key(self):
         """ Return public key """
@@ -36,7 +36,7 @@ class KeysAuth(object):
 
     def get_key_id(self):
         """ Return id generated with public key """
-        return self.keyId
+        return self.key_id
 
     def cnt_key_id(self, public_key):
         """ Return id generated from given public key

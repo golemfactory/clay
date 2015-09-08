@@ -103,9 +103,9 @@ class VRayTask(FrameRenderingTask):
                   frames,
                   returnAddress = "",
                   returnPort = 0,
-                  keyId = ""):
+                  key_id = ""):
 
-        FrameRenderingTask.__init__(self, client_id, task_id, returnAddress, returnPort, keyId,
+        FrameRenderingTask.__init__(self, client_id, task_id, returnAddress, returnPort, key_id,
                           VRayEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
