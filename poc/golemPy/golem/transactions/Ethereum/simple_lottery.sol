@@ -1,13 +1,12 @@
 contract LotteryAgent {
 
-    uint golem_dep;
-
     struct LotteryData {
         uint value;
         uint timeout;
         uint deposit;
         uint random;
-        address claimer;
+        address payer;
+        address winner;
     }
 
     mapping (bytes32 => LotteryData) lotteries;
@@ -16,9 +15,7 @@ contract LotteryAgent {
 		LotteryData lottery = lotteries[descriptionHash];
 		if (lottery.value != 0)
 		    return;
-		uint charge = msg.value / 20;
-		golem_dep += charge;
-		lotteries[descriptionHash] = LotteryData(msg.value-charge, maturity, deposit, 0, msg.sender);
+		lotteries[descriptionHash] = LotteryData(msg.value, maturity, deposit, 0, msg.sender, 0);
 	}
 
 	function captureMaturityHash(bytes32 descriptionHash) {
@@ -27,49 +24,48 @@ contract LotteryAgent {
 	    block.number > lottery.timeout + 256) {
 	        return;
 	    }
-	    address sendTo = lottery.claimer;
+	    address sendTo = lottery.payer;
 	    if (lottery.timeout + 128 < block.number)
 	        sendTo = msg.sender;
 
-       lottery.claimer = sendTo;
 	   lottery.random = random(lottery.timeout);
-	   uint deposit = lottery.value/10;
-	   lotteries[descriptionHash].value -= deposit;
-	   sendTo.send(deposit);
+	   uint reward = lottery.value/10;
+	   lottery.value -= reward;
+	   sendTo.send(reward);
     }
 
 	function winnerLottery(bytes32 descriptionHash) {
 	    LotteryData lottery = lotteries[descriptionHash];
-	    if (lottery.value == 0 || msg.value < lottery.deposit || block.number < lottery.timeout)
+	    if (lottery.value == 0 || msg.value < lottery.deposit)
 	        return;
-	    if (lottery.random != 0 && lottery.claimer != 0)
+	    if (lottery.random == 0 && block.number <= lottery.timeout + 128) {
 	        return;
-
-	    if (lottery.random == 0) {
-	        replaceRandom(descriptionHash);
 	    }
 	    lottery.deposit = msg.value;
-	    lottery.claimer = msg.sender;
+	    lottery.winner = msg.sender;
 
+	    if (lottery.random == 0) {
+	        lottery.random = random(lottery.timeout);
+	    }
 	    lottery.timeout = now + 86400;
 	}
 
 	function payoutLottery(bytes32 descriptionHash) {
 	    LotteryData lottery = lotteries[descriptionHash];
-	    if (lottery.value == 0 || lottery.random == 0 || block.timestamp <= lottery.timeout)
+	    if (lottery.value == 0 || lottery.winner == 0 || block.timestamp <= lottery.timeout)
 	        return;
-	    lottery.claimer.send(lottery.value);
+	    lottery.winner.send(lottery.value);
 	    delete lotteries[descriptionHash];
 	}
 
 	function checkLottery(uint maturity, uint lotteryId, uint startValue, address[] participants, uint[] probabilities) external {
 	    bytes32 descriptionHash = sha3(maturity, lotteryId, startValue, participants, probabilities);
 	    LotteryData lottery = lotteries[descriptionHash];
-	    if (lottery.value == 0 || (lottery.random == 0 && block.number <= lottery.timeout))
+	    if (lottery.value == 0 || (lottery.random == 0 && block.number <= lottery.timeout + 128))
 	        return;
 
 	    if (lottery.random == 0) {
-	        replaceRandom(descriptionHash);
+	        lottery.random = random(lottery.timeout);
 	    }
 
 		address winner;
@@ -83,7 +79,7 @@ contract LotteryAgent {
 		}
 
 		uint value = lotteries[descriptionHash].value;
-		if (lotteries[descriptionHash].claimer == 0) {
+		if (lotteries[descriptionHash].winner == 0) {
 		    winner.send(value);
 		} else {
 		    if (winner != msg.sender) {
@@ -96,28 +92,12 @@ contract LotteryAgent {
 		delete lotteries[descriptionHash];
 
 	}
-
 	function random(uint maturity) internal constant returns(uint) {
 	    while (block.number - maturity > 256) {
             maturity += 256;
 	    }
 
 		return uint(block.blockhash(maturity));
-	}
-
-    function replaceRandom(bytes32 descriptionHash) internal {
-        LotteryData lottery = lotteries[descriptionHash];
-	    lottery.random = random(lottery.timeout);
-	    uint deposit = lottery.value / 10;
-	    lottery.value -= deposit;
-	    if (block.number <= lottery.timeout + 128) {
-	        lottery.claimer.send(deposit);
-	    } else if (block.number > lottery.timeout + 256) {
-	        golem_dep += deposit;
-	    } else {
-	        msg.sender.send(deposit);
-	    }
-	    lottery.claimer = 0;
 	}
 
 	function verifyLottery(bytes32 descriptionHash) returns (bool) {
