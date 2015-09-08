@@ -2,7 +2,7 @@ import logging
 import datetime
 
 from Ethereum.EthereumPaymentsKeeper import EthereumPaymentsKeeper
-from PaymentsKeeper import PaymentInfo
+from payments_keeper import PaymentInfo
 from golem.Model import Bank
 from golem.core.variables import PRICE_BASE
 
@@ -58,7 +58,7 @@ class TransactionSystem(object):
         """
         price = self.count_price(price_mod)
         payment_info = PaymentInfo(task_id, subtask_id, price, account_info)
-        self.payments_keeper.finished_tasks(payment_info)
+        self.payments_keeper.finished_subtasks(payment_info)
 
     def task_finished(self, task_id):
         """ Inform payments keeper that task with given id has been finished and payments for that task may be

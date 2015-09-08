@@ -10,8 +10,9 @@ class PaymentsKeeper(object):
     def __init__(self):
         """ Create new payments keeper instance"""
         self.computing_tasks = {}  # tasks that are computed right now
-        self.finished_tasks = []  # tasks that are finished and all payments connected with them are processed
-        self.tasks_to_pay = deque()  # finished tasks with payments that haven't been processed yet
+        self.finished_tasks = []  # tasks that are finished and they're payment haven't been processed yet (may still
+        # be waiting for last subtask value estimation
+        self.tasks_to_pay = deque()  # finished tasks with payments have been processed but haven't been send yet
         self.waiting_for_payments = {}  # should receive payments from this dict
         self.settled_tasks = {}  # finished tasks with payments that has been pass to task server
 
@@ -34,7 +35,7 @@ class PaymentsKeeper(object):
         del self.settled_tasks[task_id]
 
     def get_new_payments_task(self, budget):
-        """ Return new payment for a computed task that hasn't been processed yet and that is not higer than node's
+        """ Return new payment for a computed task that hasn't been processed yet and that is not higher than node's
         budget
         :param int budget: current node's budget
         :return tuple: return task id and list of payments for this task or a pair with two None
@@ -52,13 +53,13 @@ class PaymentsKeeper(object):
     def get_list_of_payments(self, task):
         """ Extract information about subtask payment from given task payment info
         :param TaskPaymentInfo task: information about payments for a task
-        :return dict: dictionary with information about sbutask payments
+        :return dict: dictionary with information about subtask payments
         """
         return task.subtasks
 
-    def finished_tasks(self, payment_info):
+    def finished_subtasks(self, payment_info):
         """ Add new information about finished subtask
-        :param PaymentInfo payment_info: full inormation about payment for givne subtask
+        :param PaymentInfo payment_info: full information about payment for given subtask
         """
         task = self.computing_tasks.setdefault(payment_info.task_id, TaskPaymentInfo(payment_info.task_id))
         task.subtasks[payment_info.subtask_id] = SubtaskPaymentInfo(payment_info.value, payment_info.computer)
