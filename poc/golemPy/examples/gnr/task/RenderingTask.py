@@ -15,7 +15,7 @@ from examples.gnr.RenderingDirManager import getTmpPath
 from examples.gnr.RenderingTaskState import AdvanceRenderingVerificationOptions
 from examples.gnr.task.RenderingTaskCollector import exr_to_pil
 from examples.gnr.task.ImgRepr import verifyImg, advanceVerifyImg
-from examples.gnr.task.GNRTask import GNRTask, GNRTaskBuilder, checkSubtaskIdWrapper
+from examples.gnr.task.GNRTask import GNRTask, GNRTaskBuilder, checkSubtask_idWrapper
 
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
@@ -48,7 +48,7 @@ class RenderingTaskBuilder(GNRTaskBuilder):
 ##############################################
 class RenderingTask(GNRTask):
     #######################
-    def __init__(self, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
+    def __init__(self, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                   totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, root_path,
                   estimatedMemory):
@@ -65,7 +65,7 @@ class RenderingTask(GNRTask):
         for resource in taskResources:
             resourceSize += os.stat(resource).st_size
 
-        GNRTask.__init__(self, srcCode, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+        GNRTask.__init__(self, srcCode, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment,
                           ttl, subtaskTtl, resourceSize, estimatedMemory)
 
         self.fullTaskTimeout        = ttl
@@ -113,18 +113,18 @@ class RenderingTask(GNRTask):
             taskState.extraData['resultPreview'] = self.previewFilePath
 
     #######################
-    @checkSubtaskIdWrapper
-    def computationFailed(self, subtaskId):
-        GNRTask.computationFailed(self, subtaskId)
+    @checkSubtask_idWrapper
+    def computationFailed(self, subtask_id):
+        GNRTask.computationFailed(self, subtask_id)
         self._updateTaskPreview()
 
     #######################
-    @checkSubtaskIdWrapper
-    def restartSubtask(self, subtaskId):
-        if subtaskId in self.subTasksGiven:
-            if self.subTasksGiven[ subtaskId ][ 'status' ] == SubtaskStatus.finished:
-                self._removeFromPreview(subtaskId)
-        GNRTask.restartSubtask(self, subtaskId)
+    @checkSubtask_idWrapper
+    def restartSubtask(self, subtask_id):
+        if subtask_id in self.subTasksGiven:
+            if self.subTasksGiven[ subtask_id ][ 'status' ] == SubtaskStatus.finished:
+                self._removeFromPreview(subtask_id)
+        GNRTask.restartSubtask(self, subtask_id)
 
     #####################
     def getPreviewFilePath(self):
@@ -135,9 +135,9 @@ class RenderingTask(GNRTask):
         return self.resX, self.resY
 
     #######################
-    @checkSubtaskIdWrapper
-    def _getPartImgSize(self, subtaskId, advTestFile):
-        numTask = self.subTasksGiven[ subtaskId ][ 'startTask' ]
+    @checkSubtask_idWrapper
+    def _getPartImgSize(self, subtask_id, advTestFile):
+        numTask = self.subTasksGiven[ subtask_id ][ 'startTask' ]
         imgHeight = int (math.floor(float(self.resY) / float(self.totalTasks)))
         return 0, (numTask - 1) * imgHeight, self.resX, numTask * imgHeight
 
@@ -156,13 +156,13 @@ class RenderingTask(GNRTask):
         imgCurrent.save(self.previewFilePath, "BMP")
 
     #######################
-    @checkSubtaskIdWrapper
-    def _removeFromPreview(self, subtaskId):
+    @checkSubtask_idWrapper
+    def _removeFromPreview(self, subtask_id):
         emptyColor = (0, 0, 0)
         if isinstance(self.previewFilePath, list): #FIXME
             return
         img = self._openPreview()
-        self._markTaskArea(self.subTasksGiven[ subtaskId ], img, emptyColor)
+        self._markTaskArea(self.subTasksGiven[ subtask_id ], img, emptyColor)
         img.save(self.previewFilePath, "BMP")
 
     #######################
@@ -170,7 +170,7 @@ class RenderingTask(GNRTask):
         sentColor = (0, 255, 0)
         failedColor = (255, 0, 0)
 
-        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.root_path)
+        tmpDir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
         self.previewTaskFilePath = "{}".format(os.path.join(tmpDir, "current_task_preview"))
 
         imgTask = self._openPreview()
@@ -205,8 +205,8 @@ class RenderingTask(GNRTask):
     #######################
     def _newComputeTaskDef(self, hash, extraData, workingDirectory, perfIndex):
         ctd = ComputeTaskDef()
-        ctd.taskId              = self.header.taskId
-        ctd.subtaskId           = hash
+        ctd.task_id              = self.header.task_id
+        ctd.subtask_id           = hash
         ctd.extraData           = extraData
         ctd.returnAddress       = self.header.taskOwnerAddress
         ctd.returnPort          = self.header.taskOwnerPort
@@ -262,7 +262,7 @@ class RenderingTask(GNRTask):
 
     #######################
     def _openPreview(self):
-        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.root_path)
+        tmpDir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
 
         if self.previewFilePath is None or not os.path.exists(self.previewFilePath):
             self.previewFilePath = "{}".format(os.path.join(tmpDir, "current_preview"))
@@ -294,50 +294,50 @@ class RenderingTask(GNRTask):
             return True #new node
 
     #######################
-    @checkSubtaskIdWrapper
-    def __useAdvVerification(self, subtaskId):
+    @checkSubtask_idWrapper
+    def __useAdvVerification(self, subtask_id):
         if self.verificationOptions.type == 'forAll':
             return True
-        if self.verificationOptions.type == 'forFirst'and self.subTasksGiven[subtaskId]['client_id'] not in self.verifiedClients:
+        if self.verificationOptions.type == 'forFirst'and self.subTasksGiven[subtask_id]['client_id'] not in self.verifiedClients:
             return True
         if self.verificationOptions.type == 'random' and random.random() < self.verificationOptions.probability:
             return True
         return False
 
     #######################
-    def _chooseAdvVerFile(self, trFiles, subtaskId):
+    def _chooseAdvVerFile(self, trFiles, subtask_id):
         advTestFile = None
         if self.advanceVerification:
-            if self.__useAdvVerification(subtaskId):
+            if self.__useAdvVerification(subtask_id):
                 advTestFile = random.sample(trFiles, 1)
         return advTestFile
 
     #######################
-    @checkSubtaskIdWrapper
-    def _verifyImgs(self, subtaskId, trFiles):
+    @checkSubtask_idWrapper
+    def _verifyImgs(self, subtask_id, trFiles):
         resX, resY = self._getPartSize()
 
-        advTestFile = self._chooseAdvVerFile(trFiles, subtaskId)
-        x0, y0, x1, y1 = self._getPartImgSize(subtaskId, advTestFile)
+        advTestFile = self._chooseAdvVerFile(trFiles, subtask_id)
+        x0, y0, x1, y1 = self._getPartImgSize(subtask_id, advTestFile)
 
         for trFile in trFiles:
             if advTestFile is not None and trFile in advTestFile:
                 startBox = self._getBoxStart(x0, y0, x1, y1)
                 logger.debug('testBox: {}'.format(startBox))
-                cmpFile, cmpStartBox = self._getCmpFile(trFile, startBox, subtaskId)
+                cmpFile, cmpStartBox = self._getCmpFile(trFile, startBox, subtask_id)
                 logger.debug('cmpStarBox {}'.format(cmpStartBox))
                 if not advanceVerifyImg(trFile, resX, resY, startBox, self.verificationOptions.boxSize, cmpFile, cmpStartBox):
                     return False
                 else:
-                    self.verifiedClients.add(self.subTasksGiven[subtaskId][ 'client_id' ])
+                    self.verifiedClients.add(self.subTasksGiven[subtask_id][ 'client_id' ])
             if not self._verifyImg(trFile, resX, resY):
                 return False
 
         return True
 
     #######################
-    def _getCmpFile(self, trFile, startBox, subtaskId):
-        extraData, newStartBox = self._changeScope(subtaskId, startBox, trFile)
+    def _getCmpFile(self, trFile, startBox, subtask_id):
+        extraData, newStartBox = self._changeScope(subtask_id, startBox, trFile)
         cmpFile = self._runTask(self.srcCode, extraData)
         return cmpFile, newStartBox
 
@@ -350,11 +350,11 @@ class RenderingTask(GNRTask):
         return (startX, startY)
 
     #######################
-    @checkSubtaskIdWrapper
-    def _changeScope(self, subtaskId, startBox, trFile):
-        extraData = copy(self.subTasksGiven[ subtaskId ])
+    @checkSubtask_idWrapper
+    def _changeScope(self, subtask_id, startBox, trFile):
+        extraData = copy(self.subTasksGiven[ subtask_id ])
         extraData['outfilebasename'] = uuid.uuid4()
-        extraData['tmpPath'] = os.path.join(self.tmpDir, str(self.subTasksGiven[subtaskId]['startTask']))
+        extraData['tmpPath'] = os.path.join(self.tmpDir, str(self.subTasksGiven[subtask_id]['startTask']))
         if not os.path.isdir(extraData['tmpPath']):
             os.mkdir(extraData['tmpPath'])
         return extraData, startBox

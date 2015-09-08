@@ -50,65 +50,65 @@ class TaskComputer(object):
         self.delta = None
 
     def task_given(self, ctd, subtask_timeout):
-        if ctd.subtaskId not in self.assigned_subtasks:
-            self.assigned_subtasks[ctd.subtaskId] = ctd
-            self.assigned_subtasks[ctd.subtaskId].timeout = subtask_timeout
-            self.task_to_subtask_mapping[ctd.taskId] = ctd.subtaskId
-            self.__request_resource(ctd.taskId, self.resource_manager.getResourceHeader(ctd.taskId), ctd.returnAddress,
+        if ctd.subtask_id not in self.assigned_subtasks:
+            self.assigned_subtasks[ctd.subtask_id] = ctd
+            self.assigned_subtasks[ctd.subtask_id].timeout = subtask_timeout
+            self.task_to_subtask_mapping[ctd.task_id] = ctd.subtask_id
+            self.__request_resource(ctd.task_id, self.resource_manager.getResourceHeader(ctd.task_id), ctd.returnAddress,
                                     ctd.returnPort, ctd.keyId, ctd.taskOwner)
             return True
         else:
             return False
 
-    def resource_given(self, taskId):
-        if taskId in self.task_to_subtask_mapping:
-            subtaskId = self.task_to_subtask_mapping[taskId]
-            if subtaskId in self.assigned_subtasks:
+    def resource_given(self, task_id):
+        if task_id in self.task_to_subtask_mapping:
+            subtask_id = self.task_to_subtask_mapping[task_id]
+            if subtask_id in self.assigned_subtasks:
                 self.waiting_ttl = 0
                 self.counting_task = True
-                self.__compute_task(subtaskId, self.assigned_subtasks[subtaskId].srcCode,
-                                    self.assigned_subtasks[subtaskId].extraData,
-                                    self.assigned_subtasks[subtaskId].shortDescription,
-                                    self.assigned_subtasks[subtaskId].timeout)
+                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].srcCode,
+                                    self.assigned_subtasks[subtask_id].extraData,
+                                    self.assigned_subtasks[subtask_id].shortDescription,
+                                    self.assigned_subtasks[subtask_id].timeout)
                 self.waiting_for_task = None
                 return True
             else:
                 return False
 
-    def task_resource_collected(self, taskId):
-        if taskId in self.task_to_subtask_mapping:
-            subtaskId = self.task_to_subtask_mapping[taskId]
-            if subtaskId in self.assigned_subtasks:
+    def task_resource_collected(self, task_id):
+        if task_id in self.task_to_subtask_mapping:
+            subtask_id = self.task_to_subtask_mapping[task_id]
+            if subtask_id in self.assigned_subtasks:
                 self.waiting_ttl = 0
                 self.counting_task = True
-                self.taskTimeout = self.assigned_subtasks[subtaskId].timeout
+                self.taskTimeout = self.assigned_subtasks[subtask_id].timeout
                 self.lastTaskTimeoutChecking = time.time()
-                self.task_server.unpack_delta(self.dir_manager.getTaskResourceDir(taskId), self.delta, taskId)
-                self.__compute_task(subtaskId, self.assigned_subtasks[subtaskId].srcCode,
-                                    self.assigned_subtasks[subtaskId].extraData,
-                                    self.assigned_subtasks[subtaskId].shortDescription,
-                                    self.assigned_subtasks[subtaskId].timeout)
+                self.task_server.unpack_delta(self.dir_manager.getTaskResourceDir(task_id), self.delta, task_id)
+                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].srcCode,
+                                    self.assigned_subtasks[subtask_id].extraData,
+                                    self.assigned_subtasks[subtask_id].shortDescription,
+                                    self.assigned_subtasks[subtask_id].timeout)
                 self.waiting_for_task = None
                 self.delta = None
                 return True
             else:
                 return False
 
-    def waitForResources(self, taskId, delta):
-        if taskId in self.task_to_subtask_mapping:
-            subtaskId = self.task_to_subtask_mapping[taskId]
-            if subtaskId in self.assigned_subtasks:
+    def waitForResources(self, task_id, delta):
+        if task_id in self.task_to_subtask_mapping:
+            subtask_id = self.task_to_subtask_mapping[task_id]
+            if subtask_id in self.assigned_subtasks:
                 self.delta = delta
 
-    def taskRequestRejected(self, taskId, reason):
+    def taskRequestRejected(self, task_id, reason):
         self.waiting_for_task = None
-        logger.warning("Task {} request rejected: {}".format(taskId, reason))
+        logger.warning("Task {} request rejected: {}".format(task_id, reason))
 
-    def resourceRequestRejected(self, subtaskId, reason):
+    def resourceRequestRejected(self, subtask_id, reason):
         self.waiting_for_task = None
         self.waiting_ttl = 0
-        logger.warning("Task {} resource request rejected: {}".format(subtaskId, reason))
-        del self.assigned_subtasks[subtaskId]
+        logger.warning("Task {} resource request rejected: {}".format(subtask_id, reason))
+        del self.assigned_subtasks[subtask_id]
 
     def task_computed(self, taskThread):
         with self.lock:
@@ -116,25 +116,25 @@ class TaskComputer(object):
             if taskThread in self.current_computations:
                 self.current_computations.remove(taskThread)
 
-            subtaskId = taskThread.subtaskId
+            subtask_id = taskThread.subtask_id
 
-            subtask = self.assigned_subtasks.get(subtaskId)
+            subtask = self.assigned_subtasks.get(subtask_id)
             if subtask:
-                del self.assigned_subtasks[subtaskId]
+                del self.assigned_subtasks[subtask_id]
             else:
-                logger.error("No subtask with id {}".format(subtaskId))
+                logger.error("No subtask with id {}".format(subtask_id))
                 return
 
             if taskThread.error:
-                self.task_server.send_task_failed(subtaskId, subtask.taskId, taskThread.errorMsg,
+                self.task_server.send_task_failed(subtask_id, subtask.task_id, taskThread.errorMsg,
                                                   subtask.returnAddress, subtask.returnPort, subtask.keyId,
                                                   subtask.taskOwner, self.client_uid)
             elif taskThread.result and 'data' in taskThread.result and 'resultType' in taskThread.result:
-                logger.info("Task {} computed".format(subtaskId))
-                self.task_server.send_results(subtaskId, subtask.taskId, taskThread.result, subtask.returnAddress,
+                logger.info("Task {} computed".format(subtask_id))
+                self.task_server.send_results(subtask_id, subtask.task_id, taskThread.result, subtask.returnAddress,
                                               subtask.returnPort, subtask.keyId, subtask.taskOwner, self.client_uid)
             else:
-                self.task_server.send_task_failed(subtaskId, subtask.taskId, "Wrong result format",
+                self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",
                                                   subtask.returnAddress, subtask.returnPort, subtask.keyId,
                                                   subtask.taskOwner, self.client_uid)
 
@@ -163,7 +163,7 @@ class TaskComputer(object):
         for c in self.current_computations:
             tcss = TaskChunkStateSnapshot(c.get_subtask_id(), 0.0, 0.0, c.getProgress(),
                                           c.getTaskShortDescr())  # FIXME: cpu power and estimated time left
-            ret[c.subtaskId] = tcss
+            ret[c.subtask_id] = tcss
 
         return ret
 
@@ -181,7 +181,7 @@ class TaskComputer(object):
             self.waiting_for_task = None
             self.waiting_ttl = 0
 
-    def increase_request_trust(self, subtaskId):
+    def increase_request_trust(self, subtask_id):
         with self.lock:
             self.increaseTrustVal = True
 
@@ -190,20 +190,20 @@ class TaskComputer(object):
         self.last_checking = time.time()
         self.waiting_for_task = self.task_server.request_task()
 
-    def __request_resource(self, taskId, resourceHeader, returnAddress, returnPort, keyId, taskOwner):
+    def __request_resource(self, task_id, resourceHeader, returnAddress, returnPort, keyId, taskOwner):
         self.waiting_ttl = self.waiting_for_task_timeout
         self.last_checking = time.time()
         self.waiting_for_task = 1
-        self.waiting_for_task = self.task_server.request_resource(taskId, resourceHeader, returnAddress, returnPort,
+        self.waiting_for_task = self.task_server.request_resource(task_id, resourceHeader, returnAddress, returnPort,
                                                                   keyId,
                                                                   taskOwner)
 
-    def __compute_task(self, subtaskId, srcCode, extraData, shortDescr, taskTimeout):
-        taskId = self.assigned_subtasks[subtaskId].taskId
-        workingDirectory = self.assigned_subtasks[subtaskId].workingDirectory
-        self.dir_manager.clearTemporary(taskId)
-        tt = PyTaskThread(self, subtaskId, workingDirectory, srcCode, extraData, shortDescr,
-                          self.resource_manager.getResourceDir(taskId), self.resource_manager.getTemporaryDir(taskId),
+    def __compute_task(self, subtask_id, srcCode, extraData, shortDescr, taskTimeout):
+        task_id = self.assigned_subtasks[subtask_id].task_id
+        workingDirectory = self.assigned_subtasks[subtask_id].workingDirectory
+        self.dir_manager.clearTemporary(task_id)
+        tt = PyTaskThread(self, subtask_id, workingDirectory, srcCode, extraData, shortDescr,
+                          self.resource_manager.getResourceDir(task_id), self.resource_manager.getTemporaryDir(task_id),
                           taskTimeout)
         self.current_computations.append(tt)
         tt.start()
@@ -219,13 +219,13 @@ class AssignedSubTask(object):
 
 
 class TaskThread(Thread):
-    def __init__(self, task_computer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath,
+    def __init__(self, task_computer, subtask_id, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath,
                  timeout=0):
         super(TaskThread, self).__init__()
 
         self.task_computer = task_computer
         self.vm = None
-        self.subtaskId = subtaskId
+        self.subtask_id = subtask_id
         self.srcCode = srcCode
         self.extraData = extraData
         self.shortDescr = shortDescr
@@ -255,7 +255,7 @@ class TaskThread(Thread):
             self.endComp()
 
     def get_subtask_id(self):
-        return self.subtaskId
+        return self.subtask_id
 
     def getTaskShortDescr(self):
         return self.shortDescr
@@ -300,16 +300,16 @@ class TaskThread(Thread):
 
 
 class PyTaskThread(TaskThread):
-    def __init__(self, task_computer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath,
+    def __init__(self, task_computer, subtask_id, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath,
                  timeout):
-        super(PyTaskThread, self).__init__(task_computer, subtaskId, workingDirectory, srcCode, extraData, shortDescr,
+        super(PyTaskThread, self).__init__(task_computer, subtask_id, workingDirectory, srcCode, extraData, shortDescr,
                                            resPath, tmpPath, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
-    def __init__(self, task_computer, subtaskId, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath,
+    def __init__(self, task_computer, subtask_id, workingDirectory, srcCode, extraData, shortDescr, resPath, tmpPath,
                  timeout):
-        super(PyTestTaskThread, self).__init__(task_computer, subtaskId, workingDirectory, srcCode, extraData,
+        super(PyTestTaskThread, self).__init__(task_computer, subtask_id, workingDirectory, srcCode, extraData,
                                                shortDescr, resPath, tmpPath, timeout)
         self.vm = PythonTestVM()

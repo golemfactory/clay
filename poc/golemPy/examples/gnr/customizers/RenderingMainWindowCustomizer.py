@@ -101,8 +101,8 @@ class AbsRenderingMainWindowCustomizer (object):
         self.currentTaskHighlighted = t
 
     #############################
-    def showTaskResult(self, taskId):
-        t = self.logic.getTask(taskId)
+    def showTaskResult(self, task_id):
+        t = self.logic.getTask(task_id)
         if t.definition.renderer in frameRenderers and t.definition.rendererOptions.useFrames:
             file_ = self.__getFrameName(t.definition, 0)
         else:
@@ -241,8 +241,8 @@ class AbsRenderingMainWindowCustomizer (object):
 
         if t.definition.renderer:
             definition = t.definition
-            taskId = definition.taskId
-            task =  self.logic.getTask(taskId)
+            task_id = definition.task_id
+            task =  self.logic.getTask(task_id)
             renderer = self.logic.getRenderer(definition.renderer)
             if len(task.taskState.subtaskStates) > 0:
                 totalTasks = task.taskState.subtaskStates.values()[0].extraData['totalTasks']
@@ -257,7 +257,7 @@ class AbsRenderingMainWindowCustomizer (object):
     #############################
     def __getSubtask(self, num):
         subtask = None
-        task = self.logic.getTask(self.currentTaskHighlighted.definition.taskId)
+        task = self.logic.getTask(self.currentTaskHighlighted.definition.task_id)
         subtasks = [ sub  for sub in task.taskState.subtaskStates.values() if sub.extraData['startTask']  <= num <= sub.extraData['endTask']  ]
         if len(subtasks) > 0:
                 subtask = min(subtasks, key=lambda x: subtasksPriority(x))

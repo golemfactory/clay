@@ -80,11 +80,11 @@ class ResourcesManager:
         self.buff               = DataBuffer()
 
     ###################
-    def getResourceHeader(self, taskId):
+    def getResourceHeader(self, task_id):
 
         taskResHeader = None
 
-        dirName = self.getResourceDir(taskId)
+        dirName = self.getResourceDir(task_id)
 
         if os.path.exists(dirName):
             taskResHeader = TaskResourceHeader.build("resources", dirName)
@@ -94,9 +94,9 @@ class ResourcesManager:
         return taskResHeader
 
     ###################
-    def getResourceDelta(self, taskId, resourceHeader):
+    def getResourceDelta(self, task_id, resourceHeader):
 
-        dirName = self.getResourceDir(taskId)
+        dirName = self.getResourceDir(task_id)
 
         taskResHeader = None
 
@@ -111,32 +111,32 @@ class ResourcesManager:
         return taskResHeader
 
     ###################
-    def prepare_resourceDelta(self, taskId, resourceHeader):
+    def prepare_resourceDelta(self, task_id, resourceHeader):
 
-        dirName = self.getResourceDir(taskId)
+        dirName = self.getResourceDir(task_id)
 
         if os.path.exists(dirName):
-            return prepareDeltaZip(dirName, resourceHeader, self.getTemporaryDir(taskId))
+            return prepareDeltaZip(dirName, resourceHeader, self.getTemporaryDir(task_id))
         else:
             return ""
 
     ###################
-    def updateResource(self, taskId, resource):
+    def updateResource(self, task_id, resource):
 
-        dirName = self.getResourceDir(taskId)
+        dirName = self.getResourceDir(task_id)
 
         resource.extract(dirName)
 
     ###################
-    def getResourceDir(self, taskId):
-        return self.dir_manager.getTaskResourceDir(taskId)
+    def getResourceDir(self, task_id):
+        return self.dir_manager.getTaskResourceDir(task_id)
 
     ###################
-    def getTemporaryDir(self, taskId):
-        return self.dir_manager.getTaskTemporaryDir(taskId)
+    def getTemporaryDir(self, task_id):
+        return self.dir_manager.getTaskTemporaryDir(task_id)
 
     ###################
-    def getOutputDir(self, taskId):
-        return self.dir_manager.getTaskOutputDir(taskId)
+    def getOutputDir(self, task_id):
+        return self.dir_manager.getTaskOutputDir(task_id)
 
             

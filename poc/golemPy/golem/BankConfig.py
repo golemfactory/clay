@@ -13,11 +13,11 @@ class CommonConfig:
     ##############################
     def __init__(self,
                  section = "Common",
-                 priceBase = PRICE_BASE):
+                 price_base = PRICE_BASE):
 
         self._section = section
 
-        ConfigEntry.create_property(section, "price base", priceBase, self, "PriceBase")
+        ConfigEntry.create_property(section, "price base", price_base, self, "PriceBase")
 
     ##############################
     def section(self):
@@ -26,8 +26,8 @@ class CommonConfig:
 ############################################################
 class NodeConfig:
     ##############################
-    def __init__(self, nodeId, budget = START_BUDGET):
-        self._section = "Node {}".format(nodeId)
+    def __init__(self, node_id, budget = START_BUDGET):
+        self._section = "Node {}".format(node_id)
 
         ConfigEntry.create_property(self.section(), "budget", budget, self, "Budget")
 
@@ -40,11 +40,11 @@ class BankConfig:
 
     ##############################
     @classmethod
-    def loadConfig(cls, nodeId, cfgFile = CONFIG_FILENAME):
+    def loadConfig(cls, node_id, cfgFile = CONFIG_FILENAME):
 
         logger = logging.getLogger(__name__)
 
-        cfg  = SimpleConfig(CommonConfig(), NodeConfig(nodeId), cfgFile, True, False)
+        cfg  = SimpleConfig(CommonConfig(), NodeConfig(node_id), cfgFile, True, False)
 
         return BankConfig(cfg)
 

@@ -4,10 +4,10 @@ from golem.task.TaskState import SubtaskStatus
 
 class SubtaskContextMenuCustomizer:
     ##########################
-    def __init__(self, ui, logic, subtaskId, subtaskStatus):
+    def __init__(self, ui, logic, subtask_id, subtaskStatus):
         self.ui             = ui
         self.logic          = logic
-        self.subtaskId      = subtaskId
+        self.subtask_id      = subtask_id
         self.subtaskStatus  = subtaskStatus
 
         self.__buildContextMenu()
@@ -29,7 +29,7 @@ class SubtaskContextMenuCustomizer:
 
     ##########################
     def __restartSubtask(self):
-        self.logic.restartSubtask(self.subtaskId)
+        self.logic.restartSubtask(self.subtask_id)
 
     ##########################
     def __getEnabledActions(self, subtaskStatus):

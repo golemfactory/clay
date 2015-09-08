@@ -12,7 +12,7 @@ from examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
 from examples.gnr.RenderingEnvironment import BlenderEnvironment
 from examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 
-from examples.gnr.task.GNRTask import GNROptions, checkSubtaskIdWrapper
+from examples.gnr.task.GNRTask import GNROptions, checkSubtask_idWrapper
 from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
 from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
 from examples.gnr.task.SceneFileEditor import regenerateBlenderCropFile
@@ -56,7 +56,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuiler):
         mainSceneDir = os.path.dirname(self.taskDefinition.mainSceneFile)
 
         vRayTask = BlenderRenderTask(      self.client_id,
-                                   self.taskDefinition.taskId,
+                                   self.taskDefinition.task_id,
                                    mainSceneDir,
                                    self.taskDefinition.mainSceneFile,
                                    self.taskDefinition.mainProgramFile,
@@ -91,7 +91,7 @@ class BlenderRenderTask(FrameRenderingTask):
     #######################
     def __init__(self,
                   client_id,
-                  taskId,
+                  task_id,
                   mainSceneDir,
                   mainSceneFile,
                   mainProgramFile,
@@ -113,7 +113,7 @@ class BlenderRenderTask(FrameRenderingTask):
                   returnPort = 0,
                   keyId = ""):
 
-        FrameRenderingTask.__init__(self, client_id, taskId, returnAddress, returnPort, keyId,
+        FrameRenderingTask.__init__(self, client_id, task_id, returnAddress, returnPort, keyId,
                           BlenderEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
@@ -239,15 +239,15 @@ class BlenderRenderTask(FrameRenderingTask):
         return self.resX, resY
 
     #######################
-    @checkSubtaskIdWrapper
-    def _getPartImgSize(self, subtaskId, advTestFile) :
+    @checkSubtask_idWrapper
+    def _getPartImgSize(self, subtask_id, advTestFile) :
         x, y = self._getPartSize()
         return 0, 0, x, y
 
     #######################
-    @checkSubtaskIdWrapper
-    def _changeScope(self, subtaskId, startBox, trFile):
-        extraData, _ = FrameRenderingTask._changeScope(self, subtaskId, startBox, trFile)
+    @checkSubtask_idWrapper
+    def _changeScope(self, subtask_id, startBox, trFile):
+        extraData, _ = FrameRenderingTask._changeScope(self, subtask_id, startBox, trFile)
         minX = startBox[0]/float(self.resX)
         maxX = (startBox[0] + self.verificationOptions.boxSize[0] + 1) / float(self.resX)
         startY = startBox[1]+ (extraData['startTask'] - 1) * (self.resY / float(extraData['totalTasks']))
@@ -278,7 +278,7 @@ class BlenderRenderTask(FrameRenderingTask):
         except Exception, err:
             logger.error("Can't generate preview {}".format(str(err)))
 
-        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.root_path)
+        tmpDir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
 
         self.previewFilePath = "{}".format(os.path.join(tmpDir, "current_preview"))
 

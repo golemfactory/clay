@@ -25,8 +25,8 @@ class GNRClientEventListener(GolemClientEventListener):
         GolemClientEventListener.__init__(self)
 
     #####################
-    def taskUpdated(self, taskId):
-        self.logic.taskStatusChanged(taskId)
+    def taskUpdated(self, task_id):
+        self.logic.taskStatusChanged(task_id)
 
     #####################
     def checkNetworkState(self):
@@ -104,10 +104,10 @@ class GNRApplicationLogic(QtCore.QObject):
             logger.error("Can't register nodes manager client. No client instance.")
 
     ######################
-    def getTask(self, taskId):
-        assert taskId in self.tasks, "GNRApplicationLogic: task {} not added".format(taskId)
+    def getTask(self, task_id):
+        assert task_id in self.tasks, "GNRApplicationLogic: task {} not added".format(task_id)
 
-        return self.tasks[ taskId ]
+        return self.tasks[ task_id ]
 
     ######################
     def getTaskTypes(self):
@@ -159,8 +159,8 @@ class GNRApplicationLogic(QtCore.QObject):
         return GNRTaskState()
 
     ######################
-    def startTask(self, taskId):
-        ts = self.getTask(taskId)
+    def startTask(self, task_id):
+        ts = self.getTask(task_id)
 
         if ts.taskState.status != TaskStatus.notStarted:
             errorMsg = "Task already started"
@@ -183,57 +183,57 @@ class GNRApplicationLogic(QtCore.QObject):
         return self.taskTypes[ taskState.definition.taskType ].taskBuilderType(self.client.getId(), taskState.definition, self.client.getRootPath())
 
     ######################
-    def restartTask(self, taskId):
-        self.client.restartTask(taskId)
+    def restartTask(self, task_id):
+        self.client.restartTask(task_id)
 
     ######################
-    def abortTask(self, taskId):
-        self.client.abortTask(taskId)
+    def abortTask(self, task_id):
+        self.client.abortTask(task_id)
 
     ######################
-    def pauseTask(self, taskId):
-        self.client.pauseTask(taskId)
+    def pauseTask(self, task_id):
+        self.client.pauseTask(task_id)
 
     ######################
-    def resumeTask(self, taskId):
-        self.client.resumeTask(taskId)
+    def resumeTask(self, task_id):
+        self.client.resumeTask(task_id)
 
     ######################
-    def deleteTask(self, taskId):
-        self.client.deleteTask(taskId)
-        self.customizer.remove_task(taskId)
+    def deleteTask(self, task_id):
+        self.client.deleteTask(task_id)
+        self.customizer.remove_task(task_id)
 
     ######################
-    def showTaskDetails(self, taskId):
-        self.customizer.showDetailsDialog(taskId)
+    def showTaskDetails(self, task_id):
+        self.customizer.showDetailsDialog(task_id)
 
     ######################
-    def showNewTaskDialog (self, taskId):
-        self.customizer.showNewTaskDialog(taskId)
+    def showNewTaskDialog (self, task_id):
+        self.customizer.showNewTaskDialog(task_id)
 
     ######################
-    def restartSubtask (self, subtaskId):
-        self.client.restartSubtask(subtaskId)
+    def restartSubtask (self, subtask_id):
+        self.client.restartSubtask(subtask_id)
 
     ######################
-    def changeTask (self, taskId):
-        self.customizer.showChangeTaskDialog(taskId)
+    def changeTask (self, task_id):
+        self.customizer.showChangeTaskDialog(task_id)
 
     ######################
-    def showTaskResult(self, taskId):
-        self.customizer.showTaskResult(taskId)
+    def showTaskResult(self, task_id):
+        self.customizer.showTaskResult(task_id)
 
     ######################
-    def change_timeouts (self, taskId, fullTaskTimeout, subtask_timeout, minSubtaskTime):
-        if taskId in self.tasks:
-            task = self.tasks[taskId]
+    def change_timeouts (self, task_id, fullTaskTimeout, subtask_timeout, minSubtaskTime):
+        if task_id in self.tasks:
+            task = self.tasks[task_id]
             task.definition.fullTaskTimeout = fullTaskTimeout
             task.definition.minSubtaskTime = minSubtaskTime
             task.definition.subtask_timeout = subtask_timeout
-            self.client.change_timeouts(taskId, fullTaskTimeout, subtask_timeout, minSubtaskTime)
+            self.client.change_timeouts(task_id, fullTaskTimeout, subtask_timeout, minSubtaskTime)
             self.customizer.updateTaskAdditionalInfo(task)
         else:
-            logger.error("It's not my task: {} ", taskId)
+            logger.error("It's not my task: {} ", task_id)
 
     ######################
     def getTestTasks(self):
@@ -255,11 +255,11 @@ class GNRApplicationLogic(QtCore.QObject):
             return
 
         for t in tasks:
-            if t.definition.taskId not in self.tasks:
-                self.tasks[ t.definition.taskId ] = t
+            if t.definition.task_id not in self.tasks:
+                self.tasks[ t.definition.task_id ] = t
                 self.customizer.addTask(t)
             else:
-                self.tasks[ t.definition.taskId ] = t
+                self.tasks[ t.definition.task_id ] = t
 
         self.customizer.updateTasks(self.tasks)
 
@@ -328,22 +328,22 @@ class GNRApplicationLogic(QtCore.QObject):
             self.customizer.newTaskDialogCustomizer.testTaskComputationFinished(success, estMem)
 
     ######################
-    def taskStatusChanged(self, taskId):
+    def taskStatusChanged(self, task_id):
 
-        if taskId in self.tasks:
-            ts = self.client.querryTaskState(taskId)
+        if task_id in self.tasks:
+            ts = self.client.querryTaskState(task_id)
             assert isinstance(ts, TaskState)
-            self.tasks[taskId].taskState = ts
+            self.tasks[task_id].taskState = ts
             self.customizer.updateTasks(self.tasks)
             if ts.status in taskToRemoveStatus:
-                self.client.task_server.remove_task_header(taskId)
-                self.client.p2pservice.remove_task(taskId)
+                self.client.task_server.remove_task_header(task_id)
+                self.client.p2pservice.remove_task(task_id)
         else:
             assert False, "Should never be here!"
 
 
-        if self.customizer.currentTaskHighlighted.definition.taskId == taskId:
-            self.customizer.updateTaskAdditionalInfo(self.tasks[ taskId ])
+        if self.customizer.currentTaskHighlighted.definition.task_id == task_id:
+            self.customizer.updateTaskAdditionalInfo(self.tasks[ task_id ])
 
     ######################
     def _showErrorWindow(self, text):

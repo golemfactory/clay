@@ -9,27 +9,27 @@ class SimpleRank:
     def __str__(self):
         return "Ranking {}".format(self.ranking)
 
-    def getNodeRank(self, nodeId):
-        if nodeId in self.ranking:
-            return self.ranking[ nodeId ]
+    def getNodeRank(self, node_id):
+        if node_id in self.ranking:
+            return self.ranking[ node_id ]
         else:
             return None
 
-    def setNodeRank(self, nodeId, rank):
+    def setNodeRank(self, node_id, rank):
         if rank > self.maxRank:
             rank = self.maxRank
         if rank < self.minRank:
             rank = self.minRank
-        self.ranking[ nodeId ] = rank
+        self.ranking[ node_id ] = rank
 
-    def setBasicNodeRank(self, nodeId):
-        if nodeId not in self.ranking:
-            self.ranking[ nodeId ] = self.basicRank
+    def setBasicNodeRank(self, node_id):
+        if node_id not in self.ranking:
+            self.ranking[ node_id ] = self.basicRank
 
-    def setSeedRank(self, nodeId):
-        self.ranking[ nodeId ] = self.seedRank
+    def setSeedRank(self, node_id):
+        self.ranking[ node_id ] = self.seedRank
 
-    def globalNodeRank(self, nodeId, otherRanks):
+    def globalNodeRank(self, node_id, otherRanks):
         weightSum = 0.0
         rankSum = 0.0
         for nId, rank in otherRanks.iteritems():
@@ -41,12 +41,12 @@ class SimpleRank:
                     rankSum += self.basicRank * rank
                     weightSum += self.basicRank
 
-        if nodeId in self.ranking:
+        if node_id in self.ranking:
             if weightSum == 0:
                 weightSum = 1.0
-                rankSum += self.ranking[ nodeId ]
+                rankSum += self.ranking[ node_id ]
             else:
-                rankSum += self.ranking[ nodeId ] * weightSum
+                rankSum += self.ranking[ node_id ] * weightSum
                 weightSum *= 2
         else:
             rankSum += self.basicRank

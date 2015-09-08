@@ -80,17 +80,17 @@ class GNRMainWindowCustomizer:
     # Updates tasks information in gui
     def updateTasks(self, tasks):
         for i in range(self.gui.ui.taskTableWidget.rowCount()):
-            taskId = self.gui.ui.taskTableWidget.item(i, 0).text()
-            taskId = "{}".format(taskId)
-            if taskId in tasks:
-                self.gui.ui.taskTableWidget.item(i, 1).setText(tasks[ taskId ].taskState.status)
+            task_id = self.gui.ui.taskTableWidget.item(i, 0).text()
+            task_id = "{}".format(task_id)
+            if task_id in tasks:
+                self.gui.ui.taskTableWidget.item(i, 1).setText(tasks[ task_id ].taskState.status)
                 progressBarInBoxLayout = self.gui.ui.taskTableWidget.cellWidget(i, 2)
                 layout = progressBarInBoxLayout.layout()
                 pb = layout.itemAt(0).widget()
-                pb.setProperty("value", int(tasks[ taskId ].taskState.progress * 100.0))
+                pb.setProperty("value", int(tasks[ task_id ].taskState.progress * 100.0))
                 if self.taskDetailsDialogCustomizer:
-                    if self.taskDetailsDialogCustomizer.gnrTaskState.definition.taskId == taskId:
-                        self.taskDetailsDialogCustomizer.updateView(tasks[ taskId ].taskState)
+                    if self.taskDetailsDialogCustomizer.gnrTaskState.definition.task_id == task_id:
+                        self.taskDetailsDialogCustomizer.updateView(tasks[ task_id ].taskState)
 
             else:
                 assert False, "Update task for unknown task."
@@ -98,15 +98,15 @@ class GNRMainWindowCustomizer:
     ############################
     # Add task information in gui
     def addTask(self, task):
-        self._addTask(task.definition.taskId, task.status)
+        self._addTask(task.definition.task_id, task.status)
 
     ############################
     def updateTaskAdditionalInfo(self, t):
         self.currentTaskHighlighted = t
 
     #############################
-    def showTaskResult(self, taskId):
-        t = self.logic.getTask(taskId)
+    def showTaskResult(self, task_id):
+        t = self.logic.getTask(task_id)
         if hasattr(t.definition, 'outputFile') and os.path.isfile(t.definition.outputFile):
             self._showFile(t.definition.outputFile)
         elif hasattr(t.definition.options, 'outputFile') and os.path.isfile(t.definition.options.outputFile):
@@ -126,23 +126,23 @@ class GNRMainWindowCustomizer:
 
 
     ############################
-    def _addTask(self, taskId, status):
+    def _addTask(self, task_id, status):
         currentRowCount = self.gui.ui.taskTableWidget.rowCount()
         self.gui.ui.taskTableWidget.insertRow(currentRowCount)
 
-        taskTableElem = TaskTableElem(taskId, status)
+        taskTableElem = TaskTableElem(task_id, status)
 
         for col in range(0, 2): self.gui.ui.taskTableWidget.setItem(currentRowCount, col, taskTableElem.getColumnItem(col))
 
         self.gui.ui.taskTableWidget.setCellWidget(currentRowCount, 2, taskTableElem.progressBarInBoxLayoutWidget)
 
         self.gui.ui.taskTableWidget.setCurrentItem(self.gui.ui.taskTableWidget.item(currentRowCount, 1))
-        self.updateTaskAdditionalInfo(self.logic.getTask(taskId))
+        self.updateTaskAdditionalInfo(self.logic.getTask(task_id))
 
     ############################
-    def remove_task(self, taskId):
+    def remove_task(self, task_id):
         for row in range(0, self.gui.ui.taskTableWidget.rowCount()):
-            if self.gui.ui.taskTableWidget.item(row, 0).text() == taskId:
+            if self.gui.ui.taskTableWidget.item(row, 0).text() == task_id:
                 self.gui.ui.taskTableWidget.removeRow(row)
                 return
 
@@ -160,12 +160,12 @@ class GNRMainWindowCustomizer:
         self.newTaskDialog.show()
 
     #############################
-    def showNewTaskDialog(self, taskId):
-        ts = self.logic.getTask(taskId)
+    def showNewTaskDialog(self, task_id):
+        ts = self.logic.getTask(task_id)
         if ts is not None:
             self._showNewTaskDialog(ts.definition)
         else:
-            logger.error("Can't get taski information for task {}".format(taskId))
+            logger.error("Can't get taski information for task {}".format(task_id))
 
     ############################
     def _setNewTaskDialog(self):
@@ -213,8 +213,8 @@ class GNRMainWindowCustomizer:
         row = self.gui.ui.taskTableWidget.itemAt(p).row()
 
         idItem = self.gui.ui.taskTableWidget.item(row, 0)
-        taskId = "{}".format(idItem.text())
-        gnrTaskState = self.logic.getTask(taskId)
+        task_id = "{}".format(idItem.text())
+        gnrTaskState = self.logic.getTask(task_id)
 
         menu = QMenu()
         self.taskContextMenuCustomizer =  TaskContextMenuCustomizer(menu, self.logic, gnrTaskState)
@@ -228,20 +228,20 @@ class GNRMainWindowCustomizer:
     #############################
     def _taskTableRowClicked(self, row, col):
         if row < self.gui.ui.taskTableWidget.rowCount():
-            taskId = self.gui.ui.taskTableWidget.item(row, 0).text()
-            taskId = "{}".format(taskId)
-            t = self.logic.getTask(taskId)
+            task_id = self.gui.ui.taskTableWidget.item(row, 0).text()
+            task_id = "{}".format(task_id)
+            t = self.logic.getTask(task_id)
             self.updateTaskAdditionalInfo(t)
 
     #############################
     def _taskTableRowDoubleClicked(self, m):
         row = m.row()
-        taskId = "{}".format(self.gui.ui.taskTableWidget.item(row, 0).text())
-        self.showDetailsDialog(taskId)
+        task_id = "{}".format(self.gui.ui.taskTableWidget.item(row, 0).text())
+        self.showDetailsDialog(task_id)
 
     #############################
-    def showDetailsDialog(self, taskId):
-        ts = self.logic.getTask(taskId)
+    def showDetailsDialog(self, task_id):
+        ts = self.logic.getTask(task_id)
         self.taskDetailsDialog = TaskDetailsDialog(self.gui.window)
         self.taskDetailsDialogCustomizer = TaskDetailsDialogCustomizer(self.taskDetailsDialog, self.logic, ts)
         self.taskDetailsDialog.show()
@@ -253,10 +253,10 @@ class GNRMainWindowCustomizer:
         subtaskDetailsDialog.show()
 
    #############################
-    def showChangeTaskDialog(self, taskId):
+    def showChangeTaskDialog(self, task_id):
         self.changeTaskDialog = ChangeTaskDialog(self.gui.window)
         self.changeTaskDialogCustomizer = ChangeTaskDialogCustomizer(self.changeTaskDialog, self.logic)
-        ts = self.logic.getTask(taskId)
+        ts = self.logic.getTask(task_id)
         self.changeTaskDialogCustomizer.loadTaskDefinition(ts.definition)
         self.changeTaskDialog.show()
 

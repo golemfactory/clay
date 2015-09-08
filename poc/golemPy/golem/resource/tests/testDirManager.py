@@ -48,62 +48,62 @@ class TestDirManager(unittest.TestCase):
 
     def testGetTaskTemporaryDir(self):
         dm = DirManager(path, node1)
-        taskId = '12345'
-        tmpDir = dm.getTaskTemporaryDir(taskId)
-        expectedTmpDir = os.path.join(path, node1, taskId, 'tmp')
+        task_id = '12345'
+        tmpDir = dm.getTaskTemporaryDir(task_id)
+        expectedTmpDir = os.path.join(path, node1, task_id, 'tmp')
         self.assertEquals(tmpDir, expectedTmpDir)
         self.assertTrue(os.path.isdir(tmpDir))
-        tmpDir = dm.getTaskTemporaryDir(taskId)
+        tmpDir = dm.getTaskTemporaryDir(task_id)
         self.assertTrue(os.path.isdir(tmpDir))
-        tmpDir = dm.getTaskTemporaryDir(taskId, create = False)
+        tmpDir = dm.getTaskTemporaryDir(task_id, create = False)
         self.assertTrue(os.path.isdir(tmpDir))
         self.assertEquals(tmpDir, expectedTmpDir)
         shutil.rmtree(tmpDir)
-        tmpDir = dm.getTaskTemporaryDir(taskId, create = False)
+        tmpDir = dm.getTaskTemporaryDir(task_id, create = False)
         self.assertFalse(os.path.isdir(tmpDir))
-        tmpDir = dm.getTaskTemporaryDir(taskId, create = True)
+        tmpDir = dm.getTaskTemporaryDir(task_id, create = True)
         self.assertTrue(os.path.isdir(tmpDir))
 
     def testGetTaskResourceDir(self):
         dm = DirManager(path, node1)
-        taskId = '12345'
-        resDir = dm.getTaskResourceDir(taskId)
-        expectedResDir = os.path.join(path, node1, taskId, 'resources')
+        task_id = '12345'
+        resDir = dm.getTaskResourceDir(task_id)
+        expectedResDir = os.path.join(path, node1, task_id, 'resources')
         self.assertEquals(resDir, expectedResDir)
         self.assertTrue(os.path.isdir(resDir))
-        resDir = dm.getTaskResourceDir(taskId)
+        resDir = dm.getTaskResourceDir(task_id)
         self.assertTrue(os.path.isdir(resDir))
-        resDir = dm.getTaskResourceDir(taskId, create = False)
+        resDir = dm.getTaskResourceDir(task_id, create = False)
         self.assertTrue(os.path.isdir(resDir))
         self.assertEquals(resDir, expectedResDir)
         shutil.rmtree(resDir)
-        resDir = dm.getTaskResourceDir(taskId, create = False)
+        resDir = dm.getTaskResourceDir(task_id, create = False)
         self.assertFalse(os.path.isdir(resDir))
-        resDir = dm.getTaskResourceDir(taskId, create = True)
+        resDir = dm.getTaskResourceDir(task_id, create = True)
         self.assertTrue(os.path.isdir(resDir))
 
     def testGetTaskOutputDir(self):
         dm = DirManager(path, node1)
-        taskId = '12345'
-        outDir = dm.getTaskOutputDir(taskId)
-        expectedResDir = os.path.join(path, node1, taskId, 'output')
+        task_id = '12345'
+        outDir = dm.getTaskOutputDir(task_id)
+        expectedResDir = os.path.join(path, node1, task_id, 'output')
         self.assertEquals(outDir, expectedResDir)
         self.assertTrue(os.path.isdir(outDir))
-        outDir = dm.getTaskOutputDir(taskId)
+        outDir = dm.getTaskOutputDir(task_id)
         self.assertTrue(os.path.isdir(outDir))
-        outDir = dm.getTaskOutputDir(taskId, create = False)
+        outDir = dm.getTaskOutputDir(task_id, create = False)
         self.assertTrue(os.path.isdir(outDir))
         self.assertEquals(outDir, expectedResDir)
         shutil.rmtree(outDir)
-        outDir = dm.getTaskOutputDir(taskId, create = False)
+        outDir = dm.getTaskOutputDir(task_id, create = False)
         self.assertFalse(os.path.isdir(outDir))
-        outDir = dm.getTaskOutputDir(taskId, create = True)
+        outDir = dm.getTaskOutputDir(task_id, create = True)
         self.assertTrue(os.path.isdir(outDir))
 
     def testClearTemporary(self):
         dm = DirManager(path, node1)
-        taskId = '12345'
-        tmpDir = dm.getTaskTemporaryDir(taskId)
+        task_id = '12345'
+        tmpDir = dm.getTaskTemporaryDir(task_id)
         self.assertTrue(os.path.isdir(tmpDir))
         file1 = os.path.join(tmpDir, 'file1')
         file2 = os.path.join(tmpDir, 'file2')
@@ -118,7 +118,7 @@ class TestDirManager(unittest.TestCase):
         self.assertTrue(os.path.isfile(file2))
         self.assertTrue(os.path.isfile(file3))
         self.assertTrue(os.path.isdir(dir1))
-        dm.clearTemporary(taskId)
+        dm.clearTemporary(task_id)
         self.assertTrue(os.path.isdir(tmpDir))
         self.assertFalse(os.path.isfile(file1))
         self.assertFalse(os.path.isfile(file2))
@@ -127,8 +127,8 @@ class TestDirManager(unittest.TestCase):
 
     def testClearResource(self):
         dm = DirManager(path, node1)
-        taskId = '67891'
-        resDir = dm.getTaskResourceDir(taskId)
+        task_id = '67891'
+        resDir = dm.getTaskResourceDir(task_id)
         self.assertTrue(os.path.isdir(resDir))
         file1 = os.path.join(resDir, 'file1')
         file2 = os.path.join(resDir, 'file2')
@@ -143,7 +143,7 @@ class TestDirManager(unittest.TestCase):
         self.assertTrue(os.path.isfile(file2))
         self.assertTrue(os.path.isfile(file3))
         self.assertTrue(os.path.isdir(dir1))
-        dm.clearResource(taskId)
+        dm.clearResource(task_id)
         self.assertTrue(os.path.isdir(resDir))
         self.assertFalse(os.path.isfile(file1))
         self.assertFalse(os.path.isfile(file2))
@@ -152,8 +152,8 @@ class TestDirManager(unittest.TestCase):
 
     def testClearOutput(self):
         dm = DirManager(path, node1)
-        taskId = '01112'
-        outDir = dm.getTaskOutputDir(taskId)
+        task_id = '01112'
+        outDir = dm.getTaskOutputDir(task_id)
         self.assertTrue(os.path.isdir(outDir))
         self.assertTrue(os.path.isdir(outDir))
         file1 = os.path.join(outDir, 'file1')
@@ -165,7 +165,7 @@ class TestDirManager(unittest.TestCase):
         if not os.path.isdir(dir1):
             os.mkdir(dir1)
         open(file3, 'w').close()
-        dm.clearOutput(taskId)
+        dm.clearOutput(task_id)
         self.assertTrue(os.path.isdir(outDir))
         self.assertFalse(os.path.isfile(file1))
         self.assertFalse(os.path.isfile(file2))

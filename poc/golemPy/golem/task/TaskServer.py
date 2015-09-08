@@ -72,7 +72,7 @@ class TaskServer(PendingConnectionsServer):
                 args = {
                     'client_id': self.config_desc.client_uid,
                     'key_id': theader.taskOwnerKeyId,
-                    'task_id': theader.taskId,
+                    'task_id': theader.task_id,
                     'estimated_performance': self.config_desc.estimated_performance,
                     'max_resource_size': self.config_desc.max_resource_size,
                     'max_memory_size': self.config_desc.max_memory_size,
@@ -81,7 +81,7 @@ class TaskServer(PendingConnectionsServer):
                 self._add_pending_request(TaskConnTypes.TaskRequest, theader.taskOwner, theader.taskOwnerPort,
                                           theader.taskOwnerKeyId, args)
 
-                return theader.taskId
+                return theader.task_id
 
         return 0
 
@@ -129,7 +129,7 @@ class TaskServer(PendingConnectionsServer):
         ret = []
 
         for th in ths:
-            ret.append({"id": th.taskId,
+            ret.append({"id": th.task_id,
                         "address": th.taskOwnerAddress,
                         "port": th.taskOwnerPort,
                         "keyId": th.taskOwnerKeyId,
@@ -245,7 +245,7 @@ class TaskServer(PendingConnectionsServer):
             return
         try:
             logger.info("Getting {} for task {}".format(reward, task_id))
-            self.client.getReward(int(reward))
+            self.client.get_reward(int(reward))
             self.increase_trust_payment(task_id)
         except ValueError:
             logger.error("Wrong reward amount {} for task {}".format(reward, task_id))
@@ -264,7 +264,7 @@ class TaskServer(PendingConnectionsServer):
         self.client.accept_result(task_id, subtask_id, price_mod, account_info)
 
         mod = min(max(self.task_manager.getTrustMod(subtask_id), self.min_trust), self.max_trust)
-        self.client.increaseTrust(account_info.nodeId, RankingStats.computed, mod)
+        self.client.increaseTrust(account_info.node_id, RankingStats.computed, mod)
 
     def receive_task_verification(self, task_id):
         self.task_keeper.receive_task_verification(task_id)
@@ -541,7 +541,7 @@ class TaskServer(PendingConnectionsServer):
         self._mark_connected(conn_id, session.address, session.port)
         session.send_hello()
         session.send_reward_for_task(task_id, price)
-        self.client.taskRewardPaid(task_id, price)
+        self.client.task_reward_paid(task_id, price)
 
     def __connection_for_pay_for_task_failure(self, conn_id, key_id, task_id, price):
 
@@ -657,7 +657,7 @@ class TaskServer(PendingConnectionsServer):
 
     def __connection_for_pay_for_task_final_failure(self, conn_id, key_id, task_id, price):
         logger.warning("Cannot connect to pay for task {} ".format(task_id))
-        self.client.taskRewardPayment_failure(task_id, price)
+        self.client.task_reward_payment_failure(task_id, price)
 
     def __connection_for_resource_request_final_failure(self, conn_id, key_id, subtask_id, resource_header):
         logger.warning("Cannot connect to task {} owner".format(subtask_id))
@@ -724,7 +724,7 @@ class TaskServer(PendingConnectionsServer):
         self.failures_to_send.clear()
 
     def __send_payments(self):
-        task_id, payments = self.client.getNewPaymentsTasks()
+        task_id, payments = self.client.get_new_payments_tasks()
         if payments:
             self.global_pay_for_task(task_id, payments)
             for payment in payments.itervalues():

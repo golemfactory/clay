@@ -15,24 +15,24 @@ class PaymentsKeeper:
         self.settledTasks = {}
 
     ################################
-    def taskFinished(self, taskId):
-        self.finishedTasks.append(taskId)
+    def task_finished(self, task_id):
+        self.finishedTasks.append(task_id)
 
     ###############################
-    def payment_failure(self, taskId):
-        task = self.settledTasks.get(taskId)
+    def payment_failure(self, task_id):
+        task = self.settledTasks.get(task_id)
         if task is None:
-            logger.error("Unknown payment for task {}".format(taskId))
+            logger.error("Unknown payment for task {}".format(task_id))
             return
         self.tasksToPay.append(task)
-        del self.settledTasks[taskId]
+        del self.settledTasks[task_id]
 
     ################################
-    def getNewPaymentsTask(self, budget):
+    def get_new_payments_task(self, budget):
         if len(self.tasksToPay) > 0:
             task = self.tasksToPay.popleft()
             if task.value < budget:
-                self.settledTasks[task.taskId] = task
+                self.settledTasks[task.task_id] = task
                 return task, self.getListOfPayments(task)
             else:
                 self.tasksToPay.append(task)
@@ -44,38 +44,38 @@ class PaymentsKeeper:
         return task.subtasks
 
     ################################
-    def addPayment(self, paymentInfo):
-        task = self.computingTasks.setdefault(paymentInfo.taskId, TaskPaymentInfo(paymentInfo.taskId))
-        task.subtasks[paymentInfo.subtaskId]  = SubtaskPaymentInfo(paymentInfo.value, paymentInfo.computer)
-        task.value += paymentInfo.value
-        if paymentInfo.taskId in self.finishedTasks:
-            self.finishedTasks.remove(paymentInfo.taskId)
-            self.__putTaskInTasksToPay(paymentInfo.taskId)
+    def addPayment(self, payment_info):
+        task = self.computingTasks.setdefault(payment_info.task_id, TaskPaymentInfo(payment_info.task_id))
+        task.subtasks[payment_info.subtask_id]  = SubtaskPaymentInfo(payment_info.value, payment_info.computer)
+        task.value += payment_info.value
+        if payment_info.task_id in self.finishedTasks:
+            self.finishedTasks.remove(payment_info.task_id)
+            self.__putTaskInTasksToPay(payment_info.task_id)
 
     ################################
-    def __putTaskInTasksToPay(self, taskId):
-        task = self.computingTasks.get(taskId)
+    def __putTaskInTasksToPay(self, task_id):
+        task = self.computingTasks.get(task_id)
         if task is None:
-            logger.error("No information about payments for task {}".format(taskId))
+            logger.error("No information about payments for task {}".format(task_id))
             return
         self.tasksToPay.append(task)
-        del self.computingTasks[taskId]
+        del self.computingTasks[task_id]
 
 
 ################################################################
 class PaymentInfo:
     ################################
-    def __init__(self, taskId, subtaskId, value, computer):
-        self.taskId = taskId
-        self.subtaskId = subtaskId
+    def __init__(self, task_id, subtask_id, value, computer):
+        self.task_id = task_id
+        self.subtask_id = subtask_id
         self.value = value
         self.computer = computer
 
 ################################################################
 class TaskPaymentInfo:
     ################################
-    def __init__(self, taskId):
-        self.taskId = taskId
+    def __init__(self, task_id):
+        self.task_id = task_id
         self.subtasks = {}
         self.value = 0
 
@@ -89,11 +89,11 @@ class SubtaskPaymentInfo:
 ################################################################
 class AccountInfo:
     ################################
-    def __init__(self, keyId, port, addr, nodeId, node_info):
+    def __init__(self, keyId, port, addr, node_id, node_info):
         self.keyId = keyId
         self.port = port
         self.addr = addr
-        self.nodeId = nodeId
+        self.node_id = node_id
         self.node_info = node_info
 
     ################################

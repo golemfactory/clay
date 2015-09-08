@@ -37,7 +37,7 @@ class TaskTester:
 
 
             self.tt = PyTestTaskThread( self,
-                                ctd.subtaskId,
+                                ctd.subtask_id,
                                 ctd.workingDirectory,
                                 ctd.srcCode,
                                 ctd.extraData,
@@ -52,7 +52,7 @@ class TaskTester:
             self.finishedCallback(False)
 
     #########################
-    def increase_request_trust(self, subtaskId):
+    def increase_request_trust(self, subtask_id):
         pass
 
     #########################
@@ -78,7 +78,7 @@ class TaskTester:
 
         self.testTaskResDir = getTestTaskDirectory()
         rh = TaskResourceHeader(self.testTaskResDir)
-        resFile = self.task.prepare_resourceDelta(self.task.header.taskId, rh)
+        resFile = self.task.prepare_resourceDelta(self.task.header.task_id, rh)
 
         if resFile:
             decompressDir(self.testTaskResPath, resFile)

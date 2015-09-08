@@ -5,21 +5,21 @@ class LocalRank:
     def __init__(self):
         self.ranking = {}
 
-    def getNodeRank(self, nodeId):
-        if nodeId in self.ranking:
-            return self.ranking[ nodeId ]
+    def getNodeRank(self, node_id):
+        if node_id in self.ranking:
+            return self.ranking[ node_id ]
         else:
             return None
 
-    def setNodeRank(self, nodeId, value):
-        self.ranking[ nodeId ] = value
+    def setNodeRank(self, node_id, value):
+        self.ranking[ node_id ] = value
 
-    def incNodeRank(self, nodeId):
-        val = self.getNodeRank(nodeId)
+    def incNodeRank(self, node_id):
+        val = self.getNodeRank(node_id)
         if val is not None:
-            self.setNodeRank(nodeId, val + 1)
+            self.setNodeRank(node_id, val + 1)
         else:
-            self.setNodeRank(nodeId,  1)
+            self.setNodeRank(node_id,  1)
 
 
 def divTrust(a, b):
@@ -43,7 +43,7 @@ def compareVec(vec1, vec2):
 
 class DiffGossipTrustRank:
     def __init__(self, posTrustVal = 1.0, negTrustVal = 2.0, minSumVal = 50, epsilon = 0.01 ):
-        self.nodeId = None
+        self.node_id = None
         self.positive = LocalRank()
         self.negative = LocalRank()
 
@@ -62,35 +62,35 @@ class DiffGossipTrustRank:
     def __str__(self):
         return "globVec: {}".format(self.globVec)
 
-    def incNodePositive(self, nodeId):
-        self.positive.incNodeRank(nodeId)
+    def incNodePositive(self, node_id):
+        self.positive.incNodeRank(node_id)
 
-    def incNodeNegative(self, nodeId):
-        self.negative.incNodeRank(nodeId)
+    def incNodeNegative(self, node_id):
+        self.negative.incNodeRank(node_id)
 
-    def setNodeId(self, nodeId):
-        self.nodeId = nodeId
+    def setNodeId(self, node_id):
+        self.node_id = node_id
 
-    def getNodePositive(self, nodeId):
-        return self.positive.getNodeRank(nodeId)
+    def getNodePositive(self, node_id):
+        return self.positive.getNodeRank(node_id)
 
-    def getNodeNegative(self, nodeId):
-        return self.negative.getNodeRank(nodeId)
+    def getNodeNegative(self, node_id):
+        return self.negative.getNodeRank(node_id)
 
-    def setNodePositive(self, nodeId, value):
-        self.positive.setNodeRank(nodeId, value)
+    def setNodePositive(self, node_id, value):
+        self.positive.setNodeRank(node_id, value)
 
-    def setNodeNegative(self, nodeId, value):
-        self.negative.setNodeRank(nodeId, value)
+    def setNodeNegative(self, node_id, value):
+        self.negative.setNodeRank(node_id, value)
 
     def isStopped(self):
         return self.stop
 
-    def getNodeTrust(self, nodeId):
-        pos = self.positive.getNodeRank(nodeId)
+    def getNodeTrust(self, node_id):
+        pos = self.positive.getNodeRank(node_id)
         if pos is None:
             pos = 0.0
-        neg = self.negative.getNodeRank(nodeId)
+        neg = self.negative.getNodeRank(node_id)
         if neg is None:
             neg = 0.0
         val = (self.posTrustVal * pos - self.negTrustVal * neg)
@@ -122,30 +122,30 @@ class DiffGossipTrustRank:
             return []
         self.workingVec = {}
         for vec in self.collectedVecs:
-            for nodeId, val in vec.iteritems():
-                if nodeId not in self.workingVec:
-                    self.workingVec[ nodeId ] = val
+            for node_id, val in vec.iteritems():
+                if node_id not in self.workingVec:
+                    self.workingVec[ node_id ] = val
                 else:
-                    self.workingVec[ nodeId ][0] += val[0]
-                    self.workingVec[ nodeId ][1] += val[1]
-                    self.workingVec[ nodeId ][2] += val[2]
+                    self.workingVec[ node_id ][0] += val[0]
+                    self.workingVec[ node_id ][1] += val[1]
+                    self.workingVec[ node_id ][2] += val[2]
 
         self.collectedVecs = []
 
         vecToSend = {}
-        for nodeId, val in self.workingVec.iteritems():
-            vecToSend[ nodeId ] = [ val[0] / (self.gossipNum), val[1] / (self.gossipNum), val[2] / (self.gossipNum) ]
+        for node_id, val in self.workingVec.iteritems():
+            vecToSend[ node_id ] = [ val[0] / (self.gossipNum), val[1] / (self.gossipNum), val[2] / (self.gossipNum) ]
 
 
-        return [ vecToSend, self.nodeId ]
+        return [ vecToSend, self.node_id ]
 
 
     def hear_gossip(self, gossip):
         self.collectedVecs.append(gossip)
 
-    def getGlobalVal(self, nodeId):
-        if nodeId in self.globVec:
-            return self.globVec[ nodeId ]
+    def getGlobalVal(self, node_id):
+        if node_id in self.globVec:
+            return self.globVec[ node_id ]
         return None
 
     def stop_gossip(self):

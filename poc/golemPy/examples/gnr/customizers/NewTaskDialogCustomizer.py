@@ -205,7 +205,7 @@ class NewTaskDialogCustomizer:
 
     #############################
     def _readBasicTaskParams(self, definition):
-        definition.taskId = u"{}".format(self.gui.ui.taskIdLabel.text())
+        definition.task_id = u"{}".format(self.gui.ui.taskIdLabel.text())
         definition.fullTaskTimeout, definition.subtask_timeout, definition.minSubtaskTime = getTimeValues(self.gui)
         definition.mainProgramFile = u"{}".format(self.gui.ui.mainProgramFileLineEdit.text())
         definition.optimizeTotal = self.gui.ui.optimizeTotalCheckBox.isChecked()

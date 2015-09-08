@@ -27,8 +27,8 @@ class Peer:
         self.sendGetPeersCalledCnt = 0
         self.last_message_time = time.time()
 
-    def send_remove_task(self, taskId):
-        self.taskToRemove = taskId
+    def send_remove_task(self, task_id):
+        self.taskToRemove = task_id
 
     def ping(self, interval):
         self.interval = interval
@@ -47,8 +47,8 @@ class TaskServer:
     def add_task_header(self, th_dict_repr):
         self.taskHeader = th_dict_repr
 
-    def remove_task_header(self, taskId):
-        self.taskHeaderToRemove = taskId
+    def remove_task_header(self, task_id):
+        self.taskHeaderToRemove = task_id
 
 class Session():
     def __init__(self):

@@ -6,7 +6,7 @@ import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
 
-from examples.gnr.task.GNRTask import checkSubtaskIdWrapper
+from examples.gnr.task.GNRTask import checkSubtask_idWrapper
 from examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
 from examples.gnr.task.RenderingTaskCollector import exr_to_pil, RenderingTaskCollector
 from examples.gnr.RenderingDirManager import getTmpPath
@@ -48,11 +48,11 @@ class FrameRenderingTaskBuiler(RenderingTaskBuilder):
 ##############################################
 class FrameRenderingTask(RenderingTask):
     #######################
-    def __init__(self, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
+    def __init__(self, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                   totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, root_path,
                   estimatedMemory, useFrames, frames):
-        RenderingTask.__init__(self, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
+        RenderingTask.__init__(self, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                   totalTasks, resX, resY, outfilebasename, outputFile, outputFormat, root_path,
                   estimatedMemory)
@@ -79,7 +79,7 @@ class FrameRenderingTask(RenderingTask):
         else:
             img = Image.open(newChunkFilePath)
 
-        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.root_path)
+        tmpDir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
         if self.previewFilePath[ num ] is None:
             self.previewFilePath[ num ] = "{}{}".format(os.path.join(tmpDir, "current_preview"), num)
         if self.previewTaskFilePath[ num ] is None:
@@ -133,7 +133,7 @@ class FrameRenderingTask(RenderingTask):
 
     #######################
     def __markSubFrame(self, sub, frame, color ):
-        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.root_path)
+        tmpDir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
         idx = self.frames.index(frame)
         previewTaskFilePath = "{}{}".format(os.path.join(tmpDir, "current_task_preview") , idx)
         previewFilePath = "{}{}".format(os.path.join(tmpDir, "current_preview"), idx)
@@ -159,38 +159,38 @@ class FrameRenderingTask(RenderingTask):
                     imgTask.putpixel((i, j), color)
 
     #######################
-    @checkSubtaskIdWrapper
-    def _getPartImgSize(self, subtaskId, advTestFile):
+    @checkSubtask_idWrapper
+    def _getPartImgSize(self, subtask_id, advTestFile):
         if not self.useFrames or self.__fullFrames():
-            return RenderingTask._getPartImgSize(self, subtaskId, advTestFile)
+            return RenderingTask._getPartImgSize(self, subtask_id, advTestFile)
         else:
-            startTask = self.subTasksGiven[ subtaskId ][ 'startTask' ]
-            parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
+            startTask = self.subTasksGiven[ subtask_id ][ 'startTask' ]
+            parts = self.subTasksGiven[ subtask_id ][ 'parts' ]
             numTask = self._countPart(startTask, parts)
             imgHeight = int (math.floor(float(self.resY) / float(parts)))
             return 1, (numTask - 1) * imgHeight + 1, self.resX - 1, numTask * imgHeight - 1
 
     #######################
-    @checkSubtaskIdWrapper
-    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
+    @checkSubtask_idWrapper
+    def computationFinished(self, subtask_id, taskResult, dir_manager = None, resultType = 0):
 
-        if not self.shouldAccept(subtaskId):
+        if not self.shouldAccept(subtask_id):
             return
 
-        tmpDir = dir_manager.getTaskTemporaryDir(self.header.taskId, create = False)
+        tmpDir = dir_manager.getTaskTemporaryDir(self.header.task_id, create = False)
         self.tmpDir = tmpDir
 
 
         if len(taskResult) > 0:
-            numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
-            parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
-            numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
-            self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
+            numStart = self.subTasksGiven[ subtask_id ][ 'startTask' ]
+            parts = self.subTasksGiven[ subtask_id ][ 'parts' ]
+            numEnd = self.subTasksGiven[ subtask_id ][ 'endTask' ]
+            self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished
 
             if self.useFrames and self.totalTasks <= len(self.frames):
-                framesList = self.subTasksGiven[ subtaskId ]['frames']
+                framesList = self.subTasksGiven[ subtask_id ]['frames']
                 if len(taskResult) < len(framesList):
-                    self._markSubtaskFailed(subtaskId)
+                    self._markSubtaskFailed(subtask_id)
                     if not self.useFrames:
                         self._updateTaskPreview()
                     else:
@@ -199,15 +199,15 @@ class FrameRenderingTask(RenderingTask):
 
             trFiles = self.loadTaskResults(taskResult, resultType, tmpDir)
 
-            if not self._verifyImgs(subtaskId, trFiles):
-                self._markSubtaskFailed(subtaskId)
+            if not self._verifyImgs(subtask_id, trFiles):
+                self._markSubtaskFailed(subtask_id)
                 if not self.useFrames:
                     self._updateTaskPreview()
                 else:
                     self._updateFrameTaskPreview()
                 return
 
-            self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'client_id' ] ] = 1
+            self.countingNodes[ self.subTasksGiven[ subtask_id ][ 'client_id' ] ] = 1
 
             for trFile in trFiles:
 

@@ -21,7 +21,7 @@ class TestEngine(QtCore.QObject):
     def addTask(self, task):
         assert isinstance(task, Task)
 
-        self.tasks[ task.header.taskId ] = task
+        self.tasks[ task.header.task_id ] = task
 
         self.__startComputing()
 

@@ -3,16 +3,16 @@ from PyQt4.QtGui import QTableWidgetItem, QProgressBar, QWidget, QVBoxLayout
 
 class SubtaskTableElem:
     ############################
-    def __init__(self, nodeId, subtaskId, status):
-        self.nodeId             = nodeId
-        self.nodeIdItem         = None
-        self.subtaskId          = subtaskId
-        self.subtaskIdItem      = None
+    def __init__(self, node_id, subtask_id, status):
+        self.node_id             = node_id
+        self.node_idItem         = None
+        self.subtask_id          = subtask_id
+        self.subtask_idItem      = None
         self.status             = status
         self.remainingTime      = 0
         self.remainingTimeItem  = None
         self.progress           = 0.0
-        self.nodeIdItem         = None
+        self.node_idItem         = None
         self.progressBar        = None
         self.progressBarInBoxLayoutWidget = None
         self.subtaskStatusItem  = None
@@ -21,11 +21,11 @@ class SubtaskTableElem:
     ############################
     def __buildRow(self):
 
-        self.nodeIdItem = QTableWidgetItem()
-        self.nodeIdItem.setText(self.nodeId)
+        self.node_idItem = QTableWidgetItem()
+        self.node_idItem.setText(self.node_id)
 
-        self.subtaskIdItem = QTableWidgetItem()
-        self.subtaskIdItem.setText(self.subtaskId)
+        self.subtask_idItem = QTableWidgetItem()
+        self.subtask_idItem.setText(self.subtask_id)
 
         self.remainingTimeItem = QTableWidgetItem()
 
@@ -69,9 +69,9 @@ class SubtaskTableElem:
     ############################
     def getColumnItem(self, col):
         if col == 0:
-            return self.nodeIdItem
+            return self.node_idItem
         if col == 1:
-            return self.subtaskIdItem
+            return self.subtask_idItem
         if col == 2:
             return self.remainingTimeItem
         if col == 3:

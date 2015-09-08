@@ -40,43 +40,43 @@ class TaskContextMenuCustomizer:
     # SLOTS
     ###########################
     def __abortTaskTriggered(self):
-        self.logic.abortTask(self.gnrTaskState.definition.taskId)
+        self.logic.abortTask(self.gnrTaskState.definition.task_id)
 
     ###########################
     def __restartTaskTriggered(self):
-        self.logic.restartTask(self.gnrTaskState.definition.taskId)
+        self.logic.restartTask(self.gnrTaskState.definition.task_id)
 
     ###########################
     def __deleteTaskTriggered(self):
-        self.logic.deleteTask(self.gnrTaskState.definition.taskId)
+        self.logic.deleteTask(self.gnrTaskState.definition.task_id)
 
     ###########################
     def __newTaskTriggered(self):
-        self.logic.showNewTaskDialog(self.gnrTaskState.definition.taskId)
+        self.logic.showNewTaskDialog(self.gnrTaskState.definition.task_id)
 
     ###########################
     def __startTaskTriggered(self):
-        self.logic.startTask(self.gnrTaskState.definition.taskId)
+        self.logic.startTask(self.gnrTaskState.definition.task_id)
 
     ###########################
     def __pauseTaskTriggered(self):
-        self.logic.pauseTask(self.gnrTaskState.definition.taskId)
+        self.logic.pauseTask(self.gnrTaskState.definition.task_id)
 
     ###########################
     def __resumeTaskTriggered(self):
-        self.logic.resumeTask(self.gnrTaskState.definition.taskId)
+        self.logic.resumeTask(self.gnrTaskState.definition.task_id)
 
     ###########################
     def __showTaskDetailsTriggered(self):
-        self.logic.showTaskDetails(self.gnrTaskState.definition.taskId)
+        self.logic.showTaskDetails(self.gnrTaskState.definition.task_id)
 
     ###########################
     def __changeTaskTriggered(self):
-        self.logic.changeTask(self.gnrTaskState.definition.taskId)
+        self.logic.changeTask(self.gnrTaskState.definition.task_id)
 
     ###########################
     def __showResultTriggered(self):
-        self.logic.showTaskResult(self.gnrTaskState.definition.taskId)
+        self.logic.showTaskResult(self.gnrTaskState.definition.task_id)
 
     #######################
     ##########################

@@ -15,15 +15,15 @@ import pickle
 logger = logging.getLogger(__name__)
 
 ##############################################
-def checkSubtaskIdWrapper(func):
-    def checkSubtaskId(*args, **kwargs):
+def checkSubtask_idWrapper(func):
+    def checkSubtask_id(*args, **kwargs):
         task = args[0]
-        subtaskId = args[1]
-        if subtaskId not in task.subTasksGiven:
-            logger.error("This is not my subtask {}".format(subtaskId))
+        subtask_id = args[1]
+        if subtask_id not in task.subTasksGiven:
+            logger.error("This is not my subtask {}".format(subtask_id))
             return False
         return func(*args, **kwargs)
-    return checkSubtaskId
+    return checkSubtask_id
 
 ##############################################
 class GNRTaskBuilder(TaskBuilder):
@@ -40,8 +40,8 @@ class GNRTaskBuilder(TaskBuilder):
 ##############################################
 class GNRSubtask():
     #######################
-    def __init__(self, subtaskId, startChunk, endChunk):
-        self.subtaskId = subtaskId
+    def __init__(self, subtask_id, startChunk, endChunk):
+        self.subtask_id = subtask_id
         self.startChunk = startChunk
         self.endChunk = endChunk
 
@@ -62,9 +62,9 @@ class GNROptions:
 ##############################################
 class GNRTask(Task):
     #####################
-    def __init__(self, srcCode, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+    def __init__(self, srcCode, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment,
                   ttl, subtaskTtl, resourceSize, estimatedMemory):
-        th = TaskHeader(client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment, Node(),
+        th = TaskHeader(client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment, Node(),
                          ttl, subtaskTtl, resourceSize, estimatedMemory)
         Task.__init__(self, th, srcCode)
 
@@ -119,8 +119,8 @@ class GNRTask(Task):
         pass
 
     #######################
-    def computationFailed(self, subtaskId):
-        self._markSubtaskFailed(subtaskId)
+    def computationFailed(self, subtask_id):
+        self._markSubtaskFailed(subtask_id)
 
     #######################
     def getTotalTasks(self):
@@ -143,8 +143,8 @@ class GNRTask(Task):
         self.resFiles = resFiles
 
     #######################
-    def prepare_resourceDelta(self, taskId, resourceHeader):
-        if taskId == self.header.taskId:
+    def prepare_resourceDelta(self, task_id, resourceHeader):
+        if task_id == self.header.task_id:
             commonPathPrefix, dirName, tmpDir = self.__getTaskDirParams()
 
             if not os.path.exists(tmpDir):
@@ -158,8 +158,8 @@ class GNRTask(Task):
             return None
 
     #######################
-    def getResourcePartsList(self, taskId, resourceHeader):
-        if taskId == self.header.taskId:
+    def getResourcePartsList(self, task_id, resourceHeader):
+        if task_id == self.header.task_id:
             commonPathPrefix, dirName, tmpDir = self.__getTaskDirParams()
 
             if os.path.exists(dirName):
@@ -174,8 +174,8 @@ class GNRTask(Task):
     def __getTaskDirParams(self):
         commonPathPrefix = os.path.commonprefix(self.taskResources)
         commonPathPrefix = os.path.dirname(commonPathPrefix)
-        dirName = commonPathPrefix #os.path.join("res", self.header.client_id, self.header.taskId, "resources")
-        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.root_path)
+        dirName = commonPathPrefix #os.path.join("res", self.header.client_id, self.header.task_id, "resources")
+        tmpDir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
         if not os.path.exists(tmpDir):
                 os.makedirs(tmpDir)
 
@@ -200,47 +200,47 @@ class GNRTask(Task):
             return []
 
     #######################
-    @checkSubtaskIdWrapper
-    def verifySubtask(self, subtaskId):
-       return self.subTasksGiven[ subtaskId ]['status'] == SubtaskStatus.finished
+    @checkSubtask_idWrapper
+    def verifySubtask(self, subtask_id):
+       return self.subTasksGiven[ subtask_id ]['status'] == SubtaskStatus.finished
 
     #######################
     def verifyTask(self):
         return self.finishedComputation()
 
     #######################
-    @checkSubtaskIdWrapper
-    def getPriceMod(self, subtaskId):
+    @checkSubtask_idWrapper
+    def getPriceMod(self, subtask_id):
         return 1
 
     #######################
-    @checkSubtaskIdWrapper
-    def getTrustMod(self, subtaskId):
+    @checkSubtask_idWrapper
+    def getTrustMod(self, subtask_id):
         return 1.0
 
     #######################
-    @checkSubtaskIdWrapper
-    def restartSubtask(self, subtaskId):
-        if subtaskId in self.subTasksGiven:
-            if self.subTasksGiven[ subtaskId ][ 'status' ] == SubtaskStatus.starting:
-                self._markSubtaskFailed(subtaskId)
-            elif self.subTasksGiven[ subtaskId ][ 'status' ] == SubtaskStatus.finished :
-                self._markSubtaskFailed(subtaskId)
-                tasks = self.subTasksGiven[ subtaskId ]['endTask'] - self.subTasksGiven[ subtaskId  ]['startTask'] + 1
+    @checkSubtask_idWrapper
+    def restartSubtask(self, subtask_id):
+        if subtask_id in self.subTasksGiven:
+            if self.subTasksGiven[ subtask_id ][ 'status' ] == SubtaskStatus.starting:
+                self._markSubtaskFailed(subtask_id)
+            elif self.subTasksGiven[ subtask_id ][ 'status' ] == SubtaskStatus.finished :
+                self._markSubtaskFailed(subtask_id)
+                tasks = self.subTasksGiven[ subtask_id ]['endTask'] - self.subTasksGiven[ subtask_id  ]['startTask'] + 1
                 self.numTasksReceived -= tasks
 
     #######################
-    @checkSubtaskIdWrapper
-    def shouldAccept(self, subtaskId):
-        if self.subTasksGiven[ subtaskId ][ 'status' ] != SubtaskStatus.starting:
+    @checkSubtask_idWrapper
+    def shouldAccept(self, subtask_id):
+        if self.subTasksGiven[ subtask_id ][ 'status' ] != SubtaskStatus.starting:
             return False
         return True
 
     #######################
-    @checkSubtaskIdWrapper
-    def _markSubtaskFailed(self, subtaskId):
-        self.subTasksGiven[ subtaskId ]['status'] = SubtaskStatus.failure
-        self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'client_id' ] ] = -1
+    @checkSubtask_idWrapper
+    def _markSubtaskFailed(self, subtask_id):
+        self.subTasksGiven[ subtask_id ]['status'] = SubtaskStatus.failure
+        self.countingNodes[ self.subTasksGiven[ subtask_id ][ 'client_id' ] ] = -1
         self.numFailedSubtasks += 1
 
     #######################

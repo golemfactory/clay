@@ -48,7 +48,7 @@ class ResourceServer(TCPServer):
         if self.dir_manager.root_path == config_desc.root_path:
             return
         self.dir_manager.root_path = config_desc.root_path
-        self.dir_manager.nodeId = config_desc.client_uid
+        self.dir_manager.node_id = config_desc.client_uid
         self.resource_manager.change_resource_dir(self.dir_manager.getResourceDir())
 
     def get_distributed_resource_root(self):

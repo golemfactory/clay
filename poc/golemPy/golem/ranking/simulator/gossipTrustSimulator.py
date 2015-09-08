@@ -13,12 +13,12 @@ class GossipTrustNodeRank:
     def __init__(self):
         self.computing = GossipPositiveNegativeTrustRank()
         self.delegating = GossipPositiveNegativeTrustRank()
-        self.nodeId = None
+        self.node_id = None
 
-    def setNodeId(self, nodeId):
-        self.nodeId = nodeId
-        self.computing.setNodeId(nodeId)
-        self.delegating.setNodeId(nodeId)
+    def setNodeId(self, node_id):
+        self.node_id = node_id
+        self.computing.setNodeId(node_id)
+        self.delegating.setNodeId(node_id)
 
     def setSeedRank(self, seedNode):
         pass
@@ -79,10 +79,10 @@ class GossipTrustSimulator(RankSimulator):
 
     def addNode(self, goodNode = True):
         RankSimulator.addNode(self, goodNode)
-        nodeId = 'node{}'.format(str(self.nodesCnt).zfill(3))
-        self.nodes[ nodeId ]['globalRanking'] = {}
-        self.nodes[ nodeId ]['ranking'].setNodeId(nodeId)
-        self.nodes[ nodeId ]['ranking'].computing.negative.printData = True
+        node_id = 'node{}'.format(str(self.nodesCnt).zfill(3))
+        self.nodes[ node_id ]['globalRanking'] = {}
+        self.nodes[ node_id ]['ranking'].setNodeId(node_id)
+        self.nodes[ node_id ]['ranking'].computing.negative.printData = True
 
     def goodCounting(self, cntNode, dntNode):
         self.nodes[ dntNode ]['ranking'].computing.incNodePositive(cntNode)
@@ -118,14 +118,14 @@ class GossipTrustSimulator(RankSimulator):
         self.aggSteps = 0
 
     def startAggregation(self):
-        for nodeId, node in self.nodes.iteritems():
+        for node_id, node in self.nodes.iteritems():
             node['ranking'].startAggregation()
         self.finished = [ False, False, False, False ]
         self.aggSteps = 0
 
     def stopAggregation(self):
         stop = [0, 0, 0, 0]
-        for nodeId, node in self.nodes.iteritems():
+        for node_id, node in self.nodes.iteritems():
             node['ranking'].stopAggregation(self.finished, stop)
         for i in range(0, 4):
             if stop[i] == len(self.nodes):
@@ -136,7 +136,7 @@ class GossipTrustSimulator(RankSimulator):
         return True
 
     def prepAggregation(self):
-        for nodeId, node in self.nodes.iteritems():
+        for node_id, node in self.nodes.iteritems():
             node['ranking'].prepAggregation(self.finished)
         self.gossipSteps = 0
         self.finishedGossips = self.finished
@@ -159,7 +159,7 @@ class GossipTrustSimulator(RankSimulator):
 
     def stop_gossip(self):
         stop = [0, 0, 0, 0]
-        for nodeId, node in self.nodes.iteritems():
+        for node_id, node in self.nodes.iteritems():
             node['ranking'].stop_gossip(self.finishedGossips, stop)
         same = self.sameVec()
         for i in range(0, 4):
@@ -174,7 +174,7 @@ class GossipTrustSimulator(RankSimulator):
     def sameVec(self) :
         vec = [{}, {}, {}, {}]
         ret = [ None, None, None, None]
-        for nodeId, node in self.nodes.iteritems():
+        for node_id, node in self.nodes.iteritems():
             for globNodeId, globVal in node['ranking'].computing.positive.globVec.iteritems():
                 if globNodeId not in vec[0]:
                     vec[0][ globNodeId ] = countDiv(globVal[0], globVal[1])
@@ -219,7 +219,7 @@ class GossipTrustSimulator(RankSimulator):
     def doGossip(self):
         gossips = []
 
-        for nodeId, node in self.nodes.iteritems():
+        for node_id, node in self.nodes.iteritems():
             gossips.append(node['ranking'].doGossip(self.finishedGossips))
 
         self.send_gossips(gossips)
@@ -302,18 +302,18 @@ def main():
     rs.printState()
     print "Positive"
     nd = OrderedDict(sorted(rs.nodes.items(), key=lambda t: t[0]))
-    for nodeId, node in nd.iteritems():
+    for node_id, node in nd.iteritems():
         d = OrderedDict(sorted(node['ranking'].computing.positive.globVec.items(), key=lambda t: t[0]))
         for nId, val in d.iteritems():
             d[nId] = countDiv(val[0], val[1])
-        print "{}: {}\n".format(nodeId, d)
+        print "{}: {}\n".format(node_id, d)
 
     print "Negative"
-    for nodeId, node in nd.iteritems():
+    for node_id, node in nd.iteritems():
         d = OrderedDict(sorted(node['ranking'].computing.negative.globVec.items(), key=lambda t: t[0]))
         for nId, val in d.iteritems():
             d[nId] = countDiv(val[0], val[1])
-        print "{}: {}\n".format(nodeId, d)
+        print "{}: {}\n".format(node_id, d)
 
 
 

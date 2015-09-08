@@ -24,13 +24,13 @@ class TaskKeeper:
     def getTask(self):
         if  len(self.supported_tasks) > 0:
             tn = random.randrange(0, len(self.supported_tasks))
-            taskId = self.supported_tasks[tn]
-            theader = self.taskHeaders[taskId]
-            if taskId in self.activeRequests:
-                self.activeRequests[taskId] += 1
+            task_id = self.supported_tasks[tn]
+            theader = self.taskHeaders[task_id]
+            if task_id in self.activeRequests:
+                self.activeRequests[task_id] += 1
             else:
-                self.activeTasks[taskId] = theader
-                self.activeRequests[taskId] = 1
+                self.activeTasks[task_id] = theader
+                self.activeRequests[task_id] = 1
             return theader
         else:
             return None
@@ -58,52 +58,52 @@ class TaskKeeper:
             return False
 
     ###########################
-    def remove_task_header(self, taskId):
-        if taskId in self.taskHeaders:
-            del self.taskHeaders[taskId]
-        if taskId in self.supported_tasks:
-           self.supported_tasks.remove(taskId)
-        self.removedTasks[taskId] = time.time()
-        if taskId in self.activeRequests and self.activeRequests[taskId] <= 0:
-            self.__delActiveTask(taskId)
+    def remove_task_header(self, task_id):
+        if task_id in self.taskHeaders:
+            del self.taskHeaders[task_id]
+        if task_id in self.supported_tasks:
+           self.supported_tasks.remove(task_id)
+        self.removedTasks[task_id] = time.time()
+        if task_id in self.activeRequests and self.activeRequests[task_id] <= 0:
+            self.__delActiveTask(task_id)
 
     #############################
-    def get_subtask_ttl(self, taskId):
-        if taskId in self.taskHeaders:
-            return self.taskHeaders[taskId].subtask_timeout
+    def get_subtask_ttl(self, task_id):
+        if task_id in self.taskHeaders:
+            return self.taskHeaders[task_id].subtask_timeout
 
     ###########################
-    def receive_task_verification(self, taskId):
-        if taskId not in self.activeTasks:
-            logger.warning("Wasn't waiting for verification result for {}").format(taskId)
+    def receive_task_verification(self, task_id):
+        if task_id not in self.activeTasks:
+            logger.warning("Wasn't waiting for verification result for {}").format(task_id)
             return
-        self.activeRequests[taskId] -= 1
-        if self.activeRequests[taskId] <= 0 and taskId not in self.taskHeaders:
-            self.__delActiveTask(taskId)
+        self.activeRequests[task_id] -= 1
+        if self.activeRequests[task_id] <= 0 and task_id not in self.taskHeaders:
+            self.__delActiveTask(task_id)
 
     ############################
-    def getWaitingForVerificationTaskId(self, subtaskId):
-        if subtaskId not in self.waitingForVerification:
+    def getWaitingForVerificationTaskId(self, subtask_id):
+        if subtask_id not in self.waitingForVerification:
             return None
-        return self.waitingForVerification[subtaskId][0]
+        return self.waitingForVerification[subtask_id][0]
 
     ############################
-    def isWaitingForTask(self, taskId):
+    def isWaitingForTask(self, task_id):
         for v in self.waitingForVerification.itervalues():
-            if v[0] == taskId:
+            if v[0] == task_id:
                 return True
         return False
 
     ############################
-    def removeWaitingForVerification(self, taskId):
-        subtasks = [subId for subId, val in self.waitingForVerification.iteritems() if val[0] == taskId ]
-        for subtaskId in subtasks:
-            del self.waitingForVerification[ subtaskId ]
+    def removeWaitingForVerification(self, task_id):
+        subtasks = [subId for subId, val in self.waitingForVerification.iteritems() if val[0] == task_id ]
+        for subtask_id in subtasks:
+            del self.waitingForVerification[ subtask_id ]
 
     ############################
-    def removeWaitingForVerificationTaskId(self, subtaskId):
-        if subtaskId in self.waitingForVerification:
-            del self.waitingForVerification[subtaskId]
+    def removeWaitingForVerificationTaskId(self, subtask_id):
+        if subtask_id in self.waitingForVerification:
+            del self.waitingForVerification[subtask_id]
 
     ############################
     def removeOldTasks(self):
@@ -112,39 +112,39 @@ class TaskKeeper:
             t.ttl = t.ttl - (currTime - t.last_checking)
             t.last_checking = currTime
             if t.ttl <= 0:
-                logger.warning("Task {} dies".format(t.taskId))
-                self.remove_task_header(t.taskId)
+                logger.warning("Task {} dies".format(t.task_id))
+                self.remove_task_header(t.task_id)
 
-        for taskId, removeTime in self.removedTasks.items():
+        for task_id, removeTime in self.removedTasks.items():
             currTime = time.time()
             if currTime - removeTime > self.removedTaskTimeout:
-                del self.removedTasks[taskId]
+                del self.removedTasks[task_id]
 
     ############################
-    def request_failure(self, taskId):
-        if taskId in self.activeRequests:
-            self.activeRequests[taskId] -= 1
-        self.remove_task_header(taskId)
+    def request_failure(self, task_id):
+        if task_id in self.activeRequests:
+            self.activeRequests[task_id] -= 1
+        self.remove_task_header(task_id)
 
     ###########################
-    def getReceiverForTaskVerificationResult(self, taskId):
-        if taskId not in self.activeTasks:
+    def getReceiverForTaskVerificationResult(self, task_id):
+        if task_id not in self.activeTasks:
             return None
-        return self.activeTasks[taskId].client_id
+        return self.activeTasks[task_id].client_id
 
     ###########################
-    def addToVerification(self, subtaskId, taskId):
+    def addToVerification(self, subtask_id, task_id):
         now = datetime.datetime.now()
-        self.waitingForVerification[ subtaskId ] = [taskId, now, self.__countDeadline(now)]
+        self.waitingForVerification[ subtask_id ] = [task_id, now, self.__countDeadline(now)]
 
     #############################
     def checkPayments(self):
         now = datetime.datetime.now()
         afterDeadline = []
-        for subtaskId, [taskId, taskDate, deadline] in self.waitingForVerification.items():
+        for subtask_id, [task_id, taskDate, deadline] in self.waitingForVerification.items():
             if deadline < now:
-                afterDeadline.append(taskId)
-                del self.waitingForVerification[subtaskId]
+                afterDeadline.append(task_id)
+                del self.waitingForVerification[subtask_id]
         return afterDeadline
 
     ###########################
@@ -152,6 +152,6 @@ class TaskKeeper:
         return datetime.datetime.fromtimestamp(time.time() + self.verificationTimeout)
 
     ###########################
-    def __delActiveTask(self, taskId):
-        del self.activeTasks[taskId]
-        del self.activeRequests[taskId]
+    def __delActiveTask(self, task_id):
+        del self.activeTasks[task_id]
+        del self.activeRequests[task_id]

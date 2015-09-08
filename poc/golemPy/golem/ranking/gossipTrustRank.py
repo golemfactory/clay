@@ -23,12 +23,12 @@ class GossipTrustTest:
         self.infValue = 10.0
 
 
-    def addNode(self, nodeId):
-        if nodeId in self.localRankingMapping:
+    def addNode(self, node_id):
+        if node_id in self.localRankingMapping:
             return
         else:
             n = len(self.localRankingMapping)
-            self.localRankingMapping[ nodeId ] = n
+            self.localRankingMapping[ node_id ] = n
             n += 1
             if n == 1:
                 self.localRanking = matrix([1.])
@@ -36,7 +36,7 @@ class GossipTrustTest:
             self.localRanking = hstack([ vstack([ self.localRanking, zeros([1, n - 1]) ]), zeros([n, 1]) ])
 
 
-    def updateReputation(self, nodeId):
+    def updateReputation(self, node_id):
         pass
 
     def startNewCycle(self):
@@ -57,8 +57,8 @@ class GossipTrustTest:
         self.globalRanking = normMatrix.transpose() * self.globalRanking
 
 
-    def getWeightedScore(self, nodeId):
-        i = self.localRankingMapping[ nodeId ]
+    def getWeightedScore(self, node_id):
+        i = self.localRankingMapping[ node_id ]
         return self.globalRanking[i] * self.localRanking[i]
 
     def doAggregation(self):
@@ -76,11 +76,11 @@ class GossipTrustTest:
     def absmax(self, m):
         return max(m.max(), m.min(), key=abs)
 
-    def startGossip(self, nodeId):
-        if nodeId not in self.localRankingMapping:
-            self.addNode(nodeId)
+    def startGossip(self, node_id):
+        if node_id not in self.localRankingMapping:
+            self.addNode(node_id)
 
-        j = self.localRankingMapping[ nodeId ]
+        j = self.localRankingMapping[ node_id ]
         n = len(self.localRankingMapping)
         self.weightedScores = [ None ] * n
         self.consensusFactors = [ None ] *n
@@ -96,8 +96,8 @@ class GossipTrustTest:
             self.collectedPairs[ i ] = [[self.weightedScores[i], self.consensusFactors[i]]]
         self.gossipScoreSteps = 0
 
-    def doGossip(self, nodeId):
-        self.startGossip(nodeId)
+    def doGossip(self, node_id):
+        self.startGossip(node_id)
 
         while True:
             self.gossipStep()
@@ -147,7 +147,7 @@ class GossipTrustTest:
 
 class GossipPositiveNegativeTrustRank:
     def __init__(self, posTrustVal = 1.0, negTrustVal = 2.0, minSumVal = 50):
-        self.nodeId = None
+        self.node_id = None
         self.positive = GossipTrustRank(selfValue = 1.0)
         self.negative = GossipTrustRank(selfValue = 0.0)
         self.posTrustVal = posTrustVal
@@ -159,34 +159,34 @@ class GossipPositiveNegativeTrustRank:
     def __str__(self):
         return "[Positive: {}, Negative: {}]".format(self.positive, self.negative)
 
-    def incNodePositive(self, nodeId):
-        self.positive.incNodeRank(nodeId)
+    def incNodePositive(self, node_id):
+        self.positive.incNodeRank(node_id)
 
-    def incNodeNegative(self, nodeId):
-        self.negative.incNodeRank(nodeId)
+    def incNodeNegative(self, node_id):
+        self.negative.incNodeRank(node_id)
 
-    def setNodeId(self, nodeId):
-        self.nodeId = nodeId
-        self.positive.setNodeId(nodeId)
-        self.negative.setNodeId(nodeId)
+    def setNodeId(self, node_id):
+        self.node_id = node_id
+        self.positive.setNodeId(node_id)
+        self.negative.setNodeId(node_id)
 
-    def getNodePositive(self, nodeId):
-        return self.positive.getNodeRank(nodeId)
+    def getNodePositive(self, node_id):
+        return self.positive.getNodeRank(node_id)
 
-    def getNodeNegative(self, nodeId):
-        return self.negative.getNodeRank(nodeId)
+    def getNodeNegative(self, node_id):
+        return self.negative.getNodeRank(node_id)
 
-    def setNodePositive(self, nodeId, value):
-        self.positive.setNodeRank(nodeId, value)
+    def setNodePositive(self, node_id, value):
+        self.positive.setNodeRank(node_id, value)
 
-    def setNodeNegative(self, nodeId, value):
-        self.negative.setNodeRank(nodeId, value)
+    def setNodeNegative(self, node_id, value):
+        self.negative.setNodeRank(node_id, value)
 
-    def getNodeTrust(self, nodeId):
-        pos = self.positive.getNodeRank(nodeId)
+    def getNodeTrust(self, node_id):
+        pos = self.positive.getNodeRank(node_id)
         if pos is None:
             pos = 0.0
-        neg = self.negative.getNodeRank(nodeId)
+        neg = self.negative.getNodeRank(node_id)
         if neg is None:
             neg = 0.0
         val = (self.posTrustVal * pos - self.negTrustVal * neg)
@@ -235,7 +235,7 @@ class GossipPositiveNegativeTrustRank:
 
 class GossipTrustRank:
     def __init__(self, delta = 0.1, epsilon = 0.1, selfValue = 1.0):
-        self.nodeId = None
+        self.node_id = None
         self.ranking = {}
         self.weightedScore = {}
         self.globVec = {}
@@ -252,45 +252,45 @@ class GossipTrustRank:
         return "[Ranking: {}, weightedScore: {}, self.globVec: {}] ".format(self.ranking,
                                                                            self.weightedScore,
                                                                            self.globVec)
-    def setNodeId(self, nodeId ):
-        self.nodeId = nodeId
+    def setNodeId(self, node_id ):
+        self.node_id = node_id
 
-    def incNodeRank(self, nodeId):
-        val = self.getNodeRank(nodeId)
+    def incNodeRank(self, node_id):
+        val = self.getNodeRank(node_id)
         if val is not None:
-            self.setNodeRank(nodeId, val + 1)
+            self.setNodeRank(node_id, val + 1)
         else:
-            self.setNodeRank(nodeId,  1)
+            self.setNodeRank(node_id,  1)
 
 
-    def getNodeRank(self, nodeId):
-        if nodeId in self.ranking:
-            return self.ranking[ nodeId ]
-        else:
-            return None
-
-    def getNodeNegative(self, nodeId):
-        if nodeId in self.negative:
-            return self.negative[ nodeId ]
+    def getNodeRank(self, node_id):
+        if node_id in self.ranking:
+            return self.ranking[ node_id ]
         else:
             return None
 
-    def setNodeRank(self, nodeId, value):
-        self.ranking[ nodeId ] = value
+    def getNodeNegative(self, node_id):
+        if node_id in self.negative:
+            return self.negative[ node_id ]
+        else:
+            return None
+
+    def setNodeRank(self, node_id, value):
+        self.ranking[ node_id ] = value
 
     def startAggregation(self):
         print "startAggregation"
         self.weightedScore = {}
         norm = sum(self.ranking.values())
         n = len(self.ranking)
-        for nodeId in self.ranking:
-            locTrustValue = float(self.ranking[ nodeId ]) / float(norm)
-            self.weightedScore[ nodeId ] = locTrustValue / float(n + 1)
+        for node_id in self.ranking:
+            locTrustValue = float(self.ranking[ node_id ]) / float(norm)
+            self.weightedScore[ node_id ] = locTrustValue / float(n + 1)
 
         if n ==  0:
-            self.weightedScore[ self.nodeId ] = self.selfValue
+            self.weightedScore[ self.node_id ] = self.selfValue
         else:
-            self.weightedScore[ self.nodeId ] = 1.0 / float(n + 1)
+            self.weightedScore[ self.node_id ] = 1.0 / float(n + 1)
 
         self.updateGlobVec()
 
@@ -301,10 +301,10 @@ class GossipTrustRank:
     def prepAggregation (self):
         self.prevVec = self.globVec
         norm = sum(self.ranking.values())
-        for nodeId in self.ranking:
-            locTrustValue = float(self.ranking[ nodeId ]) / float(norm)
-            globVecTrustValue =  self.countDiv(self.globVec[ nodeId ][ 0 ], self.globVec[ nodeId ][ 1 ])
-            self.weightedScore[ nodeId ] = locTrustValue * globVecTrustValue
+        for node_id in self.ranking:
+            locTrustValue = float(self.ranking[ node_id ]) / float(norm)
+            globVecTrustValue =  self.countDiv(self.globVec[ node_id ][ 0 ], self.globVec[ node_id ][ 1 ])
+            self.weightedScore[ node_id ] = locTrustValue * globVecTrustValue
         self.updateGlobVec()
 
     def countDiv(self, a, b):
@@ -336,11 +336,11 @@ class GossipTrustRank:
 
 
     def updateGlobVec(self):
-        for nodeId, node in self.weightedScore.iteritems():
-            if nodeId == self.nodeId:
-                self.globVec[ nodeId ] = [ node, 1.0 ]
+        for node_id, node in self.weightedScore.iteritems():
+            if node_id == self.node_id:
+                self.globVec[ node_id ] = [ node, 1.0 ]
             else:
-                self.globVec[ nodeId ] = [ node, 0.0 ]
+                self.globVec[ node_id ] = [ node, 0.0 ]
 
     def doGossip(self):
         if self.printData:
@@ -349,29 +349,29 @@ class GossipTrustRank:
         if len (self.collectedVecs) > 0:
             self.globVec = {}
         for vec in self.collectedVecs:
-            for nodeId, val in vec.iteritems():
-                if nodeId not in self.globVec:
-                    self.globVec[nodeId] = val
+            for node_id, val in vec.iteritems():
+                if node_id not in self.globVec:
+                    self.globVec[node_id] = val
                 else:
-                    self.globVec[nodeId][0] += val[0]
-                    self.globVec[nodeId][1] += val[1]
+                    self.globVec[node_id][0] += val[0]
+                    self.globVec[node_id][1] += val[1]
 
         self.collectedVecs = []
 
 
         vecToSend = {}
-        for nodeId, val in self.globVec.iteritems():
-            vecToSend[nodeId] = [val[0] / 2.0, val[1] / 2.0 ]
+        for node_id, val in self.globVec.iteritems():
+            vecToSend[node_id] = [val[0] / 2.0, val[1] / 2.0 ]
 
-        return [ vecToSend, self.nodeId]
+        return [ vecToSend, self.node_id]
 
     def hear_gossip(self, gossip):
         if self.printData:
-            print "NODE {} hear gossip {}".format(self.nodeId, gossip)
+            print "NODE {} hear gossip {}".format(self.node_id, gossip)
         self.collectedVecs.append(gossip)
 
-    def getNodeTrust(self, nodeId):
-        if nodeId in self.globVec:
+    def getNodeTrust(self, node_id):
+        if node_id in self.globVec:
             return self.countDiv(self.globVec[0], self.globVec[1])
         else:
             return 0.0

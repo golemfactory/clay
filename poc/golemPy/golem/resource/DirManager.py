@@ -16,9 +16,9 @@ def splitPath(path):
 
 class DirManager:
     ######################
-    def __init__(self, root_path, nodeId, tmp = 'tmp', res = 'resources', output = 'output', globalResource = 'golemres'):
+    def __init__(self, root_path, node_id, tmp = 'tmp', res = 'resources', output = 'output', globalResource = 'golemres'):
         self.root_path = root_path
-        self.nodeId = nodeId
+        self.node_id = node_id
         self.tmp = tmp
         self.res = res
         self.output = output
@@ -61,40 +61,40 @@ class DirManager:
         return self.getDir(fullPath, create, "resource dir does not exist")
 
     ######################
-    def getTaskTemporaryDir(self, taskId, create = True):
-        fullPath = self.__getTmpPath(taskId)
+    def getTaskTemporaryDir(self, task_id, create = True):
+        fullPath = self.__getTmpPath(task_id)
         return self.getDir(fullPath, create, "temporary dir does not exist")
 
     ######################
-    def getTaskResourceDir(self, taskId, create = True):
-        fullPath = self.__getResPath(taskId)
+    def getTaskResourceDir(self, task_id, create = True):
+        fullPath = self.__getResPath(task_id)
         return self.getDir(fullPath, create, "resource dir does not exist")
 
     ######################
-    def getTaskOutputDir(self, taskId, create = True):
-        fullPath = self.__getOutPath(taskId)
+    def getTaskOutputDir(self, task_id, create = True):
+        fullPath = self.__getOutPath(task_id)
         return self.getDir(fullPath, create, "output dir does not exist")
 
     ######################
-    def clearTemporary(self, taskId):
-        self.clearDir(self.__getTmpPath(taskId))
+    def clearTemporary(self, task_id):
+        self.clearDir(self.__getTmpPath(task_id))
 
     ######################
-    def clearResource(self, taskId):
-        self.clearDir(self.__getResPath(taskId))
+    def clearResource(self, task_id):
+        self.clearDir(self.__getResPath(task_id))
 
-    def clearOutput(self, taskId):
-        self.clearDir(self.__getOutPath(taskId))
+    def clearOutput(self, task_id):
+        self.clearDir(self.__getOutPath(task_id))
 
     ######################
-    def __getTmpPath(self, taskId):
-        return os.path.join(self.root_path, self.nodeId, taskId, self.tmp)
+    def __getTmpPath(self, task_id):
+        return os.path.join(self.root_path, self.node_id, task_id, self.tmp)
 
-    def __getResPath(self, taskId):
-        return os.path.join(self.root_path, self.nodeId, taskId, self.res)
+    def __getResPath(self, task_id):
+        return os.path.join(self.root_path, self.node_id, task_id, self.res)
 
-    def __getOutPath(self, taskId):
-        return os.path.join(self.root_path, self.nodeId, taskId, self.output)
+    def __getOutPath(self, task_id):
+        return os.path.join(self.root_path, self.node_id, task_id, self.output)
 
     def __getGlobalResourcePath(self):
         return os.path.join(self.root_path, self.globalResource)

@@ -3,8 +3,8 @@ import abc
 
 class TaskHeader:
     #######################
-    def __init__(self, client_id, taskId, taskOwnerAddress, taskOwnerPort, taskOwnerKeyId, environment, taskOwner = None, ttl = 0.0, subtask_timeout = 0.0, resourceSize = 0, estimatedMemory = 0, min_version = 1.0):
-        self.taskId = taskId
+    def __init__(self, client_id, task_id, taskOwnerAddress, taskOwnerPort, taskOwnerKeyId, environment, taskOwner = None, ttl = 0.0, subtask_timeout = 0.0, resourceSize = 0, estimatedMemory = 0, min_version = 1.0):
+        self.task_id = task_id
         self.taskOwnerKeyId = taskOwnerKeyId
         self.taskOwnerAddress = taskOwnerAddress
         self.taskOwnerPort = taskOwnerPort
@@ -31,8 +31,8 @@ class TaskBuilder:
 class ComputeTaskDef(object):
     #######################
     def __init__(self):
-        self.taskId             = ""
-        self.subtaskId          = ""
+        self.task_id             = ""
+        self.subtask_id          = ""
         self.srcCode            = ""
         self.extraData          = {}
         self.shortDescription   = ""
@@ -77,17 +77,17 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
+    def computationFinished(self, subtask_id, taskResult, dir_manager = None, resultType = 0):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def computationFailed(self, subtaskId):
+    def computationFailed(self, subtask_id):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def verifySubtask(self, subtaskId):
+    def verifySubtask(self, subtask_id):
         return # Implement in derived class
 
     #######################
@@ -132,7 +132,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def prepare_resourceDelta(self, taskId, resourceHeader):
+    def prepare_resourceDelta(self, task_id, resourceHeader):
         return None
 
     #######################
@@ -147,12 +147,12 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def getPriceMod(self, subtaskId):
+    def getPriceMod(self, subtask_id):
         return # Implement in derived class
 
     #######################
     @abc.abstractmethod
-    def getTrustMod(self, subtaskId):
+    def getTrustMod(self, subtask_id):
         return # Implement in derived class
 
     #######################

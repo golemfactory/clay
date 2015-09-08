@@ -7,7 +7,7 @@ from PIL import Image, ImageChops
 
 from golem.task.TaskState import SubtaskStatus
 
-from examples.gnr.task.GNRTask import  GNROptions, checkSubtaskIdWrapper
+from examples.gnr.task.GNRTask import  GNROptions, checkSubtask_idWrapper
 from examples.gnr.task.RenderingTaskCollector import exr_to_pil
 from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
 from examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
@@ -64,7 +64,7 @@ class ThreeDSMaxTaskBuilder(FrameRenderingTaskBuiler):
         mainSceneDir = os.path.dirname(self.taskDefinition.mainSceneFile)
 
         threeDSMaxTask = ThreeDSMaxTask(self.client_id,
-                                   self.taskDefinition.taskId,
+                                   self.taskDefinition.task_id,
                                    mainSceneDir,
                                    self.taskDefinition.mainSceneFile,
                                    self.taskDefinition.mainProgramFile,
@@ -94,7 +94,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
     #######################
     def __init__(self,
                   client_id,
-                  taskId,
+                  task_id,
                   mainSceneDir,
                   mainSceneFile,
                   mainProgramFile,
@@ -117,7 +117,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
                   returnPort = 0,
                  ):
 
-        FrameRenderingTask.__init__(self, client_id, taskId, returnAddress, returnPort,
+        FrameRenderingTask.__init__(self, client_id, task_id, returnAddress, returnPort,
                           ThreeDSMaxEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
@@ -224,17 +224,17 @@ class ThreeDSMaxTask(FrameRenderingTask):
 
 
     #######################
-    @checkSubtaskIdWrapper
-    def getPriceMod(self, subtaskId):
-        perf =  (self.subTasksGiven[ subtaskId ]['endTask'] - self.subTasksGiven[ subtaskId ][ 'startTask' ]) + 1
-        perf *= float(self.subTasksGiven[ subtaskId ]['perf']) / 1000
+    @checkSubtask_idWrapper
+    def getPriceMod(self, subtask_id):
+        perf =  (self.subTasksGiven[ subtask_id ]['endTask'] - self.subTasksGiven[ subtask_id ][ 'startTask' ]) + 1
+        perf *= float(self.subTasksGiven[ subtask_id ]['perf']) / 1000
         perf *= 50
         return perf
 
     #######################
-    @checkSubtaskIdWrapper
-    def restartSubtask(self, subtaskId):
-        FrameRenderingTask.restartSubtask(self, subtaskId)
+    @checkSubtask_idWrapper
+    def restartSubtask(self, subtask_id):
+        FrameRenderingTask.restartSubtask(self, subtask_id)
         if not self.useFrames:
             self._updateTaskPreview()
         else:
@@ -255,7 +255,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
         except Exception, err:
             logger.error("Can't generate preview {}".format(str(err)))
 
-        tmpDir = getTmpPath(self.header.client_id, self.header.taskId, self.root_path)
+        tmpDir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
 
         self.previewFilePath = "{}".format(os.path.join(tmpDir, "current_preview"))
 
@@ -306,15 +306,15 @@ class ThreeDSMaxTask(FrameRenderingTask):
         return self.resX, resY
 
     #######################
-    @checkSubtaskIdWrapper
-    def _getPartImgSize(self, subtaskId, advTestFile) :
+    @checkSubtask_idWrapper
+    def _getPartImgSize(self, subtask_id, advTestFile) :
         x, y = self._getPartSize()
         return 0, 0, x, y
 
     #######################
-    @checkSubtaskIdWrapper
-    def _changeScope(self, subtaskId, startBox, trFile):
-        extraData, _ = FrameRenderingTask._changeScope(self, subtaskId, startBox, trFile)
+    @checkSubtask_idWrapper
+    def _changeScope(self, subtask_id, startBox, trFile):
+        extraData, _ = FrameRenderingTask._changeScope(self, subtask_id, startBox, trFile)
         if not self.useFrames:
             startY = startBox[1] + (extraData['startTask'] - 1) * self.resY / extraData['totalTasks']
         elif self.totalTasks <= len(self.frames):

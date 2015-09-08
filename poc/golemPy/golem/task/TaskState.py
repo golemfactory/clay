@@ -17,27 +17,27 @@ class TaskState:
         self.extraData      = {}
 
     #########################
-    def getSubtaskState(self, subtaskId):
-        if subtaskId in self.subtaskStates:
-            return self.subtaskStates[ subtaskId ]
+    def getSubtaskState(self, subtask_id):
+        if subtask_id in self.subtaskStates:
+            return self.subtaskStates[ subtask_id ]
         else:
             return None
 
     #########################
-    def getSubtaskStateForComputer(self, nodeId):
+    def getSubtaskStateForComputer(self, node_id):
 
         subtasksStates = []
 
         for k in self.subtaskStates:
             ss = self.subtaskStates[ k ]
-            if ss.computer.nodeId == nodeId:
+            if ss.computer.node_id == node_id:
                 subtasksStates.append(ss)
 
 
 class ComputerState:
     #########################
     def __init__(self):
-        self.nodeId             = ""
+        self.node_id             = ""
         self.eth_account         = ""
         self.performance        = 0
         self.ipAddress          = ""
@@ -48,7 +48,7 @@ class SubtaskState:
     #########################
     def __init__(self):
         self.subtaskDefinition  = ""
-        self.subtaskId          = ""
+        self.subtask_id          = ""
         self.subtaskProgress    = 0.0
         self.timeStarted        = 0
         self.ttl                = 0

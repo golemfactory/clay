@@ -62,7 +62,7 @@ class TaskableRenderer:
 
     def __createTask(self, curPixel, numPixels):
         desc = self.__createTaskDesc(self, curPixel, numPixels)
-        task = RenderTask.createRenderTask(desc, self.scene_data, self.taskFinished)
+        task = RenderTask.createRenderTask(desc, self.scene_data, self.task_finished)
 
         return task
 
@@ -139,7 +139,7 @@ class TaskableRenderer:
 
             return task
 
-    def taskFinished(self, result):
+    def task_finished(self, result):
         assert isinstance(result, RenderTaskResult)
         assert result.desc.getW() == self.w and result.desc.getH() == self.h
 

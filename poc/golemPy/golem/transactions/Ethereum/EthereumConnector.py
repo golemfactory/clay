@@ -50,17 +50,17 @@ class EthereumConnector:
     def uuidToLong(self, uuid):
         return int(sha3_256(str(uuid)).hexdigest(), 16)
 
-    def payForTask(self, eth_account, taskId, payments):
+    def payForTask(self, eth_account, task_id, payments):
         gas = "0x76c0"
         gasPrice = "0x9184e72a000"
         tranVal = 9000 + sum(payments.values())
-        taskId = self.uuidToLong(taskId)
+        task_id = self.uuidToLong(task_id)
         values = payments.values()
         keys = payments.keys()
         addresses = [str(bytearray.fromhex(key[2:])) for key in keys]
 
         data = PAY_HASH
-        data += encode_abi(['uint256', 'address[]', 'uint256[]'],  [taskId, addresses, values]).encode('hex')
+        data += encode_abi(['uint256', 'address[]', 'uint256[]'],  [task_id, addresses, values]).encode('hex')
         logger.debug("Transaction data {}".format(data))
 
         #self.sendTransaction(eth_account, gas, gasPrice, tranVal, data)

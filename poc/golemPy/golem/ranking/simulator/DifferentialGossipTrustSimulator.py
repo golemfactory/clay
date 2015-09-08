@@ -8,12 +8,12 @@ class DiffGossipTrustNodeRank:
     def __init__(self):
         self.computing = DiffGossipTrustRank()
         self.delegating = DiffGossipTrustRank()
-        self.nodeId = None
+        self.node_id = None
 
-    def setNodeId(self, nodeId):
-        self.nodeId = nodeId
-        self.computing.setNodeId(nodeId)
-        self.delegating.setNodeId(nodeId)
+    def setNodeId(self, node_id):
+        self.node_id = node_id
+        self.computing.setNodeId(node_id)
+        self.delegating.setNodeId(node_id)
         self.computingFinished = False
         self.delegatingFinished = False
 
@@ -119,7 +119,7 @@ class DifferentialGossipTrustSimulator(RankSimulator):
     def listenToOpinions(self, node, forNode, opinions, threshold):
         val = 0
         cnt = 0
-        for nodeId, opinion in opinions.iteritems():
+        for node_id, opinion in opinions.iteritems():
             val += opinion
             cnt += 1
         if cnt > 0:
@@ -145,7 +145,7 @@ class DifferentialGossipTrustSimulator(RankSimulator):
         self.gossipStep = 0
         self.finished = [ False, False ]
         for rank in self.ranking.values():
-            rank.startDiffGossip(k[ rank.nodeId ])
+            rank.startDiffGossip(k[ rank.node_id ])
 
 
     def doGossip(self):
@@ -187,8 +187,8 @@ class DifferentialGossipTrustSimulator(RankSimulator):
                 for node in nodes:
                     self.ranking[node].computing.hear_gossip(gossipVec)
 
-    def getRandomNeighbours(self, nodeId, k):
-        return random.sample(self.network.nodes[nodeId], k)
+    def getRandomNeighbours(self, node_id, k):
+        return random.sample(self.network.nodes[node_id], k)
 
 
     def stop_gossip(self):

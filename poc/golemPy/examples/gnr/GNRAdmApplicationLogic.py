@@ -38,7 +38,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
     ######################
     def updateOtherGolems(self, golemDir):
         taskDefinition         = UpdateOtherGolemsTaskDefinition()
-        taskDefinition.taskId  = "{}".format(uuid.uuid4())
+        taskDefinition.task_id  = "{}".format(uuid.uuid4())
         taskDefinition.srcFile          = os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/tasks/updateGolem.py"))
         taskDefinition.totalSubtasks    = 100
         taskDefinition.fullTaskTimeout  = 4 * 60 * 60
@@ -58,7 +58,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
     ######################
     def sendInfoTask(self, iterations, fullTaskTimeout, subtask_timeout):
         infoTaskDefinition = InfoTaskDefinition()
-        infoTaskDefinition.taskId           = "{}".format(uuid.uuid4())
+        infoTaskDefinition.task_id           = "{}".format(uuid.uuid4())
         infoTaskDefinition.srcFile          = os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/tasks/sendSnapshot.py"))
         infoTaskDefinition.totalSubtasks    = iterations
         infoTaskDefinition.fullTaskTimeout  = fullTaskTimeout
@@ -99,7 +99,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
 
         self.add_tasks (tasks)
         for task in tasks:
-            self.startTask(task.definition.taskId)
+            self.startTask(task.definition.task_id)
 
     ######################
     def __readTaskFromFile(self, taskFile):
@@ -107,5 +107,5 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         taskState.status = TaskStatus.notStarted
         with open(taskFile, 'r') as f:
             taskState.definition = pickle.loads(f.read())
-        taskState.definition.taskId = "{}".format(uuid.uuid4())
+        taskState.definition.task_id = "{}".format(uuid.uuid4())
         return taskState

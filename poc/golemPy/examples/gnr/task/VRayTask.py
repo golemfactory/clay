@@ -7,7 +7,7 @@ import shutil
 from collections import OrderedDict
 
 from  examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
-from  examples.gnr.task.GNRTask import GNROptions, checkSubtaskIdWrapper
+from  examples.gnr.task.GNRTask import GNROptions, checkSubtask_idWrapper
 from  examples.gnr.task.RenderingTask import RenderingTask
 from  examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, getTaskBoarder, getTaskNumFromPixels
 from  examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
@@ -57,7 +57,7 @@ class VRayTaskBuilder(FrameRenderingTaskBuiler):
         mainSceneDir = os.path.dirname(self.taskDefinition.mainSceneFile)
 
         vRayTask = VRayTask(      self.client_id,
-                                   self.taskDefinition.taskId,
+                                   self.taskDefinition.task_id,
                                    mainSceneDir,
                                    self.taskDefinition.mainSceneFile,
                                    self.taskDefinition.mainProgramFile,
@@ -83,7 +83,7 @@ class VRayTask(FrameRenderingTask):
     #######################
     def __init__(self,
                   client_id,
-                  taskId,
+                  task_id,
                   mainSceneDir,
                   mainSceneFile,
                   mainProgramFile,
@@ -105,7 +105,7 @@ class VRayTask(FrameRenderingTask):
                   returnPort = 0,
                   keyId = ""):
 
-        FrameRenderingTask.__init__(self, client_id, taskId, returnAddress, returnPort, keyId,
+        FrameRenderingTask.__init__(self, client_id, task_id, returnAddress, returnPort, keyId,
                           VRayEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
@@ -209,37 +209,37 @@ class VRayTask(FrameRenderingTask):
         return self._newComputeTaskDef(hash, extraData, workingDirectory, 0)
 
   #######################
-    @checkSubtaskIdWrapper
-    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
+    @checkSubtask_idWrapper
+    def computationFinished(self, subtask_id, taskResult, dir_manager = None, resultType = 0):
 
-        if not self.shouldAccept(subtaskId):
+        if not self.shouldAccept(subtask_id):
             return
 
-        tmpDir = dir_manager.getTaskTemporaryDir(self.header.taskId, create = False)
+        tmpDir = dir_manager.getTaskTemporaryDir(self.header.task_id, create = False)
         self.tmpDir = tmpDir
 
         if len(taskResult) > 0:
-            numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
-            parts = self.subTasksGiven[ subtaskId ][ 'parts' ]
-            numEnd = self.subTasksGiven[ subtaskId ][ 'endTask' ]
-            self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
+            numStart = self.subTasksGiven[ subtask_id ][ 'startTask' ]
+            parts = self.subTasksGiven[ subtask_id ][ 'parts' ]
+            numEnd = self.subTasksGiven[ subtask_id ][ 'endTask' ]
+            self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished
 
             if self.useFrames and self.totalTasks <= len(self.frames):
-                if len(taskResult) < len(self.subTasksGiven[ subtaskId ][ 'frames' ]):
-                    self._markSubtaskFailed(subtaskId)
+                if len(taskResult) < len(self.subTasksGiven[ subtask_id ][ 'frames' ]):
+                    self._markSubtaskFailed(subtask_id)
                     return
 
             trFiles = self.loadTaskResults(taskResult, resultType, tmpDir)
 
-            if not self._verifyImgs(subtaskId, trFiles):
-                self._markSubtaskFailed(subtaskId)
+            if not self._verifyImgs(subtask_id, trFiles):
+                self._markSubtaskFailed(subtask_id)
                 if not self.useFrames:
                     self._updateTaskPreview()
                 else:
                     self._updateFrameTaskPreview()
                 return
 
-            self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'client_id' ] ] = 1
+            self.countingNodes[ self.subTasksGiven[ subtask_id ][ 'client_id' ] ] = 1
 
             if not self.useFrames:
                 for trFile in trFiles:
@@ -247,14 +247,14 @@ class VRayTask(FrameRenderingTask):
             elif self.totalTasks < len(self.frames):
                 for trFile in trFiles:
                     self.__collectFrameFile(trFile)
-                self.__collectFrames(self.subTasksGiven[ subtaskId ][ 'frames' ], tmpDir)
+                self.__collectFrames(self.subTasksGiven[ subtask_id ][ 'frames' ], tmpDir)
             else:
                 for trFile in trFiles:
                     self.__collectFramePart(numStart, trFile, parts, tmpDir)
 
             self.numTasksReceived += numEnd - numStart + 1
         else:
-            self._markSubtaskFailed(subtaskId)
+            self._markSubtaskFailed(subtask_id)
             if not self.useFrames:
                 self._updateTaskPreview()
             else:
@@ -268,10 +268,10 @@ class VRayTask(FrameRenderingTask):
                 self.__putImageTogether(outputFileName)
 
     #######################
-    @checkSubtaskIdWrapper
-    def getPriceMod(self, subtaskId):
-        perf =  (self.subTasksGiven[ subtaskId ]['endTask'] - self.subTasksGiven[ subtaskId ][ 'startTask' ]) + 1
-        perf *= float(self.subTasksGiven[ subtaskId ]['perf']) / 1000
+    @checkSubtask_idWrapper
+    def getPriceMod(self, subtask_id):
+        perf =  (self.subTasksGiven[ subtask_id ]['endTask'] - self.subTasksGiven[ subtask_id ][ 'startTask' ]) + 1
+        perf *= float(self.subTasksGiven[ subtask_id ]['perf']) / 1000
         perf *= 10
         return perf
 
@@ -300,9 +300,9 @@ class VRayTask(FrameRenderingTask):
             return imgChunk
 
     #######################
-    @checkSubtaskIdWrapper
-    def _changeScope(self, subtaskId, startBox, trFile):
-        extraData, _ = FrameRenderingTask._changeScope(self, subtaskId, startBox, trFile)
+    @checkSubtask_idWrapper
+    def _changeScope(self, subtask_id, startBox, trFile):
+        extraData, _ = FrameRenderingTask._changeScope(self, subtask_id, startBox, trFile)
         extraData['isAlpha'] = self.__isAlphaFile(trFile)
         extraData['generateStartBox'] = True
         if startBox[0] == 0:

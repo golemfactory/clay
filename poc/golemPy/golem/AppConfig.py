@@ -89,7 +89,7 @@ class NodeConfig:
 
 
     ##############################
-    def __init__(self, nodeId, seed_host = "", seedPort = 0, root_path = DEFAULT_ROOT_PATH, num_cores = 4,
+    def __init__(self, node_id, seed_host = "", seedPort = 0, root_path = DEFAULT_ROOT_PATH, num_cores = 4,
                   max_resource_size = MAX_RESOURCE_SIZE, max_memory_size = MAX_MEMORY_SIZE,
                   send_pings = SEND_PINGS, pings_interval = PINGS_INTERVALS,
                   getting_peers_interval = GETTING_PEERS_INTERVAL, getting_tasks_interval = GETTING_TASKS_INTERVAL,
@@ -101,7 +101,7 @@ class NodeConfig:
                   p2p_session_timeout = P2P_SESSION_TIMEOUT, task_session_timeout = TASK_SESSION_TIMEOUT,
                   resource_session_timeout = RESOURCE_SESSION_TIMEOUT, plugin_port = PLUGIN_PORT,
                   eth_account = ETH_ACCOUNT_NAME, useIp6 = USE_IP6):
-        self._section = "Node {}".format(nodeId)
+        self._section = "Node {}".format(node_id)
 
         estimated = NodeConfig.readEstimatedPerformance()
         if estimated == 0:

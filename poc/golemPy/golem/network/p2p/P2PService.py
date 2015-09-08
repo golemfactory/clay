@@ -128,8 +128,8 @@ class P2PService(PendingConnectionsServer):
         :param Node node_info: information about new peer
         """
         peer_to_ping_info = self.peer_keeper.add_peer(peer_key_id, id_, address, port, node_info)
-        if peer_to_ping_info and peer_to_ping_info.nodeId in self.peers:
-            peer_to_ping = self.peers[peer_to_ping_info.nodeId]
+        if peer_to_ping_info and peer_to_ping_info.node_id in self.peers:
+            peer_to_ping = self.peers[peer_to_ping_info.node_id]
             if peer_to_ping:
                 peer_to_ping.ping(0)
 
@@ -337,7 +337,7 @@ class P2PService(PendingConnectionsServer):
         """
         for node_key_id, neighbours in nodes_to_find.iteritems():
             for neighbour in neighbours:
-                peer = self.peers.get(neighbour.nodeId)
+                peer = self.peers.get(neighbour.node_id)
                 if peer:
                     peer.send_find_node(node_key_id)
 
@@ -351,7 +351,7 @@ class P2PService(PendingConnectionsServer):
         neighbours = self.peer_keeper.neighbours(node_key_id)
         nodes_info = []
         for n in neighbours:
-            nodes_info.append({"address": n.ip, "port": n.port, "id": n.nodeId, "node": n.node_info})
+            nodes_info.append({"address": n.ip, "port": n.port, "id": n.node_id, "node": n.node_info})
         return nodes_info
 
     # Resource functions
@@ -615,13 +615,13 @@ class P2PService(PendingConnectionsServer):
             if len(self.free_peers) == 0:
                 peer = None  # FIXME
                 #                peer = self.peer_keeper.getRandomKnownNode()
-                if peer is None or peer.nodeId in self.peers:
+                if peer is None or peer.node_id in self.peers:
                     if time.time() - self.last_peers_request > 2:
                         self.last_peers_request = time.time()
                         for p in self.peers.values():
                             p.send_get_peers()
                 else:
-                    self.try_to_add_peer({"id": peer.nodeId, "address": peer.ip, "port": peer.port,
+                    self.try_to_add_peer({"id": peer.node_id, "address": peer.ip, "port": peer.port,
                                           "node": peer.node_info})
                 break
 

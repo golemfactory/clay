@@ -14,7 +14,7 @@ from  examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 from examples.gnr.RenderingEnvironment import LuxRenderEnvironment
 from examples.gnr.RenderingDirManager import getTestTaskPath
 from examples.gnr.task.ImgRepr import loadImg, blend
-from  examples.gnr.task.GNRTask import GNROptions, checkSubtaskIdWrapper
+from  examples.gnr.task.GNRTask import GNROptions, checkSubtask_idWrapper
 from  examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
 from examples.gnr.task.SceneFileEditor import regenerateLuxFile
 from examples.gnr.ui.LuxRenderDialog import LuxRenderDialog
@@ -82,7 +82,7 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
         mainSceneDir = os.path.dirname(self.taskDefinition.mainSceneFile)
 
         luxTask = LuxTask( self.client_id,
-                            self.taskDefinition.taskId,
+                            self.taskDefinition.task_id,
                             mainSceneDir,
                             self.taskDefinition.mainSceneFile,
                             self.taskDefinition.mainProgramFile,
@@ -110,7 +110,7 @@ class LuxTask(RenderingTask):
     #######################
     def __init__(  self,
                     client_id,
-                    taskId,
+                    task_id,
                     mainSceneDir,
                     mainSceneFile,
                     mainProgramFile,
@@ -133,7 +133,7 @@ class LuxTask(RenderingTask):
                     returnPort = 0,
                     keyId = ""):
 
-        RenderingTask.__init__(self, client_id, taskId, returnAddress, returnPort, keyId,
+        RenderingTask.__init__(self, client_id, task_id, returnAddress, returnPort, keyId,
                                  LuxRenderEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                                  mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                                  totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
@@ -250,26 +250,26 @@ class LuxTask(RenderingTask):
         return "startTask: {}, outfilebasename: {}, sceneFileSrc: {}".format(l['startTask'], l['outfilebasename'], l['sceneFileSrc'])
 
     #######################
-    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
-        tmpDir = dir_manager.getTaskTemporaryDir(self.header.taskId, create = False)
+    def computationFinished(self, subtask_id, taskResult, dir_manager = None, resultType = 0):
+        tmpDir = dir_manager.getTaskTemporaryDir(self.header.task_id, create = False)
         self.tmpDir = tmpDir
 
         trFiles = self.loadTaskResults(taskResult, resultType, tmpDir)
 
         if len(taskResult) > 0:
-            numStart = self.subTasksGiven[ subtaskId ][ 'startTask' ]
-            self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
+            numStart = self.subTasksGiven[ subtask_id ][ 'startTask' ]
+            self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished
             for trFile in trFiles:
                 _, ext = os.path.splitext(trFile)
                 if ext == '.flm':
                     self.collectedFileNames[ numStart ] = trFile
                     self.numTasksReceived += 1
-                    self.countingNodes[ self.subTasksGiven[ subtaskId ][ 'client_id' ] ] = 1
+                    self.countingNodes[ self.subTasksGiven[ subtask_id ][ 'client_id' ] ] = 1
                 else:
-                    self.subTasksGiven[ subtaskId ][ 'previewFile' ] = trFile
+                    self.subTasksGiven[ subtask_id ][ 'previewFile' ] = trFile
                     self._updatePreview(trFile, numStart)
         else:
-            self._markSubtaskFailed(subtaskId)
+            self._markSubtaskFailed(subtask_id)
 
         if self.numTasksReceived == self.totalTasks:
             self.__generateFinalFLM()
@@ -348,11 +348,11 @@ class LuxTask(RenderingTask):
         img.save(self.previewFilePath, "BMP")
 
     #######################
-    @checkSubtaskIdWrapper
-    def _removeFromPreview(self, subtaskId):
+    @checkSubtask_idWrapper
+    def _removeFromPreview(self, subtask_id):
         previewFiles = []
         for subId, task in self.subTasksGiven.iteritems():
-            if subId != subtaskId and task['status'] == 'Finished' and 'previewFile' in task:
+            if subId != subtask_id and task['status'] == 'Finished' and 'previewFile' in task:
                 previewFiles.append(task['previewFile'])
 
         self.previewFilePath = None

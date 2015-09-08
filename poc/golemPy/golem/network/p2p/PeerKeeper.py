@@ -119,7 +119,7 @@ class PeerKeeper:
                 if peerId:
                     self.sessionsToEnd.append(peerId)
                 if replacement:
-                    self.add_peer(replacement.nodeKey, replacement.nodeId,  replacement.ip, replacement.port,
+                    self.add_peer(replacement.nodeKey, replacement.node_id,  replacement.ip, replacement.port,
                                  replacement.node_info)
 
                 del self.expectedPongs[peer_key_id]
@@ -165,8 +165,8 @@ class PeerKeeper:
 
 class PeerInfo:
     #############################
-    def __init__(self, nodeId, nodeKey, ip, port, node_info):
-        self.nodeId = nodeId
+    def __init__(self, node_id, nodeKey, ip, port, node_info):
+        self.node_id = node_id
         self.nodeKey = nodeKey
         self.nodeKeyId = long(nodeKey, 16)
         self.ip = ip
@@ -179,7 +179,7 @@ class PeerInfo:
 
     #############################
     def __str__(self):
-        return self.nodeId
+        return self.node_id
 
 ##########################################################
 
@@ -211,9 +211,9 @@ class KBucket:
     def removeNode(self, nodeKeyId):
         for node in self.nodes:
             if node.nodeKeyId == nodeKeyId:
-                nodeId = node.nodeId
+                node_id = node.node_id
                 self.nodes.remove(node)
-                return nodeId
+                return node_id
         return None
 
     #############################

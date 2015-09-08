@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 ##############################################
 class InfoTaskDefinition:
     def __init__(self):
-        self.taskId = ""
+        self.task_id = ""
 
         self.fullTaskTimeout    = 0
         self.subtask_timeout     = 0
@@ -31,7 +31,7 @@ class InfoTaskBuilder(GNRTaskBuilder):
             srcCode = f.read()
         return InfoTask(   srcCode,
                             self.client_id,
-                            self.taskDefinition.taskId,
+                            self.taskDefinition.task_id,
                             "",
                             0,
                             "",
@@ -51,7 +51,7 @@ class InfoTask(GNRTask):
     def __init__(self,
                   srcCode,
                   client_id,
-                  taskId,
+                  task_id,
                   ownerAddress,
                   ownerPort,
                   ownerKeyId,
@@ -65,7 +65,7 @@ class InfoTask(GNRTask):
                   iterations):
 
 
-        GNRTask.__init__(self, srcCode, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+        GNRTask.__init__(self, srcCode, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment,
                             ttl, subtaskTtl, resourceSize, estimatedMemory)
 
         self.totalTasks = iterations
@@ -80,9 +80,9 @@ class InfoTask(GNRTask):
     #######################
     def queryExtraData(self, perfIndex, num_cores, client_id = None):
         ctd = ComputeTaskDef()
-        ctd.taskId = self.header.taskId
+        ctd.task_id = self.header.task_id
         hash = "{}".format(random.getrandbits(128))
-        ctd.subtaskId = hash
+        ctd.subtask_id = hash
         ctd.extraData = {
                           "startTask" : self.lastTask,
                           "endTask": self.lastTask + 1 }
@@ -98,7 +98,7 @@ class InfoTask(GNRTask):
         return ctd
 
     #######################
-    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
+    def computationFinished(self, subtask_id, taskResult, dir_manager = None, resultType = 0):
         if resultType != result_types['data']:
             logger.error("Only data result format supported")
             return
@@ -110,5 +110,5 @@ class InfoTask(GNRTask):
             logger.error("Error while interpreting results: {}".format(str(ex)))
 
     #######################
-    def prepare_resourceDelta(self, taskId, resourceHeader):
+    def prepare_resourceDelta(self, task_id, resourceHeader):
         return None

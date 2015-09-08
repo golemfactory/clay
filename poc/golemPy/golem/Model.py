@@ -23,32 +23,32 @@ class Database:
     def createDatabase(self):
         db.create_tables([Node, Bank, LocalRank, GlobalRank, NeighbourLocRank], safe=True)
 
-    def checkNode(self, nodeId):
+    def checkNode(self, node_id):
         with db.transaction():
-            nodes = [ n for n in Node.select().where(Node.nodeId == nodeId)]
+            nodes = [ n for n in Node.select().where(Node.node_id == node_id)]
             if len(nodes) == 0:
-                Node.create(nodeId = nodeId)
-            bank = [ n for n in Bank.select().where(Bank.nodeId == nodeId)]
+                Node.create(node_id = node_id)
+            bank = [ n for n in Bank.select().where(Bank.node_id == node_id)]
             if len(bank) == 0:
-                Bank.create(nodeId = nodeId)
+                Bank.create(node_id = node_id)
 
 class BaseModel(Model):
     class Meta:
         database = db
 
 class Node(BaseModel):
-    nodeId = CharField(primary_key=True)
+    node_id = CharField(primary_key=True)
     created_date = DateTimeField(default = datetime.datetime.now)
     modified_date = DateTimeField(default = datetime.datetime.now)
 
 class Bank(BaseModel):
-    nodeId = ForeignKeyField(Node, related_name='has', unique=True)
+    node_id = ForeignKeyField(Node, related_name='has', unique=True)
     val = FloatField(default = START_BUDGET)
     created_date = DateTimeField(default = datetime.datetime.now)
     modified_date = DateTimeField(default = datetime.datetime.now)
 
 class LocalRank(BaseModel):
-    nodeId = CharField(unique=True)
+    node_id = CharField(unique=True)
     positiveComputed = FloatField(default = 0.0)
     negativeComputed = FloatField(default = 0.0)
     wrongComputed = FloatField(default = 0.0)
@@ -62,7 +62,7 @@ class LocalRank(BaseModel):
     modified_date = DateTimeField(default = datetime.datetime.now)
 
 class GlobalRank(BaseModel):
-    nodeId = CharField(unique=True)
+    node_id = CharField(unique=True)
     requestingTrustValue = FloatField(default = 0.0)
     computingTrustValue = FloatField(default = 0.0)
     gossipWeightComputing = FloatField(default = 0.0)
@@ -71,7 +71,7 @@ class GlobalRank(BaseModel):
     modified_date = DateTimeField(default = datetime.datetime.now)
 
 class NeighbourLocRank(BaseModel):
-    nodeId = CharField()
+    node_id = CharField()
     aboutNodeId = CharField()
     requestingTrustValue = FloatField(default = 0.0)
     computingTrustValue = FloatField(default = 0.0)
@@ -79,6 +79,6 @@ class NeighbourLocRank(BaseModel):
     modified_date = DateTimeField(default = datetime.datetime.now)
 
     class Meta:
-        primary_key = CompositeKey('nodeId', 'aboutNodeId')
+        primary_key = CompositeKey('node_id', 'aboutNodeId')
 
 

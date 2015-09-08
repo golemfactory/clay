@@ -61,8 +61,8 @@ class RayTracingTask(Task):
         self.splitIndex += 1
 
     #######################
-    def computationFinished(self, subtaskId, taskResult, env = None):
-        print "Receive computed task id:{} \n result:{}".format(self.taskHeader.taskId, taskResult)
+    def computationFinished(self, subtask_id, taskResult, env = None):
+        print "Receive computed task id:{} \n result:{}".format(self.taskHeader.task_id, taskResult)
 
 TIMESLC  = 45.0
 TIMEOUT  = 100000.0
@@ -188,10 +188,10 @@ class VRayTracingTask(Task):
         pass
 
     #######################
-    def computationFinished(self, subtaskId, taskResult, env = None):
+    def computationFinished(self, subtask_id, taskResult, env = None):
         #dest = RenderTaskDesc(0, extraData[ "x" ], extraData[ "y" ], extraData[ "w" ], extraData[ "h" ], extraData[ "num_pixels" ] ,extraData[ "num_samples" ])
         #res = RenderTaskResult(dest, taskResult)
-        #self.taskableRenderer.taskFinished(res)
+        #self.taskableRenderer.task_finished(res)
         #if self.taskableRenderer.isFinished():
         #    VRayTracingTask.__save_image(self.fileName + ".ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples) #FIXME: change file name here
         pass
@@ -303,9 +303,9 @@ class PbrtRenderTask(Task):
         pass
 
     #######################
-    def computationFinished(self, subtaskId, taskResult, env = None):
+    def computationFinished(self, subtask_id, taskResult, env = None):
 
-        tmpDir = env.getTaskTemporaryDir(self.header.taskId)
+        tmpDir = env.getTaskTemporaryDir(self.header.task_id)
 
         if len(taskResult) > 0:
             for trp in taskResult:
@@ -319,7 +319,7 @@ class PbrtRenderTask(Task):
                 
 
         if self.numTasksReceived == self.totalTasks:
-            self.collector.finalize().save("{}.png".format(os.path.join(env.getTaskOutputDir(self.header.taskId), "test")), "PNG")
+            self.collector.finalize().save("{}.png".format(os.path.join(env.getTaskOutputDir(self.header.task_id), "test")), "PNG")
 
     #######################
     def getTotalTasks(self):
@@ -346,10 +346,10 @@ class PbrtRenderTask(Task):
         return float(self.lastTask) / self.totalTasks
 
     #######################
-    def prepare_resourceDelta(self, subtaskId, taskId, resourceHeader):
-        if subtaskId in self.subTasksGiven:
-            dirName = os.path.join("res", self.header.client_id, self.header.taskId, "resources")
-            tmpDir = os.path.join("res", self.header.client_id, self.header.taskId, "tmp")
+    def prepare_resourceDelta(self, subtask_id, task_id, resourceHeader):
+        if subtask_id in self.subTasksGiven:
+            dirName = os.path.join("res", self.header.client_id, self.header.task_id, "resources")
+            tmpDir = os.path.join("res", self.header.client_id, self.header.task_id, "tmp")
 
             if os.path.exists(dirName):
                 return prepareDeltaZip(dirName, resourceHeader, tmpDir)

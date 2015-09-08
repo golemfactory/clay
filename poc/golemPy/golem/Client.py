@@ -134,7 +134,7 @@ class GolemClientEventListener:
         pass
 
     ############################
-    def taskUpdated(self, taskId):
+    def taskUpdated(self, task_id):
         pass
 
     ############################
@@ -148,13 +148,13 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
         self.client = client
 
     #######################
-    def taskStatusUpdated(self, taskId):
+    def taskStatusUpdated(self, task_id):
         for l in self.client.listeners:
-            l.taskUpdated(taskId)
+            l.taskUpdated(task_id)
 
     #######################
-    def taskFinished(self, taskId):
-        self.client.taskFinished(taskId)
+    def task_finished(self, task_id):
+        self.client.task_finished(task_id)
 
 class Client:
 
@@ -251,7 +251,7 @@ class Client:
         self.task_server.task_manager.addNewTask(task)
         if self.config_desc.use_distributed_resource_management:
             self.get_resource_peers()
-            resFiles = self.resource_server.add_files_to_send(task.taskResources, task.header.taskId, self.config_desc.dist_res_num)
+            resFiles = self.resource_server.add_files_to_send(task.taskResources, task.header.task_id, self.config_desc.dist_res_num)
             task.setResFiles(resFiles)
 
     ############################
@@ -259,12 +259,12 @@ class Client:
         self.p2pservice.send_get_resource_peers()
 
     ############################
-    def taskResourcesSend(self, taskId):
-        self.task_server.task_manager.resourcesSend(taskId)
+    def taskResourcesSend(self, task_id):
+        self.task_server.task_manager.resourcesSend(task_id)
 
     ############################
-    def taskResourcesCollected(self, taskId):
-        self.task_server.task_computer.task_resource_collected(taskId)
+    def taskResourcesCollected(self, task_id):
+        self.task_server.task_computer.task_resource_collected(task_id)
 
     ############################
     def setResourcePort (self, resource_port):
@@ -272,29 +272,29 @@ class Client:
         self.p2pservice.set_resource_peer(self.node.prvAddr, self.resource_port)
 
     ############################
-    def abortTask(self, taskId):
-        self.task_server.task_manager.abortTask(taskId)
+    def abortTask(self, task_id):
+        self.task_server.task_manager.abortTask(task_id)
 
     ############################
-    def restartTask(self, taskId):
-        self.task_server.task_manager.restartTask(taskId)
+    def restartTask(self, task_id):
+        self.task_server.task_manager.restartTask(task_id)
 
     ############################
-    def restartSubtask(self, subtaskId):
-        self.task_server.task_manager.restartSubtask(subtaskId)
+    def restartSubtask(self, subtask_id):
+        self.task_server.task_manager.restartSubtask(subtask_id)
 
     ############################
-    def pauseTask(self, taskId):
-        self.task_server.task_manager.pauseTask(taskId)
+    def pauseTask(self, task_id):
+        self.task_server.task_manager.pauseTask(task_id)
 
     ############################
-    def resumeTask(self, taskId):
-        self.task_server.task_manager.resumeTask(taskId)
+    def resumeTask(self, task_id):
+        self.task_server.task_manager.resumeTask(task_id)
 
     ############################
-    def deleteTask(self, taskId):
-        self.task_server.remove_task_header(taskId)
-        self.task_server.task_manager.deleteTask(taskId)
+    def deleteTask(self, task_id):
+        self.task_server.remove_task_header(task_id)
+        self.task_server.task_manager.deleteTask(task_id)
 
     ############################
     def getId(self):
@@ -305,12 +305,12 @@ class Client:
         return self.config_desc.root_path
 
     ############################
-    def increaseTrust(self, nodeId, stat, mod = 1.0):
-        self.ranking.increaseTrust(nodeId, stat, mod)
+    def increaseTrust(self, node_id, stat, mod = 1.0):
+        self.ranking.increaseTrust(node_id, stat, mod)
 
     ############################
-    def decreaseTrust(self, nodeId, stat, mod = 1.0):
-        self.ranking.decreaseTrust(nodeId, stat, mod)
+    def decreaseTrust(self, node_id, stat, mod = 1.0):
+        self.ranking.decreaseTrust(node_id, stat, mod)
 
     ############################
     def getNeighboursDegree(self):
@@ -321,8 +321,8 @@ class Client:
         return self.p2pservice.suggested_address.get(keyId)
 
     ############################
-    def want_to_start_task_session(self, keyId, nodeId, conn_id):
-        self.p2pservice.want_to_start_task_session(keyId, nodeId, conn_id)
+    def want_to_start_task_session(self, keyId, node_id, conn_id):
+        self.p2pservice.want_to_start_task_session(keyId, node_id, conn_id)
 
     ############################
     def inform_about_task_nat_hole(self, keyId, rvKeyId, addr, port, ansConnId):
@@ -334,28 +334,28 @@ class Client:
 
     #TRANSACTION SYSTEM OPERATIONS
     ############################
-    def accept_result(self, taskId, subtaskId, priceMod, accountInfo):
-        self.transactionSystem.addPaymentInfo(taskId, subtaskId, priceMod, accountInfo)
+    def accept_result(self, task_id, subtask_id, price_mod, account_info):
+        self.transactionSystem.add_payment_info(task_id, subtask_id, price_mod, account_info)
 
     ############################
-    def taskRewardPaid(self, taskId, price):
-        return self.transactionSystem.taskRewardPaid(taskId, price)
+    def task_reward_paid(self, task_id, price):
+        return self.transactionSystem.task_reward_paid(task_id, price)
 
     ############################
-    def taskRewardPayment_failure(self, taskId, price):
-        return self.transactionSystem.taskRewardPayment_failure(taskId, price)
+    def task_reward_payment_failure(self, task_id, price):
+        return self.transactionSystem.task_reward_payment_failure(task_id, price)
 
     ############################
-    def global_pay_for_task(self, taskId, payments):
-        self.transactionSystem.global_pay_for_task(taskId, payments)
+    def global_pay_for_task(self, task_id, payments):
+        self.transactionSystem.global_pay_for_task(task_id, payments)
 
     ############################
-    def getReward(self, reward):
-        self.transactionSystem.getReward(reward)
+    def get_reward(self, reward):
+        self.transactionSystem.get_reward(reward)
 
     ############################
-    def getNewPaymentsTasks(self):
-        return self.transactionSystem.getNewPaymentsTasks()
+    def get_new_payments_tasks(self):
+        return self.transactionSystem.get_new_payments_tasks()
 
     #CLIENT CONFIGURATION
     ############################
@@ -376,8 +376,8 @@ class Client:
         self.nodesManagerClient = nodesManagerClient
 
     ############################
-    def change_timeouts(self, taskId, fullTaskTimeout, subtask_timeout, minSubtaskTime):
-        self.task_server.change_timeouts(taskId, fullTaskTimeout, subtask_timeout, minSubtaskTime)
+    def change_timeouts(self, task_id, fullTaskTimeout, subtask_timeout, minSubtaskTime):
+        self.task_server.change_timeouts(task_id, fullTaskTimeout, subtask_timeout, minSubtaskTime)
 
     ############################
     def unregisterListener(self, listener):
@@ -389,12 +389,12 @@ class Client:
         logger.info("listener {} not registered".format(listener))
 
     ############################
-    def querryTaskState(self, taskId):
-        return self.task_server.task_manager.querryTaskState(taskId)
+    def querryTaskState(self, task_id):
+        return self.task_server.task_manager.querryTaskState(task_id)
 
     ############################
-    def pull_resources(self, taskId, listFiles):
-        self.resource_server.add_files_to_get(listFiles, taskId)
+    def pull_resources(self, task_id, listFiles):
+        self.resource_server.add_files_to_get(listFiles, task_id)
         self.get_resource_peers()
 
     ############################
@@ -447,8 +447,8 @@ class Client:
         self.environmentsManager.changeAcceptTasks(envId, state)
 
     ############################
-    def get_computing_trust(self, nodeId):
-        return self.ranking.get_computing_trust(nodeId)
+    def get_computing_trust(self, node_id):
+        return self.ranking.get_computing_trust(node_id)
 
     ############################
     def send_gossip(self, gossip, send_to):
@@ -459,8 +459,8 @@ class Client:
         return self.p2pservice.send_stop_gossip()
 
     ############################
-    def getRequestingTrust(self, nodeId):
-        return self.ranking.getRequestingTrust(nodeId)
+    def getRequestingTrust(self, node_id):
+        return self.ranking.getRequestingTrust(node_id)
 
     ############################
     def collectGossip(self):
@@ -475,8 +475,8 @@ class Client:
         return self.p2pservice.pop_neighbours_loc_ranks()
 
     ############################
-    def push_local_rank(self, nodeId, locRank):
-        self.p2pservice.push_local_rank(nodeId, locRank)
+    def push_local_rank(self, node_id, locRank):
+        self.p2pservice.push_local_rank(node_id, locRank)
 
     ############################
     def getPluginPort(self):
@@ -487,8 +487,8 @@ class Client:
         return self.config_desc.eth_account
 
     ############################
-    def taskFinished(self, taskId):
-        self.transactionSystem.taskFinished(taskId)
+    def task_finished(self, task_id):
+        self.transactionSystem.task_finished(task_id)
 
     ############################
     def __tryChangeToNumber(self, oldValue, newValue, toInt = False, toFloat = False, name="Config"):

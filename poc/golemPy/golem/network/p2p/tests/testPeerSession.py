@@ -72,8 +72,8 @@ class P2PService():
     def try_to_add_peer(self, peer):
         self.peersToAdd.add(peer[ "id" ])
 
-    def remove_task_header(self, taskId):
-        self.taskHeaderToRemove = taskId
+    def remove_task_header(self, task_id):
+        self.taskHeaderToRemove = task_id
 
 class TestPeerSession(unittest.TestCase):
     def setUp(self):

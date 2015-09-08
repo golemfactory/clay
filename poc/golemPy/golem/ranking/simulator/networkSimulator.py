@@ -49,16 +49,16 @@ class NetworkSimulator:
         num =  len(self.nodes) + 1
         return "node{}".format(str(num).zfill(3))
 
-    def getDegree(self, nodeId):
-        return len(self.nodes[ nodeId ])
+    def getDegree(self, node_id):
+        return len(self.nodes[ node_id ])
 
-    def getAvgNeighboursDegree(self, nodeId):
+    def getAvgNeighboursDegree(self, node_id):
         sD = 0
-        if len(self.nodes[ nodeId ]) == 0:
+        if len(self.nodes[ node_id ]) == 0:
             return 0.0
-        for n in self.nodes[nodeId]:
+        for n in self.nodes[node_id]:
             sD += len(self.nodes[ n ])
-        return float(sD) / len(self.nodes[ nodeId ])
+        return float(sD) / len(self.nodes[ node_id ])
 
     def minDegree(self):
         if len (self.nodes) == 0:

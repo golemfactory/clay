@@ -25,8 +25,8 @@ class CommonConfig:
 ############################################################
 class NodeConfig:
     ##############################
-    def __init__(self, nodeId, environments = []):
-        self._section = "Node {}".format(nodeId)
+    def __init__(self, node_id, environments = []):
+        self._section = "Node {}".format(node_id)
 
         for envId, (envName, supported) in environments.iteritems():
             ConfigEntry.create_property(self.section(), envId.lower(), int(supported), self, envName)
@@ -40,9 +40,9 @@ class EnvironmentsConfig:
 
     ##############################
     @classmethod
-    def loadConfig(cls, nodeId, environments, cfgFile = CONFIG_FILENAME):
+    def loadConfig(cls, node_id, environments, cfgFile = CONFIG_FILENAME):
 
-        cfg  = SimpleConfig(CommonConfig(), NodeConfig(nodeId, environments), cfgFile, refresh = False, check_uid = False)
+        cfg  = SimpleConfig(CommonConfig(), NodeConfig(node_id, environments), cfgFile, refresh = False, check_uid = False)
 
         return EnvironmentsConfig(cfg)
 

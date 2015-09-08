@@ -180,9 +180,9 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
     #############################
     def __taskTableRowClicked(self, row):
         if row < self.gui.ui.taskTableWidget.rowCount():
-            taskId = self.gui.ui.taskTableWidget.item(row, 0).text()
-            taskId = "{}".format(taskId)
-            self.updateTaskAdditionalInfo(taskId)
+            task_id = self.gui.ui.taskTableWidget.item(row, 0).text()
+            task_id = "{}".format(task_id)
+            self.updateTaskAdditionalInfo(task_id)
 
     #############################
     def __showNewTaskDialogClicked(self):

@@ -1,4 +1,4 @@
-from examples.gnr.task.GNRTask import GNRTaskBuilder, GNRTask, checkSubtaskIdWrapper
+from examples.gnr.task.GNRTask import GNRTaskBuilder, GNRTask, checkSubtask_idWrapper
 from golem.environments.Environment import Environment
 from golem.task.TaskBase import ComputeTaskDef
 from golem.task.TaskState import SubtaskStatus
@@ -22,7 +22,7 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
 
         return PythonGNRTask(   srcCode,
                             self.client_id,
-                            self.taskDefinition.taskId,
+                            self.taskDefinition.task_id,
                             "",
                             0,
                             "",
@@ -37,10 +37,10 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
 
 class PythonGNRTask(GNRTask):
     #####################
-    def __init__(self, srcCode, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+    def __init__(self, srcCode, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment,
                   ttl, subtaskTtl, resourceSize, estimatedMemory, totalTasks, root_path):
 
-        GNRTask.__init__(self, srcCode, client_id, taskId,ownerAddress, ownerPort, ownerKeyId, environment, ttl, subtaskTtl,
+        GNRTask.__init__(self, srcCode, client_id, task_id,ownerAddress, ownerPort, ownerKeyId, environment, ttl, subtaskTtl,
                   resourceSize, estimatedMemory)
 
         self.totalTasks = totalTasks
@@ -50,9 +50,9 @@ class PythonGNRTask(GNRTask):
 
     def queryExtraData(self, perfIndex, num_cores = 1, client_id = None):
         ctd = ComputeTaskDef()
-        ctd.taskId = self.header.taskId
+        ctd.task_id = self.header.task_id
         hash = "{}".format(random.getrandbits(128))
-        ctd.subtaskId = hash
+        ctd.subtask_id = hash
         ctd.extraData = { "startTask" : self.lastTask,
                           "endTask": self.lastTask + 1 }
         ctd.returnAddress = self.header.taskOwnerAddress
@@ -75,8 +75,8 @@ class PythonGNRTask(GNRTask):
         return "Generic Python Task"
 
     #######################
-    @checkSubtaskIdWrapper
-    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
-        self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
+    @checkSubtask_idWrapper
+    def computationFinished(self, subtask_id, taskResult, dir_manager = None, resultType = 0):
+        self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished
         self.numTasksReceived += 1
 

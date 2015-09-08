@@ -21,7 +21,7 @@ class NodeTasksWidget(QtGui.QWidget):
         self.localTasksTableData = []
 
         self.chunkIdToRowNumMapping = {}
-        self.taskIdToRowNumMapping = {}
+        self.task_idToRowNumMapping = {}
 
         self.currNodeDataState = None
 
@@ -44,9 +44,9 @@ class NodeTasksWidget(QtGui.QWidget):
         self.currNodeDataState = nodeDataState
 
         # remove old tasks and chunks
-        for t in self.taskIdToRowNumMapping:
+        for t in self.task_idToRowNumMapping:
             if t not in nodeDataState.localTasksStateData:
-                rowToRemove = self.taskIdToRowNumMapping[ t ]
+                rowToRemove = self.task_idToRowNumMapping[ t ]
                 del self.localTasksTableData[ rowToRemove ]
                 self.localTasksTable.removeRow(rowToRemove)
                 
@@ -63,7 +63,7 @@ class NodeTasksWidget(QtGui.QWidget):
         # register new rows
 
         for t in nodeDataState.localTasksStateData:
-            if t not in self.taskIdToRowNumMapping:
+            if t not in self.task_idToRowNumMapping:
                 self.localTasksTableData.append(self.__createRow(t, self.localTasksTable, True))
                 self.__remapTaskIdRowMapping()
 
@@ -75,7 +75,7 @@ class NodeTasksWidget(QtGui.QWidget):
 
         # update view
         for t in nodeDataState.localTasksStateData:
-            self.__updateExistingRowView(self.localTasksTableData[ self.taskIdToRowNumMapping[ t ] ], t, nodeDataState.localTasksStateData[ t ][ "taskProgress" ])
+            self.__updateExistingRowView(self.localTasksTableData[ self.task_idToRowNumMapping[ t ] ], t, nodeDataState.localTasksStateData[ t ][ "taskProgress" ])
 
         for t in nodeDataState.remoteChunksStateData:
             self.__updateExistingRowView(self.remoteChunksTableData[ self.chunkIdToRowNumMapping[ t ] ], t, nodeDataState.remoteChunksStateData[ t ][ "chunkProgress" ])
@@ -125,12 +125,12 @@ class NodeTasksWidget(QtGui.QWidget):
     ########################
     def __remapTaskIdRowMapping(self):
 
-        self.taskIdToRowNumMapping.clear()
+        self.task_idToRowNumMapping.clear()
 
         idx = 0
         for lttData in self.localTasksTableData:
             uid = str(lttData.uid.text())
-            self.taskIdToRowNumMapping[ uid ] = idx
+            self.task_idToRowNumMapping[ uid ] = idx
             idx += 1
 
     ########################
@@ -168,8 +168,8 @@ class NodeTasksWidget(QtGui.QWidget):
         return p
 
     ########################
-    def __updateExistingRowView(self, rowData, taskId, progress):
-        rowData.uid.setText(taskId)
+    def __updateExistingRowView(self, rowData, task_id, progress):
+        rowData.uid.setText(task_id)
         rowData.progressBar.setProperty("value", int(100.0 * progress))
 
     def __updateDetailedTaksView(self, idx):

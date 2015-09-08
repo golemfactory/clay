@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 ##############################################
 class UpdateOtherGolemsTaskDefinition:
     def __init__(self):
-        self.taskId = ""
+        self.task_id = ""
 
         self.fullTaskTimeout    = 0
         self.subtask_timeout     = 0
@@ -48,7 +48,7 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
 
         return UpdateOtherGolemsTask(   srcCode,
                             self.client_id,
-                            self.taskDefinition.taskId,
+                            self.taskDefinition.task_id,
                             "",
                             0,
                             "",
@@ -68,7 +68,7 @@ class UpdateOtherGolemsTask(GNRTask):
     def __init__(self,
                   srcCode,
                   client_id,
-                  taskId,
+                  task_id,
                   ownerAddress,
                   ownerPort,
                   ownerKeyId,
@@ -82,7 +82,7 @@ class UpdateOtherGolemsTask(GNRTask):
                   totalTasks):
 
 
-        GNRTask.__init__(self, srcCode, client_id, taskId, ownerAddress, ownerPort, ownerKeyId, environment,
+        GNRTask.__init__(self, srcCode, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment,
                             ttl, subtaskTtl, resourceSize, estimatedMemory)
 
         self.totalTasks = totalTasks
@@ -104,9 +104,9 @@ class UpdateOtherGolemsTask(GNRTask):
             return None
 
         ctd = ComputeTaskDef()
-        ctd.taskId = self.header.taskId
+        ctd.task_id = self.header.task_id
         hash = "{}".format(random.getrandbits(128))
-        ctd.subtaskId = hash
+        ctd.subtask_id = hash
         ctd.extraData = { "startTask" : self.lastTask,
                           "endTask": self.lastTask + 1 }
         ctd.returnAddress = self.header.taskOwnerAddress
@@ -126,5 +126,5 @@ class UpdateOtherGolemsTask(GNRTask):
         return ctd
 
     #######################
-    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
-        self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
+    def computationFinished(self, subtask_id, taskResult, dir_manager = None, resultType = 0):
+        self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished
