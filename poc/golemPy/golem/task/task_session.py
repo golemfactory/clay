@@ -15,7 +15,7 @@ from golem.network.transport.tcp_network import MidAndFilesProtocol, EncryptFile
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.task.TaskBase import result_types
 from golem.resource.Resource import decompressDir
-from golem.transactions.Ethereum.EthereumPaymentsKeeper import EthAccountInfo
+from golem.transactions.Ethereum.ethereum_payments_keeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 

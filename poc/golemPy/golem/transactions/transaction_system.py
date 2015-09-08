@@ -1,7 +1,7 @@
 import logging
 import datetime
 
-from Ethereum.EthereumPaymentsKeeper import EthereumPaymentsKeeper
+from Ethereum.ethereum_payments_keeper import EthereumPaymentsKeeper
 from payments_keeper import PaymentInfo
 from golem.Model import Bank
 from golem.core.variables import PRICE_BASE

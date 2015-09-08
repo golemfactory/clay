@@ -5,7 +5,7 @@ from sha3 import sha3_256
 
 from golem.core.variables import CONTRACT_ID, PAY_HASH
 
-from EthereumAbi import encode_abi
+from ethereum_abi import encode_abi
 
 logger = logging.getLogger(__name__)
 

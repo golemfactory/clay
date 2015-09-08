@@ -4,7 +4,7 @@ import os
 
 sys.path.append(os.environ.get('GOLEM'))
 
-from golem.transactions.Ethereum.EthereumAbi import encode_abi
+from golem.transactions.Ethereum.ethereum_abi import encode_abi
 
 class TestEthereumAbi(unittest.TestCase):
     def testEncodeAbi(self):

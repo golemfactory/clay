@@ -22,7 +22,7 @@
 
 import re
 from rlp.utils import decode_hex
-from EthereumUtils import to_string, is_numeric, is_string, big_endian_to_int, zpad, encode_int, \
+from ethereum_utils import to_string, is_numeric, is_string, big_endian_to_int, zpad, encode_int, \
     ceil32, to_string_for_regexp
 import ast
 

@@ -24,7 +24,7 @@ from golem.resource.ResourceServer import ResourceServer
 from golem.resource.DirManager import DirManager
 from golem.ranking.Ranking import Ranking, RankingDatabase
 
-from golem.transactions.Ethereum.EthereumTransactionSystem import EthereumTransactionSystem
+from golem.transactions.Ethereum.ethereum_transaction_system import EthereumTransactionSystem
 
 logger = logging.getLogger(__name__)
 
