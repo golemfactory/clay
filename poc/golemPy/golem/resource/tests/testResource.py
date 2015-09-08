@@ -8,7 +8,7 @@ sys.path.append(os.environ.get('GOLEM'))
 
 path = 'C:\golem_test\\test3'
 from golem.resource.Resource import TaskResourceHeader, removeDisallowedFilenameChars, TaskResource
-from golem.resource.DirManager import DirManager
+from golem.resource.dir_manager import DirManager
 
 class TestTaskResourceHeader(unittest.TestCase):
     def setUp(self):

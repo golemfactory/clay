@@ -7,7 +7,7 @@ import shutil
 sys.path.append(os.environ.get('GOLEM'))
 
 from golem.resource.ResourcesManager import ResourcesManager
-from golem.resource.DirManager import DirManager
+from golem.resource.dir_manager import DirManager
 
 path = 'C:\golem_test\\test2'
 

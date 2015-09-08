@@ -3,7 +3,7 @@ import logging
 
 from golem.manager.NodeStateSnapshot import LocalTaskStateSnapshot
 from golem.task.TaskState import TaskState, TaskStatus, SubtaskStatus, SubtaskState, ComputerState
-from golem.resource.DirManager import DirManager
+from golem.resource.dir_manager import DirManager
 from golem.core.hostaddress import get_external_address
 
 logger = logging.getLogger(__name__)

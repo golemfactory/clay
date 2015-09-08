@@ -21,7 +21,7 @@ from golem.network.transport.message import init_messages
 from golem.ClientConfigDescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.environments.EnvironmentsManager import EnvironmentsManager
 from golem.resource.ResourceServer import ResourceServer
-from golem.resource.DirManager import DirManager
+from golem.resource.dir_manager import DirManager
 from golem.ranking.Ranking import Ranking, RankingDatabase
 
 from golem.transactions.Ethereum.ethereum_transaction_system import EthereumTransactionSystem
