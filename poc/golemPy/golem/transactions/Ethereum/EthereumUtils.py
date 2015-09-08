@@ -35,8 +35,10 @@ int_to_big_endian = lambda x: big_endian_int.serialize(x)
 
 TT256 = 2 ** 256
 
+
 def zpad(x, l):
     return b'\x00' * max(0, l - len(x)) + x
+
 
 def encode_int(v):
     '''encodes an integer into serialization'''
@@ -44,8 +46,10 @@ def encode_int(v):
         raise Exception("Integer invalid or out of range: %r" % v)
     return int_to_big_endian(v)
 
+
 def ceil32(x):
     return x if x % 32 == 0 else x + 32 - (x % 32)
+
 
 def to_string_for_regexp(value):
     return str(value)
