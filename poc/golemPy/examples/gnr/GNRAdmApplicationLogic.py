@@ -42,7 +42,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         taskDefinition.srcFile          = os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/tasks/updateGolem.py"))
         taskDefinition.totalSubtasks    = 100
         taskDefinition.fullTaskTimeout  = 4 * 60 * 60
-        taskDefinition.subtaskTimeout   = 20 * 60
+        taskDefinition.subtask_timeout   = 20 * 60
 
         taskBuilder = UpdateOtherGolemsTaskBuilder(self.client.getId(),
                                           taskDefinition,
@@ -56,13 +56,13 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
 
 
     ######################
-    def sendInfoTask(self, iterations, fullTaskTimeout, subtaskTimeout):
+    def sendInfoTask(self, iterations, fullTaskTimeout, subtask_timeout):
         infoTaskDefinition = InfoTaskDefinition()
         infoTaskDefinition.taskId           = "{}".format(uuid.uuid4())
         infoTaskDefinition.srcFile          = os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/tasks/sendSnapshot.py"))
         infoTaskDefinition.totalSubtasks    = iterations
         infoTaskDefinition.fullTaskTimeout  = fullTaskTimeout
-        infoTaskDefinition.subtaskTimeout   = subtaskTimeout
+        infoTaskDefinition.subtask_timeout   = subtask_timeout
         infoTaskDefinition.manager_address   = self.client.config_desc.manager_address
         infoTaskDefinition.manager_port      = self.client.config_desc.manager_port
 

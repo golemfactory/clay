@@ -52,7 +52,7 @@ class TaskTester:
             self.finishedCallback(False)
 
     #########################
-    def increaseRequestTrust(self, subtaskId):
+    def increase_request_trust(self, subtaskId):
         pass
 
     #########################
@@ -95,7 +95,7 @@ class TaskTester:
             os.makedirs(self.tmpDir)
 
     ###########################
-    def taskComputed(self, taskThread):
+    def task_computed(self, taskThread):
         if taskThread.result:
             res, estMem = taskThread.result
         if taskThread.result and 'data' in res and res['data']:

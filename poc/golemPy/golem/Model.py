@@ -63,8 +63,8 @@ class LocalRank(BaseModel):
 
 class GlobalRank(BaseModel):
     nodeId = CharField(unique=True)
-    requesting_trustValue = FloatField(default = 0.0)
-    computing_trustValue = FloatField(default = 0.0)
+    requestingTrustValue = FloatField(default = 0.0)
+    computingTrustValue = FloatField(default = 0.0)
     gossipWeightComputing = FloatField(default = 0.0)
     gossipWeightRequesting = FloatField(default = 0.0)
     created_date = DateTimeField(default = datetime.datetime.now)
@@ -73,8 +73,8 @@ class GlobalRank(BaseModel):
 class NeighbourLocRank(BaseModel):
     nodeId = CharField()
     aboutNodeId = CharField()
-    requesting_trustValue = FloatField(default = 0.0)
-    computing_trustValue = FloatField(default = 0.0)
+    requestingTrustValue = FloatField(default = 0.0)
+    computingTrustValue = FloatField(default = 0.0)
     created_date = DateTimeField(default = datetime.datetime.now)
     modified_date = DateTimeField(default = datetime.datetime.now)
 

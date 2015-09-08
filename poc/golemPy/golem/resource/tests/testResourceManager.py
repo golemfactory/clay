@@ -18,8 +18,8 @@ class TestResourcesManager(unittest.TestCase):
         if not os.path.isdir(path):
             os.mkdir(path)
 
-        self.dirManager = DirManager(path, 'node2')
-        resPath = self.dirManager.getTaskResourceDir('task2')
+        self.dir_manager = DirManager(path, 'node2')
+        resPath = self.dir_manager.getTaskResourceDir('task2')
 
         file1 = os.path.join(resPath, 'file1')
         file2 = os.path.join(resPath, 'file2')
@@ -37,10 +37,10 @@ class TestResourcesManager(unittest.TestCase):
            shutil.rmtree(path)
 
     def testInit(self):
-         self.assertIsNotNone(ResourcesManager(self.dirManager, 'owner'))
+         self.assertIsNotNone(ResourcesManager(self.dir_manager, 'owner'))
 
     def testGetResourceHeader(self):
-        rm = ResourcesManager(self.dirManager, 'owner')
+        rm = ResourcesManager(self.dir_manager, 'owner')
         header = rm.getResourceHeader('task2')
         self.assertEquals(len(header.filesData), 2)
         self.assertEquals(len(header.subDirHeaders[0].filesData), 1)
@@ -49,7 +49,7 @@ class TestResourcesManager(unittest.TestCase):
         self.assertEquals(len(header2.subDirHeaders), 0)
 
     def testGetResourceDelta(self):
-        rm = ResourcesManager(self.dirManager, 'owner')
+        rm = ResourcesManager(self.dir_manager, 'owner')
         header = rm.getResourceHeader('task2')
         delta = rm.getResourceDelta('task2', header)
         self.assertEquals(len(delta.filesData), 0)
@@ -58,7 +58,7 @@ class TestResourcesManager(unittest.TestCase):
         delta2 = rm.getResourceDelta('task2', header2)
         self.assertEquals(len(delta2.filesData), 2)
         self.assertEquals(len (delta2.subDirResources[0].filesData), 1)
-        resPath = self.dirManager.getTaskResourceDir('task2')
+        resPath = self.dir_manager.getTaskResourceDir('task2')
         file5 = os.path.join(resPath, 'file5')
         open(file5, 'w').close()
         dir1 = os.path.join(resPath, 'dir1')
@@ -78,22 +78,22 @@ class TestResourcesManager(unittest.TestCase):
     #     assert False
     #
     def testGetResourceDir(self):
-        rm = ResourcesManager(self.dirManager, 'owner')
+        rm = ResourcesManager(self.dir_manager, 'owner')
         resDir = rm.getResourceDir('task2')
         self.assertTrue(os.path.isdir(resDir))
-        self.assertEqual(resDir, self.dirManager.getTaskResourceDir('task2'))
+        self.assertEqual(resDir, self.dir_manager.getTaskResourceDir('task2'))
 
     def testGetTemporaryDir(self):
-        rm = ResourcesManager(self.dirManager, 'owner')
+        rm = ResourcesManager(self.dir_manager, 'owner')
         tmpDir = rm.getTemporaryDir('task2')
         self.assertTrue(os.path.isdir(tmpDir))
-        self.assertEqual(tmpDir, self.dirManager.getTaskTemporaryDir('task2'))
+        self.assertEqual(tmpDir, self.dir_manager.getTaskTemporaryDir('task2'))
 
     def testGetOutputDir(self):
-        rm = ResourcesManager(self.dirManager, 'owner')
+        rm = ResourcesManager(self.dir_manager, 'owner')
         outDir = rm.getOutputDir('task2')
         self.assertTrue(os.path.isdir(outDir))
-        self.assertEqual(outDir, self.dirManager.getTaskOutputDir('task2'))
+        self.assertEqual(outDir, self.dir_manager.getTaskOutputDir('task2'))
 
 
     # def testFileDataReceived(self):

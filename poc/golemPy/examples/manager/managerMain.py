@@ -2,8 +2,8 @@ import sys
 import os
 sys.path.append(os.environ.get('GOLEM'))
 
-from tools.UiGen import genUiFiles
-genUiFiles("./../../golem/ui")
+from tools.UiGen import gen_ui_files
+gen_ui_files("./../../golem/ui")
 
 from golem.AppConfig import AppConfig
 from golem.manager.NodesManager import  NodesManager

@@ -12,9 +12,9 @@ sys.path.append('../src/manager/server')
 sys.path.append('../testtasks/minilight/src')
 sys.path.append('../testtasks/pbrt')
 
-from tools.UiGen import genUiFiles
+from tools.UiGen import gen_ui_files
 
-genUiFiles("./../src")
+gen_ui_files("./../src")
 
 from golem.AppConfig import AppConfig
 from golem.manager.NodesManager import  NodesManager

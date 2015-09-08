@@ -5,7 +5,7 @@ class GNRTaskDefinition:
     def __init__(self):
         self.taskId = ""
         self.fullTaskTimeout = 0
-        self.subtaskTimeout     = 0
+        self.subtask_timeout     = 0
         self.minSubtaskTime     = 0
 
         self.resources = set()

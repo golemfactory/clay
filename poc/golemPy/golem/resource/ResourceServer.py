@@ -24,8 +24,8 @@ class ResourceServer(TCPServer):
         self.resourcesToGet = []
         self.resSendIt = 0
         self.peersIt = 0
-        self.dirManager = DirManager(config_desc.root_path, config_desc.client_uid)
-        self.resourceManager = DistributedResourceManager(self.dirManager.getResourceDir())
+        self.dir_manager = DirManager(config_desc.root_path, config_desc.client_uid)
+        self.resource_manager = DistributedResourceManager(self.dir_manager.getResourceDir())
         self.use_ipv6 = use_ipv6
         network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(ResourceSession)),  use_ipv6)
         TCPServer.__init__(self, config_desc, network)
@@ -45,14 +45,14 @@ class ResourceServer(TCPServer):
         TCPServer.start_accepting(self)
 
     def change_resource_dir(self, config_desc):
-        if self.dirManager.root_path == config_desc.root_path:
+        if self.dir_manager.root_path == config_desc.root_path:
             return
-        self.dirManager.root_path = config_desc.root_path
-        self.dirManager.nodeId = config_desc.client_uid
-        self.resourceManager.change_resource_dir(self.dirManager.getResourceDir())
+        self.dir_manager.root_path = config_desc.root_path
+        self.dir_manager.nodeId = config_desc.client_uid
+        self.resource_manager.change_resource_dir(self.dir_manager.getResourceDir())
 
     def get_distributed_resource_root(self):
-        return self.dirManager.getResourceDir()
+        return self.dir_manager.getResourceDir()
 
     def get_peers(self):
         self.client.get_resource_peers()
@@ -60,7 +60,7 @@ class ResourceServer(TCPServer):
     def add_files_to_send(self, files, task_id, num):
         res_files = {}
         for file_ in files:
-            res_files[file_] = self.resourceManager.splitFile(file_)
+            res_files[file_] = self.resource_manager.splitFile(file_)
             for res in res_files[file_]:
                 self.add_resource_to_send(res, num, task_id)
         return res_files
@@ -68,7 +68,7 @@ class ResourceServer(TCPServer):
     def add_files_to_get(self, files, task_id):
         num = 0
         for file_ in files:
-            if not self.resourceManager.check_resource(file_):
+            if not self.resource_manager.check_resource(file_):
                 num += 1
                 self.add_resource_to_get(file_, task_id)
 
@@ -185,14 +185,14 @@ class ResourceServer(TCPServer):
                              key_id=key_id)
 
     def check_resource(self, resource):
-        return self.resourceManager.check_resource(resource)
+        return self.resource_manager.check_resource(resource)
 
     def prepare_resource(self, resource):
-        return self.resourceManager.getResourcePath(resource)
+        return self.resource_manager.getResourcePath(resource)
 
     def resource_downloaded(self, resource, address, port):
         client_id = self.__free_peer(address, port)
-        if not self.resourceManager.check_resource(resource):
+        if not self.resource_manager.check_resource(resource):
             logger.error("Wrong resource downloaded\n")
             if client_id is not None:
                 self.client.decreaseTrust(client_id, RankingStats.resource)
@@ -237,7 +237,7 @@ class ResourceServer(TCPServer):
             self.unpack_delta(os.path.join(dest_dir, dirHeader.dirName), dirHeader, task_id)
 
         for filesData in delta.filesData:
-            self.resourceManager.connectFile(filesData[2], os.path.join(dest_dir, filesData[0]))
+            self.resource_manager.connectFile(filesData[2], os.path.join(dest_dir, filesData[0]))
 
     def remove_session(self, session):
         if session in self.sessions:

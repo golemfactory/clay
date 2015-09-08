@@ -70,7 +70,7 @@ class RenderingTask(GNRTask):
 
         self.fullTaskTimeout        = ttl
         self.header.ttl             = self.fullTaskTimeout
-        self.header.subtaskTimeout  = subtaskTtl
+        self.header.subtask_timeout  = subtaskTtl
 
         self.mainProgramFile        = mainProgramFile
         self.mainSceneFile          = mainSceneFile

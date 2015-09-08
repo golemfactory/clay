@@ -3,20 +3,20 @@ import abc
 
 class TaskHeader:
     #######################
-    def __init__(self, client_id, taskId, taskOwnerAddress, taskOwnerPort, taskOwnerKeyId, environment, taskOwner = None, ttl = 0.0, subtaskTimeout = 0.0, resourceSize = 0, estimatedMemory = 0, minVersion = 1.0):
+    def __init__(self, client_id, taskId, taskOwnerAddress, taskOwnerPort, taskOwnerKeyId, environment, taskOwner = None, ttl = 0.0, subtask_timeout = 0.0, resourceSize = 0, estimatedMemory = 0, min_version = 1.0):
         self.taskId = taskId
         self.taskOwnerKeyId = taskOwnerKeyId
         self.taskOwnerAddress = taskOwnerAddress
         self.taskOwnerPort = taskOwnerPort
         self.taskOwner = taskOwner
-        self.lastChecking = time.time()
+        self.last_checking = time.time()
         self.ttl = ttl
-        self.subtaskTimeout = subtaskTimeout
+        self.subtask_timeout = subtask_timeout
         self.client_id = client_id
         self.resourceSize = resourceSize
         self.environment = environment
         self.estimatedMemory = estimatedMemory
-        self.minVersion = minVersion
+        self.min_version = min_version
 
 class TaskBuilder:
     #######################
@@ -77,7 +77,7 @@ class Task:
 
     #######################
     @abc.abstractmethod
-    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
+    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
         return # Implement in derived class
 
     #######################

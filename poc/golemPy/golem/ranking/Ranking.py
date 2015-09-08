@@ -106,9 +106,9 @@ class RankingDatabase:
     def insertOrUpdateGlobalRank(self, nodeId, compTrust, reqTrust, compWeight, reqWeight):
         try:
             with self.db.transaction():
-                GlobalRank.create(nodeId = nodeId, requesting_trustValue = reqTrust, computing_trustValue = compTrust, gossipWeightComputing = compWeight, gossipWeightRequesting = reqWeight)
+                GlobalRank.create(nodeId = nodeId, requestingTrustValue = reqTrust, computingTrustValue = compTrust, gossipWeightComputing = compWeight, gossipWeightRequesting = reqWeight)
         except IntegrityError:
-            GlobalRank.update(requesting_trustValue = reqTrust, computing_trustValue = compTrust, gossipWeightComputing = compWeight, gossipWeightRequesting = reqWeight,  modified_date = str(datetime.datetime.now())).where(GlobalRank.nodeId == nodeId).execute()
+            GlobalRank.update(requestingTrustValue = reqTrust, computingTrustValue = compTrust, gossipWeightComputing = compWeight, gossipWeightRequesting = reqWeight,  modified_date = str(datetime.datetime.now())).where(GlobalRank.nodeId == nodeId).execute()
 
     ############################
     def getAllLocalRank(self):
@@ -121,9 +121,9 @@ class RankingDatabase:
                 logger.warning("Removing {} selftrust".format(about_id))
                 return
             with self.db.transaction():
-                NeighbourLocRank.create(nodeId = neighbourId, aboutNodeId = about_id, requesting_trustValue = locRank[1], computing_trustValue = locRank[0])
+                NeighbourLocRank.create(nodeId = neighbourId, aboutNodeId = about_id, requestingTrustValue = locRank[1], computingTrustValue = locRank[0])
         except IntegrityError:
-            NeighbourLocRank.update(requesting_trustValue = locRank[1], computing_trustValue = locRank[0]).where(NeighbourLocRank.aboutNodeId == about_id and NeighbourLocRank.nodeId == neighbourId).execute()
+            NeighbourLocRank.update(requestingTrustValue = locRank[1], computingTrustValue = locRank[0]).where(NeighbourLocRank.aboutNodeId == about_id and NeighbourLocRank.nodeId == neighbourId).execute()
 
     ############################
     def getNeighbourLocRank(self, neighbourId, about_id):
@@ -291,7 +291,7 @@ class Ranking:
         if globalRank is not None:
             if weightSum + globalRank.gossipWeightComputing != 0:
                 logger.debug("Using gossipRank + neighboursRank")
-                return (rank + globalRank.computing_trustValue) / (weightSum + globalRank.gossipWeightComputing)
+                return (rank + globalRank.computingTrustValue) / (weightSum + globalRank.gossipWeightComputing)
         elif weightSum != 0:
             logger.debug("Using neighboursRank")
             return rank / float(weightSum)
@@ -316,7 +316,7 @@ class Ranking:
         if globalRank is not None:
             if globalRank.gossipWeightRequesting != 0:
                 logger.debug("Using gossipRank + neighboursRank")
-                return  (rank + globalRank.requesting_trustValue) / float(weightSum + globalRank.gossipWeightRequesting)
+                return  (rank + globalRank.requestingTrustValue) / float(weightSum + globalRank.gossipWeightRequesting)
         elif weightSum != 0:
             logger.debug("Using neighboursRank")
             return rank / float(weightSum)
@@ -327,14 +327,14 @@ class Ranking:
     def getComputingNeighbourLocTrust(self, neighbour, about):
         rank = self.db.getNeighbourLocRank(neighbour, about)
         if rank is not None:
-            return rank.computing_trustValue
+            return rank.computingTrustValue
         return self.unknownTrust
 
     ############################
     def getRequestingNeighbourLocTrust(self, neighbour, about):
         rank = self.db.getNeighbourLocRank(neighbour, about)
         if rank is not None:
-            return rank.requesting_trustValue
+            return rank.requestingTrustValue
         return self.unknownTrust
 
 

@@ -23,6 +23,6 @@ class InfoTaskDialogCustomizer:
 
     def __startInfoTask(self):
         iterations = int (self.gui.ui.iterationsSpinBox.value())
-        fullTaskTimeout, subtaskTimeout, minSubtaskTime = getTimeValues(self.gui)
-        self.logic.sendInfoTask(iterations, fullTaskTimeout, subtaskTimeout)
+        fullTaskTimeout, subtask_timeout, minSubtaskTime = getTimeValues(self.gui)
+        self.logic.sendInfoTask(iterations, fullTaskTimeout, subtask_timeout)
         self.gui.close()

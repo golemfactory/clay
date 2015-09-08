@@ -68,9 +68,9 @@ class DistributedResourceManager:
 
 class ResourcesManager:
     ###################
-    def __init__(self, dirManager, owner):
+    def __init__(self, dir_manager, owner):
         self.resources          = {}
-        self.dirManager         = dirManager
+        self.dir_manager         = dir_manager
         self.fh                 = None
         self.fileSize           = -1
         self.recvSize           = 0
@@ -129,14 +129,14 @@ class ResourcesManager:
 
     ###################
     def getResourceDir(self, taskId):
-        return self.dirManager.getTaskResourceDir(taskId)
+        return self.dir_manager.getTaskResourceDir(taskId)
 
     ###################
     def getTemporaryDir(self, taskId):
-        return self.dirManager.getTaskTemporaryDir(taskId)
+        return self.dir_manager.getTaskTemporaryDir(taskId)
 
     ###################
     def getOutputDir(self, taskId):
-        return self.dirManager.getTaskOutputDir(taskId)
+        return self.dir_manager.getTaskOutputDir(taskId)
 
             

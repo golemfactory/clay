@@ -11,7 +11,7 @@ class TaskKeeper:
     #############################
     def __init__(self, removeTaskTimeout = 240.0, verificationTimeout = 3600):
         self.taskHeaders    = {}
-        self.supportedTasks = []
+        self.supported_tasks = []
         self.removedTasks   = {}
         self.activeTasks    = {}
         self.activeRequests = {}
@@ -22,9 +22,9 @@ class TaskKeeper:
 
     #############################
     def getTask(self):
-        if  len(self.supportedTasks) > 0:
-            tn = random.randrange(0, len(self.supportedTasks))
-            taskId = self.supportedTasks[tn]
+        if  len(self.supported_tasks) > 0:
+            tn = random.randrange(0, len(self.supported_tasks))
+            taskId = self.supported_tasks[tn]
             theader = self.taskHeaders[taskId]
             if taskId in self.activeRequests:
                 self.activeRequests[taskId] += 1
@@ -49,9 +49,9 @@ class TaskKeeper:
                     self.taskHeaders[id] = TaskHeader(th_dict_repr["client_id"], id, th_dict_repr["address"],
                                                       th_dict_repr["port"], th_dict_repr["keyId"],
                                                       th_dict_repr["environment"], th_dict_repr["taskOwner"],
-                                                      th_dict_repr[ "ttl" ], th_dict_repr["subtaskTimeout"])
+                                                      th_dict_repr[ "ttl" ], th_dict_repr["subtask_timeout"])
                     if isSupported:
-                        self.supportedTasks.append(id)
+                        self.supported_tasks.append(id)
             return True
         except Exception, err:
             logger.error("Wrong task header received {}".format(str(err)))
@@ -61,8 +61,8 @@ class TaskKeeper:
     def remove_task_header(self, taskId):
         if taskId in self.taskHeaders:
             del self.taskHeaders[taskId]
-        if taskId in self.supportedTasks:
-           self.supportedTasks.remove(taskId)
+        if taskId in self.supported_tasks:
+           self.supported_tasks.remove(taskId)
         self.removedTasks[taskId] = time.time()
         if taskId in self.activeRequests and self.activeRequests[taskId] <= 0:
             self.__delActiveTask(taskId)
@@ -70,7 +70,7 @@ class TaskKeeper:
     #############################
     def get_subtask_ttl(self, taskId):
         if taskId in self.taskHeaders:
-            return self.taskHeaders[taskId].subtaskTimeout
+            return self.taskHeaders[taskId].subtask_timeout
 
     ###########################
     def receive_task_verification(self, taskId):
@@ -109,8 +109,8 @@ class TaskKeeper:
     def removeOldTasks(self):
         for t in self.taskHeaders.values():
             currTime = time.time()
-            t.ttl = t.ttl - (currTime - t.lastChecking)
-            t.lastChecking = currTime
+            t.ttl = t.ttl - (currTime - t.last_checking)
+            t.last_checking = currTime
             if t.ttl <= 0:
                 logger.warning("Task {} dies".format(t.taskId))
                 self.remove_task_header(t.taskId)

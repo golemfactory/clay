@@ -68,7 +68,7 @@ class VRayTaskBuilder(FrameRenderingTaskBuiler):
                                    self.taskDefinition.outputFile,
                                    self.taskDefinition.outputFormat,
                                    self.taskDefinition.fullTaskTimeout,
-                                   self.taskDefinition.subtaskTimeout,
+                                   self.taskDefinition.subtask_timeout,
                                    self.taskDefinition.resources,
                                    self.taskDefinition.estimatedMemory,
                                    self.root_path,
@@ -94,7 +94,7 @@ class VRayTask(FrameRenderingTask):
                   outputFile,
                   outputFormat,
                   fullTaskTimeout,
-                  subtaskTimeout,
+                  subtask_timeout,
                   taskResources,
                   estimatedMemory,
                   root_path,
@@ -106,7 +106,7 @@ class VRayTask(FrameRenderingTask):
                   keyId = ""):
 
         FrameRenderingTask.__init__(self, client_id, taskId, returnAddress, returnPort, keyId,
-                          VRayEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
+                          VRayEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
                           root_path, estimatedMemory, useFrames, frames)
@@ -210,12 +210,12 @@ class VRayTask(FrameRenderingTask):
 
   #######################
     @checkSubtaskIdWrapper
-    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
+    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
 
         if not self.shouldAccept(subtaskId):
             return
 
-        tmpDir = dirManager.getTaskTemporaryDir(self.header.taskId, create = False)
+        tmpDir = dir_manager.getTaskTemporaryDir(self.header.taskId, create = False)
         self.tmpDir = tmpDir
 
         if len(taskResult) > 0:

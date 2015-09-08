@@ -172,12 +172,12 @@ class FrameRenderingTask(RenderingTask):
 
     #######################
     @checkSubtaskIdWrapper
-    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
+    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
 
         if not self.shouldAccept(subtaskId):
             return
 
-        tmpDir = dirManager.getTaskTemporaryDir(self.header.taskId, create = False)
+        tmpDir = dir_manager.getTaskTemporaryDir(self.header.taskId, create = False)
         self.tmpDir = tmpDir
 
 

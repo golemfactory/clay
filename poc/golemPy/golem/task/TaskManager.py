@@ -36,7 +36,7 @@ class TaskManager:
         self.keyId          = key_id
 
         self.root_path = root_path
-        self.dirManager     = DirManager(self.getTaskManagerRoot(), self.client_uid)
+        self.dir_manager     = DirManager(self.getTaskManagerRoot(), self.client_uid)
 
         self.subTask2TaskMapping = {}
 
@@ -79,8 +79,8 @@ class TaskManager:
         task.initialize()
         self.tasks[task.header.taskId] = task
 
-        self.dirManager.clearTemporary(task.header.taskId)
-        self.dirManager.getTaskTemporaryDir(task.header.taskId, create = True)
+        self.dir_manager.clearTemporary(task.header.taskId)
+        self.dir_manager.getTaskTemporaryDir(task.header.taskId, create = True)
 
         ts              = TaskState()
         if self.useDistributedResources:
@@ -177,7 +177,7 @@ class TaskManager:
                 self.__noticeTaskUpdated(taskId)
                 return False
 
-            self.tasks[taskId].computationFinished(subtaskId, result, self.dirManager, resultType)
+            self.tasks[taskId].computationFinished(subtaskId, result, self.dir_manager, resultType)
             ss = self.tasksStates[taskId].subtaskStates[subtaskId]
             ss.subtaskProgress  = 1.0
             ss.subtaskRemTime   = 0.0
@@ -236,8 +236,8 @@ class TaskManager:
             if self.tasksStates[th.taskId].status not in self.activeStatus:
                 continue
             currTime = time.time()
-            th.ttl = th.ttl - (currTime - th.lastChecking)
-            th.lastChecking = currTime
+            th.ttl = th.ttl - (currTime - th.last_checking)
+            th.last_checking = currTime
             if th.ttl <= 0:
                 logger.info("Task {} dies".format(th.taskId))
                 del self.tasks[th.taskId]
@@ -245,8 +245,8 @@ class TaskManager:
             ts = self.tasksStates[th.taskId]
             for s in ts.subtaskStates.values():
                 if s.subtaskStatus == SubtaskStatus.starting:
-                    s.ttl = s.ttl - (currTime - s.lastChecking)
-                    s.lastChecking = currTime
+                    s.ttl = s.ttl - (currTime - s.last_checking)
+                    s.last_checking = currTime
                     if s.ttl <= 0:
                         logger.info("Subtask {} dies".format(s.subtaskId))
                         s.subtaskStatus        = SubtaskStatus.failure
@@ -291,7 +291,7 @@ class TaskManager:
     def restartTask(self, taskId):
         if taskId in self.tasks:
             logger.info("restarting task")
-            self.dirManager.clearTemporary(taskId)
+            self.dir_manager.clearTemporary(taskId)
 
             self.tasks[taskId].restart()
             self.tasks[taskId].taskStatus = TaskStatus.waiting
@@ -365,7 +365,7 @@ class TaskManager:
             del self.tasks[taskId]
             del self.tasksStates[taskId]
 
-            self.dirManager.clearTemporary(taskId)
+            self.dir_manager.clearTemporary(taskId)
         else:
             logger.error("Task {} not in the active tasks queue ".format(taskId))
 
@@ -392,23 +392,23 @@ class TaskManager:
 
     #######################
     def change_config(self, root_path, use_distributed_resource_management):
-        self.dirManager = DirManager(root_path, self.client_uid)
+        self.dir_manager = DirManager(root_path, self.client_uid)
         self.useDistributedResources = use_distributed_resource_management
 
     #######################
-    def change_timeouts(self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime):
+    def change_timeouts(self, taskId, fullTaskTimeout, subtask_timeout, minSubtaskTime):
         if taskId in self.tasks:
             task = self.tasks[taskId]
             task.header.ttl = fullTaskTimeout
-            task.header.subtaskTimeout = subtaskTimeout
-            task.subtaskTimeout = subtaskTimeout
+            task.header.subtask_timeout = subtask_timeout
+            task.subtask_timeout = subtask_timeout
             task.minSubtaskTime = minSubtaskTime
             task.fullTaskTimeout = fullTaskTimeout
-            task.header.lastChecking = time.time()
+            task.header.last_checking = time.time()
             ts = self.tasksStates[taskId]
             for s in ts.subtaskStates.values():
-                s.ttl = subtaskTimeout
-                s.lastChecking = time.time()
+                s.ttl = subtask_timeout
+                s.last_checking = time.time()
             return True
         else:
             logger.info("Cannot find task {} in my tasks".format(taskId))
@@ -431,7 +431,7 @@ class TaskManager:
             ss.computer.nodeId      = client_id
             ss.computer.performance = ctd.performance
             ss.timeStarted      = time.time()
-            ss.ttl              = self.tasks[ctd.taskId].header.subtaskTimeout
+            ss.ttl              = self.tasks[ctd.taskId].header.subtask_timeout
             # TODO: read node ip address
             ss.subtaskDefinition    = ctd.shortDescription
             ss.subtaskId            = ctd.subtaskId

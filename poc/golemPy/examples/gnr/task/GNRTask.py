@@ -93,7 +93,7 @@ class GNRTask(Task):
         self.subTasksGiven.clear()
 
         self.numFailedSubtasks = 0
-        self.header.lastChecking = time.time()
+        self.header.last_checking = time.time()
         self.header.ttl = self.fullTaskTimeout
 
 

@@ -28,7 +28,7 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
                             "",
                             Environment.getId(),
                             self.taskDefinition.fullTaskTimeout,
-                            self.taskDefinition.subtaskTimeout,
+                            self.taskDefinition.subtask_timeout,
                             resourceSize,
                             0,
                             self.taskDefinition.totalSubtasks,
@@ -76,7 +76,7 @@ class PythonGNRTask(GNRTask):
 
     #######################
     @checkSubtaskIdWrapper
-    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
+    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
         self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
         self.numTasksReceived += 1
 

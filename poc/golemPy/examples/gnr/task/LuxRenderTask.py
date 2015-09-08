@@ -93,7 +93,7 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                             self.taskDefinition.outputFile,
                             self.taskDefinition.outputFormat,
                             self.taskDefinition.fullTaskTimeout,
-                            self.taskDefinition.subtaskTimeout,
+                            self.taskDefinition.subtask_timeout,
                             self.taskDefinition.resources,
                             self.taskDefinition.estimatedMemory,
                             self.root_path,
@@ -121,7 +121,7 @@ class LuxTask(RenderingTask):
                     outputFile,
                     outputFormat,
                     fullTaskTimeout,
-                    subtaskTimeout,
+                    subtask_timeout,
                     taskResources,
                     estimatedMemory,
                     root_path,
@@ -134,7 +134,7 @@ class LuxTask(RenderingTask):
                     keyId = ""):
 
         RenderingTask.__init__(self, client_id, taskId, returnAddress, returnPort, keyId,
-                                 LuxRenderEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
+                                 LuxRenderEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                                  mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                                  totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
                                  root_path, estimatedMemory)
@@ -250,8 +250,8 @@ class LuxTask(RenderingTask):
         return "startTask: {}, outfilebasename: {}, sceneFileSrc: {}".format(l['startTask'], l['outfilebasename'], l['sceneFileSrc'])
 
     #######################
-    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
-        tmpDir = dirManager.getTaskTemporaryDir(self.header.taskId, create = False)
+    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
+        tmpDir = dir_manager.getTaskTemporaryDir(self.header.taskId, create = False)
         self.tmpDir = tmpDir
 
         trFiles = self.loadTaskResults(taskResult, resultType, tmpDir)

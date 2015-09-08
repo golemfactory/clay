@@ -15,7 +15,7 @@ class InfoTaskDefinition:
         self.taskId = ""
 
         self.fullTaskTimeout    = 0
-        self.subtaskTimeout     = 0
+        self.subtask_timeout     = 0
 
         self.srcFile            = ""
         self.totalSubtasks      = 0
@@ -37,7 +37,7 @@ class InfoTaskBuilder(GNRTaskBuilder):
                             "",
                             Environment.getId(),
                             self.taskDefinition.fullTaskTimeout,
-                            self.taskDefinition.subtaskTimeout,
+                            self.taskDefinition.subtask_timeout,
                             0,
                             0,
                             self.taskDefinition.manager_address,
@@ -98,7 +98,7 @@ class InfoTask(GNRTask):
         return ctd
 
     #######################
-    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
+    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
         if resultType != result_types['data']:
             logger.error("Only data result format supported")
             return

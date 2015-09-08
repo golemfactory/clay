@@ -135,10 +135,10 @@ class TaskServer(PendingConnectionsServer):
                         "keyId": th.taskOwnerKeyId,
                         "taskOwner": th.taskOwner,
                         "ttl": th.ttl,
-                        "subtaskTimeout": th.subtaskTimeout,
+                        "subtask_timeout": th.subtask_timeout,
                         "client_id": th.client_id,
                         "environment": th.environment,
-                        "minVersion": th.minVersion})
+                        "min_version": th.min_version})
 
         return ret
 
@@ -146,7 +146,7 @@ class TaskServer(PendingConnectionsServer):
         try:
             id_ = th_dict_repr["id"]
             if id_ not in self.task_manager.tasks.keys():  # It is not my task id
-                self.task_keeper.add_task_header(th_dict_repr, self.client.supportedTask(th_dict_repr))
+                self.task_keeper.add_task_header(th_dict_repr, self.client.supported_task(th_dict_repr))
             return True
         except Exception, err:
             logger.error("Wrong task header received {}".format(str(err)))

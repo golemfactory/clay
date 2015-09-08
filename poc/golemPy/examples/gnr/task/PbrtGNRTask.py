@@ -74,7 +74,7 @@ class PbrtGNRTaskBuilder(GNRTaskBuilder):
         rtd = RenderingTaskDefinition()
         rtd.taskId = self.taskDefinition.taskId
         rtd.fullTaskTimeout = self.taskDefinition.fullTaskTimeout
-        rtd.subtaskTimeout = self.taskDefinition.subtaskTimeout
+        rtd.subtask_timeout = self.taskDefinition.subtask_timeout
         rtd.minSubtaskTime = self.taskDefinition.minSubtaskTime
         rtd.resources = self.taskDefinition.resources
         rtd.estimatedMemory = self.taskDefinition.estimatedMemory
@@ -121,7 +121,7 @@ class PbrtTaskBuilder(RenderingTaskBuilder):
                                    "temp",
                                    self.taskDefinition.mainSceneFile,
                                    self.taskDefinition.fullTaskTimeout,
-                                   self.taskDefinition.subtaskTimeout,
+                                   self.taskDefinition.subtask_timeout,
                                    self.taskDefinition.resources,
                                    self.taskDefinition.estimatedMemory,
                                    self.taskDefinition.outputFile,
@@ -180,7 +180,7 @@ class PbrtRenderTask(RenderingTask):
                   outfilebasename,
                   sceneFile,
                   fullTaskTimeout,
-                  subtaskTimeout,
+                  subtask_timeout,
                   taskResources,
                   estimatedMemory,
                   outputFile,
@@ -193,7 +193,7 @@ class PbrtRenderTask(RenderingTask):
 
 
         RenderingTask.__init__(self, client_id, taskId, returnAddress, returnPort, keyId,
-                                PBRTEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
+                                PBRTEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                                 mainProgramFile, taskResources, mainSceneDir, sceneFile,
                                 totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
                                 root_path, estimatedMemory)
@@ -296,12 +296,12 @@ class PbrtRenderTask(RenderingTask):
         return self._newComputeTaskDef(hash, extraData, workingDirectory, 0)
 
     #######################
-    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
+    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
 
         if not self.shouldAccept(subtaskId):
             return
 
-        tmpDir = dirManager.getTaskTemporaryDir(self.header.taskId, create = False)
+        tmpDir = dir_manager.getTaskTemporaryDir(self.header.taskId, create = False)
         self.tmpDir = tmpDir
         trFiles = self.loadTaskResults(taskResult, resultType, tmpDir)
 

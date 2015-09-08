@@ -26,8 +26,8 @@ class ChangeTaskDialogCustomizer:
 
     ############################
     def __saveButtonClicked(self):
-        fullTaskTimeout, subtaskTimeout, minSubtaskTime = getTimeValues(self.gui)
-        self.logic.change_timeouts(u"{}".format(self.gui.ui.taskIdLabel.text()), fullTaskTimeout, subtaskTimeout, minSubtaskTime)
+        fullTaskTimeout, subtask_timeout, minSubtaskTime = getTimeValues(self.gui)
+        self.logic.change_timeouts(u"{}".format(self.gui.ui.taskIdLabel.text()), fullTaskTimeout, subtask_timeout, minSubtaskTime)
         self.gui.window.close()
 
     ############################
@@ -35,7 +35,7 @@ class ChangeTaskDialogCustomizer:
         assert isinstance(definition, RenderingTaskDefinition)
 
         self.gui.ui.taskIdLabel.setText(u"{}".format(definition.taskId))
-        setTimeSpinBoxes(self.gui, definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime)
+        setTimeSpinBoxes(self.gui, definition.fullTaskTimeout, definition.subtask_timeout, definition.minSubtaskTime)
 
     #############################
     def __cancelButtonClicked(self):

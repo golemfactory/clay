@@ -224,13 +224,13 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.showTaskResult(taskId)
 
     ######################
-    def change_timeouts (self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime):
+    def change_timeouts (self, taskId, fullTaskTimeout, subtask_timeout, minSubtaskTime):
         if taskId in self.tasks:
             task = self.tasks[taskId]
             task.definition.fullTaskTimeout = fullTaskTimeout
             task.definition.minSubtaskTime = minSubtaskTime
-            task.definition.subtaskTimeout = subtaskTimeout
-            self.client.change_timeouts(taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime)
+            task.definition.subtask_timeout = subtask_timeout
+            self.client.change_timeouts(taskId, fullTaskTimeout, subtask_timeout, minSubtaskTime)
             self.customizer.updateTaskAdditionalInfo(task)
         else:
             logger.error("It's not my task: {} ", taskId)

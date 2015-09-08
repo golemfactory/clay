@@ -5,8 +5,8 @@ import sys
 
 sys.path.append(os.environ.get('GOLEM'))
 
-from tools.UiGen import genUiFiles
-genUiFiles("ui")
+from tools.UiGen import gen_ui_files
+gen_ui_files("ui")
 
 
 from examples.gnr.GNRAdmApplicationLogic import GNRAdmApplicationLogic

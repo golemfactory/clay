@@ -116,7 +116,7 @@ class AbsRenderingMainWindowCustomizer (object):
 
     ############################
     def __setTimeParams(self, t):
-        self.gui.ui.subtaskTimeout.setText("{} minutes".format(int(t.definition.subtaskTimeout / 60.0)))
+        self.gui.ui.subtaskTimeout.setText("{} minutes".format(int(t.definition.subtask_timeout / 60.0)))
         self.gui.ui.fullTaskTimeout.setText(str(datetime.timedelta(seconds = t.definition.fullTaskTimeout)))
         if t.taskState.timeStarted != 0.0:
             lt = time.localtime(t.taskState.timeStarted)

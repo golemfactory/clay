@@ -62,7 +62,7 @@ class ConfigApprover(object):
         self.config_desc = config_desc
         self._actions = {}
         self._opts_to_change = []
-        self._init__actions()
+        self._init_actions()
 
     def change_config(self, new_config_desc):
         """ Try to change specific configuration options in the old config for a values from new config. Try to

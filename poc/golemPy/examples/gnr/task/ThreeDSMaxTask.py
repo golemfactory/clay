@@ -75,7 +75,7 @@ class ThreeDSMaxTaskBuilder(FrameRenderingTaskBuiler):
                                    self.taskDefinition.outputFile,
                                    self.taskDefinition.outputFormat,
                                    self.taskDefinition.fullTaskTimeout,
-                                   self.taskDefinition.subtaskTimeout,
+                                   self.taskDefinition.subtask_timeout,
                                    self.taskDefinition.resources,
                                    self.taskDefinition.estimatedMemory,
                                    self.root_path,
@@ -105,7 +105,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
                   outputFile,
                   outputFormat,
                   fullTaskTimeout,
-                  subtaskTimeout,
+                  subtask_timeout,
                   taskResources,
                   estimatedMemory,
                   root_path,
@@ -118,7 +118,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
                  ):
 
         FrameRenderingTask.__init__(self, client_id, taskId, returnAddress, returnPort,
-                          ThreeDSMaxEnvironment.getId(), fullTaskTimeout, subtaskTimeout,
+                          ThreeDSMaxEnvironment.getId(), fullTaskTimeout, subtask_timeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, outputFile, outputFormat,
                           root_path, estimatedMemory, useFrames, frames)

@@ -178,7 +178,7 @@ class Client:
 
         self.nodesManagerClient = None
 
-        self.doWorkTask = task.LoopingCall(self.__doWork)
+        self.doWorkTask = task.LoopingCall(self.__do_work)
         self.doWorkTask.start(0.1, False)
 
         self.listeners = []
@@ -264,7 +264,7 @@ class Client:
 
     ############################
     def taskResourcesCollected(self, taskId):
-        self.task_server.task_computer.taskResourceCollected(taskId)
+        self.task_server.task_computer.task_resource_collected(taskId)
 
     ############################
     def setResourcePort (self, resource_port):
@@ -376,8 +376,8 @@ class Client:
         self.nodesManagerClient = nodesManagerClient
 
     ############################
-    def change_timeouts(self, taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime):
-        self.task_server.change_timeouts(taskId, fullTaskTimeout, subtaskTimeout, minSubtaskTime)
+    def change_timeouts(self, taskId, fullTaskTimeout, subtask_timeout, minSubtaskTime):
+        self.task_server.change_timeouts(taskId, fullTaskTimeout, subtask_timeout, minSubtaskTime)
 
     ############################
     def unregisterListener(self, listener):
@@ -402,7 +402,7 @@ class Client:
         self.resource_server.add_resource_peer(client_id, addr, port, keyId, node_info)
 
     ############################
-    def supportedTask(self, th_dict_repr):
+    def supported_task(self, th_dict_repr):
         supported = self.__checkSupportedEnvironment(th_dict_repr)
         return supported and self.__checkSupportedVersion(th_dict_repr)
 
@@ -425,18 +425,18 @@ class Client:
 
     ############################
     def removeComputedFiles(self):
-        dirManager = DirManager(self.config_desc.root_path, self.config_desc.client_uid)
-        dirManager.clearDir(self.getComputedFilesDir())
+        dir_manager = DirManager(self.config_desc.root_path, self.config_desc.client_uid)
+        dir_manager.clearDir(self.getComputedFilesDir())
 
    ############################
     def removeDistributedFiles(self):
-        dirManager = DirManager(self.config_desc.root_path, self.config_desc.client_uid)
-        dirManager.clearDir(self.getDistributedFilesDir())
+        dir_manager = DirManager(self.config_desc.root_path, self.config_desc.client_uid)
+        dir_manager.clearDir(self.getDistributedFilesDir())
 
    ############################
     def removeReceivedFiles(self):
-        dirManager = DirManager(self.config_desc.root_path, self.config_desc.client_uid)
-        dirManager.clearDir(self.getReceivedFilesDir())
+        dir_manager = DirManager(self.config_desc.root_path, self.config_desc.client_uid)
+        dir_manager.clearDir(self.getReceivedFilesDir())
 
     ############################
     def getEnvironments(self):
@@ -513,7 +513,7 @@ class Client:
 
     #############################
     def __checkSupportedVersion(self, th_dict_repr):
-        minV = th_dict_repr.get("minVersion")
+        minV = th_dict_repr.get("min_version")
         if not minV:
             return True
         try:
@@ -529,7 +529,7 @@ class Client:
             return False
 
     ############################
-    def __doWork(self):
+    def __do_work(self):
         if self.p2pservice:
             if self.config_desc.send_pings:
                 self.p2pservice.ping_peers(self.config_desc.pings_interval)

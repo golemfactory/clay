@@ -23,7 +23,7 @@ class RendererDefaults:
         self.mainProgramFile    = ""
         self.fullTaskTimeout    = 4 * 3600
         self.minSubtaskTime     = 60
-        self.subtaskTimeout     = 20 * 60
+        self.subtask_timeout     = 20 * 60
         self.resolution         = [800, 600]
         self.minSubtasks        = 1
         self.maxSubtasks        = 50

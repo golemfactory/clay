@@ -141,7 +141,7 @@ class NewTaskDialogCustomizer:
     #############################
     def _loadBasicTaskParams(self, definition):
         self._loadTaskType(definition)
-        setTimeSpinBoxes(self.gui, definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime)
+        setTimeSpinBoxes(self.gui, definition.fullTaskTimeout, definition.subtask_timeout, definition.minSubtaskTime)
         self.gui.ui.mainProgramFileLineEdit.setText(definition.mainProgramFile)
         self.gui.ui.totalSpinBox.setValue(definition.totalSubtasks)
 
@@ -206,7 +206,7 @@ class NewTaskDialogCustomizer:
     #############################
     def _readBasicTaskParams(self, definition):
         definition.taskId = u"{}".format(self.gui.ui.taskIdLabel.text())
-        definition.fullTaskTimeout, definition.subtaskTimeout, definition.minSubtaskTime = getTimeValues(self.gui)
+        definition.fullTaskTimeout, definition.subtask_timeout, definition.minSubtaskTime = getTimeValues(self.gui)
         definition.mainProgramFile = u"{}".format(self.gui.ui.mainProgramFileLineEdit.text())
         definition.optimizeTotal = self.gui.ui.optimizeTotalCheckBox.isChecked()
         if definition.optimizeTotal:

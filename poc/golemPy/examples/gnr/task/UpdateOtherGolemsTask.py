@@ -16,7 +16,7 @@ class UpdateOtherGolemsTaskDefinition:
         self.taskId = ""
 
         self.fullTaskTimeout    = 0
-        self.subtaskTimeout     = 0
+        self.subtask_timeout     = 0
 
         self.resourceDir        = ""
         self.srcFile            = ""
@@ -55,7 +55,7 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
                             self.root_path,
                             Environment.getId(),
                             self.taskDefinition.fullTaskTimeout,
-                            self.taskDefinition.subtaskTimeout,
+                            self.taskDefinition.subtask_timeout,
                             self.taskDefinition.taskResources,
                             resourceSize,
                             0,
@@ -126,5 +126,5 @@ class UpdateOtherGolemsTask(GNRTask):
         return ctd
 
     #######################
-    def computationFinished(self, subtaskId, taskResult, dirManager = None, resultType = 0):
+    def computationFinished(self, subtaskId, taskResult, dir_manager = None, resultType = 0):
         self.subTasksGiven[ subtaskId ][ 'status' ] = SubtaskStatus.finished
