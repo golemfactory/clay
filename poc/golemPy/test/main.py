@@ -12,7 +12,7 @@ sys.path.append('../src/manager/server')
 sys.path.append('../testtasks/minilight/src')
 sys.path.append('../testtasks/pbrt')
 
-from tools.UiGen import gen_ui_files
+from tools.uigen import gen_ui_files
 
 gen_ui_files("./../src")
 

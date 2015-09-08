@@ -49,4 +49,4 @@ def gen_ui_files(path):
         regenerate_ui_files(path)
     else:
         cwd = os.getcwd()
-        assert False, "UiGen: Cannot find " + path + " dir or wrong working directory: " + cwd
+        assert False, "uigen: Cannot find " + path + " dir or wrong working directory: " + cwd
