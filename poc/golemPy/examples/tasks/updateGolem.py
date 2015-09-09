@@ -3,6 +3,7 @@ import shutil
 import zlib
 import pickle
 
+
 ############################
 def update_golem():
     dst = os.environ.get('GOLEM')
@@ -24,10 +25,9 @@ def update_golem():
                 os.remove(dst_file)
             shutil.copy2(src_file, dst_dir)
 
-
     data = "Updated"
     compress = zlib.compress(data, 9)
-    return { 'data': [ pickle.dumps((data, compress)) ], 'result_type': 0}
+    return {'data': [pickle.dumps((data, compress))], 'result_type': 0}
 
 
 output = update_golem()

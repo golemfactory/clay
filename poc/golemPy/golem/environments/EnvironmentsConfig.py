@@ -7,13 +7,13 @@ CONFIG_FILENAME = "environments.ini"
 
 logger = logging.getLogger(__name__)
 
+
 ############################################################
 class CommonConfig:
     ##############################
     def __init__(self,
-                 section = "Common",
-                 env_version = ENV_VERSION):
-
+                 section="Common",
+                 env_version=ENV_VERSION):
         self._section = section
 
         ConfigEntry.create_property(section, "environment version", env_version, self, "env_version")
@@ -22,10 +22,13 @@ class CommonConfig:
     def section(self):
         return self._section
 
+
 ############################################################
 class NodeConfig:
     ##############################
-    def __init__(self, node_id, environments = []):
+    def __init__(self, node_id, environments=None):
+        if environments is None:
+            environments = []
         self._section = "Node {}".format(node_id)
 
         for env_id, (envName, supported) in environments.iteritems():
@@ -35,14 +38,13 @@ class NodeConfig:
     def section(self):
         return self._section
 
+
 ############################################################
 class EnvironmentsConfig:
-
     ##############################
     @classmethod
-    def load_config(cls, node_id, environments, cfg_file = CONFIG_FILENAME):
-
-        cfg  = SimpleConfig(CommonConfig(), NodeConfig(node_id, environments), cfg_file, refresh = False, check_uid = False)
+    def load_config(cls, node_id, environments, cfg_file=CONFIG_FILENAME):
+        cfg = SimpleConfig(CommonConfig(), NodeConfig(node_id, environments), cfg_file, refresh=False, check_uid=False)
 
         return EnvironmentsConfig(cfg)
 
@@ -55,8 +57,10 @@ class EnvironmentsConfig:
         return self._cfg.get_node_config()
 
     ##############################
-    def change_config(self, cfg_file = CONFIG_FILENAME):
-        return EnvironmentsConfig(SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), cfg_file,  refresh = True, check_uid = False))
+    def change_config(self, cfg_file=CONFIG_FILENAME):
+        return EnvironmentsConfig(
+            SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), cfg_file, refresh=True,
+                         check_uid=False))
 
     ##############################
     def __str__(self):

@@ -22,8 +22,8 @@ class EthJSON(object):
     def get_data(self):
         return self.data
 
-    def set_id(self, id):
-        self.data["id"] = id
+    def set_id(self, id_):
+        self.data["id"] = id_
 
     def add_param(self, param):
         self.data["params"].append(param)

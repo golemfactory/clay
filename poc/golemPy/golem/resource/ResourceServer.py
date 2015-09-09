@@ -11,12 +11,10 @@ from golem.resource.ResourcesManager import DistributedResourceManager
 from golem.resource.resource_session import ResourceSession
 from golem.ranking.Ranking import RankingStats
 
-
 logger = logging.getLogger(__name__)
 
 
 class ResourceServer(TCPServer):
-
     def __init__(self, config_desc, keys_auth, client, use_ipv6=False):
         self.client = client
         self.keys_auth = keys_auth
@@ -27,7 +25,7 @@ class ResourceServer(TCPServer):
         self.dir_manager = DirManager(config_desc.root_path, config_desc.client_uid)
         self.resource_manager = DistributedResourceManager(self.dir_manager.get_resource_dir())
         self.use_ipv6 = use_ipv6
-        network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(ResourceSession)),  use_ipv6)
+        network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(ResourceSession)), use_ipv6)
         TCPServer.__init__(self, config_desc, network)
 
         self.resource_peers = {}
@@ -35,7 +33,7 @@ class ResourceServer(TCPServer):
         self.waiting_tasks_to_compute = {}
         self.waiting_resources = {}
 
-        self.last_get_resource_peers_time  = time.time()
+        self.last_get_resource_peers_time = time.time()
         self.get_resource_peers_interval = 5.0
         self.sessions = []
 
@@ -77,7 +75,7 @@ class ResourceServer(TCPServer):
         else:
             self.client.task_resource_collected(task_id)
 
-    def add_resource_to_send(self, name, num, task_id = None):
+    def add_resource_to_send(self, name, num, task_id=None):
         if task_id not in self.waiting_tasks:
             self.waiting_tasks[task_id] = 0
         self.resources_to_send.append([name, task_id, num])
@@ -93,11 +91,13 @@ class ResourceServer(TCPServer):
 
     def add_resource_peer(self, client_id, addr, port, key_id, node_info):
         if client_id in self.resource_peers:
-            if self.resource_peers[client_id]['addr'] == addr and self.resource_peers[client_id]['port'] == port and self.resource_peers[client_id]['key_id']:
+            if self.resource_peers[client_id]['addr'] == addr and self.resource_peers[client_id]['port'] == port and \
+                    self.resource_peers[client_id]['key_id']:
                 return
 
-        self.resource_peers[client_id] = { 'addr': addr, 'port': port, 'key_id': key_id, 'state': 'free', 'posResource': 0,
-                                           'node': node_info}
+        self.resource_peers[client_id] = {'addr': addr, 'port': port, 'key_id': key_id, 'state': 'free',
+                                          'posResource': 0,
+                                          'node': node_info}
 
     def set_resource_peers(self, resource_peers):
         if self.config_desc.client_uid in resource_peers:
@@ -117,12 +117,12 @@ class ResourceServer(TCPServer):
         self.__remove_old_sessions()
 
     def get_resources(self):
-        if len (self.resources_to_get) == 0:
+        if len(self.resources_to_get) == 0:
             return
         resource_peers = [peer for peer in self.resource_peers.values() if peer['state'] == 'free']
         random.shuffle(resource_peers)
 
-        if len (self.resource_peers) == 0:
+        if len(self.resource_peers) == 0:
             return
 
         for peer in resource_peers:
@@ -142,7 +142,7 @@ class ResourceServer(TCPServer):
             name = self.resources_to_send[self.res_send_it][0]
             num = self.resources_to_send[self.res_send_it][2]
             peer['state'] = 'waiting'
-            self.push_resource(name , peer['addr'], peer['port'] , peer['key_id'], peer['node'], num)
+            self.push_resource(name, peer['addr'], peer['port'], peer['key_id'], peer['node'], num)
             self.res_send_it = (self.res_send_it + 1) % len(self.resources_to_send)
 
     def pull_resource(self, resource, addr, port, key_id, node_info):
@@ -165,7 +165,7 @@ class ResourceServer(TCPServer):
                 if res[0] == resource:
                     self.waiting_resources[resource].append(res[1])
             for task_id in self.waiting_resources[resource]:
-                    self.resources_to_get.remove([resource, task_id])
+                self.resources_to_get.remove([resource, task_id])
             session.file_name = resource
             session.conn.file_mode = True
             session.conn.confirmation = False
@@ -279,7 +279,8 @@ class ResourceServer(TCPServer):
                 self.resource_peers[client_id]['state'] = 'free'
                 return client_id
 
-    def __connection_push_resource_established(self, session, resource, copies, resource_address, resource_port, key_id):
+    def __connection_push_resource_established(self, session, resource, copies, resource_address, resource_port,
+                                               key_id):
         session.key_id = key_id
         session.send_hello()
         session.send_push_resource(resource, copies)
@@ -329,6 +330,6 @@ class ResourceServer(TCPServer):
             self.remove_session(session)
 
     def _listening_established(self, port, **kwargs):
-        TCPServer._listening_established(self, port, **kwargs)
+        self.cur_port = port
+        logger.info("Port {} opened - listening.".format(self.cur_port))
         self.client.set_resource_port(self.cur_port)
-

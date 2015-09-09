@@ -11,6 +11,7 @@ from golem.resource.ResourceHash import ResourceHash
 
 logger = logging.getLogger(__name__)
 
+
 class DistributedResourceManager:
     ###################
     def __init__(self, resource_dir):
@@ -35,16 +36,16 @@ class DistributedResourceManager:
             os.remove(os.path.join(self.resource_dir, f))
 
     ###################
-    def split_file(self, file_name, block_size = 2 ** 20):
+    def split_file(self, file_name, block_size=2 ** 20):
         resource_hash = ResourceHash(self.resource_dir)
-        list_files = [ os.path.basename(file_) for file_ in resource_hash.split_file(file_name, block_size) ]
+        list_files = [os.path.basename(file_) for file_ in resource_hash.split_file(file_name, block_size)]
         self.resources |= set(list_files)
         return list_files
 
     ###################
-    def connect_file (self, parts_list, file_name):
+    def connect_file(self, parts_list, file_name):
         resource_hash = ResourceHash(self.resource_dir)
-        res_list = [ os.path.join(self.resource_dir, p) for p in parts_list ]
+        res_list = [os.path.join(self.resource_dir, p) for p in parts_list]
         resource_hash.connect_files(res_list, file_name)
 
     ###################
@@ -64,20 +65,21 @@ class DistributedResourceManager:
     def get_resource_path(self, resource):
         return os.path.join(self.resource_dir, resource)
 
+
 #########################################################
 
 class ResourcesManager:
     ###################
     def __init__(self, dir_manager, owner):
-        self.resources          = {}
-        self.dir_manager         = dir_manager
-        self.fh                 = None
-        self.file_size           = -1
-        self.recv_size           = 0
-        self.owner              = owner
-        self.last_prct           = 0
-        self.buff_size           = 4 * 1024 * 1024
-        self.buff               = DataBuffer()
+        self.resources = {}
+        self.dir_manager = dir_manager
+        self.fh = None
+        self.file_size = -1
+        self.recv_size = 0
+        self.owner = owner
+        self.last_prct = 0
+        self.buff_size = 4 * 1024 * 1024
+        self.buff = DataBuffer()
 
     ###################
     def get_resource_header(self, task_id):
@@ -138,5 +140,3 @@ class ResourcesManager:
     ###################
     def get_output_dir(self, task_id):
         return self.dir_manager.get_task_output_dir(task_id)
-
-            

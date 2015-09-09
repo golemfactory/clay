@@ -13,7 +13,7 @@ class SubtaskTableElem:
         self.remaining_timeItem  = None
         self.progress           = 0.0
         self.node_idItem         = None
-        self.progressBar        = None
+        self.progress_bar        = None
         self.progressBarInBoxLayoutWidget = None
         self.subtask_statusItem  = None
         self.__buildRow()
@@ -31,14 +31,14 @@ class SubtaskTableElem:
 
         self.subtask_statusItem = QTableWidgetItem()
 
-        self.progressBar = QProgressBar()
-        self.progressBar.geometry().setHeight(20)
-        self.progressBar.setProperty("value", 50)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.geometry().setHeight(20)
+        self.progress_bar.setProperty("value", 50)
 
         self.progressBarInBoxLayoutWidget = QWidget()
         boxLayout = QVBoxLayout()
         boxLayout.setMargin(3)
-        boxLayout.addWidget(self.progressBar)
+        boxLayout.addWidget(self.progress_bar)
         
         self.progressBarInBoxLayoutWidget.setLayout(boxLayout)
 
@@ -52,7 +52,7 @@ class SubtaskTableElem:
     def setProgress(self, val):
         if 0.0 <= val <= 1.0:
             self.progress = val
-            self.progressBar.setProperty("value", int(val * 100))
+            self.progress_bar.setProperty("value", int(val * 100))
         else:
             assert False, "Wrong progress setting {}".format(val)
 

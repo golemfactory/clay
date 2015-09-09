@@ -64,7 +64,15 @@ class LocalTaskStateSnapshot:
 #FIXME: also add a boolean flag indicating whether there is any active local/rempote task being calculated
 class NodeStateSnapshot:
 
-    def __init__(self, running = True, uid = 0, peers_num = 0, tasks_num = 0, endpoint_addr = "", endpoint_port = "", last_network_messages = [], last_task_messages = [], tcss = {}, ltss = {}):
+    def __init__(self, running = True, uid = 0, peers_num = 0, tasks_num = 0, endpoint_addr = "", endpoint_port = "", last_network_messages = None, last_task_messages = None, tcss = None, ltss = None):
+        if last_network_messages is None:
+            last_network_messages = []
+        if last_task_messages is None:
+            last_task_messages = []
+        if tcss is None:
+            tcss = {}
+        if ltss is None:
+            ltss = {}
         self.uid                    = uid
         self.timestamp              = QtCore.QTime.currentTime()
         self.endpoint_addr           = endpoint_addr

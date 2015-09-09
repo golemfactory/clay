@@ -10,6 +10,7 @@ path = 'C:\golem_test\\test3'
 from golem.resource.Resource import TaskResourceHeader, remove_disallowed_filename_chars, TaskResource
 from golem.resource.dir_manager import DirManager
 
+
 class TestTaskResourceHeader(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
@@ -31,9 +32,9 @@ class TestTaskResourceHeader(unittest.TestCase):
         open(self.file3, 'w').close()
 
     def tearDown(self):
-       path = 'C:\golem_test\\test3'
-       if os.path.isdir(path):
-           shutil.rmtree(path)
+        path_ = 'C:\golem_test\\test3'
+        if os.path.isdir(path_):
+            shutil.rmtree(path_)
 
     def testBuild(self):
         dir_name = self.dir_manager.get_task_resource_dir("task2")
@@ -44,14 +45,16 @@ class TestTaskResourceHeader(unittest.TestCase):
     def testBuildFromChosen(self):
         dir_name = self.dir_manager.get_task_resource_dir('task2')
         header = TaskResourceHeader.build_from_chosen("resource", dir_name, [self.file1, self.file3])
-        header2 = TaskResourceHeader.build_header_delta_from_header(TaskResourceHeader("resource"), dir_name, [self.file1, self.file3])
+        header2 = TaskResourceHeader.build_header_delta_from_header(TaskResourceHeader("resource"), dir_name,
+                                                                    [self.file1, self.file3])
         self.assertTrue(header == header2)
         self.assertEquals(header.dir_name, header2.dir_name)
         self.assertEquals(header.files_data, header2.files_data)
 
+
 class TestTaskResource(unittest.TestCase):
     def setUp(self):
-        logging.basicConfig(level = logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
         if not os.path.isdir(path):
             os.mkdir(path)
 

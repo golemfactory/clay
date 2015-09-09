@@ -7,6 +7,7 @@ sys.path.append(os.environ.get('GOLEM'))
 
 from golem.core.simpleenv import SimpleEnv, DATA_DIRECTORY
 
+
 class TestSimpleEnv(unittest.TestCase):
     def testEnvFileName(self):
         shutil.rmtree(DATA_DIRECTORY)

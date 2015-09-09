@@ -1,8 +1,9 @@
-import os 
+import os
 import platform
 import subprocess
 
-def check_cmd(cmd, no_output = True):
+
+def check_cmd(cmd, no_output=True):
     pref_cmd = "where" if platform.system() == "Windows" else "which"
     try:
         if no_output:

@@ -31,7 +31,7 @@ import ast
 def decint(n):
     if isinstance(n, str):
         n = to_string(n)
-    if is_numeric(n) and -2**255 < n < 2**256:
+    if is_numeric(n) and -2 ** 255 < n < 2 ** 256:
         return n
     elif is_numeric(n):
         raise Exception("Number out of range: %r" % n)
@@ -48,6 +48,7 @@ def decint(n):
     else:
         raise Exception("Cannot encode integer: %r" % n)
 
+
 # Encodes a base datum
 def encode_single(typ, arg):
     base, sub, _ = typ
@@ -55,7 +56,7 @@ def encode_single(typ, arg):
     if base == 'uint':
         sub = int(sub)
         i = decint(arg)
-        assert 0 <= i < 2**sub, "Value out of bounds: %r" % arg
+        assert 0 <= i < 2 ** sub, "Value out of bounds: %r" % arg
         return zpad(encode_int(i), 32)
     # bool: int<sz>
     elif base == 'bool':
@@ -65,19 +66,19 @@ def encode_single(typ, arg):
     elif base == 'int':
         sub = int(sub)
         i = decint(arg)
-        assert -2**(sub - 1) <= i < 2**sub, "Value out of bounds: %r" % arg
-        return zpad(encode_int(i % 2**sub), 32)
+        assert -2 ** (sub - 1) <= i < 2 ** sub, "Value out of bounds: %r" % arg
+        return zpad(encode_int(i % 2 ** sub), 32)
     # Unsigned reals: ureal<high>x<low>
     elif base == 'ureal':
         high, low = [int(x) for x in sub.split('x')]
-        assert 0 <= arg < 2**high, "Value out of bounds: %r" % arg
-        return zpad(encode_int(arg * 2**low), 32)
+        assert 0 <= arg < 2 ** high, "Value out of bounds: %r" % arg
+        return zpad(encode_int(arg * 2 ** low), 32)
     # Signed reals: real<high>x<low>
     elif base == 'real':
         high, low = [int(x) for x in sub.split('x')]
-        assert -2**(high - 1) <= arg < 2**(high - 1), \
+        assert -2 ** (high - 1) <= arg < 2 ** (high - 1), \
             "Value out of bounds: %r" % arg
-        return zpad(encode_int((arg % 2**high) * 2**low), 32)
+        return zpad(encode_int((arg % 2 ** high) * 2 ** low), 32)
     # Strings
     elif base == 'string' or base == 'bytes':
         if not is_string(arg):
@@ -90,8 +91,8 @@ def encode_single(typ, arg):
         # Variable length: string
         else:
             return zpad(encode_int(len(arg)), 32) + \
-                arg + \
-                b'\x00' * (ceil32(len(arg)) - len(arg))
+                   arg + \
+                   b'\x00' * (ceil32(len(arg)) - len(arg))
     # Hashes: hash<sz>
     elif base == 'hash':
         assert int(sub) and int(sub) <= 32
@@ -161,6 +162,7 @@ def process_type(typ):
         assert sub == '', "Address cannot have suffix"
     return base, sub, [ast.literal_eval(x) for x in arrlist]
 
+
 # Returns the static size of a type, or None if dynamic
 def get_size(typ):
     base, sub, arrlist = typ
@@ -178,6 +180,7 @@ def get_size(typ):
 
 lentyp = 'uint', 256, []
 
+
 # Encodes a single value (static or dynamic)
 def enc(typ, arg):
     base, sub, arrlist = typ
@@ -187,8 +190,8 @@ def enc(typ, arg):
         assert isinstance(arg, (str, bytes, unicode)), \
             "Expecting a string"
         return enc(lentyp, len(arg)) + \
-            to_string(arg) + \
-            b'\x00' * (ceil32(len(arg)) - len(arg))
+               to_string(arg) + \
+               b'\x00' * (ceil32(len(arg)) - len(arg))
     # Encode dynamic-sized lists via the head/tail mechanism described in
     # https://github.com/ethereum/wiki/wiki/Proposal-for-new-ABI-value-encoding
     elif sz is None:

@@ -86,7 +86,7 @@ class NodeTasksWidget(QtGui.QWidget):
         
         self.__updateDetailedTaksView(self.localTasksActiveRow)
 
-        self.__updateDetailedChunkView(self.remoteChunkActiveRow)
+        self.__update_detailed_chunk_view(self.remoteChunkActiveRow)
 
 
     ######################## 
@@ -115,7 +115,7 @@ class NodeTasksWidget(QtGui.QWidget):
 
             self.remoteChunkActiveRow = idx
 
-            self.__updateDetailedChunkView(idx)
+            self.__update_detailed_chunk_view(idx)
         else:
             self.remoteChunkActiveRow = -1
 
@@ -170,11 +170,11 @@ class NodeTasksWidget(QtGui.QWidget):
     ########################
     def __updateExistingRowView(self, rowData, task_id, progress):
         rowData.uid.setText(task_id)
-        rowData.progressBar.setProperty("value", int(100.0 * progress))
+        rowData.progress_bar.setProperty("value", int(100.0 * progress))
 
     def __updateDetailedTaksView(self, idx):
 
-        if idx >= 0 and idx < len(self.localTasksTableData):
+        if 0 <= idx < len(self.localTasksTableData):
 
             uid = str(self.localTasksTableData[ idx ].uid.text())
 
@@ -189,9 +189,9 @@ class NodeTasksWidget(QtGui.QWidget):
             self.ui.chunksLeftInput.setText(local_task_state[ "chunks_left" ])
             self.ui.localTaskProgressBar.setProperty("value", int(100.0 * local_task_state[ "taskProgress" ]))
 
-    def __updateDetailedChunkView(self, idx):
+    def __update_detailed_chunk_view(self, idx):
 
-        if idx >= 0 and idx < len(self.remoteChunksTableData):
+        if 0 <= idx < len(self.remoteChunksTableData):
 
             uid = str(self.remoteChunksTableData[ idx ].uid.text())
 
@@ -225,6 +225,7 @@ class NodeTasksWidget(QtGui.QWidget):
 class TableRowDataEntry:
 
     ########################
-    def __init__(self, uidItem, progressBar):
+    def __init__(self, uidItem,
+                 ):
         self.uid = uidItem
-        self.progressBar = progressBar
+        self.progress_bar = progress_bar

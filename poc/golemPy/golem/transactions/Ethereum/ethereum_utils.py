@@ -41,7 +41,7 @@ def zpad(x, l):
 
 
 def encode_int(v):
-    '''encodes an integer into serialization'''
+    """encodes an integer into serialization"""
     if not is_numeric(v) or v < 0 or v >= TT256:
         raise Exception("Integer invalid or out of range: %r" % v)
     return int_to_big_endian(v)

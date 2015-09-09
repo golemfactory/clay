@@ -37,13 +37,13 @@ class RayTracingTask(Task):
 
     #######################
     def query_extra_data(self, perf_index):
-        hash = "{}".format(random.getrandbits(128))
+        hash_ = "{}".format(random.getrandbits(128))
         return {    "start_x" : 0,
                     "start_y" : 0,
                     "width" : self.width,
                     "height" : self.height,
                     "img_width" : self.width,
-                    "img_height" : self.height }, hash, self.return_address, self.return_port
+                    "img_height" : self.height }, hash_, self.return_address, self.return_port
 
     #######################
     def short_extra_data_repr(self, perf_index):
@@ -168,8 +168,8 @@ class VRayTracingTask(Task):
                     "task_data" : task_data
                     }
 
-        hash = "{}".format(random.getrandbits(128))
-        return self.last_extra_data, hash, self.return_address, self.return_port
+        hash_ = "{}".format(random.getrandbits(128))
+        return self.last_extra_data, hash_, self.return_address, self.return_port
 
     #######################
     def short_extra_data_repr(self, perf_index):
@@ -283,10 +283,10 @@ class PbrtRenderTask(Task):
                                     "scene_file" : self.scene_file
                                 }
 
-        hash = "{}".format(random.getrandbits(128))
-        self.subtasks_given[ hash ] = self.last_extra_data
+        hash_ = "{}".format(random.getrandbits(128))
+        self.subtasks_given[ hash_ ] = self.last_extra_data
         self.last_task = end_task # TODO: Should depend on performance
-        return self.last_extra_data, hash, self.return_address, self.return_port
+        return self.last_extra_data, hash_, self.return_address, self.return_port
 
     #######################
     def __short_extra_data_repr(self, perf_index, extra_data):

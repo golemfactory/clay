@@ -1,15 +1,16 @@
 from golem.environments.EnvironmentsConfig import EnvironmentsConfig
 
+
 class EnvironmentsManager:
     ############################
     def __init__(self):
         self.supportedEnvironments = set()
         self.environments = set()
-        self.env_config= None
+        self.env_config = None
 
     ############################
     def load_config(self, client_id):
-        self.env_config= EnvironmentsConfig.load_config(client_id, self.get_environments_to_config())
+        self.env_config = EnvironmentsConfig.load_config(client_id, self.get_environments_to_config())
         config_entries = self.env_config.get_config_entries()
         for env in self.environments:
             getter_for_env = getattr(config_entries, "get" + env.get_id())
@@ -39,7 +40,7 @@ class EnvironmentsManager:
     def get_environments_to_config(self):
         envs = {}
         for env in self.environments:
-            envs[ env.get_id() ] = (env.get_id(), True)
+            envs[env.get_id()] = (env.get_id(), True)
         return envs
 
     ############################
@@ -49,6 +50,6 @@ class EnvironmentsManager:
                 env.accept_tasks = state
                 config_entries = self.env_config.get_config_entries()
                 setter_for_env = getattr(config_entries, "set" + env.get_id())
-                setter_for_env(int (state))
-                self.env_config= self.env_config.change_config()
+                setter_for_env(int(state))
+                self.env_config = self.env_config.change_config()
                 return

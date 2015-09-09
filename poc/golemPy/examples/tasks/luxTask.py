@@ -9,13 +9,16 @@ import subprocess
 import psutil
 import shutil
 
+
 def format_lux_renderer_cmd(cmd_file, start_task, output_file, outfilebasename, scenefile, num_threads):
     cmd = ["{}".format(cmd_file), "{}".format(scenefile), "-o",
-           "{}/{}{}.png".format(output_file, outfilebasename, start_task), "-t", "{}".format(num_threads) ]
+           "{}/{}{}.png".format(output_file, outfilebasename, start_task), "-t", "{}".format(num_threads)]
     print cmd
     return cmd
 
+
 GOLEM_ENV = 'GOLEM'
+
 
 def __read_from_environment():
     path = os.environ.get(GOLEM_ENV)
@@ -40,6 +43,7 @@ def __read_from_environment():
         else:
             return 'luxconsole'
 
+
 ############################
 def return_data(files):
     res = []
@@ -49,7 +53,8 @@ def return_data(files):
         file_data = zlib.compress(file_data, 9)
         res.append(pickle.dumps((os.path.basename(f), file_data)))
 
-    return { 'data': res, 'result_type': 0 }
+    return {'data': res, 'result_type': 0}
+
 
 ############################
 def return_files(files):
@@ -57,13 +62,14 @@ def return_files(files):
     for f in files:
         shutil.copy2(f, copy_path)
 
-    files = [ os.path.normpath(os.path.join(copy_path, os.path.basename(f))) for f in files]
-    return {'data': files, 'result_type': 1 }
+    files = [os.path.normpath(os.path.join(copy_path, os.path.basename(f))) for f in files]
+    return {'data': files, 'result_type': 1}
 
 
 ############################
 def is_windows():
     return sys.platform == 'win32'
+
 
 def exec_cmd(cmd, nice=20):
     pc = subprocess.Popen(cmd)
@@ -76,9 +82,10 @@ def exec_cmd(cmd, nice=20):
 
     pc.wait()
 
+
 def make_tmp_file(scene_dir, scene_src):
     if is_windows():
-        tmp_scene_file = tempfile.TemporaryFile(suffix = ".lxs", dir = scene_dir)
+        tmp_scene_file = tempfile.TemporaryFile(suffix=".lxs", dir=scene_dir)
         tmp_scene_file.close()
         f = open(tmp_scene_file.name, 'w')
         f.write(scene_src)
@@ -115,8 +122,8 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir
         print tmp_scene_file
         cmd = format_lux_renderer_cmd(cmd_file, start_task, output_files, outfilebasename, tmp_scene_file, num_threads)
     else:
-         print "Scene file does not exist"
-         return {'data': [], 'result_type': 0 }
+        print "Scene file does not exist"
+        return {'data': [], 'result_type': 0}
 
     prev_dir = os.getcwd()
     os.chdir(scene_dir)
@@ -129,4 +136,5 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir
     return return_files(files)
 
 
-output = run_lux_renderer_task (start_task, outfilebasename, scene_file_src, scene_dir, num_threads, own_binaries, lux_console)
+output = run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir, num_threads, own_binaries,
+                               lux_console)

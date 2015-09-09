@@ -390,7 +390,6 @@ class TaskManager:
             return ts
         else:
             assert False, "Should never be here!"
-            return None
 
     #######################
     def change_config(self, root_path, use_distributed_resource_management):

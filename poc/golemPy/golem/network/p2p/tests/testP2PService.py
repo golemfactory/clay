@@ -139,17 +139,11 @@ class TestP2PService(unittest.TestCase):
         self.assertEquals(self.p2pservice.peers['543'], 'testPeer')
 
     def testTryToAddPeer (self):
-        peer_info = {}
-        peer_info['id'] = 'peer_id'
-        peer_info['address'] = 'address'
-        peer_info['port'] = 'port'
+        peer_info = {'id': 'peer_id', 'address': 'address', 'port': 'port'}
         self.p2pservice.try_to_add_peer(peer_info)
         self.assertEquals(self.p2pservice.incoming_peers['peer_id']['conn_trials'], 0)
         self.assertTrue('peer_id' in self.p2pservice.free_peers)
-        peer_info2 = {}
-        peer_info2['id'] = 'peer_id'
-        peer_info2['address'] = 'address2'
-        peer_info2['port'] = 'port2'
+        peer_info2 = {'id': 'peer_id', 'address': 'address2', 'port': 'port2'}
         self.p2pservice.try_to_add_peer(peer_info2)
         self.assertNotEqual(self.p2pservice.incoming_peers['peer_id']['address'], 'address2')
 

@@ -11,6 +11,7 @@ from golem.resource.dir_manager import DirManager
 
 path = 'C:\golem_test\\test2'
 
+
 class TestResourcesManager(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
@@ -32,12 +33,12 @@ class TestResourcesManager(unittest.TestCase):
         open(file3, 'w').close()
 
     def tearDown(self):
-       path = 'C:\golem_test\\test2'
-       if os.path.isdir(path):
-           shutil.rmtree(path)
+        path_ = 'C:\golem_test\\test2'
+        if os.path.isdir(path_):
+            shutil.rmtree(path_)
 
     def testInit(self):
-         self.assertIsNotNone(ResourcesManager(self.dir_manager, 'owner'))
+        self.assertIsNotNone(ResourcesManager(self.dir_manager, 'owner'))
 
     def testGetResourceHeader(self):
         rm = ResourcesManager(self.dir_manager, 'owner')
@@ -53,11 +54,11 @@ class TestResourcesManager(unittest.TestCase):
         header = rm.get_resource_header('task2')
         delta = rm.get_resource_delta('task2', header)
         self.assertEquals(len(delta.files_data), 0)
-        self.assertEquals(len (delta.sub_dir_resources[0].files_data), 0)
+        self.assertEquals(len(delta.sub_dir_resources[0].files_data), 0)
         header2 = rm.get_resource_header('task3')
         delta2 = rm.get_resource_delta('task2', header2)
         self.assertEquals(len(delta2.files_data), 2)
-        self.assertEquals(len (delta2.sub_dir_resources[0].files_data), 1)
+        self.assertEquals(len(delta2.sub_dir_resources[0].files_data), 1)
         res_path = self.dir_manager.get_task_resource_dir('task2')
         file5 = os.path.join(res_path, 'file5')
         open(file5, 'w').close()
@@ -96,8 +97,9 @@ class TestResourcesManager(unittest.TestCase):
         self.assertEqual(outDir, self.dir_manager.get_task_output_dir('task2'))
 
 
-    # def testFileDataReceived(self):
-    #     assert False
+        # def testFileDataReceived(self):
+        #     assert False
+
 
 if __name__ == '__main__':
     unittest.main()

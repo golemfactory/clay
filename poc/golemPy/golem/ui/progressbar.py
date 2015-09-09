@@ -8,16 +8,16 @@ def create_wrapped_progress_bar(red):
     widget = QtGui.QWidget()
     widget.setFixedSize(166, 22)
 
-    progressBar = QtGui.QProgressBar(widget)
-    progressBar.setGeometry(7, 2, 159, 16)
-    progressBar.setProperty("value", 0)
+    progress_bar = QtGui.QProgressBar(widget)
+    progress_bar.setGeometry(7, 2, 159, 16)
+    progress_bar.setProperty("value", 0)
 
     if red:
-        progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #dd3a36; width: 1px;}")
+        progress_bar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #dd3a36; width: 1px;}")
     else:
-        progressBar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #3add36; width: 1px;}")
+        progress_bar.setStyleSheet(" QProgressBar { border: 2px solid grey; border-radius: 0px; text-align: center; } QProgressBar::chunk {background-color: #3add36; width: 1px;}")
 
-    return widget, progressBar
+    return widget, progress_bar
 
 
 
@@ -97,7 +97,7 @@ class BurningWidget(QtGui.QWidget):
             metrics = qp.fontMetrics()
             fw = metrics.width(str(self.num[j]))
             qp.drawText(i-fw/2, h/2, str(self.num[j]))
-            j = j + 1
+            j += 1
             
 
 class Example(QtGui.QWidget):
@@ -160,10 +160,10 @@ class CustomProgressBar(QtGui.QWidget):
         super(MyCustomWidget, self).__init__(parent)
         layout = QtGui.QVBoxLayout(self)       
 
-        self.progressBar = QtGui.QProgressBar(self)
-        self.progressBar.setRange(0,100)
+        self.progress_bar = QtGui.QProgressBar(self)
+        self.progress_bar.setRange(0,100)
         button = QtGui.QPushButton("Start", self)
-        layout.addWidget(self.progressBar)
+        layout.addWidget(self.progress_bar)
         layout.addWidget(button)
 
         button.clicked.connect(self.onStart)
@@ -175,7 +175,7 @@ class CustomProgressBar(QtGui.QWidget):
         self.myLongTask.start()
 
     def onProgress(self, i):
-        self.progressBar.setValue(i)
+        self.progress_bar.setValue(i)
 
 if __name__ == "__main__":
 

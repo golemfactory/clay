@@ -1,5 +1,6 @@
 import sys
 
+
 class Environment:
     @classmethod
     def get_id(cls):

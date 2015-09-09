@@ -9,10 +9,12 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
-########################################################
-class ImgRepr:
+
+class ImgRepr(object):
+    __metaclass__ = abc.ABCMeta
+
     @abc.abstractmethod
-    def load_from_file(self, file):
+    def load_from_file(self, file_):
         return
 
     @abc.abstractmethod
@@ -23,14 +25,14 @@ class ImgRepr:
     def get_size(self):
         return
 
-########################################################
+
 class PILImgRepr(ImgRepr):
     def __init__(self):
         self.img = None
         self.type = "PIL"
 
-    def load_from_file(self, file):
-        self.img = Image.open(file)
+    def load_from_file(self, file_):
+        self.img = Image.open(file_)
         self.img = self.img.convert('RGB')
 
     def get_size(self):
@@ -39,7 +41,7 @@ class PILImgRepr(ImgRepr):
     def get_pixel(self, (i, j)):
         return list(self.img.getpixel((i, j)))
 
-########################################################
+
 class EXRImgRepr(ImgRepr):
     def __init__(self):
         self.img = None
