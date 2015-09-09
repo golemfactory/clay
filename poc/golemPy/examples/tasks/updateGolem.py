@@ -4,7 +4,7 @@ import zlib
 import pickle
 
 ############################
-def updateGolem():
+def update_golem():
     dst = os.environ.get('GOLEM')
     print dst
     src = resourcePath
@@ -16,7 +16,7 @@ def updateGolem():
             os.mkdir(dst_dir)
         for file_ in files:
             name, ext = os.path.splitext(file_)
-            if ext == '.ini' or name == 'updateGolem':
+            if ext == '.ini' or name == 'update_golem':
                 continue
             src_file = os.path.join(src_dir, file_)
             dst_file = os.path.join(dst_dir, file_)
@@ -30,4 +30,4 @@ def updateGolem():
     return { 'data': [ pickle.dumps((data, compress)) ], 'result_type': 0}
 
 
-output = updateGolem()
+output = update_golem()

@@ -6,9 +6,9 @@ import math
 from golem.task.TaskState import SubtaskStatus
 
 from examples.gnr.RenderingEnvironment import PBRTEnvironment
-from examples.gnr.RenderingDirManager import getTestTaskPath
+from examples.gnr.RenderingDirManager import get_test_task_path
 from examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo, RenderingTaskDefinition
-from examples.gnr.task.SceneFileEditor import regeneratePbrtFile
+from examples.gnr.task.SceneFileEditor import regenerate_pbrt_file
 from examples.gnr.task.GNRTask import GNROptions, GNRTaskBuilder
 from examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
 from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector
@@ -19,20 +19,20 @@ from examples.gnr.customizers.PbrtDialogCustomizer import PbrtDialogCustomizer
 logger = logging.getLogger(__name__)
 
 ##############################################
-def buildPBRTRendererInfo():
+def build_pbrt_renderer_info():
     defaults = RendererDefaults()
-    defaults.outputFormat       = "EXR"
-    defaults.mainProgramFile    = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/tasks/pbrtTask.py'))
-    defaults.minSubtasks        = 4
-    defaults.maxSubtasks        = 200
-    defaults.defaultSubtasks    = 60
+    defaults.output_format       = "EXR"
+    defaults.main_program_file    = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/tasks/pbrt_task.py'))
+    defaults.min_subtasks        = 4
+    defaults.max_subtasks        = 200
+    defaults.default_subtasks    = 60
 
 
     renderer                = RendererInfo("PBRT", defaults, PbrtTaskBuilder, PbrtDialog, PbrtDialogCustomizer, PbrtRendererOptions)
-    renderer.outputFormats  = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF" ]
-    renderer.scene_fileExt    = [ "pbrt" ]
-    renderer.get_taskNumFromPixels = get_taskNumFromPixels
-    renderer.get_taskBoarder = get_taskBoarder
+    renderer.output_formats  = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF" ]
+    renderer.scene_file_ext    = [ "pbrt" ]
+    renderer.get_task_num_from_pixels = get_task_num_from_pixels
+    renderer.get_task_boarder = get_task_boarder
 
     return renderer
 
@@ -40,61 +40,61 @@ def buildPBRTRendererInfo():
 class PbrtRendererOptions( GNROptions):
     #######################
     def __init__(self):
-        self.pbrtPath = ''
-        self.pixelFilter = "mitchell"
-        self.samplesPerPixelCount = 32
-        self.algorithmType = "lowdiscrepancy"
+        self.pbrt_path = ''
+        self.pixel_filter = "mitchell"
+        self.samples_per_pixel_count = 32
+        self.algorithm_type = "lowdiscrepancy"
         self.filters = [ "box", "gaussian", "mitchell", "sinc", "triangle" ]
-        self.pathTracers = [ "adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified" ]
+        self.path_tracers = [ "adaptive", "bestcandidate", "halton", "lowdiscrepancy", "random", "stratified" ]
 
     #######################
-    def addToResources(self, resources):
-        if os.path.isfile(self.pbrtPath):
-            resources.add(os.path.normpath(self.pbrtPath))
+    def add_to_resources(self, resources):
+        if os.path.isfile(self.pbrt_path):
+            resources.add(os.path.normpath(self.pbrt_path))
         return resources
 
     #######################
-    def removeFromResources(self, resources):
-        if os.path.normpath(self.pbrtPath) in resources:
-            resources.remove(os.path.normpath(self.pbrtPath))
+    def remove_from_resources(self, resources):
+        if os.path.normpath(self.pbrt_path) in resources:
+            resources.remove(os.path.normpath(self.pbrt_path))
         return resources
 
 ##############################################
 class PbrtGNRTaskBuilder(GNRTaskBuilder):
     def build(self):
-        if isinstance(self.taskDefinition, RenderingTaskDefinition):
-            rtd = self.taskDefinition
+        if isinstance(self.task_definition, RenderingTaskDefinition):
+            rtd = self.task_definition
         else:
-            rtd = self.__translateTaskDefinition()
+            rtd = self.__translate_task_definition()
 
-        pbrtTaskBuilder = PbrtTaskBuilder(self.client_id, rtd, self.root_path)
-        return pbrtTaskBuilder.build()
+        pbrt_task_builder = PbrtTaskBuilder(self.client_id, rtd, self.root_path)
+        return pbrt_task_builder.build()
 
-    def __translateTaskDefinition(self):
+    def __translate_task_definition(self):
         rtd = RenderingTaskDefinition()
-        rtd.task_id = self.taskDefinition.task_id
-        rtd.full_task_timeout = self.taskDefinition.full_task_timeout
-        rtd.subtask_timeout = self.taskDefinition.subtask_timeout
-        rtd.min_subtask_time = self.taskDefinition.min_subtask_time
-        rtd.resources = self.taskDefinition.resources
-        rtd.estimated_memory = self.taskDefinition.estimated_memory
-        rtd.totalSubtasks = self.taskDefinition.totalSubtasks
-        rtd.optimizeTotal = self.taskDefinition.optimizeTotal
-        rtd.mainProgramFile = self.taskDefinition.mainProgramFile
-        rtd.taskType = self.taskDefinition.taskType
-        rtd.verificationOptions = self.taskDefinition.verificationOptions
+        rtd.task_id = self.task_definition.task_id
+        rtd.full_task_timeout = self.task_definition.full_task_timeout
+        rtd.subtask_timeout = self.task_definition.subtask_timeout
+        rtd.min_subtask_time = self.task_definition.min_subtask_time
+        rtd.resources = self.task_definition.resources
+        rtd.estimated_memory = self.task_definition.estimated_memory
+        rtd.total_subtasks = self.task_definition.total_subtasks
+        rtd.optimize_total = self.task_definition.optimize_total
+        rtd.main_program_file = self.task_definition.main_program_file
+        rtd.task_type = self.task_definition.task_type
+        rtd.verification_options = self.task_definition.verification_options
 
-        rtd.resolution = self.taskDefinition.options.resolution
-        rtd.renderer = self.taskDefinition.taskType
-        rtd.mainSceneFile = self.taskDefinition.options.mainSceneFile
-        rtd.resources.add(rtd.mainSceneFile)
-        rtd.output_file = self.taskDefinition.options.output_file
-        rtd.outputFormat = self.taskDefinition.options.outputFormat
-        rtd.rendererOptions = PbrtRendererOptions()
-        rtd.rendererOptions.pixelFilter = self.taskDefinition.options.pixelFilter
-        rtd.rendererOptions.algorithmType = self.taskDefinition.options.algorithmType
-        rtd.rendererOptions.samplesPerPixelCount = self.taskDefinition.options.samplesPerPixelCount
-        rtd.rendererOptions.pbrtPath = self.taskDefinition.options.pbrtPath
+        rtd.resolution = self.task_definition.options.resolution
+        rtd.renderer = self.task_definition.task_type
+        rtd.main_scene_file = self.task_definition.options.main_scene_file
+        rtd.resources.add(rtd.main_scene_file)
+        rtd.output_file = self.task_definition.options.output_file
+        rtd.output_format = self.task_definition.options.output_format
+        rtd.renderer_options = PbrtRendererOptions()
+        rtd.renderer_options.pixel_filter = self.task_definition.options.pixel_filter
+        rtd.renderer_options.algorithm_type = self.task_definition.options.algorithm_type
+        rtd.renderer_options.samples_per_pixel_count = self.task_definition.options.samples_per_pixel_count
+        rtd.renderer_options.pbrt_path = self.task_definition.options.pbrt_path
         return rtd
 
 
@@ -103,61 +103,61 @@ class PbrtGNRTaskBuilder(GNRTaskBuilder):
 class PbrtTaskBuilder(RenderingTaskBuilder):
     #######################
     def build(self):
-        mainSceneDir = os.path.dirname(self.taskDefinition.mainSceneFile)
+        main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
 
-        pbrtTask = PbrtRenderTask(self.client_id,
-                                   self.taskDefinition.task_id,
-                                   mainSceneDir,
-                                   self.taskDefinition.mainProgramFile,
-                                   self._calculateTotal(buildPBRTRendererInfo(), self.taskDefinition),
+        pbrt_task = PbrtRenderTask(self.client_id,
+                                   self.task_definition.task_id,
+                                   main_scene_dir,
+                                   self.task_definition.main_program_file,
+                                   self._calculate_total(build_pbrt_renderer_info(), self.task_definition),
                                    20,
                                    4,
-                                   self.taskDefinition.resolution[ 0 ],
-                                   self.taskDefinition.resolution[ 1 ],
-                                   self.taskDefinition.rendererOptions.pixelFilter,
-                                   self.taskDefinition.rendererOptions.algorithmType,
-                                   self.taskDefinition.rendererOptions.samplesPerPixelCount,
-                                   self.taskDefinition.rendererOptions.pbrtPath,
+                                   self.task_definition.resolution[ 0 ],
+                                   self.task_definition.resolution[ 1 ],
+                                   self.task_definition.renderer_options.pixel_filter,
+                                   self.task_definition.renderer_options.algorithm_type,
+                                   self.task_definition.renderer_options.samples_per_pixel_count,
+                                   self.task_definition.renderer_options.pbrt_path,
                                    "temp",
-                                   self.taskDefinition.mainSceneFile,
-                                   self.taskDefinition.full_task_timeout,
-                                   self.taskDefinition.subtask_timeout,
-                                   self.taskDefinition.resources,
-                                   self.taskDefinition.estimated_memory,
-                                   self.taskDefinition.output_file,
-                                   self.taskDefinition.outputFormat,
+                                   self.task_definition.main_scene_file,
+                                   self.task_definition.full_task_timeout,
+                                   self.task_definition.subtask_timeout,
+                                   self.task_definition.resources,
+                                   self.task_definition.estimated_memory,
+                                   self.task_definition.output_file,
+                                   self.task_definition.output_format,
                                    self.root_path
                                  )
 
-        return self._setVerificationOptions(pbrtTask)
+        return self._set_verification_options(pbrt_task)
 
-    def _setVerificationOptions(self, newTask):
-        newTask = RenderingTaskBuilder._setVerificationOptions(self, newTask)
-        if newTask.advanceVerification:
-            boxX = min(newTask.verificationOptions.boxSize[0], newTask.taskResX)
-            boxY = min(newTask.verificationOptions.boxSize[1], newTask.taskResY)
-            newTask.boxSize = (boxX, boxY)
-        return newTask
+    def _set_verification_options(self, new_task):
+        new_task = RenderingTaskBuilder._set_verification_options(self, new_task)
+        if new_task.advanceVerification:
+            box_x = min(new_task.verification_options.box_size[0], new_task.task_res_x)
+            box_y = min(new_task.verification_options.box_size[1], new_task.task_res_y)
+            new_task.box_size = (box_x, box_y)
+        return new_task
 
     #######################
-    def _calculateTotal(self, renderer, definition):
+    def _calculate_total(self, renderer, definition):
 
-        if (not definition.optimizeTotal) and (renderer.defaults.minSubtasks <= definition.totalSubtasks <= renderer.defaults.maxSubtasks):
-            return definition.totalSubtasks
+        if (not definition.optimize_total) and (renderer.defaults.min_subtasks <= definition.total_subtasks <= renderer.defaults.max_subtasks):
+            return definition.total_subtasks
 
-        taskBase = 1000000
-        allOp = definition.resolution[0] * definition.resolution[1] * definition.rendererOptions.samplesPerPixelCount
-        return max(renderer.defaults.minSubtasks, min(renderer.defaults.maxSubtasks, allOp / taskBase))
+        task_base = 1000000
+        all_op = definition.resolution[0] * definition.resolution[1] * definition.renderer_options.samples_per_pixel_count
+        return max(renderer.defaults.min_subtasks, min(renderer.defaults.max_subtasks, all_op / task_base))
 
-def countSubtaskReg(total_tasks, subtasks, resX, resY):
+def count_subtask_reg(total_tasks, subtasks, res_x, res_y):
     nx = total_tasks * subtasks
     ny = 1
-    while (nx % 2 == 0) and (2 * resX * ny < resY * nx):
+    while (nx % 2 == 0) and (2 * res_x * ny < res_y * nx):
         nx /= 2
         ny *= 2
-    taskResX = float(resX) / float(nx)
-    taskResY = float(resY) / float(ny)
-    return nx, ny, taskResX, taskResY
+    task_res_x = float(res_x) / float(nx)
+    task_res_y = float(res_y) / float(ny)
+    return nx, ny, task_res_x, task_res_y
 
 ##############################################
 class PbrtRenderTask(RenderingTask):
@@ -166,25 +166,25 @@ class PbrtRenderTask(RenderingTask):
     def __init__(self,
                   client_id,
                   task_id,
-                  mainSceneDir,
-                  mainProgramFile,
+                  main_scene_dir,
+                  main_program_file,
                   total_tasks,
                   num_subtasks,
                   num_cores,
-                  resX,
-                  resY,
-                  pixelFilter,
+                  res_x,
+                  res_y,
+                  pixel_filter,
                   sampler,
-                  samplesPerPixel,
-                  pbrtPath,
+                  samples_per_pixel,
+                  pbrt_path,
                   outfilebasename,
                   scene_file,
                   full_task_timeout,
                   subtask_timeout,
-                  taskResources,
+                  task_resources,
                   estimated_memory,
                   output_file,
-                  outputFormat,
+                  output_format,
                   root_path,
                   return_address = "",
                   return_port = 0,
@@ -194,38 +194,38 @@ class PbrtRenderTask(RenderingTask):
 
         RenderingTask.__init__(self, client_id, task_id, return_address, return_port, key_id,
                                 PBRTEnvironment.get_id(), full_task_timeout, subtask_timeout,
-                                mainProgramFile, taskResources, mainSceneDir, scene_file,
-                                total_tasks, resX, resY, outfilebasename, output_file, outputFormat,
+                                main_program_file, task_resources, main_scene_dir, scene_file,
+                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                 root_path, estimated_memory)
 
-        self.collectedFileNames = set()
+        self.collected_file_names = set()
 
         self.num_subtasks        = num_subtasks
         self.num_cores           = num_cores
 
         try:
             with open(scene_file) as f:
-                self.scene_fileSrc = f.read()
+                self.scene_file_src = f.read()
         except Exception, err:
             logger.error("Wrong scene file: {}".format(str(err)))
-            self.scene_fileSrc = ""
+            self.scene_file_src = ""
 
-        self.resX               = resX
-        self.resY               = resY
-        self.pixelFilter        = pixelFilter
+        self.res_x               = res_x
+        self.res_y               = res_y
+        self.pixel_filter        = pixel_filter
         self.sampler            = sampler
-        self.samplesPerPixel    = samplesPerPixel
-        self.pbrtPath           = pbrtPath
-        self.nx, self.ny, self.taskResX, self.taskResY = countSubtaskReg(self.total_tasks, self.num_subtasks, self.resX, self.resY)
+        self.samples_per_pixel    = samples_per_pixel
+        self.pbrt_path           = pbrt_path
+        self.nx, self.ny, self.task_res_x, self.task_res_y = count_subtask_reg(self.total_tasks, self.num_subtasks, self.res_x, self.res_y)
 
     #######################
     def query_extra_data(self, perf_index, num_cores = 0, client_id = None):
-        if not self._acceptClient(client_id):
+        if not self._accept_client(client_id):
             logger.warning(" Client {} banned from this task ".format(client_id))
             return None
 
 
-        start_task, end_task = self._getNextTask(perf_index)
+        start_task, end_task = self._get_next_task(perf_index)
         if start_task is None or end_task is None:
             logger.error("Task already computed")
             return None
@@ -233,254 +233,256 @@ class PbrtRenderTask(RenderingTask):
         if num_cores == 0:
             num_cores = self.num_cores
 
-        working_directory = self._getWorkingDirectory()
-        sceneSrc = regeneratePbrtFile(self.scene_fileSrc, self.resX, self.resY, self.pixelFilter,
-                                   self.sampler, self.samplesPerPixel)
+        working_directory = self._get_working_directory()
+        scene_src = regenerate_pbrt_file(self.scene_file_src, self.res_x, self.res_y, self.pixel_filter,
+                                   self.sampler, self.samples_per_pixel)
 
-        sceneDir= os.path.dirname(self._getSceneFileRelPath())
+        scene_dir= os.path.dirname(self._get_scene_file_rel_path())
 
-        pbrtPath = self.__getPbrtRelPath()
+        pbrt_path = self.__get_pbrt_rel_path()
 
-        extra_data =          {      "path_root" : self.mainSceneDir,
+        extra_data =          {      "path_root" : self.main_scene_dir,
                                     "start_task" : start_task,
                                     "end_task" : end_task,
                                     "total_tasks" : self.total_tasks,
                                     "num_subtasks" : self.num_subtasks,
                                     "num_cores" : num_cores,
                                     "outfilebasename" : self.outfilebasename,
-                                    "scene_fileSrc" : sceneSrc,
-                                    "sceneDir": sceneDir,
-                                    "pbrtPath": pbrtPath
+                                    "scene_file_src" : scene_src,
+                                    "scene_dir": scene_dir,
+                                    "pbrt_path": pbrt_path
                                 }
 
         hash = "{}".format(random.getrandbits(128))
-        self.subTasksGiven[ hash ] = extra_data
-        self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
-        self.subTasksGiven[ hash ][ 'perf' ] = perf_index
-        self.subTasksGiven[ hash ][ 'client_id' ] = client_id
+        self.subtasks_given[ hash ] = extra_data
+        self.subtasks_given[ hash ][ 'status' ] = SubtaskStatus.starting
+        self.subtasks_given[ hash ][ 'perf' ] = perf_index
+        self.subtasks_given[ hash ][ 'client_id' ] = client_id
 
-        self._updateTaskPreview()
+        self._update_task_preview()
 
-        return self._newComputeTaskDef(hash, extra_data, working_directory, perf_index)
+        return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
     #######################
-    def query_extra_dataForTestTask(self):
+    def query_extra_data_for_test_task(self):
 
-        working_directory = self._getWorkingDirectory()
+        working_directory = self._get_working_directory()
 
-        sceneSrc = regeneratePbrtFile(self.scene_fileSrc, 1, 1, self.pixelFilter, self.sampler,
-                                   self.samplesPerPixel)
+        scene_src = regenerate_pbrt_file(self.scene_file_src, 1, 1, self.pixel_filter, self.sampler,
+                                   self.samples_per_pixel)
 
-        pbrtPath = self.__getPbrtRelPath()
-        sceneDir= os.path.dirname(self._getSceneFileRelPath())
+        pbrt_path = self.__get_pbrt_rel_path()
+        scene_dir= os.path.dirname(self._get_scene_file_rel_path())
 
-        extra_data =          {      "path_root" : self.mainSceneDir,
+        extra_data =          {      "path_root" : self.main_scene_dir,
                                     "start_task" : 0,
                                     "end_task" : 1,
                                     "total_tasks" : self.total_tasks,
                                     "num_subtasks" : self.num_subtasks,
                                     "num_cores" : self.num_cores,
                                     "outfilebasename" : self.outfilebasename,
-                                    "scene_fileSrc" : sceneSrc,
-                                    "sceneDir": sceneDir,
-                                    "pbrtPath": pbrtPath
+                                    "scene_file_src" : scene_src,
+                                    "scene_dir": scene_dir,
+                                    "pbrt_path": pbrt_path
                                 }
 
         hash = "{}".format(random.getrandbits(128))
 
-        self.test_taskResPath = getTestTaskPath(self.root_path)
-        logger.debug(self.test_taskResPath)
-        if not os.path.exists(self.test_taskResPath):
-            os.makedirs(self.test_taskResPath)
+        self.test_task_res_path = get_test_task_path(self.root_path)
+        logger.debug(self.test_task_res_path)
+        if not os.path.exists(self.test_task_res_path):
+            os.makedirs(self.test_task_res_path)
 
-        return self._newComputeTaskDef(hash, extra_data, working_directory, 0)
+        return self._new_compute_task_def(hash, extra_data, working_directory, 0)
 
     #######################
     def computation_finished(self, subtask_id, task_result, dir_manager = None, result_type = 0):
 
-        if not self.shouldAccept(subtask_id):
+        if not self.should_accept(subtask_id):
             return
 
         tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create = False)
         self.tmp_dir = tmp_dir
-        trFiles = self.load_taskResults(task_result, result_type, tmp_dir)
+        tr_files = self.load_task_results(task_result, result_type, tmp_dir)
 
-        if not self._verifyImgs(subtask_id, trFiles):
-            self._markSubtaskFailed(subtask_id)
-            self._updateTaskPreview()
+        if not self._verify_imgs(subtask_id, tr_files):
+            self._mark_subtask_failed(subtask_id)
+            self._update_task_preview()
             return
 
         if len(task_result) > 0:
-            self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished
-            for trFile in trFiles:
+            self.subtasks_given[ subtask_id ][ 'status' ] = SubtaskStatus.finished
+            for tr_file in tr_files:
 
-                self.collectedFileNames.add(trFile)
+                self.collected_file_names.add(tr_file)
                 self.num_tasks_received += 1
-                self.counting_nodes[ self.subTasksGiven[ subtask_id ][ 'client_id' ] ] = 1
+                self.counting_nodes[ self.subtasks_given[ subtask_id ][ 'client_id' ] ] = 1
 
-                self._updatePreview(trFile)
-                self._updateTaskPreview()
+                self._update_preview(tr_file)
+                self._update_task_preview()
         else:
-            self._markSubtaskFailed(subtask_id)
-            self._updateTaskPreview()
+            self._mark_subtask_failed(subtask_id)
+            self._update_task_preview()
 
         if self.num_tasks_received == self.total_tasks:
-            output_file_name = u"{}".format(self.output_file, self.outputFormat)
-            if self.outputFormat != "EXR":
+            output_file_name = u"{}".format(self.output_file, self.output_format)
+            if self.output_format != "EXR":
                 collector = RenderingTaskCollector()
-                for file in self.collectedFileNames:
-                    collector.addImgFile(file)
-                collector.finalize().save(output_file_name, self.outputFormat)
-                self.previewFilePath = output_file_name
+                for file in self.collected_file_names:
+                    collector.add_img_file(file)
+                collector.finalize().save(output_file_name, self.output_format)
+                self.preview_file_path = output_file_name
             else:
-                self._putCollectedFilesTogether(output_file_name, list(self.collectedFileNames), "add")
+                self._put_collected_files_together(output_file_name, list(self.collected_file_names), "add")
 
     #######################
     def restart(self):
         RenderingTask.restart(self)
-        self.collectedFileNames = set()
+        self.collected_file_names = set()
 
     #######################
     def restart_subtask(self, subtask_id):
-        if self.subTasksGiven[ subtask_id ][ 'status' ] == SubtaskStatus.finished:
+        if self.subtasks_given[ subtask_id ][ 'status' ] == SubtaskStatus.finished:
             self.num_tasks_received += 1
         RenderingTask.restart_subtask(self, subtask_id)
-        self._updateTaskPreview()
+        self._update_task_preview()
 
     #######################
     def get_price_mod(self, subtask_id):
-        if subtask_id not in self.subTasksGiven:
+        if subtask_id not in self.subtasks_given:
             logger.error("Not my subtask {}".format(subtask_id))
             return 0
-        perf =  (self.subTasksGiven[ subtask_id ]['end_task'] - self.subTasksGiven[ subtask_id ][ 'start_task' ])
-        perf *= float(self.subTasksGiven[ subtask_id ]['perf']) / 1000
+        perf =  (self.subtasks_given[ subtask_id ]['end_task'] - self.subtasks_given[ subtask_id ][ 'start_task' ])
+        perf *= float(self.subtasks_given[ subtask_id ]['perf']) / 1000
         return perf
 
     #######################
-    def _getNextTask(self, perf_index):
-        if self.lastTask != self.total_tasks :
+    def _get_next_task(self, perf_index):
+        if self.last_task != self.total_tasks :
             perf = max(int(float(perf_index) / 1500), 1)
-            end_task = min(self.lastTask + perf, self.total_tasks)
-            start_task = self.lastTask
-            self.lastTask = end_task
+            end_task = min(self.last_task + perf, self.total_tasks)
+            start_task = self.last_task
+            self.last_task = end_task
             return start_task, end_task
         else:
-            for sub in self.subTasksGiven.values():
+            for sub in self.subtasks_given.values():
                 if sub['status'] == SubtaskStatus.failure:
                     sub['status'] = SubtaskStatus.resent
                     end_task = sub['end_task']
                     start_task = sub['start_task']
-                    self.numFailedSubtasks -= 1
+                    self.num_failed_subtasks -= 1
                     return start_task, end_task
         return None, None
 
     #######################
     def _short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data
-        return "path_root: {}, start_task: {}, end_task: {}, total_tasks: {}, num_subtasks: {}, num_cores: {}, outfilebasename: {}, scene_fileSrc: {}".format(l["path_root"], l["start_task"], l["end_task"], l["total_tasks"], l["num_subtasks"], l["num_cores"], l["outfilebasename"], l["scene_fileSrc"])
+        return "path_root: {}, start_task: {}, end_task: {}, total_tasks: {}, num_subtasks: {}, num_cores: {}, outfilebasename: {}, scene_file_src: {}".format(l["path_root"], l["start_task"], l["end_task"], l["total_tasks"], l["num_subtasks"], l["num_cores"], l["outfilebasename"], l["scene_file_src"])
 
     #######################
-    def _getPartImgSize(self, subtask_id, advTestFile):
-        if advTestFile is not None:
-            numTask = self.__getNumFromFileName(advTestFile[0], subtask_id)
+    def _get_part_img_size(self, subtask_id, adv_test_file):
+        if adv_test_file is not None:
+            num_task = self.__get_num_from_file_name(adv_test_file[0], subtask_id)
         else:
-            numTask = self.subTasksGiven[ subtask_id ][ 'start_task' ]
-        numSubtask = random.randint(0, self.num_subtasks - 1)
-        num = numTask * self.num_subtasks + numSubtask
-        x0 = int( round((num % self.nx) * self.taskResX))
-        x1 = int( round(((num % self.nx) + 1) * self.taskResX))
-        y0 = int(math.floor((num / self.nx) * self.taskResY))
-        y1 = int (math.floor(((num / self.nx) + 1) * self.taskResY))
+            num_task = self.subtasks_given[ subtask_id ][ 'start_task' ]
+        num_subtask = random.randint(0, self.num_subtasks - 1)
+        num = num_task * self.num_subtasks + num_subtask
+        x0 = int( round((num % self.nx) * self.task_res_x))
+        x1 = int( round(((num % self.nx) + 1) * self.task_res_x))
+        y0 = int(math.floor((num / self.nx) * self.task_res_y))
+        y1 = int (math.floor(((num / self.nx) + 1) * self.task_res_y))
         return x0, y0, x1, y1
 
     #######################
-    def _markTaskArea(self, subtask, imgTask, color):
-        for numTask in range(subtask['start_task'], subtask['end_task']):
+    def _mark_task_area(self, subtask, img_task, color):
+        for num_task in range(subtask['start_task'], subtask['end_task']):
             for sb in range(0, self.num_subtasks):
-                num = self.num_subtasks * numTask + sb
+                num = self.num_subtasks * num_task + sb
                 tx = num % self.nx
                 ty = num /  self.nx
-                xL = tx * self.taskResX
-                xR = (tx + 1) * self.taskResX
-                yL = ty * self.taskResY
-                yR = (ty + 1) * self.taskResY
+                x_l = tx * self.task_res_x
+                x_r = (tx + 1) * self.task_res_x
+                y_l = ty * self.task_res_y
+                y_r = (ty + 1) * self.task_res_y
 
-                for i in range(int(round(xL)) , int(round(xR))):
-                    for j in range(int(math.floor(yL)) , int(math.floor(yR))) :
-                        imgTask.putpixel((i, j), color)
+                for i in range(int(round(x_l)) , int(round(x_r))):
+                    for j in range(int(math.floor(y_l)) , int(math.floor(y_r))) :
+                        img_task.putpixel((i, j), color)
 
     #######################
-    def _changeScope(self, subtask_id, startBox, trFile):
-        extra_data, startBox = RenderingTask._changeScope(self, subtask_id, startBox, trFile)
+    def _change_scope(self, subtask_id, start_box, tr_file):
+        extra_data, start_box = RenderingTask._change_scope(self, subtask_id, start_box, tr_file)
         extra_data[ "outfilebasename" ] = str(extra_data[ "outfilebasename" ])
-        extra_data[ "resourcePath" ] = os.path.dirname(self.mainProgramFile)
+        extra_data[ "resourcePath" ] = os.path.dirname(self.main_program_file)
         extra_data[ "tmp_path" ] = self.tmp_dir
         extra_data[ "total_tasks" ] = self.total_tasks * self.num_subtasks
         extra_data[ "num_subtasks" ] = 1
-        extra_data[ "start_task" ] = get_taskNumFromPixels(startBox[0], startBox[1], extra_data[ "total_tasks" ], self.resX, self.resY, 1) - 1
+        extra_data[ "start_task" ] = get_task_num_from_pixels(start_box[0], start_box[1], extra_data[ "total_tasks" ], self.res_x, self.res_y, 1) - 1
         extra_data[ "end_task" ] = extra_data[ "start_task" ] + 1
 
-        return extra_data, startBox
+        return extra_data, start_box
 
-    def __getPbrtRelPath(self):
-        pbrtRel = os.path.relpath(os.path.dirname(self.pbrtPath), os.path.dirname(self.mainSceneFile))
-        pbrtRel = os.path.join(pbrtRel, os.path.basename(self.pbrtPath))
-        return pbrtRel
+    def __get_pbrt_rel_path(self):
+        pbrt_rel = os.path.relpath(os.path.dirname(self.pbrt_path), os.path.dirname(self.main_scene_file))
+        pbrt_rel = os.path.join(pbrt_rel, os.path.basename(self.pbrt_path))
+        return pbrt_rel
+
 
 
     #######################
-    def __getNumFromFileName(self, file_, subtask_id):
+    def __get_num_from_file_name(self, file_, subtask_id):
         try:
             file_name = os.path.basename(file_)
             file_name, ext = os.path.splitext(file_name)
-            BASENAME = "temp"
             idx = file_name.find(BASENAME)
             return int(file_name[idx + len(BASENAME):])
         except Exception, err:
             logger.error("Wrong output file name {}: {}".format(file_, str(err)))
-            return self.subTasksGiven[ subtask_id ][ 'start_task' ]
+            return self.subtasks_given[ subtask_id ][ 'start_task' ]
+
+BASENAME = "temp"
 
 #####################################################################
-def get_taskNumFromPixels(pX, pY, total_tasks, resX = 300, resY = 200, subtasks = 20):
-    nx, ny, taskResX, taskResY = countSubtaskReg(total_tasks, subtasks, resX, resY)
-    numX = int(math.floor(pX / taskResX))
-    numY = int(math.floor(pY / taskResY))
-    num = (numY * nx + numX) /subtasks + 1
+def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x = 300, res_y = 200, subtasks = 20):
+    nx, ny, task_res_x, task_res_y = count_subtask_reg(total_tasks, subtasks, res_x, res_y)
+    num_x = int(math.floor(p_x / task_res_x))
+    num_y = int(math.floor(p_y / task_res_y))
+    num = (num_y * nx + num_x) /subtasks + 1
     return num
 
 #####################################################################
-def get_taskBoarder(start_task, end_task, total_tasks, resX = 300, resY = 200, num_subtasks = 20):
+def get_task_boarder(start_task, end_task, total_tasks, res_x = 300, res_y = 200, num_subtasks = 20):
     boarder = []
-    newLeft = True
-    lastRight = None
-    for numTask in range(start_task, end_task):
+    new_left = True
+    last_right = None
+    for num_task in range(start_task, end_task):
         for sb in range(num_subtasks):
-            num = num_subtasks * numTask + sb
-            nx, ny, taskResX, taskResY = countSubtaskReg(total_tasks, num_subtasks, resX, resY)
+            num = num_subtasks * num_task + sb
+            nx, ny, task_res_x, task_res_y = count_subtask_reg(total_tasks, num_subtasks, res_x, res_y)
             tx = num % nx
             ty = num /  nx
-            xL = int(round(tx * taskResX))
-            xR = int (round((tx + 1) * taskResX))
-            yL = int (round(ty * taskResY))
-            yR = int(round((ty + 1) * taskResY))
-            for i in range(xL, xR):
-                if (i, yL) in boarder:
-                    boarder.remove((i, yL))
+            x_l = int(round(tx * task_res_x))
+            x_r = int (round((tx + 1) * task_res_x))
+            y_l = int (round(ty * task_res_y))
+            y_r = int(round((ty + 1) * task_res_y))
+            for i in range(x_l, x_r):
+                if (i, y_l) in boarder:
+                    boarder.remove((i, y_l))
                 else:
-                    boarder.append((i, yL))
-                boarder.append((i, yR))
-            if xL == 0:
-                newLeft = True
-            if newLeft:
-                for i in range(yL, yR):
-                    boarder.append((xL, i))
-                newLeft = False
-            if xR == resY:
-                for i in range(yL, yR):
-                    boarder.append((xR, i))
-            lastRight = (xR, yL, yR)
-    xR, yL, yR = lastRight
-    for i in range(yL, yR):
-        boarder.append((xR, i))
+                    boarder.append((i, y_l))
+                boarder.append((i, y_r))
+            if x_l == 0:
+                new_left = True
+            if new_left:
+                for i in range(y_l, y_r):
+                    boarder.append((x_l, i))
+                new_left = False
+            if x_r == res_y:
+                for i in range(y_l, y_r):
+                    boarder.append((x_r, i))
+            last_right = (x_r, y_l, y_r)
+    x_r, y_l, y_r = last_right
+    for i in range(y_l, y_r):
+        boarder.append((x_r, i))
     return boarder
 

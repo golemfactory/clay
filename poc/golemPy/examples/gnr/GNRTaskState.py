@@ -11,12 +11,12 @@ class GNRTaskDefinition:
         self.resources = set()
         self.estimated_memory    = 0
 
-        self.totalSubtasks      = 0
-        self.optimizeTotal      = False
-        self.mainProgramFile    = ""
-        self.taskType           = None
+        self.total_subtasks      = 0
+        self.optimize_total      = False
+        self.main_program_file    = ""
+        self.task_type           = None
 
-        self.verificationOptions = None
+        self.verification_options = None
         self.options = GNROptions
 
 ###########################################################################

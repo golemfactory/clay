@@ -15,32 +15,32 @@ class PbrtDialogCustomizer:
         self.gui = gui
         self.logic = logic
         self.newTaskDialog = newTaskDialog
-        self.rendererOptions = newTaskDialog.rendererOptions
+        self.renderer_options = newTaskDialog.renderer_options
 
         self.__init()
         self.__setup_connections()
 
     #############################
     def __init(self):
-        renderer = self.logic.getRenderer(u"PBRT")
+        renderer = self.logic.get_renderer(u"PBRT")
 
         self.gui.ui.pixelFilterComboBox.clear()
-        self.gui.ui.pixelFilterComboBox.addItems(self.rendererOptions.filters)
-        pixelFilterItem = self.gui.ui.pixelFilterComboBox.findText(self.rendererOptions.pixelFilter)
-        if pixelFilterItem >= 0:
-            self.gui.ui.pixelFilterComboBox.setCurrentIndex(pixelFilterItem)
+        self.gui.ui.pixelFilterComboBox.addItems(self.renderer_options.filters)
+        pixel_filterItem = self.gui.ui.pixelFilterComboBox.findText(self.renderer_options.pixel_filter)
+        if pixel_filterItem >= 0:
+            self.gui.ui.pixelFilterComboBox.setCurrentIndex(pixel_filterItem)
 
         self.gui.ui.pathTracerComboBox.clear()
-        self.gui.ui.pathTracerComboBox.addItems(self.rendererOptions.pathTracers)
+        self.gui.ui.pathTracerComboBox.addItems(self.renderer_options.path_tracers)
 
-        algItem = self.gui.ui.pathTracerComboBox.findText(self.rendererOptions.algorithmType)
+        algItem = self.gui.ui.pathTracerComboBox.findText(self.renderer_options.algorithm_type)
 
         if algItem >= 0:
             self.gui.ui.pathTracerComboBox.setCurrentIndex(algItem)
 
-        self.gui.ui.samplesPerPixelSpinBox.setValue(self.rendererOptions.samplesPerPixelCount)
+        self.gui.ui.samplesPerPixelSpinBox.setValue(self.renderer_options.samples_per_pixel_count)
 
-        self.gui.ui.pbrtPathLineEdit.setText(self.rendererOptions.pbrtPath)
+        self.gui.ui.pbrtPathLineEdit.setText(self.renderer_options.pbrt_path)
 
     #############################
     def __setup_connections(self):
@@ -50,11 +50,11 @@ class PbrtDialogCustomizer:
 
     #############################
     def __changeRendererOptions(self):
-        self.rendererOptions.pixelFilter = u"{}".format(self.gui.ui.pixelFilterComboBox.itemText(self.gui.ui.pixelFilterComboBox.currentIndex()))
-        self.rendererOptions.samplesPerPixelCount = self.gui.ui.samplesPerPixelSpinBox.value()
-        self.rendererOptions.algorithmType = u"{}".format(self.gui.ui.pathTracerComboBox.itemText(self.gui.ui.pathTracerComboBox.currentIndex()))
-        self.rendererOptions.pbrtPath = u"{}".format(self.gui.ui.pbrtPathLineEdit.text())
-        self.newTaskDialog.setRendererOptions(self.rendererOptions)
+        self.renderer_options.pixel_filter = u"{}".format(self.gui.ui.pixelFilterComboBox.itemText(self.gui.ui.pixelFilterComboBox.currentIndex()))
+        self.renderer_options.samples_per_pixel_count = self.gui.ui.samplesPerPixelSpinBox.value()
+        self.renderer_options.algorithm_type = u"{}".format(self.gui.ui.pathTracerComboBox.itemText(self.gui.ui.pathTracerComboBox.currentIndex()))
+        self.renderer_options.pbrt_path = u"{}".format(self.gui.ui.pbrtPathLineEdit.text())
+        self.newTaskDialog.setRendererOptions(self.renderer_options)
         self.gui.window.close()
 
     #############################

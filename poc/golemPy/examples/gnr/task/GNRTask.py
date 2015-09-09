@@ -5,7 +5,7 @@ from golem.environments.Environment import Environment
 from golem.network.p2p.Node import Node
 from golem.core.compress import decompress
 
-from examples.gnr.RenderingDirManager import getTmpPath
+from examples.gnr.RenderingDirManager import get_tmp_path
 
 import os
 import logging
@@ -15,21 +15,21 @@ import pickle
 logger = logging.getLogger(__name__)
 
 ##############################################
-def checkSubtask_idWrapper(func):
-    def checkSubtask_id(*args, **kwargs):
+def check_subtask_id_wrapper(func):
+    def check_subtask_id(*args, **kwargs):
         task = args[0]
         subtask_id = args[1]
-        if subtask_id not in task.subTasksGiven:
+        if subtask_id not in task.subtasks_given:
             logger.error("This is not my subtask {}".format(subtask_id))
             return False
         return func(*args, **kwargs)
-    return checkSubtask_id
+    return check_subtask_id
 
 ##############################################
 class GNRTaskBuilder(TaskBuilder):
     #######################
-    def __init__(self, client_id, taskDefinition, root_path):
-        self.taskDefinition = taskDefinition
+    def __init__(self, client_id, task_definition, root_path):
+        self.task_definition = task_definition
         self.client_id       = client_id
         self.root_path       = root_path
 
@@ -40,10 +40,10 @@ class GNRTaskBuilder(TaskBuilder):
 ##############################################
 class GNRSubtask():
     #######################
-    def __init__(self, subtask_id, startChunk, endChunk):
+    def __init__(self, subtask_id, start_chunk, end_chunk):
         self.subtask_id = subtask_id
-        self.startChunk = startChunk
-        self.endChunk = endChunk
+        self.start_chunk = start_chunk
+        self.end_chunk = end_chunk
 
 ##############################################
 class GNROptions:
@@ -52,30 +52,30 @@ class GNROptions:
         self.environment = Environment()
 
     #######################
-    def addToResources(self, resources):
+    def add_to_resources(self, resources):
         return resources
 
     #######################
-    def removeFromResources(self, resources):
+    def remove_from_resources(self, resources):
         return resources
 
 ##############################################
 class GNRTask(Task):
     #####################
-    def __init__(self, src_code, client_id, task_id, owner_address, owner_port, ownerKeyId, environment,
-                  ttl, subtaskTtl, resource_size, estimated_memory):
-        th = TaskHeader(client_id, task_id, owner_address, owner_port, ownerKeyId, environment, Node(),
-                         ttl, subtaskTtl, resource_size, estimated_memory)
+    def __init__(self, src_code, client_id, task_id, owner_address, owner_port, owner_key_id, environment,
+                  ttl, subtask_ttl, resource_size, estimated_memory):
+        th = TaskHeader(client_id, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
+                         ttl, subtask_ttl, resource_size, estimated_memory)
         Task.__init__(self, th, src_code)
 
-        self.taskResources = []
+        self.task_resources = []
 
         self.total_tasks = 0
-        self.lastTask = 0
+        self.last_task = 0
 
         self.num_tasks_received = 0
-        self.subTasksGiven = {}
-        self.numFailedSubtasks = 0
+        self.subtasks_given = {}
+        self.num_failed_subtasks = 0
 
         self.full_task_timeout = 2200
         self.counting_nodes = {}
@@ -89,29 +89,29 @@ class GNRTask(Task):
     #######################
     def restart (self):
         self.num_tasks_received = 0
-        self.lastTask = 0
-        self.subTasksGiven.clear()
+        self.last_task = 0
+        self.subtasks_given.clear()
 
-        self.numFailedSubtasks = 0
+        self.num_failed_subtasks = 0
         self.header.last_checking = time.time()
         self.header.ttl = self.full_task_timeout
 
 
     #######################
     def get_chunks_left(self):
-        return (self.total_tasks - self.lastTask) + self.numFailedSubtasks
+        return (self.total_tasks - self.last_task) + self.num_failed_subtasks
 
     #######################
     def get_progress(self):
-        return float(self.lastTask) / self.total_tasks
+        return float(self.last_task) / self.total_tasks
 
 
     #######################
     def needs_computation(self):
-        return (self.lastTask != self.total_tasks) or (self.numFailedSubtasks > 0)
+        return (self.last_task != self.total_tasks) or (self.num_failed_subtasks > 0)
 
     #######################
-    def finishedComputation(self):
+    def finished_computation(self):
         return self.num_tasks_received == self.total_tasks
 
     #######################
@@ -120,7 +120,7 @@ class GNRTask(Task):
 
     #######################
     def computation_failed(self, subtask_id):
-        self._markSubtaskFailed(subtask_id)
+        self._mark_subtask_failed(subtask_id)
 
     #######################
     def get_total_tasks(self):
@@ -132,26 +132,26 @@ class GNRTask(Task):
 
     #######################
     def get_active_tasks(self):
-        return self.lastTask
+        return self.last_task
 
     #######################
     def get_active_chunks(self):
-        return self.lastTask
+        return self.last_task
 
     #######################
-    def setResFiles(self, res_files):
+    def set_res_files(self, res_files):
         self.res_files = res_files
 
     #######################
     def prepare_resource_delta(self, task_id, resource_header):
         if task_id == self.header.task_id:
-            commonPathPrefix, dir_name, tmp_dir = self.__get_taskDirParams()
+            common_path_prefix, dir_name, tmp_dir = self.__get_task_dir_params()
 
             if not os.path.exists(tmp_dir):
                 os.makedirs(tmp_dir)
 
             if os.path.exists(dir_name):
-                return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.taskResources)
+                return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
             else:
                 return None
         else:
@@ -160,7 +160,7 @@ class GNRTask(Task):
     #######################
     def get_resource_parts_list(self, task_id, resource_header):
         if task_id == self.header.task_id:
-            commonPathPrefix, dir_name, tmp_dir = self.__get_taskDirParams()
+            common_path_prefix, dir_name, tmp_dir = self.__get_task_dir_params()
 
             if os.path.exists(dir_name):
                 delta_header, parts = TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name, self.res_files)
@@ -171,15 +171,15 @@ class GNRTask(Task):
             return None
 
     #######################
-    def __get_taskDirParams(self):
-        commonPathPrefix = os.path.commonprefix(self.taskResources)
-        commonPathPrefix = os.path.dirname(commonPathPrefix)
-        dir_name = commonPathPrefix #os.path.join("res", self.header.client_id, self.header.task_id, "resources")
-        tmp_dir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
+    def __get_task_dir_params(self):
+        common_path_prefix = os.path.commonprefix(self.task_resources)
+        common_path_prefix = os.path.dirname(common_path_prefix)
+        dir_name = common_path_prefix #os.path.join("res", self.header.client_id, self.header.task_id, "resources")
+        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
         if not os.path.exists(tmp_dir):
                 os.makedirs(tmp_dir)
 
-        return commonPathPrefix, dir_name, tmp_dir
+        return common_path_prefix, dir_name, tmp_dir
 
     #######################
     def abort (self):
@@ -190,9 +190,9 @@ class GNRTask(Task):
         pass
 
     #######################
-    def load_taskResults(self, task_result, result_type, tmp_dir):
+    def load_task_results(self, task_result, result_type, tmp_dir):
         if result_type == result_types['data']:
-            return  [ self._unpackTaskResult(trp, tmp_dir) for trp in task_result ]
+            return  [ self._unpack_task_result(trp, tmp_dir) for trp in task_result ]
         elif result_type == result_types['files']:
             return task_result
         else:
@@ -200,51 +200,51 @@ class GNRTask(Task):
             return []
 
     #######################
-    @checkSubtask_idWrapper
+    @check_subtask_id_wrapper
     def verify_subtask(self, subtask_id):
-       return self.subTasksGiven[ subtask_id ]['status'] == SubtaskStatus.finished
+       return self.subtasks_given[ subtask_id ]['status'] == SubtaskStatus.finished
 
     #######################
     def verify_task(self):
-        return self.finishedComputation()
+        return self.finished_computation()
 
     #######################
-    @checkSubtask_idWrapper
+    @check_subtask_id_wrapper
     def get_price_mod(self, subtask_id):
         return 1
 
     #######################
-    @checkSubtask_idWrapper
+    @check_subtask_id_wrapper
     def get_trust_mod(self, subtask_id):
         return 1.0
 
     #######################
-    @checkSubtask_idWrapper
+    @check_subtask_id_wrapper
     def restart_subtask(self, subtask_id):
-        if subtask_id in self.subTasksGiven:
-            if self.subTasksGiven[ subtask_id ][ 'status' ] == SubtaskStatus.starting:
-                self._markSubtaskFailed(subtask_id)
-            elif self.subTasksGiven[ subtask_id ][ 'status' ] == SubtaskStatus.finished :
-                self._markSubtaskFailed(subtask_id)
-                tasks = self.subTasksGiven[ subtask_id ]['end_task'] - self.subTasksGiven[ subtask_id  ]['start_task'] + 1
+        if subtask_id in self.subtasks_given:
+            if self.subtasks_given[ subtask_id ][ 'status' ] == SubtaskStatus.starting:
+                self._mark_subtask_failed(subtask_id)
+            elif self.subtasks_given[ subtask_id ][ 'status' ] == SubtaskStatus.finished :
+                self._mark_subtask_failed(subtask_id)
+                tasks = self.subtasks_given[ subtask_id ]['end_task'] - self.subtasks_given[ subtask_id  ]['start_task'] + 1
                 self.num_tasks_received -= tasks
 
     #######################
-    @checkSubtask_idWrapper
-    def shouldAccept(self, subtask_id):
-        if self.subTasksGiven[ subtask_id ][ 'status' ] != SubtaskStatus.starting:
+    @check_subtask_id_wrapper
+    def should_accept(self, subtask_id):
+        if self.subtasks_given[ subtask_id ][ 'status' ] != SubtaskStatus.starting:
             return False
         return True
 
     #######################
-    @checkSubtask_idWrapper
-    def _markSubtaskFailed(self, subtask_id):
-        self.subTasksGiven[ subtask_id ]['status'] = SubtaskStatus.failure
-        self.counting_nodes[ self.subTasksGiven[ subtask_id ][ 'client_id' ] ] = -1
-        self.numFailedSubtasks += 1
+    @check_subtask_id_wrapper
+    def _mark_subtask_failed(self, subtask_id):
+        self.subtasks_given[ subtask_id ]['status'] = SubtaskStatus.failure
+        self.counting_nodes[ self.subtasks_given[ subtask_id ][ 'client_id' ] ] = -1
+        self.num_failed_subtasks += 1
 
     #######################
-    def _unpackTaskResult(self, trp, tmp_dir):
+    def _unpack_task_result(self, trp, tmp_dir):
         tr = pickle.loads(trp)
         with open(os.path.join(tmp_dir, tr[ 0 ]), "wb") as fh:
             fh.write(decompress(tr[ 1 ]))

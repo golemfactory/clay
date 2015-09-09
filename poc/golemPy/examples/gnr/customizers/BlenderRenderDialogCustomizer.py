@@ -15,26 +15,26 @@ class BlenderRenderDialogCustomizer:
         self.logic = logic
         self.newTaskDialog = newTaskDialog
 
-        self.rendererOptions = newTaskDialog.rendererOptions
+        self.renderer_options = newTaskDialog.renderer_options
 
         self.__init()
         self.__setup_connections()
 
     #############################
     def __init(self):
-        renderer = self.logic.getRenderer(u"Blender")
+        renderer = self.logic.get_renderer(u"Blender")
 
-        self.gui.ui.engineComboBox.addItems(self.rendererOptions.engineValues)
-        engineItem = self.gui.ui.engineComboBox.findText(self.rendererOptions.engine)
+        self.gui.ui.engineComboBox.addItems(self.renderer_options.engine_values)
+        engineItem = self.gui.ui.engineComboBox.findText(self.renderer_options.engine)
         if engineItem != -1:
             self.gui.ui.engineComboBox.setCurrentIndex(engineItem)
         else:
             logger.error("Wrong engine type ")
 
-        self.gui.ui.framesCheckBox.setChecked(self.rendererOptions.useFrames)
-        self.gui.ui.framesLineEdit.setEnabled(self.rendererOptions.useFrames)
-        if self.rendererOptions.useFrames:
-            self.gui.ui.framesLineEdit.setText(self.__framesToString(self.rendererOptions.frames))
+        self.gui.ui.framesCheckBox.setChecked(self.renderer_options.use_frames)
+        self.gui.ui.framesLineEdit.setEnabled(self.renderer_options.use_frames)
+        if self.renderer_options.use_frames:
+            self.gui.ui.framesLineEdit.setText(self.__frames_to_string(self.renderer_options.frames))
         else:
             self.gui.ui.framesLineEdit.setText("")
 
@@ -44,32 +44,32 @@ class BlenderRenderDialogCustomizer:
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__changeRendererOptions())
 
         QtCore.QObject.connect(self.gui.ui.framesCheckBox, QtCore.SIGNAL("stateChanged(int) "),
-                                self.__framesCheckBoxChanged)
+                                self.__frames_check_box_changed)
 
     #############################
-    def __framesCheckBoxChanged(self):
+    def __frames_check_box_changed(self):
         self.gui.ui.framesLineEdit.setEnabled(self.gui.ui.framesCheckBox.isChecked())
         if self.gui.ui.framesCheckBox.isChecked():
-            self.gui.ui.framesLineEdit.setText(self.__framesToString(self.rendererOptions.frames))
+            self.gui.ui.framesLineEdit.setText(self.__frames_to_string(self.renderer_options.frames))
 
     #############################
     def __changeRendererOptions(self):
         index = self.gui.ui.engineComboBox.currentIndex()
-        self.rendererOptions.engine = u"{}".format(self.gui.ui.engineComboBox.itemText(index))
-        self.rendererOptions.useFrames = self.gui.ui.framesCheckBox.isChecked()
-        if self.rendererOptions.useFrames:
+        self.renderer_options.engine = u"{}".format(self.gui.ui.engineComboBox.itemText(index))
+        self.renderer_options.use_frames = self.gui.ui.framesCheckBox.isChecked()
+        if self.renderer_options.use_frames:
             frames = self.__stringToFrames(self.gui.ui.framesLineEdit.text())
             if not frames:
                 QMessageBox().critical(None, "Error", "Wrong frame format. Frame list expected, e.g. 1;3;5-12. ")
                 return
-            self.rendererOptions.frames = frames
-        self.newTaskDialog.setRendererOptions(self.rendererOptions)
+            self.renderer_options.frames = frames
+        self.newTaskDialog.setRendererOptions(self.renderer_options)
         self.gui.window.close()
 
    #############################
-    def __framesToString(self, frames):
+    def __frames_to_string(self, frames):
         s = ""
-        lastFrame = None
+        last_frame = None
         interval = False
         for frame in sorted(frames):
             try:
@@ -77,26 +77,26 @@ class BlenderRenderDialogCustomizer:
                 if frame < 0:
                     raise
 
-                if lastFrame == None:
+                if last_frame == None:
                     s += str(frame)
-                elif frame - lastFrame == 1:
+                elif frame - last_frame == 1:
                     if not interval:
                         s += '-'
                         interval = True
                 elif interval:
-                    s += str(lastFrame) + ";" + str(frame)
+                    s += str(last_frame) + ";" + str(frame)
                     interval = False
                 else:
                     s += ';' + str(frame)
 
-                lastFrame = frame
+                last_frame = frame
 
             except:
                 logger.error("Wrong frame format")
                 return ""
 
         if interval:
-            s += str(lastFrame)
+            s += str(last_frame)
 
         return s
 
@@ -112,14 +112,14 @@ class BlenderRenderDialogCustomizer:
                 elif len(inter) == 2:
                     inter2 = inter[1].split(",")
                     if len(inter2) == 1:      #przedzial klatek (np. 1-10)
-                        startFrame = int(inter[0])
-                        endFrame = int(inter[1]) + 1
-                        frames += range(startFrame, endFrame)
+                        start_frame = int(inter[0])
+                        end_frame = int(inter[1]) + 1
+                        frames += range(start_frame, end_frame)
                     elif len (inter2)== 2:    # co n-ta klata z przedzialu (np. 10-100,5)
-                        startFrame = int(inter[0])
-                        endFrame = int(inter2[0]) + 1
+                        start_frame = int(inter[0])
+                        end_frame = int(inter2[0]) + 1
                         step = int(inter2[1])
-                        frames += range(startFrame, endFrame, step)
+                        frames += range(start_frame, end_frame, step)
                     else:
                         raise
                 else:

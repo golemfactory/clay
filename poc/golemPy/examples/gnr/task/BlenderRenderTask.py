@@ -8,14 +8,14 @@ from PIL import Image, ImageChops
 
 from golem.task.TaskState import SubtaskStatus
 
-from examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
+from examples.gnr.RenderingDirManager import get_test_task_path, get_tmp_path
 from examples.gnr.RenderingEnvironment import BlenderEnvironment
 from examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
 
-from examples.gnr.task.GNRTask import GNROptions, checkSubtask_idWrapper
-from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, get_taskBoarder, get_taskNumFromPixels
+from examples.gnr.task.GNRTask import GNROptions, check_subtask_id_wrapper
+from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, get_task_boarder, get_task_num_from_pixels
 from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector, exr_to_pil
-from examples.gnr.task.SceneFileEditor import regenerateBlenderCropFile
+from examples.gnr.task.SceneFileEditor import regenerate_blender_crop_file
 
 from examples.gnr.ui.BlenderRenderDialog import BlenderRenderDialog
 from examples.gnr.customizers.BlenderRenderDialogCustomizer import BlenderRenderDialogCustomizer
@@ -23,19 +23,19 @@ from examples.gnr.customizers.BlenderRenderDialogCustomizer import BlenderRender
 logger = logging.getLogger(__name__)
 
 ##############################################
-def buildBlenderRendererInfo():
+def build_blender_renderer_info():
     defaults = RendererDefaults()
-    defaults.outputFormat = "EXR"
-    defaults.mainProgramFile = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/tasks/blenderTask.py'))
-    defaults.minSubtasks = 1
-    defaults.maxSubtasks = 100
-    defaults.defaultSubtasks = 6
+    defaults.output_format = "EXR"
+    defaults.main_program_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/tasks/blenderTask.py'))
+    defaults.min_subtasks = 1
+    defaults.max_subtasks = 100
+    defaults.default_subtasks = 6
 
     renderer = RendererInfo("Blender", defaults, BlenderRenderTaskBuilder, BlenderRenderDialog, BlenderRenderDialogCustomizer, BlenderRendererOptions)
-    renderer.outputFormats = [ "PNG", "TGA", "EXR" ]
-    renderer.scene_fileExt = [ "blend" ]
-    renderer.get_taskNumFromPixels = get_taskNumFromPixels
-    renderer.get_taskBoarder = get_taskBoarder
+    renderer.output_formats = [ "PNG", "TGA", "EXR" ]
+    renderer.scene_file_ext = [ "blend" ]
+    renderer.get_task_num_from_pixels = get_task_num_from_pixels
+    renderer.get_task_boarder = get_task_boarder
 
     return renderer
 
@@ -44,46 +44,46 @@ class BlenderRendererOptions(GNROptions):
     #######################
     def __init__(self):
         self.environment = BlenderEnvironment()
-        self.engineValues = ["BLENDER_RENDER", "BLENDER_GAME", "CYCLES"]
+        self.engine_values = ["BLENDER_RENDER", "BLENDER_GAME", "CYCLES"]
         self.engine = "BLENDER_RENDER"
-        self.useFrames = False
+        self.use_frames = False
         self.frames = range(1, 11)
 
 ##############################################
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuiler):
     #######################
     def build(self):
-        mainSceneDir = os.path.dirname(self.taskDefinition.mainSceneFile)
+        main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
 
-        vRayTask = BlenderRenderTask(      self.client_id,
-                                   self.taskDefinition.task_id,
-                                   mainSceneDir,
-                                   self.taskDefinition.mainSceneFile,
-                                   self.taskDefinition.mainProgramFile,
-                                   self._calculateTotal(buildBlenderRendererInfo(), self.taskDefinition),
-                                   self.taskDefinition.resolution[0],
-                                   self.taskDefinition.resolution[1],
-                                   os.path.splitext(os.path.basename(self.taskDefinition.output_file))[0],
-                                   self.taskDefinition.output_file,
-                                   self.taskDefinition.outputFormat,
-                                   self.taskDefinition.full_task_timeout,
-                                   self.taskDefinition.subtask_timeout,
-                                   self.taskDefinition.resources,
-                                   self.taskDefinition.estimated_memory,
+        vray_task = BlenderRenderTask(      self.client_id,
+                                   self.task_definition.task_id,
+                                   main_scene_dir,
+                                   self.task_definition.main_scene_file,
+                                   self.task_definition.main_program_file,
+                                   self._calculate_total(build_blender_renderer_info(), self.task_definition),
+                                   self.task_definition.resolution[0],
+                                   self.task_definition.resolution[1],
+                                   os.path.splitext(os.path.basename(self.task_definition.output_file))[0],
+                                   self.task_definition.output_file,
+                                   self.task_definition.output_format,
+                                   self.task_definition.full_task_timeout,
+                                   self.task_definition.subtask_timeout,
+                                   self.task_definition.resources,
+                                   self.task_definition.estimated_memory,
                                    self.root_path,
-                                   self.taskDefinition.rendererOptions.useFrames,
-                                   self.taskDefinition.rendererOptions.frames,
-                                   self.taskDefinition.rendererOptions.engine
+                                   self.task_definition.renderer_options.use_frames,
+                                   self.task_definition.renderer_options.frames,
+                                   self.task_definition.renderer_options.engine
                                   )
-        return self._setVerificationOptions(vRayTask)
+        return self._set_verification_options(vray_task)
 
-    def _setVerificationOptions(self, newTask):
-        newTask = FrameRenderingTaskBuiler._setVerificationOptions(self, newTask)
-        if newTask.advanceVerification:
-            boxX = max(newTask.verificationOptions.boxSize[0], 8)
-            boxY = max(newTask.verificationOptions.boxSize[1], 8)
-            newTask.boxSize = (boxX, boxY)
-        return newTask
+    def _set_verification_options(self, new_task):
+        new_task = FrameRenderingTaskBuiler._set_verification_options(self, new_task)
+        if new_task.advanceVerification:
+            box_x = max(new_task.verification_options.box_size[0], 8)
+            box_y = max(new_task.verification_options.box_size[1], 8)
+            new_task.box_size = (box_x, box_y)
+        return new_task
 
 
 ##############################################
@@ -92,21 +92,21 @@ class BlenderRenderTask(FrameRenderingTask):
     def __init__(self,
                   client_id,
                   task_id,
-                  mainSceneDir,
-                  mainSceneFile,
-                  mainProgramFile,
+                  main_scene_dir,
+                  main_scene_file,
+                  main_program_file,
                   total_tasks,
-                  resX,
-                  resY,
+                  res_x,
+                  res_y,
                   outfilebasename,
                   output_file,
-                  outputFormat,
+                  output_format,
                   full_task_timeout,
                   subtask_timeout,
-                  taskResources,
+                  task_resources,
                   estimated_memory,
                   root_path,
-                  useFrames,
+                  use_frames,
                   frames,
                   engine,
                   return_address = "",
@@ -115,181 +115,181 @@ class BlenderRenderTask(FrameRenderingTask):
 
         FrameRenderingTask.__init__(self, client_id, task_id, return_address, return_port, key_id,
                           BlenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
-                          mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                          total_tasks, resX, resY, outfilebasename, output_file, outputFormat,
-                          root_path, estimated_memory, useFrames, frames)
+                          main_program_file, task_resources, main_scene_dir, main_scene_file,
+                          total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
+                          root_path, estimated_memory, use_frames, frames)
 
-        cropTask = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples\\tasks\\blenderCrop.py'))
+        crop_task = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples\\tasks\\blenderCrop.py'))
         try:
-            with open(cropTask) as f:
-                self.scriptSrc = f.read()
+            with open(crop_task) as f:
+                self.script_src = f.read()
         except Exception, err:
             logger.error("Wrong script file: {}".format(str(err)))
-            self.scriptSrc = ""
+            self.script_src = ""
 
         self.engine = engine
 
-        self.framesGiven = {}
+        self.frames_given = {}
         for frame in frames:
-            self.framesGiven[ frame ] = {}
+            self.frames_given[ frame ] = {}
 
     #######################
     def query_extra_data(self, perf_index, num_cores = 0, client_id = None):
 
-        if not self._acceptClient(client_id):
+        if not self._accept_client(client_id):
             logger.warning(" Client {} banned from this task ".format(client_id))
             return None
 
-        start_task, end_task = self._getNextTask()
+        start_task, end_task = self._get_next_task()
 
-        working_directory = self._getWorkingDirectory()
-        scene_file = self._getSceneFileRelPath()
+        working_directory = self._get_working_directory()
+        scene_file = self._get_scene_file_rel_path()
 
-        if self.useFrames:
-            frames, parts = self._chooseFrames(self.frames, start_task, self.total_tasks)
+        if self.use_frames:
+            frames, parts = self._choose_frames(self.frames, start_task, self.total_tasks)
         else:
             frames = [1]
             parts = 1
 
-        if not self.useFrames:
-            minY = (self.total_tasks - start_task) * (1.0 / float(self.total_tasks))
-            maxY = (self.total_tasks - start_task + 1) * (1.0 / float(self.total_tasks))
+        if not self.use_frames:
+            min_y = (self.total_tasks - start_task) * (1.0 / float(self.total_tasks))
+            max_y = (self.total_tasks - start_task + 1) * (1.0 / float(self.total_tasks))
         elif parts > 1:
-            minY = (parts - self._countPart(start_task, parts)) * (1.0 / float(parts))
-            maxY = (parts - self._countPart(start_task, parts) + 1) * (1.0 / float(parts))
+            min_y = (parts - self._count_part(start_task, parts)) * (1.0 / float(parts))
+            max_y = (parts - self._count_part(start_task, parts) + 1) * (1.0 / float(parts))
         else:
-            minY = 0.0
-            maxY = 1.0
+            min_y = 0.0
+            max_y = 1.0
 
-        scriptSrc = regenerateBlenderCropFile(self.scriptSrc, self.resX, self.resY, 0.0, 1.0, minY, maxY)
-        extra_data =          {      "path_root": self.mainSceneDir,
+        script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, 0.0, 1.0, min_y, max_y)
+        extra_data =          {      "path_root": self.main_scene_dir,
                                     "start_task" : start_task,
                                     "end_task": end_task,
                                     "total_tasks": self.total_tasks,
                                     "outfilebasename" : self.outfilebasename,
                                     "scene_file" : scene_file,
-                                    "scriptSrc": scriptSrc,
+                                    "script_src": script_src,
                                     "engine": self.engine,
                                     "frames": frames,
                                 }
 
 
         hash = "{}".format(random.getrandbits(128))
-        self.subTasksGiven[ hash ] = extra_data
-        self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
-        self.subTasksGiven[ hash ][ 'perf' ] = perf_index
-        self.subTasksGiven[ hash ][ 'client_id' ] = client_id
-        self.subTasksGiven[ hash ][ 'parts' ] = parts
+        self.subtasks_given[ hash ] = extra_data
+        self.subtasks_given[ hash ][ 'status' ] = SubtaskStatus.starting
+        self.subtasks_given[ hash ][ 'perf' ] = perf_index
+        self.subtasks_given[ hash ][ 'client_id' ] = client_id
+        self.subtasks_given[ hash ][ 'parts' ] = parts
 
 
-        if not self.useFrames:
-            self._updateTaskPreview()
+        if not self.use_frames:
+            self._update_task_preview()
         else:
-            self._updateFrameTaskPreview()
+            self._update_frame_task_preview()
 
-        return self._newComputeTaskDef(hash, extra_data, working_directory, perf_index)
+        return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
     #######################
-    def query_extra_dataForTestTask(self):
+    def query_extra_data_for_test_task(self):
 
-        working_directory = self._getWorkingDirectory()
-        scene_file = self._getSceneFileRelPath()
+        working_directory = self._get_working_directory()
+        scene_file = self._get_scene_file_rel_path()
 
-        if self.useFrames:
+        if self.use_frames:
             frames = [ self.frames[0] ]
         else:
             frames = []
 
-        if self.useFrames:
+        if self.use_frames:
             frames = [ self.frames[0] ]
         else:
             frames = [1]
 
-        scriptSrc = regenerateBlenderCropFile(self.scriptSrc, 8, 8, 0.0, 1.0, 0.0, 1.0)
+        script_src = regenerate_blender_crop_file(self.script_src, 8, 8, 0.0, 1.0, 0.0, 1.0)
 
-        extra_data =          {      "path_root": self.mainSceneDir,
+        extra_data =          {      "path_root": self.main_scene_dir,
                                     "start_task" : 1,
                                     "end_task": 1,
                                     "total_tasks": self.total_tasks,
                                     "outfilebasename" : self.outfilebasename,
                                     "scene_file" : scene_file,
-                                    "scriptSrc": scriptSrc,
+                                    "script_src": script_src,
                                     "engine": self.engine,
                                     "frames": frames
                                 }
 
         hash = "{}".format(random.getrandbits(128))
 
-        self.test_taskResPath = getTestTaskPath(self.root_path)
-        logger.debug(self.test_taskResPath)
-        if not os.path.exists(self.test_taskResPath):
-            os.makedirs(self.test_taskResPath)
+        self.test_task_res_path = get_test_task_path(self.root_path)
+        logger.debug(self.test_task_res_path)
+        if not os.path.exists(self.test_task_res_path):
+            os.makedirs(self.test_task_res_path)
 
-        return self._newComputeTaskDef(hash, extra_data, working_directory, 0)
+        return self._new_compute_task_def(hash, extra_data, working_directory, 0)
 
     #######################
-    def _getPartSize(self) :
-        if not self.useFrames:
-            resY = int (math.floor(float(self.resY) / float(self.total_tasks)))
+    def _get_part_size(self) :
+        if not self.use_frames:
+            res_y = int (math.floor(float(self.res_y) / float(self.total_tasks)))
         elif len(self.frames) >= self.total_tasks:
-            resY = self.resY
+            res_y = self.res_y
         else:
             parts = self.total_tasks / len(self.frames)
-            resY = int (math.floor(float(self.resY) / float(parts)))
-        return self.resX, resY
+            res_y = int (math.floor(float(self.res_y) / float(parts)))
+        return self.res_x, res_y
 
     #######################
-    @checkSubtask_idWrapper
-    def _getPartImgSize(self, subtask_id, advTestFile) :
-        x, y = self._getPartSize()
+    @check_subtask_id_wrapper
+    def _get_part_img_size(self, subtask_id, adv_test_file) :
+        x, y = self._get_part_size()
         return 0, 0, x, y
 
     #######################
-    @checkSubtask_idWrapper
-    def _changeScope(self, subtask_id, startBox, trFile):
-        extra_data, _ = FrameRenderingTask._changeScope(self, subtask_id, startBox, trFile)
-        minX = startBox[0]/float(self.resX)
-        maxX = (startBox[0] + self.verificationOptions.boxSize[0] + 1) / float(self.resX)
-        startY = startBox[1]+ (extra_data['start_task'] - 1) * (self.resY / float(extra_data['total_tasks']))
-        maxY = float(self.resY - startY) /self.resY
-        minY = max(float(self.resY - startY - self.verificationOptions.boxSize[1] - 1) /self.resY, 0.0)
-        scriptSrc = regenerateBlenderCropFile(self.scriptSrc, self.resX, self.resY, minX, maxX, minY, maxY)
-        extra_data['scriptSrc'] = scriptSrc
+    @check_subtask_id_wrapper
+    def _change_scope(self, subtask_id, start_box, tr_file):
+        extra_data, _ = FrameRenderingTask._change_scope(self, subtask_id, start_box, tr_file)
+        min_x = start_box[0]/float(self.res_x)
+        max_x = (start_box[0] + self.verification_options.box_size[0] + 1) / float(self.res_x)
+        start_y = start_box[1]+ (extra_data['start_task'] - 1) * (self.res_y / float(extra_data['total_tasks']))
+        max_y = float(self.res_y - start_y) /self.res_y
+        min_y = max(float(self.res_y - start_y - self.verification_options.box_size[1] - 1) /self.res_y, 0.0)
+        script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, min_x, max_x, min_y, max_y)
+        extra_data['script_src'] = script_src
         return extra_data, (0, 0)
 
-    def __getFrameNumFromOutputFile(self, file_):
+    def __get_frame_num_from_output_file(self, file_):
         file_name = os.path.basename(file_)
         file_name, ext = os.path.splitext(file_name)
         idx = file_name.find(self.outfilebasename)
         return int(file_name[ idx + len(self.outfilebasename):])
 
     #######################
-    def _updatePreview(self, newChunkFilePath, chunkNum):
+    def _update_preview(self, new_chunk_file_path, chunk_num):
 
-        if newChunkFilePath.endswith(".exr"):
-            img = exr_to_pil(newChunkFilePath)
+        if new_chunk_file_path.endswith(".exr"):
+            img = exr_to_pil(new_chunk_file_path)
         else:
-            img = Image.open(newChunkFilePath)
+            img = Image.open(new_chunk_file_path)
 
-        imgOffset = Image.new("RGB", (self.resX, self.resY))
+        img_offset = Image.new("RGB", (self.res_x, self.res_y))
         try:
-            offset = int (math.floor((chunkNum - 1) * float(self.resY) / float(self.total_tasks)))
-            imgOffset.paste(img, (0, offset))
+            offset = int (math.floor((chunk_num - 1) * float(self.res_y) / float(self.total_tasks)))
+            img_offset.paste(img, (0, offset))
         except Exception, err:
             logger.error("Can't generate preview {}".format(str(err)))
 
-        tmp_dir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
+        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
 
-        self.previewFilePath = "{}".format(os.path.join(tmp_dir, "current_preview"))
+        self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
 
-        if os.path.exists(self.previewFilePath):
-            imgCurrent = Image.open(self.previewFilePath)
-            imgCurrent = ImageChops.add(imgCurrent, imgOffset)
-            imgCurrent.save(self.previewFilePath, "BMP")
+        if os.path.exists(self.preview_file_path):
+            img_current = Image.open(self.preview_file_path)
+            img_current = ImageChops.add(img_current, img_offset)
+            img_current.save(self.preview_file_path, "BMP")
         else:
-            imgOffset.save(self.previewFilePath, "BMP")
+            img_offset.save(self.preview_file_path, "BMP")
 
     #######################
-    def _getOutputName(self, frameNum, numStart):
-        num = str(frameNum)
-        return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.outputFormat)
+    def _get_output_name(self, frame_num, num_start):
+        num = str(frame_num)
+        return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)

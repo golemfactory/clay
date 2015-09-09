@@ -11,38 +11,38 @@ logger = logging.getLogger(__name__)
 
 class GNRAdministratorMainWindowCustomizer (GNRMainWindowCustomizer):
     #############################
-    def _setupConnections(self):
-        GNRMainWindowCustomizer._setupConnections(self)
-        self._setupAdministrationConnections()
+    def _setup_connections(self):
+        GNRMainWindowCustomizer._setup_connections(self)
+        self._setup_administration_connections()
 
     #############################
-    def _setupAdministrationConnections(self):
-        self.gui.ui.actionSendTestTasks.triggered.connect(self._sendTestTasks)
-        self.gui.ui.actionUpdateOtherGolems.triggered.connect(self._sendUpdateOtherGolemsTask)
-        self.gui.ui.actionSendInfoTask.triggered.connect(self._showInfoTaskDialog)
-        self.gui.ui.actionStartNodesManager.triggered.connect(self._startNodesManager)
+    def _setup_administration_connections(self):
+        self.gui.ui.actionSendTestTasks.triggered.connect(self._send_test_tasks)
+        self.gui.ui.actionUpdateOtherGolems.triggered.connect(self._send_update_other_golems_task)
+        self.gui.ui.actionSendInfoTask.triggered.connect(self._show_info_task_dialog)
+        self.gui.ui.actionStartNodesManager.triggered.connect(self._start_nodes_manager)
 
     #############################
-    def _showInfoTaskDialog(self):
+    def _show_info_task_dialog(self):
         self.infoTaskDialog = InfoTaskDialog(self.gui.window)
         self.infoTaskDialogCustomizer = InfoTaskDialogCustomizer(self.infoTaskDialog, self.logic)
      #   self.infoTaskDialogCustomizer.loadDefaults()
         self.infoTaskDialog.show()
 
     ############################
-    def _sendInfoTask(self):
-        self.logic.sendInfoTask()
+    def _send_info_task(self):
+        self.logic.send_info_task()
 
     ############################
-    def _sendTestTasks(self):
-        self.logic.sendTestTasks()
+    def _send_test_tasks(self):
+        self.logic.send_test_tasks()
 
     ############################
-    def _sendUpdateOtherGolemsTask(self):
+    def _send_update_other_golems_task(self):
         updateOtherGolemsDialog = UpdateOtherGolemsDialog (self.gui.window)
         updateOtherGolemsDialogCustomizer = UpdateOtherGolemsDialogCustomizer(updateOtherGolemsDialog, self.logic)
         updateOtherGolemsDialog.show()
 
     ############################
-    def _startNodesManager(self):
-        self.logic.startNodesManagerServer()
+    def _start_nodes_manager(self):
+        self.logic.start_nodes_manager_server()

@@ -4,34 +4,34 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def _localTcpAddr(port):
+def _local_tcp_addr(port):
     print "port {}".format(port)
     return "tcp://0.0.0.0:{}".format(port)
 
 
 class TaskAdder():
     def __init__(self):
-        self.taskList = []
+        self.task_list = []
 
     def get_tasks(self):
-        list = self.taskList
-        self.taskList = []
+        list = self.task_list
+        self.task_list = []
         return list
 
-    def addTask(self, task):
-        self.taskList.append(task)
+    def add_task(self, task):
+        self.task_list.append(task)
 
 class TaskAdderServer:
     def __init__(self, port):
         self.port = port
         self.server = None
 
-    def __bindPort(self, port):
-        self.server.bind(_localTcpAddr(port))
+    def __bind_port(self, port):
+        self.server.bind(_local_tcp_addr(port))
 
     def __connect(self):
         try:
-            self.__bindPort(self.port)
+            self.__bind_port(self.port)
             return True
         except Exception as ex:
             logger.warning("Plugin server can't connect with port {}: {}".format(self.port, str(ex)))
@@ -46,7 +46,7 @@ class TaskAdderServer:
         self.server.run()
         print "after server run"
 
-def start_taskAdderServer(port):
+def start_task_adder_server(port):
     server = TaskAdderServer(port)
     server.run()
 

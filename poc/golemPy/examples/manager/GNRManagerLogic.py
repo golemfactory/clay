@@ -13,24 +13,24 @@ logger = logging.getLogger(__name__)
 def run_additional_nodes(path,  num_nodes):
     for i in range(num_nodes):
         time.sleep(0.1)
-        prevPath = os.getcwd()
+        prev_path = os.getcwd()
         os.chdir(path)
         pc = subprocess.Popen(["python", "main.py"], creationflags = subprocess.CREATE_NEW_CONSOLE)
-        os.chdir(prevPath)
+        os.chdir(prev_path)
 
-def runManager(path):
-    prevPath = os.getcwd()
+def run_manager(path):
+    prev_path = os.getcwd()
     os.chdir(path)
     pc = subprocess.Popen([ "python", "managerMain.py" ], creationflags = subprocess.CREATE_NEW_CONSOLE)
-    os.chdir(prevPath)
+    os.chdir(prev_path)
 
 
 
 class GNRManagerLogic(EmptyManagerLogic):
 
-    def __init__(self, manager_server, nodePath):
+    def __init__(self, manager_server, node_path):
         EmptyManagerLogic.__init__(self, manager_server)
-        self.nodePath = nodePath
+        self.node_path = node_path
 
     def run_additional_nodes(self, num_nodes):
         run_additional_nodes("../gnr", num_nodes)

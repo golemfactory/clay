@@ -8,28 +8,28 @@ logger = logging.getLogger(__name__)
 #############################
 def readAdvanceVerificationParams(gui, definition):
     if gui.ui.advanceVerificationCheckBox.isChecked():
-        definition.verificationOptions = AdvanceRenderingVerificationOptions()
+        definition.verification_options = AdvanceRenderingVerificationOptions()
         if gui.ui.verificationForAllRadioButton.isChecked():
-            definition.verificationOptions.type = 'forAll'
+            definition.verification_options.type = 'forAll'
         elif gui.ui.verificationForFirstRadioButton.isChecked():
-            definition.verificationOptions.type = 'forFirst'
+            definition.verification_options.type = 'forFirst'
         else:
-            definition.verificationOptions.type = 'random'
+            definition.verification_options.type = 'random'
             try:
-                definition.verificationOptions.probability = float(gui.ui.probabilityLineEdit.text())
-                if definition.verificationOptions.probability < 0:
-                    definition.verificationOptions.probability = 0.0
+                definition.verification_options.probability = float(gui.ui.probabilityLineEdit.text())
+                if definition.verification_options.probability < 0:
+                    definition.verification_options.probability = 0.0
                     gui.ui.probabilityLineEdit.setText("0.0")
-                if definition.verificationOptions.probability > 1:
-                    definition.verificationOptions.probability = 1.0
+                if definition.verification_options.probability > 1:
+                    definition.verification_options.probability = 1.0
                     gui.ui.probabilityLineEdit.setText("1.0")
             except:
                 logger.warning("Wrong probability values {}".format(gui.ui.probabilityLineEdit.text()))
-                definition.verificationOptions.probability = 0.0
+                definition.verification_options.probability = 0.0
                 gui.ui.probabilityLineEdit.setText("0.0")
-        definition.verificationOptions.boxSize = (int(gui.ui.verificationSizeXSpinBox.value()), int(gui.ui.verificationSizeYSpinBox.value()))
+        definition.verification_options.box_size = (int(gui.ui.verificationSizeXSpinBox.value()), int(gui.ui.verificationSizeYSpinBox.value()))
     else:
-        definition.verificationOptions = None
+        definition.verification_options = None
 
     return definition
 
@@ -44,20 +44,20 @@ def setVerificationWidgetsState(gui, state):
     gui.ui.probabilityLineEdit.setEnabled(state and gui.ui.verificationRandomRadioButton.isChecked())
     
 def loadVerificationParams(gui, definition):
-    enabled = definition.verificationOptions is not None
+    enabled = definition.verification_options is not None
 
     setVerificationWidgetsState(gui, enabled)
     if enabled:
         gui.ui.advanceVerificationCheckBox.setCheckState(QtCore.Qt.Checked)
-        gui.ui.verificationSizeXSpinBox.setValue(definition.verificationOptions.boxSize[0])
-        gui.ui.verificationSizeYSpinBox.setValue(definition.verificationOptions.boxSize[1])
-        gui.ui.verificationForAllRadioButton.setChecked(definition.verificationOptions.type == 'forAll')
-        gui.ui.verificationForFirstRadioButton.setChecked(definition.verificationOptions.type == 'forFirst')
-        gui.ui.verificationRandomRadioButton.setChecked(definition.verificationOptions.type == 'random')
-        gui.ui.probabilityLabel.setEnabled(definition.verificationOptions.type == 'random')
-        gui.ui.probabilityLineEdit.setEnabled(definition.verificationOptions.type == 'random')
-        if hasattr(definition.verificationOptions, 'probability'):
-            gui.ui.probabilityLineEdit.setText("{}".format(definition.verificationOptions.probability))
+        gui.ui.verificationSizeXSpinBox.setValue(definition.verification_options.box_size[0])
+        gui.ui.verificationSizeYSpinBox.setValue(definition.verification_options.box_size[1])
+        gui.ui.verificationForAllRadioButton.setChecked(definition.verification_options.type == 'forAll')
+        gui.ui.verificationForFirstRadioButton.setChecked(definition.verification_options.type == 'forFirst')
+        gui.ui.verificationRandomRadioButton.setChecked(definition.verification_options.type == 'random')
+        gui.ui.probabilityLabel.setEnabled(definition.verification_options.type == 'random')
+        gui.ui.probabilityLineEdit.setEnabled(definition.verification_options.type == 'random')
+        if hasattr(definition.verification_options, 'probability'):
+            gui.ui.probabilityLineEdit.setText("{}".format(definition.verification_options.probability))
     else:
         gui.ui.advanceVerificationCheckBox.setCheckState(QtCore.Qt.Unchecked)
 

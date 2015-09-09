@@ -15,13 +15,13 @@ except AttributeError:
 class NodeDataState:
 
     ########################
-    def __init__(self, running, uid, timestamp, endpoint, numPeers, numTasks, lastMsg, ltsd, rcsd):
+    def __init__(self, running, uid, timestamp, endpoint, numPeers, num_tasks, lastMsg, ltsd, rcsd):
         self.is_running = running
         self.uid = uid
         self.timestamp = timestamp
         self.endpoint = endpoint
         self.numPeers = numPeers
-        self.numTasks = numTasks
+        self.num_tasks = num_tasks
         self.lastMsg = lastMsg
         self.localTasksStateData = ltsd
         self.remoteChunksStateData = rcsd
@@ -184,7 +184,7 @@ class ManagerUiCustomizer(QtCore.QObject):
 
             self.ui.endpointInput.setText(node_data_state.endpoint)
             self.ui.noPeersInput.setText(node_data_state.numPeers)
-            self.ui.noTasksInput.setText(node_data_state.numTasks)
+            self.ui.noTasksInput.setText(node_data_state.num_tasks)
             self.ui.lastMsgInput.setText(node_data_state.lastMsg)
 
     ########################

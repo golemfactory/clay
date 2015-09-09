@@ -78,7 +78,7 @@ class NodesManagerUidClient (NodesManagerClient):
     ######################
     def add_new_task(self, task):
         if self.logic:
-            self.logic.addTaskFromDefinition(task)
+            self.logic.add_taskFromDefinition(task)
         elif self.task_manager:
             task.return_address  = self.task_manager.listen_address
             task.return_port     = self.task_manager.listen_port

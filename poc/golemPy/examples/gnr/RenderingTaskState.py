@@ -5,29 +5,29 @@ from examples.gnr.GNRTaskState import GNRTaskDefinition, AdvanceVerificationOpti
 ###########################################################################
 class RendererInfo:
     #########################
-    def __init__(self, name, defaults, task_builderType, dialog, dialogCustomizer, rendererOptions):
+    def __init__(self, name, defaults, task_builder_type, dialog, dialog_customizer, renderer_options):
         self.name           = name
-        self.outputFormats  = []
-        self.scene_fileExt   = []
+        self.output_formats  = []
+        self.scene_file_ext   = []
         self.defaults       = defaults
-        self.task_builderType = task_builderType
+        self.task_builder_type = task_builder_type
         self.dialog = dialog
-        self.dialogCustomizer = dialogCustomizer
-        self.rendererOptions = rendererOptions
+        self.dialog_customizer = dialog_customizer
+        self.renderer_options = renderer_options
 
 ###########################################################################
 class RendererDefaults:
     #########################
     def __init__(self):
-        self.outputFormat       = ""
-        self.mainProgramFile    = ""
+        self.output_format       = ""
+        self.main_program_file    = ""
         self.full_task_timeout    = 4 * 3600
         self.min_subtask_time     = 60
         self.subtask_timeout     = 20 * 60
         self.resolution         = [800, 600]
-        self.minSubtasks        = 1
-        self.maxSubtasks        = 50
-        self.defaultSubtasks    = 20
+        self.min_subtasks        = 1
+        self.max_subtasks        = 50
+        self.default_subtasks    = 20
 
 ###########################################################################
 class RenderingTaskDefinition(GNRTaskDefinition):
@@ -37,11 +37,11 @@ class RenderingTaskDefinition(GNRTaskDefinition):
 
         self.resolution         = [ 0, 0 ]
         self.renderer           = None
-        self.rendererOptions    = None
+        self.renderer_options    = None
 
-        self.mainSceneFile      = ""
+        self.main_scene_file      = ""
         self.output_file         = ""
-        self.outputFormat       = ""
+        self.output_format       = ""
 
 ###########################################################################
 class RenderingTaskState:
@@ -54,6 +54,6 @@ class RenderingTaskState:
 class AdvanceRenderingVerificationOptions (AdvanceVerificationOptions):
     def __init__(self):
         AdvanceVerificationOptions.__init__(self)
-        self.boxSize = (5, 5)
+        self.box_size = (5, 5)
         self.probability = 0.01
 

@@ -18,22 +18,22 @@ class LuxRenderDialogCustomizer:
         self.logic = logic
         self.newTaskDialog = newTaskDialog
 
-        self.rendererOptions = newTaskDialog.rendererOptions
+        self.renderer_options = newTaskDialog.renderer_options
 
         self.__init()
         self.__setup_connections()
 
     #############################
     def __init(self):
-        renderer = self.logic.getRenderer(u"LuxRender")
-        self.gui.ui.haltTimeLineEdit.setText(u"{}".format(self.rendererOptions.halttime))
-        self.gui.ui.haltsppLineEdit.setText(u"{}".format(self.rendererOptions.haltspp))
-        if self.rendererOptions.sendBinaries:
+        renderer = self.logic.get_renderer(u"LuxRender")
+        self.gui.ui.haltTimeLineEdit.setText(u"{}".format(self.renderer_options.halttime))
+        self.gui.ui.haltsppLineEdit.setText(u"{}".format(self.renderer_options.haltspp))
+        if self.renderer_options.send_binaries:
             self.gui.ui.sendLuxRadioButton.toggle()
         else:
             self.gui.ui.useInstalledRadioButton.toggle()
-        self.gui.ui.luxConsoleLineEdit.setEnabled(self.rendererOptions.sendBinaries)
-        self.gui.ui.luxConsoleLineEdit.setText(u"{}".format(self.rendererOptions.luxconsole))
+        self.gui.ui.luxConsoleLineEdit.setEnabled(self.renderer_options.send_binaries)
+        self.gui.ui.luxConsoleLineEdit.setText(u"{}".format(self.renderer_options.luxconsole))
 
     #############################
     def __setup_connections(self):
@@ -44,23 +44,23 @@ class LuxRenderDialogCustomizer:
     #############################
     def __changeRendererOptions(self):
         try:
-            self.rendererOptions.halttime = int(self.gui.ui.haltTimeLineEdit.text())
+            self.renderer_options.halttime = int(self.gui.ui.haltTimeLineEdit.text())
         except ValueError:
             logger.error("{} is not proper halttime value".format(self.gui.ui.haltTimeLineEdit.text()))
         try:
-            self.rendererOptions.haltspp = int(self.gui.ui.haltsppLineEdit.text())
+            self.renderer_options.haltspp = int(self.gui.ui.haltsppLineEdit.text())
         except ValueError:
             logger.error("{} in not proper haltspp value".format(self.gui.ui.haltsppLineEdit.text()))
 
-        self.rendererOptions.sendBinaries = self.gui.ui.sendLuxRadioButton.isChecked()
-        self.rendererOptions.luxconsole = u"{}".format(self.gui.ui.luxConsoleLineEdit.text())
+        self.renderer_options.send_binaries = self.gui.ui.sendLuxRadioButton.isChecked()
+        self.renderer_options.luxconsole = u"{}".format(self.gui.ui.luxConsoleLineEdit.text())
 
-        if self.rendererOptions.sendBinaries:
-            self.rendererOptions.environment = Environment()
+        if self.renderer_options.send_binaries:
+            self.renderer_options.environment = Environment()
         else:
-            self.rendererOptions.environment = LuxRenderEnvironment()
+            self.renderer_options.environment = LuxRenderEnvironment()
 
-        self.newTaskDialog.setRendererOptions(self.rendererOptions)
+        self.newTaskDialog.setRendererOptions(self.renderer_options)
         self.gui.window.close()
 
     #############################

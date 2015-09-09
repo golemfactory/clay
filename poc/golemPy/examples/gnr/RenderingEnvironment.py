@@ -5,7 +5,7 @@ import logging
 from golem.environments.Environment import Environment
 from golem.environments.checkCmd import check_cmd
 
-from examples.gnr.task.ThreeDSMaxCfgEditor import regenerateFile
+from examples.gnr.task.ThreeDSMaxCfgEditor import regenerate_file
 
 
 logger = logging.getLogger(__name__)
@@ -22,10 +22,10 @@ class ThreeDSMaxEnvironment(Environment):
         Environment.__init__(self)
         self.software.append('3DS Max Studio 2014 or 3DS Max Studio 2015')
         self.software.append('Windows')
-        self.softwareEnvVar = ['ADSK_3DSMAX_x64_2015', 'ADSK_3DSMAX_x32_2015', 'ADSK_3DSMAX_x64_2014', 'ADSK_3DSMAX_x32_2014']
-        self.softwareName = '3dsmaxcmd.exe'
-        self.configFileName = 'plugcfg_ln/mentalray_cpu.ini'
-        self.configFileBackup = 'plugcfg_ln/mentalray_cpu.bak'
+        self.software_env_var = ['ADSK_3DSMAX_x64_2015', 'ADSK_3DSMAX_x32_2015', 'ADSK_3DSMAX_x64_2014', 'ADSK_3DSMAX_x32_2014']
+        self.software_name = '3dsmaxcmd.exe'
+        self.config_file_name = 'plugcfg_ln/mentalray_cpu.ini'
+        self.config_file_backup = 'plugcfg_ln/mentalray_cpu.bak'
         self.short_description = "3DS MAX Studio command tool (http://www.autodesk.pl/products/3ds-max/overview)"
         self.path = ""
 
@@ -33,7 +33,7 @@ class ThreeDSMaxEnvironment(Environment):
     def check_software(self):
         if not self.is_windows():
             return False
-        for var in self.softwareEnvVar:
+        for var in self.software_env_var:
             if os.environ.get(var):
                 self.path = os.path.join(os.environ.get(var), '3dsmaxcmd.exe')
                 if os.path.isfile(self.path):
@@ -45,7 +45,7 @@ class ThreeDSMaxEnvironment(Environment):
         return self.check_software()
 
     #########################
-    def get3dsmaxcmdPath (self):
+    def get_3ds_max_cmd_path (self):
         self.check_software()
         if os.path.isfile(self.path):
             return self.path
@@ -53,32 +53,32 @@ class ThreeDSMaxEnvironment(Environment):
             return ""
 
     #########################
-    def setNThreads(self, num_cores):
-        for var in self.softwareEnvVar:
+    def set_n_threads(self, num_cores):
+        for var in self.software_env_var:
             if os.environ.get(var):
-                self.__rewriteCfgFile(var, num_cores)
+                self.__rewrite_cfg_file(var, num_cores)
 
     #########################
-    def __rewriteCfgFile(self, var, num_cores):
-        path = os.path.join(os.environ.get(var), self.configFileName)
-        backupPath = os.path.join(os.environ.get(var), self.configFileBackup)
-        logger.debug("Cfg file: {}, numThreads = {}".format(path, num_cores))
+    def __rewrite_cfg_file(self, var, num_cores):
+        path = os.path.join(os.environ.get(var), self.config_file_name)
+        backup_path = os.path.join(os.environ.get(var), self.config_file_backup)
+        logger.debug("Cfg file: {}, num_threads = {}".format(path, num_cores))
         if os.path.isfile(path):
             with open(path, 'r') as f:
-                cfgSrc = f.read()
-            shutil.copy2(path, backupPath)
-            newCfg = regenerateFile(cfgSrc, num_cores)
+                cfg_src = f.read()
+            shutil.copy2(path, backup_path)
+            new_cfg = regenerate_file(cfg_src, num_cores)
             with open(path, 'w') as f:
-                f.write(newCfg)
+                f.write(new_cfg)
             return
 
     #########################
-    def getDefaultPreset(self):
-        for var in self.softwareEnvVar:
+    def get_default_preset(self):
+        for var in self.software_env_var:
             if os.environ.get(var):
-                presetFile = os.path.join(os.environ.get(var), 'renderpresets\mental.ray.daylighting.high.rps')
-                if os.path.isfile(presetFile):
-                    return presetFile
+                preset_file = os.path.join(os.environ.get(var), 'renderpresets\mental.ray.daylighting.high.rps')
+                if os.path.isfile(preset_file):
+                    return preset_file
         return ""
 
 ###########################################################################
@@ -109,17 +109,17 @@ class VRayEnvironment(Environment):
         Environment.__init__(self)
         self.software.append('V-Ray standalone')
         self.short_description = "V-Ray Renderer (http://www.vray.com/)"
-        self.softwareEnvVariable = 'VRAY_PATH'
+        self.software_env_variable = 'VRAY_PATH'
         if self.is_windows():
-            self.softwareName = 'vray.exe'
+            self.software_name = 'vray.exe'
         else:
-            self.softwareName = 'vray'
+            self.software_name = 'vray'
         self.path = ""
 
     #########################
     def check_software(self):
-        if os.environ.get(self.softwareEnvVariable):
-            self.path = os.path.join(os.environ.get(self.softwareEnvVariable), self.softwareName)
+        if os.environ.get(self.software_env_variable):
+            self.path = os.path.join(os.environ.get(self.software_env_variable), self.software_name)
             if os.path.isfile(self.path):
                 return True
         return False
@@ -129,7 +129,7 @@ class VRayEnvironment(Environment):
         return self.check_software()
 
     #########################
-    def getCmdPath (self):
+    def get_cmd_path (self):
         self.check_software()
         if os.path.isfile(self.path):
             return self.path
@@ -148,43 +148,43 @@ class LuxRenderEnvironment(Environment):
         Environment.__init__(self)
         self.software.append('LuxRender')
         self.short_description = "LuxRenderer Renderer (http://www.luxrender.net/)"
-        self.softwareEnvVariables = ['LUXRENDER_ROOT']
+        self.software_env_variables = ['LUXRENDER_ROOT']
         if self.is_windows():
-            self.softwareName = ['luxconsole.exe', 'luxmerger.exe']
+            self.software_name = ['luxconsole.exe', 'luxmerger.exe']
         else:
-            self.softwareName = ['luxconsole', 'luxmerger']
-        self.luxConsolePath = ''
-        self.luxMergerPath = ''
+            self.software_name = ['luxconsole', 'luxmerger']
+        self.lux_console_path = ''
+        self.lux_merger_path = ''
 
     #########################
     def check_software(self):
-        luxInstalled = False
-        for var in self.softwareEnvVariables:
+        lux_installed = False
+        for var in self.software_env_variables:
             if os.environ.get(var):
-                self.luxConsolePath = os.path.join(os.environ.get(var), self.softwareName[0])
-                self.luxMergerPath = os.path.join(os.environ.get(var), self.softwareName[1])
-                if os.path.isfile(self.luxConsolePath) and os.path.isfile(self.luxMergerPath):
-                    luxInstalled = True
+                self.lux_console_path = os.path.join(os.environ.get(var), self.software_name[0])
+                self.lux_merger_path = os.path.join(os.environ.get(var), self.software_name[1])
+                if os.path.isfile(self.lux_console_path) and os.path.isfile(self.lux_merger_path):
+                    lux_installed = True
 
-        return luxInstalled
+        return lux_installed
 
     #########################
     def supported(self):
         return self.check_software()
 
     #########################
-    def getLuxConsole(self):
+    def get_lux_console(self):
         self.check_software()
-        if os.path.isfile(self.luxConsolePath):
-            return self.luxConsolePath
+        if os.path.isfile(self.lux_console_path):
+            return self.lux_console_path
         else:
             return ""
 
     #########################
-    def getLuxMerger(self):
+    def get_lux_merger(self):
         self.check_software()
-        if os.path.isfile(self.luxMergerPath):
-            return self.luxMergerPath
+        if os.path.isfile(self.lux_merger_path):
+            return self.lux_merger_path
         else:
             return ""
 
@@ -200,7 +200,7 @@ class BlenderEnvironment(Environment):
         Environment.__init__(self)
         self.software.append('Blender')
         self.short_description = "Blender (http://www.blender.org/)"
-        self.softwareName = 'blender'
+        self.software_name = 'blender'
 
     #########################
     def supported(self):
@@ -208,8 +208,8 @@ class BlenderEnvironment(Environment):
 
     #########################
     def check_software(self):
-        return check_cmd(self.softwareName)
+        return check_cmd(self.software_name)
 
     #########################
-    def getBlender(self):
-        return self.softwareName
+    def get_blender(self):
+        return self.software_name

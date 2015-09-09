@@ -36,22 +36,22 @@ class PbrtTaskDialogCustomizer:
     def __setRendererParameters(self) :
         self.gui.ui.pixelFilterComboBox.clear()
         self.gui.ui.pixelFilterComboBox.addItems(self.options.filters)
-        pixelFilterItem = self.gui.ui.pixelFilterComboBox.findText(self.options.pixelFilter)
-        if pixelFilterItem >= 0:
-            self.gui.ui.pixelFilterComboBox.setCurrentIndex(pixelFilterItem)
+        pixel_filterItem = self.gui.ui.pixelFilterComboBox.findText(self.options.pixel_filter)
+        if pixel_filterItem >= 0:
+            self.gui.ui.pixelFilterComboBox.setCurrentIndex(pixel_filterItem)
 
         self.gui.ui.pathTracerComboBox.clear()
-        self.gui.ui.pathTracerComboBox.addItems(self.options.pathTracers)
+        self.gui.ui.pathTracerComboBox.addItems(self.options.path_tracers)
 
-        algItem = self.gui.ui.pathTracerComboBox.findText(self.options.algorithmType)
+        algItem = self.gui.ui.pathTracerComboBox.findText(self.options.algorithm_type)
 
         if algItem >= 0:
             self.gui.ui.pathTracerComboBox.setCurrentIndex(algItem)
 
-        self.gui.ui.samplesPerPixelSpinBox.setValue(self.options.samplesPerPixelCount)
-        #self.gui.ui.pbrtPathLineEdit.setText(self.options.pbrtPath)
+        self.gui.ui.samplesPerPixelSpinBox.setValue(self.options.samples_per_pixel_count)
+        #self.gui.ui.pbrtPathLineEdit.setText(self.options.pbrt_path)
 
-        self.gui.ui.mainSceneLineEdit.setText(self.options.mainSceneFile)
+        self.gui.ui.mainSceneLineEdit.setText(self.options.main_scene_file)
 
     #############################
     def __setOutputParameters(self):
@@ -59,9 +59,9 @@ class PbrtTaskDialogCustomizer:
         self.gui.ui.outputResYSpinBox.setValue (self.options.resolution[1])
 
         self.gui.ui.outputFormatsComboBox.clear()
-        self.gui.ui.outputFormatsComboBox.addItems(self.options.outputFormats)
-        for idx, outputFormat in enumerate(self.options.outputFormats):
-            if outputFormat == self.options.outputFormat:
+        self.gui.ui.outputFormatsComboBox.addItems(self.options.output_formats)
+        for idx, output_format in enumerate(self.options.output_formats):
+            if output_format == self.options.output_format:
                 self.gui.ui.outputFormatsComboBox.setCurrentIndex(idx)
 
         self.gui.ui.outputFileLineEdit.setText(self.options.output_file)
@@ -81,32 +81,32 @@ class PbrtTaskDialogCustomizer:
         self.gui.ui.chooseOutputFileButton.clicked.connect(self.__chooseOutputFileButtonClicked)
         self.gui.ui.mainSceneButton.clicked.connect(self.__chooseMainSceneFileButtonClicked)
         self.gui.ui.pbrtPathButton.clicked.connect(self.__choosePbrtPath)
-        QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged(const QString)"), self.__resXChanged)
-        QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged(const QString)"), self.__resYChanged)
-        QtCore.QObject.connect(self.gui.ui.verificationRandomRadioButton, QtCore.SIGNAL("toggled(bool)"), self.__verificationRandomChanged)
+        QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged(const QString)"), self.__res_x_changed)
+        QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged(const QString)"), self.__res_y_changed)
+        QtCore.QObject.connect(self.gui.ui.verificationRandomRadioButton, QtCore.SIGNAL("toggled(bool)"), self.__verification_random_changed)
         QtCore.QObject.connect(self.gui.ui.advanceVerificationCheckBox, QtCore.SIGNAL("stateChanged(int)"), self.__advanceVerificationChanged)
 
     #############################
     def __changeRendererOptions(self):
-        self.__readRendererParams()
+        self.__read_renderer_params()
         self.__readOutputParams()
         self.__readVerificationParams()
         self.newTaskDialog.setOptions(self.options)
         self.gui.window.close()
 
     #############################
-    def __readRendererParams(self):
-        self.options.pixelFilter = u"{}".format(self.gui.ui.pixelFilterComboBox.itemText(self.gui.ui.pixelFilterComboBox.currentIndex()))
-        self.options.samplesPerPixelCount = self.gui.ui.samplesPerPixelSpinBox.value()
-        self.options.algorithmType = u"{}".format(self.gui.ui.pathTracerComboBox.itemText(self.gui.ui.pathTracerComboBox.currentIndex()))
-        self.options.mainSceneFile = os.path.normpath(u"{}".format(self.gui.ui.mainSceneLineEdit.text()))
-        self.options.pbrtPath = u"{}".format(self.gui.ui.pbrtPathLineEdit.text())
+    def __read_renderer_params(self):
+        self.options.pixel_filter = u"{}".format(self.gui.ui.pixelFilterComboBox.itemText(self.gui.ui.pixelFilterComboBox.currentIndex()))
+        self.options.samples_per_pixel_count = self.gui.ui.samplesPerPixelSpinBox.value()
+        self.options.algorithm_type = u"{}".format(self.gui.ui.pathTracerComboBox.itemText(self.gui.ui.pathTracerComboBox.currentIndex()))
+        self.options.main_scene_file = os.path.normpath(u"{}".format(self.gui.ui.mainSceneLineEdit.text()))
+        self.options.pbrt_path = u"{}".format(self.gui.ui.pbrtPathLineEdit.text())
 
     #############################
     def __readOutputParams(self):
         self.options.resolution        = [ self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value() ]
         self.options.output_file        = u"{}".format(self.gui.ui.outputFileLineEdit.text())
-        self.options.outputFormat      = u"{}".format(self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
+        self.options.output_format      = u"{}".format(self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
 
     #############################
     def __readVerificationParams(self):
@@ -114,7 +114,7 @@ class PbrtTaskDialogCustomizer:
 
     #############################
     def __chooseMainSceneFileButtonClicked(self):
-        outputFileTypes = " ".join([u"*.{}".format(ext) for ext in self.options.scene_fileExt ])
+        outputFileTypes = " ".join([u"*.{}".format(ext) for ext in self.options.scene_file_ext ])
         filter = u"Scene files ({})".format(outputFileTypes)
 
 
@@ -148,15 +148,15 @@ class PbrtTaskDialogCustomizer:
             self.gui.ui.pbrtPathLineEdit.setText(file_name)
 
     #############################
-    def __verificationRandomChanged(self):
+    def __verification_random_changed(self):
         verificationRandomChanged(self.gui)
 
     #############################
-    def __resXChanged(self):
+    def __res_x_changed(self):
         self.gui.ui.verificationSizeXSpinBox.setMaximum(self.gui.ui.outputResXSpinBox.value())
 
     #############################
-    def __resYChanged(self):
+    def __res_y_changed(self):
         self.gui.ui.verificationSizeYSpinBox.setMaximum(self.gui.ui.outputResYSpinBox.value())
 
     #############################

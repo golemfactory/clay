@@ -15,7 +15,7 @@ from examples.gnr.ui.RenderingMainWindow import RenderingMainWindow
 from examples.gnr.Application import GNRGui
 from examples.gnr.customizers.RenderingMainWindowCustomizer import RenderingMainWindowCustomizer
 
-from GNRstartApp import startApp
+from GNRstartApp import start_app
 
 def main():
 
@@ -26,7 +26,7 @@ def main():
     app     = GNRGui(logic, RenderingMainWindow)
     gui     = RenderingMainWindowCustomizer
 
-    startApp(logic, app, gui, rendering = True)
+    start_app(logic, app, gui, rendering = True)
 
 
 from multiprocessing import freeze_support

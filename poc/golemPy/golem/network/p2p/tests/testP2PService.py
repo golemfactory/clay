@@ -78,9 +78,9 @@ class TestP2PService(unittest.TestCase):
         self.assertTrue(self.p2pservice.wrong_seed_data())
 
     def testSetTaskServer(self):
-        newTaskServer = 'new task server'
-        self.p2pservice.set_task_server(newTaskServer)
-        self.assertEquals(self.p2pservice.task_server, newTaskServer)
+        new_taskServer = 'new task server'
+        self.p2pservice.set_task_server(new_taskServer)
+        self.assertEquals(self.p2pservice.task_server, new_taskServer)
 
     def testSyncNetwork(self):
         self.p2pservice.lastPeerRequest = time.time()

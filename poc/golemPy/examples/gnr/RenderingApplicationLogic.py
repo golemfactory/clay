@@ -11,67 +11,67 @@ class AbsRenderingApplicationLogic(object):
     ######################
     def __init__(self):
         self.renderers          = {}
-        self.currentRenderer    = None
-        self.defaultRenderer    = None
+        self.current_renderer    = None
+        self.default_renderer    = None
 
     ######################
-    def getRenderers(self):
+    def get_renderers(self):
         return self.renderers
 
     ######################
-    def getRenderer(self, name):
+    def get_renderer(self, name):
         if name in self.renderers:
             return self.renderers[ name ]
         else:
             assert False, "Renderer {} not registered".format(name)
 
     ######################
-    def getDefaultRenderer(self):
-        return self.defaultRenderer
+    def get_default_renderer(self):
+        return self.default_renderer
 
     ######################
-    def registerNewRendererType(self, renderer):
+    def register_new_renderer_type(self, renderer):
         if renderer.name not in self.renderers:
             self.renderers[ renderer.name ] = renderer
             if len(self.renderers) == 1:
-                self.defaultRenderer = renderer
+                self.default_renderer = renderer
         else:
             assert False, "Renderer {} already registered".format(renderer.name)
 
     ######################
-    def setCurrentRenderer(self, rname):
+    def set_current_renderer(self, rname):
         if rname in self.renderers:
-            self.currentRenderer = self.renderers[ rname ]
+            self.current_renderer = self.renderers[ rname ]
         else:
             assert False, "Unreachable"
 
     ######################
-    def getCurrentRenderer(self):
-        return self.currentRenderer
+    def get_current_renderer(self):
+        return self.current_renderer
 
     ######################
-    def _getNewTaskState(self):
+    def _get_new_task_state(self):
         return RenderingTaskState()
 
     ######################
-    def _getBuilder(self, task_state):
-        return self.renderers[ task_state.definition.renderer ].task_builderType(self.client.get_id(), task_state.definition, self.client.get_root_path())
+    def _get_builder(self, task_state):
+        return self.renderers[ task_state.definition.renderer ].task_builder_type(self.client.get_id(), task_state.definition, self.client.get_root_path())
 
     ######################
-    def _validateTaskState(self, task_state):
+    def _validate_task_state(self, task_state):
 
         td = task_state.definition
         if td.renderer in self.renderers:
             r = self.renderers[ td.renderer ]
 
-            if not os.path.exists(td.mainProgramFile):
-                self._showErrorWindow("Main program file does not exist: {}".format(td.mainProgramFile))
+            if not os.path.exists(td.main_program_file):
+                self._showErrorWindow("Main program file does not exist: {}".format(td.main_program_file))
                 return False
 
-            if not self.__checkOutputFile(td.output_file):
+            if not self.__check_output_file(td.output_file):
                 return False
 
-            if not os.path.exists(td.mainSceneFile):
+            if not os.path.exists(td.main_scene_file):
                 self._showErrorWindow("Main scene file is not properly set")
                 return False
 
@@ -83,13 +83,13 @@ class AbsRenderingApplicationLogic(object):
 
 
     ######################
-    def __checkOutputFile(self, output_file):
+    def __check_output_file(self, output_file):
         try:
-            fileExist = os.path.exists(output_file)
+            file_exist = os.path.exists(output_file)
 
             with open(output_file, 'a'):
                 pass
-            if not fileExist:
+            if not file_exist:
                 os.remove(output_file)
             return True
         except IOError:

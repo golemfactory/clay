@@ -193,7 +193,7 @@ class TaskManager:
                 return False
 
             if self.tasks_states[task_id].status in self.activeStatus:
-                if not self.tasks[task_id].finishedComputation():
+                if not self.tasks[task_id].finished_computation():
                     self.tasks_states[task_id].status = TaskStatus.computing
                 else:
                     if self.tasks[task_id].verify_task():

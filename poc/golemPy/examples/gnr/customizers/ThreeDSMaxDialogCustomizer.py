@@ -16,19 +16,19 @@ class ThreeDSMaxDialogCustomizer:
         self.logic = logic
         self.newTaskDialog = newTaskDialog
 
-        self.rendererOptions = newTaskDialog.rendererOptions
+        self.renderer_options = newTaskDialog.renderer_options
 
         self.__init()
         self.__setup_connections()
 
     #############################
     def __init(self):
-        renderer = self.logic.getRenderer(u"3ds Max Renderer")
-        self.gui.ui.presetLineEdit.setText(self.rendererOptions.preset)
-        self.gui.ui.framesCheckBox.setChecked(self.rendererOptions.useFrames)
-        self.gui.ui.framesLineEdit.setEnabled(self.rendererOptions.useFrames)
-        if self.rendererOptions.useFrames:
-            self.gui.ui.framesLineEdit.setText(self.__framesToString(self.rendererOptions.frames))
+        renderer = self.logic.get_renderer(u"3ds Max Renderer")
+        self.gui.ui.presetLineEdit.setText(self.renderer_options.preset)
+        self.gui.ui.framesCheckBox.setChecked(self.renderer_options.use_frames)
+        self.gui.ui.framesLineEdit.setEnabled(self.renderer_options.use_frames)
+        if self.renderer_options.use_frames:
+            self.gui.ui.framesLineEdit.setText(self.__frames_to_string(self.renderer_options.frames))
         else:
             self.gui.ui.framesLineEdit.setText("")
 
@@ -40,38 +40,38 @@ class ThreeDSMaxDialogCustomizer:
         self.gui.ui.presetButton.clicked.connect(self.__choosePresetFile)
 
         QtCore.QObject.connect(self.gui.ui.framesCheckBox, QtCore.SIGNAL("stateChanged(int) "),
-                                self.__framesCheckBoxChanged)
+                                self.__frames_check_box_changed)
 
     #############################
     def __changeRendererOptions(self):
-        self.rendererOptions.preset = u"{}".format(self.gui.ui.presetLineEdit.text())
-        self.rendererOptions.useFrames = self.gui.ui.framesCheckBox.isChecked()
-        if self.rendererOptions.useFrames:
+        self.renderer_options.preset = u"{}".format(self.gui.ui.presetLineEdit.text())
+        self.renderer_options.use_frames = self.gui.ui.framesCheckBox.isChecked()
+        if self.renderer_options.use_frames:
             frames = self.__stringToFrames(self.gui.ui.framesLineEdit.text())
             if not frames:
                 QMessageBox().critical(None, "Error", "Wrong frame format. Frame list expected, e.g. 1,3,5-12. ")
                 return
-            self.rendererOptions.frames = frames
-        self.newTaskDialog.setRendererOptions(self.rendererOptions)
+            self.renderer_options.frames = frames
+        self.newTaskDialog.setRendererOptions(self.renderer_options)
         self.gui.window.close()
 
     #############################
     def __choosePresetFile(self):
         dir = os.path.dirname(u"{}".format(self.gui.ui.presetLineEdit.text()))
-        presetFile = u"{}".format(QFileDialog.getOpenFileName(self.gui.window, "Choose preset file", dir, "3dsMax render preset file (*.rps)"))
-        if presetFile != '':
-            self.gui.ui.presetLineEdit.setText (presetFile)
+        preset_file = u"{}".format(QFileDialog.getOpenFileName(self.gui.window, "Choose preset file", dir, "3dsMax render preset file (*.rps)"))
+        if preset_file != '':
+            self.gui.ui.presetLineEdit.setText (preset_file)
 
     #############################
-    def __framesCheckBoxChanged(self):
+    def __frames_check_box_changed(self):
         self.gui.ui.framesLineEdit.setEnabled(self.gui.ui.framesCheckBox.isChecked())
         if self.gui.ui.framesCheckBox.isChecked():
-            self.gui.ui.framesLineEdit.setText(self.__framesToString(self.rendererOptions.frames))
+            self.gui.ui.framesLineEdit.setText(self.__frames_to_string(self.renderer_options.frames))
 
     #############################
-    def __framesToString(self, frames):
+    def __frames_to_string(self, frames):
         s = ""
-        lastFrame = None
+        last_frame = None
         interval = False
         for frame in sorted(frames):
             try:
@@ -79,26 +79,26 @@ class ThreeDSMaxDialogCustomizer:
                 if frame < 0:
                     raise
 
-                if lastFrame == None:
+                if last_frame == None:
                     s += str(frame)
-                elif frame - lastFrame == 1:
+                elif frame - last_frame == 1:
                     if not interval:
                         s += '-'
                         interval = True
                 elif interval:
-                    s += str(lastFrame) + "," + str(frame)
+                    s += str(last_frame) + "," + str(frame)
                     interval = False
                 else:
                     s += ',' + str(frame)
 
-                lastFrame = frame
+                last_frame = frame
 
             except:
                 logger.error("Wrong frame format")
                 return ""
 
         if interval:
-            s += str(lastFrame)
+            s += str(last_frame)
 
         return s
 

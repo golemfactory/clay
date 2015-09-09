@@ -16,7 +16,7 @@ from examples.gnr.Application import GNRGui
 
 from examples.gnr.ui.MainWindow import GNRMainWindow
 from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdministratorMainWindowCustomizer
-from GNRstartApp import startApp
+from GNRstartApp import start_app
 
 def main():
     logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
@@ -24,7 +24,7 @@ def main():
     logic   = GNRAdmApplicationLogic()
     app     = GNRGui(logic, GNRMainWindow)
     gui     = GNRAdministratorMainWindowCustomizer
-    startApp(logic, app, gui,startManager = True, startInfoServer = True)
+    start_app(logic, app, gui,start_manager = True, start_info_server = True)
 
 from multiprocessing import freeze_support
 

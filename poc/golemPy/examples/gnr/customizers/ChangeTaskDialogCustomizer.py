@@ -31,7 +31,7 @@ class ChangeTaskDialogCustomizer:
         self.gui.window.close()
 
     ############################
-    def load_taskDefinition(self, definition):
+    def load_task_definition(self, definition):
         assert isinstance(definition, RenderingTaskDefinition)
 
         self.gui.ui.taskIdLabel.setText(u"{}".format(definition.task_id))

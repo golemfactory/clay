@@ -18,7 +18,7 @@ class InfoTaskDefinition:
         self.subtask_timeout     = 0
 
         self.src_file            = ""
-        self.totalSubtasks      = 0
+        self.total_subtasks      = 0
 
         self.manager_address     = ""
         self.manager_port        = 0
@@ -27,22 +27,22 @@ class InfoTaskDefinition:
 class InfoTaskBuilder(GNRTaskBuilder):
 
     def build(self):
-        with open(self.taskDefinition.src_file) as f:
+        with open(self.task_definition.src_file) as f:
             src_code = f.read()
         return InfoTask(   src_code,
                             self.client_id,
-                            self.taskDefinition.task_id,
+                            self.task_definition.task_id,
                             "",
                             0,
                             "",
                             Environment.get_id(),
-                            self.taskDefinition.full_task_timeout,
-                            self.taskDefinition.subtask_timeout,
+                            self.task_definition.full_task_timeout,
+                            self.task_definition.subtask_timeout,
                             0,
                             0,
-                            self.taskDefinition.manager_address,
-                            self.taskDefinition.manager_port,
-                            self.taskDefinition.totalSubtasks
+                            self.task_definition.manager_address,
+                            self.task_definition.manager_port,
+                            self.task_definition.total_subtasks
                           )
 
 ##############################################
@@ -54,23 +54,23 @@ class InfoTask(GNRTask):
                   task_id,
                   owner_address,
                   owner_port,
-                  ownerKeyId,
+                  owner_key_id,
                   environment,
                   ttl,
-                  subtaskTtl,
+                  subtask_ttl,
                   resource_size,
                   estimated_memory,
-                  nodes_managerAddress,
-                  nodes_managerPort,
+                  nodes_manager_address,
+                  nodes_manager_port,
                   iterations):
 
 
-        GNRTask.__init__(self, src_code, client_id, task_id, owner_address, owner_port, ownerKeyId, environment,
-                            ttl, subtaskTtl, resource_size, estimated_memory)
+        GNRTask.__init__(self, src_code, client_id, task_id, owner_address, owner_port, owner_key_id, environment,
+                            ttl, subtask_ttl, resource_size, estimated_memory)
 
         self.total_tasks = iterations
 
-        self.nodes_manager_client = NodesManagerClient(nodes_managerAddress, int(nodes_managerPort))
+        self.nodes_manager_client = NodesManagerClient(nodes_manager_address, int(nodes_manager_port))
         self.nodes_manager_client.start()
 
     #######################
@@ -84,16 +84,16 @@ class InfoTask(GNRTask):
         hash = "{}".format(random.getrandbits(128))
         ctd.subtask_id = hash
         ctd.extra_data = {
-                          "start_task" : self.lastTask,
-                          "end_task": self.lastTask + 1 }
+                          "start_task" : self.last_task,
+                          "end_task": self.last_task + 1 }
         ctd.return_address = self.header.task_owner_address
         ctd.return_port = self.header.task_owner_port
         ctd.task_owner = self.header.task_owner
         ctd.short_description = "Standard info Task"
         ctd.src_code = self.src_code
         ctd.performance = perf_index
-        if self.lastTask + 1 <= self.total_tasks:
-            self.lastTask += 1
+        if self.last_task + 1 <= self.total_tasks:
+            self.last_task += 1
 
         return ctd
 

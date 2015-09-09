@@ -7,10 +7,10 @@ import shutil
 from collections import OrderedDict
 
 from  examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
-from  examples.gnr.task.GNRTask import GNROptions, checkSubtask_idWrapper
+from  examples.gnr.task.GNRTask import GNROptions, check_subtask_id_wrapper
 from  examples.gnr.task.RenderingTask import RenderingTask
-from  examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, get_taskBoarder, get_taskNumFromPixels
-from  examples.gnr.RenderingDirManager import getTestTaskPath, getTmpPath
+from  examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, get_task_boarder, get_task_num_from_pixels
+from  examples.gnr.RenderingDirManager import get_test_task_path, get_tmp_path
 
 from examples.gnr.task.RenderingTaskCollector import exr_to_pil, RenderingTaskCollector
 from examples.gnr.RenderingEnvironment import VRayEnvironment
@@ -23,19 +23,19 @@ from PIL import Image, ImageChops
 logger = logging.getLogger(__name__)
 
 ##############################################
-def buildVRayRendererInfo():
+def build_vray_renderer_info():
     defaults = RendererDefaults()
-    defaults.outputFormat = "EXR"
-    defaults.mainProgramFile = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/tasks/VRayTask.py'))
-    defaults.minSubtasks = 1
-    defaults.maxSubtasks = 100
-    defaults.defaultSubtasks = 6
+    defaults.output_format = "EXR"
+    defaults.main_program_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/tasks/VRayTask.py'))
+    defaults.min_subtasks = 1
+    defaults.max_subtasks = 100
+    defaults.default_subtasks = 6
 
     renderer = RendererInfo("VRay Standalone", defaults, VRayTaskBuilder, VRayDialog, VRayDialogCustomizer, VRayRendererOptions)
-    renderer.outputFormats = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF" ]
-    renderer.scene_fileExt = [ "vrscene" ]
-    renderer.get_taskNumFromPixels = get_taskNumFromPixels
-    renderer.get_taskBoarder = get_taskBoarder
+    renderer.output_formats = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF" ]
+    renderer.scene_file_ext = [ "vrscene" ]
+    renderer.get_task_num_from_pixels = get_task_num_from_pixels
+    renderer.get_task_boarder = get_task_boarder
 
     return renderer
 
@@ -45,38 +45,38 @@ class VRayRendererOptions(GNROptions):
     #######################
     def __init__(self):
         self.environment = VRayEnvironment()
-        self.rtEngine = 0
-        self.rtEngineValues = {0: 'No engine', 1: 'CPU', 3: 'OpenGL', 5: 'CUDA' }
-        self.useFrames = False
+        self.rt_engine = 0
+        self.rt_engine_values = {0: 'No engine', 1: 'CPU', 3: 'OpenGL', 5: 'CUDA' }
+        self.use_frames = False
         self.frames = range(1, 11)
 
 ##############################################
 class VRayTaskBuilder(FrameRenderingTaskBuiler):
     #######################
     def build(self):
-        mainSceneDir = os.path.dirname(self.taskDefinition.mainSceneFile)
+        main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
 
-        vRayTask = VRayTask(      self.client_id,
-                                   self.taskDefinition.task_id,
-                                   mainSceneDir,
-                                   self.taskDefinition.mainSceneFile,
-                                   self.taskDefinition.mainProgramFile,
-                                   self._calculateTotal(buildVRayRendererInfo(), self.taskDefinition),
-                                   self.taskDefinition.resolution[0],
-                                   self.taskDefinition.resolution[1],
-                                   os.path.splitext(os.path.basename(self.taskDefinition.output_file))[0],
-                                   self.taskDefinition.output_file,
-                                   self.taskDefinition.outputFormat,
-                                   self.taskDefinition.full_task_timeout,
-                                   self.taskDefinition.subtask_timeout,
-                                   self.taskDefinition.resources,
-                                   self.taskDefinition.estimated_memory,
+        vray_task = VRayTask(      self.client_id,
+                                   self.task_definition.task_id,
+                                   main_scene_dir,
+                                   self.task_definition.main_scene_file,
+                                   self.task_definition.main_program_file,
+                                   self._calculate_total(build_vray_renderer_info(), self.task_definition),
+                                   self.task_definition.resolution[0],
+                                   self.task_definition.resolution[1],
+                                   os.path.splitext(os.path.basename(self.task_definition.output_file))[0],
+                                   self.task_definition.output_file,
+                                   self.task_definition.output_format,
+                                   self.task_definition.full_task_timeout,
+                                   self.task_definition.subtask_timeout,
+                                   self.task_definition.resources,
+                                   self.task_definition.estimated_memory,
                                    self.root_path,
-                                   self.taskDefinition.rendererOptions.rtEngine,
-                                   self.taskDefinition.rendererOptions.useFrames,
-                                   self.taskDefinition.rendererOptions.frames
+                                   self.task_definition.renderer_options.rt_engine,
+                                   self.task_definition.renderer_options.use_frames,
+                                   self.task_definition.renderer_options.frames
                                   )
-        return self._setVerificationOptions(vRayTask)
+        return self._set_verification_options(vray_task)
 
 ##############################################
 class VRayTask(FrameRenderingTask):
@@ -84,22 +84,22 @@ class VRayTask(FrameRenderingTask):
     def __init__(self,
                   client_id,
                   task_id,
-                  mainSceneDir,
-                  mainSceneFile,
-                  mainProgramFile,
+                  main_scene_dir,
+                  main_scene_file,
+                  main_program_file,
                   total_tasks,
-                  resX,
-                  resY,
+                  res_x,
+                  res_y,
                   outfilebasename,
                   output_file,
-                  outputFormat,
+                  output_format,
                   full_task_timeout,
                   subtask_timeout,
-                  taskResources,
+                  task_resources,
                   estimated_memory,
                   root_path,
-                  rtEngine,
-                  useFrames,
+                  rt_engine,
+                  use_frames,
                   frames,
                   return_address = "",
                   return_port = 0,
@@ -107,12 +107,12 @@ class VRayTask(FrameRenderingTask):
 
         FrameRenderingTask.__init__(self, client_id, task_id, return_address, return_port, key_id,
                           VRayEnvironment.get_id(), full_task_timeout, subtask_timeout,
-                          mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                          total_tasks, resX, resY, outfilebasename, output_file, outputFormat,
-                          root_path, estimated_memory, useFrames, frames)
+                          main_program_file, task_resources, main_scene_dir, main_scene_file,
+                          total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
+                          root_path, estimated_memory, use_frames, frames)
 
-        self.rtEngine = rtEngine
-        self.collectedAlphaFiles = {}
+        self.rt_engine = rt_engine
+        self.collected_alpha_files = {}
 
         self.framesParts = {}
         self.framesAlphaParts = {}
@@ -121,157 +121,157 @@ class VRayTask(FrameRenderingTask):
     #######################
     def query_extra_data(self, perf_index, num_cores = 0, client_id = None):
 
-        if not self._acceptClient(client_id):
+        if not self._accept_client(client_id):
             logger.warning(" Client {} banned from this task ".format(client_id))
             return None
 
 
-        start_task, end_task = self._getNextTask()
+        start_task, end_task = self._get_next_task()
 
-        working_directory = self._getWorkingDirectory()
-        scene_file = self._getSceneFileRelPath()
+        working_directory = self._get_working_directory()
+        scene_file = self._get_scene_file_rel_path()
 
-        if self.useFrames:
-            frames, parts = self._chooseFrames(self.frames, start_task, self.total_tasks)
+        if self.use_frames:
+            frames, parts = self._choose_frames(self.frames, start_task, self.total_tasks)
         else:
             frames = []
             parts = 1
 
-        extra_data =          {      "path_root" : self.mainSceneDir,
+        extra_data =          {      "path_root" : self.main_scene_dir,
                                     "start_task" : start_task,
                                     "end_task" : end_task,
-                                    "hTask": self.total_tasks,
+                                    "h_task": self.total_tasks,
                                     "total_tasks" : self.total_tasks,
                                     "outfilebasename" : self.outfilebasename,
                                     "scene_file" : scene_file,
-                                    "width" : self.resX,
-                                    "height": self.resY,
-                                    "rtEngine": self.rtEngine,
-                                    "numThreads": num_cores,
-                                    "useFrames": self.useFrames,
+                                    "width" : self.res_x,
+                                    "height": self.res_y,
+                                    "rt_engine": self.rt_engine,
+                                    "num_threads": num_cores,
+                                    "use_frames": self.use_frames,
                                     "frames": frames,
                                     "parts": parts
                                 }
 
 
         hash = "{}".format(random.getrandbits(128))
-        self.subTasksGiven[ hash ] = extra_data
-        self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
-        self.subTasksGiven[ hash ][ 'perf' ] = perf_index
-        self.subTasksGiven[ hash ][ 'client_id' ] = client_id
+        self.subtasks_given[ hash ] = extra_data
+        self.subtasks_given[ hash ][ 'status' ] = SubtaskStatus.starting
+        self.subtasks_given[ hash ][ 'perf' ] = perf_index
+        self.subtasks_given[ hash ][ 'client_id' ] = client_id
 
         for frame in frames:
-            if self.useFrames and frame not in self.framesParts:
+            if self.use_frames and frame not in self.framesParts:
                 self.framesParts[ frame ] = {}
                 self.framesAlphaParts[ frame ] = {}
 
-        if not self.useFrames:
-            self._updateTaskPreview()
+        if not self.use_frames:
+            self._update_task_preview()
         else:
-            self._updateFrameTaskPreview()
+            self._update_frame_task_preview()
 
-        return self._newComputeTaskDef(hash, extra_data, working_directory, perf_index)
+        return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
     #######################
-    def query_extra_dataForTestTask(self):
+    def query_extra_data_for_test_task(self):
 
-        working_directory = self._getWorkingDirectory()
-        scene_file = self._getSceneFileRelPath()
+        working_directory = self._get_working_directory()
+        scene_file = self._get_scene_file_rel_path()
 
-        if self.useFrames:
+        if self.use_frames:
             frames = [ self.frames[0] ]
         else:
             frames = []
 
-        extra_data =          {      "path_root" : self.mainSceneDir,
+        extra_data =          {      "path_root" : self.main_scene_dir,
                                     "start_task" : 0,
                                     "end_task" : 1,
-                                    "hTask": self.total_tasks,
+                                    "h_task": self.total_tasks,
                                     "total_tasks" : self.total_tasks,
                                     "outfilebasename" : self.outfilebasename,
                                     "scene_file" : scene_file,
                                     "width" : 1,
                                     "height": 1,
-                                    "rtEngine": self.rtEngine,
-                                    "numThreads": 0,
-                                    "useFrames": self.useFrames,
+                                    "rt_engine": self.rt_engine,
+                                    "num_threads": 0,
+                                    "use_frames": self.use_frames,
                                     "frames": frames,
                                     "parts": 1
                                 }
 
         hash = "{}".format(random.getrandbits(128))
 
-        self.test_taskResPath = getTestTaskPath(self.root_path)
-        logger.debug(self.test_taskResPath)
-        if not os.path.exists(self.test_taskResPath):
-            os.makedirs(self.test_taskResPath)
+        self.test_task_res_path = get_test_task_path(self.root_path)
+        logger.debug(self.test_task_res_path)
+        if not os.path.exists(self.test_task_res_path):
+            os.makedirs(self.test_task_res_path)
 
-        return self._newComputeTaskDef(hash, extra_data, working_directory, 0)
+        return self._new_compute_task_def(hash, extra_data, working_directory, 0)
 
   #######################
-    @checkSubtask_idWrapper
+    @check_subtask_id_wrapper
     def computation_finished(self, subtask_id, task_result, dir_manager = None, result_type = 0):
 
-        if not self.shouldAccept(subtask_id):
+        if not self.should_accept(subtask_id):
             return
 
         tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create = False)
         self.tmp_dir = tmp_dir
 
         if len(task_result) > 0:
-            numStart = self.subTasksGiven[ subtask_id ][ 'start_task' ]
-            parts = self.subTasksGiven[ subtask_id ][ 'parts' ]
-            numEnd = self.subTasksGiven[ subtask_id ][ 'end_task' ]
-            self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished
+            num_start = self.subtasks_given[ subtask_id ][ 'start_task' ]
+            parts = self.subtasks_given[ subtask_id ][ 'parts' ]
+            num_end = self.subtasks_given[ subtask_id ][ 'end_task' ]
+            self.subtasks_given[ subtask_id ][ 'status' ] = SubtaskStatus.finished
 
-            if self.useFrames and self.total_tasks <= len(self.frames):
-                if len(task_result) < len(self.subTasksGiven[ subtask_id ][ 'frames' ]):
-                    self._markSubtaskFailed(subtask_id)
+            if self.use_frames and self.total_tasks <= len(self.frames):
+                if len(task_result) < len(self.subtasks_given[ subtask_id ][ 'frames' ]):
+                    self._mark_subtask_failed(subtask_id)
                     return
 
-            trFiles = self.load_taskResults(task_result, result_type, tmp_dir)
+            tr_files = self.load_task_results(task_result, result_type, tmp_dir)
 
-            if not self._verifyImgs(subtask_id, trFiles):
-                self._markSubtaskFailed(subtask_id)
-                if not self.useFrames:
-                    self._updateTaskPreview()
+            if not self._verify_imgs(subtask_id, tr_files):
+                self._mark_subtask_failed(subtask_id)
+                if not self.use_frames:
+                    self._update_task_preview()
                 else:
-                    self._updateFrameTaskPreview()
+                    self._update_frame_task_preview()
                 return
 
-            self.counting_nodes[ self.subTasksGiven[ subtask_id ][ 'client_id' ] ] = 1
+            self.counting_nodes[ self.subtasks_given[ subtask_id ][ 'client_id' ] ] = 1
 
-            if not self.useFrames:
-                for trFile in trFiles:
-                    self.__collectImagePart(numStart, trFile)
+            if not self.use_frames:
+                for tr_file in tr_files:
+                    self.__collect_image_part(num_start, tr_file)
             elif self.total_tasks < len(self.frames):
-                for trFile in trFiles:
-                    self.__collectFrameFile(trFile)
-                self.__collectFrames(self.subTasksGiven[ subtask_id ][ 'frames' ], tmp_dir)
+                for tr_file in tr_files:
+                    self.__collect_frame_file(tr_file)
+                self.__collect_frames(self.subtasks_given[ subtask_id ][ 'frames' ], tmp_dir)
             else:
-                for trFile in trFiles:
-                    self.__collectFramePart(numStart, trFile, parts, tmp_dir)
+                for tr_file in tr_files:
+                    self.__collect_frame_part(num_start, tr_file, parts, tmp_dir)
 
-            self.num_tasks_received += numEnd - numStart + 1
+            self.num_tasks_received += num_end - num_start + 1
         else:
-            self._markSubtaskFailed(subtask_id)
-            if not self.useFrames:
-                self._updateTaskPreview()
+            self._mark_subtask_failed(subtask_id)
+            if not self.use_frames:
+                self._update_task_preview()
             else:
-                self._updateFrameTaskPreview()
+                self._update_frame_task_preview()
 
         if self.num_tasks_received == self.total_tasks:
-            if self.useFrames:
-                self.__copyFrames()
+            if self.use_frames:
+                self.__copy_frames()
             else:
-                output_file_name = u"{}".format(self.output_file, self.outputFormat)
-                self.__putImageTogether(output_file_name)
+                output_file_name = u"{}".format(self.output_file, self.output_format)
+                self.__put_image_together(output_file_name)
 
     #######################
-    @checkSubtask_idWrapper
+    @check_subtask_id_wrapper
     def get_price_mod(self, subtask_id):
-        perf =  (self.subTasksGiven[ subtask_id ]['end_task'] - self.subTasksGiven[ subtask_id ][ 'start_task' ]) + 1
-        perf *= float(self.subTasksGiven[ subtask_id ]['perf']) / 1000
+        perf =  (self.subtasks_given[ subtask_id ]['end_task'] - self.subtasks_given[ subtask_id ][ 'start_task' ]) + 1
+        perf *= float(self.subtasks_given[ subtask_id ]['perf']) / 1000
         perf *= 10
         return perf
 
@@ -285,196 +285,196 @@ class VRayTask(FrameRenderingTask):
         msg.append("end task: {}".format(l[ "end_task" ]))
         msg.append("outfile basename: {}".format(l[ "outfilebasename" ]))
         msg.append("size: {}x{}".format(l[ "width" ], l[ "height" ]))
-        msg.append("rtEngine: {}".format(l[ "rtEngine" ]))
-        if l["useFrames"]:
+        msg.append("rt_engine: {}".format(l[ "rt_engine" ]))
+        if l["use_frames"]:
             msg.append("frames: {}".format(l[ "frames" ]))
         return "\n".join(msg)
 
     #######################
-    def _pasteNewChunk(self, imgChunk, previewFilePath, chunkNum, all_chunksNum):
-        if os.path.exists(previewFilePath):
-            img = Image.open(previewFilePath)
-            img = ImageChops.add(img, imgChunk)
+    def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
+        if os.path.exists(preview_file_path):
+            img = Image.open(preview_file_path)
+            img = ImageChops.add(img, img_chunk)
             return img
         else:
-            return imgChunk
+            return img_chunk
 
     #######################
-    @checkSubtask_idWrapper
-    def _changeScope(self, subtask_id, startBox, trFile):
-        extra_data, _ = FrameRenderingTask._changeScope(self, subtask_id, startBox, trFile)
-        extra_data['isAlpha'] = self.__isAlphaFile(trFile)
+    @check_subtask_id_wrapper
+    def _change_scope(self, subtask_id, start_box, tr_file):
+        extra_data, _ = FrameRenderingTask._change_scope(self, subtask_id, start_box, tr_file)
+        extra_data['is_alpha'] = self.__is_alpha_file(tr_file)
         extra_data['generateStartBox'] = True
-        if startBox[0] == 0:
-            newStartBoxX = 0
-            newBoxX = self.verificationOptions.boxSize[0] + 1
+        if start_box[0] == 0:
+            new_start_box_x = 0
+            new_box_x = self.verification_options.box_size[0] + 1
         else:
-            newStartBoxX = startBox[0] - 1
-            newBoxX = self.verificationOptions.boxSize[0] + 2
-        if startBox[1] == 0:
-            newStartBoxY = 0
-            newBoxY = self.verificationOptions.boxSize[1] + 1
+            new_start_box_x = start_box[0] - 1
+            new_box_x = self.verification_options.box_size[0] + 2
+        if start_box[1] == 0:
+            new_start_box_y = 0
+            new_box_y = self.verification_options.box_size[1] + 1
         else:
-            newStartBoxY = startBox[1] - 1
-            newBoxY = self.verificationOptions.boxSize[1] + 2
-        extra_data['startBox'] = (newStartBoxX, newStartBoxY)
-        extra_data['box'] = (newBoxX, newBoxY)
-        if self.useFrames:
-            extra_data['frames'] = [ self.__getFrameNumFromOutputFile(trFile) ]
+            new_start_box_y = start_box[1] - 1
+            new_box_y = self.verification_options.box_size[1] + 2
+        extra_data['start_box'] = (new_start_box_x, new_start_box_y)
+        extra_data['box'] = (new_box_x, new_box_y)
+        if self.use_frames:
+            extra_data['frames'] = [ self.__get_frame_num_from_output_file(tr_file) ]
             extra_data['parts'] = extra_data['total_tasks']
 
 
-        return extra_data, startBox
+        return extra_data, start_box
 
     #######################
-    def __getFrameNumFromOutputFile(self, file_):
+    def __get_frame_num_from_output_file(self, file_):
         file_name = os.path.basename(file_)
         file_name, ext = os.path.splitext(file_name)
         idx = file_name.find(self.outfilebasename)
-        if self.__isAlphaFile(file_name):
-            idxAlpha = file_name.find("Alpha")
-            if self.useFrames and self.total_tasks == len(self.frames):
-                return int (file_name[ idx + len(self.outfilebasename) + 1: idxAlpha - 1])
-            elif self.useFrames and self.total_tasks < len(self.frames):
-                return int (file_name[ idxAlpha + len("Alpha") + 1: ])
+        if self.__is_alpha_file(file_name):
+            idx_alpha = file_name.find("Alpha")
+            if self.use_frames and self.total_tasks == len(self.frames):
+                return int (file_name[ idx + len(self.outfilebasename) + 1: idx_alpha - 1])
+            elif self.use_frames and self.total_tasks < len(self.frames):
+                return int (file_name[ idx_alpha + len("Alpha") + 1: ])
             else:
                 return int(file_name.split(".")[-3])
 
         else:
-            if self.useFrames and self.total_tasks > len(self.frames):
+            if self.use_frames and self.total_tasks > len(self.frames):
                 suf = file_name[ idx + len(self.outfilebasename) + 1:]
-                idxDot = suf.find(".")
-                return int (suf[ idxDot + 1: ])
+                idx_dot = suf.find(".")
+                return int (suf[ idx_dot + 1: ])
             else:
                 return int(file_name[ idx + len(self.outfilebasename) + 1:])
 
 
     #######################
-    def __useAlpha(self):
-        unsupportedFormats = ['BMP', 'PCX', 'PDF']
-        if self.outputFormat in unsupportedFormats:
+    def __use_alpha(self):
+        unsupported_formats = ['BMP', 'PCX', 'PDF']
+        if self.output_format in unsupported_formats:
             return False
         return True
 
 
     #######################
-    def __isAlphaFile(self, file_name):
+    def __is_alpha_file(self, file_name):
         return file_name.find('Alpha') != -1
 
     #######################
-    def __putImageTogether(self, output_file_name ):
+    def __put_image_together(self, output_file_name ):
         collector = RenderingTaskCollector()
 
-        if not self._useOuterTaskCollector():
-            for file in self.collectedFileNames.values():
-                collector.addImgFile(file)
-            for file in self.collectedAlphaFiles.values():
+        if not self._use_outer_task_collector():
+            for file in self.collected_file_names.values():
+                collector.add_img_file(file)
+            for file in self.collected_alpha_files.values():
                 collector.acceptAlphaFile(file)
-            collector.finalize().save(output_file_name, self.outputFormat)
-#            if not self.useFrames:
-#                self.previewFilePath = output_file_name
+            collector.finalize().save(output_file_name, self.output_format)
+#            if not self.use_frames:
+#                self.preview_file_path = output_file_name
         else:
-            self.collectedFileNames = OrderedDict(sorted(self.collectedFileNames.items()))
-            self.collectedAlphaFiles = OrderedDict(sorted(self.collectedAlphaFiles.items()))
-            files = self.collectedFileNames.values() + self.collectedAlphaFiles.values()
-            self._putCollectedFilesTogether(output_file_name, files, "add")
+            self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
+            self.collected_alpha_files = OrderedDict(sorted(self.collected_alpha_files.items()))
+            files = self.collected_file_names.values() + self.collected_alpha_files.values()
+            self._put_collected_files_together(output_file_name, files, "add")
 
     #######################
-    def __collectImagePart(self, numStart, trFile):
-        if self.__isAlphaFile(trFile):
-            self.collectedAlphaFiles[ numStart ] = trFile
+    def __collect_image_part(self, num_start, tr_file):
+        if self.__is_alpha_file(tr_file):
+            self.collected_alpha_files[ num_start ] = tr_file
         else:
-            self.collectedFileNames[ numStart ] = trFile
-            self._updatePreview(trFile)
-            self._updateTaskPreview()
+            self.collected_file_names[ num_start ] = tr_file
+            self._update_preview(tr_file)
+            self._update_task_preview()
 
     #######################
-    def __collectFrames(self, frames, tmp_dir):
+    def __collect_frames(self, frames, tmp_dir):
         for frame in frames:
-            self.__putFrameTogether(tmp_dir, frame, frame)
+            self.__put_frame_together(tmp_dir, frame, frame)
 
 
     #######################
-    def __collectFrameFile(self, trFile):
-        frameNum = self.__getFrameNumberFromName(trFile)
-        if frameNum is None:
+    def __collect_frame_file(self, tr_file):
+        frame_num = self.__get_frame_number_from_name(tr_file)
+        if frame_num is None:
             return
-        if self.__isAlphaFile(trFile):
-            self.framesAlphaParts[ frameNum ][1] = trFile
+        if self.__is_alpha_file(tr_file):
+            self.framesAlphaParts[ frame_num ][1] = tr_file
         else:
-            self.framesParts[ frameNum ][1] = trFile
+            self.framesParts[ frame_num ][1] = tr_file
 
     #######################
-    def __collectFramePart(self, numStart, trFile, parts, tmp_dir):
-        frameNum = self.frames[(numStart - 1) / parts ]
-        part = ((numStart - 1) % parts) + 1
+    def __collect_frame_part(self, num_start, tr_file, parts, tmp_dir):
+        frame_num = self.frames[(num_start - 1) / parts ]
+        part = ((num_start - 1) % parts) + 1
 
-        if self.__isAlphaFile(trFile):
-            self.framesAlphaParts[ frameNum ][ part ] = trFile
+        if self.__is_alpha_file(tr_file):
+            self.framesAlphaParts[ frame_num ][ part ] = tr_file
         else:
-            self.framesParts[ frameNum ][ part ] = trFile
+            self.framesParts[ frame_num ][ part ] = tr_file
 
-        self._updateFramePreview(trFile, frameNum, part)
+        self._update_frame_preview(tr_file, frame_num, part)
 
-        if len(self.framesParts[ frameNum ]) == parts:
-            self.__putFrameTogether(tmp_dir, frameNum, numStart)
-
-    #######################
-    def __copyFrames(self):
-        outpuDir = os.path.dirname(self.output_file)
-        for file in self.collectedFileNames.values():
-            shutil.copy(file, os.path.join(outpuDir, os.path.basename(file)))
+        if len(self.framesParts[ frame_num ]) == parts:
+            self.__put_frame_together(tmp_dir, frame_num, num_start)
 
     #######################
-    def __putFrameTogether(self, tmp_dir, frameNum, numStart):
-        output_file_name = os.path.join(tmp_dir, self.__getOutputName(frameNum))
-        if self._useOuterTaskCollector():
-            collected = self.framesParts[ frameNum ]
+    def __copy_frames(self):
+        output_dir = os.path.dirname(self.output_file)
+        for file in self.collected_file_names.values():
+            shutil.copy(file, os.path.join(output_dir, os.path.basename(file)))
+
+    #######################
+    def __put_frame_together(self, tmp_dir, frame_num, num_start):
+        output_file_name = os.path.join(tmp_dir, self.__get_output_name(frame_num))
+        if self._use_outer_task_collector():
+            collected = self.framesParts[ frame_num ]
             collected = OrderedDict(sorted(collected.items()))
-            collectedAlphas = self.framesAlphaParts[ frameNum ]
-            collectedAlphas = OrderedDict(sorted(collectedAlphas.items()))
-            files = collected.values() + collectedAlphas.values()
-            self._putCollectedFilesTogether(output_file_name, files, "add")
+            collected_alphas = self.framesAlphaParts[ frame_num ]
+            collected_alphas = OrderedDict(sorted(collected_alphas.items()))
+            files = collected.values() + collected_alphas.values()
+            self._put_collected_files_together(output_file_name, files, "add")
         else:
             collector = RenderingTaskCollector()
-            for part in self.framesParts[ frameNum ].values():
-                collector.addImgFile(part)
-            for part in self.framesAlphaParts[ frameNum ].values():
-                collector.addAlphaFile(part)
-            collector.finalize().save(output_file_name, self.outputFormat)
-        self.collectedFileNames[ numStart ] = output_file_name
-        self._updateFramePreview(output_file_name, frameNum, final=True)
+            for part in self.framesParts[ frame_num ].values():
+                collector.add_img_file(part)
+            for part in self.framesAlphaParts[ frame_num ].values():
+                collector.add_alpha_file(part)
+            collector.finalize().save(output_file_name, self.output_format)
+        self.collected_file_names[ num_start ] = output_file_name
+        self._update_frame_preview(output_file_name, frame_num, final=True)
 
     #######################
-    def __getFrameNumberFromName(self, frameName):
-        frameName, ext = os.path.splitext(frameName)
+    def __get_frame_number_from_name(self, frame_name):
+        frame_name, ext = os.path.splitext(frame_name)
         try:
-            num = int(frameName.split(".")[-1].lstrip("0"))
+            num = int(frame_name.split(".")[-1].lstrip("0"))
             return num
         except Exception, err:
-            logger.warning("Wrong result name: {}; {} ", frameName, str(err))
+            logger.warning("Wrong result name: {}; {} ", frame_name, str(err))
             return None
 
 
     #######################
-    def __getOutputName(self, frameNum):
-        num = str(frameNum)
-        return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.outputFormat)
+    def __get_output_name(self, frame_num):
+        num = str(frame_num)
+        return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
 
     #######################
     def _run_task(self, src_code, scope):
         exec src_code in scope
-        trFiles = self.load_taskResults(scope['output']['data'], scope['output']['result_type'], self.tmp_dir)
-        if scope['isAlpha']:
-            for trFile in trFiles:
-                if self.__isAlphaFile(trFile):
-                    return trFile
+        tr_files = self.load_task_results(scope['output']['data'], scope['output']['result_type'], self.tmp_dir)
+        if scope['is_alpha']:
+            for tr_file in tr_files:
+                if self.__is_alpha_file(tr_file):
+                    return tr_file
         else:
-            for trFile in trFiles:
-                if not self.__isAlphaFile(trFile):
-                    return trFile
-        if len(trFiles) > 0:
-            return trFiles[0]
+            for tr_file in tr_files:
+                if not self.__is_alpha_file(tr_file):
+                    return tr_file
+        if len(tr_files) > 0:
+            return tr_files[0]
         else:
             return None
 

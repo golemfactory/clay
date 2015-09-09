@@ -230,10 +230,10 @@ class Client:
 
     ############################
     def run_add_task_server(self):
-        from PluginServer import start_taskAdderServer
+        from PluginServer import start_task_adder_server
         from multiprocessing import Process, freeze_support
         freeze_support()
-        self.task_adder_server = Process(target=start_taskAdderServer, args=(self.get_plugin_port(),))
+        self.task_adder_server = Process(target=start_task_adder_server, args=(self.get_plugin_port(),))
         self.task_adder_server.start()
 
     ############################
@@ -253,9 +253,9 @@ class Client:
         self.task_server.task_manager.add_new_task(task)
         if self.config_desc.use_distributed_resource_management:
             self.get_resource_peers()
-            res_files = self.resource_server.add_files_to_send(task.taskResources, task.header.task_id,
+            res_files = self.resource_server.add_files_to_send(task.task_resources, task.header.task_id,
                                                                self.config_desc.dist_res_num)
-            task.setResFiles(res_files)
+            task.set_res_files(res_files)
 
     ############################
     def get_resource_peers(self):

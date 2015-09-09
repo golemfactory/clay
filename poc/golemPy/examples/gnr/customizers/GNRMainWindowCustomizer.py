@@ -41,12 +41,12 @@ class GNRMainWindowCustomizer:
         self.taskDetailsDialogCustomizer    = None
         self.lastDefinition = None
 
-        self._setupConnections()
+        self._setup_connections()
 
         self._setErrorLabel()
 
     #############################
-    def _setupConnections(self):
+    def _setup_connections(self):
         self._setupBasicTaskConnections()
         self._setupBasicAppConnections()
 
@@ -97,8 +97,8 @@ class GNRMainWindowCustomizer:
 
     ############################
     # Add task information in gui
-    def addTask(self, task):
-        self._addTask(task.definition.task_id, task.status)
+    def add_task(self, task):
+        self._add_task(task.definition.task_id, task.status)
 
     ############################
     def updateTaskAdditionalInfo(self, t):
@@ -126,7 +126,7 @@ class GNRMainWindowCustomizer:
 
 
     ############################
-    def _addTask(self, task_id, status):
+    def _add_task(self, task_id, status):
         currentRowCount = self.gui.ui.taskTableWidget.rowCount()
         self.gui.ui.taskTableWidget.insertRow(currentRowCount)
 
@@ -150,7 +150,7 @@ class GNRMainWindowCustomizer:
     def _showNewTaskDialog(self, definition):
         self._setNewTaskDialog()
         self._setNewTaskDialogCustomizer()
-        self.newTaskDialogCustomizer.load_taskDefinition(definition)
+        self.newTaskDialogCustomizer.load_task_definition(definition)
         self.newTaskDialog.show()
 
    #############################
@@ -257,7 +257,7 @@ class GNRMainWindowCustomizer:
         self.changeTaskDialog = ChangeTaskDialog(self.gui.window)
         self.changeTaskDialogCustomizer = ChangeTaskDialogCustomizer(self.changeTaskDialog, self.logic)
         ts = self.logic.get_task(task_id)
-        self.changeTaskDialogCustomizer.load_taskDefinition(ts.definition)
+        self.changeTaskDialogCustomizer.load_task_definition(ts.definition)
         self.changeTaskDialog.show()
 
     #############################

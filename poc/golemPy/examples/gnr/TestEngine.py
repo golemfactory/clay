@@ -15,29 +15,29 @@ class TestEngine(QtCore.QObject):
         self.logic      = logic
         self.tasks      = {}
 
-        QtCore.QObject.connect(logic, QtCore.SIGNAL("taskStartingRequested(QObject)"), self.__taskStartingRequested)
+        QtCore.QObject.connect(logic, QtCore.SIGNAL("taskStartingRequested(QObject)"), self.__task_starting_requested)
 
     #####################
-    def addTask(self, task):
+    def add_task(self, task):
         assert isinstance(task, Task)
 
         self.tasks[ task.header.task_id ] = task
 
-        self.__startComputing()
+        self.__start_computing()
 
     #####################
-    def __startComputing(self):
+    def __start_computing(self):
         keys = self.tasks.keys()
         r = random.randint(0, len(keys) - 1)
 
         t = self.tasks[ keys[ r ] ]
 
-        poolSize = 2
-        p = Pool(poolSize)
+        pool_size = 2
+        p = Pool(pool_size)
 
         args = []
 
-        for i in range(poolSize):
+        for i in range(pool_size):
             extra_data = t.query_extra_data(1.0)
             args.append([ (t.src_code, extra_data, None) ])
 
@@ -46,13 +46,13 @@ class TestEngine(QtCore.QObject):
         p.start()
         p.join()
 
-    def __taskStartingRequested(self, ts):
+    def __task_starting_requested(self, ts):
 
-        tb = self.logic.renderers[ ts.definition.renderer ].task_builderType("client id here", ts.definition)
+        tb = self.logic.renderers[ ts.definition.renderer ].task_builder_type("client id here", ts.definition)
 
         t = Task.build_task(tb)
 
-        self.addTask(t)
+        self.add_task(t)
 
 
 #######################

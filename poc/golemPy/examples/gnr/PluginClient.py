@@ -24,7 +24,7 @@ def main(argv):
             usage()
             sys.exit()
         elif opt in ("-t", "--task"):
-            c.addTask(arg)
+            c.add_task(arg)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

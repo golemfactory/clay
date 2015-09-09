@@ -617,7 +617,7 @@ class RenderTaskResult:
     def getDesc(self):
         return self.desc
 
-    def getPixelData(self):
+    def get_pixel_data(self):
         return self.pixelData
 
 ################# RENDER WORKER
@@ -723,7 +723,7 @@ def compute(output):
     result = worker.render()
     
     #RETURN RESULT and write to proper stream
-    data = result.getPixelData()
+    data = result.get_pixel_data()
     #print len(data) // 3
     #print data
     #print len(data) // 3

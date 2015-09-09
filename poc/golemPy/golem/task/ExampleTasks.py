@@ -18,7 +18,7 @@ from minilight import render_task
 from resource import ArrayResource
 from base64 import encodestring
 
-res = render_task("d:/src/golem/poc/golemPy/testtasks/minilight/cornellbox.ml.txt", startX, startY, width, height, img_width, img_height)
+res = render_task("d:/src/golem/poc/golemPy/testtasks/minilight/cornellbox.ml.txt", start_x, start_y, width, height, img_width, img_height)
 
 output = encodestring(res)
 """
@@ -31,15 +31,15 @@ class RayTracingTask(Task):
         Task.__init__(self, task_header, [], coderes, 0)
         self.width = width
         self.height = height
-        self.splitIndex = 0
+        self.split_index = 0
         self.return_address = return_address
         self.return_port = return_port
 
     #######################
     def query_extra_data(self, perf_index):
         hash = "{}".format(random.getrandbits(128))
-        return {    "startX" : 0,
-                    "startY" : 0,
+        return {    "start_x" : 0,
+                    "start_y" : 0,
                     "width" : self.width,
                     "height" : self.height,
                     "img_width" : self.width,
@@ -51,14 +51,14 @@ class RayTracingTask(Task):
 
     #######################
     def needs_computation(self):
-        if self.splitIndex < 1:
+        if self.split_index < 1:
             return True
         else:
             return False
 
     #######################
     def computation_started(self, extra_data):
-        self.splitIndex += 1
+        self.split_index += 1
 
     #######################
     def computation_finished(self, subtask_id, task_result, env = None):
@@ -250,7 +250,7 @@ class PbrtRenderTask(Task):
         self.header.ttl = max(2200.0, TIMEOUT)
 
         self.path_root           = path_root
-        self.lastTask           = 0
+        self.last_task           = 0
         self.total_tasks         = total_tasks
         self.num_subtasks        = num_subtasks
         self.num_cores           = num_cores
@@ -263,7 +263,7 @@ class PbrtRenderTask(Task):
         self.num_tasks_received   = 0
         self.return_address      = return_address
         self.return_port         = return_port
-        self.subTasksGiven      = {}
+        self.subtasks_given      = {}
 
     def initialize(self):
         pass
@@ -271,10 +271,10 @@ class PbrtRenderTask(Task):
     #######################
     def query_extra_data(self, perf_index):
 
-        end_task = min(self.lastTask + 1, self.total_tasks)
+        end_task = min(self.last_task + 1, self.total_tasks)
 
         self.last_extra_data =  {     "path_root" : self.path_root,
-                                    "start_task" : self.lastTask,
+                                    "start_task" : self.last_task,
                                     "end_task" : end_task,
                                     "total_tasks" : self.total_tasks,
                                     "num_subtasks" : self.num_subtasks,
@@ -284,8 +284,8 @@ class PbrtRenderTask(Task):
                                 }
 
         hash = "{}".format(random.getrandbits(128))
-        self.subTasksGiven[ hash ] = self.last_extra_data
-        self.lastTask = end_task # TODO: Should depend on performance
+        self.subtasks_given[ hash ] = self.last_extra_data
+        self.last_task = end_task # TODO: Should depend on performance
         return self.last_extra_data, hash, self.return_address, self.return_port
 
     #######################
@@ -296,7 +296,7 @@ class PbrtRenderTask(Task):
 
     #######################
     def needs_computation(self):
-        return self.lastTask != self.total_tasks
+        return self.last_task != self.total_tasks
 
     #######################
     def computation_started(self, extra_data):
@@ -314,7 +314,7 @@ class PbrtRenderTask(Task):
                 fh.write(decompress(tr[ 1 ]))
                 fh.close()
         
-                self.collector.addImgFile(os.path.join(tmp_dir, tr[ 0 ])) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
+                self.collector.add_img_file(os.path.join(tmp_dir, tr[ 0 ])) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
                 self.num_tasks_received += 1
                 
 
@@ -331,23 +331,23 @@ class PbrtRenderTask(Task):
 
     #######################
     def get_active_tasks(self):
-        return self.lastTask
+        return self.last_task
 
     #######################
     def get_active_chunks(self):
-        return self.lastTask
+        return self.last_task
 
     #######################
     def get_chunks_left(self):
-        return self.total_tasks - self.lastTask
+        return self.total_tasks - self.last_task
 
     #######################
     def get_progress(self):
-        return float(self.lastTask) / self.total_tasks
+        return float(self.last_task) / self.total_tasks
 
     #######################
     def prepare_resource_delta(self, subtask_id, task_id, resource_header):
-        if subtask_id in self.subTasksGiven:
+        if subtask_id in self.subtasks_given:
             dir_name = os.path.join("res", self.header.client_id, self.header.task_id, "resources")
             tmp_dir = os.path.join("res", self.header.client_id, self.header.task_id, "tmp")
 

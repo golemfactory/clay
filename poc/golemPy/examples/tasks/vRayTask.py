@@ -9,57 +9,58 @@ import psutil
 import math
 import shutil
 
-def formatTestVRayCmd(cmdFile, output_file, outfilebasename, scenefile, width, height, rtEngine, numThreads):
-    cmd = ["{}".format(cmdFile), "-imgFile={}/{}.exr".format(output_file, outfilebasename),
-           "-scene_file={}".format(scenefile), "-imgWidth={}".format(width), "-imgHeight={}".format(height),
-           "-region={};{};{};{}".format(startBox[0], startBox[1], startBox[0] + box[0], startBox[1] + box[1]),
-           "-autoClose=1", "-display=0", "-rtEngine={}".format(rtEngine), "-numThreads={}".format(numThreads) ]
+def format_test_vray_cmd(cmd_file, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
+    cmd = ["{}".format(cmd_file), "-imgFile={}/{}.exr".format(output_file, outfilebasename),
+           "-sceneFile={}".format(scenefile), "-imgWidth={}".format(width), "-imgHeight={}".format(height),
+           "-region={};{};{};{}".format(start_box[0], start_box[1], start_box[0] + box[0], start_box[1] + box[1]),
+           "-autoClose=1", "-display=0", "-rt_engine={}".format(rt_engine), "-numThreads={}".format(num_threads) ]
     return cmd
 
-def formatTestVRayCmdWithParts(cmdFile, frames,  output_file, outfilebasename, scenefile, width, height, rtEngine, numThreads):
-    cmd = ["{}".format(cmdFile), "-imgFile={}/{}.exr".format(output_file, outfilebasename),
-           "-scene_file={}".format(scenefile), "-imgWidth={}".format(width), "-imgHeight={}".format(height),
-           "-frames={}".format(frames), "-region={};{};{};{}".format(0, startBox[1], width, startBox[1] + box[1]),
-           "-autoClose=1", "-display=0", "-rtEngine={}".format(rtEngine), "-numThreads={}".format(numThreads) ]
+def format_test_vray_cmd_with_parts(cmd_file, frames,  output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
+    cmd = ["{}".format(cmd_file), "-imgFile={}/{}.exr".format(output_file, outfilebasename),
+           "-sceneFile={}".format(scenefile), "-imgWidth={}".format(width), "-imgHeight={}".format(height),
+           "-frames={}".format(frames), "-region={};{};{};{}".format(0, start_box[1], width,
+           "-autoClose=1", "-display=0", "-rtEngine={}".format(rt_engine), "-numThreads={}".format(num_threads) ]
     return cmd
 
-def formatVRayCmd(cmdFile, start_task, end_task, hTasks, total_tasks, output_file, outfilebasename, scenefile, width, height, rtEngine, numThreads):
+def format_vray_cmd(cmd_file, start_task, end_task, h_tasks, total_tasks, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
     if 'generateStartBox' in globals():
-        return formatTestVRayCmd(cmdFile, output_file, outfilebasename, scenefile, width, height, rtEngine, numThreads)
-    wTasks = total_tasks / hTasks
-    partWidth = width / wTasks
-    partHeight = height / hTasks
-    left = ((int(start_task) - 1) / int(hTasks)) * partWidth
-    right = left + partWidth
-    upper = ((start_task - 1) % hTasks) * partHeight
-    lower = upper + partHeight
-    cmd = ["{}".format(cmdFile), "-imgFile={}/{}{}.exr".format(output_file, outfilebasename, start_task),
-           "-scene_file={}".format(scenefile), "-imgWidth={}".format(width),  "-imgHeight={}".format(height),
+        return format_test_vray_cmd(cmd_file, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads)
+    w_tasks = total_tasks / h_tasks
+    part_width = width / w_tasks
+    part_height = height / h_tasks
+    left = ((int(start_task) - 1) / int(h_tasks)) * part_width
+    right = left + part_width
+    upper = ((start_task - 1) % h_tasks) * part_height
+    lower = upper + part_height
+    cmd = ["{}".format(cmd_file), "-imgFile={}/{}{}.exr".format(output_file, outfilebasename, start_task),
+           "-sceneFile={}".format(scenefile), "-imgWidth={}".format(width),  "-imgHeight={}".format(height),
            "-region={};{};{};{}".format(left, upper, right, lower), "-autoClose=1", "-display=0",
-           "-rtEngine={}".format(rtEngine), "-numThreads={}".format(numThreads) ]
+           "-rtEngine={}".format(rt_engine), "-numThreads={}".format(num_threads) ]
     return cmd
 
-def formatVRayCmdWithFrames(cmdFile, frames, output_file, outfilebasename, scenefile, width, height, rtEngine, numThreads):
-    cmd = ["{}".format(cmdFile), "-imgFile={}/{}.exr".format(output_file, outfilebasename),
-           "-scene_file={}".format(scenefile), "-imgWidth={}".format(width), "-imgHeight={}".format(height),
+def format_vray_cmd_with_frames(cmd_file, frames, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
+    cmd = ["{}".format(cmd_file), "-imgFile={}/{}.exr".format(output_file, outfilebasename),
+           "-sceneFile={}".format(scenefile), "-imgWidth={}".format(width), "-imgHeight={}".format(height),
            "-frames={}".format(frames), "-region={};{};{};{}".format(0, 0, width, height),
-           "-autoClose=1", "-display=0", "-rtEngine={}".format(rtEngine), "-numThreads={}".format(numThreads) ]
+           "-autoClose=1", "-display=0", "-rtEngine={}".format(rt_engine), "-numThreads={}".format(num_threads) ]
     return cmd
 
-def formatVRayCmdWithParts(cmdFile, frames, parts, start_task, output_file, outfilebasename, scenefile, width, height, rtEngine, numThreads):
+def format_vray_cmd_with_parts(cmd_file, frames, parts, start_task, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
     if 'generateStartBox' in globals():
-        return formatTestVRayCmdWithParts(cmdFile, frames, output_file, outfilebasename, scenefile, width, height, rtEngine, numThreads)
+        return format_test_vray_cmd_with_parts(cmd_file, frames, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads)
     part = ((start_task - 1) % parts) + 1
     upper = int(math.floor((part  - 1) * (float(height) / float(parts))))
     lower = int(math.floor(part * (float(height) / float(parts))))
-    cmd = ["{}".format(cmdFile), "-imgFile={}/{}.{}.exr".format(output_file, outfilebasename, part),
-           "-scene_file={}".format(scenefile), "-imgWidth={}".format(width), "-imgHeight={}".format(height),
+    cmd = ["{}".format(cmd_file), "-imgFile={}/{}.{}.exr".format(output_file, outfilebasename, part),
+           "-sceneFile={}".format(scenefile), "-imgWidth={}".format(width), "-imgHeight={}".format(height),
            "-frames={}".format(frames), "-region={};{};{};{}".format(0, upper, width, lower),
-           "-autoClose=1", "-display=0", "-rtEngine={}".format(rtEngine),  "-numThreads={}".format(numThreads)]
+           "-autoClose=1", "-display=0", "-rtEngine={}".format(rt_engine),  "-numThreads={}".format(num_threads)]
     return cmd
 
-def __readFromEnvironment():
-    GOLEM_ENV = 'GOLEM'
+GOLEM_ENV = 'GOLEM'
+
+def __read_from_environment():
     path = os.environ.get(GOLEM_ENV)
     if not path:
         print "No Golem environment variable found... Assuming that exec is in working folder"
@@ -72,9 +73,9 @@ def __readFromEnvironment():
 
     from examples.gnr.RenderingEnvironment import VRayEnvironment
     env = VRayEnvironment()
-    cmdFile = env.getCmdPath()
-    if cmdFile:
-        return cmdFile
+    cmd_file = env.get_cmd_path()
+    if cmd_file:
+        return cmd_file
     else:
         print "Environment not supported... Assuming that exec is in working folder"
         if is_windows():
@@ -82,13 +83,13 @@ def __readFromEnvironment():
         else:
             return 'vray'
 
-def outputNumber(num):
+def output_number(num):
     num = str(num)
     return num.zfill(4)
 
 
 ############################
-def returnData(files):
+def return_data(files):
     res = []
     for f in files:
         with open(f, "rb") as fh:
@@ -114,16 +115,16 @@ def exec_cmd(cmd, nice=20):
     pc.wait()
 
 ############################
-def returnFiles(files):
-    copyPath = os.path.normpath(os.path.join(tmp_path, ".."))
+def return_files(files):
+    copy_path = os.path.normpath(os.path.join(tmp_path, ".."))
     for f in files:
-        shutil.copy2(f, copyPath)
+        shutil.copy2(f, copy_path)
 
-    files = [ os.path.normpath(os.path.join(copyPath, os.path.basename(f))) for f in files]
+    files = [ os.path.normpath(os.path.join(copy_path, os.path.basename(f))) for f in files]
     return {'data': files, 'result_type': 1 }
 
 ############################
-def runVRayTask(path_root, start_task, end_task, hTask, total_tasks, outfilebasename, scene_file, width, height, rtEngine, useFrames, frames, parts, numThreads):
+def run_vray_task(path_root, start_task, end_task, h_task, total_tasks, outfilebasename, scene_file, width, height, rt_engine, use_frames, frames, parts, num_threads):
     print 'runVray Taskk'
     print frames
 
@@ -141,20 +142,20 @@ def runVRayTask(path_root, start_task, end_task, hTask, total_tasks, outfilebase
         scene_file = glob.glob("*.vrscene")[0]
 
 
-    cmdFile = __readFromEnvironment()
-    print "cmdFile " + cmdFile
+    cmd_file = __read_from_environment()
+    print "cmd_file " + cmd_file
     if os.path.exists(scene_file):
-        if useFrames:
-            frames = parseFrames (frames)
+        if use_frames:
+            frames = parse_frames (frames)
             if parts == 1:
                 if len(frames) == 1:
-                    outfilebasename = "{}.{}".format(outfilebasename, outputNumber(frames[0]))
-                cmd = formatVRayCmdWithFrames(cmdFile, frames, output_files, outfilebasename, scene_file, width, height, rtEngine, numThreads)
+                    outfilebasename = "{}.{}".format(outfilebasename, output_number(frames[0]))
+                cmd = format_vray_cmd_with_frames(cmd_file, frames, output_files, outfilebasename, scene_file, width, height, rt_engine, num_threads)
             else:
-                outfilebasename = "{}.{}".format(outfilebasename, outputNumber(frames[0]))
-                cmd = formatVRayCmdWithParts(cmdFile, frames, parts, start_task, output_files, outfilebasename, scene_file, width, height, rtEngine, numThreads)
+                outfilebasename = "{}.{}".format(outfilebasename, output_number(frames[0]))
+                cmd = format_vray_cmd_with_parts(cmd_file, frames, parts, start_task, output_files, outfilebasename, scene_file, width, height, rt_engine, num_threads)
         else:
-            cmd = formatVRayCmd(cmdFile, start_task, end_task, hTask, total_tasks, output_files,outfilebasename,  scene_file, width, height, rtEngine, numThreads)
+            cmd = format_vray_cmd(cmd_file, start_task, end_task, h_task, total_tasks, output_files,outfilebasename,  scene_file, width, height, rt_engine, num_threads)
     else:
         print "Scene file does not exist"
         return {'data': [], 'result_type': 0 }
@@ -165,9 +166,9 @@ def runVRayTask(path_root, start_task, end_task, hTask, total_tasks, outfilebase
 
     files = glob.glob(output_files + "/*.exr")
 
-    return returnData(files)
+    return return_data(files)
 
-def parseFrames(frames):
+def parse_frames(frames):
     return ";".join([ u"{}".format(frame) for frame in frames ])
 
-output = runVRayTask (path_root, start_task, end_task, hTask, total_tasks, outfilebasename, scene_file, width, height, rtEngine, useFrames, frames, parts, numThreads)
+output = run_vray_task (path_root, start_task, end_task, h_task, total_tasks, outfilebasename, scene_file, width, height, rt_engine, use_frames, frames, parts, num_threads)

@@ -40,18 +40,18 @@ class GNRApplicationLogic(QtCore.QObject):
         QtCore.QObject.__init__(self)
         self.tasks              = {}
         self.test_tasks          = {}
-        self.taskTypes          = {}
+        self.task_types          = {}
         self.customizer         = None
         self.root_path           = os.path.join(os.environ.get('GOLEM'), 'examples/gnr')
         self.nodes_manager_client = None
         self.add_new_nodes_function = lambda x: None
 
     ######################
-    def registerGui(self, gui, customizerClass):
+    def register_gui(self, gui, customizerClass):
         self.customizer = customizerClass(gui, self)
 
     ######################
-    def registerClient(self, client):
+    def register_client(self, client):
         self.client = client
         self.client.register_listener(GNRClientEventListener(self))
 
@@ -110,8 +110,8 @@ class GNRApplicationLogic(QtCore.QObject):
         return self.tasks[ task_id ]
 
     ######################
-    def get_taskTypes(self):
-        return self.taskTypes
+    def get_task_types(self):
+        return self.task_types
 
     ######################
     def get_status(self):
@@ -130,10 +130,10 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.quit()
 
     ######################
-    def get_taskType(self, name):
-        taskType = self.tasksType[ name ]
-        if taskType:
-            return taskType
+    def get_task_type(self, name):
+        task_type = self.tasksType[ name ]
+        if task_type:
+            return task_type
         else:
             assert False, "Task {} not registered".format(name)
 
@@ -155,7 +155,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.change_config(cfg_desc)
 
     ######################
-    def _getNewTaskState(self):
+    def _get_new_task_state(self):
         return GNRTaskState()
 
     ######################
@@ -168,19 +168,19 @@ class GNRApplicationLogic(QtCore.QObject):
             logger.error(error_msg)
             return
 
-        tb = self._getBuilder(ts)
+        tb = self._get_builder(ts)
 
         t = Task.build_task(tb)
 
         self.client.enqueue_new_task(t)
 
     ######################
-    def _getBuilder(self, task_state):
+    def _get_builder(self, task_state):
         #FIXME Bardzo tymczasowe rozwiazanie dla zapewnienia zgodnosci
         if hasattr(task_state.definition, "renderer"):
-            task_state.definition.taskType = task_state.definition.renderer
+            task_state.definition.task_type = task_state.definition.renderer
 
-        return self.taskTypes[ task_state.definition.taskType ].task_builderType(self.client.get_id(), task_state.definition, self.client.get_root_path())
+        return self.task_types[ task_state.definition.task_type ].task_builder_type(self.client.get_id(), task_state.definition, self.client.get_root_path())
 
     ######################
     def restart_task(self, task_id):
@@ -240,8 +240,8 @@ class GNRApplicationLogic(QtCore.QObject):
         return self.test_tasks
 
     ######################
-    def addTaskFromDefinition (self, definition):
-        task_state = self._getNewTaskState()
+    def add_taskFromDefinition (self, definition):
+        task_state = self._get_new_task_state()
         task_state.status = TaskStatus.notStarted
 
         task_state.definition = definition
@@ -257,18 +257,18 @@ class GNRApplicationLogic(QtCore.QObject):
         for t in tasks:
             if t.definition.task_id not in self.tasks:
                 self.tasks[ t.definition.task_id ] = t
-                self.customizer.addTask(t)
+                self.customizer.add_task(t)
             else:
                 self.tasks[ t.definition.task_id ] = t
 
         self.customizer.updateTasks(self.tasks)
 
     ######################
-    def registerNewTaskType(self, taskType):
-        if taskType.name not in self.taskTypes:
-            self.taskTypes[ taskType.name ] = taskType
+    def registerNewTaskType(self, task_type):
+        if task_type.name not in self.task_types:
+            self.task_types[ task_type.name ] = task_type
         else:
-            assert False, "Task type {} already registered".format(taskType.name)
+            assert False, "Task type {} already registered".format(task_type.name)
 
     ######################
     def registerNewTestTaskType(self, test_taskInfo):
@@ -293,9 +293,9 @@ class GNRApplicationLogic(QtCore.QObject):
 
     ######################
     def runTestTask(self, task_state):
-        if self._validateTaskState(task_state):
+        if self._validate_task_state(task_state):
 
-            tb = self._getBuilder(task_state)
+            tb = self._get_builder(task_state)
 
             t = Task.build_task(tb)
 
@@ -319,13 +319,13 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.change_accept_tasks_for_environment(env_id, state)
 
     ######################
-    def _test_taskComputationFinished(self, success, estMem = 0):
+    def _test_taskComputationFinished(self, success, est_mem = 0):
         if success:
             self.progressDialog.showMessage("Test task computation success!")
         else:
             self.progressDialog.showMessage("Task test computation failure... Check resources.")
         if self.customizer.newTaskDialogCustomizer:
-            self.customizer.newTaskDialogCustomizer.test_taskComputationFinished(success, estMem)
+            self.customizer.newTaskDialogCustomizer.test_taskComputationFinished(success, est_mem)
 
     ######################
     def task_statusChanged(self, task_id):
@@ -354,11 +354,11 @@ class GNRApplicationLogic(QtCore.QObject):
 
 
     ######################
-    def _validateTaskState(self, task_state):
+    def _validate_task_state(self, task_state):
 
         td = task_state.definition
-        if not os.path.exists(td.mainProgramFile):
-            self._showErrorWindow("Main program file does not exist: {}".format(td.mainProgramFile))
+        if not os.path.exists(td.main_program_file):
+            self._showErrorWindow("Main program file does not exist: {}".format(td.main_program_file))
             return False
         return True
 

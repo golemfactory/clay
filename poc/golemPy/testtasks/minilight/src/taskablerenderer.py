@@ -144,7 +144,7 @@ class TaskableRenderer:
         assert result.desc.getW() == self.w and result.desc.getH() == self.h
 
         desc    = result.getDesc()
-        pixels  = result.getPixelData()
+        pixels  = result.get_pixel_data()
         x, y, w = desc.getX(), desc.getY(), desc.getW()
         offset  = 3 * (w * y + x)
 

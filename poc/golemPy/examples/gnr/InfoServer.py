@@ -5,7 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def _localTcpAddr(port):
+def _local_tcp_addr(port):
     return "tcp://127.0.0.1:{}".format(port)
 
 class SnapshotGetter:
@@ -14,10 +14,10 @@ class SnapshotGetter:
         self.otherNodes = {}
         self.lock = Lock()
 
-    def sendNodePort(self, port):
+    def send_node_port(self, port):
         try:
             node = zerorpc.Client()
-            node.connect(_localTcpAddr(port))
+            node.connect(_local_tcp_addr(port))
             with self.lock:
                 self.otherNodes[ port ] = node
         except:
@@ -44,38 +44,38 @@ class SnapshotGetter:
 
 
 class InfoServer(Thread):
-    def __init__(self, client, mainPort, start_port, end_port):
+    def __init__(self, client, main_port, start_port, end_port):
         Thread.__init__(self)
         self.client = client
         self.daemon = True
-        self.mainPort = mainPort
+        self.main_port = main_port
         self.start_port = start_port
         self.end_port = end_port
         self.server = None
 
-    def __bindPort(self, port):
-        self.server.bind(_localTcpAddr(port))
+    def __bind_port(self, port):
+        self.server.bind(_local_tcp_addr(port))
 
-    def __connectToMainPort(self):
+    def __connect_to_main_port(self):
         try:
-            self.__bindPort(self.mainPort)
+            self.__bind_port(self.main_port)
             return True
         except Exception as ex:
-            logger.info(" Can't connect with port {}: {}".format(self.mainPort, str(ex)))
+            logger.info(" Can't connect with port {}: {}".format(self.main_port, str(ex)))
             return False
 
-    def __connectToAdditionalPorts(self):
-        infoClient = None
+    def __connect_to_additional_ports(self):
+        info_client = None
         for port in range(self.start_port, self.end_port):
             try:
-                self.__bindPort(port)
-                infoClient = zerorpc.Client()
-                infoClient.connect(_localTcpAddr(self.mainPort))
-                infoClient.sendNodePort(port)
+                self.__bind_port(port)
+                info_client = zerorpc.Client()
+                info_client.connect(_local_tcp_addr(self.main_port))
+                info_client.send_node_port(port)
                 break
             except:
                 pass
-        if infoClient:
+        if info_client:
             return True
         else:
             return False
@@ -83,8 +83,8 @@ class InfoServer(Thread):
 
     def run(self):
         self.server = zerorpc.Server(SnapshotGetter(self.client))
-        if not self.__connectToMainPort():
-            if not self.__connectToAdditionalPorts():
+        if not self.__connect_to_main_port():
+            if not self.__connect_to_additional_ports():
                 logger.error("Info server not connnected")
                 return
         self.server.run()

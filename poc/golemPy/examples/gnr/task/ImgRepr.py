@@ -12,15 +12,15 @@ logger = logging.getLogger(__name__)
 ########################################################
 class ImgRepr:
     @abc.abstractmethod
-    def loadFromFile(self, file):
+    def load_from_file(self, file):
         return
 
     @abc.abstractmethod
-    def getPixel(self, (i, j)):
+    def get_pixel(self, (i, j)):
         return
 
     @abc.abstractmethod
-    def getSize(self):
+    def get_size(self):
         return
 
 ########################################################
@@ -29,14 +29,14 @@ class PILImgRepr(ImgRepr):
         self.img = None
         self.type = "PIL"
 
-    def loadFromFile(self, file):
+    def load_from_file(self, file):
         self.img = Image.open(file)
         self.img = self.img.convert('RGB')
 
-    def getSize(self):
+    def get_size(self):
         return self.img.size
 
-    def getPixel(self, (i, j)):
+    def get_pixel(self, (i, j)):
         return list(self.img.getpixel((i, j)))
 
 ########################################################
@@ -50,22 +50,22 @@ class EXRImgRepr(ImgRepr):
         self.min = 0.0
         self.max = 1.0
 
-    def loadFromFile(self, file_):
+    def load_from_file(self, file_):
         self.img = OpenEXR.InputFile(file_)
         self.dw = self.img.header()['dataWindow']
-        self.rgb = [Image.fromstring("F", self.getSize(), self.img.channel(c, self.pt)) for c in "RGB"]
+        self.rgb = [Image.fromstring("F", self.get_size(), self.img.channel(c, self.pt)) for c in "RGB"]
 
-    def getSize(self):
-        return (self.dw.max.x - self.dw.min.x + 1, self.dw.max.y - self.dw.min.y + 1)
+    def get_size(self):
+        return self.dw.max.x - self.dw.min.x + 1, self.dw.max.y - self.dw.min.y + 1
 
-    def getPixel(self, (i, j)):
+    def get_pixel(self, (i, j)):
         return [ c.getpixel((i, j)) for c in self.rgb]
 
-    def setPixel(self, (i, j), color):
+    def set_pixel(self, (i, j), color):
         for c in range(0, len(self.rgb)):
             self.rgb[c].putpixel((i, j), max(min(self.max, color[c]), self.min) )
 
-    def toPIL (self):
+    def to_pil (self):
         extrema = [im.getextrema() for im in self.rgb ]
         darkest = min([lo for (lo,hi) in extrema])
         lightest = max([hi for (lo,hi) in extrema])
@@ -77,111 +77,112 @@ class EXRImgRepr(ImgRepr):
 
 
 ############################
-def loadImg(file_):
+def load_img(file_):
     try:
         _, ext = os.path.splitext(file_)
         if ext.upper() != ".EXR":
             img = PILImgRepr()
         else:
             img = EXRImgRepr()
-        img.loadFromFile(file_)
+        img.load_from_file(file_)
         return img
     except Exception, err:
         logger.warning("Can't verify img file {}:{}".format(file_, str(err)))
         return None
 
 ############################
-def advanceVerifyImg(file_, resX, resY, startBox, boxSize, compareFile, cmpStartBox):
-    img = loadImg(file_)
-    cmpImg = loadImg(compareFile)
-    if img is None or cmpImg is None:
+def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file, cmp_start_box):
+    img = load_img(file_)
+    cmp_img = load_img(compare_file)
+    if img is None or cmp_img is None:
         return False
-    if img.getSize() != (resX, resY):
+    if img.get_size() != (res_x, res_y):
         return False
-    if boxSize < 0 or boxSize > img.getSize():
-        logger.error("Wrong box size for advance verification {}".format(boxSize))
+    if box_size < 0 or box_size > img.get_size():
+        logger.error("Wrong box size for advance verification {}".format(box_size))
 
-    if isinstance(img, PILImgRepr) and isinstance(cmpImg, PILImgRepr):
-        return __compareImgs(img, cmpImg, start1 = startBox, start2 = cmpStartBox, box = boxSize)
+    if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr):
+        return __compare_imgs(img, cmp_img, start1 = start_box, start2 = cmp_start_box, box = box_size)
     else:
-        return __compareImgs(img, cmpImg, maxCol = 1, start1 = startBox, start2 = cmpStartBox, box = boxSize)
+        return __compare_imgs(img, cmp_img, max_col = 1, start1 = start_box, start2 = cmp_start_box, box = box_size)
 
 ############################
-def verifyImg(file_, resX, resY):
-    img = loadImg(file_)
+def verify_img(file_, res_x, res_y):
+    img = load_img(file_)
     if img is None:
         return False
-    return img.getSize() == (resX, resY)
+    return img.get_size() == (res_x, res_y)
 
 ############################
-def comparePILImgs(file1, file2):
+def compare_pil_imgs(file1, file2):
     try:
         img1 = PILImgRepr()
-        img1.loadFromFile(file1)
+        img1.load_from_file(file1)
         img2 = PILImgRepr()
-        img2.loadFromFile(file2)
-        return __compareImgs(img1, img2)
+        img2.load_from_file(file2)
+        return __compare_imgs(img1, img2)
     except Exception, err:
         logger.info("Can't compare images {}, {}: {}".format(file1, file2, str(err)))
         return False
 
 ############################
-def compareEXRImgs(file1, file2):
+def compare_exr_imgs(file1, file2):
     try:
         img1 = EXRImgRepr()
-        img1.loadFromFile(file1)
+        img1.load_from_file(file1)
         img2 = EXRImgRepr()
-        img2.loadFromFile(file2)
-        return __compareImgs(img1, img2, 1)
+        img2.load_from_file(file2)
+        return __compare_imgs(img1, img2, 1)
     except Exception, err:
         logger.info("Can't compare images {}, {}: {}".format(file1, file2, str(err)))
         return False
 
 ############################
 def blend(img1, img2, alpha):
-    (resX, resY) = img1.getSize()
-    if img2.getSize() != (resX, resY):
+    (res_x, res_y) = img1.get_size()
+    if img2.get_size() != (res_x, res_y):
         logger.error("Both images must have the same size.")
         return
 
     img = copy(img1)
 
-    for x in range(0, resX):
-        for y in range(0, resY):
-            p1 = img1.getPixel((x, y))
-            p2 = img2.getPixel((x, y))
+    for x in range(0, res_x):
+        for y in range(0, res_y):
+            p1 = img1.get_pixel((x, y))
+            p2 = img2.get_pixel((x, y))
             p = map(lambda x, y: x * (1 - alpha) + y * alpha, p1, p2)
-            img.setPixel((x, y), p)
+            img.set_pixel((x, y), p)
 
     return img
 
+PSNR_ACCEPTABLE_MIN = 30
+
 ############################
-def __compareImgs(img1, img2, maxCol = 255, start1 = (0, 0), start2 = (0, 0), box = None):
-    PSNR_ACCEPTABLE_MIN = 30
-    mse = __countMSE(img1, img2, start1, start2, box)
+def __compare_imgs(img1, img2, max_col = 255, start1 = (0, 0), start2 = (0, 0), box = None):
+    mse = __count_mse(img1, img2, start1, start2, box)
     logger.debug("MSE = {}".format(mse))
     if mse == 0:
         return True
-    psnr = __countPSNR(mse, maxCol)
+    psnr = __count_psnr(mse, max_col)
     logger.debug("PSNR = {}".format(psnr))
     return psnr >= PSNR_ACCEPTABLE_MIN
 
 ############################
-def __countPSNR(mse, max=255):
+def __count_psnr(mse, max=255):
     return 20 * math.log10(max) - 10 * math.log10(mse)
 
 ############################
-def __countMSE(img1, img2, start1 = (0, 0), start2 = (0, 0), box = None):
+def __count_mse(img1, img2, start1 = (0, 0), start2 = (0, 0), box = None):
     mse = 0
     if box is None:
-        (resX, resY) = img1.getSize()
+        (res_x, res_y) = img1.get_size()
     else:
-        (resX, resY) = box
-    for i in range (0, resX):
-        for j in range(0, resY):
-            [r1, g1, b1] = img1.getPixel((start1[0] + i, start1[1] + j))
-            [r2, g2, b2] = img2.getPixel((start2[0] + i, start2[1] + j))
+        (res_x, res_y) = box
+    for i in range (0, res_x):
+        for j in range(0, res_y):
+            [r1, g1, b1] = img1.get_pixel((start1[0] + i, start1[1] + j))
+            [r2, g2, b2] = img2.get_pixel((start2[0] + i, start2[1] + j))
             mse += (r1 - r2)*(r1 - r2) + (g1 - g2)*(g1 - g2) + (b1 - b2)*(b1 - b2)
 
-    mse /= resX * resY * 3
+    mse /= res_x * res_y * 3
     return mse

@@ -10,7 +10,7 @@ from golem.task.TaskState import SubtaskStatus
 from examples.gnr.ui.ShowTaskResourcesDialog import ShowTaskResourcesDialog
 from examples.gnr.ui.RenderingNewTaskDialog import NewTaskDialog
 
-from examples.gnr.RenderingDirManager import getPreviewFile
+from examples.gnr.RenderingDirManager import get_preview_file
 from examples.gnr.RenderingTaskState import RenderingTaskDefinition
 
 from examples.gnr.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
@@ -53,7 +53,7 @@ def insertItem(root, pathTable):
 class AbsRenderingMainWindowCustomizer (object):
     ############################
     def _setRenderingVariables(self):
-        self.previewPath = os.path.join(os.environ.get('GOLEM'), "examples\\gnr", getPreviewFile())
+        self.previewPath = os.path.join(os.environ.get('GOLEM'), "examples\\gnr", get_preview_file())
         self.lastPreviewPath = self.previewPath
         self.sliderPreviews = {}
         self.gui.ui.frameSlider.setVisible(False)
@@ -92,7 +92,7 @@ class AbsRenderingMainWindowCustomizer (object):
         self.__setRendererParams(t)
         self.__setPBRTParams(t, isPBRT=(t.definition.renderer == u"PBRT") )
 
-        if t.definition.renderer in frameRenderers and t.definition.rendererOptions.useFrames:
+        if t.definition.renderer in frameRenderers and t.definition.renderer_options.use_frames:
             self.__setFramePreview(t)
         else:
             self.__setPreview(t)
@@ -103,7 +103,7 @@ class AbsRenderingMainWindowCustomizer (object):
     #############################
     def showTaskResult(self, task_id):
         t = self.logic.get_task(task_id)
-        if t.definition.renderer in frameRenderers and t.definition.rendererOptions.useFrames:
+        if t.definition.renderer in frameRenderers and t.definition.renderer_options.use_frames:
             file_ = self.__getFrameName(t.definition, 0)
         else:
             file_ = t.definition.output_file
@@ -133,9 +133,9 @@ class AbsRenderingMainWindowCustomizer (object):
     ############################
     def __setPBRTParams(self, t, isPBRT = True):
         if isPBRT:
-            self.gui.ui.algorithmType.setText("{}".format(t.definition.rendererOptions.algorithmType))
-            self.gui.ui.pixelFilter.setText("{}".format(t.definition.rendererOptions.pixelFilter))
-            self.gui.ui.samplesPerPixel.setText("{}".format(t.definition.rendererOptions.samplesPerPixelCount))
+            self.gui.ui.algorithmType.setText("{}".format(t.definition.renderer_options.algorithm_type))
+            self.gui.ui.pixelFilter.setText("{}".format(t.definition.renderer_options.pixel_filter))
+            self.gui.ui.samplesPerPixel.setText("{}".format(t.definition.renderer_options.samples_per_pixel_count))
 
         self.gui.ui.algorithmType.setVisible(isPBRT)
         self.gui.ui.algorithmTypeLabel.setVisible(isPBRT)
@@ -149,7 +149,7 @@ class AbsRenderingMainWindowCustomizer (object):
         if "resultPreview" in t.task_state.extra_data:
             self.sliderPreviews = t.task_state.extra_data[ "resultPreview" ]
         self.gui.ui.frameSlider.setVisible(True)
-        self.gui.ui.frameSlider.setRange(1, len(t.definition.rendererOptions.frames))
+        self.gui.ui.frameSlider.setRange(1, len(t.definition.renderer_options.frames))
         self.gui.ui.frameSlider.setSingleStep(1)
         self.gui.ui.frameSlider.setPageStep(1)
         self.__updateSliderPreview()
@@ -174,8 +174,8 @@ class AbsRenderingMainWindowCustomizer (object):
     ############################
     def __getFrameName(self, definition, num):
         outputName, ext = os.path.splitext(definition.output_file)
-        frameNum = definition.rendererOptions.frames[ num ]
-        outputName += str(frameNum).zfill(4)
+        frame_num = definition.renderer_options.frames[ num ]
+        outputName += str(frame_num).zfill(4)
         return outputName + ext
 
     ############################
@@ -201,7 +201,7 @@ class AbsRenderingMainWindowCustomizer (object):
                 splited = r.split("\\")
                 insertItem(item, splited)
 
-            self.showTaskResourcesDialog.ui.mainSceneFileLabel.setText(self.currentTaskHighlighted.definition.mainSceneFile)
+            self.showTaskResourcesDialog.ui.main_scene_fileLabel.setText(self.currentTaskHighlighted.definition.main_scene_file)
             self.showTaskResourcesDialog.ui.folderTreeWidget.expandAll()
 
             self.showTaskResourcesDialog.show()
@@ -232,7 +232,7 @@ class AbsRenderingMainWindowCustomizer (object):
             self._showFile(file_)
 
     #############################
-    def __get_taskNumFromPixels(self, x, y):
+    def __get_task_num_from_pixels(self, x, y):
         num = None
 
         t = self.currentTaskHighlighted
@@ -243,15 +243,15 @@ class AbsRenderingMainWindowCustomizer (object):
             definition = t.definition
             task_id = definition.task_id
             task =  self.logic.get_task(task_id)
-            renderer = self.logic.getRenderer(definition.renderer)
+            renderer = self.logic.get_renderer(definition.renderer)
             if len(task.task_state.subtask_states) > 0:
                 total_tasks = task.task_state.subtask_states.values()[0].extra_data['total_tasks']
-                if definition.renderer in frameRenderers and definition.rendererOptions.useFrames:
-                    frames = len (definition.rendererOptions.frames)
-                    frameNum = self.gui.ui.frameSlider.value()
-                    num = renderer.get_taskNumFromPixels(x, y, total_tasks, useFrames = True, frames = frames, frameNum = frameNum)
+                if definition.renderer in frameRenderers and definition.renderer_options.use_frames:
+                    frames = len (definition.renderer_options.frames)
+                    frame_num = self.gui.ui.frameSlider.value()
+                    num = renderer.get_task_num_from_pixels(x, y, total_tasks, use_frames = True, frames = frames, frame_num = frame_num)
                 else:
-                    num = renderer.get_taskNumFromPixels(x, y, total_tasks)
+                    num = renderer.get_task_num_from_pixels(x, y, total_tasks)
         return num
 
     #############################
@@ -265,7 +265,7 @@ class AbsRenderingMainWindowCustomizer (object):
 
     #############################
     def __pixmapClicked(self, x, y, *args):
-        num = self.__get_taskNumFromPixels(x, y)
+        num = self.__get_task_num_from_pixels(x, y)
         if num is not None:
             subtask = self.__getSubtask(num)
             if subtask is not None:
@@ -273,27 +273,27 @@ class AbsRenderingMainWindowCustomizer (object):
 
     #############################
     def __mouseOnPixmapMoved(self, x, y, *args):
-        num = self.__get_taskNumFromPixels(x, y)
+        num = self.__get_task_num_from_pixels(x, y)
         if num is not None:
             definition = self.currentTaskHighlighted.definition
             if not isinstance(definition, RenderingTaskDefinition):
                 return
-            renderer = self.logic.getRenderer(definition.renderer)
+            renderer = self.logic.get_renderer(definition.renderer)
             subtask = self.__getSubtask(num)
             if subtask is not None:
-                if definition.renderer in frameRenderers and definition.rendererOptions.useFrames:
-                    frames = len (definition.rendererOptions.frames)
-                    frameNum = self.gui.ui.frameSlider.value()
-                    border = renderer.get_taskBoarder(subtask.extra_data['start_task'],
+                if definition.renderer in frameRenderers and definition.renderer_options.use_frames:
+                    frames = len (definition.renderer_options.frames)
+                    frame_num = self.gui.ui.frameSlider.value()
+                    border = renderer.get_task_boarder(subtask.extra_data['start_task'],
                                                        subtask.extra_data['end_task'],
                                                        subtask.extra_data['total_tasks'],
                                                        self.currentTaskHighlighted.definition.resolution[0],
                                                        self.currentTaskHighlighted.definition.resolution[1],
-                                                       useFrames = True,
+                                                       use_frames = True,
                                                        frames = frames,
-                                                       frameNum = frameNum)
+                                                       frame_num = frame_num)
                 else:
-                    border = renderer.get_taskBoarder(subtask.extra_data['start_task'],
+                    border = renderer.get_task_boarder(subtask.extra_data['start_task'],
                                                        subtask.extra_data['end_task'],
                                                        subtask.extra_data['total_tasks'],
                                                        self.currentTaskHighlighted.definition.resolution[0],

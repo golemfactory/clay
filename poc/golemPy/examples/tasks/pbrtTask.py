@@ -15,7 +15,7 @@ def format_pbrt_cmd(renderer, start_task, end_task, total_tasks, num_subtasks, n
             "--ncores", "{}".format(num_cores), "--subtasks", "{}".format(num_subtasks), "{}".format(scenefile)]
 
 ############################
-def returnData(files):
+def return_data(files):
     res = []
     for f in files:
         with open(f, "rb") as fh:
@@ -26,12 +26,12 @@ def returnData(files):
     return { 'data': res, 'result_type': 0 }
 
 ############################
-def returnFiles(files):
-    copyPath = os.path.normpath(os.path.join(tmp_path, ".."))
+def return_files(files):
+    copy_path = os.path.normpath(os.path.join(tmp_path, ".."))
     for f in files:
-        shutil.copy2(f, copyPath)
+        shutil.copy2(f, copy_path)
 
-    files = [ os.path.normpath(os.path.join(copyPath, os.path.basename(f))) for f in files]
+    files = [ os.path.normpath(os.path.join(copy_path, os.path.basename(f))) for f in files]
     return {'data': files, 'result_type': 1 }
 
 ############################
@@ -49,26 +49,26 @@ def exec_cmd(cmd, nice=20):
 
     pc.wait()
 
-def makeTmpFile(sceneDir, sceneSrc):
+def make_tmp_file(scene_dir, scene_src):
     if is_windows():
-        tmpSceneFile = tempfile.TemporaryFile(suffix = ".pbrt", dir = sceneDir)
-        tmpSceneFile.close()
-        f = open(tmpSceneFile.name, 'w')
-        f.write(sceneSrc)
+        tmp_scene_file = tempfile.TemporaryFile(suffix = ".pbrt", dir = scene_dir)
+        tmp_scene_file.close()
+        f = open(tmp_scene_file.name, 'w')
+        f.write(scene_src)
         f.close()
 
-        return tmpSceneFile.name
+        return tmp_scene_file.name
     else:
-        tmpSceneFile = os.path.join(sceneDir, "tmpSceneFile.pbrt")
-        f = open(tmpSceneFile, "w")
-        f.write(sceneSrc)
+        tmp_scene_file = os.path.join(scene_dir, "tmp_scene_file.pbrt")
+        f = open(tmp_scene_file, "w")
+        f.write(scene_src)
         f.close()
-        return tmpSceneFile
+        return tmp_scene_file
 
 
 ############################f = 
-def run_pbrt_task(path_root, start_task, end_task, total_tasks, num_subtasks, num_cores, outfilebasename, sceneSrc, sceneDir, pbrtPath):
-    pbrt = pbrtPath
+def run_pbrt_task(path_root, start_task, end_task, total_tasks, num_subtasks, num_cores, outfilebasename, scene_src, scene_dir, pbrt_path):
+    pbrt = pbrt_path
 
     output_files = os.path.join(tmp_path, outfilebasename)
 
@@ -78,28 +78,28 @@ def run_pbrt_task(path_root, start_task, end_task, total_tasks, num_subtasks, nu
         os.remove(f)
 
 
-    tmpSceneFile = makeTmpFile(sceneDir, sceneSrc)
+    tmp_scene_file = make_tmp_file(scene_dir, scene_src)
 
-    if os.path.exists(tmpSceneFile):
-        cmd = format_pbrt_cmd(pbrt, start_task, end_task, total_tasks, num_subtasks, num_cores, output_files, tmpSceneFile)
+    if os.path.exists(tmp_scene_file):
+        cmd = format_pbrt_cmd(pbrt, start_task, end_task, total_tasks, num_subtasks, num_cores, output_files, tmp_scene_file)
     else:
         print "Scene file does not exist"
         return {'data': [], 'result_type': 0 }
         
     print cmd
-    prevDir = os.getcwd()
-    os.chdir(sceneDir)
+    prev_dir = os.getcwd()
+    os.chdir(scene_dir)
 
     exec_cmd(cmd)
 
-    os.chdir(prevDir)
+    os.chdir(prev_dir)
 
     print output_files
 
     files = glob.glob(output_files + "*.exr")
 
-    return returnData(files)
+    return return_data(files)
 
 
-output = run_pbrt_task(path_root, start_task, end_task, total_tasks, num_subtasks, num_cores, outfilebasename, scene_fileSrc, sceneDir, pbrtPath)
+output = run_pbrt_task(path_root, start_task, end_task, total_tasks, num_subtasks, num_cores, outfilebasename, scene_file_src, scene_dir, pbrt_path)
         

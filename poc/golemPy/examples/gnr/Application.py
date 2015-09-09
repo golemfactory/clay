@@ -24,7 +24,7 @@ class GNRGui:
                 sys.exit(res)
 
     ############################
-    def getMainWindow(self):
+    def get_main_window(self):
         return self.mainWindow
 
 

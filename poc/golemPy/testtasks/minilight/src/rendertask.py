@@ -119,5 +119,5 @@ class RenderTaskResult:
     def getDesc(self):
         return self.desc
 
-    def getPixelData(self):
+    def get_pixel_data(self):
         return self.pixelData

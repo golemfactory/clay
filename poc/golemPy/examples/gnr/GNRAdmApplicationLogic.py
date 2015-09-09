@@ -18,94 +18,94 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
     ######################
     def __init__(self):
         GNRApplicationLogic.__init__(self)
-        self.startNodesManagerFunction = lambda: None
+        self.start_nodes_manager_function = lambda: None
 
-        self.addTasksClient = None
-
-    ######################
-    def registerStartNodesManagerFunction(self, func):
-        self.startNodesManagerFunction = func
+        self.add_tasks_client = None
 
     ######################
-    def startNodesManagerServer(self):
-        self.startNodesManagerFunction()
+    def register_start_nodes_manager_function(self, func):
+        self.start_nodes_manager_function = func
 
     ######################
-    def sendTestTasks(self):
+    def start_nodes_manager_server(self):
+        self.start_nodes_manager_function()
+
+    ######################
+    def send_test_tasks(self):
         path = os.path.join(os.environ.get('GOLEM'), 'save/test')
-        self.addAndStartTasksFromFiles(glob.glob(os.path.join(path, '*.gt')))
+        self.add_and_start_tasks_from_files(glob.glob(os.path.join(path, '*.gt')))
 
     ######################
-    def updateOtherGolems(self, golemDir):
-        taskDefinition         = UpdateOtherGolemsTaskDefinition()
-        taskDefinition.task_id  = "{}".format(uuid.uuid4())
-        taskDefinition.src_file          = os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/tasks/updateGolem.py"))
-        taskDefinition.totalSubtasks    = 100
-        taskDefinition.full_task_timeout  = 4 * 60 * 60
-        taskDefinition.subtask_timeout   = 20 * 60
+    def update_other_golems(self, golem_dir):
+        task_definition         = UpdateOtherGolemsTaskDefinition()
+        task_definition.task_id  = "{}".format(uuid.uuid4())
+        task_definition.src_file          = os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/tasks/update_golem.py"))
+        task_definition.total_subtasks    = 100
+        task_definition.full_task_timeout  = 4 * 60 * 60
+        task_definition.subtask_timeout   = 20 * 60
 
         task_builder = UpdateOtherGolemsTaskBuilder(self.client.get_id(),
-                                          taskDefinition,
-                                        self.client.get_root_path(), golemDir)
+                                          task_definition,
+                                        self.client.get_root_path(), golem_dir)
 
         task = Task.build_task( task_builder)
-        self.addTaskFromDefinition(taskDefinition)
+        self.add_taskFromDefinition(task_definition)
         self.client.enqueue_new_task(task)
 
-        logger.info("Update with {}".format(golemDir))
+        logger.info("Update with {}".format(golem_dir))
 
 
     ######################
-    def sendInfoTask(self, iterations, full_task_timeout, subtask_timeout):
-        infoTaskDefinition = InfoTaskDefinition()
-        infoTaskDefinition.task_id           = "{}".format(uuid.uuid4())
-        infoTaskDefinition.src_file          = os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/tasks/send_snapshot.py"))
-        infoTaskDefinition.totalSubtasks    = iterations
-        infoTaskDefinition.full_task_timeout  = full_task_timeout
-        infoTaskDefinition.subtask_timeout   = subtask_timeout
-        infoTaskDefinition.manager_address   = self.client.config_desc.manager_address
-        infoTaskDefinition.manager_port      = self.client.config_desc.manager_port
+    def send_info_task(self, iterations, full_task_timeout, subtask_timeout):
+        info_task_definition = InfoTaskDefinition()
+        info_task_definition.task_id           = "{}".format(uuid.uuid4())
+        info_task_definition.src_file          = os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/tasks/send_snapshot.py"))
+        info_task_definition.total_subtasks    = iterations
+        info_task_definition.full_task_timeout  = full_task_timeout
+        info_task_definition.subtask_timeout   = subtask_timeout
+        info_task_definition.manager_address   = self.client.config_desc.manager_address
+        info_task_definition.manager_port      = self.client.config_desc.manager_port
 
         task_builder = InfoTaskBuilder(self.client.get_id(),
-                                          infoTaskDefinition,
+                                          info_task_definition,
                                         self.client.get_root_path())
 
         task = Task.build_task( task_builder)
-        self.addTaskFromDefinition(infoTaskDefinition)
+        self.add_taskFromDefinition(info_task_definition)
         self.client.enqueue_new_task(task)
 
 
     ######################
-    def startAddTaskClient(self):
+    def start_add_task_client(self):
         import zerorpc
-        self.addTasksClient = zerorpc.Client()
-        self.addTasksClient.connect("tcp://127.0.0.1:{}".format(self.client.get_plugin_port()))
+        self.add_tasks_client = zerorpc.Client()
+        self.add_tasks_client.connect("tcp://127.0.0.1:{}".format(self.client.get_plugin_port()))
 
     ######################
     def check_network_state(self):
         GNRApplicationLogic.check_network_state(self)
-        if self.addTasksClient:
-            self.addAndStartTasksFromFiles(self.addTasksClient.get_tasks())
+        if self.add_tasks_client:
+            self.add_and_start_tasks_from_files(self.add_tasks_client.get_tasks())
 
     ######################
-    def addAndStartTasksFromFiles(self, files):
+    def add_and_start_tasks_from_files(self, files):
         tasks = []
-        for taskFile in files:
+        for task_file in files:
             try:
-                task_state = self.__readTaskFromFile(taskFile)
+                task_state = self.__read_task_from_file(task_file)
                 tasks.append(task_state)
             except Exception as ex:
-                logger.error("Wrong task file {}, {}".format(taskFile, str(ex)))
+                logger.error("Wrong task file {}, {}".format(task_file, str(ex)))
 
         self.add_tasks (tasks)
         for task in tasks:
             self.start_task(task.definition.task_id)
 
     ######################
-    def __readTaskFromFile(self, taskFile):
-        task_state = self._getNewTaskState()
+    def __read_task_from_file(self, task_file):
+        task_state = self._get_new_task_state()
         task_state.status = TaskStatus.notStarted
-        with open(taskFile, 'r') as f:
+        with open(task_file, 'r') as f:
             task_state.definition = pickle.loads(f.read())
         task_state.definition.task_id = "{}".format(uuid.uuid4())
         return task_state

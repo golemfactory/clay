@@ -9,7 +9,7 @@ import shutil
 import psutil
 
 ############################
-def returnData(files):
+def return_data(files):
     res = []
     for f in files:
         with open(f, "rb") as fh:
@@ -20,41 +20,43 @@ def returnData(files):
     return { 'data': res, 'result_type': 0 }
 
 ############################
-def returnFiles(files):
-    copyPath = os.path.normpath(os.path.join(tmp_path, ".."))
+def return_files(files):
+    copy_path = os.path.normpath(os.path.join(tmp_path, ".."))
     for f in files:
-        shutil.copy2(f, copyPath)
+        shutil.copy2(f, copy_path)
 
-    files = [ os.path.normpath(os.path.join(copyPath, os.path.basename(f))) for f in files]
+    files = [ os.path.normpath(os.path.join(copy_path, os.path.basename(f))) for f in files]
     return {'data': files, 'result_type': 1 }
 
 ############################
-def getFiles():
+def get_files():
     output_files = tmp_path
     return glob.glob(output_files + "/*.exr")
 
 ############################
-def removeOldFiles():
-    for f in getFiles():
+def remove_old_files():
+    for f in get_files():
         os.remove(f)
 
-def __readFromEnvironment():
-    defaultCmdFile = 'blender'
-    GOLEM_ENV = 'GOLEM'
+GOLEM_ENV = 'GOLEM'
+
+def __read_from_environment():
+    default_cmd_file = 'blender'
+
     path = os.environ.get(GOLEM_ENV)
     if not path:
         print "No Golem environment variable found..."
-        return defaultCmdFile
+        return default_cmd_file
 
     sys.path.append(path)
 
     from examples.gnr.RenderingEnvironment import BlenderEnvironment
     env = BlenderEnvironment()
-    cmdFile = env.getBlender()
-    if cmdFile:
-        return cmdFile
+    cmd_file = env.get_blender()
+    if cmd_file:
+        return cmd_file
     else:
-        return defaultCmdFile
+        return default_cmd_file
 
 ############################
 def is_windows():
@@ -72,27 +74,27 @@ def exec_cmd(cmd, nice=20):
     pc.wait()
 
 ############################
-def formatBlenderRenderCmd(cmdFile, output_files, outfilebasename, scene_file, scriptFile, start_task, engine, frame):
-    cmd = ["{}".format(cmdFile), "-b", "{}".format(scene_file), "-P", "{}".format(scriptFile),
+def format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file, start_task, engine, frame):
+    cmd = ["{}".format(cmd_file), "-b", "{}".format(scene_file), "-P", "{}".format(script_file),
            "-o", "{}\{}{}".format(output_files, outfilebasename, start_task), "-E", "{}".format(engine), "-F", "EXR",
            "-f", "{}".format(frame) ]
     return cmd
 
 ############################
-def runBlenderTask(outfilebasename, scene_file, scriptSrc, start_task, engine, frames):
+def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames):
     print "Blender Render Task"
 
     output_files = tmp_path
 
-    removeOldFiles()
+    remove_old_files()
 
-    sceneDir = os.path.dirname(scene_file)
-    scriptFile = tempfile.TemporaryFile(suffix = ".py", dir = sceneDir)
-    scriptFile.close()
-    with open(scriptFile.name, 'w') as f:
-        f.write(scriptSrc)
+    scene_dir = os.path.dirname(scene_file)
+    script_file = tempfile.TemporaryFile(suffix = ".py", dir = scene_dir)
+    script_file.close()
+    with open(script_file.name, 'w') as f:
+        f.write(script_src)
 
-    cmdFile = __readFromEnvironment()
+    cmd_file = __read_from_environment()
     scene_file = os.path.normpath(os.path.join(os.getcwd(), scene_file))
     if not os.path.exists(os.path.normpath(scene_file)):
         print "Scene file does not exist"
@@ -100,10 +102,10 @@ def runBlenderTask(outfilebasename, scene_file, scriptSrc, start_task, engine, f
 
 
     for frame in frames:
-        cmd = formatBlenderRenderCmd(cmdFile, output_files, outfilebasename, scene_file, scriptFile.name, start_task, engine, frame)
+        cmd = format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file.name, start_task, engine, frame)
         print cmd
         exec_cmd(cmd)
 
-    return returnFiles(getFiles())
+    return return_files(get_files())
 
-output = runBlenderTask(outfilebasename, scene_file, scriptSrc, start_task, engine, frames)
+output = run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames)
