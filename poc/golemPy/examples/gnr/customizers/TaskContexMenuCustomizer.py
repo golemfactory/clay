@@ -14,15 +14,15 @@ class TaskContextMenuCustomizer:
     ##########################
     def __buildContextMenu(self):
 
-        enabledActions = self.__getEnabledActions(self.gnrTaskState.taskState.status)
+        enabledActions = self.__getEnabledActions(self.gnrTaskState.task_state.status)
 
-        self.__buildAndConnectAction("Abort Task",      self.__abortTaskTriggered,         enabledActions)
-        self.__buildAndConnectAction("Restart",         self.__restartTaskTriggered,       enabledActions)
-        self.__buildAndConnectAction("Delete",          self.__deleteTaskTriggered,        enabledActions)
+        self.__buildAndConnectAction("Abort Task",      self.__abort_taskTriggered,         enabledActions)
+        self.__buildAndConnectAction("Restart",         self.__restart_taskTriggered,       enabledActions)
+        self.__buildAndConnectAction("Delete",          self.__delete_taskTriggered,        enabledActions)
         self.__buildAndConnectAction("New Task",        self.__newTaskTriggered,           enabledActions)
         self.__buildAndConnectAction("Start Task",      self.__startTaskTriggered,         enabledActions)
-        self.__buildAndConnectAction("Pause",           self.__pauseTaskTriggered,         enabledActions)
-        self.__buildAndConnectAction("Resume",          self.__resumeTaskTriggered,        enabledActions)
+        self.__buildAndConnectAction("Pause",           self.__pause_taskTriggered,         enabledActions)
+        self.__buildAndConnectAction("Resume",          self.__resume_taskTriggered,        enabledActions)
         self.__buildAndConnectAction("Change Timeouts", self.__changeTaskTriggered,        enabledActions)
         self.__buildAndConnectAction("Show Details",    self.__showTaskDetailsTriggered,   enabledActions)
         self.__buildAndConnectAction("Show Result",     self.__showResultTriggered,        enabledActions)
@@ -39,16 +39,16 @@ class TaskContextMenuCustomizer:
 
     # SLOTS
     ###########################
-    def __abortTaskTriggered(self):
-        self.logic.abortTask(self.gnrTaskState.definition.task_id)
+    def __abort_taskTriggered(self):
+        self.logic.abort_task(self.gnrTaskState.definition.task_id)
 
     ###########################
-    def __restartTaskTriggered(self):
-        self.logic.restartTask(self.gnrTaskState.definition.task_id)
+    def __restart_taskTriggered(self):
+        self.logic.restart_task(self.gnrTaskState.definition.task_id)
 
     ###########################
-    def __deleteTaskTriggered(self):
-        self.logic.deleteTask(self.gnrTaskState.definition.task_id)
+    def __delete_taskTriggered(self):
+        self.logic.delete_task(self.gnrTaskState.definition.task_id)
 
     ###########################
     def __newTaskTriggered(self):
@@ -59,12 +59,12 @@ class TaskContextMenuCustomizer:
         self.logic.startTask(self.gnrTaskState.definition.task_id)
 
     ###########################
-    def __pauseTaskTriggered(self):
-        self.logic.pauseTask(self.gnrTaskState.definition.task_id)
+    def __pause_taskTriggered(self):
+        self.logic.pause_task(self.gnrTaskState.definition.task_id)
 
     ###########################
-    def __resumeTaskTriggered(self):
-        self.logic.resumeTask(self.gnrTaskState.definition.task_id)
+    def __resume_taskTriggered(self):
+        self.logic.resume_task(self.gnrTaskState.definition.task_id)
 
     ###########################
     def __showTaskDetailsTriggered(self):
@@ -80,7 +80,7 @@ class TaskContextMenuCustomizer:
 
     #######################
     ##########################
-    def __getEnabledActions(self, taskStatus):
+    def __getEnabledActions(self, task_status):
 
         enabled = {}
 
@@ -88,7 +88,7 @@ class TaskContextMenuCustomizer:
         enabled[ "Show Details" ]   = True
         enabled[ "Delete" ]         = True
 
-        if taskStatus == TaskStatus.notStarted:
+        if task_status == TaskStatus.notStarted:
             enabled[ "Abort Task"]      = True
             enabled[ "Restart"]         = False         
             enabled[ "Start Task" ]     = True
@@ -97,7 +97,7 @@ class TaskContextMenuCustomizer:
             enabled["Change Timeouts"]  = True
             enabled[ "Show Result" ]   = False
 
-        if taskStatus == TaskStatus.sending:
+        if task_status == TaskStatus.sending:
             enabled[ "Abort Task"]      = True
             enabled[ "Restart"]         = False
             enabled[ "Start Task" ]     = True
@@ -106,7 +106,7 @@ class TaskContextMenuCustomizer:
             enabled["Change Timeouts"]  = True
             enabled[ "Show Result" ]   = False
 
-        if taskStatus == TaskStatus.waiting:
+        if task_status == TaskStatus.waiting:
             enabled[ "Abort Task"]      = True
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False
@@ -115,7 +115,7 @@ class TaskContextMenuCustomizer:
             enabled["Change Timeouts"]  = True
             enabled[ "Show Result" ]   = False
 
-        if taskStatus == TaskStatus.starting:
+        if task_status == TaskStatus.starting:
             enabled[ "Abort Task"]      = True
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False
@@ -124,7 +124,7 @@ class TaskContextMenuCustomizer:
             enabled["Change Timeouts"]  = True
             enabled[ "Show Result" ]   = False
 
-        if taskStatus == TaskStatus.computing:
+        if task_status == TaskStatus.computing:
             enabled[ "Abort Task"]      = True
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False
@@ -133,7 +133,7 @@ class TaskContextMenuCustomizer:
             enabled["Change Timeouts"]  = True
             enabled[ "Show Result" ]   = False
             
-        if taskStatus == TaskStatus.finished:
+        if task_status == TaskStatus.finished:
             enabled[ "Abort Task"]      = False
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False
@@ -142,7 +142,7 @@ class TaskContextMenuCustomizer:
             enabled["Change Timeouts"]  = False
             enabled[ "Show Result" ]   = True
 
-        if taskStatus == TaskStatus.aborted:
+        if task_status == TaskStatus.aborted:
             enabled[ "Abort Task"]      = False
             enabled[ "Restart"]         = False
             enabled[ "Start Task" ]     = False
@@ -151,7 +151,7 @@ class TaskContextMenuCustomizer:
             enabled["Change Timeouts"]  = False
             enabled[ "Show Result" ]   = False
 
-        if taskStatus == TaskStatus.failure:
+        if task_status == TaskStatus.failure:
             enabled[ "Abort Task"]      = False
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False
@@ -160,7 +160,7 @@ class TaskContextMenuCustomizer:
             enabled["Change Timeouts"]  = False
             enabled[ "Show Result" ]   = False
 
-        if taskStatus == TaskStatus.paused:
+        if task_status == TaskStatus.paused:
             enabled[ "Abort Task"]      = True
             enabled[ "Restart"]         = True
             enabled[ "Start Task" ]     = False

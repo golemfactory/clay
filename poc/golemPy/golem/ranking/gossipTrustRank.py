@@ -3,17 +3,17 @@ import math
 from random import randint, sample
 
 class GossipTrustTest:
-    def __init__(self, epsilon = 0.1, delta = 0.1, gossipScoreMaxSteps = 10000, aggregationMaxSteps = 4):
-        self.localRanking = None
-        self.localRankingMapping = {}
+    def __init__(self, epsilon = 0.1, delta = 0.1, goosip_score_max_steps = 10000, aggregation_max_steps = 4):
+        self.local_ranking = None
+        self.local_rankingMapping = {}
         self.lastGlobalRanking = None
         self.globalRanking = None
         self.epsilon = epsilon
         self.delta = delta
         self.gossipScoreSteps = 0
-        self.gossipScoreMaxSteps = gossipScoreMaxSteps
+        self.goosip_score_max_steps = goosip_score_max_steps
         self.aggregationSteps = 0
-        self.aggregationMaxSteps = aggregationMaxSteps
+        self.aggregation_max_steps = aggregation_max_steps
         self.globalReputationCycles = 0
         #self.outerSend = outerSender
         self.weightedScores = None
@@ -24,45 +24,45 @@ class GossipTrustTest:
 
 
     def addNode(self, node_id):
-        if node_id in self.localRankingMapping:
+        if node_id in self.local_rankingMapping:
             return
         else:
-            n = len(self.localRankingMapping)
-            self.localRankingMapping[ node_id ] = n
+            n = len(self.local_rankingMapping)
+            self.local_rankingMapping[ node_id ] = n
             n += 1
             if n == 1:
-                self.localRanking = matrix([1.])
+                self.local_ranking = matrix([1.])
                 return
-            self.localRanking = hstack([ vstack([ self.localRanking, zeros([1, n - 1]) ]), zeros([n, 1]) ])
+            self.local_ranking = hstack([ vstack([ self.local_ranking, zeros([1, n - 1]) ]), zeros([n, 1]) ])
 
 
     def updateReputation(self, node_id):
         pass
 
-    def startNewCycle(self):
+    def start_new_cycle(self):
         self.gossipScoreSteps = 0
-        n = len(self.localRankingMapping)
-        self.globalRanking = matrix([1.0 / float(n)  ] * len(self.localRankingMapping)).transpose()
+        n = len(self.local_rankingMapping)
+        self.globalRanking = matrix([1.0 / float(n)  ] * len(self.local_rankingMapping)).transpose()
 
     def aggregationCycle(self):
         self.globalReputationCycles += 1
-        n = len(self.localRankingMapping)
+        n = len(self.local_rankingMapping)
         normMatrix =matrix([ n, n ])
         for i in range(0, n):
-            rowSum = sum(self.localRanking[i])
+            rowSum = sum(self.local_ranking[i])
             for j in range(0, n):
-                normMatrix[i][j] =self.localRanking[i][j] / rowSum
+                normMatrix[i][j] =self.local_ranking[i][j] / rowSum
 
         self.lastGlobalRanking = self.globalRanking
         self.globalRanking = normMatrix.transpose() * self.globalRanking
 
 
     def getWeightedScore(self, node_id):
-        i = self.localRankingMapping[ node_id ]
-        return self.globalRanking[i] * self.localRanking[i]
+        i = self.local_rankingMapping[ node_id ]
+        return self.globalRanking[i] * self.local_ranking[i]
 
     def doAggregation(self):
-        self.startNewCycle()
+        self.start_new_cycle()
         while(True):
             self.aggregationCycle()
             if self.stopAggregation():
@@ -76,18 +76,18 @@ class GossipTrustTest:
     def absmax(self, m):
         return max(m.max(), m.min(), key=abs)
 
-    def startGossip(self, node_id):
-        if node_id not in self.localRankingMapping:
+    def start_gossip(self, node_id):
+        if node_id not in self.local_rankingMapping:
             self.addNode(node_id)
 
-        j = self.localRankingMapping[ node_id ]
-        n = len(self.localRankingMapping)
+        j = self.local_rankingMapping[ node_id ]
+        n = len(self.local_rankingMapping)
         self.weightedScores = [ None ] * n
         self.consensusFactors = [ None ] *n
         self.collectedPairs = [ None ] * n
         self.previousScore = [ None ] * n
         for i in range(0, n):
-            self.weightedScores[i] = self.localRanking[i,j] * self.globalRanking[i, 0]
+            self.weightedScores[i] = self.local_ranking[i,j] * self.globalRanking[i, 0]
             if i == j:
                 self.consensusFactors[i] = 1.0
             else:
@@ -97,7 +97,7 @@ class GossipTrustTest:
         self.gossipScoreSteps = 0
 
     def doGossip(self, node_id):
-        self.startGossip(node_id)
+        self.start_gossip(node_id)
 
         while True:
             self.gossipStep()
@@ -107,9 +107,9 @@ class GossipTrustTest:
 
     def stop_gossip (self):
         stop = 0
-        if self.gossipScoreSteps >=  self.gossipScoreMaxSteps:
+        if self.gossipScoreSteps >=  self.goosip_score_max_steps:
             return True
-        for i in range(0, len(self.localRankingMapping)):
+        for i in range(0, len(self.local_rankingMapping)):
             if self.weightedScores[i] == 0:
                 newScore = 0.0
             elif self.consensusFactors[i] == 0:
@@ -123,12 +123,12 @@ class GossipTrustTest:
                 stop += 1
             self.previousScore[i] = newScore
             print stop
-        return stop == len(self.localRankingMapping)
+        return stop == len(self.local_rankingMapping)
 
     def gossipStep(self):
 
         self.gossipScoreSteps += 1
-        n = len(self.localRankingMapping)
+        n = len(self.local_rankingMapping)
         for i in range(0, n):
             self.weightedScores[i] = 0.0
             self.consensusFactors[i] = 0.0
@@ -193,9 +193,9 @@ class GossipPositiveNegativeTrustRank:
         sumVal = max(self.minSumVal, pos + neg)
         return float(val) / float(sumVal)
 
-    def startAggregation(self):
-        self.positive.startAggregation()
-        self.negative.startAggregation()
+    def start_aggregation(self):
+        self.positive.start_aggregation()
+        self.negative.start_aggregation()
 
     def stopAggregation(self, finPos, finNeg):
         stopPos = finPos
@@ -278,8 +278,8 @@ class GossipTrustRank:
     def setNodeRank(self, node_id, value):
         self.ranking[ node_id ] = value
 
-    def startAggregation(self):
-        print "startAggregation"
+    def start_aggregation(self):
+        print "start_aggregation"
         self.weightedScore = {}
         norm = sum(self.ranking.values())
         n = len(self.ranking)
@@ -303,11 +303,11 @@ class GossipTrustRank:
         norm = sum(self.ranking.values())
         for node_id in self.ranking:
             locTrustValue = float(self.ranking[ node_id ]) / float(norm)
-            globVecTrustValue =  self.countDiv(self.globVec[ node_id ][ 0 ], self.globVec[ node_id ][ 1 ])
+            globVecTrustValue =  self.count_div(self.globVec[ node_id ][ 0 ], self.globVec[ node_id ][ 1 ])
             self.weightedScore[ node_id ] = locTrustValue * globVecTrustValue
         self.updateGlobVec()
 
-    def countDiv(self, a, b):
+    def count_div(self, a, b):
         if a == 0.0:
             return 0.0
         if b == 0.0:
@@ -330,7 +330,7 @@ class GossipTrustRank:
 
         val = 0
         for node in nodes1:
-            v = self.countDiv(vec1[node][0], vec1[node][1]) - self.countDiv(vec2[node][0], vec2[node][1])
+            v = self.count_div(vec1[node][0], vec1[node][1]) - self.count_div(vec2[node][0], vec2[node][1])
             val += v*v
         return math.sqrt(val)
 
@@ -372,7 +372,7 @@ class GossipTrustRank:
 
     def getNodeTrust(self, node_id):
         if node_id in self.globVec:
-            return self.countDiv(self.globVec[0], self.globVec[1])
+            return self.count_div(self.globVec[0], self.globVec[1])
         else:
             return 0.0
 

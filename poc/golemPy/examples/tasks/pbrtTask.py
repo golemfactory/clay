@@ -23,16 +23,16 @@ def returnData(files):
         file_data = zlib.compress(file_data, 9)
         res.append(pickle.dumps((os.path.basename(f), file_data)))
 
-    return { 'data': res, 'resultType': 0 }
+    return { 'data': res, 'result_type': 0 }
 
 ############################
 def returnFiles(files):
-    copyPath = os.path.normpath(os.path.join(tmpPath, ".."))
+    copyPath = os.path.normpath(os.path.join(tmp_path, ".."))
     for f in files:
         shutil.copy2(f, copyPath)
 
     files = [ os.path.normpath(os.path.join(copyPath, os.path.basename(f))) for f in files]
-    return {'data': files, 'resultType': 1 }
+    return {'data': files, 'result_type': 1 }
 
 ############################
 def is_windows():
@@ -70,7 +70,7 @@ def makeTmpFile(sceneDir, sceneSrc):
 def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, sceneSrc, sceneDir, pbrtPath):
     pbrt = pbrtPath
 
-    output_files = os.path.join(tmpPath, outfilebasename)
+    output_files = os.path.join(tmp_path, outfilebasename)
 
     files = glob.glob(output_files + "*.exr")
 
@@ -84,7 +84,7 @@ def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cor
         cmd = format_pbrt_cmd(pbrt, startTask, endTask, totalTasks, numSubtasks, num_cores, output_files, tmpSceneFile)
     else:
         print "Scene file does not exist"
-        return {'data': [], 'resultType': 0 }
+        return {'data': [], 'result_type': 0 }
         
     print cmd
     prevDir = os.getcwd()

@@ -641,7 +641,7 @@ class RenderWorker:
         self.raytracer  = RayTracer(task.getScene())
         self.progress   = 0.0
 
-    def getProgress(self):
+    def get_progress(self):
         return self.progress
 
     def sample_radiance(self, x, y, w, h, aspect, camera, scene, num_samples):

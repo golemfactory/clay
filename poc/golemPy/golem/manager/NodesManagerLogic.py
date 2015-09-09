@@ -16,15 +16,15 @@ class NodesManagerLogicTest:
             self.simulator.addNewNode()
 
     ########################
-    def terminateNode(self, uid):
-        self.simulator.terminateNode(uid)
+    def terminate_node(self, uid):
+        self.simulator.terminate_node(uid)
 
     ########################
     def terminateAllNodes(self):
         self.simulator.terminateAllNodes()
 
     ########################
-    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, file_name):
+    def enqueue_new_task(self, uid, w, h, numSamplesPerPixel, file_name):
         self.simulator.enqueueNodeTask(uid, w, h, numSamplesPerPixel, file_name)
 
 class EmptyManagerLogic:
@@ -52,7 +52,7 @@ class EmptyManagerLogic:
             self.activeNodes.append(pc)
 
     ########################
-    def terminateNode(self, uid):
+    def terminate_node(self, uid):
         self.managerServer.sendTerminate(uid)
 
     ########################
@@ -64,7 +64,7 @@ class EmptyManagerLogic:
                 logger.warning("Can't send terminate signal to node {}".format(node.uid))
 
     ########################
-    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, file_name):
+    def enqueue_new_task(self, uid, w, h, numSamplesPerPixel, file_name):
         hash = random.getrandbits(128)
         th = TaskHeader(uid, "222222", "", 0)
         self.managerServer.sendNewTask(uid, PbrtRenderTask(th, "", 32, 16, 2, "test_chunk_", "resources/city-env.pbrt"))

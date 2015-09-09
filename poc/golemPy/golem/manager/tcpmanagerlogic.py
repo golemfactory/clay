@@ -45,7 +45,7 @@ class TcpManagerLogic(QObject):
             self.pc = subprocess.Popen(["python", "clientmain.py"], creationflags = subprocess.CREATE_NEW_CONSOLE)
 
     ########################
-    def terminateNode(self, uid):
+    def terminate_node(self, uid):
         pass
 
     ########################
@@ -53,5 +53,5 @@ class TcpManagerLogic(QObject):
         pass
 
     ########################
-    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, file_name):
+    def enqueue_new_task(self, uid, w, h, numSamplesPerPixel, file_name):
         pass

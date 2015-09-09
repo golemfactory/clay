@@ -9,7 +9,7 @@ from PyQt4.QtGui import QMessageBox
 from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
 from golem.ClientConfigDescriptor import ClientConfigDescriptor
 from golem.core.fileshelper import get_dir_size
-from MemoryHelper import resourceSizeToDisplay, translateResourceIndex, dirSizeToDisplay
+from MemoryHelper import resource_sizeToDisplay, translateResourceIndex, dirSizeToDisplay
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +24,10 @@ class ConfigurationDialogCustomizer:
 
         self.oldPluginPort = None
 
-        self.__setupConnections()
+        self.__setup_connections()
 
     #############################
-    def loadConfig(self):
+    def load_config(self):
         config_desc = self.logic.getConfig()
         self.__loadBasicConfig(config_desc)
         self.__loadAdvanceConfig(config_desc)
@@ -41,7 +41,7 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_host_port))
         self.gui.ui.workingDirectoryLineEdit.setText(u"{}".format(config_desc.root_path))
         self.gui.ui.performanceLabel.setText(u"{}".format(config_desc.estimated_performance))
-        self.gui.ui.useIp6CheckBox.setChecked(config_desc.useIp6)
+        self.gui.ui.useIp6CheckBox.setChecked(config_desc.use_ipv6)
         self.__loadNumCores(config_desc)
         self.__loadMemoryConfig(config_desc)
         self.__loadTrustConfig(config_desc)
@@ -76,11 +76,11 @@ class ConfigurationDialogCustomizer:
             max_memory_size = 250 * 1024
             logger.error("Wrong value for maximum memory usage: {}".format(str(e)))
 
-        max_resource_size, index = resourceSizeToDisplay(max_resource_size)
+        max_resource_size, index = resource_sizeToDisplay(max_resource_size)
         self.gui.ui.maxResourceSizeComboBox.setCurrentIndex(index)
         self.gui.ui.maxResourceSizeSpinBox.setValue(max_resource_size)
 
-        max_memory_size, index = resourceSizeToDisplay(max_memory_size)
+        max_memory_size, index = resource_sizeToDisplay(max_memory_size)
         self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex(index)
         self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
 
@@ -148,7 +148,7 @@ class ConfigurationDialogCustomizer:
 
     #############################
     def __loadResourceConfig(self):
-        resDirs = self.logic.getResDirs()
+        resDirs = self.logic.get_res_dirs()
         self.gui.ui.computingResSize.setText(self.du(resDirs['computing']))
         self.gui.ui.distributedResSize.setText(self.du(resDirs['distributed']))
         self.gui.ui.receivedResSize.setText(self.du(resDirs['received']))
@@ -167,7 +167,7 @@ class ConfigurationDialogCustomizer:
                 return "Error"
 
     #############################
-    def __setupConnections(self):
+    def __setup_connections(self):
         self.gui.ui.recountButton.clicked.connect(self.__recountPerformance)
         self.gui.ui.buttonBox.accepted.connect (self.__change_config)
 
@@ -186,7 +186,7 @@ class ConfigurationDialogCustomizer:
     def __removeFromComputing(self):
         reply = QMessageBox.question(self.gui.window, 'Golem Message', "Are you sure you want to remove all computed files?", QMessageBox.Yes | QMessageBox.No, defaultButton = QMessageBox.No)
         if reply == QMessageBox.Yes:
-            self.logic.removeComputedFiles()
+            self.logic.remove_computed_files()
             self.__loadResourceConfig()
         else:
             pass
@@ -195,7 +195,7 @@ class ConfigurationDialogCustomizer:
     def __removeFromDistributed(self):
         reply = QMessageBox.question(self.gui.window, 'Golem Message', "Are you sure you want to remove all distributed resources?", QMessageBox.Yes | QMessageBox.No, defaultButton = QMessageBox.No)
         if reply == QMessageBox.Yes:
-            self.logic.removeDistributedFiles()
+            self.logic.remove_distributed_files()
             self.__loadResourceConfig()
         else:
             pass
@@ -204,7 +204,7 @@ class ConfigurationDialogCustomizer:
     def __removeFromReceived(self):
         reply = QMessageBox.question(self.gui.window, 'Golem Message', "Are you sure you want to remove all received task results?", QMessageBox.Yes | QMessageBox.No, defaultButton = QMessageBox.No)
         if reply == QMessageBox.Yes:
-            self.logic.removeReceivedFiles()
+            self.logic.remove_received_files()
             self.__loadResourceConfig()
         else:
             pass
@@ -268,7 +268,7 @@ class ConfigurationDialogCustomizer:
         index = self.gui.ui.maxMemoryUsageComboBox.currentIndex()
         cfgDesc.max_memory_size = u"{}".format(self.__countResourceSize(max_memory_size, index))
         self.__readTrustConfig(cfgDesc)
-        cfgDesc.useIp6 = int(self.gui.ui.useIp6CheckBox.isChecked())
+        cfgDesc.use_ipv6 = int(self.gui.ui.useIp6CheckBox.isChecked())
 
     #############################
     def __readAdvanceConfig(self, cfgDesc):

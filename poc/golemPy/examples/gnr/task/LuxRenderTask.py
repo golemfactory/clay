@@ -92,7 +92,7 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                             os.path.splitext(os.path.basename(self.taskDefinition.output_file))[0],
                             self.taskDefinition.output_file,
                             self.taskDefinition.outputFormat,
-                            self.taskDefinition.fullTaskTimeout,
+                            self.taskDefinition.full_task_timeout,
                             self.taskDefinition.subtask_timeout,
                             self.taskDefinition.resources,
                             self.taskDefinition.estimated_memory,
@@ -120,7 +120,7 @@ class LuxTask(RenderingTask):
                     outfilebasename,
                     output_file,
                     outputFormat,
-                    fullTaskTimeout,
+                    full_task_timeout,
                     subtask_timeout,
                     taskResources,
                     estimated_memory,
@@ -129,12 +129,12 @@ class LuxTask(RenderingTask):
                     haltspp,
                     ownBinaries,
                     luxconsole,
-                    returnAddress = "",
-                    returnPort = 0,
+                    return_address = "",
+                    return_port = 0,
                     key_id = ""):
 
-        RenderingTask.__init__(self, client_id, task_id, returnAddress, returnPort, key_id,
-                                 LuxRenderEnvironment.getId(), fullTaskTimeout, subtask_timeout,
+        RenderingTask.__init__(self, client_id, task_id, return_address, return_port, key_id,
+                                 LuxRenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                  mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                                  totalTasks, resX, resY, outfilebasename, output_file, outputFormat,
                                  root_path, estimated_memory)
@@ -156,10 +156,10 @@ class LuxTask(RenderingTask):
 
         self.previewEXR = None
         if self.ownBinaries:
-            self.header.environment = Environment.getId()
+            self.header.environment = Environment.get_id()
 
     #######################
-    def queryExtraData(self, perfIndex, num_cores = 0, client_id = None):
+    def query_extra_data(self, perf_index, num_cores = 0, client_id = None):
         if not self._acceptClient(client_id):
             logger.warning(" Client {} banned from this task ".format(client_id))
             return None
@@ -169,7 +169,7 @@ class LuxTask(RenderingTask):
             logger.error("Task already computed")
             return None
 
-        workingDirectory = self._getWorkingDirectory()
+        working_directory = self._getWorkingDirectory()
         minX = 0
         maxX = 1
         minY = (startTask - 1) * (1.0 / float(self.totalTasks))
@@ -204,21 +204,21 @@ class LuxTask(RenderingTask):
         hash = "{}".format(random.getrandbits(128))
         self.subTasksGiven[ hash ] = extra_data
         self.subTasksGiven[ hash ][ 'status' ] = SubtaskStatus.starting
-        self.subTasksGiven[ hash ][ 'perf' ] = perfIndex
+        self.subTasksGiven[ hash ][ 'perf' ] = perf_index
         self.subTasksGiven[ hash ][ 'client_id' ] = client_id
 
-        return self._newComputeTaskDef(hash, extra_data, workingDirectory, perfIndex)
+        return self._newComputeTaskDef(hash, extra_data, working_directory, perf_index)
 
 
     #######################
-    def queryExtraDataForTestTask(self):
-        self.testTaskResPath = getTestTaskPath(self.root_path)
-        logger.debug(self.testTaskResPath)
-        if not os.path.exists(self.testTaskResPath):
-            os.makedirs(self.testTaskResPath)
+    def query_extra_dataForTestTask(self):
+        self.test_taskResPath = getTestTaskPath(self.root_path)
+        logger.debug(self.test_taskResPath)
+        if not os.path.exists(self.test_taskResPath):
+            os.makedirs(self.test_taskResPath)
 
         sceneSrc = regenerateLuxFile(self.sceneFileSrc, 1, 1, 5, 0, 1, [0, 1, 0, 1 ], "PNG")
-        workingDirectory = self._getWorkingDirectory()
+        working_directory = self._getWorkingDirectory()
         sceneDir= os.path.dirname(self._getSceneFileRelPath())
 
         if self.ownBinaries:
@@ -242,21 +242,21 @@ class LuxTask(RenderingTask):
         hash = "{}".format(random.getrandbits(128))
 
 
-        return self._newComputeTaskDef(hash, extra_data, workingDirectory, 0)
+        return self._newComputeTaskDef(hash, extra_data, working_directory, 0)
 
     #######################
-    def _shortExtraDataRepr(self, perfIndex, extra_data):
+    def _short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data
         return "startTask: {}, outfilebasename: {}, sceneFileSrc: {}".format(l['startTask'], l['outfilebasename'], l['sceneFileSrc'])
 
     #######################
-    def computationFinished(self, subtask_id, taskResult, dir_manager = None, resultType = 0):
+    def computation_finished(self, subtask_id, task_result, dir_manager = None, result_type = 0):
         tmpDir = dir_manager.get_task_temporary_dir(self.header.task_id, create = False)
         self.tmpDir = tmpDir
 
-        trFiles = self.loadTaskResults(taskResult, resultType, tmpDir)
+        trFiles = self.loadTaskResults(task_result, result_type, tmpDir)
 
-        if len(taskResult) > 0:
+        if len(task_result) > 0:
             numStart = self.subTasksGiven[ subtask_id ][ 'startTask' ]
             self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished
             for trFile in trFiles:

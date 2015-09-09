@@ -15,10 +15,10 @@ class UpdateOtherGolemsTaskDefinition:
     def __init__(self):
         self.task_id = ""
 
-        self.fullTaskTimeout    = 0
+        self.full_task_timeout    = 0
         self.subtask_timeout     = 0
 
-        self.resourceDir        = ""
+        self.resource_dir        = ""
         self.srcFile            = ""
         self.resources          = []
         self.totalSubtasks      = 1
@@ -32,7 +32,7 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
 
     def build(self):
         with open(self.taskDefinition.srcFile) as f:
-            srcCode = f.read()
+            src_code = f.read()
         self.taskDefinition.taskResources = set()
         for dir, dirs, files in os.walk(self.srcDir):
             for file_ in files:
@@ -42,22 +42,22 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
                 self.taskDefinition.taskResources.add(os.path.join(dir,file_))
 
         print self.taskDefinition.taskResources
-        resourceSize = 0
+        resource_size = 0
         for resource in self.taskDefinition.taskResources:
-            resourceSize += os.stat(resource).st_size
+            resource_size += os.stat(resource).st_size
 
-        return UpdateOtherGolemsTask(   srcCode,
+        return UpdateOtherGolemsTask(   src_code,
                             self.client_id,
                             self.taskDefinition.task_id,
                             "",
                             0,
                             "",
                             self.root_path,
-                            Environment.getId(),
-                            self.taskDefinition.fullTaskTimeout,
+                            Environment.get_id(),
+                            self.taskDefinition.full_task_timeout,
                             self.taskDefinition.subtask_timeout,
                             self.taskDefinition.taskResources,
-                            resourceSize,
+                            resource_size,
                             0,
                             self.taskDefinition.totalSubtasks
                           )
@@ -66,24 +66,24 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
 class UpdateOtherGolemsTask(GNRTask):
 
     def __init__(self,
-                  srcCode,
+                  src_code,
                   client_id,
                   task_id,
-                  ownerAddress,
-                  ownerPort,
+                  owner_address,
+                  owner_port,
                   ownerKeyId,
                   root_path,
                   environment,
                   ttl,
                   subtaskTtl,
                   resources,
-                  resourceSize,
+                  resource_size,
                   estimated_memory,
                   totalTasks):
 
 
-        GNRTask.__init__(self, srcCode, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment,
-                            ttl, subtaskTtl, resourceSize, estimated_memory)
+        GNRTask.__init__(self, src_code, client_id, task_id, owner_address, owner_port, ownerKeyId, environment,
+                            ttl, subtaskTtl, resource_size, estimated_memory)
 
         self.totalTasks = totalTasks
         self.root_path = root_path
@@ -98,7 +98,7 @@ class UpdateOtherGolemsTask(GNRTask):
         self.active = False
 
     #######################
-    def queryExtraData(self, perfIndex, num_cores, client_id):
+    def query_extra_data(self, perf_index, num_cores, client_id):
 
         if client_id in self.updated:
             return None
@@ -109,12 +109,12 @@ class UpdateOtherGolemsTask(GNRTask):
         ctd.subtask_id = hash
         ctd.extra_data = { "startTask" : self.lastTask,
                           "endTask": self.lastTask + 1 }
-        ctd.returnAddress = self.header.taskOwnerAddress
-        ctd.returnPort = self.header.taskOwnerPort
-        ctd.taskOwner = self.header.taskOwner
-        ctd.shortDescription = "Golem update"
-        ctd.srcCode = self.srcCode
-        ctd.performance = perfIndex
+        ctd.return_address = self.header.task_owner_address
+        ctd.return_port = self.header.task_owner_port
+        ctd.task_owner = self.header.task_owner
+        ctd.short_description = "Golem update"
+        ctd.src_code = self.src_code
+        ctd.performance = perf_index
         if self.lastTask + 1 <= self.totalTasks:
             self.lastTask += 1
         self.updated[ client_id ] = True
@@ -126,5 +126,5 @@ class UpdateOtherGolemsTask(GNRTask):
         return ctd
 
     #######################
-    def computationFinished(self, subtask_id, taskResult, dir_manager = None, resultType = 0):
+    def computation_finished(self, subtask_id, task_result, dir_manager = None, result_type = 0):
         self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished

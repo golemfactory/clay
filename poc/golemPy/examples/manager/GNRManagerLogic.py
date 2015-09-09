@@ -50,7 +50,7 @@ class GNRManagerLogic(EmptyManagerLogic):
         self.managerServer.sendNewTask(uid, definition)
 
     ########################
-    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, file_name):
+    def enqueue_new_task(self, uid, w, h, numSamplesPerPixel, file_name):
         pass
 
     ########################

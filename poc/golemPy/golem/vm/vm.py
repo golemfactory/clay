@@ -12,7 +12,7 @@ class IGolemVM:
         pass
 
     #######################
-    def getProgress(self):
+    def get_progress(self):
         assert False
 
     #######################
@@ -41,17 +41,17 @@ class GolemVM(IGolemVM):
     #######################
     def __init__(self):
         IGolemVM.__init__(self)
-        self.srcCode = ""
+        self.src_code = ""
         self.scope = {}
         self.progress = TaskProgress()
 
     #######################
-    def getProgress(self):
+    def get_progress(self):
         return self.progress.get()
       
     #######################  
-    def runTask(self, srcCode, extra_data):
-        self.srcCode = srcCode
+    def runTask(self, src_code, extra_data):
+        self.src_code = src_code
         self.scope = extra_data
         self.scope[ "taskProgress" ] = self.progress
 
@@ -71,7 +71,7 @@ import multiprocessing as mp
 class PythonVM(GolemVM):
 
     def _interpret(self):
-        exec self.srcCode in self.scope
+        exec self.src_code in self.scope
         return self.scope[ "output" ]
 
 ##############################################
@@ -90,14 +90,14 @@ class PythonProcVM(GolemVM):
         del self.scope['taskProgress']
         manager = mp.Manager()
         scope = manager.dict(self.scope)
-        self.proc = mp.Process(target = execCode, args=(self.srcCode, scope))
+        self.proc = mp.Process(target = execCode, args=(self.src_code, scope))
         self.proc.start()
         self.proc.join()
         return scope.get("output")
 
-def execCode(srcCode, scopeManager):
+def execCode(src_code, scopeManager):
     scope = dict(scopeManager)
-    exec srcCode in scope
+    exec src_code in scope
     scopeManager["output"] = scope["output"]
 
 ##############################################
@@ -106,7 +106,7 @@ class PythonTestVM(GolemVM):
         mc = MemoryChecker()
         mc.start()
         try:
-            exec self.srcCode in self.scope
+            exec self.src_code in self.scope
         except Exception, e:
             logger.error("Execution failure {}".format(str(e)))
         finally:

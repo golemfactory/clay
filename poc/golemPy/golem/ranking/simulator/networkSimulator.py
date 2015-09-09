@@ -88,17 +88,17 @@ class NetworkSimulator:
 # Preferentail Attachment newtork simulator
 class PANetworkSimulator(NetworkSimulator):
     def connectNode(self, node):
-        sumDegrees = 0
+        sum_degrees = 0
         for node2Con in self.nodes.values():
-            sumDegrees += len(node2Con)
+            sum_degrees += len(node2Con)
 
         connected = False
         while not connected:
             for node2, node2Con in self.nodes.items():
-                if sumDegrees == 0:
+                if sum_degrees == 0:
                     p = 1
                 else:
-                    p = float(len(node2Con)) / float(sumDegrees)
+                    p = float(len(node2Con)) / float(sum_degrees)
                 r = random.random()
                 if r < p:
                     self.nodes[ node ].add(node2)

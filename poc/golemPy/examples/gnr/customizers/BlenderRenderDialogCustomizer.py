@@ -18,7 +18,7 @@ class BlenderRenderDialogCustomizer:
         self.rendererOptions = newTaskDialog.rendererOptions
 
         self.__init()
-        self.__setupConnections()
+        self.__setup_connections()
 
     #############################
     def __init(self):
@@ -39,7 +39,7 @@ class BlenderRenderDialogCustomizer:
             self.gui.ui.framesLineEdit.setText("")
 
     #############################
-    def __setupConnections(self):
+    def __setup_connections(self):
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__changeRendererOptions())
 

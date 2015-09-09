@@ -48,16 +48,16 @@ def returnData(files):
         file_data = zlib.compress(file_data, 9)
         res.append(pickle.dumps((os.path.basename(f), file_data)))
 
-    return { 'data': res, 'resultType': 0 }
+    return { 'data': res, 'result_type': 0 }
 
 ############################
 def returnFiles(files):
-    copyPath = os.path.normpath(os.path.join(tmpPath, ".."))
+    copyPath = os.path.normpath(os.path.join(tmp_path, ".."))
     for f in files:
         shutil.copy2(f, copyPath)
 
     files = [ os.path.normpath(os.path.join(copyPath, os.path.basename(f))) for f in files]
-    return {'data': files, 'resultType': 1 }
+    return {'data': files, 'result_type': 1 }
 
 
 ############################
@@ -96,7 +96,7 @@ def makeTmpFile(sceneDir, sceneSrc):
 def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, num_cores, ownBinaries, luxConsole):
     print 'LuxRenderer Task'
 
-    output_files = tmpPath
+    output_files = tmp_path
 
     files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm")
 
@@ -115,7 +115,7 @@ def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, num_c
         cmd = formatLuxRendererCmd(cmdFile, startTask, output_files, outfilebasename, tmpSceneFile, numThreads)
     else:
          print "Scene file does not exist"
-         return {'data': [], 'resultType': 0 }
+         return {'data': [], 'result_type': 0 }
 
     prevDir = os.getcwd()
     os.chdir(sceneDir)

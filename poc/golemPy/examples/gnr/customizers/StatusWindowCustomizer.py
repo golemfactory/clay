@@ -14,10 +14,10 @@ class StatusWindowCustomizer:
         self.gui    = gui
         self.logic  = logic
 
-        self.__setupConnections()
+        self.__setup_connections()
 
     #############################
-    def __setupConnections(self):
+    def __setup_connections(self):
         self.gui.ui.okButton.clicked.connect(self.__okButtonClicked)
 
     #############################
@@ -25,5 +25,5 @@ class StatusWindowCustomizer:
         self.gui.window.close()
 
 
-    def getStatus(self):
-        self.gui.ui.statusTextBrowser.setText(self.logic.getStatus())
+    def get_status(self):
+        self.gui.ui.statusTextBrowser.setText(self.logic.get_status())

@@ -36,7 +36,7 @@ class TaskKeeper:
             return None
 
     #############################
-    def getAllTasks(self):
+    def get_all_Tasks(self):
         return self.taskHeaders.values()
 
     #############################
@@ -48,7 +48,7 @@ class TaskKeeper:
                     logger.info("Adding task {}".format(id))
                     self.taskHeaders[id] = TaskHeader(th_dict_repr["client_id"], id, th_dict_repr["address"],
                                                       th_dict_repr["port"], th_dict_repr["key_id"],
-                                                      th_dict_repr["environment"], th_dict_repr["taskOwner"],
+                                                      th_dict_repr["environment"], th_dict_repr["task_owner"],
                                                       th_dict_repr[ "ttl" ], th_dict_repr["subtask_timeout"])
                     if is_supported:
                         self.supported_tasks.append(id)
@@ -106,18 +106,18 @@ class TaskKeeper:
             del self.waitingForVerification[subtask_id]
 
     ############################
-    def removeOldTasks(self):
+    def remove_old_tasks(self):
         for t in self.taskHeaders.values():
-            currTime = time.time()
-            t.ttl = t.ttl - (currTime - t.last_checking)
-            t.last_checking = currTime
+            cur_time = time.time()
+            t.ttl = t.ttl - (cur_time - t.last_checking)
+            t.last_checking = cur_time
             if t.ttl <= 0:
                 logger.warning("Task {} dies".format(t.task_id))
                 self.remove_task_header(t.task_id)
 
         for task_id, removeTime in self.removedTasks.items():
-            currTime = time.time()
-            if currTime - removeTime > self.removedTaskTimeout:
+            cur_time = time.time()
+            if cur_time - removeTime > self.removedTaskTimeout:
                 del self.removedTasks[task_id]
 
     ############################

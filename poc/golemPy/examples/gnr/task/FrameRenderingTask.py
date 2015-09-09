@@ -48,11 +48,11 @@ class FrameRenderingTaskBuiler(RenderingTaskBuilder):
 ##############################################
 class FrameRenderingTask(RenderingTask):
     #######################
-    def __init__(self, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
+    def __init__(self, client_id, task_id, owner_address, owner_port, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                   totalTasks, resX, resY, outfilebasename, output_file, outputFormat, root_path,
                   estimated_memory, useFrames, frames):
-        RenderingTask.__init__(self, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment, ttl,
+        RenderingTask.__init__(self, client_id, task_id, owner_address, owner_port, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                   totalTasks, resX, resY, outfilebasename, output_file, outputFormat, root_path,
                   estimated_memory)
@@ -172,7 +172,7 @@ class FrameRenderingTask(RenderingTask):
 
     #######################
     @checkSubtask_idWrapper
-    def computationFinished(self, subtask_id, taskResult, dir_manager = None, resultType = 0):
+    def computation_finished(self, subtask_id, task_result, dir_manager = None, result_type = 0):
 
         if not self.shouldAccept(subtask_id):
             return
@@ -181,7 +181,7 @@ class FrameRenderingTask(RenderingTask):
         self.tmpDir = tmpDir
 
 
-        if len(taskResult) > 0:
+        if len(task_result) > 0:
             numStart = self.subTasksGiven[ subtask_id ][ 'startTask' ]
             parts = self.subTasksGiven[ subtask_id ][ 'parts' ]
             numEnd = self.subTasksGiven[ subtask_id ][ 'endTask' ]
@@ -189,7 +189,7 @@ class FrameRenderingTask(RenderingTask):
 
             if self.useFrames and self.totalTasks <= len(self.frames):
                 framesList = self.subTasksGiven[ subtask_id ]['frames']
-                if len(taskResult) < len(framesList):
+                if len(task_result) < len(framesList):
                     self._markSubtaskFailed(subtask_id)
                     if not self.useFrames:
                         self._updateTaskPreview()
@@ -197,7 +197,7 @@ class FrameRenderingTask(RenderingTask):
                         self._updateFrameTaskPreview()
                     return
 
-            trFiles = self.loadTaskResults(taskResult, resultType, tmpDir)
+            trFiles = self.loadTaskResults(task_result, result_type, tmpDir)
 
             if not self._verifyImgs(subtask_id, trFiles):
                 self._markSubtaskFailed(subtask_id)

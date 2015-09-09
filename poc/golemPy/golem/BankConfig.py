@@ -40,7 +40,7 @@ class BankConfig:
 
     ##############################
     @classmethod
-    def loadConfig(cls, node_id, cfgFile = CONFIG_FILENAME):
+    def load_config(cls, node_id, cfgFile = CONFIG_FILENAME):
 
         logger = logging.getLogger(__name__)
 

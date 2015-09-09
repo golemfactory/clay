@@ -24,7 +24,7 @@ class PbrtTaskDialogCustomizer:
         self.options = deepcopy(newTaskDialog.options)
 
         self.__init()
-        self.__setupConnections()
+        self.__setup_connections()
 
     #############################
     def __init(self):
@@ -75,7 +75,7 @@ class PbrtTaskDialogCustomizer:
         setVerificationWidgetsState(self.gui, state)
 
     #############################
-    def __setupConnections(self):
+    def __setup_connections(self):
         self.gui.ui.cancelButton.clicked.connect(self.gui.window.close)
         self.gui.ui.okButton.clicked.connect(lambda: self.__changeRendererOptions())
         self.gui.ui.chooseOutputFileButton.clicked.connect(self.__chooseOutputFileButtonClicked)

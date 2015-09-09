@@ -27,7 +27,7 @@ def updateGolem():
 
     data = "Updated"
     compress = zlib.compress(data, 9)
-    return { 'data': [ pickle.dumps((data, compress)) ], 'resultType': 0}
+    return { 'data': [ pickle.dumps((data, compress)) ], 'result_type': 0}
 
 
 output = updateGolem()

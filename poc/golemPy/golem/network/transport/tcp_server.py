@@ -197,11 +197,11 @@ class PendingConnectionsServer(TCPServer):
 
     @staticmethod
     def _node_info_to_tcp_addresses(node_info, port):
-        tcp_addresses = [TCPAddress(i, port) for i in node_info.prvAddresses]
-        if node_info.pubPort:
-            tcp_addresses.append(TCPAddress(node_info.pubAddr, node_info.pubPort))
+        tcp_addresses = [TCPAddress(i, port) for i in node_info.prv_addresses]
+        if node_info.pub_port:
+            tcp_addresses.append(TCPAddress(node_info.pub_addr, node_info.pub_port))
         else:
-            tcp_addresses.append(TCPAddress(node_info.pubAddr, port))
+            tcp_addresses.append(TCPAddress(node_info.pub_addr, port))
         return tcp_addresses
 
 

@@ -44,7 +44,7 @@ class NodesManagerClient:
             self.clientManagerSession.dropped()
 
     #############################
-    def addNewTask(self, task):
+    def add_new_task(self, task):
         pass
 
     ######################
@@ -76,14 +76,14 @@ class NodesManagerUidClient (NodesManagerClient):
         self.task_manager            = task_manager
 
     ######################
-    def addNewTask(self, task):
+    def add_new_task(self, task):
         if self.logic:
             self.logic.addTaskFromDefinition(task)
         elif self.task_manager:
-            task.returnAddress  = self.task_manager.listenAddress
-            task.returnPort     = self.task_manager.listenPort
-            task.taskOwner = self.task_manager.node
-            self.task_manager.addNewTask(task)
+            task.return_address  = self.task_manager.listen_address
+            task.return_port     = self.task_manager.listen_port
+            task.task_owner = self.task_manager.node
+            self.task_manager.add_new_task(task)
         else:
             logger.error("No logic and no task_manager defined.")
 

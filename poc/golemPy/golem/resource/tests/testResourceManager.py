@@ -41,20 +41,20 @@ class TestResourcesManager(unittest.TestCase):
 
     def testGetResourceHeader(self):
         rm = ResourcesManager(self.dir_manager, 'owner')
-        header = rm.getResourceHeader('task2')
+        header = rm.get_resource_header('task2')
         self.assertEquals(len(header.files_data), 2)
         self.assertEquals(len(header.sub_dir_headers[0].files_data), 1)
-        header2 = rm.getResourceHeader('task3')
+        header2 = rm.get_resource_header('task3')
         self.assertEquals(len(header2.files_data), 0)
         self.assertEquals(len(header2.sub_dir_headers), 0)
 
     def testGetResourceDelta(self):
         rm = ResourcesManager(self.dir_manager, 'owner')
-        header = rm.getResourceHeader('task2')
+        header = rm.get_resource_header('task2')
         delta = rm.getResourceDelta('task2', header)
         self.assertEquals(len(delta.files_data), 0)
         self.assertEquals(len (delta.sub_dir_resources[0].files_data), 0)
-        header2 = rm.getResourceHeader('task3')
+        header2 = rm.get_resource_header('task3')
         delta2 = rm.getResourceDelta('task2', header2)
         self.assertEquals(len(delta2.files_data), 2)
         self.assertEquals(len (delta2.sub_dir_resources[0].files_data), 1)

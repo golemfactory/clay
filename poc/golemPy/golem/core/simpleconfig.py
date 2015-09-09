@@ -216,9 +216,9 @@ class SimpleConfig(object):
 #
 #     listattr(c)
 #
-#     print c.getOptimalPeerNum()
+#     print c.get_optimal_peer_num()
 #     c.setOptimalPeerNum(20)
-#     print c.getOptimalPeerNum()
+#     print c.get_optimal_peer_num()
 #
 #     cfg = DefaultConfig(0, "some_test_cfg.ini")
 #     cfg1 = DefaultConfig(1, "some_test_cfg.ini")

@@ -47,9 +47,9 @@ class ComputerState:
 class SubtaskState:
     #########################
     def __init__(self):
-        self.subtaskDefinition  = ""
+        self.subtask_definition  = ""
         self.subtask_id          = ""
-        self.subtaskProgress    = 0.0
+        self.subtask_progress    = 0.0
         self.time_started        = 0
         self.ttl                = 0
         self.last_checking       = time.time()

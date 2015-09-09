@@ -26,7 +26,7 @@ class NodeSimulator(QtCore.QThread):
         self.numRemoteTasks = numRemoteTasks
         self.localTaskDuration = localTaskDuration
         self.remoteTaskDuration = remoteTaskDuration
-        self.startTime = time.time()
+        self.start_time = time.time()
         self.innerUpdateDelay = innerUpdateDelay
         
         self.locProgress = 0.0
@@ -36,8 +36,8 @@ class NodeSimulator(QtCore.QThread):
 
         self.localAddr = "127.0.0.1"
         self.localPort = int(random.random() * 60000.0 + 1024.0)
-        self.peersNum = 0
-        self.tasksNum = 0
+        self.peers_num = 0
+        self.tasks_num = 0
         self.running = True
         
         self.addedTasks = []
@@ -58,7 +58,7 @@ class NodeSimulator(QtCore.QThread):
         self.addedTasks.append(extra_data)
 
     ########################
-    def getId(self):
+    def get_id(self):
         return self.id
 
     ########################
@@ -69,21 +69,21 @@ class NodeSimulator(QtCore.QThread):
     def getStateSnapshot(self):
         add_peers = 1 if random.random() >= 0.45 else -1
 
-        self.peersNum += add_peers
+        self.peers_num += add_peers
 
-        if self.peersNum < 0:
-            self.peersNum = 0
-        if self.peersNum > 10:
-            self.peersNum = 10
+        if self.peers_num < 0:
+            self.peers_num = 0
+        if self.peers_num > 10:
+            self.peers_num = 10
 
         add_tasks = 1 if random.random() >= 0.5 else -1
 
-        self.tasksNum += add_tasks
+        self.tasks_num += add_tasks
 
-        if self.tasksNum < 0:
-            self.tasksNum = 0
-        if self.tasksNum > 200:
-            self.tasksNum = 200
+        if self.tasks_num < 0:
+            self.tasks_num = 0
+        if self.tasks_num > 200:
+            self.tasks_num = 200
 
         cur_time = time.time()
 
@@ -108,26 +108,26 @@ class NodeSimulator(QtCore.QThread):
 
         ltss = LocalTaskStateSnapshot('0xcdcdcdcd', totalTasks, totalChunks, activeTasks, activeChunks, allChunks - totalChunks, self.locProgress, descr)
 
-        return NodeStateSnapshot(self.running, self.uid, self.peersNum, self.tasksNum, self.localAddr, self.localPort, ['test message {}'.format(random.randint(0,200))], ['test message {}'.format(random.randint(10, 70))], { '0' : tcss }, { '0xcdcdcd' : ltss })
+        return NodeStateSnapshot(self.running, self.uid, self.peers_num, self.tasks_num, self.localAddr, self.localPort, ['test message {}'.format(random.randint(0,200))], ['test message {}'.format(random.randint(10, 70))], { '0' : tcss }, { '0xcdcdcd' : ltss })
 
     ########################
     def run(self):
 
-        startTime = time.time()
+        start_time = time.time()
         self.locTasksDuration = self.numLocalTasks * self.localTaskDuration
         self.remTasksDuration = self.numRemoteTasks * self.remoteTaskDuration
 
         self.totalDuration = max(self.locTasksDuration, self.remTasksDuration)
 
         self.locTask = 0
-        self.locTaskStartTime = startTime
+        self.locTaskStartTime = start_time
         self.remTask = 0
-        self.remTaskStartTime = startTime
+        self.remTaskStartTime = start_time
 
         logger_msg = "Starting node '{}' local tasks: {} remote tasks: {}".format(self.uid, self.numLocalTasks, self.numRemoteTasks)
         logger.info("{} ->local task dura: {} secs, remote task dura: {} secs".format(logger_msg, self.localTaskDuration, self.remoteTaskDuration))
 
-        while time.time() - startTime < self.totalDuration:
+        while time.time() - start_time < self.totalDuration:
                 
             if GLOBAL_SHUTDOWN[ 0 ]:
                 logger.warning("{}: Global shutdown triggered - bailing out".format(self.uid))
@@ -199,7 +199,7 @@ class LocalNetworkSimulator(Thread):
                 node.terminate()
 
     ########################
-    def terminateNode(self, uid):
+    def terminate_node(self, uid):
         with self.lock:
             for i, node in enumerate(self.nodes):
                 if node.getUid() == uid:

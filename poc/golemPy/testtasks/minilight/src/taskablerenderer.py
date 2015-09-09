@@ -12,7 +12,7 @@ class TaskableRenderer:
 
         self.timeoutTime = timeoutTime
         self.preferredTaskTime = preferredTaskTimeSlice 
-        self.startTime = time()
+        self.start_time = time()
 
         #FIXME: validate scene data here
         #FIXME: this should be a bit more sophisticated structure (to collect more than one result per pixel and to calc some stats using this data)
@@ -32,10 +32,10 @@ class TaskableRenderer:
         print "  Total pixels calculated : {}".format(self.pixelsCalculated)
         print "  Active pixels (in tasks): {}".format(self.nextPixel - self.pixelsCalculated)
         print "  Unallocated pixels:       {}".format(self.pixelsLeft)
-        print "  Progress:                 {}".format(self.getProgress())
+        print "  Progress:                 {}".format(self.get_progress())
 
     def start(self):
-        self.startTime = time()
+        self.start_time = time()
 
     def isFinished(self):
         return self.pixelsCalculated == self.w * self.h
@@ -43,7 +43,7 @@ class TaskableRenderer:
     def hasMoreTasks(self):
         return self.pixelsLeft > 0
 
-    def getProgress(self):
+    def get_progress(self):
         return float(self.pixelsCalculated) / float(self.w * self.h)
 
     def getResult(self):
@@ -69,7 +69,7 @@ class TaskableRenderer:
     #estimated speed means rays per second
     def getNextTaskDesc(self, estimatedSpeed):
         with self.lock:
-            timeLeft = self.timeoutTime - (time() - self.startTime)
+            timeLeft = self.timeoutTime - (time() - self.start_time)
         
             timeSlice = self.preferredTaskTime
             if timeLeft < self.preferredTaskTime:
@@ -106,7 +106,7 @@ class TaskableRenderer:
     #estimated speed means rays per second
     def getNextTask(self, estimatedSpeed):
         with self.lock:
-            timeLeft = self.timeoutTime - (time() - self.startTime)
+            timeLeft = self.timeoutTime - (time() - self.start_time)
         
             timeSlice = self.preferredTaskTime
             if timeLeft < self.preferredTaskTime:
@@ -152,7 +152,7 @@ class TaskableRenderer:
             self.activeTasks -= 1
             self.pixelsCalculated += result.getDesc().getNumPixels()
 
-        print "FINISHED Task {:5} with {:5} pixels at ({}, {}) with progress: {} %".format(result.desc.getID(), result.desc.getNumPixels(), result.desc.getX(), result.desc.getY(), 100.0 * self.getProgress())
+        print "FINISHED Task {:5} with {:5} pixels at ({}, {}) with progress: {} %".format(result.desc.getID(), result.desc.getNumPixels(), result.desc.getX(), result.desc.getY(), 100.0 * self.get_progress())
 
         for k in range(3 * desc.getNumPixels()):
             self.data[ k + offset ] = pixels[ k ]

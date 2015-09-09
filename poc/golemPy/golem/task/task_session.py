@@ -200,8 +200,8 @@ class TaskSession(MiddlemanSafeSession):
 
         subtask_id = extra_data.get("subtask_id")
         if subtask_id:
-            self.task_manager.computedTaskReceived(subtask_id, result, result_type)
-            if self.task_manager.verifySubtask(subtask_id):
+            self.task_manager.computed_task_received(subtask_id, result, result_type)
+            if self.task_manager.verify_subtask(subtask_id):
                 self.task_server.accept_result(subtask_id, self.result_owner)
             else:
                 self.task_server.reject_result(subtask_id, self.result_owner)
@@ -322,7 +322,7 @@ class TaskSession(MiddlemanSafeSession):
         trust = self.task_server.get_computing_trust(msg.client_id)
         logger.debug("Computing trust level: {}".format(trust))
         if trust >= self.task_server.config_desc.computing_trust:
-            ctd, wrong_task = self.task_manager.getNextSubTask(msg.client_id, msg.task_id, msg.perf_index,
+            ctd, wrong_task = self.task_manager.get_next_subtask(msg.client_id, msg.task_id, msg.perf_index,
                                                                msg.max_resource_size, msg.max_memory_size,
                                                                msg.num_cores)
         else:
@@ -341,13 +341,13 @@ class TaskSession(MiddlemanSafeSession):
         self.dropped()
 
     def _react_to_cannot_assign_task(self, msg):
-        self.task_computer.taskRequestRejected(msg.task_id, msg.reason)
+        self.task_computer.task_request_rejected(msg.task_id, msg.reason)
         self.task_server.remove_task_header(msg.task_id)
         self.dropped()
 
     def _react_to_report_computed_task(self, msg):
-        if msg.subtask_id in self.task_manager.subTask2TaskMapping:
-            delay = self.task_manager.accept_results_delay(self.task_manager.subTask2TaskMapping[msg.subtask_id])
+        if msg.subtask_id in self.task_manager.subtask2task_mapping:
+            delay = self.task_manager.accept_results_delay(self.task_manager.subtask2task_mapping[msg.subtask_id])
 
             if delay == -1.0:
                 self.dropped()
@@ -423,7 +423,7 @@ class TaskSession(MiddlemanSafeSession):
         self.dropped()
 
     def _react_to_delta_parts(self, msg):
-        self.task_computer.waitForResources(self.task_id, msg.delta_header)
+        self.task_computer.wait_for_resources(self.task_id, msg.delta_header)
         self.task_server.pull_resources(self.task_id, msg.parts)
         self.task_server.add_resource_peer(msg.client_id, msg.addr, msg.port, self.key_id, msg.node_info)
         self.dropped()

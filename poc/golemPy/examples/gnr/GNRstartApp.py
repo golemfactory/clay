@@ -1,6 +1,6 @@
 import os
 
-from golem.Client import startClient
+from golem.Client import start_client
 from golem.environments.Environment import Environment
 
 from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment, LuxRenderEnvironment, BlenderEnvironment
@@ -59,14 +59,14 @@ def loadEnvironments():
 
 ############################
 def startAndConfigureClient(logic, environments):
-    client = startClient()
+    client = start_client()
     for env in environments:
-        client.environmentsManager.addEnvironment(env)
+        client.environments_manager.add_environment(env)
 
-    client.environmentsManager.loadConfig(client.config_desc.client_uid)
+    client.environments_manager.load_config(client.config_desc.client_uid)
 
     logic.registerClient(client)
-    logic.checkNetworkState()
+    logic.check_network_state()
 
     return client
 
@@ -83,7 +83,7 @@ def runManager(logic, client):
     logic.registerStartNewNodeFunction(runGNRNodes)
     logic.registerStartNodesManagerFunction(runGNRManager)
 
-    client.environmentsManager.loadConfig(client.config_desc.client_uid)
+    client.environments_manager.load_config(client.config_desc.client_uid)
 
 ############################
 def runInfoServer(client, start_port = 55555, nextPort = 55556, end_port = 59999):
@@ -104,10 +104,10 @@ def runAddTaskClient(logic):
     logic.startAddTaskClient()
 
 ############################
-def runAddTaskServer(client):
-   client.runAddTaskServer()
+def run_add_task_server(client):
+   client.run_add_task_server()
  #   from PluginServer import TaskAdderServer
- #   server =  TaskAdderServer(client.getPluginPort())
+ #   server =  TaskAdderServer(client.get_plugin_port())
  #   server.start()
 
 ###########################################################################
@@ -133,7 +133,7 @@ def startApp(logic, app, gui, rendering = False, startManager = False, startMana
     if startAddTaskClient:
         runAddTaskClient(logic)
     if startAddTaskServer:
-        runAddTaskServer(client)
+        run_add_task_server(client)
 
     app.execute(False)
 

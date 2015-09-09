@@ -1,7 +1,7 @@
 
 from PyQt4 import QtCore, QtGui
 from gen.ui_nodetasks import Ui_NodeTasksWidget
-from progressbar import createWrappedProgressBar
+from progressbar import create_wrapped_progress_bar
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class NodeTasksWidget(QtGui.QWidget):
         self.remoteChunksTableData = []
         self.localTasksTableData = []
 
-        self.chunkIdToRowNumMapping = {}
+        self.chunk_idToRowNumMapping = {}
         self.task_idToRowNumMapping = {}
 
         self.currNodeDataState = None
@@ -39,22 +39,22 @@ class NodeTasksWidget(QtGui.QWidget):
         self.ui.nodeUidLabel.setText(uid)
 
     ########################
-    def updateNodeViewData(self, nodeDataState):
+    def updateNodeViewData(self, node_data_state):
 
-        self.currNodeDataState = nodeDataState
+        self.currNodeDataState = node_data_state
 
         # remove old tasks and chunks
         for t in self.task_idToRowNumMapping:
-            if t not in nodeDataState.localTasksStateData:
+            if t not in node_data_state.localTasksStateData:
                 rowToRemove = self.task_idToRowNumMapping[ t ]
                 del self.localTasksTableData[ rowToRemove ]
                 self.localTasksTable.removeRow(rowToRemove)
                 
         self.__remapTaskIdRowMapping()
 
-        for t in self.chunkIdToRowNumMapping:
-            if t not in nodeDataState.remoteChunksStateData:
-                rowToRemove = self.chunkIdToRowNumMapping[ t ]
+        for t in self.chunk_idToRowNumMapping:
+            if t not in node_data_state.remoteChunksStateData:
+                rowToRemove = self.chunk_idToRowNumMapping[ t ]
                 del self.remoteChunksTableData[ rowToRemove ]
                 self.remoteChunksTable.removeRow(rowToRemove)
             
@@ -62,23 +62,23 @@ class NodeTasksWidget(QtGui.QWidget):
 
         # register new rows
 
-        for t in nodeDataState.localTasksStateData:
+        for t in node_data_state.localTasksStateData:
             if t not in self.task_idToRowNumMapping:
                 self.localTasksTableData.append(self.__createRow(t, self.localTasksTable, True))
                 self.__remapTaskIdRowMapping()
 
-        for t in nodeDataState.remoteChunksStateData:
-            if t not in self.chunkIdToRowNumMapping:
+        for t in node_data_state.remoteChunksStateData:
+            if t not in self.chunk_idToRowNumMapping:
                 self.remoteChunksTableData.append(self.__createRow(t, self.remoteChunksTable, False))
                 self.__remapChunkIdRowMapping()
 
 
         # update view
-        for t in nodeDataState.localTasksStateData:
-            self.__updateExistingRowView(self.localTasksTableData[ self.task_idToRowNumMapping[ t ] ], t, nodeDataState.localTasksStateData[ t ][ "taskProgress" ])
+        for t in node_data_state.localTasksStateData:
+            self.__updateExistingRowView(self.localTasksTableData[ self.task_idToRowNumMapping[ t ] ], t, node_data_state.localTasksStateData[ t ][ "taskProgress" ])
 
-        for t in nodeDataState.remoteChunksStateData:
-            self.__updateExistingRowView(self.remoteChunksTableData[ self.chunkIdToRowNumMapping[ t ] ], t, nodeDataState.remoteChunksStateData[ t ][ "chunkProgress" ])
+        for t in node_data_state.remoteChunksStateData:
+            self.__updateExistingRowView(self.remoteChunksTableData[ self.chunk_idToRowNumMapping[ t ] ], t, node_data_state.remoteChunksStateData[ t ][ "chunkProgress" ])
 
         self.__resetDetailedTaskView()
         self.__resetDetailedChunkView()
@@ -136,12 +136,12 @@ class NodeTasksWidget(QtGui.QWidget):
     ########################
     def __remapChunkIdRowMapping(self):
 
-        self.chunkIdToRowNumMapping.clear()
+        self.chunk_idToRowNumMapping.clear()
 
         idx = 0
         for rctData in self.remoteChunksTableData:
             uid = str(rctData.uid.text())
-            self.chunkIdToRowNumMapping[ uid ] = idx
+            self.chunk_idToRowNumMapping[ uid ] = idx
             idx += 1
 
 
@@ -163,7 +163,7 @@ class NodeTasksWidget(QtGui.QWidget):
 
     ########################
     def __addProgressBar(self, table, row, col, red = False):
-        w, p = createWrappedProgressBar(red)
+        w, p = create_wrapped_progress_bar(red)
         table.setCellWidget(row, col, w)
         return p
 
@@ -199,7 +199,7 @@ class NodeTasksWidget(QtGui.QWidget):
 
             self.ui.labelDetailedRemoteTask.setText("{}".format(uid))
             self.ui.chunkShortDescrInput.setText(remoteChunkState[ "cshd" ])
-            self.ui.cpuPowerInput.setText(remoteChunkState[ "cpuPower" ])
+            self.ui.cpuPowerInput.setText(remoteChunkState[ "cpu_power" ])
             self.ui.timeLeftInput.setText(remoteChunkState[ "timeLeft" ])
             self.ui.activeChunkProgressBar.setProperty("value", int(100.0 * remoteChunkState[ "chunkProgress" ]))
 

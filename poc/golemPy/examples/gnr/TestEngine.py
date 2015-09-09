@@ -38,8 +38,8 @@ class TestEngine(QtCore.QObject):
         args = []
 
         for i in range(poolSize):
-            extra_data = t.queryExtraData(1.0)
-            args.append([ (t.srcCode, extra_data, None) ])
+            extra_data = t.query_extra_data(1.0)
+            args.append([ (t.src_code, extra_data, None) ])
 
         res = p.map(runTask, args)
 
@@ -48,19 +48,19 @@ class TestEngine(QtCore.QObject):
 
     def __taskStartingRequested(self, ts):
 
-        tb = self.logic.renderers[ ts.definition.renderer ].taskBuilderType("client id here", ts.definition)
+        tb = self.logic.renderers[ ts.definition.renderer ].task_builderType("client id here", ts.definition)
 
-        t = Task.buildTask(tb)
+        t = Task.build_task(tb)
 
         self.addTask(t)
 
 
 #######################
-def runTask(self, srcCode, extra_data, progress):
+def runTask(self, src_code, extra_data, progress):
     extra_data = copy(extra_data)
     scope = extra_data
     scope[ "taskProgress" ] = progress
 
-    exec srcCode in scope
+    exec src_code in scope
     return scope[ "output" ]
 

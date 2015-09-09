@@ -24,8 +24,8 @@ def buildPBRTTaskType():
     options.resolution = renderer.defaults.resolution
     options.outputFormat = renderer.defaults.outputFormat
     options.mainProgramFile = renderer.defaults.mainProgramFile
-    options.fullTaskTimeout = renderer.defaults.fullTaskTimeout
-    options.minSubtaskTime = renderer.defaults.minSubtaskTime
+    options.full_task_timeout = renderer.defaults.full_task_timeout
+    options.min_subtask_time = renderer.defaults.min_subtask_time
     options.minSubtasks = renderer.defaults.minSubtasks
     options.maxSubtasks = renderer.defaults.maxSubtasks
     options.defaultSubtasks = renderer.defaults.defaultSubtasks
@@ -51,9 +51,9 @@ def buildPythonGNRTaskType():
     return TaskType("Python GNR Task", PythonGNRTaskBuilder)
 
 class TaskType:
-    def __init__(self, name, taskBuilderType, options = None, dialog = None, dialogCustomizer = None):
+    def __init__(self, name, task_builderType, options = None, dialog = None, dialogCustomizer = None):
         self.name = name
-        self.taskBuilderType = taskBuilderType
+        self.task_builderType = task_builderType
         self.options = options
         self.dialog = dialog
         self.dialogCustomizer = dialogCustomizer

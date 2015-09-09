@@ -62,11 +62,11 @@ class GNROptions:
 ##############################################
 class GNRTask(Task):
     #####################
-    def __init__(self, srcCode, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment,
-                  ttl, subtaskTtl, resourceSize, estimated_memory):
-        th = TaskHeader(client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment, Node(),
-                         ttl, subtaskTtl, resourceSize, estimated_memory)
-        Task.__init__(self, th, srcCode)
+    def __init__(self, src_code, client_id, task_id, owner_address, owner_port, ownerKeyId, environment,
+                  ttl, subtaskTtl, resource_size, estimated_memory):
+        th = TaskHeader(client_id, task_id, owner_address, owner_port, ownerKeyId, environment, Node(),
+                         ttl, subtaskTtl, resource_size, estimated_memory)
+        Task.__init__(self, th, src_code)
 
         self.taskResources = []
 
@@ -77,10 +77,10 @@ class GNRTask(Task):
         self.subTasksGiven = {}
         self.numFailedSubtasks = 0
 
-        self.fullTaskTimeout = 2200
+        self.full_task_timeout = 2200
         self.countingNodes = {}
 
-        self.resFiles = {}
+        self.res_files = {}
 
     #######################
     def initialize(self):
@@ -94,20 +94,20 @@ class GNRTask(Task):
 
         self.numFailedSubtasks = 0
         self.header.last_checking = time.time()
-        self.header.ttl = self.fullTaskTimeout
+        self.header.ttl = self.full_task_timeout
 
 
     #######################
-    def getChunksLeft(self):
+    def get_chunks_left(self):
         return (self.totalTasks - self.lastTask) + self.numFailedSubtasks
 
     #######################
-    def getProgress(self):
+    def get_progress(self):
         return float(self.lastTask) / self.totalTasks
 
 
     #######################
-    def needsComputation(self):
+    def needs_computation(self):
         return (self.lastTask != self.totalTasks) or (self.numFailedSubtasks > 0)
 
     #######################
@@ -115,32 +115,32 @@ class GNRTask(Task):
         return self.numTasksReceived == self.totalTasks
 
     #######################
-    def computationStarted(self, extra_data):
+    def computation_started(self, extra_data):
         pass
 
     #######################
-    def computationFailed(self, subtask_id):
+    def computation_failed(self, subtask_id):
         self._markSubtaskFailed(subtask_id)
 
     #######################
-    def getTotalTasks(self):
+    def get_total_tasks(self):
         return self.totalTasks
 
     #######################
-    def getTotalChunks(self):
+    def get_total_chunks(self):
         return self.totalTasks
 
     #######################
-    def getActiveTasks(self):
+    def get_active_tasks(self):
         return self.lastTask
 
     #######################
-    def getActiveChunks(self):
+    def get_active_chunks(self):
         return self.lastTask
 
     #######################
-    def setResFiles(self, resFiles):
-        self.resFiles = resFiles
+    def setResFiles(self, res_files):
+        self.res_files = res_files
 
     #######################
     def prepare_resource_delta(self, task_id, resource_header):
@@ -163,7 +163,7 @@ class GNRTask(Task):
             commonPathPrefix, dir_name, tmpDir = self.__get_taskDirParams()
 
             if os.path.exists(dir_name):
-                delta_header, parts = TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name, self.resFiles)
+                delta_header, parts = TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name, self.res_files)
                 return delta_header, parts
             else:
                 return None
@@ -186,22 +186,22 @@ class GNRTask(Task):
         pass
 
     #######################
-    def updateTaskState(self, taskState):
+    def update_task_state(self, task_state):
         pass
 
     #######################
-    def loadTaskResults(self, taskResult, resultType, tmpDir):
-        if resultType == result_types['data']:
-            return  [ self._unpackTaskResult(trp, tmpDir) for trp in taskResult ]
-        elif resultType == result_types['files']:
-            return taskResult
+    def loadTaskResults(self, task_result, result_type, tmpDir):
+        if result_type == result_types['data']:
+            return  [ self._unpackTaskResult(trp, tmpDir) for trp in task_result ]
+        elif result_type == result_types['files']:
+            return task_result
         else:
-            logger.error("Task result type not supported {}".format(resultType))
+            logger.error("Task result type not supported {}".format(result_type))
             return []
 
     #######################
     @checkSubtask_idWrapper
-    def verifySubtask(self, subtask_id):
+    def verify_subtask(self, subtask_id):
        return self.subTasksGiven[ subtask_id ]['status'] == SubtaskStatus.finished
 
     #######################
@@ -210,17 +210,17 @@ class GNRTask(Task):
 
     #######################
     @checkSubtask_idWrapper
-    def getPriceMod(self, subtask_id):
+    def get_price_mod(self, subtask_id):
         return 1
 
     #######################
     @checkSubtask_idWrapper
-    def getTrustMod(self, subtask_id):
+    def get_trust_mod(self, subtask_id):
         return 1.0
 
     #######################
     @checkSubtask_idWrapper
-    def restartSubtask(self, subtask_id):
+    def restart_subtask(self, subtask_id):
         if subtask_id in self.subTasksGiven:
             if self.subTasksGiven[ subtask_id ][ 'status' ] == SubtaskStatus.starting:
                 self._markSubtaskFailed(subtask_id)

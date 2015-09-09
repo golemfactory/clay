@@ -13,23 +13,23 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
     #######################
     def build(self):
         with open(self.taskDefinition.mainProgramFile) as f:
-            srcCode = f.read()
+            src_code = f.read()
         self.taskDefinition.taskResources = set()
 
-        resourceSize = 0
+        resource_size = 0
         for resource in self.taskDefinition.taskResources:
-            resourceSize += os.stat(resource).st_size
+            resource_size += os.stat(resource).st_size
 
-        return PythonGNRTask(   srcCode,
+        return PythonGNRTask(   src_code,
                             self.client_id,
                             self.taskDefinition.task_id,
                             "",
                             0,
                             "",
-                            Environment.getId(),
-                            self.taskDefinition.fullTaskTimeout,
+                            Environment.get_id(),
+                            self.taskDefinition.full_task_timeout,
                             self.taskDefinition.subtask_timeout,
-                            resourceSize,
+                            resource_size,
                             0,
                             self.taskDefinition.totalSubtasks,
                             self.root_path
@@ -37,30 +37,30 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
 
 class PythonGNRTask(GNRTask):
     #####################
-    def __init__(self, srcCode, client_id, task_id, ownerAddress, ownerPort, ownerKeyId, environment,
-                  ttl, subtaskTtl, resourceSize, estimated_memory, totalTasks, root_path):
+    def __init__(self, src_code, client_id, task_id, owner_address, owner_port, ownerKeyId, environment,
+                  ttl, subtaskTtl, resource_size, estimated_memory, totalTasks, root_path):
 
-        GNRTask.__init__(self, srcCode, client_id, task_id,ownerAddress, ownerPort, ownerKeyId, environment, ttl, subtaskTtl,
-                  resourceSize, estimated_memory)
+        GNRTask.__init__(self, src_code, client_id, task_id,owner_address, owner_port, ownerKeyId, environment, ttl, subtaskTtl,
+                  resource_size, estimated_memory)
 
         self.totalTasks = totalTasks
         self.root_path = root_path
 
 
 
-    def queryExtraData(self, perfIndex, num_cores = 1, client_id = None):
+    def query_extra_data(self, perf_index, num_cores = 1, client_id = None):
         ctd = ComputeTaskDef()
         ctd.task_id = self.header.task_id
         hash = "{}".format(random.getrandbits(128))
         ctd.subtask_id = hash
         ctd.extra_data = { "startTask" : self.lastTask,
                           "endTask": self.lastTask + 1 }
-        ctd.returnAddress = self.header.taskOwnerAddress
-        ctd.returnPort = self.header.taskOwnerPort
-        ctd.taskOnwer = self.header.taskOwner
-        ctd.shortDescription = "Golem update"
-        ctd.srcCode = self.srcCode
-        ctd.performance = perfIndex
+        ctd.return_address = self.header.task_owner_address
+        ctd.return_port = self.header.task_owner_port
+        ctd.taskOnwer = self.header.task_owner
+        ctd.short_description = "Golem update"
+        ctd.src_code = self.src_code
+        ctd.performance = perf_index
         if self.lastTask + 1 <= self.totalTasks:
             self.lastTask += 1
 
@@ -71,12 +71,12 @@ class PythonGNRTask(GNRTask):
         return ctd
 
     #######################
-    def shortExtraDataRepr(self, perfIndex):
+    def short_extra_data_repr(self, perf_index):
         return "Generic Python Task"
 
     #######################
     @checkSubtask_idWrapper
-    def computationFinished(self, subtask_id, taskResult, dir_manager = None, resultType = 0):
+    def computation_finished(self, subtask_id, task_result, dir_manager = None, result_type = 0):
         self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished
         self.numTasksReceived += 1
 

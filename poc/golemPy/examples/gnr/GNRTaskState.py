@@ -4,9 +4,9 @@ from golem.task.TaskState import TaskState
 class GNRTaskDefinition:
     def __init__(self):
         self.task_id = ""
-        self.fullTaskTimeout = 0
+        self.full_task_timeout = 0
         self.subtask_timeout     = 0
-        self.minSubtaskTime     = 0
+        self.min_subtask_time     = 0
 
         self.resources = set()
         self.estimated_memory    = 0
@@ -33,7 +33,7 @@ class GNRTaskState:
     #########################
     def __init__(self):
         self.definition     = GNRTaskDefinition()
-        self.taskState      = TaskState()
+        self.task_state      = TaskState()
 
 class GNROptions:
     #########################

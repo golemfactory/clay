@@ -13,56 +13,56 @@ logger = logging.getLogger(__name__)
 
 class DistributedResourceManager:
     ###################
-    def __init__(self, resourceDir):
+    def __init__(self, resource_dir):
         self.resources = set()
-        self.resourceDir = resourceDir
-        self.resourceHash = ResourceHash(self.resourceDir)
-        self.addResources()
+        self.resource_dir = resource_dir
+        self.resourceHash = ResourceHash(self.resource_dir)
+        self.add_resources()
 
     ###################
-    def change_resource_dir(self, resourceDir):
-        self.resourceHash.set_resource_dir(resourceDir)
-        self.copyResources(resourceDir)
+    def change_resource_dir(self, resource_dir):
+        self.resourceHash.set_resource_dir(resource_dir)
+        self.copyResources(resource_dir)
         self.resources = set()
-        self.resourceDir = resourceDir
-        self.addResources()
+        self.resource_dir = resource_dir
+        self.add_resources()
 
     ###################
     def copyResources(self, newResourceDir):
-        copy_file_tree(self.resourceDir, newResourceDir)
-        filenames = next(os.walk(self.resourceDir))[2]
+        copy_file_tree(self.resource_dir, newResourceDir)
+        filenames = next(os.walk(self.resource_dir))[2]
         for f in filenames:
-            os.remove(os.path.join(self.resourceDir, f))
+            os.remove(os.path.join(self.resource_dir, f))
 
     ###################
-    def splitFile(self, file_name, blockSize = 2 ** 20):
-        resourceHash = ResourceHash(self.resourceDir)
-        listFiles = [ os.path.basename(file_) for file_ in resourceHash.splitFile(file_name, blockSize) ]
-        self.resources |= set(listFiles)
-        return listFiles
+    def split_file(self, file_name, blockSize = 2 ** 20):
+        resourceHash = ResourceHash(self.resource_dir)
+        list_files = [ os.path.basename(file_) for file_ in resourceHash.split_file(file_name, blockSize) ]
+        self.resources |= set(list_files)
+        return list_files
 
     ###################
-    def connectFile (self, partsList, file_name):
-        resourceHash = ResourceHash(self.resourceDir)
-        resList = [ os.path.join(self.resourceDir, p) for p in partsList ]
-        resourceHash.connectFiles(resList, file_name)
+    def connect_file (self, partsList, file_name):
+        resourceHash = ResourceHash(self.resource_dir)
+        resList = [ os.path.join(self.resource_dir, p) for p in partsList ]
+        resourceHash.connect_files(resList, file_name)
 
     ###################
-    def addResources(self):
-        filenames = next(os.walk(self.resourceDir))[2]
+    def add_resources(self):
+        filenames = next(os.walk(self.resource_dir))[2]
         self.resources = set(filenames)
 
     ###################
     def check_resource(self, resource):
-        res_path = os.path.join(self.resourceDir, os.path.basename(resource))
+        res_path = os.path.join(self.resource_dir, os.path.basename(resource))
         if os.path.isfile(res_path) and self.resourceHash.getFileHash(res_path) == resource:
             return True
         else:
             return False
 
     ###################
-    def getResourcePath(self, resource):
-        return os.path.join(self.resourceDir, resource)
+    def get_resource_path(self, resource):
+        return os.path.join(self.resource_dir, resource)
 
 #########################################################
 
@@ -80,7 +80,7 @@ class ResourcesManager:
         self.buff               = DataBuffer()
 
     ###################
-    def getResourceHeader(self, task_id):
+    def get_resource_header(self, task_id):
 
         taskResHeader = None
 

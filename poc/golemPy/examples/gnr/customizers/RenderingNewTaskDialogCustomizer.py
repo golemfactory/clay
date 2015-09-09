@@ -132,7 +132,7 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
 
             self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.mainProgramFile)
 
-            setTimeSpinBoxes(self.gui, r.defaults.fullTaskTimeout, r.defaults.subtask_timeout, r.defaults.minSubtaskTime)
+            setTimeSpinBoxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout, r.defaults.min_subtask_time)
 
             self.gui.ui.totalSpinBox.setRange(r.defaults.minSubtasks, r.defaults.maxSubtasks)
 
@@ -155,7 +155,7 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
 
         self.gui.ui.mainProgramFileLineEdit.setText(dr.defaults.mainProgramFile)
 
-        setTimeSpinBoxes(self.gui, dr.defaults.fullTaskTimeout, dr.defaults.subtask_timeout, dr.defaults.minSubtaskTime)
+        setTimeSpinBoxes(self.gui, dr.defaults.full_task_timeout, dr.defaults.subtask_timeout, dr.defaults.min_subtask_time)
 
         self.gui.ui.outputFileLineEdit.clear()
 
@@ -313,17 +313,17 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
 
     ############################
     def __testTaskButtonClicked(self):
-        self.taskState = RenderingTaskState()
-        self.taskState.status = TaskStatus.notStarted
-        self.taskState.definition = self._queryTaskDefinition()
+        self.task_state = RenderingTaskState()
+        self.task_state.status = TaskStatus.notStarted
+        self.task_state.definition = self._queryTaskDefinition()
         
-        if not self.logic.runTestTask(self.taskState):
+        if not self.logic.runTestTask(self.task_state):
             logger.error("Task not tested properly")
 
     #############################
-    def testTaskComputationFinished(self, success, estMem):
+    def test_taskComputationFinished(self, success, estMem):
         if success:
-            self.taskState.definition.estimated_memory  = estMem
+            self.task_state.definition.estimated_memory  = estMem
             self._changeFinishState(True)
 
     #############################

@@ -5,12 +5,12 @@ from examples.gnr.GNRTaskState import GNRTaskDefinition, AdvanceVerificationOpti
 ###########################################################################
 class RendererInfo:
     #########################
-    def __init__(self, name, defaults, taskBuilderType, dialog, dialogCustomizer, rendererOptions):
+    def __init__(self, name, defaults, task_builderType, dialog, dialogCustomizer, rendererOptions):
         self.name           = name
         self.outputFormats  = []
         self.sceneFileExt   = []
         self.defaults       = defaults
-        self.taskBuilderType = taskBuilderType
+        self.task_builderType = task_builderType
         self.dialog = dialog
         self.dialogCustomizer = dialogCustomizer
         self.rendererOptions = rendererOptions
@@ -21,8 +21,8 @@ class RendererDefaults:
     def __init__(self):
         self.outputFormat       = ""
         self.mainProgramFile    = ""
-        self.fullTaskTimeout    = 4 * 3600
-        self.minSubtaskTime     = 60
+        self.full_task_timeout    = 4 * 3600
+        self.min_subtask_time     = 60
         self.subtask_timeout     = 20 * 60
         self.resolution         = [800, 600]
         self.minSubtasks        = 1
@@ -48,7 +48,7 @@ class RenderingTaskState:
     #########################
     def __init__(self):
         self.definition     = RenderingTaskDefinition()
-        self.taskState      = TaskState()
+        self.task_state      = TaskState()
 
 ###########################################################################
 class AdvanceRenderingVerificationOptions (AdvanceVerificationOptions):

@@ -15,7 +15,7 @@ def format_pbrt_cmd(renderer, startTask, endTask, totalTasks, numSubtasks, num_c
 def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, sceneSrc):
     pbrt = os.path.join(resourcePath, "pbrt.exe")
 
-    output_files = os.path.join(tmpPath, outfilebasename)
+    output_files = os.path.join(tmp_path, outfilebasename)
 
     files = glob.glob(output_files + "*.exr")
 

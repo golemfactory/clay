@@ -17,7 +17,7 @@ from examples.gnr.customizers.GNRMainWindowCustomizer import GNRMainWindowCustom
 from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdministratorMainWindowCustomizer
 from examples.gnr.customizers.RenderingNewTaskDialogCustomizer import RenderingNewTaskDialogCustomizer
 
-from examples.gnr.customizers.MemoryHelper import resourceSizeToDisplay, translateResourceIndex
+from examples.gnr.customizers.MemoryHelper import resource_sizeToDisplay, translateResourceIndex
 
 logger = logging.getLogger(__name__)
 
@@ -117,15 +117,15 @@ class AbsRenderingMainWindowCustomizer (object):
     ############################
     def __setTimeParams(self, t):
         self.gui.ui.subtaskTimeout.setText("{} minutes".format(int(t.definition.subtask_timeout / 60.0)))
-        self.gui.ui.fullTaskTimeout.setText(str(datetime.timedelta(seconds = t.definition.fullTaskTimeout)))
-        if t.taskState.time_started != 0.0:
-            lt = time.localtime(t.taskState.time_started)
+        self.gui.ui.fullTaskTimeout.setText(str(datetime.timedelta(seconds = t.definition.full_task_timeout)))
+        if t.task_state.time_started != 0.0:
+            lt = time.localtime(t.task_state.time_started)
             timeString  = time.strftime("%Y.%m.%d  %H:%M:%S", lt)
             self.gui.ui.timeStarted.setText(timeString)
 
     ############################
     def __setRendererParams(self, t):
-        mem, index = resourceSizeToDisplay(t.definition.estimated_memory / 1024)
+        mem, index = resource_sizeToDisplay(t.definition.estimated_memory / 1024)
         self.gui.ui.estimatedMemoryLabel.setText("{} {}".format(mem, translateResourceIndex(index)))
         self.gui.ui.resolution.setText("{} x {}".format(t.definition.resolution[ 0 ], t.definition.resolution[ 1 ]))
         self.gui.ui.renderer.setText("{}".format(t.definition.renderer))
@@ -146,8 +146,8 @@ class AbsRenderingMainWindowCustomizer (object):
 
     ############################
     def __setFramePreview(self, t):
-        if "resultPreview" in t.taskState.extra_data:
-            self.sliderPreviews = t.taskState.extra_data[ "resultPreview" ]
+        if "resultPreview" in t.task_state.extra_data:
+            self.sliderPreviews = t.task_state.extra_data[ "resultPreview" ]
         self.gui.ui.frameSlider.setVisible(True)
         self.gui.ui.frameSlider.setRange(1, len(t.definition.rendererOptions.frames))
         self.gui.ui.frameSlider.setSingleStep(1)
@@ -160,8 +160,8 @@ class AbsRenderingMainWindowCustomizer (object):
     def __setPreview(self, t):
         self.gui.ui.outputFile.setText(u"{}".format(t.definition.output_file))
         self.gui.ui.frameSlider.setVisible(False)
-        if "resultPreview" in t.taskState.extra_data:
-            filePath = os.path.abspath(t.taskState.extra_data["resultPreview"])
+        if "resultPreview" in t.task_state.extra_data:
+            filePath = os.path.abspath(t.task_state.extra_data["resultPreview"])
             time.sleep(0.5)
             if os.path.exists(filePath):
                 self.gui.ui.previewLabel.setPixmap(QPixmap(filePath))
@@ -244,8 +244,8 @@ class AbsRenderingMainWindowCustomizer (object):
             task_id = definition.task_id
             task =  self.logic.get_task(task_id)
             renderer = self.logic.getRenderer(definition.renderer)
-            if len(task.taskState.subtask_states) > 0:
-                totalTasks = task.taskState.subtask_states.values()[0].extra_data['totalTasks']
+            if len(task.task_state.subtask_states) > 0:
+                totalTasks = task.task_state.subtask_states.values()[0].extra_data['totalTasks']
                 if definition.renderer in frameRenderers and definition.rendererOptions.useFrames:
                     frames = len (definition.rendererOptions.frames)
                     frameNum = self.gui.ui.frameSlider.value()
@@ -258,7 +258,7 @@ class AbsRenderingMainWindowCustomizer (object):
     def __getSubtask(self, num):
         subtask = None
         task = self.logic.get_task(self.currentTaskHighlighted.definition.task_id)
-        subtasks = [ sub  for sub in task.taskState.subtask_states.values() if sub.extra_data['startTask']  <= num <= sub.extra_data['endTask']  ]
+        subtasks = [ sub  for sub in task.task_state.subtask_states.values() if sub.extra_data['startTask']  <= num <= sub.extra_data['endTask']  ]
         if len(subtasks) > 0:
                 subtask = min(subtasks, key=lambda x: subtasksPriority(x))
         return subtask

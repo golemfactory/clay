@@ -18,7 +18,7 @@ class PbrtDialogCustomizer:
         self.rendererOptions = newTaskDialog.rendererOptions
 
         self.__init()
-        self.__setupConnections()
+        self.__setup_connections()
 
     #############################
     def __init(self):
@@ -43,7 +43,7 @@ class PbrtDialogCustomizer:
         self.gui.ui.pbrtPathLineEdit.setText(self.rendererOptions.pbrtPath)
 
     #############################
-    def __setupConnections(self):
+    def __setup_connections(self):
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__changeRendererOptions())
         self.gui.ui.pbrtPathButton.clicked.connect(self.__choosePbrtPath)

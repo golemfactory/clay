@@ -78,39 +78,39 @@ class NodesManager:
 
         ndslt = {}
         for sp in tcss.values():
-            ndslt[ sp.getChunkId() ] = {    "chunkProgress" : sp.getProgress(),
-                                            "cpuPower" : "{}".format(sp.getCpuPower()),
+            ndslt[ sp.getChunkId() ] = {    "chunkProgress" : sp.get_progress(),
+                                            "cpu_power" : "{}".format(sp.getCpuPower()),
                                             "timeLeft" : "{}".format(sp.getEstimatedTimeLeft()),
                                             "cshd" : sp.getChunkShortDescr()
                                         }
 
         ndscs = {}
 
-        ltss = ns.getLocalTaskStateSnapshot()
+        ltss = ns.get_local_task_state_snapshot()
         for sp in ltss.values():
-            ndscs[ sp.get_task_id() ] = {   "taskProgress" : sp.getProgress(),
-                                            "allocTasks" : "{}".format(sp.getTotalTasks()),
-                                            "allocChunks" : "{}".format(sp.getTotalChunks()),
-                                            "activeTasks" : "{}".format(sp.getActiveTasks()),
-                                            "activeChunks" : "{}".format(sp.getActiveChunks()),
-                                            "chunksLeft" : "{}".format(sp.getChunksLeft()),
-                                            "ltshd" : sp.get_taskShortDescr()
+            ndscs[ sp.get_task_id() ] = {   "taskProgress" : sp.get_progress(),
+                                            "allocTasks" : "{}".format(sp.get_total_tasks()),
+                                            "allocChunks" : "{}".format(sp.get_total_chunks()),
+                                            "activeTasks" : "{}".format(sp.get_active_tasks()),
+                                            "activeChunks" : "{}".format(sp.get_active_chunks()),
+                                            "chunksLeft" : "{}".format(sp.get_chunks_left()),
+                                            "ltshd" : sp.get_task_short_desc()
                                        }
 
         ep = "{}:{}".format(ns.endpointAddr, ns.endpointPort)
         ts = ns.getFormattedTimestamp()
         pn = "{}".format(ns.getPeersNum())
-        tn = "{}".format(ns.get_tasksNum())
+        tn = "{}".format(ns.get_tasks_num())
         lm = ""
         if len(ns.getLastNetworkMessages()) > 0:
             lm = ns.getLastNetworkMessages()[-1][ 0 ] + str(ns.getLastNetworkMessages()[-1][ 4 ])
 
 
-        ir = ns.isRunning()
+        ir = ns.is_running()
 
-        nodeDataState = NodeDataState(ir, ns.uid, ts, ep, pn, tn, lm, ndscs, ndslt)
+        node_data_state = NodeDataState(ir, ns.uid, ts, ep, pn, tn, lm, ndscs, ndslt)
 
-        self.uic.UpdateNodePresentationState(nodeDataState)
+        self.uic.UpdateNodePresentationState(node_data_state)
 
     ########################
     def runAdditionalNodes(self, numNodes):
@@ -121,8 +121,8 @@ class NodesManager:
         self.managerLogic.runAdditionalLocalNodes(uid, numNodes)
 
     ########################
-    def terminateNode(self, uid):
-        self.managerLogic.terminateNode(uid)
+    def terminate_node(self, uid):
+        self.managerLogic.terminate_node(uid)
 
     ########################
     def terminateAllNodes(self):
@@ -137,8 +137,8 @@ class NodesManager:
         self.managerLogic.loadTask(uid, filePath)
 
     ########################
-    def enqueueNewTask(self, uid, w, h, numSamplesPerPixel, file_name):
-        self.managerLogic.enqueueNewTask(uid, w, h, numSamplesPerPixel, file_name)
+    def enqueue_new_task(self, uid, w, h, numSamplesPerPixel, file_name):
+        self.managerLogic.enqueue_new_task(uid, w, h, numSamplesPerPixel, file_name)
 
 if __name__ == "__main__":
 

@@ -12,38 +12,38 @@ class AddTaskResourcesDialog:
         self.ui         = Ui_AddTaskResourcesDialog()
 
         self.ui.setupUi(self.window)
-        self.__initFolderTreeView()
-        self.__setupConnections()
+        self.__init_folder_tree_view()
+        self.__setup_connections()
 
     ###################
     def show(self):
         self.window.show()
 
     ###################
-    def __initFolderTreeView(self):
+    def __init_folder_tree_view(self):
 
-        fsModel = CheckableDirModel()
-        fsModel.setRootPath("")
-        fsModel.setFilter(QtCore.QDir.AllDirs | QtCore.QDir.Files | QtCore.QDir.NoDotAndDotDot)
+        fs_model = CheckableDirModel()
+        fs_model.setRootPath("")
+        fs_model.setFilter(QtCore.QDir.AllDirs | QtCore.QDir.Files | QtCore.QDir.NoDotAndDotDot)
 
-        self.ui.folderTreeView.setModel(fsModel)
+        self.ui.folderTreeView.setModel(fs_model)
         self.ui.folderTreeView.setColumnWidth(0, self.ui.folderTreeView.columnWidth(0) * 2)
 
     ###################
-    def __setupConnections(self):
+    def __setup_connections(self):
         QtCore.QObject.connect(self.ui.folderTreeView
                         , QtCore.SIGNAL("expanded (const QModelIndex)")
-                        , self.__treeViewExpanded)
+                        , self.__tree_view_expanded)
 
         QtCore.QObject.connect(self.ui.folderTreeView
                         , QtCore.SIGNAL("collapsed (const QModelIndex)")
-                        , self.__treeViewCollapsed)
+                        , self.__tree_view_collapsed)
 
     # SLOTS
     ############################
-    def __treeViewExpanded(self, index):
+    def __tree_view_expanded(self, index):
         self.ui.folderTreeView.resizeColumnToContents(0)
 
     ############################
-    def __treeViewCollapsed(self, index):
+    def __tree_view_collapsed(self, index):
         self.ui.folderTreeView.resizeColumnToContents(0)

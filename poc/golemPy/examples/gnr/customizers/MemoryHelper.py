@@ -20,7 +20,7 @@ def dirSizeToDisplay(dirSize):
         index = 0
     return dirSize, index
 
-def resourceSizeToDisplay(max_resource_size):
+def resource_sizeToDisplay(max_resource_size):
     if max_resource_size / (1024 * 1024) > 0:
         max_resource_size /= (1024 * 1024)
         index = 2

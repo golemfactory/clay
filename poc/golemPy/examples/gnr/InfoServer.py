@@ -23,21 +23,21 @@ class SnapshotGetter:
         except:
             logger.error("Can't connect to port: {}".format(port))
 
-    def sendSnapshot(self):
+    def send_snapshot(self):
         messages = []
         with self.lock:
             for port, node in self.otherNodes.items():
                 try:
-                    messages += pickle.loads(node.sendSnapshot())
+                    messages += pickle.loads(node.send_snapshot())
                 except:
                     del self.otherNodes[port]
 
-        with self.client.snapshotLock:
-            snapshot = self.client.lastNodeStateSnapshot
+        with self.client.snapshot_lock:
+            snapshot = self.client.last_node_state_snapshot
         messages.append(snapshot)
         try:
             messages = pickle.dumps(messages)
-            return { 'data': messages, 'resultType': 0 }
+            return { 'data': messages, 'result_type': 0 }
         except Exception as ex:
             logger.error("Can't serialize snapshots: {}".format(str(ex)))
 

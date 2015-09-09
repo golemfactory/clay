@@ -32,7 +32,7 @@ class ClientManagerSession:
         if type == MessageNewTask.Type:
             task = pickle.loads(msg.data)
             if self.client:
-                self.client.addNewTask(task)
+                self.client.add_new_task(task)
 
         elif type == MessageKillNode.Type:
             self.dropped()

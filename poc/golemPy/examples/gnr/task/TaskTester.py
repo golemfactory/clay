@@ -16,7 +16,7 @@ class TaskTester:
     def __init__(self, task, root_path, finishedCallback):
         assert isinstance(task, Task)
         self.task               = task
-        self.testTaskResPath    = None
+        self.test_taskResPath    = None
         self.tmpDir             = None
         self.success            = False
         self.lock               = Lock()
@@ -33,16 +33,16 @@ class TaskTester:
             if not success:
                 return False
 
-            ctd = self.task.queryExtraDataForTestTask()
+            ctd = self.task.query_extra_dataForTestTask()
 
 
             self.tt = PyTestTaskThread( self,
                                 ctd.subtask_id,
-                                ctd.workingDirectory,
-                                ctd.srcCode,
+                                ctd.working_directory,
+                                ctd.src_code,
                                 ctd.extra_data,
-                                ctd.shortDescription,
-                                self.testTaskResPath,
+                                ctd.short_description,
+                                self.test_taskResPath,
                                 self.tmpDir,
                                 0)
             self.tt.start()
@@ -56,32 +56,32 @@ class TaskTester:
         pass
 
     #########################
-    def getProgress(self):
+    def get_progress(self):
         if self.tt:
             with self.lock:
-                if self.tt.getError():
+                if self.tt.get_error():
                     logger.warning("Task not tested properly")
                     self.finishedCallback(False)
                     return 0
-                return self.tt.getProgress()
+                return self.tt.get_progress()
         return None
 
     #########################
     def __prepare_resources(self):
 
-        self.testTaskResPath = getTestTaskPath(self.root_path)
-        if not os.path.exists(self.testTaskResPath):
-            os.makedirs(self.testTaskResPath)
+        self.test_taskResPath = getTestTaskPath(self.root_path)
+        if not os.path.exists(self.test_taskResPath):
+            os.makedirs(self.test_taskResPath)
         else:
-            shutil.rmtree(self.testTaskResPath, True)
-            os.makedirs(self.testTaskResPath)
+            shutil.rmtree(self.test_taskResPath, True)
+            os.makedirs(self.test_taskResPath)
 
-        self.testTaskResDir = getTestTaskDirectory()
-        rh = TaskResourceHeader(self.testTaskResDir)
+        self.test_taskResDir = getTestTaskDirectory()
+        rh = TaskResourceHeader(self.test_taskResDir)
         resFile = self.task.prepare_resource_delta(self.task.header.task_id, rh)
 
         if resFile:
-            decompress_dir(self.testTaskResPath, resFile)
+            decompress_dir(self.test_taskResPath, resFile)
 
         return True
     #########################
@@ -95,10 +95,10 @@ class TaskTester:
             os.makedirs(self.tmpDir)
 
     ###########################
-    def task_computed(self, taskThread):
-        if taskThread.result:
-            res, estMem = taskThread.result
-        if taskThread.result and 'data' in res and res['data']:
+    def task_computed(self, task_thread):
+        if task_thread.result:
+            res, estMem = task_thread.result
+        if task_thread.result and 'data' in res and res['data']:
             logger.info("Test task computation success !")
             self.finishedCallback(True, estMem)
         else:

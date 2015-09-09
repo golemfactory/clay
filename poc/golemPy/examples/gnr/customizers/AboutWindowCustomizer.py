@@ -13,15 +13,15 @@ class AboutWindowCustomizer:
         self.gui    = gui
         self.logic  = logic
 
-        self.__setupConnections()
+        self.__setup_connections()
         self.__getVersion()
 
     #############################
-    def __setupConnections(self):
+    def __setup_connections(self):
         self.gui.ui.okButton.clicked.connect(self.gui.window.close)
 
     #############################
     def __getVersion(self):
-        name, version = self.logic.getAboutInfo()
+        name, version = self.logic.get_about_info()
         self.gui.ui.nameLabel.setText(name)
         self.gui.ui.versionLabel.setText(version)

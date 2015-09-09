@@ -74,7 +74,7 @@ class ThreeDSMaxTaskBuilder(FrameRenderingTaskBuiler):
                                    os.path.splitext(os.path.basename(self.taskDefinition.output_file))[0],
                                    self.taskDefinition.output_file,
                                    self.taskDefinition.outputFormat,
-                                   self.taskDefinition.fullTaskTimeout,
+                                   self.taskDefinition.full_task_timeout,
                                    self.taskDefinition.subtask_timeout,
                                    self.taskDefinition.resources,
                                    self.taskDefinition.estimated_memory,
@@ -104,7 +104,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
                   outfilebasename,
                   output_file,
                   outputFormat,
-                  fullTaskTimeout,
+                  full_task_timeout,
                   subtask_timeout,
                   taskResources,
                   estimated_memory,
@@ -113,12 +113,12 @@ class ThreeDSMaxTask(FrameRenderingTask):
                   cmdFile,
                   useFrames,
                   frames,
-                  returnAddress = "",
-                  returnPort = 0,
+                  return_address = "",
+                  return_port = 0,
                  ):
 
-        FrameRenderingTask.__init__(self, client_id, task_id, returnAddress, returnPort,
-                          ThreeDSMaxEnvironment.getId(), fullTaskTimeout, subtask_timeout,
+        FrameRenderingTask.__init__(self, client_id, task_id, return_address, return_port,
+                          ThreeDSMaxEnvironment.get_id(), full_task_timeout, subtask_timeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
                           totalTasks, resX, resY, outfilebasename, output_file, outputFormat,
                           root_path, estimated_memory, useFrames, frames)
@@ -129,7 +129,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
         self.framesGiven = {}
 
     #######################
-    def queryExtraData(self, perfIndex, num_cores = 0, client_id = None):
+    def query_extra_data(self, perf_index, num_cores = 0, client_id = None):
 
         if not self._acceptClient(client_id):
             logger.warning(" Client {} banned from this task ".format(client_id))
@@ -137,7 +137,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
 
         startTask, endTask = self._getNextTask()
 
-        workingDirectory = self._getWorkingDirectory()
+        working_directory = self._getWorkingDirectory()
         presetFile = self.__getPresetFileRelPath()
         sceneFile = self._getSceneFileRelPath()
         cmdFile = os.path.basename(self.cmd)
@@ -170,7 +170,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
         hash = "{}".format(random.getrandbits(128))
         self.subTasksGiven[ hash ] = extra_data
         self.subTasksGiven[ hash ]['status' ] = SubtaskStatus.starting
-        self.subTasksGiven[ hash ]['perf'] = perfIndex
+        self.subTasksGiven[ hash ]['perf'] = perf_index
         self.subTasksGiven[ hash ][ 'client_id' ] = client_id
 
         for frame in frames:
@@ -181,12 +181,12 @@ class ThreeDSMaxTask(FrameRenderingTask):
         else:
             self._updateFrameTaskPreview()
 
-        return self._newComputeTaskDef(hash, extra_data, workingDirectory, perfIndex)
+        return self._newComputeTaskDef(hash, extra_data, working_directory, perf_index)
 
     #######################
-    def queryExtraDataForTestTask(self):
+    def query_extra_dataForTestTask(self):
 
-        workingDirectory = self._getWorkingDirectory()
+        working_directory = self._getWorkingDirectory()
         presetFile = self.__getPresetFileRelPath()
         sceneFile = self._getSceneFileRelPath()
         cmdFile = os.path.basename(self.cmd)
@@ -215,17 +215,17 @@ class ThreeDSMaxTask(FrameRenderingTask):
 
         hash = "{}".format(random.getrandbits(128))
 
-        self.testTaskResPath = getTestTaskPath(self.root_path)
-        logger.debug(self.testTaskResPath)
-        if not os.path.exists(self.testTaskResPath):
-            os.makedirs(self.testTaskResPath)
+        self.test_taskResPath = getTestTaskPath(self.root_path)
+        logger.debug(self.test_taskResPath)
+        if not os.path.exists(self.test_taskResPath):
+            os.makedirs(self.test_taskResPath)
 
-        return self._newComputeTaskDef(hash, extra_data, workingDirectory, 0)
+        return self._newComputeTaskDef(hash, extra_data, working_directory, 0)
 
 
     #######################
     @checkSubtask_idWrapper
-    def getPriceMod(self, subtask_id):
+    def get_price_mod(self, subtask_id):
         perf =  (self.subTasksGiven[ subtask_id ]['endTask'] - self.subTasksGiven[ subtask_id ][ 'startTask' ]) + 1
         perf *= float(self.subTasksGiven[ subtask_id ]['perf']) / 1000
         perf *= 50
@@ -233,8 +233,8 @@ class ThreeDSMaxTask(FrameRenderingTask):
 
     #######################
     @checkSubtask_idWrapper
-    def restartSubtask(self, subtask_id):
-        FrameRenderingTask.restartSubtask(self, subtask_id)
+    def restart_subtask(self, subtask_id):
+        FrameRenderingTask.restart_subtask(self, subtask_id)
         if not self.useFrames:
             self._updateTaskPreview()
         else:
@@ -268,7 +268,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
 
 
     #######################
-    def _shortExtraDataRepr(self, perfIndex, extra_data):
+    def _short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data
         msg = []
         msg.append("scene file: {} ".format(l [ "sceneFile" ]))

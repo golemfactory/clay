@@ -3,7 +3,7 @@ import shutil
 import logging
 
 from golem.environments.Environment import Environment
-from golem.environments.checkCmd import checkCmd
+from golem.environments.checkCmd import check_cmd
 
 from examples.gnr.task.ThreeDSMaxCfgEditor import regenerateFile
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class ThreeDSMaxEnvironment(Environment):
     #########################
     @classmethod
-    def getId(cls):
+    def get_id(cls):
         return "3DSMAX"
 
     #########################
@@ -26,11 +26,11 @@ class ThreeDSMaxEnvironment(Environment):
         self.softwareName = '3dsmaxcmd.exe'
         self.configFileName = 'plugcfg_ln/mentalray_cpu.ini'
         self.configFileBackup = 'plugcfg_ln/mentalray_cpu.bak'
-        self.shortDescription = "3DS MAX Studio command tool (http://www.autodesk.pl/products/3ds-max/overview)"
+        self.short_description = "3DS MAX Studio command tool (http://www.autodesk.pl/products/3ds-max/overview)"
         self.path = ""
 
     #########################
-    def checkSoftware(self):
+    def check_software(self):
         if not self.is_windows():
             return False
         for var in self.softwareEnvVar:
@@ -42,11 +42,11 @@ class ThreeDSMaxEnvironment(Environment):
 
     #########################
     def supported(self) :
-        return self.checkSoftware()
+        return self.check_software()
 
     #########################
     def get3dsmaxcmdPath (self):
-        self.checkSoftware()
+        self.check_software()
         if os.path.isfile(self.path):
             return self.path
         else:
@@ -85,13 +85,13 @@ class ThreeDSMaxEnvironment(Environment):
 class PBRTEnvironment (Environment):
     #########################
     @classmethod
-    def getId(cls):
+    def get_id(cls):
         return "PBRT"
 
     #########################
     def __init__(self):
         Environment.__init__(self)
-        self.shortDescription =  "PBRT renderer (http://www.pbrt.org/)  "
+        self.short_description =  "PBRT renderer (http://www.pbrt.org/)  "
 
     #########################
     def supported(self) :
@@ -101,14 +101,14 @@ class PBRTEnvironment (Environment):
 class VRayEnvironment(Environment):
     #########################
     @classmethod
-    def getId(cls):
+    def get_id(cls):
         return "VRAY"
 
     #########################
     def __init__(self):
         Environment.__init__(self)
         self.software.append('V-Ray standalone')
-        self.shortDescription = "V-Ray Renderer (http://www.vray.com/)"
+        self.short_description = "V-Ray Renderer (http://www.vray.com/)"
         self.softwareEnvVariable = 'VRAY_PATH'
         if self.is_windows():
             self.softwareName = 'vray.exe'
@@ -117,7 +117,7 @@ class VRayEnvironment(Environment):
         self.path = ""
 
     #########################
-    def checkSoftware(self):
+    def check_software(self):
         if os.environ.get(self.softwareEnvVariable):
             self.path = os.path.join(os.environ.get(self.softwareEnvVariable), self.softwareName)
             if os.path.isfile(self.path):
@@ -126,11 +126,11 @@ class VRayEnvironment(Environment):
 
     #########################
     def supported(self):
-        return self.checkSoftware()
+        return self.check_software()
 
     #########################
     def getCmdPath (self):
-        self.checkSoftware()
+        self.check_software()
         if os.path.isfile(self.path):
             return self.path
         else:
@@ -140,14 +140,14 @@ class VRayEnvironment(Environment):
 class LuxRenderEnvironment(Environment):
     #########################
     @classmethod
-    def getId(cls):
+    def get_id(cls):
         return "LUXRENDER"
 
     #########################
     def __init__(self):
         Environment.__init__(self)
         self.software.append('LuxRender')
-        self.shortDescription = "LuxRenderer Renderer (http://www.luxrender.net/)"
+        self.short_description = "LuxRenderer Renderer (http://www.luxrender.net/)"
         self.softwareEnvVariables = ['LUXRENDER_ROOT']
         if self.is_windows():
             self.softwareName = ['luxconsole.exe', 'luxmerger.exe']
@@ -157,7 +157,7 @@ class LuxRenderEnvironment(Environment):
         self.luxMergerPath = ''
 
     #########################
-    def checkSoftware(self):
+    def check_software(self):
         luxInstalled = False
         for var in self.softwareEnvVariables:
             if os.environ.get(var):
@@ -170,11 +170,11 @@ class LuxRenderEnvironment(Environment):
 
     #########################
     def supported(self):
-        return self.checkSoftware()
+        return self.check_software()
 
     #########################
     def getLuxConsole(self):
-        self.checkSoftware()
+        self.check_software()
         if os.path.isfile(self.luxConsolePath):
             return self.luxConsolePath
         else:
@@ -182,7 +182,7 @@ class LuxRenderEnvironment(Environment):
 
     #########################
     def getLuxMerger(self):
-        self.checkSoftware()
+        self.check_software()
         if os.path.isfile(self.luxMergerPath):
             return self.luxMergerPath
         else:
@@ -192,23 +192,23 @@ class LuxRenderEnvironment(Environment):
 class BlenderEnvironment(Environment):
     #########################
     @classmethod
-    def getId(cls):
+    def get_id(cls):
         return "Blender"
 
     #########################
     def __init__(self):
         Environment.__init__(self)
         self.software.append('Blender')
-        self.shortDescription = "Blender (http://www.blender.org/)"
+        self.short_description = "Blender (http://www.blender.org/)"
         self.softwareName = 'blender'
 
     #########################
     def supported(self):
-        return self.checkSoftware()
+        return self.check_software()
 
     #########################
-    def checkSoftware(self):
-        return checkCmd(self.softwareName)
+    def check_software(self):
+        return check_cmd(self.softwareName)
 
     #########################
     def getBlender(self):

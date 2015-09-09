@@ -17,20 +17,20 @@ def returnData(files):
         file_data = zlib.compress(file_data, 9)
         res.append(pickle.dumps((os.path.basename(f), file_data)))
 
-    return { 'data': res, 'resultType': 0 }
+    return { 'data': res, 'result_type': 0 }
 
 ############################
 def returnFiles(files):
-    copyPath = os.path.normpath(os.path.join(tmpPath, ".."))
+    copyPath = os.path.normpath(os.path.join(tmp_path, ".."))
     for f in files:
         shutil.copy2(f, copyPath)
 
     files = [ os.path.normpath(os.path.join(copyPath, os.path.basename(f))) for f in files]
-    return {'data': files, 'resultType': 1 }
+    return {'data': files, 'result_type': 1 }
 
 ############################
 def getFiles():
-    output_files = tmpPath
+    output_files = tmp_path
     return glob.glob(output_files + "/*.exr")
 
 ############################
@@ -82,7 +82,7 @@ def formatBlenderRenderCmd(cmdFile, output_files, outfilebasename, sceneFile, sc
 def runBlenderTask(outfilebasename, sceneFile, scriptSrc, startTask, engine, frames):
     print "Blender Render Task"
 
-    output_files = tmpPath
+    output_files = tmp_path
 
     removeOldFiles()
 
@@ -96,7 +96,7 @@ def runBlenderTask(outfilebasename, sceneFile, scriptSrc, startTask, engine, fra
     sceneFile = os.path.normpath(os.path.join(os.getcwd(), sceneFile))
     if not os.path.exists(os.path.normpath(sceneFile)):
         print "Scene file does not exist"
-        return { 'data': [], 'resultType': 0 }
+        return { 'data': [], 'result_type': 0 }
 
 
     for frame in frames:

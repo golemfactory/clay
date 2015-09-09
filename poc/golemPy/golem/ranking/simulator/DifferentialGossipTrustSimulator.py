@@ -129,8 +129,8 @@ class DifferentialGossipTrustSimulator(RankSimulator):
         return neighOpinion > threshold
 
     def syncRanking(self):
-        k = self.countGossipNumVec()
-        self.startGossip(k)
+        k = self.count_gossip_num_vec()
+        self.start_gossip(k)
         while True:
             self.doGossip()
             if self.gossipStep > 0 and self.stop_gossip():
@@ -141,7 +141,7 @@ class DifferentialGossipTrustSimulator(RankSimulator):
         print "GOSSIP STEP {}".format(self.gossipStep)
         self.gossipStep = 0
 
-    def startGossip(self, k):
+    def start_gossip(self, k):
         self.gossipStep = 0
         self.finished = [ False, False ]
         for rank in self.ranking.values():
@@ -155,7 +155,7 @@ class DifferentialGossipTrustSimulator(RankSimulator):
 
         self.send_gossips(gossips)
 
-    def countGossipNumVec(self):
+    def count_gossip_num_vec(self):
         nodes = self.ranking.keys()
         k = {}
         for node in nodes:
@@ -172,20 +172,20 @@ class DifferentialGossipTrustSimulator(RankSimulator):
     def send_gossips(self, gossips):
         for gossip in gossips:
             if gossip[0] is not None and len(gossip[0]) > 0:
-                gossipVec, node1 = gossip[0]
-                print "gossipVec {}, node1 {}".format(gossipVec, node1)
-                self.ranking[node1].computing.hear_gossip(gossipVec)
+                gossip_vec, node1 = gossip[0]
+                print "gossip_vec {}, node1 {}".format(gossip_vec, node1)
+                self.ranking[node1].computing.hear_gossip(gossip_vec)
                 k = self.ranking[node1].computing.gossipNum
                 nodes = self.getRandomNeighbours(node1, k)
                 for node in nodes:
-                    self.ranking[node].computing.hear_gossip(gossipVec)
+                    self.ranking[node].computing.hear_gossip(gossip_vec)
             if gossip[1] is not None and len(gossip[1]) > 0:
-                gossipVec, node1 = gossip[1]
-                self.ranking[node1].delegating.hear_gossip(gossipVec)
+                gossip_vec, node1 = gossip[1]
+                self.ranking[node1].delegating.hear_gossip(gossip_vec)
                 k = self.ranking[node1].delegating.gossipNum
                 nodes = self.getRandomNeighbours(node1, k)
                 for node in nodes:
-                    self.ranking[node].computing.hear_gossip(gossipVec)
+                    self.ranking[node].computing.hear_gossip(gossip_vec)
 
     def getRandomNeighbours(self, node_id, k):
         return random.sample(self.network.nodes[node_id], k)

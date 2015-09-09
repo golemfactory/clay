@@ -17,10 +17,10 @@ class UpdateOtherGolemsDialogCustomizer:
         self.logic  = logic
         self.golemDir = ""
 
-        self.__setupConnections()
+        self.__setup_connections()
 
     #############################
-    def __setupConnections(self):
+    def __setup_connections(self):
         self.gui.ui.folderButton.clicked.connect(self.__chooseSrcFolder)
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__updateOtherGolems())
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)

@@ -25,12 +25,12 @@ class GNRClientEventListener(GolemClientEventListener):
         GolemClientEventListener.__init__(self)
 
     #####################
-    def taskUpdated(self, task_id):
-        self.logic.taskStatusChanged(task_id)
+    def task_updated(self, task_id):
+        self.logic.task_statusChanged(task_id)
 
     #####################
-    def checkNetworkState(self):
-        self.logic.checkNetworkState()
+    def check_network_state(self):
+        self.logic.check_network_state()
 
 taskToRemoveStatus = [ TaskStatus.aborted, TaskStatus.failure, TaskStatus.finished, TaskStatus.paused ]
 
@@ -39,11 +39,11 @@ class GNRApplicationLogic(QtCore.QObject):
     def __init__(self):
         QtCore.QObject.__init__(self)
         self.tasks              = {}
-        self.testTasks          = {}
+        self.test_tasks          = {}
         self.taskTypes          = {}
         self.customizer         = None
         self.root_path           = os.path.join(os.environ.get('GOLEM'), 'examples/gnr')
-        self.nodesManagerClient = None
+        self.nodes_manager_client = None
         self.addNewNodesFunction = lambda x: None
 
     ######################
@@ -53,37 +53,37 @@ class GNRApplicationLogic(QtCore.QObject):
     ######################
     def registerClient(self, client):
         self.client = client
-        self.client.registerListener(GNRClientEventListener(self))
+        self.client.register_listener(GNRClientEventListener(self))
 
     ######################
     def registerStartNewNodeFunction(self, func):
         self.addNewNodesFunction = func
 
     ######################
-    def getResDirs(self):
-        return self.client.getResDirs()
+    def get_res_dirs(self):
+        return self.client.get_res_dirs()
 
     ######################
-    def removeComputedFiles(self):
-        self.client.removeComputedFiles()
+    def remove_computed_files(self):
+        self.client.remove_computed_files()
 
     ######################
-    def removeDistributedFiles(self):
-        self.client.removeDistributedFiles()
+    def remove_distributed_files(self):
+        self.client.remove_distributed_files()
 
     ######################
-    def removeReceivedFiles(self):
-        self.client.removeReceivedFiles()
+    def remove_received_files(self):
+        self.client.remove_received_files()
 
     ######################
-    def checkNetworkState(self):
-        listenPort = self.client.p2pservice.cur_port
+    def check_network_state(self):
+        listen_port = self.client.p2pservice.cur_port
         task_server_port = self.client.task_server.cur_port
-        if listenPort == 0 or task_server_port == 0:
+        if listen_port == 0 or task_server_port == 0:
             self.customizer.gui.ui.errorLabel.setText("Application not listening, check config file.")
             return
-        peersNum = len(self.client.p2pservice.peers)
-        if peersNum == 0:
+        peers_num = len(self.client.p2pservice.peers)
+        if peers_num == 0:
             self.customizer.gui.ui.errorLabel.setText("Not connected to Golem Network. Check seed parameters.")
             return
 
@@ -93,13 +93,13 @@ class GNRApplicationLogic(QtCore.QObject):
     def startNodesManagerClient(self):
         if self.client:
             config_desc = self.client.config_desc
-            self.nodesManagerClient = NodesManagerUidClient (config_desc.client_uid,
+            self.nodes_manager_client = NodesManagerUidClient (config_desc.client_uid,
                                                            config_desc.manager_address,
                                                            config_desc.manager_port,
                                                            None,
                                                            self)
-            self.nodesManagerClient.start()
-            self.client.registerNodesManagerClient(self.nodesManagerClient)
+            self.nodes_manager_client.start()
+            self.client.register_nodes_manager_client(self.nodes_manager_client)
         else:
             logger.error("Can't register nodes manager client. No client instance.")
 
@@ -114,12 +114,12 @@ class GNRApplicationLogic(QtCore.QObject):
         return self.taskTypes
 
     ######################
-    def getStatus(self):
-        return self.client.getStatus()
+    def get_status(self):
+        return self.client.get_status()
 
     ######################
-    def getAboutInfo(self):
-        return self.client.getAboutInfo()
+    def get_about_info(self):
+        return self.client.get_about_info()
 
     ######################
     def getConfig(self):
@@ -141,17 +141,17 @@ class GNRApplicationLogic(QtCore.QObject):
     def change_config ( self, cfgDesc):
         oldCfgDesc = self.client.config_desc
         if (oldCfgDesc.manager_address != cfgDesc.manager_address) or (oldCfgDesc.manager_port != cfgDesc.manager_port):
-            if self.nodesManagerClient is not None:
-                self.nodesManagerClient.dropConnection()
-                del self.nodesManagerClient
-            self.nodesManagerClient = NodesManagerUidClient(cfgDesc.client_uid,
+            if self.nodes_manager_client is not None:
+                self.nodes_manager_client.dropConnection()
+                del self.nodes_manager_client
+            self.nodes_manager_client = NodesManagerUidClient(cfgDesc.client_uid,
                                                           cfgDesc.manager_address,
                                                           cfgDesc.manager_port,
                                                           None,
                                                           self)
 
-            self.nodesManagerClient.start()
-            self.client.registerNodesManagerClient(self.nodesManagerClient)
+            self.nodes_manager_client.start()
+            self.client.register_nodes_manager_client(self.nodes_manager_client)
         self.client.change_config(cfgDesc)
 
     ######################
@@ -162,45 +162,45 @@ class GNRApplicationLogic(QtCore.QObject):
     def startTask(self, task_id):
         ts = self.get_task(task_id)
 
-        if ts.taskState.status != TaskStatus.notStarted:
-            errorMsg = "Task already started"
-            self._showErrorWindow(errorMsg)
-            logger.error(errorMsg)
+        if ts.task_state.status != TaskStatus.notStarted:
+            error_msg = "Task already started"
+            self._showErrorWindow(error_msg)
+            logger.error(error_msg)
             return
 
         tb = self._getBuilder(ts)
 
-        t = Task.buildTask(tb)
+        t = Task.build_task(tb)
 
-        self.client.enqueueNewTask(t)
+        self.client.enqueue_new_task(t)
 
     ######################
-    def _getBuilder(self, taskState):
+    def _getBuilder(self, task_state):
         #FIXME Bardzo tymczasowe rozwiazanie dla zapewnienia zgodnosci
-        if hasattr(taskState.definition, "renderer"):
-            taskState.definition.taskType = taskState.definition.renderer
+        if hasattr(task_state.definition, "renderer"):
+            task_state.definition.taskType = task_state.definition.renderer
 
-        return self.taskTypes[ taskState.definition.taskType ].taskBuilderType(self.client.getId(), taskState.definition, self.client.getRootPath())
-
-    ######################
-    def restartTask(self, task_id):
-        self.client.restartTask(task_id)
+        return self.taskTypes[ task_state.definition.taskType ].task_builderType(self.client.get_id(), task_state.definition, self.client.get_root_path())
 
     ######################
-    def abortTask(self, task_id):
-        self.client.abortTask(task_id)
+    def restart_task(self, task_id):
+        self.client.restart_task(task_id)
 
     ######################
-    def pauseTask(self, task_id):
-        self.client.pauseTask(task_id)
+    def abort_task(self, task_id):
+        self.client.abort_task(task_id)
 
     ######################
-    def resumeTask(self, task_id):
-        self.client.resumeTask(task_id)
+    def pause_task(self, task_id):
+        self.client.pause_task(task_id)
 
     ######################
-    def deleteTask(self, task_id):
-        self.client.deleteTask(task_id)
+    def resume_task(self, task_id):
+        self.client.resume_task(task_id)
+
+    ######################
+    def delete_task(self, task_id):
+        self.client.delete_task(task_id)
         self.customizer.remove_task(task_id)
 
     ######################
@@ -212,8 +212,8 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.showNewTaskDialog(task_id)
 
     ######################
-    def restartSubtask (self, subtask_id):
-        self.client.restartSubtask(subtask_id)
+    def restart_subtask (self, subtask_id):
+        self.client.restart_subtask(subtask_id)
 
     ######################
     def changeTask (self, task_id):
@@ -224,29 +224,29 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.showTaskResult(task_id)
 
     ######################
-    def change_timeouts (self, task_id, fullTaskTimeout, subtask_timeout, minSubtaskTime):
+    def change_timeouts (self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
         if task_id in self.tasks:
             task = self.tasks[task_id]
-            task.definition.fullTaskTimeout = fullTaskTimeout
-            task.definition.minSubtaskTime = minSubtaskTime
+            task.definition.full_task_timeout = full_task_timeout
+            task.definition.min_subtask_time = min_subtask_time
             task.definition.subtask_timeout = subtask_timeout
-            self.client.change_timeouts(task_id, fullTaskTimeout, subtask_timeout, minSubtaskTime)
+            self.client.change_timeouts(task_id, full_task_timeout, subtask_timeout, min_subtask_time)
             self.customizer.updateTaskAdditionalInfo(task)
         else:
             logger.error("It's not my task: {} ", task_id)
 
     ######################
     def getTestTasks(self):
-        return self.testTasks
+        return self.test_tasks
 
     ######################
     def addTaskFromDefinition (self, definition):
-        taskState = self._getNewTaskState()
-        taskState.status = TaskStatus.notStarted
+        task_state = self._getNewTaskState()
+        task_state.status = TaskStatus.notStarted
 
-        taskState.definition = definition
+        task_state.definition = definition
 
-        self.add_tasks([taskState])
+        self.add_tasks([task_state])
 
     ######################
     def add_tasks(self, tasks):
@@ -271,16 +271,16 @@ class GNRApplicationLogic(QtCore.QObject):
             assert False, "Task type {} already registered".format(taskType.name)
 
     ######################
-    def registerNewTestTaskType(self, testTaskInfo):
-        if testTaskInfo.name not in self.testTasks:
-            self.testTasks[ testTaskInfo.name ] = testTaskInfo
+    def registerNewTestTaskType(self, test_taskInfo):
+        if test_taskInfo.name not in self.test_tasks:
+            self.test_tasks[ test_taskInfo.name ] = test_taskInfo
         else:
-            assert False, "Test task {} already registered".format(testTaskInfo.name)
+            assert False, "Test task {} already registered".format(test_taskInfo.name)
 
     ######################
-    def saveTask(self, taskState, filePath):
+    def saveTask(self, task_state, filePath):
         with open(filePath, "wb") as f:
-            tspickled = pickle.dumps(taskState)
+            tspickled = pickle.dumps(task_state)
             f.write(tspickled)
 
     ######################
@@ -292,14 +292,14 @@ class GNRApplicationLogic(QtCore.QObject):
 
 
     ######################
-    def runTestTask(self, taskState):
-        if self._validateTaskState(taskState):
+    def runTestTask(self, task_state):
+        if self._validateTaskState(task_state):
 
-            tb = self._getBuilder(taskState)
+            tb = self._getBuilder(task_state)
 
-            t = Task.buildTask(tb)
+            t = Task.build_task(tb)
 
-            self.tt = TaskTester(t, self.client.getRootPath(), self._testTaskComputationFinished)
+            self.tt = TaskTester(t, self.client.get_root_path(), self._test_taskComputationFinished)
 
             self.progressDialog = TestingTaskProgressDialog(self.customizer.gui.window )
             self.progressDialog.show()
@@ -311,29 +311,29 @@ class GNRApplicationLogic(QtCore.QObject):
             return False
 
     ######################
-    def getEnvironments(self) :
-        return self.client.getEnvironments()
+    def get_environments(self) :
+        return self.client.get_environments()
 
     ######################
-    def changeAcceptTasksForEnvironment(self, envId, state):
-        self.client.changeAcceptTasksForEnvironment(envId, state)
+    def change_accept_tasks_for_environment(self, env_id, state):
+        self.client.change_accept_tasks_for_environment(env_id, state)
 
     ######################
-    def _testTaskComputationFinished(self, success, estMem = 0):
+    def _test_taskComputationFinished(self, success, estMem = 0):
         if success:
             self.progressDialog.showMessage("Test task computation success!")
         else:
             self.progressDialog.showMessage("Task test computation failure... Check resources.")
         if self.customizer.newTaskDialogCustomizer:
-            self.customizer.newTaskDialogCustomizer.testTaskComputationFinished(success, estMem)
+            self.customizer.newTaskDialogCustomizer.test_taskComputationFinished(success, estMem)
 
     ######################
-    def taskStatusChanged(self, task_id):
+    def task_statusChanged(self, task_id):
 
         if task_id in self.tasks:
-            ts = self.client.querryTaskState(task_id)
+            ts = self.client.querry_task_state(task_id)
             assert isinstance(ts, TaskState)
-            self.tasks[task_id].taskState = ts
+            self.tasks[task_id].task_state = ts
             self.customizer.updateTasks(self.tasks)
             if ts.status in taskToRemoveStatus:
                 self.client.task_server.remove_task_header(task_id)
@@ -354,9 +354,9 @@ class GNRApplicationLogic(QtCore.QObject):
 
 
     ######################
-    def _validateTaskState(self, taskState):
+    def _validateTaskState(self, task_state):
 
-        td = taskState.definition
+        td = task_state.definition
         if not os.path.exists(td.mainProgramFile):
             self._showErrorWindow("Main program file does not exist: {}".format(td.mainProgramFile))
             return False

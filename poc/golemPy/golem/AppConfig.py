@@ -33,8 +33,8 @@ class CommonConfig:
                   end_port = END_PORT,
                   optimalPeerNum = OPTIMAL_PEER_NUM,
                   distributedResNum = DISTRIBUTED_RES_NUM,
-                  appName = APP_NAME,
-                  appVersion = APP_VERSION):
+                  app_name = APP_NAME,
+                  app_version = APP_VERSION):
 
         self._section = section
 
@@ -44,8 +44,8 @@ class CommonConfig:
         ConfigEntry.create_property(section, "manager address", manager_address, self, "ManagerAddress")
         ConfigEntry.create_property(section, "manager listen port", manager_port, self, "ManagerListenPort")
         ConfigEntry.create_property(section, "distributed res num", distributedResNum, self, "DistributedResNum")
-        ConfigEntry.create_property(section, "application name", appName, self, "AppName")
-        ConfigEntry.create_property(section, "application version", appVersion, self, "AppVersion")
+        ConfigEntry.create_property(section, "application name", app_name, self, "AppName")
+        ConfigEntry.create_property(section, "application version", app_version, self, "AppVersion")
 
     ##############################
     def section(self):
@@ -100,7 +100,7 @@ class NodeConfig:
                   use_distributed_resource_management = USE_DISTRIBUTED_RESOURCE_MANAGEMENT,
                   p2p_session_timeout = P2P_SESSION_TIMEOUT, task_session_timeout = TASK_SESSION_TIMEOUT,
                   resource_session_timeout = RESOURCE_SESSION_TIMEOUT, plugin_port = PLUGIN_PORT,
-                  eth_account = ETH_ACCOUNT_NAME, useIp6 = USE_IP6):
+                  eth_account = ETH_ACCOUNT_NAME, use_ipv6 = USE_IP6):
         self._section = "Node {}".format(node_id)
 
         estimated = NodeConfig.readEstimatedPerformance()
@@ -133,7 +133,7 @@ class NodeConfig:
         ConfigEntry.create_property(self.section(), "resource session timeout", resource_session_timeout, self, "ResourceSessionTimeout")
         ConfigEntry.create_property(self.section(), "plugin port", plugin_port, self, "PluginPort")
         ConfigEntry.create_property(self.section(), "eth account name", eth_account, self, "EthAccount")
-        ConfigEntry.create_property(self.section(), "listen of Ip6", useIp6, self, "UseIp6")
+        ConfigEntry.create_property(self.section(), "listen of Ip6", use_ipv6, self, "UseIp6")
 
     ##############################
     def section(self):
@@ -152,7 +152,7 @@ class AppConfig:
 
     ##############################
     @classmethod
-    def loadConfig(cls, cfgFile = CONFIG_FILENAME):
+    def load_config(cls, cfgFile = CONFIG_FILENAME):
 
         logger = logging.getLogger(__name__)
 
@@ -183,7 +183,7 @@ class AppConfig:
         self._cfg = cfg
 
     ##############################
-    def getOptimalPeerNum(self):
+    def get_optimal_peer_num(self):
         return self._cfg.get_common_config().getOptimalPeerNum()
 
     def getStartPort(self):
@@ -213,11 +213,11 @@ class AppConfig:
     def getSeedHostPort(self):
         return self._cfg.get_node_config().getSeedHostPort()
 
-    def getRootPath(self):
+    def get_root_path(self):
         return self._cfg.get_node_config().getRootPath()
 
-    def getSendPings(self):
-        return self._cfg.get_node_config().getSendPings()
+    def get_send_pings(self):
+        return self._cfg.get_node_config().get_send_pings()
 
     def getPingsInterval(self):
         return self._cfg.get_node_config().getPingsInterval()
@@ -267,7 +267,7 @@ class AppConfig:
     def getUseDistributedResourceManagement(self):
         return self._cfg.get_node_config().getUseDistributedResourceManagement()
 
-    def getRequestingTrust(self):
+    def get_requesting_trust(self):
         return self._cfg.get_node_config().getRequestingTrust()
 
     def getComputingTrust(self):
@@ -282,10 +282,10 @@ class AppConfig:
     def getResourceSessionTimeout(self):
         return self._cfg.get_node_config().getResourceSessionTimeout()
 
-    def getPluginPort(self):
+    def get_plugin_port(self):
         return self._cfg.get_node_config().getPluginPort()
 
-    def getEthAccount(self):
+    def get_eth_account(self):
         return self._cfg.get_node_config().getEthAccount()
 
     def getUseIp6(self):
@@ -319,7 +319,7 @@ class AppConfig:
         self._cfg.get_node_config().setResourceSessionTimeout(cfgDesc.resource_session_timeout)
         self._cfg.get_node_config().setPluginPort(cfgDesc.plugin_port)
         self._cfg.get_node_config().setEthAccount(cfgDesc.eth_account)
-        self._cfg.get_node_config().setUseIp6(cfgDesc.useIp6)
+        self._cfg.get_node_config().setUseIp6(cfgDesc.use_ipv6)
 
         self._cfg.get_common_config().setManagerAddress(cfgDesc.manager_address)
         self._cfg.get_common_config().setManagerListenPort(cfgDesc.manager_port)

@@ -28,8 +28,8 @@ class NodeConfig:
     def __init__(self, node_id, environments = []):
         self._section = "Node {}".format(node_id)
 
-        for envId, (envName, supported) in environments.iteritems():
-            ConfigEntry.create_property(self.section(), envId.lower(), int(supported), self, envName)
+        for env_id, (envName, supported) in environments.iteritems():
+            ConfigEntry.create_property(self.section(), env_id.lower(), int(supported), self, envName)
 
     ##############################
     def section(self):
@@ -40,7 +40,7 @@ class EnvironmentsConfig:
 
     ##############################
     @classmethod
-    def loadConfig(cls, node_id, environments, cfgFile = CONFIG_FILENAME):
+    def load_config(cls, node_id, environments, cfgFile = CONFIG_FILENAME):
 
         cfg  = SimpleConfig(CommonConfig(), NodeConfig(node_id, environments), cfgFile, refresh = False, check_uid = False)
 
@@ -51,7 +51,7 @@ class EnvironmentsConfig:
         self._cfg = cfg
 
     ##############################
-    def getConfigEntries(self):
+    def get_config_entries(self):
         return self._cfg.get_node_config()
 
     ##############################

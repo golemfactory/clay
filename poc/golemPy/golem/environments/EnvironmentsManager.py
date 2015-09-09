@@ -5,50 +5,50 @@ class EnvironmentsManager:
     def __init__(self):
         self.supportedEnvironments = set()
         self.environments = set()
-        self.envConfig = None
+        self.env_config= None
 
     ############################
-    def loadConfig(self, client_id):
-        self.envConfig = EnvironmentsConfig.loadConfig(client_id, self.getEnvironmentsToConfig())
-        configEntries = self.envConfig.getConfigEntries()
+    def load_config(self, client_id):
+        self.env_config= EnvironmentsConfig.load_config(client_id, self.get_environments_to_config())
+        config_entries = self.env_config.get_config_entries()
         for env in self.environments:
-            getterForEnv = getattr(configEntries, "get" + env.getId())
-            env.acceptTasks = getterForEnv()
+            getterForEnv = getattr(config_entries, "get" + env.get_id())
+            env.accept_tasks = getterForEnv()
 
     ############################
-    def addEnvironment(self, environment):
+    def add_environment(self, environment):
         self.environments.add(environment)
         if environment.supported():
-            self.supportedEnvironments.add(environment.getId())
+            self.supportedEnvironments.add(environment.get_id())
 
     ############################
-    def supported(self, envId):
-        return envId in self.supportedEnvironments
+    def supported(self, env_id):
+        return env_id in self.supportedEnvironments
 
     ############################
-    def acceptTasks(self, envId):
+    def accept_tasks(self, env_id):
         for env in self.environments:
-            if env.getId() == envId:
-                return env.isAccepted()
+            if env.get_id() == env_id:
+                return env.is_accepted()
 
     ############################
-    def getEnvironments(self):
+    def get_environments(self):
         return self.environments
 
     ############################
-    def getEnvironmentsToConfig(self):
+    def get_environments_to_config(self):
         envs = {}
         for env in self.environments:
-            envs[ env.getId() ] = (env.getId(), True)
+            envs[ env.get_id() ] = (env.get_id(), True)
         return envs
 
     ############################
-    def changeAcceptTasks(self, envId, state):
+    def change_accept_tasks(self, env_id, state):
         for env in self.environments:
-            if env.getId() == envId:
-                env.acceptTasks = state
-                configEntries = self.envConfig.getConfigEntries()
-                setterForEnv = getattr(configEntries, "set" + env.getId())
-                setterForEnv(int (state))
-                self.envConfig = self.envConfig.change_config()
+            if env.get_id() == env_id:
+                env.accept_tasks = state
+                config_entries = self.env_config.get_config_entries()
+                setter_for_env = getattr(config_entries, "set" + env.get_id())
+                setter_for_env(int (state))
+                self.env_config= self.env_config.change_config()
                 return

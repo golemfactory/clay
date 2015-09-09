@@ -24,7 +24,7 @@ class NewTaskDialogCustomizer:
         self.options = None
 
         self.addTaskResourceDialog      = None
-        self.taskState                  = None
+        self.task_state                  = None
         self.addTaskResourcesDialogCustomizer = None
 
         self._setupConnections()
@@ -141,7 +141,7 @@ class NewTaskDialogCustomizer:
     #############################
     def _loadBasicTaskParams(self, definition):
         self._loadTaskType(definition)
-        setTimeSpinBoxes(self.gui, definition.fullTaskTimeout, definition.subtask_timeout, definition.minSubtaskTime)
+        setTimeSpinBoxes(self.gui, definition.full_task_timeout, definition.subtask_timeout, definition.min_subtask_time)
         self.gui.ui.mainProgramFileLineEdit.setText(definition.mainProgramFile)
         self.gui.ui.totalSpinBox.setValue(definition.totalSubtasks)
 
@@ -176,14 +176,14 @@ class NewTaskDialogCustomizer:
 
     #############################
     def _finishButtonClicked(self):
-        self.taskState = RenderingTaskState()
-        self.taskState.status = TaskStatus.notStarted
-        self.taskState.definition = self._queryTaskDefinition()
+        self.task_state = RenderingTaskState()
+        self.task_state.status = TaskStatus.notStarted
+        self.task_state.definition = self._queryTaskDefinition()
         self._addCurrentTask()
 
     #############################
     def _addCurrentTask(self):
-        self.logic.add_tasks([ self.taskState ])
+        self.logic.add_tasks([ self.task_state ])
         self.gui.window.close()
 
     #############################
@@ -206,7 +206,7 @@ class NewTaskDialogCustomizer:
     #############################
     def _readBasicTaskParams(self, definition):
         definition.task_id = u"{}".format(self.gui.ui.taskIdLabel.text())
-        definition.fullTaskTimeout, definition.subtask_timeout, definition.minSubtaskTime = getTimeValues(self.gui)
+        definition.full_task_timeout, definition.subtask_timeout, definition.min_subtask_time = getTimeValues(self.gui)
         definition.mainProgramFile = u"{}".format(self.gui.ui.mainProgramFileLineEdit.text())
         definition.optimizeTotal = self.gui.ui.optimizeTotalCheckBox.isChecked()
         if definition.optimizeTotal:

@@ -14,13 +14,13 @@ class AddResourcesDialogCustomizer:
 
         self.resources  = set()
 
-        self.__setupConnections()
+        self.__setup_connections()
 
     #############################
-    def __setupConnections(self):
+    def __setup_connections(self):
         self.gui.ui.okButton.clicked.connect(self.__okButtonClicked)
 
     #############################
     def __okButtonClicked(self):
-        self.resources = self.gui.ui.folderTreeView.model().exportChecked()
+        self.resources = self.gui.ui.folderTreeView.model().export_checked()
         self.gui.window.close()

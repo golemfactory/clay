@@ -80,7 +80,7 @@ class ConfigApprover(object):
     def _init_actions(self):
         dont_change_opt = ['seed_host', 'root_path', 'max_resource_size', 'max_memory_size',
                            'use_distributed_resource_management', 'use_waiting_for_task_timeout', 'send_pings',
-                           'useIp6', 'eth_account', 'root_path']
+                           'use_ipv6', 'eth_account', 'root_path']
         to_int_opt = ['seed_host_port', 'manager_port', 'num_cores', 'opt_num_peers', 'dist_res_num',
                       'waiting_for_task_timeout', 'p2p_session_timeout', 'task_session_timeout',
                       'resource_session_timeout', 'pings_interval', 'max_results_sending_delay', ]

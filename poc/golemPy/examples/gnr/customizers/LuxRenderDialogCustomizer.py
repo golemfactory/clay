@@ -21,7 +21,7 @@ class LuxRenderDialogCustomizer:
         self.rendererOptions = newTaskDialog.rendererOptions
 
         self.__init()
-        self.__setupConnections()
+        self.__setup_connections()
 
     #############################
     def __init(self):
@@ -36,7 +36,7 @@ class LuxRenderDialogCustomizer:
         self.gui.ui.luxConsoleLineEdit.setText(u"{}".format(self.rendererOptions.luxconsole))
 
     #############################
-    def __setupConnections(self):
+    def __setup_connections(self):
         self.gui.ui.cancelButton.clicked.connect(self.gui.close)
         self.gui.ui.okButton.clicked.connect(lambda: self.__changeRendererOptions())
         QtCore.QObject.connect(self.gui.ui.sendLuxRadioButton, QtCore.SIGNAL("toggled(bool)"), self.__sendLuxSettingsChanged)

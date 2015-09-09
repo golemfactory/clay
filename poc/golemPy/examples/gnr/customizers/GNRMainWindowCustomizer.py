@@ -73,8 +73,8 @@ class GNRMainWindowCustomizer:
 
     ############################
     # Add new task to golem client
-    def enqueueNewTask(self, uiNewTaskInfo):
-        self.logic.enqueueNewTask(uiNewTaskInfo)
+    def enqueue_new_task(self, uiNewTaskInfo):
+        self.logic.enqueue_new_task(uiNewTaskInfo)
 
     ############################
     # Updates tasks information in gui
@@ -83,14 +83,14 @@ class GNRMainWindowCustomizer:
             task_id = self.gui.ui.taskTableWidget.item(i, 0).text()
             task_id = "{}".format(task_id)
             if task_id in tasks:
-                self.gui.ui.taskTableWidget.item(i, 1).setText(tasks[ task_id ].taskState.status)
+                self.gui.ui.taskTableWidget.item(i, 1).setText(tasks[ task_id ].task_state.status)
                 progressBarInBoxLayout = self.gui.ui.taskTableWidget.cellWidget(i, 2)
                 layout = progressBarInBoxLayout.layout()
                 pb = layout.itemAt(0).widget()
-                pb.setProperty("value", int(tasks[ task_id ].taskState.progress * 100.0))
+                pb.setProperty("value", int(tasks[ task_id ].task_state.progress * 100.0))
                 if self.taskDetailsDialogCustomizer:
                     if self.taskDetailsDialogCustomizer.gnrTaskState.definition.task_id == task_id:
-                        self.taskDetailsDialogCustomizer.updateView(tasks[ task_id ].taskState)
+                        self.taskDetailsDialogCustomizer.updateView(tasks[ task_id ].task_state)
 
             else:
                 assert False, "Update task for unknown task."
@@ -265,7 +265,7 @@ class GNRMainWindowCustomizer:
         self.statusWindow = StatusWindow(self.gui.window)
 
         self.statusWindowCustomizer = StatusWindowCustomizer(self.statusWindow, self.logic)
-        self.statusWindowCustomizer.getStatus()
+        self.statusWindowCustomizer.get_status()
         self.statusWindow.show()
 
     #############################
@@ -278,7 +278,7 @@ class GNRMainWindowCustomizer:
     def _showConfigurationDialogClicked(self):
         self.configurationDialog = ConfigurationDialog(self.gui.window)
         self.configurationDialogCustomizer = ConfigurationDialogCustomizer(self.configurationDialog, self.logic)
-        self.configurationDialogCustomizer.loadConfig()
+        self.configurationDialogCustomizer.load_config()
         self.configurationDialog.show()
 
     #############################

@@ -54,8 +54,8 @@ class TaskComputer(object):
             self.assigned_subtasks[ctd.subtask_id] = ctd
             self.assigned_subtasks[ctd.subtask_id].timeout = subtask_timeout
             self.task_to_subtask_mapping[ctd.task_id] = ctd.subtask_id
-            self.__request_resource(ctd.task_id, self.resource_manager.getResourceHeader(ctd.task_id), ctd.returnAddress,
-                                    ctd.returnPort, ctd.key_id, ctd.taskOwner)
+            self.__request_resource(ctd.task_id, self.resource_manager.get_resource_header(ctd.task_id), ctd.return_address,
+                                    ctd.return_port, ctd.key_id, ctd.task_owner)
             return True
         else:
             return False
@@ -66,9 +66,9 @@ class TaskComputer(object):
             if subtask_id in self.assigned_subtasks:
                 self.waiting_ttl = 0
                 self.counting_task = True
-                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].srcCode,
+                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].src_code,
                                     self.assigned_subtasks[subtask_id].extra_data,
-                                    self.assigned_subtasks[subtask_id].shortDescription,
+                                    self.assigned_subtasks[subtask_id].short_description,
                                     self.assigned_subtasks[subtask_id].timeout)
                 self.waiting_for_task = None
                 return True
@@ -81,12 +81,12 @@ class TaskComputer(object):
             if subtask_id in self.assigned_subtasks:
                 self.waiting_ttl = 0
                 self.counting_task = True
-                self.taskTimeout = self.assigned_subtasks[subtask_id].timeout
-                self.lastTaskTimeoutChecking = time.time()
+                self.task_timeout = self.assigned_subtasks[subtask_id].timeout
+                self.last_task_timeout_checking = time.time()
                 self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
-                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].srcCode,
+                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].src_code,
                                     self.assigned_subtasks[subtask_id].extra_data,
-                                    self.assigned_subtasks[subtask_id].shortDescription,
+                                    self.assigned_subtasks[subtask_id].short_description,
                                     self.assigned_subtasks[subtask_id].timeout)
                 self.waiting_for_task = None
                 self.delta = None
@@ -94,29 +94,29 @@ class TaskComputer(object):
             else:
                 return False
 
-    def waitForResources(self, task_id, delta):
+    def wait_for_resources(self, task_id, delta):
         if task_id in self.task_to_subtask_mapping:
             subtask_id = self.task_to_subtask_mapping[task_id]
             if subtask_id in self.assigned_subtasks:
                 self.delta = delta
 
-    def taskRequestRejected(self, task_id, reason):
+    def task_request_rejected(self, task_id, reason):
         self.waiting_for_task = None
         logger.warning("Task {} request rejected: {}".format(task_id, reason))
 
-    def resourceRequestRejected(self, subtask_id, reason):
+    def resource_request_rejected(self, subtask_id, reason):
         self.waiting_for_task = None
         self.waiting_ttl = 0
         logger.warning("Task {} resource request rejected: {}".format(subtask_id, reason))
         del self.assigned_subtasks[subtask_id]
 
-    def task_computed(self, taskThread):
+    def task_computed(self, task_thread):
         with self.lock:
             self.counting_task = False
-            if taskThread in self.current_computations:
-                self.current_computations.remove(taskThread)
+            if task_thread in self.current_computations:
+                self.current_computations.remove(task_thread)
 
-            subtask_id = taskThread.subtask_id
+            subtask_id = task_thread.subtask_id
 
             subtask = self.assigned_subtasks.get(subtask_id)
             if subtask:
@@ -125,24 +125,24 @@ class TaskComputer(object):
                 logger.error("No subtask with id {}".format(subtask_id))
                 return
 
-            if taskThread.error:
-                self.task_server.send_task_failed(subtask_id, subtask.task_id, taskThread.errorMsg,
-                                                  subtask.returnAddress, subtask.returnPort, subtask.key_id,
-                                                  subtask.taskOwner, self.client_uid)
-            elif taskThread.result and 'data' in taskThread.result and 'resultType' in taskThread.result:
+            if task_thread.error:
+                self.task_server.send_task_failed(subtask_id, subtask.task_id, task_thread.error_msg,
+                                                  subtask.return_address, subtask.return_port, subtask.key_id,
+                                                  subtask.task_owner, self.client_uid)
+            elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
                 logger.info("Task {} computed".format(subtask_id))
-                self.task_server.send_results(subtask_id, subtask.task_id, taskThread.result, subtask.returnAddress,
-                                              subtask.returnPort, subtask.key_id, subtask.taskOwner, self.client_uid)
+                self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, subtask.return_address,
+                                              subtask.return_port, subtask.key_id, subtask.task_owner, self.client_uid)
             else:
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",
-                                                  subtask.returnAddress, subtask.returnPort, subtask.key_id,
-                                                  subtask.taskOwner, self.client_uid)
+                                                  subtask.return_address, subtask.return_port, subtask.key_id,
+                                                  subtask.task_owner, self.client_uid)
 
     def run(self):
 
         if self.counting_task:
-            for taskThread in self.current_computations:
-                taskThread.checkTimeout()
+            for task_thread in self.current_computations:
+                task_thread.check_timeout()
             return
 
         if self.waiting_for_task == 0 or self.waiting_for_task is None:
@@ -158,11 +158,11 @@ class TaskComputer(object):
                 self.waiting_for_task = None
                 self.waiting_ttl = 0
 
-    def getProgresses(self):
+    def get_progresses(self):
         ret = {}
         for c in self.current_computations:
-            tcss = TaskChunkStateSnapshot(c.get_subtask_id(), 0.0, 0.0, c.getProgress(),
-                                          c.get_taskShortDescr())  # FIXME: cpu power and estimated time left
+            tcss = TaskChunkStateSnapshot(c.get_subtask_id(), 0.0, 0.0, c.get_progress(),
+                                          c.get_task_short_desc())  # FIXME: cpu power and estimated time left
             ret[c.subtask_id] = tcss
 
         return ret
@@ -174,7 +174,7 @@ class TaskComputer(object):
         self.use_waiting_ttl = self.task_server.config_desc.use_waiting_for_task_timeout
         self.waiting_for_task_timeout = self.task_server.config_desc.waiting_for_task_timeout
 
-    def sessionTimeout(self):
+    def session_timeout(self):
         if self.counting_task:
             return
         else:
@@ -183,88 +183,87 @@ class TaskComputer(object):
 
     def increase_request_trust(self, subtask_id):
         with self.lock:
-            self.increaseTrustVal = True
+            self.increase_trust_val = True
 
     def __request_task(self):
         self.waiting_ttl = self.waiting_for_task_timeout
         self.last_checking = time.time()
         self.waiting_for_task = self.task_server.request_task()
 
-    def __request_resource(self, task_id, resource_header, returnAddress, returnPort, key_id, taskOwner):
+    def __request_resource(self, task_id, resource_header, return_address, return_port, key_id, task_owner):
         self.waiting_ttl = self.waiting_for_task_timeout
         self.last_checking = time.time()
         self.waiting_for_task = 1
-        self.waiting_for_task = self.task_server.request_resource(task_id, resource_header, returnAddress, returnPort,
+        self.waiting_for_task = self.task_server.request_resource(task_id, resource_header, return_address, return_port,
                                                                   key_id,
-                                                                  taskOwner)
+                                                                  task_owner)
 
-    def __compute_task(self, subtask_id, srcCode, extra_data, shortDescr, taskTimeout):
+    def __compute_task(self, subtask_id, src_code, extra_data, short_desc, task_timeout):
         task_id = self.assigned_subtasks[subtask_id].task_id
-        workingDirectory = self.assigned_subtasks[subtask_id].workingDirectory
+        working_directory = self.assigned_subtasks[subtask_id].working_directory
         self.dir_manager.clear_temporary(task_id)
-        tt = PyTaskThread(self, subtask_id, workingDirectory, srcCode, extra_data, shortDescr,
+        tt = PyTaskThread(self, subtask_id, working_directory, src_code, extra_data, short_desc,
                           self.resource_manager.get_resource_dir(task_id), self.resource_manager.getTemporaryDir(task_id),
-                          taskTimeout)
+                          task_timeout)
         self.current_computations.append(tt)
         tt.start()
 
 
 class AssignedSubTask(object):
-    def __init__(self, srcCode, extra_data, shortDescr, ownerAddress, ownerPort):
-        self.srcCode = srcCode
+    def __init__(self, src_code, extra_data, short_desc, owner_address, owner_port):
+        self.src_code = src_code
         self.extra_data = extra_data
-        self.shortDescr = shortDescr
-        self.ownerAddress = ownerAddress
-        self.ownerPort = ownerPort
+        self.short_desc = short_desc
+        self.owner_address = owner_address
+        self.owner_port = owner_port
 
 
 class TaskThread(Thread):
-    def __init__(self, task_computer, subtask_id, workingDirectory, srcCode, extra_data, shortDescr, res_path, tmpPath,
+    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path, tmp_path,
                  timeout=0):
         super(TaskThread, self).__init__()
 
         self.task_computer = task_computer
         self.vm = None
         self.subtask_id = subtask_id
-        self.srcCode = srcCode
+        self.src_code = src_code
         self.extra_data = extra_data
-        self.shortDescr = shortDescr
+        self.short_desc = short_desc
         self.result = None
         self.done = False
         self.res_path = res_path
-        self.tmpPath = tmpPath
-        self.workingDirectory = workingDirectory
-        self.prevWorkingDirectory = ""
+        self.tmp_path = tmp_path
+        self.working_directory = working_directory
+        self.prev_working_directory = ""
         self.lock = Lock()
         self.error = False
-        self.errorMsg = ""
-        self.useTimeout = timeout != 0
-        self.taskTimeout = timeout
-        self.lastTimeChecking = time.time()
+        self.error_msg = ""
+        self.use_timeout = timeout != 0
+        self.task_timeout = timeout
+        self.last_time_checking = time.time()
 
-    ######################
-    def checkTimeout(self):
-        if not self.useTimeout:
+    def check_timeout(self):
+        if not self.use_timeout:
             return
         time_ = time.time()
-        self.taskTimeout -= time_ - self.lastTimeChecking
-        self.lastTimeChecking = time_
-        if self.taskTimeout < 0:
+        self.task_timeout -= time_ - self.last_time_checking
+        self.last_time_checking = time_
+        if self.task_timeout < 0:
             self.error = True
-            self.errorMsg = "Timeout"
+            self.error_msg = "Timeout"
             self.end_comp()
 
     def get_subtask_id(self):
         return self.subtask_id
 
-    def get_taskShortDescr(self):
-        return self.shortDescr
+    def get_task_short_desc(self):
+        return self.short_desc
 
-    def getProgress(self):
+    def get_progress(self):
         with self.lock:
-            return self.vm.getProgress()
+            return self.vm.get_progress()
 
-    def getError(self):
+    def get_error(self):
         with self.lock:
             return self.error
 
@@ -276,7 +275,7 @@ class TaskThread(Thread):
         except Exception as exc:
             logger.error("Task computing error: {}".format(exc))
             self.error = True
-            self.errorMsg = str(exc)
+            self.error_msg = str(exc)
             self.done = True
             self.task_computer.task_computed(self)
 
@@ -286,30 +285,30 @@ class TaskThread(Thread):
     def __do_work(self):
         extra_data = copy(self.extra_data)
 
-        absResPath = os.path.abspath(os.path.normpath(self.res_path))
-        absTmpPath = os.path.abspath(os.path.normpath(self.tmpPath))
+        abs_res_path = os.path.abspath(os.path.normpath(self.res_path))
+        abs_tmp_path = os.path.abspath(os.path.normpath(self.tmp_path))
 
-        self.prevWorkingDirectory = os.getcwd()
-        os.chdir(os.path.join(absResPath, os.path.normpath(self.workingDirectory)))
+        self.prev_working_directory = os.getcwd()
+        os.chdir(os.path.join(abs_res_path, os.path.normpath(self.working_directory)))
         try:
-            extra_data["resourcePath"] = absResPath
-            extra_data["tmpPath"] = absTmpPath
-            self.result = self.vm.runTask(self.srcCode, extra_data)
+            extra_data["resourcePath"] = abs_res_path
+            extra_data["tmp_path"] = abs_tmp_path
+            self.result = self.vm.runTask(self.src_code, extra_data)
         finally:
-            os.chdir(self.prevWorkingDirectory)
+            os.chdir(self.prev_working_directory)
 
 
 class PyTaskThread(TaskThread):
-    def __init__(self, task_computer, subtask_id, workingDirectory, srcCode, extra_data, shortDescr, res_path, tmpPath,
+    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path, tmp_path,
                  timeout):
-        super(PyTaskThread, self).__init__(task_computer, subtask_id, workingDirectory, srcCode, extra_data, shortDescr,
-                                           res_path, tmpPath, timeout)
+        super(PyTaskThread, self).__init__(task_computer, subtask_id, working_directory, src_code, extra_data, short_desc,
+                                           res_path, tmp_path, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
-    def __init__(self, task_computer, subtask_id, workingDirectory, srcCode, extra_data, shortDescr, res_path, tmpPath,
+    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path, tmp_path,
                  timeout):
-        super(PyTestTaskThread, self).__init__(task_computer, subtask_id, workingDirectory, srcCode, extra_data,
-                                               shortDescr, res_path, tmpPath, timeout)
+        super(PyTestTaskThread, self).__init__(task_computer, subtask_id, working_directory, src_code, extra_data,
+                                               short_desc, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()

@@ -2,30 +2,30 @@ import sys
 
 class Environment:
     @classmethod
-    def getId(cls):
+    def get_id(cls):
         return "DEFAULT"
 
     def __init__(self):
         self.software = []
         self.caps = []
-        self.shortDescription = "Default environment for generic tasks without any additional requirements."
-        self.longDescription = ""
-        self.acceptTasks = False
+        self.short_description = "Default environment for generic tasks without any additional requirements."
+        self.long_description = ""
+        self.accept_tasks = False
 
-    def checkSoftware(self):
+    def check_software(self):
         return True
 
-    def checkCaps(self):
+    def check_caps(self):
         return True
 
     def supported(self):
         return True
 
-    def isAccepted(self):
-        return self.acceptTasks
+    def is_accepted(self):
+        return self.accept_tasks
 
     def description(self):
-        desc = self.shortDescription + "\n"
+        desc = self.short_description + "\n"
         if self.caps or self.software:
             desc += "REQUIREMENTS\n\n"
             if self.caps:
@@ -38,8 +38,8 @@ class Environment:
                 for s in self.software:
                     desc += "\t * " + s + "\n"
                 desc += "\n"
-        if self.longDescription:
-            desc += "Additional informations:\n" + self.longDescription
+        if self.long_description:
+            desc += "Additional informations:\n" + self.long_description
         return desc
 
     def is_windows(self):

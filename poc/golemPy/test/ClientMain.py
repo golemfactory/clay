@@ -18,15 +18,15 @@ def main():
 
     init_messages()
 
-    cfg = AppConfig.loadConfig()
+    cfg = AppConfig.load_config()
 
-    opt_num_peers     = cfg.getOptimalPeerNum()
+    opt_num_peers     = cfg.get_optimal_peer_num()
     manager_port     = cfg.getManagerListenPort()
     start_port       = cfg.getStartPort()
     end_port         = cfg.getEndPort()
     seed_host        = cfg.getSeedHost()
     seed_host_port    = cfg.getSeedHostPort()
-    send_pings       = cfg.getSendPings()
+    send_pings       = cfg.get_send_pings()
     pings_interval   = cfg.getPingsInterval()
     client_uid       = cfg.getClientUid()
     add_tasks        = cfg.getAddTasks()
@@ -64,7 +64,7 @@ def main():
     c = Client(config_desc)
 
     print "Starting all asynchronous services"
-    c.startNetwork()
+    c.start_network()
 
     reactor.run()
 

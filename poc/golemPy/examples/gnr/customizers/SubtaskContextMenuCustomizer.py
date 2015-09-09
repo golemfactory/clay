@@ -15,7 +15,7 @@ class SubtaskContextMenuCustomizer:
     ##########################
     def __buildContextMenu(self):
         enabledActions = self.__getEnabledActions(self.subtask_status)
-        self.__buildAndConnectAction("Restart", self.__restartSubtask, enabledActions)
+        self.__buildAndConnectAction("Restart", self.__restart_subtask, enabledActions)
 
     ##########################
     def __buildAndConnectAction(self, name, triggeredFunc, enabledActions):
@@ -28,8 +28,8 @@ class SubtaskContextMenuCustomizer:
         return action
 
     ##########################
-    def __restartSubtask(self):
-        self.logic.restartSubtask(self.subtask_id)
+    def __restart_subtask(self):
+        self.logic.restart_subtask(self.subtask_id)
 
     ##########################
     def __getEnabledActions(self, subtask_status):

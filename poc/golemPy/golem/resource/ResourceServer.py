@@ -35,8 +35,8 @@ class ResourceServer(TCPServer):
         self.waitingTasksToCompute = {}
         self.waitingResources = {}
 
-        self.lastGetResourcePeersTime  = time.time()
-        self.getResourcePeersInterval = 5.0
+        self.last_get_resource_peers_time  = time.time()
+        self.get_resource_peers_interval = 5.0
         self.sessions = []
 
         self.last_message_time_threshold = config_desc.resource_session_timeout
@@ -60,7 +60,7 @@ class ResourceServer(TCPServer):
     def add_files_to_send(self, files, task_id, num):
         res_files = {}
         for file_ in files:
-            res_files[file_] = self.resource_manager.splitFile(file_)
+            res_files[file_] = self.resource_manager.split_file(file_)
             for res in res_files[file_]:
                 self.add_resource_to_send(res, num, task_id)
         return res_files
@@ -75,7 +75,7 @@ class ResourceServer(TCPServer):
         if num > 0:
             self.waitingTasksToCompute[task_id] = num
         else:
-            self.client.taskResourcesCollected(task_id)
+            self.client.task_resource_collected(task_id)
 
     def add_resource_to_send(self, name, num, task_id = None):
         if task_id not in self.waitingTasks:
@@ -109,9 +109,9 @@ class ResourceServer(TCPServer):
     def sync_network(self):
         if len(self.resourcesToGet) + len(self.resourcesToSend) > 0:
             cur_time = time.time()
-            if cur_time - self.lastGetResourcePeersTime > self.getResourcePeersInterval:
+            if cur_time - self.last_get_resource_peers_time > self.get_resource_peers_interval:
                 self.client.get_resource_peers()
-                self.lastGetResourcePeersTime = time.time()
+                self.last_get_resource_peers_time = time.time()
         self.send_resources()
         self.get_resources()
         self.__remove_old_sessions()
@@ -147,7 +147,7 @@ class ResourceServer(TCPServer):
 
     def pull_resource(self, resource, addr, port, key_id, node_info):
         tcp_addresses = self._node_info_to_tcp_addresses(node_info, port)
-        addr = self.client.getSuggestedAddr(key_id)
+        addr = self.client.get_suggested_addr(key_id)
         if addr:
             tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
         connect_info = TCPConnectInfo(tcp_addresses, self.__connection_pull_resource_established,
@@ -176,7 +176,7 @@ class ResourceServer(TCPServer):
     def push_resource(self, resource, addr, port, key_id, node_info, copies):
 
         tcp_addresses = self._node_info_to_tcp_addresses(node_info, port)
-        addr = self.client.getSuggestedAddr(key_id)
+        addr = self.client.get_suggested_addr(key_id)
         if addr:
             tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
         connect_info = TCPConnectInfo(tcp_addresses, self.__connection_push_resource_established,
@@ -188,24 +188,24 @@ class ResourceServer(TCPServer):
         return self.resource_manager.check_resource(resource)
 
     def prepare_resource(self, resource):
-        return self.resource_manager.getResourcePath(resource)
+        return self.resource_manager.get_resource_path(resource)
 
     def resource_downloaded(self, resource, address, port):
         client_id = self.__free_peer(address, port)
         if not self.resource_manager.check_resource(resource):
             logger.error("Wrong resource downloaded\n")
             if client_id is not None:
-                self.client.decreaseTrust(client_id, RankingStats.resource)
+                self.client.decrease_trust(client_id, RankingStats.resource)
             return
         if client_id is not None:
             # Uaktualniamy ranking co 100 zasobow, zeby specjalnie nie zasmiecac sieci
             self.resource_peers[client_id]['posResource'] += 1
             if (self.resource_peers[client_id]['posResource'] % 50) == 0:
-                self.client.increaseTrust(client_id, RankingStats.resource, 50)
+                self.client.increase_trust(client_id, RankingStats.resource, 50)
         for task_id in self.waitingResources[resource]:
             self.waitingTasksToCompute[task_id] -= 1
             if self.waitingTasksToCompute[task_id] == 0:
-                self.client.taskResourcesCollected(task_id)
+                self.client.task_resource_collected(task_id)
                 del self.waitingTasksToCompute[task_id]
         del self.waitingResources[resource]
 
@@ -222,7 +222,7 @@ class ResourceServer(TCPServer):
                     if self.waitingTasks[task_id] == 0:
                         del self.waitingTasks[task_id]
                         if task_id is not None:
-                            self.client.taskResourcesSend(task_id)
+                            self.client.task_resource_send(task_id)
                     break
 
         if remove_res:
@@ -237,7 +237,7 @@ class ResourceServer(TCPServer):
             self.unpack_delta(os.path.join(dest_dir, dirHeader.dir_name), dirHeader, task_id)
 
         for files_data in delta.files_data:
-            self.resource_manager.connectFile(files_data[2], os.path.join(dest_dir, files_data[0]))
+            self.resource_manager.connect_file(files_data[2], os.path.join(dest_dir, files_data[0]))
 
     def remove_session(self, session):
         if session in self.sessions:
@@ -266,11 +266,11 @@ class ResourceServer(TCPServer):
 
     @staticmethod
     def _node_info_to_tcp_addresses(node_info, port):
-        tcp_addresses = [TCPAddress(i, port) for i in node_info.prvAddresses]
-        if node_info.pubPort:
-            tcp_addresses.append(TCPAddress(node_info.pubAddr, node_info.pubPort))
+        tcp_addresses = [TCPAddress(i, port) for i in node_info.prv_addresses]
+        if node_info.pub_port:
+            tcp_addresses.append(TCPAddress(node_info.pub_addr, node_info.pub_port))
         else:
-            tcp_addresses.append(TCPAddress(node_info.pubAddr, port))
+            tcp_addresses.append(TCPAddress(node_info.pub_addr, port))
         return tcp_addresses
 
     def __free_peer(self, addr, port):
@@ -330,5 +330,5 @@ class ResourceServer(TCPServer):
 
     def _listening_established(self, port, **kwargs):
         TCPServer._listening_established(self, port, **kwargs)
-        self.client.setResourcePort(self.cur_port)
+        self.client.set_resource_port(self.cur_port)
 

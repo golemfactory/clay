@@ -54,13 +54,13 @@ class AbsRenderingApplicationLogic(object):
         return RenderingTaskState()
 
     ######################
-    def _getBuilder(self, taskState):
-        return self.renderers[ taskState.definition.renderer ].taskBuilderType(self.client.getId(), taskState.definition, self.client.getRootPath())
+    def _getBuilder(self, task_state):
+        return self.renderers[ task_state.definition.renderer ].task_builderType(self.client.get_id(), task_state.definition, self.client.get_root_path())
 
     ######################
-    def _validateTaskState(self, taskState):
+    def _validateTaskState(self, task_state):
 
-        td = taskState.definition
+        td = task_state.definition
         if td.renderer in self.renderers:
             r = self.renderers[ td.renderer ]
 

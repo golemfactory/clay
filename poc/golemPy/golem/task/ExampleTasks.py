@@ -13,7 +13,7 @@ import random
 
 from img import Img
 
-testTaskScr2 = """ 
+test_taskScr2 = """
 from minilight import render_task
 from resource import ArrayResource
 from base64 import encodestring
@@ -26,43 +26,43 @@ output = encodestring(res)
 
 class RayTracingTask(Task):
     #######################
-    def __init__(self, width, height, taskHeader, returnAddress = "", returnPort = 0):
-        coderes = testTaskScr2
+    def __init__(self, width, height, taskHeader, return_address = "", return_port = 0):
+        coderes = test_taskScr2
         Task.__init__(self, taskHeader, [], coderes, 0)
         self.width = width
         self.height = height
         self.splitIndex = 0
-        self.returnAddress = returnAddress
-        self.returnPort = returnPort
+        self.return_address = return_address
+        self.return_port = return_port
 
     #######################
-    def queryExtraData(self, perfIndex):
+    def query_extra_data(self, perf_index):
         hash = "{}".format(random.getrandbits(128))
         return {    "startX" : 0,
                     "startY" : 0,
                     "width" : self.width,
                     "height" : self.height,
                     "img_width" : self.width,
-                    "img_height" : self.height }, hash, self.returnAddress, self.returnPort
+                    "img_height" : self.height }, hash, self.return_address, self.return_port
 
     #######################
-    def shortExtraDataRepr(self, perfIndex):
-        return self.queryExtraData(perfIndex).__str__()
+    def short_extra_data_repr(self, perf_index):
+        return self.query_extra_data(perf_index).__str__()
 
     #######################
-    def needsComputation(self):
+    def needs_computation(self):
         if self.splitIndex < 1:
             return True
         else:
             return False
 
     #######################
-    def computationStarted(self, extra_data):
+    def computation_started(self, extra_data):
         self.splitIndex += 1
 
     #######################
-    def computationFinished(self, subtask_id, taskResult, env = None):
-        print "Receive computed task id:{} \n result:{}".format(self.taskHeader.task_id, taskResult)
+    def computation_finished(self, subtask_id, task_result, env = None):
+        print "Receive computed task id:{} \n result:{}".format(self.taskHeader.task_id, task_result)
 
 TIMESLC  = 45.0
 TIMEOUT  = 100000.0
@@ -126,12 +126,12 @@ task_data = u'''
 
 class VRayTracingTask(Task):
     #######################
-    def __init__(self, width, height, num_samples, header, file_name, returnAddress = "", returnPort = 0):
+    def __init__(self, width, height, num_samples, header, file_name, return_address = "", return_port = 0):
 
         srcFile = open("../testtasks/minilight/compact_src/renderer.py", "r")
-        srcCode = srcFile.read()
+        src_code = srcFile.read()
 
-        Task.__init__(self, header, srcCode)
+        Task.__init__(self, header, src_code)
 
         self.header.ttl = max(width * height * num_samples * 2 / 2200.0, TIMEOUT)
 
@@ -143,8 +143,8 @@ class VRayTracingTask(Task):
 
         self.lastExtraData = ""
         self.file_name = file_name
-        self.returnAddress = returnAddress
-        self.returnPort = returnPort
+        self.return_address = return_address
+        self.return_port = return_port
 
     #######################
     def __initRenderer(self):
@@ -154,9 +154,9 @@ class VRayTracingTask(Task):
         self.__initRenderer()
 
     #######################
-    def queryExtraData(self, perfIndex):
+    def query_extra_data(self, perf_index):
 
-        taskDesc = self.taskableRenderer.getNextTaskDesc(perfIndex)
+        taskDesc = self.taskableRenderer.getNextTaskDesc(perf_index)
 
         self.lastExtraData =  {    "id" : taskDesc.getID(),
                     "x" : taskDesc.getX(),
@@ -169,10 +169,10 @@ class VRayTracingTask(Task):
                     }
 
         hash = "{}".format(random.getrandbits(128))
-        return self.lastExtraData, hash, self.returnAddress, self.returnPort
+        return self.lastExtraData, hash, self.return_address, self.return_port
 
     #######################
-    def shortExtraDataRepr(self, perfIndex):
+    def short_extra_data_repr(self, perf_index):
         if self.lastExtraData:
             l = self.lastExtraData
             return "x: {}, y: {}, w: {}, h: {}, num_pixels: {}, num_samples: {}".format(l["x"], l["y"], l["w"], l["h"], l["num_pixels"], l["num_samples"])
@@ -180,45 +180,45 @@ class VRayTracingTask(Task):
         return ""
 
     #######################
-    def needsComputation(self):
+    def needs_computation(self):
         return self.taskableRenderer.hasMoreTasks()
 
     #######################
-    def computationStarted(self, extra_data):
+    def computation_started(self, extra_data):
         pass
 
     #######################
-    def computationFinished(self, subtask_id, taskResult, env = None):
+    def computation_finished(self, subtask_id, task_result, env = None):
         #dest = RenderTaskDesc(0, extra_data[ "x" ], extra_data[ "y" ], extra_data[ "w" ], extra_data[ "h" ], extra_data[ "num_pixels" ] ,extra_data[ "num_samples" ])
-        #res = RenderTaskResult(dest, taskResult)
+        #res = RenderTaskResult(dest, task_result)
         #self.taskableRenderer.task_finished(res)
         #if self.taskableRenderer.isFinished():
         #    VRayTracingTask.__save_image(self.file_name + ".ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples) #FIXME: change file name here
         pass
 
     #######################
-    def getTotalTasks(self):
+    def get_total_tasks(self):
         return self.taskableRenderer.totalTasks
 
     #######################
-    def getTotalChunks(self):
+    def get_total_chunks(self):
         return self.taskableRenderer.pixelsCalculated
 
     #######################
-    def getActiveTasks(self):
+    def get_active_tasks(self):
         return self.taskableRenderer.activeTasks
 
     #######################
-    def getActiveChunks(self):
+    def get_active_chunks(self):
         return self.taskableRenderer.nextPixel - self.taskableRenderer.pixelsCalculated
 
     #######################
-    def getChunksLeft(self):
+    def get_chunks_left(self):
         return self.taskableRenderer.pixelsLeft
 
     #######################
-    def getProgress(self):
-        return self.taskableRenderer.getProgress()
+    def get_progress(self):
+        return self.taskableRenderer.get_progress()
 
     #######################
     @classmethod
@@ -240,12 +240,12 @@ from golem.core.compress import decompress
 class PbrtRenderTask(Task):
 
     #######################
-    def __init__(self, header, pathRoot, totalTasks, numSubtasks, num_cores, outfilebasename, sceneFile, returnAddress = "", returnPort = 0):
+    def __init__(self, header, pathRoot, totalTasks, numSubtasks, num_cores, outfilebasename, sceneFile, return_address = "", return_port = 0):
 
         srcFile = open("../testtasks/pbrt/pbrt_compact.py", "r")
-        srcCode = srcFile.read()
+        src_code = srcFile.read()
 
-        Task.__init__(self, header, srcCode)
+        Task.__init__(self, header, src_code)
 
         self.header.ttl = max(2200.0, TIMEOUT)
 
@@ -261,15 +261,15 @@ class PbrtRenderTask(Task):
 
         self.collector          = PbrtTaksCollector()
         self.numTasksReceived   = 0
-        self.returnAddress      = returnAddress
-        self.returnPort         = returnPort
+        self.return_address      = return_address
+        self.return_port         = return_port
         self.subTasksGiven      = {}
 
     def initialize(self):
         pass
 
     #######################
-    def queryExtraData(self, perfIndex):
+    def query_extra_data(self, perf_index):
 
         endTask = min(self.lastTask + 1, self.totalTasks)
 
@@ -286,29 +286,29 @@ class PbrtRenderTask(Task):
         hash = "{}".format(random.getrandbits(128))
         self.subTasksGiven[ hash ] = self.lastExtraData
         self.lastTask = endTask # TODO: Should depend on performance
-        return self.lastExtraData, hash, self.returnAddress, self.returnPort
+        return self.lastExtraData, hash, self.return_address, self.return_port
 
     #######################
-    def __shortExtraDataRepr(self, perfIndex, extra_data):
+    def __short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data
         return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, num_cores: {}, outfilebasename: {}, sceneFile: {}".format(l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["num_cores"], l["outfilebasename"], l["sceneFile"])
 
 
     #######################
-    def needsComputation(self):
+    def needs_computation(self):
         return self.lastTask != self.totalTasks
 
     #######################
-    def computationStarted(self, extra_data):
+    def computation_started(self, extra_data):
         pass
 
     #######################
-    def computationFinished(self, subtask_id, taskResult, env = None):
+    def computation_finished(self, subtask_id, task_result, env = None):
 
         tmpDir = env.get_task_temporary_dir(self.header.task_id)
 
-        if len(taskResult) > 0:
-            for trp in taskResult:
+        if len(task_result) > 0:
+            for trp in task_result:
                 tr = pickle.loads(trp)
                 fh = open(os.path.join(tmpDir, tr[ 0 ]), "wb")
                 fh.write(decompress(tr[ 1 ]))
@@ -322,27 +322,27 @@ class PbrtRenderTask(Task):
             self.collector.finalize().save("{}.png".format(os.path.join(env.get_task_output_dir(self.header.task_id), "test")), "PNG")
 
     #######################
-    def getTotalTasks(self):
+    def get_total_tasks(self):
         return self.totalTasks
 
     #######################
-    def getTotalChunks(self):
+    def get_total_chunks(self):
         return self.totalTasks
 
     #######################
-    def getActiveTasks(self):
+    def get_active_tasks(self):
         return self.lastTask
 
     #######################
-    def getActiveChunks(self):
+    def get_active_chunks(self):
         return self.lastTask
 
     #######################
-    def getChunksLeft(self):
+    def get_chunks_left(self):
         return self.totalTasks - self.lastTask
 
     #######################
-    def getProgress(self):
+    def get_progress(self):
         return float(self.lastTask) / self.totalTasks
 
     #######################

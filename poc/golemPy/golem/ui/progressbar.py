@@ -3,7 +3,7 @@ from PyQt4 import QtGui, QtCore
 
 
 ########################
-def createWrappedProgressBar(red):
+def create_wrapped_progress_bar(red):
 
     widget = QtGui.QWidget()
     widget.setFixedSize(166, 22)

@@ -2,24 +2,24 @@ from PyQt4.QtGui import QTableWidgetItem, QProgressBar, QWidget, QVBoxLayout
 from PyQt4.QtCore import Qt
 
 class EnvTableElem:
-    colItem = [ "idItem", "statusItem", "acceptTasksItem", "shortDescriptionItem" ]
+    colItem = [ "idItem", "statusItem", "accept_tasksItem", "short_descriptionItem" ]
 
     ############################
-    def __init__(self, id, status, shortDescription, acceptTask):
+    def __init__(self, id, status, short_description, acceptTask):
         self.id                     = id
         self.status                 = status
-        self.shortDescription       = shortDescription
-        self.acceptTasks            = acceptTask
+        self.short_description       = short_description
+        self.accept_tasks            = acceptTask
         self.idItem                 = None
         self.statusItem             = None
-        self.shortDescriptionItem   = None
-        self.acceptTasksItem        = None
+        self.short_descriptionItem   = None
+        self.accept_tasksItem        = None
 
         self.__buildRow()
-        self.columnItemTranslation = { "idItem": self.__getIdItem,
-                                       "statusItem": self.__getStatusItem,
-                                       "acceptTasksItem": self.__getAcceptTasksItem,
-                                       "shortDescriptionItem": self.__getShortDescriptionItem }
+        self.columnItemTranslation = { "idItem": self.__get_idItem,
+                                       "statusItem": self.__get_statusItem,
+                                       "accept_tasksItem": self.__getAcceptTasksItem,
+                                       "short_descriptionItem": self.__getShortDescriptionItem }
 
    ############################
     def getColumnItem(self, col):
@@ -31,7 +31,7 @@ class EnvTableElem:
 
     ############################
     def changeAcceptTaks(self, state):
-        self.acceptTasks = state
+        self.accept_tasks = state
 
 
     ############################
@@ -43,30 +43,30 @@ class EnvTableElem:
         self.statusItem = QTableWidgetItem()
         self.statusItem.setText(self.status)
 
-        self.shortDescriptionItem = QTableWidgetItem()
-        self.shortDescriptionItem.setText(self.shortDescription)
+        self.short_descriptionItem = QTableWidgetItem()
+        self.short_descriptionItem.setText(self.short_description)
 
-        self.acceptTasksItem = QTableWidgetItem()
-        self.acceptTasksItem.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-        if self.acceptTasks:
-            self.acceptTasksItem.setCheckState(Qt.Checked)
+        self.accept_tasksItem = QTableWidgetItem()
+        self.accept_tasksItem.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        if self.accept_tasks:
+            self.accept_tasksItem.setCheckState(Qt.Checked)
         else:
-            self.acceptTasksItem.setCheckState(Qt.Unchecked)
+            self.accept_tasksItem.setCheckState(Qt.Unchecked)
 
     ############################
-    def __getIdItem(self):
+    def __get_idItem(self):
         return self.idItem
 
     ############################
-    def __getStatusItem(self):
+    def __get_statusItem(self):
         return self.statusItem
 
     ############################
     def __getAcceptTasksItem(self):
-        return self.acceptTasksItem
+        return self.accept_tasksItem
 
     ############################
     def __getShortDescriptionItem(self):
-        return self.shortDescriptionItem
+        return self.short_descriptionItem
 
 
