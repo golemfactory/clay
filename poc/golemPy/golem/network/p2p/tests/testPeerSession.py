@@ -18,11 +18,11 @@ class Conn():
         self.messages = []
         self.closedCalled = False
 
-    def sendMessage(self, message):
+    def send_message(self, message):
         self.messages.append(message)
         return True
 
-    def isOpen(self):
+    def is_open(self):
         return True
 
     def close(self):
@@ -45,7 +45,7 @@ class P2PService():
         self.peers = {}
         self.tasksHeaders = []
         self.peersToAdd = set()
-        self.taskHeaderToRemove = None
+        self.task_headerToRemove = None
 
     def get_listen_params(self):
         return 12345, 'ABC'
@@ -73,7 +73,7 @@ class P2PService():
         self.peersToAdd.add(peer[ "id" ])
 
     def remove_task_header(self, task_id):
-        self.taskHeaderToRemove = task_id
+        self.task_headerToRemove = task_id
 
 class TestPeerSession(unittest.TestCase):
     def setUp(self):
@@ -136,7 +136,7 @@ class TestPeerSession(unittest.TestCase):
         self.assertIsInstance(self.conn.messages[6], MessageDisconnect)
 
         self.peer_session.interpret(MessageRemoveTask('12345'))
-        self.assertEqual(self.peer_session.p2pService.taskHeaderToRemove, '12345')
+        self.assertEqual(self.peer_session.p2pService.task_headerToRemove, '12345')
 
         self.peer_session.interpret(MessageDisconnect())
         self.assertEquals(self.conn.closedCalled, True)

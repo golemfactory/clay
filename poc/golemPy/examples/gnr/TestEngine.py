@@ -41,7 +41,7 @@ class TestEngine(QtCore.QObject):
             extra_data = t.query_extra_data(1.0)
             args.append([ (t.src_code, extra_data, None) ])
 
-        res = p.map(runTask, args)
+        res = p.map(run_task, args)
 
         p.start()
         p.join()
@@ -56,7 +56,7 @@ class TestEngine(QtCore.QObject):
 
 
 #######################
-def runTask(self, src_code, extra_data, progress):
+def run_task(self, src_code, extra_data, progress):
     extra_data = copy(extra_data)
     scope = extra_data
     scope[ "taskProgress" ] = progress

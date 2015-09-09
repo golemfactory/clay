@@ -11,83 +11,83 @@ class NetworkSimulator:
             answ.append("{}: degree{}, conn: {}\n".format(node, len(nodeCon), sorted(nodeCon)))
         return "".join(answ)
 
-    def addNode(self, name=None) :
+    def add_node(self, name=None) :
         if name is None:
-            name = self.generateName()
+            name = self.generate_name()
 
         if name in self.nodes:
             return
 
         self.nodes[ name ] = set()
-        self.connectNode(name)
+        self.connect_node(name)
         return name
 
-    def connectNode(self, node):
+    def connect_node(self, node):
         if len (self.nodes) <= 1:
             return
 
         while True:
-            seedNode = random.sample(self.nodes.keys(), 1)[0]
-            if seedNode != node:
+            seed_node = random.sample(self.nodes.keys(), 1)[0]
+            if seed_node != node:
                 break
 
-        self.nodes[ seedNode ].add(node)
-        self.nodes[ node ].add(seedNode)
+        self.nodes[ seed_node ].add(node)
+        self.nodes[ node ].add(seed_node)
 
-    def sync_network(self, optPeers = 4):
+    def sync_network(self, opt_peers = 4):
         for node in self.nodes.keys():
-            if len (self.nodes[node]) < optPeers:
-                newPeers = set()
+            if len (self.nodes[node]) < opt_peers:
+                new_peers = set()
                 for peer in copy(self.nodes[node]):
-                    if len(self.nodes[node]) < optPeers:
+                    if len(self.nodes[node]) < opt_peers:
                         self.nodes[node] |= self.nodes[peer]
                         if node in self.nodes[ node ]:
                             self.nodes[ node ].remove(node)
 
 
-    def generateName(self):
+    def generate_name(self):
         num =  len(self.nodes) + 1
         return "node{}".format(str(num).zfill(3))
 
-    def getDegree(self, node_id):
+    def get_degree(self, node_id):
         return len(self.nodes[ node_id ])
 
-    def getAvgNeighboursDegree(self, node_id):
-        sD = 0
+    def get_avg_neighbours_degree(self, node_id):
+        sd = 0
         if len(self.nodes[ node_id ]) == 0:
             return 0.0
         for n in self.nodes[node_id]:
-            sD += len(self.nodes[ n ])
-        return float(sD) / len(self.nodes[ node_id ])
+            sd += len(self.nodes[ n ])
+        return float(sd) / len(self.nodes[ node_id ])
 
-    def minDegree(self):
+    def min_degree(self):
         if len (self.nodes) == 0:
             return 0
-        mD = float("inf")
+        md = float("inf")
         for nodeCon in self.nodes.itervalues():
-            if len(nodeCon) < mD:
-                mD = len(nodeCon)
+            if len(nodeCon) < md:
+                md = len(nodeCon)
 
-        return mD
+        return md
 
-    def maxDegree(self):
-        mD = 0
+    def max_degree(self):
+        md = 0
         for nodeCon in self.nodes.itervalues():
-            if len(nodeCon) > mD:
-                mD = len(nodeCon)
+            if len(nodeCon) > md:
+                md = len(nodeCon)
 
-        return mD
+        return md
 
-    def avgDegree(self):
-        sD = 0
+    def avg_degree(self):
+        sd = 0
         for nodeCon in self.nodes.itervalues():
-            sD += len(nodeCon)
+            sd += len(nodeCon)
 
-        return float(sD) / len(self.nodes)
+        return float(sd) / len(self.nodes)
 
 # Preferentail Attachment newtork simulator
 class PANetworkSimulator(NetworkSimulator):
-    def connectNode(self, node):
+    def connect_node(self, node):
         sum_degrees = 0
         for node2Con in self.nodes.values():
             sum_degrees += len(node2Con)

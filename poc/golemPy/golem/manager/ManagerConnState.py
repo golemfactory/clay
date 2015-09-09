@@ -11,7 +11,7 @@ class ManagerConnState(ServerProtocol):
     def __init__(self, server=None):
         ServerProtocol.__init__(self, server)
 
-    def setSession(self, session):
+    def set_session(self, session):
         self.session = session
 
     ############################

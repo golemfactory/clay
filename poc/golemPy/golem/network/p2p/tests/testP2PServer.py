@@ -21,37 +21,37 @@ class ConfigDesc:
         self.start_port = 1332
         self.end_port = 1333
 
-class testP2PServer(unittest.TestCase):
+class TestP2PServer(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
 
     def testInit(self):
         config_desc = ConfigDesc()
-        p2pServer = P2PServer(config_desc, 'p2pService')
-        self.assertIsNotNone(p2pServer)
-        self.assertGreaterEqual(p2pServer.curPort, config_desc.start_port)
-        self.assertLessEqual(p2pServer.curPort, config_desc.end_port)
+        p2p_server = P2PServer(config_desc, 'p2pService')
+        self.assertIsNotNone(p2p_server)
+        self.assertGreaterEqual(p2p_server.curPort, config_desc.start_port)
+        self.assertLessEqual(p2p_server.curPort, config_desc.end_port)
 
     def testNewConnection(self):
         p2pService = P2PService()
-        p2pServer = P2PServer( ConfigDesc(), p2pService)
-        p2pServer.new_connection('newsession')
+        p2p_server = P2PServer( ConfigDesc(), p2pService)
+        p2p_server.new_connection('newsession')
         self.assertEquals(p2pService.session, 'newsession')
 
     def testChangeConfig(self):
-        p2pServer = P2PServer(ConfigDesc(), 'p2pService')
+        p2p_server = P2PServer(ConfigDesc(), 'p2pService')
         config_desc2 = ConfigDesc()
         config_desc2.start_port = 1334
         config_desc2.end_port = 1335
-        p2pServer.change_config(config_desc2)
+        p2p_server.change_config(config_desc2)
         time.sleep(1)
-        self.assertEquals(p2pServer.config_desc.start_port, 1334)
-        self.assertEquals(p2pServer.config_desc.end_port, 1335)
-        self.assertGreaterEqual(p2pServer.curPort, config_desc2.start_port)
-        self.assertLessEqual(p2pServer.curPort, config_desc2.end_port)
+        self.assertEquals(p2p_server.config_desc.start_port, 1334)
+        self.assertEquals(p2p_server.config_desc.end_port, 1335)
+        self.assertGreaterEqual(p2p_server.curPort, config_desc2.start_port)
+        self.assertLessEqual(p2p_server.curPort, config_desc2.end_port)
 
 
-class testNetServerFactory(unittest.TestCase):
+class TestNetServerFactory(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
 

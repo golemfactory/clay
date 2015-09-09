@@ -9,112 +9,112 @@ class TaskChunkStateSnapshot:
         self.progress = progress
         self.chunk_short_desc = chunk_short_desc
 
-    def getChunkId(self):
+    def get_chunk_id(self):
         return self.chunk_id
     
-    def getCpuPower(self):
+    def get_cpu_power(self):
         return self.cpu_power
 
-    def getEstimatedTimeLeft(self):
+    def get_estimated_time_left(self):
         return self.est_time_left
 
     def get_progress(self):
         return self.progress
 
-    def getChunkShortDescr(self):
+    def get_chunk_short_descr(self):
         return self.chunk_short_desc
 
 class LocalTaskStateSnapshot:
 
-    def __init__(self, task_id, totalTasks, totalChunks, activeTasks, activeChunks, chunksLeft, progress, taskShortDescr):
+    def __init__(self, task_id, total_tasks, total_chunks, active_tasks, active_chunks, chunks_left, progress, task_short_desc):
         self.task_id = task_id
-        self.totalTasks = totalTasks 
-        self.totalChunks = totalChunks
-        self.activeTasks = activeTasks
-        self.activeChunks = activeChunks
-        self.chunksLeft = chunksLeft
+        self.total_tasks = total_tasks
+        self.total_chunks = total_chunks
+        self.active_tasks = active_tasks
+        self.active_chunks = active_chunks
+        self.chunks_left = chunks_left
         self.progress = progress
-        self.taskShortDescr = taskShortDescr
+        self.task_short_desc = task_short_desc
 
     def get_task_id(self):
         return self.task_id
 
     def get_total_tasks(self):
-        return self.totalTasks
+        return self.total_tasks
     
     def get_total_chunks(self):
-        return self.totalChunks
+        return self.total_chunks
 
     def get_active_tasks(self):
-        return self.activeTasks
+        return self.active_tasks
 
     def get_active_chunks(self):
-        return self.activeChunks
+        return self.active_chunks
 
     def get_chunks_left(self):
-        return self.chunksLeft
+        return self.chunks_left
 
     def get_progress(self):
         return self.progress
 
     def get_task_short_desc(self):
-        return self.taskShortDescr
+        return self.task_short_desc
 
 #FIXME: REGISTER number of local and remote tasks processed by current node (and number of successes and failures as well) - and show it in this manager
 #FIXME: also add a boolean flag indicating whether there is any active local/rempote task being calculated
 class NodeStateSnapshot:
 
-    def __init__(self, running = True, uid = 0, peers_num = 0, tasks_num = 0, endpointAddr = "", endpointPort = "", last_network_messages = [], last_task_messages = [], tcss = {}, ltss = {}):
+    def __init__(self, running = True, uid = 0, peers_num = 0, tasks_num = 0, endpoint_addr = "", endpoint_port = "", last_network_messages = [], last_task_messages = [], tcss = {}, ltss = {}):
         self.uid                    = uid
         self.timestamp              = QtCore.QTime.currentTime()
-        self.endpointAddr           = endpointAddr
-        self.endpointPort           = endpointPort
+        self.endpoint_addr           = endpoint_addr
+        self.endpoint_port           = endpoint_port
         self.peers_num               = peers_num
         self.tasks_num               = tasks_num
         self.last_network_messages    = last_network_messages
         self.last_task_messages       = last_task_messages
-        self.taskChunkState         = tcss
-        self.localTaskState         = ltss
+        self.task_chunk_state         = tcss
+        self.local_task_state         = ltss
         self.running                = running
 
     def is_running(self):
         return self.running
 
-    def getUID(self):
+    def get_uid(self):
         return self.uid
 
-    def getFormattedTimestamp(self):
+    def get_formatted_timestamp(self):
         return self.timestamp.toString("hh:mm:ss.zzz")
 
-    def getEndpointAddr(self):
-        return self.endpointAddr
+    def get_endpoint_addr(self):
+        return self.endpoint_addr
 
-    def getEndpointPort(self):
-        return self.endpointPort
+    def get_endpoint_port(self):
+        return self.endpoint_port
 
-    def getPeersNum(self):
+    def get_peers_num(self):
         return self.peers_num
 
     def get_tasks_num(self):
         return self.tasks_num
 
-    def getLastNetworkMessages(self):
+    def get_last_network_messages(self):
         return self.last_network_messages
 
     def get_last_task_messages(self):
         return self.last_task_messages
 
-    def get_taskChunkStateSnapshot(self):
-        return self.taskChunkState
+    def get_task_chunk_state_snapshot(self):
+        return self.task_chunk_state
 
     def get_local_task_state_snapshot(self):
-        return self.localTaskState
+        return self.local_task_state
 
     def __str__(self):
         return "Nothing here"
-        #ret = str(self.getUID())+ " ----- \n" + "peers count: " + str(self.getPeersNum()) + "\n" + "tasks count: " + str(self.get_tasks_num()) + "\n"
+        #ret = str(self.get_uid())+ " ----- \n" + "peers count: " + str(self.get_peers_num()) + "\n" + "tasks count: " + str(self.get_tasks_num()) + "\n"
         #ret += "remote progress: " + str(self.getRemoteProgress()) + "\n" + "lockal progress: " + str(self.getLocalProgress()) + "\n"
-        #ret += "last net comunication: " + str(self.getLastNetworkMessages()) + "\n"
+        #ret += "last net comunication: " + str(self.get_last_network_messages()) + "\n"
         #ret += "last task comunication: " + str(self.get_last_task_messages())
         #return ret
 
@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
     ns = NodeStateSnapshot("some uiid", 0.2, 0.7)
 
-    print ns.getUID()
-    print ns.getFormattedTimestamp()
+    print ns.get_uid()
+    print ns.get_formatted_timestamp()
     print ns.getLocalProgress()
     print ns.getRemoteProgress()

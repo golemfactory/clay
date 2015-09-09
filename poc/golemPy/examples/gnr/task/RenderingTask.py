@@ -50,12 +50,12 @@ class RenderingTask(GNRTask):
     #######################
     def __init__(self, client_id, task_id, owner_address, owner_port, ownerKeyId, environment, ttl,
                   subtaskTtl, mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                  totalTasks, resX, resY, outfilebasename, output_file, outputFormat, root_path,
+                  total_tasks, resX, resY, outfilebasename, output_file, outputFormat, root_path,
                   estimated_memory):
 
         try:
-            with open(mainProgramFile, "r") as srcFile:
-                src_code = srcFile.read()
+            with open(mainProgramFile, "r") as src_file:
+                src_code = src_file.read()
         except Exception, err:
             logger.error("Wrong main program file: {}".format(str(err)))
             src_code = ""
@@ -79,7 +79,7 @@ class RenderingTask(GNRTask):
         self.output_file             = output_file
         self.outputFormat           = outputFormat
 
-        self.totalTasks             = totalTasks
+        self.total_tasks             = total_tasks
         self.resX                   = resX
         self.resY                   = resY
 
@@ -137,8 +137,8 @@ class RenderingTask(GNRTask):
     #######################
     @checkSubtask_idWrapper
     def _getPartImgSize(self, subtask_id, advTestFile):
-        numTask = self.subTasksGiven[ subtask_id ][ 'startTask' ]
-        imgHeight = int (math.floor(float(self.resY) / float(self.totalTasks)))
+        numTask = self.subTasksGiven[ subtask_id ][ 'start_task' ]
+        imgHeight = int (math.floor(float(self.resY) / float(self.total_tasks)))
         return 0, (numTask - 1) * imgHeight, self.resX, numTask * imgHeight
 
 
@@ -170,8 +170,8 @@ class RenderingTask(GNRTask):
         sentColor = (0, 255, 0)
         failedColor = (255, 0, 0)
 
-        tmpDir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
-        self.previewTaskFilePath = "{}".format(os.path.join(tmpDir, "current_task_preview"))
+        tmp_dir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
+        self.previewTaskFilePath = "{}".format(os.path.join(tmp_dir, "current_task_preview"))
 
         imgTask = self._openPreview()
 
@@ -185,8 +185,8 @@ class RenderingTask(GNRTask):
 
     #######################
     def _markTaskArea(self, subtask, imgTask, color):
-        upper = int(math.floor(float(self.resY) / float(self.totalTasks)   * (subtask[ 'startTask' ] - 1)))
-        lower = int(math.floor(float(self.resY) / float(self.totalTasks)  * (subtask[ 'endTask' ])))
+        upper = int(math.floor(float(self.resY) / float(self.total_tasks)   * (subtask[ 'start_task' ] - 1)))
+        lower = int(math.floor(float(self.resY) / float(self.total_tasks)  * (subtask[ 'end_task' ])))
         for i in range(0, self.resX):
             for j in range(upper, lower):
                 imgTask.putpixel((i, j), color)
@@ -219,19 +219,19 @@ class RenderingTask(GNRTask):
 
     #######################
     def _getNextTask(self):
-        if self.lastTask != self.totalTasks:
+        if self.lastTask != self.total_tasks:
             self.lastTask += 1
-            startTask = self.lastTask
-            endTask = self.lastTask
-            return startTask, endTask
+            start_task = self.lastTask
+            end_task = self.lastTask
+            return start_task, end_task
         else:
             for sub in self.subTasksGiven.values():
                 if sub['status'] == SubtaskStatus.failure:
                     sub['status'] = SubtaskStatus.resent
-                    endTask = sub['endTask']
-                    startTask = sub['startTask']
+                    end_task = sub['end_task']
+                    start_task = sub['start_task']
                     self.numFailedSubtasks -= 1
-                    return startTask, endTask
+                    return start_task, end_task
         return None, None
 
     #######################
@@ -246,15 +246,15 @@ class RenderingTask(GNRTask):
 
     #######################
     def _getSceneFileRelPath(self):
-        sceneFile = os.path.relpath(os.path.dirname(self.mainSceneFile) , os.path.dirname(self.mainProgramFile))
-        sceneFile = os.path.normpath(os.path.join(sceneFile, os.path.basename(self.mainSceneFile)))
-        return self.__get_path(sceneFile)
+        scene_file = os.path.relpath(os.path.dirname(self.mainSceneFile) , os.path.dirname(self.mainProgramFile))
+        scene_file = os.path.normpath(os.path.join(scene_file, os.path.basename(self.mainSceneFile)))
+        return self.__get_path(scene_file)
 
     ########################
     def _short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data
-        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, outfilebasename: {}, sceneFile: {}".format(
-            l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["outfilebasename"], l["sceneFile"])
+        return "path_root: {}, start_task: {}, end_task: {}, total_tasks: {}, outfilebasename: {}, scene_file: {}".format(
+            l["path_root"], l["start_task"], l["end_task"], l["total_tasks"], l["outfilebasename"], l["scene_file"])
 
     #######################
     def _verifyImg(self, file_, resX, resY):
@@ -262,10 +262,10 @@ class RenderingTask(GNRTask):
 
     #######################
     def _openPreview(self):
-        tmpDir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
+        tmp_dir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
 
         if self.previewFilePath is None or not os.path.exists(self.previewFilePath):
-            self.previewFilePath = "{}".format(os.path.join(tmpDir, "current_preview"))
+            self.previewFilePath = "{}".format(os.path.join(tmp_dir, "current_preview"))
             img = Image.new("RGB", (self.resX,self.resY))
             img.save(self.previewFilePath, "BMP")
 
@@ -280,17 +280,17 @@ class RenderingTask(GNRTask):
 
     #######################
     def _acceptClient(self, client_id):
-        if client_id in self.countingNodes:
-            if self.countingNodes[ client_id ] > 0: # client with accepted task
+        if client_id in self.counting_nodes:
+            if self.counting_nodes[ client_id ] > 0: # client with accepted task
                 return True
-            elif self.countingNodes[ client_id ] == 0: # client took task but hasn't return result yet
-                self.countingNodes[ client_id ] = -1
+            elif self.counting_nodes[ client_id ] == 0: # client took task but hasn't return result yet
+                self.counting_nodes[ client_id ] = -1
                 return True
             else:
-                self.countingNodes[ client_id ] = -1 # client with failed task or client that took more than one task without returning any results
+                self.counting_nodes[ client_id ] = -1 # client with failed task or client that took more than one task without returning any results
                 return False
         else:
-            self.countingNodes[ client_id ] = 0
+            self.counting_nodes[ client_id ] = 0
             return True #new node
 
     #######################
@@ -338,7 +338,7 @@ class RenderingTask(GNRTask):
     #######################
     def _getCmpFile(self, trFile, startBox, subtask_id):
         extra_data, newStartBox = self._changeScope(subtask_id, startBox, trFile)
-        cmpFile = self._runTask(self.src_code, extra_data)
+        cmpFile = self._run_task(self.src_code, extra_data)
         return cmpFile, newStartBox
 
     #######################
@@ -354,16 +354,16 @@ class RenderingTask(GNRTask):
     def _changeScope(self, subtask_id, startBox, trFile):
         extra_data = copy(self.subTasksGiven[ subtask_id ])
         extra_data['outfilebasename'] = uuid.uuid4()
-        extra_data['tmp_path'] = os.path.join(self.tmpDir, str(self.subTasksGiven[subtask_id]['startTask']))
+        extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(self.subTasksGiven[subtask_id]['start_task']))
         if not os.path.isdir(extra_data['tmp_path']):
             os.mkdir(extra_data['tmp_path'])
         return extra_data, startBox
 
     #######################
-    def _runTask(self, src_code, scope):
+    def _run_task(self, src_code, scope):
         exec src_code in scope
         if len(scope['output']) > 0:
-            return self.loadTaskResults(scope['output']['data'], scope['output']['result_type'], self.tmpDir)[0]
+            return self.load_taskResults(scope['output']['data'], scope['output']['result_type'], self.tmp_dir)[0]
         else:
             return None
 

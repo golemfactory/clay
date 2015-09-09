@@ -37,7 +37,7 @@ class TaskDetailsDialogCustomizer:
         for k in self.gnrTaskState.task_state.subtask_states:
             if k not in self.subtaskTableElements:
                 ss = self.gnrTaskState.task_state.subtask_states[ k ]
-                self.__addNode(ss.computer.node_id, ss.subtask_id, ss.subtask_status)
+                self.__add_node(ss.computer.node_id, ss.subtask_id, ss.subtask_status)
 
         for k, elem in self.subtaskTableElements.items():
             if elem.subtask_id in self.gnrTaskState.task_state.subtask_states:
@@ -61,7 +61,7 @@ class TaskDetailsDialogCustomizer:
     #     for k in self.gnrTaskState.task_state.subtask_states:
     #         if k not in self.subtaskTableElements:
     #             ss = self.gnrTaskState.task_state.subtask_states[ k ]
-    #             self.__addNode(ss.computer.node_id, ss.subtask_id, ss.subtask_status)
+    #             self.__add_node(ss.computer.node_id, ss.subtask_id, ss.subtask_status)
 
     ###########################
     def __updateNodeAdditionalInfo(self, node_id, subtask_id):
@@ -78,7 +78,7 @@ class TaskDetailsDialogCustomizer:
             self.gui.ui.subtaskDefinitionTextEdit.setPlainText(ss.subtask_definition)
 
     ############################
-    def __addNode(self, node_id, subtask_id, status):
+    def __add_node(self, node_id, subtask_id, status):
         currentRowCount = self.gui.ui.nodesTableWidget.rowCount()
         self.gui.ui.nodesTableWidget.insertRow(currentRowCount)
 

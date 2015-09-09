@@ -203,7 +203,7 @@ class P2PService(PendingConnectionsServer):
         :param str address: sender address
         :param int port: sender port
         """
-        self.peer_keeper.setLastMessageTime(client_key_id)
+        self.peer_keeper.set_last_message_time(client_key_id)
         if len(self.last_messages) >= self.last_message_buffer_len:
             self.last_messages = self.last_messages[-(self.last_message_buffer_len - 1):]
 
@@ -512,7 +512,7 @@ class P2PService(PendingConnectionsServer):
             return
 
         # TODO Lepszy mechanizm wyznaczania supernode'a
-        if super_node_info is None and self.node.isSuperNode():
+        if super_node_info is None and self.node.is_super_node():
             super_node_info = self.node
 
         # TODO Te informacje powinny wygasac (byc usuwane po jakims czasie)
@@ -614,7 +614,7 @@ class P2PService(PendingConnectionsServer):
         while len(self.peers) < self.config_desc.opt_num_peers:
             if len(self.free_peers) == 0:
                 peer = None  # FIXME
-                #                peer = self.peer_keeper.getRandomKnownNode()
+                #                peer = self.peer_keeper.get_random_known_node()
                 if peer is None or peer.node_id in self.peers:
                     if time.time() - self.last_peers_request > 2:
                         self.last_peers_request = time.time()
@@ -687,9 +687,9 @@ class P2PService(PendingConnectionsServer):
             self.send_find_nodes(nodes_to_find)
 
     def __remove_sessions_to_end_from_peer_keeper(self):
-        for peer_id in self.peer_keeper.sessionsToEnd:
+        for peer_id in self.peer_keeper.sessions_to_end:
             self.remove_peer_by_id(peer_id)
-        self.peer_keeper.sessionsToEnd = []
+        self.peer_keeper.sessions_to_end = []
 
 
 class P2PConnTypes(object):

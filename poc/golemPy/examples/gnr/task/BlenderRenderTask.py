@@ -33,7 +33,7 @@ def buildBlenderRendererInfo():
 
     renderer = RendererInfo("Blender", defaults, BlenderRenderTaskBuilder, BlenderRenderDialog, BlenderRenderDialogCustomizer, BlenderRendererOptions)
     renderer.outputFormats = [ "PNG", "TGA", "EXR" ]
-    renderer.sceneFileExt = [ "blend" ]
+    renderer.scene_fileExt = [ "blend" ]
     renderer.get_taskNumFromPixels = get_taskNumFromPixels
     renderer.get_taskBoarder = get_taskBoarder
 
@@ -95,7 +95,7 @@ class BlenderRenderTask(FrameRenderingTask):
                   mainSceneDir,
                   mainSceneFile,
                   mainProgramFile,
-                  totalTasks,
+                  total_tasks,
                   resX,
                   resY,
                   outfilebasename,
@@ -116,7 +116,7 @@ class BlenderRenderTask(FrameRenderingTask):
         FrameRenderingTask.__init__(self, client_id, task_id, return_address, return_port, key_id,
                           BlenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                          totalTasks, resX, resY, outfilebasename, output_file, outputFormat,
+                          total_tasks, resX, resY, outfilebasename, output_file, outputFormat,
                           root_path, estimated_memory, useFrames, frames)
 
         cropTask = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples\\tasks\\blenderCrop.py'))
@@ -140,34 +140,34 @@ class BlenderRenderTask(FrameRenderingTask):
             logger.warning(" Client {} banned from this task ".format(client_id))
             return None
 
-        startTask, endTask = self._getNextTask()
+        start_task, end_task = self._getNextTask()
 
         working_directory = self._getWorkingDirectory()
-        sceneFile = self._getSceneFileRelPath()
+        scene_file = self._getSceneFileRelPath()
 
         if self.useFrames:
-            frames, parts = self._chooseFrames(self.frames, startTask, self.totalTasks)
+            frames, parts = self._chooseFrames(self.frames, start_task, self.total_tasks)
         else:
             frames = [1]
             parts = 1
 
         if not self.useFrames:
-            minY = (self.totalTasks - startTask) * (1.0 / float(self.totalTasks))
-            maxY = (self.totalTasks - startTask + 1) * (1.0 / float(self.totalTasks))
+            minY = (self.total_tasks - start_task) * (1.0 / float(self.total_tasks))
+            maxY = (self.total_tasks - start_task + 1) * (1.0 / float(self.total_tasks))
         elif parts > 1:
-            minY = (parts - self._countPart(startTask, parts)) * (1.0 / float(parts))
-            maxY = (parts - self._countPart(startTask, parts) + 1) * (1.0 / float(parts))
+            minY = (parts - self._countPart(start_task, parts)) * (1.0 / float(parts))
+            maxY = (parts - self._countPart(start_task, parts) + 1) * (1.0 / float(parts))
         else:
             minY = 0.0
             maxY = 1.0
 
         scriptSrc = regenerateBlenderCropFile(self.scriptSrc, self.resX, self.resY, 0.0, 1.0, minY, maxY)
-        extra_data =          {      "pathRoot": self.mainSceneDir,
-                                    "startTask" : startTask,
-                                    "endTask": endTask,
-                                    "totalTasks": self.totalTasks,
+        extra_data =          {      "path_root": self.mainSceneDir,
+                                    "start_task" : start_task,
+                                    "end_task": end_task,
+                                    "total_tasks": self.total_tasks,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFile" : sceneFile,
+                                    "scene_file" : scene_file,
                                     "scriptSrc": scriptSrc,
                                     "engine": self.engine,
                                     "frames": frames,
@@ -193,7 +193,7 @@ class BlenderRenderTask(FrameRenderingTask):
     def query_extra_dataForTestTask(self):
 
         working_directory = self._getWorkingDirectory()
-        sceneFile = self._getSceneFileRelPath()
+        scene_file = self._getSceneFileRelPath()
 
         if self.useFrames:
             frames = [ self.frames[0] ]
@@ -207,12 +207,12 @@ class BlenderRenderTask(FrameRenderingTask):
 
         scriptSrc = regenerateBlenderCropFile(self.scriptSrc, 8, 8, 0.0, 1.0, 0.0, 1.0)
 
-        extra_data =          {      "pathRoot": self.mainSceneDir,
-                                    "startTask" : 1,
-                                    "endTask": 1,
-                                    "totalTasks": self.totalTasks,
+        extra_data =          {      "path_root": self.mainSceneDir,
+                                    "start_task" : 1,
+                                    "end_task": 1,
+                                    "total_tasks": self.total_tasks,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFile" : sceneFile,
+                                    "scene_file" : scene_file,
                                     "scriptSrc": scriptSrc,
                                     "engine": self.engine,
                                     "frames": frames
@@ -230,11 +230,11 @@ class BlenderRenderTask(FrameRenderingTask):
     #######################
     def _getPartSize(self) :
         if not self.useFrames:
-            resY = int (math.floor(float(self.resY) / float(self.totalTasks)))
-        elif len(self.frames) >= self.totalTasks:
+            resY = int (math.floor(float(self.resY) / float(self.total_tasks)))
+        elif len(self.frames) >= self.total_tasks:
             resY = self.resY
         else:
-            parts = self.totalTasks / len(self.frames)
+            parts = self.total_tasks / len(self.frames)
             resY = int (math.floor(float(self.resY) / float(parts)))
         return self.resX, resY
 
@@ -250,7 +250,7 @@ class BlenderRenderTask(FrameRenderingTask):
         extra_data, _ = FrameRenderingTask._changeScope(self, subtask_id, startBox, trFile)
         minX = startBox[0]/float(self.resX)
         maxX = (startBox[0] + self.verificationOptions.boxSize[0] + 1) / float(self.resX)
-        startY = startBox[1]+ (extra_data['startTask'] - 1) * (self.resY / float(extra_data['totalTasks']))
+        startY = startBox[1]+ (extra_data['start_task'] - 1) * (self.resY / float(extra_data['total_tasks']))
         maxY = float(self.resY - startY) /self.resY
         minY = max(float(self.resY - startY - self.verificationOptions.boxSize[1] - 1) /self.resY, 0.0)
         scriptSrc = regenerateBlenderCropFile(self.scriptSrc, self.resX, self.resY, minX, maxX, minY, maxY)
@@ -273,14 +273,14 @@ class BlenderRenderTask(FrameRenderingTask):
 
         imgOffset = Image.new("RGB", (self.resX, self.resY))
         try:
-            offset = int (math.floor((chunkNum - 1) * float(self.resY) / float(self.totalTasks)))
+            offset = int (math.floor((chunkNum - 1) * float(self.resY) / float(self.total_tasks)))
             imgOffset.paste(img, (0, offset))
         except Exception, err:
             logger.error("Can't generate preview {}".format(str(err)))
 
-        tmpDir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
+        tmp_dir = getTmpPath(self.header.client_id, self.header.task_id, self.root_path)
 
-        self.previewFilePath = "{}".format(os.path.join(tmpDir, "current_preview"))
+        self.previewFilePath = "{}".format(os.path.join(tmp_dir, "current_preview"))
 
         if os.path.exists(self.previewFilePath):
             imgCurrent = Image.open(self.previewFilePath)

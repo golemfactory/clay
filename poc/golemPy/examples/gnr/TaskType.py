@@ -13,7 +13,7 @@ def buildPBRTTaskType():
     renderer = buildPBRTRendererInfo()
     options = GNROptions()
     options.outputFormats = renderer.outputFormats
-    options.sceneFileExt = renderer.sceneFileExt
+    options.scene_fileExt = renderer.scene_fileExt
     options.defaults = renderer.defaults
     rendererOptions = PbrtRendererOptions()
     options.filters = rendererOptions.filters

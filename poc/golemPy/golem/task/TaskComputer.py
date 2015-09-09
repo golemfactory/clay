@@ -203,7 +203,7 @@ class TaskComputer(object):
         working_directory = self.assigned_subtasks[subtask_id].working_directory
         self.dir_manager.clear_temporary(task_id)
         tt = PyTaskThread(self, subtask_id, working_directory, src_code, extra_data, short_desc,
-                          self.resource_manager.get_resource_dir(task_id), self.resource_manager.getTemporaryDir(task_id),
+                          self.resource_manager.get_resource_dir(task_id), self.resource_manager.get_temporary_dir(task_id),
                           task_timeout)
         self.current_computations.append(tt)
         tt.start()
@@ -293,7 +293,7 @@ class TaskThread(Thread):
         try:
             extra_data["resourcePath"] = abs_res_path
             extra_data["tmp_path"] = abs_tmp_path
-            self.result = self.vm.runTask(self.src_code, extra_data)
+            self.result = self.vm.run_task(self.src_code, extra_data)
         finally:
             os.chdir(self.prev_working_directory)
 

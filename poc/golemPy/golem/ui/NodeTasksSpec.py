@@ -178,16 +178,16 @@ class NodeTasksWidget(QtGui.QWidget):
 
             uid = str(self.localTasksTableData[ idx ].uid.text())
 
-            localTaskState = self.currNodeDataState.localTasksStateData[ uid ]
+            local_task_state = self.currNodeDataState.localTasksStateData[ uid ]
 
             self.ui.labelDetailedLocalTask.setText("{}".format(uid))
-            self.ui.locTaskShortDescrInput.setText(localTaskState[ "ltshd" ])
-            self.ui.allocatedTasksInput.setText(localTaskState[ "allocTasks" ])
-            self.ui.allocatedChunksInput.setText(localTaskState[ "allocChunks" ])
-            self.ui.activeTasksInput.setText(localTaskState[ "activeTasks" ])
-            self.ui.activeChunksInput.setText(localTaskState[ "activeChunks" ])
-            self.ui.chunksLeftInput.setText(localTaskState[ "chunksLeft" ])
-            self.ui.localTaskProgressBar.setProperty("value", int(100.0 * localTaskState[ "taskProgress" ]))
+            self.ui.locTaskShortDescrInput.setText(local_task_state[ "ltshd" ])
+            self.ui.allocatedTasksInput.setText(local_task_state[ "allocTasks" ])
+            self.ui.allocatedChunksInput.setText(local_task_state[ "alloc_chunks" ])
+            self.ui.activeTasksInput.setText(local_task_state[ "active_tasks" ])
+            self.ui.activeChunksInput.setText(local_task_state[ "active_chunks" ])
+            self.ui.chunksLeftInput.setText(local_task_state[ "chunks_left" ])
+            self.ui.localTaskProgressBar.setProperty("value", int(100.0 * local_task_state[ "taskProgress" ]))
 
     def __updateDetailedChunkView(self, idx):
 

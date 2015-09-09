@@ -50,7 +50,7 @@ class GolemVM(IGolemVM):
         return self.progress.get()
       
     #######################  
-    def runTask(self, src_code, extra_data):
+    def run_task(self, src_code, extra_data):
         self.src_code = src_code
         self.scope = extra_data
         self.scope[ "taskProgress" ] = self.progress
@@ -90,15 +90,15 @@ class PythonProcVM(GolemVM):
         del self.scope['taskProgress']
         manager = mp.Manager()
         scope = manager.dict(self.scope)
-        self.proc = mp.Process(target = execCode, args=(self.src_code, scope))
+        self.proc = mp.Process(target = exec_code, args=(self.src_code, scope))
         self.proc.start()
         self.proc.join()
         return scope.get("output")
 
-def execCode(src_code, scopeManager):
-    scope = dict(scopeManager)
+def exec_code(src_code, scope_manager):
+    scope = dict(scope_manager)
     exec src_code in scope
-    scopeManager["output"] = scope["output"]
+    scope_manager["output"] = scope["output"]
 
 ##############################################
 class PythonTestVM(GolemVM):

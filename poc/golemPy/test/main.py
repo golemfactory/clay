@@ -27,8 +27,8 @@ def main():
 
     port = AppConfig.manager_port()
     manager = NodesManager(None)
-    logic = EmptyManagerLogic(port, manager.managerServer)
-    manager.setManagerLogic(logic)
+    logic = EmptyManagerLogic(port, manager.manager_server)
+    manager.set_manager_logic(logic)
 
     try:
         import qt4reactor
@@ -38,7 +38,7 @@ def main():
     qt4reactor.install()
     from twisted.internet import reactor
 
-    logic.setReactor(reactor)
+    logic.set_reactor(reactor)
     manager.execute(True)
 
     reactor.run()

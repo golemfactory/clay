@@ -17,7 +17,7 @@ class TaskTester:
         assert isinstance(task, Task)
         self.task               = task
         self.test_taskResPath    = None
-        self.tmpDir             = None
+        self.tmp_dir             = None
         self.success            = False
         self.lock               = Lock()
         self.tt                 = None
@@ -43,7 +43,7 @@ class TaskTester:
                                 ctd.extra_data,
                                 ctd.short_description,
                                 self.test_taskResPath,
-                                self.tmpDir,
+                                self.tmp_dir,
                                 0)
             self.tt.start()
 
@@ -78,21 +78,21 @@ class TaskTester:
 
         self.test_taskResDir = getTestTaskDirectory()
         rh = TaskResourceHeader(self.test_taskResDir)
-        resFile = self.task.prepare_resource_delta(self.task.header.task_id, rh)
+        res_file = self.task.prepare_resource_delta(self.task.header.task_id, rh)
 
-        if resFile:
-            decompress_dir(self.test_taskResPath, resFile)
+        if res_file:
+            decompress_dir(self.test_taskResPath, res_file)
 
         return True
     #########################
     def __prepareTmpDir(self):
 
-        self.tmpDir = getTestTaskTmpPath(self.root_path)
-        if not os.path.exists(self.tmpDir):
-            os.makedirs(self.tmpDir)
+        self.tmp_dir = getTestTaskTmpPath(self.root_path)
+        if not os.path.exists(self.tmp_dir):
+            os.makedirs(self.tmp_dir)
         else:
-            shutil.rmtree(self.tmpDir, True)
-            os.makedirs(self.tmpDir)
+            shutil.rmtree(self.tmp_dir, True)
+            os.makedirs(self.tmp_dir)
 
     ###########################
     def task_computed(self, task_thread):

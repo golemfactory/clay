@@ -97,12 +97,12 @@ class NewTaskDialogCustomizer:
             self._saveTask(file_name)
 
     ############################
-    def _saveTask(self, filePath):
+    def _saveTask(self, file_path):
         definition = self._queryTaskDefinition()
-        self.logic.saveTask(definition, filePath)
+        self.logic.saveTask(definition, file_path)
 
     ############################
-    def loadTaskDefinition(self, taskDefinition):
+    def load_taskDefinition(self, taskDefinition):
         assert isinstance(taskDefinition, GNRTaskDefinition)
 
         definition = deepcopy(taskDefinition)
@@ -140,7 +140,7 @@ class NewTaskDialogCustomizer:
 
     #############################
     def _loadBasicTaskParams(self, definition):
-        self._loadTaskType(definition)
+        self._load_taskType(definition)
         setTimeSpinBoxes(self.gui, definition.full_task_timeout, definition.subtask_timeout, definition.min_subtask_time)
         self.gui.ui.mainProgramFileLineEdit.setText(definition.mainProgramFile)
         self.gui.ui.totalSpinBox.setValue(definition.totalSubtasks)
@@ -157,7 +157,7 @@ class NewTaskDialogCustomizer:
         self.options = deepcopy(definition.options)
 
     ############################
-    def _loadTaskType(self, definition):
+    def _load_taskType(self, definition):
         try:
             taskTypeItem = self.gui.ui.taskTypeComboBox.findText(definition.taskType)
             if taskTypeItem >= 0:

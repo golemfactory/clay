@@ -38,12 +38,12 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
 class PythonGNRTask(GNRTask):
     #####################
     def __init__(self, src_code, client_id, task_id, owner_address, owner_port, ownerKeyId, environment,
-                  ttl, subtaskTtl, resource_size, estimated_memory, totalTasks, root_path):
+                  ttl, subtaskTtl, resource_size, estimated_memory, total_tasks, root_path):
 
         GNRTask.__init__(self, src_code, client_id, task_id,owner_address, owner_port, ownerKeyId, environment, ttl, subtaskTtl,
                   resource_size, estimated_memory)
 
-        self.totalTasks = totalTasks
+        self.total_tasks = total_tasks
         self.root_path = root_path
 
 
@@ -53,15 +53,15 @@ class PythonGNRTask(GNRTask):
         ctd.task_id = self.header.task_id
         hash = "{}".format(random.getrandbits(128))
         ctd.subtask_id = hash
-        ctd.extra_data = { "startTask" : self.lastTask,
-                          "endTask": self.lastTask + 1 }
+        ctd.extra_data = { "start_task" : self.lastTask,
+                          "end_task": self.lastTask + 1 }
         ctd.return_address = self.header.task_owner_address
         ctd.return_port = self.header.task_owner_port
         ctd.taskOnwer = self.header.task_owner
         ctd.short_description = "Golem update"
         ctd.src_code = self.src_code
         ctd.performance = perf_index
-        if self.lastTask + 1 <= self.totalTasks:
+        if self.lastTask + 1 <= self.total_tasks:
             self.lastTask += 1
 
         self.subTasksGiven[ hash ] = ctd.extra_data
@@ -78,5 +78,5 @@ class PythonGNRTask(GNRTask):
     @checkSubtask_idWrapper
     def computation_finished(self, subtask_id, task_result, dir_manager = None, result_type = 0):
         self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished
-        self.numTasksReceived += 1
+        self.num_tasks_received += 1
 

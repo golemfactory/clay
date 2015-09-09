@@ -9,161 +9,161 @@ from golem.ranking.simpleRank import SimpleRank
 from networkSimulator import PANetworkSimulator
 
 class RankSimulator:
-    def __init__(self, rankClass, optPeers = 2, network = PANetworkSimulator):
+    def __init__(self, rank_class, opt_peers = 2, network = PANetworkSimulator):
         self.network = network()
         self.ranking = {}
         self.behaviour = {}
-        self.nodesCnt = 0
-        self.rankClass = rankClass
-        self.optPeers = optPeers
-        self.lastNode = None
+        self.nodes_cnt = 0
+        self.rank_class = rank_class
+        self.opt_peers = opt_peers
+        self.last_node = None
 
-    def getLastNodeName(self):
-        return self.lastNode
+    def get_last_node_name(self):
+        return self.last_node
 
-    def addNode(self, goodNode = True):
-        node = self.network.addNode()
-        self.ranking[ node ] = self.rankClass()
-        self.behaviour[ node ] = goodNode
-        self.lastNode = node
+    def add_node(self, good_node = True):
+        node = self.network.add_node()
+        self.ranking[ node ] = self.rank_class()
+        self.behaviour[ node ] = good_node
+        self.last_node = node
 
-    def fullAddNode(self, goodNode = True):
-        self.addNode(goodNode)
+    def full_add_node(self, good_node = True):
+        self.add_node(good_node)
         self.sync_network()
 
-    def connectNode(self, node):
-        self.network.connectNode(node)
+    def connect_node(self, node):
+        self.network.connect_node(node)
 
     def sync_network(self):
-        self.network.sync_network(self.optPeers)
+        self.network.sync_network(self.opt_peers)
 
-    def printState(self):
+    def print_state(self):
         for node, nodeData in self.network.nodes.iteritems():
             print "{}: {}, peers {}\n".format(node, self.ranking[node], nodeData)
 
-    def startTask(self, node):
+    def start_task(self, node):
         if node not in self.ranking:
             print "Wrong node {}".format(node)
 
-        countingNodes = self.ranking.keys()
-        for n in random.sample(countingNodes, self.numNodesTask()):
+        counting_nodes = self.ranking.keys()
+        for n in random.sample(counting_nodes, self.num_nodes_task()):
             if n != node:
-                if self.askForNodeDelegating(n, node) and self.askForNodeComputing(node, n):
-                    self.countTask(n, node)
+                if self.ask_for_node_delegating(n, node) and self.ask_for_node_computing(node, n):
+                    self.count_task(n, node)
 
-    def askForNodeDelegating(self, cntNode, dntNode):
+    def ask_for_node_delegating(self, cnt_node, dnt_node):
         return True
 
-    def askForNodeComputing(self, cntNode, dntNode):
+    def ask_for_node_computing(self, cnt_node, dnt_node):
         return True
 
-    def numNodesTask(self):
+    def num_nodes_task(self):
         return 3
 
-    def countTask(self, cntNode, dntNode):
-        if cntNode not in self.ranking:
-            print "Wrong node {}".format(cntNode)
-        if dntNode not in self.ranking:
-            print "Wrong node {}".format(dntNode)
+    def count_task(self, cnt_node, dnt_node):
+        if cnt_node not in self.ranking:
+            print "Wrong node {}".format(cnt_node)
+        if dnt_node not in self.ranking:
+            print "Wrong node {}".format(dnt_node)
 
-        if self.behaviour[cntNode]:
-            self.goodCounting(cntNode, dntNode)
-            if self.behaviour[dntNode]:
-                self.goodPayment(cntNode, dntNode)
+        if self.behaviour[cnt_node]:
+            self.good_counting(cnt_node, dnt_node)
+            if self.behaviour[dnt_node]:
+                self.good_payment(cnt_node, dnt_node)
             else:
-                self.noPayment(cntNode, dntNode)
+                self.no_payment(cnt_node, dnt_node)
         else:
-            self.badCounting(cntNode, dntNode)
+            self.bad_counting(cnt_node, dnt_node)
 
 
-    def goodCounting(self, cntNode, dntNode):
+    def good_counting(self, cnt_node, dnt_node):
         pass
 
-    def badCounting(self, cntNode, dntNode):
+    def bad_counting(self, cnt_node, dnt_node):
         pass
 
-    def goodPayment(self, cntNode, dntNode):
+    def good_payment(self, cnt_node, dnt_node):
         pass
 
-    def noPayment(self, cntNode, dntNode):
+    def no_payment(self, cnt_node, dnt_node):
         pass
 
 
 
 class SimpleRankSimulator(RankSimulator):
-    def __init__(self, optPeers = 3, trustThreshold  = 0.2, nodesForTask = 2, goodTaskReward = 0.1,
-                  badTaskPunishment = 0.2, paymentReward = 0.2, badPaymentPunishment = 0.3):
-        RankSimulator.__init__(self, SimpleRank, optPeers)
-        self.trustThreshold = trustThreshold
-        self.nodesForTask = nodesForTask
-        self.goodTaskReward = goodTaskReward
-        self.badTaskPunishment = badTaskPunishment
-        self.paymentReward = paymentReward
-        self.badPaymentPunishment = badPaymentPunishment
+    def __init__(self, opt_peers = 3, trust_threshold  = 0.2, nodes_for_task = 2, good_task_reward = 0.1,
+                  bad_task_punishment = 0.2, payment_reward = 0.2, bad_payment_punishment = 0.3):
+        RankSimulator.__init__(self, SimpleRank, opt_peers)
+        self.trust_threshold = trust_threshold
+        self.nodes_for_task = nodes_for_task
+        self.good_task_reward = good_task_reward
+        self.bad_task_punishment = bad_task_punishment
+        self.payment_reward = payment_reward
+        self.bad_payment_punishment = bad_payment_punishment
 
-    def numNodesTask(self):
-        return self.nodesForTask
+    def num_nodes_task(self):
+        return self.nodes_for_task
 
-    def goodCounting(self, cntNode, dntNode):
-        self.addToRank(dntNode, cntNode, self.goodTaskReward)
+    def good_counting(self, cnt_node, dnt_node):
+        self.add_to_rank(dnt_node, cnt_node, self.good_task_reward)
 
-    def badCounting(self, cntNode, dntNode):
-        self.addToRank(dntNode, cntNode, - self.badTaskPunishment)
-        self.addToRank(cntNode, dntNode, - self.badPaymentPunishment)
+    def bad_counting(self, cnt_node, dnt_node):
+        self.add_to_rank(dnt_node, cnt_node, - self.bad_task_punishment)
+        self.add_to_rank(cnt_node, dnt_node, - self.bad_payment_punishment)
 
-    def goodPayment(self, cntNode, dntNode):
-        self.addToRank(cntNode, dntNode, self.paymentReward)
+    def good_payment(self, cnt_node, dnt_node):
+        self.add_to_rank(cnt_node, dnt_node, self.payment_reward)
 
-    def noPayment(self, cntNode, dntNode):
-        self.addToRank(cntNode, dntNode, -self.badPaymentPunishment)
+    def no_payment(self, cnt_node, dnt_node):
+        self.add_to_rank(cnt_node, dnt_node, -self.bad_payment_punishment)
 
-    def addToRank(self, inNode, forNode, value):
-        self.ranking[inNode].setNodeRank(forNode, self.getGlobalRank(inNode, forNode) + value)
+    def add_to_rank(self, in_node, for_node, value):
+        self.ranking[in_node].set_node_rank(for_node, self.get_global_rank(in_node, for_node) + value)
 
-    def askForNodeDelegating(self, cntNode, dntNode):
-        return self.askForNode(cntNode, dntNode)
+    def ask_for_node_delegating(self, cnt_node, dnt_node):
+        return self.ask_for_node(cnt_node, dnt_node)
 
-    def askForNodeComputing(self, dntNode, cntNode):
-        return self.askForNode(dntNode, cntNode)
+    def ask_for_node_computing(self, dnt_node, cnt_node):
+        return self.ask_for_node(dnt_node, cnt_node)
 
-    def askForNode(self, node, forNode):
+    def ask_for_node(self, node, for_node):
         if node not in self.ranking:
             print "Wrong node {}".format(node)
-        if forNode not in self.ranking:
-            print "Wrong node {}".format(forNode)
+        if for_node not in self.ranking:
+            print "Wrong node {}".format(for_node)
 
-        otherRank = {}
+        other_rank = {}
         for peer in self.network.nodes[node]:
-            otherRank[peer] = self.ranking[peer].getNodeRank(forNode)
+            other_rank[peer] = self.ranking[peer].get_node_rank(for_node)
 
-        test = self.ranking[node].globalNodeRank(forNode, otherRank)
-        if test > self.trustThreshold:
+        test = self.ranking[node].global_node_rank(for_node, other_rank)
+        if test > self.trust_threshold:
             return True
         else:
-            if forNode in self.network.nodes[node]:
-                self.network.nodes[node].remove(forNode)
+            if for_node in self.network.nodes[node]:
+                self.network.nodes[node].remove(for_node)
             return False
 
-    def getGlobalRank(self, node, forNode):
-        otherRank = {}
+    def get_global_rank(self, node, for_node):
+        other_rank = {}
         for peer in self.network.nodes[node]:
-            otherRank[peer] = self.ranking[peer].getNodeRank(forNode)
+            other_rank[peer] = self.ranking[peer].get_node_rank(for_node)
 
-        return self.ranking[node].globalNodeRank(forNode, otherRank)
+        return self.ranking[node].global_node_rank(for_node, other_rank)
 
 
 def main():
     rs = SimpleRankSimulator()
     for i in range(0, 5):
-        rs.fullAddNode(goodNode = False)
+        rs.full_add_node(good_node = False)
     for i in range(0, 10):
-        rs.fullAddNode(goodNode = True)
+        rs.full_add_node(good_node = True)
 
-    rs.printState()
+    rs.print_state()
     print "################"
     for i in range(0, 200):
-        rs.startTask(random.sample(rs.ranking.keys(), 1)[0])
-    rs.printState()
+        rs.start_task(random.sample(rs.ranking.keys(), 1)[0])
+    rs.print_state()
 
 
 if __name__ == "__main__":

@@ -12,9 +12,9 @@ class GNRGui:
         self.appLogic       = appLogic
 
     ############################
-    def execute(self, usingqt4Reactor = True):
+    def execute(self, using_qt4_reactor = True):
         self.mainWindow.show()
-        if not usingqt4Reactor:
+        if not using_qt4_reactor:
             res = self.app.exec_()
             try:
                 self.appLogic.quit()

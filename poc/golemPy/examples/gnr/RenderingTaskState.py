@@ -8,7 +8,7 @@ class RendererInfo:
     def __init__(self, name, defaults, task_builderType, dialog, dialogCustomizer, rendererOptions):
         self.name           = name
         self.outputFormats  = []
-        self.sceneFileExt   = []
+        self.scene_fileExt   = []
         self.defaults       = defaults
         self.task_builderType = task_builderType
         self.dialog = dialog

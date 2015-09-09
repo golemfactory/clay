@@ -11,66 +11,66 @@ logger = logging.getLogger(__name__)
 class NodesManagerClient:
 
     ######################
-    def __init__(self, managerServerAddress, managerServerPort):
-        self.managerServerAddress    = managerServerAddress
-        self.managerServerPort       = managerServerPort
-        self.clientManagerSession   = None
+    def __init__(self, manager_server_address, manager_server_port):
+        self.manager_server_address    = manager_server_address
+        self.manager_server_port       = manager_server_port
+        self.client_manager_session   = None
 
         self.network = TCPNetwork(ProtocolFactory(ManagerConnState, None, ClientManagerSessionFactory()))
 
     ######################
     def start(self):
         try:
-            if (int(self.managerServerPort) < 1) or (int(self.managerServerPort) > 65535):
-                logger.warning(u"Manager Server port number out of range [1, 65535]: {}".format(self.managerServerPort))
+            if (int(self.manager_server_port) < 1) or (int(self.manager_server_port) > 65535):
+                logger.warning(u"Manager Server port number out of range [1, 65535]: {}".format(self.manager_server_port))
                 return True
         except Exception, e:
-            logger.error(u"Wrong seed port number {}: {}".format(self.managerServerPort, str(e)))
+            logger.error(u"Wrong seed port number {}: {}".format(self.manager_server_port, str(e)))
             return True
 
-        if not self.clientManagerSession:
-            self.__connectNodesManager()
+        if not self.client_manager_session:
+            self.__connect_nodes_manager()
 
     #############################
-    def sendClientStateSnapshot(self, snapshot):
-        if self.clientManagerSession:
-            self.clientManagerSession.sendClientStateSnapshot(snapshot)
+    def send_client_state_snapshot(self, snapshot):
+        if self.client_manager_session:
+            self.client_manager_session.send_client_state_snapshot(snapshot)
         else:
-            logger.error("No clientManagerSession defined")
+            logger.error("No client_manager_session defined")
 
     ######################
     def dropConnection(self):
-        if  self.clientManagerSession:
-            self.clientManagerSession.dropped()
+        if  self.client_manager_session:
+            self.client_manager_session.dropped()
 
     #############################
     def add_new_task(self, task):
         pass
 
     ######################
-    def runNewNodes(self, num):
+    def run_new_nodes(self, num):
         pass
 
     ######################
-    def __connectNodesManager(self):
+    def __connect_nodes_manager(self):
 
-        assert not self.clientManagerSession # connection already established
+        assert not self.client_manager_session # connection already established
 
-        connect_info = TCPConnectInfo([TCPAddress(self.managerServerAddress, self.managerServerPort)], self.__connection_established, self.__connection_failure)
+        connect_info = TCPConnectInfo([TCPAddress(self.manager_server_address, self.manager_server_port)], self.__connection_established, self.__connection_failure)
         self.network.connect(connect_info)
 
     #############################
     def __connection_established(self, session):
         session.client = self
-        self.clientManagerSession = session
+        self.client_manager_session = session
 
     def __connection_failure(self):
         logger.error("Connection to nodes manager failure.")
 
 class NodesManagerUidClient (NodesManagerClient):
     ######################
-    def __init__(self, client_uid, managerServerAddress, managerServerPort, task_manager, logic = None):
-        NodesManagerClient.__init__(self, managerServerAddress, managerServerPort)
+    def __init__(self, client_uid, manager_server_address, manager_server_port, task_manager, logic = None):
+        NodesManagerClient.__init__(self, manager_server_address, manager_server_port)
         self.client_uid              = client_uid
         self.logic                  = logic
         self.task_manager            = task_manager
@@ -88,5 +88,5 @@ class NodesManagerUidClient (NodesManagerClient):
             logger.error("No logic and no task_manager defined.")
 
     ######################
-    def runNewNodes(self, num):
-        self.logic.addNewNodesFunction(num)
+    def run_new_nodes(self, num):
+        self.logic.add_new_nodes_function(num)

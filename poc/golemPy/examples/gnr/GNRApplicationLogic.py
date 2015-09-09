@@ -44,7 +44,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer         = None
         self.root_path           = os.path.join(os.environ.get('GOLEM'), 'examples/gnr')
         self.nodes_manager_client = None
-        self.addNewNodesFunction = lambda x: None
+        self.add_new_nodes_function = lambda x: None
 
     ######################
     def registerGui(self, gui, customizerClass):
@@ -57,7 +57,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
     ######################
     def registerStartNewNodeFunction(self, func):
-        self.addNewNodesFunction = func
+        self.add_new_nodes_function = func
 
     ######################
     def get_res_dirs(self):
@@ -138,28 +138,28 @@ class GNRApplicationLogic(QtCore.QObject):
             assert False, "Task {} not registered".format(name)
 
     ######################
-    def change_config ( self, cfgDesc):
+    def change_config ( self, cfg_desc):
         oldCfgDesc = self.client.config_desc
-        if (oldCfgDesc.manager_address != cfgDesc.manager_address) or (oldCfgDesc.manager_port != cfgDesc.manager_port):
+        if (oldCfgDesc.manager_address != cfg_desc.manager_address) or (oldCfgDesc.manager_port != cfg_desc.manager_port):
             if self.nodes_manager_client is not None:
                 self.nodes_manager_client.dropConnection()
                 del self.nodes_manager_client
-            self.nodes_manager_client = NodesManagerUidClient(cfgDesc.client_uid,
-                                                          cfgDesc.manager_address,
-                                                          cfgDesc.manager_port,
+            self.nodes_manager_client = NodesManagerUidClient(cfg_desc.client_uid,
+                                                          cfg_desc.manager_address,
+                                                          cfg_desc.manager_port,
                                                           None,
                                                           self)
 
             self.nodes_manager_client.start()
             self.client.register_nodes_manager_client(self.nodes_manager_client)
-        self.client.change_config(cfgDesc)
+        self.client.change_config(cfg_desc)
 
     ######################
     def _getNewTaskState(self):
         return GNRTaskState()
 
     ######################
-    def startTask(self, task_id):
+    def start_task(self, task_id):
         ts = self.get_task(task_id)
 
         if ts.task_state.status != TaskStatus.notStarted:
@@ -278,8 +278,8 @@ class GNRApplicationLogic(QtCore.QObject):
             assert False, "Test task {} already registered".format(test_taskInfo.name)
 
     ######################
-    def saveTask(self, task_state, filePath):
-        with open(filePath, "wb") as f:
+    def saveTask(self, task_state, file_path):
+        with open(file_path, "wb") as f:
             tspickled = pickle.dumps(task_state)
             f.write(tspickled)
 

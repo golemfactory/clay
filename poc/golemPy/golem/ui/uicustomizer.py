@@ -42,7 +42,7 @@ class TableRowDataEntry:
 class ManagerUiCustomizer(QtCore.QObject):
 
     ########################
-    def __init__(self, widget, managerLogic):
+    def __init__(self, widget, manager_logic):
         super(ManagerUiCustomizer, self).__init__()
 
         self.window = widget.window
@@ -52,8 +52,8 @@ class ManagerUiCustomizer(QtCore.QObject):
         self.table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.tableData = {}
         self.node_data_states = []
-        self.uidRowMapping = {}
-        self.logic = managerLogic
+        self.uid_row_mapping = {}
+        self.logic = manager_logic
         self.detailedViewEnabled = False
         self.curActiveRowIdx = None
         self.curActiveRowUid = None
@@ -73,14 +73,14 @@ class ManagerUiCustomizer(QtCore.QObject):
 
     ########################
     def add_nodes_clicked(self):
-        numNodes = self.ui.additionalNodesSpinBox.value()
-        self.logic.runAdditionalNodes(numNodes)
+        num_nodes = self.ui.additionalNodesSpinBox.value()
+        self.logic.run_additional_nodes(num_nodes)
 
     ########################
     def add_local_nodes_clicked(self):
         if self.curActiveRowIdx is not None and self.curActiveRowUid is not None:
-            numNodes = self.ui.additionalLocalNodesSpinBox.value()
-            self.logic.runAdditionalLocalNodes(self.curActiveRowUid, numNodes)
+            num_nodes = self.ui.additionalLocalNodesSpinBox.value()
+            self.logic.runAdditionalLocalNodes(self.curActiveRowUid, num_nodes)
 
     ########################
     def stop_node_clicked(self):
@@ -89,20 +89,20 @@ class ManagerUiCustomizer(QtCore.QObject):
 
     ########################
     def terminate_all_nodes_clicked(self):
-        self.logic.terminateAllNodes()
+        self.logic.terminate_all_nodes()
 
     ########################
     def terminate_all_local_nodes_clicked(self):
         if self.curActiveRowIdx is not None and self.curActiveRowUid is not None:
-            self.logic.terminateAllLocalNodes(self.curActiveRowUid)
+            self.logic.terminate_all_local_nodes(self.curActiveRowUid)
 
     ########################
     def enqueue_task_clicked(self):
         if self.curActiveRowIdx is not None and self.curActiveRowUid is not None:
             uid = self.curActiveRowUid
-            filePath = QFileDialog.getOpenFileName(self.window, "Choose task file", "", "Golem Task (*.gt)")
-            if os.path.exists(filePath):
-                self.logic.loadTask(uid, filePath)
+            file_path = QFileDialog.getOpenFileName(self.window, "Choose task file", "", "Golem Task (*.gt)")
+            if os.path.exists(file_path):
+                self.logic.load_task(uid, file_path)
 #        dialog = TaskSpecDialog(self.table)
 #        if dialog.exec_():
 #            w = dialog.getWidth()
@@ -197,7 +197,7 @@ class ManagerUiCustomizer(QtCore.QObject):
     ########################
     def __registerRowData(self, nodeUid, rowDataEntry, node_data_state):
         self.tableData[ nodeUid ] = rowDataEntry
-        self.uidRowMapping[ nodeUid ] = len(self.node_data_states)
+        self.uid_row_mapping[ nodeUid ] = len(self.node_data_states)
         self.node_data_states.append(node_data_state)
 
     ########################
@@ -207,9 +207,9 @@ class ManagerUiCustomizer(QtCore.QObject):
         del self.tableData[ uid ]
         self.table.removeRow(idx)
 
-        self.uidRowMapping = {}
+        self.uid_row_mapping = {}
         for i, nds in enumerate(self.node_data_states):
-            self.uidRowMapping[ nds.uid ] = i
+            self.uid_row_mapping[ nds.uid ] = i
 
         curRow = self.table.currentRow()
 
@@ -235,7 +235,7 @@ class ManagerUiCustomizer(QtCore.QObject):
             self.__registerRowData(node_data_state.uid, self.__createRow(node_data_state.uid, node_data_state.timestamp), node_data_state)
 
         #update model
-        idx = self.uidRowMapping[ node_data_state.uid ]
+        idx = self.uid_row_mapping[ node_data_state.uid ]
         self.node_data_states[ idx ] = node_data_state
 
         #update view

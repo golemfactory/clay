@@ -127,7 +127,7 @@ class ProcessService(object):
         for p in self.state:
             if int(p) in pids:
                 updated_state[p] = self.state[p]
-                ids.append(self.state[p][1])  # localId
+                ids.append(self.state[p][1])  # local_id
             else:
                 logger.info("Process PID {} is inactive - removing".format(p))
 

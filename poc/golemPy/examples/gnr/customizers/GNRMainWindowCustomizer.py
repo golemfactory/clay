@@ -53,7 +53,7 @@ class GNRMainWindowCustomizer:
     #############################
     def _setupBasicTaskConnections(self):
         self.gui.ui.actionNew.triggered.connect(self._showNewTaskDialogClicked)
-        self.gui.ui.actionLoadTask.triggered.connect(self._loadTaskButtonClicked)
+        self.gui.ui.actionLoadTask.triggered.connect(self._load_taskButtonClicked)
         QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("cellClicked(int, int)"), self._taskTableRowClicked)
         QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("doubleClicked(const QModelIndex)"), self._taskTableRowDoubleClicked)
         self.gui.ui.taskTableWidget.customContextMenuRequested.connect(self._contexMenuRequested)
@@ -150,7 +150,7 @@ class GNRMainWindowCustomizer:
     def _showNewTaskDialog(self, definition):
         self._setNewTaskDialog()
         self._setNewTaskDialogCustomizer()
-        self.newTaskDialogCustomizer.loadTaskDefinition(definition)
+        self.newTaskDialogCustomizer.load_taskDefinition(definition)
         self.newTaskDialog.show()
 
    #############################
@@ -177,7 +177,7 @@ class GNRMainWindowCustomizer:
 
 
     ############################
-    def _loadTaskButtonClicked(self):
+    def _load_taskButtonClicked(self):
         golemPath = os.environ.get('GOLEM')
         dir = ""
         if golemPath:
@@ -188,16 +188,16 @@ class GNRMainWindowCustomizer:
         file_name = QFileDialog.getOpenFileName(self.gui.window,
             "Choose task file", dir, "Golem Task (*.gt)")
         if os.path.exists(file_name):
-            self._loadTask(file_name)
+            self._load_task(file_name)
 
    ############################
-    def _loadTask(self, filePath):
-        f = open(filePath, 'r')
+    def _load_task(self, file_path):
+        f = open(file_path, 'r')
         try:
             definition = pickle.loads(f.read())
         except Exception, e:
             definition = None
-            logger.error("Can't unpickle the file {}: {}".format(filePath, str(e)))
+            logger.error("Can't unpickle the file {}: {}".format(file_path, str(e)))
             QMessageBox().critical(None, "Error", "This is not a proper gt file")
         finally:
             f.close()
@@ -257,7 +257,7 @@ class GNRMainWindowCustomizer:
         self.changeTaskDialog = ChangeTaskDialog(self.gui.window)
         self.changeTaskDialogCustomizer = ChangeTaskDialogCustomizer(self.changeTaskDialog, self.logic)
         ts = self.logic.get_task(task_id)
-        self.changeTaskDialogCustomizer.loadTaskDefinition(ts.definition)
+        self.changeTaskDialogCustomizer.load_taskDefinition(ts.definition)
         self.changeTaskDialog.show()
 
     #############################

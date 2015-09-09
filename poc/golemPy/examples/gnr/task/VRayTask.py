@@ -33,7 +33,7 @@ def buildVRayRendererInfo():
 
     renderer = RendererInfo("VRay Standalone", defaults, VRayTaskBuilder, VRayDialog, VRayDialogCustomizer, VRayRendererOptions)
     renderer.outputFormats = [ "BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF" ]
-    renderer.sceneFileExt = [ "vrscene" ]
+    renderer.scene_fileExt = [ "vrscene" ]
     renderer.get_taskNumFromPixels = get_taskNumFromPixels
     renderer.get_taskBoarder = get_taskBoarder
 
@@ -87,7 +87,7 @@ class VRayTask(FrameRenderingTask):
                   mainSceneDir,
                   mainSceneFile,
                   mainProgramFile,
-                  totalTasks,
+                  total_tasks,
                   resX,
                   resY,
                   outfilebasename,
@@ -108,7 +108,7 @@ class VRayTask(FrameRenderingTask):
         FrameRenderingTask.__init__(self, client_id, task_id, return_address, return_port, key_id,
                           VRayEnvironment.get_id(), full_task_timeout, subtask_timeout,
                           mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                          totalTasks, resX, resY, outfilebasename, output_file, outputFormat,
+                          total_tasks, resX, resY, outfilebasename, output_file, outputFormat,
                           root_path, estimated_memory, useFrames, frames)
 
         self.rtEngine = rtEngine
@@ -126,24 +126,24 @@ class VRayTask(FrameRenderingTask):
             return None
 
 
-        startTask, endTask = self._getNextTask()
+        start_task, end_task = self._getNextTask()
 
         working_directory = self._getWorkingDirectory()
-        sceneFile = self._getSceneFileRelPath()
+        scene_file = self._getSceneFileRelPath()
 
         if self.useFrames:
-            frames, parts = self._chooseFrames(self.frames, startTask, self.totalTasks)
+            frames, parts = self._chooseFrames(self.frames, start_task, self.total_tasks)
         else:
             frames = []
             parts = 1
 
-        extra_data =          {      "pathRoot" : self.mainSceneDir,
-                                    "startTask" : startTask,
-                                    "endTask" : endTask,
-                                    "hTask": self.totalTasks,
-                                    "totalTasks" : self.totalTasks,
+        extra_data =          {      "path_root" : self.mainSceneDir,
+                                    "start_task" : start_task,
+                                    "end_task" : end_task,
+                                    "hTask": self.total_tasks,
+                                    "total_tasks" : self.total_tasks,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFile" : sceneFile,
+                                    "scene_file" : scene_file,
                                     "width" : self.resX,
                                     "height": self.resY,
                                     "rtEngine": self.rtEngine,
@@ -176,20 +176,20 @@ class VRayTask(FrameRenderingTask):
     def query_extra_dataForTestTask(self):
 
         working_directory = self._getWorkingDirectory()
-        sceneFile = self._getSceneFileRelPath()
+        scene_file = self._getSceneFileRelPath()
 
         if self.useFrames:
             frames = [ self.frames[0] ]
         else:
             frames = []
 
-        extra_data =          {      "pathRoot" : self.mainSceneDir,
-                                    "startTask" : 0,
-                                    "endTask" : 1,
-                                    "hTask": self.totalTasks,
-                                    "totalTasks" : self.totalTasks,
+        extra_data =          {      "path_root" : self.mainSceneDir,
+                                    "start_task" : 0,
+                                    "end_task" : 1,
+                                    "hTask": self.total_tasks,
+                                    "total_tasks" : self.total_tasks,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFile" : sceneFile,
+                                    "scene_file" : scene_file,
                                     "width" : 1,
                                     "height": 1,
                                     "rtEngine": self.rtEngine,
@@ -215,21 +215,21 @@ class VRayTask(FrameRenderingTask):
         if not self.shouldAccept(subtask_id):
             return
 
-        tmpDir = dir_manager.get_task_temporary_dir(self.header.task_id, create = False)
-        self.tmpDir = tmpDir
+        tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create = False)
+        self.tmp_dir = tmp_dir
 
         if len(task_result) > 0:
-            numStart = self.subTasksGiven[ subtask_id ][ 'startTask' ]
+            numStart = self.subTasksGiven[ subtask_id ][ 'start_task' ]
             parts = self.subTasksGiven[ subtask_id ][ 'parts' ]
-            numEnd = self.subTasksGiven[ subtask_id ][ 'endTask' ]
+            numEnd = self.subTasksGiven[ subtask_id ][ 'end_task' ]
             self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished
 
-            if self.useFrames and self.totalTasks <= len(self.frames):
+            if self.useFrames and self.total_tasks <= len(self.frames):
                 if len(task_result) < len(self.subTasksGiven[ subtask_id ][ 'frames' ]):
                     self._markSubtaskFailed(subtask_id)
                     return
 
-            trFiles = self.loadTaskResults(task_result, result_type, tmpDir)
+            trFiles = self.load_taskResults(task_result, result_type, tmp_dir)
 
             if not self._verifyImgs(subtask_id, trFiles):
                 self._markSubtaskFailed(subtask_id)
@@ -239,20 +239,20 @@ class VRayTask(FrameRenderingTask):
                     self._updateFrameTaskPreview()
                 return
 
-            self.countingNodes[ self.subTasksGiven[ subtask_id ][ 'client_id' ] ] = 1
+            self.counting_nodes[ self.subTasksGiven[ subtask_id ][ 'client_id' ] ] = 1
 
             if not self.useFrames:
                 for trFile in trFiles:
                     self.__collectImagePart(numStart, trFile)
-            elif self.totalTasks < len(self.frames):
+            elif self.total_tasks < len(self.frames):
                 for trFile in trFiles:
                     self.__collectFrameFile(trFile)
-                self.__collectFrames(self.subTasksGiven[ subtask_id ][ 'frames' ], tmpDir)
+                self.__collectFrames(self.subTasksGiven[ subtask_id ][ 'frames' ], tmp_dir)
             else:
                 for trFile in trFiles:
-                    self.__collectFramePart(numStart, trFile, parts, tmpDir)
+                    self.__collectFramePart(numStart, trFile, parts, tmp_dir)
 
-            self.numTasksReceived += numEnd - numStart + 1
+            self.num_tasks_received += numEnd - numStart + 1
         else:
             self._markSubtaskFailed(subtask_id)
             if not self.useFrames:
@@ -260,7 +260,7 @@ class VRayTask(FrameRenderingTask):
             else:
                 self._updateFrameTaskPreview()
 
-        if self.numTasksReceived == self.totalTasks:
+        if self.num_tasks_received == self.total_tasks:
             if self.useFrames:
                 self.__copyFrames()
             else:
@@ -270,7 +270,7 @@ class VRayTask(FrameRenderingTask):
     #######################
     @checkSubtask_idWrapper
     def get_price_mod(self, subtask_id):
-        perf =  (self.subTasksGiven[ subtask_id ]['endTask'] - self.subTasksGiven[ subtask_id ][ 'startTask' ]) + 1
+        perf =  (self.subTasksGiven[ subtask_id ]['end_task'] - self.subTasksGiven[ subtask_id ][ 'start_task' ]) + 1
         perf *= float(self.subTasksGiven[ subtask_id ]['perf']) / 1000
         perf *= 10
         return perf
@@ -279,10 +279,10 @@ class VRayTask(FrameRenderingTask):
     def _short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data
         msg = []
-        msg.append(" scene file: {} ".format(l [ "sceneFile" ]))
-        msg.append("total tasks: {}".format(l[ "totalTasks" ]))
-        msg.append("start task: {}".format(l[ "startTask" ]))
-        msg.append("end task: {}".format(l[ "endTask" ]))
+        msg.append(" scene file: {} ".format(l [ "scene_file" ]))
+        msg.append("total tasks: {}".format(l[ "total_tasks" ]))
+        msg.append("start task: {}".format(l[ "start_task" ]))
+        msg.append("end task: {}".format(l[ "end_task" ]))
         msg.append("outfile basename: {}".format(l[ "outfilebasename" ]))
         msg.append("size: {}x{}".format(l[ "width" ], l[ "height" ]))
         msg.append("rtEngine: {}".format(l[ "rtEngine" ]))
@@ -291,7 +291,7 @@ class VRayTask(FrameRenderingTask):
         return "\n".join(msg)
 
     #######################
-    def _pasteNewChunk(self, imgChunk, previewFilePath, chunkNum, allChunksNum):
+    def _pasteNewChunk(self, imgChunk, previewFilePath, chunkNum, all_chunksNum):
         if os.path.exists(previewFilePath):
             img = Image.open(previewFilePath)
             img = ImageChops.add(img, imgChunk)
@@ -321,7 +321,7 @@ class VRayTask(FrameRenderingTask):
         extra_data['box'] = (newBoxX, newBoxY)
         if self.useFrames:
             extra_data['frames'] = [ self.__getFrameNumFromOutputFile(trFile) ]
-            extra_data['parts'] = extra_data['totalTasks']
+            extra_data['parts'] = extra_data['total_tasks']
 
 
         return extra_data, startBox
@@ -333,15 +333,15 @@ class VRayTask(FrameRenderingTask):
         idx = file_name.find(self.outfilebasename)
         if self.__isAlphaFile(file_name):
             idxAlpha = file_name.find("Alpha")
-            if self.useFrames and self.totalTasks == len(self.frames):
+            if self.useFrames and self.total_tasks == len(self.frames):
                 return int (file_name[ idx + len(self.outfilebasename) + 1: idxAlpha - 1])
-            elif self.useFrames and self.totalTasks < len(self.frames):
+            elif self.useFrames and self.total_tasks < len(self.frames):
                 return int (file_name[ idxAlpha + len("Alpha") + 1: ])
             else:
                 return int(file_name.split(".")[-3])
 
         else:
-            if self.useFrames and self.totalTasks > len(self.frames):
+            if self.useFrames and self.total_tasks > len(self.frames):
                 suf = file_name[ idx + len(self.outfilebasename) + 1:]
                 idxDot = suf.find(".")
                 return int (suf[ idxDot + 1: ])
@@ -389,9 +389,9 @@ class VRayTask(FrameRenderingTask):
             self._updateTaskPreview()
 
     #######################
-    def __collectFrames(self, frames, tmpDir):
+    def __collectFrames(self, frames, tmp_dir):
         for frame in frames:
-            self.__putFrameTogether(tmpDir, frame, frame)
+            self.__putFrameTogether(tmp_dir, frame, frame)
 
 
     #######################
@@ -405,7 +405,7 @@ class VRayTask(FrameRenderingTask):
             self.framesParts[ frameNum ][1] = trFile
 
     #######################
-    def __collectFramePart(self, numStart, trFile, parts, tmpDir):
+    def __collectFramePart(self, numStart, trFile, parts, tmp_dir):
         frameNum = self.frames[(numStart - 1) / parts ]
         part = ((numStart - 1) % parts) + 1
 
@@ -417,7 +417,7 @@ class VRayTask(FrameRenderingTask):
         self._updateFramePreview(trFile, frameNum, part)
 
         if len(self.framesParts[ frameNum ]) == parts:
-            self.__putFrameTogether(tmpDir, frameNum, numStart)
+            self.__putFrameTogether(tmp_dir, frameNum, numStart)
 
     #######################
     def __copyFrames(self):
@@ -426,8 +426,8 @@ class VRayTask(FrameRenderingTask):
             shutil.copy(file, os.path.join(outpuDir, os.path.basename(file)))
 
     #######################
-    def __putFrameTogether(self, tmpDir, frameNum, numStart):
-        output_file_name = os.path.join(tmpDir, self.__getOutputName(frameNum))
+    def __putFrameTogether(self, tmp_dir, frameNum, numStart):
+        output_file_name = os.path.join(tmp_dir, self.__getOutputName(frameNum))
         if self._useOuterTaskCollector():
             collected = self.framesParts[ frameNum ]
             collected = OrderedDict(sorted(collected.items()))
@@ -462,9 +462,9 @@ class VRayTask(FrameRenderingTask):
         return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.outputFormat)
 
     #######################
-    def _runTask(self, src_code, scope):
+    def _run_task(self, src_code, scope):
         exec src_code in scope
-        trFiles = self.loadTaskResults(scope['output']['data'], scope['output']['result_type'], self.tmpDir)
+        trFiles = self.load_taskResults(scope['output']['data'], scope['output']['result_type'], self.tmp_dir)
         if scope['isAlpha']:
             for trFile in trFiles:
                 if self.__isAlphaFile(trFile):

@@ -39,42 +39,42 @@ def start_client():
     cfg = AppConfig.load_config()
 
     opt_num_peers = cfg.get_optimal_peer_num()
-    manager_address = cfg.getManagerAddress()
-    manager_port = cfg.getManagerListenPort()
-    start_port = cfg.getStartPort()
-    end_port = cfg.getEndPort()
-    seed_host = cfg.getSeedHost()
-    seed_host_port = cfg.getSeedHostPort()
+    manager_address = cfg.get_manager_address()
+    manager_port = cfg.get_manager_listen_port()
+    start_port = cfg.get_start_port()
+    end_port = cfg.get_end_port()
+    seed_host = cfg.get_seed_host()
+    seed_host_port = cfg.get_seed_host_port()
     send_pings = cfg.get_send_pings()
-    pings_interval = cfg.getPingsInterval()
-    client_uid = cfg.getClientUid()
-    add_tasks = cfg.getAddTasks()
+    pings_interval = cfg.get_pings_interval()
+    client_uid = cfg.get_client_uid()
+    add_tasks = cfg.get_add_tasks()
     root_path = cfg.get_root_path()
-    num_cores = cfg.getNumCores()
-    max_resource_size = cfg.getMaxResourceSize()
-    max_memory_size = cfg.getMaxMemorySize()
-    dist_res_num = cfg.getDistributedResNum()
-    app_name = cfg.getAppName()
-    app_version = cfg.getAppVersion()
+    num_cores = cfg.get_num_cores()
+    max_resource_size = cfg.get_max_resource_size()
+    max_memory_size = cfg.get_max_memory_size()
+    dist_res_num = cfg.get_distributed_res_num()
+    app_name = cfg.get_app_name()
+    app_version = cfg.get_app_version()
     plugin_port = cfg.get_plugin_port()
 
-    getting_peers_interval = cfg.getGettingPeersInterval()
-    getting_tasks_interval = cfg.getGettingTasksInterval()
-    task_request_interval = cfg.get_taskRequestInterval()
-    use_waiting_for_task_timeout = cfg.getUseWaitingForTaskTimeout()
-    waiting_for_task_timeout = cfg.getWaitingForTaskTimeout()
-    p2p_session_timeout = cfg.getP2pSessionTimeout()
-    task_session_timeout = cfg.get_taskSessionTimeout()
-    resource_session_timeout = cfg.getResourceSessionTimeout()
+    getting_peers_interval = cfg.get_getting_peers_interval()
+    getting_tasks_interval = cfg.get_getting_tasks_interval()
+    task_request_interval = cfg.get_task_request_interval()
+    use_waiting_for_task_timeout = cfg.get_use_waiting_for_task_timeout()
+    waiting_for_task_timeout = cfg.get_waiting_for_task_timeout()
+    p2p_session_timeout = cfg.get_p2p_session_timeout()
+    task_session_timeout = cfg.get_task_session_timeout()
+    resource_session_timeout = cfg.get_resource_session_timeout()
 
-    estimated_performance = cfg.getEstimatedPerformance()
-    node_snapshot_interval = cfg.getNodeSnapshotInterval()
-    use_distributed_resource_management = cfg.getUseDistributedResourceManagement()
+    estimated_performance = cfg.get_estimated_performance()
+    node_snapshot_interval = cfg.get_node_snapshot_interval()
+    use_distributed_resource_management = cfg.get_use_distributed_resource_management()
     requesting_trust = cfg.get_requesting_trust()
-    computing_trust = cfg.getComputingTrust()
+    computing_trust = cfg.get_computing_trust()
 
     eth_account = cfg.get_eth_account()
-    use_ipv6 = cfg.getUseIp6()
+    use_ipv6 = cfg.get_use_ipv6()
 
     config_desc = ClientConfigDescriptor()
 
@@ -112,7 +112,7 @@ def start_client():
 
     config_desc.estimated_performance = estimated_performance
     config_desc.node_snapshot_interval = node_snapshot_interval
-    config_desc.max_results_sending_delay = cfg.getMaxResultsSendingDelay()
+    config_desc.max_results_sending_delay = cfg.get_max_results_sending_delay()
     config_desc.use_distributed_resource_management = use_distributed_resource_management
     config_desc.requesting_trust = requesting_trust
     config_desc.computing_trust = computing_trust
@@ -169,7 +169,7 @@ class Client:
         # NETWORK
         self.node = Node(self.config_desc.client_uid, self.keys_auth.get_key_id())
         self.node.collect_network_info(self.config_desc.seed_host, use_ipv6=self.config_desc.use_ipv6)
-        logger.debug("Is super node? {}".format(self.node.isSuperNode()))
+        logger.debug("Is super node? {}".format(self.node.is_super_node()))
         self.p2pservice = None
 
         self.task_server = None
@@ -191,7 +191,7 @@ class Client:
         self.snapshot_lock = Lock()
 
         self.db = Database()
-        self.db.checkNode(self.config_desc.client_uid)
+        self.db.check_node(self.config_desc.client_uid)
 
         self.ranking = Ranking(self, RankingDatabase(self.db))
 
@@ -230,10 +230,10 @@ class Client:
 
     ############################
     def run_add_task_server(self):
-        from PluginServer import startTaskAdderServer
+        from PluginServer import start_taskAdderServer
         from multiprocessing import Process, freeze_support
         freeze_support()
-        self.task_adder_server = Process(target=startTaskAdderServer, args=(self.get_plugin_port(),))
+        self.task_adder_server = Process(target=start_taskAdderServer, args=(self.get_plugin_port(),))
         self.task_adder_server.start()
 
     ############################
@@ -551,7 +551,7 @@ class Client:
                 for l in self.listeners:
                     l.check_network_state()
 
-                    # self.managerServer.sendStateMessage(self.last_node_state_snapshot)
+                    # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
 
     ############################
     def __make_node_state_snapshot(self, is_running=True):
@@ -560,7 +560,7 @@ class Client:
         last_network_messages = self.p2pservice.get_last_messages()
 
         if self.task_server:
-            tasks_num = len(self.task_server.task_keeper.taskHeaders)
+            tasks_num = len(self.task_server.task_keeper.task_headers)
             remote_tasks_progresses = self.task_server.task_computer.get_progresses()
             local_tasks_progresses = self.task_server.task_manager.get_progresses()
             last_task_messages = self.task_server.get_last_messages()
@@ -578,7 +578,7 @@ class Client:
             self.last_node_state_snapshot = NodeStateSnapshot(self.config_desc.client_uid, peers_num)
 
         if self.nodes_manager_client:
-            self.nodes_manager_client.sendClientStateSnapshot(self.last_node_state_snapshot)
+            self.nodes_manager_client.send_client_state_snapshot(self.last_node_state_snapshot)
 
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()

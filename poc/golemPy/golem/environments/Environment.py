@@ -45,5 +45,5 @@ class Environment:
     def is_windows(self):
         return sys.platform == 'win32'
 
-    def isLinux(self):
+    def is_linux(self):
         return sys.platform.startswith('linux')

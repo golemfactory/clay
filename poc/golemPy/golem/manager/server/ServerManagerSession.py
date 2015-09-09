@@ -32,37 +32,37 @@ class ServerManagerSession:
 
         if type == MessagePeerStatus.Type:
             nss = pickle.loads(msg.data)
-            self.uid = nss.getUID()
-            self.server.nodeStateSnapshotReceived(nss)
+            self.uid = nss.get_uid()
+            self.server.node_state_snapshot_received(nss)
 
         else:
             logger.error("Wrong message received {}".format(msg))
 
     ##########################
-    def sendClientStateSnapshot(self, snapshot):
+    def send_client_state_snapshot(self, snapshot):
 
         if self.conn and self.conn.opened:
-            self.conn.sendMessage(MessagePeerStatus(snapshot.uid, pickle.dumps(snapshot)))
+            self.conn.send_message(MessagePeerStatus(snapshot.uid, pickle.dumps(snapshot)))
 
-    def sendKillNode(self):
+    def send_kill_node(self):
         if self.conn and self.conn.opened:
-            self.conn.sendMessage(MessageKillNode())
+            self.conn.send_message(MessageKillNode())
 
-    def sendKillAllNodes(self):
+    def send_kill_all_nodes(self):
         if self.conn and self.conn.opened:
-            self.conn.sendMessage(MessageKillAllNodes())
+            self.conn.send_message(MessageKillAllNodes())
 
 
     ##########################
-    def sendNewTask(self, task):
+    def send_new_task(self, task):
         if self.conn and self.conn.opened:
             tp = pickle.dumps(task)
-            self.conn.sendMessage(MessageNewTask(tp))
+            self.conn.send_message(MessageNewTask(tp))
 
     ##########################
-    def sendNewNodes(self, numNodes):
+    def send_new_nodes(self, num_nodes):
         if self.conn and self.conn.opened:
-            self.conn.sendMessage(MessageNewNodes(numNodes))
+            self.conn.send_message(MessageNewNodes(num_nodes))
 
 class ServerManagerSessionFactory:
     def __init__(self, server):

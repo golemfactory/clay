@@ -23,7 +23,7 @@ class Node:
         self.prv_addresses = get_host_addresses(use_ipv6)
 
     #############################
-    def isSuperNode(self):
+    def is_super_node(self):
         if self.pub_addr is None or self.prv_addr is None:
             return False
         return self.pub_addr == self.prv_addr

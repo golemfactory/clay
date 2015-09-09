@@ -20,10 +20,10 @@ class ResourceServer(TCPServer):
     def __init__(self, config_desc, keys_auth, client, use_ipv6=False):
         self.client = client
         self.keys_auth = keys_auth
-        self.resourcesToSend = []
-        self.resourcesToGet = []
-        self.resSendIt = 0
-        self.peersIt = 0
+        self.resources_to_send = []
+        self.resources_to_get = []
+        self.res_send_it = 0
+        self.peers_it = 0
         self.dir_manager = DirManager(config_desc.root_path, config_desc.client_uid)
         self.resource_manager = DistributedResourceManager(self.dir_manager.get_resource_dir())
         self.use_ipv6 = use_ipv6
@@ -31,9 +31,9 @@ class ResourceServer(TCPServer):
         TCPServer.__init__(self, config_desc, network)
 
         self.resource_peers = {}
-        self.waitingTasks = {}
-        self.waitingTasksToCompute = {}
-        self.waitingResources = {}
+        self.waiting_tasks = {}
+        self.waiting_tasks_to_compute = {}
+        self.waiting_resources = {}
 
         self.last_get_resource_peers_time  = time.time()
         self.get_resource_peers_interval = 5.0
@@ -73,18 +73,18 @@ class ResourceServer(TCPServer):
                 self.add_resource_to_get(file_, task_id)
 
         if num > 0:
-            self.waitingTasksToCompute[task_id] = num
+            self.waiting_tasks_to_compute[task_id] = num
         else:
             self.client.task_resource_collected(task_id)
 
     def add_resource_to_send(self, name, num, task_id = None):
-        if task_id not in self.waitingTasks:
-            self.waitingTasks[task_id] = 0
-        self.resourcesToSend.append([name, task_id, num])
-        self.waitingTasks[task_id] += 1
+        if task_id not in self.waiting_tasks:
+            self.waiting_tasks[task_id] = 0
+        self.resources_to_send.append([name, task_id, num])
+        self.waiting_tasks[task_id] += 1
 
     def add_resource_to_get(self, name, task_id):
-        self.resourcesToGet.append([name, task_id])
+        self.resources_to_get.append([name, task_id])
 
     def new_connection(self, session):
         self.sessions.append(session)
@@ -107,7 +107,7 @@ class ResourceServer(TCPServer):
             self.add_resource_peer(client_id, addr, port, key_id, node_info)
 
     def sync_network(self):
-        if len(self.resourcesToGet) + len(self.resourcesToSend) > 0:
+        if len(self.resources_to_get) + len(self.resources_to_send) > 0:
             cur_time = time.time()
             if cur_time - self.last_get_resource_peers_time > self.get_resource_peers_interval:
                 self.client.get_resource_peers()
@@ -117,7 +117,7 @@ class ResourceServer(TCPServer):
         self.__remove_old_sessions()
 
     def get_resources(self):
-        if len (self.resourcesToGet) == 0:
+        if len (self.resources_to_get) == 0:
             return
         resource_peers = [peer for peer in self.resource_peers.values() if peer['state'] == 'free']
         random.shuffle(resource_peers)
@@ -127,23 +127,23 @@ class ResourceServer(TCPServer):
 
         for peer in resource_peers:
             peer['state'] = 'waiting'
-            self.pull_resource(self.resourcesToGet[0][0], peer['addr'], peer['port'], peer['key_id'], peer['node'])
+            self.pull_resource(self.resources_to_get[0][0], peer['addr'], peer['port'], peer['key_id'], peer['node'])
 
     def send_resources(self):
-        if len(self.resourcesToSend) == 0:
+        if len(self.resources_to_send) == 0:
             return
 
-        if self.resSendIt >= len(self.resourcesToSend):
-            self.resSendIt = len(self.resourcesToSend) - 1
+        if self.res_send_it >= len(self.resources_to_send):
+            self.res_send_it = len(self.resources_to_send) - 1
 
         resource_peers = [peer for peer in self.resource_peers.values() if peer['state'] == 'free']
 
         for peer in resource_peers:
-            name = self.resourcesToSend[self.resSendIt][0]
-            num = self.resourcesToSend[self.resSendIt][2]
+            name = self.resources_to_send[self.res_send_it][0]
+            num = self.resources_to_send[self.res_send_it][2]
             peer['state'] = 'waiting'
             self.push_resource(name , peer['addr'], peer['port'] , peer['key_id'], peer['node'], num)
-            self.resSendIt = (self.resSendIt + 1) % len(self.resourcesToSend)
+            self.res_send_it = (self.res_send_it + 1) % len(self.resources_to_send)
 
     def pull_resource(self, resource, addr, port, key_id, node_info):
         tcp_addresses = self._node_info_to_tcp_addresses(node_info, port)
@@ -155,17 +155,17 @@ class ResourceServer(TCPServer):
         self.network.connect(connect_info, resource=resource, resource_address=addr, resource_port=port, key_id=key_id)
 
     def pull_answer(self, resource, has_resource, session):
-        if not has_resource or resource not in [res[0] for res in self.resourcesToGet]:
+        if not has_resource or resource not in [res[0] for res in self.resources_to_get]:
             self.__free_peer(session.address, session.port)
             session.dropped()
         else:
-            if resource not in self.waitingResources:
-                self.waitingResources[resource] = []
-            for res in self.resourcesToGet:
+            if resource not in self.waiting_resources:
+                self.waiting_resources[resource] = []
+            for res in self.resources_to_get:
                 if res[0] == resource:
-                    self.waitingResources[resource].append(res[1])
-            for task_id in self.waitingResources[resource]:
-                    self.resourcesToGet.remove([resource, task_id])
+                    self.waiting_resources[resource].append(res[1])
+            for task_id in self.waiting_resources[resource]:
+                    self.resources_to_get.remove([resource, task_id])
             session.file_name = resource
             session.conn.file_mode = True
             session.conn.confirmation = False
@@ -202,31 +202,31 @@ class ResourceServer(TCPServer):
             self.resource_peers[client_id]['posResource'] += 1
             if (self.resource_peers[client_id]['posResource'] % 50) == 0:
                 self.client.increase_trust(client_id, RankingStats.resource, 50)
-        for task_id in self.waitingResources[resource]:
-            self.waitingTasksToCompute[task_id] -= 1
-            if self.waitingTasksToCompute[task_id] == 0:
+        for task_id in self.waiting_resources[resource]:
+            self.waiting_tasks_to_compute[task_id] -= 1
+            if self.waiting_tasks_to_compute[task_id] == 0:
                 self.client.task_resource_collected(task_id)
-                del self.waitingTasksToCompute[task_id]
-        del self.waitingResources[resource]
+                del self.waiting_tasks_to_compute[task_id]
+        del self.waiting_resources[resource]
 
     def has_resource(self, resource, addr, port):
         remove_res = False
-        for res in self.resourcesToSend:
+        for res in self.resources_to_send:
 
             if resource == res[0]:
                 res[2] -= 1
                 if res[2] == 0:
                     remove_res = True
                     task_id = res[1]
-                    self.waitingTasks[task_id] -= 1
-                    if self.waitingTasks[task_id] == 0:
-                        del self.waitingTasks[task_id]
+                    self.waiting_tasks[task_id] -= 1
+                    if self.waiting_tasks[task_id] == 0:
+                        del self.waiting_tasks[task_id]
                         if task_id is not None:
                             self.client.task_resource_send(task_id)
                     break
 
         if remove_res:
-            self.resourcesToSend.remove([resource, task_id, 0])
+            self.resources_to_send.remove([resource, task_id, 0])
 
         self.__free_peer(addr, port)
 

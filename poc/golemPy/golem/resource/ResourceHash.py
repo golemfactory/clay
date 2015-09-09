@@ -8,11 +8,11 @@ class ResourceHash:
         self.resource_dir = resource_dir
 
     ##################################
-    def split_file(self, filename, blockSize = 2 ** 20):
+    def split_file(self, filename, block_size = 2 ** 20):
         with open(filename, "rb") as f:
-            fileList = []
+            file_list = []
             while True:
-                data = f.read(blockSize)
+                data = f.read(block_size)
                 if not data:
                     break
 
@@ -23,13 +23,13 @@ class ResourceHash:
                 with open(filehash, "wb") as fwb:
                     fwb.write(data)
 
-                fileList.append(filehash)
-        return fileList
+                file_list.append(filehash)
+        return file_list
 
     ##################################
-    def connect_files(self, fileList, resFile):
-        with open(resFile, 'wb') as f:
-            for file_hash in fileList:
+    def connect_files(self, file_list, res_file):
+        with open(res_file, 'wb') as f:
+            for file_hash in file_list:
                 with open(file_hash, "rb") as fh:
                     while True:
                         data = fh.read()
@@ -38,7 +38,7 @@ class ResourceHash:
                         f.write(data)
 
     ##################################
-    def getFileHash(self, filename):
+    def get_file_hash(self, filename):
         with open(filename, "rb") as f:
             data = f.read()
             hash = self.__count_hash(data)

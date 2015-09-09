@@ -17,7 +17,7 @@ class InfoTaskDefinition:
         self.full_task_timeout    = 0
         self.subtask_timeout     = 0
 
-        self.srcFile            = ""
+        self.src_file            = ""
         self.totalSubtasks      = 0
 
         self.manager_address     = ""
@@ -27,7 +27,7 @@ class InfoTaskDefinition:
 class InfoTaskBuilder(GNRTaskBuilder):
 
     def build(self):
-        with open(self.taskDefinition.srcFile) as f:
+        with open(self.taskDefinition.src_file) as f:
             src_code = f.read()
         return InfoTask(   src_code,
                             self.client_id,
@@ -60,17 +60,17 @@ class InfoTask(GNRTask):
                   subtaskTtl,
                   resource_size,
                   estimated_memory,
-                  nodesManagerAddress,
-                  nodesManagerPort,
+                  nodes_managerAddress,
+                  nodes_managerPort,
                   iterations):
 
 
         GNRTask.__init__(self, src_code, client_id, task_id, owner_address, owner_port, ownerKeyId, environment,
                             ttl, subtaskTtl, resource_size, estimated_memory)
 
-        self.totalTasks = iterations
+        self.total_tasks = iterations
 
-        self.nodes_manager_client = NodesManagerClient(nodesManagerAddress, int(nodesManagerPort))
+        self.nodes_manager_client = NodesManagerClient(nodes_managerAddress, int(nodes_managerPort))
         self.nodes_manager_client.start()
 
     #######################
@@ -84,15 +84,15 @@ class InfoTask(GNRTask):
         hash = "{}".format(random.getrandbits(128))
         ctd.subtask_id = hash
         ctd.extra_data = {
-                          "startTask" : self.lastTask,
-                          "endTask": self.lastTask + 1 }
+                          "start_task" : self.lastTask,
+                          "end_task": self.lastTask + 1 }
         ctd.return_address = self.header.task_owner_address
         ctd.return_port = self.header.task_owner_port
         ctd.task_owner = self.header.task_owner
         ctd.short_description = "Standard info Task"
         ctd.src_code = self.src_code
         ctd.performance = perf_index
-        if self.lastTask + 1 <= self.totalTasks:
+        if self.lastTask + 1 <= self.total_tasks:
             self.lastTask += 1
 
         return ctd
@@ -105,7 +105,7 @@ class InfoTask(GNRTask):
         try:
             msgs = pickle.loads(task_result)
             for msg in msgs:
-                self.nodes_manager_client.sendClientStateSnapshot(msg)
+                self.nodes_manager_client.send_client_state_snapshot(msg)
         except Exception as ex:
             logger.error("Error while interpreting results: {}".format(str(ex)))
 

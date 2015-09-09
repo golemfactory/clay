@@ -72,38 +72,38 @@ def exec_cmd(cmd, nice=20):
     pc.wait()
 
 ############################
-def formatBlenderRenderCmd(cmdFile, output_files, outfilebasename, sceneFile, scriptFile, startTask, engine, frame):
-    cmd = ["{}".format(cmdFile), "-b", "{}".format(sceneFile), "-P", "{}".format(scriptFile),
-           "-o", "{}\{}{}".format(output_files, outfilebasename, startTask), "-E", "{}".format(engine), "-F", "EXR",
+def formatBlenderRenderCmd(cmdFile, output_files, outfilebasename, scene_file, scriptFile, start_task, engine, frame):
+    cmd = ["{}".format(cmdFile), "-b", "{}".format(scene_file), "-P", "{}".format(scriptFile),
+           "-o", "{}\{}{}".format(output_files, outfilebasename, start_task), "-E", "{}".format(engine), "-F", "EXR",
            "-f", "{}".format(frame) ]
     return cmd
 
 ############################
-def runBlenderTask(outfilebasename, sceneFile, scriptSrc, startTask, engine, frames):
+def runBlenderTask(outfilebasename, scene_file, scriptSrc, start_task, engine, frames):
     print "Blender Render Task"
 
     output_files = tmp_path
 
     removeOldFiles()
 
-    sceneDir = os.path.dirname(sceneFile)
+    sceneDir = os.path.dirname(scene_file)
     scriptFile = tempfile.TemporaryFile(suffix = ".py", dir = sceneDir)
     scriptFile.close()
     with open(scriptFile.name, 'w') as f:
         f.write(scriptSrc)
 
     cmdFile = __readFromEnvironment()
-    sceneFile = os.path.normpath(os.path.join(os.getcwd(), sceneFile))
-    if not os.path.exists(os.path.normpath(sceneFile)):
+    scene_file = os.path.normpath(os.path.join(os.getcwd(), scene_file))
+    if not os.path.exists(os.path.normpath(scene_file)):
         print "Scene file does not exist"
         return { 'data': [], 'result_type': 0 }
 
 
     for frame in frames:
-        cmd = formatBlenderRenderCmd(cmdFile, output_files, outfilebasename, sceneFile, scriptFile.name, startTask, engine, frame)
+        cmd = formatBlenderRenderCmd(cmdFile, output_files, outfilebasename, scene_file, scriptFile.name, start_task, engine, frame)
         print cmd
         exec_cmd(cmd)
 
     return returnFiles(getFiles())
 
-output = runBlenderTask(outfilebasename, sceneFile, scriptSrc, startTask, engine, frames)
+output = runBlenderTask(outfilebasename, scene_file, scriptSrc, start_task, engine, frames)

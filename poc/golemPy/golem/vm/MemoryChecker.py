@@ -5,18 +5,18 @@ import time
 class MemoryChecker(Thread):
     def __init__(self):
         super(MemoryChecker, self).__init__()
-        self.startMem = psutil.virtual_memory().used
-        self.maxMem = 0
-        self.minMem = self.startMem
+        self.start_mem = psutil.virtual_memory().used
+        self.max_mem = 0
+        self.min_mem = self.start_mem
         self.pid = 0
         self._stop = Event()
 
     def stop(self):
         self._stop.set()
-        if self.maxMem - self.startMem > 0:
-            return self.maxMem - self.startMem
+        if self.max_mem - self.start_mem> 0:
+            return self.max_mem - self.start_mem
         else:
-            return max(0, self.maxMem - self.minMem)
+            return max(0, self.max_mem - self.min_mem)
 
     def stopped(self):
         return self._stop.isSet()
@@ -24,8 +24,8 @@ class MemoryChecker(Thread):
     def run(self):
         while not self.stopped():
             mem = psutil.virtual_memory().used
-            if mem > self.maxMem:
-                self.maxMem = mem
-            if mem < self.minMem:
-                self.minMem = mem
+            if mem > self.max_mem:
+                self.max_mem = mem
+            if mem < self.min_mem:
+                self.min_mem = mem
             time.sleep(0.5)

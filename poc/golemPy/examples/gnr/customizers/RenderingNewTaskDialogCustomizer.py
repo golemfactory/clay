@@ -101,9 +101,9 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
 
     #############################
     def _chooseMainSceneFileButtonClicked(self):
-        sceneFileExt = self.logic.getCurrentRenderer().sceneFileExt
+        scene_fileExt = self.logic.getCurrentRenderer().scene_fileExt
 
-        outputFileTypes = " ".join([u"*.{}".format(ext) for ext in sceneFileExt ])
+        outputFileTypes = " ".join([u"*.{}".format(ext) for ext in scene_fileExt ])
         filter = u"Scene files ({})".format(outputFileTypes)
 
         dir = os.path.dirname(u"{}".format(self.gui.ui.mainSceneFileLineEdit.text()) )
@@ -241,7 +241,7 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
         self._changeFinishState(False)
 
     ############################
-    def loadTaskDefinition(self, taskDefinition):
+    def load_taskDefinition(self, taskDefinition):
         assert isinstance(taskDefinition, RenderingTaskDefinition)
 
         definition = deepcopy(taskDefinition)
@@ -258,7 +258,7 @@ class RenderingNewTaskDialogCustomizer (NewTaskDialogCustomizer):
         pass
 
     ############################
-    def _loadTaskType(self, definition):
+    def _load_taskType(self, definition):
         rendererItem = self.gui.ui.rendererComboBox.findText(definition.renderer)
         if rendererItem >= 0:
             self.gui.ui.rendererComboBox.setCurrentIndex(rendererItem)

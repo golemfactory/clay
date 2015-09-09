@@ -114,7 +114,7 @@ class PbrtTaskDialogCustomizer:
 
     #############################
     def __chooseMainSceneFileButtonClicked(self):
-        outputFileTypes = " ".join([u"*.{}".format(ext) for ext in self.options.sceneFileExt ])
+        outputFileTypes = " ".join([u"*.{}".format(ext) for ext in self.options.scene_fileExt ])
         filter = u"Scene files ({})".format(outputFileTypes)
 
 

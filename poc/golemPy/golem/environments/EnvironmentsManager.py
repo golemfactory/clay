@@ -12,8 +12,8 @@ class EnvironmentsManager:
         self.env_config= EnvironmentsConfig.load_config(client_id, self.get_environments_to_config())
         config_entries = self.env_config.get_config_entries()
         for env in self.environments:
-            getterForEnv = getattr(config_entries, "get" + env.get_id())
-            env.accept_tasks = getterForEnv()
+            getter_for_env = getattr(config_entries, "get" + env.get_id())
+            env.accept_tasks = getter_for_env()
 
     ############################
     def add_environment(self, environment):

@@ -27,11 +27,11 @@ def main():
 
     port = AppConfig.manager_port()
     manager = NodesManager(None, port)
-    logic = GNRManagerLogic( manager.managerServer, "../gnr")
-    manager.setManagerLogic(logic)
+    logic = GNRManagerLogic( manager.manager_server, "../gnr")
+    manager.set_manager_logic(logic)
 
 
-    logic.setReactor(reactor)
+    logic.set_reactor(reactor)
     manager.execute(True)
 
     reactor.run()

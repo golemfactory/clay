@@ -531,7 +531,7 @@ def prepare_delta_zip(root_dir, header, output_dir, chosen_files=None):
 #             printAndPause(12)
 #
 #         #tr = pickle.loads(trp)
-#         #fh = open(os.path.join(tmpDir, tr[ 0 ]), "wb")
+#         #fh = open(os.path.join(tmp_dir, tr[ 0 ]), "wb")
 #         #fh.write(decompress(tr[ 1 ]))
 #         #fh.close()
 #

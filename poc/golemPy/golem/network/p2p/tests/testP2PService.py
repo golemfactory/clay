@@ -38,17 +38,17 @@ class Peer:
 
 class TaskServer:
     def __init__(self):
-        self.taskHeader = None
-        self.taskHeaderToRemove = None
+        self.task_header = None
+        self.task_headerToRemove = None
 
     def get_tasks_headers(self):
         return 'taskserver taskheaders'
 
     def add_task_header(self, th_dict_repr):
-        self.taskHeader = th_dict_repr
+        self.task_header = th_dict_repr
 
     def remove_task_header(self, task_id):
-        self.taskHeaderToRemove = task_id
+        self.task_headerToRemove = task_id
 
 class Session():
     def __init__(self):
@@ -140,18 +140,18 @@ class TestP2PService(unittest.TestCase):
 
     def testTryToAddPeer (self):
         peer_info = {}
-        peer_info['id'] = 'peerId'
+        peer_info['id'] = 'peer_id'
         peer_info['address'] = 'address'
         peer_info['port'] = 'port'
         self.p2pservice.try_to_add_peer(peer_info)
-        self.assertEquals(self.p2pservice.incoming_peers['peerId']['conn_trials'], 0)
-        self.assertTrue('peerId' in self.p2pservice.free_peers)
+        self.assertEquals(self.p2pservice.incoming_peers['peer_id']['conn_trials'], 0)
+        self.assertTrue('peer_id' in self.p2pservice.free_peers)
         peer_info2 = {}
-        peer_info2['id'] = 'peerId'
+        peer_info2['id'] = 'peer_id'
         peer_info2['address'] = 'address2'
         peer_info2['port'] = 'port2'
         self.p2pservice.try_to_add_peer(peer_info2)
-        self.assertNotEqual(self.p2pservice.incoming_peers['peerId']['address'], 'address2')
+        self.assertNotEqual(self.p2pservice.incoming_peers['peer_id']['address'], 'address2')
 
     def testRemovePeer(self):
         self.p2pservice.all_peers.append('345')
@@ -184,9 +184,9 @@ class TestP2PService(unittest.TestCase):
 
     def testChangeConfig(self):
         config_desc = ConfigDesc()
-        config_desc.seedPort = '43215'
+        config_desc.seed_port = '43215'
         self.p2pservice.change_config(config_desc)
-        self.assertEquals(self.p2pservice.config_desc.seedPort, config_desc.seedPort)
+        self.assertEquals(self.p2pservice.config_desc.seed_port, config_desc.seed_port)
 
 
     def testChangeAddress(self):
@@ -195,13 +195,13 @@ class TestP2PService(unittest.TestCase):
             self.assertTrue('ERROR' in [ rec.levelname for rec in l.records ])
 
         th_dict_repr = { 'client_id': 124, 'address': 'ADDR', 'port' : 'PORT' }
-        th_dict_reprCopy =  th_dict_repr.copy()
+        th_dict_repr_copy =  th_dict_repr.copy()
         self.p2pservice.change_address(th_dict_repr)
-        self.assertDictEqual(th_dict_repr , th_dict_reprCopy)
+        self.assertDictEqual(th_dict_repr , th_dict_repr_copy)
         self.p2pservice.peers[ 124 ] = Peer()
         self.p2pservice.change_address(th_dict_repr)
-        self.assertEquals( th_dict_repr['client_id'] , th_dict_reprCopy['client_id'])
-        self.assertNotEquals( th_dict_repr['address'] , th_dict_reprCopy['address'])
+        self.assertEquals( th_dict_repr['client_id'] , th_dict_repr_copy['client_id'])
+        self.assertNotEquals( th_dict_repr['address'] , th_dict_repr_copy['address'])
 
     def testGetListenParams(self):
         expectedListenParams = (self.p2pservice.curPort, self.p2pservice.client_uid)
@@ -214,12 +214,12 @@ class TestP2PService(unittest.TestCase):
     def testAddTaskHeader(self):
         self.p2pservice.task_server = TaskServer()
         self.p2pservice.add_task_header('testHeader')
-        self.assertEquals(self.p2pservice.task_server.taskHeader, 'testHeader')
+        self.assertEquals(self.p2pservice.task_server.task_header, 'testHeader')
 
     def testRemoveTaskHeader(self):
         self.p2pservice.task_server = TaskServer()
         self.p2pservice.remove_task_header('testHeader')
-        self.assertEquals(self.p2pservice.task_server.taskHeaderToRemove, 'testHeader')
+        self.assertEquals(self.p2pservice.task_server.task_headerToRemove, 'testHeader')
 
     def testRemoveTask(self):
         self.p2pservice.peers['1'] = Peer()

@@ -10,8 +10,8 @@ import pickle
 
 logger = logging.getLogger(__name__)
 
-def runAdditionalNodes(path,  numNodes):
-    for i in range(numNodes):
+def run_additional_nodes(path,  num_nodes):
+    for i in range(num_nodes):
         time.sleep(0.1)
         prevPath = os.getcwd()
         os.chdir(path)
@@ -28,36 +28,36 @@ def runManager(path):
 
 class GNRManagerLogic(EmptyManagerLogic):
 
-    def __init__(self, managerServer, nodePath):
-        EmptyManagerLogic.__init__(self, managerServer)
+    def __init__(self, manager_server, nodePath):
+        EmptyManagerLogic.__init__(self, manager_server)
         self.nodePath = nodePath
 
-    def runAdditionalNodes(self, numNodes):
-        runAdditionalNodes("../gnr", numNodes)
+    def run_additional_nodes(self, num_nodes):
+        run_additional_nodes("../gnr", num_nodes)
 
     ########################
-    def loadTask(self, uid, filePath):
-        f = open(filePath, 'r')
+    def load_task(self, uid, file_path):
+        f = open(file_path, 'r')
 
         try:
             definition = pickle.loads(f.read())
         except Exception, e:
             definition = None
-            logger.error("Can't unpickle the file {}: {}".format(filePath, str(e)))
+            logger.error("Can't unpickle the file {}: {}".format(file_path, str(e)))
             QMessageBox().critical(None, "Error", "This is not a proper gt file")
         finally:
             f.close()
-        self.managerServer.sendNewTask(uid, definition)
+        self.manager_server.send_new_task(uid, definition)
 
     ########################
-    def enqueue_new_task(self, uid, w, h, numSamplesPerPixel, file_name):
+    def enqueue_new_task(self, uid, w, h, num_samples_per_pixel, file_name):
         pass
 
     ########################
-    def terminateAllLocalNodes(self, uid):
-        self.managerServer.sendTerminateAll(uid)
+    def terminate_all_local_nodes(self, uid):
+        self.manager_server.send_terminate_all(uid)
 
     ########################
-    def runAdditionalLocalNodes(self, uid, numNodes):
-        self.managerServer.sendNewNodes(uid, numNodes)
+    def run_additional_local_nodes(self, uid, num_nodes):
+        self.manager_server.send_new_nodes(uid, num_nodes)
 

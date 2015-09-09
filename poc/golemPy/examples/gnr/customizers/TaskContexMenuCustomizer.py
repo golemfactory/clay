@@ -20,7 +20,7 @@ class TaskContextMenuCustomizer:
         self.__buildAndConnectAction("Restart",         self.__restart_taskTriggered,       enabledActions)
         self.__buildAndConnectAction("Delete",          self.__delete_taskTriggered,        enabledActions)
         self.__buildAndConnectAction("New Task",        self.__newTaskTriggered,           enabledActions)
-        self.__buildAndConnectAction("Start Task",      self.__startTaskTriggered,         enabledActions)
+        self.__buildAndConnectAction("Start Task",      self.__start_taskTriggered,         enabledActions)
         self.__buildAndConnectAction("Pause",           self.__pause_taskTriggered,         enabledActions)
         self.__buildAndConnectAction("Resume",          self.__resume_taskTriggered,        enabledActions)
         self.__buildAndConnectAction("Change Timeouts", self.__changeTaskTriggered,        enabledActions)
@@ -55,8 +55,8 @@ class TaskContextMenuCustomizer:
         self.logic.showNewTaskDialog(self.gnrTaskState.definition.task_id)
 
     ###########################
-    def __startTaskTriggered(self):
-        self.logic.startTask(self.gnrTaskState.definition.task_id)
+    def __start_taskTriggered(self):
+        self.logic.start_task(self.gnrTaskState.definition.task_id)
 
     ###########################
     def __pause_taskTriggered(self):

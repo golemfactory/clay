@@ -57,7 +57,7 @@ class EthereumConnector(object):
         :return Response: send transaction response
         """
         data_desc = EthJSON()
-        param = {"from": id_, "to": to, "gas": gas, "gasPrice": gas_price, "value": value, "data": data}
+        param = {"from": id_, "to": to, "gas": gas, "gas_price": gas_price, "value": value, "data": data}
         data_desc.add_param(param)
         data_desc.set_method("eth_sendTransaction")
         data_desc.set_id(1)
@@ -76,7 +76,7 @@ class EthereumConnector(object):
         :return Response: send transaction response
         """
         gas = "0x76c0"
-        gasPrice = "0x9184e72a000"
+        gas_price = "0x9184e72a000"
         tran_val = 9000 + sum(payments.values())
         task_id = EthereumConnector.uuid_to_long(task_id)
         values = payments.values()

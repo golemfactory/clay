@@ -1,14 +1,14 @@
 import os
 
 ############################
-def format_pbrt_cmd(renderer, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, scenefile):
-    return "{} --starttask {} --endtask {} --outresultbasename {} --totaltasks {} --ncores {} --subtasks {} {}".format(renderer, startTask, endTask, outfilebasename, totalTasks, num_cores, numSubtasks, scenefile)
+def format_pbrt_cmd(renderer, start_task, end_task, total_tasks, num_subtasks, num_cores, outfilebasename, scenefile):
+    return "{} --starttask {} --endtask {} --outresultbasename {} --totaltasks {} --ncores {} --subtasks {} {}".format(renderer, start_task, end_task, outfilebasename, total_tasks, num_cores, num_subtasks, scenefile)
 
 ############################
-def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, sceneFile):
-    pbrt = os.path.join(pathRoot, "pbrt.exe")
+def run_pbrt_task(path_root, start_task, end_task, total_tasks, num_subtasks, num_cores, outfilebasename, scene_file):
+    pbrt = os.path.join(path_root, "pbrt.exe")
 
-    cmd = format_pbrt_cmd(pbrt, startTask, endTask, totalTasks, numSubtasks, num_cores, outfilebasename, sceneFile)
+    cmd = format_pbrt_cmd(pbrt, start_task, end_task, total_tasks, num_subtasks, num_cores, outfilebasename, scene_file)
     
     print cmd
    
@@ -16,11 +16,12 @@ def run_pbrt_task(pathRoot, startTask, endTask, totalTasks, numSubtasks, num_cor
 
 if __name__ == "__main__":
 
-    totalTasks = 16
-    numSubtasks = 32
+    total_tasks = 16
+    num_subtasks = 32
     num_cores = 3
     outfilebasename = "output/test_chunk_"
-    sceneFile = "test_run/resources/scene.pbrt"
+    scene_file = "test_run/resources/scene.pbrt"
  
-    for i in range(totalTasks):
-        run_pbrt_task("test_run", i, i + 1, totalTasks, numSubtasks, num_cores, outfilebasename, sceneFile)
+    for i in range(total_tasks):
+        run_pbrt_task("test_run", i, i + 1, total_tasks, num_subtasks, num_cores, outfilebasename,
+                      scene_file)

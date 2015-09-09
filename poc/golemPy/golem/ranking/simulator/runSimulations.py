@@ -4,12 +4,12 @@ def main():
     ns = NetworkSimulator()
     pan = PANetworkSimulator()
     for i in range(1, 1000):
-        ns.addNode()
-        pan.addNode()
+        ns.add_node()
+        pan.add_node()
         ns.sync_network()
         pan.sync_network()
-    print "NS maxD {}, minD {}, avgD {}".format(ns.maxDegree(), ns.minDegree(), ns.avgDegree())
-    print "PAN maxD {}, minD {}, avgD {}".format(pan.maxDegree(), pan.minDegree(), pan.avgDegree())
+    print "NS maxD {}, minD {}, avgD {}".format(ns.max_degree(), ns.min_degree(), ns.avg_degree())
+    print "PAN maxD {}, minD {}, avgD {}".format(pan.max_degree(), pan.min_degree(), pan.avg_degree())
 
 
 

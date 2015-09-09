@@ -11,123 +11,141 @@ logger = logging.getLogger(__name__)
 from peewee import IntegrityError
 from golem.Model import LocalRank, GlobalRank, NeighbourLocRank
 
+
 class RankingStats:
     computed = "computed"
-    wrongComputed = "wrongComputed"
+    wrong_computed = "wrong_computed"
     requested = "requested"
     payment = "payment"
     resource = "resource"
+
 
 class RankingDatabase:
     def __init__(self, database):
         self.db = database.db
 
     ############################
-    def increasePositiveComputing(self, node_id, trustMod):
+    def increase_positive_computing(self, node_id, trust_mod):
         try:
             with self.db.transaction():
-                LocalRank.create(node_id=node_id, positiveComputed=trustMod)
+                LocalRank.create(node_id=node_id, positive_computed=trust_mod)
         except IntegrityError:
-            LocalRank.update(positiveComputed = LocalRank.positiveComputed + trustMod, modified_date = str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
+            LocalRank.update(positive_computed=LocalRank.positive_computed + trust_mod,
+                             modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
     ############################
-    def increaseNegativeComputing(self, node_id, trustMod):
+    def increase_negative_computing(self, node_id, trust_mod):
         try:
             with self.db.transaction():
-                LocalRank.create(node_id = node_id, negativeComputed = trustMod)
+                LocalRank.create(node_id=node_id, negative_computed=trust_mod)
         except IntegrityError:
-            LocalRank.update(negativeComputed = LocalRank.negativeComputed + trustMod, modified_date = str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
+            LocalRank.update(negative_computed=LocalRank.negative_computed + trust_mod,
+                             modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
     ############################
-    def increaseWrongComputed(self, node_id, trustMod):
+    def increase_wrong_computed(self, node_id, trust_mod):
         try:
             with self.db.transaction():
-                LocalRank.create(node_id = node_id, wrongComputed = trustMod)
+                LocalRank.create(node_id=node_id, wrong_computed=trust_mod)
         except IntegrityError:
-            LocalRank.update(wrongComputed = LocalRank.wrongComputed + trustMod, modified_date = str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
+            LocalRank.update(wrong_computed=LocalRank.wrong_computed + trust_mod,
+                             modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
     ############################
-    def increasePositiveRequested(self, node_id, trustMod):
+    def increase_positive_requested(self, node_id, trust_mod):
         try:
             with self.db.transaction():
-                LocalRank.create(node_id=node_id, positiveRequested=trustMod)
+                LocalRank.create(node_id=node_id, positive_requested=trust_mod)
         except IntegrityError:
-            LocalRank.update(positiveRequested = LocalRank.positiveRequested + trustMod, modified_date = str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
+            LocalRank.update(positive_requested=LocalRank.positive_requested + trust_mod,
+                             modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
     ############################
-    def increaseNegativeRequested(self, node_id, trustMod):
+    def increase_negative_requested(self, node_id, trust_mod):
         try:
             with self.db.transaction():
-                LocalRank.create(node_id=node_id, negativeRequested=trustMod)
+                LocalRank.create(node_id=node_id, negative_requested=trust_mod)
         except IntegrityError:
-            LocalRank.update(negativeRequested = LocalRank.negativeRequested + trustMod, modified_date = str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
+            LocalRank.update(negative_requested=LocalRank.negative_requested + trust_mod,
+                             modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
     ############################
-    def increasePositivePayment(self, node_id, trustMod):
+    def increase_positive_payment(self, node_id, trust_mod):
         try:
             with self.db.transaction():
-                LocalRank.create(node_id = node_id, positivePayment = trustMod)
+                LocalRank.create(node_id=node_id, positive_payment=trust_mod)
         except IntegrityError:
-            LocalRank.update(positivePayment = LocalRank.positivePayment + trustMod, modified_date = str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
+            LocalRank.update(positive_payment=LocalRank.positive_payment + trust_mod,
+                             modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
     ############################
-    def increaseNegativePayment(self, node_id, trustMod):
+    def increase_negative_payment(self, node_id, trust_mod):
         try:
             with self.db.transaction():
-                LocalRank.create(node_id = node_id, negativePayment = trustMod)
+                LocalRank.create(node_id=node_id, negative_payment=trust_mod)
         except IntegrityError:
-            LocalRank.update(negativePayment = LocalRank.negativePayment + trustMod,  modified_date = str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
+            LocalRank.update(negative_payment=LocalRank.negative_payment + trust_mod,
+                             modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
     ############################
-    def increasePositiveResource(self, node_id, trustMod):
+    def increase_positive_resource(self, node_id, trust_mod):
         try:
             with self.db.transaction():
-                LocalRank.create(node_id = node_id, positiveResource = trustMod)
+                LocalRank.create(node_id=node_id, positive_resource=trust_mod)
         except IntegrityError:
-            LocalRank.update(positiveResource = LocalRank.positiveResource + trustMod, modified_date = str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
+            LocalRank.update(positive_resource=LocalRank.positive_resource + trust_mod,
+                             modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
     ############################
-    def increaseNegativeResource(self, node_id, trustMod):
+    def increase_negative_resource(self, node_id, trust_mod):
         try:
             with self.db.transaction():
-                LocalRank.create(node_id = node_id, negativeResource = trustMod)
+                LocalRank.create(node_id=node_id, negative_resource=trust_mod)
         except IntegrityError:
-            LocalRank.update(positiveResource = LocalRank.negativeResource + trustMod, modified_date = str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
+            LocalRank.update(positive_resource=LocalRank.negative_resource + trust_mod,
+                             modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
     ############################
-    def getLocalRank(self, node_id):
+    def get_local_rank(self, node_id):
         return LocalRank.select().where(LocalRank.node_id == node_id).first()
 
     ############################
-    def getGlobalRank(self, node_id):
+    def get_global_rank(self, node_id):
         return GlobalRank.select().where(GlobalRank.node_id == node_id).first()
 
     ############################
-    def insertOrUpdateGlobalRank(self, node_id, comp_trust, req_trust, compWeight, reqWeight):
+    def insert_or_update_global_rank(self, node_id, comp_trust, req_trust, comp_weight, req_weight):
         try:
             with self.db.transaction():
-                GlobalRank.create(node_id = node_id, requestingTrustValue = req_trust, computingTrustValue = comp_trust, gossipWeightComputing = compWeight, gossipWeightRequesting = reqWeight)
+                GlobalRank.create(node_id=node_id, requesting_trust_value=req_trust, computing_trust_value=comp_trust,
+                                  gossip_weight_computing=comp_weight, gossip_weight_requesting=req_weight)
         except IntegrityError:
-            GlobalRank.update(requestingTrustValue = req_trust, computingTrustValue = comp_trust, gossipWeightComputing = compWeight, gossipWeightRequesting = reqWeight,  modified_date = str(datetime.datetime.now())).where(GlobalRank.node_id == node_id).execute()
+            GlobalRank.update(requesting_trust_value=req_trust, computing_trust_value=comp_trust,
+                              gossip_weight_computing=comp_weight, gossip_weight_requesting=req_weight,
+                              modified_date=str(datetime.datetime.now())).where(GlobalRank.node_id == node_id).execute()
 
     ############################
-    def getAllLocalRank(self):
+    def get_all_local_rank(self):
         return LocalRank.select()
 
     ############################
-    def insertOrUpdateNeighbourLocRank(self, neighbourId, about_id, loc_rank):
+    def insert_or_update_neighbour_loc_rank(self, neighbour_id, about_id, loc_rank):
         try:
-            if neighbourId == about_id:
+            if neighbour_id == about_id:
                 logger.warning("Removing {} selftrust".format(about_id))
                 return
             with self.db.transaction():
-                NeighbourLocRank.create(node_id = neighbourId, aboutNodeId = about_id, requestingTrustValue = loc_rank[1], computingTrustValue = loc_rank[0])
+                NeighbourLocRank.create(node_id=neighbour_id, about_node_id=about_id,
+                                        requesting_trust_value=loc_rank[1], computing_trust_value=loc_rank[0])
         except IntegrityError:
-            NeighbourLocRank.update(requestingTrustValue = loc_rank[1], computingTrustValue = loc_rank[0]).where(NeighbourLocRank.aboutNodeId == about_id and NeighbourLocRank.node_id == neighbourId).execute()
+            NeighbourLocRank.update(requesting_trust_value=loc_rank[1], computing_trust_value=loc_rank[0]).where(
+                NeighbourLocRank.about_node_id == about_id and NeighbourLocRank.node_id == neighbour_id).execute()
 
     ############################
-    def getNeighbourLocRank(self, neighbourId, about_id):
-        return NeighbourLocRank.select().where(NeighbourLocRank.node_id == neighbourId and NeighbourLocRank.aboutNodeId == about_id).first()
+    def get_neighbour_loc_rank(self, neighbour_id, about_id):
+        return NeighbourLocRank.select().where(
+            NeighbourLocRank.node_id == neighbour_id and NeighbourLocRank.about_node_id == about_id).first()
+
 
 POS_PAR = 1.0
 NEG_PAR = 2.0
@@ -139,45 +157,46 @@ MAX_STEPS = 10
 EPSILON = 0.01
 LOC_RANK_PUSH_DELTA = 0.1
 
+
 class Ranking:
     ############################
-    def __init__(self, client, database, posPar = POS_PAR, negPar = NEG_PAR, maxTrust = MAX_TRUST, minTrust = MIN_TRUST,
-                 minOpNum = MIN_OP_NUM, unknownTrust = UNKNOWN_TRUST, max_steps = MAX_STEPS, epsilon = EPSILON,
-                 loc_rankPushDelta = LOC_RANK_PUSH_DELTA):
+    def __init__(self, client, database, pos_par=POS_PAR, neg_par=NEG_PAR, max_trust=MAX_TRUST, min_trust=MIN_TRUST,
+                 min_op_num=MIN_OP_NUM, unknown_trust=UNKNOWN_TRUST, max_steps=MAX_STEPS, epsilon=EPSILON,
+                 loc_rank_push_delta=LOC_RANK_PUSH_DELTA):
         self.db = database
         self.client = client
-        self.posPar = posPar
-        self.negPar = negPar
-        self.maxTrust = maxTrust
-        self.minTrust = minTrust
-        self.unknownTrust = unknownTrust
-        self.minOpNum = minOpNum
-        self.roundOracle = DiscreteTimeRoundOracle()
+        self.pos_par = pos_par
+        self.neg_par = neg_par
+        self.max_trust = max_trust
+        self.min_trust = min_trust
+        self.unknown_trust = unknown_trust
+        self.min_op_num = min_op_num
+        self.round_oracle = DiscreteTimeRoundOracle()
 
         self.k = 1
         self.epsilon = epsilon
         self.neighbours = []
         self.step = 0
         self.max_steps = max_steps
-        self.workingVec = {}
+        self.working_vec = {}
         self.prevRank = {}
         self.globRank = {}
-        self.receivedGossip = []
+        self.received_gossip = []
         self.finished = False
         self.finished_neighbours = set()
         self.global_finished = False
         self.reactor = None
         self.initLocRankPush = True
         self.prev_loc_rank = {}
-        self.loc_rankPushDelta = loc_rankPushDelta
+        self.loc_rank_push_delta = loc_rank_push_delta
 
     ############################
     def run(self, reactor):
         self.reactor = reactor
-        deferLater(self.reactor, self.roundOracle.sec_to_new_stage(), self.initStage)
+        deferLater(self.reactor, self.round_oracle.sec_to_new_stage(), self.init_stage)
 
     ############################
-    def initStage(self):
+    def init_stage(self):
         try:
             logger.debug("New gossip stage")
             self.__push_local_ranks()
@@ -185,22 +204,22 @@ class Ranking:
             self.global_finished = False
             self.step = 0
             self.finished_neighbours = set()
-            self.initWorkingVec()
+            self.init_working_vec()
         finally:
-            deferLater(self.reactor, self.roundOracle.sec_to_round(), self.newRound)
+            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.new_round)
 
     ############################
-    def initWorkingVec(self):
-        self.workingVec = {}
+    def init_working_vec(self):
+        self.working_vec = {}
         self.prevRank = {}
-        for loc_rank in self.db.getAllLocalRank():
+        for loc_rank in self.db.get_all_local_rank():
             comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank), self.__get_comp_trust_neg(loc_rank))
             req_trust = self.__count_trust(self.__get_req_trust_pos(loc_rank), self.__get_req_trust_neg(loc_rank))
-            self.workingVec[loc_rank.node_id] = [[comp_trust, 1.0], [req_trust, 1.0]]
-            self.prevRank[loc_rank.node_id] = [ comp_trust, req_trust ]
+            self.working_vec[loc_rank.node_id] = [[comp_trust, 1.0], [req_trust, 1.0]]
+            self.prevRank[loc_rank.node_id] = [comp_trust, req_trust]
 
     ############################
-    def newRound(self):
+    def new_round(self):
         logger.debug("New gossip round")
         try:
             self.__set_k()
@@ -209,29 +228,29 @@ class Ranking:
             if len(self.neighbours) > 0:
                 send_to = random.sample(self.neighbours, self.k)
                 self.client.send_gossip(gossip, send_to)
-            self.receivedGossip = [ gossip ]
+            self.received_gossip = [gossip]
         finally:
-            deferLater(self.reactor, self.roundOracle.sec_to_end_round(), self.endRound)
+            deferLater(self.reactor, self.round_oracle.sec_to_end_round(), self.end_round)
 
     ############################
-    def endRound(self):
+    def end_round(self):
         logger.debug("End gossip round")
         try:
-            self.receivedGossip = self.client.collect_gossip() + self.receivedGossip
+            self.received_gossip = self.client.collect_gossip() + self.received_gossip
             self.__make_prev_rank()
-            self.workingVec = {}
+            self.working_vec = {}
             self.__add_gossip()
             self.__check_finished()
         finally:
-            deferLater(self.reactor, self.roundOracle.sec_to_break(), self.makeBreak)
+            deferLater(self.reactor, self.round_oracle.sec_to_break(), self.make_break)
 
     ############################
-    def makeBreak(self):
+    def make_break(self):
         logger.debug("Gossip round finished")
         try:
             self.__check_global_finished()
         except Exception:
-            deferLater(self.reactor, self.roundOracle.sec_to_round(), self.newRound)
+            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.new_round)
             raise
 
         if self.global_finished:
@@ -240,146 +259,145 @@ class Ranking:
                 self.client.collect_stopped_peers()
                 self.__save_working_vec()
             finally:
-                deferLater(self.reactor, self.roundOracle.sec_to_new_stage(), self.initStage)
+                deferLater(self.reactor, self.round_oracle.sec_to_new_stage(), self.init_stage)
         else:
-            deferLater(self.reactor, self.roundOracle.sec_to_round(), self.newRound)
+            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.new_round)
 
     ############################
     def increase_trust(self, node_id, stat, mod):
         if stat == RankingStats.computed:
-            self.db.increasePositiveComputing(node_id, mod)
+            self.db.increase_positive_computing(node_id, mod)
         elif stat == RankingStats.requested:
-            self.db.increasePositiveRequested(node_id, mod)
+            self.db.increase_positive_requested(node_id, mod)
         elif stat == RankingStats.payment:
-            self.db.increasePositivePayment(node_id, mod)
+            self.db.increase_positive_payment(node_id, mod)
         elif stat == RankingStats.resource:
-            self.db.increasePositiveResource(node_id, mod)
+            self.db.increase_positive_resource(node_id, mod)
         else:
             logger.error("Wrong stat type {}".format(stat))
 
-   ############################
+            ############################
+
     def decrease_trust(self, node_id, stat, mod):
         if stat == RankingStats.computed:
-            self.db.increaseNegativeComputing(node_id, mod)
-        elif stat == RankingStats.wrongComputed:
-            self.db.increaseWrongComputed(node_id, mod)
+            self.db.increase_negative_computing(node_id, mod)
+        elif stat == RankingStats.wrong_computed:
+            self.db.increase_wrong_computed(node_id, mod)
         elif stat == RankingStats.requested:
-            self.db.increaseNegativeRequested(node_id, mod)
+            self.db.increase_negative_requested(node_id, mod)
         elif stat == RankingStats.payment:
-            self.db.increaseNegativePayment(node_id, mod)
+            self.db.increase_negative_payment(node_id, mod)
         elif stat == RankingStats.resource:
-            self.db.increaseNegativeResource(node_id, mod)
+            self.db.increase_negative_resource(node_id, mod)
         else:
             logger.error("Wrong stat type {}".format(stat))
 
     ############################
-    def getLocComputingTrust(self, node_id):
-        localRank = self.db.getLocalRank(node_id)
-        #Known node
-        if localRank is not None:
-            return self.__count_trust(self.__get_comp_trust_pos(localRank), self.__get_comp_trust_neg(localRank))
+    def get_loc_computing_trust(self, node_id):
+        local_rank = self.db.get_local_rank(node_id)
+        # Known node
+        if local_rank is not None:
+            return self.__count_trust(self.__get_comp_trust_pos(local_rank), self.__get_comp_trust_neg(local_rank))
         return None
 
     ############################
     def get_computing_trust(self, node_id):
-        localRank = self.getLocComputingTrust(node_id)
-        if localRank is not None:
-            logger.debug("Using local rank {}".format(localRank))
-            return localRank
-        rank, weightSum = self.__count_neighbours_rank(node_id, computing = True)
-        globalRank = self.db.getGlobalRank(node_id)
-        if globalRank is not None:
-            if weightSum + globalRank.gossipWeightComputing != 0:
+        local_rank = self.get_loc_computing_trust(node_id)
+        if local_rank is not None:
+            logger.debug("Using local rank {}".format(local_rank))
+            return local_rank
+        rank, weight_sum = self.__count_neighbours_rank(node_id, computing=True)
+        global_rank = self.db.get_global_rank(node_id)
+        if global_rank is not None:
+            if weight_sum + global_rank.gossip_weight_computing != 0:
                 logger.debug("Using gossipRank + neighboursRank")
-                return (rank + globalRank.computingTrustValue) / (weightSum + globalRank.gossipWeightComputing)
-        elif weightSum != 0:
+                return (rank + global_rank.computing_trust_value) / (weight_sum + global_rank.gossip_weight_computing)
+        elif weight_sum != 0:
             logger.debug("Using neighboursRank")
-            return rank / float(weightSum)
-        return self.unknownTrust
+            return rank / float(weight_sum)
+        return self.unknown_trust
 
     ############################
-    def getLocRequestingTrust(self, node_id):
-        localRank = self.db.getLocalRank(node_id)
-        #Known node
-        if localRank is not None:
-            return self.__count_trust(self.__get_req_trust_pos(localRank), self.__get_req_trust_neg(localRank))
+    def get_loc_requesting_trust(self, node_id):
+        local_rank = self.db.get_local_rank(node_id)
+        # Known node
+        if local_rank is not None:
+            return self.__count_trust(self.__get_req_trust_pos(local_rank), self.__get_req_trust_neg(local_rank))
         return None
 
     ############################
     def get_requesting_trust(self, node_id):
-        localRank = self.getLocRequestingTrust(node_id)
-        if localRank is not None:
-            logger.debug("Using local rank {}".format(localRank))
-            return localRank
-        rank, weightSum = self.__count_neighbours_rank(node_id, computing = False)
-        globalRank = self.db.getGlobalRank(node_id)
-        if globalRank is not None:
-            if globalRank.gossipWeightRequesting != 0:
+        local_rank = self.get_loc_requesting_trust(node_id)
+        if local_rank is not None:
+            logger.debug("Using local rank {}".format(local_rank))
+            return local_rank
+        rank, weight_sum = self.__count_neighbours_rank(node_id, computing=False)
+        global_rank = self.db.get_global_rank(node_id)
+        if global_rank is not None:
+            if global_rank.gossip_weight_requesting != 0:
                 logger.debug("Using gossipRank + neighboursRank")
-                return  (rank + globalRank.requestingTrustValue) / float(weightSum + globalRank.gossipWeightRequesting)
-        elif weightSum != 0:
+                return (rank + global_rank.requesting_trust_value) / float(
+                    weight_sum + global_rank.gossip_weight_requesting)
+        elif weight_sum != 0:
             logger.debug("Using neighboursRank")
-            return rank / float(weightSum)
+            return rank / float(weight_sum)
 
-        return self.unknownTrust
+        return self.unknown_trust
 
     ############################
-    def getComputingNeighbourLocTrust(self, neighbour, about):
-        rank = self.db.getNeighbourLocRank(neighbour, about)
+    def get_computing_neighbour_loc_trust(self, neighbour, about):
+        rank = self.db.get_neighbour_loc_rank(neighbour, about)
         if rank is not None:
-            return rank.computingTrustValue
-        return self.unknownTrust
+            return rank.computing_trust_value
+        return self.unknown_trust
 
     ############################
-    def getRequestingNeighbourLocTrust(self, neighbour, about):
-        rank = self.db.getNeighbourLocRank(neighbour, about)
+    def get_requesting_neighbour_loc_trust(self, neighbour, about):
+        rank = self.db.get_neighbour_loc_rank(neighbour, about)
         if rank is not None:
-            return rank.requestingTrustValue
-        return self.unknownTrust
-
+            return rank.requesting_trust_value
+        return self.unknown_trust
 
     ############################
-    def neighbourWeightBase(self):
+    def neighbour_weight_base(self):
         return 2
 
     ############################
-    def neighbourWeightPower(self, node_id):
+    def neighbour_weight_power(self, node_id):
         return 2
 
     ############################
-    def countNeighbourWeight(self, node_id, computing = True):
+    def count_neighbour_weight(self, node_id, computing=True):
         if computing:
-            locTrust = self.getLocComputingTrust(node_id)
+            loc_trust = self.get_loc_computing_trust(node_id)
         else:
-            locTrust = self.getLocRequestingTrust(node_id)
-        if locTrust is None:
-            locTrust = self.unknownTrust
-        return self.neighbourWeightBase() ** (self.neighbourWeightPower(node_id) * locTrust)
+            loc_trust = self.get_loc_requesting_trust(node_id)
+        if loc_trust is None:
+            loc_trust = self.unknown_trust
+        return self.neighbour_weight_base() ** (self.neighbour_weight_power(node_id) * loc_trust)
 
     def sync_network(self):
-        neighboursLocRanks = self.client.collect_neighbours_loc_ranks()
-        for [ neighbourId, about_id, loc_rank ] in neighboursLocRanks:
-            self.db.insertOrUpdateNeighbourLocRank(neighbourId,
-                                                   about_id, loc_rank)
+        neighbours_loc_ranks = self.client.collect_neighbours_loc_ranks()
+        for [neighbour_id, about_id, loc_rank] in neighbours_loc_ranks:
+            self.db.insert_or_update_neighbour_loc_rank(neighbour_id,
+                                                        about_id, loc_rank)
 
     ############################
     def __push_local_ranks(self):
-        for loc_rank in self.db.getAllLocalRank():
+        for loc_rank in self.db.get_all_local_rank():
             if loc_rank.node_id in self.prev_loc_rank:
-                prevTrust = self.prev_loc_rank[ loc_rank.node_id ]
+                prev_trust = self.prev_loc_rank[loc_rank.node_id]
 
             comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank), self.__get_comp_trust_neg(loc_rank))
             req_trust = self.__count_trust(self.__get_req_trust_pos(loc_rank), self.__get_req_trust_neg(loc_rank))
-            trust = [ comp_trust, req_trust ]
+            trust = [comp_trust, req_trust]
             if loc_rank.node_id in self.prev_loc_rank:
-                prevTrust = self.prev_loc_rank[ loc_rank.node_id ]
+                prev_trust = self.prev_loc_rank[loc_rank.node_id]
             else:
-                prevTrust = [float("inf")] * 2
-            if max(map(abs, map(operator.sub, prevTrust, trust))) > self.loc_rankPushDelta:
+                prev_trust = [float("inf")] * 2
+            if max(map(abs, map(operator.sub, prev_trust, trust))) > self.loc_rank_push_delta:
                 self.client.push_local_rank(loc_rank.node_id, trust)
                 self.prev_loc_rank[loc_rank.node_id] = trust
-
-
 
     ############################
     def __check_finished(self):
@@ -391,10 +409,9 @@ class Ranking:
                 self.__send_finished()
             else:
                 val = self.__compare_working_vec_and_prev_rank()
-                if val <= len(self.workingVec) * self.epsilon * 2:
+                if val <= len(self.working_vec) * self.epsilon * 2:
                     self.finished = True
                     self.__send_finished()
-
 
     ############################
     def __check_global_finished(self):
@@ -409,7 +426,7 @@ class Ranking:
     ############################
     def __compare_working_vec_and_prev_rank(self):
         sum = 0.0
-        for node_id, val in self.workingVec.iteritems():
+        for node_id, val in self.working_vec.iteritems():
             try:
                 computing, requesting = val
             except (TypeError, ValueError):
@@ -425,13 +442,11 @@ class Ranking:
             sum += abs(comp_trust - comp_trust_old) + abs(req_trust - req_trust_old)
         return sum
 
-
-
     ############################
     def __count_trust(self, pos, neg):
-        val = pos * self.posPar - neg * self.negPar
-        val /= max(pos + neg, self.minOpNum)
-        val = min(self.maxTrust, max(self.minTrust, val))
+        val = pos * self.pos_par - neg * self.neg_par
+        val /= max(pos + neg, self.min_op_num)
+        val = min(self.max_trust, max(self.min_trust, val))
         return val
 
     ############################
@@ -442,8 +457,8 @@ class Ranking:
         if degree == 0:
             self.k = 0
         else:
-            avg =  float(sum_degrees) / float(degree)
-            self.k = max(int (round(float(degree) / avg)), 1)
+            avg = float(sum_degrees) / float(degree)
+            self.k = max(int(round(float(degree) / avg)), 1)
 
     ############################
     def __get_neighbours_degree(self):
@@ -453,7 +468,7 @@ class Ranking:
 
     ############################
     def __make_prev_rank(self):
-        for node_id, val in self.workingVec.iteritems():
+        for node_id, val in self.working_vec.iteritems():
             try:
                 computing, requesting = val
             except (TypeError, ValueError):
@@ -465,7 +480,7 @@ class Ranking:
 
     ############################
     def __save_working_vec(self):
-        for node_id, val in self.workingVec.iteritems():
+        for node_id, val in self.working_vec.iteritems():
             try:
                 computing, requesting = val
             except (TypeError, ValueError):
@@ -473,11 +488,11 @@ class Ranking:
                 break
             comp_trust = self.__working_vec_to_trust(computing)
             req_trust = self.__working_vec_to_trust(requesting)
-            self.db.insertOrUpdateGlobalRank(node_id, comp_trust, req_trust,  computing[1], requesting[1])
+            self.db.insert_or_update_global_rank(node_id, comp_trust, req_trust, computing[1], requesting[1])
 
     ############################
     def __working_vec_to_trust(self, val):
-        if val == None:
+        if val is None:
             return 0.0
         try:
             a, b = val
@@ -487,12 +502,12 @@ class Ranking:
         if a == 0.0 or b == 0.0:
             return 0.0
         else:
-            return min(max(float(a) / float(b), self.minTrust), self.maxTrust)
+            return min(max(float(a) / float(b), self.min_trust), self.max_trust)
 
     ############################
     def __prepare_gossip(self):
         gossip_vec = []
-        for node_id, val in self.workingVec.iteritems():
+        for node_id, val in self.working_vec.iteritems():
             comp_trust = map(self.__scale_gossip, val[0])
             req_trust = map(self.__scale_gossip, val[1])
             gossip_vec.append([node_id, [comp_trust, req_trust]])
@@ -504,19 +519,20 @@ class Ranking:
 
     ############################
     def __add_gossip(self):
-        for gossipGroup in self.receivedGossip:
-            for gossip in gossipGroup:
+        for gossip_group in self.received_gossip:
+            for gossip in gossip_group:
                 try:
                     node_id, [comp, req] = gossip
-                    if node_id in self.workingVec:
-                        [prev_comp, prev_req] = self.workingVec[node_id]
-                        self.workingVec[node_id] = [self.__sum_gossip(comp, prev_comp), self.__sum_gossip(req, prev_req)]
+                    if node_id in self.working_vec:
+                        [prev_comp, prev_req] = self.working_vec[node_id]
+                        self.working_vec[node_id] = [self.__sum_gossip(comp, prev_comp),
+                                                     self.__sum_gossip(req, prev_req)]
                     else:
-                        self.workingVec[node_id] = [comp, req]
+                        self.working_vec[node_id] = [comp, req]
                 except Exception, err:
                     logger.error("Wrong gossip {}, {}".format(gossip, str(err)))
 
-        self.receivedGossip = []
+        self.received_gossip = []
 
     ############################
     def __sum_gossip(self, a, b):
@@ -537,36 +553,39 @@ class Ranking:
         for n in self.neighbours:
             if n != node_id:
                 if computing:
-                    trust = self.getComputingNeighbourLocTrust(n, node_id)
+                    trust = self.get_computing_neighbour_loc_trust(n, node_id)
                 else:
-                    trust = self.getRequestingNeighbourLocTrust(n, node_id)
-                weight = self.countNeighbourWeight(n, not computing)
+                    trust = self.get_requesting_neighbour_loc_trust(n, node_id)
+                weight = self.count_neighbour_weight(n, not computing)
                 sum_trust += (weight - 1) * trust
                 sum_weight += weight
         return sum_trust, sum_weight
 
     ############################
     def __get_comp_trust_pos(self, rank):
-        return rank.positiveComputed
+        return rank.positive_computed
 
     ############################
     def __get_comp_trust_neg(self, rank):
-        return rank.negativeComputed + rank.wrongComputed
+        return rank.negative_computed + rank.wrong_computed
 
     ############################
     def __get_req_trust_pos(self, rank):
-        return rank.positivePayment
+        return rank.positive_payment
 
     ############################
     def __get_req_trust_neg(self, rank):
-        return rank.negativeRequested + rank.negativePayment
+        return rank.negative_requested + rank.negative_payment
+
 
 ####################################################################################
 
 from golem.core.variables import BREAK_TIME, ROUND_TIME, END_ROUND_TIME, STAGE_TIME
 
+
 class DiscreteTimeRoundOracle:
-    def __init__(self, break_time = BREAK_TIME, round_time = ROUND_TIME, end_round_time = END_ROUND_TIME, stage_time = STAGE_TIME):
+    def __init__(self, break_time=BREAK_TIME, round_time=ROUND_TIME, end_round_time=END_ROUND_TIME,
+                 stage_time=STAGE_TIME):
         self.break_time = break_time
         self.round_time = round_time
         self.end_round_time = end_round_time
@@ -599,7 +618,7 @@ class DiscreteTimeRoundOracle:
 
     def sec_to_break(self):
         tm = self.__time_mod()
-        if self.round_time + self.end_round_time -tm >= 0:
+        if self.round_time + self.end_round_time - tm >= 0:
             return self.round_time + self.end_round_time - tm
         else:
             return self.__sum_time() + self.round_time + self.end_round_time - tm

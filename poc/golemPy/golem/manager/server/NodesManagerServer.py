@@ -9,18 +9,18 @@ logger = logging.getLogger(__name__)
 class NodesManagerServer:
 
     #############################
-    def __init__(self, nodesManager, port, reactor = None):
+    def __init__(self, nodes_manager, port, reactor = None):
         self.port               = port
         self.manager_sessions    = []
         self.reactor            = reactor
-        self.nodesManager       = nodesManager
+        self.nodes_manager      = nodes_manager
 
         self.network = TCPNetwork(ProtocolFactory(ManagerConnState, self, ServerManagerSessionFactory(self)))
 
         self.__start_accepting()
 
     #############################
-    def setReactor(self, reactor):
+    def set_reactor(self, reactor):
         self.reactor = reactor
 
     #############################
@@ -43,36 +43,36 @@ class NodesManagerServer:
         self.manager_sessions.append(session)
 
     #############################
-    def nodeStateSnapshotReceived(self, nss):
-        self.nodesManager.appendStateUpdate(nss)
+    def node_state_snapshot_received(self, nss):
+        self.nodes_manager.append_state_update(nss)
         
     #############################
     def manager_session_disconnect(self, uid):
-        self.nodesManager.appendStateUpdate(NodeStateSnapshot(False, uid))
+        self.nodes_manager.append_state_update(NodeStateSnapshot(False, uid))
 
     #############################
-    def sendTerminate(self, uid):
+    def send_terminate(self, uid):
         for ms in self.manager_sessions:
             if ms.uid == uid:
-                ms.sendKillNode()
+                ms.send_kill_node()
 
-    def sendTerminateAll(self, uid):
+    def send_terminate_all(self, uid):
         for ms in self.manager_sessions:
             if ms.uid == uid:
-                ms.sendKillAllNodes()
-
-    #############################
-    def sendNewTask(self, uid, task):
-        for ms in self.manager_sessions:
-            if ms.uid == uid:
-                ms.sendNewTask(task)
-
+                ms.send_kill_all_nodes()
 
     #############################
-    def sendNewNodes(self, uid, numNodes):
+    def send_new_task(self, uid, task):
         for ms in self.manager_sessions:
             if ms.uid == uid:
-                ms.sendNewNodes(numNodes)
+                ms.send_new_task(task)
+
+
+    #############################
+    def send_new_nodes(self, uid, num_nodes):
+        for ms in self.manager_sessions:
+            if ms.uid == uid:
+                ms.send_new_nodes(num_nodes)
 
 
 from twisted.internet.protocol import Factory

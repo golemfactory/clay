@@ -19,7 +19,7 @@ class UpdateOtherGolemsTaskDefinition:
         self.subtask_timeout     = 0
 
         self.resource_dir        = ""
-        self.srcFile            = ""
+        self.src_file            = ""
         self.resources          = []
         self.totalSubtasks      = 1
 
@@ -31,7 +31,7 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
         self.srcDir = srcDir
 
     def build(self):
-        with open(self.taskDefinition.srcFile) as f:
+        with open(self.taskDefinition.src_file) as f:
             src_code = f.read()
         self.taskDefinition.taskResources = set()
         for dir, dirs, files in os.walk(self.srcDir):
@@ -79,13 +79,13 @@ class UpdateOtherGolemsTask(GNRTask):
                   resources,
                   resource_size,
                   estimated_memory,
-                  totalTasks):
+                  total_tasks):
 
 
         GNRTask.__init__(self, src_code, client_id, task_id, owner_address, owner_port, ownerKeyId, environment,
                             ttl, subtaskTtl, resource_size, estimated_memory)
 
-        self.totalTasks = totalTasks
+        self.total_tasks = total_tasks
         self.root_path = root_path
 
         self.taskResources = resources
@@ -107,15 +107,15 @@ class UpdateOtherGolemsTask(GNRTask):
         ctd.task_id = self.header.task_id
         hash = "{}".format(random.getrandbits(128))
         ctd.subtask_id = hash
-        ctd.extra_data = { "startTask" : self.lastTask,
-                          "endTask": self.lastTask + 1 }
+        ctd.extra_data = { "start_task" : self.lastTask,
+                          "end_task": self.lastTask + 1 }
         ctd.return_address = self.header.task_owner_address
         ctd.return_port = self.header.task_owner_port
         ctd.task_owner = self.header.task_owner
         ctd.short_description = "Golem update"
         ctd.src_code = self.src_code
         ctd.performance = perf_index
-        if self.lastTask + 1 <= self.totalTasks:
+        if self.lastTask + 1 <= self.total_tasks:
             self.lastTask += 1
         self.updated[ client_id ] = True
 

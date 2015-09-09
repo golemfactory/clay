@@ -13,7 +13,7 @@ class EigenTrustNodeRank:
         self.computing = EigenTrustRank()
         self.delegating = EigenTrustRank()
 
-    def setSeedRank(self, seedNode):
+    def set_seed_rank(self, seed_node):
         pass
 
     def __str__(self):
@@ -22,54 +22,54 @@ class EigenTrustNodeRank:
 
 
 class EigenTrustSimulator(RankSimulator):
-    def __init__(self, optPeers = 3, trustThreshold = -1.0):
-        RankSimulator.__init__(self, EigenTrustNodeRank, optPeers)
-        self.trustThreshold = trustThreshold
+    def __init__(self, opt_peers = 3, trust_threshold = -1.0):
+        RankSimulator.__init__(self, EigenTrustNodeRank, opt_peers)
+        self.trust_threshold = trust_threshold
 
-    def goodCounting(self, cntNode, dntNode):
-        self.nodes[ dntNode ]['ranking'].computing.incNodePositive(cntNode)
+    def good_counting(self, cnt_node, dnt_node):
+        self.nodes[ dnt_node ]['ranking'].computing.inc_node_positive(cnt_node)
 
-    def badCounting(self, cntNode, dntNode):
-        self.nodes[ dntNode ]['ranking'].computing.incNodeNegative(cntNode)
-        self.nodes[ cntNode ]['ranking'].delegating.incNodeNegative(dntNode)
+    def bad_counting(self, cnt_node, dnt_node):
+        self.nodes[ dnt_node ]['ranking'].computing.inc_node_negative(cnt_node)
+        self.nodes[ cnt_node ]['ranking'].delegating.inc_node_negative(dnt_node)
 
-    def goodPayment(self, cntNode, dntNode):
-        self.nodes[ cntNode ]['ranking'].delegating.incNodePositive(dntNode)
+    def good_payment(self, cnt_node, dnt_node):
+        self.nodes[ cnt_node ]['ranking'].delegating.inc_node_positive(dnt_node)
 
-    def noPayment(self, cntNode, dntNode):
-        self.nodes[ cntNode ]['ranking'].delegating.incNodeNegative(dntNode)
+    def no_payment(self, cnt_node, dnt_node):
+        self.nodes[ cnt_node ]['ranking'].delegating.inc_node_negative(dnt_node)
 
 
-    def askForNodeComputing(self, dntNode, cntNode):
-        if cntNode not in self.nodes:
-            print "Wrong node {}".format(cntNode)
-        if dntNode not in self.nodes:
-            print "Wrong node {}".format(dntNode)
+    def ask_for_node_computing(self, dnt_node, cnt_node):
+        if cnt_node not in self.nodes:
+            print "Wrong node {}".format(cnt_node)
+        if dnt_node not in self.nodes:
+            print "Wrong node {}".format(dnt_node)
 
-        otherRanks = {}
-        for peer in self.nodes[ dntNode ]['peers']:
-            otherRanks[peer] = self.nodes[peer]['ranking'].computing.getNodeTrust(cntNode)
+        other_ranks = {}
+        for peer in self.nodes[ dnt_node ]['peers']:
+            other_ranks[peer] = self.nodes[peer]['ranking'].computing.get_node_trust(cnt_node)
 
-        test = self.nodes[dntNode]['ranking'].computing.getGlobalTrust(cntNode, otherRanks)
-        print "DNT NODE {}, CNT NODE{} GLOBAL {}".format(dntNode, cntNode, test)
-        if test > self.trustThreshold:
+        test = self.nodes[dnt_node]['ranking'].computing.get_global_trust(cnt_node, other_ranks)
+        print "DNT NODE {}, CNT NODE{} GLOBAL {}".format(dnt_node, cnt_node, test)
+        if test > self.trust_threshold:
             return True
         else:
             return False
 
-    def askForNodeDelegating(self, cntNode, dntNode):
-        if cntNode not in self.nodes:
-            print "Wrong node {}".format(cntNode)
-        if dntNode not in self.nodes:
-            print "Wrong node {}".format(dntNode)
+    def ask_for_node_delegating(self, cnt_node, dnt_node):
+        if cnt_node not in self.nodes:
+            print "Wrong node {}".format(cnt_node)
+        if dnt_node not in self.nodes:
+            print "Wrong node {}".format(dnt_node)
 
-        otherRanks = {}
-        for peer in self.nodes[ cntNode ]['peers']:
-            otherRanks[peer] = self.nodes[peer]['ranking'].delegating.getNodeTrust(dntNode)
+        other_ranks = {}
+        for peer in self.nodes[ cnt_node ]['peers']:
+            other_ranks[peer] = self.nodes[peer]['ranking'].delegating.get_node_trust(dnt_node)
 
-        test = self.nodes[cntNode]['ranking'].delegating.getGlobalTrust(dntNode, otherRanks)
-        print "CNT NODE {}, DNT NODE{} GLOBAL {}".format(cntNode, dntNode, test)
-        if test > self.trustThreshold:
+        test = self.nodes[cnt_node]['ranking'].delegating.get_global_trust(dnt_node, other_ranks)
+        print "CNT NODE {}, DNT NODE{} GLOBAL {}".format(cnt_node, dnt_node, test)
+        if test > self.trust_threshold:
             return True
         else:
             return False
@@ -79,15 +79,15 @@ class EigenTrustSimulator(RankSimulator):
 def main():
     rs = EigenTrustSimulator()
     for i in range(0, 1):
-        rs.fullAddNode(goodNode = False)
+        rs.full_add_node(good_node = False)
     for i in range(0, 10):
-        rs.fullAddNode(goodNode = True)
+        rs.full_add_node(good_node = True)
 
-    rs.printState()
+    rs.print_state()
     print "################"
     for i in range(0, 100):
-        rs.startTask(random.sample(rs.nodes.keys(), 1)[0])
-    rs.printState()
+        rs.start_task(random.sample(rs.nodes.keys(), 1)[0])
+    rs.print_state()
 
 
 

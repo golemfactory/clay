@@ -15,25 +15,25 @@ from server.NodesManagerServer import NodesManagerServer
 class NodesManager:
 
     ########################
-    def __init__(self, managerLogic = None, port = 20301):
+    def __init__(self, manager_logic = None, port = 20301):
         self.app = QApplication(sys.argv)
         self.mainWindow = NodesManagerWidget(None)
         self.uic = ManagerUiCustomizer(self.mainWindow, self)
         self.timer = QTimer()
-        self.timer.timeout.connect(self.polledUpdate)
+        self.timer.timeout.connect(self.polled_update)
         self.lock = Lock()
         self.statesBuffer = []
-        self.managerLogic = managerLogic
+        self.manager_logic = manager_logic
 
         self.uic.enableDetailedView(False)
 
-        self.managerServer = NodesManagerServer(self, port)
+        self.manager_server = NodesManagerServer(self, port)
 
          #FIXME: some shitty python magic
     def closeEvent_(self, event):
         try:
-            self.managerLogic.getReactor().stop()
-            self.managerLogic.terminateAllNodes()
+            self.manager_logic.get_reactor().stop()
+            self.manager_logic.terminate_all_nodes()
         except Exception as ex:
             pass
         finally:
@@ -43,45 +43,45 @@ class NodesManager:
         setattr(self.mainWindow.window.__class__, 'closeEvent', closeEvent_)
 
      ########################
-    def setManagerLogic(self, managerLogic):
-        self.managerLogic = managerLogic
+    def set_manager_logic(self, manager_logic):
+        self.manager_logic = manager_logic
 
     ########################
-    def curSelectedNode(self):
+    def cur_selected_node(self):
         return None
 
     ########################
-    def appendStateUpdate(self, update):
+    def append_state_update(self, update):
         with self.lock:
             self.statesBuffer.append(update)
 
     ########################
-    def polledUpdate(self):
+    def polled_update(self):
         with self.lock:
             for ns in self.statesBuffer:
-                self.updateNodeState(ns)
+                self.update_node_state(ns)
 
             self.statesBuffer = []
 
     ########################
-    def execute(self, usingqt4Reactor = False):
+    def execute(self, using_qt4_reactor = False):
         self.mainWindow.show()
         self.timer.start(100)
-        if not usingqt4Reactor:
+        if not using_qt4_reactor:
             sys.exit(self.app.exec_())
 
     ########################
-    def updateNodeState(self, ns):
+    def update_node_state(self, ns):
         assert isinstance(ns, NodeStateSnapshot)
 
-        tcss = ns.get_taskChunkStateSnapshot()
+        tcss = ns.get_task_chunk_state_snapshot()
 
         ndslt = {}
         for sp in tcss.values():
-            ndslt[ sp.getChunkId() ] = {    "chunkProgress" : sp.get_progress(),
-                                            "cpu_power" : "{}".format(sp.getCpuPower()),
-                                            "timeLeft" : "{}".format(sp.getEstimatedTimeLeft()),
-                                            "cshd" : sp.getChunkShortDescr()
+            ndslt[ sp.get_chunk_id() ] = {    "chunkProgress" : sp.get_progress(),
+                                            "cpu_power" : "{}".format(sp.get_cpu_power()),
+                                            "timeLeft" : "{}".format(sp.get_estimated_time_left()),
+                                            "cshd" : sp.get_chunk_short_descr()
                                         }
 
         ndscs = {}
@@ -89,21 +89,21 @@ class NodesManager:
         ltss = ns.get_local_task_state_snapshot()
         for sp in ltss.values():
             ndscs[ sp.get_task_id() ] = {   "taskProgress" : sp.get_progress(),
-                                            "allocTasks" : "{}".format(sp.get_total_tasks()),
-                                            "allocChunks" : "{}".format(sp.get_total_chunks()),
-                                            "activeTasks" : "{}".format(sp.get_active_tasks()),
-                                            "activeChunks" : "{}".format(sp.get_active_chunks()),
-                                            "chunksLeft" : "{}".format(sp.get_chunks_left()),
+                                            "alloc_tasks" : "{}".format(sp.get_total_tasks()),
+                                            "alloc_chunks" : "{}".format(sp.get_total_chunks()),
+                                            "active_tasks" : "{}".format(sp.get_active_tasks()),
+                                            "active_chunks" : "{}".format(sp.get_active_chunks()),
+                                            "chunks_left" : "{}".format(sp.get_chunks_left()),
                                             "ltshd" : sp.get_task_short_desc()
                                        }
 
-        ep = "{}:{}".format(ns.endpointAddr, ns.endpointPort)
-        ts = ns.getFormattedTimestamp()
-        pn = "{}".format(ns.getPeersNum())
+        ep = "{}:{}".format(ns.endpoint_addr, ns.endpoint_port)
+        ts = ns.get_formatted_timestamp()
+        pn = "{}".format(ns.get_peers_num())
         tn = "{}".format(ns.get_tasks_num())
         lm = ""
-        if len(ns.getLastNetworkMessages()) > 0:
-            lm = ns.getLastNetworkMessages()[-1][ 0 ] + str(ns.getLastNetworkMessages()[-1][ 4 ])
+        if len(ns.get_last_network_messages()) > 0:
+            lm = ns.get_last_network_messages()[-1][ 0 ] + str(ns.get_last_network_messages()[-1][ 4 ])
 
 
         ir = ns.is_running()
@@ -113,47 +113,47 @@ class NodesManager:
         self.uic.UpdateNodePresentationState(node_data_state)
 
     ########################
-    def runAdditionalNodes(self, numNodes):
-        self.managerLogic.runAdditionalNodes(numNodes)
+    def run_additional_nodes(self, num_nodes):
+        self.manager_logic.run_additional_nodes(num_nodes)
 
     ########################
-    def runAdditionalLocalNodes(self, uid, numNodes):
-        self.managerLogic.runAdditionalLocalNodes(uid, numNodes)
+    def run_additional_local_nodes(self, uid, num_nodes):
+        self.manager_logic.run_additional_local_nodes(uid, num_nodes)
 
     ########################
     def terminate_node(self, uid):
-        self.managerLogic.terminate_node(uid)
+        self.manager_logic.terminate_node(uid)
 
     ########################
-    def terminateAllNodes(self):
-        self.managerLogic.terminateAllNodes()
+    def terminate_all_nodes(self):
+        self.manager_logic.terminate_all_nodes()
 
     ########################
-    def terminateAllLocalNodes(self, uid):
-        self.managerLogic.terminateAllLocalNodes(uid)
+    def terminate_all_local_nodes(self, uid):
+        self.manager_logic.terminate_all_local_nodes(uid)
 
     ########################
-    def loadTask(self, uid, filePath):
-        self.managerLogic.loadTask(uid, filePath)
+    def load_task(self, uid, file_path):
+        self.manager_logic.load_task(uid, file_path)
 
     ########################
-    def enqueue_new_task(self, uid, w, h, numSamplesPerPixel, file_name):
-        self.managerLogic.enqueue_new_task(uid, w, h, numSamplesPerPixel, file_name)
+    def enqueue_new_task(self, uid, w, h, num_samples_per_pixel, file_name):
+        self.manager_logic.enqueue_new_task(uid, w, h, num_samples_per_pixel, file_name)
 
 if __name__ == "__main__":
 
     manager = NodesManager()
 
-    numNodes = 1
-    maxLocalTasks = 2
-    maxRemoteTasks = 30
-    maxLocTaskDuration = 10.0
-    maxRemTaskDuration = 28.0
-    maxInnerUpdateDelay = 2.0
-    nodeSpawnDelay = 1.0
+    num_nodes = 1
+    max_local_tasks = 2
+    max_remote_tasks = 30
+    max_loc_task_duration = 10.0
+    max_rem_task_duration = 28.0
+    max_inner_update_delay = 2.0
+    node_spawn_delay = 1.0
 
-    simulator = LocalNetworkSimulator(manager, numNodes, maxLocalTasks, maxRemoteTasks, maxLocTaskDuration, maxRemTaskDuration, maxInnerUpdateDelay, nodeSpawnDelay)
-    manager.setManagerLogic(NodesManagerLogicTest(simulator))
+    simulator = LocalNetworkSimulator(manager, num_nodes, max_local_tasks, max_remote_tasks, max_loc_task_duration, max_rem_task_duration, max_inner_update_delay, node_spawn_delay)
+    manager.set_manager_logic(NodesManagerLogicTest(simulator))
     simulator.start()
 
     manager.execute()

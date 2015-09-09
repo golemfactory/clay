@@ -9,9 +9,9 @@ import subprocess
 import psutil
 import shutil
 
-def formatLuxRendererCmd(cmdFile, startTask, output_file, outfilebasename, scenefile, numThreads):
+def formatLuxRendererCmd(cmdFile, start_task, output_file, outfilebasename, scenefile, numThreads):
     cmd = ["{}".format(cmdFile), "{}".format(scenefile), "-o",
-           "{}/{}{}.png".format(output_file, outfilebasename, startTask), "-t", "{}".format(numThreads) ]
+           "{}/{}{}.png".format(output_file, outfilebasename, start_task), "-t", "{}".format(numThreads) ]
     print cmd
     return cmd
 
@@ -93,7 +93,7 @@ def makeTmpFile(sceneDir, sceneSrc):
 
 
 ############################
-def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, num_cores, ownBinaries, luxConsole):
+def runLuxRendererTask(start_task, outfilebasename, scene_fileSrc, sceneDir, num_cores, ownBinaries, luxConsole):
     print 'LuxRenderer Task'
 
     output_files = tmp_path
@@ -104,7 +104,7 @@ def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, num_c
         os.remove(f)
 
     sceneDir = os.path.normpath(os.path.join(os.getcwd(), sceneDir))
-    tmpSceneFile = makeTmpFile(sceneDir, sceneFileSrc)
+    tmpSceneFile = makeTmpFile(sceneDir, scene_fileSrc)
 
     if ownBinaries:
         cmdFile = luxConsole
@@ -112,7 +112,7 @@ def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, num_c
         cmdFile = __readFromEnvironment()
     if os.path.exists(tmpSceneFile):
         print tmpSceneFile
-        cmd = formatLuxRendererCmd(cmdFile, startTask, output_files, outfilebasename, tmpSceneFile, numThreads)
+        cmd = formatLuxRendererCmd(cmdFile, start_task, output_files, outfilebasename, tmpSceneFile, numThreads)
     else:
          print "Scene file does not exist"
          return {'data': [], 'result_type': 0 }
@@ -128,4 +128,4 @@ def runLuxRendererTask(startTask, outfilebasename, sceneFileSrc, sceneDir, num_c
     return returnFiles(files)
 
 
-output = runLuxRendererTask (startTask, outfilebasename, sceneFileSrc, sceneDir, numThreads, ownBinaries, luxConsole)
+output = runLuxRendererTask (start_task, outfilebasename, scene_fileSrc, sceneDir, numThreads, ownBinaries, luxConsole)

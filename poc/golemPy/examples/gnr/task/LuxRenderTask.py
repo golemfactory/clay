@@ -33,13 +33,13 @@ def buildLuxRenderInfo():
 
     renderer = RendererInfo("LuxRender", defaults, LuxRenderTaskBuilder, LuxRenderDialog, LuxRenderDialogCustomizer, LuxRenderOptions)
     renderer.outputFormats = ["EXR", "PNG", "TGA"]
-    renderer.sceneFileExt = [ "lxs" ]
+    renderer.scene_fileExt = [ "lxs" ]
     renderer.get_taskNumFromPixels = get_taskNumFromPixels
     renderer.get_taskBoarder = get_taskBoarder
 
     return renderer
 
-def get_taskBoarder(startTask, endTask, totalTasks, resX = 300 , resY = 200, numSubtasks = 20):
+def get_taskBoarder(start_task, end_task, total_tasks, resX = 300 , resY = 200, num_subtasks = 20):
     boarder = []
     for i in range(0, resY):
         boarder.append((0, i))
@@ -49,7 +49,7 @@ def get_taskBoarder(startTask, endTask, totalTasks, resX = 300 , resY = 200, num
         boarder.append((i, resY - 1))
     return boarder
 
-def get_taskNumFromPixels(pX, pY, totalTasks, resX = 300, resY = 200):
+def get_taskNumFromPixels(pX, pY, total_tasks, resX = 300, resY = 200):
     return 1
 
 ##############################################
@@ -114,7 +114,7 @@ class LuxTask(RenderingTask):
                     mainSceneDir,
                     mainSceneFile,
                     mainProgramFile,
-                    totalTasks,
+                    total_tasks,
                     resX,
                     resY,
                     outfilebasename,
@@ -136,7 +136,7 @@ class LuxTask(RenderingTask):
         RenderingTask.__init__(self, client_id, task_id, return_address, return_port, key_id,
                                  LuxRenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                  mainProgramFile, taskResources, mainSceneDir, mainSceneFile,
-                                 totalTasks, resX, resY, outfilebasename, output_file, outputFormat,
+                                 total_tasks, resX, resY, outfilebasename, output_file, outputFormat,
                                  root_path, estimated_memory)
 
         self.halttime = halttime
@@ -146,10 +146,10 @@ class LuxTask(RenderingTask):
 
         try:
             with open(mainSceneFile) as f:
-                self.sceneFileSrc = f.read()
+                self.scene_fileSrc = f.read()
         except Exception, err:
             logger.error("Wrong scene file: {}".format(str(err)))
-            self.sceneFileSrc = ""
+            self.scene_fileSrc = ""
 
         self.output_file, _ = os.path.splitext(self.output_file)
         self.numAdd = 0
@@ -164,22 +164,22 @@ class LuxTask(RenderingTask):
             logger.warning(" Client {} banned from this task ".format(client_id))
             return None
 
-        startTask, endTask = self._getNextTask()
-        if startTask is None or endTask is None:
+        start_task, end_task = self._getNextTask()
+        if start_task is None or end_task is None:
             logger.error("Task already computed")
             return None
 
         working_directory = self._getWorkingDirectory()
         minX = 0
         maxX = 1
-        minY = (startTask - 1) * (1.0 / float(self.totalTasks))
-        maxY = (endTask) * (1.0 / float(self.totalTasks))
+        minY = (start_task - 1) * (1.0 / float(self.total_tasks))
+        maxY = (end_task) * (1.0 / float(self.total_tasks))
 
         if self.halttime > 0:
             writeInterval =  int(self.halttime / 2)
         else:
             writeInterval = 60
-        sceneSrc = regenerateLuxFile(self.sceneFileSrc, self.resX, self.resY, self.halttime, self.haltspp, writeInterval, [0, 1, 0, 1], "PNG")
+        sceneSrc = regenerateLuxFile(self.scene_fileSrc, self.resX, self.resY, self.halttime, self.haltspp, writeInterval, [0, 1, 0, 1], "PNG")
         sceneDir= os.path.dirname(self._getSceneFileRelPath())
 
         if self.ownBinaries:
@@ -189,12 +189,12 @@ class LuxTask(RenderingTask):
 
         numThreads = max(num_cores, 1)
 
-        extra_data =          {      "pathRoot" : self.mainSceneDir,
-                                    "startTask" : startTask,
-                                    "endTask" : endTask,
-                                    "totalTasks" : self.totalTasks,
+        extra_data =          {      "path_root" : self.mainSceneDir,
+                                    "start_task" : start_task,
+                                    "end_task" : end_task,
+                                    "total_tasks" : self.total_tasks,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFileSrc" : sceneSrc,
+                                    "scene_fileSrc" : sceneSrc,
                                     "sceneDir": sceneDir,
                                     "numThreads": numThreads,
                                     "ownBinaries": self.ownBinaries,
@@ -217,7 +217,7 @@ class LuxTask(RenderingTask):
         if not os.path.exists(self.test_taskResPath):
             os.makedirs(self.test_taskResPath)
 
-        sceneSrc = regenerateLuxFile(self.sceneFileSrc, 1, 1, 5, 0, 1, [0, 1, 0, 1 ], "PNG")
+        sceneSrc = regenerateLuxFile(self.scene_fileSrc, 1, 1, 5, 0, 1, [0, 1, 0, 1 ], "PNG")
         working_directory = self._getWorkingDirectory()
         sceneDir= os.path.dirname(self._getSceneFileRelPath())
 
@@ -227,12 +227,12 @@ class LuxTask(RenderingTask):
             luxConsole = 'luxconsole.exe'
 
         extra_data = {
-            "pathRoot" : self.mainSceneDir,
-            "startTask": 1,
-            "endTask": 1,
-            "totalTasks": 1,
+            "path_root" : self.mainSceneDir,
+            "start_task": 1,
+            "end_task": 1,
+            "total_tasks": 1,
             "outfilebasename": self.outfilebasename,
-            "sceneFileSrc": sceneSrc,
+            "scene_fileSrc": sceneSrc,
             "sceneDir": sceneDir,
             "numThreads": 1,
             "ownBinaries": self.ownBinaries,
@@ -247,31 +247,31 @@ class LuxTask(RenderingTask):
     #######################
     def _short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data
-        return "startTask: {}, outfilebasename: {}, sceneFileSrc: {}".format(l['startTask'], l['outfilebasename'], l['sceneFileSrc'])
+        return "start_task: {}, outfilebasename: {}, scene_fileSrc: {}".format(l['start_task'], l['outfilebasename'], l['scene_fileSrc'])
 
     #######################
     def computation_finished(self, subtask_id, task_result, dir_manager = None, result_type = 0):
-        tmpDir = dir_manager.get_task_temporary_dir(self.header.task_id, create = False)
-        self.tmpDir = tmpDir
+        tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create = False)
+        self.tmp_dir = tmp_dir
 
-        trFiles = self.loadTaskResults(task_result, result_type, tmpDir)
+        trFiles = self.load_taskResults(task_result, result_type, tmp_dir)
 
         if len(task_result) > 0:
-            numStart = self.subTasksGiven[ subtask_id ][ 'startTask' ]
+            numStart = self.subTasksGiven[ subtask_id ][ 'start_task' ]
             self.subTasksGiven[ subtask_id ][ 'status' ] = SubtaskStatus.finished
             for trFile in trFiles:
                 _, ext = os.path.splitext(trFile)
                 if ext == '.flm':
                     self.collectedFileNames[ numStart ] = trFile
-                    self.numTasksReceived += 1
-                    self.countingNodes[ self.subTasksGiven[ subtask_id ][ 'client_id' ] ] = 1
+                    self.num_tasks_received += 1
+                    self.counting_nodes[ self.subTasksGiven[ subtask_id ][ 'client_id' ] ] = 1
                 else:
                     self.subTasksGiven[ subtask_id ][ 'previewFile' ] = trFile
                     self._updatePreview(trFile, numStart)
         else:
             self._markSubtaskFailed(subtask_id)
 
-        if self.numTasksReceived == self.totalTasks:
+        if self.num_tasks_received == self.total_tasks:
             self.__generateFinalFLM()
             self.__generateFinalFile()
 
@@ -296,24 +296,24 @@ class LuxTask(RenderingTask):
         else:
             writeInterval = 60
 
-        sceneSrc = regenerateLuxFile(self.sceneFileSrc, self.resX, self.resY, self.halttime, self.haltspp, writeInterval, [0, 1, 0, 1], self.outputFormat)
+        sceneSrc = regenerateLuxFile(self.scene_fileSrc, self.resX, self.resY, self.halttime, self.haltspp, writeInterval, [0, 1, 0, 1], self.outputFormat)
 
         tmpSceneFile = self.__writeTmpSceneFile(sceneSrc)
         self.__formatLuxRenderCmd(tmpSceneFile)
 
     #######################
-    def __writeTmpSceneFile(self, sceneFileSrc):
+    def __writeTmpSceneFile(self, scene_fileSrc):
         tmpSceneFile = tempfile.TemporaryFile(suffix = ".lxs", dir = os.path.dirname(self.mainSceneFile))
         tmpSceneFile.close()
         with open(tmpSceneFile.name, 'w') as f:
-            f.write(sceneFileSrc)
+            f.write(scene_fileSrc)
         return tmpSceneFile.name
 
     #######################
-    def __formatLuxRenderCmd(self, sceneFile):
+    def __formatLuxRenderCmd(self, scene_file):
         cmdFile = LuxRenderEnvironment().getLuxConsole()
         outputFLM = "{}.flm".format(self.output_file)
-        cmd = '"{}" "{}" -R "{}" -o "{}" '.format(cmdFile, sceneFile, outputFLM, self.output_file)
+        cmd = '"{}" "{}" -R "{}" -o "{}" '.format(cmdFile, scene_file, outputFLM, self.output_file)
         logger.debug("Last flm cmd {}".format(cmd))
         prevPath = os.getcwd()
         os.chdir(os.path.dirname(self.mainSceneFile))

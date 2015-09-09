@@ -1,13 +1,13 @@
 import re
 
-def regeneratePbrtFile(sceneFileSrc, xres, yres, pixelFilter, sampler, samplesPerPixel):
+def regeneratePbrtFile(scene_fileSrc, xres, yres, pixelFilter, sampler, samplesPerPixel):
     out = ""
 
     pixelSamplesSamplers = ['bestcandidate', 'lowdiscrepancy', 'halton', 'random']
     minMaxSamplesSamplers = ['adaptive']
     jitterSamplers = ['stratified']
 
-    for l in sceneFileSrc.splitlines():
+    for l in scene_fileSrc.splitlines():
         line = re.sub(r'("integer\s+xresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(xres), l)
         line = re.sub(r'("integer\s+yresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(yres), line)
         if sampler in pixelSamplesSamplers:
@@ -36,19 +36,19 @@ def regenerateBlenderCropFile(cropFileSrc, xres, yres, min_x, max_x, min_y, max_
 
     return out
 
-def regenerateLuxFile(sceneFileSrc, xres, yres, halttime, haltspp, writeinterval, crop, outputFormat):
+def regenerateLuxFile(scene_fileSrc, xres, yres, halttime, haltspp, writeinterval, crop, outputFormat):
     out = ""
-    if "halttime" in sceneFileSrc:
+    if "halttime" in scene_fileSrc:
         addHaltTime = False
     else:
         addHaltTime = True
 
-    if "haltspp" in sceneFileSrc:
+    if "haltspp" in scene_fileSrc:
         addHaltspp = False
     else:
         addHaltspp = True
 
-    if "cropwindow" in sceneFileSrc:
+    if "cropwindow" in scene_fileSrc:
         addCropWindow = False
     else:
         addCropWindow = True
@@ -66,7 +66,7 @@ def regenerateLuxFile(sceneFileSrc, xres, yres, halttime, haltspp, writeinterval
     nextLineAddHalt = False
     nextLineAddCrop = False
     nextLineAddHaltspp = False
-    for l in sceneFileSrc.splitlines():
+    for l in scene_fileSrc.splitlines():
         if nextLineAddHalt:
             nextLineAddHalt = False
             out += '\t"integer halttime" [{}]\n'.format(halttime)

@@ -13,7 +13,7 @@ from examples.gnr.task.BlenderRenderTask import buildBlenderRendererInfo
 
 
 
-from examples.manager.GNRManagerLogic import runAdditionalNodes, runManager
+from examples.manager.GNRManagerLogic import run_additional_nodes, runManager
 
 ###########################################################################
 def install_reactor():
@@ -73,8 +73,8 @@ def startAndConfigureClient(logic, environments):
 ############################
 def runManager(logic, client):
     path = os.getcwd()
-    def runGNRNodes(numNodes):
-        runAdditionalNodes(path, numNodes)
+    def runGNRNodes(num_nodes):
+        run_additional_nodes(path, num_nodes)
 
     nmPath = os.path.join(path, "..\\manager\\")
     def runGNRManager():

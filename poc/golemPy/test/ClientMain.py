@@ -21,21 +21,21 @@ def main():
     cfg = AppConfig.load_config()
 
     opt_num_peers     = cfg.get_optimal_peer_num()
-    manager_port     = cfg.getManagerListenPort()
-    start_port       = cfg.getStartPort()
-    end_port         = cfg.getEndPort()
-    seed_host        = cfg.getSeedHost()
-    seed_host_port    = cfg.getSeedHostPort()
+    manager_port     = cfg.get_manager_listen_port()
+    start_port       = cfg.get_start_port()
+    end_port         = cfg.get_end_port()
+    seed_host        = cfg.get_seed_host()
+    seed_host_port    = cfg.get_seed_host_port()
     send_pings       = cfg.get_send_pings()
-    pings_interval   = cfg.getPingsInterval()
-    client_uid       = cfg.getClientUid()
-    add_tasks        = cfg.getAddTasks()
+    pings_interval   = cfg.get_pings_interval()
+    client_uid       = cfg.get_client_uid()
+    add_tasks        = cfg.get_add_tasks()
 
-    getting_peers_interval    = cfg.getGettingPeersInterval()
-    getting_tasks_interval    = cfg.getGettingTasksInterval()
-    task_request_interval     = cfg.get_taskRequestInterval()
-    estimated_performance    = cfg.getEstimatedPerformance()
-    node_snapshot_interval    = cfg.getNodeSnapshotInterval()
+    getting_peers_interval    = cfg.get_getting_peers_interval()
+    getting_tasks_interval    = cfg.get_getting_tasks_interval()
+    task_request_interval     = cfg.get_task_request_interval()
+    estimated_performance    = cfg.get_estimated_performance()
+    node_snapshot_interval    = cfg.get_node_snapshot_interval()
 
     config_desc = ClientConfigDescriptor()
 
@@ -57,7 +57,7 @@ def main():
     config_desc.task_request_interval    = task_request_interval
     config_desc.estimated_performance   = estimated_performance
     config_desc.node_snapshot_interval   = node_snapshot_interval
-    config_desc.max_results_sending_delay = cfg.getMaxResultsSendingDelay()
+    config_desc.max_results_sending_delay = cfg.get_max_results_sending_delay()
 
     print "Adding tasks {}".format(add_tasks)
     print "Creating public client interface with uuid: {}".format(client_uid)

@@ -430,7 +430,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_resource_format(self, msg):
         if not msg.use_distributed_resource:
-            tmp_file = os.path.join(self.task_computer.resource_manager.getTemporaryDir(self.task_id),
+            tmp_file = os.path.join(self.task_computer.resource_manager.get_temporary_dir(self.task_id),
                                     "res" + self.task_id)
             output_dir = self.task_computer.resource_manager.get_resource_dir(self.task_id)
             extra_data = {"task_id": self.task_id, "data_type": 'resource', 'output_dir': output_dir}

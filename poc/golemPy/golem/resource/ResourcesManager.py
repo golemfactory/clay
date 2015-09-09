@@ -16,36 +16,36 @@ class DistributedResourceManager:
     def __init__(self, resource_dir):
         self.resources = set()
         self.resource_dir = resource_dir
-        self.resourceHash = ResourceHash(self.resource_dir)
+        self.resource_hash = ResourceHash(self.resource_dir)
         self.add_resources()
 
     ###################
     def change_resource_dir(self, resource_dir):
-        self.resourceHash.set_resource_dir(resource_dir)
-        self.copyResources(resource_dir)
+        self.resource_hash.set_resource_dir(resource_dir)
+        self.copy_resources(resource_dir)
         self.resources = set()
         self.resource_dir = resource_dir
         self.add_resources()
 
     ###################
-    def copyResources(self, newResourceDir):
-        copy_file_tree(self.resource_dir, newResourceDir)
+    def copy_resources(self, new_resource_dir):
+        copy_file_tree(self.resource_dir, new_resource_dir)
         filenames = next(os.walk(self.resource_dir))[2]
         for f in filenames:
             os.remove(os.path.join(self.resource_dir, f))
 
     ###################
-    def split_file(self, file_name, blockSize = 2 ** 20):
-        resourceHash = ResourceHash(self.resource_dir)
-        list_files = [ os.path.basename(file_) for file_ in resourceHash.split_file(file_name, blockSize) ]
+    def split_file(self, file_name, block_size = 2 ** 20):
+        resource_hash = ResourceHash(self.resource_dir)
+        list_files = [ os.path.basename(file_) for file_ in resource_hash.split_file(file_name, block_size) ]
         self.resources |= set(list_files)
         return list_files
 
     ###################
-    def connect_file (self, partsList, file_name):
-        resourceHash = ResourceHash(self.resource_dir)
-        resList = [ os.path.join(self.resource_dir, p) for p in partsList ]
-        resourceHash.connect_files(resList, file_name)
+    def connect_file (self, parts_list, file_name):
+        resource_hash = ResourceHash(self.resource_dir)
+        res_list = [ os.path.join(self.resource_dir, p) for p in parts_list ]
+        resource_hash.connect_files(res_list, file_name)
 
     ###################
     def add_resources(self):
@@ -55,7 +55,7 @@ class DistributedResourceManager:
     ###################
     def check_resource(self, resource):
         res_path = os.path.join(self.resource_dir, os.path.basename(resource))
-        if os.path.isfile(res_path) and self.resourceHash.getFileHash(res_path) == resource:
+        if os.path.isfile(res_path) and self.resource_hash.get_file_hash(res_path) == resource:
             return True
         else:
             return False
@@ -72,43 +72,43 @@ class ResourcesManager:
         self.resources          = {}
         self.dir_manager         = dir_manager
         self.fh                 = None
-        self.fileSize           = -1
-        self.recvSize           = 0
+        self.file_size           = -1
+        self.recv_size           = 0
         self.owner              = owner
-        self.lastPrct           = 0
-        self.buffSize           = 4 * 1024 * 1024
+        self.last_prct           = 0
+        self.buff_size           = 4 * 1024 * 1024
         self.buff               = DataBuffer()
 
     ###################
     def get_resource_header(self, task_id):
 
-        taskResHeader = None
+        task_res_header = None
 
         dir_name = self.get_resource_dir(task_id)
 
         if os.path.exists(dir_name):
-            taskResHeader = TaskResourceHeader.build("resources", dir_name)
+            task_res_header = TaskResourceHeader.build("resources", dir_name)
         else:
-            taskResHeader = TaskResourceHeader("resources")
+            task_res_header = TaskResourceHeader("resources")
 
-        return taskResHeader
+        return task_res_header
 
     ###################
-    def getResourceDelta(self, task_id, resource_header):
+    def get_resource_delta(self, task_id, resource_header):
 
         dir_name = self.get_resource_dir(task_id)
 
-        taskResHeader = None
+        task_res_header = None
 
         logger.info("Getting resource for delta dir: {} header:{}".format(dir_name, resource_header))
 
         if os.path.exists(dir_name):
-            taskResHeader = TaskResource.build_delta_from_header(resource_header, dir_name)
+            task_res_header = TaskResource.build_delta_from_header(resource_header, dir_name)
         else:
-            taskResHeader = TaskResource("resources")
+            task_res_header = TaskResource("resources")
 
         logger.info("Getting resource for delta dir: {} header:{} FINISHED".format(dir_name, resource_header))
-        return taskResHeader
+        return task_res_header
 
     ###################
     def prepare_resource_delta(self, task_id, resource_header):
@@ -116,12 +116,12 @@ class ResourcesManager:
         dir_name = self.get_resource_dir(task_id)
 
         if os.path.exists(dir_name):
-            return prepare_delta_zip(dir_name, resource_header, self.getTemporaryDir(task_id))
+            return prepare_delta_zip(dir_name, resource_header, self.get_temporary_dir(task_id))
         else:
             return ""
 
     ###################
-    def updateResource(self, task_id, resource):
+    def update_resource(self, task_id, resource):
 
         dir_name = self.get_resource_dir(task_id)
 
@@ -132,11 +132,11 @@ class ResourcesManager:
         return self.dir_manager.get_task_resource_dir(task_id)
 
     ###################
-    def getTemporaryDir(self, task_id):
+    def get_temporary_dir(self, task_id):
         return self.dir_manager.get_task_temporary_dir(task_id)
 
     ###################
-    def getOutputDir(self, task_id):
+    def get_output_dir(self, task_id):
         return self.dir_manager.get_task_output_dir(task_id)
 
             

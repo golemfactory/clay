@@ -40,34 +40,34 @@ class ClientManagerSession:
             os.system("taskkill /PID {} /F".format(os.getpid()))
 
         elif type == MessageKillAllNodes.Type:
-            processService = ProcessService()
-            if processService.lock_state():
-                pids = processService.state.keys()
+            process_service = ProcessService()
+            if process_service.lock_state():
+                pids = process_service.state.keys()
                 logger.debug("Active processes with pids: {}".format(pids))
-                processService.unlock_state()
+                process_service.unlock_state()
 
-            curPid = os.getpid()
-            if curPid in pids:
-                pids.remove(curPid)
+            cur_pid = os.getpid()
+            if cur_pid in pids:
+                pids.remove(cur_pid)
 
             logger.debug("Killing processes with pids: {}".format(pids))
             for pid in pids:
                 os.system("taskkill /PID {} /F".format(pid))
-            os.system("taskkill /PID {} /F".format(curPid))
+            os.system("taskkill /PID {} /F".format(cur_pid))
 
         elif type == MessageNewNodes.Type:
             num = msg.num
             if self.client:
-                self.client.runNewNodes(num)
+                self.client.run_new_nodes(num)
 
 
         else:
             logger.error("Wrong message received {}".format(msg))
 
     ##########################
-    def sendClientStateSnapshot(self, snapshot):
+    def send_client_state_snapshot(self, snapshot):
         if self.conn and self.conn.opened:
-            self.conn.sendMessage(MessagePeerStatus(snapshot.uid, pickle.dumps(snapshot)))
+            self.conn.send_message(MessagePeerStatus(snapshot.uid, pickle.dumps(snapshot)))
 
 
 class ClientManagerSessionFactory:

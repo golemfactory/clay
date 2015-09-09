@@ -9,24 +9,24 @@ class TcpManagerLogic(QObject):
     def __init__(self, port):
         super(TcpManagerLogic,self).__init__()
 
-        self.tcpServer = QTcpServer(self)
-        self.tcpServer.listen(QHostAddress("0.0.0.0"), port)
-        self.connect(self.tcpServer, SIGNAL("newConnection()"), self.addConnection)
+        self.tcp_server = QTcpServer(self)
+        self.tcp_server.listen(QHostAddress("0.0.0.0"), port)
+        self.connect(self.tcp_server, SIGNAL("newConnection()"), self.add_connection)
         self.connections = []
-        self.msgBuffers = []
+        self.msg_buffers = []
 
     ########################
-    def addConnection(self):
-        conn = self.tcpServer.nextPendingConnection()
+    def add_connection(self):
+        conn = self.tcp_server.nextPendingConnection()
         conn.nextBlockSize = 0
         self.connections.append(conn)
 
-        self.connect(conn, signal("readyRead()"), self.recvMsg)
+        self.connect(conn, signal("readyRead()"), self.recv_msg)
         self.connect(conn, signal("disconnected()"), self.disconnected)
         self.connect(conn, signal("error()"), self.error)
 
     ########################
-    def recvMsg(self):
+    def recv_msg(self):
         print
 
     ########################
@@ -40,8 +40,8 @@ class TcpManagerLogic(QObject):
         print
 
     ########################
-    def runAdditionalNodes(self, numNodes):
-        for i in range(numNodes):
+    def run_additional_nodes(self, num_nodes):
+        for i in range(num_nodes):
             self.pc = subprocess.Popen(["python", "clientmain.py"], creationflags = subprocess.CREATE_NEW_CONSOLE)
 
     ########################
@@ -49,9 +49,9 @@ class TcpManagerLogic(QObject):
         pass
 
     ########################
-    def terminateAllNodes(self):
+    def terminate_all_nodes(self):
         pass
 
     ########################
-    def enqueue_new_task(self, uid, w, h, numSamplesPerPixel, file_name):
+    def enqueue_new_task(self, uid, w, h, num_samples_per_pixel, file_name):
         pass

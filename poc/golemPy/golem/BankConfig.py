@@ -40,11 +40,11 @@ class BankConfig:
 
     ##############################
     @classmethod
-    def load_config(cls, node_id, cfgFile = CONFIG_FILENAME):
+    def load_config(cls, node_id, cfg_file = CONFIG_FILENAME):
 
         logger = logging.getLogger(__name__)
 
-        cfg  = SimpleConfig(CommonConfig(), NodeConfig(node_id), cfgFile, True, False)
+        cfg  = SimpleConfig(CommonConfig(), NodeConfig(node_id), cfg_file, True, False)
 
         return BankConfig(cfg)
 
@@ -53,19 +53,19 @@ class BankConfig:
         self._cfg = cfg
 
     ##############################
-    def getPriceBase(self):
+    def get_price_base(self):
         return self._cfg.get_common_config().getPriceBase()
 
     ##############################
-    def getBudget(self):
+    def get_budget(self):
         return self._cfg.get_node_config().getBudget()
 
     ##############################
-    def addToBudget(self, amount, cfgFile = CONFIG_FILENAME):
+    def add_to_budget(self, amount, cfg_file = CONFIG_FILENAME):
         budget = self._cfg.get_node_config().getBudget()
         budget += amount
         self._cfg.get_node_config().setBudget(budget)
-        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), cfgFile, True, False)
+        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), cfg_file, True, False)
 
     ##############################
         def __str__(self):

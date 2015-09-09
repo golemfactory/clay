@@ -21,14 +21,14 @@ class TaskableRenderer:
 
         self.nextPixel = 0
         self.pixelsLeft = w * h
-        self.totalTasks = 0
-        self.activeTasks = 0
+        self.total_tasks = 0
+        self.active_tasks = 0
 
         self.lock = Lock()
 
     def printStats(self):
-        print "  Total accepted tasks:     {}".format(self.totalTasks)
-        print "  Active tasks:             {}".format(self.activeTasks)
+        print "  Total accepted tasks:     {}".format(self.total_tasks)
+        print "  Active tasks:             {}".format(self.active_tasks)
         print "  Total pixels calculated : {}".format(self.pixelsCalculated)
         print "  Active pixels (in tasks): {}".format(self.nextPixel - self.pixelsCalculated)
         print "  Unallocated pixels:       {}".format(self.pixelsLeft)
@@ -52,16 +52,16 @@ class TaskableRenderer:
 
         return None
 
-    def __createTaskDesc(self, curPixel, numPixels):
+    def __createTaskDesc(self, curPixel, num_pixels):
         x = curPixel % self.w
         y = curPixel // self.w
 
-        desc = RenderTaskDesc.createRenderTaskDesc(self.totalTasks, x, y, self.w, self.h, numPixels, self.num_samples)
+        desc = RenderTaskDesc.createRenderTaskDesc(self.total_tasks, x, y, self.w, self.h, num_pixels, self.num_samples)
 
         return desc
 
-    def __createTask(self, curPixel, numPixels):
-        desc = self.__createTaskDesc(self, curPixel, numPixels)
+    def __createTask(self, curPixel, num_pixels):
+        desc = self.__createTaskDesc(self, curPixel, num_pixels)
         task = RenderTask.createRenderTask(desc, self.scene_data, self.task_finished)
 
         return task
@@ -79,28 +79,28 @@ class TaskableRenderer:
                 print "Overtime - we're doomed, but we still want the calculation to progress"
                 timeSlice = self.preferredTaskTime
 
-            numPixels = int(estimatedSpeed / self.num_samples * timeSlice)
+            num_pixels = int(estimatedSpeed / self.num_samples * timeSlice)
             
-            if numPixels < 1:
-                numPixels = 1
+            if num_pixels < 1:
+                num_pixels = 1
 
-            if numPixels > self.pixelsLeft:
-                numPixels = self.pixelsLeft
+            if num_pixels > self.pixelsLeft:
+                num_pixels = self.pixelsLeft
 
-            if numPixels == 0:
+            if num_pixels == 0:
                 print "All pixels have beend already dispatched"
                 return None
 
-            taskDesc = self.__createTaskDesc(self.nextPixel, numPixels)
+            task_desc = self.__createTaskDesc(self.nextPixel, num_pixels)
 
-            self.nextPixel += numPixels
-            self.pixelsLeft -= numPixels
-            self.activeTasks += 1
-            self.totalTasks += 1
+            self.nextPixel += num_pixels
+            self.pixelsLeft -= num_pixels
+            self.active_tasks += 1
+            self.total_tasks += 1
 
-            print "ASSIGNED Task {:5} with {:5} pixels at ({}, {}) at {} rays/s".format(taskDesc.getID(), taskDesc.getNumPixels(), taskDesc.getX(), taskDesc.getY(), estimatedSpeed)
+            print "ASSIGNED Task {:5} with {:5} pixels at ({}, {}) at {} rays/s".format(task_desc.getID(), task_desc.getNumPixels(), task_desc.getX(), task_desc.getY(), estimatedSpeed)
 
-            return taskDesc
+            return task_desc
 
 
     #estimated speed means rays per second
@@ -116,24 +116,24 @@ class TaskableRenderer:
                 print "Overtime - we're doomed, but we still want the calculation to progress"
                 timeSlice = self.preferredTaskTime
 
-            numPixels = int(estimatedSpeed / self.num_samples * timeSlice)
+            num_pixels = int(estimatedSpeed / self.num_samples * timeSlice)
             
-            if numPixels < 1:
-                numPixels = 1
+            if num_pixels < 1:
+                num_pixels = 1
 
-            if numPixels > self.pixelsLeft:
-                numPixels = self.pixelsLeft
+            if num_pixels > self.pixelsLeft:
+                num_pixels = self.pixelsLeft
 
-            if numPixels == 0:
+            if num_pixels == 0:
                 print "All pixels have beend already dispatched"
                 return None
 
-            task = self.__createTask(self.nextPixel, numPixels)
+            task = self.__createTask(self.nextPixel, num_pixels)
 
-            self.nextPixel += numPixels
-            self.pixelsLeft -= numPixels
-            self.activeTasks += 1
-            self.totalTasks += 1
+            self.nextPixel += num_pixels
+            self.pixelsLeft -= num_pixels
+            self.active_tasks += 1
+            self.total_tasks += 1
 
             print "ASSIGNED Task {:5} with {:5} pixels at ({}, {}) at {} rays/s".format(task.desc.getID(), task.desc.getNumPixels(), task.desc.getX(), task.desc.getY(), estimatedSpeed)
 
@@ -149,7 +149,7 @@ class TaskableRenderer:
         offset  = 3 * (w * y + x)
 
         with self.lock:
-            self.activeTasks -= 1
+            self.active_tasks -= 1
             self.pixelsCalculated += result.getDesc().getNumPixels()
 
         print "FINISHED Task {:5} with {:5} pixels at ({}, {}) with progress: {} %".format(result.desc.getID(), result.desc.getNumPixels(), result.desc.getX(), result.desc.getY(), 100.0 * self.get_progress())

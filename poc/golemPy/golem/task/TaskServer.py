@@ -106,7 +106,7 @@ class TaskServer(PendingConnectionsServer):
         self.client.increase_trust(node_id, RankingStats.requested)
 
         if subtask_id not in self.results_to_send:
-            self.task_keeper.addToVerification(subtask_id, task_id)
+            self.task_keeper.add_to_verification(subtask_id, task_id)
             self.results_to_send[subtask_id] = WaitingTaskResult(subtask_id, result['data'], result['result_type'],
                                                                0.0, 0.0, owner_address, owner_port, owner_key_id, owner)
         else:
@@ -124,7 +124,7 @@ class TaskServer(PendingConnectionsServer):
         self.task_sessions_incoming.append(session)
 
     def get_tasks_headers(self):
-        ths = self.task_keeper.get_all_Tasks() + self.task_manager.get_tasks_headers()
+        ths = self.task_keeper.get_all_tasks() + self.task_manager.get_tasks_headers()
 
         ret = []
 
@@ -230,17 +230,17 @@ class TaskServer(PendingConnectionsServer):
 
     def subtask_rejected(self, subtask_id):
         logger.debug("Subtask {} result rejected".format(subtask_id))
-        task_id = self.task_keeper.getWaitingForVerificationTaskId(subtask_id)
+        task_id = self.task_keeper.get_waiting_for_verification_task_id(subtask_id)
         if task_id is not None:
             self.decrease_trust_payment(task_id)
             self.remove_task_header(task_id)
-            self.task_keeper.removeWaitingForVerificationTaskId(subtask_id)
+            self.task_keeper.remove_waiting_for_verification_task_id(subtask_id)
 
     def subtask_accepted(self, task_id, reward):
         logger.debug("Task {} result accepted".format(task_id))
 
-        #  task_id = self.task_keeper.getWaitingForVerificationTaskId(task_id)
-        if not self.task_keeper.isWaitingForTask(task_id):
+        #  task_id = self.task_keeper.get_waiting_for_verification_task_id(task_id)
+        if not self.task_keeper.is_waiting_for_task(task_id):
             logger.error("Wasn't waiting for reward for task {}".format(task_id))
             return
         try:
@@ -250,7 +250,7 @@ class TaskServer(PendingConnectionsServer):
         except ValueError:
             logger.error("Wrong reward amount {} for task {}".format(reward, task_id))
             self.decrease_trust_payment(task_id)
-        self.task_keeper.removeWaitingForVerification(task_id)
+        self.task_keeper.remove_waiting_for_verification(task_id)
 
     def subtask_failure(self, subtask_id, err):
         logger.info("Computation for task {} failed: {}.".format(subtask_id, err))
@@ -270,12 +270,12 @@ class TaskServer(PendingConnectionsServer):
         self.task_keeper.receive_task_verification(task_id)
 
     def increase_trust_payment(self, task_id):
-        node_id = self.task_keeper.getReceiverForTaskVerificationResult(task_id)
+        node_id = self.task_keeper.get_receiver_for_task_verification_result(task_id)
         self.receive_task_verification(task_id)
         self.client.increase_trust(node_id, RankingStats.payment, self.max_trust)
 
     def decrease_trust_payment(self, task_id):
-        node_id = self.task_keeper.getReceiverForTaskVerificationResult(task_id)
+        node_id = self.task_keeper.get_receiver_for_task_verification_result(task_id)
         self.receive_task_verification(task_id)
         self.client.decrease_trust(node_id, RankingStats.payment, self.max_trust)
 
@@ -292,7 +292,7 @@ class TaskServer(PendingConnectionsServer):
 
     def reject_result(self, subtask_id, account_info):
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
-        self.client.decrease_trust(account_info.node_id, RankingStats.wrongComputed, mod)
+        self.client.decrease_trust(account_info.node_id, RankingStats.wrong_computed, mod)
         args = {'key_id': account_info.key_id, 'subtask_id': subtask_id}
         self._add_pending_request(TaskConnTypes.ResultRejected, account_info.node_info, account_info.port,
                                   account_info.key_id, args)
@@ -733,7 +733,7 @@ class TaskServer(PendingConnectionsServer):
                                             payment.accountsPayments[idx])
 
     def __check_payments(self):
-        after_deadline = self.task_keeper.checkPayments()
+        after_deadline = self.task_keeper.check_payments()
         for task_id in after_deadline:
             self.decrease_trust_payment(task_id)
 

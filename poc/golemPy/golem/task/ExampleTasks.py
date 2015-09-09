@@ -26,9 +26,9 @@ output = encodestring(res)
 
 class RayTracingTask(Task):
     #######################
-    def __init__(self, width, height, taskHeader, return_address = "", return_port = 0):
+    def __init__(self, width, height, task_header, return_address = "", return_port = 0):
         coderes = test_taskScr2
-        Task.__init__(self, taskHeader, [], coderes, 0)
+        Task.__init__(self, task_header, [], coderes, 0)
         self.width = width
         self.height = height
         self.splitIndex = 0
@@ -62,7 +62,7 @@ class RayTracingTask(Task):
 
     #######################
     def computation_finished(self, subtask_id, task_result, env = None):
-        print "Receive computed task id:{} \n result:{}".format(self.taskHeader.task_id, task_result)
+        print "Receive computed task id:{} \n result:{}".format(self.task_header.task_id, task_result)
 
 TIMESLC  = 45.0
 TIMEOUT  = 100000.0
@@ -128,60 +128,60 @@ class VRayTracingTask(Task):
     #######################
     def __init__(self, width, height, num_samples, header, file_name, return_address = "", return_port = 0):
 
-        srcFile = open("../testtasks/minilight/compact_src/renderer.py", "r")
-        src_code = srcFile.read()
+        src_file = open("../testtasks/minilight/compact_src/renderer.py", "r")
+        src_code = src_file.read()
 
         Task.__init__(self, header, src_code)
 
         self.header.ttl = max(width * height * num_samples * 2 / 2200.0, TIMEOUT)
 
-        self.taskableRenderer = None
+        self.taskable_renderer = None
 
         self.w = width
         self.h = height
         self.num_samples = num_samples
 
-        self.lastExtraData = ""
+        self.last_extra_data = ""
         self.file_name = file_name
         self.return_address = return_address
         self.return_port = return_port
 
     #######################
-    def __initRenderer(self):
-        self.taskableRenderer = TaskableRenderer(self.w, self.h, self.num_samples, None, TIMESLC, TIMEOUT)
+    def __init_renderer(self):
+        self.taskable_renderer = TaskableRenderer(self.w, self.h, self.num_samples, None, TIMESLC, TIMEOUT)
 
     def initialize(self):
-        self.__initRenderer()
+        self.__init_renderer()
 
     #######################
     def query_extra_data(self, perf_index):
 
-        taskDesc = self.taskableRenderer.getNextTaskDesc(perf_index)
+        task_desc = self.taskable_renderer.getNextTaskDesc(perf_index)
 
-        self.lastExtraData =  {    "id" : taskDesc.getID(),
-                    "x" : taskDesc.getX(),
-                    "y" : taskDesc.getY(),
-                    "w" : taskDesc.getW(),
-                    "h" : taskDesc.getH(),
-                    "num_pixels" : taskDesc.getNumPixels(),
-                    "num_samples" : taskDesc.getNumSamples(),
+        self.last_extra_data =  {    "id" : task_desc.getID(),
+                    "x" : task_desc.getX(),
+                    "y" : task_desc.getY(),
+                    "w" : task_desc.getW(),
+                    "h" : task_desc.getH(),
+                    "num_pixels" : task_desc.getNumPixels(),
+                    "num_samples" : task_desc.getNumSamples(),
                     "task_data" : task_data
                     }
 
         hash = "{}".format(random.getrandbits(128))
-        return self.lastExtraData, hash, self.return_address, self.return_port
+        return self.last_extra_data, hash, self.return_address, self.return_port
 
     #######################
     def short_extra_data_repr(self, perf_index):
-        if self.lastExtraData:
-            l = self.lastExtraData
+        if self.last_extra_data:
+            l = self.last_extra_data
             return "x: {}, y: {}, w: {}, h: {}, num_pixels: {}, num_samples: {}".format(l["x"], l["y"], l["w"], l["h"], l["num_pixels"], l["num_samples"])
 
         return ""
 
     #######################
     def needs_computation(self):
-        return self.taskableRenderer.hasMoreTasks()
+        return self.taskable_renderer.hasMoreTasks()
 
     #######################
     def computation_started(self, extra_data):
@@ -191,34 +191,34 @@ class VRayTracingTask(Task):
     def computation_finished(self, subtask_id, task_result, env = None):
         #dest = RenderTaskDesc(0, extra_data[ "x" ], extra_data[ "y" ], extra_data[ "w" ], extra_data[ "h" ], extra_data[ "num_pixels" ] ,extra_data[ "num_samples" ])
         #res = RenderTaskResult(dest, task_result)
-        #self.taskableRenderer.task_finished(res)
-        #if self.taskableRenderer.isFinished():
-        #    VRayTracingTask.__save_image(self.file_name + ".ppm", self.w, self.h, self.taskableRenderer.getResult(), self.num_samples) #FIXME: change file name here
+        #self.taskable_renderer.task_finished(res)
+        #if self.taskable_renderer.isFinished():
+        #    VRayTracingTask.__save_image(self.file_name + ".ppm", self.w, self.h, self.taskable_renderer.getResult(), self.num_samples) #FIXME: change file name here
         pass
 
     #######################
     def get_total_tasks(self):
-        return self.taskableRenderer.totalTasks
+        return self.taskable_renderer.total_tasks
 
     #######################
     def get_total_chunks(self):
-        return self.taskableRenderer.pixelsCalculated
+        return self.taskable_renderer.pixelsCalculated
 
     #######################
     def get_active_tasks(self):
-        return self.taskableRenderer.activeTasks
+        return self.taskable_renderer.active_tasks
 
     #######################
     def get_active_chunks(self):
-        return self.taskableRenderer.nextPixel - self.taskableRenderer.pixelsCalculated
+        return self.taskable_renderer.nextPixel - self.taskable_renderer.pixelsCalculated
 
     #######################
     def get_chunks_left(self):
-        return self.taskableRenderer.pixelsLeft
+        return self.taskable_renderer.pixelsLeft
 
     #######################
     def get_progress(self):
-        return self.taskableRenderer.get_progress()
+        return self.taskable_renderer.get_progress()
 
     #######################
     @classmethod
@@ -240,27 +240,27 @@ from golem.core.compress import decompress
 class PbrtRenderTask(Task):
 
     #######################
-    def __init__(self, header, pathRoot, totalTasks, numSubtasks, num_cores, outfilebasename, sceneFile, return_address = "", return_port = 0):
+    def __init__(self, header, path_root, total_tasks, num_subtasks, num_cores, outfilebasename, scene_file, return_address = "", return_port = 0):
 
-        srcFile = open("../testtasks/pbrt/pbrt_compact.py", "r")
-        src_code = srcFile.read()
+        src_file = open("../testtasks/pbrt/pbrt_compact.py", "r")
+        src_code = src_file.read()
 
         Task.__init__(self, header, src_code)
 
         self.header.ttl = max(2200.0, TIMEOUT)
 
-        self.pathRoot           = pathRoot
+        self.path_root           = path_root
         self.lastTask           = 0
-        self.totalTasks         = totalTasks
-        self.numSubtasks        = numSubtasks
+        self.total_tasks         = total_tasks
+        self.num_subtasks        = num_subtasks
         self.num_cores           = num_cores
         self.outfilebasename    = outfilebasename
-        self.sceneFile          = sceneFile
+        self.scene_file          = scene_file
 
-        self.lastExtraData      = None
+        self.last_extra_data      = None
 
         self.collector          = PbrtTaksCollector()
-        self.numTasksReceived   = 0
+        self.num_tasks_received   = 0
         self.return_address      = return_address
         self.return_port         = return_port
         self.subTasksGiven      = {}
@@ -271,32 +271,32 @@ class PbrtRenderTask(Task):
     #######################
     def query_extra_data(self, perf_index):
 
-        endTask = min(self.lastTask + 1, self.totalTasks)
+        end_task = min(self.lastTask + 1, self.total_tasks)
 
-        self.lastExtraData =  {     "pathRoot" : self.pathRoot,
-                                    "startTask" : self.lastTask,
-                                    "endTask" : endTask,
-                                    "totalTasks" : self.totalTasks,
-                                    "numSubtasks" : self.numSubtasks,
+        self.last_extra_data =  {     "path_root" : self.path_root,
+                                    "start_task" : self.lastTask,
+                                    "end_task" : end_task,
+                                    "total_tasks" : self.total_tasks,
+                                    "num_subtasks" : self.num_subtasks,
                                     "num_cores" : self.num_cores,
                                     "outfilebasename" : self.outfilebasename,
-                                    "sceneFile" : self.sceneFile
+                                    "scene_file" : self.scene_file
                                 }
 
         hash = "{}".format(random.getrandbits(128))
-        self.subTasksGiven[ hash ] = self.lastExtraData
-        self.lastTask = endTask # TODO: Should depend on performance
-        return self.lastExtraData, hash, self.return_address, self.return_port
+        self.subTasksGiven[ hash ] = self.last_extra_data
+        self.lastTask = end_task # TODO: Should depend on performance
+        return self.last_extra_data, hash, self.return_address, self.return_port
 
     #######################
     def __short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data
-        return "pathRoot: {}, startTask: {}, endTask: {}, totalTasks: {}, numSubtasks: {}, num_cores: {}, outfilebasename: {}, sceneFile: {}".format(l["pathRoot"], l["startTask"], l["endTask"], l["totalTasks"], l["numSubtasks"], l["num_cores"], l["outfilebasename"], l["sceneFile"])
+        return "path_root: {}, start_task: {}, end_task: {}, total_tasks: {}, num_subtasks: {}, num_cores: {}, outfilebasename: {}, scene_file: {}".format(l["path_root"], l["start_task"], l["end_task"], l["total_tasks"], l["num_subtasks"], l["num_cores"], l["outfilebasename"], l["scene_file"])
 
 
     #######################
     def needs_computation(self):
-        return self.lastTask != self.totalTasks
+        return self.lastTask != self.total_tasks
 
     #######################
     def computation_started(self, extra_data):
@@ -305,29 +305,29 @@ class PbrtRenderTask(Task):
     #######################
     def computation_finished(self, subtask_id, task_result, env = None):
 
-        tmpDir = env.get_task_temporary_dir(self.header.task_id)
+        tmp_dir = env.get_task_temporary_dir(self.header.task_id)
 
         if len(task_result) > 0:
             for trp in task_result:
                 tr = pickle.loads(trp)
-                fh = open(os.path.join(tmpDir, tr[ 0 ]), "wb")
+                fh = open(os.path.join(tmp_dir, tr[ 0 ]), "wb")
                 fh.write(decompress(tr[ 1 ]))
                 fh.close()
         
-                self.collector.addImgFile(os.path.join(tmpDir, tr[ 0 ])) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
-                self.numTasksReceived += 1
+                self.collector.addImgFile(os.path.join(tmp_dir, tr[ 0 ])) # pewnie tutaj trzeba czytac nie zpliku tylko z streama
+                self.num_tasks_received += 1
                 
 
-        if self.numTasksReceived == self.totalTasks:
+        if self.num_tasks_received == self.total_tasks:
             self.collector.finalize().save("{}.png".format(os.path.join(env.get_task_output_dir(self.header.task_id), "test")), "PNG")
 
     #######################
     def get_total_tasks(self):
-        return self.totalTasks
+        return self.total_tasks
 
     #######################
     def get_total_chunks(self):
-        return self.totalTasks
+        return self.total_tasks
 
     #######################
     def get_active_tasks(self):
@@ -339,20 +339,20 @@ class PbrtRenderTask(Task):
 
     #######################
     def get_chunks_left(self):
-        return self.totalTasks - self.lastTask
+        return self.total_tasks - self.lastTask
 
     #######################
     def get_progress(self):
-        return float(self.lastTask) / self.totalTasks
+        return float(self.lastTask) / self.total_tasks
 
     #######################
     def prepare_resource_delta(self, subtask_id, task_id, resource_header):
         if subtask_id in self.subTasksGiven:
             dir_name = os.path.join("res", self.header.client_id, self.header.task_id, "resources")
-            tmpDir = os.path.join("res", self.header.client_id, self.header.task_id, "tmp")
+            tmp_dir = os.path.join("res", self.header.client_id, self.header.task_id, "tmp")
 
             if os.path.exists(dir_name):
-                return prepare_delta_zip(dir_name, resource_header, tmpDir)
+                return prepare_delta_zip(dir_name, resource_header, tmp_dir)
             else:
                 return None
         else:
