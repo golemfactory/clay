@@ -9,14 +9,14 @@ logger = logging.getLogger(__name__)
 
 class ThreeDSMaxDialogCustomizer:
     #############################
-    def __init__(self, gui, logic, newTaskDialog):
+    def __init__(self, gui, logic, new_task_dialog):
         assert isinstance(gui, ThreeDSMaxDialog)
 
         self.gui = gui
         self.logic = logic
-        self.newTaskDialog = newTaskDialog
+        self.new_task_dialog = new_task_dialog
 
-        self.renderer_options = newTaskDialog.renderer_options
+        self.renderer_options = new_task_dialog.renderer_options
 
         self.__init()
         self.__setup_connections()
@@ -36,14 +36,14 @@ class ThreeDSMaxDialogCustomizer:
     #############################
     def __setup_connections(self):
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
-        self.gui.ui.buttonBox.accepted.connect(lambda: self.__changeRendererOptions())
+        self.gui.ui.buttonBox.accepted.connect(lambda: self.__change_renderer_options())
         self.gui.ui.presetButton.clicked.connect(self.__choosePresetFile)
 
         QtCore.QObject.connect(self.gui.ui.framesCheckBox, QtCore.SIGNAL("stateChanged(int) "),
                                 self.__frames_check_box_changed)
 
     #############################
-    def __changeRendererOptions(self):
+    def __change_renderer_options(self):
         self.renderer_options.preset = u"{}".format(self.gui.ui.presetLineEdit.text())
         self.renderer_options.use_frames = self.gui.ui.framesCheckBox.isChecked()
         if self.renderer_options.use_frames:
@@ -52,7 +52,7 @@ class ThreeDSMaxDialogCustomizer:
                 QMessageBox().critical(None, "Error", "Wrong frame format. Frame list expected, e.g. 1,3,5-12. ")
                 return
             self.renderer_options.frames = frames
-        self.newTaskDialog.setRendererOptions(self.renderer_options)
+        self.new_task_dialog.set_renderer_options(self.renderer_options)
         self.gui.window.close()
 
     #############################

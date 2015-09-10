@@ -6,6 +6,7 @@ from Crypto.PublicKey import RSA
 from simplehash import SimpleHash
 from crypto import mk_privkey, privtopub, ECCx
 from sha3 import sha3_256
+from hashlib import sha256
 
 from golem.core.variables import KEYS_PATH, PRIVATE_KEY_PREF, PUBLIC_KEY_PREF
 
@@ -18,6 +19,9 @@ def sha3(seed):
     return sha3_256(seed).digest()
 
 
+def sha2(seed):
+    return int("0x" + sha256(seed).hexdigest(), 16)
+
 class KeysAuth(object):
     """ Cryptographic authorization manager. Create and keeps private and public keys."""
 
@@ -29,6 +33,18 @@ class KeysAuth(object):
         self._private_key = self._load_private_key(str(uuid))
         self.public_key = self._load_public_key(str(uuid))
         self.key_id = self.cnt_key_id(self.public_key)
+
+    def get_difficulty(self):
+        """ Count key_id difficulty in hashcash-like puzzle
+        :return int: key_id difficulty
+        """
+        difficulty = 0
+        min_hash = KeysAuth.__count_min_hash(difficulty)
+        while sha2(self.key_id) <= min_hash:
+            difficulty += 1
+            min_hash = KeysAuth.__count_min_hash(difficulty)
+
+        return difficulty - 1
 
     def get_public_key(self):
         """ Return public key """
@@ -88,6 +104,10 @@ class KeysAuth(object):
     @abc.abstractmethod
     def _load_public_key(uuid):  # implement in derived classes
         return
+
+    @staticmethod
+    def __count_min_hash(difficulty):
+        return pow(2, 256 - difficulty)
 
 
 class RSAKeysAuth(KeysAuth):

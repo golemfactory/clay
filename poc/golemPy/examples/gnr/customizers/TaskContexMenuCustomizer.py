@@ -7,14 +7,14 @@ class TaskContextMenuCustomizer:
     def __init__(self, ui, logic, ts):
         self.ui         = ui
         self.logic      = logic
-        self.gnrTaskState  = ts
+        self.gnr_task_state  = ts
 
         self.__buildContextMenu()
 
     ##########################
     def __buildContextMenu(self):
 
-        enabledActions = self.__getEnabledActions(self.gnrTaskState.task_state.status)
+        enabledActions = self.__getEnabledActions(self.gnr_task_state.task_state.status)
 
         self.__buildAndConnectAction("Abort Task",      self.__abort_taskTriggered,         enabledActions)
         self.__buildAndConnectAction("Restart",         self.__restart_taskTriggered,       enabledActions)
@@ -40,43 +40,43 @@ class TaskContextMenuCustomizer:
     # SLOTS
     ###########################
     def __abort_taskTriggered(self):
-        self.logic.abort_task(self.gnrTaskState.definition.task_id)
+        self.logic.abort_task(self.gnr_task_state.definition.task_id)
 
     ###########################
     def __restart_taskTriggered(self):
-        self.logic.restart_task(self.gnrTaskState.definition.task_id)
+        self.logic.restart_task(self.gnr_task_state.definition.task_id)
 
     ###########################
     def __delete_taskTriggered(self):
-        self.logic.delete_task(self.gnrTaskState.definition.task_id)
+        self.logic.delete_task(self.gnr_task_state.definition.task_id)
 
     ###########################
     def __newTaskTriggered(self):
-        self.logic.showNewTaskDialog(self.gnrTaskState.definition.task_id)
+        self.logic.show_new_task_dialog(self.gnr_task_state.definition.task_id)
 
     ###########################
     def __start_taskTriggered(self):
-        self.logic.start_task(self.gnrTaskState.definition.task_id)
+        self.logic.start_task(self.gnr_task_state.definition.task_id)
 
     ###########################
     def __pause_taskTriggered(self):
-        self.logic.pause_task(self.gnrTaskState.definition.task_id)
+        self.logic.pause_task(self.gnr_task_state.definition.task_id)
 
     ###########################
     def __resume_taskTriggered(self):
-        self.logic.resume_task(self.gnrTaskState.definition.task_id)
+        self.logic.resume_task(self.gnr_task_state.definition.task_id)
 
     ###########################
     def __showTaskDetailsTriggered(self):
-        self.logic.showTaskDetails(self.gnrTaskState.definition.task_id)
+        self.logic.showTaskDetails(self.gnr_task_state.definition.task_id)
 
     ###########################
     def __changeTaskTriggered(self):
-        self.logic.changeTask(self.gnrTaskState.definition.task_id)
+        self.logic.changeTask(self.gnr_task_state.definition.task_id)
 
     ###########################
     def __showResultTriggered(self):
-        self.logic.showTaskResult(self.gnrTaskState.definition.task_id)
+        self.logic.show_task_result(self.gnr_task_state.definition.task_id)
 
     #######################
     ##########################

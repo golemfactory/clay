@@ -32,8 +32,8 @@ class NodeDataState:
 class TableRowDataEntry:
 
     ########################
-    def __init__(self, uidItem, address, remoteChunksCount, localTasksCount, timestampItem,):
-        self.uid = uidItem
+    def __init__(self, uid_item, address, remoteChunksCount, localTasksCount, timestampItem,):
+        self.uid = uid_item
         self.endpoint  = address
         self.timestamp = timestampItem
         self.remoteChunksCount = remoteChunksCount

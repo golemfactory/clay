@@ -11,37 +11,37 @@ from examples.gnr.ui.SubtaskTableEntry import SubtaskTableElem
 
 class TaskDetailsDialogCustomizer:
     ###########################
-    def __init__(self, gui, logic, gnrTaskState):
-    #    assert isinstance(gnrTaskState, RenderingTaskState)
+    def __init__(self, gui, logic, gnr_task_state):
+    #    assert isinstance(gnr_task_state, RenderingTaskState)
         self.gui            = gui
         self.logic          = logic
-        self.gnrTaskState   = gnrTaskState
+        self.gnr_task_state   = gnr_task_state
 
         self.subtaskTableElements = {}
 
         self.__setup_connections()
 
-        self.updateView(self.gnrTaskState.task_state)
+        self.updateView(self.gnr_task_state.task_state)
 
     ###########################
     def updateView(self, task_state):
-        self.gnrTaskState.task_state = task_state
+        self.gnr_task_state.task_state = task_state
         self.__updateData()
 
     ###########################
     def __updateData(self):
-        self.gui.ui.totalTaskProgressBar.setProperty("value", int(self.gnrTaskState.task_state.progress * 100))
-        self.gui.ui.estimatedRemainingTimeLabel.setText(str(datetime.timedelta(seconds = self.gnrTaskState.task_state.remaining_time)))
-        self.gui.ui.elapsedTimeLabel.setText(str(datetime.timedelta(seconds = self.gnrTaskState.task_state.elapsed_time)))
+        self.gui.ui.totalTaskProgressBar.setProperty("value", int(self.gnr_task_state.task_state.progress * 100))
+        self.gui.ui.estimatedRemainingTimeLabel.setText(str(datetime.timedelta(seconds = self.gnr_task_state.task_state.remaining_time)))
+        self.gui.ui.elapsedTimeLabel.setText(str(datetime.timedelta(seconds = self.gnr_task_state.task_state.elapsed_time)))
 
-        for k in self.gnrTaskState.task_state.subtask_states:
+        for k in self.gnr_task_state.task_state.subtask_states:
             if k not in self.subtaskTableElements:
-                ss = self.gnrTaskState.task_state.subtask_states[ k ]
+                ss = self.gnr_task_state.task_state.subtask_states[ k ]
                 self.__add_node(ss.computer.node_id, ss.subtask_id, ss.subtask_status)
 
         for k, elem in self.subtaskTableElements.items():
-            if elem.subtask_id in self.gnrTaskState.task_state.subtask_states:
-                ss = self.gnrTaskState.task_state.subtask_states[ elem.subtask_id ]
+            if elem.subtask_id in self.gnr_task_state.task_state.subtask_states:
+                ss = self.gnr_task_state.task_state.subtask_states[ elem.subtask_id ]
                 elem.update(ss.subtask_progress, ss.subtask_status, ss.subtask_rem_time)
             else:
                 del self.subtaskTableElements[ k ]
@@ -55,18 +55,18 @@ class TaskDetailsDialogCustomizer:
 
     # ###########################
     # def __initializeData(self):
-    #     self.gui.ui.totalTaskProgressBar.setProperty("value", int(self.gnrTaskState.task_state.progress * 100))
-    #     self.gui.ui.estimatedRemainingTimeLabel.setText(str(datetime.timedelta(seconds = self.gnrTaskState.task_state.remaining_time)))
-    #     self.gui.ui.elapsedTimeLabel.setText(str(datetime.timedelta(seconds = self.gnrTaskState.task_state.elapsed_time)))
-    #     for k in self.gnrTaskState.task_state.subtask_states:
+    #     self.gui.ui.totalTaskProgressBar.setProperty("value", int(self.gnr_task_state.task_state.progress * 100))
+    #     self.gui.ui.estimatedRemainingTimeLabel.setText(str(datetime.timedelta(seconds = self.gnr_task_state.task_state.remaining_time)))
+    #     self.gui.ui.elapsedTimeLabel.setText(str(datetime.timedelta(seconds = self.gnr_task_state.task_state.elapsed_time)))
+    #     for k in self.gnr_task_state.task_state.subtask_states:
     #         if k not in self.subtaskTableElements:
-    #             ss = self.gnrTaskState.task_state.subtask_states[ k ]
+    #             ss = self.gnr_task_state.task_state.subtask_states[ k ]
     #             self.__add_node(ss.computer.node_id, ss.subtask_id, ss.subtask_status)
 
     ###########################
     def __updateNodeAdditionalInfo(self, node_id, subtask_id):
-        if subtask_id in self.gnrTaskState.task_state.subtask_states:
-            ss = self.gnrTaskState.task_state.subtask_states[ subtask_id ]
+        if subtask_id in self.gnr_task_state.task_state.subtask_states:
+            ss = self.gnr_task_state.task_state.subtask_states[ subtask_id ]
             comp = ss.computer
 
 
@@ -79,14 +79,14 @@ class TaskDetailsDialogCustomizer:
 
     ############################
     def __add_node(self, node_id, subtask_id, status):
-        currentRowCount = self.gui.ui.nodesTableWidget.rowCount()
-        self.gui.ui.nodesTableWidget.insertRow(currentRowCount)
+        current_row_count = self.gui.ui.nodesTableWidget.rowCount()
+        self.gui.ui.nodesTableWidget.insertRow(current_row_count)
 
         subtaskTableElem = SubtaskTableElem(node_id, subtask_id, status)
 
-        for col in range(0, 4): self.gui.ui.nodesTableWidget.setItem(currentRowCount, col, subtaskTableElem.getColumnItem(col))
+        for col in range(0, 4): self.gui.ui.nodesTableWidget.setItem(current_row_count, col, subtaskTableElem.getColumnItem(col))
 
-        self.gui.ui.nodesTableWidget.setCellWidget(currentRowCount, 4, subtaskTableElem.progressBarInBoxLayoutWidget)
+        self.gui.ui.nodesTableWidget.setCellWidget(current_row_count, 4, subtaskTableElem.progressBarInBoxLayoutWidget)
 
         self.subtaskTableElements[ subtask_id ] = subtaskTableElem
 
@@ -118,10 +118,10 @@ class TaskDetailsDialogCustomizer:
         if self.gui.ui.nodesTableWidget.itemAt(p) is None:
             return
         row = self.gui.ui.nodesTableWidget.itemAt(p).row()
-        idItem = self.gui.ui.nodesTableWidget.item(row, 1)
-        subtask_id = "{}".format(idItem.text())
-        idItem = self.gui.ui.nodesTableWidget.item(row, 3)
-        subtask_status= "{}".format(idItem.text())
+        id_item = self.gui.ui.nodesTableWidget.item(row, 1)
+        subtask_id = "{}".format(id_item.text())
+        id_item = self.gui.ui.nodesTableWidget.item(row, 3)
+        subtask_status= "{}".format(id_item.text())
         menu = QMenu()
         self.subtaskContextMenuCustomizer = SubtaskContextMenuCustomizer(menu, self.logic, subtask_id, subtask_status)
         menu.popup(self.gui.ui.nodesTableWidget.viewport().mapToGlobal(p))

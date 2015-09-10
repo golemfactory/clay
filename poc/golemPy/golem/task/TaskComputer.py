@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class TaskComputer(object):
     """ TaskComputer is responsible for task computations that take place in Golem application. Tasks are started
-    in separete threads.
+    in separate threads.
     """
     def __init__(self, client_uid, task_server):
         """ Create new task computer instance

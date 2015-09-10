@@ -225,7 +225,7 @@ class NodeTasksWidget(QtGui.QWidget):
 class TableRowDataEntry:
 
     ########################
-    def __init__(self, uidItem,
+    def __init__(self, uid_item,
                  ):
-        self.uid = uidItem
+        self.uid = uid_item
         self.progress_bar = progress_bar

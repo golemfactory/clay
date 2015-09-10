@@ -25,12 +25,12 @@ class EnvironmentsDialogCustomizer:
         self.gui.ui.tableWidget.horizontalHeader().setStretchLastSection(True)
         self.environments = self.logic.get_environments()
         for env in self.environments:
-            currentRowCount = self.gui.ui.tableWidget.rowCount()
-            self.gui.ui.tableWidget.insertRow(currentRowCount)
+            current_row_count = self.gui.ui.tableWidget.rowCount()
+            self.gui.ui.tableWidget.insertRow(current_row_count)
 
             envTableElem = EnvTableElem(env.get_id(), self.__printSupported(env.supported()), env.short_description, env.is_accepted() )
             for col in range(0, 4):
-                self.gui.ui.tableWidget.setItem(currentRowCount, col, envTableElem.getColumnItem(col))
+                self.gui.ui.tableWidget.setItem(current_row_count, col, envTableElem.getColumnItem(col))
 
     def __printSupported(self, val):
         if val:
@@ -41,11 +41,11 @@ class EnvironmentsDialogCustomizer:
     #############################
     def __setup_connections(self):
         self.gui.ui.okButton.clicked.connect(self.gui.close)
-        QtCore.QObject.connect(self.gui.ui.tableWidget, QtCore.SIGNAL("cellClicked(int, int)"), self.__taskTableRowClicked)
+        QtCore.QObject.connect(self.gui.ui.tableWidget, QtCore.SIGNAL("cellClicked(int, int)"), self.__task_table_row_clicked)
 
-    def __taskTableRowClicked(self, row, col):
+    def __task_table_row_clicked(self, row, col):
         if row < self.gui.ui.tableWidget.rowCount():
-            env_id = self.gui.ui.tableWidget.item(row, EnvTableElem.colItem.index('idItem')).text()
+            env_id = self.gui.ui.tableWidget.item(row, EnvTableElem.colItem.index('id_item')).text()
             env = self.__getEnv(env_id)
             if env:
                 self.gui.ui.envTextBrowser.setText(env.description() )

@@ -67,6 +67,7 @@ class NodeConfig:
 
     SEND_PINGS = 1
     PINGS_INTERVALS = 120
+    KEY_DIFFICULTY = 3
     GETTING_PEERS_INTERVAL = 4.0
     GETTING_TASKS_INTERVAL = 4.0
     TASK_REQUEST_INTERVAL = 5.0
@@ -97,7 +98,7 @@ class NodeConfig:
                  use_distributed_resource_management=USE_DISTRIBUTED_RESOURCE_MANAGEMENT,
                  p2p_session_timeout=P2P_SESSION_TIMEOUT, task_session_timeout=TASK_SESSION_TIMEOUT,
                  resource_session_timeout=RESOURCE_SESSION_TIMEOUT, plugin_port=PLUGIN_PORT,
-                 eth_account=ETH_ACCOUNT_NAME, use_ipv6=USE_IP6):
+                 eth_account=ETH_ACCOUNT_NAME, use_ipv6=USE_IP6, key_difficulty=KEY_DIFFICULTY):
         self._section = "Node {}".format(node_id)
 
         estimated = NodeConfig.read_estimated_performance()
@@ -144,6 +145,7 @@ class NodeConfig:
         ConfigEntry.create_property(self.section(), "plugin port", plugin_port, self, "PluginPort")
         ConfigEntry.create_property(self.section(), "eth account name", eth_account, self, "EthAccount")
         ConfigEntry.create_property(self.section(), "listen of Ip6", use_ipv6, self, "UseIp6")
+        ConfigEntry.create_property(self.section(), "key difficulty", key_difficulty, self, "KeyDifficulty")
 
     ##############################
     def section(self):
@@ -300,6 +302,9 @@ class AppConfig:
     def get_use_ipv6(self):
         return self._cfg.get_node_config().getUseIp6()
 
+    def get_key_difficulty(self):
+        return self._cfg.get_node_config().getKeyDifficulty()
+
     ##############################
     def change_config(self, cfg_desc, cfg_file=CONFIG_FILENAME, ):
         assert isinstance(cfg_desc, ClientConfigDescriptor)
@@ -329,6 +334,7 @@ class AppConfig:
         self._cfg.get_node_config().setPluginPort(cfg_desc.plugin_port)
         self._cfg.get_node_config().setEthAccount(cfg_desc.eth_account)
         self._cfg.get_node_config().setUseIp6(cfg_desc.use_ipv6)
+        self._cfg.get_node_config().setKeyDifficulty(cfg_desc.key_difficulty)
 
         self._cfg.get_common_config().setManagerAddress(cfg_desc.manager_address)
         self._cfg.get_common_config().setManagerListenPort(cfg_desc.manager_port)

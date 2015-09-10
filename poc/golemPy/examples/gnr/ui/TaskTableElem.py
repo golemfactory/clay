@@ -6,7 +6,7 @@ class TaskTableElem:
         self.id                 = id
         self.status             = status
         self.progress           = 0.0
-        self.idItem             = None
+        self.id_item             = None
         self.progress_bar        = None
         self.progressBarInBoxLayoutWidget = None
         self.statusItem         = None
@@ -15,8 +15,8 @@ class TaskTableElem:
     ############################
     def __buildRow(self):
 
-        self.idItem = QTableWidgetItem()
-        self.idItem.setText(self.id)
+        self.id_item = QTableWidgetItem()
+        self.id_item.setText(self.id)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.geometry().setHeight(20)
@@ -41,7 +41,7 @@ class TaskTableElem:
 
     def getColumnItem(self, col):
         if col == 0:
-            return self.idItem
+            return self.id_item
         if col == 1:
             return self.statusItem
 

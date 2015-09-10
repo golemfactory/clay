@@ -8,14 +8,14 @@ logger = logging.getLogger(__name__)
 
 class BlenderRenderDialogCustomizer:
     #############################
-    def __init__(self, gui, logic, newTaskDialog):
+    def __init__(self, gui, logic, new_task_dialog):
         assert isinstance(gui, BlenderRenderDialog)
 
         self.gui = gui
         self.logic = logic
-        self.newTaskDialog = newTaskDialog
+        self.new_task_dialog = new_task_dialog
 
-        self.renderer_options = newTaskDialog.renderer_options
+        self.renderer_options = new_task_dialog.renderer_options
 
         self.__init()
         self.__setup_connections()
@@ -41,7 +41,7 @@ class BlenderRenderDialogCustomizer:
     #############################
     def __setup_connections(self):
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
-        self.gui.ui.buttonBox.accepted.connect(lambda: self.__changeRendererOptions())
+        self.gui.ui.buttonBox.accepted.connect(lambda: self.__change_renderer_options())
 
         QtCore.QObject.connect(self.gui.ui.framesCheckBox, QtCore.SIGNAL("stateChanged(int) "),
                                 self.__frames_check_box_changed)
@@ -53,7 +53,7 @@ class BlenderRenderDialogCustomizer:
             self.gui.ui.framesLineEdit.setText(self.__frames_to_string(self.renderer_options.frames))
 
     #############################
-    def __changeRendererOptions(self):
+    def __change_renderer_options(self):
         index = self.gui.ui.engineComboBox.currentIndex()
         self.renderer_options.engine = u"{}".format(self.gui.ui.engineComboBox.itemText(index))
         self.renderer_options.use_frames = self.gui.ui.framesCheckBox.isChecked()
@@ -63,10 +63,9 @@ class BlenderRenderDialogCustomizer:
                 QMessageBox().critical(None, "Error", "Wrong frame format. Frame list expected, e.g. 1;3;5-12. ")
                 return
             self.renderer_options.frames = frames
-        self.newTaskDialog.setRendererOptions(self.renderer_options)
+        self.new_task_dialog.set_renderer_options(self.renderer_options)
         self.gui.window.close()
 
-   #############################
     def __frames_to_string(self, frames):
         s = ""
         last_frame = None

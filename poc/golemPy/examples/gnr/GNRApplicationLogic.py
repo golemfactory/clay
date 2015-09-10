@@ -54,6 +54,7 @@ class GNRApplicationLogic(QtCore.QObject):
     def register_client(self, client):
         self.client = client
         self.client.register_listener(GNRClientEventListener(self))
+        self.customizer.set_options(self.getConfig())
 
     ######################
     def registerStartNewNodeFunction(self, func):
@@ -205,11 +206,11 @@ class GNRApplicationLogic(QtCore.QObject):
 
     ######################
     def showTaskDetails(self, task_id):
-        self.customizer.showDetailsDialog(task_id)
+        self.customizer.show_details_dialog(task_id)
 
     ######################
-    def showNewTaskDialog (self, task_id):
-        self.customizer.showNewTaskDialog(task_id)
+    def show_new_task_dialog (self, task_id):
+        self.customizer.show_new_task_dialog(task_id)
 
     ######################
     def restart_subtask (self, subtask_id):
@@ -217,21 +218,22 @@ class GNRApplicationLogic(QtCore.QObject):
 
     ######################
     def changeTask (self, task_id):
-        self.customizer.showChangeTaskDialog(task_id)
+        self.customizer.show_change_task_dialog(task_id)
 
-    ######################
-    def showTaskResult(self, task_id):
-        self.customizer.showTaskResult(task_id)
+    def show_task_result(self, task_id):
+        self.customizer.show_task_result(task_id)
 
-    ######################
-    def change_timeouts (self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
+    def get_keys_auth(self):
+        return self.client.keys_auth
+
+    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
         if task_id in self.tasks:
             task = self.tasks[task_id]
             task.definition.full_task_timeout = full_task_timeout
             task.definition.min_subtask_time = min_subtask_time
             task.definition.subtask_timeout = subtask_timeout
             self.client.change_timeouts(task_id, full_task_timeout, subtask_timeout, min_subtask_time)
-            self.customizer.updateTaskAdditionalInfo(task)
+            self.customizer.update_task_additional_info(task)
         else:
             logger.error("It's not my task: {} ", task_id)
 
@@ -261,7 +263,7 @@ class GNRApplicationLogic(QtCore.QObject):
             else:
                 self.tasks[ t.definition.task_id ] = t
 
-        self.customizer.updateTasks(self.tasks)
+        self.customizer.update_tasks(self.tasks)
 
     ######################
     def registerNewTaskType(self, task_type):
@@ -324,8 +326,8 @@ class GNRApplicationLogic(QtCore.QObject):
             self.progressDialog.showMessage("Test task computation success!")
         else:
             self.progressDialog.showMessage("Task test computation failure... Check resources.")
-        if self.customizer.newTaskDialogCustomizer:
-            self.customizer.newTaskDialogCustomizer.test_taskComputationFinished(success, est_mem)
+        if self.customizer.new_task_dialogCustomizer:
+            self.customizer.new_task_dialogCustomizer.test_taskComputationFinished(success, est_mem)
 
     ######################
     def task_statusChanged(self, task_id):
@@ -334,7 +336,7 @@ class GNRApplicationLogic(QtCore.QObject):
             ts = self.client.querry_task_state(task_id)
             assert isinstance(ts, TaskState)
             self.tasks[task_id].task_state = ts
-            self.customizer.updateTasks(self.tasks)
+            self.customizer.update_tasks(self.tasks)
             if ts.status in taskToRemoveStatus:
                 self.client.task_server.remove_task_header(task_id)
                 self.client.p2pservice.remove_task(task_id)
@@ -342,8 +344,8 @@ class GNRApplicationLogic(QtCore.QObject):
             assert False, "Should never be here!"
 
 
-        if self.customizer.currentTaskHighlighted.definition.task_id == task_id:
-            self.customizer.updateTaskAdditionalInfo(self.tasks[ task_id ])
+        if self.customizer.current_task_highlighted.definition.task_id == task_id:
+            self.customizer.update_task_additional_info(self.tasks[ task_id ])
 
     ######################
     def _showErrorWindow(self, text):

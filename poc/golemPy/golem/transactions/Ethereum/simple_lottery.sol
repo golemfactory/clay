@@ -1,106 +1,142 @@
 contract LotteryAgent {
 
+    uint golem_dep;
+
     struct LotteryData {
         uint value;
-        uint timeout;
-        uint deposit;
-        uint random;
+        uint maturity;
+        uint deadline;
+        uint winnerDeposit;
+        uint payerDeposit;
+        uint seed;
         address payer;
         address winner;
     }
 
     mapping (bytes32 => LotteryData) lotteries;
 
-	function initLottery(bytes32 descriptionHash, uint maturity, uint deposit) {
-		LotteryData lottery = lotteries[descriptionHash];
-		if (lottery.value != 0)
-		    return;
-		lotteries[descriptionHash] = LotteryData(msg.value, maturity, deposit, 0, msg.sender, 0);
-	}
-
-	function captureMaturityHash(bytes32 descriptionHash) {
-	    LotteryData lottery = lotteries[descriptionHash];
-	    if (lottery.value == 0 || lottery.random != 0 || block.number <= lottery.timeout ||
-	    block.number > lottery.timeout + 256) {
-	        return;
-	    }
-	    address sendTo = lottery.payer;
-	    if (lottery.timeout + 128 < block.number)
-	        sendTo = msg.sender;
-
-	   lottery.random = random(lottery.timeout);
-	   uint reward = lottery.value/10;
-	   lottery.value -= reward;
-	   sendTo.send(reward);
+    function initLottery(bytes32 descriptionHash, uint maturity, uint deposit) {
+        LotteryData lottery = lotteries[descriptionHash];
+        if (lottery.value != 0)
+            return;
+        uint payerDeposit = msg.value / 10;
+        uint value = msg.value - payerDeposit;
+        lotteries[descriptionHash] = LotteryData(value, maturity, 0, deposit, payerDeposit, 0, msg.sender, 0);
     }
 
-	function winnerLottery(bytes32 descriptionHash) {
-	    LotteryData lottery = lotteries[descriptionHash];
-	    if (lottery.value == 0 || msg.value < lottery.deposit)
-	        return;
-	    if (lottery.random == 0 && block.number <= lottery.timeout + 128) {
-	        return;
-	    }
-	    lottery.deposit = msg.value;
-	    lottery.winner = msg.sender;
+    function captureMaturityHash(bytes32 descriptionHash) {
+        LotteryData lottery = lotteries[descriptionHash];
+        if (lottery.value == 0)
+            return;
 
-	    if (lottery.random == 0) {
-	        lottery.random = random(lottery.timeout);
-	    }
-	    lottery.timeout = now + 86400;
-	}
+        if (lottery.seed != 0 )
+            return;
 
-	function payoutLottery(bytes32 descriptionHash) {
-	    LotteryData lottery = lotteries[descriptionHash];
-	    if (lottery.value == 0 || lottery.winner == 0 || block.timestamp <= lottery.timeout)
-	        return;
-	    lottery.winner.send(lottery.value);
-	    delete lotteries[descriptionHash];
-	}
+        if (block.number <= lottery.maturity || block.number > lottery.maturity + 256)
+            return;
 
-	function checkLottery(uint maturity, uint lotteryId, uint startValue, address[] participants, uint[] probabilities) external {
-	    bytes32 descriptionHash = sha3(maturity, lotteryId, startValue, participants, probabilities);
-	    LotteryData lottery = lotteries[descriptionHash];
-	    if (lottery.value == 0 || (lottery.random == 0 && block.number <= lottery.timeout + 128))
-	        return;
+        address sendTo = lottery.payer;
+        if (lottery.maturity + 128 < block.number)
+            sendTo = msg.sender;
 
-	    if (lottery.random == 0) {
-	        lottery.random = random(lottery.timeout);
-	    }
+       lottery.seed = random(lottery.maturity);
+       sendTo.send(lottery.payerDeposit);
+       lottery.payerDeposit = 0;
+    }
 
-		address winner;
-		uint target = 0;
-		for (uint i = 0; i < probabilities.length; ++i) {
-			target += probabilities[i];
-			if (lottery.random <= target) {
-				winner = participants[i];
-				break;
-			}
-		}
+    function winnerLottery(bytes32 descriptionHash) {
+        LotteryData lottery = lotteries[descriptionHash];
+        if (lottery.value == 0 || msg.value < lottery.payerDeposit)
+            return;
+        if (lottery.winner != 0 && block.number <= lottery.maturity) {
+            return;
+        }
+        lottery.payerDeposit = msg.value;
+        lottery.winner = msg.sender;
+        lottery.deadline = now + 86400;
 
-		uint value = lotteries[descriptionHash].value;
-		if (lotteries[descriptionHash].winner == 0) {
-		    winner.send(value);
-		} else {
-		    if (winner != msg.sender) {
-		        winner.send(value);
-		        msg.sender.send(lotteries[descriptionHash].deposit);
-		    } else {
-		        winner.send(value + lotteries[descriptionHash].deposit);
-		    }
-		}
-		delete lotteries[descriptionHash];
+        if (lottery.seed == 0) {
+            lottery.seed = random(lottery.maturity);
+            if (block.number <= lottery.maturity + 128)
+                lottery.payer.send(lottery.payerDeposit);
+            else if (block.number <= lottery.maturity + 256)
+                msg.sender.send(lottery.payerDeposit);
+            else
+               golem_dep += lottery.payerDeposit;
 
-	}
-	function random(uint maturity) internal constant returns(uint) {
-	    while (block.number - maturity > 256) {
+            lottery.payerDeposit = 0;
+        }
+
+    }
+
+    function payoutLottery(bytes32 descriptionHash) {
+        LotteryData lottery = lotteries[descriptionHash];
+        if (lottery.value == 0 || lottery.winner == 0)
+            return;
+        if (block.timestamp <= lottery.deadline)
+            return;
+
+        lottery.winner.send(lottery.value);
+        delete lotteries[descriptionHash];
+    }
+
+    function checkLottery(uint maturity, uint lotteryId, uint startValue, address[] participants, uint[] probabilities) external {
+        bytes32 descriptionHash = sha3(maturity, lotteryId, startValue, participants, probabilities);
+        LotteryData lottery = lotteries[descriptionHash];
+        if (lottery.value == 0 || block.number <= lottery.maturity)
+            return;
+
+        if (lottery.seed == 0) {
+            lottery.seed = random(lottery.maturity);
+            if (block.number <= lottery.maturity + 128)
+                lottery.payer.send(lottery.payerDeposit);
+            else if (block.number <= lottery.maturity + 256)
+                msg.sender.send(lottery.payerDeposit);
+            else
+                golem_dep += lottery.payerDeposit;
+            lottery.payerDeposit = 0;
+        }
+
+        address winner;
+        uint target = 0;
+        for (uint i = 0; i < probabilities.length; ++i) {
+            target += probabilities[i];
+            if (lottery.seed <= target) {
+                winner = participants[i];
+                break;
+            }
+        }
+
+
+        if (lottery.winner == 0) {
+            winner.send(lottery.value);
+        } else {
+            if (lottery.winner != winner) {
+                uint val = lottery.winnerDeposit / 2;
+                lottery.winnerDeposit = lottery.winnerDeposit - val;
+                golem_dep += val;
+            }
+
+            if (winner != msg.sender) {
+                winner.send(lottery.value);
+                msg.sender.send(lottery.winnerDeposit);
+            } else {
+                winner.send(lottery.value + lottery.winnerDeposit);
+            }
+        }
+        delete lotteries[descriptionHash];
+
+    }
+
+    function random(uint maturity) internal constant returns(uint) {
+        while (block.number - maturity > 256) {
             maturity += 256;
-	    }
+        }
 
-		return uint(block.blockhash(maturity));
-	}
+        return uint(block.blockhash(maturity));
+    }
 
-	function verifyLottery(bytes32 descriptionHash) returns (bool) {
-	    return lotteries[descriptionHash].value == 0;
-	}
+    function verifyLottery(bytes32 descriptionHash) returns (bool) {
+        return lotteries[descriptionHash].value != 0;
+    }
 }

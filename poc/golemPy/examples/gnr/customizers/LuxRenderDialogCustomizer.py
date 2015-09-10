@@ -11,14 +11,14 @@ logger = logging.getLogger(__name__)
 
 class LuxRenderDialogCustomizer:
     #############################
-    def __init__(self, gui, logic, newTaskDialog):
+    def __init__(self, gui, logic, new_task_dialog):
         assert isinstance(gui, LuxRenderDialog)
 
         self.gui = gui
         self.logic = logic
-        self.newTaskDialog = newTaskDialog
+        self.new_task_dialog = new_task_dialog
 
-        self.renderer_options = newTaskDialog.renderer_options
+        self.renderer_options = new_task_dialog.renderer_options
 
         self.__init()
         self.__setup_connections()
@@ -38,11 +38,11 @@ class LuxRenderDialogCustomizer:
     #############################
     def __setup_connections(self):
         self.gui.ui.cancelButton.clicked.connect(self.gui.close)
-        self.gui.ui.okButton.clicked.connect(lambda: self.__changeRendererOptions())
+        self.gui.ui.okButton.clicked.connect(lambda: self.__change_renderer_options())
         QtCore.QObject.connect(self.gui.ui.sendLuxRadioButton, QtCore.SIGNAL("toggled(bool)"), self.__sendLuxSettingsChanged)
 
     #############################
-    def __changeRendererOptions(self):
+    def __change_renderer_options(self):
         try:
             self.renderer_options.halttime = int(self.gui.ui.haltTimeLineEdit.text())
         except ValueError:
@@ -60,7 +60,7 @@ class LuxRenderDialogCustomizer:
         else:
             self.renderer_options.environment = LuxRenderEnvironment()
 
-        self.newTaskDialog.setRendererOptions(self.renderer_options)
+        self.new_task_dialog.set_renderer_options(self.renderer_options)
         self.gui.window.close()
 
     #############################

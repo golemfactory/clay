@@ -35,7 +35,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     #############################
     def _setup_renderers_connections(self):
         QtCore.QObject.connect(self.gui.ui.rendererComboBox, QtCore.SIGNAL("currentIndexChanged(const QString)"),
-                               self.__rendererComboBoxValueChanged)
+                               self.__renderer_combo_box_value_changed)
         self.gui.ui.chooseMainSceneFileButton.clicked.connect(self._chooseMainSceneFileButtonClicked)
 
     #############################
@@ -53,50 +53,50 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.resetToDefaultButton.clicked.connect(self.__resetToDefaultButtonClicked)
 
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutHourSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutMinSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutSecSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.minSubtaskTimeHourSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.minSubtaskTimeMinSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.minSubtaskTimeSecSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.subtaskTimeoutHourSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.subtaskTimeoutMinSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.subtaskTimeoutSecSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.mainProgramFileLineEdit, QtCore.SIGNAL("textChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.mainSceneFileLineEdit, QtCore.SIGNAL("textChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.outputFormatsComboBox, QtCore.SIGNAL("currentIndexChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.outputFileLineEdit, QtCore.SIGNAL("textChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.totalSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.verificationSizeXSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.verificationSizeYSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.verificationForAllRadioButton, QtCore.SIGNAL("toggled(bool)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.verificationForFirstRadioButton, QtCore.SIGNAL("toggled(bool)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
         QtCore.QObject.connect(self.gui.ui.probabilityLineEdit, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__taskSettingsChanged)
+                               self.__task_settings_changed)
 
     #############################
     def _setup_verification_connections(self):
         QtCore.QObject.connect(self.gui.ui.verificationRandomRadioButton, QtCore.SIGNAL("toggled(bool)"),
                                self.__verification_random_changed)
         QtCore.QObject.connect(self.gui.ui.advanceVerificationCheckBox, QtCore.SIGNAL("stateChanged(int)"),
-                               self.__advanceVerificationChanged)
+                               self.__advance_verification_changed)
 
     #############################
     def _init(self):
@@ -203,14 +203,12 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.optimizeTotalCheckBox.setChecked(False)
 
     # SLOTS
-    #############################
-    def __taskTableRowClicked(self, row):
+    def __task_table_row_clicked(self, row):
         if row < self.gui.ui.taskTableWidget.rowCount():
             task_id = self.gui.ui.taskTableWidget.item(row, 0).text()
             task_id = "{}".format(task_id)
-            self.updateTaskAdditionalInfo(task_id)
+            self.update_task_additional_info(task_id)
 
-    #############################
     def __show_new_task_dialog_clicked(self):
         renderers = self.logic.get_renderers()
 
@@ -222,12 +220,10 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             r = renderers[k]
             self.gui.ui.rendererComboBox.addItem(r.name)
 
-    #############################
-    def __rendererComboBoxValueChanged(self, name):
+    def __renderer_combo_box_value_changed(self, name):
         self.__updateRendererOptions("{}".format(name))
 
-    #############################
-    def __taskSettingsChanged(self, name=None):
+    def __task_settings_changed(self, name=None):
         self._changeFinishState(False)
 
     #############################
@@ -406,7 +402,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     #############################
     def _optimizeTotalCheckBoxChanged(self):
         NewTaskDialogCustomizer._optimizeTotalCheckBoxChanged(self)
-        self.__taskSettingsChanged()
+        self.__task_settings_changed()
 
     #############################
     def _openOptions(self):
@@ -418,30 +414,26 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         rendererDialogCustomizer = dialog_customizer(rendererDialog, self.logic, self)
         rendererDialog.show()
 
-    def setRendererOptions(self, options):
+    def set_renderer_options(self, options):
         self.renderer_options = options
-        self.__taskSettingsChanged()
+        self.__task_settings_changed()
 
-    def get_rendererOptions(self):
+    def get_renderer_options(self):
         return self.renderer_options
 
-    #############################
-    def __advanceVerificationChanged(self):
+    def __advance_verification_changed(self):
         state = self.gui.ui.advanceVerificationCheckBox.isChecked()
         self.__setVerificationWidgetsState(state)
-        self.__taskSettingsChanged()
+        self.__task_settings_changed()
 
-    #############################
     def __res_x_changed(self):
         self.gui.ui.verificationSizeXSpinBox.setMaximum(self.gui.ui.outputResXSpinBox.value())
-        self.__taskSettingsChanged()
+        self.__task_settings_changed()
 
-    #############################
     def __res_y_changed(self):
         self.gui.ui.verificationSizeYSpinBox.setMaximum(self.gui.ui.outputResYSpinBox.value())
-        self.__taskSettingsChanged()
+        self.__task_settings_changed()
 
-    #############################
     def __verification_random_changed(self):
         verificationRandomChanged(self.gui)
-        self.__taskSettingsChanged()
+        self.__task_settings_changed()

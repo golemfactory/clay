@@ -14,14 +14,14 @@ logger = logging.getLogger(__name__)
 
 class PbrtTaskDialogCustomizer:
     #############################
-    def __init__(self, gui, logic, newTaskDialog):
+    def __init__(self, gui, logic, new_task_dialog):
 
         assert isinstance(gui, PbrtTaskDialog)
 
         self.gui = gui
         self.logic = logic
-        self.newTaskDialog = newTaskDialog
-        self.options = deepcopy(newTaskDialog.options)
+        self.new_task_dialog = new_task_dialog
+        self.options = deepcopy(new_task_dialog.options)
 
         self.__init()
         self.__setup_connections()
@@ -77,21 +77,21 @@ class PbrtTaskDialogCustomizer:
     #############################
     def __setup_connections(self):
         self.gui.ui.cancelButton.clicked.connect(self.gui.window.close)
-        self.gui.ui.okButton.clicked.connect(lambda: self.__changeRendererOptions())
+        self.gui.ui.okButton.clicked.connect(lambda: self.__change_renderer_options())
         self.gui.ui.chooseOutputFileButton.clicked.connect(self.__chooseOutputFileButtonClicked)
         self.gui.ui.mainSceneButton.clicked.connect(self.__chooseMainSceneFileButtonClicked)
         self.gui.ui.pbrtPathButton.clicked.connect(self.__choosePbrtPath)
         QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged(const QString)"), self.__res_x_changed)
         QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged(const QString)"), self.__res_y_changed)
         QtCore.QObject.connect(self.gui.ui.verificationRandomRadioButton, QtCore.SIGNAL("toggled(bool)"), self.__verification_random_changed)
-        QtCore.QObject.connect(self.gui.ui.advanceVerificationCheckBox, QtCore.SIGNAL("stateChanged(int)"), self.__advanceVerificationChanged)
+        QtCore.QObject.connect(self.gui.ui.advanceVerificationCheckBox, QtCore.SIGNAL("stateChanged(int)"), self.__advance_verification_changed)
 
     #############################
-    def __changeRendererOptions(self):
+    def __change_renderer_options(self):
         self.__read_renderer_params()
         self.__readOutputParams()
         self.__readVerificationParams()
-        self.newTaskDialog.setOptions(self.options)
+        self.new_task_dialog.setOptions(self.options)
         self.gui.window.close()
 
     #############################
@@ -160,6 +160,6 @@ class PbrtTaskDialogCustomizer:
         self.gui.ui.verificationSizeYSpinBox.setMaximum(self.gui.ui.outputResYSpinBox.value())
 
     #############################
-    def __advanceVerificationChanged(self):
+    def __advance_verification_changed(self):
         state = self.gui.ui.advanceVerificationCheckBox.isChecked()
         self.__setVerificationWidgetsState(state)

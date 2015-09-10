@@ -5,14 +5,14 @@ class SubtaskTableElem:
     ############################
     def __init__(self, node_id, subtask_id, status):
         self.node_id             = node_id
-        self.node_idItem         = None
+        self.node_id_item         = None
         self.subtask_id          = subtask_id
-        self.subtask_idItem      = None
+        self.subtask_id_item      = None
         self.status             = status
         self.remaining_time      = 0
         self.remaining_timeItem  = None
         self.progress           = 0.0
-        self.node_idItem         = None
+        self.node_id_item         = None
         self.progress_bar        = None
         self.progressBarInBoxLayoutWidget = None
         self.subtask_statusItem  = None
@@ -21,11 +21,11 @@ class SubtaskTableElem:
     ############################
     def __buildRow(self):
 
-        self.node_idItem = QTableWidgetItem()
-        self.node_idItem.setText(self.node_id)
+        self.node_id_item = QTableWidgetItem()
+        self.node_id_item.setText(self.node_id)
 
-        self.subtask_idItem = QTableWidgetItem()
-        self.subtask_idItem.setText(self.subtask_id)
+        self.subtask_id_item = QTableWidgetItem()
+        self.subtask_id_item.setText(self.subtask_id)
 
         self.remaining_timeItem = QTableWidgetItem()
 
@@ -69,9 +69,9 @@ class SubtaskTableElem:
     ############################
     def getColumnItem(self, col):
         if col == 0:
-            return self.node_idItem
+            return self.node_id_item
         if col == 1:
-            return self.subtask_idItem
+            return self.subtask_id_item
         if col == 2:
             return self.remaining_timeItem
         if col == 3:
