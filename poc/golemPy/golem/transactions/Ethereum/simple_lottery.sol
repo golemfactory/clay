@@ -10,6 +10,7 @@ contract LotteryAgent {
         uint payerDeposit;
         uint seed;
         address payer;
+        address agent;
         address winner;
     }
 
@@ -21,7 +22,7 @@ contract LotteryAgent {
             return;
         uint payerDeposit = msg.value / 10;
         uint value = msg.value - payerDeposit;
-        lotteries[descriptionHash] = LotteryData(value, maturity, 0, deposit, payerDeposit, 0, msg.sender, 0);
+        lotteries[descriptionHash] = LotteryData(value, maturity, 0, deposit, payerDeposit, 0, msg.sender, 0, 0);
     }
 
     function captureMaturityHash(bytes32 descriptionHash) {
@@ -51,7 +52,7 @@ contract LotteryAgent {
         if (lottery.winner != 0 && block.number <= lottery.maturity) {
             return;
         }
-        lottery.payerDeposit = msg.value;
+        lottery.winnerDeposit = msg.value;
         lottery.winner = msg.sender;
         lottery.deadline = now + 86400;
 
@@ -69,6 +70,27 @@ contract LotteryAgent {
 
     }
 
+    function otherWinnerLottery(bytes32 descriptionHash, address winner) {
+        LotteryData lottery = lotteries[descriptionHash];
+        if (lottery.value == 0 || msg.value < lottery.payerDeposit)
+            return;
+        if (lottery.winner != 0 && block.number <= lottery.maturity + 28800) {
+            return;
+        }
+        lottery.winnerDeposit = msg.value;
+        lottery.winner = winner;
+        lottery.agent = msg.sender;
+        lottery.deadline = now + 86400;
+
+        if (lottery.seed == 0) {
+            lottery.seed = random(lottery.maturity);
+            golem_dep += lottery.payerDeposit;
+
+            lottery.payerDeposit = 0;
+        }
+
+    }
+
     function payoutLottery(bytes32 descriptionHash) {
         LotteryData lottery = lotteries[descriptionHash];
         if (lottery.value == 0 || lottery.winner == 0)
@@ -76,7 +98,13 @@ contract LotteryAgent {
         if (block.timestamp <= lottery.deadline)
             return;
 
-        lottery.winner.send(lottery.value);
+        if (lottery.agent == 0) {
+            lottery.winner.send(lottery.value + lottery.winnerDeposit);
+        } else {
+            uint val = lottery.value / 10;
+            lottery.agent.send(val + lottery.winnerDesposit);
+            lottery.winner.send(lottery.value - val);
+        }
         delete lotteries[descriptionHash];
     }
 
@@ -115,6 +143,13 @@ contract LotteryAgent {
                 uint val = lottery.winnerDeposit / 2;
                 lottery.winnerDeposit = lottery.winnerDeposit - val;
                 golem_dep += val;
+            } else {
+                if (lottery.agent ! = 0) {
+                    uint val = lottery.value / 10;
+                    lottery.agent.send(val);
+                    lottery.value -= val;
+                }
+
             }
 
             if (winner != msg.sender) {
