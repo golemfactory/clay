@@ -7,15 +7,15 @@ class SubtaskDetailsDialogCustomizer:
         self.logic          = logic
         self.subtask_state        = subtask_state
         self.__setup_connections()
-        self.updateView(self.subtask_state)
+        self.update_view(self.subtask_state)
 
     ###########################
-    def updateView(self, subtask_state):
+    def update_view(self, subtask_state):
         self.subtask_state = subtask_state
-        self.__updateData()
+        self.__update_data()
 
     ###########################
-    def __updateData(self):
+    def __update_data(self):
         self.gui.ui.subtaskIdLabel.setText(self.subtask_state.subtask_id)
         self.gui.ui.nodeIdLabel.setText(self.subtask_state.computer.node_id)
         self.gui.ui.nodeIpAddressLabel.setText(self.subtask_state.computer.ip_address)

@@ -3,27 +3,25 @@ from PyQt4.QtGui import QAction
 from golem.task.TaskState import SubtaskStatus
 
 class SubtaskContextMenuCustomizer:
-    ##########################
     def __init__(self, ui, logic, subtask_id, subtask_status):
         self.ui             = ui
         self.logic          = logic
         self.subtask_id      = subtask_id
         self.subtask_status = subtask_status
 
-        self.__buildContextMenu()
+        self.__build_context_menu()
+
+    def __build_context_menu(self):
+        enabled_actions = self.__get_enabled_actions(self.subtask_status)
+        self.__build_and_connect_action("Restart", self.__restart_subtask, enabled_actions)
 
     ##########################
-    def __buildContextMenu(self):
-        enabledActions = self.__getEnabledActions(self.subtask_status)
-        self.__buildAndConnectAction("Restart", self.__restart_subtask, enabledActions)
-
-    ##########################
-    def __buildAndConnectAction(self, name, triggeredFunc, enabledActions):
+    def __build_and_connect_action(self, name, triggered_func, enabled_actions):
         action = QAction(name, self.ui)
 
-        action.setEnabled(enabledActions[ name ])
+        action.setEnabled(enabled_actions[ name ])
 
-        action.triggered.connect(triggeredFunc)
+        action.triggered.connect(triggered_func)
         self.ui.addAction(action)
         return action
 
@@ -32,7 +30,7 @@ class SubtaskContextMenuCustomizer:
         self.logic.restart_subtask(self.subtask_id)
 
     ##########################
-    def __getEnabledActions(self, subtask_status):
+    def __get_enabled_actions(self, subtask_status):
         enabled = {}
 
         if subtask_status== SubtaskStatus.starting:

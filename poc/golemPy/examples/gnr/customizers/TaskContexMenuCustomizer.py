@@ -2,6 +2,7 @@ from PyQt4.QtGui import QAction
 
 from golem.task.TaskState import TaskStatus
 
+
 class TaskContextMenuCustomizer:
     ##########################
     def __init__(self, ui, logic, ts):
@@ -9,78 +10,67 @@ class TaskContextMenuCustomizer:
         self.logic      = logic
         self.gnr_task_state  = ts
 
-        self.__buildContextMenu()
+        self.__build_context_menu()
 
     ##########################
-    def __buildContextMenu(self):
+    def __build_context_menu(self):
 
-        enabledActions = self.__getEnabledActions(self.gnr_task_state.task_state.status)
+        enabled_actions = self.__get_enabled_actions(self.gnr_task_state.task_state.status)
 
-        self.__buildAndConnectAction("Abort Task",      self.__abort_taskTriggered,         enabledActions)
-        self.__buildAndConnectAction("Restart",         self.__restart_taskTriggered,       enabledActions)
-        self.__buildAndConnectAction("Delete",          self.__delete_taskTriggered,        enabledActions)
-        self.__buildAndConnectAction("New Task",        self.__newTaskTriggered,           enabledActions)
-        self.__buildAndConnectAction("Start Task",      self.__start_taskTriggered,         enabledActions)
-        self.__buildAndConnectAction("Pause",           self.__pause_taskTriggered,         enabledActions)
-        self.__buildAndConnectAction("Resume",          self.__resume_taskTriggered,        enabledActions)
-        self.__buildAndConnectAction("Change Timeouts", self.__change_taskTriggered,        enabledActions)
-        self.__buildAndConnectAction("Show Details",    self.__showTaskDetailsTriggered,   enabledActions)
-        self.__buildAndConnectAction("Show Result",     self.__showResultTriggered,        enabledActions)
+        self.__build_and_connect_action("Abort Task",      self.__abort_task_triggered,         enabled_actions)
+        self.__build_and_connect_action("Restart",         self.__restart_task_triggered,       enabled_actions)
+        self.__build_and_connect_action("Delete",          self.__delete_task_triggered,        enabled_actions)
+        self.__build_and_connect_action("New Task",        self.__new_task_triggered,           enabled_actions)
+        self.__build_and_connect_action("Start Task",      self.__start_task_triggered,         enabled_actions)
+        self.__build_and_connect_action("Pause",           self.__pause_task_triggered,         enabled_actions)
+        self.__build_and_connect_action("Resume",          self.__resume_task_triggered,        enabled_actions)
+        self.__build_and_connect_action("Change Timeouts", self.__change_task_triggered,        enabled_actions)
+        self.__build_and_connect_action("Show Details",    self.__show_task_details_triggered,   enabled_actions)
+        self.__build_and_connect_action("Show Result",     self.__show_result_triggered,        enabled_actions)
 
     ##########################
-    def __buildAndConnectAction(self, name, triggeredFunc, enabledActions):
+    def __build_and_connect_action(self, name, triggered_func, enabled_actions):
         action = QAction(name, self.ui)
 
-        action.setEnabled(enabledActions[ name ])
+        action.setEnabled(enabled_actions[ name ])
 
-        action.triggered.connect(triggeredFunc)
+        action.triggered.connect(triggered_func)
         self.ui.addAction(action)
         return action        
 
     # SLOTS
     ###########################
-    def __abort_taskTriggered(self):
+    def __abort_task_triggered(self):
         self.logic.abort_task(self.gnr_task_state.definition.task_id)
 
-    ###########################
-    def __restart_taskTriggered(self):
+    def __restart_task_triggered(self):
         self.logic.restart_task(self.gnr_task_state.definition.task_id)
 
-    ###########################
-    def __delete_taskTriggered(self):
+    def __delete_task_triggered(self):
         self.logic.delete_task(self.gnr_task_state.definition.task_id)
 
-    ###########################
-    def __newTaskTriggered(self):
+    def __new_task_triggered(self):
         self.logic.show_new_task_dialog(self.gnr_task_state.definition.task_id)
 
-    ###########################
-    def __start_taskTriggered(self):
+    def __start_task_triggered(self):
         self.logic.start_task(self.gnr_task_state.definition.task_id)
 
-    ###########################
-    def __pause_taskTriggered(self):
+    def __pause_task_triggered(self):
         self.logic.pause_task(self.gnr_task_state.definition.task_id)
 
-    ###########################
-    def __resume_taskTriggered(self):
+    def __resume_task_triggered(self):
         self.logic.resume_task(self.gnr_task_state.definition.task_id)
 
-    ###########################
-    def __showTaskDetailsTriggered(self):
+    def __show_task_details_triggered(self):
         self.logic.show_task_details(self.gnr_task_state.definition.task_id)
 
-    ###########################
-    def __change_taskTriggered(self):
+    def __change_task_triggered(self):
         self.logic.change_task(self.gnr_task_state.definition.task_id)
 
-    ###########################
-    def __showResultTriggered(self):
+    def __show_result_triggered(self):
         self.logic.show_task_result(self.gnr_task_state.definition.task_id)
 
-    #######################
-    ##########################
-    def __getEnabledActions(self, task_status):
+    def __get_enabled_actions(self, task_status):
 
         enabled = {}
 

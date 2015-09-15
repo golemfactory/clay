@@ -26,11 +26,11 @@ class UpdateOtherGolemsDialogCustomizer:
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
 
     def __choose_src_folder(self):
-        dir = u"{}".format(QFileDialog.getExistingDirectory(self.gui.window, "Choose golem source directory",
+        dir_ = u"{}".format(QFileDialog.getExistingDirectory(self.gui.window, "Choose golem source directory",
                                                  "",
                                                  QFileDialog.ShowDirsOnly))
-        if dir is not None:
-            self.golem_dir = dir
+        if dir_ is not None:
+            self.golem_dir = dir_
             self.gui.ui.srcDirLineEdit.setText("{}".format(self.golem_dir))
 
     def __update_other_golems(self):

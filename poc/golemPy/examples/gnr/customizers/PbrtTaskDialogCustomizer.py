@@ -41,10 +41,10 @@ class PbrtTaskDialogCustomizer:
         self.gui.ui.pathTracerComboBox.clear()
         self.gui.ui.pathTracerComboBox.addItems(self.options.path_tracers)
 
-        algItem = self.gui.ui.pathTracerComboBox.findText(self.options.algorithm_type)
+        alg_item = self.gui.ui.pathTracerComboBox.findText(self.options.algorithm_type)
 
-        if algItem >= 0:
-            self.gui.ui.pathTracerComboBox.setCurrentIndex(algItem)
+        if alg_item >= 0:
+            self.gui.ui.pathTracerComboBox.setCurrentIndex(alg_item)
 
         self.gui.ui.samplesPerPixelSpinBox.setValue(self.options.samples_per_pixel_count)
         #self.gui.ui.pbrtPathLineEdit.setText(self.options.pbrt_path)
@@ -104,32 +104,32 @@ class PbrtTaskDialogCustomizer:
 
     def __choose_main_scene_file_button_clicked(self):
         output_file_types = " ".join([u"*.{}".format(ext) for ext in self.options.scene_file_ext ])
-        filter = u"Scene files ({})".format(output_file_types)
+        filter_ = u"Scene files ({})".format(output_file_types)
 
 
-        dir = os.path.dirname(u"{}".format(self.gui.ui.mainSceneLineEdit.text()) )
+        dir_ = os.path.dirname(u"{}".format(self.gui.ui.mainSceneLineEdit.text()) )
 
         file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
-            "Choose main scene file", dir, filter))
+            "Choose main scene file", dir_, filter_))
 
         if file_name != '':
             self.gui.ui.mainSceneLineEdit.setText(file_name)
 
     def __choose_output_file_button_clicked(self):
         output_file_type = u"{}".format(self.gui.ui.outputFormatsComboBox.currentText())
-        filter = u"{} (*.{})".format(output_file_type, output_file_type)
+        filter_ = u"{} (*.{})".format(output_file_type, output_file_type)
 
-        dir = os.path.dirname(u"{}".format(self.gui.ui.outputFileLineEdit.text()) )
+        dir_ = os.path.dirname(u"{}".format(self.gui.ui.outputFileLineEdit.text()) )
 
         file_name = u"{}".format(QFileDialog.getSaveFileName(self.gui.window,
-            "Choose output file", dir, filter))
+            "Choose output file", dir_, filter_))
 
         if file_name != '':
             self.gui.ui.outputFileLineEdit.setText(file_name)
 
     def __choose_pbrt_path(self):
-        dir = os.path.dirname(u"{}".format(self.gui.ui.pbrtPathLineEdit.text()))
-        file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window, "Choose pbrt file", dir, ""))
+        dir_ = os.path.dirname(u"{}".format(self.gui.ui.pbrtPathLineEdit.text()))
+        file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window, "Choose pbrt file", dir_, ""))
         if file_name != '':
             self.gui.ui.pbrtPathLineEdit.setText(file_name)
 

@@ -67,7 +67,7 @@ class GNRMainWindowCustomizer:
                 pb.setProperty("value", int(tasks[task_id].task_state.progress * 100.0))
                 if self.task_details_dialog_customizer:
                     if self.task_details_dialog_customizer.gnr_task_state.definition.task_id == task_id:
-                        self.task_details_dialog_customizer.updateView(tasks[task_id].task_state)
+                        self.task_details_dialog_customizer.update_view(tasks[task_id].task_state)
 
             else:
                 assert False, "Update task for unknown task."

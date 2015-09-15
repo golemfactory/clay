@@ -16,7 +16,7 @@ from examples.gnr.RenderingTaskState import RenderingTaskDefinition
 from examples.gnr.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
 from examples.gnr.customizers.RenderingNewTaskDialogCustomizer import RenderingNewTaskDialogCustomizer
 
-from examples.gnr.customizers.MemoryHelper import resource_sizeToDisplay, translateResourceIndex
+from examples.gnr.customizers.MemoryHelper import resource_size_to_display, translate_resource_index
 
 logger = logging.getLogger(__name__)
 
@@ -117,8 +117,8 @@ class AbsRenderingMainWindowCustomizer(object):
             self.gui.ui.timeStarted.setText(time_string)
 
     def __set_renderer_params(self, t):
-        mem, index = resource_sizeToDisplay(t.definition.estimated_memory / 1024)
-        self.gui.ui.estimatedMemoryLabel.setText("{} {}".format(mem, translateResourceIndex(index)))
+        mem, index = resource_size_to_display(t.definition.estimated_memory / 1024)
+        self.gui.ui.estimatedMemoryLabel.setText("{} {}".format(mem, translate_resource_index(index)))
         self.gui.ui.resolution.setText("{} x {}".format(t.definition.resolution[0], t.definition.resolution[1]))
         self.gui.ui.renderer.setText("{}".format(t.definition.renderer))
 

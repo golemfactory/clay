@@ -8,19 +8,21 @@ options = {
     2: 'GB'
 }
 
-def dirSizeToDisplay(dirSize):
-    if dirSize / (1024 * 1024 * 1024) > 0:
-        dirSize = round(float(dirSize) / (1024 * 1024 * 1024), 1)
+
+def dir_size_to_display(dir_size):
+    if dir_size / (1024 * 1024 * 1024) > 0:
+        dir_size = round(float(dir_size) / (1024 * 1024 * 1024), 1)
         index = 2
-    elif dirSize / (1024 * 1024) > 0:
-        dirSize = round(float(dirSize) / (1024 * 1024), 1)
+    elif dir_size / (1024 * 1024) > 0:
+        dir_size = round(float(dir_size) / (1024 * 1024), 1)
         index = 1
     else:
-        dirSize = round(float(dirSize) / 1024, 1)
+        dir_size = round(float(dir_size) / 1024, 1)
         index = 0
-    return dirSize, index
+    return dir_size, index
 
-def resource_sizeToDisplay(max_resource_size):
+
+def resource_size_to_display(max_resource_size):
     if max_resource_size / (1024 * 1024) > 0:
         max_resource_size /= (1024 * 1024)
         index = 2
@@ -31,7 +33,8 @@ def resource_sizeToDisplay(max_resource_size):
         index = 0
     return max_resource_size, index
 
-def translateResourceIndex(index):
+
+def translate_resource_index(index):
     if index in options:
         return options[ index ]
     else:

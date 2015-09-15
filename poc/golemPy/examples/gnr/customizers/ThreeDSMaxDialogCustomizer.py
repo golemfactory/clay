@@ -7,8 +7,8 @@ from examples.gnr.ui.ThreeDSMaxDialog import ThreeDSMaxDialog
 
 logger = logging.getLogger(__name__)
 
+
 class ThreeDSMaxDialogCustomizer:
-    #############################
     def __init__(self, gui, logic, new_task_dialog):
         assert isinstance(gui, ThreeDSMaxDialog)
 
@@ -21,7 +21,6 @@ class ThreeDSMaxDialogCustomizer:
         self.__init()
         self.__setup_connections()
 
-    #############################
     def __init(self):
         renderer = self.logic.get_renderer(u"3ds Max Renderer")
         self.gui.ui.presetLineEdit.setText(self.renderer_options.preset)
@@ -32,17 +31,14 @@ class ThreeDSMaxDialogCustomizer:
         else:
             self.gui.ui.framesLineEdit.setText("")
 
-
-    #############################
     def __setup_connections(self):
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__change_renderer_options())
-        self.gui.ui.presetButton.clicked.connect(self.__choosePresetFile)
+        self.gui.ui.presetButton.clicked.connect(self.__choose_preset_file)
 
         QtCore.QObject.connect(self.gui.ui.framesCheckBox, QtCore.SIGNAL("stateChanged(int) "),
                                 self.__frames_check_box_changed)
 
-    #############################
     def __change_renderer_options(self):
         self.renderer_options.preset = u"{}".format(self.gui.ui.presetLineEdit.text())
         self.renderer_options.use_frames = self.gui.ui.framesCheckBox.isChecked()
@@ -55,20 +51,17 @@ class ThreeDSMaxDialogCustomizer:
         self.new_task_dialog.set_renderer_options(self.renderer_options)
         self.gui.window.close()
 
-    #############################
-    def __choosePresetFile(self):
-        dir = os.path.dirname(u"{}".format(self.gui.ui.presetLineEdit.text()))
-        preset_file = u"{}".format(QFileDialog.getOpenFileName(self.gui.window, "Choose preset file", dir, "3dsMax render preset file (*.rps)"))
+    def __choose_preset_file(self):
+        dir_ = os.path.dirname(u"{}".format(self.gui.ui.presetLineEdit.text()))
+        preset_file = u"{}".format(QFileDialog.getOpenFileName(self.gui.window, "Choose preset file", dir_, "3dsMax render preset file (*.rps)"))
         if preset_file != '':
-            self.gui.ui.presetLineEdit.setText (preset_file)
+            self.gui.ui.presetLineEdit.setText(preset_file)
 
-    #############################
     def __frames_check_box_changed(self):
         self.gui.ui.framesLineEdit.setEnabled(self.gui.ui.framesCheckBox.isChecked())
         if self.gui.ui.framesCheckBox.isChecked():
             self.gui.ui.framesLineEdit.setText(self.__frames_to_string(self.renderer_options.frames))
 
-    #############################
     def __frames_to_string(self, frames):
         s = ""
         last_frame = None
@@ -102,7 +95,6 @@ class ThreeDSMaxDialogCustomizer:
 
         return s
 
-    #############################
     def __string_to_frames(self, s):
         try:
             frames = []

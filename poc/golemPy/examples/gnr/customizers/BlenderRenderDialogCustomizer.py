@@ -6,8 +6,8 @@ from examples.gnr.ui.BlenderRenderDialog import BlenderRenderDialog
 
 logger = logging.getLogger(__name__)
 
+
 class BlenderRenderDialogCustomizer:
-    #############################
     def __init__(self, gui, logic, new_task_dialog):
         assert isinstance(gui, BlenderRenderDialog)
 
@@ -20,14 +20,13 @@ class BlenderRenderDialogCustomizer:
         self.__init()
         self.__setup_connections()
 
-    #############################
     def __init(self):
         renderer = self.logic.get_renderer(u"Blender")
 
         self.gui.ui.engineComboBox.addItems(self.renderer_options.engine_values)
-        engineItem = self.gui.ui.engineComboBox.findText(self.renderer_options.engine)
-        if engineItem != -1:
-            self.gui.ui.engineComboBox.setCurrentIndex(engineItem)
+        engine_item = self.gui.ui.engineComboBox.findText(self.renderer_options.engine)
+        if engine_item != -1:
+            self.gui.ui.engineComboBox.setCurrentIndex(engine_item)
         else:
             logger.error("Wrong engine type ")
 
@@ -38,7 +37,6 @@ class BlenderRenderDialogCustomizer:
         else:
             self.gui.ui.framesLineEdit.setText("")
 
-    #############################
     def __setup_connections(self):
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__change_renderer_options())
@@ -46,13 +44,11 @@ class BlenderRenderDialogCustomizer:
         QtCore.QObject.connect(self.gui.ui.framesCheckBox, QtCore.SIGNAL("stateChanged(int) "),
                                 self.__frames_check_box_changed)
 
-    #############################
     def __frames_check_box_changed(self):
         self.gui.ui.framesLineEdit.setEnabled(self.gui.ui.framesCheckBox.isChecked())
         if self.gui.ui.framesCheckBox.isChecked():
             self.gui.ui.framesLineEdit.setText(self.__frames_to_string(self.renderer_options.frames))
 
-    #############################
     def __change_renderer_options(self):
         index = self.gui.ui.engineComboBox.currentIndex()
         self.renderer_options.engine = u"{}".format(self.gui.ui.engineComboBox.itemText(index))
@@ -99,7 +95,6 @@ class BlenderRenderDialogCustomizer:
 
         return s
 
-    #############################
     def __string_to_frames(self, s):
         try:
             frames = []

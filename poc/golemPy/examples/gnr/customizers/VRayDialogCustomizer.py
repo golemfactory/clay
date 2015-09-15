@@ -6,6 +6,7 @@ from examples.gnr.ui.VRayDialog import VRayDialog
 
 logger = logging.getLogger(__name__)
 
+
 class VRayDialogCustomizer:
     def __init__(self, gui, logic, new_task_dialog):
         assert isinstance(gui, VRayDialog)

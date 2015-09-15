@@ -9,8 +9,8 @@ from examples.gnr.RenderingEnvironment import LuxRenderEnvironment
 
 logger = logging.getLogger(__name__)
 
+
 class LuxRenderDialogCustomizer:
-    #############################
     def __init__(self, gui, logic, new_task_dialog):
         assert isinstance(gui, LuxRenderDialog)
 
@@ -23,7 +23,6 @@ class LuxRenderDialogCustomizer:
         self.__init()
         self.__setup_connections()
 
-    #############################
     def __init(self):
         renderer = self.logic.get_renderer(u"LuxRender")
         self.gui.ui.haltTimeLineEdit.setText(u"{}".format(self.renderer_options.halttime))
@@ -35,13 +34,11 @@ class LuxRenderDialogCustomizer:
         self.gui.ui.luxConsoleLineEdit.setEnabled(self.renderer_options.send_binaries)
         self.gui.ui.luxConsoleLineEdit.setText(u"{}".format(self.renderer_options.luxconsole))
 
-    #############################
     def __setup_connections(self):
         self.gui.ui.cancelButton.clicked.connect(self.gui.close)
         self.gui.ui.okButton.clicked.connect(lambda: self.__change_renderer_options())
-        QtCore.QObject.connect(self.gui.ui.sendLuxRadioButton, QtCore.SIGNAL("toggled(bool)"), self.__sendLuxSettingsChanged)
+        QtCore.QObject.connect(self.gui.ui.sendLuxRadioButton, QtCore.SIGNAL("toggled(bool)"), self.__send_lux_settings_changed)
 
-    #############################
     def __change_renderer_options(self):
         try:
             self.renderer_options.halttime = int(self.gui.ui.haltTimeLineEdit.text())
@@ -63,6 +60,5 @@ class LuxRenderDialogCustomizer:
         self.new_task_dialog.set_renderer_options(self.renderer_options)
         self.gui.window.close()
 
-    #############################
-    def __sendLuxSettingsChanged(self):
+    def __send_lux_settings_changed(self):
         self.gui.ui.luxConsoleLineEdit.setEnabled(self.gui.ui.sendLuxRadioButton.isChecked())
