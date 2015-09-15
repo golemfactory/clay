@@ -49,7 +49,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
                                         self.client.get_root_path(), golem_dir)
 
         task = Task.build_task( task_builder)
-        self.add_taskFromDefinition(task_definition)
+        self.add_task_from_definition(task_definition)
         self.client.enqueue_new_task(task)
 
         logger.info("Update with {}".format(golem_dir))
@@ -71,7 +71,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
                                         self.client.get_root_path())
 
         task = Task.build_task( task_builder)
-        self.add_taskFromDefinition(info_task_definition)
+        self.add_task_from_definition(info_task_definition)
         self.client.enqueue_new_task(task)
 
 

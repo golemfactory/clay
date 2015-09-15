@@ -542,7 +542,7 @@ class P2PService(PendingConnectionsServer):
         """ Return all gathered gossips and clear gossip buffer
         :return list: list of all gossips
         """
-        return self.gossip_keeper.pop_gossip(())
+        return self.gossip_keeper.pop_gossip()
 
     def send_stop_gossip(self):
         """ Send stop gossip message to all peers

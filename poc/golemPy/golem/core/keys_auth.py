@@ -22,6 +22,7 @@ def sha3(seed):
 def sha2(seed):
     return int("0x" + sha256(seed).hexdigest(), 16)
 
+
 class KeysAuth(object):
     """ Cryptographic authorization manager. Create and keeps private and public keys."""
 
@@ -39,10 +40,10 @@ class KeysAuth(object):
         :return int: key_id difficulty
         """
         difficulty = 0
-        min_hash = KeysAuth.__count_min_hash(difficulty)
+        min_hash = KeysAuth._count_min_hash(difficulty)
         while sha2(self.key_id) <= min_hash:
             difficulty += 1
-            min_hash = KeysAuth.__count_min_hash(difficulty)
+            min_hash = KeysAuth._count_min_hash(difficulty)
 
         return difficulty - 1
 
@@ -95,6 +96,13 @@ class KeysAuth(object):
         """
         return sig == data
 
+    @abc.abstractmethod
+    def generate_new(self, difficulty):
+        """ Generate new pair of keys with given difficulty
+        :param int difficulty: desired key difficulty level
+        """
+        return
+
     @staticmethod
     @abc.abstractmethod
     def _load_private_key(uuid):  # implement in derived classes
@@ -106,7 +114,7 @@ class KeysAuth(object):
         return
 
     @staticmethod
-    def __count_min_hash(difficulty):
+    def _count_min_hash(difficulty):
         return pow(2, 256 - difficulty)
 
 
@@ -156,6 +164,25 @@ class RSAKeysAuth(KeysAuth):
         if public_key is None:
             public_key = self.public_key
         return public_key.verify(data, sig)
+
+    def generate_new(self, difficulty, uuid):
+        """ Generate new pair of keys with given difficulty
+        :param int difficulty: desired key difficulty level
+        :param uuid: node's id
+        """
+        min_hash = self._count_min_hash(difficulty)
+        priv_key = RSA.generate(2048)
+        pub_key = priv_key.publickey()
+        while sha2(pub_key) > min_hash:
+            priv_key = RSA.generate(2048)
+            pub_key = priv_key.publickey()
+        priv_key_loc = RSAKeysAuth._get_private_key_loc(uuid)
+        pub_key_loc = RSAKeysAuth._get_public_key_loc(uuid)
+        with open(priv_key_loc, 'w') as f:
+            f.write(priv_key.exportKey('PEM'))
+        with open(pub_key_loc, 'w') as f:
+            f.write(pub_key.exportKey())
+
 
     @staticmethod
     def _get_private_key_loc(uuid):
@@ -269,6 +296,28 @@ class EllipticalKeysAuth(KeysAuth):
             public_key = public_key.decode('hex')
         ecc = ECCx(public_key)
         return ecc.verify(sig, data)
+
+    def generate_new(self, difficulty, uuid):
+        """ Generate new pair of keys with given difficulty
+        :param int difficulty: desired key difficulty level
+        :param uuid: node's id
+        """
+        min_hash = self._count_min_hash(difficulty)
+        priv_key = mk_privkey(str(random()))
+        pub_key = privtopub(priv_key)
+        while sha2(self.cnt_key_id(pub_key)) > min_hash:
+            priv_key = mk_privkey(str(random()))
+            pub_key = privtopub(priv_key)
+        priv_key_loc = EllipticalKeysAuth._get_private_key_loc(uuid)
+        pub_key_loc = EllipticalKeysAuth._get_public_key_loc(uuid)
+        with open(priv_key_loc, 'wb') as f:
+            f.write(priv_key)
+        with open(pub_key_loc, 'wb') as f:
+            f.write(pub_key)
+        self._private_key = priv_key
+        self.public_key = pub_key
+        self.key_id = self.cnt_key_id(pub_key)
+
 
     @staticmethod
     def _get_private_key_loc(uuid):

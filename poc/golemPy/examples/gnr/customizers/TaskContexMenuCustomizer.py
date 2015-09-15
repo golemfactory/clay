@@ -23,7 +23,7 @@ class TaskContextMenuCustomizer:
         self.__buildAndConnectAction("Start Task",      self.__start_taskTriggered,         enabledActions)
         self.__buildAndConnectAction("Pause",           self.__pause_taskTriggered,         enabledActions)
         self.__buildAndConnectAction("Resume",          self.__resume_taskTriggered,        enabledActions)
-        self.__buildAndConnectAction("Change Timeouts", self.__changeTaskTriggered,        enabledActions)
+        self.__buildAndConnectAction("Change Timeouts", self.__change_taskTriggered,        enabledActions)
         self.__buildAndConnectAction("Show Details",    self.__showTaskDetailsTriggered,   enabledActions)
         self.__buildAndConnectAction("Show Result",     self.__showResultTriggered,        enabledActions)
 
@@ -68,11 +68,11 @@ class TaskContextMenuCustomizer:
 
     ###########################
     def __showTaskDetailsTriggered(self):
-        self.logic.showTaskDetails(self.gnr_task_state.definition.task_id)
+        self.logic.show_task_details(self.gnr_task_state.definition.task_id)
 
     ###########################
-    def __changeTaskTriggered(self):
-        self.logic.changeTask(self.gnr_task_state.definition.task_id)
+    def __change_taskTriggered(self):
+        self.logic.change_task(self.gnr_task_state.definition.task_id)
 
     ###########################
     def __showResultTriggered(self):

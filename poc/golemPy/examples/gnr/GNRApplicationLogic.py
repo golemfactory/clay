@@ -1,9 +1,7 @@
 import os
 import logging
-import uuid
-import cPickle as pickle
+import cPickle
 from PyQt4 import QtCore
-
 
 from examples.gnr.ui.TestingTaskProgressDialog import TestingTaskProgressDialog
 from golem.task.TaskState import TaskStatus
@@ -18,65 +16,59 @@ from testtasks.minilight.src.minilight import makePerfTest
 
 logger = logging.getLogger(__name__)
 
+
 class GNRClientEventListener(GolemClientEventListener):
-    #####################
     def __init__(self, logic):
         self.logic = logic
         GolemClientEventListener.__init__(self)
 
-    #####################
     def task_updated(self, task_id):
-        self.logic.task_statusChanged(task_id)
+        self.logic.task_status_changed(task_id)
 
-    #####################
     def check_network_state(self):
         self.logic.check_network_state()
 
-taskToRemoveStatus = [ TaskStatus.aborted, TaskStatus.failure, TaskStatus.finished, TaskStatus.paused ]
+
+task_to_remove_status = [TaskStatus.aborted, TaskStatus.failure, TaskStatus.finished, TaskStatus.paused]
+
 
 class GNRApplicationLogic(QtCore.QObject):
-    ######################
     def __init__(self):
         QtCore.QObject.__init__(self)
-        self.tasks              = {}
-        self.test_tasks          = {}
-        self.task_types          = {}
-        self.customizer         = None
-        self.root_path           = os.path.join(os.environ.get('GOLEM'), 'examples/gnr')
+        self.tasks = {}
+        self.test_tasks = {}
+        self.task_types = {}
+        self.customizer = None
+        self.root_path = os.path.join(os.environ.get('GOLEM'), 'examples/gnr')
         self.nodes_manager_client = None
+        self.client = None
+        self.tt = None
+        self.progress_dialog = None
         self.add_new_nodes_function = lambda x: None
 
-    ######################
-    def register_gui(self, gui, customizerClass):
-        self.customizer = customizerClass(gui, self)
+    def register_gui(self, gui, customizer_class):
+        self.customizer = customizer_class(gui, self)
 
-    ######################
     def register_client(self, client):
         self.client = client
         self.client.register_listener(GNRClientEventListener(self))
-        self.customizer.set_options(self.getConfig())
+        self.customizer.set_options(self.get_config())
 
-    ######################
-    def registerStartNewNodeFunction(self, func):
+    def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
 
-    ######################
     def get_res_dirs(self):
         return self.client.get_res_dirs()
 
-    ######################
     def remove_computed_files(self):
         self.client.remove_computed_files()
 
-    ######################
     def remove_distributed_files(self):
         self.client.remove_distributed_files()
 
-    ######################
     def remove_received_files(self):
         self.client.remove_received_files()
 
-    ######################
     def check_network_state(self):
         listen_port = self.client.p2pservice.cur_port
         task_server_port = self.client.task_server.cur_port
@@ -90,82 +82,72 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.customizer.gui.ui.errorLabel.setText("")
 
-    ######################
-    def startNodesManagerClient(self):
+    def start_nodes_manager_client(self):
         if self.client:
             config_desc = self.client.config_desc
-            self.nodes_manager_client = NodesManagerUidClient (config_desc.client_uid,
-                                                           config_desc.manager_address,
-                                                           config_desc.manager_port,
-                                                           None,
-                                                           self)
+            self.nodes_manager_client = NodesManagerUidClient(config_desc.client_uid,
+                                                              config_desc.manager_address,
+                                                              config_desc.manager_port,
+                                                              None,
+                                                              self)
             self.nodes_manager_client.start()
             self.client.register_nodes_manager_client(self.nodes_manager_client)
         else:
             logger.error("Can't register nodes manager client. No client instance.")
 
-    ######################
     def get_task(self, task_id):
         assert task_id in self.tasks, "GNRApplicationLogic: task {} not added".format(task_id)
 
-        return self.tasks[ task_id ]
+        return self.tasks[task_id]
 
-    ######################
     def get_task_types(self):
         return self.task_types
 
-    ######################
     def get_status(self):
         return self.client.get_status()
 
-    ######################
     def get_about_info(self):
         return self.client.get_about_info()
 
-    ######################
-    def getConfig(self):
+    def get_config(self):
         return self.client.config_desc
 
-    ######################
     def quit(self):
         self.client.quit()
 
-    ######################
     def get_task_type(self, name):
-        task_type = self.tasksType[ name ]
+        task_type = self.tasksType[name]
         if task_type:
             return task_type
         else:
             assert False, "Task {} not registered".format(name)
 
-    ######################
-    def change_config ( self, cfg_desc):
-        oldCfgDesc = self.client.config_desc
-        if (oldCfgDesc.manager_address != cfg_desc.manager_address) or (oldCfgDesc.manager_port != cfg_desc.manager_port):
+    def change_config(self, cfg_desc):
+        old_cfg_desc = self.client.config_desc
+        if (old_cfg_desc.manager_address != cfg_desc.manager_address) or\
+                (old_cfg_desc.manager_port != cfg_desc.manager_port):
             if self.nodes_manager_client is not None:
                 self.nodes_manager_client.dropConnection()
                 del self.nodes_manager_client
             self.nodes_manager_client = NodesManagerUidClient(cfg_desc.client_uid,
-                                                          cfg_desc.manager_address,
-                                                          cfg_desc.manager_port,
-                                                          None,
-                                                          self)
+                                                              cfg_desc.manager_address,
+                                                              cfg_desc.manager_port,
+                                                              None,
+                                                              self)
 
             self.nodes_manager_client.start()
             self.client.register_nodes_manager_client(self.nodes_manager_client)
         self.client.change_config(cfg_desc)
 
-    ######################
     def _get_new_task_state(self):
         return GNRTaskState()
 
-    ######################
     def start_task(self, task_id):
         ts = self.get_task(task_id)
 
         if ts.task_state.status != TaskStatus.notStarted:
             error_msg = "Task already started"
-            self._showErrorWindow(error_msg)
+            self._show_error_window(error_msg)
             logger.error(error_msg)
             return
 
@@ -175,49 +157,41 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.client.enqueue_new_task(t)
 
-    ######################
     def _get_builder(self, task_state):
-        #FIXME Bardzo tymczasowe rozwiazanie dla zapewnienia zgodnosci
+        # FIXME Bardzo tymczasowe rozwiazanie dla zapewnienia zgodnosci
         if hasattr(task_state.definition, "renderer"):
             task_state.definition.task_type = task_state.definition.renderer
 
-        return self.task_types[ task_state.definition.task_type ].task_builder_type(self.client.get_id(), task_state.definition, self.client.get_root_path())
+        return self.task_types[task_state.definition.task_type].task_builder_type(self.client.get_id(),
+                                                                                  task_state.definition,
+                                                                                  self.client.get_root_path())
 
-    ######################
     def restart_task(self, task_id):
         self.client.restart_task(task_id)
 
-    ######################
     def abort_task(self, task_id):
         self.client.abort_task(task_id)
 
-    ######################
     def pause_task(self, task_id):
         self.client.pause_task(task_id)
 
-    ######################
     def resume_task(self, task_id):
         self.client.resume_task(task_id)
 
-    ######################
     def delete_task(self, task_id):
         self.client.delete_task(task_id)
         self.customizer.remove_task(task_id)
 
-    ######################
-    def showTaskDetails(self, task_id):
+    def show_task_details(self, task_id):
         self.customizer.show_details_dialog(task_id)
 
-    ######################
-    def show_new_task_dialog (self, task_id):
+    def show_new_task_dialog(self, task_id):
         self.customizer.show_new_task_dialog(task_id)
 
-    ######################
-    def restart_subtask (self, subtask_id):
+    def restart_subtask(self, subtask_id):
         self.client.restart_subtask(subtask_id)
 
-    ######################
-    def changeTask (self, task_id):
+    def change_task(self, task_id):
         self.customizer.show_change_task_dialog(task_id)
 
     def show_task_result(self, task_id):
@@ -237,12 +211,10 @@ class GNRApplicationLogic(QtCore.QObject):
         else:
             logger.error("It's not my task: {} ", task_id)
 
-    ######################
-    def getTestTasks(self):
+    def get_test_tasks(self):
         return self.test_tasks
 
-    ######################
-    def add_taskFromDefinition (self, definition):
+    def add_task_from_definition(self, definition):
         task_state = self._get_new_task_state()
         task_state.status = TaskStatus.notStarted
 
@@ -250,7 +222,6 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.add_tasks([task_state])
 
-    ######################
     def add_tasks(self, tasks):
 
         if len(tasks) == 0:
@@ -258,53 +229,47 @@ class GNRApplicationLogic(QtCore.QObject):
 
         for t in tasks:
             if t.definition.task_id not in self.tasks:
-                self.tasks[ t.definition.task_id ] = t
+                self.tasks[t.definition.task_id] = t
                 self.customizer.add_task(t)
             else:
-                self.tasks[ t.definition.task_id ] = t
+                self.tasks[t.definition.task_id] = t
 
         self.customizer.update_tasks(self.tasks)
 
-    ######################
-    def registerNewTaskType(self, task_type):
+    def register_new_task_type(self, task_type):
         if task_type.name not in self.task_types:
-            self.task_types[ task_type.name ] = task_type
+            self.task_types[task_type.name] = task_type
         else:
             assert False, "Task type {} already registered".format(task_type.name)
 
-    ######################
-    def registerNewTestTaskType(self, test_taskInfo):
-        if test_taskInfo.name not in self.test_tasks:
-            self.test_tasks[ test_taskInfo.name ] = test_taskInfo
+    def register_new_test_task_type(self, test_task_info):
+        if test_task_info.name not in self.test_tasks:
+            self.test_tasks[test_task_info.name] = test_task_info
         else:
-            assert False, "Test task {} already registered".format(test_taskInfo.name)
+            assert False, "Test task {} already registered".format(test_task_info.name)
 
-    ######################
-    def saveTask(self, task_state, file_path):
+    def save_task(self, task_state, file_path):
         with open(file_path, "wb") as f:
-            tspickled = pickle.dumps(task_state)
+            tspickled = cPickle.dumps(task_state)
             f.write(tspickled)
 
-    ######################
-    def recountPerformance(self, num_cores):
-        testFile = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'testtasks/minilight/cornellbox.ml.txt'))
-        resultFile = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/gnr/node_data/minilight.ini'))
-        estimatedPerf =  makePerfTest(testFile, resultFile, num_cores)
-        return estimatedPerf
+    def recount_performance(self, num_cores):
+        test_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'testtasks/minilight/cornellbox.ml.txt'))
+        result_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/gnr/node_data/minilight.ini'))
+        estimated_perf = makePerfTest(test_file, result_file, num_cores)
+        return estimated_perf
 
-
-    ######################
-    def runTestTask(self, task_state):
+    def run_test_task(self, task_state):
         if self._validate_task_state(task_state):
 
             tb = self._get_builder(task_state)
 
             t = Task.build_task(tb)
 
-            self.tt = TaskTester(t, self.client.get_root_path(), self._test_taskComputationFinished)
+            self.tt = TaskTester(t, self.client.get_root_path(), self._test_task_computation_finished)
 
-            self.progressDialog = TestingTaskProgressDialog(self.customizer.gui.window )
-            self.progressDialog.show()
+            self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
+            self.progress_dialog.show()
 
             self.tt.run()
 
@@ -312,55 +277,46 @@ class GNRApplicationLogic(QtCore.QObject):
         else:
             return False
 
-    ######################
-    def get_environments(self) :
+    def get_environments(self):
         return self.client.get_environments()
 
-    ######################
     def change_accept_tasks_for_environment(self, env_id, state):
         self.client.change_accept_tasks_for_environment(env_id, state)
 
-    ######################
-    def _test_taskComputationFinished(self, success, est_mem = 0):
+    def _test_task_computation_finished(self, success, est_mem=0):
         if success:
-            self.progressDialog.showMessage("Test task computation success!")
+            self.progress_dialog.showMessage("Test task computation success!")
         else:
-            self.progressDialog.showMessage("Task test computation failure... Check resources.")
+            self.progress_dialog.showMessage("Task test computation failure... Check resources.")
         if self.customizer.new_task_dialogCustomizer:
             self.customizer.new_task_dialogCustomizer.test_taskComputationFinished(success, est_mem)
 
-    ######################
-    def task_statusChanged(self, task_id):
+    def task_status_changed(self, task_id):
 
         if task_id in self.tasks:
             ts = self.client.querry_task_state(task_id)
             assert isinstance(ts, TaskState)
             self.tasks[task_id].task_state = ts
             self.customizer.update_tasks(self.tasks)
-            if ts.status in taskToRemoveStatus:
+            if ts.status in task_to_remove_status:
                 self.client.task_server.remove_task_header(task_id)
                 self.client.p2pservice.remove_task(task_id)
         else:
             assert False, "Should never be here!"
 
-
         if self.customizer.current_task_highlighted.definition.task_id == task_id:
-            self.customizer.update_task_additional_info(self.tasks[ task_id ])
+            self.customizer.update_task_additional_info(self.tasks[task_id])
 
-    ######################
-    def _showErrorWindow(self, text):
+    def _show_error_window(self, text):
         from PyQt4.QtGui import QMessageBox
-        msBox = QMessageBox(QMessageBox.Critical, "Error", text)
-        msBox.exec_()
-        msBox.show()
+        ms_box = QMessageBox(QMessageBox.Critical, "Error", text)
+        ms_box.exec_()
+        ms_box.show()
 
-
-    ######################
     def _validate_task_state(self, task_state):
 
         td = task_state.definition
         if not os.path.exists(td.main_program_file):
-            self._showErrorWindow("Main program file does not exist: {}".format(td.main_program_file))
+            self._show_error_window("Main program file does not exist: {}".format(td.main_program_file))
             return False
         return True
-

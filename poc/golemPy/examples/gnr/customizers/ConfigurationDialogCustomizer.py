@@ -26,16 +26,14 @@ class ConfigurationDialogCustomizer:
 
         self.__setup_connections()
 
-    #############################
     def load_config(self):
-        config_desc = self.logic.getConfig()
+        config_desc = self.logic.get_config()
         self.__loadBasicConfig(config_desc)
         self.__loadAdvanceConfig(config_desc)
         self.__loadManagerConfig(config_desc)
         self.__loadResourceConfig()
         self.__loadPaymentConfig(config_desc)
 
-    #############################
     def __loadBasicConfig(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
         self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_host_port))
@@ -46,7 +44,6 @@ class ConfigurationDialogCustomizer:
         self.__loadMemoryConfig(config_desc)
         self.__loadTrustConfig(config_desc)
 
-    #############################
     def __loadNumCores(self, config_desc):
         maxNumCores = multiprocessing.cpu_count()
         self.gui.ui.numCoresSlider.setMaximum(maxNumCores)
@@ -59,7 +56,6 @@ class ConfigurationDialogCustomizer:
             logger.error("Wrong value for number of cores: {}".format(str(e)))
         self.gui.ui.numCoresSlider.setValue(num_cores)
 
-    #############################
     def __loadMemoryConfig (self, config_desc):
         memTab = ["kB","MB", "GB"]
         self.gui.ui.maxResourceSizeComboBox.addItems(memTab)
@@ -84,12 +80,10 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex(index)
         self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
 
-    #############################
     def __loadTrustConfig(self, config_desc):
         self.__loadTrust(config_desc.computing_trust, self.gui.ui.computingTrustLineEdit, self.gui.ui.computingTrustSlider)
         self.__loadTrust(config_desc.requesting_trust, self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)
 
-    #############################
     def __loadTrust(self, value, lineEdit, slider):
         try:
             trust = max(min(int(round(value * 100)), 100), -100)
@@ -99,7 +93,6 @@ class ConfigurationDialogCustomizer:
         lineEdit.setText("{}".format(trust))
         slider.setValue(trust)
 
-    #############################
     def __loadAdvanceConfig(self, config_desc):
         self.gui.ui.optimalPeerNumLineEdit.setText(u"{}".format(config_desc.opt_num_peers))
 
@@ -124,7 +117,6 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.pluginPortLineEdit.setText(u"{}".format(config_desc.plugin_port))
         self.oldPluginPort = u"{}".format(config_desc.plugin_port)
 
-    #############################
     def __loadCheckBoxParam(self, param, checkBox, paramName = ''):
         try:
             param = int (param)
@@ -137,23 +129,19 @@ class ConfigurationDialogCustomizer:
             logger.error("Wrong configuration parameter {}: {}".format(paramName, param))
         checkBox.setChecked(checked)
 
-    #############################
     def __loadManagerConfig(self, config_desc):
         self.gui.ui.managerAddressLineEdit.setText(u"{}".format(config_desc.manager_address))
         self.gui.ui.managerPortLineEdit.setText(u"{}".format(config_desc.manager_port))
 
-    #############################
     def __loadPaymentConfig(self, config_desc):
         self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.eth_account))
 
-    #############################
     def __loadResourceConfig(self):
         resDirs = self.logic.get_res_dirs()
         self.gui.ui.computingResSize.setText(self.du(resDirs['computing']))
         self.gui.ui.distributedResSize.setText(self.du(resDirs['distributed']))
         self.gui.ui.receivedResSize.setText(self.du(resDirs['received']))
 
-    #############################
     def du(self, path):
         try:
             return subprocess.check_output(['du', '-sh', path]).split()[0]
@@ -166,12 +154,11 @@ class ConfigurationDialogCustomizer:
                 logger.error(str(err))
                 return "Error"
 
-    #############################
     def __setup_connections(self):
-        self.gui.ui.recountButton.clicked.connect(self.__recountPerformance)
+        self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
         self.gui.ui.buttonBox.accepted.connect (self.__change_config)
 
-        QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"), self.__recountPerformance)
+        QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"), self.__recount_performance)
 
         self.gui.ui.removeComputingButton.clicked.connect(self.__removeFromComputing)
         self.gui.ui.removeDistributedButton.clicked.connect(self.__removeFromDistributed)
@@ -182,7 +169,6 @@ class ConfigurationDialogCustomizer:
         QtCore.QObject.connect(self.gui.ui.requestingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"), self.__requestingTrustEdited)
         QtCore.QObject.connect(self.gui.ui.computingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"), self.__computingTrustEdited)
 
-    #############################
     def __removeFromComputing(self):
         reply = QMessageBox.question(self.gui.window, 'Golem Message', "Are you sure you want to remove all computed files?", QMessageBox.Yes | QMessageBox.No, defaultButton = QMessageBox.No)
         if reply == QMessageBox.Yes:
@@ -191,7 +177,6 @@ class ConfigurationDialogCustomizer:
         else:
             pass
 
-    #############################
     def __removeFromDistributed(self):
         reply = QMessageBox.question(self.gui.window, 'Golem Message', "Are you sure you want to remove all distributed resources?", QMessageBox.Yes | QMessageBox.No, defaultButton = QMessageBox.No)
         if reply == QMessageBox.Yes:
@@ -325,12 +310,12 @@ class ConfigurationDialogCustomizer:
         return trust
 
     #############################
-    def __recountPerformance(self):
+    def __recount_performance(self):
         try:
             num_cores = int(self.gui.ui.numCoresSlider.value())
         except:
             num_cores = 1
-        self.gui.ui.performanceLabel.setText(str(self.logic.recountPerformance(num_cores)))
+        self.gui.ui.performanceLabel.setText(str(self.logic.recount_performance(num_cores)))
 
     #############################
     def __readPaymentConfig(self, cfg_desc):

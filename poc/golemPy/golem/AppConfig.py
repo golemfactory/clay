@@ -86,6 +86,8 @@ class NodeConfig:
     PLUGIN_PORT = 1111
     ETH_ACCOUNT_NAME = ""
     USE_IP6 = 0
+    PRIVATE_KEY_FILE = ""
+    PUBLIC_KEY_FILE = ""
 
     def __init__(self, node_id, seed_host="", seed_port=0, root_path=DEFAULT_ROOT_PATH, num_cores=4,
                  max_resource_size=MAX_RESOURCE_SIZE, max_memory_size=MAX_MEMORY_SIZE,

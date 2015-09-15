@@ -94,12 +94,12 @@ class NewTaskDialogCustomizer:
             "Choose save file", "", "Golem Task (*.gt)")
 
         if file_name != '':
-            self._saveTask(file_name)
+            self._save_task(file_name)
 
     ############################
-    def _saveTask(self, file_path):
+    def _save_task(self, file_path):
         definition = self._queryTaskDefinition()
-        self.logic.saveTask(definition, file_path)
+        self.logic.save_task(definition, file_path)
 
     ############################
     def load_task_definition(self, task_definition):

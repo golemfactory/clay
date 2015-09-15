@@ -29,7 +29,7 @@ class TestSimpleHash(unittest.TestCase):
         self.assertEquals(b641, SimpleHash.hash_base64(ex1))
         self.assertEquals(b642, SimpleHash.hash_base64(ex2))
 
-    def testFileHash(self):
+    def test_fileHash(self):
         file_ = 'testSH.txt'
         b64 = "L9ThxnotKPzthJ7hu3bnORuT6xI=\n"
         self.assertEquals(b64, SimpleHash.hash_file_base64(file_))

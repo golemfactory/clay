@@ -338,7 +338,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.task_state.status = TaskStatus.notStarted
         self.task_state.definition = self._queryTaskDefinition()
 
-        if not self.logic.runTestTask(self.task_state):
+        if not self.logic.run_test_task(self.task_state):
             logger.error("Task not tested properly")
 
     #############################

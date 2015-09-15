@@ -97,7 +97,7 @@ class TestResourcesManager(unittest.TestCase):
         self.assertEqual(outDir, self.dir_manager.get_task_output_dir('task2'))
 
 
-        # def testFileDataReceived(self):
+        # def test_fileDataReceived(self):
         #     assert False
 
 
