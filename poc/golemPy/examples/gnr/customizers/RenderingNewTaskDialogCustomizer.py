@@ -3,17 +3,15 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
 from copy import deepcopy
 
-from examples.gnr.ui.AddTaskResourcesDialog import AddTaskResourcesDialog
 
 from examples.gnr.customizers.NewTaskDialogCustomizer import NewTaskDialogCustomizer
 
-from AddResourcesDialogCustomizer import AddResourcesDialogCustomizer
 from examples.gnr.RenderingTaskState import RenderingTaskState, RenderingTaskDefinition, \
     AdvanceRenderingVerificationOptions
 from golem.task.TaskState import TaskStatus
-from TimeHelper import setTimeSpinBoxes, getTimeValues
-from VerificationParamsHelper import readAdvanceVerificationParams, setVerificationWidgetsState, loadVerificationParams, \
-    verificationRandomChanged
+from TimeHelper import set_time_spin_boxes
+from VerificationParamsHelper import read_advance_verification_params, set_verification_widgets_state, \
+    load_verification_params, verification_random_changed
 
 import logging
 
@@ -21,36 +19,36 @@ logger = logging.getLogger(__name__)
 
 
 class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
-    #############################
+
+    def __init__(self, gui, logic):
+        self.renderer_options = None
+        NewTaskDialogCustomizer.__init__(self, gui, logic)
+
     def _setup_connections(self):
         NewTaskDialogCustomizer._setup_connections(self)
         self._setup_renderers_connections()
         self._setup_output_connections()
         self._setup_verification_connections()
 
-    #############################
     def _setup_task_type_connections(self):
         pass
 
-    #############################
     def _setup_renderers_connections(self):
         QtCore.QObject.connect(self.gui.ui.rendererComboBox, QtCore.SIGNAL("currentIndexChanged(const QString)"),
                                self.__renderer_combo_box_value_changed)
-        self.gui.ui.chooseMainSceneFileButton.clicked.connect(self._chooseMainSceneFileButtonClicked)
+        self.gui.ui.chooseMainSceneFileButton.clicked.connect(self._choose_main_scene_file_button_clicked)
 
-    #############################
     def _setup_output_connections(self):
-        self.gui.ui.chooseOutputFileButton.clicked.connect(self.__chooseOutputFileButtonClicked)
+        self.gui.ui.chooseOutputFileButton.clicked.connect(self.__choose_output_file_button_clicked)
         QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
                                self.__res_x_changed)
         QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
                                self.__res_y_changed)
 
-    #############################
     def _setup_advance_new_task_connections(self):
         NewTaskDialogCustomizer._setup_advance_new_task_connections(self)
-        self.gui.ui.testTaskButton.clicked.connect(self.__testTaskButtonClicked)
-        self.gui.ui.resetToDefaultButton.clicked.connect(self.__resetToDefaultButtonClicked)
+        self.gui.ui.testTaskButton.clicked.connect(self.__test_task_button_clicked)
+        self.gui.ui.resetToDefaultButton.clicked.connect(self.__reset_to_default_button_clicked)
 
         QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutHourSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
                                self.__task_settings_changed)
@@ -91,16 +89,14 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         QtCore.QObject.connect(self.gui.ui.probabilityLineEdit, QtCore.SIGNAL("valueChanged(const QString)"),
                                self.__task_settings_changed)
 
-    #############################
     def _setup_verification_connections(self):
         QtCore.QObject.connect(self.gui.ui.verificationRandomRadioButton, QtCore.SIGNAL("toggled(bool)"),
                                self.__verification_random_changed)
         QtCore.QObject.connect(self.gui.ui.advanceVerificationCheckBox, QtCore.SIGNAL("stateChanged(int)"),
                                self.__advance_verification_changed)
 
-    #############################
     def _init(self):
-        self._setUid()
+        self._set_uid()
 
         renderers = self.logic.get_renderers()
         dr = self.logic.get_default_renderer()
@@ -124,23 +120,21 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.verificationSizeXSpinBox.setMaximum(dr.defaults.resolution[0])
         self.gui.ui.verificationSizeYSpinBox.setMaximum(dr.defaults.resolution[1])
 
-    #############################
-    def _chooseMainSceneFileButtonClicked(self):
+    def _choose_main_scene_file_button_clicked(self):
         scene_file_ext = self.logic.get_current_renderer().scene_file_ext
 
-        outputFileTypes = " ".join([u"*.{}".format(ext) for ext in scene_file_ext])
-        filter = u"Scene files ({})".format(outputFileTypes)
+        output_file_types = " ".join([u"*.{}".format(ext) for ext in scene_file_ext])
+        filter_ = u"Scene files ({})".format(output_file_types)
 
-        dir = os.path.dirname(u"{}".format(self.gui.ui.mainSceneFileLineEdit.text()))
+        dir_ = os.path.dirname(u"{}".format(self.gui.ui.mainSceneFileLineEdit.text()))
 
         file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
-                                                             "Choose main scene file", dir, filter))
+                                                             "Choose main scene file", dir_, filter_))
 
         if file_name != '':
             self.gui.ui.mainSceneFileLineEdit.setText(file_name)
 
-    #############################
-    def __updateRendererOptions(self, name):
+    def __update_renderer_options(self, name):
         r = self.logic.get_renderer(name)
 
         if r:
@@ -156,7 +150,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
             self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
 
-            setTimeSpinBoxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout,
+            set_time_spin_boxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout,
                              r.defaults.min_subtask_time)
 
             self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
@@ -164,7 +158,6 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         else:
             assert False, "Unreachable"
 
-    #############################
     def __reset_to_defaults(self):
         dr = self.__get_current_renderer()
 
@@ -180,7 +173,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
         self.gui.ui.mainProgramFileLineEdit.setText(dr.defaults.main_program_file)
 
-        setTimeSpinBoxes(self.gui, dr.defaults.full_task_timeout, dr.defaults.subtask_timeout,
+        set_time_spin_boxes(self.gui, dr.defaults.full_task_timeout, dr.defaults.subtask_timeout,
                          dr.defaults.min_subtask_time)
 
         self.gui.ui.outputFileLineEdit.clear()
@@ -190,12 +183,12 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
         self.gui.ui.mainSceneFileLineEdit.clear()
 
-        if self.addTaskResourceDialog:
-            self.addTaskResourcesDialogCustomizer.resources = set()
-            self.addTaskResourceDialog.ui.folderTreeView.model().addStartFiles([])
-            self.addTaskResourceDialog.ui.folderTreeView.model().checks = {}
+        if self.add_task_resource_dialog:
+            self.add_task_resource_dialog_customizer.resources = set()
+            self.add_task_resource_dialog.ui.folderTreeView.model().addStartFiles([])
+            self.add_task_resource_dialog.ui.folderTreeView.model().checks = {}
 
-        self._changeFinishState(False)
+        self._change_finish_state(False)
 
         self.gui.ui.totalSpinBox.setRange(dr.defaults.min_subtasks, dr.defaults.max_subtasks)
         self.gui.ui.totalSpinBox.setValue(dr.defaults.default_subtasks)
@@ -214,72 +207,66 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
         self.__setupNewTaskDialogConnections(self.gui.ui)
 
-        self.gui.ui.taskIdLabel.setText(self._generateNewTaskUID())
+        self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())
 
         for k in renderers:
             r = renderers[k]
             self.gui.ui.rendererComboBox.addItem(r.name)
 
     def __renderer_combo_box_value_changed(self, name):
-        self.__updateRendererOptions("{}".format(name))
+        self.__update_renderer_options("{}".format(name))
 
     def __task_settings_changed(self, name=None):
-        self._changeFinishState(False)
+        self._change_finish_state(False)
 
-    #############################
-    def __chooseOutputFileButtonClicked(self):
+    def __choose_output_file_button_clicked(self):
 
-        outputFileType = u"{}".format(self.gui.ui.outputFormatsComboBox.currentText())
-        filter = u"{} (*.{})".format(outputFileType, outputFileType)
+        output_file_type = u"{}".format(self.gui.ui.outputFormatsComboBox.currentText())
+        filter_ = u"{} (*.{})".format(output_file_type, output_file_type)
 
-        dir = os.path.dirname(u"{}".format(self.gui.ui.outputFileLineEdit.text()))
+        dir_ = os.path.dirname(u"{}".format(self.gui.ui.outputFileLineEdit.text()))
 
         file_name = u"{}".format(QFileDialog.getSaveFileName(self.gui.window,
-                                                             "Choose output file", dir, filter))
+                                                             "Choose output file", dir_, filter_))
 
         if file_name != '':
             self.gui.ui.outputFileLineEdit.setText(file_name)
-            self._changeFinishState(False)
+            self._change_finish_state(False)
 
-    def _changeFinishState(self, state):
+    def _change_finish_state(self, state):
         self.gui.ui.finishButton.setEnabled(state)
         self.gui.ui.testTaskButton.setEnabled(not state)
 
-    #############################
-    def _chooseMainProgramFileButtonClicked(self):
+    def _choose_main_program_file_button_clicked(self):
 
-        dir = os.path.dirname(u"{}".format(self.gui.ui.mainProgramFileLineEdit.text()))
+        dir_ = os.path.dirname(u"{}".format(self.gui.ui.mainProgramFileLineEdit.text()))
 
         file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
-                                                             "Choose main program file", dir, "Python (*.py)"))
+                                                             "Choose main program file", dir_, "Python (*.py)"))
 
         if file_name != '':
             self.gui.ui.mainProgramFileLineEdit.setText(file_name)
-            self._changeFinishState(False)
+            self._change_finish_state(False)
 
-    ############################
-    def _showAddResourcesDialog(self):
-        NewTaskDialogCustomizer._showAddResourcesDialog(self)
-        self._changeFinishState(False)
+    def _show_add_resource_dialog(self):
+        NewTaskDialogCustomizer._show_add_resource_dialog(self)
+        self._change_finish_state(False)
 
-    ############################
     def load_task_definition(self, task_definition):
         assert isinstance(task_definition, RenderingTaskDefinition)
 
         definition = deepcopy(task_definition)
-        self.gui.ui.taskIdLabel.setText(self._generateNewTaskUID())
+        self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())
 
-        self._loadBasicTaskParams(definition)
-        self._loadRendererParams(definition)
-        self._loadAdvanceTaskParams(definition)
-        self._loadResources(definition)
-        self._loadVerificationParams(definition)
+        self._load_basic_task_params(definition)
+        self._load_renderer_params(definition)
+        self._load_advance_task_params(definition)
+        self._load_resources(definition)
+        self._load_verification_params(definition)
 
-    ########################
-    def _loadOptions(self, definition):
+    def _load_options(self, definition):
         pass
 
-    ############################
     def _load_task_type(self, definition):
         renderer_item = self.gui.ui.rendererComboBox.findText(definition.renderer)
         if renderer_item >= 0:
@@ -288,8 +275,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             logger.error("Cannot load task, wrong renderer")
             return
 
-    ############################
-    def _loadRendererParams(self, definition):
+    def _load_renderer_params(self, definition):
         self.renderer_options = deepcopy(definition.renderer_options)
 
         self.gui.ui.outputResXSpinBox.setValue(definition.resolution[0])
@@ -308,78 +294,65 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             definition.resources.remove(os.path.normpath(definition.main_scene_file))
         definition.resources = definition.renderer_options.remove_from_resources(definition.resources)
 
-    ############################
-    def _loadBasicTaskParms(self, definition):
+    def _load_basic_task_params(self, definition):
         r = self.logic.get_renderer(definition.renderer)
         self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
-        NewTaskDialogCustomizer._loadBasicTaskParams(definition)
+        NewTaskDialogCustomizer._load_basic_task_params(definition)
 
-    ############################
-    def _loadResources(self, definition):
+    def _load_resources(self, definition):
         if os.path.normpath(definition.main_scene_file) in definition.resources:
             definition.resources.remove(os.path.normpath(definition.main_scene_file))
         definition.resources = definition.renderer_options.remove_from_resources(definition.resources)
 
-        NewTaskDialogCustomizer._loadResources(self, definition)
+        NewTaskDialogCustomizer._load_resources(self, definition)
 
         self.gui.ui.mainSceneFileLineEdit.setText(definition.main_scene_file)
 
-    ############################
-    def _loadVerificationParams(self, definition):
-        loadVerificationParams(self.gui, definition)
+    def _load_verification_params(self, definition):
+        load_verification_params(self.gui, definition)
 
-    ############################
-    def __setVerificationWidgetsState(self, state):
-        setVerificationWidgetsState(self.gui, state)
+    def __set_verification_widgets_state(self, state):
+        set_verification_widgets_state(self.gui, state)
 
-    ############################
-    def __testTaskButtonClicked(self):
+    def __test_task_button_clicked(self):
         self.task_state = RenderingTaskState()
         self.task_state.status = TaskStatus.notStarted
-        self.task_state.definition = self._queryTaskDefinition()
+        self.task_state.definition = self._query_task_definition()
 
         if not self.logic.run_test_task(self.task_state):
             logger.error("Task not tested properly")
 
-    #############################
-    def test_taskComputationFinished(self, success, est_mem):
+    def test_task_computation_finished(self, success, est_mem):
         if success:
             self.task_state.definition.estimated_memory = est_mem
-            self._changeFinishState(True)
+            self._change_finish_state(True)
 
-    #############################
-    def _finishButtonClicked(self):
-        self._addCurrentTask()
+    def _finish_button_clicked(self):
+        self._add_current_task()
 
-    #############################
-    def _cancelButtonClicked(self):
+    def _cancel_button_clicked(self):
         self.__reset_to_defaults()
-        NewTaskDialogCustomizer._cancelButtonClicked(self)
+        NewTaskDialogCustomizer._cancel_button_clicked(self)
 
-    #############################
-    def __resetToDefaultButtonClicked(self):
+    def __reset_to_default_button_clicked(self):
         self.__reset_to_defaults()
 
-    #############################
     def __get_current_renderer(self):
         index = self.gui.ui.rendererComboBox.currentIndex()
-        rendererName = self.gui.ui.rendererComboBox.itemText(index)
-        return self.logic.get_renderer(u"{}".format(rendererName))
+        renderer_name = self.gui.ui.rendererComboBox.itemText(index)
+        return self.logic.get_renderer(u"{}".format(renderer_name))
 
-    #############################
-    def _queryTaskDefinition(self):
+    def _query_task_definition(self):
         definition = RenderingTaskDefinition()
-        definition = self._readBasicTaskParams(definition)
+        definition = self._read_basic_task_params(definition)
         definition = self._read_renderer_params(definition)
-        definition = self._readAdvanceVerificationParams(definition)
+        definition = self._read_advance_verification_params(definition)
 
         return definition
 
-    #############################
-    def _readTaskType(self):
+    def _read_task_type(self):
         pass
 
-    #############################
     def _read_renderer_params(self, definition):
         definition.renderer = self.__get_current_renderer().name
         definition.renderer_options = deepcopy(self.renderer_options)
@@ -388,31 +361,28 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         definition.output_format = u"{}".format(
             self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
 
-        if self.addTaskResourcesDialogCustomizer:
+        if self.add_task_resource_dialog_customizer:
             definition.resources = self.renderer_options.add_to_resources(definition.resources)
 
             definition.main_scene_file = u"{}".format(self.gui.ui.mainSceneFileLineEdit.text())
             definition.resources.add(os.path.normpath(definition.main_scene_file))
         return definition
 
-    #############################
-    def _readAdvanceVerificationParams(self, definition):
-        return readAdvanceVerificationParams(self.gui, definition)
+    def _read_advance_verification_params(self, definition):
+        return read_advance_verification_params(self.gui, definition)
 
-    #############################
-    def _optimizeTotalCheckBoxChanged(self):
-        NewTaskDialogCustomizer._optimizeTotalCheckBoxChanged(self)
+    def _optimize_total_check_box_changed(self):
+        NewTaskDialogCustomizer._optimize_total_check_box_changed(self)
         self.__task_settings_changed()
 
-    #############################
-    def _openOptions(self):
-        rendererName = self.gui.ui.rendererComboBox.itemText(self.gui.ui.rendererComboBox.currentIndex())
-        renderer = self.logic.get_renderer(u"{}".format(rendererName))
+    def _open_options(self):
+        renderer_name = self.gui.ui.rendererComboBox.itemText(self.gui.ui.rendererComboBox.currentIndex())
+        renderer = self.logic.get_renderer(u"{}".format(renderer_name))
         dialog = renderer.dialog
         dialog_customizer = renderer.dialog_customizer
-        rendererDialog = dialog(self.gui.window)
-        rendererDialogCustomizer = dialog_customizer(rendererDialog, self.logic, self)
-        rendererDialog.show()
+        renderer_dialog = dialog(self.gui.window)
+        dialog_customizer(renderer_dialog, self.logic, self)
+        renderer_dialog.show()
 
     def set_renderer_options(self, options):
         self.renderer_options = options
@@ -423,7 +393,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
     def __advance_verification_changed(self):
         state = self.gui.ui.advanceVerificationCheckBox.isChecked()
-        self.__setVerificationWidgetsState(state)
+        self.__set_verification_widgets_state(state)
         self.__task_settings_changed()
 
     def __res_x_changed(self):
@@ -435,5 +405,5 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.__task_settings_changed()
 
     def __verification_random_changed(self):
-        verificationRandomChanged(self.gui)
+        verification_random_changed(self.gui)
         self.__task_settings_changed()

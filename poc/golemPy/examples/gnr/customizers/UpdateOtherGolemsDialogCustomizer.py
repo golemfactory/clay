@@ -7,8 +7,9 @@ import os
 
 logger = logging.getLogger(__name__)
 
+
 class UpdateOtherGolemsDialogCustomizer:
-    #############################
+
     def __init__(self, gui, logic):
 
         assert isinstance(gui, UpdateOtherGolemsDialog)
@@ -19,7 +20,6 @@ class UpdateOtherGolemsDialogCustomizer:
 
         self.__setup_connections()
 
-    #############################
     def __setup_connections(self):
         self.gui.ui.folderButton.clicked.connect(self.__choose_src_folder)
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__update_other_golems())
@@ -32,7 +32,6 @@ class UpdateOtherGolemsDialogCustomizer:
         if dir is not None:
             self.golem_dir = dir
             self.gui.ui.srcDirLineEdit.setText("{}".format(self.golem_dir))
-
 
     def __update_other_golems(self):
         if not os.path.isdir(self.golem_dir):

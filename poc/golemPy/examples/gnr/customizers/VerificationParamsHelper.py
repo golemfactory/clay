@@ -5,8 +5,8 @@ from examples.gnr.RenderingTaskState import AdvanceRenderingVerificationOptions
 
 logger = logging.getLogger(__name__)
 
-#############################
-def readAdvanceVerificationParams(gui, definition):
+
+def read_advance_verification_params(gui, definition):
     if gui.ui.advanceVerificationCheckBox.isChecked():
         definition.verification_options = AdvanceRenderingVerificationOptions()
         if gui.ui.verificationForAllRadioButton.isChecked():
@@ -33,8 +33,8 @@ def readAdvanceVerificationParams(gui, definition):
 
     return definition
 
-#############################
-def setVerificationWidgetsState(gui, state):
+
+def set_verification_widgets_state(gui, state):
     gui.ui.verificationForAllRadioButton.setEnabled(state)
     gui.ui.verificationForFirstRadioButton.setEnabled(state)
     gui.ui.verificationSizeXSpinBox.setEnabled(state)
@@ -42,11 +42,12 @@ def setVerificationWidgetsState(gui, state):
     gui.ui.verificationRandomRadioButton.setEnabled(state)
     gui.ui.probabilityLabel.setEnabled(state and gui.ui.verificationRandomRadioButton.isChecked())
     gui.ui.probabilityLineEdit.setEnabled(state and gui.ui.verificationRandomRadioButton.isChecked())
-    
-def loadVerificationParams(gui, definition):
+
+
+def load_verification_params(gui, definition):
     enabled = definition.verification_options is not None
 
-    setVerificationWidgetsState(gui, enabled)
+    set_verification_widgets_state(gui, enabled)
     if enabled:
         gui.ui.advanceVerificationCheckBox.setCheckState(QtCore.Qt.Checked)
         gui.ui.verificationSizeXSpinBox.setValue(definition.verification_options.box_size[0])
@@ -61,8 +62,8 @@ def loadVerificationParams(gui, definition):
     else:
         gui.ui.advanceVerificationCheckBox.setCheckState(QtCore.Qt.Unchecked)
 
-#############################
-def verificationRandomChanged(gui):
-    randSet =  gui.ui.verificationRandomRadioButton.isChecked()
-    gui.ui.probabilityLineEdit.setEnabled(randSet)
-    gui.ui.probabilityLabel.setEnabled(randSet)
+
+def verification_random_changed(gui):
+    rand_set = gui.ui.verificationRandomRadioButton.isChecked()
+    gui.ui.probabilityLineEdit.setEnabled(rand_set)
+    gui.ui.probabilityLabel.setEnabled(rand_set)

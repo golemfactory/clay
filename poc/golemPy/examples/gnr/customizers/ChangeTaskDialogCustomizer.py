@@ -4,7 +4,7 @@ from PyQt4.QtGui import QFileDialog
 
 from examples.gnr.ui.ChangeTaskDialog import ChangeTaskDialog
 from examples.gnr.RenderingTaskState import RenderingTaskDefinition
-from TimeHelper import setTimeSpinBoxes, getTimeValues
+from TimeHelper import set_time_spin_boxes, get_time_values
 
 import logging
 
@@ -22,11 +22,11 @@ class ChangeTaskDialogCustomizer:
     ############################
     def __setup_connections(self):
         self.gui.ui.saveButton.clicked.connect(self.__saveButtonClicked)
-        self.gui.ui.cancelButton.clicked.connect(self.__cancelButtonClicked)
+        self.gui.ui.cancelButton.clicked.connect(self.__cancel_button_clicked)
 
     ############################
     def __saveButtonClicked(self):
-        full_task_timeout, subtask_timeout, min_subtask_time = getTimeValues(self.gui)
+        full_task_timeout, subtask_timeout, min_subtask_time = get_time_values(self.gui)
         self.logic.change_timeouts(u"{}".format(self.gui.ui.taskIdLabel.text()), full_task_timeout, subtask_timeout, min_subtask_time)
         self.gui.window.close()
 
@@ -35,9 +35,9 @@ class ChangeTaskDialogCustomizer:
         assert isinstance(definition, RenderingTaskDefinition)
 
         self.gui.ui.taskIdLabel.setText(u"{}".format(definition.task_id))
-        setTimeSpinBoxes(self.gui, definition.full_task_timeout, definition.subtask_timeout, definition.min_subtask_time)
+        set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout, definition.min_subtask_time)
 
     #############################
-    def __cancelButtonClicked(self):
+    def __cancel_button_clicked(self):
         self.gui.window.close()
 

@@ -34,6 +34,7 @@ class KeysAuth(object):
         self._private_key = self._load_private_key(str(uuid))
         self.public_key = self._load_public_key(str(uuid))
         self.key_id = self.cnt_key_id(self.public_key)
+        self.uuid = uuid
 
     def get_difficulty(self):
         """ Count key_id difficulty in hashcash-like puzzle
@@ -97,6 +98,24 @@ class KeysAuth(object):
         return sig == data
 
     @abc.abstractmethod
+    def load_from_file(self, file_name):
+        """ Load private key from given file. If it's proper key, then generate public key and
+        save both in default files
+        :param str file_name: file containing private key
+        :return bool: information if keys have been changed
+        """
+        return False
+
+    @abc.abstractmethod
+    def save_to_files(self, private_key_loc, public_key_loc):
+        """ Save current pair of keys in given locations
+        :param str private_key_loc: where should private key be saved
+        :param str public_key_loc: where should public key be saved
+        :return boolean: return True if keys have been saved, False otherwise
+        """
+        return False
+
+    @abc.abstractmethod
     def generate_new(self, difficulty):
         """ Generate new pair of keys with given difficulty
         :param int difficulty: desired key difficulty level
@@ -155,7 +174,7 @@ class RSAKeysAuth(KeysAuth):
     def verify(self, sig, data, public_key=None):
         """
         Verify the validity of an RSA signature
-        :param str sig: RSA signture
+        :param str sig: RSA signature
         :param str data: expected data
         :param None|_RSAobj public_key: *Default: None* public key that should be used to verify signed data.
             If public key is None then default public key will be used
@@ -165,10 +184,9 @@ class RSAKeysAuth(KeysAuth):
             public_key = self.public_key
         return public_key.verify(data, sig)
 
-    def generate_new(self, difficulty, uuid):
+    def generate_new(self, difficulty):
         """ Generate new pair of keys with given difficulty
         :param int difficulty: desired key difficulty level
-        :param uuid: node's id
         """
         min_hash = self._count_min_hash(difficulty)
         priv_key = RSA.generate(2048)
@@ -176,13 +194,55 @@ class RSAKeysAuth(KeysAuth):
         while sha2(pub_key) > min_hash:
             priv_key = RSA.generate(2048)
             pub_key = priv_key.publickey()
-        priv_key_loc = RSAKeysAuth._get_private_key_loc(uuid)
-        pub_key_loc = RSAKeysAuth._get_public_key_loc(uuid)
+        priv_key_loc = RSAKeysAuth._get_private_key_loc(self.uuid)
+        pub_key_loc = RSAKeysAuth._get_public_key_loc(self.uuid)
         with open(priv_key_loc, 'w') as f:
             f.write(priv_key.exportKey('PEM'))
         with open(pub_key_loc, 'w') as f:
             f.write(pub_key.exportKey())
 
+    def load_from_file(self, file_name):
+        """ Load private key from given file. If it's proper key, then generate public key and
+        save both in default files
+        :param str file_name: file containing private key
+        :return bool: information if keys have been changed
+        """
+        priv_key = RSAKeysAuth._load_private_key_from_file(file_name)
+        if priv_key is None:
+            return False
+        try:
+            pub_key = priv_key.publickey()
+        except (AssertionError, AttributeError):
+            return False
+        self._set_and_save(priv_key, pub_key)
+        return True
+
+    def save_to_files(self, private_key_loc, public_key_loc):
+        """ Save current pair of keys in given locations
+        :param str private_key_loc: where should private key be saved
+        :param str public_key_loc: where should public key be saved
+        :return boolean: return True if keys have been saved, False otherwise
+        """
+        try:
+            with open(private_key_loc, 'w') as f:
+                f.write(self._private_key.exportKey('PEM'))
+            with open(public_key_loc, 'w') as f:
+                f.write(self.public_key.exportKey())
+                return True
+        except IOError:
+            return False
+
+    @staticmethod
+    def _load_private_key_from_file(file_name):
+        if not os.path.isfile(file_name):
+            return None
+        try:
+            with open(file_name) as f:
+                key = f.read()
+            key = RSA.importKey(key)
+        except (ValueError, IndexError, TypeError, IOError):
+            return None
+        return key
 
     @staticmethod
     def _get_private_key_loc(uuid):
@@ -232,6 +292,17 @@ class RSAKeysAuth(KeysAuth):
             f.write(key.exportKey('PEM'))
         with open(public_key, 'w') as f:
             f.write(pub_key.exportKey())
+
+    def _set_and_save(self, private_key, public_key):
+        self._private_key = private_key
+        self.public_key = public_key
+        self.key_id = self.cnt_key_id(self.public_key)
+        private_key_loc = RSAKeysAuth._get_private_key_loc(self.uuid)
+        public_key_loc = RSAKeysAuth._get_public_key_loc(self.uuid)
+        with open(private_key_loc, 'w') as f:
+            f.write(private_key.exportKey('PEM'))
+        with open(public_key_loc, 'w') as f:
+            f.write(public_key.exportKey())
 
 
 class EllipticalKeysAuth(KeysAuth):
@@ -297,10 +368,9 @@ class EllipticalKeysAuth(KeysAuth):
         ecc = ECCx(public_key)
         return ecc.verify(sig, data)
 
-    def generate_new(self, difficulty, uuid):
+    def generate_new(self, difficulty):
         """ Generate new pair of keys with given difficulty
         :param int difficulty: desired key difficulty level
-        :param uuid: node's id
         """
         min_hash = self._count_min_hash(difficulty)
         priv_key = mk_privkey(str(random()))
@@ -308,16 +378,46 @@ class EllipticalKeysAuth(KeysAuth):
         while sha2(self.cnt_key_id(pub_key)) > min_hash:
             priv_key = mk_privkey(str(random()))
             pub_key = privtopub(priv_key)
-        priv_key_loc = EllipticalKeysAuth._get_private_key_loc(uuid)
-        pub_key_loc = EllipticalKeysAuth._get_public_key_loc(uuid)
-        with open(priv_key_loc, 'wb') as f:
-            f.write(priv_key)
-        with open(pub_key_loc, 'wb') as f:
-            f.write(pub_key)
+        self._set_and_save(priv_key, pub_key)
+
+    def load_from_file(self, file_name):
+        """ Load private key from given file. If it's proper key, then generate public key and
+        save both in default files
+        :param str file_name: file containing private key
+        :return bool: information if keys have been changed
+        """
+        priv_key = EllipticalKeysAuth._load_private_key_from_file(file_name)
+        if priv_key is None:
+            return False
+        try:
+            pub_key = privtopub(priv_key)
+        except AssertionError:
+            return False
+        self._set_and_save(priv_key, pub_key)
+        return True
+
+    def save_to_files(self, private_key_loc, public_key_loc):
+        """ Save current pair of keys in given locations
+        :param str private_key_loc: where should private key be saved
+        :param str public_key_loc: where should public key be saved
+        :return boolean: return True if keys have been saved, False otherwise
+        """
+        try:
+            with open(private_key_loc, 'wb') as f:
+                f.write(self._private_key)
+            with open(public_key_loc, 'wb') as f:
+                f.write(self.public_key)
+            return True
+        except IOError:
+            return False
+
+    def _set_and_save(self, priv_key, pub_key):
+        priv_key_loc = EllipticalKeysAuth._get_private_key_loc(self.uuid)
+        pub_key_loc = EllipticalKeysAuth._get_public_key_loc(self.uuid)
         self._private_key = priv_key
         self.public_key = pub_key
         self.key_id = self.cnt_key_id(pub_key)
-
+        self.save_to_files(priv_key_loc, pub_key_loc)
 
     @staticmethod
     def _get_private_key_loc(uuid):
@@ -335,6 +435,14 @@ class EllipticalKeysAuth(KeysAuth):
         else:
             return os.path.normpath(
                 os.path.join(os.environ.get('GOLEM'), 'examples/gnr/node_data/golem_public_key{}'.format(uuid)))
+
+    @staticmethod
+    def _load_private_key_from_file(file_name):
+        if not os.path.isfile(file_name):
+            return None
+        with open(file_name) as f:
+            key = f.read()
+        return key
 
     @staticmethod
     def _load_private_key(uuid=None):

@@ -26,9 +26,9 @@ class PbrtDialogCustomizer:
 
         self.gui.ui.pixelFilterComboBox.clear()
         self.gui.ui.pixelFilterComboBox.addItems(self.renderer_options.filters)
-        pixel_filterItem = self.gui.ui.pixelFilterComboBox.findText(self.renderer_options.pixel_filter)
-        if pixel_filterItem >= 0:
-            self.gui.ui.pixelFilterComboBox.setCurrentIndex(pixel_filterItem)
+        pixel_filter_item = self.gui.ui.pixelFilterComboBox.findText(self.renderer_options.pixel_filter)
+        if pixel_filter_item >= 0:
+            self.gui.ui.pixelFilterComboBox.setCurrentIndex(pixel_filter_item)
 
         self.gui.ui.pathTracerComboBox.clear()
         self.gui.ui.pathTracerComboBox.addItems(self.renderer_options.path_tracers)
@@ -46,7 +46,7 @@ class PbrtDialogCustomizer:
     def __setup_connections(self):
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__change_renderer_options())
-        self.gui.ui.pbrtPathButton.clicked.connect(self.__choosePbrtPath)
+        self.gui.ui.pbrtPathButton.clicked.connect(self.__choose_pbrt_path)
 
     #############################
     def __change_renderer_options(self):
@@ -58,7 +58,7 @@ class PbrtDialogCustomizer:
         self.gui.window.close()
 
     #############################
-    def __choosePbrtPath(self):
+    def __choose_pbrt_path(self):
         dir = os.path.dirname(u"{}".format(self.gui.ui.pbrtPathLineEdit.text()))
         file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window, "Choose pbrt file", dir, ""))
         if file_name != '':

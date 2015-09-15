@@ -59,7 +59,7 @@ class VRayDialogCustomizer:
             logger.error("Wrong rt_engine value: {}".format(rt_engine))
         self.renderer_options.use_frames = self.gui.ui.framesCheckBox.isChecked()
         if self.renderer_options.use_frames:
-            frames = self.__stringToFrames(self.gui.ui.framesLineEdit.text())
+            frames = self.__string_to_frames(self.gui.ui.framesLineEdit.text())
             if not frames:
                 QMessageBox().critical(None, "Error", "Wrong frame format. Frame list expected, e.g. 1;3;5-12. ")
                 return
@@ -100,12 +100,11 @@ class VRayDialogCustomizer:
 
         return s
 
-    #############################
-    def __stringToFrames(self, s):
+    def __string_to_frames(self, s):
         try:
             frames = []
-            splitted = s.split(";")
-            for i in splitted:
+            after_split = s.split(";")
+            for i in after_split:
                 inter = i.split("-")
                 if len (inter) == 1:      # pojedyncza klatka (np. 5)
                     frames.append(int (inter[0]))
