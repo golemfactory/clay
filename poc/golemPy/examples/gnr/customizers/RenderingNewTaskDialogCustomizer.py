@@ -297,7 +297,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def _load_basic_task_params(self, definition):
         r = self.logic.get_renderer(definition.renderer)
         self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
-        NewTaskDialogCustomizer._load_basic_task_params(definition)
+        NewTaskDialogCustomizer._load_basic_task_params(self, definition)
 
     def _load_resources(self, definition):
         if os.path.normpath(definition.main_scene_file) in definition.resources:

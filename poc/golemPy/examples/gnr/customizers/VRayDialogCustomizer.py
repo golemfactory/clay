@@ -40,8 +40,7 @@ class VRayDialogCustomizer:
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__change_renderer_options())
 
-        QtCore.QObject.connect(self.gui.ui.framesCheckBox, QtCore.SIGNAL("stateChanged(int) "),
-                                self.__frames_check_box_changed)
+        QtCore.QObject.connect(self.gui.ui.framesCheckBox, QtCore.SIGNAL("stateChanged(int) "), self.__frames_check_box_changed)
 
     def __frames_check_box_changed(self):
         self.gui.ui.framesLineEdit.setEnabled(self.gui.ui.framesCheckBox.isChecked())

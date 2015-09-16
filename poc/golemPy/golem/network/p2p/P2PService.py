@@ -6,7 +6,8 @@ from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress, SafeProtocol
 from golem.network.transport.tcp_server import TCPServer, PendingConnectionsServer, PenConnStatus
 from golem.network.p2p.peer_session import PeerSession
-from golem.core.variables import REFRESH_PEERS_TIMEOUT, LAST_MESSAGE_BUFFER_LEN
+from golem.core.variables import REFRESH_PEERS_TIMEOUT, LAST_MESSAGE_BUFFER_LEN, SOLVE_CHALLENGE, BASE_DIFFICULTY
+from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
 from golem.ranking.gossip_keeper import GossipKeeper
 
 from PeerKeeper import PeerKeeper
@@ -41,6 +42,10 @@ class P2PService(PendingConnectionsServer):
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
         self.last_message_buffer_len = LAST_MESSAGE_BUFFER_LEN
         self.refresh_peers_timeout = REFRESH_PEERS_TIMEOUT
+        self.should_solve_challenge = SOLVE_CHALLENGE
+        self.challenge_history = []
+        self.last_challenge = ""
+        self.base_difficulty = BASE_DIFFICULTY
 
         # TODO: all peers powinno zostac przeniesione do peer keepera
         # Peers options
@@ -255,12 +260,47 @@ class P2PService(PendingConnectionsServer):
         except Exception, err:
             logger.error("Wrong task representation: {}".format(str(err)))
 
-    def get_listen_params(self):
+    def get_listen_params(self, key_id, rand_val):
         """ Return parameters that are needed for listen function in tuple
-        :return int, str, str, Node: this node listen port, this node id, this node public key,
-        information about this node
+        :param str|None key_id: key id of a node with whom we want to connect
+        :param int rand_val: session random value
+        :return (int, str, str, Node, int, bool) | (int, str, str, Node, int, bool, str, int) : this node listen port,
+        this node id, this node public key, information about this node, random value, information wheter
+        other node should solve cryptographic challenge, (optional: cryptographic challenge),
+        (optional: cryptographic challenge difficulty)
         """
-        return self.cur_port, self.client_uid, self.keys_auth.get_key_id(), self.node
+        if key_id:
+            should_solve_challenge = self.should_solve_challenge
+        else:
+            should_solve_challenge = False
+        listen_params = (self.cur_port, self.client_uid, self.keys_auth.get_key_id(), self.node, rand_val,
+                         should_solve_challenge)
+        if should_solve_challenge:
+            listen_params += (self._get_challenge(key_id), self._get_difficulty(key_id))
+
+        return listen_params
+
+    def check_solution(self, solution, challenge, difficulty):
+        """
+        Check wheter solution is valid for given challenge and it's difficulty
+        :param str solution: solution to check
+        :param str challenge: solved puzzle
+        :param int difficulty: difficulty of a challenge
+        :return boolean: true if challenge has been correctly solved, false otherwise
+        """
+        return accept_challenge(challenge, solution, difficulty)
+
+    def solve_challenge(self, key_id, challenge, difficulty):
+        """ Solve challenge with given difficulty for a node with key_id
+        :param str key_id: key id of a node that has send this challenge
+        :param str challenge: puzzle to solve
+        :param int difficulty: difficulty of challenge
+        :return str: solution of a challenge
+        """
+        self.challenge_history.append([key_id, challenge])
+        solution, time_ = solve_challenge(challenge, difficulty)
+        logger.debug("Solved challenge with difficulty {} in {} sec".format(difficulty, time_))
+        return solution
 
     def get_peers_degree(self):
         """ Return peers degree level
@@ -601,6 +641,14 @@ class P2PService(PendingConnectionsServer):
         self.conn_final_failure_for_type.update({
             P2PConnTypes.Start: P2PService.__connection_final_failure
         })
+
+    # In the future it may be changed to something more flexible and more connected with key_id
+    def _get_difficulty(self, key_id):
+        return self.base_difficulty
+
+    def _get_challenge(self, key_id):
+        self.last_challenge = create_challenge(self.challenge_history, self.last_challenge)
+        return self.last_challenge
 
     #############################
     # PRIVATE SECTION

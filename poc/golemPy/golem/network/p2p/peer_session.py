@@ -1,10 +1,11 @@
 import time
 import logging
 
-from golem.network.transport.message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers, MessagePeers, \
-    MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, MessageDegree, \
-    MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, MessageRandVal, MessageWantToStartTaskSession, \
-    MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, MessageInformAboutNatTraverseFailure
+from golem.network.transport.message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers,\
+    MessagePeers, MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
+    MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, MessageRandVal, \
+    MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
+    MessageInformAboutNatTraverseFailure, MessageChallengeSolution
 from golem.network.transport.tcp_network import SafeProtocol
 from golem.network.transport.session import BasicSafeSession
 
@@ -38,7 +39,11 @@ class PeerSession(BasicSafeSession):
 
         self.conn_id = None
 
-        self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type])
+        self.solve_challenge = False  # Verification by challenge not a random value
+        self.challenge = None
+        self.difficulty = 0
+
+        self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type, MessageChallengeSolution.Type])
         self.can_be_unsigned.extend([MessageHello.Type])
         self.can_be_not_encrypted.extend([MessageHello.Type])
 
@@ -100,7 +105,7 @@ class PeerSession(BasicSafeSession):
 
     def decrypt(self, data):
         """
-        Decrypt given data using private key. If during decryption AssertionError occured this may mean that
+        Decrypt given data using private key. If during decryption AssertionError occurred this may mean that
         data is not encrypted simple serialized message. In that case unaltered data are returned.
         :param str data: data to be decrypted
         :return str msg: decrypted message
@@ -234,6 +239,9 @@ class PeerSession(BasicSafeSession):
         self.node_info = msg.node_info
         self.key_id = msg.client_key_id
         self.listen_port = msg.port
+        solve_challenge = msg.solve_challenge
+        challenge = msg.challenge
+        difficulty = msg.difficulty
 
         if not self.verify(msg):
             logger.error("Wrong signature for Hello msg")
@@ -253,6 +261,10 @@ class PeerSession(BasicSafeSession):
             self.disconnect(PeerSession.DCRTooManyPeers)
             return
 
+        if solve_challenge and not self.verified:
+            solution = self.p2p_service.solve_challenge(self.key_id, challenge, difficulty)
+            self.send(MessageChallengeSolution(solution), send_unverified=True)
+
         if p and p != self and p.conn.opened:
             # self.sendPing()
             logger_msg = "PEER DUPLICATED: {} {} : {}".format(p.node_id, p.address, p.port)
@@ -262,7 +274,11 @@ class PeerSession(BasicSafeSession):
         if not p:
             self.p2p_service.add_peer(self.node_id, self)
             self.__send_hello()
-            self.send(MessageRandVal(msg.rand_val), send_unverified=True)
+            if solve_challenge:
+                solution = self.p2p_service.solve_challenge(self.key_id, challenge, difficulty)
+                self.send(MessageChallengeSolution(solution), send_unverified=True)
+            else:
+                self.send(MessageRandVal(msg.rand_val), send_unverified=True)
 
         # print "Add peer to client uid:{} address:{} port:{}".format(self.node_id, self.address, self.port)
 
@@ -310,10 +326,23 @@ class PeerSession(BasicSafeSession):
         self.send(MessagePeers(nodes_info))
 
     def _react_to_rand_val(self, msg):
+        if self.solve_challenge:
+            return
         if self.rand_val == msg.rand_val:
-            self.verified = True
-            self.p2p_service.verified_conn(self.conn_id)
-            self.p2p_service.set_suggested_address(self.key_id, self.address, self.port)
+            self.__set_verified_conn()
+        else:
+            self.disconnect(PeerSession.DCRUnverified)
+
+    def _react_to_challenge_solution(self, msg):
+        if not self.solve_challenge:
+            self.disconnect(PeerSession.DCRBadProtocol)
+            return
+        good_solution = self.p2p_service.check_solution(msg.solution, self.challenge, self.difficulty)
+        if good_solution:
+            self.solve_challenge = False
+            self.__set_verified_conn()
+        else:
+            self.disconnect(PeerSession.DCRUnverified)
 
     def _react_to_want_to_start_task_session(self, msg):
         self.p2p_service.peer_want_task_session(msg.node_info, msg.super_node_info, msg.conn_id)
@@ -331,8 +360,11 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.send_nat_traverse_failure(msg.key_id, msg.conn_id)
 
     def __send_hello(self):
-        listen_params = self.p2p_service.get_listen_params()
-        listen_params += (self.rand_val,)
+        listen_params = self.p2p_service.get_listen_params(self.key_id, self.rand_val)
+        self.solve_challenge = listen_params[5]
+        if self.solve_challenge:
+            self.challenge = listen_params[6]
+            self.difficulty = listen_params[7]
         self.send(MessageHello(*listen_params), send_unverified=True)
 
     def __send_ping(self):
@@ -359,6 +391,11 @@ class PeerSession(BasicSafeSession):
         resource_peers = self.p2p_service.get_resource_peers()
         self.send(MessageResourcePeers(resource_peers))
 
+    def __set_verified_conn(self):
+        self.verified = True
+        self.p2p_service.verified_conn(self.conn_id)
+        self.p2p_service.set_suggested_address(self.key_id, self.address, self.port)
+
     def __set_msg_interpretations(self):
         self.__set_basic_msg_interpretations()
         self.__set_resource_msg_interpretations()
@@ -369,6 +406,7 @@ class PeerSession(BasicSafeSession):
             MessagePing.Type: self._react_to_ping,
             MessagePong.Type: self._react_to_pong,
             MessageHello.Type: self._react_to_hello,
+            MessageChallengeSolution.Type: self._react_to_challenge_solution,
             MessageGetPeers.Type: self._react_to_get_peers,
             MessagePeers.Type: self._react_to_peers,
             MessageGetTasks.Type: self._react_to_get_tasks,

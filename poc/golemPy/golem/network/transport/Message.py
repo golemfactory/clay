@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class Message:
     """ Communication message that is sent in all networks """
 
-    registered_message_types = {} # Message types that are allowed to be sent in the network """
+    registered_message_types = {}  # Message types that are allowed to be sent in the network """
 
     def __init__(self, type_, sig="", timestamp=None):
         """ Create new message. If this message type hasn't been registered yet, add this class to registered message
@@ -130,7 +130,7 @@ class Message:
     @abc.abstractmethod
     def dict_repr(self):
         """
-        Returns dictionary/list representation of  any subclassed message
+        Returns dictionary/list representation of  any subclass message
         """
         return
 
@@ -156,17 +156,23 @@ class MessageHello(Message):
     CLIENT_KEY_ID_STR = u"CLIENT_KEY_ID"
     RAND_VAL_STR = u"RAND_VAL"
     NODE_INFO_STR = u"NODE_INFO"
+    SOLVE_CHALLENGE_STR = u"SOLVE_CHALLENGE"
+    CHALLENGE_STR = u"CHALLENGE"
+    DIFFICULTY_STR = u"DIFFICULTY"
 
     def __init__(self, port=0, client_uid=None, client_key_id=None, node_info=None,
-                 rand_val=0, proto_id=0, client_ver=0, sig="", timestamp=None,
-                 dict_repr=None):
+                 rand_val=0, solve_challenge=False, challenge=None, difficulty=0, proto_id=0, client_ver=0, sig="",
+                 timestamp=None, dict_repr=None):
         """
         Create new introduction message
         :param int port: listening port
-        :param uuid client_uid: uid
+        :param str client_uid: uid
         :param str client_key_id: public key
         :param NodeInfo node_info: information about node
         :param float rand_val: random value that should be signed by other site
+        :param boolean solve_challenge: should other client solve given challenge
+        :param str challenge: challenge to solve
+        :param int difficulty: difficulty of a challenge
         :param int proto_id: protocol id
         :param str client_ver: application version
         :param str sig: signature
@@ -182,6 +188,9 @@ class MessageHello(Message):
         self.client_key_id = client_key_id
         self.rand_val = rand_val
         self.node_info = node_info
+        self.solve_challenge = solve_challenge
+        self.challenge = challenge
+        self.difficulty = difficulty
 
         if dict_repr:
             self.proto_id = dict_repr[MessageHello.PROTO_ID_STR]
@@ -191,6 +200,9 @@ class MessageHello(Message):
             self.client_key_id = dict_repr[MessageHello.CLIENT_KEY_ID_STR]
             self.rand_val = dict_repr[MessageHello.RAND_VAL_STR]
             self.node_info = dict_repr[MessageHello.NODE_INFO_STR]
+            self.challenge = dict_repr[MessageHello.CHALLENGE_STR]
+            self.solve_challenge = dict_repr[MessageHello.SOLVE_CHALLENGE_STR]
+            self.difficulty = dict_repr[MessageHello.DIFFICULTY_STR]
 
     def dict_repr(self):
         return {MessageHello.PROTO_ID_STR: self.proto_id,
@@ -199,7 +211,10 @@ class MessageHello(Message):
                 MessageHello.CLIENT_UID_STR: self.client_uid,
                 MessageHello.CLIENT_KEY_ID_STR: self.client_key_id,
                 MessageHello.RAND_VAL_STR: self.rand_val,
-                MessageHello.NODE_INFO_STR: self.node_info
+                MessageHello.NODE_INFO_STR: self.node_info,
+                MessageHello.SOLVE_CHALLENGE_STR: self.solve_challenge,
+                MessageHello.CHALLENGE_STR: self.challenge,
+                MessageHello.DIFFICULTY_STR: self.difficulty
                 }
 
 
@@ -249,6 +264,31 @@ class MessageDisconnect(Message):
 
     def dict_repr(self):
         return {MessageDisconnect.DISCONNECT_REASON_STR: self.reason}
+
+
+class MessageChallengeSolution(Message):
+    Type = 3
+
+    SOLUTION_STR = u"SOLUTION"
+
+    def __init__(self, solution="", sig="", timestamp=None, dict_repr=None):
+        """
+        Create a message with signed cryptographic challenge solution
+        :param str solution: challenge solution
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessageChallengeSolution.Type, sig, timestamp)
+
+        self.solution = solution
+
+        if dict_repr:
+            self.solution = dict_repr[MessageChallengeSolution.SOLUTION_STR]
+
+    def dict_repr(self):
+        return {MessageChallengeSolution.SOLUTION_STR: self.solution}
+
 
 ################
 # P2P Messages #
@@ -608,7 +648,7 @@ class MessageWantToStartTaskSession(Message):
         """
         Create request for starting task session with given node
         :param Node node_info: information about this node
-        :param uuid conn_id: connection id for refrence
+        :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
         :param str sig: signature
         :param float timestamp: current timestamp
@@ -1494,7 +1534,7 @@ class MessageNatPunchFailure(Message):
 
     def __init__(self, sig="", timestamp=None, dict_repr=None):
         """
-        Create messsage that informs node about unsuccessful nat punch
+        Create message that informs node about unsuccessful nat punch
         :param str sig: signature
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
@@ -1794,6 +1834,7 @@ def init_messages():
     MessageHello()
     MessageRandVal()
     MessageDisconnect()
+    MessageChallengeSolution()
 
     # P2P messages
     MessagePing()
@@ -1859,7 +1900,7 @@ def init_messages():
 
 
 def init_manager_messages():
-    """ Add manager messages to registed messages list"""
+    """ Add manager messages to registered messages list"""
     MessagePeerStatus()
     MessageKillNode()
     MessageKillAllNodes()
@@ -1869,7 +1910,7 @@ def init_manager_messages():
 
 if __name__ == "__main__":
 
-    hem = MessageHello(1, 2)
+    hem = MessageHello(1, "id2")
     pim = MessagePing()
     pom = MessagePong()
     dcm = MessageDisconnect(3)

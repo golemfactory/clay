@@ -17,8 +17,8 @@ class NodesManager:
     ########################
     def __init__(self, manager_logic = None, port = 20301):
         self.app = QApplication(sys.argv)
-        self.mainWindow = NodesManagerWidget(None)
-        self.uic = ManagerUiCustomizer(self.mainWindow, self)
+        self.main_window = NodesManagerWidget(None)
+        self.uic = ManagerUiCustomizer(self.main_window, self)
         self.timer = QTimer()
         self.timer.timeout.connect(self.polled_update)
         self.lock = Lock()
@@ -40,7 +40,7 @@ class NodesManager:
             GLOBAL_SHUTDOWN[ 0 ] = True
             event.accept()
 
-        setattr(self.mainWindow.window.__class__, 'closeEvent', closeEvent_)
+        setattr(self.main_window.window.__class__, 'closeEvent', closeEvent_)
 
      ########################
     def set_manager_logic(self, manager_logic):
@@ -65,7 +65,7 @@ class NodesManager:
 
     ########################
     def execute(self, using_qt4_reactor = False):
-        self.mainWindow.show()
+        self.main_window.show()
         self.timer.start(100)
         if not using_qt4_reactor:
             sys.exit(self.app.exec_())
