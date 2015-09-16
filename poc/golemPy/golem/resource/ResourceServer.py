@@ -4,7 +4,7 @@ import os
 import time
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcp_server import TCPServer
+from golem.network.transport.tcp_server import PendingConnectionsServer
 from golem.network.transport.tcp_network import TCPConnectInfo, TCPAddress, TCPListenInfo, TCPNetwork, FilesProtocol
 from golem.resource.dir_manager import DirManager
 from golem.resource.ResourcesManager import DistributedResourceManager
@@ -14,7 +14,7 @@ from golem.ranking.Ranking import RankingStats
 logger = logging.getLogger(__name__)
 
 
-class ResourceServer(TCPServer):
+class ResourceServer(PendingConnectionsServer):
     def __init__(self, config_desc, keys_auth, client, use_ipv6=False):
         self.client = client
         self.keys_auth = keys_auth
@@ -26,7 +26,7 @@ class ResourceServer(TCPServer):
         self.resource_manager = DistributedResourceManager(self.dir_manager.get_resource_dir())
         self.use_ipv6 = use_ipv6
         network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(ResourceSession)), use_ipv6)
-        TCPServer.__init__(self, config_desc, network)
+        PendingConnectionsServer.__init__(self, config_desc, network)
 
         self.resource_peers = {}
         self.waiting_tasks = {}
@@ -40,7 +40,7 @@ class ResourceServer(TCPServer):
         self.last_message_time_threshold = config_desc.resource_session_timeout
 
     def start_accepting(self):
-        TCPServer.start_accepting(self)
+        PendingConnectionsServer.start_accepting(self)
 
     def change_resource_dir(self, config_desc):
         if self.dir_manager.root_path == config_desc.root_path:

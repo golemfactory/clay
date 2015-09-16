@@ -56,14 +56,14 @@ class AbsRenderingApplicationLogic(object):
         if td.renderer in self.renderers:
 
             if not os.path.exists(td.main_program_file):
-                self._show_error_window("Main program file does not exist: {}".format(td.main_program_file))
+                self.show_error_window("Main program file does not exist: {}".format(td.main_program_file))
                 return False
 
             if not self.__check_output_file(td.output_file):
                 return False
 
             if not os.path.exists(td.main_scene_file):
-                self._show_error_window("Main scene file is not properly set")
+                self.show_error_window("Main scene file is not properly set")
                 return False
         else:
             return False
@@ -80,10 +80,10 @@ class AbsRenderingApplicationLogic(object):
                 os.remove(output_file)
             return True
         except IOError:
-            self._show_error_window("Cannot open file: {}".format(output_file))
+            self.show_error_window("Cannot open file: {}".format(output_file))
             return False
         except:
-            self._show_error_window("Output file is not properly set")
+            self.show_error_window("Output file is not properly set")
             return False
 
 

@@ -51,7 +51,6 @@ class ClientConfigDescriptor(object):
         self.app_name = ""
         self.app_version = ""
         self.eth_account = ""
-        self.key_difficulty = ""
 
 
 class ConfigApprover(object):

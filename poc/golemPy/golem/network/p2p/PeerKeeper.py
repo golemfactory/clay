@@ -25,11 +25,17 @@ class PeerKeeper:
         self.idle_refresh = 3
         self.sessions_to_end = []
 
-    #############################
     def __str__(self):
         return "\n".join([ str(bucket) for bucket in self.buckets ])
 
-    #############################
+    def restart(self, peer_key):
+        self.peer_key = peer_key
+        self.peer_key_id = long(peer_key, 16)
+        self.buckets = [KBucket(0, 2 ** self.k_size - 1, self.k)]
+        self.expected_pongs = {}
+        self.find_requests = {}
+        self.sessions_to_end = []
+
     def add_peer(self, peer_key, peer_id, ip, port, node_info):
         if peer_key == self.peer_key:
             logger.warning("Trying to add self to Routing table")

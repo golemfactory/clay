@@ -13,7 +13,7 @@ class Customizer(object):
         pass
 
     @staticmethod
-    def _show_error_window(text):
+    def show_error_window(text):
         from PyQt4.QtGui import QMessageBox
         ms_box = QMessageBox(QMessageBox.Critical, "Error", text)
         ms_box.exec_()

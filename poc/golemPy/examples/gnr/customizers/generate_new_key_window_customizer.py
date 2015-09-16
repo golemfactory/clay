@@ -19,6 +19,6 @@ class GenerateNewKeyWindowCustomizer():
         self.thread.start()
 
     def _generate_keys_func(self, keys_auth, difficulty):
-        keys_auth.generate_new(difficulty, keys_auth.uuid)
+        keys_auth.generate_new(difficulty)
         self.parent.keys_changed()
         self.gui.window.close()

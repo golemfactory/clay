@@ -22,7 +22,6 @@ class P2PService(PendingConnectionsServer):
         :param Node node: Information about this node
         :param ClientConfigDescriptor config_desc: configuration options
         :param KeysAuth keys_auth: authorization manager
-        :return:
         """
         network = TCPNetwork(ProtocolFactory(SafeProtocol, self, SessionFactory(PeerSession)), config_desc.use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
@@ -121,6 +120,7 @@ class P2PService(PendingConnectionsServer):
         :param str id_: peer id
         :param PeerSession peer: peer session with given peer
         """
+        logger.info("Adding peer {}, key id difficulty: {}".format(id_, self.keys_auth.get_difficulty(peer.key_id)))
         self.peers[id_] = peer
         self.__send_degree()
 
@@ -311,6 +311,18 @@ class P2PService(PendingConnectionsServer):
     def get_key_id(self):
         """ Return node public key in a form of an id """
         return self.peer_keeper.peer_key_id
+
+    def key_changed(self):
+        """ React to the fact that key id has been changed. Drop all connections with peer,
+        restart peer keeper and connect to the network with new key id.
+        """
+        self.peer_keeper.restart(self.keys_auth.get_key_id())
+        for p in self.peers.values():
+            p.dropped()
+
+        tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_host_port)
+        if tcp_address.is_proper():
+            self.__connect(tcp_address)
 
     def encrypt(self, data, public_key):
         """ Encrypt data with given public_key. If no public_key is given, or it's equal to zero

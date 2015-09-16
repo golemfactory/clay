@@ -26,8 +26,8 @@ class TaskServer(PendingConnectionsServer):
         self.node = node
         self.task_keeper = TaskKeeper()
         self.task_manager = TaskManager(config_desc.client_uid, self.node, key_id=self.keys_auth.get_key_id(),
-                                       root_path=TaskServer.__get_task_manager_root(config_desc),
-                                       use_distributed_resources=config_desc.use_distributed_resource_management)
+                                        root_path=TaskServer.__get_task_manager_root(config_desc),
+                                        use_distributed_resources=config_desc.use_distributed_resource_management)
         self.task_computer = TaskComputer(config_desc.client_uid, self)
         self.task_sessions = {}
         self.task_sessions_incoming = []
@@ -50,6 +50,10 @@ class TaskServer(PendingConnectionsServer):
 
     def start_accepting(self):
         PendingConnectionsServer.start_accepting(self)
+
+    def key_changed(self):
+        """React to the fact that key id has been changed. Inform task manager about new key """
+        self.task_manager.key_id = self.keys_auth.get_key_id()
 
     def sync_network(self):
         self.task_computer.run()

@@ -147,7 +147,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         if ts.task_state.status != TaskStatus.notStarted:
             error_msg = "Task already started"
-            self._show_error_window(error_msg)
+            self.show_error_window(error_msg)
             logger.error(error_msg)
             return
 
@@ -307,7 +307,10 @@ class GNRApplicationLogic(QtCore.QObject):
         if self.customizer.current_task_highlighted.definition.task_id == task_id:
             self.customizer.update_task_additional_info(self.tasks[task_id])
 
-    def _show_error_window(self, text):
+    def key_changed(self):
+        self.client.key_changed()
+
+    def show_error_window(self, text):
         from PyQt4.QtGui import QMessageBox
         ms_box = QMessageBox(QMessageBox.Critical, "Error", text)
         ms_box.exec_()
@@ -317,6 +320,6 @@ class GNRApplicationLogic(QtCore.QObject):
 
         td = task_state.definition
         if not os.path.exists(td.main_program_file):
-            self._show_error_window("Main program file does not exist: {}".format(td.main_program_file))
+            self.show_error_window("Main program file does not exist: {}".format(td.main_program_file))
             return False
         return True

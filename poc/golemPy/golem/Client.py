@@ -228,7 +228,6 @@ class Client:
         time.sleep(0.5)
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
 
-    ############################
     def run_add_task_server(self):
         from PluginServer import start_task_adder_server
         from multiprocessing import Process, freeze_support
@@ -236,19 +235,21 @@ class Client:
         self.task_adder_server = Process(target=start_task_adder_server, args=(self.get_plugin_port(),))
         self.task_adder_server.start()
 
-    ############################
     def quit(self):
         if self.task_adder_server:
             self.task_adder_server.terminate()
 
-    ############################
+    def key_changed(self):
+        self.node.key = self.keys_auth.get_key_id()
+        self.task_server.key_changed()
+        self.p2pservice.key_changed()
+
     def stop_network(self):
         # FIXME: Pewnie cos tu trzeba jeszcze dodac. Zamykanie serwera i wysylanie DisconnectPackege
         self.p2pservice = None
         self.task_server = None
         self.nodes_manager_client = None
 
-    ############################
     def enqueue_new_task(self, task):
         self.task_server.task_manager.add_new_task(task)
         if self.config_desc.use_distributed_resource_management:

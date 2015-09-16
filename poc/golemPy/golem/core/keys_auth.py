@@ -1,5 +1,6 @@
 import os
 import abc
+import logging
 from random import random
 
 from Crypto.PublicKey import RSA
@@ -9,6 +10,9 @@ from sha3 import sha3_256
 from hashlib import sha256
 
 from golem.core.variables import KEYS_PATH, PRIVATE_KEY_PREF, PUBLIC_KEY_PREF
+
+
+logger = logging.getLogger(__name__)
 
 
 def sha3(seed):
@@ -36,13 +40,17 @@ class KeysAuth(object):
         self.key_id = self.cnt_key_id(self.public_key)
         self.uuid = uuid
 
-    def get_difficulty(self):
+    def get_difficulty(self, key_id=None):
         """ Count key_id difficulty in hashcash-like puzzle
+        :param str|None key_id: *Default: None* count difficulty of given key. If key_id is None then
+        use default key_id
         :return int: key_id difficulty
         """
         difficulty = 0
+        if key_id is None:
+            key_id = self.key_id
         min_hash = KeysAuth._count_min_hash(difficulty)
-        while sha2(self.key_id) <= min_hash:
+        while sha2(key_id) <= min_hash:
             difficulty += 1
             min_hash = KeysAuth._count_min_hash(difficulty)
 
@@ -314,7 +322,14 @@ class EllipticalKeysAuth(KeysAuth):
         :param uuid|None uuid: application identifier (to read keys)
         """
         KeysAuth.__init__(self, uuid)
-        self.ecc = ECCx(None, self._private_key)
+        try:
+            self.ecc = ECCx(None, self._private_key)
+        except AssertionError:
+            self._generate_keys(uuid)
+            self._private_key = self._load_private_key(uuid)
+            self.public_key = self._load_public_key(uuid)
+            self.key_id = self.cnt_key_id(self.public_key)
+            self.ecc = ECCx(None, self._private_key)
 
     def cnt_key_id(self, public_key):
         """ Return id generated from given public key (in hex format).
@@ -361,12 +376,16 @@ class EllipticalKeysAuth(KeysAuth):
         :return bool: verification result
         """
 
-        if public_key is None:
-            public_key = self.public_key
-        if len(public_key) == 128:
-            public_key = public_key.decode('hex')
-        ecc = ECCx(public_key)
-        return ecc.verify(sig, data)
+        try:
+            if public_key is None:
+                public_key = self.public_key
+            if len(public_key) == 128:
+                public_key = public_key.decode('hex')
+            ecc = ECCx(public_key)
+            return ecc.verify(sig, data)
+        except AssertionError:
+            logger.info("Wrong key format")
+            return False
 
     def generate_new(self, difficulty):
         """ Generate new pair of keys with given difficulty
@@ -418,6 +437,9 @@ class EllipticalKeysAuth(KeysAuth):
         self.public_key = pub_key
         self.key_id = self.cnt_key_id(pub_key)
         self.save_to_files(priv_key_loc, pub_key_loc)
+        self.ecc = ECCx(None, self._private_key)
+
+
 
     @staticmethod
     def _get_private_key_loc(uuid):

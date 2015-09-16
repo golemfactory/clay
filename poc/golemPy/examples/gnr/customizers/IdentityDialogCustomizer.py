@@ -17,6 +17,7 @@ LOAD_NEW_WARNING = u"Are you sure that you want to load new keys? If you don't s
 class IdentityDialogCustomizer(Customizer):
     def __init__(self, gui, logic):
         self.keys_auth = None
+        self.changed = False
         Customizer.__init__(self, gui, logic)
 
     def load_config(self):
@@ -29,6 +30,7 @@ class IdentityDialogCustomizer(Customizer):
 
     def keys_changed(self):
         self.set_labels()
+        self.changed = True
 
     def _load_from_file(self):
         reply = QMessageBox.warning(self.gui.window, "Warning!", LOAD_NEW_WARNING, QMessageBox.Yes | QMessageBox.No,
@@ -41,21 +43,20 @@ class IdentityDialogCustomizer(Customizer):
         if file_name != "":
             result = self.keys_auth.load_from_file(file_name)
             if result:
-                self.set_labels()
+                self.keys_changed()
             else:
-                self.logic._show_error_window("Can't load key from given file")
+                IdentityDialogCustomizer.show_error_window("Can't load key from given file")
 
     def _save_in_file(self):
         save_keys_dialog = SaveKeysDialog(self.gui.window)
         SaveKeysDialogCustomizer(save_keys_dialog, self)
         save_keys_dialog.show()
-        print "SAVE IN FILE CLICKED"
 
     def _generate_new_clicked(self):
         try:
             difficulty = int(self.gui.ui.difficulty_spin_box.text())
         except ValueError:
-            IdentityDialogCustomizer._show_error_window("Difficulty must be an integer [0-255]")
+            IdentityDialogCustomizer.show_error_window("Difficulty must be an integer [0-255]")
             return
 
         reply = QMessageBox.warning(self.gui.window, "Warning!", GENERATE_NEW_WARNING, QMessageBox.Yes | QMessageBox.No,
@@ -69,10 +70,15 @@ class IdentityDialogCustomizer(Customizer):
         window_customizer.generate_key(difficulty)
 
     def _setup_connections(self):
-        self.gui.ui.ok_button.clicked.connect(self.gui.window.close)
+        self.gui.ui.ok_button.clicked.connect(lambda: self._close())
         self.gui.ui.generate_new_button.clicked.connect(lambda: self._generate_new_clicked())
         self.gui.ui.load_from_file_button.clicked.connect(lambda: self._load_from_file())
         self.gui.ui.save_in_file_button.clicked.connect(lambda: self._save_in_file())
+
+    def _close(self):
+        if self.changed:
+            self.logic.key_changed()
+        self.gui.window.close()
 
 
 class SaveKeysDialogCustomizer(Customizer):
@@ -103,4 +109,4 @@ class SaveKeysDialogCustomizer(Customizer):
         if res:
             self.gui.window.close()
         else:
-            self.logic._show_error_window("Can't save keys in given files")
+            SaveKeysDialogCustomizer.show_error_window("Can't save keys in given files")
