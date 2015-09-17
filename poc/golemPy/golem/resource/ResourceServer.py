@@ -10,6 +10,7 @@ from golem.resource.dir_manager import DirManager
 from golem.resource.ResourcesManager import DistributedResourceManager
 from golem.resource.resource_session import ResourceSession
 from golem.ranking.Ranking import RankingStats
+from golem.network.transport.tcp_network import FilesProtocol, EncryptFileProducer, DecryptFileConsumer
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,7 @@ class ResourceServer(PendingConnectionsServer):
             self.add_resource_peer(client_id, addr, port, key_id, node_info)
 
     def sync_network(self):
+        self._sync_pending()
         if len(self.resources_to_get) + len(self.resources_to_send) > 0:
             cur_time = time.time()
             if cur_time - self.last_get_resource_peers_time > self.get_resource_peers_interval:
@@ -146,13 +148,8 @@ class ResourceServer(PendingConnectionsServer):
             self.res_send_it = (self.res_send_it + 1) % len(self.resources_to_send)
 
     def pull_resource(self, resource, addr, port, key_id, node_info):
-        tcp_addresses = self._node_info_to_tcp_addresses(node_info, port)
-        addr = self.client.get_suggested_addr(key_id)
-        if addr:
-            tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
-        connect_info = TCPConnectInfo(tcp_addresses, self.__connection_pull_resource_established,
-                                      self.__connection_pull_resource_failure)
-        self.network.connect(connect_info, resource=resource, resource_address=addr, resource_port=port, key_id=key_id)
+        args = {"resource": resource, "resource_address": addr, "resource_port": port, "key_id": key_id}
+        self._add_pending_request(ResourceConnTypes.Pull, node_info, port, key_id, args)
 
     def pull_answer(self, resource, has_resource, session):
         if not has_resource or resource not in [res[0] for res in self.resources_to_get]:
@@ -167,22 +164,19 @@ class ResourceServer(PendingConnectionsServer):
             for task_id in self.waiting_resources[resource]:
                 self.resources_to_get.remove([resource, task_id])
             session.file_name = resource
-            session.conn.file_mode = True
+            session.conn.stream_mode = True
             session.conn.confirmation = False
             session.send_want_resource(resource)
+            session.conn.consumer = DecryptFileConsumer([self.prepare_resource(session.file_name)], "",
+                                                 session, {})
+
             if session not in self.sessions:
                 self.sessions.append(session)
 
     def push_resource(self, resource, addr, port, key_id, node_info, copies):
-
-        tcp_addresses = self._node_info_to_tcp_addresses(node_info, port)
-        addr = self.client.get_suggested_addr(key_id)
-        if addr:
-            tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
-        connect_info = TCPConnectInfo(tcp_addresses, self.__connection_push_resource_established,
-                                      self.__connection_push_resource_failure)
-        self.network.connect(connect_info, resource=resource, copies=copies, resource_address=addr, resource_port=port,
-                             key_id=key_id)
+        args = {"resource": resource, "copies": copies, "resource_address": addr, "resource_port": port,
+                "key_id": key_id}
+        self._add_pending_request(ResourceConnTypes.Push, node_info, port, key_id, args)
 
     def check_resource(self, resource):
         return self.resource_manager.check_resource(resource)
@@ -247,6 +241,13 @@ class ResourceServer(PendingConnectionsServer):
     def get_key_id(self):
         return self.keys_auth.get_key_id()
 
+    def get_tcp_addresses(self, node_info, port, key_id):
+        tcp_addresses = PendingConnectionsServer.get_tcp_addresses(self, node_info, port, key_id)
+        addr = self.client.get_suggested_addr(key_id)
+        if addr:
+            tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
+        return tcp_addresses
+
     def encrypt(self, message, public_key):
         if public_key == 0:
             return message
@@ -264,6 +265,27 @@ class ResourceServer(PendingConnectionsServer):
     def change_config(self, config_desc):
         self.last_message_time_threshold = config_desc.resource_session_timeout
 
+    def _set_conn_established(self):
+        self.conn_established_for_type.update({
+            ResourceConnTypes.Pull: self.__connection_pull_resource_established,
+            ResourceConnTypes.Push: self.__connection_push_resource_established,
+            ResourceConnTypes.Resource: self.__connection_for_resource_established
+        })
+
+    def _set_conn_failure(self):
+        self.conn_failure_for_type.update({
+            ResourceConnTypes.Pull: self.__connection_pull_resource_failure,
+            ResourceConnTypes.Push: self.__connection_push_resource_failure,
+            ResourceConnTypes.Resource: self.__connection_for_resource_failure
+        })
+
+    def _set_conn_final_failure(self):
+        self.conn_final_failure_for_type.update({
+            ResourceConnTypes.Pull: self.__connection_final_failure,
+            ResourceConnTypes.Push: self.__connection_final_failure,
+            ResourceConnTypes.Resource: self.__connection_final_failure
+        })
+
     @staticmethod
     def _node_info_to_tcp_addresses(node_info, port):
         tcp_addresses = [TCPAddress(i, port) for i in node_info.prv_addresses]
@@ -279,36 +301,42 @@ class ResourceServer(PendingConnectionsServer):
                 self.resource_peers[client_id]['state'] = 'free'
                 return client_id
 
-    def __connection_push_resource_established(self, session, resource, copies, resource_address, resource_port,
+    def __connection_push_resource_established(self, session, conn_id, resource, copies, resource_address, resource_port,
                                                key_id):
         session.key_id = key_id
+        session.conn_id = conn_id
         session.send_hello()
         session.send_push_resource(resource, copies)
         self.sessions.append(session)
 
-    def __connection_push_resource_failure(self, resource, copies, resource_address, resource_port, key_id):
+    def __connection_push_resource_failure(self, conn_id, resource, copies, resource_address, resource_port, key_id):
         self.__remove_client(resource_address, resource_port)
         logger.error("Connection to resource server failed")
 
-    def __connection_pull_resource_established(self, session, resource, resource_address, resource_port, key_id):
+    def __connection_pull_resource_established(self, session, conn_id, resource, resource_address, resource_port, key_id):
         session.key_id = key_id
+        session.conn_id = conn_id
         session.send_hello()
         session.send_pull_resource(resource)
         self.sessions.append(session)
 
-    def __connection_pull_resource_failure(self, resource, resource_address, resource_port, key_id):
+    def __connection_pull_resource_failure(self, conn_id, resource, resource_address, resource_port, key_id):
         self.__remove_client(resource_address, resource_port)
         logger.error("Connection to resource server failed")
 
-    def __connection_for_resource_established(self, session, resource, resource_address, resource_port, key_id):
+    def __connection_for_resource_established(self, session, conn_id, resource, resource_address, resource_port, key_id):
         session.key_id = key_id
+        session.conn_id = conn_id
         session.send_hello()
         session.send_want_resource(resource)
         self.sessions.append(session)
 
-    def __connection_for_resource_failure(self, resource, resource_address, resource_port):
+    def __connection_for_resource_failure(self, conn_id, resource, resource_address, resource_port):
         self.__remove_client(resource_address, resource_port)
         logger.error("Connection to resource server failed")
+
+    def __connection_final_failure(self, conn_id, resource, resource_address, resource_port):
+        pass
 
     def __remove_client(self, addr, port):
         bad_client = None
@@ -333,3 +361,10 @@ class ResourceServer(PendingConnectionsServer):
         self.cur_port = port
         logger.info("Port {} opened - listening.".format(self.cur_port))
         self.client.set_resource_port(self.cur_port)
+
+
+class ResourceConnTypes(object):
+    """ Resource Connection Types that allows to choose right reaction """
+    Pull = 1
+    Push = 2
+    Resource = 3

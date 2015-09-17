@@ -1,8 +1,8 @@
 import logging
 
 
-from golem.network.transport.message import MessageHello, MessageRandVal, MessageHasResource, MessageWantResource, MessagePushResource,\
-    MessagePullResource, MessagePullAnswer, MessageSendResource
+from golem.network.transport.message import MessageHello, MessageRandVal, MessageHasResource, MessageWantResource, \
+    MessagePushResource, MessagePullResource, MessagePullAnswer, MessageSendResource
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcp_network import FilesProtocol, EncryptFileProducer, DecryptFileConsumer
 
@@ -27,6 +27,7 @@ class ResourceSession(BasicSafeSession):
         self.confirmation = False  # should it send confirmation after receiving current file?
         self.copies = 0  # how many copies of current file should be pushed into network
         self.msgs_to_send = []  # messages waiting to be send (because connection hasn't been verified yet)
+        self.conn_id = None
 
         self.__set_msg_interpretations()
 
@@ -90,7 +91,7 @@ class ResourceSession(BasicSafeSession):
     def send(self, msg, send_unverified=False):
         """ Send given message if connection was verified or send_unverified option is set to True. Collect other
         message in the list (they should be send after verification).
-        :param Message message: message to be sent.
+        :param Message msg: message to be sent.
         :param boolean send_unverified: should message be sent even if the connection hasn't been verified yet?
         """
         if not self.verified and not send_unverified:
@@ -208,6 +209,8 @@ class ResourceSession(BasicSafeSession):
         if self.key_id == 0:
             self.key_id = msg.client_key_id
             self.send_hello()
+        elif self.key_id != msg.client_key_id:
+            self.dropped()
 
         if not self.verify(msg):
             logger.error("Wrong signature for Hello msg")
@@ -219,6 +222,7 @@ class ResourceSession(BasicSafeSession):
     def _react_to_rand_val(self, msg):
         if self.rand_val == msg.rand_val:
             self.verified = True
+            self.resource_server.verified_conn(self.conn_id)
             for msg in self.msgs_to_send:
                 self.send(msg)
             self.msgs_to_send = []
