@@ -10,7 +10,7 @@ from golem.core.variables import REFRESH_PEERS_TIMEOUT, LAST_MESSAGE_BUFFER_LEN,
 from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
 from golem.ranking.gossip_keeper import GossipKeeper
 
-from PeerKeeper import PeerKeeper
+from peer_keeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
 
