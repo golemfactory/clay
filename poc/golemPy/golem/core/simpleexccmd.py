@@ -12,7 +12,8 @@ def exec_cmd(cmd, nice=20, wait=True):
     :param bool wait: *Default: True* if True, program will wait for child process to terminate
     :return:
     """
-    pc = subprocess.Popen(cmd)
+    pc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = pc.communicate()
     if is_windows():
         import win32process
         import win32api
@@ -25,3 +26,4 @@ def exec_cmd(cmd, nice=20, wait=True):
 
     if wait:
         pc.wait()
+        print "STDOUT: {}".format(stdout)

@@ -314,7 +314,7 @@ class ConfigurationDialogCustomizer:
     def __recount_performance(self):
         try:
             num_cores = int(self.gui.ui.numCoresSlider.value())
-        except:
+        except ValueError:
             num_cores = 1
         self.gui.ui.performanceLabel.setText(str(self.logic.recount_performance(num_cores)))
 

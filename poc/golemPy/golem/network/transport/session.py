@@ -130,10 +130,18 @@ class BasicSession(FileSession):
             return
 
     def data_sent(self, extra_data=None):
-        pass
+        """ All data that should be send in stream mode has been send.
+        :param dict|None extra_data: additional information that may be needed
+        """
+        if self.conn.producer:
+            self.conn.producer.close()
+            self.conn.producer = None
 
     def production_failed(self, extra_data=None):
-        pass
+        """ Producer encounter error and stopped sending data in stream mode
+        :param dict|None extra_data: additional information that may be needed
+        """
+        self.dropped()
 
     def full_data_received(self, extra_data=None):
         pass
@@ -155,7 +163,7 @@ class BasicSession(FileSession):
 
 
 class BasicSafeSession(BasicSession, SafeSession):
-    """ Enhance BasicSession with cryptographical operations logic (eg. accepting only encrypted or signed messages)
+    """ Enhance BasicSession with cryptographic operations logic (eg. accepting only encrypted or signed messages)
     and connection verifications logic.
     Cryptographic operation should be implemented in descendant class.
     """

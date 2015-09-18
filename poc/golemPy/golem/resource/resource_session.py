@@ -119,19 +119,6 @@ class ResourceSession(BasicSafeSession):
             self.dropped()
         self.file_name = None
 
-    def data_sent(self, extra_data=None):
-        """ All data that should be send in stream mode has been send.
-        :param dict|None extra_data: additional information that may be needed
-        """
-        self.conn.producer.close()
-        self.conn.producer = None
-
-    def production_failed(self, extra_data=None):
-        """ Producer encounter error and stopped sending data in stream mode
-        :param dict|None extra_data: additional information that may be needed
-        """
-        self.dropped()
-
     def send_has_resource(self, resource):
         """ Send has resource message
         :param str resource: resource name

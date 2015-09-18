@@ -131,9 +131,7 @@ class TaskSession(MiddlemanSafeSession):
         """
         if extra_data and "subtask_id" in extra_data:
             self.task_server.task_result_sent(extra_data["subtask_id"])
-        if self.conn.producer:
-            self.conn.producer.close()
-            self.conn.producer = None
+        MiddlemanSafeSession.data_sent(self, extra_data)
         self.dropped()
 
     def full_data_received(self, extra_data):
@@ -153,12 +151,6 @@ class TaskSession(MiddlemanSafeSession):
             logger.error("Unknown data type {}".format(data_type))
             self.conn.producer = None
             self.dropped()
-
-    def production_failed(self, extra_data=None):
-        """ Producer encounter error and stopped sending data in stream mode
-        :param dict|None extra_data: additional information that may be needed
-        """
-        self.dropped()
 
     def resource_received(self, extra_data):
         """ Inform server about received resource

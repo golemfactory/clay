@@ -70,6 +70,6 @@ class ClientManagerSession:
             self.conn.send_message(MessagePeerStatus(snapshot.uid, pickle.dumps(snapshot)))
 
 
-class ClientManagerSessionFactory:
+class ClientManagerSessionFactory(object):
     def get_session(self, conn):
         return ClientManagerSession(conn)

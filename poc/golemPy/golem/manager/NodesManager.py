@@ -25,7 +25,7 @@ class NodesManager:
         self.statesBuffer = []
         self.manager_logic = manager_logic
 
-        self.uic.enableDetailedView(False)
+        self.uic.enable_detailed_view(False)
 
         self.manager_server = NodesManagerServer(self, port)
 
@@ -110,7 +110,7 @@ class NodesManager:
 
         node_data_state = NodeDataState(ir, ns.uid, ts, ep, pn, tn, lm, ndscs, ndslt)
 
-        self.uic.UpdateNodePresentationState(node_data_state)
+        self.uic.update_node_presentation_state(node_data_state)
 
     ########################
     def run_additional_nodes(self, num_nodes):

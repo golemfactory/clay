@@ -180,10 +180,10 @@ class PeerSession(BasicSafeSession):
         """
         self.send(MessageLocRank(node_id, loc_rank))
 
-    def send_find_node(self, node_id):
+    def send_find_node(self, key_num):
         """ Send find node message
-        :param str node_id: key of a node to be find """
-        self.send(MessageFindNode(node_id))
+        :param long key_num: key of a node to be find """
+        self.send(MessageFindNode(key_num))
 
     def send_want_to_start_task_session(self, node_info, conn_id, super_node_info):
         """ Send request for starting task session with given node
@@ -232,7 +232,7 @@ class PeerSession(BasicSafeSession):
         self._send_pong()
 
     def _react_to_pong(self, msg):
-        self.p2p_service.pong_received(self.node_id, self.key_id, self.address, self.port)
+        self.p2p_service.pong_received(self.key_id)
 
     def _react_to_hello(self, msg):
         self.node_id = msg.client_uid
@@ -251,7 +251,7 @@ class PeerSession(BasicSafeSession):
         enough_peers = self.p2p_service.enough_peers()
         p = self.p2p_service.find_peer(self.node_id)
 
-        self.p2p_service.add_to_peer_keeper(self.node_id, self.key_id, self.address, self.listen_port, self.node_info)
+        self.p2p_service.add_to_peer_keeper(self.node_info)
 
         if enough_peers:
             logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.node_id, self.address, self.port)
@@ -359,6 +359,9 @@ class PeerSession(BasicSafeSession):
     def _react_to_inform_about_nat_traverse_failure(self, msg):
         self.p2p_service.send_nat_traverse_failure(msg.key_id, msg.conn_id)
 
+    def _send_pong(self):
+        self.send(MessagePong())
+
     def __send_hello(self):
         listen_params = self.p2p_service.get_listen_params(self.key_id, self.rand_val)
         self.solve_challenge = listen_params[5]
@@ -369,9 +372,6 @@ class PeerSession(BasicSafeSession):
 
     def __send_ping(self):
         self.send(MessagePing())
-
-    def __send_pong(self):
-        self.send(MessagePong())
 
     def __send_peers(self):
         peers_info = []

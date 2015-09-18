@@ -124,29 +124,22 @@ class P2PService(PendingConnectionsServer):
         self.peers[id_] = peer
         self.__send_degree()
 
-    def add_to_peer_keeper(self, id_, peer_key_id, address, port, node_info):
+    def add_to_peer_keeper(self, peer_info):
         """ Add information about peer to the peer keeper
-        :param str id_: id of a new peer
-        :param peer_key_id: new peer public key
-        :param str address: new peer address
-        :param int port: new peer port
-        :param Node node_info: information about new peer
+        :param Node peer_info: information about new peer
         """
-        peer_to_ping_info = self.peer_keeper.add_peer(peer_key_id, id_, address, port, node_info)
+        peer_to_ping_info = self.peer_keeper.add_peer(peer_info)
         if peer_to_ping_info and peer_to_ping_info.node_id in self.peers:
             peer_to_ping = self.peers[peer_to_ping_info.node_id]
             if peer_to_ping:
                 peer_to_ping.ping(0)
 
-    def pong_received(self, id_, peer_key_id, address, port):
+    def pong_received(self, key_num):
         """ React to pong received from other node
-        :param str id_: id of a ping sender
-        :param peer_key_id: public key of a ping sender
-        :param str address: address of a ping sender
-        :param int port: port of a pinn sender
+        :param key_num: public key of a ping sender
         :return:
         """
-        self.peer_keeper.pong_received(peer_key_id, id_, address, port)
+        self.peer_keeper.pong_received(key_num)
 
     def try_to_add_peer(self, peer_info):
         """ Add peer to inner peer information
@@ -248,7 +241,7 @@ class P2PService(PendingConnectionsServer):
             self.resource_server.change_config(config_desc)
 
     def change_address(self, th_dict_repr):
-        """ Change peer address in task header dictonary representation
+        """ Change peer address in task header dictionary representation
         :param dict th_dict_repr: task header dictionary representation that should be changed
         """
         try:
@@ -265,7 +258,7 @@ class P2PService(PendingConnectionsServer):
         :param str|None key_id: key id of a node with whom we want to connect
         :param int rand_val: session random value
         :return (int, str, str, Node, int, bool) | (int, str, str, Node, int, bool, str, int) : this node listen port,
-        this node id, this node public key, information about this node, random value, information wheter
+        this node id, this node public key, information about this node, random value, information whether
         other node should solve cryptographic challenge, (optional: cryptographic challenge),
         (optional: cryptographic challenge difficulty)
         """
@@ -282,7 +275,7 @@ class P2PService(PendingConnectionsServer):
 
     def check_solution(self, solution, challenge, difficulty):
         """
-        Check wheter solution is valid for given challenge and it's difficulty
+        Check whether solution is valid for given challenge and it's difficulty
         :param str solution: solution to check
         :param str challenge: solved puzzle
         :param int difficulty: difficulty of a challenge
@@ -310,7 +303,7 @@ class P2PService(PendingConnectionsServer):
 
     def get_key_id(self):
         """ Return node public key in a form of an id """
-        return self.peer_keeper.peer_key_id
+        return self.peer_keeper.key_num
 
     def key_changed(self):
         """ React to the fact that key id has been changed. Drop all connections with peer,
@@ -382,12 +375,12 @@ class P2PService(PendingConnectionsServer):
 
     # Kademlia functions
     #############################
-    def send_find_nodes(self, nodes_to_find):
+    def send_find_nodes(self, peers_to_find):
         """ Kademlia find node function. Send find node request to the closest neighbours
-         of a seeked node
-        :param dict nodes_to_find: list of nodes that should be find with their closest neighbours list
+         of a sought node
+        :param dict peers_to_find: list of nodes that should be find with their closest neighbours list
         """
-        for node_key_id, neighbours in nodes_to_find.iteritems():
+        for node_key_id, neighbours in peers_to_find.iteritems():
             for neighbour in neighbours:
                 peer = self.peers.get(neighbour.node_id)
                 if peer:
@@ -397,14 +390,16 @@ class P2PService(PendingConnectionsServer):
     #############################
     def find_node(self, node_key_id):
         """ Kademlia find node function. Find closest neighbours of a node with given public key
-        :param node_key_id: public key of a seeked node
-        :return list: liste of information about closest neighbours
+        :param node_key_id: public key of a sought node
+        :return list: list of information about closest neighbours
         """
         neighbours = self.peer_keeper.neighbours(node_key_id)
-        nodes_info = []
-        for n in neighbours:
-            nodes_info.append({"address": n.ip, "port": n.port, "id": n.node_id, "node": n.node_info})
-        return nodes_info
+        peer_infos = []
+        for peer in neighbours:
+            peer_infos.append({"address": peer.prv_addr, "port": peer.prv_port, "id": peer.node_id,
+                               "node": peer })
+        return peer_infos
+
 
     # Resource functions
     #############################
@@ -429,7 +424,7 @@ class P2PService(PendingConnectionsServer):
 
     def get_resource_peers(self):
         """ Prepare information about resource peers
-        :return list: list of rsource peers information
+        :return list: list of resource peers information
         """
         resource_peers_info = []
         for client_id, [addr, port, key_id, node_info] in self.resource_peers.iteritems():
@@ -606,10 +601,10 @@ class P2PService(PendingConnectionsServer):
         """ Register that peer with given id has stopped gossiping
         :param str id_: id of a string that has stopped gossiping
         """
-        self.peer_keeper.stop_gossip(id_)
+        self.gossip_keeper.stop_gossip(id_)
 
     def pop_stop_gossip_form_peers(self):
-        """ Return set of all peers that has stopped gossing
+        """ Return set of all peers that has stopped gossiping
         :return set: set of peers id's
         """
         return self.gossip_keeper.pop_stop_gossip_from_peers()
@@ -674,7 +669,7 @@ class P2PService(PendingConnectionsServer):
         while len(self.peers) < self.config_desc.opt_num_peers:
             if len(self.free_peers) == 0:
                 peer = None  # FIXME
-                #                peer = self.peer_keeper.get_random_known_node()
+                #                peer = self.peer_keeper.get_random_known_peer()
                 if peer is None or peer.node_id in self.peers:
                     if time.time() - self.last_peers_request > 2:
                         self.last_peers_request = time.time()
@@ -741,10 +736,10 @@ class P2PService(PendingConnectionsServer):
 
     def __sync_peer_keeper(self):
         self.__remove_sessions_to_end_from_peer_keeper()
-        nodes_to_find = self.peer_keeper.sync_network()
+        peers_to_find = self.peer_keeper.sync()
         self.__remove_sessions_to_end_from_peer_keeper()
-        if nodes_to_find:
-            self.send_find_nodes(nodes_to_find)
+        if peers_to_find:
+            self.send_find_nodes(peers_to_find)
 
     def __remove_sessions_to_end_from_peer_keeper(self):
         for peer_id in self.peer_keeper.sessions_to_end:

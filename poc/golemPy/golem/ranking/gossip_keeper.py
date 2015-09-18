@@ -27,7 +27,7 @@ class GossipKeeper(object):
         self.stop_gossip_from_peers.add(id_)
 
     def pop_stop_gossip_from_peers(self):
-        """ Return set of all peers that has stopped gossing
+        """ Return set of all peers that has stopped gossiping
         :return set: set of peers id's
         """
         stop = self.stop_gossip_from_peers

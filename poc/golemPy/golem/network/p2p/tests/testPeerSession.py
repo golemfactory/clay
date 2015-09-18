@@ -12,7 +12,8 @@ from golem.network.transport.message import MessageHello, MessagePing, MessageGe
                           MessagePing, MessageDisconnect, MessagePong, MessagePeers, \
                           MessageTasks, MessageRemoveTask, MessageWantToComputeTask
 
-class Conn():
+
+class Conn(object):
     def __init__(self):
         self.transport = Transport()
         self.messages = []
@@ -28,18 +29,20 @@ class Conn():
     def close(self):
         self.closedCalled = True
 
-class Transport():
+
+class Transport(object):
     def getPeer(self):
         return Peer()
 
 
-class Peer():
+class Peer(object):
     def __init__(self, id = 0):
         self.host = 'host'
         self.port = 'port'
         self.id = id
 
-class P2PService():
+
+class P2PService(object):
     def __init__(self):
         self.add_peer_called = False
         self.peers = {}
@@ -74,6 +77,7 @@ class P2PService():
 
     def remove_task_header(self, task_id):
         self.task_headerToRemove = task_id
+
 
 class TestPeerSession(unittest.TestCase):
     def setUp(self):
@@ -140,9 +144,6 @@ class TestPeerSession(unittest.TestCase):
 
         self.peer_session.interpret(MessageDisconnect())
         self.assertEquals(self.conn.closedCalled, True)
-
-
-
 
     def testSendGetPeers(self):
         self.peer_session.send_get_peers()

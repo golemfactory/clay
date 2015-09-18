@@ -44,7 +44,8 @@ def is_windows():
 
 
 def exec_cmd(cmd, nice=20):
-    pc = subprocess.Popen(cmd)
+    pc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = pc.communicate()
     if is_windows():
         import win32process
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
@@ -53,6 +54,7 @@ def exec_cmd(cmd, nice=20):
         p.nice(nice)
 
     pc.wait()
+    print "STDOUT: {}".format(stdout)
 
 
 def make_tmp_file(scene_dir, scene_src):
@@ -72,7 +74,6 @@ def make_tmp_file(scene_dir, scene_src):
         return tmp_scene_file
 
 
-############################f = 
 def run_pbrt_task(path_root, start_task, end_task, total_tasks, num_subtasks, num_cores, outfilebasename, scene_src,
                   scene_dir, pbrt_path):
     pbrt = pbrt_path
