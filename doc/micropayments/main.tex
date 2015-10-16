@@ -1,0 +1,52 @@
+\documentclass[a4paper]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{lmodern}
+
+% For TikZ diagrams:
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.11}
+
+\title{A Probabilistic Micropayment Scheme for Golem}
+\author{Golem Team (\texttt{golem@imapp.pl})}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+  We consider a setting where a transaction is made by a single payer
+  to a possibly large group of recipients, each receiving only a small
+  sum in the order of \$$0.01$. For such small sums transaction fees are
+  relatively large even if we consider cryptocurrencies instead of
+  bank-based transactions.
+
+  Both payers and recipients are expected to repeatedly take part in
+  many transactions, but subsequent transactions of a single payer may
+  have different, possibly disjoint, groups of recipients. Also, we
+  assume that transactions result from activities carried out in a
+  decentralized peer-to-peer network, so we would like to avoid
+  solutions relying on any trusted third party. We cannot therefore use
+  existing solutions that require a central server or assume that a
+  payer makes a series of micropayments to a single recipient (Bitcoin
+  micropayment channels).
+
+  Instead, we propose a probabilistic payment scheme in which only one
+  recipient randomly chosen from a group of candidates is rewarded in
+  a single transaction. Our solution is based on Ethereum and is thus
+  decentralized and avoids relying on a trusted third party. In
+  particular, we describe an Ethereum smart contract implementing a
+  lottery used to reward recipients. In the proposed payment scheme,
+  the estimated cost of ...\marginpar{dokończyć zdanie}
+\end{abstract}
+
+\begin{figure}
+  \include{merkle}
+  \caption{An example Merkle tree.}
+  \label{fig:merkle}
+\end{figure}
+
+Figure~\ref{fig:merkle} shows an example Mekle tree with a distinguished node $n = 010$. Its label $w$, together with labels $w_3$, $w_2$ and $w_1$ are used to compute hashes $h_3, \ldots, h_0$.
+
+\end{document}
