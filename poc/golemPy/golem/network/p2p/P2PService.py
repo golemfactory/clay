@@ -6,13 +6,18 @@ from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress, SafeProtocol
 from golem.network.transport.tcp_server import TCPServer, PendingConnectionsServer, PenConnStatus
 from golem.network.p2p.peer_session import PeerSession
-from golem.core.variables import REFRESH_PEERS_TIMEOUT, LAST_MESSAGE_BUFFER_LEN, SOLVE_CHALLENGE, BASE_DIFFICULTY
 from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
 from golem.ranking.gossip_keeper import GossipKeeper
+from golem.task.task_connections_helper import TaskConnectionsHelper
 
 from peer_keeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
+
+LAST_MESSAGE_BUFFER_LEN = 5  # How many last messages should we keep
+REFRESH_PEERS_TIMEOUT = 1200  # How often should we disconnect with a random node
+SOLVE_CHALLENGE = True  # Should nodes that connects with us solve hashcash challenge?
+BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 
 
 class P2PService(PendingConnectionsServer):
@@ -29,6 +34,7 @@ class P2PService(PendingConnectionsServer):
         self.node = node
         self.keys_auth = keys_auth
         self.peer_keeper = PeerKeeper(keys_auth.get_key_id())
+        self.task_connections_helper = TaskConnectionsHelper()
         self.task_server = None
         self.resource_server = None
         self.resource_port = 0
@@ -61,8 +67,6 @@ class P2PService(PendingConnectionsServer):
 
         self.last_messages = []
 
-        self.connections_to_set = {}
-
         self.connect_to_network()
 
     def new_connection(self, session):
@@ -81,6 +85,7 @@ class P2PService(PendingConnectionsServer):
         :param TaskServer task_server: task server instance
         """
         self.task_server = task_server
+        self.task_connections_helper.task_server = task_server
 
     def sync_network(self):
         """ Get information about new tasks and new peers in the network. Remove excess information
@@ -94,6 +99,7 @@ class P2PService(PendingConnectionsServer):
         self.__remove_old_peers()
         self.__sync_peer_keeper()
         self._sync_pending()
+        self.task_connections_helper.sync()
 
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection
@@ -102,12 +108,12 @@ class P2PService(PendingConnectionsServer):
         for p in self.peers.values():
             p.ping(interval)
 
-    def find_peer(self, peer_id):
+    def find_peer(self, key_id):
         """ Find peer with given id on list of active connections
-        :param peer_id:
+        :param key_id: id of a searched peer
         :return None|PeerSession: connection to a given peer or None
         """
-        return self.peers.get(peer_id)
+        return self.peers.get(key_id)
 
     def get_peers(self):
         """ Return all open connection to other peers that this node keeps
@@ -130,7 +136,7 @@ class P2PService(PendingConnectionsServer):
         """
         peer_to_ping_info = self.peer_keeper.add_peer(peer_info)
         if peer_to_ping_info and peer_to_ping_info.node_id in self.peers:
-            peer_to_ping = self.peers[peer_to_ping_info.node_id]
+            peer_to_ping = self.peers[peer_to_ping_info.key]
             if peer_to_ping:
                 peer_to_ping.ping(0)
 
@@ -145,15 +151,15 @@ class P2PService(PendingConnectionsServer):
         """ Add peer to inner peer information
         :param dict peer_info: dictionary with information about peer
         """
-        if self.__is_new_peer(peer_info["id"]):
+        if self.__is_new_peer(peer_info["key"]):
             logger.info("add peer to incoming {} {} {}".format(peer_info["id"],
                                                                peer_info["address"],
                                                                peer_info["port"]))
-            self.incoming_peers[peer_info["id"]] = {"address": peer_info["address"],
+            self.incoming_peers[peer_info["key"]] = {"address": peer_info["address"],
                                                     "port": peer_info["port"],
                                                     "node": peer_info["node"],
                                                     "conn_trials": 0}
-            self.free_peers.append(peer_info["id"])
+            self.free_peers.append(peer_info["key"])
             logger.debug(self.incoming_peers)
 
     def remove_peer(self, peer_session):
@@ -478,7 +484,7 @@ class P2PService(PendingConnectionsServer):
             p.send_remove_task(task_id)
 
     def want_to_start_task_session(self, key_id, node_info, conn_id, super_node_info=None):
-        """ Inform task with public key <key_id> that node from node info want to start task session with him. If
+        """ Inform peer with public key <key_id> that node from node info want to start task session with him. If
         peer with given id is on a list of peers that this message will be send directly. Otherwise all peers will
         receive a request to pass this message.
         :param str key_id: key id of a node that should open a task session
@@ -487,10 +493,8 @@ class P2PService(PendingConnectionsServer):
         :param Node|None super_node_info: *Default: None* information about node with public ip that took part
         in message transport
         """
-        if conn_id in self.connections_to_set:
+        if not self.task_connections_helper.is_new_conn_request(conn_id, key_id, node_info, super_node_info):
             return
-
-        self.connections_to_set[conn_id] = (key_id, node_info, time.time())
 
         logger.debug("Try to start task session {}".format(key_id))
         msg_snd = False
@@ -507,7 +511,7 @@ class P2PService(PendingConnectionsServer):
         # TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
 
         if not msg_snd and node_info.key == self.get_key_id():
-            self.task_server.final_conn_failure(conn_id)
+            self.task_connections_helper.final_conn_failure(conn_id)
 
     def inform_about_task_nat_hole(self, key_id, rv_key_id, addr, port, ans_conn_id):
         """
@@ -543,31 +547,15 @@ class P2PService(PendingConnectionsServer):
         self.task_server.traverse_nat_failure(conn_id)
 
     def peer_want_task_session(self, node_info, super_node_info, conn_id):
-        # TODO Reakcja powinna nastapic tylko na pierwszy taki komunikat
-        self.task_server.start_task_session(node_info, super_node_info, conn_id)
-
-    def peer_want_to_set_task_session(self, key_id, node_info, conn_id, super_node_info):
+        """ Process request to start task session from this node to a node from node_info.
+        :param Node node_info: node that requests task session with this node
+        :param Node|None super_node_info: information about supernode that has passed this information
+        :param conn_id: connection id
         """
-        :param key_id:
-        :param node_info:
-        :param conn_id:
-        :param super_node_info:
-        :return:
-        """
-        logger.debug("Peer want to set task session with {}".format(key_id))
-        if conn_id in self.connections_to_set:
-            return
-
-        # TODO Lepszy mechanizm wyznaczania supernode'a
-        if super_node_info is None and self.node.is_super_node():
-            super_node_info = self.node
-
-        # TODO Te informacje powinny wygasac (byc usuwane po jakims czasie)
-        self.connections_to_set[conn_id] = (key_id, node_info, time.time())
-        self.want_to_start_task_session(key_id, node_info, conn_id, super_node_info)
+        self.task_connections_helper.want_to_start(conn_id, node_info, super_node_info)
 
     #############################
-    # RANKING FUNCTIONS          #
+    # RANKING FUNCTIONS         #
     #############################
     def send_gossip(self, gossip, send_to):
         """ send gossip to given peers
@@ -670,7 +658,7 @@ class P2PService(PendingConnectionsServer):
             if len(self.free_peers) == 0:
                 peer = None  # FIXME
                 #                peer = self.peer_keeper.get_random_known_peer()
-                if peer is None or peer.node_id in self.peers:
+                if peer is None or peer.key_id in self.peers:
                     if time.time() - self.last_peers_request > 2:
                         self.last_peers_request = time.time()
                         for p in self.peers.values():
@@ -712,7 +700,7 @@ class P2PService(PendingConnectionsServer):
         logger.info("Can't connect to peer {}.".format(conn_id))
 
     def __is_new_peer(self, id_):
-        if id_ in self.incoming_peers or id_ in self.peers or id_ == self.client_uid:
+        if id_ in self.incoming_peers or id_ in self.peers or id_ == self.get_key_id():
             return False
         else:
             return True
@@ -745,7 +733,6 @@ class P2PService(PendingConnectionsServer):
         for peer_id in self.peer_keeper.sessions_to_end:
             self.remove_peer_by_id(peer_id)
         self.peer_keeper.sessions_to_end = []
-
 
 class P2PConnTypes(object):
     """ P2P Connection Types that allows to choose right reaction  """

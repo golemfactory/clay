@@ -24,14 +24,6 @@ LISTEN_WAIT_TIME = 1
 LISTENING_REFRESH_TIME = 120
 LISTEN_PORT_TTL = 3600
 
-##################
-# P2P VARIABLES #
-#################
-REFRESH_PEERS_TIMEOUT = 1200
-LAST_MESSAGE_BUFFER_LEN = 5
-SOLVE_CHALLENGE = True
-BASE_DIFFICULTY = 5
-
 #####################
 # SESSION VARIABLES #
 #####################
