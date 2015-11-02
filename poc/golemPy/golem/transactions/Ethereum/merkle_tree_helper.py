@@ -22,7 +22,7 @@ class MerkleTree(object):
     """ Merkle Tree structure that can help generating data for Ethereum lottery contract """
     def __init__(self, value):
         """ Create new leaf
-        :param value: value strored in this node
+        :param value: value stored in this node
         """
         self.value = value
         self.left = None
@@ -56,6 +56,14 @@ class MerkleTree(object):
         return False, [], [self.value]
 
     def verify_path(self, path, values, leaf):
+        """ Check that a tree contains given leaf. Leaf, path and values create together leaf certificate that can
+        be send to verify that a leaf is in a tree with given value. Check Golem whitepaper for details.
+        :param list path:  list describing how to get to the node  with given value: 0 - choose left path, 1 choose
+            right path
+        :param list values:   list containing hashes of other children of a nodes on the path
+        :param leaf: value stored in a leaf
+        :return bool: True if given leaf is in a tree and given proof is sufficient, False otherwise.
+        """
         h = leaf
         for it in range(len(path)):
             if path[it] == 0:
@@ -66,6 +74,11 @@ class MerkleTree(object):
 
     @classmethod
     def make_tree(cls, payment_list):
+        """ Generate new Merkle Tree form given payment list
+        :param list payment_list: list containing lottery description triples (a, R, r).
+            a will win lottery if a random value x is such that R <= x < r.
+        :return MerkleTree: root of a created merkle tree describing lottery
+        """
         nodes = cls.generate_leaves(payment_list)
         for t in nodes:
             print t
@@ -74,11 +87,24 @@ class MerkleTree(object):
         lvl_pairs = n - 2 ** lvl
         nodes = cls.__generate_next_layer(nodes[:lvl_pairs * 2]) + nodes[lvl_pairs * 2:]
         while len(nodes) > 1:
-            print "NEW ITERATION"
             for t in nodes:
                 print t
             nodes = cls.__generate_next_layer(nodes)
         return nodes
+
+    @classmethod
+    def generate_leaves(cls, payment_list):
+        """ Generate leaves of merkle tree from given payment list
+        :param list payment_list: list containing lottery description triples (a, R, r)
+        :return list: list of a hashed values, each representing one address. Each value should be stored in one merkle
+        tree leaf.
+        """
+        hash_list = []
+        for (address, R, r) in payment_list:
+            data = encode_abi(['uint256'], [address]) + encode_abi(['uint256'], [R]) + encode_abi(['uint256'], [r])
+            data = encode_abi(['bytes32'], [sha3_256(data).digest()])
+            hash_list.append(MerkleTree(data))
+        return hash_list
 
     @classmethod
     def __generate_next_layer(cls, nodes):
@@ -96,19 +122,6 @@ class MerkleTree(object):
                 new_nodes.append(MerkleTree(nodes[i].value))
         return new_nodes
 
-    @classmethod
-    def generate_leaves(cls, payment_list):
-        """
-        :param payment_list:
-        :return:
-        """
-        hash_list = []
-        for (address, R, r) in payment_list:
-            data = encode_abi(['uint256'], [address]) + encode_abi(['uint256'], [R]) + encode_abi(['uint256'], [r])
-            data = encode_abi(['bytes32'], [sha3_256(data).digest()])
-            hash_list.append(MerkleTree(data))
-        return hash_list
-
 
 if __name__ == "__main__":
 
@@ -118,7 +131,7 @@ if __name__ == "__main__":
     print pl
     cr = MerkleTree.make_tree(pl)
     root = cr[0]
-    print encode_abi(['bytes32'], [sha3_256(root.value + '123').digest()]).encode('hex')
+    print "ROOT BEFORE {}".format(encode_abi(['bytes32'], [sha3_256(root.value + '123').digest()]).encode('hex'))
     print "ROOT"
     print root
     addr, path, value = root.produce_path(root.generate_leaves([('745ae7f60baf85e58f0920521e1e292e981ee7da', 2, 5)])[0].value)
