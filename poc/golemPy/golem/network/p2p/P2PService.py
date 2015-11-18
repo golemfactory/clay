@@ -151,15 +151,15 @@ class P2PService(PendingConnectionsServer):
         """ Add peer to inner peer information
         :param dict peer_info: dictionary with information about peer
         """
-        if self.__is_new_peer(peer_info["key"]):
+        if self.__is_new_peer(peer_info["node"].key):
             logger.info("add peer to incoming {} {} {}".format(peer_info["id"],
                                                                peer_info["address"],
                                                                peer_info["port"]))
-            self.incoming_peers[peer_info["key"]] = {"address": peer_info["address"],
+            self.incoming_peers[peer_info["node"].key] = {"address": peer_info["address"],
                                                     "port": peer_info["port"],
                                                     "node": peer_info["node"],
                                                     "conn_trials": 0}
-            self.free_peers.append(peer_info["key"])
+            self.free_peers.append(peer_info["node"].key)
             logger.debug(self.incoming_peers)
 
     def remove_peer(self, peer_session):
