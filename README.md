@@ -7,4 +7,6 @@ that there are two types of nodes in the Golem network: requester nodes that ann
 tasks and compute nodes that perform computations (in the actual implementation nodes may switch
 between both roles).
 
-To start application got to poc/golemPy/examples/gnr and run admMain.py.
+Set environment variable "GOLEM" to "golem/poc/golemPy"
+
+To start application go to poc/golemPy/examples/gnr and run admMain.py.
