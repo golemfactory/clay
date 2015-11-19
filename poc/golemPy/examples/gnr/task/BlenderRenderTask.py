@@ -86,9 +86,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuiler):
         return new_task
 
 
-##############################################
 class BlenderRenderTask(FrameRenderingTask):
-    #######################
     def __init__(self,
                   client_id,
                   task_id,
@@ -119,7 +117,7 @@ class BlenderRenderTask(FrameRenderingTask):
                           total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                           root_path, estimated_memory, use_frames, frames)
 
-        crop_task = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples\\tasks\\blenderCrop.py'))
+        crop_task = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/tasks/blenderCrop.py'))
         try:
             with open(crop_task) as f:
                 self.script_src = f.read()
@@ -133,7 +131,6 @@ class BlenderRenderTask(FrameRenderingTask):
         for frame in frames:
             self.frames_given[ frame ] = {}
 
-    #######################
     def query_extra_data(self, perf_index, num_cores = 0, client_id = None):
 
         if not self._accept_client(client_id):

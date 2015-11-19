@@ -1,2 +1,4 @@
 *.pyc
 ui_*.py
+*.db
+*.log
