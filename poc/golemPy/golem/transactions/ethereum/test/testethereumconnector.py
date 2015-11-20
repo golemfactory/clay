@@ -1,11 +1,10 @@
 import unittest
-
 import sys
 import os
 
 sys.path.append(os.environ.get('GOLEM'))
 
-from golem.transactions.Ethereum.ethereum_connector import EthereumConnector, EthJSON
+from golem.transactions.ethereum.ethereumconnector import EthereumConnector, EthJSON
 
 sys.path.append(os.environ.get('GOLEM'))
 

@@ -4,7 +4,7 @@ import os
 
 sys.path.append(os.environ.get('GOLEM'))
 
-from golem.environments.check_cmd import check_cmd
+from golem.environments.checkcmd import check_cmd
 
 
 class TestCheckCmd(unittest.TestCase):

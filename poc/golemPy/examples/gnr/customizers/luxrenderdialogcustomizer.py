@@ -2,10 +2,10 @@ import logging
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMessageBox
 
-from golem.environments.Environment import Environment
+from golem.environments.environment import Environment
 
-from examples.gnr.ui.LuxRenderDialog import LuxRenderDialog
-from examples.gnr.RenderingEnvironment import LuxRenderEnvironment
+from examples.gnr.ui.luxrenderdialog import LuxRenderDialog
+from examples.gnr.renderingenvironment import LuxRenderEnvironment
 
 logger = logging.getLogger(__name__)
 

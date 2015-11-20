@@ -7,27 +7,27 @@ from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
 logger = logging.getLogger(__name__)
 
-from examples.gnr.ui.NewTaskDialog import NewTaskDialog
-from examples.gnr.ui.TaskTableElem import TaskTableElem
-from examples.gnr.ui.TaskDetailsDialog import TaskDetailsDialog
-from examples.gnr.ui.SubtaskDetailsDialog import SubtaskDetailsDialog
-from examples.gnr.ui.ChangeTaskDialog import ChangeTaskDialog
-from examples.gnr.ui.StatusWindow import StatusWindow
-from examples.gnr.ui.AboutWindow import AboutWindow
-from examples.gnr.ui.ConfigurationDialog import ConfigurationDialog
-from examples.gnr.ui.EnvironmentsDialog import EnvironmentsDialog
-from examples.gnr.ui.IdentityDialog import IdentityDialog
+from examples.gnr.ui.newtaskdialog import NewTaskDialog
+from examples.gnr.ui.tasktableelem import TaskTableElem
+from examples.gnr.ui.taskdetailsdialog import TaskDetailsDialog
+from examples.gnr.ui.subtaskdetailsdialog import SubtaskDetailsDialog
+from examples.gnr.ui.changetaskdialog import ChangeTaskDialog
+from examples.gnr.ui.statuswindow import StatusWindow
+from examples.gnr.ui.aboutwindow import AboutWindow
+from examples.gnr.ui.configurationdialog import ConfigurationDialog
+from examples.gnr.ui.environmentsdialog import EnvironmentsDialog
+from examples.gnr.ui.identitydialog import IdentityDialog
 
-from examples.gnr.customizers.NewTaskDialogCustomizer import NewTaskDialogCustomizer
-from examples.gnr.customizers.TaskContexMenuCustomizer import TaskContextMenuCustomizer
-from examples.gnr.customizers.TaskDetailsDialogCustomizer import TaskDetailsDialogCustomizer
-from examples.gnr.customizers.SubtaskDetailsDialogCustomizer import SubtaskDetailsDialogCustomizer
-from examples.gnr.customizers.ChangeTaskDialogCustomizer import ChangeTaskDialogCustomizer
-from examples.gnr.customizers.StatusWindowCustomizer import StatusWindowCustomizer
-from examples.gnr.customizers.AboutWindowCustomizer import AboutWindowCustomizer
-from examples.gnr.customizers.ConfigurationDialogCustomizer import ConfigurationDialogCustomizer
-from examples.gnr.customizers.EnvironmentsDialogCustomizer import EnvironmentsDialogCustomizer
-from examples.gnr.customizers.IdentityDialogCustomizer import IdentityDialogCustomizer
+from examples.gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
+from examples.gnr.customizers.taskcontexmenucustomizer import TaskContextMenuCustomizer
+from examples.gnr.customizers.taskdetailsdialogcustomizer import TaskDetailsDialogCustomizer
+from examples.gnr.customizers.subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
+from examples.gnr.customizers.changetaskdialogcustomizer import ChangeTaskDialogCustomizer
+from examples.gnr.customizers.statuswindowcustomizer import StatusWindowCustomizer
+from examples.gnr.customizers.aboutwindowcustomizer import AboutWindowCustomizer
+from examples.gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer
+from examples.gnr.customizers.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
+from examples.gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer
 
 from golem.core.simpleexccmd import is_windows, exec_cmd
 
@@ -205,7 +205,7 @@ class GNRMainWindowCustomizer:
         task_table_elem = TaskTableElem(task_id, status)
 
         for col in range(0, 2):
-            self.gui.ui.taskTableWidget.setItem(current_row_count, col, task_table_elem.getColumnItem(col))
+            self.gui.ui.taskTableWidget.setItem(current_row_count, col, task_table_elem.get_column_item(col))
 
         self.gui.ui.taskTableWidget.setCellWidget(current_row_count, 2, task_table_elem.progressBarInBoxLayoutWidget)
 

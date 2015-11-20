@@ -1,18 +1,19 @@
 import sys
+import time
+import os
+import logging
 
 sys.path.append('../manager')
 
 from threading import Thread, Lock
-import time
+
 from copy import copy
 
 from golem.vm.vm import PythonProcVM, PythonTestVM, PythonVM
-from golem.manager.NodeStateSnapshot import TaskChunkStateSnapshot
-from golem.resource.ResourcesManager import ResourcesManager
-from golem.resource.dir_manager import DirManager
+from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
+from golem.resource.resourcesmanager import ResourcesManager
+from golem.resource.dirmanager import DirManager
 
-import os
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ from golem.network.transport.message import MessageHello, MessagePing, MessagePo
     MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, MessageRandVal, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
     MessageInformAboutNatTraverseFailure, MessageChallengeSolution
-from golem.network.transport.tcp_network import SafeProtocol
+from golem.network.transport.tcpnetwork import SafeProtocol
 from golem.network.transport.session import BasicSafeSession
 
 logger = logging.getLogger(__name__)

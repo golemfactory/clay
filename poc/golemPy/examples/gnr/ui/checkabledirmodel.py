@@ -1,6 +1,7 @@
 import os
 from PyQt4 import QtGui, QtCore
 
+
 def are_parent_and_child(parent, child):
     while child.isValid():
         if child == parent:

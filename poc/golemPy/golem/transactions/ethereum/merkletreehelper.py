@@ -1,6 +1,6 @@
 from sha3 import sha3_256
 import math
-from ethereum_abi import encode_abi
+from ethereumabi import encode_abi
 
 
 def make_payment_list(payments):

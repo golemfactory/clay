@@ -3,7 +3,7 @@ import os
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog, QMessageBox
-from examples.gnr.ui.ThreeDSMaxDialog import ThreeDSMaxDialog
+from examples.gnr.ui.threedsmaxdialog import ThreeDSMaxDialog
 
 logger = logging.getLogger(__name__)
 

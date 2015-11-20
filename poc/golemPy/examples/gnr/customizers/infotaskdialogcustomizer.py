@@ -1,5 +1,5 @@
-from examples.gnr.ui.InfoTaskDialog import InfoTaskDialog
-from TimeHelper import get_time_values
+from examples.gnr.ui.infotaskdialog import InfoTaskDialog
+from timehelper import get_time_values
 
 import logging
 

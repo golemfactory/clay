@@ -1,16 +1,14 @@
 import logging
-
-from examples.gnr.ui.UpdateOtherGolemsDialog import UpdateOtherGolemsDialog
-from examples.gnr.ui.InfoTaskDialog import InfoTaskDialog
-
-from examples.gnr.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
-from examples.gnr.customizers.UpdateOtherGolemsDialogCustomizer import UpdateOtherGolemsDialogCustomizer
-from examples.gnr.customizers.InfoTaskDialogCustomizer import InfoTaskDialogCustomizer
+from examples.gnr.ui.updateothergolemsdialog import UpdateOtherGolemsDialog
+from examples.gnr.ui.infotaskdialog import InfoTaskDialog
+from examples.gnr.customizers.gnrmainwindowcustomizer import GNRMainWindowCustomizer
+from examples.gnr.customizers.updateothergolemsdialogcustomizer import UpdateOtherGolemsDialogCustomizer
+from examples.gnr.customizers.infotaskdialogcustomizer import InfoTaskDialogCustomizer
 
 logger = logging.getLogger(__name__)
 
 
-class GNRAdministratorMainWindowCustomizer (GNRMainWindowCustomizer):
+class GNRAdministratorMainWindowCustomizer(GNRMainWindowCustomizer):
     def _setup_connections(self):
         GNRMainWindowCustomizer._setup_connections(self)
         self._setup_administration_connections()
@@ -24,7 +22,7 @@ class GNRAdministratorMainWindowCustomizer (GNRMainWindowCustomizer):
     def _show_info_task_dialog(self):
         self.info_task_dialog = InfoTaskDialog(self.gui.window)
         self.info_task_dialog_customizer = InfoTaskDialogCustomizer(self.info_task_dialog, self.logic)
-     #   self.info_task_dialog_customizer.loadDefaults()
+        #   self.info_task_dialog_customizer.loadDefaults()
         self.info_task_dialog.show()
 
     def _send_info_task(self):
@@ -34,8 +32,9 @@ class GNRAdministratorMainWindowCustomizer (GNRMainWindowCustomizer):
         self.logic.send_test_tasks()
 
     def _send_update_other_golems_task(self):
-        update_other_golems_dialog = UpdateOtherGolemsDialog (self.gui.window)
-        update_other_golems_dialog_customizer = UpdateOtherGolemsDialogCustomizer(update_other_golems_dialog, self.logic)
+        update_other_golems_dialog = UpdateOtherGolemsDialog(self.gui.window)
+        update_other_golems_dialog_customizer = UpdateOtherGolemsDialogCustomizer(update_other_golems_dialog,
+                                                                                  self.logic)
         update_other_golems_dialog.show()
 
     def _start_nodes_manager(self):

@@ -10,12 +10,12 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
     MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse
-from golem.network.transport.tcp_network import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
+from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
 from golem.network.transport.session import MiddlemanSafeSession
-from golem.task.TaskBase import result_types
-from golem.resource.Resource import decompress_dir
-from golem.transactions.Ethereum.ethereum_payments_keeper import EthAccountInfo
+from golem.task.taskbase import result_types
+from golem.resource.resource import decompress_dir
+from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 

@@ -6,8 +6,8 @@ import time
 
 sys.path.append(os.environ.get('GOLEM'))
 
-from golem.network.p2p.P2PServer import P2PServer, NetServerFactory
-from golem.network.p2p.NetConnState import NetConnState
+from golem.network.p2p.p2pserver import P2PServer, NetServerFactory
+from golem.network.p2p.netconnstate import NetConnState
 
 class P2PService():
     def __init__(self):

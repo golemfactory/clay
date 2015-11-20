@@ -1,7 +1,7 @@
 import logging
 
-from examples.gnr.customizers.GNRAdministratorMainWindowCustomizer import GNRAdministratorMainWindowCustomizer
-from examples.gnr.customizers.RenderingMainWindowCustomizer import AbsRenderingMainWindowCustomizer
+from examples.gnr.customizers.gnradministratormainwindowcustomizer import GNRAdministratorMainWindowCustomizer
+from examples.gnr.customizers.renderingmainwindowcustomizer import AbsRenderingMainWindowCustomizer
 
 logger = logging.getLogger(__name__)
 

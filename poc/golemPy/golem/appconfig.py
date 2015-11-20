@@ -7,7 +7,7 @@ import logging
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 from golem.core.simpleenv import SimpleEnv
 from golem.core.prochelper import ProcessService
-from ClientConfigDescriptor import ClientConfigDescriptor
+from clientconfigdescriptor import ClientConfigDescriptor
 
 CONFIG_FILENAME = "app_cfg.ini"
 ESTM_FILENAME = "minilight.ini"
@@ -25,7 +25,7 @@ APP_VERSION = "1.021"
 
 
 class CommonConfig:
-    ##############################
+
     def __init__(self,
                  section="Common",
                  manager_address=MANAGER_ADDRESS,
@@ -47,7 +47,6 @@ class CommonConfig:
         ConfigEntry.create_property(section, "application name", app_name, self, "AppName")
         ConfigEntry.create_property(section, "application version", app_version, self, "AppVersion")
 
-    ##############################
     def section(self):
         return self._section
 
@@ -145,22 +144,19 @@ class NodeConfig:
         ConfigEntry.create_property(self.section(), "eth account name", eth_account, self, "EthAccount")
         ConfigEntry.create_property(self.section(), "listen of Ip6", use_ipv6, self, "UseIp6")
 
-    ##############################
     def section(self):
         return self._section
 
 
-##############################
-##############################
 class AppConfig:
     CONFIG_LOADED = False
 
-    ##############################
+
     @classmethod
     def manager_port(cls):
         return MANAGER_PORT
 
-    ##############################
+
     @classmethod
     def load_config(cls, cfg_file=CONFIG_FILENAME):
 
@@ -187,11 +183,9 @@ class AppConfig:
 
         return AppConfig(cfg)
 
-    ##############################
     def __init__(self, cfg):
         self._cfg = cfg
 
-    ##############################
     def get_optimal_peer_num(self):
         return self._cfg.get_common_config().getOptimalPeerNum()
 
@@ -300,7 +294,6 @@ class AppConfig:
     def get_use_ipv6(self):
         return self._cfg.get_node_config().getUseIp6()
 
-    ##############################
     def change_config(self, cfg_desc, cfg_file=CONFIG_FILENAME, ):
         assert isinstance(cfg_desc, ClientConfigDescriptor)
 

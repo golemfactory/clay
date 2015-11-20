@@ -6,10 +6,10 @@ from threading import Lock
 
 from golem.ui.manager import NodesManagerWidget
 from golem.ui.uicustomizer import ManagerUiCustomizer, NodeDataState
-from NodeStateSnapshot import NodeStateSnapshot
+from nodestatesnapshot import NodeStateSnapshot
 from networksimulator import GLOBAL_SHUTDOWN, LocalNetworkSimulator
-from NodesManagerLogic import NodesManagerLogicTest, EmptyManagerLogic
-from server.NodesManagerServer import NodesManagerServer
+from nodesmanagerlogic import NodesManagerLogicTest, EmptyManagerLogic
+from server.nodesmanagerserver import NodesManagerServer
 
 #FIXME: potencjalnie mozna tez spiac ze soba managery i wtedy kontrolowac zdalnie wszystkie koncowki i sobie odpalac nody w miare potrzeb, ale to nie na najblizsza prezentacje zabawa
 class NodesManager:

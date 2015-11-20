@@ -5,18 +5,18 @@ import logging
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox
 
-from golem.task.TaskState import SubtaskStatus
+from golem.task.taskstate import SubtaskStatus
 
-from examples.gnr.ui.ShowTaskResourcesDialog import ShowTaskResourcesDialog
-from examples.gnr.ui.RenderingNewTaskDialog import NewTaskDialog
+from examples.gnr.ui.showtaskresourcesdialog import ShowTaskResourcesDialog
+from examples.gnr.ui.renderingnewtaskdialog import NewTaskDialog
 
-from examples.gnr.RenderingDirManager import get_preview_file
-from examples.gnr.RenderingTaskState import RenderingTaskDefinition
+from examples.gnr.renderingdirmanager import get_preview_file
+from examples.gnr.renderingtaskstate import RenderingTaskDefinition
 
-from examples.gnr.customizers.GNRMainWindowCustomizer import GNRMainWindowCustomizer
-from examples.gnr.customizers.RenderingNewTaskDialogCustomizer import RenderingNewTaskDialogCustomizer
+from examples.gnr.customizers.gnrmainwindowcustomizer import GNRMainWindowCustomizer
+from examples.gnr.customizers.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
 
-from examples.gnr.customizers.MemoryHelper import resource_size_to_display, translate_resource_index
+from examples.gnr.customizers.memoryhelper import resource_size_to_display, translate_resource_index
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class AbsRenderingMainWindowCustomizer(object):
         self.new_task_dialogCustomizer = RenderingNewTaskDialogCustomizer(self.new_task_dialog, self.logic)
 
     def update_task_additional_info(self, t):
-        from examples.gnr.RenderingTaskState import RenderingTaskState
+        from examples.gnr.renderingtaskstate import RenderingTaskState
         assert isinstance(t, RenderingTaskState)
 
         self.current_task_highlighted = t

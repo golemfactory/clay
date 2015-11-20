@@ -1,6 +1,6 @@
 import logging
 
-from golem.network.transport.tcp_network import ServerProtocol
+from golem.network.transport.tcpnetwork import ServerProtocol
 from golem.network.transport.message import Message
 
 

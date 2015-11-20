@@ -1,5 +1,6 @@
 import re
 
+
 def regenerate_file(cfg_file_src, thread_num):
     out = ""
 

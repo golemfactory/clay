@@ -2,7 +2,7 @@ import logging
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMessageBox
-from examples.gnr.ui.BlenderRenderDialog import BlenderRenderDialog
+from examples.gnr.ui.blenderrenderdialog import BlenderRenderDialog
 
 logger = logging.getLogger(__name__)
 

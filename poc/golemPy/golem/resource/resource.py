@@ -1,7 +1,7 @@
 import logging
 
 from golem.core.simplehash import SimpleHash
-from golem.resource.dir_manager import split_path
+from golem.resource.dirmanager import split_path
 
 import os
 import zipfile

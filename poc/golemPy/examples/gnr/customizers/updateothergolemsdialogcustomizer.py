@@ -1,4 +1,4 @@
-from examples.gnr.ui.UpdateOtherGolemsDialog import UpdateOtherGolemsDialog
+from examples.gnr.ui.updateothergolemsdialog import UpdateOtherGolemsDialog
 
 from PyQt4.QtGui import QFileDialog, QMessageBox
 

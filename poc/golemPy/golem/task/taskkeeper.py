@@ -3,13 +3,12 @@ import random
 import time
 import datetime
 
-from TaskBase import TaskHeader
+from taskbase import TaskHeader
 
 logger = logging.getLogger(__name__)
 
 
 class TaskKeeper:
-    #############################
     def __init__(self, remove_task_timeout=240.0, verification_timeout=3600):
         self.task_headers = {}
         self.supported_tasks = []
@@ -21,7 +20,6 @@ class TaskKeeper:
         self.verification_timeout = verification_timeout
         self.removed_task_timeout = remove_task_timeout
 
-    #############################
     def get_task(self):
         if len(self.supported_tasks) > 0:
             tn = random.randrange(0, len(self.supported_tasks))
@@ -36,11 +34,9 @@ class TaskKeeper:
         else:
             return None
 
-    #############################
     def get_all_tasks(self):
         return self.task_headers.values()
 
-    #############################
     def add_task_header(self, th_dict_repr, is_supported):
         try:
             id_ = th_dict_repr["id"]
@@ -58,7 +54,6 @@ class TaskKeeper:
             logger.error("Wrong task header received {}".format(str(err)))
             return False
 
-    ###########################
     def remove_task_header(self, task_id):
         if task_id in self.task_headers:
             del self.task_headers[task_id]
@@ -68,12 +63,10 @@ class TaskKeeper:
         if task_id in self.active_requests and self.active_requests[task_id] <= 0:
             self.__del_active_task(task_id)
 
-    #############################
     def get_subtask_ttl(self, task_id):
         if task_id in self.task_headers:
             return self.task_headers[task_id].subtask_timeout
 
-    ###########################
     def receive_task_verification(self, task_id):
         if task_id not in self.active_tasks:
             logger.warning("Wasn't waiting for verification result for {}").format(task_id)
@@ -82,31 +75,26 @@ class TaskKeeper:
         if self.active_requests[task_id] <= 0 and task_id not in self.task_headers:
             self.__del_active_task(task_id)
 
-    ############################
     def get_waiting_for_verification_task_id(self, subtask_id):
         if subtask_id not in self.waiting_for_verification:
             return None
         return self.waiting_for_verification[subtask_id][0]
 
-    ############################
     def is_waiting_for_task(self, task_id):
         for v in self.waiting_for_verification.itervalues():
             if v[0] == task_id:
                 return True
         return False
 
-    ############################
     def remove_waiting_for_verification(self, task_id):
         subtasks = [subId for subId, val in self.waiting_for_verification.iteritems() if val[0] == task_id]
         for subtask_id in subtasks:
             del self.waiting_for_verification[subtask_id]
 
-    ############################
     def remove_waiting_for_verification_task_id(self, subtask_id):
         if subtask_id in self.waiting_for_verification:
             del self.waiting_for_verification[subtask_id]
 
-    ############################
     def remove_old_tasks(self):
         for t in self.task_headers.values():
             cur_time = time.time()
@@ -121,24 +109,20 @@ class TaskKeeper:
             if cur_time - removeTime > self.removed_task_timeout:
                 del self.removed_tasks[task_id]
 
-    ############################
     def request_failure(self, task_id):
         if task_id in self.active_requests:
             self.active_requests[task_id] -= 1
         self.remove_task_header(task_id)
 
-    ###########################
     def get_receiver_for_task_verification_result(self, task_id):
         if task_id not in self.active_tasks:
             return None
         return self.active_tasks[task_id].client_id
 
-    ###########################
     def add_to_verification(self, subtask_id, task_id):
         now = datetime.datetime.now()
         self.waiting_for_verification[subtask_id] = [task_id, now, self.__count_deadline(now)]
 
-    #############################
     def check_payments(self):
         now = datetime.datetime.now()
         after_deadline = []
@@ -148,11 +132,9 @@ class TaskKeeper:
                 del self.waiting_for_verification[subtask_id]
         return after_deadline
 
-    ###########################
     def __count_deadline(self, date):  # FIXME Cos zdecydowanie bardziej zaawansowanego i moze dopasowanego do kwoty
         return datetime.datetime.fromtimestamp(time.time() + self.verification_timeout)
 
-    ###########################
     def __del_active_task(self, task_id):
         del self.active_tasks[task_id]
         del self.active_requests[task_id]

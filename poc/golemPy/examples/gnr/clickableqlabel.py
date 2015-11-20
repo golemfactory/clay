@@ -1,8 +1,8 @@
 from PyQt4.QtGui import QLabel
 from PyQt4.QtCore import SIGNAL
 
-class   ClickableQLabel(QLabel):
 
+class ClickableQLabel(QLabel):
     def __init(self, parent):
         QLabel.__init__(self, parent)
 

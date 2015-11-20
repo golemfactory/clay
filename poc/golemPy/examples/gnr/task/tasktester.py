@@ -3,11 +3,11 @@ from threading import Thread, Lock
 import shutil
 import logging
 
-from golem.task.TaskBase import Task
-from golem.resource.Resource import TaskResourceHeader, decompress_dir
-from golem.task.TaskComputer import PyTestTaskThread
+from golem.task.taskbase import Task
+from golem.resource.resource import TaskResourceHeader, decompress_dir
+from golem.task.taskcomputer import PyTestTaskThread
 
-from examples.gnr.RenderingDirManager import get_test_task_path, get_test_task_directory, get_test_task_tmp_path
+from examples.gnr.renderingdirmanager import get_test_task_path, get_test_task_directory, get_test_task_tmp_path
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ class TaskTester:
             shutil.rmtree(self.tmp_dir, True)
             os.makedirs(self.tmp_dir)
 
-    ###########################
+#
     def task_computed(self, task_thread):
         if task_thread.result:
             res, est_mem = task_thread.result

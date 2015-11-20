@@ -1,19 +1,19 @@
 import os
 
-from golem.Client import start_client
-from golem.environments.Environment import Environment
+from golem.client import start_client
+from golem.environments.environment import Environment
 
-from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment, \
+from examples.gnr.renderingenvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment, \
     LuxRenderEnvironment, BlenderEnvironment
-from examples.gnr.TaskType import buildPBRTTaskType, build_3ds_max_task_type, build_vray_task_type, \
+from examples.gnr.tasktype import build_pbrt_task_type, build_3ds_max_task_type, build_vray_task_type, \
     build_python_gnr_task_type, build_luxrender_task_type, build_blender_render_task_type
-from examples.gnr.task.PbrtGNRTask import build_pbrt_renderer_info
-from examples.gnr.task.ThreeDSMaxTask import build_3ds_max_renderer_info
-from examples.gnr.task.VRayTask import build_vray_renderer_info
-from examples.gnr.task.LuxRenderTask import build_lux_render_info
-from examples.gnr.task.BlenderRenderTask import build_blender_renderer_info
+from examples.gnr.task.pbrtgnrtask import build_pbrt_renderer_info
+from examples.gnr.task.threedsmaxtask import build_3ds_max_renderer_info
+from examples.gnr.task.vraytask import build_vray_renderer_info
+from examples.gnr.task.luxrendertask import build_lux_render_info
+from examples.gnr.task.blenderrendertask import build_blender_renderer_info
 
-from examples.manager.GNRManagerLogic import run_additional_nodes, run_manager
+from examples.manager.gnrmanagerlogic import run_additional_nodes, run_manager
 
 
 def install_reactor():
@@ -40,7 +40,7 @@ def register_rendering_task_types(logic):
 
 
 def register_task_types(logic):
-    logic.register_new_task_type(buildPBRTTaskType())
+    logic.register_new_task_type(build_pbrt_task_type())
     logic.register_new_task_type(build_3ds_max_task_type())
     logic.register_new_task_type(build_vray_task_type())
     logic.register_new_task_type(build_python_gnr_task_type())

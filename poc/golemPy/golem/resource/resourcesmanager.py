@@ -1,4 +1,4 @@
-from Resource import TaskResource, TaskResourceHeader, prepare_delta_zip, decompress_dir
+from resource import TaskResource, TaskResourceHeader, prepare_delta_zip, decompress_dir
 
 import os
 from os.path import join, isdir, isfile
@@ -7,7 +7,7 @@ import logging
 
 from golem.core.databuffer import DataBuffer
 from golem.core.fileshelper import copy_file_tree
-from golem.resource.ResourceHash import ResourceHash
+from golem.resource.resourcehash import ResourceHash
 
 logger = logging.getLogger(__name__)
 

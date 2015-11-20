@@ -1,35 +1,30 @@
 import os
 import shutil
 import logging
-
-from golem.environments.Environment import Environment
-from golem.environments.checkCmd import check_cmd
-
-from examples.gnr.task.ThreeDSMaxCfgEditor import regenerate_file
-
+from golem.environments.environment import Environment
+from golem.environments.checkcmd import check_cmd
+from examples.gnr.task.threedsmaxcfgeditor import regenerate_file
 
 logger = logging.getLogger(__name__)
 
-###########################################################################
+
 class ThreeDSMaxEnvironment(Environment):
-    #########################
     @classmethod
     def get_id(cls):
         return "3DSMAX"
 
-    #########################
     def __init__(self):
         Environment.__init__(self)
         self.software.append('3DS Max Studio 2014 or 3DS Max Studio 2015')
         self.software.append('Windows')
-        self.software_env_var = ['ADSK_3DSMAX_x64_2015', 'ADSK_3DSMAX_x32_2015', 'ADSK_3DSMAX_x64_2014', 'ADSK_3DSMAX_x32_2014']
+        self.software_env_var = ['ADSK_3DSMAX_x64_2015', 'ADSK_3DSMAX_x32_2015', 'ADSK_3DSMAX_x64_2014',
+                                 'ADSK_3DSMAX_x32_2014']
         self.software_name = '3dsmaxcmd.exe'
         self.config_file_name = 'plugcfg_ln/mentalray_cpu.ini'
         self.config_file_backup = 'plugcfg_ln/mentalray_cpu.bak'
         self.short_description = "3DS MAX Studio command tool (http://www.autodesk.pl/products/3ds-max/overview)"
         self.path = ""
 
-    #########################
     def check_software(self):
         if not self.is_windows():
             return False
@@ -40,25 +35,21 @@ class ThreeDSMaxEnvironment(Environment):
                     return True
         return False
 
-    #########################
-    def supported(self) :
+    def supported(self):
         return self.check_software()
 
-    #########################
-    def get_3ds_max_cmd_path (self):
+    def get_3ds_max_cmd_path(self):
         self.check_software()
         if os.path.isfile(self.path):
             return self.path
         else:
             return ""
 
-    #########################
     def set_n_threads(self, num_cores):
         for var in self.software_env_var:
             if os.environ.get(var):
                 self.__rewrite_cfg_file(var, num_cores)
 
-    #########################
     def __rewrite_cfg_file(self, var, num_cores):
         path = os.path.join(os.environ.get(var), self.config_file_name)
         backup_path = os.path.join(os.environ.get(var), self.config_file_backup)
@@ -72,7 +63,6 @@ class ThreeDSMaxEnvironment(Environment):
                 f.write(new_cfg)
             return
 
-    #########################
     def get_default_preset(self):
         for var in self.software_env_var:
             if os.environ.get(var):
@@ -81,30 +71,25 @@ class ThreeDSMaxEnvironment(Environment):
                     return preset_file
         return ""
 
-###########################################################################
-class PBRTEnvironment (Environment):
-    #########################
+
+class PBRTEnvironment(Environment):
     @classmethod
     def get_id(cls):
         return "PBRT"
 
-    #########################
     def __init__(self):
         Environment.__init__(self)
-        self.short_description =  "PBRT renderer (http://www.pbrt.org/)  "
+        self.short_description = "PBRT renderer (http://www.pbrt.org/)  "
 
-    #########################
-    def supported(self) :
+    def supported(self):
         return True
 
-###########################################################################
+
 class VRayEnvironment(Environment):
-    #########################
     @classmethod
     def get_id(cls):
         return "VRAY"
 
-    #########################
     def __init__(self):
         Environment.__init__(self)
         self.software.append('V-Ray standalone')
@@ -116,7 +101,6 @@ class VRayEnvironment(Environment):
             self.software_name = 'vray'
         self.path = ""
 
-    #########################
     def check_software(self):
         if os.environ.get(self.software_env_variable):
             self.path = os.path.join(os.environ.get(self.software_env_variable), self.software_name)
@@ -124,26 +108,22 @@ class VRayEnvironment(Environment):
                 return True
         return False
 
-    #########################
     def supported(self):
         return self.check_software()
 
-    #########################
-    def get_cmd_path (self):
+    def get_cmd_path(self):
         self.check_software()
         if os.path.isfile(self.path):
             return self.path
         else:
             return ""
 
-###########################################################################
+
 class LuxRenderEnvironment(Environment):
-    #########################
     @classmethod
     def get_id(cls):
         return "LUXRENDER"
 
-    #########################
     def __init__(self):
         Environment.__init__(self)
         self.software.append('LuxRender')
@@ -156,7 +136,6 @@ class LuxRenderEnvironment(Environment):
         self.lux_console_path = ''
         self.lux_merger_path = ''
 
-    #########################
     def check_software(self):
         lux_installed = False
         for var in self.software_env_variables:
@@ -168,11 +147,9 @@ class LuxRenderEnvironment(Environment):
 
         return lux_installed
 
-    #########################
     def supported(self):
         return self.check_software()
 
-    #########################
     def get_lux_console(self):
         self.check_software()
         if os.path.isfile(self.lux_console_path):
@@ -180,7 +157,6 @@ class LuxRenderEnvironment(Environment):
         else:
             return ""
 
-    #########################
     def get_lux_merger(self):
         self.check_software()
         if os.path.isfile(self.lux_merger_path):
@@ -188,28 +164,23 @@ class LuxRenderEnvironment(Environment):
         else:
             return ""
 
-###########################################################################
+
 class BlenderEnvironment(Environment):
-    #########################
     @classmethod
     def get_id(cls):
         return "Blender"
 
-    #########################
     def __init__(self):
         Environment.__init__(self)
         self.software.append('Blender')
         self.short_description = "Blender (http://www.blender.org/)"
         self.software_name = 'blender'
 
-    #########################
     def supported(self):
         return self.check_software()
 
-    #########################
     def check_software(self):
         return check_cmd(self.software_name)
 
-    #########################
     def get_blender(self):
         return self.software_name

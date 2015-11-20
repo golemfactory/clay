@@ -3,14 +3,11 @@ import glob
 import uuid
 import logging
 import cPickle as pickle
-
-from golem.task.TaskState import TaskStatus
-from golem.task.TaskBase import Task
-
-from examples.gnr.task.InfoTask import InfoTaskBuilder, InfoTaskDefinition
-from examples.gnr.task.UpdateOtherGolemsTask import UpdateOtherGolemsTaskBuilder, UpdateOtherGolemsTaskDefinition
-
-from GNRApplicationLogic import GNRApplicationLogic
+from golem.task.taskstate import TaskStatus
+from golem.task.taskbase import Task
+from examples.gnr.task.infotask import InfoTaskBuilder, InfoTaskDefinition
+from examples.gnr.task.updateothergolemstask import UpdateOtherGolemsTaskBuilder, UpdateOtherGolemsTaskDefinition
+from gnrapplicationlogic import GNRApplicationLogic
 
 logger = logging.getLogger(__name__)
 
@@ -33,18 +30,19 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         self.add_and_start_tasks_from_files(glob.glob(os.path.join(path, '*.gt')))
 
     def update_other_golems(self, golem_dir):
-        task_definition         = UpdateOtherGolemsTaskDefinition()
-        task_definition.task_id  = "{}".format(uuid.uuid4())
-        task_definition.src_file          = os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/tasks/update_golem.py"))
-        task_definition.total_subtasks    = 100
-        task_definition.full_task_timeout  = 4 * 60 * 60
-        task_definition.subtask_timeout   = 20 * 60
+        task_definition = UpdateOtherGolemsTaskDefinition()
+        task_definition.task_id = "{}".format(uuid.uuid4())
+        task_definition.src_file = os.path.normpath(
+            os.path.join(os.environ.get('GOLEM'), "examples/tasks/update_golem.py"))
+        task_definition.total_subtasks = 100
+        task_definition.full_task_timeout = 4 * 60 * 60
+        task_definition.subtask_timeout = 20 * 60
 
         task_builder = UpdateOtherGolemsTaskBuilder(self.client.get_id(),
-                                          task_definition,
-                                        self.client.get_root_path(), golem_dir)
+                                                    task_definition,
+                                                    self.client.get_root_path(), golem_dir)
 
-        task = Task.build_task( task_builder)
+        task = Task.build_task(task_builder)
         self.add_task_from_definition(task_definition)
         self.client.enqueue_new_task(task)
 
@@ -52,22 +50,22 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
 
     def send_info_task(self, iterations, full_task_timeout, subtask_timeout):
         info_task_definition = InfoTaskDefinition()
-        info_task_definition.task_id           = "{}".format(uuid.uuid4())
-        info_task_definition.src_file          = os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/tasks/send_snapshot.py"))
-        info_task_definition.total_subtasks    = iterations
-        info_task_definition.full_task_timeout  = full_task_timeout
-        info_task_definition.subtask_timeout   = subtask_timeout
-        info_task_definition.manager_address   = self.client.config_desc.manager_address
-        info_task_definition.manager_port      = self.client.config_desc.manager_port
+        info_task_definition.task_id = "{}".format(uuid.uuid4())
+        info_task_definition.src_file = os.path.normpath(
+            os.path.join(os.environ.get('GOLEM'), "examples/tasks/send_snapshot.py"))
+        info_task_definition.total_subtasks = iterations
+        info_task_definition.full_task_timeout = full_task_timeout
+        info_task_definition.subtask_timeout = subtask_timeout
+        info_task_definition.manager_address = self.client.config_desc.manager_address
+        info_task_definition.manager_port = self.client.config_desc.manager_port
 
         task_builder = InfoTaskBuilder(self.client.get_id(),
-                                          info_task_definition,
-                                        self.client.get_root_path())
+                                       info_task_definition,
+                                       self.client.get_root_path())
 
-        task = Task.build_task( task_builder)
+        task = Task.build_task(task_builder)
         self.add_task_from_definition(info_task_definition)
         self.client.enqueue_new_task(task)
-
 
     def start_add_task_client(self):
         import zerorpc
@@ -88,7 +86,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
             except Exception as ex:
                 logger.error("Wrong task file {}, {}".format(task_file, str(ex)))
 
-        self.add_tasks (tasks)
+        self.add_tasks(tasks)
         for task in tasks:
             self.start_task(task.definition.task_id)
 

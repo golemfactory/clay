@@ -5,26 +5,26 @@ import logging
 from twisted.internet import task
 from threading import Lock
 
-from golem.network.p2p.P2PService import P2PService
-from golem.network.p2p.Node import Node
-from golem.task.TaskServer import TaskServer
-from golem.task.TaskManager import TaskManagerEventListener
+from golem.network.p2p.p2pservice import P2PService
+from golem.network.p2p.node import Node
+from golem.task.taskserver import TaskServer
+from golem.task.taskmanager import TaskManagerEventListener
 
-from golem.core.keys_auth import EllipticalKeysAuth
+from golem.core.keysauth import EllipticalKeysAuth
 
-from golem.manager.NodeStateSnapshot import NodeStateSnapshot
+from golem.manager.nodestatesnapshot import NodeStateSnapshot
 
-from golem.AppConfig import AppConfig
+from golem.appconfig import AppConfig
 
-from golem.Model import Database
+from golem.model import Database
 from golem.network.transport.message import init_messages
-from golem.ClientConfigDescriptor import ClientConfigDescriptor, ConfigApprover
-from golem.environments.EnvironmentsManager import EnvironmentsManager
-from golem.resource.ResourceServer import ResourceServer
-from golem.resource.dir_manager import DirManager
-from golem.ranking.Ranking import Ranking, RankingDatabase
+from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
+from golem.environments.environmentsmanager import EnvironmentsManager
+from golem.resource.resourceserver import ResourceServer
+from golem.resource.dirmanager import DirManager
+from golem.ranking.ranking import Ranking, RankingDatabase
 
-from golem.transactions.Ethereum.ethereum_transaction_system import EthereumTransactionSystem
+from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
 logger = logging.getLogger(__name__)
 

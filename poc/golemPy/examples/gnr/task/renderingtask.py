@@ -7,15 +7,15 @@ import uuid
 from copy import deepcopy, copy
 from PIL import Image, ImageChops
 
-from golem.task.TaskState import SubtaskStatus
-from golem.task.TaskBase import ComputeTaskDef
+from golem.task.taskstate import SubtaskStatus
+from golem.task.taskbase import ComputeTaskDef
 from golem.core.simpleexccmd import is_windows, exec_cmd
 
-from examples.gnr.RenderingDirManager import get_tmp_path
-from examples.gnr.RenderingTaskState import AdvanceRenderingVerificationOptions
-from examples.gnr.task.RenderingTaskCollector import exr_to_pil
-from examples.gnr.task.ImgRepr import verify_img, advance_verify_img
-from examples.gnr.task.GNRTask import GNRTask, GNRTaskBuilder, check_subtask_id_wrapper
+from examples.gnr.renderingdirmanager import get_tmp_path
+from examples.gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
+from examples.gnr.task.renderingtaskcollector import exr_to_pil
+from examples.gnr.task.imgrepr import verify_img, advance_verify_img
+from examples.gnr.task.gnrtask import GNRTask, GNRTaskBuilder, check_subtask_id_wrapper
 
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0

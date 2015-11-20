@@ -1,8 +1,8 @@
 
-from ClientManagerSession import ClientManagerSessionFactory
-from golem.network.transport.tcp_network import TCPNetwork, TCPAddress, TCPConnectInfo
+from clientmanagersession import ClientManagerSessionFactory
+from golem.network.transport.tcpnetwork import TCPNetwork, TCPAddress, TCPConnectInfo
 from golem.network.transport.network import ProtocolFactory
-from golem.manager.ManagerConnState import ManagerConnState
+from golem.manager.managerconnstate import ManagerConnState
 
 import logging
 

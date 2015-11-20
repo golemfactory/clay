@@ -4,13 +4,13 @@ from PyQt4.QtGui import QFileDialog
 from copy import deepcopy
 
 
-from examples.gnr.customizers.NewTaskDialogCustomizer import NewTaskDialogCustomizer
+from examples.gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
 
-from examples.gnr.RenderingTaskState import RenderingTaskState, RenderingTaskDefinition, \
+from examples.gnr.renderingtaskstate import RenderingTaskState, RenderingTaskDefinition, \
     AdvanceRenderingVerificationOptions
-from golem.task.TaskState import TaskStatus
-from TimeHelper import set_time_spin_boxes
-from VerificationParamsHelper import read_advance_verification_params, set_verification_widgets_state, \
+from golem.task.taskstate import TaskStatus
+from timehelper import set_time_spin_boxes
+from verificationparamshelper import read_advance_verification_params, set_verification_widgets_state, \
     load_verification_params, verification_random_changed
 
 import logging

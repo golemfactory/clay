@@ -6,7 +6,7 @@ from copy import copy
 sys.path.append(os.environ.get('GOLEM'))
 
 from golem.ranking.simpleRank import SimpleRank
-from networkSimulator import PANetworkSimulator
+from networksimulator import PANetworkSimulator
 
 class RankSimulator:
     def __init__(self, rank_class, opt_peers = 2, network = PANetworkSimulator):

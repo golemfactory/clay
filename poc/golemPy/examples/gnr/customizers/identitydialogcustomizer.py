@@ -1,9 +1,9 @@
 from PyQt4.QtGui import QMessageBox, QFileDialog
 
-from examples.gnr.ui.generating_key_window import GeneratingKeyWindow
+from examples.gnr.ui.generatingkeywindow import GeneratingKeyWindow
 from examples.gnr.ui.dialog import SaveKeysDialog
-from Customizer import Customizer
-from generate_new_key_window_customizer import GenerateNewKeyWindowCustomizer
+from customizer import Customizer
+from generatenewkeywindowcustomizer import GenerateNewKeyWindowCustomizer
 
 GENERATE_NEW_WARNING = u"Are you sure that you want to generate new keys? If you don't save" \
                        u"your current keys you may loose your reputation in the network.\n " \

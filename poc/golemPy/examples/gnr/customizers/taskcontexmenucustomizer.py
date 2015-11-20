@@ -1,10 +1,10 @@
 from PyQt4.QtGui import QAction
 
-from golem.task.TaskState import TaskStatus
+from golem.task.taskstate import TaskStatus
 
 
 class TaskContextMenuCustomizer:
-    ##########################
+
     def __init__(self, ui, logic, ts):
         self.ui         = ui
         self.logic      = logic
@@ -12,7 +12,7 @@ class TaskContextMenuCustomizer:
 
         self.__build_context_menu()
 
-    ##########################
+
     def __build_context_menu(self):
 
         enabled_actions = self.__get_enabled_actions(self.gnr_task_state.task_state.status)
@@ -28,7 +28,7 @@ class TaskContextMenuCustomizer:
         self.__build_and_connect_action("Show Details",    self.__show_task_details_triggered,   enabled_actions)
         self.__build_and_connect_action("Show Result",     self.__show_result_triggered,        enabled_actions)
 
-    ##########################
+
     def __build_and_connect_action(self, name, triggered_func, enabled_actions):
         action = QAction(name, self.ui)
 
@@ -39,7 +39,7 @@ class TaskContextMenuCustomizer:
         return action        
 
     # SLOTS
-    ###########################
+#
     def __abort_task_triggered(self):
         self.logic.abort_task(self.gnr_task_state.definition.task_id)
 

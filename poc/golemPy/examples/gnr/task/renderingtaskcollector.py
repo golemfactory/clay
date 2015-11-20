@@ -151,7 +151,7 @@ def exr_to_pil(exr_file):
 
 class RenderingTaskCollector:
 
-    ############################
+##
     def __init__(self, paste = False, width = 1, height = 1):
         self.darkest = None
         self.lightest = None
@@ -163,7 +163,7 @@ class RenderingTaskCollector:
         self.width = width
         self.height = height
 
-    ############################
+##
     def add_img_file(self, exr_file):
         rgbf = open_exr_as_rgbf_images(exr_file)
         d, l = get_single_rgbf_extrema(rgbf)
@@ -180,7 +180,7 @@ class RenderingTaskCollector:
 
         self.accepted_exr_files.append(exr_file)
 
-    ############################
+##
     def add_alpha_file(self, exr_file):
         rgbf = open_exr_as_rgbf_images(exr_file)
         d, l = get_single_rgbf_extrema(rgbf)
@@ -198,7 +198,7 @@ class RenderingTaskCollector:
         self.accepted_alpha_files.append(exr_file)
 
 
-    ############################
+##
     def finalize(self, show_progress = False):
         if len(self.accepted_exr_files) == 0:
             return None

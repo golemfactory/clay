@@ -1,6 +1,6 @@
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtGui import QFileDialog
-from NodeTasksSpec import NodeTasksWidget
+from nodetasksspec import NodeTasksWidget
 import logging
 import os
 

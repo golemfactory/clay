@@ -1,25 +1,26 @@
 import math
 import random
 
+
 class LocalRank:
     def __init__(self):
         self.ranking = {}
 
     def get_node_rank(self, node_id):
         if node_id in self.ranking:
-            return self.ranking[ node_id ]
+            return self.ranking[node_id]
         else:
             return None
 
     def set_node_rank(self, node_id, value):
-        self.ranking[ node_id ] = value
+        self.ranking[node_id] = value
 
     def inc_node_rank(self, node_id):
         val = self.get_node_rank(node_id)
         if val is not None:
             self.set_node_rank(node_id, val + 1)
         else:
-            self.set_node_rank(node_id,  1)
+            self.set_node_rank(node_id, 1)
 
 
 def div_trust(a, b):
@@ -37,12 +38,12 @@ def compare_vec(vec1, vec2):
         if node not in vec1.keys():
             return float("inf")
         v = vec1[node] - vec2[node]
-        val += v*v
+        val += v * v
     return math.sqrt(val)
 
 
 class DiffGossipTrustRank:
-    def __init__(self, pos_trust_val = 1.0, neg_trust_val = 2.0, min_sum_val = 50, epsilon = 0.01 ):
+    def __init__(self, pos_trust_val=1.0, neg_trust_val=2.0, min_sum_val=50, epsilon=0.01):
         self.node_id = None
         self.positive = LocalRank()
         self.negative = LocalRank()
@@ -107,16 +108,15 @@ class DiffGossipTrustRank:
             self.working_vec[node] = [self.get_node_trust(node), 1.0, 0.0]
         for node in self.glob_vec:
             if node not in known_nodes:
-                self.working_vec[ node ] = [ 0.0, 0.0, 0.0 ]
+                self.working_vec[node] = [0.0, 0.0, 0.0]
         if len(self.working_vec) > 0:
             rand_node = random.sample(self.working_vec.keys(), 1)[0]
-            self.working_vec[ rand_node ][1] = 1.0
+            self.working_vec[rand_node][1] = 1.0
         for node, val in self.working_vec.iteritems():
-            self.glob_vec[ node ] = div_trust(val[0], val[1])
-        self.collected_vecs = [ self.working_vec ]
+            self.glob_vec[node] = div_trust(val[0], val[1])
+        self.collected_vecs = [self.working_vec]
 
-
-    def do_gossip (self):
+    def do_gossip(self):
 
         if self.global_stop:
             return []
@@ -124,28 +124,26 @@ class DiffGossipTrustRank:
         for vec in self.collected_vecs:
             for node_id, val in vec.iteritems():
                 if node_id not in self.working_vec:
-                    self.working_vec[ node_id ] = val
+                    self.working_vec[node_id] = val
                 else:
-                    self.working_vec[ node_id ][0] += val[0]
-                    self.working_vec[ node_id ][1] += val[1]
-                    self.working_vec[ node_id ][2] += val[2]
+                    self.working_vec[node_id][0] += val[0]
+                    self.working_vec[node_id][1] += val[1]
+                    self.working_vec[node_id][2] += val[2]
 
         self.collected_vecs = []
 
         vec_to_send = {}
         for node_id, val in self.working_vec.iteritems():
-            vec_to_send[ node_id ] = [ val[0] / (self.gossip_num), val[1] / (self.gossip_num), val[2] / (self.gossip_num) ]
+            vec_to_send[node_id] = [val[0] / (self.gossip_num), val[1] / (self.gossip_num), val[2] / (self.gossip_num)]
 
-
-        return [ vec_to_send, self.node_id ]
-
+        return [vec_to_send, self.node_id]
 
     def hear_gossip(self, gossip):
         self.collected_vecs.append(gossip)
 
     def get_global_val(self, node_id):
         if node_id in self.glob_vec:
-            return self.glob_vec[ node_id ]
+            return self.glob_vec[node_id]
         return None
 
     def stop_gossip(self):

@@ -2,6 +2,7 @@ from threading import Thread, Event
 import psutil
 import time
 
+
 class MemoryChecker(Thread):
     def __init__(self):
         super(MemoryChecker, self).__init__()
@@ -13,7 +14,7 @@ class MemoryChecker(Thread):
 
     def stop(self):
         self._stop.set()
-        if self.max_mem - self.start_mem> 0:
+        if self.max_mem - self.start_mem > 0:
             return self.max_mem - self.start_mem
         else:
             return max(0, self.max_mem - self.min_mem)

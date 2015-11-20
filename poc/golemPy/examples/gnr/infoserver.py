@@ -42,7 +42,6 @@ class SnapshotGetter:
             logger.error("Can't serialize snapshots: {}".format(str(ex)))
 
 
-
 class InfoServer(Thread):
     def __init__(self, client, main_port, start_port, end_port):
         Thread.__init__(self)
@@ -79,7 +78,6 @@ class InfoServer(Thread):
             return True
         else:
             return False
-
 
     def run(self):
         self.server = zerorpc.Server(SnapshotGetter(self.client))

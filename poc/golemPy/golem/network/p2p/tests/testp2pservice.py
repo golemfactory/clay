@@ -7,7 +7,7 @@ from testfixtures import LogCapture
 
 sys.path.append(os.environ.get('GOLEM'))
 
-from golem.network.p2p.P2PService import P2PService
+from golem.network.p2p.p2pservice import P2PService
 
 class ConfigDesc:
     def __init__(self):

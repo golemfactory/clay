@@ -6,17 +6,17 @@ import shutil
 
 from collections import OrderedDict
 
-from  examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
-from  examples.gnr.task.GNRTask import GNROptions, check_subtask_id_wrapper
-from  examples.gnr.task.RenderingTask import RenderingTask
-from  examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, get_task_boarder, get_task_num_from_pixels
-from  examples.gnr.RenderingDirManager import get_test_task_path, get_tmp_path
+from  examples.gnr.renderingtaskstate import RendererDefaults, RendererInfo
+from  examples.gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
+from  examples.gnr.task.renderingtask import RenderingTask
+from  examples.gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuiler, get_task_boarder, get_task_num_from_pixels
+from  examples.gnr.renderingdirmanager import get_test_task_path, get_tmp_path
 
-from examples.gnr.task.RenderingTaskCollector import exr_to_pil, RenderingTaskCollector
-from examples.gnr.RenderingEnvironment import VRayEnvironment
-from examples.gnr.ui.VRayDialog import VRayDialog
-from examples.gnr.customizers.VRayDialogCustomizer import VRayDialogCustomizer
-from golem.task.TaskState import SubtaskStatus
+from examples.gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
+from examples.gnr.renderingenvironment import VRayEnvironment
+from examples.gnr.ui.vraydialog import VRayDialog
+from examples.gnr.customizers.vraydialogcustomizer import VRayDialogCustomizer
+from golem.task.taskstate import SubtaskStatus
 
 from PIL import Image, ImageChops
 

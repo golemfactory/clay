@@ -4,15 +4,15 @@ import logging
 
 from collections import deque
 
-from TaskManager import TaskManager
-from TaskComputer import TaskComputer
-from task_session import TaskSession
-from TaskKeeper import TaskKeeper
+from taskmanager import TaskManager
+from taskcomputer import TaskComputer
+from tasksession import TaskSession
+from taskkeeper import TaskKeeper
 
-from golem.ranking.Ranking import RankingStats
-from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress, MidAndFilesProtocol
+from golem.ranking.ranking import RankingStats
+from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, TCPAddress, MidAndFilesProtocol
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcp_server import PendingConnectionsServer, PendingConnection, PenConnStatus
+from golem.network.transport.tcpserver import PendingConnectionsServer, PendingConnection, PenConnStatus
 
 logger = logging.getLogger(__name__)
 

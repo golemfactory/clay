@@ -4,13 +4,13 @@ import os
 import time
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcp_server import PendingConnectionsServer
-from golem.network.transport.tcp_network import TCPConnectInfo, TCPAddress, TCPListenInfo, TCPNetwork, FilesProtocol
-from golem.resource.dir_manager import DirManager
-from golem.resource.ResourcesManager import DistributedResourceManager
-from golem.resource.resource_session import ResourceSession
-from golem.ranking.Ranking import RankingStats
-from golem.network.transport.tcp_network import FilesProtocol, EncryptFileProducer, DecryptFileConsumer
+from golem.network.transport.tcpserver import PendingConnectionsServer
+from golem.network.transport.tcpnetwork import TCPConnectInfo, TCPAddress, TCPListenInfo, TCPNetwork, FilesProtocol
+from golem.resource.dirmanager import DirManager
+from golem.resource.resourcesmanager import DistributedResourceManager
+from golem.resource.resourcesession import ResourceSession
+from golem.ranking.ranking import RankingStats
+from golem.network.transport.tcpnetwork import FilesProtocol, EncryptFileProducer, DecryptFileConsumer
 
 logger = logging.getLogger(__name__)
 

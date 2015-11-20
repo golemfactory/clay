@@ -3,11 +3,11 @@ import datetime
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMenu
 
-from golem.task.TaskState import TaskState, ComputerState
-from examples.gnr.RenderingTaskState import RenderingTaskState
-from SubtaskContextMenuCustomizer import SubtaskContextMenuCustomizer
+from golem.task.taskstate import TaskState, ComputerState
+from examples.gnr.renderingtaskstate import RenderingTaskState
+from subtaskcontextmenucustomizer import SubtaskContextMenuCustomizer
 
-from examples.gnr.ui.SubtaskTableEntry import SubtaskTableElem
+from examples.gnr.ui.subtasktableentry import SubtaskTableElem
 
 
 class TaskDetailsDialogCustomizer:
@@ -83,7 +83,7 @@ class TaskDetailsDialogCustomizer:
         subtask_table_elem = SubtaskTableElem(node_id, subtask_id, status)
 
         for col in range(0, 4): self.gui.ui.nodesTableWidget.setItem(current_row_count, col,
-                                                                     subtask_table_elem.getColumnItem(col))
+                                                                     subtask_table_elem.get_column_item(col))
 
         self.gui.ui.nodesTableWidget.setCellWidget(current_row_count, 4,
                                                    subtask_table_elem.progressBarInBoxLayoutWidget)

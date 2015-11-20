@@ -3,14 +3,14 @@ import logging
 import cPickle
 from PyQt4 import QtCore
 
-from examples.gnr.ui.TestingTaskProgressDialog import TestingTaskProgressDialog
-from golem.task.TaskState import TaskStatus
-from examples.gnr.GNRTaskState import GNRTaskState
-from examples.gnr.task.TaskTester import TaskTester
-from golem.task.TaskBase import Task
-from golem.task.TaskState import TaskState
-from golem.Client import GolemClientEventListener
-from golem.manager.client.NodesManagerClient import NodesManagerUidClient, NodesManagerClient
+from examples.gnr.ui.testingtaskprogressdialog import TestingTaskProgressDialog
+from golem.task.taskstate import TaskStatus
+from examples.gnr.gnrtaskstate import GNRTaskState
+from examples.gnr.task.tasktester import TaskTester
+from golem.task.taskbase import Task
+from golem.task.taskstate import TaskState
+from golem.client import GolemClientEventListener
+from golem.manager.client.nodesmanagerclient import NodesManagerUidClient, NodesManagerClient
 
 from testtasks.minilight.src.minilight import makePerfTest
 

@@ -46,7 +46,7 @@ def __read_from_environment(default_cmd_file, num_cores):
 
     sys.path.append(path)
 
-    from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
+    from examples.gnr.renderingenvironment import ThreeDSMaxEnvironment
     env = ThreeDSMaxEnvironment()
     cmd_file = env.get_3ds_max_cmd_path()
     if cmd_file:
@@ -57,7 +57,6 @@ def __read_from_environment(default_cmd_file, num_cores):
         return default_cmd_file
 
 
-###########################
 def return_data(files):
     res = []
     for f in files:
@@ -68,8 +67,6 @@ def return_data(files):
 
     return {'data': res, 'result_type': 0}
 
-
-############################
 def return_files(files):
     copy_path = os.path.normpath(os.path.join(tmp_path, ".."))
     for f in files:
@@ -79,7 +76,6 @@ def return_files(files):
     return {'data': files, 'result_type': 1}
 
 
-############################f =
 def run_3ds_max_task(path_root, start_task, end_task, total_tasks, outfilebasename, scene_file, width, height, preset,
                      cmd_file, use_frames, frames, parts, num_cores, overlap):
     print 'run_3ds_max_task'

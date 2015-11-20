@@ -1,11 +1,11 @@
-from golem.task.TaskBase import Task, TaskHeader, TaskBuilder, result_types
-from golem.task.TaskState import SubtaskStatus
-from golem.resource.Resource import prepare_delta_zip, TaskResourceHeader
-from golem.environments.Environment import Environment
-from golem.network.p2p.Node import Node
+from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types
+from golem.task.taskstate import SubtaskStatus
+from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
+from golem.environments.environment import Environment
+from golem.network.p2p.node import Node
 from golem.core.compress import decompress
 
-from examples.gnr.RenderingDirManager import get_tmp_path
+from examples.gnr.renderingdirmanager import get_tmp_path
 
 import os
 import logging

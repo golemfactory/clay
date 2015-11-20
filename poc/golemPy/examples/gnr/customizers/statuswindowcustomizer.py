@@ -1,5 +1,5 @@
 
-from examples.gnr.ui.StatusWindow import StatusWindow
+from examples.gnr.ui.statuswindow import StatusWindow
 
 import logging
 

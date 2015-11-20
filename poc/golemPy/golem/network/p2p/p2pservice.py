@@ -3,14 +3,14 @@ import logging
 import random
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcp_network import TCPNetwork, TCPConnectInfo, TCPAddress, SafeProtocol
-from golem.network.transport.tcp_server import TCPServer, PendingConnectionsServer, PenConnStatus
-from golem.network.p2p.peer_session import PeerSession
+from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, TCPAddress, SafeProtocol
+from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer, PenConnStatus
+from golem.network.p2p.peersession import PeerSession
 from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
-from golem.ranking.gossip_keeper import GossipKeeper
-from golem.task.task_connections_helper import TaskConnectionsHelper
+from golem.ranking.gossipkeeper import GossipKeeper
+from golem.task.taskconnectionshelper import TaskConnectionsHelper
 
-from peer_keeper import PeerKeeper
+from peerkeeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
 

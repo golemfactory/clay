@@ -6,7 +6,7 @@ from stun import FullCone, OpenInternet
 from collections import deque
 
 from server import Server
-from tcp_network import TCPListeningInfo, TCPListenInfo, TCPAddress, TCPConnectInfo
+from tcpnetwork import TCPListeningInfo, TCPListenInfo, TCPAddress, TCPConnectInfo
 from golem.core.variables import LISTEN_WAIT_TIME, LISTENING_REFRESH_TIME, LISTEN_PORT_TTL
 
 logger = logging.getLogger(__name__)

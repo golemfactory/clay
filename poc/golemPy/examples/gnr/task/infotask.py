@@ -2,10 +2,10 @@ import random
 import logging
 import cPickle as pickle
 
-from golem.manager.client.NodesManagerClient import NodesManagerClient
-from golem.environments.Environment import Environment
-from golem.task.TaskBase import ComputeTaskDef, result_types
-from GNRTask import GNRTask, GNRTaskBuilder
+from golem.manager.client.nodesmanagerclient import NodesManagerClient
+from golem.environments.environment import Environment
+from golem.task.taskbase import ComputeTaskDef, result_types
+from gnrtask import GNRTask, GNRTaskBuilder
 
 logger = logging.getLogger(__name__)
 

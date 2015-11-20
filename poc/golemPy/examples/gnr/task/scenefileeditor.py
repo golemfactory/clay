@@ -1,5 +1,6 @@
 import re
 
+
 def regenerate_pbrt_file(scene_file_src, xres, yres, pixel_filter, sampler, samples_per_pixel):
     out = ""
 
@@ -11,15 +12,22 @@ def regenerate_pbrt_file(scene_file_src, xres, yres, pixel_filter, sampler, samp
         line = re.sub(r'("integer\s+xresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(xres), l)
         line = re.sub(r'("integer\s+yresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(yres), line)
         if sampler in pixel_samples_samplers:
-            line = re.sub(r'(Sampler\s+)([\s*\d*\w*\"*\[*\]*]*)', r'\1"{}" "integer pixelsamples" [{}]'.format(sampler, samples_per_pixel), line)
+            line = re.sub(r'(Sampler\s+)([\s*\d*\w*\"*\[*\]*]*)',
+                          r'\1"{}" "integer pixelsamples" [{}]'.format(sampler, samples_per_pixel), line)
         if sampler in min_max_samples_samplers:
-            line = re.sub(r'(Sampler\s+)([\s*\d*\w*\"*\[*\]*]*)', r'\1"{}" "integer minsamples" [{}] "integer maxsamples" [{}]'.format(sampler, samples_per_pixel, samples_per_pixel), line)
+            line = re.sub(r'(Sampler\s+)([\s*\d*\w*\"*\[*\]*]*)',
+                          r'\1"{}" "integer minsamples" [{}] "integer maxsamples" [{}]'.format(sampler,
+                                                                                               samples_per_pixel,
+                                                                                               samples_per_pixel), line)
         if sampler in jitter_samplers:
-            line = re.sub(r'(Sampler\s+)([\s*\d*\w*\"*\[*\]*]*)', r'\1"{}" "integer xsamples" [{}] "integer ysamples" [{}]'.format(sampler, samples_per_pixel, samples_per_pixel), line)
+            line = re.sub(r'(Sampler\s+)([\s*\d*\w*\"*\[*\]*]*)',
+                          r'\1"{}" "integer xsamples" [{}] "integer ysamples" [{}]'.format(sampler, samples_per_pixel,
+                                                                                           samples_per_pixel), line)
         line = re.sub(r'(PixelFilter\s+)("\w*")', r'\1"{}"'.format(pixel_filter), line)
         out += line + "\n"
 
     return out
+
 
 def regenerate_blender_crop_file(crop_file_src, xres, yres, min_x, max_x, min_y, max_y):
     out = ""
@@ -35,6 +43,7 @@ def regenerate_blender_crop_file(crop_file_src, xres, yres, min_x, max_x, min_y,
         out += line + "\n"
 
     return out
+
 
 def regenerate_lux_file(scene_file_src, xres, yres, halttime, haltspp, writeinterval, crop, output_format):
     out = ""
@@ -80,7 +89,8 @@ def regenerate_lux_file(scene_file_src, xres, yres, halttime, haltspp, writeinte
         line = re.sub(r'("integer\s+yresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(yres), line)
         line = re.sub(r'("integer\s+halttime"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(halttime), line)
         line = re.sub(r'("integer\s+haltspp"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(haltspp), line)
-        line = re.sub(r'("float\s+cropwindow"\s*)(\[\s*[0-9,\.,\s*]*\s*\])', r'\1[{} {} {} {}]'.format(crop[0], crop[1], crop[2], crop[3]), line)
+        line = re.sub(r'("float\s+cropwindow"\s*)(\[\s*[0-9,\.,\s*]*\s*\])',
+                      r'\1[{} {} {} {}]'.format(crop[0], crop[1], crop[2], crop[3]), line)
         line = re.sub(r'("integer\s+writeinterval"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(writeinterval), line)
         line = re.sub(r'("bool\s+write_exr"\s*)(\[\s*"[A-Z,a-z]*"\s*\])', r'\1["{}"]'.format(exr), line)
         line = re.sub(r'("bool\s+write_png"\s*)(\[\s*"[A-Z,a-z]*"\s*\])', r'\1["{}"]'.format(png), line)
@@ -98,5 +108,4 @@ def regenerate_lux_file(scene_file_src, xres, yres, halttime, haltspp, writeinte
 
 
 if __name__ == "__main__":
-
-    print regenerate_pbrt_file(open("d:/test_run/resources/scene.pbrt").read(), 3,2,"michell", "dupa22", 60)
+    print regenerate_pbrt_file(open("d:/test_run/resources/scene.pbrt").read(), 3, 2, "michell", "dupa22", 60)

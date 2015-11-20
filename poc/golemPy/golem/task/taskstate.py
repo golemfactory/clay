@@ -2,7 +2,7 @@ import time
 
 
 class TaskState:
-    #########################
+
     def __init__(self):
 
         self.status = TaskStatus.notStarted
@@ -17,14 +17,12 @@ class TaskState:
 
         self.extra_data = {}
 
-    #########################
     def get_subtask_state(self, subtask_id):
         if subtask_id in self.subtask_states:
             return self.subtask_states[subtask_id]
         else:
             return None
 
-    #########################
     def get_subtask_state_for_computer(self, node_id):
 
         subtasks_states = []
@@ -36,7 +34,6 @@ class TaskState:
 
 
 class ComputerState:
-    #########################
     def __init__(self):
         self.node_id = ""
         self.eth_account = ""
@@ -47,7 +44,6 @@ class ComputerState:
 
 
 class SubtaskState:
-    #########################
     def __init__(self):
         self.subtask_definition = ""
         self.subtask_id = ""

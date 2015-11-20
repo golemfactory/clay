@@ -1,8 +1,8 @@
-from golem.environments.Environment import Environment
-from golem.task.TaskBase import ComputeTaskDef
-from golem.task.TaskState import SubtaskStatus
+from golem.environments.environment import Environment
+from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskstate import SubtaskStatus
 
-from GNRTask import GNRTask, GNRTaskBuilder
+from gnrtask import GNRTask, GNRTaskBuilder
 
 import random
 import logging
@@ -10,7 +10,6 @@ import os
 
 logger = logging.getLogger(__name__)
 
-##############################################
 class UpdateOtherGolemsTaskDefinition:
     def __init__(self):
         self.task_id = ""
@@ -23,9 +22,9 @@ class UpdateOtherGolemsTaskDefinition:
         self.resources          = []
         self.total_subtasks      = 1
 
-##############################################
+
 class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
-    #######################
+
     def __init__(self, client_id, task_definition, root_path, src_dir):
         GNRTaskBuilder.__init__(self, client_id, task_definition, root_path)
         self.src_dir = src_dir
@@ -62,7 +61,6 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
                             self.task_definition.total_subtasks
                           )
 
-##############################################
 class UpdateOtherGolemsTask(GNRTask):
 
     def __init__(self,
@@ -93,11 +91,9 @@ class UpdateOtherGolemsTask(GNRTask):
         self.updated = {}
 
 
-    #######################
     def abort (self):
         self.active = False
 
-    #######################
     def query_extra_data(self, perf_index, num_cores, client_id):
 
         if client_id in self.updated:
@@ -125,6 +121,5 @@ class UpdateOtherGolemsTask(GNRTask):
 
         return ctd
 
-    #######################
     def computation_finished(self, subtask_id, task_result, dir_manager = None, result_type = 0):
         self.subtasks_given[ subtask_id ][ 'status' ] = SubtaskStatus.finished

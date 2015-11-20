@@ -9,7 +9,7 @@ from itertools import izip
 
 logger = logging.getLogger(__name__)
 from peewee import IntegrityError
-from golem.Model import LocalRank, GlobalRank, NeighbourLocRank
+from golem.model import LocalRank, GlobalRank, NeighbourLocRank
 
 
 class RankingStats:

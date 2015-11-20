@@ -1,5 +1,5 @@
-from golem.transactions.transaction_system import TransactionSystem
-from ethereum_connector import EthereumConnector
+from golem.transactions.transactionsystem import TransactionSystem
+from ethereumconnector import EthereumConnector
 
 from golem.core.variables import ETH_CONN_ADDR
 

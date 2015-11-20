@@ -6,11 +6,11 @@ import os
 
 sys.path.append(os.environ.get('GOLEM'))
 
-from golem.network.p2p.peer_session import PeerSession
-from golem.network.p2p.NetConnState import NetConnState
+from golem.network.p2p.peersession import PeerSession
+from golem.network.p2p.netconnstate import NetConnState
 from golem.network.transport.message import MessageHello, MessagePing, MessageGetTasks, MessageGetPeers, \
-                          MessagePing, MessageDisconnect, MessagePong, MessagePeers, \
-                          MessageTasks, MessageRemoveTask, MessageWantToComputeTask
+    MessagePing, MessageDisconnect, MessagePong, MessagePeers, \
+    MessageTasks, MessageRemoveTask, MessageWantToComputeTask
 
 
 class Conn(object):
@@ -36,7 +36,7 @@ class Transport(object):
 
 
 class Peer(object):
-    def __init__(self, id = 0):
+    def __init__(self, id=0):
         self.host = 'host'
         self.port = 'port'
         self.id = id
@@ -73,7 +73,7 @@ class P2PService(object):
         return True
 
     def try_to_add_peer(self, peer):
-        self.peersToAdd.add(peer[ "id" ])
+        self.peersToAdd.add(peer["id"])
 
     def remove_task_header(self, task_id):
         self.task_headerToRemove = task_id
@@ -81,7 +81,7 @@ class P2PService(object):
 
 class TestPeerSession(unittest.TestCase):
     def setUp(self):
-        logging.basicConfig(level = logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
         self.conn = Conn()
         self.peer_session = PeerSession(self.conn)
         self.peer_session.p2pService = P2PService()
@@ -98,7 +98,7 @@ class TestPeerSession(unittest.TestCase):
         self.assertIsInstance(self.conn.messages[0], MessageHello)
         self.assertIsInstance(self.conn.messages[1], MessagePing)
 
-    def testDropped (self):
+    def testDropped(self):
         self.peer_session.dropped()
         self.assertEquals(self.peer_session.state, PeerSession.StateInitialize)
         self.assertEquals(self.conn.closedCalled, True)
@@ -127,10 +127,10 @@ class TestPeerSession(unittest.TestCase):
         self.peer_session.interpret(MessageGetPeers())
         self.assertIsInstance(self.conn.messages[4], MessagePeers)
 
-        self.peer_session.interpret(MessagePeers([ {"id": 1} , {"id": 2} ]))
+        self.peer_session.interpret(MessagePeers([{"id": 1}, {"id": 2}]))
         self.assertSetEqual(self.peer_session.p2pService.peersToAdd, set([1, 2]))
 
-        self.peer_session.interpret(MessageTasks([ 1, 2 ]))
+        self.peer_session.interpret(MessageTasks([1, 2]))
         self.assertEquals(len(self.peer_session.p2pService.tasksHeaders), 2)
 
         self.peer_session.interpret(MessageGetTasks())

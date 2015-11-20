@@ -3,20 +3,19 @@ import glob
 import cPickle as pickle
 import zlib
 import subprocess
-import platform, psutil
+import platform
+import psutil
 import tempfile
 import shutil
 import sys
 
 
-############################
 def format_pbrt_cmd(renderer, start_task, end_task, total_tasks, num_subtasks, num_cores, outfilebasename, scenefile):
     return ["{}".format(renderer), "--starttask", "{}".format(start_task), "--endtask", "{}".format(end_task),
             "--outresultbasename", "{}".format(outfilebasename), "--totaltasks", "{}".format(total_tasks),
             "--ncores", "{}".format(num_cores), "--subtasks", "{}".format(num_subtasks), "{}".format(scenefile)]
 
 
-############################
 def return_data(files):
     res = []
     for f in files:
@@ -28,7 +27,6 @@ def return_data(files):
     return {'data': res, 'result_type': 0}
 
 
-############################
 def return_files(files):
     copy_path = os.path.normpath(os.path.join(tmp_path, ".."))
     for f in files:
@@ -38,7 +36,6 @@ def return_files(files):
     return {'data': files, 'result_type': 1}
 
 
-############################
 def is_windows():
     return sys.platform == 'win32'
 

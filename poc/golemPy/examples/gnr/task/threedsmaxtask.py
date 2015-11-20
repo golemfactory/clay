@@ -5,16 +5,16 @@ import math
 
 from PIL import Image, ImageChops
 
-from golem.task.TaskState import SubtaskStatus
+from golem.task.taskstate import SubtaskStatus
 
-from examples.gnr.task.GNRTask import  GNROptions, check_subtask_id_wrapper
-from examples.gnr.task.RenderingTaskCollector import exr_to_pil
-from examples.gnr.task.FrameRenderingTask import FrameRenderingTask, FrameRenderingTaskBuiler, get_task_boarder, get_task_num_from_pixels
-from examples.gnr.RenderingDirManager import get_test_task_path, get_tmp_path
-from examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
-from examples.gnr.RenderingEnvironment import ThreeDSMaxEnvironment
-from examples.gnr.ui.ThreeDSMaxDialog import ThreeDSMaxDialog
-from examples.gnr.customizers.ThreeDSMaxDialogCustomizer import ThreeDSMaxDialogCustomizer
+from examples.gnr.task.gnrtask import  GNROptions, check_subtask_id_wrapper
+from examples.gnr.task.renderingtaskcollector import exr_to_pil
+from examples.gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuiler, get_task_boarder, get_task_num_from_pixels
+from examples.gnr.renderingdirmanager import get_test_task_path, get_tmp_path
+from examples.gnr.renderingtaskstate import RendererDefaults, RendererInfo
+from examples.gnr.renderingenvironment import ThreeDSMaxEnvironment
+from examples.gnr.ui.threedsmaxdialog import ThreeDSMaxDialog
+from examples.gnr.customizers.threedsmaxdialogcustomizer import ThreeDSMaxDialogCustomizer
 
 logger = logging.getLogger(__name__)
 

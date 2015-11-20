@@ -1,6 +1,7 @@
 from PyQt4.QtGui import QDialog
 from gen.ui_ConfigurationDialog import Ui_ConfigurationDialog
 
+
 class ConfigurationDialog:
     ###################
     def __init__(self, parent):

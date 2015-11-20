@@ -5,7 +5,7 @@ import logging
 
 from PyQt4 import QtCore
 
-from NodeStateSnapshot import NodeStateSnapshot, LocalTaskStateSnapshot, TaskChunkStateSnapshot
+from nodestatesnapshot import NodeStateSnapshot, LocalTaskStateSnapshot, TaskChunkStateSnapshot
 
 logger = logging.getLogger(__name__)
 

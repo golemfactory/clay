@@ -2,7 +2,7 @@ from threading import Lock
 import logging
 import abc
 
-from MemoryChecker import MemoryChecker
+from memorychecker import MemoryChecker
 
 logger = logging.getLogger(__name__)
 

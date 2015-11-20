@@ -1,7 +1,7 @@
-from examples.gnr.task.GNRTask import GNRTaskBuilder, GNRTask, check_subtask_id_wrapper
-from golem.environments.Environment import Environment
-from golem.task.TaskBase import ComputeTaskDef
-from golem.task.TaskState import SubtaskStatus
+from examples.gnr.task.gnrtask import GNRTaskBuilder, GNRTask, check_subtask_id_wrapper
+from golem.environments.environment import Environment
+from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskstate import SubtaskStatus
 
 import logging
 import random

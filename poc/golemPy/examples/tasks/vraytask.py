@@ -19,8 +19,8 @@ def format_test_vray_cmd(cmd_file, output_file, outfilebasename, scenefile, widt
 def format_test_vray_cmd_with_parts(cmd_file, frames,  output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
     cmd = ["{}".format(cmd_file), "-imgFile={}/{}.exr".format(output_file, outfilebasename),
            "-sceneFile={}".format(scenefile), "-imgWidth={}".format(width), "-imgHeight={}".format(height),
-           "-frames={}".format(frames), "-region={};{};{};{}".format(0, start_box[1], width,
-           "-autoClose=1", "-display=0", "-rtEngine={}".format(rt_engine), "-numThreads={}".format(num_threads) ]
+           "-frames={}".format(frames), "-region={};{};{};{}".format(0, start_box[1], width),
+           "-autoClose=1", "-display=0", "-rtEngine={}".format(rt_engine), "-numThreads={}".format(num_threads)]
     return cmd
 
 def format_vray_cmd(cmd_file, start_task, end_task, h_tasks, total_tasks, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
@@ -71,7 +71,7 @@ def __read_from_environment():
 
     sys.path.append(path)
 
-    from examples.gnr.RenderingEnvironment import VRayEnvironment
+    from examples.gnr.renderingenvironment import VRayEnvironment
     env = VRayEnvironment()
     cmd_file = env.get_cmd_path()
     if cmd_file:

@@ -1,4 +1,4 @@
-from golem.environments.EnvironmentsConfig import EnvironmentsConfig
+from golem.environments.environmentsconfig import EnvironmentsConfig
 
 
 class EnvironmentsManager:

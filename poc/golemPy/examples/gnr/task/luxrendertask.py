@@ -7,18 +7,18 @@ from collections import OrderedDict
 from PIL import Image, ImageChops
 
 from golem.core.simpleexccmd import exec_cmd
-from golem.task.TaskState import SubtaskStatus
-from golem.environments.Environment import Environment
+from golem.task.taskstate import SubtaskStatus
+from golem.environments.environment import Environment
 
-from  examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo
-from examples.gnr.RenderingEnvironment import LuxRenderEnvironment
-from examples.gnr.RenderingDirManager import get_test_task_path
-from examples.gnr.task.ImgRepr import load_img, blend
-from  examples.gnr.task.GNRTask import GNROptions, check_subtask_id_wrapper
-from  examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
-from examples.gnr.task.SceneFileEditor import regenerate_lux_file
-from examples.gnr.ui.LuxRenderDialog import LuxRenderDialog
-from examples.gnr.customizers.LuxRenderDialogCustomizer import LuxRenderDialogCustomizer
+from  examples.gnr.renderingtaskstate import RendererDefaults, RendererInfo
+from examples.gnr.renderingenvironment import LuxRenderEnvironment
+from examples.gnr.renderingdirmanager import get_test_task_path
+from examples.gnr.task.imgrepr import load_img, blend
+from  examples.gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
+from  examples.gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
+from examples.gnr.task.scenefileeditor import regenerate_lux_file
+from examples.gnr.ui.luxrenderdialog import LuxRenderDialog
+from examples.gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
 
 logger = logging.getLogger(__name__)
 

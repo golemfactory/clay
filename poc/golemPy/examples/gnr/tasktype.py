@@ -1,15 +1,15 @@
-from examples.gnr.task.PbrtGNRTask import PbrtGNRTaskBuilder, build_pbrt_renderer_info, PbrtRendererOptions
-from examples.gnr.task.VRayTask import VRayTaskBuilder
-from examples.gnr.task.ThreeDSMaxTask import ThreeDSMaxTaskBuilder
-from examples.gnr.task.PythonGNRTask import PythonGNRTaskBuilder
-from examples.gnr.task.LuxRenderTask import LuxRenderTaskBuilder
-from examples.gnr.task.BlenderRenderTask import BlenderRenderTaskBuilder
-from examples.gnr.task.GNRTask import GNROptions
+from examples.gnr.task.pbrtgnrtask import PbrtGNRTaskBuilder, build_pbrt_renderer_info, PbrtRendererOptions
+from examples.gnr.task.vraytask import VRayTaskBuilder
+from examples.gnr.task.threedsmaxtask import ThreeDSMaxTaskBuilder
+from examples.gnr.task.pythongnrtask import PythonGNRTaskBuilder
+from examples.gnr.task.luxrendertask import LuxRenderTaskBuilder
+from examples.gnr.task.blenderrendertask import BlenderRenderTaskBuilder
+from examples.gnr.task.gnrtask import GNROptions
+from examples.gnr.ui.pbrttaskdialog import PbrtTaskDialog
+from examples.gnr.customizers.pbrttaskdialogcustomizer import PbrtTaskDialogCustomizer
 
-from examples.gnr.ui.PbrtTaskDialog import PbrtTaskDialog
-from examples.gnr.customizers.PbrtTaskDialogCustomizer import PbrtTaskDialogCustomizer
 
-def buildPBRTTaskType():
+def build_pbrt_task_type():
     renderer = build_pbrt_renderer_info()
     options = GNROptions()
     options.output_formats = renderer.output_formats
@@ -35,23 +35,29 @@ def buildPBRTTaskType():
 
     return TaskType("PBRT", PbrtGNRTaskBuilder, options, PbrtTaskDialog, PbrtTaskDialogCustomizer)
 
+
 def build_3ds_max_task_type():
     return TaskType("3ds Max Renderer", ThreeDSMaxTaskBuilder)
+
 
 def build_vray_task_type():
     return TaskType("VRay Standalone", VRayTaskBuilder)
 
+
 def build_luxrender_task_type():
     return TaskType("LuxRender", LuxRenderTaskBuilder)
+
 
 def build_blender_render_task_type():
     return TaskType("BlenderRender", BlenderRenderTaskBuilder)
 
+
 def build_python_gnr_task_type():
     return TaskType("Python GNR Task", PythonGNRTaskBuilder)
 
+
 class TaskType:
-    def __init__(self, name, task_builder_type, options = None, dialog = None, dialog_customizer = None):
+    def __init__(self, name, task_builder_type, options=None, dialog=None, dialog_customizer=None):
         self.name = name
         self.task_builder_type = task_builder_type
         self.options = options

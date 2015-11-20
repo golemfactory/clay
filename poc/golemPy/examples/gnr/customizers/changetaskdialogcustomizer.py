@@ -1,10 +1,7 @@
-import os
-from PyQt4 import QtCore
-from PyQt4.QtGui import QFileDialog
 
-from examples.gnr.ui.ChangeTaskDialog import ChangeTaskDialog
-from examples.gnr.RenderingTaskState import RenderingTaskDefinition
-from TimeHelper import set_time_spin_boxes, get_time_values
+from examples.gnr.ui.changetaskdialog import ChangeTaskDialog
+from examples.gnr.renderingtaskstate import RenderingTaskDefinition
+from timehelper import set_time_spin_boxes, get_time_values
 
 import logging
 

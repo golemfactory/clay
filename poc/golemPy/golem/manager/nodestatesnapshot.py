@@ -1,7 +1,7 @@
 from PyQt4 import QtCore
 
+
 class TaskChunkStateSnapshot:
-    
     def __init__(self, chunk_id, cpu_power, est_time_left, progress, chunk_short_desc):
         self.chunk_id = chunk_id
         self.cpu_power = cpu_power
@@ -11,7 +11,7 @@ class TaskChunkStateSnapshot:
 
     def get_chunk_id(self):
         return self.chunk_id
-    
+
     def get_cpu_power(self):
         return self.cpu_power
 
@@ -24,9 +24,10 @@ class TaskChunkStateSnapshot:
     def get_chunk_short_descr(self):
         return self.chunk_short_desc
 
-class LocalTaskStateSnapshot:
 
-    def __init__(self, task_id, total_tasks, total_chunks, active_tasks, active_chunks, chunks_left, progress, task_short_desc):
+class LocalTaskStateSnapshot:
+    def __init__(self, task_id, total_tasks, total_chunks, active_tasks, active_chunks, chunks_left, progress,
+                 task_short_desc):
         self.task_id = task_id
         self.total_tasks = total_tasks
         self.total_chunks = total_chunks
@@ -41,7 +42,7 @@ class LocalTaskStateSnapshot:
 
     def get_total_tasks(self):
         return self.total_tasks
-    
+
     def get_total_chunks(self):
         return self.total_chunks
 
@@ -60,11 +61,12 @@ class LocalTaskStateSnapshot:
     def get_task_short_desc(self):
         return self.task_short_desc
 
-#FIXME: REGISTER number of local and remote tasks processed by current node (and number of successes and failures as well) - and show it in this manager
-#FIXME: also add a boolean flag indicating whether there is any active local/rempote task being calculated
-class NodeStateSnapshot:
 
-    def __init__(self, running = True, uid = 0, peers_num = 0, tasks_num = 0, endpoint_addr = "", endpoint_port = "", last_network_messages = None, last_task_messages = None, tcss = None, ltss = None):
+# FIXME: REGISTER number of local and remote tasks processed by current node (and number of successes and failures as well) - and show it in this manager
+# FIXME: also add a boolean flag indicating whether there is any active local/rempote task being calculated
+class NodeStateSnapshot:
+    def __init__(self, running=True, uid=0, peers_num=0, tasks_num=0, endpoint_addr="", endpoint_port="",
+                 last_network_messages=None, last_task_messages=None, tcss=None, ltss=None):
         if last_network_messages is None:
             last_network_messages = []
         if last_task_messages is None:
@@ -73,17 +75,17 @@ class NodeStateSnapshot:
             tcss = {}
         if ltss is None:
             ltss = {}
-        self.uid                    = uid
-        self.timestamp              = QtCore.QTime.currentTime()
-        self.endpoint_addr           = endpoint_addr
-        self.endpoint_port           = endpoint_port
-        self.peers_num               = peers_num
-        self.tasks_num               = tasks_num
-        self.last_network_messages    = last_network_messages
-        self.last_task_messages       = last_task_messages
-        self.task_chunk_state         = tcss
-        self.local_task_state         = ltss
-        self.running                = running
+        self.uid = uid
+        self.timestamp = QtCore.QTime.currentTime()
+        self.endpoint_addr = endpoint_addr
+        self.endpoint_port = endpoint_port
+        self.peers_num = peers_num
+        self.tasks_num = tasks_num
+        self.last_network_messages = last_network_messages
+        self.last_task_messages = last_task_messages
+        self.task_chunk_state = tcss
+        self.local_task_state = ltss
+        self.running = running
 
     def is_running(self):
         return self.running
@@ -120,14 +122,14 @@ class NodeStateSnapshot:
 
     def __str__(self):
         return "Nothing here"
-        #ret = str(self.get_uid())+ " ----- \n" + "peers count: " + str(self.get_peers_num()) + "\n" + "tasks count: " + str(self.get_tasks_num()) + "\n"
-        #ret += "remote progress: " + str(self.getRemoteProgress()) + "\n" + "lockal progress: " + str(self.getLocalProgress()) + "\n"
-        #ret += "last net comunication: " + str(self.get_last_network_messages()) + "\n"
-        #ret += "last task comunication: " + str(self.get_last_task_messages())
-        #return ret
+        # ret = str(self.get_uid())+ " ----- \n" + "peers count: " + str(self.get_peers_num()) + "\n" + "tasks count: " + str(self.get_tasks_num()) + "\n"
+        # ret += "remote progress: " + str(self.getRemoteProgress()) + "\n" + "lockal progress: " + str(self.getLocalProgress()) + "\n"
+        # ret += "last net comunication: " + str(self.get_last_network_messages()) + "\n"
+        # ret += "last task comunication: " + str(self.get_last_task_messages())
+        # return ret
+
 
 if __name__ == "__main__":
-
     ns = NodeStateSnapshot("some uiid", 0.2, 0.7)
 
     print ns.get_uid()

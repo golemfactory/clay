@@ -1,5 +1,5 @@
 
-from examples.gnr.ui.AboutWindow import AboutWindow
+from examples.gnr.ui.aboutwindow import AboutWindow
 import logging
 
 logger = logging.getLogger(__name__)

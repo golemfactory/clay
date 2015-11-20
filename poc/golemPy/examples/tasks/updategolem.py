@@ -4,7 +4,6 @@ import zlib
 import pickle
 
 
-############################
 def update_golem():
     dst = os.environ.get('GOLEM')
     print dst

@@ -3,17 +3,17 @@ import random
 import logging
 import math
 
-from golem.task.TaskState import SubtaskStatus
+from golem.task.taskstate import SubtaskStatus
 
-from examples.gnr.RenderingEnvironment import PBRTEnvironment
-from examples.gnr.RenderingDirManager import get_test_task_path
-from examples.gnr.RenderingTaskState import RendererDefaults, RendererInfo, RenderingTaskDefinition
-from examples.gnr.task.SceneFileEditor import regenerate_pbrt_file
-from examples.gnr.task.GNRTask import GNROptions, GNRTaskBuilder
-from examples.gnr.task.RenderingTask import RenderingTask, RenderingTaskBuilder
-from examples.gnr.task.RenderingTaskCollector import RenderingTaskCollector
-from examples.gnr.ui.PbrtDialog import PbrtDialog
-from examples.gnr.customizers.PbrtDialogCustomizer import PbrtDialogCustomizer
+from examples.gnr.renderingenvironment import PBRTEnvironment
+from examples.gnr.renderingdirmanager import get_test_task_path
+from examples.gnr.renderingtaskstate import RendererDefaults, RendererInfo, RenderingTaskDefinition
+from examples.gnr.task.scenefileeditor import regenerate_pbrt_file
+from examples.gnr.task.gnrtask import GNROptions, GNRTaskBuilder
+from examples.gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
+from examples.gnr.task.renderingtaskcollector import RenderingTaskCollector
+from examples.gnr.ui.pbrtdialog import PbrtDialog
+from examples.gnr.customizers.pbrtdialogcustomizer import PbrtDialogCustomizer
 
 
 logger = logging.getLogger(__name__)

@@ -2,8 +2,10 @@ import zerorpc
 import sys
 import getopt
 
+
 def usage():
     print "--task <filename> [--port <port>]"
+
 
 def main(argv):
     try:

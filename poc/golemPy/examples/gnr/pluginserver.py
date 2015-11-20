@@ -21,6 +21,7 @@ class TaskAdder():
     def add_task(self, task):
         self.task_list.append(task)
 
+
 class TaskAdderServer:
     def __init__(self, port):
         self.port = port
@@ -45,6 +46,7 @@ class TaskAdderServer:
         print "server ruuuuuning"
         self.server.run()
         print "after server run"
+
 
 def start_task_adder_server(port):
     server = TaskAdderServer(port)

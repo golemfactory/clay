@@ -1,4 +1,4 @@
-from golem.transactions.payments_keeper import AccountInfo, PaymentsKeeper
+from golem.transactions.paymentskeeper import AccountInfo, PaymentsKeeper
 
 
 class EthereumPaymentsKeeper(PaymentsKeeper):
