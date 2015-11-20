@@ -7,17 +7,29 @@ that there are two types of nodes in the Golem network: requester nodes that ann
 tasks and compute nodes that perform computations (in the actual implementation nodes may switch
 between both roles).
 
-1) Set environment variable "GOLEM" to "<path_to_golem>/golem/poc/golemPy"
+## Running Golem Network Renderer (GNR) in Ubuntu 15.04
 
-2) Run pip install -r requirements.txt
+### Installing Depedencies:
 
-3) Download: http://excamera.com/files/OpenEXR-1.2.0.tar.gz, extract and run
+* Run pip install -r requirements.txt
+* Qt4 bingings for Python: `sudo apt-get install python-qt4`
+* Twisted Qt4 integration: `sudo apt-get install python-qt4reactor`
+* OpenEXR bindings for Python: download and unpack http://excamera.com/files/OpenEXR-1.2.0.tar.gz, then use `setup.py` inside
+* ...
+ 
+### Starting GNR
 
-sudo python setup.py install
+* Set environment variable `GOLEM` to `<path-to-golem-repo>/poc/golemPy` 
+* Go to `$GOLEM/examples/gnr` and run `admMain.py`.
 
-4) Install PyQt4 by following the instruction from: http://pyqt.sourceforge.net/Docs/PyQt4/installation.html
-5) Set envrionment variable QT_GRAPHICSSYSTEM=native
+If the GUI does not look good at all and you see the following error in console:
+```
+QNativeImage: Unable to attach to shared memory segment. 
 
-5) To start application go to poc/golemPy/examples/gnr and run admMain.py.
-
+X Error: BadDrawable (invalid Pixmap or Window parameter) 9
+  Major opcode: 62 (X_CopyArea)
+  Resource id:  0x0
+```
+then set `QT_GRAPHICSSYSTEM=native` (see https://bbs.archlinux.org/viewtopic.php?id=200167).
+>>>>>>> 7ac732935c6136bfb623c9b1aea9e56f5dc542f8
 
