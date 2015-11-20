@@ -3,7 +3,7 @@ import os
 import logging
 import logging.config
 
-sys.path.append(os.environ.get('GOLEM'))
+sys.path.insert(0, os.environ.get('GOLEM'))
 
 from tools.uigen import gen_ui_files
 if os.path.normpath(os.getcwd()) == os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/gnr")):
