@@ -7,6 +7,27 @@ that there are two types of nodes in the Golem network: requester nodes that ann
 tasks and compute nodes that perform computations (in the actual implementation nodes may switch
 between both roles).
 
-Set environment variable "GOLEM" to "golem/poc/golemPy"
+## Running Golem Network Renderer (GNR) in Ubuntu 15.04
 
-To start application go to poc/golemPy/examples/gnr and run admMain.py.
+### Installing Depedencies:
+
+* Qt4 bingings for Python: `sudo apt-get install python-qt4`
+* Twisted Qt4 integration: `sudo apt-get install python-qt4reactor`
+* OpenEXR bindings for Python: download and unpack http://excamera.com/files/OpenEXR-1.2.0.tar.gz, then use `setup.py` inside
+* ...
+ 
+### Starting GNR
+
+* Set environment variable `GOLEM` to `<path-to-golem-repo>/poc/golemPy` 
+* Go to `$GOLEM/examples/gnr` and run `admMain.py`.
+
+If the GUI does not look good at all and you see the following error in console:
+```
+QNativeImage: Unable to attach to shared memory segment. 
+
+X Error: BadDrawable (invalid Pixmap or Window parameter) 9
+  Major opcode: 62 (X_CopyArea)
+  Resource id:  0x0
+```
+then set `QT_GRAPHICSSYSTEM=native` (see https://bbs.archlinux.org/viewtopic.php?id=200167).
+
