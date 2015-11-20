@@ -31,5 +31,4 @@ X Error: BadDrawable (invalid Pixmap or Window parameter) 9
   Resource id:  0x0
 ```
 then set `QT_GRAPHICSSYSTEM=native` (see https://bbs.archlinux.org/viewtopic.php?id=200167).
->>>>>>> 7ac732935c6136bfb623c9b1aea9e56f5dc542f8
 
