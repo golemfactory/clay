@@ -26,3 +26,7 @@ class TestSimpleEnv(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(SimpleEnv.DATA_DIRECTORY, 'testFile.txt')))
         f.close()
         self.assertTrue(f.closed)
+
+    def tearDown(self):
+        if os.path.isdir(SimpleEnv.DATA_DIRECTORY):
+            shutil.rmtree(SimpleEnv.DATA_DIRECTORY)
