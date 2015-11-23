@@ -1,9 +1,4 @@
 import unittest
-import sys
-import os
-
-sys.path.append(os.environ.get('GOLEM'))
-
 from golem.core.simpleserializer import SimpleSerializerDebug, SimpleSerializerRelease, SimpleSerializer
 
 
@@ -49,7 +44,3 @@ class TestSimpleSerializerRelease(unittest.TestCase):
         data2 = SimpleSerializerRelease.loads(ser)
         self.assertTrue(isinstance(data2, Example))
         self.assertEqual(data, data2)
-
-
-if __name__ == '__main__':
-    unittest.main()

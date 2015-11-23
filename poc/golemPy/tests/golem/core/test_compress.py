@@ -1,10 +1,6 @@
 import unittest
 import logging
-import sys
 import os
-
-sys.path.append(os.environ.get('GOLEM'))
-
 from golem.core.compress import compress, decompress, load, save
 
 
@@ -25,6 +21,3 @@ class TestCompress(unittest.TestCase):
         c2 = load('tezt.gz')
         os.remove('tezt.gz')
         self.assertEqual(text, decompress(c2))
-
-if __name__ == '__main__':
-    unittest.main()

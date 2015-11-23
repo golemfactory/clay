@@ -1,10 +1,6 @@
 import unittest
-import sys
 import os
 import shutil
-
-sys.path.append(os.environ.get('GOLEM'))
-
 from golem.core.simpleenv import SimpleEnv, DATA_DIRECTORY
 
 
@@ -27,7 +23,3 @@ class TestSimpleEnv(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(DATA_DIRECTORY, 'testFile.txt')))
         f.close()
         self.assertTrue(f.closed)
-
-
-if __name__ == '__main__':
-    unittest.main()
