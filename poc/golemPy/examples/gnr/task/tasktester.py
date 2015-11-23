@@ -2,29 +2,26 @@ import os
 from threading import Thread, Lock
 import shutil
 import logging
-
 from golem.task.taskbase import Task
 from golem.resource.resource import TaskResourceHeader, decompress_dir
 from golem.task.taskcomputer import PyTestTaskThread
-
 from examples.gnr.renderingdirmanager import get_test_task_path, get_test_task_directory, get_test_task_tmp_path
 
 logger = logging.getLogger(__name__)
 
+
 class TaskTester:
-    #########################
     def __init__(self, task, root_path, finished_callback):
         assert isinstance(task, Task)
-        self.task               = task
-        self.test_task_res_path    = None
-        self.tmp_dir             = None
-        self.success            = False
-        self.lock               = Lock()
-        self.tt                 = None
-        self.root_path           = root_path
-        self.finished_callback   = finished_callback
+        self.task = task
+        self.test_task_res_path = None
+        self.tmp_dir = None
+        self.success = False
+        self.lock = Lock()
+        self.tt = None
+        self.root_path = root_path
+        self.finished_callback = finished_callback
 
-    #########################
     def run(self):
         try:
             success = self.__prepare_resources()
@@ -35,27 +32,24 @@ class TaskTester:
 
             ctd = self.task.query_extra_data_for_test_task()
 
-
-            self.tt = PyTestTaskThread( self,
-                                ctd.subtask_id,
-                                ctd.working_directory,
-                                ctd.src_code,
-                                ctd.extra_data,
-                                ctd.short_description,
-                                self.test_task_res_path,
-                                self.tmp_dir,
-                                0)
+            self.tt = PyTestTaskThread(self,
+                                       ctd.subtask_id,
+                                       ctd.working_directory,
+                                       ctd.src_code,
+                                       ctd.extra_data,
+                                       ctd.short_description,
+                                       self.test_task_res_path,
+                                       self.tmp_dir,
+                                       0)
             self.tt.start()
 
         except Exception as exc:
             logger.warning("Task not tested properly: {}".format(exc))
             self.finished_callback(False)
 
-    #########################
     def increase_request_trust(self, subtask_id):
         pass
 
-    #########################
     def get_progress(self):
         if self.tt:
             with self.lock:
@@ -66,7 +60,6 @@ class TaskTester:
                 return self.tt.get_progress()
         return None
 
-    #########################
     def __prepare_resources(self):
 
         self.test_task_res_path = get_test_task_path(self.root_path)
@@ -84,7 +77,7 @@ class TaskTester:
             decompress_dir(self.test_task_res_path, res_file)
 
         return True
-    #########################
+
     def __prepare_tmp_dir(self):
 
         self.tmp_dir = get_test_task_tmp_path(self.root_path)
@@ -94,7 +87,6 @@ class TaskTester:
             shutil.rmtree(self.tmp_dir, True)
             os.makedirs(self.tmp_dir)
 
-#
     def task_computed(self, task_thread):
         if task_thread.result:
             res, est_mem = task_thread.result

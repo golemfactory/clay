@@ -1,7 +1,6 @@
 import random
 import logging
 import cPickle as pickle
-
 from golem.manager.client.nodesmanagerclient import NodesManagerClient
 from golem.environments.environment import Environment
 from golem.task.taskbase import ComputeTaskDef, result_types
@@ -9,83 +8,78 @@ from gnrtask import GNRTask, GNRTaskBuilder
 
 logger = logging.getLogger(__name__)
 
-##############################################
+
 class InfoTaskDefinition:
     def __init__(self):
         self.task_id = ""
 
-        self.full_task_timeout    = 0
-        self.subtask_timeout     = 0
+        self.full_task_timeout = 0
+        self.subtask_timeout = 0
 
-        self.src_file            = ""
-        self.total_subtasks      = 0
+        self.src_file = ""
+        self.total_subtasks = 0
 
-        self.manager_address     = ""
-        self.manager_port        = 0
+        self.manager_address = ""
+        self.manager_port = 0
 
-##############################################
+
 class InfoTaskBuilder(GNRTaskBuilder):
-
     def build(self):
         with open(self.task_definition.src_file) as f:
             src_code = f.read()
-        return InfoTask(   src_code,
-                            self.client_id,
-                            self.task_definition.task_id,
-                            "",
-                            0,
-                            "",
-                            Environment.get_id(),
-                            self.task_definition.full_task_timeout,
-                            self.task_definition.subtask_timeout,
-                            0,
-                            0,
-                            self.task_definition.manager_address,
-                            self.task_definition.manager_port,
-                            self.task_definition.total_subtasks
-                          )
+        return InfoTask(src_code,
+                        self.client_id,
+                        self.task_definition.task_id,
+                        "",
+                        0,
+                        "",
+                        Environment.get_id(),
+                        self.task_definition.full_task_timeout,
+                        self.task_definition.subtask_timeout,
+                        0,
+                        0,
+                        self.task_definition.manager_address,
+                        self.task_definition.manager_port,
+                        self.task_definition.total_subtasks
+                        )
 
-##############################################
+
 class InfoTask(GNRTask):
-
     def __init__(self,
-                  src_code,
-                  client_id,
-                  task_id,
-                  owner_address,
-                  owner_port,
-                  owner_key_id,
-                  environment,
-                  ttl,
-                  subtask_ttl,
-                  resource_size,
-                  estimated_memory,
-                  nodes_manager_address,
-                  nodes_manager_port,
-                  iterations):
-
+                 src_code,
+                 client_id,
+                 task_id,
+                 owner_address,
+                 owner_port,
+                 owner_key_id,
+                 environment,
+                 ttl,
+                 subtask_ttl,
+                 resource_size,
+                 estimated_memory,
+                 nodes_manager_address,
+                 nodes_manager_port,
+                 iterations):
 
         GNRTask.__init__(self, src_code, client_id, task_id, owner_address, owner_port, owner_key_id, environment,
-                            ttl, subtask_ttl, resource_size, estimated_memory)
+                         ttl, subtask_ttl, resource_size, estimated_memory)
 
         self.total_tasks = iterations
 
         self.nodes_manager_client = NodesManagerClient(nodes_manager_address, int(nodes_manager_port))
         self.nodes_manager_client.start()
 
-    #######################
-    def abort (self):
+    def abort(self):
         self.nodes_manager_client.dropConnection()
 
-    #######################
-    def query_extra_data(self, perf_index, num_cores, client_id = None):
+    def query_extra_data(self, perf_index, num_cores, client_id=None):
         ctd = ComputeTaskDef()
         ctd.task_id = self.header.task_id
         hash = "{}".format(random.getrandbits(128))
         ctd.subtask_id = hash
         ctd.extra_data = {
-                          "start_task" : self.last_task,
-                          "end_task": self.last_task + 1 }
+            "start_task": self.last_task,
+            "end_task": self.last_task + 1}
         ctd.return_address = self.header.task_owner_address
         ctd.return_port = self.header.task_owner_port
         ctd.task_owner = self.header.task_owner
@@ -97,8 +91,7 @@ class InfoTask(GNRTask):
 
         return ctd
 
-    #######################
-    def computation_finished(self, subtask_id, task_result, dir_manager = None, result_type = 0):
+    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
         if result_type != result_types['data']:
             logger.error("Only data result format supported")
             return
@@ -109,6 +102,5 @@ class InfoTask(GNRTask):
         except Exception as ex:
             logger.error("Error while interpreting results: {}".format(str(ex)))
 
-    #######################
     def prepare_resource_delta(self, task_id, resource_header):
         return None

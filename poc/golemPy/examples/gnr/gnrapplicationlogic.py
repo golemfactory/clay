@@ -294,7 +294,7 @@ class GNRApplicationLogic(QtCore.QObject):
     def task_status_changed(self, task_id):
 
         if task_id in self.tasks:
-            ts = self.client.querry_task_state(task_id)
+            ts = self.client.query_task_state(task_id)
             assert isinstance(ts, TaskState)
             self.tasks[task_id].task_state = ts
             self.customizer.update_tasks(self.tasks)

@@ -13,7 +13,7 @@ from golem.task.taskstate import SubtaskStatus
 logger = logging.getLogger(__name__)
 
 
-class FrameRenderingTaskBuiler(RenderingTaskBuilder):
+class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     def _calculate_total(self, renderer, definition):
         if definition.optimize_total:
             if self.task_definition.renderer_options.use_frames:

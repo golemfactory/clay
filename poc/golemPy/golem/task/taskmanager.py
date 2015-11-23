@@ -10,21 +10,17 @@ logger = logging.getLogger(__name__)
 
 
 class TaskManagerEventListener:
-    #######################
     def __init__(self):
         pass
 
-    #######################
     def task_status_updated(self, task_id):
         pass
 
-    #######################
     def subtask_status_updated(self, subtask_id):
         pass
 
 
 class TaskManager:
-    #######################
     def __init__(self, client_uid, node, listen_address="", listen_port=0, key_id="", root_path="res",
                  use_distributed_resources=True):
         self.client_uid = client_uid
@@ -47,11 +43,9 @@ class TaskManager:
 
         self.use_distributed_resources = use_distributed_resources
 
-    #######################
     def get_task_manager_root(self):
         return self.root_path
 
-    #######################
     def register_listener(self, listener):
         assert isinstance(listener, TaskManagerEventListener)
 
@@ -61,14 +55,12 @@ class TaskManager:
 
         self.listeners.append(listener)
 
-    #######################
     def unregister_listener(self, listener):
         for i in range(len(self.listeners)):
             if self.listeners[i] is listener:
                 del self.listeners[i]
                 return
 
-    #######################
     def add_new_task(self, task):
         assert task.header.task_id not in self.tasks
 
@@ -97,14 +89,12 @@ class TaskManager:
 
         self.__notice_task_updated(task.header.task_id)
 
-    #######################
     def resources_send(self, task_id):
         self.tasks_states[task_id].status = TaskStatus.waiting
         self.tasks[task_id].task_status = TaskStatus.waiting
         self.__notice_task_updated(task_id)
         logger.info("Resources for task {} send".format(task_id))
 
-    #######################
     def get_next_subtask(self, client_id, task_id, estimated_performance, max_resource_size, max_memory_size,
                          num_cores=0):
         if task_id in self.tasks:
@@ -126,7 +116,6 @@ class TaskManager:
             logger.info("Cannot find task {} in my tasks".format(task_id))
             return None, True
 
-    #######################
     def get_tasks_headers(self):
         ret = []
         for t in self.tasks.values():
@@ -135,7 +124,6 @@ class TaskManager:
 
         return ret
 
-    #######################
     def get_price_mod(self, subtask_id):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
@@ -144,7 +132,6 @@ class TaskManager:
             logger.error("This is not my subtask {}".format(subtask_id))
             return 0
 
-    #######################
     def get_trust_mod(self, subtask_id):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
@@ -153,7 +140,6 @@ class TaskManager:
             logger.error("This is not my subtask {}".format(subtask_id))
             return 0
 
-    #######################
     def verify_subtask(self, subtask_id):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
@@ -161,7 +147,6 @@ class TaskManager:
         else:
             return False
 
-    #######################
     def get_node_id_for_subtask(self, subtask_id):
         if subtask_id in self.subtask2task_mapping:
             subtask_state = self.tasks_states[self.subtask2task_mapping[subtask_id]].subtask_states[subtask_id]
@@ -169,7 +154,6 @@ class TaskManager:
         else:
             return None
 
-    #######################
     def computed_task_received(self, subtask_id, result, result_type):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
@@ -209,7 +193,6 @@ class TaskManager:
             logger.error("It is not my task id {}".format(subtask_id))
             return False
 
-    #######################
     def task_computation_failure(self, subtask_id, err):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
@@ -231,7 +214,6 @@ class TaskManager:
             logger.error("It is not my task id {}".format(subtask_id))
             return False
 
-    #######################
     def remove_old_tasks(self):
         nodes_with_timeouts = []
         for t in self.tasks.values():
@@ -258,7 +240,6 @@ class TaskManager:
                         self.__notice_task_updated(th.task_id)
         return nodes_with_timeouts
 
-    #######################
     def get_progresses(self):
         tasks_progresses = {}
 
@@ -271,26 +252,22 @@ class TaskManager:
 
         return tasks_progresses
 
-    #######################
     def prepare_resource(self, task_id, resource_header):
         if task_id in self.tasks:
             task = self.tasks[task_id]
             return task.prepare_resource_delta(task_id, resource_header)
 
-    #######################
     def get_resource_parts_list(self, task_id, resource_header):
         if task_id in self.tasks:
             task = self.tasks[task_id]
             return task.get_resource_parts_list(task_id, resource_header)
 
-    #######################
     def accept_results_delay(self, task_id):
         if task_id in self.tasks:
             return self.tasks[task_id].accept_results_delay()
         else:
             return -1.0
 
-    #######################
     def restart_task(self, task_id):
         if task_id in self.tasks:
             logger.info("restarting task")
@@ -309,7 +286,6 @@ class TaskManager:
         else:
             logger.error("Task {} not in the active tasks queue ".format(task_id))
 
-    #######################
     def restart_subtask(self, subtask_id):
         if not subtask_id in self.subtask2task_mapping:
             logger.error("Subtask {} not in subtasks queue".format(subtask_id))
@@ -322,7 +298,6 @@ class TaskManager:
 
         self.__notice_task_updated(task_id)
 
-    #######################
     def abort_task(self, task_id):
         if task_id in self.tasks:
             self.tasks[task_id].abort()
@@ -336,7 +311,6 @@ class TaskManager:
         else:
             logger.error("Task {} not in the active tasks queue ".format(task_id))
 
-    #######################
     def pause_task(self, task_id):
         if task_id in self.tasks:
             self.tasks[task_id].task_status = TaskStatus.paused
@@ -346,7 +320,6 @@ class TaskManager:
         else:
             logger.error("Task {} not in the active tasks queue ".format(task_id))
 
-    #######################
     def resume_task(self, task_id):
         if task_id in self.tasks:
             self.tasks[task_id].task_status = TaskStatus.starting
@@ -356,7 +329,6 @@ class TaskManager:
         else:
             logger.error("Task {} not in the active tasks queue ".format(task_id))
 
-    #######################
     def delete_task(self, task_id):
         if task_id in self.tasks:
 
@@ -371,8 +343,7 @@ class TaskManager:
         else:
             logger.error("Task {} not in the active tasks queue ".format(task_id))
 
-    #######################
-    def querry_task_state(self, task_id):
+    def query_task_state(self, task_id):
         if task_id in self.tasks_states and task_id in self.tasks:
             ts = self.tasks_states[task_id]
             t = self.tasks[task_id]
@@ -391,12 +362,10 @@ class TaskManager:
         else:
             assert False, "Should never be here!"
 
-    #######################
     def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path, self.client_uid)
         self.use_distributed_resources = use_distributed_resource_management
 
-    #######################
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
         if task_id in self.tasks:
             task = self.tasks[task_id]
@@ -415,11 +384,9 @@ class TaskManager:
             logger.info("Cannot find task {} in my tasks".format(task_id))
             return False
 
-    #######################
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
-    #######################
     def __add_subtask_to_tasks_states(self, client_id, ctd):
 
         if ctd.task_id not in self.tasks_states:
@@ -441,17 +408,14 @@ class TaskManager:
 
             ts.subtask_states[ctd.subtask_id] = ss
 
-    #######################
     def __notice_task_updated(self, task_id):
         for l in self.listeners:
             l.task_status_updated(task_id)
 
-    #######################
     def __notice_task_finished(self, task_id):
         for l in self.listeners:
             l.task_finished(task_id)
 
-    #######################
     def __has_subtasks(self, task_state, task, max_resource_size, max_memory_size):
         if task_state.status not in self.activeStatus:
             return False
