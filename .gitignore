@@ -1,4 +1,31 @@
-*.pyc
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
 ui_*.py
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+build/
+.cache/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Golem files
 *.db
 *.log
