@@ -52,34 +52,59 @@ class Task:
 
     @abc.abstractmethod
     def initialize(self):
+        """ Called after adding a new task, may initialize or create some resources or do other required operations. """
         return  # Implement in derived class
 
     @abc.abstractmethod
     def query_extra_data(self, perf_index, num_cores=1, client_id=None):
+        """ Called when a node asks with given parameters asks for a new subtask to compute.
+        :param int perf_index: performance that given node declares
+        :param int num_cores: number of cores that current node declares
+        :param client_id: id of a node that wants to get a next subtask
+        :return ComputeTaskDef | None: return ComputeTaskDef if a client with given id receives a subtask to compute
+        and None otherwise
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod
-    def short_extra_data_repr(self, perf_index):
+    def short_extra_data_repr(self, perf_index=None):
+        """ Should return a short string with general task description that may be used for logging or stats gathering.
+        :param int perf_index: performance index that may affect task description
+        :return str:
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod
     def needs_computation(self):
-        return  # Implement in derived class
-
-    @abc.abstractmethod
-    def computation_started(self, extra_data):
+        """ Return information if there are still some subtasks that may be dispended
+        :return bool: True if there are still subtask that should be computed, False otherwise
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod
     def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+        """ Inform about finished subtask
+        :param subtask_id: finished subtask id
+        :param task_result: task result, can be binary data or list of files
+        :param DirManager dir_manager: directory manager that keeps information where results are kept
+        :param result_type: result_types representation
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod
     def computation_failed(self, subtask_id):
+        """ Inform that computation of a task with given id has failed
+        :param subtask_id:
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod
     def verify_subtask(self, subtask_id):
+        """
+        Verify given subtask
+        :param subtask_id:
+        :return bool: True if a subtask passed verification
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod

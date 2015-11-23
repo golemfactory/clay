@@ -204,8 +204,6 @@ class VRayTask(FrameRenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, working_directory, 0)
 
-        #######################
-
     @check_subtask_id_wrapper
     def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
 

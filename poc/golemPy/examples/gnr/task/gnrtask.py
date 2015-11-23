@@ -98,9 +98,6 @@ class GNRTask(Task):
     def finished_computation(self):
         return self.num_tasks_received == self.total_tasks
 
-    def computation_started(self, extra_data):
-        pass
-
     def computation_failed(self, subtask_id):
         self._mark_subtask_failed(subtask_id)
 
