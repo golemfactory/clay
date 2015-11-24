@@ -36,93 +36,13 @@ def empty_add_nodes(*args):
 def start_client():
     init_messages()
 
-    cfg = AppConfig.load_config()
-
-    opt_num_peers = cfg.get_optimal_peer_num()
-    manager_address = cfg.get_manager_address()
-    manager_port = cfg.get_manager_listen_port()
-    start_port = cfg.get_start_port()
-    end_port = cfg.get_end_port()
-    seed_host = cfg.get_seed_host()
-    seed_host_port = cfg.get_seed_host_port()
-    send_pings = cfg.get_send_pings()
-    pings_interval = cfg.get_pings_interval()
-    client_uid = cfg.get_client_uid()
-    add_tasks = cfg.get_add_tasks()
-    root_path = cfg.get_root_path()
-    num_cores = cfg.get_num_cores()
-    max_resource_size = cfg.get_max_resource_size()
-    max_memory_size = cfg.get_max_memory_size()
-    dist_res_num = cfg.get_distributed_res_num()
-    app_name = cfg.get_app_name()
-    app_version = cfg.get_app_version()
-    plugin_port = cfg.get_plugin_port()
-
-    getting_peers_interval = cfg.get_getting_peers_interval()
-    getting_tasks_interval = cfg.get_getting_tasks_interval()
-    task_request_interval = cfg.get_task_request_interval()
-    use_waiting_for_task_timeout = cfg.get_use_waiting_for_task_timeout()
-    waiting_for_task_timeout = cfg.get_waiting_for_task_timeout()
-    p2p_session_timeout = cfg.get_p2p_session_timeout()
-    task_session_timeout = cfg.get_task_session_timeout()
-    resource_session_timeout = cfg.get_resource_session_timeout()
-
-    estimated_performance = cfg.get_estimated_performance()
-    node_snapshot_interval = cfg.get_node_snapshot_interval()
-    use_distributed_resource_management = cfg.get_use_distributed_resource_management()
-    requesting_trust = cfg.get_requesting_trust()
-    computing_trust = cfg.get_computing_trust()
-
-    eth_account = cfg.get_eth_account()
-    use_ipv6 = cfg.get_use_ipv6()
-
+    app_config = AppConfig.load_config()
     config_desc = ClientConfigDescriptor()
+    config_desc.init_from_app_config(app_config)
 
-    config_desc.client_uid = client_uid
-    config_desc.start_port = start_port
-    config_desc.end_port = end_port
-    config_desc.manager_address = manager_address
-    config_desc.manager_port = manager_port
-    config_desc.opt_num_peers = opt_num_peers
-    config_desc.send_pings = send_pings
-    config_desc.pings_interval = pings_interval
-    config_desc.add_tasks = add_tasks
-    config_desc.client_version = 1
-    config_desc.root_path = root_path
-    config_desc.num_cores = num_cores
-    config_desc.max_resource_size = max_resource_size
-    config_desc.max_memory_size = max_memory_size
-    config_desc.dist_res_num = dist_res_num
-
-    config_desc.seed_host = seed_host
-    config_desc.seed_host_port = seed_host_port
-
-    config_desc.app_version = app_version
-    config_desc.app_name = app_name
-
-    config_desc.plugin_port = plugin_port
-    config_desc.getting_peers_interval = getting_peers_interval
-    config_desc.getting_tasks_interval = getting_tasks_interval
-    config_desc.task_request_interval = task_request_interval
-    config_desc.use_waiting_for_task_timeout = use_waiting_for_task_timeout
-    config_desc.waiting_for_task_timeout = waiting_for_task_timeout
-    config_desc.p2p_session_timeout = p2p_session_timeout
-    config_desc.task_session_timeout = task_session_timeout
-    config_desc.resource_session_timeout = resource_session_timeout
-
-    config_desc.estimated_performance = estimated_performance
-    config_desc.node_snapshot_interval = node_snapshot_interval
-    config_desc.max_results_sending_delay = cfg.get_max_results_sending_delay()
-    config_desc.use_distributed_resource_management = use_distributed_resource_management
-    config_desc.requesting_trust = requesting_trust
-    config_desc.computing_trust = computing_trust
-
-    config_desc.eth_account = eth_account
-    config_desc.use_ipv6 = use_ipv6
-
-    logger.info("Adding tasks {}".format(add_tasks))
-    logger.info("Creating public client interface with uuid: {}".format(client_uid))
-    c = Client(config_desc, config=cfg)
+    logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
+    logger.info("Creating public client interface with uuid: {}".format(app_config.get_client_uid()))
+    c = Client(config_desc, config=app_config)
 
     logger.info("Starting all asynchronous services")
     c.start_network()
