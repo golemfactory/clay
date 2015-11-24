@@ -84,6 +84,7 @@ class FrameRenderingTask(RenderingTask):
             parts = self.subtasks_given[subtask_id]['parts']
             num_end = self.subtasks_given[subtask_id]['end_task']
             self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
+            frames_list = []
 
             if self.use_frames and self.total_tasks <= len(self.frames):
                 frames_list = self.subtasks_given[subtask_id]['frames']
