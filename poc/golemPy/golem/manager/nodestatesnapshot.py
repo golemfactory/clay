@@ -26,14 +26,10 @@ class TaskChunkStateSnapshot:
 
 
 class LocalTaskStateSnapshot:
-    def __init__(self, task_id, total_tasks, total_chunks, active_tasks, active_chunks, chunks_left, progress,
-                 task_short_desc):
+    def __init__(self, task_id, total_tasks, active_tasks, progress, task_short_desc):
         self.task_id = task_id
         self.total_tasks = total_tasks
-        self.total_chunks = total_chunks
         self.active_tasks = active_tasks
-        self.active_chunks = active_chunks
-        self.chunks_left = chunks_left
         self.progress = progress
         self.task_short_desc = task_short_desc
 
@@ -43,17 +39,8 @@ class LocalTaskStateSnapshot:
     def get_total_tasks(self):
         return self.total_tasks
 
-    def get_total_chunks(self):
-        return self.total_chunks
-
     def get_active_tasks(self):
         return self.active_tasks
-
-    def get_active_chunks(self):
-        return self.active_chunks
-
-    def get_chunks_left(self):
-        return self.chunks_left
 
     def get_progress(self):
         return self.progress

@@ -100,63 +100,88 @@ class Task:
 
     @abc.abstractmethod
     def verify_subtask(self, subtask_id):
-        """
-        Verify given subtask
+        """ Verify given subtask
         :param subtask_id:
-        :return bool: True if a subtask passed verification
+        :return bool: True if a subtask passed verification, False otherwise
         """
         return  # Implement in derived class
 
     @abc.abstractmethod
     def verify_task(self):
+        """ Verify whole task after computation
+        :return bool: True if task passed verification, False otherwise
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod
     def get_total_tasks(self):
-        return  # Implement in derived class
-
-    @abc.abstractmethod
-    def get_total_chunks(self):
+        """ Return total number of tasks that should be computed
+        :return int: number should be greater than 0
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod
     def get_active_tasks(self):
+        """ Return number of tasks that are currently being computed
+        :return int: number should be between 0 and a result of get_total_tasks
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod
-    def get_active_chunks(self):
-        return  # Implement in derived class
-
-    @abc.abstractmethod
-    def get_chunks_left(self):
+    def get_tasks_left(self):
+        """ Return number of tasks that still should be computed
+        :return int: number should be between 0 and a result of get_total_tasks
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod
     def get_progress(self):
+        """ Return task computations progress
+        :return float: Return number between 0.0 and 1.0.
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod
     def accept_results_delay(self):
+        """ asks there should be a added subtask_id and delay_time as an argument. The name should be also changed
+        from "accept" to "set down" or something similar. The result of this method is a delay value, not a boolean
+        as a name is suggesting.
+        :return:
+        """
         return 0.0
 
     @abc.abstractmethod
     def prepare_resource_delta(self, task_id, resource_header):
+        """Compare resources that were declared by client in a resource_header and creates a zip file with lacking ones.
+        :param task_id: FIXME
+        :param ResourceHeader resource_header: description of resources that computing node already have for this task
+        :return str | None : named of ziped file or None (if there are no resources required).
+        """
         return None
 
     @abc.abstractmethod
-    def test_task(self):
-        return False
-
-    @abc.abstractmethod
     def update_task_state(self, task_state):
+        """Update some task information taking into account new state.
+        :param TaskState task_state:
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod
     def get_price_mod(self, subtask_id):
+        """ Return price modifier for given subtask. This number may be taken into account during increasing
+        or decreasing trust for given node after successful or failed computation.
+        :param subtask_id:
+        :return int:
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod
     def get_trust_mod(self, subtask_id):
+        """ Return trust modifier for given subtask. This number may be taken into account during increasing
+        or decreasing trust for given node after successful or failed computation.
+        :param subtask_id:
+        :return int:
+        """
         return  # Implement in derived class
 
     @classmethod

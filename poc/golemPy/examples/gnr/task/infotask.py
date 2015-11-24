@@ -91,7 +91,7 @@ class InfoTask(GNRTask):
 
         return ctd
 
-    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+    def computation_finished(self, task_id, task_result, dir_manager=None, result_type=0):
         if result_type != result_types['data']:
             logger.error("Only data result format supported")
             return
@@ -102,5 +102,5 @@ class InfoTask(GNRTask):
         except Exception as ex:
             logger.error("Error while interpreting results: {}".format(str(ex)))
 
-    def prepare_resource_delta(self, task_id, resource_header):
+    def prepare_resource_delta(self, subtask_id, resource_header):
         return None

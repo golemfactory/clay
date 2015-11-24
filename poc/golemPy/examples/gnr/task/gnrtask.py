@@ -104,31 +104,23 @@ class GNRTask(Task):
     def get_total_tasks(self):
         return self.total_tasks
 
-    def get_total_chunks(self):
-        return self.total_tasks
-
     def get_active_tasks(self):
-        return self.last_task
-
-    def get_active_chunks(self):
         return self.last_task
 
     def set_res_files(self, res_files):
         self.res_files = res_files
 
     def prepare_resource_delta(self, task_id, resource_header):
-        if task_id == self.header.task_id:
-            common_path_prefix, dir_name, tmp_dir = self.__get_task_dir_params()
+        common_path_prefix, dir_name, tmp_dir = self.__get_task_dir_params()
 
-            if not os.path.exists(tmp_dir):
-                os.makedirs(tmp_dir)
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
 
-            if os.path.exists(dir_name):
-                return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
-            else:
-                return None
+        if os.path.exists(dir_name):
+            return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
         else:
             return None
+
 
     def get_resource_parts_list(self, task_id, resource_header):
         if task_id == self.header.task_id:
