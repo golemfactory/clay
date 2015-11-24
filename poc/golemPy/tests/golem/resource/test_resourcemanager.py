@@ -1,25 +1,14 @@
-import sys
 import os
-import unittest
-import logging
-import shutil
-
-sys.path.append(os.environ.get('GOLEM'))
-
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
+from test_dirmanager import TestDirFixture
 
-path = 'C:\golem_test\\test2'
 
-
-class TestResourcesManager(unittest.TestCase):
+class TestResourcesManager(TestDirFixture):
     def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
+        TestDirFixture.setUp(self)
 
-        if not os.path.isdir(path):
-            os.mkdir(path)
-
-        self.dir_manager = DirManager(path, 'node2')
+        self.dir_manager = DirManager(self.path, 'node2')
         res_path = self.dir_manager.get_task_resource_dir('task2')
 
         file1 = os.path.join(res_path, 'file1')
@@ -31,11 +20,6 @@ class TestResourcesManager(unittest.TestCase):
         if not os.path.isdir(dir1):
             os.mkdir(dir1)
         open(file3, 'w').close()
-
-    def tearDown(self):
-        path_ = 'C:\golem_test\\test2'
-        if os.path.isdir(path_):
-            shutil.rmtree(path_)
 
     def testInit(self):
         self.assertIsNotNone(ResourcesManager(self.dir_manager, 'owner'))
@@ -96,10 +80,5 @@ class TestResourcesManager(unittest.TestCase):
         self.assertTrue(os.path.isdir(outDir))
         self.assertEqual(outDir, self.dir_manager.get_task_output_dir('task2'))
 
-
-        # def test_fileDataReceived(self):
-        #     assert False
-
-
-if __name__ == '__main__':
-    unittest.main()
+    # def test_fileDataReceived(self):
+    #     assert False

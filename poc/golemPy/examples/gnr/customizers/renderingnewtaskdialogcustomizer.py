@@ -361,10 +361,9 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         definition.output_format = u"{}".format(
             self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
 
+        definition.main_scene_file = u"{}".format(self.gui.ui.mainSceneFileLineEdit.text())
         if self.add_task_resource_dialog_customizer:
             definition.resources = self.renderer_options.add_to_resources(definition.resources)
-
-            definition.main_scene_file = u"{}".format(self.gui.ui.mainSceneFileLineEdit.text())
             definition.resources.add(os.path.normpath(definition.main_scene_file))
         return definition
 

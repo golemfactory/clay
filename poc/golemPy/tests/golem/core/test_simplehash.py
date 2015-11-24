@@ -1,9 +1,5 @@
 import unittest
-import sys
-import os
-
-sys.path.append(os.environ.get('GOLEM'))
-
+from os import path
 from golem.core.simplehash import SimpleHash
 
 
@@ -30,10 +26,6 @@ class TestSimpleHash(unittest.TestCase):
         self.assertEquals(b642, SimpleHash.hash_base64(ex2))
 
     def test_fileHash(self):
-        file_ = 'testSH.txt'
-        b64 = "L9ThxnotKPzthJ7hu3bnORuT6xI=\n"
+        file_ = path.join(path.dirname(__file__), 'file.txt')
+        b64 = "vkF3aLXDxcHZvLLnwRkZbddrVXA=\n"
         self.assertEquals(b64, SimpleHash.hash_file_base64(file_))
-
-
-if __name__ == '__main__':
-    unittest.main()

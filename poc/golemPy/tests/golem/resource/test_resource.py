@@ -1,24 +1,14 @@
-import sys
 import os
-import unittest
-import logging
-import shutil
-
-sys.path.append(os.environ.get('GOLEM'))
-
-path = 'C:\golem_test\\test3'
-from golem.resource.resource import TaskResourceHeader, remove_disallowed_filename_chars, TaskResource
+from golem.resource.resource import TaskResourceHeader, TaskResource
 from golem.resource.dirmanager import DirManager
+from test_dirmanager import TestDirFixture
 
 
-class TestTaskResourceHeader(unittest.TestCase):
+class TestTaskResourceHeader(TestDirFixture):
     def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
+        TestDirFixture.setUp(self)
 
-        if not os.path.isdir(path):
-            os.mkdir(path)
-
-        self.dir_manager = DirManager(path, 'node3')
+        self.dir_manager = DirManager(self.path, 'node3')
         res_path = self.dir_manager.get_task_resource_dir('task2')
 
         self.file1 = os.path.join(res_path, 'file1')
@@ -30,11 +20,6 @@ class TestTaskResourceHeader(unittest.TestCase):
         if not os.path.isdir(self.dir1):
             os.mkdir(self.dir1)
         open(self.file3, 'w').close()
-
-    def tearDown(self):
-        path_ = 'C:\golem_test\\test3'
-        if os.path.isdir(path_):
-            shutil.rmtree(path_)
 
     def testBuild(self):
         dir_name = self.dir_manager.get_task_resource_dir("task2")
@@ -52,15 +37,7 @@ class TestTaskResourceHeader(unittest.TestCase):
         self.assertEquals(header.files_data, header2.files_data)
 
 
-class TestTaskResource(unittest.TestCase):
-    def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
-        if not os.path.isdir(path):
-            os.mkdir(path)
+class TestTaskResource(TestDirFixture):
 
     def testInit(self):
-        self.assertIsNotNone(TaskResource(path))
-
-
-if __name__ == '__main__':
-    unittest.main()
+        self.assertIsNotNone(TaskResource(self.path))

@@ -1,18 +1,19 @@
 import unittest
-import sys
-import os
-
-sys.path.append(os.environ.get('GOLEM'))
-
+from os import path
 from golem.network.adapter.sftpadapter import SFTPAdapter, SFTPHostInfo, SFTPResourceInfo
 from golem.network.adapter.adapter import ClosedAdapterError
 
-#To pass tests fill-in two files "test" and "test2"
+# To pass tests fill-in two files "test" and "test2"
+
 
 class TestSFTPAdapters(unittest.TestCase):
+    dataFile1 = path.join(path.dirname(__file__), "dataFile1")
+    dataFile2 = path.join(path.dirname(__file__), "dataFile2")
+
+    @unittest.skip("SFTP mock needed")
     def test_connect_password(self):
         sftp_adapter = SFTPAdapter()
-        with open('test', 'r') as f:
+        with open(self.dataFile1, 'r') as f:
             address = f.readline()[:-1]
             username = f.readline()[:-1]
             password = f.readline()[:-1]
@@ -24,9 +25,10 @@ class TestSFTPAdapters(unittest.TestCase):
         self.assertFalse(sftp_adapter.connect(sftp_host_info))
         self.assertFalse(sftp_adapter.close())
 
+    @unittest.skip("SFTP mock needed")
     def test_connect_key(self):
         sftp_adapter = SFTPAdapter()
-        with open('test2', 'r') as f:
+        with open(self.dataFile2, 'r') as f:
             address = f.readline()[:-1]
             username = f.readline()[:-1]
             private_key = f.readline()[:-1]
@@ -37,9 +39,10 @@ class TestSFTPAdapters(unittest.TestCase):
         print private_key
         self.assertTrue(sftp_adapter.connect(sftp_host_info))
 
+    @unittest.skip("SFTP mock needed")
     def test_resource(self):
         sftp_adapter = SFTPAdapter()
-        with open('test', 'r') as f:
+        with open(self.dataFile1, 'r') as f:
             address = f.readline()[:-1]
             username = f.readline()[:-1]
             password = f.readline()[:-1]
@@ -49,11 +52,8 @@ class TestSFTPAdapters(unittest.TestCase):
         sftp_adapter.connect(sftp_host_info)
         resource_info = SFTPResourceInfo(resource_name, resource_dir)
         sftp_adapter.get_resource(resource_info)
-        self.assertTrue(os.path.isfile(resource_name))
+        self.assertTrue(path.isfile(resource_name))
         sftp_adapter.send_resource(resource_name)
         sftp_adapter.close()
         with self.assertRaises(ClosedAdapterError):
             sftp_adapter.get_resource(resource_info)
-
-if __name__ == '__main__':
-    unittest.main()

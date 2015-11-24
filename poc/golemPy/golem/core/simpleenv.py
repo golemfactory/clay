@@ -1,10 +1,10 @@
 import os
 
-DATA_DIRECTORY = os.path.join(os.environ.get("GOLEM"), "examples/gnr/node_data")
-
 
 class SimpleEnv(object):
     """ Metaclass that keeps information about golem configuration files location. """
+
+    DATA_DIRECTORY = os.path.abspath("examples/gnr/node_data")
 
     @classmethod
     def open_env_file(cls, filename, options='a'):
@@ -29,14 +29,14 @@ class SimpleEnv(object):
         """
         cls.__env_dir_guard()
 
-        if DATA_DIRECTORY in filename:
+        if SimpleEnv.DATA_DIRECTORY in filename:
             return filename
 
-        return os.path.join(DATA_DIRECTORY, filename)
+        return os.path.join(SimpleEnv.DATA_DIRECTORY, filename)
 
     @classmethod
     def __env_dir_guard(cls):
-        if not os.path.exists(DATA_DIRECTORY):
-            os.makedirs(DATA_DIRECTORY)
+        if not os.path.exists(SimpleEnv.DATA_DIRECTORY):
+            os.makedirs(SimpleEnv.DATA_DIRECTORY)
 
 
