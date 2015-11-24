@@ -1827,6 +1827,13 @@ class MessageNewNodes(Message):
     def dict_repr(self):
         return {MessageNewNodes.NUM_STR: self.num}
 
+def init_manager_messages():
+    """ Add manager messages to registered messages list"""
+    MessagePeerStatus()
+    MessageKillNode()
+    MessageKillAllNodes()
+    MessageNewTask()
+    MessageNewNodes()
 
 def init_messages():
     """ Add supported messages to register messages list """
@@ -1892,20 +1899,7 @@ def init_messages():
     MessageSendResource()
 
     # Manager messages
-    MessagePeerStatus()
-    MessageNewTask()
-    MessageKillNode()
-    MessageKillAllNodes()
-    MessageNewNodes()
-
-
-def init_manager_messages():
-    """ Add manager messages to registered messages list"""
-    MessagePeerStatus()
-    MessageKillNode()
-    MessageKillAllNodes()
-    MessageNewTask()
-    MessageNewNodes()
+    init_manager_messages()
 
 
 if __name__ == "__main__":
