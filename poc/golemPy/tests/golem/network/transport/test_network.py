@@ -1,14 +1,10 @@
 import unittest
 import logging
-import sys
 import os
 import time
 
-sys.path.append(os.environ.get('GOLEM'))
-
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, TCPListeningInfo, TCPConnectInfo, \
-                                                TCPAddress, BasicProtocol, ServerProtocol, SafeProtocol, FilesProtocol,\
-                                                MidAndFilesProtocol
+    TCPAddress, BasicProtocol, ServerProtocol, SafeProtocol
 from golem.network.transport.network import ProtocolFactory, SessionFactory, SessionProtocol
 from golem.network.transport.message import Message, MessageHello
 from golem.core.databuffer import DataBuffer
@@ -85,7 +81,7 @@ class TestNetwork(unittest.TestCase):
         self.assertFalse(self.listen_success)
 
         listen_info = TCPListenInfo(1111, 1115, established_callback=self.__listen_success,
-                                   failure_callback=self.__listen_failure)
+                                    failure_callback=self.__listen_failure)
         self.network.listen(listen_info)
         time.sleep(5)
         self.assertTrue(self.listen_success)
@@ -281,7 +277,7 @@ class TestBasicProtocol(unittest.TestCase):
 
 
 class TestServerProtocol(unittest.TestCase):
-        @unittest.skip("Fix me (testing takes too long)")
+    @unittest.skip("Fix me (testing takes too long)")
     def test_connection_made(self):
         p = ServerProtocol(Server())
         session_factory = SessionFactory(ASession)
@@ -308,6 +304,3 @@ class TestSaferProtocol(unittest.TestCase):
         self.assertIsInstance(p.session.msgs[0], MessageHello)
         self.assertEquals(msg.timestamp, p.session.msgs[0].timestamp)
         self.assertEqual(msg.sig, "ASessionSign")
-
-if __name__ == '__main__':
-    unittest.main()
