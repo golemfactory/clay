@@ -300,16 +300,16 @@ class TaskThread(Thread):
 
 
 class PyTaskThread(TaskThread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path, tmp_path,
-                 timeout):
-        super(PyTaskThread, self).__init__(task_computer, subtask_id, working_directory, src_code, extra_data, short_desc,
-                                           res_path, tmp_path, timeout)
+    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path,
+                 tmp_path, timeout):
+        super(PyTaskThread, self).__init__(task_computer, subtask_id, working_directory, src_code, extra_data,
+                                           short_desc, res_path, tmp_path, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path, tmp_path,
-                 timeout):
+    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path,
+                 tmp_path, timeout):
         super(PyTestTaskThread, self).__init__(task_computer, subtask_id, working_directory, src_code, extra_data,
                                                short_desc, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()

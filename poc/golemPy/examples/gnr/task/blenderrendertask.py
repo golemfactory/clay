@@ -9,7 +9,7 @@ from examples.gnr.renderingdirmanager import get_test_task_path, get_tmp_path
 from examples.gnr.renderingenvironment import BlenderEnvironment
 from examples.gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from examples.gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
-from examples.gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuiler, get_task_boarder, \
+from examples.gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
 from examples.gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from examples.gnr.task.scenefileeditor import regenerate_blender_crop_file
@@ -23,7 +23,7 @@ def build_blender_renderer_info():
     defaults = RendererDefaults()
     defaults.output_format = "EXR"
     defaults.main_program_file = os.path.normpath(
-        os.path.join(os.environ.get('GOLEM'), 'examples/tasks/blenderTask.py'))
+        os.path.join(os.environ.get('GOLEM'), 'examples/tasks/blendertask.py'))
     defaults.min_subtasks = 1
     defaults.max_subtasks = 100
     defaults.default_subtasks = 6
@@ -47,7 +47,7 @@ class BlenderRendererOptions(GNROptions):
         self.frames = range(1, 11)
 
 
-class BlenderRenderTaskBuilder(FrameRenderingTaskBuiler):
+class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
 
@@ -74,7 +74,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuiler):
         return self._set_verification_options(vray_task)
 
     def _set_verification_options(self, new_task):
-        new_task = FrameRenderingTaskBuiler._set_verification_options(self, new_task)
+        new_task = FrameRenderingTaskBuilder._set_verification_options(self, new_task)
         if new_task.advanceVerification:
             box_x = max(new_task.verification_options.box_size[0], 8)
             box_y = max(new_task.verification_options.box_size[1], 8)
@@ -83,6 +83,11 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuiler):
 
 
 class BlenderRenderTask(FrameRenderingTask):
+
+    ################
+    # Task methods #
+    ################
+
     def __init__(self,
                  client_id,
                  task_id,
@@ -179,6 +184,10 @@ class BlenderRenderTask(FrameRenderingTask):
             self._update_frame_task_preview()
 
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+
+    ###################
+    # GNRTask methods #
+    ###################
 
     def query_extra_data_for_test_task(self):
 

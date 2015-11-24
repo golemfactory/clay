@@ -106,7 +106,7 @@ class NodeSimulator(QtCore.QThread):
         if lc_t < len(self.addedTasks):
             descr = self.addedTasks[ lc_t ]
 
-        ltss = LocalTaskStateSnapshot('0xcdcdcdcd', total_tasks, total_chunks, active_tasks, active_chunks, all_chunks - total_chunks, self.loc_progress, descr)
+        ltss = LocalTaskStateSnapshot('0xcdcdcdcd', total_tasks, active_tasks, self.loc_progress, descr)
 
         return NodeStateSnapshot(self.running, self.uid, self.peers_num, self.tasks_num, self.local_addr, self.local_port, ['test message {}'.format(random.randint(0,200))], ['test message {}'.format(random.randint(10, 70))], { '0' : tcss }, { '0xcdcdcd' : ltss })
 

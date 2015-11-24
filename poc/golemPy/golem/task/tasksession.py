@@ -3,8 +3,8 @@ import cPickle as pickle
 import struct
 import logging
 import os
-
-from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, MessageTaskToCompute, \
+from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, \
+    MessageTaskToCompute, \
     MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, \
     MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
@@ -13,7 +13,7 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
 from golem.network.transport.session import MiddlemanSafeSession
-from golem.task.taskbase import result_types
+from golem.task.taskbase import result_types, resource_types
 from golem.resource.resource import decompress_dir
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
@@ -269,7 +269,8 @@ class TaskSession(MiddlemanSafeSession):
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
-        self.send(MessageHello(client_key_id=self.task_server.get_key_id(), rand_val=self.rand_val), send_unverified=True)
+        self.send(MessageHello(client_key_id=self.task_server.get_key_id(), rand_val=self.rand_val),
+                  send_unverified=True)
 
     def send_start_session_response(self, conn_id):
         """ Inform that this session was started as an answer for a request to start task session
@@ -315,8 +316,8 @@ class TaskSession(MiddlemanSafeSession):
         logger.debug("Computing trust level: {}".format(trust))
         if trust >= self.task_server.config_desc.computing_trust:
             ctd, wrong_task = self.task_manager.get_next_subtask(msg.client_id, msg.task_id, msg.perf_index,
-                                                               msg.max_resource_size, msg.max_memory_size,
-                                                               msg.num_cores)
+                                                                 msg.max_resource_size, msg.max_memory_size,
+                                                                 msg.num_cores)
         else:
             ctd, wrong_task = None, False
 
@@ -457,7 +458,8 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_middleman(self, msg):
         self.send(MessageBeingMiddlemanAccepted())
-        self.task_server.be_a_middleman(self.key_id, self, self.conn_id, msg.asking_node, msg.dest_node, msg.ask_conn_id)
+        self.task_server.be_a_middleman(self.key_id, self, self.conn_id, msg.asking_node, msg.dest_node,
+                                        msg.ask_conn_id)
 
     def _react_to_join_middleman_conn(self, msg):
         self.middleman_conn_data = {'key_id': msg.key_id, 'conn_id': msg.conn_id,
@@ -480,7 +482,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_nat_punch(self, msg):
         self.task_server.organize_nat_punch(self.address, self.port, self.key_id, msg.asking_node, msg.dest_node,
-                                          msg.ask_conn_id)
+                                            msg.ask_conn_id)
         self.send(MessageWaitForNatTraverse(self.port))
         self.dropped()
 
@@ -499,7 +501,8 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.set_last_message("->", time.localtime(), msg, self.address, self.port)
 
     def __send_delta_resource(self, msg):
-        res_file_path = self.task_manager.prepare_resource(msg.task_id, pickle.loads(msg.resource_header))
+        res_file_path = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),
+                                                        resource_types["zip"])
 
         if not res_file_path:
             logger.error("Task {} has no resource".format(msg.task_id))
@@ -510,7 +513,8 @@ class TaskSession(MiddlemanSafeSession):
         self.conn.producer = EncryptFileProducer([res_file_path], self)
 
     def __send_resource_parts_list(self, msg):
-        delta_header, parts_list = self.task_manager.get_resource_parts_list(msg.task_id, pickle.loads(msg.resource_header))
+        delta_header, parts_list = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),
+                                                                   resource_types["parts"])
         self.send(MessageDeltaParts(self.task_id, delta_header, parts_list, self.task_server.get_client_id(),
                                     self.task_server.node, self.task_server.get_resource_addr(),
                                     self.task_server.get_resource_port())

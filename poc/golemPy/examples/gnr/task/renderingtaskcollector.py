@@ -1,44 +1,44 @@
 import glob
 import logging
 import math
-
-import OpenEXR, Imath
+import OpenEXR
+import Imath
 from PIL import Image, ImageChops
 
 logger = logging.getLogger(__name__)
 
-############################
+
 def print_progress(i, total):
     print "\rProgress: {} %       ".format(100.0 * float(i + 1) / total),
 
-############################
+
 def open_exr_as_rgbf_images(exr_file):
     file = OpenEXR.InputFile(exr_file)
     pt = Imath.PixelType(Imath.PixelType.FLOAT)
     dw = file.header()['dataWindow']
     size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
 
-    rgbf = [Image.fromstring("F", size, file.channel(c, pt)) for c in "RGB"]
+    rgbf = [Image.frombytes("F", size, file.channel(c, pt)) for c in "RGB"]
 
     return rgbf
 
-############################
-def convert_rgbf_images_to_rgb8_image(rgbf, lightest = 255.0, darkest=0.0):
+
+def convert_rgbf_images_to_rgb8_image(rgbf, lightest=255.0, darkest=0.0):
     scale = 255 / (lightest - darkest)
 
     def normalize_0_255(val):
         scale = 255.0
         darkest = 0.0
         return (val * scale) + darkest
-    
+
     rgb8 = [im.point(normalize_0_255).convert("L") for im in rgbf]
-    
+
     img = Image.merge("RGB", rgb8)
-    
+
     return img
 
-############################
-def convert_rgbf_images_to_l_image(rgbf, lightest = 255.0, darkest=0.0):
+
+def convert_rgbf_images_to_l_image(rgbf, lightest=255.0, darkest=0.0):
     scale = 255 / (lightest - darkest)
 
     def normalize_0_255(val):
@@ -54,33 +54,32 @@ def convert_rgbf_images_to_l_image(rgbf, lightest = 255.0, darkest=0.0):
     return img
 
 
-############################
 def get_single_rgbf_extrema(rgbf):
     extrema = [im.getextrema() for im in rgbf]
-    darkest = min([lo for (lo,hi) in extrema])
-    lightest = max([hi for (lo,hi) in extrema])
+    darkest = min([lo for (lo, hi) in extrema])
+    lightest = max([hi for (lo, hi) in extrema])
 
     return darkest, lightest
 
-############################
+
 def get_list_rgbf_extrema(rgbf_list):
     assert len(rgbf_list) > 0
 
-    darkest, lightest = get_single_rgbf_extrema(rgbf_list[ 0 ])
-    
+    darkest, lightest = get_single_rgbf_extrema(rgbf_list[0])
+
     for i in range(1, len(rgbf_list)):
-        d, l = get_single_rgbf_extrema(rgbf_list[ i ])
-          
+        d, l = get_single_rgbf_extrema(rgbf_list[i])
+
         darkest = min(d, darkest)
         lightest = max(l, lightest)
 
         print_progress(i, len(rgbf_list))
-    
+
     print ""
 
     return darkest, lightest
 
-############################
+
 def compose_final_image(open_exr_files):
     rgbfs = []
 
@@ -93,7 +92,7 @@ def compose_final_image(open_exr_files):
 
     print "\nFinding extremas for all chunks"
     darkest, lightest = get_list_rgbf_extrema(rgbfs)
-   
+
     rgb8_images = []
 
     print "Converting chunks to rgb8 images"
@@ -103,21 +102,21 @@ def compose_final_image(open_exr_files):
 
         print_progress(i, len(rgbfs))
 
-    final_img = rgb8_images[ 0 ]
+    final_img = rgb8_images[0]
 
     print "\nCompositing the final image"
     for i in range(1, len(rgb8_images)):
-        final_img = ImageChops.add(final_img, rgb8_images[ i ])
+        final_img = ImageChops.add(final_img, rgb8_images[i])
 
         print_progress(i, len(rgb8_images))
 
     return final_img
 
-############################
+
 def get_exr_files(path):
     return glob.glob(path + "/*.exr")
 
-############################
+
 def test_it():
     image = 'test/test_chunk_00000.tga'
     watermark = 'test/test_chunk_00001.png'
@@ -129,30 +128,31 @@ def test_it():
 
     out.save("result.png", "PNG")
 
-def exr_to_pil(exr_file):
 
+def exr_to_pil(exr_file):
     file = OpenEXR.InputFile(exr_file)
     pt = Imath.PixelType(Imath.PixelType.FLOAT)
     dw = file.header()['dataWindow']
     size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
 
-    rgbf = [Image.fromstring("F", size, file.channel(c, pt))    for c in "RGB"]
+    rgbf = [Image.frombytes("F", size, file.channel(c, pt)) for c in "RGB"]
 
- #   extrema = [im.getextrema() for im in rgbf]
- #   darkest = min([lo for (lo,hi) in extrema])
-#    lightest = max([hi for (lo,hi) in extrema])
-#    scale = 255.0 / (lightest - darkest)
+    #   extrema = [im.getextrema() for im in rgbf]
+    #   darkest = min([lo for (lo,hi) in extrema])
+    #    lightest = max([hi for (lo,hi) in extrema])
+    #    scale = 255.0 / (lightest - darkest)
 
     scale = 255.0
+
     def normalize_0_255(v):
         return v * scale
+
     rgb8 = [im.point(normalize_0_255).convert("L") for im in rgbf]
     return Image.merge("RGB", rgb8)
 
-class RenderingTaskCollector:
 
-##
-    def __init__(self, paste = False, width = 1, height = 1):
+class RenderingTaskCollector:
+    def __init__(self, paste=False, width=1, height=1):
         self.darkest = None
         self.lightest = None
         self.alpha_darkest = None
@@ -163,7 +163,6 @@ class RenderingTaskCollector:
         self.width = width
         self.height = height
 
-##
     def add_img_file(self, exr_file):
         rgbf = open_exr_as_rgbf_images(exr_file)
         d, l = get_single_rgbf_extrema(rgbf)
@@ -180,7 +179,6 @@ class RenderingTaskCollector:
 
         self.accepted_exr_files.append(exr_file)
 
-##
     def add_alpha_file(self, exr_file):
         rgbf = open_exr_as_rgbf_images(exr_file)
         d, l = get_single_rgbf_extrema(rgbf)
@@ -197,9 +195,7 @@ class RenderingTaskCollector:
 
         self.accepted_alpha_files.append(exr_file)
 
-
-##
-    def finalize(self, show_progress = False):
+    def finalize(self, show_progress=False):
         if len(self.accepted_exr_files) == 0:
             return None
 
@@ -209,17 +205,19 @@ class RenderingTaskCollector:
         if self.lightest == self.darkest:
             self.lightest = self.darkest + 0.1
 
-        final_img = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_exr_files[ 0 ]), self.lightest, self.darkest)
+        final_img = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_exr_files[0]),
+                                                      self.lightest, self.darkest)
 
         if self.paste:
             if not self.width or not self.height:
                 self.width, self.height = final_img.size
                 self.height *= len(self.accepted_exr_files)
             final_img = self.__paste_image(Image.new('RGB', (self.width, self.height)), final_img, 0)
-        
+
         for i in range(1, len(self.accepted_exr_files)):
-            print self.accepted_exr_files[ i ]
-            rgb8_im = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_exr_files[ i ]), self.lightest, self.darkest)
+            print self.accepted_exr_files[i]
+            rgb8_im = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_exr_files[i]),
+                                                        self.lightest, self.darkest)
             if not self.paste:
                 final_img = ImageChops.add(final_img, rgb8_im)
             else:
@@ -229,10 +227,12 @@ class RenderingTaskCollector:
                 print_progress(i, len(self.accepted_exr_files))
 
         if len(self.accepted_alpha_files) > 0:
-            final_alpha = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[ 0 ]), self.lightest, self.darkest)
+            final_alpha = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[0]),
+                                                         self.lightest, self.darkest)
 
             for i in range(1, len(self.accepted_alpha_files)):
-                l_im = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[ i ]), self.lightest, self.darkest)
+                l_im = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[i]),
+                                                      self.lightest, self.darkest)
                 final_alpha = ImageChops.add(final_alpha, l_im)
 
             final_img.putalpha(final_alpha)
@@ -241,18 +241,20 @@ class RenderingTaskCollector:
 
     def __paste_image(self, final_img, new_part, num):
         img_offset = Image.new("RGB", (self.width, self.height))
-        offset = int (math.floor(num * float(self.height) / float(len(self.accepted_exr_files))))
+        offset = int(math.floor(num * float(self.height) / float(len(self.accepted_exr_files))))
         img_offset.paste(new_part, (0, offset))
         return ImageChops.add(final_img, img_offset)
 
-#klasa powinna miec add task (ktore otwiera i liczy min/max oraz update na tej podstawie swojego stanu) oraz dodaje chunk do listy i tyle - potem usuwa
-#finalize - czyli po ostatnim chunku konwertuje na bazie min/max po kolei wszystkie chunki (ale nie otwiera wszystkich, bo na to jest za malo miejsca)
-#kazdy skonwertowany dodaje od razu do final image i tylko ten final jest trzymany w pamieci - troche wolniej bedzie, ale za to nie zabraknie RAMU
-#teraz obrazek fullhd podzielony na 1000-2000 chunkow wywali manager pamieci
 
-############################
+# klasa powinna miec add task (ktore otwiera i liczy min/max oraz update na tej podstawie swojego stanu)
+#  oraz dodaje chunk do listy i tyle - potem usuwa
+# finalize - czyli po ostatnim chunku konwertuje na bazie min/max po kolei wszystkie chunki (ale nie otwiera
+# wszystkich, bo na to jest za malo miejsca)
+# kazdy skonwertowany dodaje od razu do final image i tylko ten final jest trzymany w pamieci - troche wolniej bedzie,
+# ale za to nie zabraknie RAMU teraz obrazek fullhd podzielony na 1000-2000 chunkow wywali manager pamieci
+
 if __name__ == "__main__":
-    
+
     def test_task_collector(path, result_name):
         files = get_exr_files(path)
 
@@ -273,9 +275,11 @@ if __name__ == "__main__":
 
         im.save("{}.png".format(result_name), "PNG")
 
+
     def sys_test():
         import sys
         for e in sys.path:
             print e
+
 
     test_task_collector("test_run1", "result_64")

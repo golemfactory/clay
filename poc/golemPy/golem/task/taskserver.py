@@ -1,14 +1,11 @@
 import time
 import os
 import logging
-
 from collections import deque
-
 from taskmanager import TaskManager
 from taskcomputer import TaskComputer
 from tasksession import TaskSession
 from taskkeeper import TaskKeeper
-
 from golem.ranking.ranking import RankingStats
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, TCPAddress, MidAndFilesProtocol
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -112,7 +109,8 @@ class TaskServer(PendingConnectionsServer):
         if subtask_id not in self.results_to_send:
             self.task_keeper.add_to_verification(subtask_id, task_id)
             self.results_to_send[subtask_id] = WaitingTaskResult(subtask_id, result['data'], result['result_type'],
-                                                               0.0, 0.0, owner_address, owner_port, owner_key_id, owner)
+                                                                 0.0, 0.0, owner_address, owner_port, owner_key_id,
+                                                                 owner)
         else:
             assert False
 
@@ -122,7 +120,7 @@ class TaskServer(PendingConnectionsServer):
         self.client.decrease_trust(node_id, RankingStats.requested)
         if subtask_id not in self.failures_to_send:
             self.failures_to_send[subtask_id] = WaitingTaskFailure(subtask_id, err_msg, owner_address, owner_port,
-                                                                 owner_key_id, owner)
+                                                                   owner_key_id, owner)
 
     def new_connection(self, session):
         self.task_sessions_incoming.append(session)
@@ -223,7 +221,7 @@ class TaskServer(PendingConnectionsServer):
         self.config_desc = config_desc
         self.last_message_time_threshold = config_desc.task_session_timeout
         self.task_manager.change_config(self.__get_task_manager_root(config_desc),
-                                       config_desc.use_distributed_resource_management)
+                                        config_desc.use_distributed_resource_management)
         self.task_computer.change_config()
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
@@ -385,7 +383,8 @@ class TaskServer(PendingConnectionsServer):
         self.task_manager.node = self.node
 
     def _listening_failure(self, **kwargs):
-        logger.error("Listening on ports {} to {} failure".format(self.config_desc.start_port, self.config_desc.end_port))
+        logger.error("Listening on ports {} to {} failure".format(self.config_desc.start_port,
+                                                                  self.config_desc.end_port))
         # FIXME: some graceful terminations should take place here
         # sys.exit(0)
 
