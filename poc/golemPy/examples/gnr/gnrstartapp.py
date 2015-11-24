@@ -1,7 +1,12 @@
 import os
+import logging.config
+from os import path
 
 from golem.client import start_client
 from golem.environments.environment import Environment
+from tools import uigen
+
+uigen.gen_ui_files(path.join(path.dirname(__file__), "ui"))
 
 from examples.gnr.renderingenvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment, \
     LuxRenderEnvironment, BlenderEnvironment
@@ -14,6 +19,12 @@ from examples.gnr.task.luxrendertask import build_lux_render_info
 from examples.gnr.task.blenderrendertask import build_blender_renderer_info
 
 from examples.manager.gnrmanagerlogic import run_additional_nodes, run_manager
+
+
+def config_logging():
+    """Config logger"""
+    config_file = path.join(path.dirname(__file__), "logging.ini")
+    logging.config.fileConfig(config_file, disable_existing_loggers=False)
 
 
 def install_reactor():

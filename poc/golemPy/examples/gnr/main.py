@@ -1,25 +1,12 @@
-import sys
-import os
-import logging
-import logging.config
-
-sys.path.append(os.environ.get('GOLEM'))
-
-from tools.uigen import gen_ui_files
-
-if os.path.normpath(os.getcwd()) == os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/gnr")):
-    gen_ui_files("ui")
-
+from gnrstartapp import start_app, config_logging
 from renderingapplicationlogic import RenderingApplicationLogic
 from examples.gnr.ui.renderingmainwindow import RenderingMainWindow
 from examples.gnr.application import GNRGui
 from examples.gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-from gnrstartapp import start_app
 
 
 def main():
-    if os.path.normpath(os.getcwd()) == os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/gnr")):
-        logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
+    config_logging()
 
     logic = RenderingApplicationLogic()
     app = GNRGui(logic, RenderingMainWindow)
