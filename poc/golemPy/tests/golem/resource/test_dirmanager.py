@@ -1,35 +1,33 @@
-import sys
 import os
 import unittest
 import logging
 import shutil
-
-sys.path.append(os.environ.get('GOLEM'))
-
+import tempfile
 from golem.resource.dirmanager import DirManager
 
-path = 'C:\golem_test\\test1'
-node1 = 'node1'
 
+class TestDirFixture(unittest.TestCase):
 
-class TestDirManager(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
-        if not os.path.isdir(path):
-            os.mkdir(path)
+        self.path = tempfile.mkdtemp(prefix='golem')
 
     def tearDown(self):
-        path_ = 'C:\golem_test\\test1'
-        if os.path.isdir(path_):
-            shutil.rmtree(path_)
+        if os.path.isdir(self.path):
+            shutil.rmtree(self.path)
+
+
+class TestDirManager(TestDirFixture):
+
+    node1 = 'node1'
 
     def testInit(self):
-        self.assertIsNotNone(DirManager(path, node1))
+        self.assertIsNotNone(DirManager(self.path, self.node1))
 
     def testClearDir(self):
-        file1 = os.path.join(path, 'file1')
-        file2 = os.path.join(path, 'file2')
-        dir1 = os.path.join(path, 'dir1')
+        file1 = os.path.join(self.path, 'file1')
+        file2 = os.path.join(self.path, 'file2')
+        dir1 = os.path.join(self.path, 'dir1')
         file3 = os.path.join(dir1, 'file3')
         open(file1, 'w').close()
         open(file2, 'w').close()
@@ -40,7 +38,7 @@ class TestDirManager(unittest.TestCase):
         self.assertTrue(os.path.isfile(file2))
         self.assertTrue(os.path.isfile(file3))
         self.assertTrue(os.path.isdir(dir1))
-        dm = DirManager(path, node1)
+        dm = DirManager(self.path, self.node1)
         dm.clear_dir(dm.root_path)
         self.assertFalse(os.path.isfile(file1))
         self.assertFalse(os.path.isfile(file2))
@@ -48,10 +46,10 @@ class TestDirManager(unittest.TestCase):
         self.assertFalse(os.path.isdir(dir1))
 
     def testGetTaskTemporaryDir(self):
-        dm = DirManager(path, node1)
+        dm = DirManager(self.path, self.node1)
         task_id = '12345'
         tmp_dir = dm.get_task_temporary_dir(task_id)
-        expectedTmpDir = os.path.join(path, node1, task_id, 'tmp')
+        expectedTmpDir = os.path.join(self.path, self.node1, task_id, 'tmp')
         self.assertEquals(tmp_dir, expectedTmpDir)
         self.assertTrue(os.path.isdir(tmp_dir))
         tmp_dir = dm.get_task_temporary_dir(task_id)
@@ -66,10 +64,10 @@ class TestDirManager(unittest.TestCase):
         self.assertTrue(os.path.isdir(tmp_dir))
 
     def testGetTaskResourceDir(self):
-        dm = DirManager(path, node1)
+        dm = DirManager(self.path, self.node1)
         task_id = '12345'
         resDir = dm.get_task_resource_dir(task_id)
-        expectedResDir = os.path.join(path, node1, task_id, 'resources')
+        expectedResDir = os.path.join(self.path, self.node1, task_id, 'resources')
         self.assertEquals(resDir, expectedResDir)
         self.assertTrue(os.path.isdir(resDir))
         resDir = dm.get_task_resource_dir(task_id)
@@ -84,10 +82,10 @@ class TestDirManager(unittest.TestCase):
         self.assertTrue(os.path.isdir(resDir))
 
     def testGetTaskOutputDir(self):
-        dm = DirManager(path, node1)
+        dm = DirManager(self.path, self.node1)
         task_id = '12345'
         outDir = dm.get_task_output_dir(task_id)
-        expectedResDir = os.path.join(path, node1, task_id, 'output')
+        expectedResDir = os.path.join(self.path, self.node1, task_id, 'output')
         self.assertEquals(outDir, expectedResDir)
         self.assertTrue(os.path.isdir(outDir))
         outDir = dm.get_task_output_dir(task_id)
@@ -102,7 +100,7 @@ class TestDirManager(unittest.TestCase):
         self.assertTrue(os.path.isdir(outDir))
 
     def testClearTemporary(self):
-        dm = DirManager(path, node1)
+        dm = DirManager(self.path, self.node1)
         task_id = '12345'
         tmp_dir = dm.get_task_temporary_dir(task_id)
         self.assertTrue(os.path.isdir(tmp_dir))
@@ -127,7 +125,7 @@ class TestDirManager(unittest.TestCase):
         self.assertFalse(os.path.isdir(dir1))
 
     def testClearResource(self):
-        dm = DirManager(path, node1)
+        dm = DirManager(self.path, self.node1)
         task_id = '67891'
         resDir = dm.get_task_resource_dir(task_id)
         self.assertTrue(os.path.isdir(resDir))
@@ -152,7 +150,7 @@ class TestDirManager(unittest.TestCase):
         self.assertFalse(os.path.isdir(dir1))
 
     def testClearOutput(self):
-        dm = DirManager(path, node1)
+        dm = DirManager(self.path, self.node1)
         task_id = '01112'
         outDir = dm.get_task_output_dir(task_id)
         self.assertTrue(os.path.isdir(outDir))
@@ -172,7 +170,3 @@ class TestDirManager(unittest.TestCase):
         self.assertFalse(os.path.isfile(file2))
         self.assertFalse(os.path.isfile(file3))
         self.assertFalse(os.path.isdir(dir1))
-
-
-if __name__ == '__main__':
-    unittest.main()
