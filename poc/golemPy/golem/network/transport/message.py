@@ -1828,7 +1828,7 @@ class MessageNewNodes(Message):
         return {MessageNewNodes.NUM_STR: self.num}
 
 def init_manager_messages():
-    """ Add manager messages to registered messages list"""
+    """Add manager messages to registered messages list"""
     MessagePeerStatus()
     MessageKillNode()
     MessageKillAllNodes()
@@ -1836,7 +1836,7 @@ def init_manager_messages():
     MessageNewNodes()
 
 def init_messages():
-    """ Add supported messages to register messages list """
+    """Add supported messages to register messages list"""
     # Basic messages
     MessageHello()
     MessageRandVal()

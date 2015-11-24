@@ -18,7 +18,7 @@ class ClientConfigDescriptor(object):
         self.pings_interval = 0.0
         self.add_tasks = 0
         self.dist_res_num = 0
-        self.client_version = 0
+        self.client_version = 1  # hard-coded (not copied from AppConfig)
         self.use_ipv6 = 0
 
         self.seed_host = u""
@@ -51,6 +51,32 @@ class ClientConfigDescriptor(object):
         self.app_name = ""
         self.app_version = ""
         self.eth_account = ""
+
+    def init_from_app_config(self, app_config):
+        """Intializes config parameters based on the specified AppConfig
+        :param app_config: instance of AppConfig
+        :return:
+        """
+        # Fields to be copied from AppConfig:
+        field_names = ['client_uid', 'start_port', 'end_port', 'manager_address',
+                       'send_pings', 'pings_interval', 'add_tasks', 'root_path', 'num_cores',
+                       'max_resource_size', 'max_memory_size', 'seed_host', 'seed_host_port',
+                       'app_name', 'app_version', 'plugin_port',
+                       'getting_peers_interval', 'getting_tasks_interval', 'task_request_interval',
+                       'use_waiting_for_task_timeout', 'waiting_for_task_timeout',
+                       'p2p_session_timeout', 'task_session_timeout', 'resource_session_timeout',
+                       'estimated_performance', 'node_snapshot_interval',
+                       'max_results_sending_delay', 'use_distributed_resource_management',
+                       'requesting_trust', 'computing_trust', 'eth_account', 'use_ipv6'
+                       ]
+        for name in field_names:
+            getter = 'get_' + name
+            setattr(self, name, getattr(app_config, getter)())
+
+        # Some parameter names do not exactly match AppConfig getter names:
+        self.manager_port = app_config.get_manager_listen_port()
+        self.opt_num_peers = app_config.get_optimal_peer_num()
+        self.dist_res_num = app_config.get_distributed_res_num()
 
 
 class ConfigApprover(object):
