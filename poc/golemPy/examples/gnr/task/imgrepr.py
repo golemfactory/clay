@@ -55,7 +55,7 @@ class EXRImgRepr(ImgRepr):
     def load_from_file(self, file_):
         self.img = OpenEXR.InputFile(file_)
         self.dw = self.img.header()['dataWindow']
-        self.rgb = [Image.fromstring("F", self.get_size(), self.img.channel(c, self.pt)) for c in "RGB"]
+        self.rgb = [Image.frombytes("F", self.get_size(), self.img.channel(c, self.pt)) for c in "RGB"]
 
     def get_size(self):
         return self.dw.max.x - self.dw.min.x + 1, self.dw.max.y - self.dw.min.y + 1

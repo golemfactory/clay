@@ -18,7 +18,7 @@ def open_exr_as_rgbf_images(exr_file):
     dw = file.header()['dataWindow']
     size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
 
-    rgbf = [Image.fromstring("F", size, file.channel(c, pt)) for c in "RGB"]
+    rgbf = [Image.frombytes("F", size, file.channel(c, pt)) for c in "RGB"]
 
     return rgbf
 
@@ -135,7 +135,7 @@ def exr_to_pil(exr_file):
     dw = file.header()['dataWindow']
     size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
 
-    rgbf = [Image.fromstring("F", size, file.channel(c, pt)) for c in "RGB"]
+    rgbf = [Image.frombytes("F", size, file.channel(c, pt)) for c in "RGB"]
 
     #   extrema = [im.getextrema() for im in rgbf]
     #   darkest = min([lo for (lo,hi) in extrema])
