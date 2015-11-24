@@ -4,7 +4,7 @@ import os
 class SimpleEnv(object):
     """ Metaclass that keeps information about golem configuration files location. """
 
-    DATA_DIRECTORY = os.path.abspath("examples/gnr/node_data")
+    DATA_DIRECTORY = os.path.abspath("node_data")
 
     @classmethod
     def open_env_file(cls, filename, options='a'):
