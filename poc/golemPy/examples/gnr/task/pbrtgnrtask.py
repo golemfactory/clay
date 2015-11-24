@@ -153,6 +153,11 @@ def count_subtask_reg(total_tasks, subtasks, res_x, res_y):
 
 
 class PbrtRenderTask(RenderingTask):
+
+    ################
+    # Task methods #
+    ################
+
     def __init__(self,
                  client_id,
                  task_id,
@@ -251,37 +256,6 @@ class PbrtRenderTask(RenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
-    def query_extra_data_for_test_task(self):
-
-        working_directory = self._get_working_directory()
-
-        scene_src = regenerate_pbrt_file(self.scene_file_src, 1, 1, self.pixel_filter, self.sampler,
-                                         self.samples_per_pixel)
-
-        pbrt_path = self.__get_pbrt_rel_path()
-        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
-
-        extra_data = {"path_root": self.main_scene_dir,
-                      "start_task": 0,
-                      "end_task": 1,
-                      "total_tasks": self.total_tasks,
-                      "num_subtasks": self.num_subtasks,
-                      "num_cores": self.num_cores,
-                      "outfilebasename": self.outfilebasename,
-                      "scene_file_src": scene_src,
-                      "scene_dir": scene_dir,
-                      "pbrt_path": pbrt_path
-                      }
-
-        hash = "{}".format(random.getrandbits(128))
-
-        self.test_task_res_path = get_test_task_path(self.root_path)
-        logger.debug(self.test_task_res_path)
-        if not os.path.exists(self.test_task_res_path):
-            os.makedirs(self.test_task_res_path)
-
-        return self._new_compute_task_def(hash, extra_data, working_directory, 0)
-
     def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
 
         if not self.should_accept(subtask_id):
@@ -337,6 +311,43 @@ class PbrtRenderTask(RenderingTask):
         perf = (self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task'])
         perf *= float(self.subtasks_given[subtask_id]['perf']) / 1000
         return perf
+
+    ###################
+    # GNRTask methods #
+    ###################
+
+    def query_extra_data_for_test_task(self):
+
+        working_directory = self._get_working_directory()
+
+        scene_src = regenerate_pbrt_file(self.scene_file_src, 1, 1, self.pixel_filter, self.sampler,
+                                         self.samples_per_pixel)
+
+        pbrt_path = self.__get_pbrt_rel_path()
+        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+
+        extra_data = {"path_root": self.main_scene_dir,
+                      "start_task": 0,
+                      "end_task": 1,
+                      "total_tasks": self.total_tasks,
+                      "num_subtasks": self.num_subtasks,
+                      "num_cores": self.num_cores,
+                      "outfilebasename": self.outfilebasename,
+                      "scene_file_src": scene_src,
+                      "scene_dir": scene_dir,
+                      "pbrt_path": pbrt_path
+                      }
+
+        hash = "{}".format(random.getrandbits(128))
+
+        self.test_task_res_path = get_test_task_path(self.root_path)
+        logger.debug(self.test_task_res_path)
+        if not os.path.exists(self.test_task_res_path):
+            os.makedirs(self.test_task_res_path)
+
+        return self._new_compute_task_def(hash, extra_data, working_directory, 0)
+
+
 
     def _get_next_task(self, perf_index):
         if self.last_task != self.total_tasks:

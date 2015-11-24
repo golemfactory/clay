@@ -13,7 +13,7 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
 from golem.network.transport.session import MiddlemanSafeSession
-from golem.task.taskbase import result_types
+from golem.task.taskbase import result_types, resource_types
 from golem.resource.resource import decompress_dir
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
@@ -501,7 +501,8 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.set_last_message("->", time.localtime(), msg, self.address, self.port)
 
     def __send_delta_resource(self, msg):
-        res_file_path = self.task_manager.prepare_resource(msg.task_id, pickle.loads(msg.resource_header))
+        res_file_path = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),
+                                                        resource_types["zip"])
 
         if not res_file_path:
             logger.error("Task {} has no resource".format(msg.task_id))
@@ -512,8 +513,8 @@ class TaskSession(MiddlemanSafeSession):
         self.conn.producer = EncryptFileProducer([res_file_path], self)
 
     def __send_resource_parts_list(self, msg):
-        delta_header, parts_list = self.task_manager.get_resource_parts_list(msg.task_id,
-                                                                             pickle.loads(msg.resource_header))
+        delta_header, parts_list = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),
+                                                                   resource_types["parts"])
         self.send(MessageDeltaParts(self.task_id, delta_header, parts_list, self.task_server.get_client_id(),
                                     self.task_server.node, self.task_server.get_resource_addr(),
                                     self.task_server.get_resource_port())

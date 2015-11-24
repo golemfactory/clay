@@ -46,6 +46,12 @@ class ComputeTaskDef(object):
 
 
 class Task:
+
+    @classmethod
+    def build_task(cls, task_builder):
+        assert isinstance(task_builder, TaskBuilder)
+        return task_builder.build()
+
     def __init__(self, header, src_code):
         self.src_code = src_code
         self.header = header
@@ -80,6 +86,13 @@ class Task:
         :return bool: True if there are still subtask that should be computed, False otherwise
         """
         return  # Implement in derived class
+
+    @abc.abstractmethod
+    def finished_computation(self):
+        """ Return information if tasks has been fully computed
+        :return bool: True if there is all tasks has been computed and verified
+        """
+        return False
 
     @abc.abstractmethod
     def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
@@ -135,6 +148,21 @@ class Task:
         return  # Implement in derived class
 
     @abc.abstractmethod
+    def restart(self):
+        """ Restart all subtask computation for this task """
+        return  # Implement in derived class
+
+    @abc.abstractmethod
+    def restart_subtask(self, subtask_id):
+        """ Restart subtask with given id """
+        return  # Implement in derived class
+
+    @abc.abstractmethod
+    def abort(self):
+        """ Abort task and all computations """
+        return  # Implement in derived class
+
+    @abc.abstractmethod
     def get_progress(self):
         """ Return task computations progress
         :return float: Return number between 0.0 and 1.0.
@@ -151,11 +179,13 @@ class Task:
         return 0.0
 
     @abc.abstractmethod
-    def prepare_resource_delta(self, task_id, resource_header):
-        """Compare resources that were declared by client in a resource_header and creates a zip file with lacking ones.
+    def get_resources(self, task_id, resource_header, resource_type=0):
+        """ Compare resources that were declared by client in a resource_header and prepare lacking one. Method of
+        preparing resources depends from declared resource_type
         :param task_id: FIXME
         :param ResourceHeader resource_header: description of resources that computing node already have for this task
-        :return str | None : named of ziped file or None (if there are no resources required).
+        :param int resource_type: resource type from resources_types (0 for zip, 1 for hash list)
+        :return None | str | (TaskResourceHeader, list): result depends on return on resource_type
         """
         return None
 
@@ -184,10 +214,13 @@ class Task:
         """
         return  # Implement in derived class
 
-    @classmethod
-    def build_task(cls, task_builder):
-        assert isinstance(task_builder, TaskBuilder)
-        return task_builder.build()
+    @abc.abstractmethod
+    def add_resources(self, resources):
+        """ Add resources to a task
+        :param resources:
+        """
+        return  # Implement in derived class
 
 
 result_types = {'data': 0, 'files': 1}
+resource_types = {'zip': 0, 'parts': 1}

@@ -83,6 +83,11 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
 
 
 class BlenderRenderTask(FrameRenderingTask):
+
+    ################
+    # Task methods #
+    ################
+
     def __init__(self,
                  client_id,
                  task_id,
@@ -179,6 +184,10 @@ class BlenderRenderTask(FrameRenderingTask):
             self._update_frame_task_preview()
 
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+
+    ###################
+    # GNRTask methods #
+    ###################
 
     def query_extra_data_for_test_task(self):
 

@@ -2,7 +2,7 @@ import os
 from threading import Thread, Lock
 import shutil
 import logging
-from golem.task.taskbase import Task
+from golem.task.taskbase import Task, resource_types
 from golem.resource.resource import TaskResourceHeader, decompress_dir
 from golem.task.taskcomputer import PyTestTaskThread
 from examples.gnr.renderingdirmanager import get_test_task_path, get_test_task_directory, get_test_task_tmp_path
@@ -60,6 +60,16 @@ class TaskTester:
                 return self.tt.get_progress()
         return None
 
+    def task_computed(self, task_thread):
+        if task_thread.result:
+            res, est_mem = task_thread.result
+        if task_thread.result and 'data' in res and res['data']:
+            logger.info("Test task computation success !")
+            self.finished_callback(True, est_mem)
+        else:
+            logger.warning("Test task computation failed !!!")
+            self.finished_callback(False)
+
     def __prepare_resources(self):
 
         self.test_task_res_path = get_test_task_path(self.root_path)
@@ -71,7 +81,7 @@ class TaskTester:
 
         self.test_taskResDir = get_test_task_directory()
         rh = TaskResourceHeader(self.test_taskResDir)
-        res_file = self.task.prepare_resource_delta(self.task.header.task_id, rh)
+        res_file = self.task.get_resources(self.task.header.task_id, rh, resource_types["zip"])
 
         if res_file:
             decompress_dir(self.test_task_res_path, res_file)
@@ -87,12 +97,3 @@ class TaskTester:
             shutil.rmtree(self.tmp_dir, True)
             os.makedirs(self.tmp_dir)
 
-    def task_computed(self, task_thread):
-        if task_thread.result:
-            res, est_mem = task_thread.result
-        if task_thread.result and 'data' in res and res['data']:
-            logger.info("Test task computation success !")
-            self.finished_callback(True, est_mem)
-        else:
-            logger.warning("Test task computation failed !!!")
-            self.finished_callback(False)

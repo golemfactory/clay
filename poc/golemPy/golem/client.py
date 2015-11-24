@@ -248,7 +248,7 @@ class Client:
             self.get_resource_peers()
             res_files = self.resource_server.add_files_to_send(task.task_resources, task.header.task_id,
                                                                self.config_desc.dist_res_num)
-            task.set_res_files(res_files)
+            task.add_resources(res_files)
 
     def get_resource_peers(self):
         self.p2pservice.send_get_resource_peers()

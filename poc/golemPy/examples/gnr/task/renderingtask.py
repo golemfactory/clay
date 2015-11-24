@@ -45,6 +45,11 @@ class RenderingTaskBuilder(GNRTaskBuilder):
 
 
 class RenderingTask(GNRTask):
+
+    ################
+    # Task methods #
+    ################
+
     def __init__(self, client_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
@@ -94,6 +99,11 @@ class RenderingTask(GNRTask):
         if is_windows():
             self.__get_path = self.__get_path_windows
 
+    @check_subtask_id_wrapper
+    def computation_failed(self, subtask_id):
+        GNRTask.computation_failed(self, subtask_id)
+        self._update_task_preview()
+
     def restart(self):
         GNRTask.restart(self)
         self.preview_file_path = None
@@ -101,23 +111,22 @@ class RenderingTask(GNRTask):
 
         self.collected_file_names = {}
 
-    def update_task_state(self, task_state):
-        if not self.finished_computation() and self.preview_task_file_path:
-            task_state.extra_data['resultPreview'] = self.preview_task_file_path
-        elif self.preview_file_path:
-            task_state.extra_data['resultPreview'] = self.preview_file_path
-
-    @check_subtask_id_wrapper
-    def computation_failed(self, subtask_id):
-        GNRTask.computation_failed(self, subtask_id)
-        self._update_task_preview()
-
     @check_subtask_id_wrapper
     def restart_subtask(self, subtask_id):
         if subtask_id in self.subtasks_given:
             if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
                 self._remove_from_preview(subtask_id)
         GNRTask.restart_subtask(self, subtask_id)
+
+    def update_task_state(self, task_state):
+        if not self.finished_computation() and self.preview_task_file_path:
+            task_state.extra_data['resultPreview'] = self.preview_task_file_path
+        elif self.preview_file_path:
+            task_state.extra_data['resultPreview'] = self.preview_file_path
+
+    #########################
+    # Specific task methods #
+    #########################
 
     def get_preview_file_path(self):
         return self.preview_file_path
@@ -268,16 +277,6 @@ class RenderingTask(GNRTask):
             self.counting_nodes[client_id] = 0
             return True  # new node
 
-    @check_subtask_id_wrapper
-    def __use_adv_verification(self, subtask_id):
-        if self.verification_options.type == 'forAll':
-            return True
-        if self.verification_options.type == 'forFirst' and self.subtasks_given[subtask_id]['client_id'] not in self.verifiedClients:
-            return True
-        if self.verification_options.type == 'random' and random.random() < self.verification_options.probability:
-            return True
-        return False
-
     def _choose_adv_ver_file(self, tr_files, subtask_id):
         adv_test_file = None
         if self.advanceVerification:
@@ -335,6 +334,17 @@ class RenderingTask(GNRTask):
             return self.load_task_results(scope['output']['data'], scope['output']['result_type'], self.tmp_dir)[0]
         else:
             return None
+
+    @check_subtask_id_wrapper
+    def __use_adv_verification(self, subtask_id):
+        if self.verification_options.type == 'forAll':
+            return True
+        if self.verification_options.type == 'forFirst':
+            if self.subtasks_given[subtask_id]['client_id'] not in self.verifiedClients:
+                return True
+        if self.verification_options.type == 'random' and random.random() < self.verification_options.probability:
+            return True
+        return False
 
     def __get_path(self, path):
         return path

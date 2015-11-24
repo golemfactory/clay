@@ -43,6 +43,11 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
 
 
 class FrameRenderingTask(RenderingTask):
+
+    ################
+    # Task methods #
+    ################
+
     def __init__(self, client_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
@@ -64,96 +69,6 @@ class FrameRenderingTask(RenderingTask):
         if self.use_frames:
             self.preview_file_path = [None] * len(self.frames)
             self.preview_task_file_path = [None] * len(self.frames)
-
-    def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
-        num = self.frames.index(frame_num)
-        if new_chunk_file_path.endswith(".exr") or new_chunk_file_path.endswith(".EXR"):
-            img = exr_to_pil(new_chunk_file_path)
-        else:
-            img = Image.open(new_chunk_file_path)
-
-        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
-        if self.preview_file_path[num] is None:
-            self.preview_file_path[num] = "{}{}".format(os.path.join(tmp_dir, "current_preview"), num)
-        if self.preview_task_file_path[num] is None:
-            self.preview_task_file_path[num] = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), num)
-
-        if not final:
-            img = self._paste_new_chunk(img, self.preview_file_path[num], part, self.total_tasks / len(self.frames))
-
-        img.save(self.preview_file_path[num], "BMP")
-        img.save(self.preview_task_file_path[num], "BMP")
-
-    def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
-        img_offset = Image.new("RGB", (self.res_x, self.res_y))
-        try:
-            offset = int(math.floor((chunk_num - 1) * float(self.res_y) / float(all_chunks_num)))
-            img_offset.paste(img_chunk, (0, offset))
-        except Exception, err:
-            logger.error("Can't generate preview {}".format(str(err)))
-        if os.path.exists(preview_file_path):
-            img = Image.open(preview_file_path)
-            img = ImageChops.add(img, img_offset)
-            return img
-        else:
-            return img_offset
-
-    def _update_frame_task_preview(self):
-        sent_color = (0, 255, 0)
-        failed_color = (255, 0, 0)
-
-        for sub in self.subtasks_given.values():
-            if sub['status'] == SubtaskStatus.starting:
-                for frame in sub['frames']:
-                    self.__mark_sub_frame(sub, frame, sent_color)
-
-            if sub['status'] == SubtaskStatus.failure:
-                for frame in sub['frames']:
-                    self.__mark_sub_frame(sub, frame, failed_color)
-
-    def _open_frame_preview(self, preview_file_path):
-
-        if not os.path.exists(preview_file_path):
-            img = Image.new("RGB", (self.res_x, self.res_y))
-            img.save(preview_file_path, "BMP")
-
-        return Image.open(preview_file_path)
-
-    def __mark_sub_frame(self, sub, frame, color):
-        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
-        idx = self.frames.index(frame)
-        preview_task_file_path = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), idx)
-        preview_file_path = "{}{}".format(os.path.join(tmp_dir, "current_preview"), idx)
-        img_task = self._open_frame_preview(preview_file_path)
-        self._mark_task_area(sub, img_task, color)
-        img_task.save(preview_task_file_path, "BMP")
-        self.preview_task_file_path[idx] = preview_task_file_path
-
-    def _mark_task_area(self, subtask, img_task, color):
-        if not self.use_frames:
-            RenderingTask._mark_task_area(self, subtask, img_task, color)
-        elif self.__full_frames():
-            for i in range(0, self.res_x):
-                for j in range(0, self.res_y):
-                    img_task.putpixel((i, j), color)
-        else:
-            parts = self.total_tasks / len(self.frames)
-            upper = int(math.floor(float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts))
-            lower = int(math.floor(float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts + 1))
-            for i in range(0, self.res_x):
-                for j in range(upper, lower):
-                    img_task.putpixel((i, j), color)
-
-    @check_subtask_id_wrapper
-    def _get_part_img_size(self, subtask_id, adv_test_file):
-        if not self.use_frames or self.__full_frames():
-            return RenderingTask._get_part_img_size(self, subtask_id, adv_test_file)
-        else:
-            start_task = self.subtasks_given[subtask_id]['start_task']
-            parts = self.subtasks_given[subtask_id]['parts']
-            num_task = self._count_part(start_task, parts)
-            img_height = int(math.floor(float(self.res_y) / float(parts)))
-            return 1, (num_task - 1) * img_height + 1, self.res_x - 1, num_task * img_height - 1
 
     @check_subtask_id_wrapper
     def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
@@ -210,6 +125,90 @@ class FrameRenderingTask(RenderingTask):
                 self._copy_frames()
             else:
                 self._put_image_together(tmp_dir)
+
+    #########################
+    # Specific task methods #
+    #########################
+
+    def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
+        num = self.frames.index(frame_num)
+        if new_chunk_file_path.endswith(".exr") or new_chunk_file_path.endswith(".EXR"):
+            img = exr_to_pil(new_chunk_file_path)
+        else:
+            img = Image.open(new_chunk_file_path)
+
+        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
+        if self.preview_file_path[num] is None:
+            self.preview_file_path[num] = "{}{}".format(os.path.join(tmp_dir, "current_preview"), num)
+        if self.preview_task_file_path[num] is None:
+            self.preview_task_file_path[num] = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), num)
+
+        if not final:
+            img = self._paste_new_chunk(img, self.preview_file_path[num], part, self.total_tasks / len(self.frames))
+
+        img.save(self.preview_file_path[num], "BMP")
+        img.save(self.preview_task_file_path[num], "BMP")
+
+    def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
+        img_offset = Image.new("RGB", (self.res_x, self.res_y))
+        try:
+            offset = int(math.floor((chunk_num - 1) * float(self.res_y) / float(all_chunks_num)))
+            img_offset.paste(img_chunk, (0, offset))
+        except Exception, err:
+            logger.error("Can't generate preview {}".format(str(err)))
+        if os.path.exists(preview_file_path):
+            img = Image.open(preview_file_path)
+            img = ImageChops.add(img, img_offset)
+            return img
+        else:
+            return img_offset
+
+    def _update_frame_task_preview(self):
+        sent_color = (0, 255, 0)
+        failed_color = (255, 0, 0)
+
+        for sub in self.subtasks_given.values():
+            if sub['status'] == SubtaskStatus.starting:
+                for frame in sub['frames']:
+                    self.__mark_sub_frame(sub, frame, sent_color)
+
+            if sub['status'] == SubtaskStatus.failure:
+                for frame in sub['frames']:
+                    self.__mark_sub_frame(sub, frame, failed_color)
+
+    def _open_frame_preview(self, preview_file_path):
+
+        if not os.path.exists(preview_file_path):
+            img = Image.new("RGB", (self.res_x, self.res_y))
+            img.save(preview_file_path, "BMP")
+
+        return Image.open(preview_file_path)
+
+    def _mark_task_area(self, subtask, img_task, color):
+        if not self.use_frames:
+            RenderingTask._mark_task_area(self, subtask, img_task, color)
+        elif self.__full_frames():
+            for i in range(0, self.res_x):
+                for j in range(0, self.res_y):
+                    img_task.putpixel((i, j), color)
+        else:
+            parts = self.total_tasks / len(self.frames)
+            upper = int(math.floor(float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts))
+            lower = int(math.floor(float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts + 1))
+            for i in range(0, self.res_x):
+                for j in range(upper, lower):
+                    img_task.putpixel((i, j), color)
+
+    @check_subtask_id_wrapper
+    def _get_part_img_size(self, subtask_id, adv_test_file):
+        if not self.use_frames or self.__full_frames():
+            return RenderingTask._get_part_img_size(self, subtask_id, adv_test_file)
+        else:
+            start_task = self.subtasks_given[subtask_id]['start_task']
+            parts = self.subtasks_given[subtask_id]['parts']
+            num_task = self._count_part(start_task, parts)
+            img_height = int(math.floor(float(self.res_y) / float(parts)))
+            return 1, (num_task - 1) * img_height + 1, self.res_x - 1, num_task * img_height - 1
 
     def _choose_frames(self, frames, start_task, total_tasks):
         if total_tasks <= len(frames):
@@ -271,15 +270,25 @@ class FrameRenderingTask(RenderingTask):
 
         self._update_frame_preview(tr_file, frame_num, part)
 
-        print "collect frame {}, part {}, collected parts {}".format(frame_num, part, self.frames_given[frame_num])
         if len(self.frames_given[frame_num]) == parts:
             self._put_frame_together(tmp_dir, frame_num, num_start)
+
+    def _count_part(self, start_num, parts):
+        return ((start_num - 1) % parts) + 1
 
     def __full_frames(self):
         return self.total_tasks <= len(self.frames)
 
-    def _count_part(self, start_num, parts):
-        return ((start_num - 1) % parts) + 1
+    def __mark_sub_frame(self, sub, frame, color):
+        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
+        idx = self.frames.index(frame)
+        preview_task_file_path = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), idx)
+        preview_file_path = "{}{}".format(os.path.join(tmp_dir, "current_preview"), idx)
+        img_task = self._open_frame_preview(preview_file_path)
+        self._mark_task_area(sub, img_task, color)
+        img_task.save(preview_task_file_path, "BMP")
+        self.preview_task_file_path[idx] = preview_task_file_path
+
 
 
 def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,

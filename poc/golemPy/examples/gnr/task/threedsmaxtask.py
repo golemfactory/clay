@@ -85,6 +85,11 @@ class ThreeDSMaxTaskBuilder(FrameRenderingTaskBuilder):
 
 
 class ThreeDSMaxTask(FrameRenderingTask):
+
+    ################
+    # Task methods #
+    ################
+
     def __init__(self,
                  client_id,
                  task_id,
@@ -172,6 +177,25 @@ class ThreeDSMaxTask(FrameRenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
+    @check_subtask_id_wrapper
+    def get_price_mod(self, subtask_id):
+        perf = (self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task']) + 1
+        perf *= float(self.subtasks_given[subtask_id]['perf']) / 1000
+        perf *= 50
+        return perf
+
+    @check_subtask_id_wrapper
+    def restart_subtask(self, subtask_id):
+        FrameRenderingTask.restart_subtask(self, subtask_id)
+        if not self.use_frames:
+            self._update_task_preview()
+        else:
+            self._update_frame_task_preview()
+
+    ###################
+    # GNRTask methods #
+    ###################
+
     def query_extra_data_for_test_task(self):
 
         working_directory = self._get_working_directory()
@@ -209,21 +233,6 @@ class ThreeDSMaxTask(FrameRenderingTask):
             os.makedirs(self.test_task_res_path)
 
         return self._new_compute_task_def(hash, extra_data, working_directory, 0)
-
-    @check_subtask_id_wrapper
-    def get_price_mod(self, subtask_id):
-        perf = (self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task']) + 1
-        perf *= float(self.subtasks_given[subtask_id]['perf']) / 1000
-        perf *= 50
-        return perf
-
-    @check_subtask_id_wrapper
-    def restart_subtask(self, subtask_id):
-        FrameRenderingTask.restart_subtask(self, subtask_id)
-        if not self.use_frames:
-            self._update_task_preview()
-        else:
-            self._update_frame_task_preview()
 
     def _update_preview(self, new_chunk_file_path, chunk_num):
 
@@ -268,11 +277,6 @@ class ThreeDSMaxTask(FrameRenderingTask):
         num = str(frame_num)
         return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
 
-    def __get_preset_file_rel_path(self):
-        preset_file = os.path.relpath(os.path.dirname(self.preset_file), os.path.dirname(self.main_program_file))
-        preset_file = os.path.join(preset_file, os.path.basename(self.preset_file))
-        return preset_file
-
     def _get_part_size(self):
         if not self.use_frames:
             res_y = int(math.floor(float(self.res_y) / float(self.total_tasks)))
@@ -313,6 +317,11 @@ class ThreeDSMaxTask(FrameRenderingTask):
             new_start_y = 0
         new_start_y += start_y % self.verification_options.box_size[1]
         return extra_data, (start_box[0], new_start_y)
+
+    def __get_preset_file_rel_path(self):
+        preset_file = os.path.relpath(os.path.dirname(self.preset_file), os.path.dirname(self.main_program_file))
+        preset_file = os.path.join(preset_file, os.path.basename(self.preset_file))
+        return preset_file
 
     def __get_frame_num_from_output_file(self, file_):
         file_name = os.path.basename(file_)

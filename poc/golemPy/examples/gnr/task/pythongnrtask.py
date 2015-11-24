@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class PythonGNRTaskBuilder(GNRTaskBuilder):
-    #######################
     def build(self):
         with open(self.task_definition.main_program_file) as f:
             src_code = f.read()

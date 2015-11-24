@@ -1,4 +1,4 @@
-from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types
+from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
 from golem.task.taskstate import SubtaskStatus
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.environments.environment import Environment
@@ -54,6 +54,11 @@ class GNROptions(object):
 
 
 class GNRTask(Task):
+
+    ################
+    # Task methods #
+    ################
+
     def __init__(self, src_code, client_id, task_id, owner_address, owner_port, owner_key_id, environment,
                  ttl, subtask_ttl, resource_size, estimated_memory):
         th = TaskHeader(client_id, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
@@ -77,21 +82,6 @@ class GNRTask(Task):
     def initialize(self):
         pass
 
-    def restart(self):
-        self.num_tasks_received = 0
-        self.last_task = 0
-        self.subtasks_given.clear()
-
-        self.num_failed_subtasks = 0
-        self.header.last_checking = time.time()
-        self.header.ttl = self.full_task_timeout
-
-    def get_chunks_left(self):
-        return (self.total_tasks - self.last_task) + self.num_failed_subtasks
-
-    def get_progress(self):
-        return float(self.last_task) / self.total_tasks
-
     def needs_computation(self):
         return (self.last_task != self.total_tasks) or (self.num_failed_subtasks > 0)
 
@@ -101,65 +91,6 @@ class GNRTask(Task):
     def computation_failed(self, subtask_id):
         self._mark_subtask_failed(subtask_id)
 
-    def get_total_tasks(self):
-        return self.total_tasks
-
-    def get_active_tasks(self):
-        return self.last_task
-
-    def set_res_files(self, res_files):
-        self.res_files = res_files
-
-    def prepare_resource_delta(self, task_id, resource_header):
-        common_path_prefix, dir_name, tmp_dir = self.__get_task_dir_params()
-
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
-
-        if os.path.exists(dir_name):
-            return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
-        else:
-            return None
-
-
-    def get_resource_parts_list(self, task_id, resource_header):
-        if task_id == self.header.task_id:
-            common_path_prefix, dir_name, tmp_dir = self.__get_task_dir_params()
-
-            if os.path.exists(dir_name):
-                delta_header, parts = TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name,
-                                                                                              self.res_files)
-                return delta_header, parts
-            else:
-                return None
-        else:
-            return None
-
-    def __get_task_dir_params(self):
-        common_path_prefix = os.path.commonprefix(self.task_resources)
-        common_path_prefix = os.path.dirname(common_path_prefix)
-        dir_name = common_path_prefix  # os.path.join("res", self.header.client_id, self.header.task_id, "resources")
-        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
-
-        return common_path_prefix, dir_name, tmp_dir
-
-    def abort(self):
-        pass
-
-    def update_task_state(self, task_state):
-        pass
-
-    def load_task_results(self, task_result, result_type, tmp_dir):
-        if result_type == result_types['data']:
-            return [self._unpack_task_result(trp, tmp_dir) for trp in task_result]
-        elif result_type == result_types['files']:
-            return task_result
-        else:
-            logger.error("Task result type not supported {}".format(result_type))
-            return []
-
     @check_subtask_id_wrapper
     def verify_subtask(self, subtask_id):
         return self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished
@@ -167,13 +98,23 @@ class GNRTask(Task):
     def verify_task(self):
         return self.finished_computation()
 
-    @check_subtask_id_wrapper
-    def get_price_mod(self, subtask_id):
-        return 1
+    def get_total_tasks(self):
+        return self.total_tasks
 
-    @check_subtask_id_wrapper
-    def get_trust_mod(self, subtask_id):
-        return 1.0
+    def get_active_tasks(self):
+        return self.last_task
+
+    def get_tasks_left(self):
+        return (self.total_tasks - self.last_task) + self.num_failed_subtasks
+
+    def restart(self):
+        self.num_tasks_received = 0
+        self.last_task = 0
+        self.subtasks_given.clear()
+
+        self.num_failed_subtasks = 0
+        self.header.last_checking = time.time()
+        self.header.ttl = self.full_task_timeout
 
     @check_subtask_id_wrapper
     def restart_subtask(self, subtask_id):
@@ -184,6 +125,56 @@ class GNRTask(Task):
                 self._mark_subtask_failed(subtask_id)
                 tasks = self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task'] + 1
                 self.num_tasks_received -= tasks
+
+    def abort(self):
+        pass
+
+    def get_progress(self):
+        return float(self.last_task) / self.total_tasks
+
+    def get_resources(self, task_id, resource_header, resource_type=0):
+        common_path_prefix, dir_name, tmp_dir = self.__get_task_dir_params()
+        if resource_type == resource_types["zip"] and not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+        if os.path.exists(dir_name):
+            if resource_type == resource_types["zip"]:
+                return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
+            elif resource_type == resource_types["parts"]:
+                delta_header, parts = TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name,
+                                                                                              self.res_files)
+                return delta_header, parts
+
+        return None
+
+    def update_task_state(self, task_state):
+        pass
+
+    @check_subtask_id_wrapper
+    def get_price_mod(self, subtask_id):
+        return 1
+
+    @check_subtask_id_wrapper
+    def get_trust_mod(self, subtask_id):
+        return 1.0
+
+    def add_resources(self, res_files):
+        self.res_files = res_files
+
+    #########################
+    # Specific task methods #
+    #########################
+
+    def query_extra_data_for_test_task(self):
+        return None  # Implement in derived methods
+
+    def load_task_results(self, task_result, result_type, tmp_dir):
+        if result_type == result_types['data']:
+            return [self._unpack_task_result(trp, tmp_dir) for trp in task_result]
+        elif result_type == result_types['files']:
+            return task_result
+        else:
+            logger.error("Task result type not supported {}".format(result_type))
+            return []
 
     @check_subtask_id_wrapper
     def should_accept(self, subtask_id):
@@ -202,3 +193,13 @@ class GNRTask(Task):
         with open(os.path.join(tmp_dir, tr[0]), "wb") as fh:
             fh.write(decompress(tr[1]))
         return os.path.join(tmp_dir, tr[0])
+
+    def __get_task_dir_params(self):
+        common_path_prefix = os.path.commonprefix(self.task_resources)
+        common_path_prefix = os.path.dirname(common_path_prefix)
+        dir_name = common_path_prefix  # os.path.join("res", self.header.client_id, self.header.task_id, "resources")
+        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+
+        return common_path_prefix, dir_name, tmp_dir

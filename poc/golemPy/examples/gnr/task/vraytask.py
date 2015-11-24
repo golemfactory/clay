@@ -38,9 +38,7 @@ def build_vray_renderer_info():
     return renderer
 
 
-##############################################
 class VRayRendererOptions(GNROptions):
-    #######################
     def __init__(self):
         self.environment = VRayEnvironment()
         self.rt_engine = 0
@@ -49,9 +47,7 @@ class VRayRendererOptions(GNROptions):
         self.frames = range(1, 11)
 
 
-##############################################
 class VRayTaskBuilder(FrameRenderingTaskBuilder):
-    #######################
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
 
@@ -79,7 +75,11 @@ class VRayTaskBuilder(FrameRenderingTaskBuilder):
 
 
 class VRayTask(FrameRenderingTask):
-    #######################
+
+    ################
+    # Task methods #
+    ################
+
     def __init__(self,
                  client_id,
                  task_id,
@@ -116,7 +116,6 @@ class VRayTask(FrameRenderingTask):
         self.framesParts = {}
         self.framesAlphaParts = {}
 
-    #######################
     def query_extra_data(self, perf_index, num_cores=0, client_id=None):
 
         if not self._accept_client(client_id):
@@ -167,42 +166,6 @@ class VRayTask(FrameRenderingTask):
             self._update_frame_task_preview()
 
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
-
-    #######################
-    def query_extra_data_for_test_task(self):
-
-        working_directory = self._get_working_directory()
-        scene_file = self._get_scene_file_rel_path()
-
-        if self.use_frames:
-            frames = [self.frames[0]]
-        else:
-            frames = []
-
-        extra_data = {"path_root": self.main_scene_dir,
-                      "start_task": 0,
-                      "end_task": 1,
-                      "h_task": self.total_tasks,
-                      "total_tasks": self.total_tasks,
-                      "outfilebasename": self.outfilebasename,
-                      "scene_file": scene_file,
-                      "width": 1,
-                      "height": 1,
-                      "rt_engine": self.rt_engine,
-                      "num_threads": 0,
-                      "use_frames": self.use_frames,
-                      "frames": frames,
-                      "parts": 1
-                      }
-
-        hash = "{}".format(random.getrandbits(128))
-
-        self.test_task_res_path = get_test_task_path(self.root_path)
-        logger.debug(self.test_task_res_path)
-        if not os.path.exists(self.test_task_res_path):
-            os.makedirs(self.test_task_res_path)
-
-        return self._new_compute_task_def(hash, extra_data, working_directory, 0)
 
     @check_subtask_id_wrapper
     def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
@@ -262,7 +225,6 @@ class VRayTask(FrameRenderingTask):
                 output_file_name = u"{}".format(self.output_file, self.output_format)
                 self.__put_image_together(output_file_name)
 
-    #######################
     @check_subtask_id_wrapper
     def get_price_mod(self, subtask_id):
         perf = (self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task']) + 1
@@ -270,7 +232,45 @@ class VRayTask(FrameRenderingTask):
         perf *= 10
         return perf
 
-    #######################
+    ###################
+    # GNRTask methods #
+    ###################
+
+    def query_extra_data_for_test_task(self):
+
+        working_directory = self._get_working_directory()
+        scene_file = self._get_scene_file_rel_path()
+
+        if self.use_frames:
+            frames = [self.frames[0]]
+        else:
+            frames = []
+
+        extra_data = {"path_root": self.main_scene_dir,
+                      "start_task": 0,
+                      "end_task": 1,
+                      "h_task": self.total_tasks,
+                      "total_tasks": self.total_tasks,
+                      "outfilebasename": self.outfilebasename,
+                      "scene_file": scene_file,
+                      "width": 1,
+                      "height": 1,
+                      "rt_engine": self.rt_engine,
+                      "num_threads": 0,
+                      "use_frames": self.use_frames,
+                      "frames": frames,
+                      "parts": 1
+                      }
+
+        hash = "{}".format(random.getrandbits(128))
+
+        self.test_task_res_path = get_test_task_path(self.root_path)
+        logger.debug(self.test_task_res_path)
+        if not os.path.exists(self.test_task_res_path):
+            os.makedirs(self.test_task_res_path)
+
+        return self._new_compute_task_def(hash, extra_data, working_directory, 0)
+
     def _short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data
         msg = []
@@ -285,7 +285,6 @@ class VRayTask(FrameRenderingTask):
             msg.append("frames: {}".format(l["frames"]))
         return "\n".join(msg)
 
-    #######################
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
         if os.path.exists(preview_file_path):
             img = Image.open(preview_file_path)
@@ -294,7 +293,6 @@ class VRayTask(FrameRenderingTask):
         else:
             return img_chunk
 
-    #######################
     @check_subtask_id_wrapper
     def _change_scope(self, subtask_id, start_box, tr_file):
         extra_data, _ = FrameRenderingTask._change_scope(self, subtask_id, start_box, tr_file)
@@ -320,7 +318,22 @@ class VRayTask(FrameRenderingTask):
 
         return extra_data, start_box
 
-    #######################
+    def _run_task(self, src_code, scope):
+        exec src_code in scope
+        tr_files = self.load_task_results(scope['output']['data'], scope['output']['result_type'], self.tmp_dir)
+        if scope['is_alpha']:
+            for tr_file in tr_files:
+                if self.__is_alpha_file(tr_file):
+                    return tr_file
+        else:
+            for tr_file in tr_files:
+                if not self.__is_alpha_file(tr_file):
+                    return tr_file
+        if len(tr_files) > 0:
+            return tr_files[0]
+        else:
+            return None
+
     def __get_frame_num_from_output_file(self, file_):
         file_name = os.path.basename(file_)
         file_name, ext = os.path.splitext(file_name)
@@ -342,18 +355,15 @@ class VRayTask(FrameRenderingTask):
             else:
                 return int(file_name[idx + len(self.outfilebasename) + 1:])
 
-    #######################
     def __use_alpha(self):
         unsupported_formats = ['BMP', 'PCX', 'PDF']
         if self.output_format in unsupported_formats:
             return False
         return True
 
-    #######################
     def __is_alpha_file(self, file_name):
         return file_name.find('Alpha') != -1
 
-    #######################
     def __put_image_together(self, output_file_name):
         collector = RenderingTaskCollector()
 
@@ -371,7 +381,6 @@ class VRayTask(FrameRenderingTask):
             files = self.collected_file_names.values() + self.collected_alpha_files.values()
             self._put_collected_files_together(output_file_name, files, "add")
 
-    #######################
     def __collect_image_part(self, num_start, tr_file):
         if self.__is_alpha_file(tr_file):
             self.collected_alpha_files[num_start] = tr_file
@@ -380,12 +389,10 @@ class VRayTask(FrameRenderingTask):
             self._update_preview(tr_file)
             self._update_task_preview()
 
-    #######################
     def __collect_frames(self, frames, tmp_dir):
         for frame in frames:
             self.__put_frame_together(tmp_dir, frame, frame)
 
-    #######################
     def __collect_frame_file(self, tr_file):
         frame_num = self.__get_frame_number_from_name(tr_file)
         if frame_num is None:
@@ -395,7 +402,6 @@ class VRayTask(FrameRenderingTask):
         else:
             self.framesParts[frame_num][1] = tr_file
 
-    #######################
     def __collect_frame_part(self, num_start, tr_file, parts, tmp_dir):
         frame_num = self.frames[(num_start - 1) / parts]
         part = ((num_start - 1) % parts) + 1
@@ -410,13 +416,11 @@ class VRayTask(FrameRenderingTask):
         if len(self.framesParts[frame_num]) == parts:
             self.__put_frame_together(tmp_dir, frame_num, num_start)
 
-    #######################
     def __copy_frames(self):
         output_dir = os.path.dirname(self.output_file)
         for file in self.collected_file_names.values():
             shutil.copy(file, os.path.join(output_dir, os.path.basename(file)))
 
-    #######################
     def __put_frame_together(self, tmp_dir, frame_num, num_start):
         output_file_name = os.path.join(tmp_dir, self.__get_output_name(frame_num))
         if self._use_outer_task_collector():
@@ -436,7 +440,6 @@ class VRayTask(FrameRenderingTask):
         self.collected_file_names[num_start] = output_file_name
         self._update_frame_preview(output_file_name, frame_num, final=True)
 
-    #######################
     def __get_frame_number_from_name(self, frame_name):
         frame_name, ext = os.path.splitext(frame_name)
         try:
@@ -446,24 +449,7 @@ class VRayTask(FrameRenderingTask):
             logger.warning("Wrong result name: {}; {} ", frame_name, str(err))
             return None
 
-    #######################
     def __get_output_name(self, frame_num):
         num = str(frame_num)
         return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
 
-    #######################
-    def _run_task(self, src_code, scope):
-        exec src_code in scope
-        tr_files = self.load_task_results(scope['output']['data'], scope['output']['result_type'], self.tmp_dir)
-        if scope['is_alpha']:
-            for tr_file in tr_files:
-                if self.__is_alpha_file(tr_file):
-                    return tr_file
-        else:
-            for tr_file in tr_files:
-                if not self.__is_alpha_file(tr_file):
-                    return tr_file
-        if len(tr_files) > 0:
-            return tr_files[0]
-        else:
-            return None

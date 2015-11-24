@@ -102,6 +102,11 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
 
 
 class LuxTask(RenderingTask):
+
+    ################
+    # Task methods #
+    ################
+
     def __init__(self,
                  client_id,
                  task_id,
@@ -203,6 +208,35 @@ class LuxTask(RenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
+    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+        tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
+        self.tmp_dir = tmp_dir
+
+        tr_files = self.load_task_results(task_result, result_type, tmp_dir)
+
+        if len(task_result) > 0:
+            num_start = self.subtasks_given[subtask_id]['start_task']
+            self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
+            for tr_file in tr_files:
+                _, ext = os.path.splitext(tr_file)
+                if ext == '.flm':
+                    self.collected_file_names[num_start] = tr_file
+                    self.num_tasks_received += 1
+                    self.counting_nodes[self.subtasks_given[subtask_id]['client_id']] = 1
+                else:
+                    self.subtasks_given[subtask_id]['previewFile'] = tr_file
+                    self._update_preview(tr_file, num_start)
+        else:
+            self._mark_subtask_failed(subtask_id)
+
+        if self.num_tasks_received == self.total_tasks:
+            self.__generate_final_flm()
+            self.__generate_final_file()
+
+    ###################
+    # GNRTask methods #
+    ###################
+
     def query_extra_data_for_test_task(self):
         self.test_task_res_path = get_test_task_path(self.root_path)
         logger.debug(self.test_task_res_path)
@@ -239,42 +273,56 @@ class LuxTask(RenderingTask):
         return "start_task: {start_task}, outfilebasename: {outfilebasename}, " \
                "scene_file_src: {scene_file_src}".format(**extra_data)
 
-    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
-        tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
-        self.tmp_dir = tmp_dir
-
-        tr_files = self.load_task_results(task_result, result_type, tmp_dir)
-
-        if len(task_result) > 0:
-            num_start = self.subtasks_given[subtask_id]['start_task']
-            self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
-            for tr_file in tr_files:
-                _, ext = os.path.splitext(tr_file)
-                if ext == '.flm':
-                    self.collected_file_names[num_start] = tr_file
-                    self.num_tasks_received += 1
-                    self.counting_nodes[self.subtasks_given[subtask_id]['client_id']] = 1
-                else:
-                    self.subtasks_given[subtask_id]['previewFile'] = tr_file
-                    self._update_preview(tr_file, num_start)
+    def _update_preview(self, new_chunk_file_path, chunk_num):
+        self.numAdd += 1
+        if new_chunk_file_path.endswith(".exr"):
+            self.__update_preview_from_exr(new_chunk_file_path)
         else:
-            self._mark_subtask_failed(subtask_id)
+            self.__update_preview_from_pil_file(new_chunk_file_path)
 
-        if self.num_tasks_received == self.total_tasks:
-            self.__generate_final_flm()
-            self.__generate_final_file()
+    @check_subtask_id_wrapper
+    def _remove_from_preview(self, subtask_id):
+        preview_files = []
+        for subId, task in self.subtasks_given.iteritems():
+            if subId != subtask_id and task['status'] == 'Finished' and 'previewFile' in task:
+                preview_files.append(task['previewFile'])
 
-    def __generate_final_flm(self):
-        output_file_name = u"{}".format(self.output_file, self.output_format)
-        self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
-        files = " ".join(self.collected_file_names.values())
-        env = LuxRenderEnvironment()
-        lux_merger = env.get_lux_merger()
-        if lux_merger is not None:
-            cmd = "{} -o {}.flm {}".format(lux_merger, self.output_file, files)
+        self.preview_file_path = None
+        self.numAdd = 0
+        for f in preview_files:
+            self._update_preview(f, None)
 
-            logger.debug("Lux Merger cmd: {}".format(cmd))
-            exec_cmd(cmd)
+    def _get_lux_console_rel_path(self):
+        luxconsole_rel = os.path.relpath(os.path.dirname(self.luxconsole), os.path.dirname(self.main_scene_file))
+        luxconsole_rel = os.path.join(luxconsole_rel, os.path.basename(self.luxconsole))
+        return luxconsole_rel
+
+    def __update_preview_from_pil_file(self, new_chunk_file_path):
+        img = Image.open(new_chunk_file_path)
+
+        img_current = self._open_preview()
+        img_current = ImageChops.blend(img_current, img, 1.0 / float(self.numAdd))
+        img_current.save(self.preview_file_path, "BMP")
+
+    def __update_preview_from_exr(self, new_chunk_file):
+        if self.preview_exr is None:
+            self.preview_exr = load_img(new_chunk_file)
+        else:
+            self.preview_exr = blend(self.preview_exr, load_img(new_chunk_file), 1.0 / float(self.numAdd))
+
+        img_current = self._open_preview()
+        img = self.preview_exr.to_pil()
+        img.save(self.preview_file_path, "BMP")
+
+    def __format_lux_render_cmd(self, scene_file):
+        cmd_file = LuxRenderEnvironment().get_lux_console()
+        output_flm = "{}.flm".format(self.output_file)
+        cmd = '"{}" "{}" -R "{}" -o "{}" '.format(cmd_file, scene_file, output_flm, self.output_file)
+        logger.debug("Last flm cmd {}".format(cmd))
+        prev_path = os.getcwd()
+        os.chdir(os.path.dirname(self.main_scene_file))
+        exec_cmd(cmd)
+        os.chdir(prev_path)
 
     def __generate_final_file(self):
 
@@ -296,53 +344,15 @@ class LuxTask(RenderingTask):
             f.write(scene_file_src)
         return tmp_scene_file.name
 
-    def __format_lux_render_cmd(self, scene_file):
-        cmd_file = LuxRenderEnvironment().get_lux_console()
-        output_flm = "{}.flm".format(self.output_file)
-        cmd = '"{}" "{}" -R "{}" -o "{}" '.format(cmd_file, scene_file, output_flm, self.output_file)
-        logger.debug("Last flm cmd {}".format(cmd))
-        prev_path = os.getcwd()
-        os.chdir(os.path.dirname(self.main_scene_file))
-        exec_cmd(cmd)
-        os.chdir(prev_path)
+    def __generate_final_flm(self):
+        output_file_name = u"{}".format(self.output_file, self.output_format)
+        self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
+        files = " ".join(self.collected_file_names.values())
+        env = LuxRenderEnvironment()
+        lux_merger = env.get_lux_merger()
+        if lux_merger is not None:
+            cmd = "{} -o {}.flm {}".format(lux_merger, self.output_file, files)
 
-    def _update_preview(self, new_chunk_file_path, chunk_num):
-        self.numAdd += 1
-        if new_chunk_file_path.endswith(".exr"):
-            self.__update_preview_from_exr(new_chunk_file_path)
-        else:
-            self.__update_preview_from_pil_file(new_chunk_file_path)
+            logger.debug("Lux Merger cmd: {}".format(cmd))
+            exec_cmd(cmd)
 
-    def __update_preview_from_pil_file(self, new_chunk_file_path):
-        img = Image.open(new_chunk_file_path)
-
-        img_current = self._open_preview()
-        img_current = ImageChops.blend(img_current, img, 1.0 / float(self.numAdd))
-        img_current.save(self.preview_file_path, "BMP")
-
-    def __update_preview_from_exr(self, new_chunk_file):
-        if self.preview_exr is None:
-            self.preview_exr = load_img(new_chunk_file)
-        else:
-            self.preview_exr = blend(self.preview_exr, load_img(new_chunk_file), 1.0 / float(self.numAdd))
-
-        img_current = self._open_preview()
-        img = self.preview_exr.to_pil()
-        img.save(self.preview_file_path, "BMP")
-
-    @check_subtask_id_wrapper
-    def _remove_from_preview(self, subtask_id):
-        preview_files = []
-        for subId, task in self.subtasks_given.iteritems():
-            if subId != subtask_id and task['status'] == 'Finished' and 'previewFile' in task:
-                preview_files.append(task['previewFile'])
-
-        self.preview_file_path = None
-        self.numAdd = 0
-        for f in preview_files:
-            self._update_preview(f, None)
-
-    def _get_lux_console_rel_path(self):
-        luxconsole_rel = os.path.relpath(os.path.dirname(self.luxconsole), os.path.dirname(self.main_scene_file))
-        luxconsole_rel = os.path.join(luxconsole_rel, os.path.basename(self.luxconsole))
-        return luxconsole_rel

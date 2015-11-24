@@ -8,6 +8,9 @@ import cPickle as pickle
 import random
 from img import Img
 
+
+# WARNING, very old code, just for references
+
 test_taskScr2 = """
 from minilight import render_task
 from resource import ArrayResource
@@ -315,6 +318,7 @@ class PbrtRenderTask(Task):
     def get_progress(self):
         return float(self.last_task) / self.total_tasks
 
+    # OLD METHOD
     def prepare_resource_delta(self, task_id, resource_header):
         if task_id in self.subtasks_given:
             dir_name = os.path.join("res", self.header.client_id, self.header.task_id, "resources")

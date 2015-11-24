@@ -102,5 +102,5 @@ class InfoTask(GNRTask):
         except Exception as ex:
             logger.error("Error while interpreting results: {}".format(str(ex)))
 
-    def prepare_resource_delta(self, subtask_id, resource_header):
+    def get_resources(self, task_id, resource_header, resource_type=0):
         return None

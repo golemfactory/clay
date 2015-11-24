@@ -251,15 +251,10 @@ class TaskManager:
 
         return tasks_progresses
 
-    def prepare_resource(self, task_id, resource_header):
+    def get_resources(self, task_id, resource_header, resource_type=0):
         if task_id in self.tasks:
             task = self.tasks[task_id]
-            return task.prepare_resource_delta(task_id, resource_header)
-
-    def get_resource_parts_list(self, task_id, resource_header):
-        if task_id in self.tasks:
-            task = self.tasks[task_id]
-            return task.get_resource_parts_list(task_id, resource_header)
+            return task.get_resources(task_id, resource_header, resource_type)
 
     def accept_results_delay(self, task_id):
         if task_id in self.tasks:
