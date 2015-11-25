@@ -118,7 +118,7 @@ class BlenderRenderTask(FrameRenderingTask):
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                     root_path, estimated_memory, use_frames, frames)
 
-        crop_task = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/tasks/blenderCrop.py'))
+        crop_task = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/tasks/blendercrop.py'))
         try:
             with open(crop_task) as f:
                 self.script_src = f.read()

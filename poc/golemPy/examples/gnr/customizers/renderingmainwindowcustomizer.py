@@ -186,7 +186,7 @@ class AbsRenderingMainWindowCustomizer(object):
                 after_split = r.split("\\")
                 insert_item(item, after_split)
 
-            self.showTaskResourcesDialog.ui.main_scene_fileLabel.setText(
+            self.showTaskResourcesDialog.ui.mainSceneFileLabel.setText(
                 self.current_task_highlighted.definition.main_scene_file)
             self.showTaskResourcesDialog.ui.folderTreeWidget.expandAll()
 
