@@ -53,8 +53,7 @@ class ClientConfigDescriptor(object):
         self.eth_account = ""
 
     def init_from_app_config(self, app_config):
-        """
-        Intializes config parameters based on the specified AppConfig
+        """Intializes config parameters based on the specified AppConfig
         :param app_config: instance of AppConfig
         :return:
         """
