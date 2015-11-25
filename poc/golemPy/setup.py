@@ -74,9 +74,9 @@ setup(
     url='http://golemproject.net',
     packages=[
         'golem',
+        'examples',
+        'tools'
     ],
-    package_dir={'golem':
-                 'golem'},
     include_package_data=True,
     install_requires=requirements,
     # TODO: No license yet

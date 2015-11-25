@@ -1,24 +1,12 @@
-import sys
-import os
-import logging
-import logging.config
-
-sys.path.insert(0, os.environ.get('GOLEM'))
-
-from tools.uigen import gen_ui_files
-
-if os.path.normpath(os.getcwd()) == os.path.normpath(os.path.join(os.environ.get('GOLEM'), "examples/gnr")):
-    gen_ui_files("ui")
-
+from gnrstartapp import start_app, config_logging
 from renderingadmapplicationlogic import RenderingAdmApplicationLogic
-from gnrstartapp import start_app
 from examples.gnr.ui.administrationmainwindow import AdministrationMainWindow
 from examples.gnr.application import GNRGui
 from examples.gnr.customizers.renderingadmmainwindowcustomizer import RenderingAdmMainWindowCustomizer
 
 
 def main():
-    logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
+    config_logging()
 
     logic = RenderingAdmApplicationLogic()
     app = GNRGui(logic, AdministrationMainWindow)

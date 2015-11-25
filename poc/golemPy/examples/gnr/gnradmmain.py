@@ -1,23 +1,12 @@
-import logging
-import logging.config
-import os
-import sys
-
-sys.path.append(os.environ.get('GOLEM'))
-
-from tools.uigen import gen_ui_files
-
-gen_ui_files("ui")
-
+from gnrstartapp import start_app, config_logging
 from examples.gnr.gnradmapplicationlogic import GNRAdmApplicationLogic
 from examples.gnr.application import GNRGui
 from examples.gnr.ui.mainwindow import GNRMainWindow
 from examples.gnr.customizers.gnradministratormainwindowcustomizer import GNRAdministratorMainWindowCustomizer
-from gnrstartapp import start_app
 
 
 def main():
-    logging.config.fileConfig('logging.ini', disable_existing_loggers=False)
+    config_logging()
 
     logic = GNRAdmApplicationLogic()
     app = GNRGui(logic, GNRMainWindow)
