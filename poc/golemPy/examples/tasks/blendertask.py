@@ -9,6 +9,7 @@ import shutil
 import psutil
 
 
+
 def return_data(files):
     res = []
     for f in files:
@@ -93,22 +94,21 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine
     remove_old_files()
 
     scene_dir = os.path.dirname(scene_file)
-    script_file = tempfile.TemporaryFile(suffix=".py", dir=scene_dir)
-    script_file.close()
-    with open(script_file.name, 'w') as f:
-        f.write(script_src)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", dir=scene_dir) as script_file:
+        script_file.write(script_src)
+        script_file.flush()
 
-    cmd_file = __read_from_environment()
-    scene_file = os.path.normpath(os.path.join(os.getcwd(), scene_file))
-    if not os.path.exists(os.path.normpath(scene_file)):
-        print "Scene file does not exist"
-        return {'data': [], 'result_type': 0}
+        cmd_file = __read_from_environment()
+        scene_file = os.path.normpath(os.path.join(os.getcwd(), scene_file))
+        if not os.path.exists(os.path.normpath(scene_file)):
+            print "Scene file does not exist"
+            return {'data': [], 'result_type': 0}
 
-    for frame in frames:
-        cmd = format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file.name,
-                                        start_task, engine, frame)
-        print cmd
-        exec_cmd(cmd)
+        for frame in frames:
+            cmd = format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file.name,
+                                            start_task, engine, frame)
+            print cmd
+            exec_cmd(cmd)
 
     return return_files(get_files())
 

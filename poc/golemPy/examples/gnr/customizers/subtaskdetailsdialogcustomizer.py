@@ -22,7 +22,7 @@ class SubtaskDetailsDialogCustomizer:
         self.gui.ui.nodeIpAddressLabel.setText(self.subtask_state.computer.ip_address)
         self.gui.ui.statusLabel.setText(self.subtask_state.subtask_status)
         self.gui.ui.performanceLabel.setText("{}".format(self.subtask_state.computer.performance))
-        self.gui.ui.subtask_definitionTextEdit.setPlainText(self.subtask_state.subtask_definition)
+        self.gui.ui.subtaskDefinitionTextEdit.setPlainText(self.subtask_state.subtask_definition)
 
     #
     def __setup_connections(self):
