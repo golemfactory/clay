@@ -7,9 +7,7 @@ python:
   #- "3.5-dev" # 3.5 development branch
   #- "nightly" # currently points to 3.6-dev
 
-install:
-  - cd poc/golemPy
-  - python setup.py install
+install: python setup.py install
 
 script:
   - python setup.py test
