@@ -25,21 +25,18 @@ def run_pbrt_task(path_root, start_task, end_task, total_tasks, num_subtasks, nu
     with tempfile.NamedTemporaryFile(mode="w", suffix=".pbrt", dir=os.path.join(resourcePath, "resources"),
                                      delete=False) as tmp_scene_file:
         tmp_scene_file.write(scene_src)
-        tmp_scene_file.flush()
 
-        cmd = format_pbrt_cmd(pbrt, start_task, end_task, total_tasks, num_subtasks, num_cores, output_files,
-                                  tmp_scene_file.name)
+    cmd = format_pbrt_cmd(pbrt, start_task, end_task, total_tasks, num_subtasks, num_cores, output_files,
+                              tmp_scene_file.name)
 
 
-        pc = subprocess.Popen(cmd)
+    pc = subprocess.Popen(cmd)
+    win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
+    pc.wait()
 
-        win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
+    files = glob.glob(output_files + "*.exr")
 
-        pc.wait()
-
-        files = glob.glob(output_files + "*.exr")
-
-        res = []
+    res = []
 
     os.remove(tmp_scene_file.name)
 

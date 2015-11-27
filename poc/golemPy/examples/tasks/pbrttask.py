@@ -65,18 +65,17 @@ def run_pbrt_task(path_root, start_task, end_task, total_tasks, num_subtasks, nu
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".pbrt", dir=scene_dir, delete=False) as tmp_scene_file:
         tmp_scene_file.write(scene_src)
-        tmp_scene_file.flush()
-        cmd = format_pbrt_cmd(pbrt, start_task, end_task, total_tasks, num_subtasks, num_cores, output_files,
-                              tmp_scene_file.name)
+    cmd = format_pbrt_cmd(pbrt, start_task, end_task, total_tasks, num_subtasks, num_cores, output_files,
+                          tmp_scene_file.name)
 
 
-        print cmd
-        prev_dir = os.getcwd()
-        os.chdir(scene_dir)
+    print cmd
+    prev_dir = os.getcwd()
+    os.chdir(scene_dir)
 
-        exec_cmd(cmd)
+    exec_cmd(cmd)
 
-        os.chdir(prev_dir)
+    os.chdir(prev_dir)
 
     os.remove(tmp_scene_file.name)
 

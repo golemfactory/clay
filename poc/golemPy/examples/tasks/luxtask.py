@@ -98,18 +98,18 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=scene_dir, delete=False) as tmp_scene_file:
         tmp_scene_file.write(scene_src)
-        tmp_scene_file.flush()
-        cmd = format_lux_renderer_cmd(cmd_file, start_task, output_files, outfilebasename, tmp_scene_file.name,
-                                      num_threads)
+
+    cmd = format_lux_renderer_cmd(cmd_file, start_task, output_files, outfilebasename, tmp_scene_file.name,
+                                  num_threads)
 
 
-        prev_dir = os.getcwd()
-        os.chdir(scene_dir)
+    prev_dir = os.getcwd()
+    os.chdir(scene_dir)
 
-        exec_cmd(cmd)
+    exec_cmd(cmd)
 
-        os.chdir(prev_dir)
-        files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm")
+    os.chdir(prev_dir)
+    files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm")
 
     os.remove(tmp_scene_file.name)
 

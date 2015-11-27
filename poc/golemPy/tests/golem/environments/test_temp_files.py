@@ -18,12 +18,11 @@ class TestTempFiles(unittest.TestCase):
             name = tmp_file.name
             self.assertTrue(os.path.exists(name))
             tmp_file.write("print 'hello!'")
-            tmp_file.flush()
-            cmd = ['python', name]
-            proc = subprocess.Popen(cmd, stdout = subprocess.PIPE)
-            proc.wait()
-            out = proc.stdout.read()
-            self.assertEquals(out.rstrip(), 'hello!')
+        cmd = ['python', name]
+        proc = subprocess.Popen(cmd, stdout = subprocess.PIPE)
+        proc.wait()
+        out = proc.stdout.read()
+        self.assertEquals(out.rstrip(), 'hello!')
 
         self.assertTrue(os.path.exists(tmp_file.name))
         self.assertTrue(os.path.join(test_dir, os.path.basename(tmp_file.name)))
