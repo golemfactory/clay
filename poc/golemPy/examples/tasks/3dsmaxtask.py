@@ -78,7 +78,6 @@ def return_files(files):
 
 def run_3ds_max_task(path_root, start_task, end_task, total_tasks, outfilebasename, scene_file, width, height, preset,
                      cmd_file, use_frames, frames, parts, num_cores, overlap):
-    print 'run_3ds_max_task'
     output_files = tmp_path
 
     files = glob.glob(output_files + "*.exr")
@@ -117,9 +116,7 @@ def run_3ds_max_task(path_root, start_task, end_task, total_tasks, outfilebasena
     print cmd
 
     pc = subprocess.Popen(cmd)
-
     win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
-
     pc.wait()
 
     files = glob.glob(output_files + "\*.exr")

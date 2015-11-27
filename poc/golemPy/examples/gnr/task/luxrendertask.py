@@ -335,13 +335,12 @@ class LuxTask(RenderingTask):
                                         write_interval, [0, 1, 0, 1], self.output_format)
 
         dir_name = os.path.dirname(self.main_scene_file)
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=dir_name) as tmp_scene_file:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=dir_name, delete=False) as tmp_scene_file:
             tmp_scene_file.write(scene_file_src)
             tmp_scene_file.flush()
             self.__format_lux_render_cmd(tmp_scene_file.name)
 
-        if os.path.exists(tmp_scene_file.name):
-            os.remove(tmp_scene_file.name)
+        os.remove(tmp_scene_file.name)
 
     def __generate_final_flm(self):
         output_file_name = u"{}".format(self.output_file, self.output_format)

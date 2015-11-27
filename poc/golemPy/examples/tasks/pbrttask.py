@@ -51,25 +51,6 @@ def exec_cmd(cmd, nice=20):
         p.nice(nice)
 
     pc.wait()
-    print "STDOUT: {}".format(stdout)
-
-
-def make_tmp_file(scene_dir, scene_src):
-    if is_windows():
-        tmp_scene_file = tempfile.TemporaryFile(suffix=".pbrt", dir=scene_dir)
-        tmp_scene_file.close()
-        f = open(tmp_scene_file.name, 'w')
-        f.write(scene_src)
-        f.close()
-
-        return tmp_scene_file.name
-    else:
-        tmp_scene_file = os.path.join(scene_dir, "tmp_scene_file.pbrt")
-        f = open(tmp_scene_file, "w")
-        f.write(scene_src)
-        f.close()
-        return tmp_scene_file
-
 
 def run_pbrt_task(path_root, start_task, end_task, total_tasks, num_subtasks, num_cores, outfilebasename, scene_src,
                   scene_dir, pbrt_path):
@@ -97,8 +78,7 @@ def run_pbrt_task(path_root, start_task, end_task, total_tasks, num_subtasks, nu
 
         os.chdir(prev_dir)
 
-    if os.path.exists(tmp_scene_file.name):
-        os.remove(tmp_scene_file.name)
+    os.remove(tmp_scene_file.name)
 
     print output_files
 

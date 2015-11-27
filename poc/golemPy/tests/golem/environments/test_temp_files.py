@@ -8,7 +8,7 @@ class TestTempFiles(unittest.TestCase):
 
     def test_running_script_from_temp_file(self):
         """Creates a temporary file, writes a python code into it and runs it"""
-        test_dir = "testdata2"
+        test_dir = "testdata"
         test_dir_created = False
         if not os.path.isdir(test_dir):
             test_dir_created = True
@@ -25,8 +25,9 @@ class TestTempFiles(unittest.TestCase):
             out = proc.stdout.read()
             self.assertEquals(out.rstrip(), 'hello!')
 
-        if os.path.exists(tmp_file.name):
-            os.remove(tmp_file.name)
+        self.assertTrue(os.path.exists(tmp_file.name))
+        self.assertTrue(os.path.join(test_dir, os.path.basename(tmp_file.name)))
+        os.remove(tmp_file.name)
         self.assertFalse(os.path.exists(tmp_file.name))
         if test_dir_created:
             os.removedirs(test_dir)

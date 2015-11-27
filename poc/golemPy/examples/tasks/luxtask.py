@@ -4,7 +4,6 @@ import sys
 import glob
 import cPickle as pickle
 import zlib
-import zipfile
 import subprocess
 import psutil
 import shutil
@@ -44,7 +43,6 @@ def __read_from_environment():
             return 'luxconsole'
 
 
-############################
 def return_data(files):
     res = []
     for f in files:
@@ -56,7 +54,6 @@ def return_data(files):
     return {'data': res, 'result_type': 0}
 
 
-############################
 def return_files(files):
     copy_path = os.path.normpath(os.path.join(tmp_path, ".."))
     for f in files:
@@ -66,7 +63,6 @@ def return_files(files):
     return {'data': files, 'result_type': 1}
 
 
-############################
 def is_windows():
     return sys.platform == 'win32'
 
@@ -83,11 +79,6 @@ def exec_cmd(cmd, nice=20):
     pc.wait()
 
 
-def make_tmp_file(scene_dir, scene_src):
-
-
-
-############################
 def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir, num_cores, own_binaries, lux_console):
     print 'LuxRenderer Task'
 
@@ -105,7 +96,7 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir
     else:
         cmd_file = __read_from_environment()
 
-    with tempfile.TemporaryFile(mode="w", suffix=".lxs", dir=scene_dir, delete=False) as tmp_scene_file:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=scene_dir, delete=False) as tmp_scene_file:
         tmp_scene_file.write(scene_src)
         tmp_scene_file.flush()
         cmd = format_lux_renderer_cmd(cmd_file, start_task, output_files, outfilebasename, tmp_scene_file.name,
@@ -119,8 +110,8 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir
 
         os.chdir(prev_dir)
         files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm")
-    if os.path.exists(tmp_scene_file.name)
-        os.remove(tmp_scene_file.name)
+
+    os.remove(tmp_scene_file.name)
 
     return return_files(files)
 
