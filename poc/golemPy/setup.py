@@ -37,6 +37,7 @@ class PyTest(TestCommand):
 
 requirements = [
     'bitcoin==1.1.39',
+    'devp2p>=0.6',
     'ecdsa==0.13',
     'ipaddr==2.1.11',
     'netifaces==0.10.4',
@@ -79,6 +80,9 @@ setup(
     ],
     include_package_data=True,
     install_requires=requirements,
+    dependency_links=[
+        'https://github.com/ethereum/pydevp2p/tarball/develop#egg=devp2p-0.6'
+    ],
     # TODO: No license yet
     # license="ISCL",
     zip_safe=False,
