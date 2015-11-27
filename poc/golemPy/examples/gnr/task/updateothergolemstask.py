@@ -38,7 +38,6 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
                     continue
                 self.task_definition.task_resources.add(os.path.join(dir, file_))
 
-        print self.task_definition.task_resources
         resource_size = 0
         for resource in self.task_definition.task_resources:
             resource_size += os.stat(resource).st_size

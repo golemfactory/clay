@@ -87,28 +87,27 @@ def format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_fil
 
 
 def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames):
-    print "Blender Render Task"
 
     output_files = tmp_path
-
     remove_old_files()
 
     scene_dir = os.path.dirname(scene_file)
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", dir=scene_dir) as script_file:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", dir=scene_dir, delete=False) as script_file:
         script_file.write(script_src)
-        script_file.flush()
 
-        cmd_file = __read_from_environment()
-        scene_file = os.path.normpath(os.path.join(os.getcwd(), scene_file))
-        if not os.path.exists(os.path.normpath(scene_file)):
-            print "Scene file does not exist"
-            return {'data': [], 'result_type': 0}
+    cmd_file = __read_from_environment()
+    scene_file = os.path.normpath(os.path.join(os.getcwd(), scene_file))
+    if not os.path.exists(os.path.normpath(scene_file)):
+        print "Scene file does not exist"
+        return {'data': [], 'result_type': 0}
 
-        for frame in frames:
-            cmd = format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file.name,
-                                            start_task, engine, frame)
-            print cmd
-            exec_cmd(cmd)
+    for frame in frames:
+        cmd = format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file.name,
+                                        start_task, engine, frame)
+        print cmd
+        exec_cmd(cmd)
+
+    os.remove(script_file.name)
 
     return return_files(get_files())
 

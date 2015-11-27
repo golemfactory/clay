@@ -119,8 +119,6 @@ class FrameRenderingTask(RenderingTask):
 
             self.num_tasks_received += num_end - num_start + 1
 
-        print self.num_tasks_received
-
         if self.num_tasks_received == self.total_tasks:
             if self.use_frames:
                 self._copy_frames()
