@@ -8,7 +8,8 @@ class TestTempFiles(unittest.TestCase):
 
     def test_running_script_from_temp_file(self):
         """Creates a temporary file, writes a python code into it and runs it"""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", dir=".") as tmp_file:
+        test_dir = "testdata"
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", dir=test_dir, delete=False) as tmp_file:
             name = tmp_file.name
             self.assertTrue(os.path.exists(name))
             tmp_file.write("print 'hello!'")
@@ -18,4 +19,7 @@ class TestTempFiles(unittest.TestCase):
             proc.wait()
             out = proc.stdout.read()
             self.assertEquals(out.rstrip(), 'hello!')
-        self.assertFalse(os.path.exists(name))
+
+        if os.path.exists(tmp_file.name):
+            os.remove(tmp_file.name)
+        self.assertFalse(os.path.exists(tmp_file.name))

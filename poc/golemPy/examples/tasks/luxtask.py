@@ -84,20 +84,7 @@ def exec_cmd(cmd, nice=20):
 
 
 def make_tmp_file(scene_dir, scene_src):
-    if is_windows():
-        tmp_scene_file = tempfile.TemporaryFile(suffix=".lxs", dir=scene_dir)
-        tmp_scene_file.close()
-        f = open(tmp_scene_file.name, 'w')
-        f.write(scene_src)
-        f.close()
 
-        return tmp_scene_file.name
-    else:
-        tmp_scene_file = os.path.join(scene_dir, "tmp_scene_file.lxs")
-        f = open(tmp_scene_file, "w")
-        f.write(scene_src)
-        f.close()
-        return tmp_scene_file
 
 
 ############################
@@ -112,26 +99,28 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir
         os.remove(f)
 
     scene_dir = os.path.normpath(os.path.join(os.getcwd(), scene_dir))
-    tmp_scene_file = make_tmp_file(scene_dir, scene_file_src)
 
     if own_binaries:
         cmd_file = lux_console
     else:
         cmd_file = __read_from_environment()
-    if os.path.exists(tmp_scene_file):
-        print tmp_scene_file
-        cmd = format_lux_renderer_cmd(cmd_file, start_task, output_files, outfilebasename, tmp_scene_file, num_threads)
-    else:
-        print "Scene file does not exist"
-        return {'data': [], 'result_type': 0}
 
-    prev_dir = os.getcwd()
-    os.chdir(scene_dir)
+    with tempfile.TemporaryFile(mode="w", suffix=".lxs", dir=scene_dir, delete=False) as tmp_scene_file:
+        tmp_scene_file.write(scene_src)
+        tmp_scene_file.flush()
+        cmd = format_lux_renderer_cmd(cmd_file, start_task, output_files, outfilebasename, tmp_scene_file.name,
+                                      num_threads)
 
-    exec_cmd(cmd)
 
-    os.chdir(prev_dir)
-    files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm")
+        prev_dir = os.getcwd()
+        os.chdir(scene_dir)
+
+        exec_cmd(cmd)
+
+        os.chdir(prev_dir)
+        files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm")
+    if os.path.exists(tmp_scene_file.name)
+        os.remove(tmp_scene_file.name)
 
     return return_files(files)
 

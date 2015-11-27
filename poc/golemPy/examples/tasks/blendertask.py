@@ -94,7 +94,7 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine
     remove_old_files()
 
     scene_dir = os.path.dirname(scene_file)
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", dir=scene_dir) as script_file:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", dir=scene_dir, delete=False) as script_file:
         script_file.write(script_src)
         script_file.flush()
 
@@ -109,6 +109,9 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine
                                             start_task, engine, frame)
             print cmd
             exec_cmd(cmd)
+
+    if os.path.exists(script_file.name):
+        os.remove(scene_file)
 
     return return_files(get_files())
 
