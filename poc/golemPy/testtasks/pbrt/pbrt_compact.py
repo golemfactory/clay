@@ -29,7 +29,6 @@ def run_pbrt_task(path_root, start_task, end_task, total_tasks, num_subtasks, nu
     cmd = format_pbrt_cmd(pbrt, start_task, end_task, total_tasks, num_subtasks, num_cores, output_files,
                               tmp_scene_file.name)
 
-
     pc = subprocess.Popen(cmd)
     win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
     pc.wait()

@@ -87,10 +87,8 @@ def format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_fil
 
 
 def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames):
-    print "Blender Render Task"
 
     output_files = tmp_path
-
     remove_old_files()
 
     scene_dir = os.path.dirname(scene_file)
@@ -109,8 +107,7 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine
         print cmd
         exec_cmd(cmd)
 
-    if os.path.exists(script_file.name):
-        os.remove(scene_file)
+    os.remove(script_file.name)
 
     return return_files(get_files())
 

@@ -333,10 +333,9 @@ class LuxTask(RenderingTask):
 
         scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, self.halttime, self.haltspp,
                                         write_interval, [0, 1, 0, 1], self.output_format)
-
         dir_name = os.path.dirname(self.main_scene_file)
         with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=dir_name, delete=False) as tmp_scene_file:
-            tmp_scene_file.write(scene_file_src)
+            tmp_scene_file.write(scene_src)
         self.__format_lux_render_cmd(tmp_scene_file.name)
 
         os.remove(tmp_scene_file.name)
