@@ -48,9 +48,9 @@ class EnvironmentsDialogCustomizer:
             if env:
                 self.gui.ui.envTextBrowser.setText(env.description())
                 if col == EnvTableElem.colItem.index('accept_tasks_item'):
-                    if self.gui.ui.tableWidget.item(row, col).check_state() == Qt.Unchecked and env.is_accepted():
+                    if self.gui.ui.tableWidget.item(row, col).checkState() == Qt.Unchecked and env.is_accepted():
                         self.logic.change_accept_tasks_for_environment(env_id, False)
-                    elif self.gui.ui.tableWidget.item(row, col).check_state() == Qt.Checked and not env.is_accepted():
+                    elif self.gui.ui.tableWidget.item(row, col).checkState() == Qt.Checked and not env.is_accepted():
                         self.logic.change_accept_tasks_for_environment(env_id, True)
 
     def __get_env(self, id_):
