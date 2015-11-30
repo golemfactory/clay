@@ -1,4 +1,3 @@
-from golem.core.simpleenv import SimpleEnv
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 import logging
 
@@ -8,7 +7,7 @@ CONFIG_FILENAME = "environments.ini"
 logger = logging.getLogger(__name__)
 
 
-class CommonConfig:
+class CommonConfig(object):
     def __init__(self,
                  section="Common",
                  env_version=ENV_VERSION):
@@ -20,7 +19,7 @@ class CommonConfig:
         return self._section
 
 
-class NodeConfig:
+class NodeConfig(object):
     def __init__(self, node_id, environments=None):
         if environments is None:
             environments = []
@@ -33,7 +32,8 @@ class NodeConfig:
         return self._section
 
 
-class EnvironmentsConfig:
+class EnvironmentsConfig(object):
+    """Manage config file describing whether user want to compute tasks from given environment or not."""
     @classmethod
     def load_config(cls, node_id, environments, cfg_file=CONFIG_FILENAME):
         cfg = SimpleConfig(CommonConfig(), NodeConfig(node_id, environments), cfg_file, refresh=False, check_uid=False)
