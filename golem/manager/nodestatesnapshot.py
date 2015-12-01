@@ -1,4 +1,4 @@
-from PyQt4 import QtCore
+from datetime import datetime
 
 
 class TaskChunkStateSnapshot:
@@ -63,7 +63,7 @@ class NodeStateSnapshot:
         if ltss is None:
             ltss = {}
         self.uid = uid
-        self.timestamp = QtCore.QTime.currentTime()
+        self.timestamp = datetime.utcnow()
         self.endpoint_addr = endpoint_addr
         self.endpoint_port = endpoint_port
         self.peers_num = peers_num
@@ -81,7 +81,9 @@ class NodeStateSnapshot:
         return self.uid
 
     def get_formatted_timestamp(self):
-        return self.timestamp.toString("hh:mm:ss.zzz")
+        """Return formatted timestamp"""
+        # Trim 3 last chars to get milliseconds from microseconds.
+        return self.timestamp.strftime("%H:%M:%S.%f")[:-3]
 
     def get_endpoint_addr(self):
         return self.endpoint_addr
