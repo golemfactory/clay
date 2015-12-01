@@ -57,8 +57,11 @@ class Task:
         self.header = header
 
     @abc.abstractmethod
-    def initialize(self):
-        """ Called after adding a new task, may initialize or create some resources or do other required operations. """
+    def initialize(self, dir_manager):
+        """Called after adding a new task, may initialize or create some resources
+        or do other required operations.
+        :param DirManager dir_manager: DirManager instance for accessing temp dir for this task
+        """
         return  # Implement in derived class
 
     @abc.abstractmethod

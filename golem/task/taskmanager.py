@@ -70,11 +70,11 @@ class TaskManager:
         self.node.pub_addr, self.node.pub_port, self.node.nat_type = get_external_address(self.listen_port)
         task.header.task_owner = self.node
 
-        task.initialize()
-        self.tasks[task.header.task_id] = task
-
         self.dir_manager.clear_temporary(task.header.task_id)
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
+
+        task.initialize(self.dir_manager)
+        self.tasks[task.header.task_id] = task
 
         ts = TaskState()
         if self.use_distributed_resources:
