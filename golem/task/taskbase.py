@@ -5,12 +5,12 @@ import abc
 class TaskHeader:
     def __init__(self, client_id, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
                  task_owner=None, ttl=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0, min_version=1.0):
+        assert isinstance(min_version, (int, long))
         self.task_id = task_id
         self.task_owner_key_id = task_owner_key_id
         self.task_owner_address = task_owner_address
         self.task_owner_port = task_owner_port
         self.task_owner = task_owner
-        self.last_checking = time.time()
         self.ttl = ttl
         self.subtask_timeout = subtask_timeout
         self.client_id = client_id
@@ -18,6 +18,8 @@ class TaskHeader:
         self.environment = environment
         self.estimated_memory = estimated_memory
         self.min_version = min_version
+
+        self.last_checking = time.time()
 
 
 class TaskBuilder:
