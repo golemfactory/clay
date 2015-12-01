@@ -1,6 +1,7 @@
 import os
 import abc
 import logging
+import appdirs
 from random import random
 
 from Crypto.PublicKey import RSA
@@ -9,7 +10,7 @@ from crypto import mk_privkey, privtopub, ECCx
 from sha3 import sha3_256
 from hashlib import sha256
 
-from golem.core.variables import KEYS_PATH, PRIVATE_KEY_PREF, PUBLIC_KEY_PREF
+from golem.core.variables import PRIVATE_KEY_PREF, PUBLIC_KEY_PREF
 
 
 logger = logging.getLogger(__name__)
@@ -130,14 +131,24 @@ class KeysAuth(object):
         """
         return
 
-    @staticmethod
-    def __get_key_loc(file_name_pattern, uuid):
-        root_path = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
-        keys_path = os.path.join(root_path, KEYS_PATH)
+    @classmethod
+    def get_keys_dir(cls):
+        """Path to the dir where keys files are stored"""
+        # FIXME: @property would be a better design,
+        # but cannot be mixed with @classmethod
+        if not hasattr(cls, '_keys_dir'):
+            cls._keys_dir = appdirs.user_data_dir('Golem', 'keys')
+        return cls._keys_dir
+
+    @classmethod
+    def set_keys_dir(cls, path):
+        assert os.path.isdir(path) or not os.path.exists(path)
+        cls._keys_dir = path
+
+    @classmethod
+    def __get_key_loc(cls, file_name_pattern, uuid):
         file_name = file_name_pattern.format("" if uuid is None else uuid)
-        return os.path.join(keys_path, file_name)
+        return os.path.join(cls.get_keys_dir(), file_name)
 
     @classmethod
     def _get_private_key_loc(cls, uuid):
