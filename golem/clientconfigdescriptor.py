@@ -8,21 +8,20 @@ class ClientConfigDescriptor(object):
 
     def __init__(self):
         """ Create new basic empty configuration scheme """
-        self.client_uid = 0
+        self.node_name = 0
         self.start_port = 0
         self.end_port = 0
         self.manager_address = ""
         self.manager_port = 0
-        self.opt_num_peers = 0
+        self.opt_peer_num = 0
         self.send_pings = 0
         self.pings_interval = 0.0
         self.add_tasks = 0
         self.dist_res_num = 0
-        self.client_version = 1  # hard-coded (not copied from AppConfig)
         self.use_ipv6 = 0
 
         self.seed_host = u""
-        self.seed_host_port = 0
+        self.seed_port = 0
 
         self.plugin_port = 0
 
@@ -53,30 +52,13 @@ class ClientConfigDescriptor(object):
         self.eth_account = ""
 
     def init_from_app_config(self, app_config):
-        """Intializes config parameters based on the specified AppConfig
+        """Initializes config parameters based on the specified AppConfig
         :param app_config: instance of AppConfig
         :return:
         """
-        # Fields to be copied from AppConfig:
-        field_names = ['client_uid', 'start_port', 'end_port', 'manager_address',
-                       'send_pings', 'pings_interval', 'add_tasks', 'root_path', 'num_cores',
-                       'max_resource_size', 'max_memory_size', 'seed_host', 'seed_host_port',
-                       'app_name', 'app_version', 'plugin_port',
-                       'getting_peers_interval', 'getting_tasks_interval', 'task_request_interval',
-                       'use_waiting_for_task_timeout', 'waiting_for_task_timeout',
-                       'p2p_session_timeout', 'task_session_timeout', 'resource_session_timeout',
-                       'estimated_performance', 'node_snapshot_interval',
-                       'max_results_sending_delay', 'use_distributed_resource_management',
-                       'requesting_trust', 'computing_trust', 'eth_account', 'use_ipv6'
-                       ]
-        for name in field_names:
+        for name in vars(self):
             getter = 'get_' + name
             setattr(self, name, getattr(app_config, getter)())
-
-        # Some parameter names do not exactly match AppConfig getter names:
-        self.manager_port = app_config.get_manager_listen_port()
-        self.opt_num_peers = app_config.get_optimal_peer_num()
-        self.dist_res_num = app_config.get_distributed_res_num()
 
 
 class ConfigApprover(object):
@@ -109,7 +91,7 @@ class ConfigApprover(object):
         dont_change_opt = ['seed_host', 'root_path', 'max_resource_size', 'max_memory_size',
                            'use_distributed_resource_management', 'use_waiting_for_task_timeout', 'send_pings',
                            'use_ipv6', 'eth_account', 'root_path']
-        to_int_opt = ['seed_host_port', 'manager_port', 'num_cores', 'opt_num_peers', 'dist_res_num',
+        to_int_opt = ['seed_port', 'manager_port', 'num_cores', 'opt_peer_num', 'dist_res_num',
                       'waiting_for_task_timeout', 'p2p_session_timeout', 'task_session_timeout',
                       'resource_session_timeout', 'pings_interval', 'max_results_sending_delay', ]
         to_float_opt = ['estimated_performance', 'getting_peers_interval', 'getting_tasks_interval',

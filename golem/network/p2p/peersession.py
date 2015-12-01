@@ -235,7 +235,7 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.pong_received(self.key_id)
 
     def _react_to_hello(self, msg):
-        self.node_id = msg.client_uid
+        self.node_id = msg.node_name
         self.node_info = msg.node_info
         self.key_id = msg.client_key_id
         self.listen_port = msg.port
@@ -268,7 +268,7 @@ class PeerSession(BasicSafeSession):
         if p and p != self and p.conn.opened:
             # self.sendPing()
             logger_msg = "PEER DUPLICATED: {} {} : {}".format(p.node_id, p.address, p.port)
-            logger.warning("{} AND {} : {}".format(logger_msg, msg.client_uid, msg.port))
+            logger.warning("{} AND {} : {}".format(logger_msg, msg.node_name, msg.port))
             self.disconnect(PeerSession.DCRDuplicatePeers)
 
         if not p:

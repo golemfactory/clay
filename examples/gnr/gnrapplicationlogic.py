@@ -85,7 +85,7 @@ class GNRApplicationLogic(QtCore.QObject):
     def start_nodes_manager_client(self):
         if self.client:
             config_desc = self.client.config_desc
-            self.nodes_manager_client = NodesManagerUidClient(config_desc.client_uid,
+            self.nodes_manager_client = NodesManagerUidClient(config_desc.node_name,
                                                               config_desc.manager_address,
                                                               config_desc.manager_port,
                                                               None,
@@ -129,7 +129,7 @@ class GNRApplicationLogic(QtCore.QObject):
             if self.nodes_manager_client is not None:
                 self.nodes_manager_client.dropConnection()
                 del self.nodes_manager_client
-            self.nodes_manager_client = NodesManagerUidClient(cfg_desc.client_uid,
+            self.nodes_manager_client = NodesManagerUidClient(cfg_desc.node_name,
                                                               cfg_desc.manager_address,
                                                               cfg_desc.manager_port,
                                                               None,

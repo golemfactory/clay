@@ -22,10 +22,10 @@ class TaskServer(PendingConnectionsServer):
 
         self.node = node
         self.task_keeper = TaskKeeper()
-        self.task_manager = TaskManager(config_desc.client_uid, self.node, key_id=self.keys_auth.get_key_id(),
+        self.task_manager = TaskManager(config_desc.node_name, self.node, key_id=self.keys_auth.get_key_id(),
                                         root_path=TaskServer.__get_task_manager_root(config_desc),
                                         use_distributed_resources=config_desc.use_distributed_resource_management)
-        self.task_computer = TaskComputer(config_desc.client_uid, self)
+        self.task_computer = TaskComputer(config_desc.node_name, self)
         self.task_sessions = {}
         self.task_sessions_incoming = []
 
@@ -71,7 +71,7 @@ class TaskServer(PendingConnectionsServer):
             logger.debug("Requesting trust level: {}".format(trust))
             if trust >= self.config_desc.requesting_trust:
                 args = {
-                    'client_id': self.config_desc.client_uid,
+                    'client_id': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,
                     'task_id': theader.task_id,
                     'estimated_performance': self.config_desc.estimated_performance,
@@ -179,7 +179,7 @@ class TaskServer(PendingConnectionsServer):
         return self.results_to_send.get(subtask_id)
 
     def get_client_id(self):
-        return self.config_desc.client_uid
+        return self.config_desc.node_name
 
     def get_key_id(self):
         return self.keys_auth.get_key_id()

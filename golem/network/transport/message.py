@@ -160,13 +160,13 @@ class MessageHello(Message):
     CHALLENGE_STR = u"CHALLENGE"
     DIFFICULTY_STR = u"DIFFICULTY"
 
-    def __init__(self, port=0, client_uid=None, client_key_id=None, node_info=None,
+    def __init__(self, port=0, node_name=None, client_key_id=None, node_info=None,
                  rand_val=0, solve_challenge=False, challenge=None, difficulty=0, proto_id=0, client_ver=0, sig="",
                  timestamp=None, dict_repr=None):
         """
         Create new introduction message
         :param int port: listening port
-        :param str client_uid: uid
+        :param str node_name: uid
         :param str client_key_id: public key
         :param NodeInfo node_info: information about node
         :param float rand_val: random value that should be signed by other site
@@ -184,7 +184,7 @@ class MessageHello(Message):
         self.proto_id = proto_id
         self.client_ver = client_ver
         self.port = port
-        self.client_uid = client_uid
+        self.node_name = node_name
         self.client_key_id = client_key_id
         self.rand_val = rand_val
         self.node_info = node_info
@@ -196,7 +196,7 @@ class MessageHello(Message):
             self.proto_id = dict_repr[MessageHello.PROTO_ID_STR]
             self.client_ver = dict_repr[MessageHello.CLI_VER_STR]
             self.port = dict_repr[MessageHello.PORT_STR]
-            self.client_uid = dict_repr[MessageHello.CLIENT_UID_STR]
+            self.node_name = dict_repr[MessageHello.CLIENT_UID_STR]
             self.client_key_id = dict_repr[MessageHello.CLIENT_KEY_ID_STR]
             self.rand_val = dict_repr[MessageHello.RAND_VAL_STR]
             self.node_info = dict_repr[MessageHello.NODE_INFO_STR]
@@ -208,7 +208,7 @@ class MessageHello(Message):
         return {MessageHello.PROTO_ID_STR: self.proto_id,
                 MessageHello.CLI_VER_STR: self.client_ver,
                 MessageHello.PORT_STR: self.port,
-                MessageHello.CLIENT_UID_STR: self.client_uid,
+                MessageHello.CLIENT_UID_STR: self.node_name,
                 MessageHello.CLIENT_KEY_ID_STR: self.client_key_id,
                 MessageHello.RAND_VAL_STR: self.rand_val,
                 MessageHello.NODE_INFO_STR: self.node_info,

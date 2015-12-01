@@ -23,7 +23,7 @@ class ResourceServer(PendingConnectionsServer):
         self.resources_to_get = []
         self.res_send_it = 0
         self.peers_it = 0
-        self.dir_manager = DirManager(config_desc.root_path, config_desc.client_uid)
+        self.dir_manager = DirManager(config_desc.root_path, config_desc.node_name)
         self.resource_manager = DistributedResourceManager(self.dir_manager.get_resource_dir())
         self.use_ipv6 = use_ipv6
         network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(ResourceSession)), use_ipv6)
@@ -47,7 +47,7 @@ class ResourceServer(PendingConnectionsServer):
         if self.dir_manager.root_path == config_desc.root_path:
             return
         self.dir_manager.root_path = config_desc.root_path
-        self.dir_manager.node_id = config_desc.client_uid
+        self.dir_manager.node_id = config_desc.node_name
         self.resource_manager.change_resource_dir(self.dir_manager.get_resource_dir())
 
     def get_distributed_resource_root(self):
@@ -101,8 +101,8 @@ class ResourceServer(PendingConnectionsServer):
                                           'node': node_info}
 
     def set_resource_peers(self, resource_peers):
-        if self.config_desc.client_uid in resource_peers:
-            del resource_peers[self.config_desc.client_uid]
+        if self.config_desc.node_name in resource_peers:
+            del resource_peers[self.config_desc.node_name]
 
         for client_id, [addr, port, key_id, node_info] in resource_peers.iteritems():
             self.add_resource_peer(client_id, addr, port, key_id, node_info)

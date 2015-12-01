@@ -21,9 +21,9 @@ class TaskManagerEventListener:
 
 
 class TaskManager:
-    def __init__(self, client_uid, node, listen_address="", listen_port=0, key_id="", root_path="res",
+    def __init__(self, node_name, node, listen_address="", listen_port=0, key_id="", root_path="res",
                  use_distributed_resources=True):
-        self.client_uid = client_uid
+        self.node_name = node_name
         self.node = node
 
         self.tasks = {}
@@ -34,7 +34,7 @@ class TaskManager:
         self.key_id = key_id
 
         self.root_path = root_path
-        self.dir_manager = DirManager(self.get_task_manager_root(), self.client_uid)
+        self.dir_manager = DirManager(self.get_task_manager_root(), self.node_name)
 
         self.subtask2task_mapping = {}
 
@@ -357,7 +357,7 @@ class TaskManager:
             assert False, "Should never be here!"
 
     def change_config(self, root_path, use_distributed_resource_management):
-        self.dir_manager = DirManager(root_path, self.client_uid)
+        self.dir_manager = DirManager(root_path, self.node_name)
         self.use_distributed_resources = use_distributed_resource_management
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):

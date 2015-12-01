@@ -22,13 +22,13 @@ class TaskComputer(object):
     """ TaskComputer is responsible for task computations that take place in Golem application. Tasks are started
     in separate threads.
     """
-    def __init__(self, client_uid, task_server):
+    def __init__(self, node_name, task_server):
         """ Create new task computer instance
-        :param client_uid:
+        :param node_name:
         :param task_server:
         :return:
         """
-        self.client_uid = client_uid
+        self.node_name = node_name
         self.task_server = task_server
         self.waiting_for_task = None
         self.counting_task = False
@@ -40,7 +40,7 @@ class TaskComputer(object):
         self.waiting_for_task_timeout = task_server.config_desc.waiting_for_task_timeout
         self.waiting_ttl = 0
         self.last_checking = time.time()
-        self.dir_manager = DirManager(task_server.get_task_computer_root(), self.client_uid)
+        self.dir_manager = DirManager(task_server.get_task_computer_root(), self.node_name)
 
         self.resource_manager = ResourcesManager(self.dir_manager, self)
 
@@ -129,15 +129,15 @@ class TaskComputer(object):
             if task_thread.error:
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, task_thread.error_msg,
                                                   subtask.return_address, subtask.return_port, subtask.key_id,
-                                                  subtask.task_owner, self.client_uid)
+                                                  subtask.task_owner, self.node_name)
             elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
                 logger.info("Task {} computed".format(subtask_id))
                 self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, subtask.return_address,
-                                              subtask.return_port, subtask.key_id, subtask.task_owner, self.client_uid)
+                                              subtask.return_port, subtask.key_id, subtask.task_owner, self.node_name)
             else:
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",
                                                   subtask.return_address, subtask.return_port, subtask.key_id,
-                                                  subtask.task_owner, self.client_uid)
+                                                  subtask.task_owner, self.node_name)
 
     def run(self):
 
@@ -169,7 +169,7 @@ class TaskComputer(object):
         return ret
 
     def change_config(self):
-        self.dir_manager = DirManager(self.task_server.get_task_computer_root(), self.client_uid)
+        self.dir_manager = DirManager(self.task_server.get_task_computer_root(), self.node_name)
         self.resource_manager = ResourcesManager(self.dir_manager, self)
         self.task_request_frequency = self.task_server.config_desc.task_request_interval
         self.use_waiting_ttl = self.task_server.config_desc.use_waiting_for_task_timeout
