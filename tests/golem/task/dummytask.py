@@ -5,6 +5,7 @@ from golem.network.p2p.node import Node
 # from golem.resource.dirmanager import DirManager
 
 import logging.config
+import binascii
 import os
 
 class DummyTaskParameters(object):
@@ -48,10 +49,9 @@ class DummyTask(Task):
         self.task_resources = []
 
         self.shared_data_file = None
-        self.total_subtasks = num_subtasks      # total number of subtasks, does not change
-        self.remaining_subtasks = num_subtasks  # subtasks remaining to be sent
-        self.completed_subtasks = 0             # subtasks for which results are delivered
-
+        self.total_subtasks = num_subtasks  # total number of subtasks, does not change
+        self.subtask_data = []              # len of this array is number of sent subtasks
+        self.subtask_results = []           # len of this array is number of completed subtasks
 
     def initialize(self, dir_manager):
         """Create resource files for this task
@@ -62,7 +62,6 @@ class DummyTask(Task):
 
         # write some random shared data
         with open(self.shared_data_file, 'w') as shared:
-            import binascii
             hex = binascii.b2a_hex(os.urandom(self.task_params.shared_data_size))
             shared.write(hex)
 
@@ -75,13 +74,48 @@ class DummyTask(Task):
         return self.total_subtasks
 
     def get_tasks_left(self):
-        return self.total_subtasks - self.completed_subtasks
+        return self.total_subtasks - self.subtask_results.len()
 
     def needs_computation(self):
-        return self.remaining_subtasks > 0
+        return self.subtask_data.len() < self.total_subtasks
 
     def finished_computation(self):
-        return self.completed_subtasks = self.total_subtasks
+        return self.get_tasks_left() == 0
+
+    def query_extra_data(self, perf_index, num_cores=1, client_id=None):
+        # create subtask-specific data
+        data = binascii.b2a_hex(os.urandom(self.task_params.subtask_data_size))
+        self.subtask_data.append(data)
+
+        return {
+            'data_file': self.shared_data_file,
+            'subtask_data': data,
+            'difficulty': self.task_params.difficulty,
+            'result_file': 'result.hash'
+        }
+
+    def verify_subtask(self, subtask_id):
+        # TODO: verify that task_result size is as required
+        if self.task_params.difficulty == 0:
+            return True
+
+        import hashlib
+        sha = hashlib.sha256()
+
+        with open(self.shared_data_file, 'r') as shared:
+            sha.update(shared.readall())
+        sha.update(self.subtask_data[subtask_id])
+        sha.update(self.subtask_results[subtask_id])
+        digest = sha.hexdigest()
+        prefix = digest[0, self.task_params.difficulty]
+        return min(prefix) == '0'
+
+    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+        self.subtask_results[subtask_id] = task_result
+        if not self.verify_subtask(subtask_id):
+            # TODO
+            pass
+
 
 def install_reactor():
     #try:
@@ -98,7 +132,7 @@ config_file = os.path.join(os.path.dirname(__file__), "logging.ini")
 logging.config.fileConfig(config_file, disable_existing_loggers = False)
 
 client = start_client()
-params = DummyTaskParameters(1024, 2048, 256, 0x100)
+params = DummyTaskParameters(1024, 2048, 256, 2)
 task = DummyTask(client.get_id(), params, 3)
 client.enqueue_new_task(task)
 
