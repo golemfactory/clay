@@ -4,7 +4,6 @@ LONG_STANDARD_SIZE = 4
 ############################
 #       VARIABLES          #
 ############################
-KEYS_PATH = "examples/gnr/node_data/"
 PRIVATE_KEY_PREF = "golem_private_key"
 PUBLIC_KEY_PREF = "golem_public_key"
 DEFAULT_PROC_FILE = "node_processes.ctl"

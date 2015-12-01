@@ -1,6 +1,7 @@
 import os
 import abc
 import logging
+import appdirs
 from random import random
 
 from Crypto.PublicKey import RSA
@@ -9,7 +10,7 @@ from crypto import mk_privkey, privtopub, ECCx
 from sha3 import sha3_256
 from hashlib import sha256
 
-from golem.core.variables import KEYS_PATH, PRIVATE_KEY_PREF, PUBLIC_KEY_PREF
+from golem.core.variables import PRIVATE_KEY_PREF, PUBLIC_KEY_PREF
 
 
 logger = logging.getLogger(__name__)
@@ -129,6 +130,33 @@ class KeysAuth(object):
         :param int difficulty: desired key difficulty level
         """
         return
+
+    @classmethod
+    def get_keys_dir(cls):
+        """Path to the dir where keys files are stored"""
+        # FIXME: @property would be a better design,
+        # but cannot be mixed with @classmethod
+        if not hasattr(cls, '_keys_dir'):
+            cls._keys_dir = appdirs.user_data_dir('Golem', 'keys')
+        return cls._keys_dir
+
+    @classmethod
+    def set_keys_dir(cls, path):
+        assert os.path.isdir(path) or not os.path.exists(path)
+        cls._keys_dir = path
+
+    @classmethod
+    def __get_key_loc(cls, file_name_pattern, uuid):
+        file_name = file_name_pattern.format("" if uuid is None else uuid)
+        return os.path.join(cls.get_keys_dir(), file_name)
+
+    @classmethod
+    def _get_private_key_loc(cls, uuid):
+        return cls.__get_key_loc(PRIVATE_KEY_PREF + "{}.pem", uuid)
+
+    @classmethod
+    def _get_public_key_loc(cls, uuid):
+        return cls.__get_key_loc(PUBLIC_KEY_PREF + "{}.pubkey", uuid)
 
     @staticmethod
     @abc.abstractmethod
@@ -251,22 +279,6 @@ class RSAKeysAuth(KeysAuth):
         except (ValueError, IndexError, TypeError, IOError):
             return None
         return key
-
-    @staticmethod
-    def _get_private_key_loc(uuid):
-        if uuid is None:
-            return os.path.normpath(os.path.join(os.environ.get('GOLEM'), KEYS_PATH, "{}.pem".format(PRIVATE_KEY_PREF)))
-        else:
-            return os.path.normpath(os.path.join(os.environ.get('GOLEM'), KEYS_PATH,
-                                                 "{}{}.pem".format(PRIVATE_KEY_PREF, uuid)))
-
-    @staticmethod
-    def _get_public_key_loc(uuid):
-        if uuid is None:
-            os.path.normpath(os.path.join(os.environ.get('GOLEM'), KEYS_PATH, "{}.pubkey".format(PUBLIC_KEY_PREF)))
-        else:
-            return os.path.normpath(os.path.join(os.environ.get('GOLEM'), KEYS_PATH,
-                                                 "{}{}.pubkey".format(PUBLIC_KEY_PREF, uuid)))
 
     @staticmethod
     def _load_private_key(uuid=None):
@@ -439,25 +451,6 @@ class EllipticalKeysAuth(KeysAuth):
         self.save_to_files(priv_key_loc, pub_key_loc)
         self.ecc = ECCx(None, self._private_key)
 
-
-
-    @staticmethod
-    def _get_private_key_loc(uuid):
-        if uuid is None:
-            return os.path.normpath(os.path.join(os.environ.get('GOLEM'),
-                                                 'examples/gnr/node_data/golem_private_key'))
-        else:
-            return os.path.normpath(
-                os.path.join(os.environ.get('GOLEM'), 'examples/gnr/node_data/golem_private_key{}'.format(uuid)))
-
-    @staticmethod
-    def _get_public_key_loc(uuid):
-        if uuid is None:
-            os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/gnr/node_data/golem_public_key'))
-        else:
-            return os.path.normpath(
-                os.path.join(os.environ.get('GOLEM'), 'examples/gnr/node_data/golem_public_key{}'.format(uuid)))
-
     @staticmethod
     def _load_private_key_from_file(file_name):
         if not os.path.isfile(file_name):
@@ -492,6 +485,14 @@ class EllipticalKeysAuth(KeysAuth):
         public_key = EllipticalKeysAuth._get_public_key_loc(uuid)
         key = mk_privkey(str(random()))
         pub_key = privtopub(key)
+
+        # Create dir for the keys.
+        # FIXME: It assumes private and public keys are stored in the same dir.
+        # FIXME: The same fix is needed for RSAKeysAuth.
+        keys_dir = os.path.dirname(private_key)
+        if not os.path.isdir(keys_dir):
+            os.makedirs(keys_dir, 0700)
+
         with open(private_key, 'wb') as f:
             f.write(key)
         with open(public_key, 'wb') as f:
