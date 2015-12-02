@@ -7,7 +7,9 @@ from golem.network.p2p.node import Node
 
 class TaskHeader(object):
     def __init__(self, client_id, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
-                 task_owner=Node(), ttl=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0, min_version=1):
+                 task_owner=Node(), ttl=0, subtask_timeout=0, resource_size=0, estimated_memory=0, min_version=1):
+        assert isinstance(ttl, (int, long))
+        assert isinstance(subtask_timeout, (int, long))
         assert isinstance(min_version, (int, long))
         self.task_id = task_id
         self.ttl = ttl
