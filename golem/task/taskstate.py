@@ -40,7 +40,7 @@ class ComputerState:
         self.performance = 0
         self.ip_address = ""
         self.port = 0
-        self.key_id = 0
+        self.node_name = ""
 
 
 class SubtaskState:

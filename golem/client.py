@@ -104,11 +104,11 @@ class Client:
         self.snapshot_lock = Lock()
 
         self.db = Database()
-        self.db.check_node(self.config_desc.node_name)
+        self.db.check_node(self.keys_auth.get_key_id())
 
         self.ranking = Ranking(self, RankingDatabase(self.db))
 
-        self.transaction_system = EthereumTransactionSystem(self.config_desc.node_name, self.config_desc.eth_account)
+        self.transaction_system = EthereumTransactionSystem(self.keys_auth.get_key_id(), self.config_desc.eth_account)
 
         self.environments_manager = EnvironmentsManager()
 

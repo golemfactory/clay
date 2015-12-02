@@ -312,7 +312,7 @@ class TaskSession(MiddlemanSafeSession):
     #########################
 
     def _react_to_want_to_compute_task(self, msg):
-        trust = self.task_server.get_computing_trust(msg.client_id)
+        trust = self.task_server.get_computing_trust(self.key_id)
         logger.debug("Computing trust level: {}".format(trust))
         if trust >= self.task_server.config_desc.computing_trust:
             ctd, wrong_task = self.task_manager.get_next_subtask(msg.client_id, msg.task_id, msg.perf_index,

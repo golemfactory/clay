@@ -67,7 +67,7 @@ class TaskServer(PendingConnectionsServer):
 
         theader = self.task_keeper.get_task()
         if theader is not None:
-            trust = self.client.get_requesting_trust(theader.client_id)
+            trust = self.client.get_requesting_trust(theader.task_owner_key_id)
             logger.debug("Requesting trust level: {}".format(trust))
             if trust >= self.config_desc.requesting_trust:
                 args = {
@@ -104,7 +104,7 @@ class TaskServer(PendingConnectionsServer):
             logger.error("Wrong result format")
             assert False
 
-        self.client.increase_trust(node_id, RankingStats.requested)
+        self.client.increase_trust(owner_key_id, RankingStats.requested)
 
         if subtask_id not in self.results_to_send:
             self.task_keeper.add_to_verification(subtask_id, task_id)
@@ -117,7 +117,7 @@ class TaskServer(PendingConnectionsServer):
         return True
 
     def send_task_failed(self, subtask_id, task_id, err_msg, owner_address, owner_port, owner_key_id, owner, node_id):
-        self.client.decrease_trust(node_id, RankingStats.requested)
+        self.client.decrease_trust(owner_key_id, RankingStats.requested)
         if subtask_id not in self.failures_to_send:
             self.failures_to_send[subtask_id] = WaitingTaskFailure(subtask_id, err_msg, owner_address, owner_port,
                                                                    owner_key_id, owner)
@@ -266,7 +266,7 @@ class TaskServer(PendingConnectionsServer):
         self.client.accept_result(task_id, subtask_id, price_mod, account_info)
 
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
-        self.client.increase_trust(account_info.node_id, RankingStats.computed, mod)
+        self.client.increase_trust(account_info.key_id, RankingStats.computed, mod)
 
     def receive_task_verification(self, task_id):
         self.task_keeper.receive_task_verification(task_id)

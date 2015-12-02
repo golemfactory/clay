@@ -2,7 +2,7 @@ import time
 import logging
 
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
-from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState, ComputerState
+from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 from golem.resource.dirmanager import DirManager
 from golem.core.hostaddress import get_external_address
 
@@ -95,19 +95,19 @@ class TaskManager:
         self.__notice_task_updated(task_id)
         logger.info("Resources for task {} send".format(task_id))
 
-    def get_next_subtask(self, client_id, task_id, estimated_performance, max_resource_size, max_memory_size,
+    def get_next_subtask(self, node_name, task_id, estimated_performance, max_resource_size, max_memory_size,
                          num_cores=0):
         if task_id in self.tasks:
             task = self.tasks[task_id]
             ts = self.tasks_states[task_id]
             th = task.header
             if self.__has_subtasks(ts, task, max_resource_size, max_memory_size):
-                ctd = task.query_extra_data(estimated_performance, num_cores, client_id)
+                ctd = task.query_extra_data(estimated_performance, num_cores, node_name)
                 if ctd is None or ctd.subtask_id is None:
                     return None, False
                 ctd.key_id = th.task_owner_key_id
                 self.subtask2task_mapping[ctd.subtask_id] = task_id
-                self.__add_subtask_to_tasks_states(client_id, ctd)
+                self.__add_subtask_to_tasks_states(node_name, ctd)
                 self.__notice_task_updated(task_id)
                 return ctd, False
             logger.info("Cannot get next task for estimated performence {}".format(estimated_performance))
@@ -214,6 +214,7 @@ class TaskManager:
             logger.error("It is not my task id {}".format(subtask_id))
             return False
 
+    # CHANGE TO RETURN KEY_ID (check IF SUBTASK COMPUTER HAS KEY_ID
     def remove_old_tasks(self):
         nodes_with_timeouts = []
         for t in self.tasks.values():
@@ -381,7 +382,7 @@ class TaskManager:
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
-    def __add_subtask_to_tasks_states(self, client_id, ctd):
+    def __add_subtask_to_tasks_states(self, node_name, ctd):
 
         if ctd.task_id not in self.tasks_states:
             assert False, "Should never be here!"
@@ -389,7 +390,8 @@ class TaskManager:
             ts = self.tasks_states[ctd.task_id]
 
             ss = SubtaskState()
-            ss.computer.node_id = client_id
+            ss.computer.node_id = ctd.key_id
+            ss.computer.node_name = node_name
             ss.computer.performance = ctd.performance
             ss.time_started = time.time()
             ss.ttl = self.tasks[ctd.task_id].header.subtask_timeout
