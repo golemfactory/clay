@@ -1,29 +1,46 @@
 import time
 import abc
 import warnings
+import rlp
+from rlp import sedes
 warnings.simplefilter("always")
 from golem.network.p2p.node import Node
 
 
-class TaskHeader(object):
-    def __init__(self, client_id, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
-                 task_owner=Node(), ttl=0, subtask_timeout=0, resource_size=0, estimated_memory=0, min_version=1):
+class TaskHeader(rlp.Serializable):
+    fields = (
+        ('client_id', sedes.binary),
+        ('task_id', sedes.big_endian_int),
+        ('environment', sedes.binary),
+        ('task_owner', Node),
+        ('ttl', sedes.big_endian_int),
+        ('subtask_timeout', sedes.big_endian_int),
+        ('resource_size', sedes.big_endian_int),
+        ('estimated_memory', sedes.big_endian_int),
+        ('min_version', sedes.big_endian_int)
+    )
+
+    def __init__(self, client_id, task_id, task_owner_address=None,
+                 task_owner_port=None, task_owner_key_id=None, environment=None,
+                 task_owner=Node(), ttl=0, subtask_timeout=0, resource_size=0,
+                 estimated_memory=0, min_version=1):
+        assert isinstance(task_id, (int, long))
+        assert isinstance(task_owner, Node)
         assert isinstance(ttl, (int, long))
         assert isinstance(subtask_timeout, (int, long))
         assert isinstance(min_version, (int, long))
-        self.task_id = task_id
-        self.ttl = ttl
-        self.subtask_timeout = subtask_timeout
-        self.client_id = client_id
-        self.resource_size = resource_size
-        self.environment = environment
-        self.estimated_memory = estimated_memory
-        self.min_version = min_version
 
-        self.task_owner = task_owner
-        self.task_owner.key = task_owner_key_id
-        self.task_owner.pub_addr = task_owner_address
-        self.task_owner.prv_addr = task_owner_port
+        super(TaskHeader, self).__init__(client_id, task_id, environment,
+                                         task_owner, ttl, subtask_timeout,
+                                         resource_size, estimated_memory,
+                                         min_version)
+
+        if task_owner_key_id is not None:
+            self.task_owner.key = task_owner_key_id
+        if task_owner_address is not None:
+            self.task_owner.pub_addr = task_owner_address
+        if task_owner_port is not None:
+            self.task_owner.pub_port = task_owner_port
 
         self.last_checking = time.time()
 

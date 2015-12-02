@@ -1,9 +1,11 @@
 import unittest
 import warnings
+import rlp
 from golem.task.taskbase import TaskHeader
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.environments.environment import Environment
+from golem.network.p2p.node import Node
 
 
 class TaskHeaderTest(unittest.TestCase):
@@ -68,3 +70,27 @@ class TaskHeaderDeprecatedTest(unittest.TestCase):
             assert len(w) == 2
             assert issubclass(w[-1].category, DeprecationWarning)
         assert addr == 8080
+
+
+class TaskHeaderSerializationTest(unittest.TestCase):
+    def test_rlp_encode(self):
+        th = TaskHeader('Client ID', 2016, 'addr', 0, 'key', 'env')
+        encoded = rlp.encode(th)
+        assert encoded
+
+    def test_rlp_decode(self):
+        th = TaskHeader('Client ID', 2016, 'addr', 0, 'key', 'env')
+        encoded = rlp.encode(th)
+        decoded = rlp.decode(encoded, TaskHeader)
+        assert decoded == th
+
+    def test_rlp_decode_full(self):
+        node = Node(node_id='Node ID', key='Node Key', prv_addr='privaddr',
+                    prv_port=9, pub_addr='pubaddr', pub_port=2009,
+                    nat_type='fakenat', prv_addresses=['ispaddr:2019'])
+        th = TaskHeader('Client ID', 2016, environment='Quantum Env',
+                        task_owner=node, ttl=3600, subtask_timeout=2400,
+                        resource_size=111, estimated_memory=512, min_version=9)
+        encoded = rlp.encode(th)
+        decoded = rlp.decode(encoded, TaskHeader)
+        assert decoded == th
