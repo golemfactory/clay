@@ -1,16 +1,15 @@
 import time
 import abc
+import warnings
+warnings.simplefilter("always")
+from golem.network.p2p.node import Node
 
 
-class TaskHeader:
+class TaskHeader(object):
     def __init__(self, client_id, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
-                 task_owner=None, ttl=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0, min_version=1.0):
+                 task_owner=Node(), ttl=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0, min_version=1):
         assert isinstance(min_version, (int, long))
         self.task_id = task_id
-        self.task_owner_key_id = task_owner_key_id
-        self.task_owner_address = task_owner_address
-        self.task_owner_port = task_owner_port
-        self.task_owner = task_owner
         self.ttl = ttl
         self.subtask_timeout = subtask_timeout
         self.client_id = client_id
@@ -19,7 +18,48 @@ class TaskHeader:
         self.estimated_memory = estimated_memory
         self.min_version = min_version
 
+        self.task_owner = task_owner
+        self.task_owner.key = task_owner_key_id
+        self.task_owner.pub_addr = task_owner_address
+        self.task_owner.prv_addr = task_owner_port
+
         self.last_checking = time.time()
+
+    @property
+    def task_owner_address(self):
+        warnings.warn("task_owner_address property is deprecated, "
+                      "use task_owner.pub_addr", DeprecationWarning)
+        return self.task_owner.pub_addr
+
+    @task_owner_address.setter
+    def task_owner_address(self, value):
+        warnings.warn("task_owner_address property is deprecated, "
+                      "use task_owner.pub_addr", DeprecationWarning)
+        self.task_owner.pub_addr = value
+
+    @property
+    def task_owner_port(self):
+        warnings.warn("task_owner_port property is deprecated, "
+                      "use task_owner.pub_port", DeprecationWarning)
+        return self.task_owner.pub_port
+
+    @task_owner_port.setter
+    def task_owner_port(self, value):
+        warnings.warn("task_owner_port property is deprecated, "
+                      "use task_owner.pub_port", DeprecationWarning)
+        self.task_owner.pub_port = value
+
+    @property
+    def task_owner_key_id(self):
+        warnings.warn("task_owner_key_id property is deprecated, "
+                      "use task_owner.key", DeprecationWarning)
+        return self.task_owner.key
+
+    @task_owner_key_id.setter
+    def task_owner_key_id(self, value):
+        warnings.warn("task_owner_key_id property is deprecated, "
+                      "use task_owner.key", DeprecationWarning)
+        self.task_owner.key = value
 
 
 class TaskBuilder:
