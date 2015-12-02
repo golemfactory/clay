@@ -121,13 +121,13 @@ class P2PService(PendingConnectionsServer):
         """
         return self.peers
 
-    def add_peer(self, id_, peer):
+    def add_peer(self, key_id, peer):
         """ Add a new open connection with a peer to the list of peers
-        :param str id_: peer id
+        :param str key_id: peer id
         :param PeerSession peer: peer session with given peer
         """
-        logger.info("Adding peer {}, key id difficulty: {}".format(id_, self.keys_auth.get_difficulty(peer.key_id)))
-        self.peers[id_] = peer
+        logger.info("Adding peer {}, key id difficulty: {}".format(key_id, self.keys_auth.get_difficulty(peer.key_id)))
+        self.peers[key_id] = peer
         self.__send_degree()
 
     def add_to_peer_keeper(self, peer_info):
@@ -152,7 +152,7 @@ class P2PService(PendingConnectionsServer):
         :param dict peer_info: dictionary with information about peer
         """
         if self.__is_new_peer(peer_info["node"].key):
-            logger.info("add peer to incoming {} {} {}".format(peer_info["id"],
+            logger.info("add peer to incoming {} {} {}".format(peer_info["node_name"],
                                                                peer_info["address"],
                                                                peer_info["port"]))
             self.incoming_peers[peer_info["node"].key] = {"address": peer_info["address"],
@@ -251,7 +251,7 @@ class P2PService(PendingConnectionsServer):
         :param dict th_dict_repr: task header dictionary representation that should be changed
         """
         try:
-            id_ = th_dict_repr["client_id"]
+            id_ = th_dict_repr["task_owner_key_id"]
 
             if self.peers[id_]:
                 th_dict_repr["address"] = self.peers[id_].address
@@ -305,7 +305,7 @@ class P2PService(PendingConnectionsServer):
         """ Return peers degree level
         :return dict: dictionary where peers ids are keys and their degrees are values
         """
-        return {peer.id: peer.degree for peer in self.peers.values()}
+        return {peer.key_id: peer.degree for peer in self.peers.values()}
 
     def get_key_id(self):
         """ Return node public key in a form of an id """
@@ -388,7 +388,7 @@ class P2PService(PendingConnectionsServer):
         """
         for node_key_id, neighbours in peers_to_find.iteritems():
             for neighbour in neighbours:
-                peer = self.peers.get(neighbour.node_id)
+                peer = self.peers.get(neighbour.key)
                 if peer:
                     peer.send_find_node(node_key_id)
 
@@ -664,7 +664,7 @@ class P2PService(PendingConnectionsServer):
                         for p in self.peers.values():
                             p.send_get_peers()
                 else:
-                    self.try_to_add_peer({"id": peer.node_id, "address": peer.ip, "port": peer.port,
+                    self.try_to_add_peer({"node_name": peer.node_name, "address": peer.ip, "port": peer.port,
                                           "node": peer.node_info})
                 break
 

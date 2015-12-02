@@ -47,7 +47,7 @@ class ResourceServer(PendingConnectionsServer):
         if self.dir_manager.root_path == config_desc.root_path:
             return
         self.dir_manager.root_path = config_desc.root_path
-        self.dir_manager.node_id = config_desc.node_name
+        self.dir_manager.node_name = config_desc.node_name
         self.resource_manager.change_resource_dir(self.dir_manager.get_resource_dir())
 
     def get_distributed_resource_root(self):

@@ -53,14 +53,14 @@ class TaskDetailsDialogCustomizer:
         self.gui.ui.nodesTableWidget.customContextMenuRequested.connect(self.__context_menu_requested)
         self.gui.ui.closeButton.clicked.connect(self.__close_button_clicked)
 
-    def __update_node_additional_info(self, node_id, subtask_id):
+    def __update_node_additional_info(self, node_name, subtask_id):
         if subtask_id in self.gnr_task_state.task_state.subtask_states:
             ss = self.gnr_task_state.task_state.subtask_states[subtask_id]
             comp = ss.computer
 
             assert isinstance(comp, ComputerState)
 
-            self.gui.ui.nodeIdLabel.setText(node_id)
+            self.gui.ui.nodeNameLabel.setText(node_name)
             self.gui.ui.nodeIpAddressLabel.setText(comp.ip_address)
             self.gui.ui.performanceLabel.setText("{} rays per sec".format(comp.performance))
             self.gui.ui.subtaskDefinitionTextEdit.setPlainText(ss.subtask_definition)
@@ -87,16 +87,16 @@ class TaskDetailsDialogCustomizer:
     ###########################
     def __nodes_table_row_clicked(self, r, c):
 
-        node_id = "{}".format(self.gui.ui.nodesTableWidget.item(r, 0).text())
+        node_name = "{}".format(self.gui.ui.nodesTableWidget.item(r, 0).text())
         subtask_id = "{}".format(self.gui.ui.nodesTableWidget.item(r, 1).text())
-        self.__update_node_additional_info(node_id, subtask_id)
+        self.__update_node_additional_info(node_name, subtask_id)
 
     def __nodes_table_row_selected(self):
         if self.gui.ui.nodesTableWidget.selectedItems():
             row = self.gui.ui.nodesTableWidget.selectedItems()[0].row()
-            node_id = "{}".format(self.gui.ui.nodesTableWidget.item(row, 0).text())
+            node_name = "{}".format(self.gui.ui.nodesTableWidget.item(row, 0).text())
             subtask_id = "{}".format(self.gui.ui.nodesTableWidget.item(row, 1).text())
-            self.__update_node_additional_info(node_id, subtask_id)
+            self.__update_node_additional_info(node_name, subtask_id)
 
     def __close_button_clicked(self):
         self.gui.window.close()

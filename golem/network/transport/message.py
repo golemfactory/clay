@@ -152,7 +152,7 @@ class MessageHello(Message):
     PROTO_ID_STR = u"PROTO_ID"
     CLI_VER_STR = u"CLI_VER"
     PORT_STR = u"PORT"
-    CLIENT_UID_STR = u"CLIENT_UID"
+    NODE_NAME_STR = u"NODE_NAME"
     CLIENT_KEY_ID_STR = u"CLIENT_KEY_ID"
     RAND_VAL_STR = u"RAND_VAL"
     NODE_INFO_STR = u"NODE_INFO"
@@ -196,7 +196,7 @@ class MessageHello(Message):
             self.proto_id = dict_repr[MessageHello.PROTO_ID_STR]
             self.client_ver = dict_repr[MessageHello.CLI_VER_STR]
             self.port = dict_repr[MessageHello.PORT_STR]
-            self.node_name = dict_repr[MessageHello.CLIENT_UID_STR]
+            self.node_name = dict_repr[MessageHello.NODE_NAME_STR]
             self.client_key_id = dict_repr[MessageHello.CLIENT_KEY_ID_STR]
             self.rand_val = dict_repr[MessageHello.RAND_VAL_STR]
             self.node_info = dict_repr[MessageHello.NODE_INFO_STR]
@@ -208,7 +208,7 @@ class MessageHello(Message):
         return {MessageHello.PROTO_ID_STR: self.proto_id,
                 MessageHello.CLI_VER_STR: self.client_ver,
                 MessageHello.PORT_STR: self.port,
-                MessageHello.CLIENT_UID_STR: self.node_name,
+                MessageHello.NODE_NAME_STR: self.node_name,
                 MessageHello.CLIENT_KEY_ID_STR: self.client_key_id,
                 MessageHello.RAND_VAL_STR: self.rand_val,
                 MessageHello.NODE_INFO_STR: self.node_info,
@@ -387,7 +387,7 @@ class MessagePeers(Message):
         return {MessagePeers.PEERS_STR: self.peers_array}
 
     def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer.items()) for peer in self.peers_array]))
+        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer["node"].__dict__) for peer in self.peers_array]))
 
 
 class MessageGetTasks(Message):
@@ -820,18 +820,18 @@ TASK_MSG_BASE = 2000
 class MessageWantToComputeTask(Message):
     Type = TASK_MSG_BASE + 1
 
-    CLIENT_ID_STR = u"CLIENT_ID"
+    NODE_NAME_STR = u"NODE_NAME"
     TASK_ID_STR = u"TASK_ID"
     PERF_INDEX_STR = u"PERF_INDEX"
     MAX_RES_STR = u"MAX_RES"
     MAX_MEM_STR = u"MAX_MEM"
     NUM_CORES_STR = u"NUM_CORES"
 
-    def __init__(self, client_id=0, task_id=0, perf_index=0, max_resource_size=0, max_memory_size=0, num_cores=0,
+    def __init__(self, node_name=0, task_id=0, perf_index=0, max_resource_size=0, max_memory_size=0, num_cores=0,
                  sig="", timestamp=None, dict_repr=None):
         """
         Create message with information that node wants to compute given task
-        :param str client_id: id of that node
+        :param str node_name: id of that node
         :param uuid task_id: if of a task that node wants to compute
         :param float perf_index: benchmark result for this task type
         :param int max_resource_size: how much disk space can this node offer
@@ -843,7 +843,7 @@ class MessageWantToComputeTask(Message):
         """
         Message.__init__(self, MessageWantToComputeTask.Type, sig, timestamp)
 
-        self.client_id = client_id
+        self.node_name = node_name
         self.task_id = task_id
         self.perf_index = perf_index
         self.max_resource_size = max_resource_size
@@ -851,7 +851,7 @@ class MessageWantToComputeTask(Message):
         self.num_cores = num_cores
 
         if dict_repr:
-            self.client_id = dict_repr[MessageWantToComputeTask.CLIENT_ID_STR]
+            self.node_name = dict_repr[MessageWantToComputeTask.NODE_NAME_STR]
             self.task_id = dict_repr[MessageWantToComputeTask.TASK_ID_STR]
             self.perf_index = dict_repr[MessageWantToComputeTask.PERF_INDEX_STR]
             self.max_resource_size = dict_repr[MessageWantToComputeTask.MAX_RES_STR]
@@ -859,7 +859,7 @@ class MessageWantToComputeTask(Message):
             self.num_cores = dict_repr[MessageWantToComputeTask.NUM_CORES_STR]
 
     def dict_repr(self):
-        return {MessageWantToComputeTask.CLIENT_ID_STR: self.client_id,
+        return {MessageWantToComputeTask.NODE_NAME_STR: self.node_name,
                 MessageWantToComputeTask.TASK_ID_STR: self.task_id,
                 MessageWantToComputeTask.PERF_INDEX_STR: self.perf_index,
                 MessageWantToComputeTask.MAX_RES_STR: self.max_resource_size,
@@ -929,7 +929,7 @@ class MessageReportComputedTask(Message):
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     RESULT_TYPE_STR = u"RESULT_TYPE"
-    NODE_ID_STR = u"NODE_ID"
+    NODE_NAME_STR = u"NODE_NAME"
     ADDR_STR = u"ADDR"
     NODE_INFO_STR = u"NODE_INFO"
     PORT_STR = u"PORT"
@@ -937,14 +937,14 @@ class MessageReportComputedTask(Message):
     EXTRA_DATA_STR = u"EXTRA_DATA"
     ETH_ACCOUNT_STR = u"ETH_ACCOUNT"
 
-    def __init__(self, subtask_id=0, result_type=None, node_id='', address='',
+    def __init__(self, subtask_id=0, result_type=None, node_name='', address='',
                  port='', key_id='', node_info=None, eth_account='', extra_data=None,
                  sig="", timestamp=None, dict_repr=None):
         """
         Create message with information about finished computation
         :param str subtask_id: finished subtask id
         :param int result_type: type of a result (from result_types dict)
-        :param uuid node_id: task result owner uid
+        :param node_name: task result owner name
         :param str address: task result owner address
         :param int port: task result owner port
         :param key_id: task result owner key
@@ -960,7 +960,7 @@ class MessageReportComputedTask(Message):
         self.subtask_id = subtask_id
         self.result_type = result_type
         self.extra_data = extra_data
-        self.node_id = node_id
+        self.node_name = node_name
         self.address = address
         self.port = port
         self.key_id = key_id
@@ -970,7 +970,7 @@ class MessageReportComputedTask(Message):
         if dict_repr:
             self.subtask_id = dict_repr[MessageReportComputedTask.SUB_TASK_ID_STR]
             self.result_type = dict_repr[MessageReportComputedTask.RESULT_TYPE_STR]
-            self.node_id = dict_repr[MessageReportComputedTask.NODE_ID_STR]
+            self.node_name = dict_repr[MessageReportComputedTask.NODE_NAME_STR]
             self.address = dict_repr[MessageReportComputedTask.ADDR_STR]
             self.port = dict_repr[MessageReportComputedTask.PORT_STR]
             self.key_id = dict_repr[MessageReportComputedTask.KEY_ID_STR]
@@ -981,7 +981,7 @@ class MessageReportComputedTask(Message):
     def dict_repr(self):
         return {MessageReportComputedTask.SUB_TASK_ID_STR: self.subtask_id,
                 MessageReportComputedTask.RESULT_TYPE_STR: self.result_type,
-                MessageReportComputedTask.NODE_ID_STR: self.node_id,
+                MessageReportComputedTask.NODE_NAME_STR: self.node_name,
                 MessageReportComputedTask.ADDR_STR: self.address,
                 MessageReportComputedTask.PORT_STR: self.port,
                 MessageReportComputedTask.KEY_ID_STR: self.key_id,
@@ -1175,12 +1175,12 @@ class MessageDeltaParts(Message):
     TASK_ID_STR = u"TASK_ID"
     DELTA_HEADER_STR = u"DELTA_HEADER"
     PARTS_STR = u"PARTS"
-    CLIENT_ID_STR = u"CLIENT_ID"
+    NODE_NAME_STR = u"NODE_NAME"
     ADDR_STR = u"ADDR"
     PORT_STR = u"PORT"
     NODE_INFO_STR = u"node info"
 
-    def __init__(self, task_id=0, delta_header=None, parts=None, client_id='',
+    def __init__(self, task_id=0, delta_header=None, parts=None, node_name='',
                  node_info=None, addr='', port='', sig="", timestamp=None,
                  dict_repr=None):
         """
@@ -1188,7 +1188,7 @@ class MessageDeltaParts(Message):
         :param task_id: resources are for task with this id
         :param TaskResourceHeader delta_header: resource header containing only parts that computing node doesn't have
         :param list parts: list of all files that are needed to create resources
-        :param uuid client_id: resource owner id
+        :param str node_name: resource owner name
         :param Node node_info: information about resource owner
         :param addr: resource owner address
         :param port: resource owner port
@@ -1201,7 +1201,7 @@ class MessageDeltaParts(Message):
         self.task_id = task_id
         self.delta_header = delta_header
         self.parts = parts
-        self.client_id = client_id
+        self.node_name = node_name
         self.addr = addr
         self.port = port
         self.node_info = node_info
@@ -1210,7 +1210,7 @@ class MessageDeltaParts(Message):
             self.task_id = dict_repr[MessageDeltaParts.TASK_ID_STR]
             self.delta_header = dict_repr[MessageDeltaParts.DELTA_HEADER_STR]
             self.parts = dict_repr[MessageDeltaParts.PARTS_STR]
-            self.client_id = dict_repr[MessageDeltaParts.CLIENT_ID_STR]
+            self.node_name = dict_repr[MessageDeltaParts.NODE_NAME_STR]
             self.addr = dict_repr[MessageDeltaParts.ADDR_STR]
             self.port = dict_repr[MessageDeltaParts.PORT_STR]
             self.node_info = dict_repr[MessageDeltaParts.NODE_INFO_STR]
@@ -1220,7 +1220,7 @@ class MessageDeltaParts(Message):
             MessageDeltaParts.TASK_ID_STR: self.task_id,
             MessageDeltaParts.DELTA_HEADER_STR: self.delta_header,
             MessageDeltaParts.PARTS_STR: self.parts,
-            MessageDeltaParts.CLIENT_ID_STR: self.client_id,
+            MessageDeltaParts.NODE_NAME_STR: self.node_name,
             MessageDeltaParts.ADDR_STR: self.addr,
             MessageDeltaParts.PORT_STR: self.port,
             MessageDeltaParts.NODE_INFO_STR: self.node_info

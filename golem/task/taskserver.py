@@ -98,7 +98,7 @@ class TaskServer(PendingConnectionsServer):
     def pull_resources(self, task_id, list_files):
         self.client.pull_resources(task_id, list_files)
 
-    def send_results(self, subtask_id, task_id, result, owner_address, owner_port, owner_key_id, owner, node_id):
+    def send_results(self, subtask_id, task_id, result, owner_address, owner_port, owner_key_id, owner, node_name):
 
         if 'data' not in result or 'result_type' not in result:
             logger.error("Wrong result format")
@@ -116,7 +116,7 @@ class TaskServer(PendingConnectionsServer):
 
         return True
 
-    def send_task_failed(self, subtask_id, task_id, err_msg, owner_address, owner_port, owner_key_id, owner, node_id):
+    def send_task_failed(self, subtask_id, task_id, err_msg, owner_address, owner_port, owner_key_id, owner, node_name):
         self.client.decrease_trust(owner_key_id, RankingStats.requested)
         if subtask_id not in self.failures_to_send:
             self.failures_to_send[subtask_id] = WaitingTaskFailure(subtask_id, err_msg, owner_address, owner_port,
@@ -178,7 +178,7 @@ class TaskServer(PendingConnectionsServer):
     def get_waiting_task_result(self, subtask_id):
         return self.results_to_send.get(subtask_id)
 
-    def get_client_id(self):
+    def get_node_name(self):
         return self.config_desc.node_name
 
     def get_key_id(self):
@@ -294,7 +294,7 @@ class TaskServer(PendingConnectionsServer):
 
     def reject_result(self, subtask_id, account_info):
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
-        self.client.decrease_trust(account_info.node_id, RankingStats.wrong_computed, mod)
+        self.client.decrease_trust(account_info.key_id, RankingStats.wrong_computed, mod)
         args = {'key_id': account_info.key_id, 'subtask_id': subtask_id}
         self._add_pending_request(TaskConnTypes.ResultRejected, account_info.node_info, account_info.port,
                                   account_info.key_id, args)

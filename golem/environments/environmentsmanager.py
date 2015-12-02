@@ -8,11 +8,11 @@ class EnvironmentsManager(object):
         self.environments = set()
         self.env_config = None
 
-    def load_config(self, client_id):
+    def load_config(self, node_name):
         """ Load acceptance of environments from the config file
-        :param client_id:
+        :param node_name:
         """
-        self.env_config = EnvironmentsConfig.load_config(client_id, self.get_environments_to_config())
+        self.env_config = EnvironmentsConfig.load_config(node_name, self.get_environments_to_config())
         config_entries = self.env_config.get_config_entries()
         for env in self.environments:
             getter_for_env = getattr(config_entries, "get_" + env.get_id())
