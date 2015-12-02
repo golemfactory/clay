@@ -124,20 +124,22 @@ class DummyTask(Task):
         return subtask_def
 
     def verify_subtask(self, subtask_id):
-        # TODO: verify that task_result size is as required
+        result = self.subtask_results[subtask_id]
+
+        if len(result) != 2 * self.task_params.result_size:
+            # multiply by 2 since each byte is encoded in two hex digits
+            return False
+
         if self.task_params.difficulty == 0:
             return True
 
-        import hashlib
-        sha = hashlib.sha256()
+        import dummyscript
+        with open(self.shared_data_file, 'r') as f:
+            input_data = f.readall()
 
-        with open(self.shared_data_file, 'r') as shared:
-            sha.update(shared.readall())
-        sha.update(self.subtask_data[subtask_id])
-        sha.update(self.subtask_results[subtask_id])
-        digest = sha.hexdigest()
-        prefix = digest[0, self.task_params.difficulty]
-        return min(prefix) == '0'
+        input_data += self.subtask_data[subtask_id]
+        return dummyscript.check_pow(result, input_data,
+                                     self.task_params.difficulty)
 
     def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
         self.subtask_results[subtask_id] = task_result
