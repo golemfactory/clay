@@ -1,16 +1,25 @@
+import rlp
+from rlp.sedes import big_endian_int, binary, CountableList
 from golem.core.hostaddress import get_host_address, get_external_address, get_host_addresses
 
 
-class Node(object):
-    def __init__(self, node_id=None, key=None, prv_addr=None, prv_port=None, pub_addr=None, pub_port=None, nat_type=None):
-        self.node_id = node_id
-        self.key = key
-        self.prv_addr = prv_addr
-        self.prv_port = prv_port
-        self.pub_addr = pub_addr
-        self.pub_port = pub_port
-        self.nat_type = nat_type
-        self.prv_addresses = []
+class Node(rlp.Serializable):
+    fields = (
+        ('node_id', binary),
+        ('key', binary),
+        ('prv_addr', binary),
+        ('prv_port', big_endian_int),
+        ('pub_addr', binary),
+        ('pub_port', big_endian_int),
+        ('nat_type', binary),
+        ('prv_addresses', CountableList(binary)),
+    )
+
+    def __init__(self, node_id='', key='', prv_addr='', prv_port=0,
+                 pub_addr='', pub_port=0, nat_type='', prv_addresses=[]):
+        # The constructor has to have exactly the same arguments as in fields.
+        super(Node, self).__init__(node_id, key, prv_addr, prv_port, pub_addr,
+                                   pub_port, nat_type, prv_addresses)
 
     def collect_network_info(self, seed_host=None, use_ipv6=False):
         self.prv_addr = get_host_address(seed_host, use_ipv6)
@@ -24,4 +33,3 @@ class Node(object):
         if self.pub_addr is None or self.prv_addr is None:
             return False
         return self.pub_addr == self.prv_addr
-
