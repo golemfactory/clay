@@ -403,7 +403,7 @@ class P2PService(PendingConnectionsServer):
         peer_infos = []
         for peer in neighbours:
             peer_infos.append({"address": peer.prv_addr, "port": peer.prv_port, "id": peer.node_id,
-                               "node": peer })
+                               "node": peer})
         return peer_infos
 
 
@@ -421,7 +421,7 @@ class P2PService(PendingConnectionsServer):
         :param int port: resource server listen port
         """
         self.resource_port = port
-        self.resource_peers[self.node_name] = [addr, port, self.keys_auth.get_key_id(), self.node]
+        self.resource_peers[self.keys_auth.get_key_id()] = [addr, port, self.node_name, self.node]
 
     def send_get_resource_peers(self):
         """ Request information about resource peers from peers"""
@@ -433,8 +433,8 @@ class P2PService(PendingConnectionsServer):
         :return list: list of resource peers information
         """
         resource_peers_info = []
-        for client_id, [addr, port, key_id, node_info] in self.resource_peers.iteritems():
-            resource_peers_info.append({'client_id': client_id, 'addr': addr, 'port': port, 'key_id': key_id,
+        for key_id, [addr, port, node_name, node_info] in self.resource_peers.iteritems():
+            resource_peers_info.append({'node_name': node_name, 'addr': addr, 'port': port, 'key_id': key_id,
                                         'node': node_info})
 
         return resource_peers_info
@@ -446,12 +446,12 @@ class P2PService(PendingConnectionsServer):
         """
         for peer in resource_peers:
             try:
-                if peer['client_id'] != self.node_name:
-                    self.resource_peers[peer['client_id']] = [peer['addr'], peer['port'], peer['key_id'], peer['node']]
+                if peer['key_id'] != self.keys_auth.get_key_id():
+                    self.resource_peers[peer['key_id']] = [peer['addr'], peer['port'], peer['node_name'], peer['node']]
             except Exception, err:
                 logger.error("Wrong set peer message (peer: {}): {}".format(peer, str(err)))
         resource_peers_copy = self.resource_peers.copy()
-        if self.node_name in resource_peers_copy:
+        if self.get_key_id() in resource_peers_copy:
             del resource_peers_copy[self.node_name]
         self.resource_server.set_resource_peers(resource_peers_copy)
 

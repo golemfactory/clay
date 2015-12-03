@@ -71,7 +71,7 @@ class TaskServer(PendingConnectionsServer):
             logger.debug("Requesting trust level: {}".format(trust))
             if trust >= self.config_desc.requesting_trust:
                 args = {
-                    'client_id': self.config_desc.node_name,
+                    'node_name': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,
                     'task_id': theader.task_id,
                     'estimated_performance': self.config_desc.estimated_performance,
@@ -207,8 +207,8 @@ class TaskServer(PendingConnectionsServer):
     def get_subtask_ttl(self, task_id):
         return self.task_keeper.get_subtask_ttl(task_id)
 
-    def add_resource_peer(self, client_id, addr, port, key_id, node_info):
-        self.client.add_resource_peer(client_id, addr, port, key_id, node_info)
+    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
+        self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
 
     def task_result_sent(self, subtask_id):
         if subtask_id in self.results_to_send:
@@ -407,7 +407,7 @@ class TaskServer(PendingConnectionsServer):
     #############################
     #   CONNECTION REACTIONS    #
     #############################
-    def __connection_for_task_request_established(self, session, conn_id, client_id, key_id, task_id,
+    def __connection_for_task_request_established(self, session, conn_id, node_name, key_id, task_id,
                                                   estimated_performance, max_resource_size, max_memory_size, num_cores):
         session.task_id = task_id
         session.key_id = key_id
@@ -415,12 +415,12 @@ class TaskServer(PendingConnectionsServer):
         self._mark_connected(conn_id, session.address, session.port)
         self.task_sessions[task_id] = session
         session.send_hello()
-        session.request_task(client_id, task_id, estimated_performance, max_resource_size, max_memory_size, num_cores)
+        session.request_task(node_name, task_id, estimated_performance, max_resource_size, max_memory_size, num_cores)
 
-    def __connection_for_task_request_failure(self, conn_id, client_id, key_id, task_id, estimated_performance,
+    def __connection_for_task_request_failure(self, conn_id, node_name, key_id, task_id, estimated_performance,
                                               max_resource_size, max_memory_size, num_cores, *args):
 
-        response = lambda session: self.__connection_for_task_request_established(session, conn_id, client_id, key_id,
+        response = lambda session: self.__connection_for_task_request_established(session, conn_id, node_name, key_id,
                                                                                   task_id, estimated_performance,
                                                                                   max_resource_size, max_memory_size,
                                                                                   num_cores)
@@ -650,7 +650,7 @@ class TaskServer(PendingConnectionsServer):
         session.open_session = open_session
         open_session.open_session = session
 
-    def __connection_for_task_request_final_failure(self, conn_id, client_id, key_id, task_id, estimated_performance,
+    def __connection_for_task_request_final_failure(self, conn_id, node_name, key_id, task_id, estimated_performance,
                                                     max_resource_size, max_memory_size, num_cores, *args):
         logger.warning("Cannot connect to task {} owner".format(task_id))
         logger.warning("Removing task {} from task list".format(task_id))

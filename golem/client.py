@@ -281,8 +281,8 @@ class Client:
         self.resource_server.add_files_to_get(list_files, task_id)
         self.get_resource_peers()
 
-    def add_resource_peer(self, client_id, addr, port, key_id, node_info):
-        self.resource_server.add_resource_peer(client_id, addr, port, key_id, node_info)
+    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
+        self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)
 
     def supported_task(self, th_dict_repr):
         supported = self.__check_supported_environment(th_dict_repr)
