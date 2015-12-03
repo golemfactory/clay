@@ -105,9 +105,9 @@ class TaskManager:
                 ctd = task.query_extra_data(estimated_performance, num_cores, node_id, node_name)
                 if ctd is None or ctd.subtask_id is None:
                     return None, False
-                ctd.key_id = node_id
+                ctd.key_id = th.task_owner_key_id
                 self.subtask2task_mapping[ctd.subtask_id] = task_id
-                self.__add_subtask_to_tasks_states(node_name, ctd)
+                self.__add_subtask_to_tasks_states(node_name, node_id, ctd)
                 self.__notice_task_updated(task_id)
                 return ctd, False
             logger.info("Cannot get next task for estimated performence {}".format(estimated_performance))
@@ -382,7 +382,7 @@ class TaskManager:
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
-    def __add_subtask_to_tasks_states(self, node_name, ctd):
+    def __add_subtask_to_tasks_states(self, node_name, node_id, ctd):
 
         if ctd.task_id not in self.tasks_states:
             assert False, "Should never be here!"
@@ -390,7 +390,7 @@ class TaskManager:
             ts = self.tasks_states[ctd.task_id]
 
             ss = SubtaskState()
-            ss.computer.node_id = ctd.key_id
+            ss.computer.node_id = node_id
             ss.computer.node_name = node_name
             ss.computer.performance = ctd.performance
             ss.time_started = time.time()

@@ -382,7 +382,7 @@ class TaskSession(MiddlemanSafeSession):
             self.dropped()
 
     def _react_to_task_result(self, msg):
-        self.__receiveTaskResult(msg.subtask_id, msg.result)
+        self.__receive_task_result(msg.subtask_id, msg.result)
 
     def _react_to_get_resource(self, msg):
         self.last_resource_msg = msg
@@ -513,8 +513,12 @@ class TaskSession(MiddlemanSafeSession):
         self.conn.producer = EncryptFileProducer([res_file_path], self)
 
     def __send_resource_parts_list(self, msg):
-        delta_header, parts_list = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),
+        res = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),
                                                                    resource_types["parts"])
+        if res is None:
+            return
+        delta_header, parts_list = res
+
         self.send(MessageDeltaParts(self.task_id, delta_header, parts_list, self.task_server.get_node_name(),
                                     self.task_server.node, self.task_server.get_resource_addr(),
                                     self.task_server.get_resource_port())

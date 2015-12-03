@@ -123,7 +123,7 @@ class BasicSession(FileSession):
         """ Send given message.
         :param Message message: message to be sent.
         """
-        # "Sending to {}:{}: {}".format(self.address, self.port, message)
+        # print "Sending to {}:{}: {}".format(self.address, self.port, message)
 
         if not self.conn.send_message(message):
             self.dropped()

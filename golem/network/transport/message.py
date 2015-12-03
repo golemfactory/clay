@@ -1,5 +1,6 @@
 import time
 import abc
+import copy
 
 from golem.core.simpleserializer import SimpleSerializer
 from golem.core.databuffer import DataBuffer
@@ -387,7 +388,8 @@ class MessagePeers(Message):
         return {MessagePeers.PEERS_STR: self.peers_array}
 
     def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer["node"].__dict__) for peer in self.peers_array]))
+        return SimpleHash.hash(
+                    SimpleSerializer.dumps([sorted(peer["node"].__dict__.values()) for peer in self.peers_array]))
 
 
 class MessageGetTasks(Message):
@@ -437,7 +439,11 @@ class MessageTasks(Message):
         return {MessageTasks.TASKS_STR: self.tasks_array}
 
     def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(task.items()) for task in self.tasks_array]))
+        tasks_array_copy = copy.deepcopy(self.tasks_array)
+        for task in tasks_array_copy:
+            task['task_owner'] = task['task_owner'].__dict__.values()
+
+        return SimpleHash.hash(SimpleSerializer.dumps([sorted(task.items()) for task in tasks_array_copy]))
 
 
 class MessageRemoveTask(Message):
@@ -512,7 +518,7 @@ class MessageResourcePeers(Message):
         return {MessageResourcePeers.RESOURCE_PEERS_STR: self.resource_peers}
 
     def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer.items()) for peer in self.resource_peers]))
+        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer['node'].__dict__.values()) for peer in self.resource_peers]))
 
 
 class MessageDegree(Message):
