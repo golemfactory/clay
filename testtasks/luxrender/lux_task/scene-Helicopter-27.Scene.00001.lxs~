@@ -1,0 +1,97 @@
+# Main Scene File
+
+Renderer "sampler"
+
+Sampler "metropolis"
+	"float largemutationprob" [0.400000005960464]
+	"bool noiseaware" ["false"]
+	"integer maxconsecrejects" [128]
+	"bool usecooldown" ["false"]
+
+Accelerator "qbvh"
+	"integer maxprimsperleaf" [4]
+	"integer fullsweepthreshold" [16]
+	"integer skipfactor" [1]
+
+SurfaceIntegrator "bidirectional"
+	"integer eyedepth" [2]
+	"integer lightdepth" [2]
+	"integer lightraycount" [1]
+	"float eyerrthreshold" [0.000000000000000]
+	"float lightrrthreshold" [0.000000000000000]
+	"string lightpathstrategy" ["auto"]
+	"integer shadowraycount" [1]
+	"string lightstrategy" ["auto"]
+
+VolumeIntegrator "multi"
+
+PixelFilter "blackmanharris"
+	"float xwidth" [3.299999952316284]
+	"float ywidth" [3.299999952316284]
+
+LookAt 1.483912 -1.307547 1.660947 0.862524 -0.718768 1.144019 -0.381202 0.349221 0.855996
+
+Camera "perspective"
+	"float fov" [49.134342077604479]
+	"float screenwindow" [-1.000000000000000 1.000000000000000 -0.562500000000000 0.562500000000000]
+	"bool autofocus" ["false"]
+	"float shutteropen" [0.000000000000000]
+	"float shutterclose" [0.040000000000000]
+
+Film "fleximage"
+	"integer xresolution" [577]
+	"integer yresolution" [325]
+	"float gamma" [2.200000000000000]
+	"float colorspace_white" [0.314275000000000 0.329411000000000]
+	"float colorspace_red" [0.630000000000000 0.340000000000000]
+	"float colorspace_green" [0.310000000000000 0.595000000000000]
+	"float colorspace_blue" [0.155000000000000 0.070000000000000]
+	"string filename" ["scene-Helicopter-27.Scene.00001"]
+	"bool write_resume_flm" ["false"]
+	"bool restart_resume_flm" ["false"]
+	"bool write_flm_direct" ["false"]
+	"bool write_exr_halftype" ["false"]
+	"bool write_exr_applyimaging" ["true"]
+	"bool write_exr_ZBuf" ["false"]
+	"string write_exr_compressiontype" ["PIZ (lossless)"]
+	"string write_exr_zbuf_normalizationtype" ["None"]
+	"bool write_exr" ["false"]
+	"string write_exr_channels" ["RGB"]
+	"bool write_png" ["true"]
+	"string write_png_channels" ["RGB"]
+	"bool write_png_16bit" ["false"]
+	"bool write_tga" ["false"]
+	"string write_tga_channels" ["RGB"]
+	"string ldr_clamp_method" ["cut"]
+	"integer displayinterval" [10]
+	"integer writeinterval" [180]
+	"integer flmwriteinterval" [900]
+	"integer haltspp" [1]
+	"float convergencestep" [4.000000000000000]
+	"integer outlierrejection_k" [2]
+	"integer tilecount" [0]
+	"string tonemapkernel" ["autolinear"]
+
+WorldBegin
+
+Include "scene-Helicopter-27/Scene/00001/LuxRender-Materials.lxm"
+
+Include "scene-Helicopter-27/Scene/00001/LuxRender-Geometry.lxo"
+
+TransformBegin #  "Point"
+
+Transform [1.000000000000000 0.000000000000000 0.000000000000000 0.000000000000000 0.000000000000000 1.000000000000000 0.000000000000000 0.000000000000000 0.000000000000000 0.000000000000000 1.000000000000000 0.000000000000000 -0.849591135978699 -0.380836248397827 0.587505578994751 1.000000000000000]
+
+LightGroup "default"
+
+LightSource "point"
+	"float gain" [1.000000000000000]
+	"float importance" [1.000000000000000]
+	"color L" [1.00000000 1.00000000 1.00000000]
+	"bool flipz" ["true"]
+	"float power" [0.000000000000000]
+	"float efficacy" [0.000000000000000]
+	"point from" [0.000000000000000 0.000000000000000 0.000000000000000]
+
+TransformEnd # ""
+WorldEnd
