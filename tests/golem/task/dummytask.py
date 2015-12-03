@@ -5,6 +5,10 @@ from golem.network.p2p.node import Node
 from golem.resource.resource import TaskResourceHeader
 # from golem.resource.dirmanager import DirManager
 
+from twisted.internet import reactor
+from twisted.web.server import Site
+from twisted.web.resource import Resource
+
 import logging.config
 import binascii
 import os
@@ -17,8 +21,9 @@ class DummyTaskParameters(object):
         :param int shared_data_size: size of input data shared by all subtasks in bytes
         :param int subtask_data_size: size of subtask-specific input data in bytes
         :param int result_size: size of subtask result in bytes
-        :param int difficulty: computational difficulty, e.g. 0x0400 to compute
-        1024 hashes on average"""
+        :param int difficulty: computational difficulty, 4 byte int, 0x00000001 is the
+        greatest and 0xffffffff the least difficulty, for example
+        0x003fffff = 0xffffffff / 1024 requires 1024 hash iterations on average"""
         self.shared_data_size = shared_data_size
         self.subtask_data_size = subtask_data_size
         self.result_size = result_size
@@ -51,7 +56,13 @@ class DummyTask(Task):
                             subtask_timeout = 1200,
                             resource_size = task_params.shared_data_size + task_params.subtask_data_size,
                             estimated_memory = 0)
-        Task.__init__(self, header, src_code = None)
+
+        # load the script to be run remotely from the file in the current dir
+        with open('dummyscript.py', 'r') as f:
+            src_code = f.read()
+            src_code += '\noutput = run_dummy_task(data_file, subtask_data, difficulty, result_size)'
+
+        Task.__init__(self, header, src_code)
 
         self.task_id = task_id
         self.task_params = task_params
@@ -123,6 +134,10 @@ class DummyTask(Task):
         subtask_def.environment = self.header.environment
         return subtask_def
 
+    def verify_task(self):
+        # nothing to check
+        return True
+
     def verify_subtask(self, subtask_id):
         result = self.subtask_results[subtask_id]
 
@@ -135,10 +150,10 @@ class DummyTask(Task):
 
         import dummyscript
         with open(self.shared_data_file, 'r') as f:
-            input_data = f.readall()
+            input_data = f.read()
 
         input_data += self.subtask_data[subtask_id]
-        return dummyscript.check_pow(result, input_data,
+        return dummyscript.check_pow(long(result, 16), input_data,
                                      self.task_params.difficulty)
 
     def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
@@ -161,19 +176,35 @@ class DummyTask(Task):
         """
         self.resource_parts = resource_parts
 
+    def get_price_mod(self, subtask_id):
+        return 1
 
-def install_reactor():
-    from twisted.internet import reactor
-    return reactor
+
+class InfoPage(Resource):
+    global client
+    isLeaf = True
+
+    def render_GET(self, request):
+        request.setHeader('content-type', 'text/html; charset=utf-8')
+        page = '<html><body>Hello from client %s</body></html>' % client.get_id()
+        return page.encode('utf-8')
+
+
+def start_http_server(port_number):
+    resource = InfoPage()
+    factory = Site(resource)
+    reactor.listenTCP(port_number, factory)
+    print 'HTTP server started on port', port_number
 
 
 config_file = os.path.join(os.path.dirname(__file__), "logging.ini")
 logging.config.fileConfig(config_file, disable_existing_loggers = False)
 
 client = start_client()
-params = DummyTaskParameters(1024, 2048, 256, 2)
+start_http_server(8081)
+
+params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
 task = DummyTask(client.get_id(), params, 3)
 client.enqueue_new_task(task)
 
-reactor = install_reactor()
 reactor.run()
