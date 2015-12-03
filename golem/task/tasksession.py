@@ -315,9 +315,9 @@ class TaskSession(MiddlemanSafeSession):
         trust = self.task_server.get_computing_trust(self.key_id)
         logger.debug("Computing trust level: {}".format(trust))
         if trust >= self.task_server.config_desc.computing_trust:
-            ctd, wrong_task = self.task_manager.get_next_subtask(msg.node_name, msg.task_id, msg.perf_index,
-                                                                 msg.max_resource_size, msg.max_memory_size,
-                                                                 msg.num_cores)
+            ctd, wrong_task = self.task_manager.get_next_subtask(self.key_id, msg.node_name, msg.task_id,
+                                                                 msg.perf_index, msg.max_resource_size,
+                                                                 msg.max_memory_size, msg.num_cores)
         else:
             ctd, wrong_task = None, False
 

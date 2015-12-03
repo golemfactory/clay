@@ -76,7 +76,7 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
 
-        lux_task = LuxTask(self.client_id,
+        lux_task = LuxTask(self.node_name,
                            self.task_definition.task_id,
                            main_scene_dir,
                            self.task_definition.main_scene_file,
@@ -108,7 +108,7 @@ class LuxTask(RenderingTask):
     ################
 
     def __init__(self,
-                 client_id,
+                 node_name,
                  task_id,
                  main_scene_dir,
                  main_scene_file,
@@ -132,7 +132,7 @@ class LuxTask(RenderingTask):
                  return_port=0,
                  key_id=""):
 
-        RenderingTask.__init__(self, client_id, task_id, return_address, return_port, key_id,
+        RenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                LuxRenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                main_program_file, task_resources, main_scene_dir, main_scene_file,
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
@@ -157,9 +157,9 @@ class LuxTask(RenderingTask):
         if self.own_binaries:
             self.header.environment = Environment.get_id()
 
-    def query_extra_data(self, perf_index, num_cores=0, client_id=None):
-        if not self._accept_client(client_id):
-            logger.warning(" Client {} banned from this task ".format(client_id))
+    def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
+        if not self._accept_client(node_id):
+            logger.warning(" Client {} banned from this task ".format(node_name))
             return None
 
         start_task, end_task = self._get_next_task()
@@ -204,7 +204,7 @@ class LuxTask(RenderingTask):
         self.subtasks_given[hash] = extra_data
         self.subtasks_given[hash]['status'] = SubtaskStatus.starting
         self.subtasks_given[hash]['perf'] = perf_index
-        self.subtasks_given[hash]['client_id'] = client_id
+        self.subtasks_given[hash]['node_id'] = node_id
 
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
@@ -222,7 +222,7 @@ class LuxTask(RenderingTask):
                 if ext == '.flm':
                     self.collected_file_names[num_start] = tr_file
                     self.num_tasks_received += 1
-                    self.counting_nodes[self.subtasks_given[subtask_id]['client_id']] = 1
+                    self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
                 else:
                     self.subtasks_given[subtask_id]['previewFile'] = tr_file
                     self._update_preview(tr_file, num_start)

@@ -38,7 +38,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         task_definition.full_task_timeout = 4 * 60 * 60
         task_definition.subtask_timeout = 20 * 60
 
-        task_builder = UpdateOtherGolemsTaskBuilder(self.client.get_id(),
+        task_builder = UpdateOtherGolemsTaskBuilder(self.client.get_node_name(),
                                                     task_definition,
                                                     self.client.get_root_path(), golem_dir)
 
@@ -59,7 +59,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         info_task_definition.manager_address = self.client.config_desc.manager_address
         info_task_definition.manager_port = self.client.config_desc.manager_port
 
-        task_builder = InfoTaskBuilder(self.client.get_id(),
+        task_builder = InfoTaskBuilder(self.client.get_node_name(),
                                        info_task_definition,
                                        self.client.get_root_path())
 

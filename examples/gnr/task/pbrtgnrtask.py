@@ -60,7 +60,7 @@ class PbrtGNRTaskBuilder(GNRTaskBuilder):
         else:
             rtd = self.__translate_task_definition()
 
-        pbrt_task_builder = PbrtTaskBuilder(self.client_id, rtd, self.root_path)
+        pbrt_task_builder = PbrtTaskBuilder(self.node_name, rtd, self.root_path)
         return pbrt_task_builder.build()
 
     def __translate_task_definition(self):
@@ -95,7 +95,7 @@ class PbrtTaskBuilder(RenderingTaskBuilder):
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
 
-        pbrt_task = PbrtRenderTask(self.client_id,
+        pbrt_task = PbrtRenderTask(self.node_name,
                                    self.task_definition.task_id,
                                    main_scene_dir,
                                    self.task_definition.main_program_file,
@@ -159,7 +159,7 @@ class PbrtRenderTask(RenderingTask):
     ################
 
     def __init__(self,
-                 client_id,
+                 node_name,
                  task_id,
                  main_scene_dir,
                  main_program_file,
@@ -186,7 +186,7 @@ class PbrtRenderTask(RenderingTask):
                  key_id=""
                  ):
 
-        RenderingTask.__init__(self, client_id, task_id, return_address, return_port, key_id,
+        RenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                PBRTEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                main_program_file, task_resources, main_scene_dir, scene_file,
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
@@ -213,9 +213,9 @@ class PbrtRenderTask(RenderingTask):
         self.nx, self.ny, self.task_res_x, self.task_res_y = count_subtask_reg(self.total_tasks, self.num_subtasks,
                                                                                self.res_x, self.res_y)
 
-    def query_extra_data(self, perf_index, num_cores=0, client_id=None):
-        if not self._accept_client(client_id):
-            logger.warning(" Client {} banned from this task ".format(client_id))
+    def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
+        if not self._accept_client(node_id):
+            logger.warning(" Client {} banned from this task ".format(node_name))
             return None
 
         start_task, end_task = self._get_next_task(perf_index)
@@ -250,7 +250,7 @@ class PbrtRenderTask(RenderingTask):
         self.subtasks_given[hash] = extra_data
         self.subtasks_given[hash]['status'] = SubtaskStatus.starting
         self.subtasks_given[hash]['perf'] = perf_index
-        self.subtasks_given[hash]['client_id'] = client_id
+        self.subtasks_given[hash]['node_id'] = node_id
 
         self._update_task_preview()
 
@@ -275,7 +275,7 @@ class PbrtRenderTask(RenderingTask):
             for tr_file in tr_files:
                 self.collected_file_names.add(tr_file)
                 self.num_tasks_received += 1
-                self.counting_nodes[self.subtasks_given[subtask_id]['client_id']] = 1
+                self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
 
                 self._update_preview(tr_file)
                 self._update_task_preview()

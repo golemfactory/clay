@@ -138,7 +138,7 @@ class TaskServer(PendingConnectionsServer):
                         "task_owner": th.task_owner,
                         "ttl": th.ttl,
                         "subtask_timeout": th.subtask_timeout,
-                        "client_id": th.client_id,
+                        "node_name": th.node_name,
                         "environment": th.environment,
                         "min_version": th.min_version})
 

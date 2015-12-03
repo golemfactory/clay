@@ -162,7 +162,7 @@ class GNRApplicationLogic(QtCore.QObject):
         if hasattr(task_state.definition, "renderer"):
             task_state.definition.task_type = task_state.definition.renderer
 
-        return self.task_types[task_state.definition.task_type].task_builder_type(self.client.get_id(),
+        return self.task_types[task_state.definition.task_type].task_builder_type(self.client.get_node_name(),
                                                                                   task_state.definition,
                                                                                   self.client.get_root_path())
 

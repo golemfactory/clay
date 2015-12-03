@@ -3,7 +3,7 @@ import abc
 
 
 class TaskHeader:
-    def __init__(self, client_id, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
+    def __init__(self, node_name, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
                  task_owner=None, ttl=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0, min_version=1.0):
         self.task_id = task_id
         self.task_owner_key_id = task_owner_key_id
@@ -13,7 +13,7 @@ class TaskHeader:
         self.last_checking = time.time()
         self.ttl = ttl
         self.subtask_timeout = subtask_timeout
-        self.client_id = client_id
+        self.node_name = node_name
         self.resource_size = resource_size
         self.environment = environment
         self.estimated_memory = estimated_memory
@@ -62,11 +62,12 @@ class Task:
         return  # Implement in derived class
 
     @abc.abstractmethod
-    def query_extra_data(self, perf_index, num_cores=1, client_id=None):
+    def query_extra_data(self, perf_index, num_cores=1, node_id=None, node_name=None):
         """ Called when a node asks with given parameters asks for a new subtask to compute.
         :param int perf_index: performance that given node declares
         :param int num_cores: number of cores that current node declares
-        :param client_id: id of a node that wants to get a next subtask
+        :param None|str node_id: id of a node that wants to get a next subtask
+        :param None|str node_name: name of a node that wants to get a next subtask
         :return ComputeTaskDef | None: return ComputeTaskDef if a client with given id receives a subtask to compute
         and None otherwise
         """

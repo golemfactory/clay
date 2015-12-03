@@ -51,7 +51,7 @@ class VRayTaskBuilder(FrameRenderingTaskBuilder):
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
 
-        vray_task = VRayTask(self.client_id,
+        vray_task = VRayTask(self.node_name,
                              self.task_definition.task_id,
                              main_scene_dir,
                              self.task_definition.main_scene_file,
@@ -81,7 +81,7 @@ class VRayTask(FrameRenderingTask):
     ################
 
     def __init__(self,
-                 client_id,
+                 node_name,
                  task_id,
                  main_scene_dir,
                  main_scene_file,
@@ -104,7 +104,7 @@ class VRayTask(FrameRenderingTask):
                  return_port=0,
                  key_id=""):
 
-        FrameRenderingTask.__init__(self, client_id, task_id, return_address, return_port, key_id,
+        FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                     VRayEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                     main_program_file, task_resources, main_scene_dir, main_scene_file,
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
@@ -116,10 +116,10 @@ class VRayTask(FrameRenderingTask):
         self.framesParts = {}
         self.framesAlphaParts = {}
 
-    def query_extra_data(self, perf_index, num_cores=0, client_id=None):
+    def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
-        if not self._accept_client(client_id):
-            logger.warning(" Client {} banned from this task ".format(client_id))
+        if not self._accept_client(node_id):
+            logger.warning(" Client {} banned from this task ".format(node_id))
             return None
 
         start_task, end_task = self._get_next_task()
@@ -153,7 +153,7 @@ class VRayTask(FrameRenderingTask):
         self.subtasks_given[hash] = extra_data
         self.subtasks_given[hash]['status'] = SubtaskStatus.starting
         self.subtasks_given[hash]['perf'] = perf_index
-        self.subtasks_given[hash]['client_id'] = client_id
+        self.subtasks_given[hash]['node_id'] = node_id
 
         for frame in frames:
             if self.use_frames and frame not in self.framesParts:
@@ -197,7 +197,7 @@ class VRayTask(FrameRenderingTask):
                     self._update_frame_task_preview()
                 return
 
-            self.counting_nodes[self.subtasks_given[subtask_id]['client_id']] = 1
+            self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
 
             if not self.use_frames:
                 for tr_file in tr_files:

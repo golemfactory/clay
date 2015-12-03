@@ -95,17 +95,17 @@ class TaskManager:
         self.__notice_task_updated(task_id)
         logger.info("Resources for task {} send".format(task_id))
 
-    def get_next_subtask(self, node_name, task_id, estimated_performance, max_resource_size, max_memory_size,
+    def get_next_subtask(self, node_id, node_name, task_id, estimated_performance, max_resource_size, max_memory_size,
                          num_cores=0):
         if task_id in self.tasks:
             task = self.tasks[task_id]
             ts = self.tasks_states[task_id]
             th = task.header
             if self.__has_subtasks(ts, task, max_resource_size, max_memory_size):
-                ctd = task.query_extra_data(estimated_performance, num_cores, node_name)
+                ctd = task.query_extra_data(estimated_performance, num_cores, node_id, node_name)
                 if ctd is None or ctd.subtask_id is None:
                     return None, False
-                ctd.key_id = th.task_owner_key_id
+                ctd.key_id = node_id
                 self.subtask2task_mapping[ctd.subtask_id] = task_id
                 self.__add_subtask_to_tasks_states(node_name, ctd)
                 self.__notice_task_updated(task_id)

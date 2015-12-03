@@ -202,7 +202,7 @@ class Client:
         self.task_server.remove_task_header(task_id)
         self.task_server.task_manager.delete_task(task_id)
 
-    def get_id(self):
+    def get_node_name(self):
         return self.config_desc.node_name
 
     def get_root_path(self):

@@ -48,7 +48,7 @@ class GNRMainWindowCustomizer:
 
     def set_options(self, cfg_desc):
         self.gui.ui.appVer.setText(u"{} - {}".format(cfg_desc.app_name, cfg_desc.app_version))
-        self.gui.ui.client_id_label.setText(u"Id: {}".format(cfg_desc.node_name))
+        self.gui.ui.nodeNameLabel.setText(u"Id: {}".format(cfg_desc.node_name))
 
     # Add new task to golem client
     def enqueue_new_task(self, ui_new_task_info):

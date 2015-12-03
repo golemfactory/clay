@@ -19,7 +19,7 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
             resource_size += os.stat(resource).st_size
 
         return PythonGNRTask(src_code,
-                             self.client_id,
+                             self.node_name,
                              self.task_definition.task_id,
                              "",
                              0,
@@ -35,16 +35,16 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
 
 
 class PythonGNRTask(GNRTask):
-    def __init__(self, src_code, client_id, task_id, owner_address, owner_port, owner_key_id, environment,
+    def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
                  ttl, subtask_ttl, resource_size, estimated_memory, total_tasks, root_path):
-        GNRTask.__init__(self, src_code, client_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
+        GNRTask.__init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                          subtask_ttl,
                          resource_size, estimated_memory)
 
         self.total_tasks = total_tasks
         self.root_path = root_path
 
-    def query_extra_data(self, perf_index, num_cores=1, client_id=None):
+    def query_extra_data(self, perf_index, num_cores=1, node_id=None, node_name=None):
         ctd = ComputeTaskDef()
         ctd.task_id = self.header.task_id
         hash = "{}".format(random.getrandbits(128))
@@ -53,7 +53,7 @@ class PythonGNRTask(GNRTask):
                           "end_task": self.last_task + 1}
         ctd.return_address = self.header.task_owner_address
         ctd.return_port = self.header.task_owner_port
-        ctd.taskOnwer = self.header.task_owner
+        ctd.task_owner = self.header.task_owner
         ctd.short_description = "Golem update"
         ctd.src_code = self.src_code
         ctd.performance = perf_index
@@ -62,7 +62,7 @@ class PythonGNRTask(GNRTask):
 
         self.subtasks_given[hash] = ctd.extra_data
         self.subtasks_given[hash]['status'] = SubtaskStatus.starting
-        self.subtasks_given[hash]['client_id'] = client_id
+        self.subtasks_given[hash]['node_id'] = node_id
 
         return ctd
 
