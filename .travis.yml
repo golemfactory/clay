@@ -1,7 +1,7 @@
 language: python
 python:
   - "2.7"
-  - "pypy"
+  #- "pypy" # pysha3 fails with PyPy
   #- "3.3"
   #- "3.4"
   #- "3.5"

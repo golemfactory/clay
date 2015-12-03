@@ -3,7 +3,7 @@
 import re
 import sys
 from os import path
-from setuptools import setup
+from setuptools import setup, find_packages
 from setuptools.command.test import test as TestCommand
 
 
@@ -68,8 +68,7 @@ setup(
     author="Golem Team",
     author_email='contact@golemproject.net',
     url='http://golemproject.net',
-    packages=[
-        'golem',
+    packages=find_packages(include=['golem*']) + [
         'examples',
         'tools'
     ],
