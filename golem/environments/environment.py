@@ -1,31 +1,49 @@
 import sys
 
 
-class Environment:
+class Environment(object):
     @classmethod
     def get_id(cls):
+        """ Get Environment unique id
+        :return str:
+        """
         return "DEFAULT"
 
     def __init__(self):
-        self.software = []
-        self.caps = []
+        self.software = []  # list of software that should be installed
+        self.caps = []  # list of hardware requirements
         self.short_description = "Default environment for generic tasks without any additional requirements."
         self.long_description = ""
         self.accept_tasks = False
 
     def check_software(self):
+        """ Check if required software is installed on this machine
+        :return bool:
+        """
         return True
 
     def check_caps(self):
+        """ Check if required hardware is available on this machine
+        :return bool:
+        """
         return True
 
     def supported(self):
+        """ Check if this environment is supported on this machine
+        :return bool:
+        """
         return True
 
     def is_accepted(self):
+        """ Check if user wants to compute tasks from this environment
+        :return bool:
+        """
         return self.accept_tasks
 
     def description(self):
+        """ Return long description of this environment
+        :return str:
+        """
         desc = self.short_description + "\n"
         if self.caps or self.software:
             desc += "REQUIREMENTS\n\n"

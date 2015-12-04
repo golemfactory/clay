@@ -1,3 +1,4 @@
+appdirs>=1.4
 bitcoin==1.1.39
 ecdsa==0.13
 ipaddr==2.1.11

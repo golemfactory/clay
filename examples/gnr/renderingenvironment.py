@@ -79,10 +79,11 @@ class PBRTEnvironment(Environment):
 
     def __init__(self):
         Environment.__init__(self)
+        self.software.append('Windows')
         self.short_description = "PBRT renderer (http://www.pbrt.org/)  "
 
     def supported(self):
-        return True
+        return self.is_windows()
 
 
 class VRayEnvironment(Environment):
@@ -168,7 +169,7 @@ class LuxRenderEnvironment(Environment):
 class BlenderEnvironment(Environment):
     @classmethod
     def get_id(cls):
-        return "Blender"
+        return "BLENDER"
 
     def __init__(self):
         Environment.__init__(self)
