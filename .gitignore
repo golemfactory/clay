@@ -23,7 +23,7 @@ golemres/
 lib/
 lib64/
 parts/
-poc/golemPy/examples/gnr/node_data/
+examples/gnr/node_data/
 res/
 sdist/
 testdata/

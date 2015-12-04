@@ -63,9 +63,9 @@ class NodesManagerClient:
 
 
 class NodesManagerUidClient (NodesManagerClient):
-    def __init__(self, client_uid, manager_server_address, manager_server_port, task_manager, logic = None):
+    def __init__(self, node_name, manager_server_address, manager_server_port, task_manager, logic = None):
         NodesManagerClient.__init__(self, manager_server_address, manager_server_port)
-        self.client_uid              = client_uid
+        self.node_name              = node_name
         self.logic                  = logic
         self.task_manager            = task_manager
 

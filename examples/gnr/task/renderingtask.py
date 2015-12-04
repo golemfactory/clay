@@ -50,7 +50,7 @@ class RenderingTask(GNRTask):
     # Task methods #
     ################
 
-    def __init__(self, client_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
+    def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
                  estimated_memory):
@@ -67,7 +67,7 @@ class RenderingTask(GNRTask):
         for resource in task_resources:
             resource_size += os.stat(resource).st_size
 
-        GNRTask.__init__(self, src_code, client_id, task_id, owner_address, owner_port, owner_key_id, environment,
+        GNRTask.__init__(self, src_code, node_id, task_id, owner_address, owner_port, owner_key_id, environment,
                          ttl, subtask_ttl, resource_size, estimated_memory)
 
         self.full_task_timeout = ttl
@@ -94,7 +94,7 @@ class RenderingTask(GNRTask):
         self.collected_file_names = {}
 
         self.advanceVerification = False
-        self.verifiedClients = set()
+        self.verifided_clients = set()
 
         if is_windows():
             self.__get_path = self.__get_path_windows
@@ -164,7 +164,7 @@ class RenderingTask(GNRTask):
         sent_color = (0, 255, 0)
         failed_color = (255, 0, 0)
 
-        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
+        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         self.preview_task_file_path = "{}".format(os.path.join(tmp_dir, "current_task_preview"))
 
         img_task = self._open_preview()
@@ -247,7 +247,7 @@ class RenderingTask(GNRTask):
         return verify_img(file_, res_x, res_y)
 
     def _open_preview(self):
-        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
+        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
 
         if self.preview_file_path is None or not os.path.exists(self.preview_file_path):
             self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
@@ -262,19 +262,19 @@ class RenderingTask(GNRTask):
             return True
         return False
 
-    def _accept_client(self, client_id):
-        if client_id in self.counting_nodes:
-            if self.counting_nodes[client_id] > 0:  # client with accepted task
+    def _accept_client(self, node_id):
+        if node_id in self.counting_nodes:
+            if self.counting_nodes[node_id] > 0:  # client with accepted task
                 return True
-            elif self.counting_nodes[client_id] == 0:  # client took task but hasn't return result yet
-                self.counting_nodes[client_id] = -1
+            elif self.counting_nodes[node_id] == 0:  # client took task but hasn't return result yet
+                self.counting_nodes[node_id] = -1
                 return True
             else:
-                self.counting_nodes[client_id] = -1
+                self.counting_nodes[node_id] = -1
                 # client with failed task or client that took more than one task without returning any results
                 return False
         else:
-            self.counting_nodes[client_id] = 0
+            self.counting_nodes[node_id] = 0
             return True  # new node
 
     def _choose_adv_ver_file(self, tr_files, subtask_id):
@@ -301,7 +301,7 @@ class RenderingTask(GNRTask):
                                           cmp_file, cmp_start_box):
                     return False
                 else:
-                    self.verifiedClients.add(self.subtasks_given[subtask_id]['client_id'])
+                    self.verifided_clients.add(self.subtasks_given[subtask_id]['node_id'])
             if not self._verify_img(tr_file, res_x, res_y):
                 return False
 
@@ -340,7 +340,7 @@ class RenderingTask(GNRTask):
         if self.verification_options.type == 'forAll':
             return True
         if self.verification_options.type == 'forFirst':
-            if self.subtasks_given[subtask_id]['client_id'] not in self.verifiedClients:
+            if self.subtasks_given[subtask_id]['node_id'] not in self.verifided_clients:
                 return True
         if self.verification_options.type == 'random' and random.random() < self.verification_options.probability:
             return True

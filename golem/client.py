@@ -41,7 +41,7 @@ def start_client():
     config_desc.init_from_app_config(app_config)
 
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
-    logger.info("Creating public client interface with uuid: {}".format(app_config.get_client_uid()))
+    logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
     c = Client(config_desc, config=app_config)
 
     logger.info("Starting all asynchronous services")
@@ -76,11 +76,11 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 class Client:
     def __init__(self, config_desc, root_path="", config=""):
         self.config_desc = config_desc
-        self.keys_auth = EllipticalKeysAuth(config_desc.client_uid)
+        self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
 
         # NETWORK
-        self.node = Node(self.config_desc.client_uid, self.keys_auth.get_key_id())
+        self.node = Node(self.config_desc.node_name, self.keys_auth.get_key_id())
         self.node.collect_network_info(self.config_desc.seed_host, use_ipv6=self.config_desc.use_ipv6)
         logger.debug("Is super node? {}".format(self.node.is_super_node()))
         self.p2pservice = None
@@ -104,11 +104,11 @@ class Client:
         self.snapshot_lock = Lock()
 
         self.db = Database()
-        self.db.check_node(self.config_desc.client_uid)
+        self.db.check_node(self.keys_auth.get_key_id())
 
         self.ranking = Ranking(self, RankingDatabase(self.db))
 
-        self.transaction_system = EthereumTransactionSystem(self.config_desc.client_uid, self.config_desc.eth_account)
+        self.transaction_system = EthereumTransactionSystem(self.keys_auth.get_key_id(), self.config_desc.eth_account)
 
         self.environments_manager = EnvironmentsManager()
 
@@ -202,8 +202,8 @@ class Client:
         self.task_server.remove_task_header(task_id)
         self.task_server.task_manager.delete_task(task_id)
 
-    def get_id(self):
-        return self.config_desc.client_uid
+    def get_node_name(self):
+        return self.config_desc.node_name
 
     def get_root_path(self):
         return self.config_desc.root_path
@@ -281,8 +281,8 @@ class Client:
         self.resource_server.add_files_to_get(list_files, task_id)
         self.get_resource_peers()
 
-    def add_resource_peer(self, client_id, addr, port, key_id, node_info):
-        self.resource_server.add_resource_peer(client_id, addr, port, key_id, node_info)
+    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
+        self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)
 
     def supported_task(self, th_dict_repr):
         supported = self.__check_supported_environment(th_dict_repr)
@@ -305,15 +305,15 @@ class Client:
         return self.resource_server.get_distributed_resource_root()
 
     def remove_computed_files(self):
-        dir_manager = DirManager(self.config_desc.root_path, self.config_desc.client_uid)
+        dir_manager = DirManager(self.config_desc.root_path, self.config_desc.node_name)
         dir_manager.clear_dir(self.get_computed_files_dir())
 
     def remove_distributed_files(self):
-        dir_manager = DirManager(self.config_desc.root_path, self.config_desc.client_uid)
+        dir_manager = DirManager(self.config_desc.root_path, self.config_desc.node_name)
         dir_manager.clear_dir(self.get_distributed_files_dir())
 
     def remove_received_files(self):
-        dir_manager = DirManager(self.config_desc.root_path, self.config_desc.client_uid)
+        dir_manager = DirManager(self.config_desc.root_path, self.config_desc.node_name)
         dir_manager.clear_dir(self.get_received_files_dir())
 
     def get_environments(self):
@@ -420,7 +420,7 @@ class Client:
             local_tasks_progresses = self.task_server.task_manager.get_progresses()
             last_task_messages = self.task_server.get_last_messages()
             self.last_node_state_snapshot = NodeStateSnapshot(is_running
-                                                           , self.config_desc.client_uid
+                                                           , self.config_desc.node_name
                                                            , peers_num
                                                            , tasks_num
                                                            , self.p2pservice.node.pub_addr
@@ -430,7 +430,7 @@ class Client:
                                                            , remote_tasks_progresses
                                                            , local_tasks_progresses)
         else:
-            self.last_node_state_snapshot = NodeStateSnapshot(self.config_desc.client_uid, peers_num)
+            self.last_node_state_snapshot = NodeStateSnapshot(self.config_desc.node_name, peers_num)
 
         if self.nodes_manager_client:
             self.nodes_manager_client.send_client_state_snapshot(self.last_node_state_snapshot)

@@ -23,7 +23,7 @@ class ResourceServer(PendingConnectionsServer):
         self.resources_to_get = []
         self.res_send_it = 0
         self.peers_it = 0
-        self.dir_manager = DirManager(config_desc.root_path, config_desc.client_uid)
+        self.dir_manager = DirManager(config_desc.root_path, config_desc.node_name)
         self.resource_manager = DistributedResourceManager(self.dir_manager.get_resource_dir())
         self.use_ipv6 = use_ipv6
         network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(ResourceSession)), use_ipv6)
@@ -47,7 +47,7 @@ class ResourceServer(PendingConnectionsServer):
         if self.dir_manager.root_path == config_desc.root_path:
             return
         self.dir_manager.root_path = config_desc.root_path
-        self.dir_manager.node_id = config_desc.client_uid
+        self.dir_manager.node_name = config_desc.node_name
         self.resource_manager.change_resource_dir(self.dir_manager.get_resource_dir())
 
     def get_distributed_resource_root(self):
@@ -88,24 +88,21 @@ class ResourceServer(PendingConnectionsServer):
     def new_connection(self, session):
         self.sessions.append(session)
 
-    new_connection = new_connection
-
-    def add_resource_peer(self, client_id, addr, port, key_id, node_info):
-        if client_id in self.resource_peers:
-            if self.resource_peers[client_id]['addr'] == addr and self.resource_peers[client_id]['port'] == port and \
-                    self.resource_peers[client_id]['key_id']:
+    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
+        if key_id in self.resource_peers:
+            if self.resource_peers[key_id]['addr'] == addr and self.resource_peers[key_id]['port'] == port and \
+                    self.resource_peers[key_id]['node_name']:
                 return
 
-        self.resource_peers[client_id] = {'addr': addr, 'port': port, 'key_id': key_id, 'state': 'free',
-                                          'posResource': 0,
-                                          'node': node_info}
+        self.resource_peers[key_id] = {'addr': addr, 'port': port, 'node_name': node_name, 'state': 'free',
+                                       'pos_resource': 0, 'node': node_info, 'key_id': key_id}
 
     def set_resource_peers(self, resource_peers):
-        if self.config_desc.client_uid in resource_peers:
-            del resource_peers[self.config_desc.client_uid]
+        if self.keys_auth.get_key_id() in resource_peers:
+            del resource_peers[self.keys_auth.get_key_id()]
 
-        for client_id, [addr, port, key_id, node_info] in resource_peers.iteritems():
-            self.add_resource_peer(client_id, addr, port, key_id, node_info)
+        for key_id, [addr, port, node_name, node_info] in resource_peers.iteritems():
+            self.add_resource_peer(node_name, addr, port, key_id, node_info)
 
     def sync_network(self):
         self._sync_pending()
@@ -167,8 +164,7 @@ class ResourceServer(PendingConnectionsServer):
             session.conn.stream_mode = True
             session.conn.confirmation = False
             session.send_want_resource(resource)
-            session.conn.consumer = DecryptFileConsumer([self.prepare_resource(session.file_name)], "",
-                                                 session, {})
+            session.conn.consumer = DecryptFileConsumer([self.prepare_resource(session.file_name)], "", session, {})
 
             if session not in self.sessions:
                 self.sessions.append(session)
@@ -185,17 +181,17 @@ class ResourceServer(PendingConnectionsServer):
         return self.resource_manager.get_resource_path(resource)
 
     def resource_downloaded(self, resource, address, port):
-        client_id = self.__free_peer(address, port)
+        key_id = self.__free_peer(address, port)
         if not self.resource_manager.check_resource(resource):
             logger.error("Wrong resource downloaded\n")
-            if client_id is not None:
-                self.client.decrease_trust(client_id, RankingStats.resource)
+            if key_id is not None:
+                self.client.decrease_trust(key_id, RankingStats.resource)
             return
-        if client_id is not None:
+        if key_id is not None:
             # Uaktualniamy ranking co 100 zasobow, zeby specjalnie nie zasmiecac sieci
-            self.resource_peers[client_id]['posResource'] += 1
-            if (self.resource_peers[client_id]['posResource'] % 50) == 0:
-                self.client.increase_trust(client_id, RankingStats.resource, 50)
+            self.resource_peers[key_id]['pos_resource'] += 1
+            if (self.resource_peers[key_id]['pos_resource'] % 50) == 0:
+                self.client.increase_trust(key_id, RankingStats.resource, 50)
         for task_id in self.waiting_resources[resource]:
             self.waiting_tasks_to_compute[task_id] -= 1
             if self.waiting_tasks_to_compute[task_id] == 0:
@@ -227,8 +223,8 @@ class ResourceServer(PendingConnectionsServer):
     def unpack_delta(self, dest_dir, delta, task_id):
         if not os.path.isdir(dest_dir):
             os.mkdir(dest_dir)
-        for dirHeader in delta.sub_dir_headers:
-            self.unpack_delta(os.path.join(dest_dir, dirHeader.dir_name), dirHeader, task_id)
+        for dir_header in delta.sub_dir_headers:
+            self.unpack_delta(os.path.join(dest_dir, dir_header.dir_name), dir_header, task_id)
 
         for files_data in delta.files_data:
             self.resource_manager.connect_file(files_data[2], os.path.join(dest_dir, files_data[0]))
@@ -296,10 +292,10 @@ class ResourceServer(PendingConnectionsServer):
         return tcp_addresses
 
     def __free_peer(self, addr, port):
-        for client_id, value in self.resource_peers.iteritems():
-            if value['addr'] == addr and value['port'] == port:
-                self.resource_peers[client_id]['state'] = 'free'
-                return client_id
+        for key_id, peer in self.resource_peers.iteritems():
+            if peer['addr'] == addr and peer['port'] == port:
+                self.resource_peers[key_id]['state'] = 'free'
+                return key_id
 
     def __connection_push_resource_established(self, session, conn_id, resource, copies, resource_address, resource_port,
                                                key_id):
@@ -340,9 +336,9 @@ class ResourceServer(PendingConnectionsServer):
 
     def __remove_client(self, addr, port):
         bad_client = None
-        for client_id, peer in self.resource_peers.iteritems():
+        for key_id, peer in self.resource_peers.iteritems():
             if peer['addr'] == addr and peer['port'] == port:
-                bad_client = client_id
+                bad_client = key_id
                 break
 
         if bad_client is not None:

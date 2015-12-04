@@ -142,7 +142,7 @@
       </attribute>
       <column>
        <property name="text">
-        <string>Node ID</string>
+        <string>Node Name</string>
        </property>
       </column>
       <column>
@@ -175,7 +175,7 @@
       <item row="0" column="0">
        <widget class="QLabel" name="label_6">
         <property name="text">
-         <string>Node ID</string>
+         <string>Node Name</string>
         </property>
        </widget>
       </item>
@@ -196,7 +196,7 @@
       <item row="2" column="0">
        <widget class="QLabel" name="label_9">
         <property name="text">
-         <string>IP address</string>
+         <string>IP Address</string>
         </property>
        </widget>
       </item>
@@ -210,12 +210,12 @@
       <item row="3" column="0">
        <widget class="QLabel" name="label_11">
         <property name="text">
-         <string>Subtask definition</string>
+         <string>Subtask Definition</string>
         </property>
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QLabel" name="nodeIdLabel">
+       <widget class="QLabel" name="nodeNameLabel">
         <property name="text">
          <string/>
         </property>

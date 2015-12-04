@@ -202,9 +202,9 @@ class TaskSession(MiddlemanSafeSession):
         self.dropped()
 
     # TODO Wszystkie parametry klienta powinny zostac zapisane w jednej spojnej klasie
-    def request_task(self, node_id, task_id, performance_index, max_resource_size, max_memory_size, num_cores):
+    def request_task(self, node_name, task_id, performance_index, max_resource_size, max_memory_size, num_cores):
         """ Inform that node wants to compute given task
-        :param str node_id: id of that node
+        :param str node_name: name of that node
         :param uuid task_id: if of a task that node wants to compute
         :param float performance_index: benchmark result for this task type
         :param int max_resource_size: how much disk space can this node offer
@@ -212,7 +212,7 @@ class TaskSession(MiddlemanSafeSession):
         :param int num_cores: how many cpu cores this node can offer
         :return:
         """
-        self.send(MessageWantToComputeTask(node_id, task_id, performance_index, max_resource_size, max_memory_size,
+        self.send(MessageWantToComputeTask(node_name, task_id, performance_index, max_resource_size, max_memory_size,
                                            num_cores))
 
     def request_resource(self, task_id, resource_header):
@@ -241,9 +241,9 @@ class TaskSession(MiddlemanSafeSession):
         else:
             logger.error("Unknown result type {}".format(task_result.result_type))
             return
-        node_id = self.task_server.get_client_id()
+        node_name = self.task_server.get_node_name()
 
-        self.send(MessageReportComputedTask(task_result.subtask_id, task_result.result_type, node_id, address, port,
+        self.send(MessageReportComputedTask(task_result.subtask_id, task_result.result_type, node_name, address, port,
                                             self.task_server.get_key_id(), node_info, eth_account, extra_data))
 
     def send_task_failure(self, subtask_id, err_msg):
@@ -312,12 +312,12 @@ class TaskSession(MiddlemanSafeSession):
     #########################
 
     def _react_to_want_to_compute_task(self, msg):
-        trust = self.task_server.get_computing_trust(msg.client_id)
+        trust = self.task_server.get_computing_trust(self.key_id)
         logger.debug("Computing trust level: {}".format(trust))
         if trust >= self.task_server.config_desc.computing_trust:
-            ctd, wrong_task = self.task_manager.get_next_subtask(msg.client_id, msg.task_id, msg.perf_index,
-                                                                 msg.max_resource_size, msg.max_memory_size,
-                                                                 msg.num_cores)
+            ctd, wrong_task = self.task_manager.get_next_subtask(self.key_id, msg.node_name, msg.task_id,
+                                                                 msg.perf_index, msg.max_resource_size,
+                                                                 msg.max_memory_size, msg.num_cores)
         else:
             ctd, wrong_task = None, False
 
@@ -346,7 +346,7 @@ class TaskSession(MiddlemanSafeSession):
                 self.dropped()
             elif delay == 0.0:
                 self.send(MessageGetTaskResult(msg.subtask_id, delay))
-                self.result_owner = EthAccountInfo(msg.key_id, msg.port, msg.address, msg.node_id, msg.node_info,
+                self.result_owner = EthAccountInfo(msg.key_id, msg.port, msg.address, msg.node_name, msg.node_info,
                                                    msg.eth_account)
 
                 if msg.result_type == result_types['data']:
@@ -382,7 +382,7 @@ class TaskSession(MiddlemanSafeSession):
             self.dropped()
 
     def _react_to_task_result(self, msg):
-        self.__receiveTaskResult(msg.subtask_id, msg.result)
+        self.__receive_task_result(msg.subtask_id, msg.result)
 
     def _react_to_get_resource(self, msg):
         self.last_resource_msg = msg
@@ -418,7 +418,7 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_delta_parts(self, msg):
         self.task_computer.wait_for_resources(self.task_id, msg.delta_header)
         self.task_server.pull_resources(self.task_id, msg.parts)
-        self.task_server.add_resource_peer(msg.client_id, msg.addr, msg.port, self.key_id, msg.node_info)
+        self.task_server.add_resource_peer(msg.node_name, msg.addr, msg.port, self.key_id, msg.node_info)
         self.dropped()
 
     def _react_to_resource_format(self, msg):
@@ -513,9 +513,13 @@ class TaskSession(MiddlemanSafeSession):
         self.conn.producer = EncryptFileProducer([res_file_path], self)
 
     def __send_resource_parts_list(self, msg):
-        delta_header, parts_list = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),
+        res = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),
                                                                    resource_types["parts"])
-        self.send(MessageDeltaParts(self.task_id, delta_header, parts_list, self.task_server.get_client_id(),
+        if res is None:
+            return
+        delta_header, parts_list = res
+
+        self.send(MessageDeltaParts(self.task_id, delta_header, parts_list, self.task_server.get_node_name(),
                                     self.task_server.node, self.task_server.get_resource_addr(),
                                     self.task_server.get_resource_port())
                   )

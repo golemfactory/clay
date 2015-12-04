@@ -36,7 +36,7 @@ class ConfigurationDialogCustomizer:
 
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
-        self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_host_port))
+        self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_port))
         self.gui.ui.workingDirectoryLineEdit.setText(u"{}".format(config_desc.root_path))
         self.gui.ui.performanceLabel.setText(u"{}".format(config_desc.estimated_performance))
         self.gui.ui.useIp6CheckBox.setChecked(config_desc.use_ipv6)
@@ -96,7 +96,7 @@ class ConfigurationDialogCustomizer:
         slider.setValue(trust)
 
     def __load_advance_config(self, config_desc):
-        self.gui.ui.optimalPeerNumLineEdit.setText(u"{}".format(config_desc.opt_num_peers))
+        self.gui.ui.optimalPeerNumLineEdit.setText(u"{}".format(config_desc.opt_peer_num))
 
         self.__load_checkbox_param(config_desc.use_distributed_resource_management,
                                    self.gui.ui.useDistributedResCheckBox, 'use distributed res')
@@ -246,9 +246,9 @@ class ConfigurationDialogCustomizer:
     def __read_basic_config(self, cfg_desc):
         cfg_desc.seed_host = u"{}".format(self.gui.ui.hostAddressLineEdit.text())
         try:
-            cfg_desc.seed_host_port = int(self.gui.ui.hostIPLineEdit.text())
+            cfg_desc.seed_port = int(self.gui.ui.hostIPLineEdit.text())
         except ValueError:
-            cfg_desc.seed_host_port = u"{}".format(self.gui.ui.hostIPLineEdit.text())
+            cfg_desc.seed_port = u"{}".format(self.gui.ui.hostIPLineEdit.text())
         cfg_desc.root_path = u"{}".format(self.gui.ui.workingDirectoryLineEdit.text())
 
         cfg_desc.num_cores = u"{}".format(self.gui.ui.numCoresSlider.value())
@@ -263,7 +263,7 @@ class ConfigurationDialogCustomizer:
         cfg_desc.use_ipv6 = int(self.gui.ui.useIp6CheckBox.isChecked())
 
     def __read_advance_config(self, cfg_desc):
-        cfg_desc.opt_num_peers = u"{}".format(self.gui.ui.optimalPeerNumLineEdit.text())
+        cfg_desc.opt_peer_num = u"{}".format(self.gui.ui.optimalPeerNumLineEdit.text())
         cfg_desc.use_distributed_resource_management = int(self.gui.ui.useDistributedResCheckBox.isChecked())
         cfg_desc.dist_res_num = u"{}".format(self.gui.ui.distributedResNumLineEdit.text())
         cfg_desc.use_waiting_for_task_timeout = int(self.gui.ui.useWaitingForTaskTimeoutCheckBox.isChecked())

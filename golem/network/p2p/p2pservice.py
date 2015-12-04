@@ -43,7 +43,7 @@ class P2PService(PendingConnectionsServer):
         self.manager_session = None
 
         # Useful config options
-        self.client_uid = self.config_desc.client_uid
+        self.node_name = self.config_desc.node_name
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
         self.last_message_buffer_len = LAST_MESSAGE_BUFFER_LEN
         self.refresh_peers_timeout = REFRESH_PEERS_TIMEOUT
@@ -76,7 +76,7 @@ class P2PService(PendingConnectionsServer):
     def connect_to_network(self):
         """ Start listening on the port from configuration and try to connect to the seed node """
         self.start_accepting()
-        tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_host_port)
+        tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
         if tcp_address.is_proper():
             self.__connect(tcp_address)
 
@@ -121,13 +121,13 @@ class P2PService(PendingConnectionsServer):
         """
         return self.peers
 
-    def add_peer(self, id_, peer):
+    def add_peer(self, key_id, peer):
         """ Add a new open connection with a peer to the list of peers
-        :param str id_: peer id
+        :param str key_id: peer id
         :param PeerSession peer: peer session with given peer
         """
-        logger.info("Adding peer {}, key id difficulty: {}".format(id_, self.keys_auth.get_difficulty(peer.key_id)))
-        self.peers[id_] = peer
+        logger.info("Adding peer {}, key id difficulty: {}".format(key_id, self.keys_auth.get_difficulty(peer.key_id)))
+        self.peers[key_id] = peer
         self.__send_degree()
 
     def add_to_peer_keeper(self, peer_info):
@@ -152,7 +152,7 @@ class P2PService(PendingConnectionsServer):
         :param dict peer_info: dictionary with information about peer
         """
         if self.__is_new_peer(peer_info["node"].key):
-            logger.info("add peer to incoming {} {} {}".format(peer_info["id"],
+            logger.info("add peer to incoming {} {} {}".format(peer_info["node_name"],
                                                                peer_info["address"],
                                                                peer_info["port"]))
             self.incoming_peers[peer_info["node"].key] = {"address": peer_info["address"],
@@ -196,7 +196,7 @@ class P2PService(PendingConnectionsServer):
         """ Inform whether peer has optimal or more open connections with other peers
         :return bool: True if peer has enough open connections with other peers, False otherwise
         """
-        return len(self.peers) >= self.config_desc.opt_num_peers
+        return len(self.peers) >= self.config_desc.opt_peer_num
 
     def set_last_message(self, type_, client_key_id, t, msg, address, port):
         """ Add given message to last message buffer and inform peer keeper about it
@@ -236,10 +236,10 @@ class P2PService(PendingConnectionsServer):
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
 
         for peer in self.peers.values():
-            if (peer.port == self.config_desc.seed_host_port) and (peer.address == self.config_desc.seed_host_port):
+            if (peer.port == self.config_desc.seed_port) and (peer.address == self.config_desc.seed_host):
                 return
 
-        tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_host_port)
+        tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
         if tcp_address.is_proper():
             self.__connect(tcp_address)
 
@@ -251,7 +251,7 @@ class P2PService(PendingConnectionsServer):
         :param dict th_dict_repr: task header dictionary representation that should be changed
         """
         try:
-            id_ = th_dict_repr["client_id"]
+            id_ = th_dict_repr["task_owner_key_id"]
 
             if self.peers[id_]:
                 th_dict_repr["address"] = self.peers[id_].address
@@ -272,7 +272,7 @@ class P2PService(PendingConnectionsServer):
             should_solve_challenge = self.should_solve_challenge
         else:
             should_solve_challenge = False
-        listen_params = (self.cur_port, self.client_uid, self.keys_auth.get_key_id(), self.node, rand_val,
+        listen_params = (self.cur_port, self.node_name, self.keys_auth.get_key_id(), self.node, rand_val,
                          should_solve_challenge)
         if should_solve_challenge:
             listen_params += (self._get_challenge(key_id), self._get_difficulty(key_id))
@@ -305,7 +305,7 @@ class P2PService(PendingConnectionsServer):
         """ Return peers degree level
         :return dict: dictionary where peers ids are keys and their degrees are values
         """
-        return {peer.id: peer.degree for peer in self.peers.values()}
+        return {peer.key_id: peer.degree for peer in self.peers.values()}
 
     def get_key_id(self):
         """ Return node public key in a form of an id """
@@ -319,7 +319,7 @@ class P2PService(PendingConnectionsServer):
         for p in self.peers.values():
             p.dropped()
 
-        tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_host_port)
+        tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
         if tcp_address.is_proper():
             self.__connect(tcp_address)
 
@@ -388,7 +388,7 @@ class P2PService(PendingConnectionsServer):
         """
         for node_key_id, neighbours in peers_to_find.iteritems():
             for neighbour in neighbours:
-                peer = self.peers.get(neighbour.node_id)
+                peer = self.peers.get(neighbour.key)
                 if peer:
                     peer.send_find_node(node_key_id)
 
@@ -403,7 +403,7 @@ class P2PService(PendingConnectionsServer):
         peer_infos = []
         for peer in neighbours:
             peer_infos.append({"address": peer.prv_addr, "port": peer.prv_port, "id": peer.node_id,
-                               "node": peer })
+                               "node": peer})
         return peer_infos
 
 
@@ -421,7 +421,7 @@ class P2PService(PendingConnectionsServer):
         :param int port: resource server listen port
         """
         self.resource_port = port
-        self.resource_peers[self.client_uid] = [addr, port, self.keys_auth.get_key_id(), self.node]
+        self.resource_peers[self.keys_auth.get_key_id()] = [addr, port, self.node_name, self.node]
 
     def send_get_resource_peers(self):
         """ Request information about resource peers from peers"""
@@ -433,8 +433,8 @@ class P2PService(PendingConnectionsServer):
         :return list: list of resource peers information
         """
         resource_peers_info = []
-        for client_id, [addr, port, key_id, node_info] in self.resource_peers.iteritems():
-            resource_peers_info.append({'client_id': client_id, 'addr': addr, 'port': port, 'key_id': key_id,
+        for key_id, [addr, port, node_name, node_info] in self.resource_peers.iteritems():
+            resource_peers_info.append({'node_name': node_name, 'addr': addr, 'port': port, 'key_id': key_id,
                                         'node': node_info})
 
         return resource_peers_info
@@ -446,13 +446,13 @@ class P2PService(PendingConnectionsServer):
         """
         for peer in resource_peers:
             try:
-                if peer['client_id'] != self.client_uid:
-                    self.resource_peers[peer['client_id']] = [peer['addr'], peer['port'], peer['key_id'], peer['node']]
+                if peer['key_id'] != self.keys_auth.get_key_id():
+                    self.resource_peers[peer['key_id']] = [peer['addr'], peer['port'], peer['node_name'], peer['node']]
             except Exception, err:
                 logger.error("Wrong set peer message (peer: {}): {}".format(peer, str(err)))
         resource_peers_copy = self.resource_peers.copy()
-        if self.client_uid in resource_peers_copy:
-            del resource_peers_copy[self.client_uid]
+        if self.get_key_id() in resource_peers_copy:
+            del resource_peers_copy[self.node_name]
         self.resource_server.set_resource_peers(resource_peers_copy)
 
     # TASK FUNCTIONS
@@ -654,7 +654,7 @@ class P2PService(PendingConnectionsServer):
         self.network.connect(connect_info)
 
     def __send_get_peers(self):
-        while len(self.peers) < self.config_desc.opt_num_peers:
+        while len(self.peers) < self.config_desc.opt_peer_num:
             if len(self.free_peers) == 0:
                 peer = None  # FIXME
                 #                peer = self.peer_keeper.get_random_known_peer()
@@ -664,7 +664,7 @@ class P2PService(PendingConnectionsServer):
                         for p in self.peers.values():
                             p.send_get_peers()
                 else:
-                    self.try_to_add_peer({"id": peer.node_id, "address": peer.ip, "port": peer.port,
+                    self.try_to_add_peer({"node_name": peer.node_name, "address": peer.ip, "port": peer.port,
                                           "node": peer.node_info})
                 break
 
@@ -700,7 +700,9 @@ class P2PService(PendingConnectionsServer):
         logger.info("Can't connect to peer {}.".format(conn_id))
 
     def __is_new_peer(self, id_):
-        if id_ in self.incoming_peers or id_ in self.peers or id_ == self.get_key_id():
+        if (id_ in self.incoming_peers or
+                id_ in self.peers or
+                long(id_, 16) == self.get_key_id()):
             return False
         else:
             return True

@@ -796,7 +796,6 @@ class DataProducer(object):
     implements(IPullProducer)
 
     def __init__(self, data_to_send, session, buff_size=BUFF_SIZE, extra_data=None):
-        print "inti data producer"
         """ Create data producer
         :param str data_to_send: data that should be send
         :param FileSession session:  session that uses this file producer

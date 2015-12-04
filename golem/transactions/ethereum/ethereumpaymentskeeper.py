@@ -39,7 +39,7 @@ class EthereumPaymentInfo(object):
 
 class EthAccountInfo(AccountInfo):
     """ Information about node's payment account and Ethereum account. """
-    def __init__(self, key_id, port, addr, node_id, node_info, eth_account):
-        AccountInfo.__init__(self, key_id, port, addr, node_id, node_info)
+    def __init__(self, key_id, port, addr, node_name, node_info, eth_account):
+        AccountInfo.__init__(self, key_id, port, addr, node_name, node_info)
         self.eth_account = eth_account
 

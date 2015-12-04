@@ -18,7 +18,7 @@ class SubtaskDetailsDialogCustomizer:
     #
     def __update_data(self):
         self.gui.ui.subtaskIdLabel.setText(self.subtask_state.subtask_id)
-        self.gui.ui.nodeIdLabel.setText(self.subtask_state.computer.node_id)
+        self.gui.ui.nodeNameLabel.setText(self.subtask_state.computer.node_name)
         self.gui.ui.nodeIpAddressLabel.setText(self.subtask_state.computer.ip_address)
         self.gui.ui.statusLabel.setText(self.subtask_state.subtask_status)
         self.gui.ui.performanceLabel.setText("{}".format(self.subtask_state.computer.performance))

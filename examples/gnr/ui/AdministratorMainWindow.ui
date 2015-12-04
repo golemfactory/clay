@@ -22,7 +22,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
-     <widget class="QLabel" name="client_id_label">
+     <widget class="QLabel" name="nodeNameLabel">
       <property name="text">
        <string/>
       </property>

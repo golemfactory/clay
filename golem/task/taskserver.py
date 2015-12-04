@@ -22,10 +22,10 @@ class TaskServer(PendingConnectionsServer):
 
         self.node = node
         self.task_keeper = TaskKeeper()
-        self.task_manager = TaskManager(config_desc.client_uid, self.node, key_id=self.keys_auth.get_key_id(),
+        self.task_manager = TaskManager(config_desc.node_name, self.node, key_id=self.keys_auth.get_key_id(),
                                         root_path=TaskServer.__get_task_manager_root(config_desc),
                                         use_distributed_resources=config_desc.use_distributed_resource_management)
-        self.task_computer = TaskComputer(config_desc.client_uid, self)
+        self.task_computer = TaskComputer(config_desc.node_name, self)
         self.task_sessions = {}
         self.task_sessions_incoming = []
 
@@ -64,14 +64,13 @@ class TaskServer(PendingConnectionsServer):
 
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
-
         theader = self.task_keeper.get_task()
         if theader is not None:
-            trust = self.client.get_requesting_trust(theader.client_id)
+            trust = self.client.get_requesting_trust(theader.task_owner_key_id)
             logger.debug("Requesting trust level: {}".format(trust))
             if trust >= self.config_desc.requesting_trust:
                 args = {
-                    'client_id': self.config_desc.client_uid,
+                    'node_name': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,
                     'task_id': theader.task_id,
                     'estimated_performance': self.config_desc.estimated_performance,
@@ -98,13 +97,13 @@ class TaskServer(PendingConnectionsServer):
     def pull_resources(self, task_id, list_files):
         self.client.pull_resources(task_id, list_files)
 
-    def send_results(self, subtask_id, task_id, result, owner_address, owner_port, owner_key_id, owner, node_id):
+    def send_results(self, subtask_id, task_id, result, owner_address, owner_port, owner_key_id, owner, node_name):
 
         if 'data' not in result or 'result_type' not in result:
             logger.error("Wrong result format")
             assert False
 
-        self.client.increase_trust(node_id, RankingStats.requested)
+        self.client.increase_trust(owner_key_id, RankingStats.requested)
 
         if subtask_id not in self.results_to_send:
             self.task_keeper.add_to_verification(subtask_id, task_id)
@@ -116,8 +115,8 @@ class TaskServer(PendingConnectionsServer):
 
         return True
 
-    def send_task_failed(self, subtask_id, task_id, err_msg, owner_address, owner_port, owner_key_id, owner, node_id):
-        self.client.decrease_trust(node_id, RankingStats.requested)
+    def send_task_failed(self, subtask_id, task_id, err_msg, owner_address, owner_port, owner_key_id, owner, node_name):
+        self.client.decrease_trust(owner_key_id, RankingStats.requested)
         if subtask_id not in self.failures_to_send:
             self.failures_to_send[subtask_id] = WaitingTaskFailure(subtask_id, err_msg, owner_address, owner_port,
                                                                    owner_key_id, owner)
@@ -138,7 +137,7 @@ class TaskServer(PendingConnectionsServer):
                         "task_owner": th.task_owner,
                         "ttl": th.ttl,
                         "subtask_timeout": th.subtask_timeout,
-                        "client_id": th.client_id,
+                        "node_name": th.node_name,
                         "environment": th.environment,
                         "min_version": th.min_version})
 
@@ -178,8 +177,8 @@ class TaskServer(PendingConnectionsServer):
     def get_waiting_task_result(self, subtask_id):
         return self.results_to_send.get(subtask_id)
 
-    def get_client_id(self):
-        return self.config_desc.client_uid
+    def get_node_name(self):
+        return self.config_desc.node_name
 
     def get_key_id(self):
         return self.keys_auth.get_key_id()
@@ -207,8 +206,8 @@ class TaskServer(PendingConnectionsServer):
     def get_subtask_ttl(self, task_id):
         return self.task_keeper.get_subtask_ttl(task_id)
 
-    def add_resource_peer(self, client_id, addr, port, key_id, node_info):
-        self.client.add_resource_peer(client_id, addr, port, key_id, node_info)
+    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
+        self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
 
     def task_result_sent(self, subtask_id):
         if subtask_id in self.results_to_send:
@@ -266,7 +265,7 @@ class TaskServer(PendingConnectionsServer):
         self.client.accept_result(task_id, subtask_id, price_mod, account_info)
 
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
-        self.client.increase_trust(account_info.node_id, RankingStats.computed, mod)
+        self.client.increase_trust(account_info.key_id, RankingStats.computed, mod)
 
     def receive_task_verification(self, task_id):
         self.task_keeper.receive_task_verification(task_id)
@@ -294,7 +293,7 @@ class TaskServer(PendingConnectionsServer):
 
     def reject_result(self, subtask_id, account_info):
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
-        self.client.decrease_trust(account_info.node_id, RankingStats.wrong_computed, mod)
+        self.client.decrease_trust(account_info.key_id, RankingStats.wrong_computed, mod)
         args = {'key_id': account_info.key_id, 'subtask_id': subtask_id}
         self._add_pending_request(TaskConnTypes.ResultRejected, account_info.node_info, account_info.port,
                                   account_info.key_id, args)
@@ -407,20 +406,21 @@ class TaskServer(PendingConnectionsServer):
     #############################
     #   CONNECTION REACTIONS    #
     #############################
-    def __connection_for_task_request_established(self, session, conn_id, client_id, key_id, task_id,
+    def __connection_for_task_request_established(self, session, conn_id, node_name, key_id, task_id,
                                                   estimated_performance, max_resource_size, max_memory_size, num_cores):
+
         session.task_id = task_id
         session.key_id = key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
         self.task_sessions[task_id] = session
         session.send_hello()
-        session.request_task(client_id, task_id, estimated_performance, max_resource_size, max_memory_size, num_cores)
+        session.request_task(node_name, task_id, estimated_performance, max_resource_size, max_memory_size, num_cores)
 
-    def __connection_for_task_request_failure(self, conn_id, client_id, key_id, task_id, estimated_performance,
+    def __connection_for_task_request_failure(self, conn_id, node_name, key_id, task_id, estimated_performance,
                                               max_resource_size, max_memory_size, num_cores, *args):
 
-        response = lambda session: self.__connection_for_task_request_established(session, conn_id, client_id, key_id,
+        response = lambda session: self.__connection_for_task_request_established(session, conn_id, node_name, key_id,
                                                                                   task_id, estimated_performance,
                                                                                   max_resource_size, max_memory_size,
                                                                                   num_cores)
@@ -650,7 +650,7 @@ class TaskServer(PendingConnectionsServer):
         session.open_session = open_session
         open_session.open_session = session
 
-    def __connection_for_task_request_final_failure(self, conn_id, client_id, key_id, task_id, estimated_performance,
+    def __connection_for_task_request_final_failure(self, conn_id, node_name, key_id, task_id, estimated_performance,
                                                     max_resource_size, max_memory_size, num_cores, *args):
         logger.warning("Cannot connect to task {} owner".format(task_id))
         logger.warning("Removing task {} from task list".format(task_id))
