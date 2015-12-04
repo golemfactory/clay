@@ -48,11 +48,11 @@ class FrameRenderingTask(RenderingTask):
     # Task methods #
     ################
 
-    def __init__(self, client_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
+    def __init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
                  estimated_memory, use_frames, frames):
-        RenderingTask.__init__(self, client_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
+        RenderingTask.__init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                                subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
                                estimated_memory)
@@ -106,7 +106,7 @@ class FrameRenderingTask(RenderingTask):
                     self._update_frame_task_preview()
                 return
 
-            self.counting_nodes[self.subtasks_given[subtask_id]['client_id']] = 1
+            self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
 
             for tr_file in tr_files:
 
@@ -136,7 +136,7 @@ class FrameRenderingTask(RenderingTask):
         else:
             img = Image.open(new_chunk_file_path)
 
-        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
+        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         if self.preview_file_path[num] is None:
             self.preview_file_path[num] = "{}{}".format(os.path.join(tmp_dir, "current_preview"), num)
         if self.preview_task_file_path[num] is None:
@@ -279,7 +279,7 @@ class FrameRenderingTask(RenderingTask):
         return self.total_tasks <= len(self.frames)
 
     def __mark_sub_frame(self, sub, frame, color):
-        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
+        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         idx = self.frames.index(frame)
         preview_task_file_path = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), idx)
         preview_file_path = "{}{}".format(os.path.join(tmp_dir, "current_preview"), idx)

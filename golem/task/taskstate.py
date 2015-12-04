@@ -1,7 +1,7 @@
 import time
 
 
-class TaskState:
+class TaskState(object):
 
     def __init__(self):
 
@@ -23,27 +23,18 @@ class TaskState:
         else:
             return None
 
-    def get_subtask_state_for_computer(self, node_id):
 
-        subtasks_states = []
-
-        for k in self.subtask_states:
-            ss = self.subtask_states[k]
-            if ss.computer.node_id == node_id:
-                subtasks_states.append(ss)
-
-
-class ComputerState:
+class ComputerState(object):
     def __init__(self):
         self.node_id = ""
         self.eth_account = ""
         self.performance = 0
         self.ip_address = ""
         self.port = 0
-        self.key_id = 0
+        self.node_name = ""
 
 
-class SubtaskState:
+class SubtaskState(object):
     def __init__(self):
         self.subtask_definition = ""
         self.subtask_id = ""
@@ -59,7 +50,7 @@ class SubtaskState:
         self.computer = ComputerState()
 
 
-class TaskStatus:
+class TaskStatus(object):
     notStarted = "Not started"
     sending = "Sending"
     waiting = "Waiting"
@@ -71,7 +62,7 @@ class TaskStatus:
     paused = "Paused"
 
 
-class SubtaskStatus:
+class SubtaskStatus(object):
     waiting = "Waiting"
     starting = "Starting"
     resent = "Failed - Resent"

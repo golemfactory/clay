@@ -2,8 +2,8 @@ from golem.core.hostaddress import get_host_address, get_external_address, get_h
 
 
 class Node(object):
-    def __init__(self, node_id=None, key=None, prv_addr=None, prv_port=None, pub_addr=None, pub_port=None, nat_type=None):
-        self.node_id = node_id
+    def __init__(self, node_name=None, key=None, prv_addr=None, prv_port=None, pub_addr=None, pub_port=None, nat_type=None):
+        self.node_name = node_name
         self.key = key
         self.prv_addr = prv_addr
         self.prv_port = prv_port

@@ -23,5 +23,5 @@ def get_test_task_tmp_path(root_path):
     return os.path.join(root_path, TEST_TMP_DIRECTORY)
 
 
-def get_tmp_path(client_id, task_id, root_path):
-    return os.path.join(root_path, RES_DIRECTORY, client_id, task_id, TMP_DIRECTORY)
+def get_tmp_path(node_name, task_id, root_path):
+    return os.path.join(root_path, RES_DIRECTORY, node_name, task_id, TMP_DIRECTORY)

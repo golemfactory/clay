@@ -64,8 +64,8 @@ class ConfigEntry(object):
         """
         property_ = ConfigEntry(section, key, value)
 
-        getter_name = "get{}".format(prop_name)
-        setter_name = "set{}".format(prop_name)
+        getter_name = "get_{}".format(prop_name)
+        setter_name = "set_{}".format(prop_name)
 
         def get_prop(_self):
             return getattr(_self, prop_name).value()
@@ -122,7 +122,7 @@ class SimpleConfig(object):
 
                         if not check_uid:
                             write_config = False
-                        elif len(self._node_config.getClientUid()) > 0:
+                        elif len(self._node_config.get_node_name()) > 0:
                             write_config = False
                 else:
                     cfg.add_section(self._node_config.section())
@@ -161,7 +161,7 @@ class SimpleConfig(object):
             logger_msg = "Generating fresh UUID for {} ->".format(self.get_node_config().section())
             new_uuid = SimpleAuth.generate_uuid()
             logger.info("{} {}".format(logger_msg, new_uuid.get_hex()))
-            self.get_node_config().setClientUid(new_uuid.get_hex())
+            self.get_node_config().set_node_name(new_uuid.get_hex())
 
         self.__write_options(cfg)
 
@@ -216,9 +216,9 @@ class SimpleConfig(object):
 #
 #     listattr(c)
 #
-#     print c.get_optimal_peer_num()
+#     print c.get_opt_peer_num()
 #     c.setOptimalPeerNum(20)
-#     print c.get_optimal_peer_num()
+#     print c.get_opt_peer_num()
 #
 #     cfg = DefaultConfig(0, "some_test_cfg.ini")
 #     cfg1 = DefaultConfig(1, "some_test_cfg.ini")

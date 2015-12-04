@@ -3,8 +3,7 @@ import datetime
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMenu
 
-from golem.task.taskstate import TaskState, ComputerState
-from examples.gnr.renderingtaskstate import RenderingTaskState
+from golem.task.taskstate import ComputerState
 from subtaskcontextmenucustomizer import SubtaskContextMenuCustomizer
 
 from examples.gnr.ui.subtasktableentry import SubtaskTableElem
@@ -37,7 +36,7 @@ class TaskDetailsDialogCustomizer:
         for k in self.gnr_task_state.task_state.subtask_states:
             if k not in self.subtask_table_elements:
                 ss = self.gnr_task_state.task_state.subtask_states[k]
-                self.__add_node(ss.computer.node_id, ss.subtask_id, ss.subtask_status)
+                self.__add_node(ss.computer.node_name, ss.subtask_id, ss.subtask_status)
 
         for k, elem in self.subtask_table_elements.items():
             if elem.subtask_id in self.gnr_task_state.task_state.subtask_states:
@@ -54,36 +53,26 @@ class TaskDetailsDialogCustomizer:
         self.gui.ui.nodesTableWidget.customContextMenuRequested.connect(self.__context_menu_requested)
         self.gui.ui.closeButton.clicked.connect(self.__close_button_clicked)
 
-    # ###########################
-    # def __initializeData(self):
-    #     self.gui.ui.totalTaskProgressBar.setProperty("value", int(self.gnr_task_state.task_state.progress * 100))
-    #     self.gui.ui.estimatedRemainingTimeLabel.setText(str(datetime.timedelta(seconds = self.gnr_task_state.task_state.remaining_time)))
-    #     self.gui.ui.elapsedTimeLabel.setText(str(datetime.timedelta(seconds = self.gnr_task_state.task_state.elapsed_time)))
-    #     for k in self.gnr_task_state.task_state.subtask_states:
-    #         if k not in self.subtask_table_elements:
-    #             ss = self.gnr_task_state.task_state.subtask_states[ k ]
-    #             self.__add_node(ss.computer.node_id, ss.subtask_id, ss.subtask_status)
-
-    def __update_node_additional_info(self, node_id, subtask_id):
+    def __update_node_additional_info(self, node_name, subtask_id):
         if subtask_id in self.gnr_task_state.task_state.subtask_states:
             ss = self.gnr_task_state.task_state.subtask_states[subtask_id]
             comp = ss.computer
 
             assert isinstance(comp, ComputerState)
 
-            self.gui.ui.nodeIdLabel.setText(node_id)
+            self.gui.ui.nodeNameLabel.setText(node_name)
             self.gui.ui.nodeIpAddressLabel.setText(comp.ip_address)
             self.gui.ui.performanceLabel.setText("{} rays per sec".format(comp.performance))
             self.gui.ui.subtaskDefinitionTextEdit.setPlainText(ss.subtask_definition)
 
-    def __add_node(self, node_id, subtask_id, status):
+    def __add_node(self, node_name, subtask_id, status):
         current_row_count = self.gui.ui.nodesTableWidget.rowCount()
         self.gui.ui.nodesTableWidget.insertRow(current_row_count)
 
-        subtask_table_elem = SubtaskTableElem(node_id, subtask_id, status)
+        subtask_table_elem = SubtaskTableElem(node_name, subtask_id, status)
 
-        for col in range(0, 4): self.gui.ui.nodesTableWidget.setItem(current_row_count, col,
-                                                                     subtask_table_elem.get_column_item(col))
+        for col in range(0, 4):
+            self.gui.ui.nodesTableWidget.setItem(current_row_count, col, subtask_table_elem.get_column_item(col))
 
         self.gui.ui.nodesTableWidget.setCellWidget(current_row_count, 4,
                                                    subtask_table_elem.progressBarInBoxLayoutWidget)
@@ -92,22 +81,22 @@ class TaskDetailsDialogCustomizer:
 
         subtask_table_elem.update(0.0, "", 0.0)
 
-        self.__update_node_additional_info(node_id, subtask_id)
+        self.__update_node_additional_info(node_name, subtask_id)
 
     # SLOTS
     ###########################
     def __nodes_table_row_clicked(self, r, c):
 
-        node_id = "{}".format(self.gui.ui.nodesTableWidget.item(r, 0).text())
+        node_name = "{}".format(self.gui.ui.nodesTableWidget.item(r, 0).text())
         subtask_id = "{}".format(self.gui.ui.nodesTableWidget.item(r, 1).text())
-        self.__update_node_additional_info(node_id, subtask_id)
+        self.__update_node_additional_info(node_name, subtask_id)
 
     def __nodes_table_row_selected(self):
         if self.gui.ui.nodesTableWidget.selectedItems():
             row = self.gui.ui.nodesTableWidget.selectedItems()[0].row()
-            node_id = "{}".format(self.gui.ui.nodesTableWidget.item(row, 0).text())
+            node_name = "{}".format(self.gui.ui.nodesTableWidget.item(row, 0).text())
             subtask_id = "{}".format(self.gui.ui.nodesTableWidget.item(row, 1).text())
-            self.__update_node_additional_info(node_id, subtask_id)
+            self.__update_node_additional_info(node_name, subtask_id)
 
     def __close_button_clicked(self):
         self.gui.window.close()

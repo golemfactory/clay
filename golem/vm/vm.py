@@ -1,55 +1,48 @@
 from threading import Lock
 import logging
 import abc
+import multiprocessing as mp
 
 from memorychecker import MemoryChecker
 
 logger = logging.getLogger(__name__)
 
+
 class IGolemVM:
-    #######################
     def __init__(self):
         pass
 
-    #######################
     def get_progress(self):
         assert False
 
-    #######################
-    def interpret(self, codeResource):
+    def interpret(self, code_resource):
         pass
 
 
 class TaskProgress:
-    #######################
     def __init__(self):
         self.lock = Lock()
         self.progress = 0.0
 
-    #######################
     def get(self):
         with self.lock:
             return self.progress
 
-    #######################
     def set(self, val):
         with self.lock:
             self.progress = val
 
 
 class GolemVM(IGolemVM):
-    #######################
     def __init__(self):
         IGolemVM.__init__(self)
         self.src_code = ""
         self.scope = {}
         self.progress = TaskProgress()
 
-    #######################
     def get_progress(self):
         return self.progress.get()
-      
-    #######################  
+
     def run_task(self, src_code, extra_data):
         self.src_code = src_code
         self.scope = extra_data
@@ -60,13 +53,10 @@ class GolemVM(IGolemVM):
     def end_comp(self):
         pass
 
-    #######################
     @abc.abstractmethod
     def _interpret(self):
         return
 
-##############################################
-import multiprocessing as mp
 
 class PythonVM(GolemVM):
 
@@ -74,8 +64,7 @@ class PythonVM(GolemVM):
         exec self.src_code in self.scope
         return self.scope[ "output" ]
 
-##############################################
-import multiprocessing as mp
+
 
 class PythonProcVM(GolemVM):
     def __init__(self):
@@ -95,12 +84,13 @@ class PythonProcVM(GolemVM):
         self.proc.join()
         return scope.get("output")
 
+
 def exec_code(src_code, scope_manager):
     scope = dict(scope_manager)
     exec src_code in scope
     scope_manager["output"] = scope["output"]
 
-##############################################
+
 class PythonTestVM(GolemVM):
     def _interpret(self):
         mc = MemoryChecker()
@@ -112,5 +102,5 @@ class PythonTestVM(GolemVM):
         finally:
             estimated_mem = mc.stop()
         logger.info("Estimated memory for taks: {}".format(estimated_mem))
-        return self.scope[ "output" ], estimated_mem
+        return self.scope["output"], estimated_mem
 

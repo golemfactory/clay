@@ -7,7 +7,7 @@ from taskbase import TaskHeader
 logger = logging.getLogger(__name__)
 
 
-class TaskKeeper:
+class TaskKeeper(object):
     def __init__(self, remove_task_timeout=240.0, verification_timeout=3600):
         self.task_headers = {}
         self.supported_tasks = []
@@ -39,10 +39,10 @@ class TaskKeeper:
     def add_task_header(self, th_dict_repr, is_supported):
         try:
             id_ = th_dict_repr["id"]
-            if id_ not in self.task_headers.keys():  # dont have it
+            if id_ not in self.task_headers.keys():  # don't have it
                 if id_ not in self.removed_tasks.keys():  # not removed recently
                     logger.info("Adding task {}".format(id_))
-                    self.task_headers[id_] = TaskHeader(th_dict_repr["client_id"], id_, th_dict_repr["address"],
+                    self.task_headers[id_] = TaskHeader(th_dict_repr["node_name"], id_, th_dict_repr["address"],
                                                         th_dict_repr["port"], th_dict_repr["key_id"],
                                                         th_dict_repr["environment"], th_dict_repr["task_owner"],
                                                         th_dict_repr["ttl"], th_dict_repr["subtask_timeout"])
@@ -103,9 +103,9 @@ class TaskKeeper:
                 logger.warning("Task {} dies".format(t.task_id))
                 self.remove_task_header(t.task_id)
 
-        for task_id, removeTime in self.removed_tasks.items():
+        for task_id, remove_time in self.removed_tasks.items():
             cur_time = time.time()
-            if cur_time - removeTime > self.removed_task_timeout:
+            if cur_time - remove_time > self.removed_task_timeout:
                 del self.removed_tasks[task_id]
 
     def request_failure(self, task_id):
@@ -116,7 +116,7 @@ class TaskKeeper:
     def get_receiver_for_task_verification_result(self, task_id):
         if task_id not in self.active_tasks:
             return None
-        return self.active_tasks[task_id].client_id
+        return self.active_tasks[task_id].owner_key_id
 
     def add_to_verification(self, subtask_id, task_id):
         now = datetime.datetime.now()

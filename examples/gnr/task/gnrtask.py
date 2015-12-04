@@ -26,9 +26,9 @@ def check_subtask_id_wrapper(func):
 
 
 class GNRTaskBuilder(TaskBuilder):
-    def __init__(self, client_id, task_definition, root_path):
+    def __init__(self, node_name, task_definition, root_path):
         self.task_definition = task_definition
-        self.client_id = client_id
+        self.node_name = node_name
         self.root_path = root_path
 
     def build(self):
@@ -59,9 +59,9 @@ class GNRTask(Task):
     # Task methods #
     ################
 
-    def __init__(self, src_code, client_id, task_id, owner_address, owner_port, owner_key_id, environment,
+    def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
                  ttl, subtask_ttl, resource_size, estimated_memory):
-        th = TaskHeader(client_id, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
+        th = TaskHeader(node_name, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
                         ttl, subtask_ttl, resource_size, estimated_memory)
         Task.__init__(self, th, src_code)
 
@@ -185,7 +185,7 @@ class GNRTask(Task):
     @check_subtask_id_wrapper
     def _mark_subtask_failed(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
-        self.counting_nodes[self.subtasks_given[subtask_id]['client_id']] = -1
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = -1
         self.num_failed_subtasks += 1
 
     def _unpack_task_result(self, trp, tmp_dir):
@@ -197,8 +197,8 @@ class GNRTask(Task):
     def __get_task_dir_params(self):
         common_path_prefix = os.path.commonprefix(self.task_resources)
         common_path_prefix = os.path.dirname(common_path_prefix)
-        dir_name = common_path_prefix  # os.path.join("res", self.header.client_id, self.header.task_id, "resources")
-        tmp_dir = get_tmp_path(self.header.client_id, self.header.task_id, self.root_path)
+        dir_name = common_path_prefix  # os.path.join("res", self.header.node_name, self.header.task_id, "resources")
+        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
 

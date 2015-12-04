@@ -85,7 +85,7 @@ class GNRApplicationLogic(QtCore.QObject):
     def start_nodes_manager_client(self):
         if self.client:
             config_desc = self.client.config_desc
-            self.nodes_manager_client = NodesManagerUidClient(config_desc.client_uid,
+            self.nodes_manager_client = NodesManagerUidClient(config_desc.node_name,
                                                               config_desc.manager_address,
                                                               config_desc.manager_port,
                                                               None,
@@ -129,7 +129,7 @@ class GNRApplicationLogic(QtCore.QObject):
             if self.nodes_manager_client is not None:
                 self.nodes_manager_client.dropConnection()
                 del self.nodes_manager_client
-            self.nodes_manager_client = NodesManagerUidClient(cfg_desc.client_uid,
+            self.nodes_manager_client = NodesManagerUidClient(cfg_desc.node_name,
                                                               cfg_desc.manager_address,
                                                               cfg_desc.manager_port,
                                                               None,
@@ -162,7 +162,7 @@ class GNRApplicationLogic(QtCore.QObject):
         if hasattr(task_state.definition, "renderer"):
             task_state.definition.task_type = task_state.definition.renderer
 
-        return self.task_types[task_state.definition.task_type].task_builder_type(self.client.get_id(),
+        return self.task_types[task_state.definition.task_type].task_builder_type(self.client.get_node_name(),
                                                                                   task_state.definition,
                                                                                   self.client.get_root_path())
 

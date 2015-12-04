@@ -23,8 +23,8 @@ class UpdateOtherGolemsTaskDefinition:
 
 
 class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
-    def __init__(self, client_id, task_definition, root_path, src_dir):
-        GNRTaskBuilder.__init__(self, client_id, task_definition, root_path)
+    def __init__(self, node_name, task_definition, root_path, src_dir):
+        GNRTaskBuilder.__init__(self, node_name, task_definition, root_path)
         self.src_dir = src_dir
 
     def build(self):
@@ -43,7 +43,7 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
             resource_size += os.stat(resource).st_size
 
         return UpdateOtherGolemsTask(src_code,
-                                     self.client_id,
+                                     self.node_name,
                                      self.task_definition.task_id,
                                      "",
                                      0,
@@ -62,7 +62,7 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
 class UpdateOtherGolemsTask(GNRTask):
     def __init__(self,
                  src_code,
-                 client_id,
+                 node_name,
                  task_id,
                  owner_address,
                  owner_port,
@@ -76,7 +76,7 @@ class UpdateOtherGolemsTask(GNRTask):
                  estimated_memory,
                  total_tasks):
 
-        GNRTask.__init__(self, src_code, client_id, task_id, owner_address, owner_port, owner_key_id, environment,
+        GNRTask.__init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
                          ttl, subtask_ttl, resource_size, estimated_memory)
 
         self.total_tasks = total_tasks
@@ -89,9 +89,9 @@ class UpdateOtherGolemsTask(GNRTask):
     def abort(self):
         self.active = False
 
-    def query_extra_data(self, perf_index, num_cores, client_id):
+    def query_extra_data(self, perf_index, num_cores, node_id, node_name=None):
 
-        if client_id in self.updated:
+        if node_id in self.updated:
             return None
 
         ctd = ComputeTaskDef()
@@ -108,11 +108,11 @@ class UpdateOtherGolemsTask(GNRTask):
         ctd.performance = perf_index
         if self.last_task + 1 <= self.total_tasks:
             self.last_task += 1
-        self.updated[client_id] = True
+        self.updated[node_id] = True
 
         self.subtasks_given[hash_] = ctd.extra_data
         self.subtasks_given[hash_]['status'] = SubtaskStatus.starting
-        self.subtasks_given[hash_]['client_id'] = client_id
+        self.subtasks_given[hash_]['node_id'] = node_id
 
         return ctd
 
