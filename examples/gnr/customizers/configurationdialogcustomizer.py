@@ -39,6 +39,8 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_host_port))
         self.gui.ui.workingDirectoryLineEdit.setText(u"{}".format(config_desc.root_path))
         self.gui.ui.performanceLabel.setText(u"{}".format(config_desc.estimated_performance))
+        self.gui.ui.luxPerformanceLabel.setText(u"{}".format(config_desc.estimated_lux_performance))
+        self.gui.ui.blenderPerformanceLabel.setText(u"{}".format(config_desc.estimated_blender_performance))
         self.gui.ui.useIp6CheckBox.setChecked(config_desc.use_ipv6)
         self.__load_num_cores(config_desc)
         self.__load_memory_config(config_desc)
@@ -160,6 +162,8 @@ class ConfigurationDialogCustomizer:
 
     def __setup_connections(self):
         self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
+        self.gui.ui.recountLuxButton.clicked.connect(self.__recount_lux_performance)
+        self.gui.ui.recountBlenderButton.clicked.connect(self.__recount_blender_performance)
         self.gui.ui.buttonBox.accepted.connect(self.__change_config)
 
         QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
@@ -317,6 +321,12 @@ class ConfigurationDialogCustomizer:
         except ValueError:
             num_cores = 1
         self.gui.ui.performanceLabel.setText(str(self.logic.recount_performance(num_cores)))
+    
+    def __recount_lux_performance(self):
+        self.gui.ui.luxPerformanceLabel.setText(str(self.logic.recount_lux_performance()))
+    
+    def __recount_blender_performance(self):
+        self.gui.ui.blenderPerformanceLabel.setText(str(self.logic.recount_blender_performance()))
 
     def __read_payment_config(self, cfg_desc):
         cfg_desc.eth_account = u"{}".format(self.gui.ui.ethAccountLineEdit.text())

@@ -36,6 +36,8 @@ class ClientConfigDescriptor(object):
         self.resource_session_timeout = 0
 
         self.estimated_performance = 0.0
+        self.estimated_lux_performance = 0.0
+        self.estimated_blender_performance = 0.0
         self.node_snapshot_interval = 0.0
         self.max_results_sending_delay = 0.0
         self.root_path = u""
@@ -65,9 +67,10 @@ class ClientConfigDescriptor(object):
                        'getting_peers_interval', 'getting_tasks_interval', 'task_request_interval',
                        'use_waiting_for_task_timeout', 'waiting_for_task_timeout',
                        'p2p_session_timeout', 'task_session_timeout', 'resource_session_timeout',
-                       'estimated_performance', 'node_snapshot_interval',
-                       'max_results_sending_delay', 'use_distributed_resource_management',
-                       'requesting_trust', 'computing_trust', 'eth_account', 'use_ipv6'
+                       'estimated_performance', 'estimated_lux_performance', 'estimated_blender_performance',
+                       'node_snapshot_interval', 'max_results_sending_delay', 
+                       'use_distributed_resource_management', 'requesting_trust', 'computing_trust', 
+                       'eth_account', 'use_ipv6'
                        ]
         for name in field_names:
             getter = 'get_' + name
@@ -112,7 +115,7 @@ class ConfigApprover(object):
         to_int_opt = ['seed_host_port', 'manager_port', 'num_cores', 'opt_num_peers', 'dist_res_num',
                       'waiting_for_task_timeout', 'p2p_session_timeout', 'task_session_timeout',
                       'resource_session_timeout', 'pings_interval', 'max_results_sending_delay', ]
-        to_float_opt = ['estimated_performance', 'getting_peers_interval', 'getting_tasks_interval',
+        to_float_opt = ['estimated_performance', 'estimated_lux_performance', 'estimated_blender_performance', 'getting_peers_interval', 'getting_tasks_interval',
                         'node_snapshot_interval', 'computing_trust', 'requesting_trust']
         self._opts_to_change = dont_change_opt + to_int_opt + to_float_opt
         for opt in dont_change_opt:
