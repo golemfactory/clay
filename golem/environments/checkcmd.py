@@ -1,6 +1,8 @@
-import os
 import platform
 import subprocess
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def check_cmd(cmd, no_output=True):
@@ -12,5 +14,6 @@ def check_cmd(cmd, no_output=True):
         else:
             rc = subprocess.call([pref_cmd, cmd])
             return rc == 0
-    except Exception, err:
+    except Exception:
+        logger.warn("Command {} not found".format(cmd))
         return False

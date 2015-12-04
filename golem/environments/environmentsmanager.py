@@ -1,4 +1,7 @@
+import logging
 from golem.environments.environmentsconfig import EnvironmentsConfig
+
+logger = logging.getLogger(__name__)
 
 
 class EnvironmentsManager(object):
@@ -23,7 +26,10 @@ class EnvironmentsManager(object):
         :param Environment environment:
         """
         self.environments.add(environment)
-        if environment.supported():
+        supported = environment.supported()
+        logger.info("Adding environment {} supported={}"
+                    .format(environment.get_id(), supported))
+        if supported:
             self.supported_environments.add(environment.get_id())
 
     def supported(self, env_id):

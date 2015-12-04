@@ -41,7 +41,7 @@ class TaskKeeper:
             id_ = th_dict_repr["id"]
             if id_ not in self.task_headers.keys():  # dont have it
                 if id_ not in self.removed_tasks.keys():  # not removed recently
-                    logger.info("Adding task {}".format(id_))
+                    logger.info("Adding task {} is_supported={}".format(id_, is_supported))
                     self.task_headers[id_] = TaskHeader(th_dict_repr["client_id"], id_, th_dict_repr["address"],
                                                         th_dict_repr["port"], th_dict_repr["key_id"],
                                                         th_dict_repr["environment"], th_dict_repr["task_owner"],
