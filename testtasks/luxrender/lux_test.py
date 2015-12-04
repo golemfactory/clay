@@ -2,7 +2,10 @@ from testtasks.execution_time_measure import measure
 from testtasks.dir_hash_builder import get_hash_of_dir, get_current_directory
 import os
 
-EXPECTED_CHECKSUM = "725ad6c8c3391c730708bf3619bfd236690fef29"
+# normalization constant, obtained experimentally
+MAGIC_CONSTANT = 34098
+# hash of the test task
+EXPECTED_CHECKSUM = "b48040b48391b7c435a0fe27d1223b4c17cf9a78"
 
 def lux_performance():
     '''
@@ -14,5 +17,6 @@ def lux_performance():
     if checksum == "-1":
         return -1.
     if str(checksum) != EXPECTED_CHECKSUM:
+        print str(checksum)
         return -1.
-    return measure(["luxconsole", "lux_task/scene-Helicopter-27.Scene.00001.lxs"])
+    return MAGIC_CONSTANT / measure(["luxconsole", "lux_task/schoolcorridor.lxs"])
