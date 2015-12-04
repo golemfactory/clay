@@ -8,7 +8,7 @@ class ClientConfigDescriptor(object):
 
     def __init__(self):
         """ Create new basic empty configuration scheme """
-        self.node_name = 0
+        self.node_name = ""
         self.start_port = 0
         self.end_port = 0
         self.manager_address = ""

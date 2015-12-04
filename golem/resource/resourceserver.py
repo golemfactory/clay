@@ -88,8 +88,6 @@ class ResourceServer(PendingConnectionsServer):
     def new_connection(self, session):
         self.sessions.append(session)
 
-    new_connection = new_connection
-
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         if key_id in self.resource_peers:
             if self.resource_peers[key_id]['addr'] == addr and self.resource_peers[key_id]['port'] == port and \

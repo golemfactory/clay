@@ -33,7 +33,7 @@ class PeerSession(BasicSafeSession):
 
         # Information about peer
         self.degree = 0
-        self.node_name = None
+        self.node_name = ""
         self.node_info = None
         self.listen_port = None
 

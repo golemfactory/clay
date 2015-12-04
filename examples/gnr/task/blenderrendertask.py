@@ -135,7 +135,7 @@ class BlenderRenderTask(FrameRenderingTask):
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
         if not self._accept_client(node_id):
-            logger.warning(" Client {} banned from this task ".format(node_name))
+            logger.warning("Client {} banned from this task ".format(node_name))
             return None
 
         start_task, end_task = self._get_next_task()
