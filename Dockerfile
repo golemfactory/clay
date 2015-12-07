@@ -23,8 +23,6 @@ RUN cd /opt/golem && python setup.py install
 
 ENV GOLEM=/opt/golem PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/blender
 
-ENTRYPOINT ["/usr/bin/python"]
-
 WORKDIR /opt/golem/examples/gnr
 
-CMD ["node.py"]
+ENTRYPOINT ["/usr/bin/python", "node.py"]

@@ -32,8 +32,7 @@ logger = logging.getLogger(__name__)
 def empty_add_nodes(*args):
     pass
 
-
-def start_client():
+def create_client():
     init_messages()
 
     app_config = AppConfig.load_config()
@@ -42,11 +41,13 @@ def start_client():
 
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
-    c = Client(config_desc, config=app_config)
+    return Client(config_desc, config=app_config)
 
+
+def start_client():
+    c = create_client()
     logger.info("Starting all asynchronous services")
     c.start_network()
-
     return c
 
 
