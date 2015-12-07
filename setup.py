@@ -68,8 +68,7 @@ setup(
     author="Golem Team",
     author_email='contact@golemproject.net',
     url='http://golemproject.net',
-    packages=find_packages(include=['golem*']) + [
-        'examples',
+    packages=find_packages(include=['golem*', 'examples*']) + [
         'tools'
     ],
     include_package_data=True,

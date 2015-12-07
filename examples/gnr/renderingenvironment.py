@@ -2,7 +2,7 @@ import os
 import shutil
 import logging
 from golem.environments.environment import Environment
-from golem.environments.checkcmd import check_cmd
+from golem.environments.utils import find_program
 from examples.gnr.task.threedsmaxcfgeditor import regenerate_file
 
 logger = logging.getLogger(__name__)
@@ -181,7 +181,7 @@ class BlenderEnvironment(Environment):
         return self.check_software()
 
     def check_software(self):
-        return check_cmd(self.software_name)
+        return find_program(self.software_name) is not None
 
     def get_blender(self):
         return self.software_name
