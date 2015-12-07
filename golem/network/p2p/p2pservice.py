@@ -236,7 +236,7 @@ class P2PService(PendingConnectionsServer):
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
 
         for peer in self.peers.values():
-            if (peer.port == self.config_desc.seed_port) and (peer.address == self.config_desc.seed_port):
+            if (peer.port == self.config_desc.seed_port) and (peer.address == self.config_desc.seed_host):
                 return
 
         tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
