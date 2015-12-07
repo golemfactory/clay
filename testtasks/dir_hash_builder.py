@@ -26,7 +26,7 @@ def get_hash_of_dir(directory, verbose=0):
                 if verbose == 1:
                     print 'Hashing', names
                 # skip rendered images if they are there
-                if names[-4:] == ".png" or names[-5:] == ".jpeg":
+                if names[-4:] == ".png" or names[-5:] == ".jpeg" or names[-4:] == ".jpg":
                     print names
                     continue
                 filepath = os.path.join(root,names)

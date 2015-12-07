@@ -11,6 +11,8 @@ from clientconfigdescriptor import ClientConfigDescriptor
 
 CONFIG_FILENAME = "app_cfg.ini"
 ESTM_FILENAME = "minilight.ini"
+ESTM_LUX_FILENAME = "lux.ini"
+ESTM_BLENDER_FILENAME = "blender.ini"
 MANAGER_PORT = 20301
 MANAGER_ADDRESS = "127.0.0.1"
 ESTIMATED_DEFAULT = 2220.0
@@ -64,6 +66,30 @@ class NodeConfig:
                 return 0
         return res
 
+    @classmethod
+    def read_estimated_lux_performance(cls):
+        estm_file = SimpleEnv.env_file_name(ESTM_LUX_FILENAME)
+        res = 0
+        if os.path.isfile(estm_file):
+            try:
+                with open(estm_file, 'r') as file_:
+                    res = "{0:.1f}".format(float(file_.read()))
+            except:
+                return 0
+        return res
+    
+    @classmethod
+    def read_estimated_blender_performance(cls):
+        estm_file = SimpleEnv.env_file_name(ESTM_BLENDER_FILENAME)
+        res = 0
+        if os.path.isfile(estm_file):
+            try:
+                with open(estm_file, 'r') as file_:
+                    res = "{0:.1f}".format(float(file_.read()))
+            except:
+                return 0
+        return res
+    
     SEND_PINGS = 1
     PINGS_INTERVALS = 120
     GETTING_PEERS_INTERVAL = 4.0
@@ -102,7 +128,15 @@ class NodeConfig:
         estimated = NodeConfig.read_estimated_performance()
         if estimated == 0:
             estimated = ESTIMATED_DEFAULT
-
+            
+        estimated_lux = NodeConfig.read_estimated_lux_performance()
+        if estimated_lux <= 0:
+            estimated_lux = ESTIMATED_DEFAULT
+        
+        estimated_blender = NodeConfig.read_estimated_blender_performance()
+        if estimated_blender <= 0:
+            estimated_blender = ESTIMATED_DEFAULT
+            
         ConfigEntry.create_property(self.section(), "seed host", seed_host, self, "SeedHost")
         ConfigEntry.create_property(self.section(), "seed host port", seed_port, self, "SeedHostPort")
         ConfigEntry.create_property(self.section(), "resource root path", root_path, self, "RootPath")
@@ -120,6 +154,9 @@ class NodeConfig:
         ConfigEntry.create_property(self.section(), "waiting for task timeout", waiting_for_task_timeout, self,
                                     "WaitingForTaskTimeout")
         ConfigEntry.create_property(self.section(), "estimated performance", estimated, self, "EstimatedPerformance")
+        ConfigEntry.create_property(self.section(), "estimated lux performance", estimated_lux, self, "EstimatedLuxPerformance")
+        ConfigEntry.create_property(self.section(), "estimated blender performance", estimated_blender, self, "EstimatedBlenderPerformance")
+        
         ConfigEntry.create_property(self.section(), "node snapshot interval", nodes_snapshot_interval, self,
                                     "NodeSnapshotInterval")
         ConfigEntry.create_property(self.section(), "add tasks", add_tasks, self, "AddTasks")
@@ -249,6 +286,18 @@ class AppConfig:
         except:
             return float(ESTIMATED_DEFAULT)
 
+    def get_estimated_lux_performance(self):
+        try:
+            return float(self._cfg.get_node_config().getEstimatedLuxPerformance())
+        except:
+            return float(ESTIMATED_DEFAULT)
+
+    def get_estimated_blender_performance(self):
+        try:
+            return float(self._cfg.get_node_config().getEstimatedBlenderPerformance())
+        except:
+            return float(ESTIMATED_DEFAULT)
+
     def get_node_snapshot_interval(self):
         return self._cfg.get_node_config().getNodeSnapshotInterval()
 
@@ -302,6 +351,8 @@ class AppConfig:
         self._cfg.get_node_config().setRootPath(cfg_desc.root_path)
         self._cfg.get_node_config().setNumCores(cfg_desc.num_cores)
         self._cfg.get_node_config().setEstimatedPerformance(cfg_desc.estimated_performance)
+        self._cfg.get_node_config().setEstimatedLuxPerformance(cfg_desc.estimated_lux_performance)
+        self._cfg.get_node_config().setEstimatedBlenderPerformance(cfg_desc.estimated_blender_performance)
         self._cfg.get_node_config().setMaxResourceSize(cfg_desc.max_resource_size)
         self._cfg.get_node_config().setMaxMemorySize(cfg_desc.max_memory_size)
         self._cfg.get_node_config().setSendPings(cfg_desc.send_pings)
