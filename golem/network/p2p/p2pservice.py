@@ -700,7 +700,9 @@ class P2PService(PendingConnectionsServer):
         logger.info("Can't connect to peer {}.".format(conn_id))
 
     def __is_new_peer(self, id_):
-        if id_ in self.incoming_peers or id_ in self.peers or id_ == self.get_key_id():
+        if (id_ in self.incoming_peers or
+                id_ in self.peers or
+                long(id_, 16) == self.get_key_id()):
             return False
         else:
             return True
