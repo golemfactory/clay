@@ -141,6 +141,10 @@ class Client:
         time.sleep(0.5)
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
 
+    def connect(self, tcp_address):
+        logger.debug("P2pservice connecting to {} on port {}".format(tcp_address.address, tcp_address.port))
+        self.p2pservice.connect(tcp_address)
+
     def run_add_task_server(self):
         from PluginServer import start_task_adder_server
         from multiprocessing import Process, freeze_support

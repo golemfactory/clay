@@ -78,7 +78,12 @@ class P2PService(PendingConnectionsServer):
         self.start_accepting()
         tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
         if tcp_address.is_proper():
-            self.__connect(tcp_address)
+            self.connect(tcp_address)
+
+    def connect(self, tcp_address):
+        connect_info = TCPConnectInfo([tcp_address], self.__connection_established,
+                                      P2PService.__connection_failure)
+        self.network.connect(connect_info)
 
     def set_task_server(self, task_server):
         """ Set task server
@@ -241,7 +246,7 @@ class P2PService(PendingConnectionsServer):
 
         tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
         if tcp_address.is_proper():
-            self.__connect(tcp_address)
+            self.connect(tcp_address)
 
         if self.resource_server:
             self.resource_server.change_config(config_desc)
@@ -321,7 +326,7 @@ class P2PService(PendingConnectionsServer):
 
         tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
         if tcp_address.is_proper():
-            self.__connect(tcp_address)
+            self.connect(tcp_address)
 
     def encrypt(self, data, public_key):
         """ Encrypt data with given public_key. If no public_key is given, or it's equal to zero
@@ -648,10 +653,6 @@ class P2PService(PendingConnectionsServer):
     #############################
     # PRIVATE SECTION
     #############################
-    def __connect(self, tcp_address):
-        connect_info = TCPConnectInfo([tcp_address], self.__connection_established,
-                                      P2PService.__connection_failure)
-        self.network.connect(connect_info)
 
     def __send_get_peers(self):
         while len(self.peers) < self.config_desc.opt_peer_num:
