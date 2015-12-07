@@ -1,9 +1,10 @@
 import logging
-import ipaddr
 import time
 import os
+import re
 import struct
 
+from ipaddress import IPv6Address, IPv4Address, ip_address
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
     TCP6ClientEndpoint
 from twisted.internet.defer import maybeDeferred
@@ -26,28 +27,76 @@ logger = logging.getLogger(__name__)
 
 
 class TCPAddress(object):
+
+    """Pattern for recognizing host name segments"""
+    __segment_pattern = re.compile('(?!-)[a-z\d-]{1,63}(?<!-)\Z', re.IGNORECASE)
+
+    __all_numeric_pattern = re.compile('[0-9\.]+\Z')
+
     def __init__(self, address, port):
         """
         TCP Address information
-        :param str address: address or name
+        :param str address: IPv4/IPv6 address or host name
         :param int port:
         :return: None
         """
+        assert (isinstance(address, str))
+        assert (isinstance(port, int))
         self.address = address
         self.port = port
 
-    def is_proper(self):
-        try:
-            if self.port < MIN_PORT or self.port > MAX_PORT:
-                logger.warning(u"Port number out of range ({},{}):{}".format(MIN_PORT, MAX_PORT, self.port))
-                return False
-        except Exception, e:
-            logger.error(u"Wrong port number {}: {}".format(self.port, str(e)))
-            return False
-        return len(self.address) > 0
-
     def __eq__(self, other):
         return self.address == other.address and self.port == other.port
+
+    @staticmethod
+    def __check_valid_hostname(hostname):
+        """Checks that the given string is a valid hostname.
+        See RFC 1123, page 13, and here:
+        http://stackoverflow.com/questions/2532053/validate-a-hostname-string.
+        Raises ValueError if the argument is not a valid hostname.
+        :returns None
+        """
+        if len(hostname) > 255:
+            raise ValueError('Host name has more than 255 chars: ' + hostname)
+        # Trailing '.' is allowed!
+        if hostname[-1] == '.':
+            hostname = hostname[:-1]
+        segments = hostname.split('.')
+        if not all(TCPAddress.__segment_pattern.match(s) for s in segments):
+            raise ValueError('Invalid host name: ' + hostname)
+
+    @staticmethod
+    def parse(text):
+        """Parses an IPv4 or IPv6 socket address.
+        Note: preceding or trailing spaces are not allowed.
+        :param str|unicode text:
+        :returns parsed TCPAddress
+        :rtype TCPAddress
+        """
+        # TODO: describe syntax (esp. of IPv6 addresses)
+        if not isinstance(text, str):
+            raise TypeError('string expected instead of ' + type(text).__name__)
+
+        if text.startswith('['):
+            # We expect '[<ip6 addr>]:<portnum>',
+            # use ipaddress to parse IPv6 address:
+            addr_str, port_str = text.split(']:')
+            addr_str = addr_str[1:-1]
+            # ipaddress requires unicode input
+            IPv6Address(addr_str.decode('utf8'))
+        else:
+            # We expect '<ip4 addr or hostname>:<port>'.
+            addr_str, port_str = text.split(':')
+            # TODO: maybe check that the last segment is numeric?
+            if TCPAddress.__all_numeric_pattern.match(addr_str):
+                IPv4Address(addr_str.decode('utf8'))
+            else:
+                TCPAddress.__check_valid_hostname(addr_str)
+
+        port = int(port_str)
+        if not 1 <= port <= 65535:
+            raise ValueError('Port number out of range (1..65535): ' + port_str)
+        return TCPAddress(addr_str, port)
 
 
 class TCPListenInfo(object):
@@ -190,7 +239,7 @@ class TCPNetwork(Network):
 
         use_ipv6 = False
         try:
-            ip = ipaddr.IPAddress(address)
+            ip = ip_address(address)
             use_ipv6 = ip.version == 6
         except ValueError:
             logger.warning("{} address is invalid".format(address))
