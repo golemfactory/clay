@@ -79,7 +79,7 @@ class GNRTask(Task):
 
         self.res_files = {}
 
-    def initialize(self):
+    def initialize(self, dir_manager):
         pass
 
     def needs_computation(self):
