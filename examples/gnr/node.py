@@ -24,28 +24,10 @@ def parse_connect(arg_connect):
     print arg_addresses
     for arg in arg_addresses:
         try:
-            if arg.startswith("["):
-                addr = __parse_ipv6(arg)
-            else:
-                addr = __parse_ipv4(arg)
-            addresses.append(addr)
+            addresses.append(TCPAddress.parse(arg))
         except ValueError:
             logger.warning("Wrong value format {}. Skipping address.".format(arg))
     return addresses
-
-
-def __parse_ipv6(addr_arg):
-    print addr_arg
-    host, port = addr_arg.split("]")
-    host = host[1:]
-    port = int(port[1:])
-    return TCPAddress(host, port)
-
-
-def __parse_ipv4(addr_arg):
-    host, port = addr_arg.split(":")
-    port = int(port)
-    return TCPAddress(host, port)
 
 
 if __name__ == "__main__":
