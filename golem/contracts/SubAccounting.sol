@@ -7,7 +7,7 @@ contract SubAccounting {
         return _balance[addr];
     }
 
-    // This function is redundant, but might make some clients simplier.
+    // This function is redundant, but might make some clients simpler.
     function balance() constant external returns (uint) {
         return _balance[msg.sender];
     }
@@ -32,13 +32,13 @@ contract SubAccounting {
         }
     }
 
-    function transferExt(uint[] payments) external {
+    function transferExternalValue(bytes32[] payments) external {
         uint value = msg.value;
 
         for (uint i = 0; i < payments.length; ++i) {
-            uint payment = payments[i];
+            bytes32 payment = payments[i];
             address addr = address(payment);
-            uint v = payment / 2**160;
+            uint v = uint(payment) / 2**160;
             if (v > value)
                 break;
             _balance[addr] += v;

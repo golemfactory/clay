@@ -6,8 +6,8 @@ from ethereum.utils import int_to_big_endian, denoms
 
 # Contract code:
 # https://chriseth.github.io/browser-solidity/?gist=ac140b941584ca36be92
-contract_init_hexcode = "6060604052610653806100126000396000f36060604052361561007f576000357c0100000000000000000000000000000000000000000000000000000000900480632e1a7d4d1461008157806370a0823114610099578063853828b6146100c557806390a2005b146100d4578063b69ef8a8146100f7578063d0e30db01461011a578063eddfe116146101295761007f565b005b6100976004808035906020019091905050610439565b005b6100af60048080359060200190919050506102e6565b6040518082815260200191505060405180910390f35b6100d2600480505061039f565b005b6100f56004808035906020019082018035906020019190919290505061014c565b005b6101046004805050610324565b6040518082815260200191505060405180910390f35b6101276004805050610360565b005b61014a600480803590602001908201803590602001919091929050506104f0565b005b600060006000600060006000600060005060003373ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000206000505495508534019450600093505b8787905084101561029d578787858181101561000257905090906020020135925082600190049150740100000000000000000000000000000000000000008360019004049050848111156101e75761029d565b80600060005060008473ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082828250540192505081905550808503945084508173ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff167fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef836040518082815260200191505060405180910390a35b8360010193508350610194565b85851415156102db5784600060005060003373ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600050819055505b5b5050505050505050565b6000600060005060008373ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060005054905061031f565b919050565b6000600060005060003373ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060005054905061035d565b90565b34600060005060003373ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000206000828282505401925050819055505b565b3373ffffffffffffffffffffffffffffffffffffffff166000600060005060003373ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060005054604051809050600060405180830381858888f19350505050506000600060005060003373ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600050819055505b565b6000600060005060003373ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060005054905081811015156104eb573373ffffffffffffffffffffffffffffffffffffffff16600083604051809050600060405180830381858888f19350505050156104ea5781600060005060003373ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000206000828282505403925050819055505b5b5b5050565b60006000600060006000349450600093505b86869050841015610603578686858181101561000257905090906020020135925082915074010000000000000000000000000000000000000000830490508481111561054d57610603565b80600060005060008473ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082828250540192505081905550808503945084508173ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff167fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef836040518082815260200191505060405180910390a35b8360010193508350610502565b60008511156106495784600060005060003373ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000206000828282505401925050819055505b5b5050505050505056"
-contract_abi = """[{"constant":false,"inputs":[{"name":"value","type":"uint256"}],"name":"withdraw","outputs":[],"type":"function"},{"constant":true,"inputs":[{"name":"addr","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"},{"constant":false,"inputs":[],"name":"withdrawAll","outputs":[],"type":"function"},{"constant":false,"inputs":[{"name":"payments","type":"bytes32[]"}],"name":"transfer","outputs":[],"type":"function"},{"constant":true,"inputs":[],"name":"balance","outputs":[{"name":"","type":"uint256"}],"type":"function"},{"constant":false,"inputs":[],"name":"deposit","outputs":[],"type":"function"},{"constant":false,"inputs":[{"name":"payments","type":"uint256[]"}],"name":"transferExt","outputs":[],"type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"}]"""
+contract_init_hexcode = "6060604052610656806100126000396000f36060604052361561007f576000357c0100000000000000000000000000000000000000000000000000000000900480632e1a7d4d146100815780633f883dfb1461009957806370a08231146100bc578063853828b6146100e857806390a2005b146100f7578063b69ef8a81461011a578063d0e30db01461013d5761007f565b005b6100976004808035906020019091905050610225565b005b6100ba600480803590602001908201803590602001919091929050506102d7565b005b6100d260048080359060200190919050506105dc565b6040518082815260200191505060405180910390f35b6100f5600480505061018b565b005b61011860048080359060200190820180359060200191909192905050610442565b005b610127600480505061061a565b6040518082815260200191505060405180910390f35b61014a600480505061014c565b005b34600060005060003373ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000206000828282505401925050819055505b565b3373ffffffffffffffffffffffffffffffffffffffff166000600060005060003373ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060005054604051809050600060405180830381858888f19350505050506000600060005060003373ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600050819055505b565b6000600060005060003373ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060005054905081811015156102d2573373ffffffffffffffffffffffffffffffffffffffff16600083604051809050600060405180830381858888f193505050505081600060005060003373ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000206000828282505403925050819055505b5b5050565b60006000600060006000349450600093505b868690508410156103f25786868581811015610002579050909060200201359250826001900491507401000000000000000000000000000000000000000083600190040490508481111561033c576103f2565b80600060005060008473ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082828250540192505081905550808503945084508173ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff167fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef836040518082815260200191505060405180910390a35b83600101935083506102e9565b60008511156104385784600060005060003373ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000206000828282505401925050819055505b5b50505050505050565b600060006000600060006000600060005060003373ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000206000505495508534019450600093505b87879050841015610593578787858181101561000257905090906020020135925082600190049150740100000000000000000000000000000000000000008360019004049050848111156104dd57610593565b80600060005060008473ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082828250540192505081905550808503945084508173ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff167fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef836040518082815260200191505060405180910390a35b836001019350835061048a565b85851415156105d15784600060005060003373ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600050819055505b5b5050505050505050565b6000600060005060008373ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600050549050610615565b919050565b6000600060005060003373ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600050549050610653565b9056"
+contract_abi = """[{"constant":false,"inputs":[{"name":"value","type":"uint256"}],"name":"withdraw","outputs":[],"type":"function"},{"constant":false,"inputs":[{"name":"payments","type":"bytes32[]"}],"name":"transferExternalValue","outputs":[],"type":"function"},{"constant":true,"inputs":[{"name":"addr","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"},{"constant":false,"inputs":[],"name":"withdrawAll","outputs":[],"type":"function"},{"constant":false,"inputs":[{"name":"payments","type":"bytes32[]"}],"name":"transfer","outputs":[],"type":"function"},{"constant":true,"inputs":[],"name":"balance","outputs":[{"name":"","type":"uint256"}],"type":"function"},{"constant":false,"inputs":[],"name":"deposit","outputs":[],"type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"}]"""
 
 eth = denoms.ether
 
@@ -62,12 +62,13 @@ class BankContractTest(unittest.TestCase):
         o = self.c.withdraw(value, sender=m.key, profiling=True)
         return o['gas'] - 21000
 
-    def transfer(self, addr_idx, payments, value=0):
+    @staticmethod
+    def encode_payments(payments):
         args = []
-        vsum = 0L
+        value_sum = 0L
         for idx, v in payments:
             addr = tester.accounts[idx]
-            vsum += v
+            value_sum += v
             v = long(v)
             assert v < 2**96
             vv = int_to_big_endian(v)
@@ -77,26 +78,36 @@ class BankContractTest(unittest.TestCase):
             assert len(mix) == 32
             print encode_hex(mix), "v: ", v, "addr", encode_hex(addr)
             args.append(mix)
+        return args, value_sum
 
+    def transfer(self, addr_idx, payments, value=0):
+        args, vsum = self.encode_payments(payments)
         sender = self.monitor(addr_idx, vsum)
-        return self.c.transfer(args, sender=sender.key, value=value)
+        self.c.transfer(args, sender=sender.key, value=value)
+        return sender.gas()
+
+    def transfer_external_value(self, addr_idx, payments, value):
+        args, vsum = self.encode_payments(payments)
+        sender = self.monitor(addr_idx, vsum)
+        self.c.transferExternalValue(args, sender=sender.key, value=value)
+        return sender.gas()
 
     def test_deployment(self):
         c, g = self.deploy_contract()
         assert len(c) == 20
-        assert g == 445318
+        assert g == 446122
 
     def test_create_account(self):
         self.deploy_contract()
         g = self.deposit(1, 1)
-        assert g == 41396 + 4 * 68
+        assert g == 41690
         assert self.contract_balance() == 1
 
     def test_deposit(self):
         self.deploy_contract()
         self.deposit(1, 1)
         g = self.deposit(1, 10*9)
-        assert g == 26396 + 4 * 68
+        assert g == 26690
         assert self.contract_balance() == 10*9 + 1
 
     def test_balance(self, dep=12345678):
@@ -116,11 +127,11 @@ class BankContractTest(unittest.TestCase):
         a = tester.accounts[6]
         b0 = self.state.block.get_balance(a)
         eg = self.withdraw(6, w)
-        assert eg == 12324
+        assert eg == 12309
         assert self.contract_balance() == v - w
         diff = self.state.block.get_balance(a) - b0
         cost = diff - w
-        g = 21000 + 5000 + 6700 + 1472
+        g = 21000 + 5000 + 6700 + 1457
         assert cost == -g
         assert self.balance_of(6) == v - w
 
@@ -176,3 +187,39 @@ class BankContractTest(unittest.TestCase):
         assert self.balance(4) == 44*eth
         assert self.balance(5) == 55*eth
         assert self.balance(1) == v*eth  # Rest should go to 1
+
+    def test_transfer_exact_value_2(self):
+        """Transfers exact value included in transaction to 2 other accounts.
+           This is a benchmark used to compare with transferExternalValue().
+           See :func:test_transfer_external_value_2.
+           """
+        self.deploy_contract()
+        self.deposit(1, 1)
+        self.deposit(7, 1)
+        v1, v7 = 1*eth, 7*eth
+        v = v1 + v7
+        g = self.transfer(8, [(1, v1), (7, v7)], value=v)
+        assert g == 40152
+        assert self.balance(8) == 0
+        assert self.balance(1) == v1 + 1
+        assert self.balance(7) == v7 + 1
+        assert self.contract_balance() == v + 2
+
+    def test_transfer_external_value_2(self):
+        """Transfers exact value included in transaction to 2 other accounts.
+           This is a benchmark used to compare with transfer().
+           See :func:test_transfer_exact_value_2.
+           """
+        self.deploy_contract()
+        self.deposit(1, 1)
+        self.deposit(7, 1)
+        v1, v7 = 1*eth, 7*eth
+        v = v1 + v7
+        g = self.transfer_external_value(8, [(1, v1), (7, v7)], value=v)
+        savings = 1 - (g / 40152.0)
+        assert g == 39985
+        assert savings < 0.005
+        assert self.balance(8) == 0
+        assert self.balance(1) == v1 + 1
+        assert self.balance(7) == v7 + 1
+        assert self.contract_balance() == v + 2
