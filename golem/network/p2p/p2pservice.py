@@ -1,6 +1,7 @@
 import time
 import logging
 import random
+from ipaddress import AddressValueError
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, TCPAddress, SafeProtocol
@@ -76,9 +77,11 @@ class P2PService(PendingConnectionsServer):
     def connect_to_network(self):
         """ Start listening on the port from configuration and try to connect to the seed node """
         self.start_accepting()
-        tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
-        if tcp_address.is_proper():
+        try:
+            tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
             self.connect(tcp_address)
+        except AddressValueError, err:
+            logger.error("Invalid seed address: " + err.message)
 
     def connect(self, tcp_address):
         connect_info = TCPConnectInfo([tcp_address], self.__connection_established,
@@ -244,9 +247,11 @@ class P2PService(PendingConnectionsServer):
             if (peer.port == self.config_desc.seed_port) and (peer.address == self.config_desc.seed_host):
                 return
 
-        tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
-        if tcp_address.is_proper():
+        try:
+            tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
             self.connect(tcp_address)
+        except AddressValueError, err:
+            logger.error('Invalid seed address: ' + err.messsage)
 
         if self.resource_server:
             self.resource_server.change_config(config_desc)
@@ -324,9 +329,11 @@ class P2PService(PendingConnectionsServer):
         for p in self.peers.values():
             p.dropped()
 
-        tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
-        if tcp_address.is_proper():
+        try:
+            tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
             self.connect(tcp_address)
+        except AddressValueError, err:
+            logger.error("Invalid seed address: " + err.message)
 
     def encrypt(self, data, public_key):
         """ Encrypt data with given public_key. If no public_key is given, or it's equal to zero
