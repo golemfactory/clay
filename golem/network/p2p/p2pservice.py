@@ -55,7 +55,6 @@ class P2PService(PendingConnectionsServer):
         # TODO: all peers powinno zostac przeniesione do peer keepera
         # Peers options
         self.peers = {}  # active peers
-        self.all_peers = []  # all known peers
         self.incoming_peers = {}  # known peers with connections
         self.free_peers = []  # peers to which we're not connected
         self.resource_peers = {}
@@ -70,7 +69,6 @@ class P2PService(PendingConnectionsServer):
         self.connect_to_network()
 
     def new_connection(self, session):
-        self.all_peers.append(session)
         session.start()
 
     def connect_to_network(self):
@@ -174,8 +172,6 @@ class P2PService(PendingConnectionsServer):
         pc = self.pending_connections.get(peer_session.conn_id)
         if pc:
             pc.status = PenConnStatus.Failure
-        if peer_session in self.all_peers:
-            self.all_peers.remove(peer_session)
 
         for p in self.peers.keys():
             if self.peers[p] == peer_session:
@@ -191,8 +187,6 @@ class P2PService(PendingConnectionsServer):
         if not peer:
             logger.info("Can't remove peer {}, unknown peer".format(peer_id))
             return
-        if peer in self.all_peers:
-            self.all_peers.remove(peer)
         del self.peers[peer_id]
 
         self.__send_degree()
