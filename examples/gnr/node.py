@@ -2,6 +2,7 @@
 
 import os
 import argparse
+import click
 import logging.config
 from golem.client import create_client
 from golem.network.transport.tcpnetwork import TCPAddress
@@ -13,16 +14,9 @@ logging.config.fileConfig(config_file, disable_existing_loggers=False)
 
 logger = logging.getLogger(__name__)
 
-
-def parse_connect(arg_connect):
-    """ Parse connect arguments
-    :param arg_connect: string with addresses formed as addr_1:port1,addr_2:port2,[ipv6_addr_3]:port3
-    :return list:  list of tcp_address that may be used to call client.connect.
-    """
+def parse_peer(ctx, param, value):
     addresses = []
-    arg_addresses = arg_connect.split(",")
-    print arg_addresses
-    for arg in arg_addresses:
+    for arg in value:
         try:
             if arg.startswith("["):
                 addr = __parse_ipv6(arg)
@@ -30,8 +24,28 @@ def parse_connect(arg_connect):
                 addr = __parse_ipv4(arg)
             addresses.append(addr)
         except ValueError:
-            logger.warning("Wrong value format {}. Skipping address.".format(arg))
+            logger.warning("Wrong peer address {}. Address should be in format <ipv4_addr>:port "
+                           "or [<ipv6_addr>]:port".format(arg))
     return addresses
+
+
+@click.command()
+@click.option('--peer', '-p', multiple=True, callback=parse_peer,
+              help="Connect with given peer: <ipv4_addr>:port or [<ipv6_addr>]:port")
+@click.option('--task', '-t', multiple=True, help="Request task from file")
+def start_node(peer):
+    client = create_client()
+    load_environments(client)
+    client.start_network()
+    for p in peer:
+        client.connect(p)
+    reactor.run()
+
+
+def load_environments(client):
+    blender_env = BlenderEnvironment()
+    blender_env.accept_tasks = True
+    client.environments_manager.add_environment(blender_env)
 
 
 def __parse_ipv6(addr_arg):
@@ -47,23 +61,5 @@ def __parse_ipv4(addr_arg):
     port = int(port)
     return TCPAddress(host, port)
 
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='GNR Compute Node')
-    parser.add_argument('--connect', type=str)
-    args = parser.parse_args()
-
-    client = create_client()
-    blender_env = BlenderEnvironment()
-    blender_env.accept_tasks = True
-    client.environments_manager.add_environment(blender_env)
-    client.start_network()
-
-    if args.connect:
-        addresses = parse_connect(args.connect)
-        for addr in addresses:
-            client.connect(addr)
-
-    reactor.run()
-
-
+    start_node()
