@@ -5,11 +5,10 @@ import pickle
 import click
 import uuid
 import logging.config
-from examples.gnr.task.blenderrendertask import BlenderRenderTaskBuilder
-from golem.task.taskbase import Task
+
 from golem.client import create_client
 from golem.network.transport.tcpnetwork import TCPAddress
-from renderingenvironment import BlenderEnvironment
+from examples.gnr.nodelogic import Logic
 from twisted.internet import reactor
 
 config_file = os.path.join(os.path.dirname(__file__), "logging.ini")
@@ -49,23 +48,14 @@ def parse_task_file(ctx, param, value):
               help="Request task from file")
 def start_node(peer, task):
     client = create_client()
-    load_environments(client)
     client.start_network()
-    for p in peer:
-        client.connect(p)
-    for task_def in task:
-        golem_task = Task.build_task(BlenderRenderTaskBuilder(client.get_node_name(),
-                                                              task_def,
-                                                              client.get_root_path()))
-        client.enqueue_new_task(golem_task)
+    logic = Logic(client)
+
+    logic.load_environments()
+    logic.connect_with_peers(peer)
+    logic.add_tasks(task)
 
     reactor.run()
-
-
-def load_environments(client):
-    blender_env = BlenderEnvironment()
-    blender_env.accept_tasks = True
-    client.environments_manager.add_environment(blender_env)
 
 
 def __parse_ipv6(addr_arg):
