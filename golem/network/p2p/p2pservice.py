@@ -679,7 +679,6 @@ class P2PService(PendingConnectionsServer):
                 p.send_get_tasks()
 
     def __connection_established(self, session, conn_id=None):
-        self.all_peers.append(session)
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
         logger.debug("Connection to peer established. {}: {}, conn_id {}".format(session.conn.transport.getPeer().host,
