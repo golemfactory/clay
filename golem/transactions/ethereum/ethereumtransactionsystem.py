@@ -1,8 +1,10 @@
+import logging
 from golem.transactions.transactionsystem import TransactionSystem
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumPaymentsKeeper
 from ethereumconnector import EthereumConnector
-
 from golem.core.variables import ETH_CONN_ADDR
+
+log = logging.getLogger("golem.t.eth")
 
 
 class EthereumTransactionSystem(TransactionSystem):
@@ -12,6 +14,7 @@ class EthereumTransactionSystem(TransactionSystem):
         :param node_id: id of a node that has this transaction system.
         :param eth_account: ethereum account address (bytes20)
         """
+        log.info("Ethereum Transaction System created ({})".format(eth_account))
         TransactionSystem.__init__(self, node_id, EthereumPaymentsKeeper)
         self.eth_account = eth_account
 

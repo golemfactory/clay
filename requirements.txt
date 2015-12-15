@@ -16,5 +16,4 @@ qt4reactor==1.6
 requests==2.8.1
 six==1.10.0
 Twisted>=15.4
-https://github.com/ethereum/pydevp2p/tarball/develop#egg=devp2p
-https://github.com/ethereum/pyethereum/tarball/develop#egg=ethereum
+https://github.com/ethereum/pyethapp/tarball/develop#egg=pyethapp
