@@ -63,9 +63,9 @@ class TCPAddress(object):
             else:
                 TCPAddress.validate_hostname(self.address)
 
-        if not (1 <= self.port <= 65535):
-            raise ValueError('Port out of range (1 .. 65535): ' +
-                             str(self.port))
+        if not (MIN_PORT <= self.port <= MAX_PORT):
+            raise ValueError('Port out of range ({} .. {}): {}'.format(
+                MIN_PORT, MAX_PORT, self.port))
 
     def __eq__(self, other):
         return self.address == other.address and self.port == other.port
@@ -88,7 +88,7 @@ class TCPAddress(object):
         if len(hostname) > 255:
             raise ValueError('Host name exceeds 255 chars: ' + hostname)
         # Trailing '.' is allowed!
-        if hostname[-1] == '.':
+        if hostname.endswith('.'):
             hostname = hostname[:-1]
         segments = hostname.split('.')
         if not all(TCPAddress._dns_label_pattern.match(s) for s in segments):
@@ -105,7 +105,6 @@ class TCPAddress(object):
         :returns parsed TCPAddress
         :rtype TCPAddress
         """
-        # TODO: describe syntax (esp. of IPv6 addresses)
         if type(string) is not str:
             raise TypeError('Expected string argument, not ' +
                             type(string).__name__)
@@ -115,7 +114,7 @@ class TCPAddress(object):
                 # We expect '[<ip6 addr>]:<portnum>',
                 # use ipaddress to parse IPv6 address:
                 addr_str, port_str = string.split(']:')
-                addr_str = addr_str[1:-1]
+                addr_str = addr_str[1:]
             else:
                 # We expect '<ip4 addr or hostname>:<port>'.
                 addr_str, port_str = string.split(':')
