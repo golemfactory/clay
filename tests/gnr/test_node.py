@@ -1,6 +1,9 @@
+import sys
 import unittest
-from examples.gnr.node import parse_peer
-
+from examples.gnr.node import parse_peer, start_node
+from click.testing import CliRunner
+from multiprocessing.pool import ThreadPool
+from multiprocessing import TimeoutError
 
 class TestParseConnect(unittest.TestCase):
     def test_parse_peer(self):
@@ -30,3 +33,34 @@ class TestParseConnect(unittest.TestCase):
         self.assertEqual(addr[2].port, 3013)
         self.assertEqual(addr[3].address, "2001:db8:85a3:8d3:1319:8a2e:370:7348")
         self.assertEqual(addr[3].port, 443)
+
+
+class TestNode(unittest.TestCase):
+
+    def test_help(self):
+        runner = CliRunner()
+
+        pool = ThreadPool(processes=1)
+        async_result = pool.apply_async(runner.invoke, (start_node, ['--help']))
+        return_value = async_result.get(2)
+        assert return_value.exit_code == 0
+        assert return_value.output.startswith('Usage')
+
+    def test_wrong_option(self):
+        runner = CliRunner()
+        pool = ThreadPool(processes=1)
+        async_result = pool.apply_async(runner.invoke, (start_node, ['--blargh']))
+        return_value = async_result.get(2)
+        assert return_value.exit_code == 2
+        assert return_value.output.startswith('Error')
+
+    def test_peers(self):
+        runner = CliRunner()
+        pool = ThreadPool(processes=1)
+        async_result = pool.apply_async(runner.invoke, (start_node,))
+        with self.assertRaises(TimeoutError):
+            return_value = async_result.get(1)
+        try:
+            pool.close()
+        except Exception:
+            assert False
