@@ -1,9 +1,12 @@
-import sys
 import unittest
+import time
+import os
+import cPickle
+from mock import patch, call
 from examples.gnr.node import parse_peer, start_node
 from click.testing import CliRunner
-from multiprocessing.pool import ThreadPool
-from multiprocessing import TimeoutError
+from golem.network.transport.tcpnetwork import TCPAddress
+
 
 class TestParseConnect(unittest.TestCase):
     def test_parse_peer(self):
@@ -25,7 +28,7 @@ class TestParseConnect(unittest.TestCase):
 
     def test_parse_peer_ip6(self):
         addr = parse_peer(None, "connect", ("10.30.12.13:45", "[::ffff:0:0:0]:96", "10.30.10.12:3013",
-                             "[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443"))
+                          "[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443"))
         self.assertEqual(len(addr), 4)
         self.assertEqual(addr[1].address, "::ffff:0:0:0")
         self.assertEqual(addr[1].port, 96)
@@ -35,32 +38,91 @@ class TestParseConnect(unittest.TestCase):
         self.assertEqual(addr[3].port, 443)
 
 
+class A(object):
+    def __init__(self):
+        self.a = 2
+        self.b = "abc"
+
+
 class TestNode(unittest.TestCase):
 
-    def test_help(self):
+    @patch('examples.gnr.node.reactor')
+    def test_help(self, mock_reactor):
+        runner = CliRunner()
+        return_value = runner.invoke(start_node, ['--help'])
+        self.assertEqual(return_value.exit_code, 0)
+        self.assertTrue(return_value.output.startswith('Usage'))
+        mock_reactor.run.assert_not_called()
+
+    @patch('examples.gnr.node.reactor')
+    def test_wrong_option(self, mock_reactor):
+        runner = CliRunner()
+        return_value = runner.invoke(start_node, ['--blargh'])
+        self.assertEqual(return_value.exit_code, 2)
+        self.assertTrue(return_value.output.startswith('Error'))
+        mock_reactor.run.assert_not_called()
+
+    @patch('examples.gnr.node.reactor')
+    def test_no_args(self, mock_reactor):
+        runner = CliRunner()
+        return_value = runner.invoke(start_node)
+        self.assertEqual(return_value.exit_code, 0)
+        mock_reactor.run.assert_called_with()
+        mock_reactor.stop()
+
+    @patch('examples.gnr.node.create_client')
+    @patch('examples.gnr.node.Logic')
+    @patch('examples.gnr.node.reactor')
+    def test_wrong_peer_good_peer(self, mock_reactor, mock_logic, mock_client):
+        runner = CliRunner()
+        return_value = runner.invoke(start_node, ['--peer', '10.30.10.216:40111', '--peer', 'bla'])
+        time.sleep(1)
+        self.assertEqual(return_value.exit_code, 0)
+        mock_reactor.run.assert_called_with()
+        peer_arg = mock_logic.mock_calls[2][1][0]
+        self.assertEqual(len(peer_arg), 1)
+        self.assertEqual(peer_arg[0], TCPAddress('10.30.10.216', 40111))
+        mock_logic.assert_has_calls([call().add_tasks([])])
+
+    @patch('examples.gnr.node.create_client')
+    @patch('examples.gnr.node.Logic')
+    @patch('examples.gnr.node.reactor')
+    def test_peers(self, mock_reactor, mock_logic, mock_client):
+        runner = CliRunner()
+        return_value = runner.invoke(start_node, ['--peer', '10.30.10.216:40111', '--peer',
+                                                  '[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443'])
+        self.assertEqual(return_value.exit_code, 0)
+        mock_reactor.run.assert_called_with()
+        self.assertEqual(mock_logic.mock_calls[2][0], '().connect_with_peers')
+        peer_arg = mock_logic.mock_calls[2][1][0]
+        self.assertEqual(len(peer_arg), 2)
+        self.assertEqual(peer_arg[0], TCPAddress('10.30.10.216', 40111))
+        self.assertEqual(peer_arg[1], TCPAddress('2001:db8:85a3:8d3:1319:8a2e:370:7348', 443))
+        mock_logic.assert_has_calls([call().add_tasks([])])
+        mock_reactor.stop()
+
+    @patch('examples.gnr.node.Logic')
+    @patch('examples.gnr.node.reactor')
+    def test_wrong_task(self, mock_reactor, mock_logic):
+        runner = CliRunner()
+        return_value = runner.invoke(start_node, ['--task', 'testtask.gt'])
+        self.assertEqual(return_value.exit_code, 2)
+        self.assertTrue('Error' in return_value.output and 'Usage' in return_value.output)
+
+    @patch('examples.gnr.node.create_client')
+    @patch('examples.gnr.node.Logic')
+    @patch('examples.gnr.node.reactor')
+    def test_task(self, mock_reactor, mock_logic, mock_client):
         runner = CliRunner()
 
-        pool = ThreadPool(processes=1)
-        async_result = pool.apply_async(runner.invoke, (start_node, ['--help']))
-        return_value = async_result.get(2)
-        assert return_value.exit_code == 0
-        assert return_value.output.startswith('Usage')
-
-    def test_wrong_option(self):
-        runner = CliRunner()
-        pool = ThreadPool(processes=1)
-        async_result = pool.apply_async(runner.invoke, (start_node, ['--blargh']))
-        return_value = async_result.get(2)
-        assert return_value.exit_code == 2
-        assert return_value.output.startswith('Error')
-
-    def test_peers(self):
-        runner = CliRunner()
-        pool = ThreadPool(processes=1)
-        async_result = pool.apply_async(runner.invoke, (start_node,))
-        with self.assertRaises(TimeoutError):
-            return_value = async_result.get(1)
-        try:
-            pool.close()
-        except Exception:
-            assert False
+        a = A()
+        with open('testclassdump', 'w') as f:
+            cPickle.dump(a, f)
+        return_value = runner.invoke(start_node, ['--task', 'testclassdump', '--task', 'testclassdump'])
+        self.assertEqual(return_value.exit_code, 0)
+        self.assertEqual(mock_logic.mock_calls[3][0], '().add_tasks')
+        task_arg = mock_logic.mock_calls[3][1][0]
+        self.assertEqual(len(task_arg), 2)
+        self.assertIsInstance(task_arg[0], A)
+        if os.path.exists('testclassdump'):
+            os.remove('testclassdump')

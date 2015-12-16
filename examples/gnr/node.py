@@ -55,6 +55,10 @@ def start_node(peer, task):
     logic.connect_with_peers(peer)
     logic.add_tasks(task)
 
+    run_node()
+
+
+def run_node():
     reactor.run()
 
 
