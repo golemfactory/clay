@@ -25,7 +25,7 @@ class TestTCPAddressParsing(unittest.TestCase):
     def __expect_valid(self, value):
         if value[0] == '[':
             addr, port = value.split(']:')
-            addr = addr[1:-1]
+            addr = addr[1:]
         else:
             addr, port = value.split(':')
         a = TCPAddress.parse(value)
@@ -83,6 +83,8 @@ class TestTCPAddressParsing(unittest.TestCase):
         self.__expect_valid('[0:1a:2B:c3:D4:555:ffff:0000]:1')
         self.__expect_valid('[::1a:2B:c3:D4:555:ffff:0000]:1')
         self.__expect_valid('[0::c3:D4:555:ffff:0000]:1')
+        self.__expect_valid('[0:1:2:3:4:5:6:7]:1')
+        self.__expect_valid('[::7]:1')
 
     def test_valid_hostname(self):
         self.__expect_valid('localhost:40102')
