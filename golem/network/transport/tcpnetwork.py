@@ -265,7 +265,7 @@ class TCPNetwork(Network):
 
         use_ipv6 = False
         try:
-            ip = ip_address(address)
+            ip = ip_address(u"{}".format(address))
             use_ipv6 = ip.version == 6
         except ValueError:
             logger.warning("{} address is invalid".format(address))

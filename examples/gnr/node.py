@@ -70,11 +70,12 @@ def parse_peer(ctx, param, value):
     addresses = []
     for arg in value:
         try:
-            addresses.append(TCPAddress.parse(arg))
+            addresses.append(TCPAddress.parse(str(arg)))
         except ValueError:
             logger.warning("Wrong peer address {}. Address should be in format <ipv4_addr>:port "
                            "or [<ipv6_addr>]:port".format(arg))
     return addresses
+
 
 def parse_task_file(ctx, param, value):
     tasks = []
