@@ -12,24 +12,28 @@ from examples.gnr.task.framerenderingtask import FrameRenderingTask, FrameRender
 from examples.gnr.renderingdirmanager import get_test_task_path, get_tmp_path
 from examples.gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from examples.gnr.renderingenvironment import VRayEnvironment
-from examples.gnr.ui.vraydialog import VRayDialog
-from examples.gnr.customizers.vraydialogcustomizer import VRayDialogCustomizer
+
 from golem.task.taskstate import SubtaskStatus
 from PIL import Image, ImageChops
 
 logger = logging.getLogger(__name__)
 
 
-def build_vray_renderer_info():
-    defaults = RendererDefaults()
-    defaults.output_format = "EXR"
-    defaults.main_program_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/tasks/VRayTask.py'))
-    defaults.min_subtasks = 1
-    defaults.max_subtasks = 100
-    defaults.default_subtasks = 6
+class VrayDefaults(RendererDefaults):
+    def __init__(self):
+        RendererDefaults.__init__(self)
+        self.output_format = "EXR"
+        self.main_program_file = os.path.normpath(os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                                                               '../tasks/vraytask.py')))
+        self.min_subtasks = 1
+        self.max_subtasks = 100
+        self.default_subtasks = 6
 
-    renderer = RendererInfo("VRay Standalone", defaults, VRayTaskBuilder, VRayDialog, VRayDialogCustomizer,
-                            VRayRendererOptions)
+
+def build_vray_renderer_info(dialog, customizer):
+    defaults = VrayDefaults()
+
+    renderer = RendererInfo("VRay Standalone", defaults, VRayTaskBuilder, dialog, customizer, VRayRendererOptions)
     renderer.output_formats = ["BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF"]
     renderer.scene_file_ext = ["vrscene"]
     renderer.get_task_num_from_pixels = get_task_num_from_pixels
@@ -56,7 +60,7 @@ class VRayTaskBuilder(FrameRenderingTaskBuilder):
                              main_scene_dir,
                              self.task_definition.main_scene_file,
                              self.task_definition.main_program_file,
-                             self._calculate_total(build_vray_renderer_info(), self.task_definition),
+                             self._calculate_total(VRayDefaults(), self.task_definition),
                              self.task_definition.resolution[0],
                              self.task_definition.resolution[1],
                              os.path.splitext(os.path.basename(self.task_definition.output_file))[0],

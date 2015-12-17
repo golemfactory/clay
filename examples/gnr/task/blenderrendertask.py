@@ -13,23 +13,27 @@ from examples.gnr.task.framerenderingtask import FrameRenderingTask, FrameRender
     get_task_num_from_pixels
 from examples.gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from examples.gnr.task.scenefileeditor import regenerate_blender_crop_file
-from examples.gnr.ui.blenderrenderdialog import BlenderRenderDialog
-from examples.gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
+
 
 logger = logging.getLogger(__name__)
 
 
-def build_blender_renderer_info():
-    defaults = RendererDefaults()
-    defaults.output_format = "EXR"
-    defaults.main_program_file = os.path.normpath(
-        os.path.join(os.environ.get('GOLEM'), 'examples/tasks/blendertask.py'))
-    defaults.min_subtasks = 1
-    defaults.max_subtasks = 100
-    defaults.default_subtasks = 6
+class BlenderDefaults(RendererDefaults):
+    def __init__(self):
+        RendererDefaults.__init__(self)
+        self.output_format = "EXR"
+        self.main_program_file = os.path.normpath(os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                                                               '../tasks/blendertask.py')))
+        self.min_subtasks = 1
+        self.max_subtasks = 100
+        self.default_subtasks = 6
 
-    renderer = RendererInfo("Blender", defaults, BlenderRenderTaskBuilder, BlenderRenderDialog,
-                            BlenderRenderDialogCustomizer, BlenderRendererOptions)
+
+def build_blender_renderer_info(dialog, customizer):
+    defaults = BlenderDefaults()
+
+    renderer = RendererInfo("Blender", defaults, BlenderRenderTaskBuilder, dialog,
+                            customizer, BlenderRendererOptions)
     renderer.output_formats = ["PNG", "TGA", "EXR"]
     renderer.scene_file_ext = ["blend"]
     renderer.get_task_num_from_pixels = get_task_num_from_pixels
@@ -56,7 +60,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                       main_scene_dir,
                                       self.task_definition.main_scene_file,
                                       self.task_definition.main_program_file,
-                                      self._calculate_total(build_blender_renderer_info(), self.task_definition),
+                                      self._calculate_total(BlenderDefaults(), self.task_definition),
                                       self.task_definition.resolution[0],
                                       self.task_definition.resolution[1],
                                       os.path.splitext(os.path.basename(self.task_definition.output_file))[0],

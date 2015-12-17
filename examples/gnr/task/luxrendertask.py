@@ -14,22 +14,25 @@ from examples.gnr.task.imgrepr import load_img, blend
 from examples.gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
 from examples.gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from examples.gnr.task.scenefileeditor import regenerate_lux_file
-from examples.gnr.ui.luxrenderdialog import LuxRenderDialog
-from examples.gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
 
 logger = logging.getLogger(__name__)
 
 
-def build_lux_render_info():
-    defaults = RendererDefaults()
-    defaults.output_format = "EXR"
-    defaults.main_program_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/tasks/luxTask.py'))
-    defaults.min_subtasks = 1
-    defaults.max_subtasks = 100
-    defaults.default_subtasks = 5
+class LuxRenderDefaults(RendererDefaults):
+    def __init__(self):
+        RendererDefaults.__init__(self)
+        self.output_format = "EXR"
+        self.main_program_file = os.path.normpath(os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                                                               '../tasks/luxtask.py')))
+        self.min_subtasks = 1
+        self.max_subtasks = 100
+        self.default_subtasks = 5
 
-    renderer = RendererInfo("LuxRender", defaults, LuxRenderTaskBuilder, LuxRenderDialog, LuxRenderDialogCustomizer,
-                            LuxRenderOptions)
+
+def build_lux_render_info(dialog, customizer):
+    defaults = LuxRenderDefaults()
+
+    renderer = RendererInfo("LuxRender", defaults, LuxRenderTaskBuilder, dialog, customizer, LuxRenderOptions)
     renderer.output_formats = ["EXR", "PNG", "TGA"]
     renderer.scene_file_ext = ["lxs"]
     renderer.get_task_num_from_pixels = get_task_num_from_pixels
@@ -81,7 +84,7 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                            main_scene_dir,
                            self.task_definition.main_scene_file,
                            self.task_definition.main_program_file,
-                           self._calculate_total(build_lux_render_info(), self.task_definition),
+                           self._calculate_total(LuxRenderDefaults(), self.task_definition),
                            self.task_definition.resolution[0],
                            self.task_definition.resolution[1],
                            os.path.splitext(os.path.basename(self.task_definition.output_file))[0],
