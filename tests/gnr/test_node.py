@@ -3,7 +3,7 @@ import time
 import os
 import cPickle
 from mock import patch, call
-from examples.gnr.node import parse_peer, start_node
+from examples.gnr.node import parse_peer, start
 from click.testing import CliRunner
 from golem.network.transport.tcpnetwork import TCPAddress
 
@@ -49,7 +49,7 @@ class TestNode(unittest.TestCase):
     @patch('examples.gnr.node.reactor')
     def test_help(self, mock_reactor):
         runner = CliRunner()
-        return_value = runner.invoke(start_node, ['--help'])
+        return_value = runner.invoke(start, ['--help'])
         self.assertEqual(return_value.exit_code, 0)
         self.assertTrue(return_value.output.startswith('Usage'))
         mock_reactor.run.assert_not_called()
@@ -57,7 +57,7 @@ class TestNode(unittest.TestCase):
     @patch('examples.gnr.node.reactor')
     def test_wrong_option(self, mock_reactor):
         runner = CliRunner()
-        return_value = runner.invoke(start_node, ['--blargh'])
+        return_value = runner.invoke(start, ['--blargh'])
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue(return_value.output.startswith('Error'))
         mock_reactor.run.assert_not_called()
@@ -65,7 +65,7 @@ class TestNode(unittest.TestCase):
     @patch('examples.gnr.node.reactor')
     def test_no_args(self, mock_reactor):
         runner = CliRunner()
-        return_value = runner.invoke(start_node)
+        return_value = runner.invoke(start)
         self.assertEqual(return_value.exit_code, 0)
         mock_reactor.run.assert_called_with()
         mock_reactor.stop()
@@ -75,7 +75,7 @@ class TestNode(unittest.TestCase):
     @patch('examples.gnr.node.reactor')
     def test_wrong_peer_good_peer(self, mock_reactor, mock_logic, mock_client):
         runner = CliRunner()
-        return_value = runner.invoke(start_node, ['--peer', '10.30.10.216:40111', '--peer', 'bla'])
+        return_value = runner.invoke(start, ['--peer', '10.30.10.216:40111', '--peer', 'bla'])
         time.sleep(1)
         self.assertEqual(return_value.exit_code, 0)
         mock_reactor.run.assert_called_with()
@@ -89,7 +89,7 @@ class TestNode(unittest.TestCase):
     @patch('examples.gnr.node.reactor')
     def test_peers(self, mock_reactor, mock_logic, mock_client):
         runner = CliRunner()
-        return_value = runner.invoke(start_node, ['--peer', '10.30.10.216:40111', '--peer',
+        return_value = runner.invoke(start, ['--peer', '10.30.10.216:40111', '--peer',
                                                   '[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443'])
         self.assertEqual(return_value.exit_code, 0)
         mock_reactor.run.assert_called_with()
@@ -105,7 +105,7 @@ class TestNode(unittest.TestCase):
     @patch('examples.gnr.node.reactor')
     def test_wrong_task(self, mock_reactor, mock_logic):
         runner = CliRunner()
-        return_value = runner.invoke(start_node, ['--task', 'testtask.gt'])
+        return_value = runner.invoke(start, ['--task', 'testtask.gt'])
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Error' in return_value.output and 'Usage' in return_value.output)
 
@@ -118,7 +118,7 @@ class TestNode(unittest.TestCase):
         a = A()
         with open('testclassdump', 'w') as f:
             cPickle.dump(a, f)
-        return_value = runner.invoke(start_node, ['--task', 'testclassdump', '--task', 'testclassdump'])
+        return_value = runner.invoke(start, ['--task', 'testclassdump', '--task', 'testclassdump'])
         self.assertEqual(return_value.exit_code, 0)
         self.assertEqual(mock_logic.mock_calls[3][0], '().add_tasks')
         task_arg = mock_logic.mock_calls[3][1][0]

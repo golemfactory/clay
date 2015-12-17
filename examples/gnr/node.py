@@ -46,7 +46,7 @@ def parse_task_file(ctx, param, value):
               help="Connect with given peer: <ipv4_addr>:port or [<ipv6_addr>]:port")
 @click.option('--task', '-t', multiple=True, type=click.File(lazy=True), callback=parse_task_file,
               help="Request task from file")
-def start_node(peer, task):
+def start(peer, task):
     client = create_client()
     client.start_network()
     logic = Logic(client)
@@ -76,4 +76,4 @@ def __parse_ipv4(addr_arg):
     return TCPAddress(host, port)
 
 if __name__ == "__main__":
-    start_node()
+    start()
