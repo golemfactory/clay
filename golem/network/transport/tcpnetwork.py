@@ -1,9 +1,10 @@
 import logging
-import ipaddr
 import time
 import os
+import re
 import struct
 
+from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
     TCP6ClientEndpoint
 from twisted.internet.defer import maybeDeferred
@@ -26,28 +27,102 @@ logger = logging.getLogger(__name__)
 
 
 class TCPAddress(object):
+    """TCP socket address (host and port)"""
+
+    _dns_label_pattern = re.compile('(?!-)[a-z\d-]{1,63}(?<!-)\Z', re.IGNORECASE)
+    _all_numeric_pattern = re.compile('[0-9\.]+\Z')
+
     def __init__(self, address, port):
-        """
-        TCP Address information
-        :param str address: address or name
+        """Creates and validates TCPAddress. Raises
+        AddressValueError if 'address' or 'port' is invalid.
+        :param str address: IPv4/IPv6 address or hostname
         :param int port:
-        :return: None
         """
         self.address = address
         self.port = port
-
-    def is_proper(self):
         try:
-            if self.port < MIN_PORT or self.port > MAX_PORT:
-                logger.warning(u"Port number out of range ({},{}):{}".format(MIN_PORT, MAX_PORT, self.port))
-                return False
-        except Exception, e:
-            logger.error(u"Wrong port number {}: {}".format(self.port, str(e)))
-            return False
-        return len(self.address) > 0
+            self.__validate()
+        except ValueError, err:
+            raise AddressValueError(err.message)
+
+    def __validate(self):
+        if type(self.address) is not str:
+            raise TypeError('Address must be a string, not a ' +
+                            type(self.address).__name__)
+        if type(self.port) is not int and type(self.port) is not long:
+            raise TypeError('Port must be an int, not a ' +
+                            type(self.port).__name__)
+
+        if self.address.find(':') != -1:
+            # IPv6 address
+            IPv6Address(self.address.decode('utf8'))
+        else:
+            # If it's all digits then guess it's an IPv4 address
+            if self._all_numeric_pattern.match(self.address):
+                IPv4Address(self.address.decode('utf8'))
+            else:
+                TCPAddress.validate_hostname(self.address)
+
+        if not (MIN_PORT <= self.port <= MAX_PORT):
+            raise ValueError('Port out of range ({} .. {}): {}'.format(
+                MIN_PORT, MAX_PORT, self.port))
 
     def __eq__(self, other):
         return self.address == other.address and self.port == other.port
+
+    @staticmethod
+    def validate_hostname(hostname):
+        """Checks that the given string is a valid hostname.
+        See RFC 1123, page 13, and here:
+        http://stackoverflow.com/questions/2532053/validate-a-hostname-string.
+        Raises ValueError if the argument is not a valid hostname.
+        :param str hostname:
+        :returns None
+        """
+        if type(hostname) is not str:
+            raise TypeError('Expected string argument, not ' +
+                            type(hostname).__name__)
+
+        if hostname == '':
+            raise ValueError('Empty host name')
+        if len(hostname) > 255:
+            raise ValueError('Host name exceeds 255 chars: ' + hostname)
+        # Trailing '.' is allowed!
+        if hostname.endswith('.'):
+            hostname = hostname[:-1]
+        segments = hostname.split('.')
+        if not all(TCPAddress._dns_label_pattern.match(s) for s in segments):
+            raise ValueError('Invalid host name: ' + hostname)
+
+    @staticmethod
+    def parse(string):
+        """Parses a string representation of a socket address.
+        IPv4 syntax: <IPv4 address> ':' <port>
+        IPv6 syntax: '[' <IPv6 address> ']' ':' <port>
+        DNS syntax:  <hostname> ':' <port>
+        Raises AddressValueError if the input cannot be parsed.
+        :param str string:
+        :returns parsed TCPAddress
+        :rtype TCPAddress
+        """
+        if type(string) is not str:
+            raise TypeError('Expected string argument, not ' +
+                            type(string).__name__)
+
+        try:
+            if string.startswith('['):
+                # We expect '[<ip6 addr>]:<portnum>',
+                # use ipaddress to parse IPv6 address:
+                addr_str, port_str = string.split(']:')
+                addr_str = addr_str[1:]
+            else:
+                # We expect '<ip4 addr or hostname>:<port>'.
+                addr_str, port_str = string.split(':')
+            port = int(port_str)
+        except ValueError:
+            raise AddressValueError('Invalid address: port missing or invalid')
+
+        return TCPAddress(addr_str, port)
 
 
 class TCPListenInfo(object):
@@ -190,7 +265,7 @@ class TCPNetwork(Network):
 
         use_ipv6 = False
         try:
-            ip = ipaddr.IPAddress(address)
+            ip = ip_address(address)
             use_ipv6 = ip.version == 6
         except ValueError:
             logger.warning("{} address is invalid".format(address))

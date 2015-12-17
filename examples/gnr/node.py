@@ -70,16 +70,11 @@ def parse_peer(ctx, param, value):
     addresses = []
     for arg in value:
         try:
-            if arg.startswith("["):
-                addr = __parse_ipv6(arg)
-            else:
-                addr = __parse_ipv4(arg)
-            addresses.append(addr)
+            addresses.append(TCPAddress.parse(arg))
         except ValueError:
             logger.warning("Wrong peer address {}. Address should be in format <ipv4_addr>:port "
                            "or [<ipv6_addr>]:port".format(arg))
     return addresses
-
 
 def parse_task_file(ctx, param, value):
     tasks = []
@@ -105,19 +100,6 @@ def start(peer, task):
 
     node.run()
 
-
-def __parse_ipv6(addr_arg):
-    print addr_arg
-    host, port = addr_arg.split("]")
-    host = host[1:]
-    port = int(port[1:])
-    return TCPAddress(host, port)
-
-
-def __parse_ipv4(addr_arg):
-    host, port = addr_arg.split(":")
-    port = int(port)
-    return TCPAddress(host, port)
 
 if __name__ == "__main__":
     start()
