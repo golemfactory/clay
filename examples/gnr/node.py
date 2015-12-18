@@ -50,7 +50,8 @@ class Node(object):
                                                       self.client.get_root_path()))
             self.client.enqueue_new_task(golem_task)
 
-    def run(self):
+    @staticmethod
+    def run():
         reactor.run()
 
 
@@ -67,6 +68,7 @@ class GNRNode(Node):
 
 
 def parse_peer(ctx, param, value):
+    del ctx, param
     addresses = []
     for arg in value:
         try:
@@ -78,6 +80,7 @@ def parse_peer(ctx, param, value):
 
 
 def parse_task_file(ctx, param, value):
+    del ctx, param
     tasks = []
     for task_file in value:
         task_def = pickle.loads(task_file.read())
