@@ -10,21 +10,25 @@ from examples.gnr.task.scenefileeditor import regenerate_pbrt_file
 from examples.gnr.task.gnrtask import GNROptions, GNRTaskBuilder
 from examples.gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from examples.gnr.task.renderingtaskcollector import RenderingTaskCollector
-from examples.gnr.ui.pbrtdialog import PbrtDialog
-from examples.gnr.customizers.pbrtdialogcustomizer import PbrtDialogCustomizer
 
 logger = logging.getLogger(__name__)
 
 
-def build_pbrt_renderer_info():
-    defaults = RendererDefaults()
-    defaults.output_format = "EXR"
-    defaults.main_program_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/tasks/pbrt_task.py'))
-    defaults.min_subtasks = 4
-    defaults.max_subtasks = 200
-    defaults.default_subtasks = 60
+class PbrtDefaults(RendererDefaults):
+    def __init__(self):
+        RendererDefaults.__init__(self)
+        self.output_format = "EXR"
+        self.main_program_file = os.path.normpath(os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                                                               '../tasks/pbrttask.py')))
+        self.min_subtasks = 4
+        self.max_subtasks = 200
+        self.default_subtasks = 60
 
-    renderer = RendererInfo("PBRT", defaults, PbrtTaskBuilder, PbrtDialog, PbrtDialogCustomizer, PbrtRendererOptions)
+
+def build_pbrt_renderer_info(dialog, customizer):
+    defaults = PbrtDefaults()
+
+    renderer = RendererInfo("PBRT", defaults, PbrtTaskBuilder, dialog, customizer, PbrtRendererOptions)
     renderer.output_formats = ["BMP", "EPS", "EXR", "GIF", "IM", "JPEG", "PCX", "PDF", "PNG", "PPM", "TIFF"]
     renderer.scene_file_ext = ["pbrt"]
     renderer.get_task_num_from_pixels = get_task_num_from_pixels
@@ -99,7 +103,7 @@ class PbrtTaskBuilder(RenderingTaskBuilder):
                                    self.task_definition.task_id,
                                    main_scene_dir,
                                    self.task_definition.main_program_file,
-                                   self._calculate_total(build_pbrt_renderer_info(), self.task_definition),
+                                   self._calculate_total(PbrtDefaults(), self.task_definition),
                                    20,
                                    4,
                                    self.task_definition.resolution[0],
@@ -129,16 +133,16 @@ class PbrtTaskBuilder(RenderingTaskBuilder):
             new_task.box_size = (box_x, box_y)
         return new_task
 
-    def _calculate_total(self, renderer, definition):
+    def _calculate_total(self, defaults, definition):
 
         if (not definition.optimize_total) and (
-                renderer.defaults.min_subtasks <= definition.total_subtasks <= renderer.defaults.max_subtasks):
+                defaults.min_subtasks <= definition.total_subtasks <= defaults.max_subtasks):
             return definition.total_subtasks
 
         task_base = 1000000
         all_op = definition.resolution[0] * definition.resolution[
             1] * definition.renderer_options.samples_per_pixel_count
-        return max(renderer.defaults.min_subtasks, min(renderer.defaults.max_subtasks, all_op / task_base))
+        return max(defaults.min_subtasks, min(defaults.max_subtasks, all_op / task_base))
 
 
 def count_subtask_reg(total_tasks, subtasks, res_x, res_y):

@@ -18,6 +18,18 @@ from examples.gnr.task.vraytask import build_vray_renderer_info
 from examples.gnr.task.luxrendertask import build_lux_render_info
 from examples.gnr.task.blenderrendertask import build_blender_renderer_info
 
+from examples.gnr.ui.blenderrenderdialog import BlenderRenderDialog
+from examples.gnr.ui.luxrenderdialog import LuxRenderDialog
+from examples.gnr.ui.pbrtdialog import PbrtDialog
+from examples.gnr.ui.threedsmaxdialog import ThreeDSMaxDialog
+from examples.gnr.ui.vraydialog import VRayDialog
+
+from examples.gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
+from examples.gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
+from examples.gnr.customizers.pbrtdialogcustomizer import PbrtDialogCustomizer
+from examples.gnr.customizers.threedsmaxdialogcustomizer import ThreeDSMaxDialogCustomizer
+from examples.gnr.customizers.vraydialogcustomizer import VRayDialogCustomizer
+
 from examples.manager.gnrmanagerlogic import run_additional_nodes, run_manager
 
 
@@ -43,11 +55,11 @@ def register_gui(logic, app, gui):
 
 
 def register_rendering_task_types(logic):
-    logic.register_new_renderer_type(build_pbrt_renderer_info())
-    logic.register_new_renderer_type(build_3ds_max_renderer_info())
-    logic.register_new_renderer_type(build_vray_renderer_info())
-    logic.register_new_renderer_type(build_lux_render_info())
-    logic.register_new_renderer_type(build_blender_renderer_info())
+    logic.register_new_renderer_type(build_pbrt_renderer_info(PbrtDialog, PbrtDialogCustomizer))
+    logic.register_new_renderer_type(build_3ds_max_renderer_info(ThreeDSMaxDialog, ThreeDSMaxDialogCustomizer))
+    logic.register_new_renderer_type(build_vray_renderer_info(VRayDialog, VRayDialogCustomizer))
+    logic.register_new_renderer_type(build_lux_render_info(LuxRenderDialog, LuxRenderDialogCustomizer))
+    logic.register_new_renderer_type(build_blender_renderer_info(BlenderRenderDialog, BlenderRenderDialogCustomizer))
 
 
 def register_task_types(logic):

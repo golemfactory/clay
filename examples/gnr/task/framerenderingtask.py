@@ -14,12 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
-    def _calculate_total(self, renderer, definition):
+    def _calculate_total(self, defaults, definition):
         if definition.optimize_total:
             if self.task_definition.renderer_options.use_frames:
                 return len(self.task_definition.renderer_options.frames)
             else:
-                return renderer.defaults.default_subtasks
+                return defaults.default_subtasks
 
         if self.task_definition.renderer_options.use_frames:
             num_frames = len(self.task_definition.renderer_options.frames)
@@ -36,10 +36,10 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
 
             return est
 
-        if renderer.defaults.min_subtasks <= definition.total_subtasks <= renderer.defaults.max_subtasks:
+        if defaults.min_subtasks <= definition.total_subtasks <= defaults.max_subtasks:
             return definition.total_subtasks
         else:
-            return renderer.defaults.default_subtasks
+            return defaults.default_subtasks
 
 
 class FrameRenderingTask(RenderingTask):
