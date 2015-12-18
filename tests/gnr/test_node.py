@@ -31,12 +31,12 @@ class TestNode(unittest.TestCase):
         self.assertTrue(return_value.output.startswith('Error'))
         mock_reactor.run.assert_not_called()
 
-    @patch('examples.gnr.node.GNRNode')
-    def test_no_args(self, mock_node):
+    @patch('examples.gnr.node.reactor')
+    def test_no_args(self, mock_reactor):
         runner = CliRunner()
         return_value = runner.invoke(start)
         self.assertEqual(return_value.exit_code, 0)
-        mock_node.assert_has_calls([call().run()])
+        mock_reactor.run.assert_called_with()
 
     @patch('examples.gnr.node.GNRNode')
     def test_wrong_peer_good_peer(self, mock_node):

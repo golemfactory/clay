@@ -105,6 +105,9 @@ class TCPAddress(object):
         :returns parsed TCPAddress
         :rtype TCPAddress
         """
+        if type(string) is unicode:
+            string = string.encode()
+
         if type(string) is not str:
             raise TypeError('Expected string argument, not ' +
                             type(string).__name__)
@@ -265,7 +268,7 @@ class TCPNetwork(Network):
 
         use_ipv6 = False
         try:
-            ip = ip_address(u"{}".format(address))
+            ip = ip_address(address.decode())
             use_ipv6 = ip.version == 6
         except ValueError:
             logger.warning("{} address is invalid".format(address))

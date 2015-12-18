@@ -72,7 +72,7 @@ def parse_peer(ctx, param, value):
     addresses = []
     for arg in value:
         try:
-            addresses.append(TCPAddress.parse(str(arg)))
+            addresses.append(TCPAddress.parse(arg))
         except ValueError:
             logger.warning("Wrong peer address {}. Address should be in format <ipv4_addr>:port "
                            "or [<ipv6_addr>]:port".format(arg))
@@ -84,7 +84,7 @@ def parse_task_file(ctx, param, value):
     tasks = []
     for task_file in value:
         task_def = pickle.loads(task_file.read())
-        task_def.task_id = "{}".format(uuid.uuid4())
+        task_def.task_id = str(uuid.uuid4())
         tasks.append(task_def)
     return tasks
 

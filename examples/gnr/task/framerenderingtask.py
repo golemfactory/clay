@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
-    def _calculate_total(self,defaults, definition):
+    def _calculate_total(self, defaults, definition):
         if definition.optimize_total:
             if self.task_definition.renderer_options.use_frames:
                 return len(self.task_definition.renderer_options.frames)
