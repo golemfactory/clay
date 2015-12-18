@@ -4,7 +4,7 @@ from os import path
 
 from golem.client import start_client
 from golem.environments.environment import Environment
-from tools import uigen
+from golem.tools import uigen
 
 uigen.gen_ui_files(path.join(path.dirname(__file__), "ui"))
 
