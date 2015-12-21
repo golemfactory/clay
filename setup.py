@@ -53,8 +53,6 @@ def parse_requirements(requirements_file):
 
 requirements, dependency_links = parse_requirements('requirements.txt')
 
-print requirements, dependency_links
-
 test_requirements = [
     'pytest'
 ]

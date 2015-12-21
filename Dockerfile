@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
 && apt-get clean \
 && rm -rf /var/lib/apt/lists/* \
-&& pip install -U setuptools
+&& pip install --upgrade pip setuptools
 
 # Quite stupid, but GNR is not independent yet
 COPY . /opt/golem
