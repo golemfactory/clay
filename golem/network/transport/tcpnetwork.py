@@ -46,6 +46,8 @@ class TCPAddress(object):
             raise AddressValueError(err.message)
 
     def __validate(self):
+        if type(self.address) is unicode:
+            self.address = self.address.encode()
         if type(self.address) is not str:
             raise TypeError('Address must be a string, not a ' +
                             type(self.address).__name__)
@@ -79,6 +81,9 @@ class TCPAddress(object):
         :param str hostname:
         :returns None
         """
+        if type(hostname) is unicode:
+            hostname = hostname.encode()
+
         if type(hostname) is not str:
             raise TypeError('Expected string argument, not ' +
                             type(hostname).__name__)
