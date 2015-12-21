@@ -497,17 +497,3 @@ class EllipticalKeysAuth(KeysAuth):
             f.write(key)
         with open(public_key, 'wb') as f:
             f.write(pub_key)
-
-
-# if __name__ == "__main__":
-#     auth = RSAKeysAuth()
-#     # auth = EllipticalKeysAuth("BLARG")
-#     print sha3(auth.get_key_id())
-#     print auth._private_key
-#     print auth.public_key
-#     print len(auth.get_key_id())
-#     print len(auth.get_key_id().decode('hex'))
-#     print auth.get_public_key()
-#     # print len(auth.get_public_key())
-#     # print len(auth._private_key)
-#     # print auth.cnt_key_id()
