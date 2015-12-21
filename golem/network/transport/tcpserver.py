@@ -30,7 +30,7 @@ class TCPServer(Server):
         :param ClientConfigDescriptor config_desc: new config descriptor
         """
         Server.change_config(self, config_desc)
-        if self.config_desc.start_port < self.cur_port < self.config_desc.end_port:
+        if self.config_desc.start_port <= self.cur_port <= self.config_desc.end_port:
             return
 
         if self.cur_port != 0:
