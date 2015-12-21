@@ -4,10 +4,10 @@ import math
 import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
-from examples.gnr.task.gnrtask import check_subtask_id_wrapper
-from examples.gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
-from examples.gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
-from examples.gnr.renderingdirmanager import get_tmp_path
+from gnr.task.gnrtask import check_subtask_id_wrapper
+from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
+from gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
+from gnr.renderingdirmanager import get_tmp_path
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger(__name__)

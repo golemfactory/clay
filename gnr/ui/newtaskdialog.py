@@ -1,5 +1,5 @@
 from PyQt4.QtGui import QDialog
-from examples.gnr.ui.gen.ui_NewTaskDialog import Ui_NewTaskDialog
+from gnr.ui.gen.ui_NewTaskDialog import Ui_NewTaskDialog
 
 
 class NewTaskDialog:

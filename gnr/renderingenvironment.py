@@ -3,7 +3,7 @@ import shutil
 import logging
 from golem.environments.environment import Environment
 from golem.environments.utils import find_program
-from examples.gnr.task.threedsmaxcfgeditor import regenerate_file
+from gnr.task.threedsmaxcfgeditor import regenerate_file
 
 logger = logging.getLogger(__name__)
 

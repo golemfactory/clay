@@ -1,9 +1,9 @@
 import logging
-from examples.gnr.ui.updateothergolemsdialog import UpdateOtherGolemsDialog
-from examples.gnr.ui.infotaskdialog import InfoTaskDialog
-from examples.gnr.customizers.gnrmainwindowcustomizer import GNRMainWindowCustomizer
-from examples.gnr.customizers.updateothergolemsdialogcustomizer import UpdateOtherGolemsDialogCustomizer
-from examples.gnr.customizers.infotaskdialogcustomizer import InfoTaskDialogCustomizer
+from gnr.ui.updateothergolemsdialog import UpdateOtherGolemsDialog
+from gnr.ui.infotaskdialog import InfoTaskDialog
+from gnr.customizers.gnrmainwindowcustomizer import GNRMainWindowCustomizer
+from gnr.customizers.updateothergolemsdialogcustomizer import UpdateOtherGolemsDialogCustomizer
+from gnr.customizers.infotaskdialogcustomizer import InfoTaskDialogCustomizer
 
 logger = logging.getLogger(__name__)
 

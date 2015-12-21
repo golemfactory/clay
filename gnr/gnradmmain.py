@@ -1,8 +1,8 @@
 from gnrstartapp import start_app, config_logging
-from examples.gnr.gnradmapplicationlogic import GNRAdmApplicationLogic
-from examples.gnr.application import GNRGui
-from examples.gnr.ui.mainwindow import GNRMainWindow
-from examples.gnr.customizers.gnradministratormainwindowcustomizer import GNRAdministratorMainWindowCustomizer
+from gnr.gnradmapplicationlogic import GNRAdmApplicationLogic
+from gnr.application import GNRGui
+from gnr.ui.mainwindow import GNRMainWindow
+from gnr.customizers.gnradministratormainwindowcustomizer import GNRAdministratorMainWindowCustomizer
 
 
 def main():

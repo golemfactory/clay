@@ -1,5 +1,5 @@
-from examples.gnr.ui.environmentsdialog import EnvironmentsDialog
-from examples.gnr.ui.envtableelem import EnvTableElem
+from gnr.ui.environmentsdialog import EnvironmentsDialog
+from gnr.ui.envtableelem import EnvTableElem
 from PyQt4 import QtCore
 from PyQt4.Qt import Qt
 import logging

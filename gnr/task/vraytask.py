@@ -4,14 +4,14 @@ import random
 import math
 import shutil
 from collections import OrderedDict
-from examples.gnr.renderingtaskstate import RendererDefaults, RendererInfo
-from examples.gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
-from examples.gnr.task.renderingtask import RenderingTask
-from examples.gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
+from gnr.renderingtaskstate import RendererDefaults, RendererInfo
+from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
+from gnr.task.renderingtask import RenderingTask
+from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
-from examples.gnr.renderingdirmanager import get_test_task_path, get_tmp_path
-from examples.gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
-from examples.gnr.renderingenvironment import VRayEnvironment
+from gnr.renderingdirmanager import get_test_task_path, get_tmp_path
+from gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
+from gnr.renderingenvironment import VRayEnvironment
 
 from golem.task.taskstate import SubtaskStatus
 from PIL import Image, ImageChops

@@ -6,7 +6,7 @@ from PyQt4.QtGui import QMenu
 from golem.task.taskstate import ComputerState
 from subtaskcontextmenucustomizer import SubtaskContextMenuCustomizer
 
-from examples.gnr.ui.subtasktableentry import SubtaskTableElem
+from gnr.ui.subtasktableentry import SubtaskTableElem
 
 
 class TaskDetailsDialogCustomizer:

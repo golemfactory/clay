@@ -5,7 +5,7 @@ import logging
 from golem.task.taskbase import Task, resource_types
 from golem.resource.resource import TaskResourceHeader, decompress_dir
 from golem.task.taskcomputer import PyTestTaskThread
-from examples.gnr.renderingdirmanager import get_test_task_path, get_test_task_directory, get_test_task_tmp_path
+from gnr.renderingdirmanager import get_test_task_path, get_test_task_directory, get_test_task_tmp_path
 
 logger = logging.getLogger(__name__)
 

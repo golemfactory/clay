@@ -12,9 +12,9 @@ from golem.client import create_client
 from golem.network.transport.tcpnetwork import TCPAddress
 from golem.task.taskbase import Task
 
-from examples.gnr.task.blenderrendertask import BlenderRenderTaskBuilder
-from examples.gnr.task.luxrendertask import LuxRenderTaskBuilder
-from examples.gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
+from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
+from gnr.task.luxrendertask import LuxRenderTaskBuilder
+from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
 
 config_file = os.path.join(os.path.dirname(__file__), "logging.ini")
 logging.config.fileConfig(config_file, disable_existing_loggers=False)

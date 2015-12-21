@@ -4,9 +4,9 @@ from PyQt4.QtGui import QFileDialog
 from copy import deepcopy
 
 
-from examples.gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
+from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
 
-from examples.gnr.renderingtaskstate import RenderingTaskState, RenderingTaskDefinition, \
+from gnr.renderingtaskstate import RenderingTaskState, RenderingTaskDefinition, \
     AdvanceRenderingVerificationOptions
 from golem.task.taskstate import TaskStatus
 from timehelper import set_time_spin_boxes

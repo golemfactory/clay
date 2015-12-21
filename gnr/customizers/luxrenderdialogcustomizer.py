@@ -4,8 +4,8 @@ from PyQt4.QtGui import QMessageBox
 
 from golem.environments.environment import Environment
 
-from examples.gnr.ui.luxrenderdialog import LuxRenderDialog
-from examples.gnr.renderingenvironment import LuxRenderEnvironment
+from gnr.ui.luxrenderdialog import LuxRenderDialog
+from gnr.renderingenvironment import LuxRenderEnvironment
 
 logger = logging.getLogger(__name__)
 

@@ -46,7 +46,7 @@ def __read_from_environment(default_cmd_file, num_cores):
 
     sys.path.append(path)
 
-    from examples.gnr.renderingenvironment import ThreeDSMaxEnvironment
+    from gnr.renderingenvironment import ThreeDSMaxEnvironment
     env = ThreeDSMaxEnvironment()
     cmd_file = env.get_3ds_max_cmd_path()
     if cmd_file:

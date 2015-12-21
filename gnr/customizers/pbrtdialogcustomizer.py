@@ -2,7 +2,7 @@ import logging
 import os
 from PyQt4.QtGui import QFileDialog
 
-from examples.gnr.ui.pbrtdialog import PbrtDialog
+from gnr.ui.pbrtdialog import PbrtDialog
 
 logger = logging.getLogger(__name__)
 

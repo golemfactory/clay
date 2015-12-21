@@ -71,7 +71,7 @@ def __read_from_environment():
 
     sys.path.append(path)
 
-    from examples.gnr.renderingenvironment import VRayEnvironment
+    from gnr.renderingenvironment import VRayEnvironment
     env = VRayEnvironment()
     cmd_file = env.get_cmd_path()
     if cmd_file:

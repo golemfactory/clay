@@ -1,8 +1,8 @@
 import logging
 import os
 
-from examples.gnr.gnrapplicationlogic import GNRApplicationLogic
-from examples.gnr.renderingtaskstate import RenderingTaskState
+from gnr.gnrapplicationlogic import GNRApplicationLogic
+from gnr.renderingtaskstate import RenderingTaskState
 
 logger = logging.getLogger(__name__)
 

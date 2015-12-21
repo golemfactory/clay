@@ -53,7 +53,7 @@ def __read_from_environment():
 
     sys.path.append(path)
 
-    from examples.gnr.renderingenvironment import BlenderEnvironment
+    from gnr.renderingenvironment import BlenderEnvironment
     env = BlenderEnvironment()
     cmd_file = env.get_blender()
     if cmd_file:

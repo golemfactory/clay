@@ -3,7 +3,7 @@ import os
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
 from copy import deepcopy
-from examples.gnr.ui.pbrttaskdialog import PbrtTaskDialog
+from gnr.ui.pbrttaskdialog import PbrtTaskDialog
 from verificationparamshelper import read_advance_verification_params, set_verification_widgets_state, \
     load_verification_params, verification_random_changed
 

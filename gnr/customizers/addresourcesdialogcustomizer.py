@@ -1,6 +1,6 @@
 
 
-from examples.gnr.ui.addtaskresourcesdialog import AddTaskResourcesDialog
+from gnr.ui.addtaskresourcesdialog import AddTaskResourcesDialog
 
 
 class AddResourcesDialogCustomizer:

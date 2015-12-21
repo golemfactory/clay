@@ -2,7 +2,7 @@ import logging
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog, QMessageBox
-from examples.gnr.ui.vraydialog import VRayDialog
+from gnr.ui.vraydialog import VRayDialog
 
 logger = logging.getLogger(__name__)
 

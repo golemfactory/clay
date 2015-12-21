@@ -5,8 +5,8 @@ import logging
 import cPickle as pickle
 from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task
-from examples.gnr.task.infotask import InfoTaskBuilder, InfoTaskDefinition
-from examples.gnr.task.updateothergolemstask import UpdateOtherGolemsTaskBuilder, UpdateOtherGolemsTaskDefinition
+from gnr.task.infotask import InfoTaskBuilder, InfoTaskDefinition
+from gnr.task.updateothergolemstask import UpdateOtherGolemsTaskBuilder, UpdateOtherGolemsTaskDefinition
 from gnrapplicationlogic import GNRApplicationLogic
 
 logger = logging.getLogger(__name__)

@@ -8,27 +8,27 @@ from golem.tools import uigen
 
 uigen.gen_ui_files(path.join(path.dirname(__file__), "ui"))
 
-from examples.gnr.renderingenvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment, \
+from gnr.renderingenvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment, \
     LuxRenderEnvironment, BlenderEnvironment
-from examples.gnr.tasktype import build_pbrt_task_type, build_3ds_max_task_type, build_vray_task_type, \
+from gnr.tasktype import build_pbrt_task_type, build_3ds_max_task_type, build_vray_task_type, \
     build_python_gnr_task_type, build_luxrender_task_type, build_blender_render_task_type
-from examples.gnr.task.pbrtgnrtask import build_pbrt_renderer_info
-from examples.gnr.task.threedsmaxtask import build_3ds_max_renderer_info
-from examples.gnr.task.vraytask import build_vray_renderer_info
-from examples.gnr.task.luxrendertask import build_lux_render_info
-from examples.gnr.task.blenderrendertask import build_blender_renderer_info
+from gnr.task.pbrtgnrtask import build_pbrt_renderer_info
+from gnr.task.threedsmaxtask import build_3ds_max_renderer_info
+from gnr.task.vraytask import build_vray_renderer_info
+from gnr.task.luxrendertask import build_lux_render_info
+from gnr.task.blenderrendertask import build_blender_renderer_info
 
-from examples.gnr.ui.blenderrenderdialog import BlenderRenderDialog
-from examples.gnr.ui.luxrenderdialog import LuxRenderDialog
-from examples.gnr.ui.pbrtdialog import PbrtDialog
-from examples.gnr.ui.threedsmaxdialog import ThreeDSMaxDialog
-from examples.gnr.ui.vraydialog import VRayDialog
+from gnr.ui.blenderrenderdialog import BlenderRenderDialog
+from gnr.ui.luxrenderdialog import LuxRenderDialog
+from gnr.ui.pbrtdialog import PbrtDialog
+from gnr.ui.threedsmaxdialog import ThreeDSMaxDialog
+from gnr.ui.vraydialog import VRayDialog
 
-from examples.gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
-from examples.gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
-from examples.gnr.customizers.pbrtdialogcustomizer import PbrtDialogCustomizer
-from examples.gnr.customizers.threedsmaxdialogcustomizer import ThreeDSMaxDialogCustomizer
-from examples.gnr.customizers.vraydialogcustomizer import VRayDialogCustomizer
+from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
+from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
+from gnr.customizers.pbrtdialogcustomizer import PbrtDialogCustomizer
+from gnr.customizers.threedsmaxdialogcustomizer import ThreeDSMaxDialogCustomizer
+from gnr.customizers.vraydialogcustomizer import VRayDialogCustomizer
 
 from examples.manager.gnrmanagerlogic import run_additional_nodes, run_manager
 
@@ -111,7 +111,7 @@ def run_manager(logic, client):
 
 
 def run_info_server(client, start_port=55555, next_port=55556, end_port=59999):
-    from examples.gnr.InfoServer import InfoServer
+    from gnr.InfoServer import InfoServer
     info_server = InfoServer(client, start_port, next_port, end_port)
     info_server.start()
 

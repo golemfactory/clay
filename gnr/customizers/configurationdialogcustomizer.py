@@ -6,7 +6,7 @@ import os
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMessageBox
 
-from examples.gnr.ui.configurationdialog import ConfigurationDialog
+from gnr.ui.configurationdialog import ConfigurationDialog
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.fileshelper import get_dir_size
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display

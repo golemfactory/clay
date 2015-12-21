@@ -1,6 +1,6 @@
 
-from examples.gnr.ui.changetaskdialog import ChangeTaskDialog
-from examples.gnr.renderingtaskstate import RenderingTaskDefinition
+from gnr.ui.changetaskdialog import ChangeTaskDialog
+from gnr.renderingtaskstate import RenderingTaskDefinition
 from timehelper import set_time_spin_boxes, get_time_values
 
 import logging

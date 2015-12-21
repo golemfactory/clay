@@ -5,14 +5,14 @@ import math
 from collections import OrderedDict
 from PIL import Image, ImageChops
 from golem.task.taskstate import SubtaskStatus
-from examples.gnr.renderingdirmanager import get_test_task_path, get_tmp_path
-from examples.gnr.renderingenvironment import BlenderEnvironment
-from examples.gnr.renderingtaskstate import RendererDefaults, RendererInfo
-from examples.gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
-from examples.gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
+from gnr.renderingdirmanager import get_test_task_path, get_tmp_path
+from gnr.renderingenvironment import BlenderEnvironment
+from gnr.renderingtaskstate import RendererDefaults, RendererInfo
+from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
+from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
-from examples.gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
-from examples.gnr.task.scenefileeditor import regenerate_blender_crop_file
+from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
+from gnr.task.scenefileeditor import regenerate_blender_crop_file
 
 
 logger = logging.getLogger(__name__)

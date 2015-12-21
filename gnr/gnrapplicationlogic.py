@@ -3,10 +3,10 @@ import logging
 import cPickle
 from PyQt4 import QtCore
 
-from examples.gnr.ui.testingtaskprogressdialog import TestingTaskProgressDialog
+from gnr.ui.testingtaskprogressdialog import TestingTaskProgressDialog
 from golem.task.taskstate import TaskStatus
-from examples.gnr.gnrtaskstate import GNRTaskState
-from examples.gnr.task.tasktester import TaskTester
+from gnr.gnrtaskstate import GNRTaskState
+from gnr.task.tasktester import TaskTester
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.client import GolemClientEventListener

@@ -1,7 +1,7 @@
 from PyQt4.QtGui import QMessageBox, QFileDialog
 
-from examples.gnr.ui.generatingkeywindow import GeneratingKeyWindow
-from examples.gnr.ui.dialog import SaveKeysDialog
+from gnr.ui.generatingkeywindow import GeneratingKeyWindow
+from gnr.ui.dialog import SaveKeysDialog
 from customizer import Customizer
 from generatenewkeywindowcustomizer import GenerateNewKeyWindowCustomizer
 

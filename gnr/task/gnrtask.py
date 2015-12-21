@@ -4,7 +4,7 @@ from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
 from golem.core.compress import decompress
-from examples.gnr.renderingdirmanager import get_tmp_path
+from gnr.renderingdirmanager import get_tmp_path
 import os
 import logging
 import time

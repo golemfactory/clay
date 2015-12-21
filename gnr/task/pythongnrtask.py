@@ -1,4 +1,4 @@
-from examples.gnr.task.gnrtask import GNRTaskBuilder, GNRTask, check_subtask_id_wrapper
+from gnr.task.gnrtask import GNRTaskBuilder, GNRTask, check_subtask_id_wrapper
 from golem.environments.environment import Environment
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus

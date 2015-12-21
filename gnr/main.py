@@ -1,8 +1,8 @@
 from gnrstartapp import start_app, config_logging
 from renderingapplicationlogic import RenderingApplicationLogic
-from examples.gnr.ui.renderingmainwindow import RenderingMainWindow
-from examples.gnr.application import GNRGui
-from examples.gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from gnr.ui.renderingmainwindow import RenderingMainWindow
+from gnr.application import GNRGui
+from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 
 
 def main():

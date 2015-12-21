@@ -3,13 +3,13 @@ import random
 import logging
 import math
 from golem.task.taskstate import SubtaskStatus
-from examples.gnr.renderingenvironment import PBRTEnvironment
-from examples.gnr.renderingdirmanager import get_test_task_path
-from examples.gnr.renderingtaskstate import RendererDefaults, RendererInfo, RenderingTaskDefinition
-from examples.gnr.task.scenefileeditor import regenerate_pbrt_file
-from examples.gnr.task.gnrtask import GNROptions, GNRTaskBuilder
-from examples.gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
-from examples.gnr.task.renderingtaskcollector import RenderingTaskCollector
+from gnr.renderingenvironment import PBRTEnvironment
+from gnr.renderingdirmanager import get_test_task_path
+from gnr.renderingtaskstate import RendererDefaults, RendererInfo, RenderingTaskDefinition
+from gnr.task.scenefileeditor import regenerate_pbrt_file
+from gnr.task.gnrtask import GNROptions, GNRTaskBuilder
+from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
+from gnr.task.renderingtaskcollector import RenderingTaskCollector
 
 logger = logging.getLogger(__name__)
 

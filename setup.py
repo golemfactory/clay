@@ -66,7 +66,7 @@ setup(
     author="Golem Team",
     author_email='contact@golemproject.net',
     url='http://golemproject.net',
-    packages=find_packages(include=['golem*', 'examples.gnr*']),
+    packages=find_packages(include=['golem*', 'gnr*']),
     include_package_data=True,
     install_requires=requirements,
     dependency_links=dependency_links,

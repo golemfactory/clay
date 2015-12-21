@@ -7,13 +7,13 @@ from PIL import Image, ImageChops
 from golem.core.simpleexccmd import exec_cmd
 from golem.task.taskstate import SubtaskStatus
 from golem.environments.environment import Environment
-from examples.gnr.renderingtaskstate import RendererDefaults, RendererInfo
-from examples.gnr.renderingenvironment import LuxRenderEnvironment
-from examples.gnr.renderingdirmanager import get_test_task_path
-from examples.gnr.task.imgrepr import load_img, blend
-from examples.gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
-from examples.gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
-from examples.gnr.task.scenefileeditor import regenerate_lux_file
+from gnr.renderingtaskstate import RendererDefaults, RendererInfo
+from gnr.renderingenvironment import LuxRenderEnvironment
+from gnr.renderingdirmanager import get_test_task_path
+from gnr.task.imgrepr import load_img, blend
+from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
+from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
+from gnr.task.scenefileeditor import regenerate_lux_file
 
 logger = logging.getLogger(__name__)
 

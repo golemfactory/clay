@@ -1,12 +1,12 @@
-from examples.gnr.task.pbrtgnrtask import PbrtGNRTaskBuilder, build_pbrt_renderer_info, PbrtRendererOptions
-from examples.gnr.task.vraytask import VRayTaskBuilder
-from examples.gnr.task.threedsmaxtask import ThreeDSMaxTaskBuilder
-from examples.gnr.task.pythongnrtask import PythonGNRTaskBuilder
-from examples.gnr.task.luxrendertask import LuxRenderTaskBuilder
-from examples.gnr.task.blenderrendertask import BlenderRenderTaskBuilder
-from examples.gnr.task.gnrtask import GNROptions
-from examples.gnr.ui.pbrttaskdialog import PbrtTaskDialog
-from examples.gnr.customizers.pbrttaskdialogcustomizer import PbrtTaskDialogCustomizer
+from gnr.task.pbrtgnrtask import PbrtGNRTaskBuilder, build_pbrt_renderer_info, PbrtRendererOptions
+from gnr.task.vraytask import VRayTaskBuilder
+from gnr.task.threedsmaxtask import ThreeDSMaxTaskBuilder
+from gnr.task.pythongnrtask import PythonGNRTaskBuilder
+from gnr.task.luxrendertask import LuxRenderTaskBuilder
+from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
+from gnr.task.gnrtask import GNROptions
+from gnr.ui.pbrttaskdialog import PbrtTaskDialog
+from gnr.customizers.pbrttaskdialogcustomizer import PbrtTaskDialogCustomizer
 
 
 def build_pbrt_task_type():

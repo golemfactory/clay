@@ -1,7 +1,7 @@
 import logging
 
-from examples.gnr.renderingapplicationlogic import AbsRenderingApplicationLogic
-from examples.gnr.gnradmapplicationlogic import GNRAdmApplicationLogic
+from gnr.renderingapplicationlogic import AbsRenderingApplicationLogic
+from gnr.gnradmapplicationlogic import GNRAdmApplicationLogic
 
 logger = logging.getLogger(__name__)
 
