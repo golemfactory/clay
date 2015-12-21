@@ -34,6 +34,19 @@ class ConfigurationDialogCustomizer:
         self.__load_resource_config()
         self.__load_payment_config(config_desc)
 
+    @staticmethod
+    def du(path):
+        try:
+            return subprocess.check_output(['du', '-sh', path]).split()[0]
+        except (OSError, subprocess.CalledProcessError):
+            try:
+                size = get_dir_size(path)
+                human_readable_size, idx = dir_size_to_display(size)
+                return "{} {}".format(human_readable_size, translate_resource_index(idx))
+            except OSError as err:
+                logger.info("Can't open dir {}: {}".format(path, str(err)))
+        return "-1"
+
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
         self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_port))
@@ -145,18 +158,6 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
         self.gui.ui.distributedResSize.setText(self.du(res_dirs['distributed']))
         self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
-
-    def du(self, path):
-        try:
-            return subprocess.check_output(['du', '-sh', path]).split()[0]
-        except:
-            try:
-                size = get_dir_size(path)
-                human_readable_size, idx = dir_size_to_display(size)
-                return "{} {}".format(human_readable_size, translate_resource_index(idx))
-            except Exception as err:
-                logger.error(str(err))
-                return "Error"
 
     def __setup_connections(self):
         self.gui.ui.recountButton.clicked.connect(self.__recount_performance)

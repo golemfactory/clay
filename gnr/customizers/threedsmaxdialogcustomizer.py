@@ -68,11 +68,10 @@ class ThreeDSMaxDialogCustomizer:
         interval = False
         for frame in sorted(frames):
             try:
-                frame = int (frame)
+                frame = int(frame)
                 if frame < 0:
-                    raise
-
-                if last_frame == None:
+                    raise ValueError("Frame number must be greater than 0")
+                if last_frame is None:
                     s += str(frame)
                 elif frame - last_frame == 1:
                     if not interval:
@@ -85,9 +84,8 @@ class ThreeDSMaxDialogCustomizer:
                     s += ',' + str(frame)
 
                 last_frame = frame
-
-            except:
-                logger.error("Wrong frame format")
+            except ValueError as err:
+                logger.error("Wrong frame format: {}".format(err))
                 return ""
 
         if interval:
@@ -101,12 +99,13 @@ class ThreeDSMaxDialogCustomizer:
             after_split = s.split(",")
             for i in after_split:
                 inter = i.split("-")
-                if len (inter) == 1:
-                    frames.append(int (inter[0]))
+                if len(inter) == 1:
+                    frames.append(int(inter[0]))
                 elif len(inter) == 2:
                     frames += range(int(inter[0]), int(inter[1]) + 1)
                 else:
-                    raise
+                    raise ValueError("Wrong frame interval format")
             return frames
-        except:
+        except ValueError as err:
+            logger.warning("Wrong frame format {}".format(str(err)))
             return []

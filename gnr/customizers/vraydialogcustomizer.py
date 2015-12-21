@@ -73,11 +73,10 @@ class VRayDialogCustomizer:
         interval = False
         for frame in sorted(frames):
             try:
-                frame = int (frame)
+                frame = int(frame)
                 if frame < 0:
-                    raise
-
-                if last_frame == None:
+                    raise ValueError
+                if last_frame is None:
                     s += str(frame)
                 elif frame - last_frame == 1:
                     if not interval:
@@ -90,9 +89,8 @@ class VRayDialogCustomizer:
                     s += ';' + str(frame)
 
                 last_frame = frame
-
-            except:
-                logger.error("Wrong frame format")
+            except ValueError as err:
+                logger.error("Wrong frame format: {}".format(err))
                 return ""
 
         if interval:
@@ -106,18 +104,19 @@ class VRayDialogCustomizer:
             after_split = s.split(";")
             for i in after_split:
                 inter = i.split("-")
-                if len (inter) == 1:      # pojedyncza klatka (np. 5)
-                    frames.append(int (inter[0]))
+                if len(inter) == 1:      # pojedyncza klatka (np. 5)
+                    frames.append(int(inter[0]))
                 elif len(inter) == 2:
                     inter2 = inter[1].split(",")
                     if len(inter2) == 1:      #przedzial klatek (np. 1-10)
                         frames += range(int(inter[0]), int(inter[1]) + 1)
-                    elif len (inter2)== 2:    # co n-ta klata z przedzialu (np. 10-100,5)
-                        frames += range(int (inter[0]), int (inter2[0]) + 1, int (inter2[1]))
+                    elif len(inter2) == 2:    # co n-ta klata z przedzialu (np. 10-100,5)
+                        frames += range(int(inter[0]), int(inter2[0]) + 1, int(inter2[1]))
                     else:
-                        raise
+                        raise ValueError("Wrong interval format")
                 else:
-                    raise
+                    raise ValueError("Unknown frame format")
             return frames
-        except:
+        except ValueError as err:
+            logger.warning("Wrong fame format: {}".format(err))
             return []

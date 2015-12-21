@@ -80,10 +80,10 @@ class AbsRenderingApplicationLogic(object):
                 os.remove(output_file)
             return True
         except IOError:
-            self.show_error_window("Cannot open file: {}".format(output_file))
+            self.show_error_window("Cannot open output file: {}".format(output_file))
             return False
-        except:
-            self.show_error_window("Output file is not properly set")
+        except (OSError, TypeError) as err:
+            self.show_error_window("Output file {} is not properly set: {}".format(output_file, err))
             return False
 
 

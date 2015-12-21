@@ -5,8 +5,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def _local_tcp_addr(port):
     return "tcp://127.0.0.1:{}".format(port)
+
 
 class SnapshotGetter:
     def __init__(self, client):
@@ -19,7 +21,7 @@ class SnapshotGetter:
             node = zerorpc.Client()
             node.connect(_local_tcp_addr(port))
             with self.lock:
-                self.otherNodes[ port ] = node
+                self.otherNodes[port] = node
         except:
             logger.error("Can't connect to port: {}".format(port))
 
@@ -37,7 +39,7 @@ class SnapshotGetter:
         messages.append(snapshot)
         try:
             messages = pickle.dumps(messages)
-            return { 'data': messages, 'result_type': 0 }
+            return {'data': messages, 'result_type': 0}
         except Exception as ex:
             logger.error("Can't serialize snapshots: {}".format(str(ex)))
 

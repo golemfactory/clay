@@ -23,7 +23,7 @@ def read_advance_verification_params(gui, definition):
                 if definition.verification_options.probability > 1:
                     definition.verification_options.probability = 1.0
                     gui.ui.probabilityLineEdit.setText("1.0")
-            except:
+            except ValueError:
                 logger.warning("Wrong probability values {}".format(gui.ui.probabilityLineEdit.text()))
                 definition.verification_options.probability = 0.0
                 gui.ui.probabilityLineEdit.setText("0.0")
