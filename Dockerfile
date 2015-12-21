@@ -9,14 +9,14 @@ MAINTAINER Paweł Bylica <chfast@gmail.com>
 #   pycrypto: libgmp-dev
 #   ethereum: libssl-dev
 RUN apt-get update && apt-get install -y \
-    python-setuptools \
+    python-pip \
     python-dev \
     g++ dh-autoreconf \
     libjpeg-dev zlib1g-dev libopenexr-dev libgmp-dev libffi-dev \
     libssl-dev \
 && apt-get clean \
-&& rm -rf /var/lib/apt/lists/*
-
+&& rm -rf /var/lib/apt/lists/* \
+&& pip install -U setuptools
 
 # Quite stupid, but GNR is not independent yet
 COPY . /opt/golem
