@@ -8,7 +8,7 @@ def read_task(file_, file_dest):
     dir_ = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
     task.main_scene_file = os.path.normpath(os.path.join(dir_, task.main_scene_file))
     task.main_program_file = os.path.normpath(os.path.join(dir_, task.main_program_file))
-    task.resources = set([os.path.normpath(os.path.join(dir_, res) )for res in task.resources])
+    task.resources = set([os.path.normpath(os.path.join(dir_, res))for res in task.resources])
 
     with open(file_dest, 'w') as f:
         pickle.dump(task, f)
