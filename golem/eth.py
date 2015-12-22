@@ -11,12 +11,14 @@ from devp2p.discovery import NodeDiscovery
 from ethereum import blocks, keys
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
-from pyethapp.accounts import AccountsService
+from pyethapp.accounts import Account, AccountsService
 from pyethapp.app import EthApp
 from pyethapp.db_service import DBService
 from pyethapp.eth_service import ChainService
 from pyethapp.pow_service import PoWService
 from pyethapp.utils import merge_dict
+
+from golem.contracts import BankOfDeposit
 
 slogging.configure(":info")
 
@@ -80,7 +82,7 @@ def app(ctx, data_dir):
 @click.pass_obj
 def server(data_dir):
     config = _build_config(data_dir, 'server')
-    config['accounts']['privkeys_hex'][0] = FAUCET_PRIVKEY.encode('hex')
+    config['accounts']['privkeys_hex'] = [FAUCET_PRIVKEY.encode('hex')]
     config['node']['privkey_hex'] = FAUCET_PRIVKEY.encode('hex')
     config['discovery']['listen_port'] = 30300
     config['p2p']['listen_port'] = 30300
@@ -93,17 +95,44 @@ def server(data_dir):
     app.start()
 
 
-@app.command()
+@app.group()
 @click.option('--name', default='node')
-@click.argument('bootstrap_node', required=False)
-@click.pass_obj
-def run(data_dir, name, bootstrap_node):
+@click.option('bootstrap_node', '-b', required=False)
+@click.pass_context
+def node(ctx, name, bootstrap_node):
+    data_dir = ctx.obj
     config = _build_config(data_dir, name)
     if bootstrap_node:
         config['discovery']['bootstrap_nodes'].append(bootstrap_node)
     else:
         config['discovery']['bootstrap_nodes'].append(SERVER_ENODE)
-    _build_app(config).start()
+    app = _build_app(config)
+    accounts = app.services.accounts
+    print accounts.keystore_dir
+    if len(accounts) == 0:
+        me = Account.new('')
+        me.path = accounts.propose_path(me.address)
+        accounts.add_account(me)
+    app.start()
+    ctx.obj = app
+
+
+@node.command()
+@click.pass_obj
+@click.argument('recipient')
+@click.argument('value')
+def direct(app, recipient, value):
+    me = app.services.accounts[0]
+    print "MY ADDRESS", me.address.encode('hex')
+    svc = app.services.chain
+    head = svc.chain.head
+    nonce = head.get_nonce(me.address)
+    print "NONCE", nonce
+    print "VALUE", value
+    tx = Transaction(nonce, 1, 21000, to=recipient.decode('hex'), value=value,
+                     data='')
+    tx.sign(me.privkey)
+    svc.add_transaction(tx)
 
 
 @app.group()
@@ -121,18 +150,30 @@ def faucet(ctx):
     while app.services.chain.is_syncing:
         print "syncing..."
         gevent.sleep(1)
+
+    svc = app.services.chain
+    head = svc.chain.head
+    nonce = head.get_nonce(FAUCET_ADDR)
+    print "NONCE", nonce
+    if nonce == 0:  # Deploy Bank of Deposit contract
+        tx = Transaction(nonce, 1, 3141592, to='', value=0,
+                         data=BankOfDeposit.INIT_HEX.decode('hex'))
+        tx.sign(FAUCET_PRIVKEY)
+        svc.add_transaction(tx)
+        addr = tx.creates
+        assert addr == "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
+        print "ADDR", addr.encode('hex')
     ctx.obj = app
 
 
 @faucet.command('balance')
 @click.pass_obj
 def faucet_balance(app):
-    slogging.configure(":error")
     gevent.sleep(2)
     while app.services.chain.is_syncing:
         gevent.sleep(1)
     print app.services.chain.chain.head.get_balance(FAUCET_ADDR)
-    app.stop()
+    # app.stop()
 
 
 @faucet.command('send')
