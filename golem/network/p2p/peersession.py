@@ -33,7 +33,7 @@ class PeerSession(BasicSafeSession):
 
         # Information about peer
         self.degree = 0
-        self.node_id = None
+        self.node_name = ""
         self.node_info = None
         self.listen_port = None
 
@@ -174,7 +174,7 @@ class PeerSession(BasicSafeSession):
 
     def send_loc_rank(self, node_id, loc_rank):
         """ Send local opinion about given node
-        :param uuid node_id: send opinion about node with this id
+        :param node_id: send opinion about node with this id
         :param LocalRank loc_rank: opinion bout node
         :return:
         """
@@ -235,9 +235,11 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.pong_received(self.key_id)
 
     def _react_to_hello(self, msg):
-        self.node_id = msg.client_uid
+        self.node_name = msg.node_name
         self.node_info = msg.node_info
+        next_hello = self.key_id == msg.client_key_id
         self.key_id = msg.client_key_id
+
         self.listen_port = msg.port
         solve_challenge = msg.solve_challenge
         challenge = msg.challenge
@@ -249,12 +251,12 @@ class PeerSession(BasicSafeSession):
             return
 
         enough_peers = self.p2p_service.enough_peers()
-        p = self.p2p_service.find_peer(self.node_id)
+        p = self.p2p_service.find_peer(self.key_id)
 
         self.p2p_service.add_to_peer_keeper(self.node_info)
 
         if enough_peers:
-            logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.node_id, self.address, self.port)
+            logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.node_name, self.address, self.port)
             logger.info(logger_msg)
             nodes_info = self.p2p_service.find_node(self.p2p_service.get_key_id())
             self.send(MessagePeers(nodes_info))
@@ -265,14 +267,14 @@ class PeerSession(BasicSafeSession):
             solution = self.p2p_service.solve_challenge(self.key_id, challenge, difficulty)
             self.send(MessageChallengeSolution(solution), send_unverified=True)
 
-        if p and p != self and p.conn.opened:
+        if not next_hello and p and p != self and p.conn.opened:
             # self.sendPing()
-            logger_msg = "PEER DUPLICATED: {} {} : {}".format(p.node_id, p.address, p.port)
-            logger.warning("{} AND {} : {}".format(logger_msg, msg.client_uid, msg.port))
+            logger_msg = "PEER DUPLICATED: {} {} : {}".format(p.node_name, p.address, p.port)
+            logger.warning("{} AND {} : {}".format(logger_msg, msg.node_name, msg.port))
             self.disconnect(PeerSession.DCRDuplicatePeers)
 
         if not p:
-            self.p2p_service.add_peer(self.node_id, self)
+            self.p2p_service.add_peer(self.key_id, self)
             self.__send_hello()
             if solve_challenge:
                 solution = self.p2p_service.solve_challenge(self.key_id, challenge, difficulty)
@@ -280,7 +282,7 @@ class PeerSession(BasicSafeSession):
             else:
                 self.send(MessageRandVal(msg.rand_val), send_unverified=True)
 
-        # print "Add peer to client uid:{} address:{} port:{}".format(self.node_id, self.address, self.port)
+        # print "Add peer to client uid:{} address:{} port:{}".format(self.node_name, self.address, self.port)
 
     def _react_to_get_peers(self, msg):
         self.__send_peers()
@@ -316,10 +318,10 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.hear_gossip(msg.gossip)
 
     def _react_to_stop_gossip(self, msg):
-        self.p2p_service.stop_gossip(self.node_id)
+        self.p2p_service.stop_gossip(self.key_id)
 
     def _react_to_loc_rank(self, msg):
-        self.p2p_service.safe_neighbour_loc_rank(self.node_id, msg.node_id, msg.loc_rank)
+        self.p2p_service.safe_neighbour_loc_rank(self.key_id, msg.node_id, msg.loc_rank)
 
     def _react_to_find_node(self, msg):
         nodes_info = self.p2p_service.find_node(msg.node_key_id)
@@ -379,7 +381,7 @@ class PeerSession(BasicSafeSession):
             peers_info.append({
                 "address": p.address,
                 "port": p.listen_port,
-                "id": p.node_id,
+                "node_name": p.node_name,
                 "node": p.node_info
             })
         self.send(MessagePeers(peers_info))

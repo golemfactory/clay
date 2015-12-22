@@ -104,11 +104,11 @@ class SubtaskPaymentInfo(object):
 
 class AccountInfo(object):
     """ Information about node's payment account """
-    def __init__(self, key_id, port, addr, node_id, node_info):
+    def __init__(self, key_id, port, addr, node_name, node_info):
         self.key_id = key_id
         self.port = port
         self.addr = addr
-        self.node_id = node_id
+        self.node_name = node_name
         self.node_info = node_info
 
     def __eq__(self, other):

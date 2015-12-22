@@ -58,7 +58,7 @@ class NodeSimulator(QtCore.QThread):
         self.addedTasks.append(extra_data)
 
     ########################
-    def get_id(self):
+    def get_node_name(self):
         return self.id
 
     ########################

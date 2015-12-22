@@ -22,17 +22,17 @@ def split_path(path):
 
 class DirManager(object):
     """ Manage working directories for application. Return paths, create them if it's needed """
-    def __init__(self, root_path, node_id, tmp="tmp", res="resources", output="output", global_resource="golemres"):
+    def __init__(self, root_path, node_name, tmp="tmp", res="resources", output="output", global_resource="golemres"):
         """ Creates new dir manager instance
         :param str root_path: path to the main directory where all other working directories are placed
-        :param node_id: current node id
+        :param node_name: current node id
         :param str tmp: temporary directory name
         :param res: resource directory name
         :param output: output directory name
         :param global_resource: global resources directory name
         """
         self.root_path = root_path
-        self.node_id = node_id
+        self.node_name = node_name
         self.tmp = tmp
         self.res = res
         self.output = output
@@ -131,13 +131,13 @@ class DirManager(object):
         self.clear_dir(self.__get_out_path(task_id))
 
     def __get_tmp_path(self, task_id):
-        return os.path.join(self.root_path, self.node_id, task_id, self.tmp)
+        return os.path.join(self.root_path, self.node_name, task_id, self.tmp)
 
     def __get_res_path(self, task_id):
-        return os.path.join(self.root_path, self.node_id, task_id, self.res)
+        return os.path.join(self.root_path, self.node_name, task_id, self.res)
 
     def __get_out_path(self, task_id):
-        return os.path.join(self.root_path, self.node_id, task_id, self.output)
+        return os.path.join(self.root_path, self.node_name, task_id, self.output)
 
     def __get_global_resource_path(self):
         return os.path.join(self.root_path, self.global_resource)

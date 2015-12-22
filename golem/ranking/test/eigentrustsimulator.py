@@ -1,9 +1,4 @@
-import sys
-import os
 import random
-
-
-sys.path.append(os.environ.get('GOLEM'))
 
 from golem.ranking.eigenTrustRank import EigenTrustRank
 from rankSimulator import RankSimulator

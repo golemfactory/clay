@@ -26,4 +26,3 @@ def exec_cmd(cmd, nice=20, wait=True):
 
     if wait:
         pc.wait()
-        print "STDOUT: {}".format(stdout)

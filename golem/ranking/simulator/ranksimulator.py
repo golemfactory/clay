@@ -1,15 +1,10 @@
-import sys
-import os
 import random
-from copy import copy
-
-sys.path.append(os.environ.get('GOLEM'))
-
-from golem.ranking.simpleRank import SimpleRank
+from golem.ranking.simplerank import SimpleRank
 from networksimulator import PANetworkSimulator
 
+
 class RankSimulator:
-    def __init__(self, rank_class, opt_peers = 2, network = PANetworkSimulator):
+    def __init__(self, rank_class, opt_peers=2, network=PANetworkSimulator):
         self.network = network()
         self.ranking = {}
         self.behaviour = {}
@@ -21,13 +16,13 @@ class RankSimulator:
     def get_last_node_name(self):
         return self.last_node
 
-    def add_node(self, good_node = True):
+    def add_node(self, good_node=True):
         node = self.network.add_node()
-        self.ranking[ node ] = self.rank_class()
-        self.behaviour[ node ] = good_node
+        self.ranking[node] = self.rank_class()
+        self.behaviour[node] = good_node
         self.last_node = node
 
-    def full_add_node(self, good_node = True):
+    def full_add_node(self, good_node=True):
         self.add_node(good_node)
         self.sync_network()
 
@@ -74,7 +69,6 @@ class RankSimulator:
                 self.no_payment(cnt_node, dnt_node)
         else:
             self.bad_counting(cnt_node, dnt_node)
-
 
     def good_counting(self, cnt_node, dnt_node):
         pass
@@ -155,9 +149,9 @@ class SimpleRankSimulator(RankSimulator):
 def main():
     rs = SimpleRankSimulator()
     for i in range(0, 5):
-        rs.full_add_node(good_node = False)
+        rs.full_add_node(good_node=False)
     for i in range(0, 10):
-        rs.full_add_node(good_node = True)
+        rs.full_add_node(good_node=True)
 
     rs.print_state()
     print "################"
@@ -168,4 +162,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
