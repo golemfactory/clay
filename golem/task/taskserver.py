@@ -149,8 +149,8 @@ class TaskServer(PendingConnectionsServer):
             if id_ not in self.task_manager.tasks.keys():  # It is not my task id
                 self.task_keeper.add_task_header(th_dict_repr, self.client.supported_task(th_dict_repr))
             return True
-        except Exception, err:
-            logger.error("Wrong task header received {}".format(str(err)))
+        except Exception as err:
+            logger.error("Wrong task header received {}".format(err))
             return False
 
     def remove_task_header(self, task_id):

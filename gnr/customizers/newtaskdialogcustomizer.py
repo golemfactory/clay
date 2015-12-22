@@ -151,8 +151,8 @@ class NewTaskDialogCustomizer:
             else:
                 logger.error("Cannot load task, unknown task type")
                 return
-        except Exception, err:
-            logger.error("Wrong task type {}".format(str(err)))
+        except Exception as err:
+            logger.error("Wrong task type {}".format(err))
             return
 
     def _load_advance_task_params(self, definition):

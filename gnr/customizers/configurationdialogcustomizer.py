@@ -64,9 +64,9 @@ class ConfigurationDialogCustomizer:
 
         try:
             num_cores = int(config_desc.num_cores)
-        except Exception, e:
+        except (ValueError, AttributeError, TypeError) as err:
             num_cores = 1
-            logger.error("Wrong value for number of cores: {}".format(str(e)))
+            logger.error("Wrong value for number of cores: {}".format(err))
         self.gui.ui.numCoresSlider.setValue(num_cores)
 
     def __load_memory_config(self, config_desc):
@@ -75,15 +75,15 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.maxMemoryUsageComboBox.addItems(mem_tab)
         try:
             max_resource_size = long(config_desc.max_resource_size)
-        except Exception, e:
+        except (ValueError, AttributeError, TypeError) as err:
             max_resource_size = 250 * 1024
-            logger.error("Wrong value for maximum resource size: {}".format(str(e)))
+            logger.error("Wrong value for maximum resource size: {}".format(err))
 
         try:
             max_memory_size = long(config_desc.max_memory_size)
-        except Exception, e:
+        except (ValueError, AttributeError, TypeError) as err:
             max_memory_size = 250 * 1024
-            logger.error("Wrong value for maximum memory usage: {}".format(str(e)))
+            logger.error("Wrong value for maximum memory usage: {}".format(err))
 
         max_resource_size, index = resource_size_to_display(max_resource_size)
         self.gui.ui.maxResourceSizeComboBox.setCurrentIndex(index)

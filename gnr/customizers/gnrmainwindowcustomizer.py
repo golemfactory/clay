@@ -177,13 +177,13 @@ class GNRMainWindowCustomizer:
             self._load_task(file_name)
 
     def _load_task(self, file_path):
-        f = open(file_path, 'r')
         try:
+            f = open(file_path, 'r')
             definition = cPickle.loads(f.read())
-        except Exception, e:
+        except Exception as err:
             definition = None
-            logger.error("Can't unpickle the file {}: {}".format(file_path, str(e)))
-            QMessageBox().critical(None, "Error", "This is not a proper gt file")
+            logger.error("Can't unpickle the file {}: {}".format(file_path, err))
+            QMessageBox().critical(None, "Error", "This is not a proper gt file: {}".format(err))
         finally:
             f.close()
 

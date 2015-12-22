@@ -49,8 +49,8 @@ class TaskKeeper(object):
                     if is_supported:
                         self.supported_tasks.append(id_)
             return True
-        except Exception, err:
-            logger.error("Wrong task header received {}".format(str(err)))
+        except (KeyError, TypeError) as err:
+            logger.error("Wrong task header received {}".format(err))
             return False
 
     def remove_task_header(self, task_id):
