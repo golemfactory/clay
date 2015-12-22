@@ -6,7 +6,7 @@ import os
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMessageBox
 
-from gnr.ui.configurationdialog import ConfigurationDialog
+from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.fileshelper import get_dir_size
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
@@ -14,17 +14,10 @@ from memoryhelper import resource_size_to_display, translate_resource_index, dir
 logger = logging.getLogger(__name__)
 
 
-class ConfigurationDialogCustomizer:
+class ConfigurationDialogCustomizer(Customizer):
     def __init__(self, gui, logic):
-
-        assert isinstance(gui, ConfigurationDialog)
-
-        self.gui = gui
-        self.logic = logic
-
+        Customizer.__init__(self, gui, logic)
         self.old_plugin_port = None
-
-        self.__setup_connections()
 
     def load_config(self):
         config_desc = self.logic.get_config()
@@ -46,6 +39,26 @@ class ConfigurationDialogCustomizer:
             except OSError as err:
                 logger.info("Can't open dir {}: {}".format(path, str(err)))
         return "-1"
+
+    def _setup_connections(self):
+        self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
+        self.gui.ui.buttonBox.accepted.connect(self.__change_config)
+
+        QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
+                               self.__recount_performance)
+
+        self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
+        self.gui.ui.removeDistributedButton.clicked.connect(self.__remove_from_distributed)
+        self.gui.ui.removeReceivedButton.clicked.connect(self.__remove_from_received)
+
+        QtCore.QObject.connect(self.gui.ui.requestingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
+                               self.__requesting_trust_slider_changed)
+        QtCore.QObject.connect(self.gui.ui.computingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
+                               self.__computing_trust_slider_changed)
+        QtCore.QObject.connect(self.gui.ui.requestingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"),
+                               self.__requesting_trust_edited)
+        QtCore.QObject.connect(self.gui.ui.computingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"),
+                               self.__computing_trust_edited)
 
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
@@ -158,26 +171,6 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
         self.gui.ui.distributedResSize.setText(self.du(res_dirs['distributed']))
         self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
-
-    def __setup_connections(self):
-        self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
-        self.gui.ui.buttonBox.accepted.connect(self.__change_config)
-
-        QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
-                               self.__recount_performance)
-
-        self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
-        self.gui.ui.removeDistributedButton.clicked.connect(self.__remove_from_distributed)
-        self.gui.ui.removeReceivedButton.clicked.connect(self.__remove_from_received)
-
-        QtCore.QObject.connect(self.gui.ui.requestingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
-                               self.__requesting_trust_slider_changed)
-        QtCore.QObject.connect(self.gui.ui.computingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
-                               self.__computing_trust_slider_changed)
-        QtCore.QObject.connect(self.gui.ui.requestingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"),
-                               self.__requesting_trust_edited)
-        QtCore.QObject.connect(self.gui.ui.computingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"),
-                               self.__computing_trust_edited)
 
     def __remove_from_computing(self):
         reply = QMessageBox.question(self.gui.window, 'Golem Message',
