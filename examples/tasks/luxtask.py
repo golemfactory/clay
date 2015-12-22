@@ -30,7 +30,7 @@ def __read_from_environment():
 
     sys.path.append(path)
 
-    from examples.gnr.renderingenvironment import LuxRenderEnvironment
+    from gnr.renderingenvironment import LuxRenderEnvironment
     env = LuxRenderEnvironment()
     cmd_file = env.get_lux_console()
     if cmd_file:

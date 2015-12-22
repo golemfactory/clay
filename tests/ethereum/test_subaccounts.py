@@ -60,7 +60,7 @@ class BankContractTest(unittest.TestCase):
     def withdraw(self, addr_idx, value):
         m = self.monitor(addr_idx)
         o = self.c.withdraw(value, sender=m.key, profiling=True)
-        return o['gas'] - 21000
+        return o['gas']
 
     @staticmethod
     def encode_payments(payments):

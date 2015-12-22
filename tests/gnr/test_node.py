@@ -2,7 +2,7 @@ import unittest
 import os
 import cPickle
 from mock import patch, call
-from examples.gnr.node import parse_peer, start
+from gnr.node import parse_peer, start
 from click.testing import CliRunner
 from golem.network.transport.tcpnetwork import TCPAddress
 
@@ -15,7 +15,7 @@ class A(object):
 
 class TestNode(unittest.TestCase):
 
-    @patch('examples.gnr.node.reactor')
+    @patch('gnr.node.reactor')
     def test_help(self, mock_reactor):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--help'])
@@ -23,7 +23,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(return_value.output.startswith('Usage'))
         mock_reactor.run.assert_not_called()
 
-    @patch('examples.gnr.node.reactor')
+    @patch('gnr.node.reactor')
     def test_wrong_option(self, mock_reactor):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--blargh'])
@@ -31,14 +31,14 @@ class TestNode(unittest.TestCase):
         self.assertTrue(return_value.output.startswith('Error'))
         mock_reactor.run.assert_not_called()
 
-    @patch('examples.gnr.node.reactor')
+    @patch('gnr.node.reactor')
     def test_no_args(self, mock_reactor):
         runner = CliRunner()
         return_value = runner.invoke(start)
         self.assertEqual(return_value.exit_code, 0)
         mock_reactor.run.assert_called_with()
 
-    @patch('examples.gnr.node.GNRNode')
+    @patch('gnr.node.GNRNode')
     def test_wrong_peer_good_peer(self, mock_node):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--peer', '10.30.10.216:40111', '--peer', 'bla'])
@@ -51,7 +51,7 @@ class TestNode(unittest.TestCase):
         self.assertEqual(len(peer_arg), 1)
         self.assertEqual(peer_arg[0], TCPAddress('10.30.10.216', 40111))
 
-    @patch('examples.gnr.node.GNRNode')
+    @patch('gnr.node.GNRNode')
     def test_peers(self, mock_node):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--peer', u'10.30.10.216:40111',
@@ -70,14 +70,14 @@ class TestNode(unittest.TestCase):
         self.assertEqual(peer_arg[2], TCPAddress('::ffff:0:0:0', 96))
 
 
-    @patch('examples.gnr.node.GNRNode')
+    @patch('gnr.node.GNRNode')
     def test_wrong_task(self, mock_node):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--task', 'testtask.gt'])
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Error' in return_value.output and 'Usage' in return_value.output)
 
-    @patch('examples.gnr.node.GNRNode')
+    @patch('gnr.node.GNRNode')
     def test_task(self, mock_node):
         runner = CliRunner()
 

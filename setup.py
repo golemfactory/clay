@@ -53,8 +53,6 @@ def parse_requirements(requirements_file):
 
 requirements, dependency_links = parse_requirements('requirements.txt')
 
-print requirements, dependency_links
-
 test_requirements = [
     'pytest'
 ]
@@ -68,7 +66,7 @@ setup(
     author="Golem Team",
     author_email='contact@golemproject.net',
     url='http://golemproject.net',
-    packages=find_packages(include=['golem*', 'examples.gnr*']),
+    packages=find_packages(include=['golem*', 'gnr*']),
     include_package_data=True,
     install_requires=requirements,
     dependency_links=dependency_links,

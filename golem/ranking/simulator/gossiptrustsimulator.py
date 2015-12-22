@@ -1,12 +1,7 @@
-import sys
-import os
 import random
 from numpy import matrix
 from collections import OrderedDict
-
-sys.path.append(os.environ.get('GOLEM'))
-
-from golem.ranking.gossipTrustRank import GossipTrustTest, GossipPositiveNegativeTrustRank
+from golem.ranking.gossiptrustrank import GossipTrustTest, GossipPositiveNegativeTrustRank
 from ranksimulator import RankSimulator
 
 

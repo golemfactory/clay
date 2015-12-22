@@ -198,28 +198,3 @@ class SimpleConfig(object):
             rs += "{}\n".format(str(prop))
 
         return rs
-
-# if __name__ == "__main__":
-#
-#     # get a list of a class's method type attributes
-#     def listattr(c):
-#         for m in [(n, v) for n, v in inspect.getmembers(c, inspect.ismethod) if isinstance(v,types.MethodType)]:
-#             print m[0], m[1]
-#
-#     c = DefaultConfig(0)
-#     print c
-#     c = DefaultConfig(1)
-#     print c
-#     c = DefaultConfig(2)
-#     print c
-#     c = GlobalConfig()
-#
-#     listattr(c)
-#
-#     print c.get_opt_peer_num()
-#     c.setOptimalPeerNum(20)
-#     print c.get_opt_peer_num()
-#
-#     cfg = DefaultConfig(0, "some_test_cfg.ini")
-#     cfg1 = DefaultConfig(1, "some_test_cfg.ini")
-#     cfg2 = DefaultConfig(2, "some_test_cfg.ini")

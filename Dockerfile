@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
 && apt-get clean \
 && rm -rf /var/lib/apt/lists/* \
-&& pip install -U setuptools
+&& pip install --upgrade pip setuptools
 
 # Quite stupid, but GNR is not independent yet
 COPY . /opt/golem
@@ -25,6 +25,6 @@ RUN cd /opt/golem && python setup.py install
 
 ENV GOLEM=/opt/golem PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/blender
 
-WORKDIR /opt/golem/examples/gnr
+WORKDIR /opt/golem/gnr
 
 ENTRYPOINT ["/usr/bin/python", "node.py"]

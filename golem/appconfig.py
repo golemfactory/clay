@@ -1,13 +1,10 @@
-import sys
-
-sys.path.append('core')
-import os
 import logging
+from os import path
 
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 from golem.core.simpleenv import SimpleEnv
 from golem.core.prochelper import ProcessService
-from clientconfigdescriptor import ClientConfigDescriptor
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 CONFIG_FILENAME = "app_cfg.ini"
 ESTM_FILENAME = "minilight.ini"
@@ -26,7 +23,7 @@ APP_VERSION = "1.021"
 
 class CommonConfig:
 
-    def __init__(self, section="Common",**kwargs):
+    def __init__(self, section="Common", **kwargs):
         self._section = section
 
         for k, v in kwargs.iteritems():
@@ -49,7 +46,7 @@ NODE_SNAPSHOT_INTERVAL = 4.0
 ADD_TASKS = 0
 MAX_SENDING_DELAY = 360
 USE_DISTRIBUTED_RESOURCE_MANAGEMENT = 1
-DEFAULT_ROOT_PATH = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+DEFAULT_ROOT_PATH = path.normpath(path.join(path.dirname(__file__), '..'))
 REQUESTING_TRUST = -1.0
 COMPUTING_TRUST = -1.0
 P2P_SESSION_TIMEOUT = 240
@@ -65,7 +62,7 @@ class NodeConfig:
     def read_estimated_performance(cls):
         estm_file = SimpleEnv.env_file_name(ESTM_FILENAME)
         res = 0
-        if os.path.isfile(estm_file):
+        if path.isfile(estm_file):
             try:
                 with open(estm_file, 'r') as file_:
                     res = "{0:.1f}".format(float(file_.read()))

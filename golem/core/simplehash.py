@@ -64,16 +64,3 @@ class SimpleHash(object):
                 sha.update(data)
 
             return cls.base64_encode(sha.digest())
-
-if __name__ == "__main__":
-    val = "Exceptional string"
-
-    hh = SimpleHash.hash_hex(val)
-    h = SimpleHash.hash(val)
-    eh = SimpleHash.hash_base64(val)
-
-    print "Input data '{}'".format(val)
-    print "Hex encoded hash digest: {}".format(hh)
-    print "Hash digest base64 encoded: {}".format(eh)
-    print "Hash digest raw: {}".format(h)
-    print "Hash digest raw from encode64: {}".format(SimpleHash.base64_decode(eh))
