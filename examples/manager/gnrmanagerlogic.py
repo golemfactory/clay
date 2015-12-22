@@ -34,13 +34,12 @@ class GNRManagerLogic(EmptyManagerLogic):
         run_additional_nodes("../gnr", num_nodes)
 
     def load_task(self, uid, file_path):
-        f = open(file_path, 'r')
-
         try:
+            f = open(file_path, 'r')
             definition = pickle.loads(f.read())
-        except Exception, e:
+        except Exception as err:
             definition = None
-            logger.error("Can't unpickle the file {}: {}".format(file_path, str(e)))
+            logger.error("Can't unpickle the file {}: {}".format(file_path, err))
             QMessageBox().critical(None, "Error", "This is not a proper gt file")
         finally:
             f.close()

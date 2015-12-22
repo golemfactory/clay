@@ -204,8 +204,8 @@ class PbrtRenderTask(RenderingTask):
         try:
             with open(scene_file) as f:
                 self.scene_file_src = f.read()
-        except Exception, err:
-            logger.error("Wrong scene file: {}".format(str(err)))
+        except IOError as err:
+            logger.error("Wrong scene file: {}".format(err))
             self.scene_file_src = ""
 
         self.res_x = res_x
@@ -427,8 +427,8 @@ class PbrtRenderTask(RenderingTask):
             file_name, ext = os.path.splitext(file_name)
             idx = file_name.find(BASENAME)
             return int(file_name[idx + len(BASENAME):])
-        except Exception, err:
-            logger.error("Wrong output file name {}: {}".format(file_, str(err)))
+        except Exception as err:
+            logger.error("Wrong output file name {}: {}".format(file_, err))
             return self.subtasks_given[subtask_id]['start_task']
 
 

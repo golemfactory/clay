@@ -126,8 +126,8 @@ class BlenderRenderTask(FrameRenderingTask):
         try:
             with open(crop_task) as f:
                 self.script_src = f.read()
-        except Exception, err:
-            logger.error("Wrong script file: {}".format(str(err)))
+        except IOError as err:
+            logger.error("Wrong script file: {}".format(err))
             self.script_src = ""
 
         self.engine = engine
@@ -264,18 +264,17 @@ class BlenderRenderTask(FrameRenderingTask):
         return int(file_name[idx + len(self.outfilebasename):])
 
     def _update_preview(self, new_chunk_file_path, chunk_num):
-
-        if new_chunk_file_path.endswith(".exr"):
-            img = exr_to_pil(new_chunk_file_path)
-        else:
-            img = Image.open(new_chunk_file_path)
-
-        img_offset = Image.new("RGB", (self.res_x, self.res_y))
         try:
+            if new_chunk_file_path.endswith(".exr"):
+                img = exr_to_pil(new_chunk_file_path)
+            else:
+                img = Image.open(new_chunk_file_path)
+            img_offset = Image.new("RGB", (self.res_x, self.res_y))
             offset = int(math.floor((chunk_num - 1) * float(self.res_y) / float(self.total_tasks)))
             img_offset.paste(img, (0, offset))
-        except Exception, err:
-            logger.error("Can't generate preview {}".format(str(err)))
+        except Exception as err:
+            logger.error("Can't generate preview {}".format(err))
+            return
 
         tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
 

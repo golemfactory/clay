@@ -89,8 +89,8 @@ def load_img(file_):
             img = EXRImgRepr()
         img.load_from_file(file_)
         return img
-    except Exception, err:
-        logger.warning("Can't verify img file {}:{}".format(file_, str(err)))
+    except Exception as err:
+        logger.warning("Can't verify img file {}:{}".format(file_, err))
         return None
 
 
@@ -124,8 +124,8 @@ def compare_pil_imgs(file1, file2):
         img2 = PILImgRepr()
         img2.load_from_file(file2)
         return __compare_imgs(img1, img2)
-    except Exception, err:
-        logger.info("Can't compare images {}, {}: {}".format(file1, file2, str(err)))
+    except Exception as err:
+        logger.info("Can't compare images {}, {}: {}".format(file1, file2, err))
         return False
 
 
@@ -136,8 +136,8 @@ def compare_exr_imgs(file1, file2):
         img2 = EXRImgRepr()
         img2.load_from_file(file2)
         return __compare_imgs(img1, img2, 1)
-    except Exception, err:
-        logger.info("Can't compare images {}, {}: {}".format(file1, file2, str(err)))
+    except Exception as err:
+        logger.info("Can't compare images {}, {}: {}".format(file1, file2, err))
         return False
 
 

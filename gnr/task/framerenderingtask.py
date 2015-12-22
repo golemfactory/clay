@@ -149,15 +149,17 @@ class FrameRenderingTask(RenderingTask):
         img.save(self.preview_task_file_path[num], "BMP")
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
-        img_offset = Image.new("RGB", (self.res_x, self.res_y))
         try:
+            img_offset = Image.new("RGB", (self.res_x, self.res_y))
             offset = int(math.floor((chunk_num - 1) * float(self.res_y) / float(all_chunks_num)))
             img_offset.paste(img_chunk, (0, offset))
-        except Exception, err:
-            logger.error("Can't generate preview {}".format(str(err)))
+        except Exception as err:
+            logger.error("Can't generate preview {}".format(err))
+            img_offset = None
         if os.path.exists(preview_file_path):
             img = Image.open(preview_file_path)
-            img = ImageChops.add(img, img_offset)
+            if img_offset:
+                img = ImageChops.add(img, img_offset)
             return img
         else:
             return img_offset

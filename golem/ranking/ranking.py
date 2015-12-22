@@ -485,8 +485,8 @@ class Ranking:
                                                      self.__sum_gossip(req, prev_req)]
                     else:
                         self.working_vec[node_id] = [comp, req]
-                except Exception, err:
-                    logger.error("Wrong gossip {}, {}".format(gossip, str(err)))
+                except Exception as err:
+                    logger.error("Wrong gossip {}, {}".format(gossip, err))
 
         self.received_gossip = []
 

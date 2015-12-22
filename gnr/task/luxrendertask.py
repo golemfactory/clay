@@ -149,8 +149,8 @@ class LuxTask(RenderingTask):
         try:
             with open(main_scene_file) as f:
                 self.scene_file_src = f.read()
-        except Exception, err:
-            logger.error("Wrong scene file: {}".format(str(err)))
+        except IOError as err:
+            logger.error("Wrong scene file: {}".format(err))
             self.scene_file_src = ""
 
         self.output_file, _ = os.path.splitext(self.output_file)
