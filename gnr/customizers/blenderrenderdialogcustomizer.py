@@ -60,13 +60,13 @@ class BlenderRenderDialogCustomizer(Customizer):
     @staticmethod
     def frames_to_string(frames):
         s = ""
+        last_frame = None
+        interval = False
         try:
-            last_frame = None
-            interval = False
             for frame in sorted(frames):
                 frame = int(frame)
                 if frame < 0:
-                    raise ValueError("Frame number must be greater than 0")
+                    raise ValueError("Frame number must be greater or equal to 0")
 
                 if last_frame is None:
                     s += str(frame)

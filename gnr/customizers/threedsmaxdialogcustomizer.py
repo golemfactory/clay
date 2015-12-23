@@ -70,7 +70,7 @@ class ThreeDSMaxDialogCustomizer:
             try:
                 frame = int(frame)
                 if frame < 0:
-                    raise ValueError("Frame number must be greater than 0")
+                    raise ValueError("Frame number must be greater or equal to 0")
                 if last_frame is None:
                     s += str(frame)
                 elif frame - last_frame == 1:
