@@ -1,7 +1,8 @@
 import unittest
 import os
+import re
 
-from examples.gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer
+from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer
 
 
 class TestConfigurationDialogCustomizer(unittest.TestCase):
@@ -18,21 +19,22 @@ class TestConfigurationDialogCustomizer(unittest.TestCase):
         res = ConfigurationDialogCustomizer.du("notexisting")
         self.assertEqual(res, "-1")
         res = ConfigurationDialogCustomizer.du(self.testdir)
-        size, sym = res.split(" ")
+        try:
+            size = float(res)
+        except ValueError:
+            size, sym = re.split("[ kKmMgGbB]", res)[:2]
         self.assertGreaterEqual(float(size), 0.0)
-        self.assertEqual(sym, 'kB')
         with open(os.path.join(self.testdir, self.testfile1), 'w') as f:
             f.write("a" * 10000)
         res = ConfigurationDialogCustomizer.du(self.testdir)
-        size1, sym = res.split(" ")
-        self.assertEqual(sym, 'kB')
+        size1, sym = re.split("[ kKmMgGbB]", res)[:2]
         self.assertGreater(float(size1), float(size))
         if not os.path.exists(self.testdir2):
             os.makedirs(self.testdir2)
         with open(os.path.join(self.testdir2, self.testfile2), 'w') as f:
             f.write("123" * 10000)
         res = ConfigurationDialogCustomizer.du(self.testdir)
-        size2, sym = res.split(" ")
+        size2, sym = re.split("[ kKmMgGbB]", res)[:2]
         self.assertGreater(float(size2), float(size1))
 
     def tearDown(self):

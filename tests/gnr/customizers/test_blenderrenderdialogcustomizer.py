@@ -1,5 +1,5 @@
 import unittest
-from examples.gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
+from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 
 
 class TestFramesConversion(unittest.TestCase):
