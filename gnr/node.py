@@ -36,7 +36,7 @@ class Node(object):
 
     def load_environments(self, environments):
         for env in environments:
-            env.accept_task = True
+            env.accept_tasks = True
             self.client.environments_manager.add_environment(env)
 
     def connect_with_peers(self, peers):
