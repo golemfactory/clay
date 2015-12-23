@@ -287,9 +287,13 @@ class TaskServer(PendingConnectionsServer):
 
     def global_pay_for_task(self, task_id, payments):
         global_payments = {eth_account: desc.value for eth_account, desc in payments.items()}
-        self.client.global_pay_for_task(task_id, global_payments)
-        for eth_account, v in global_payments.iteritems():
-            print "Global paying {} to {}".format(v, eth_account)
+        try:
+            self.client.global_pay_for_task(task_id, global_payments)
+            for eth_account, v in global_payments.iteritems():
+                print "Global paying {} to {}".format(v, eth_account)
+        except Exception as err:
+            #FIXME Dealing with payments errors should be much more advance
+            logger.error("Can't pay for task: {}".format(err))
 
     def reject_result(self, subtask_id, account_info):
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
