@@ -141,7 +141,7 @@ class P2PService(PendingConnectionsServer):
         :param Node peer_info: information about new peer
         """
         peer_to_ping_info = self.peer_keeper.add_peer(peer_info)
-        if peer_to_ping_info and peer_to_ping_info.node_id in self.peers:
+        if peer_to_ping_info and peer_to_ping_info.key in self.peers:
             peer_to_ping = self.peers[peer_to_ping_info.key]
             if peer_to_ping:
                 peer_to_ping.ping(0)
