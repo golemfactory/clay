@@ -68,10 +68,7 @@ class CheckableDirModel(QtGui.QFileSystemModel):
         for path, dirs, files in os.walk(unicode(dirFilePath)):
             for filename in files:
                 if self.check_state(self.index(os.path.join(path, filename))) == QtCore.Qt.Checked:
-                    try:
-                        selection.append(os.path.normpath(os.path.join(path, filename)))
-                    except:
-                        pass
+                    selection.append(os.path.normpath(os.path.join(path, filename)))
 
     def export_checked(self):
         selection = []

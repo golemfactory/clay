@@ -24,8 +24,8 @@ class NodesManagerClient:
             if (int(self.manager_server_port) < 1) or (int(self.manager_server_port) > 65535):
                 logger.warning(u"Manager Server port number out of range [1, 65535]: {}".format(self.manager_server_port))
                 return True
-        except Exception, e:
-            logger.error(u"Wrong seed port number {}: {}".format(self.manager_server_port, str(e)))
+        except ValueError as err:
+            logger.error(u"Wrong seed port number {}: {}".format(self.manager_server_port, err))
             return True
 
         if not self.client_manager_session:

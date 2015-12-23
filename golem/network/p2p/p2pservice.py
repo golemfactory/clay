@@ -260,8 +260,8 @@ class P2PService(PendingConnectionsServer):
             if self.peers[id_]:
                 th_dict_repr["address"] = self.peers[id_].address
                 th_dict_repr["port"] = self.peers[id_].port
-        except Exception, err:
-            logger.error("Wrong task representation: {}".format(str(err)))
+        except KeyError as err:
+            logger.error("Wrong task representation: {}".format(err))
 
     def get_listen_params(self, key_id, rand_val):
         """ Return parameters that are needed for listen function in tuple
@@ -454,7 +454,7 @@ class P2PService(PendingConnectionsServer):
             try:
                 if peer['key_id'] != self.keys_auth.get_key_id():
                     self.resource_peers[peer['key_id']] = [peer['addr'], peer['port'], peer['node_name'], peer['node']]
-            except Exception, err:
+            except KeyError as err:
                 logger.error("Wrong set peer message (peer: {}): {}".format(peer, str(err)))
         resource_peers_copy = self.resource_peers.copy()
         if self.get_key_id() in resource_peers_copy:

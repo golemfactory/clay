@@ -89,13 +89,14 @@ class TaskSession(MiddlemanSafeSession):
         :return str|None: decrypted data
         """
         if self.task_server is None:
+            logger.warning("Can't decrypt data - no task server")
             return data
         try:
             data = self.task_server.decrypt(data)
         except AssertionError:
             logger.warning("Failed to decrypt message, maybe it's not encrypted?")
-        except Exception, err:
-            logger.warning("Fail to decrypt message {}".format(str(err)))
+        except Exception as err:
+            logger.warning("Fail to decrypt message {}".format(err))
             self.dropped()
             return None
 
@@ -187,8 +188,10 @@ class TaskSession(MiddlemanSafeSession):
             try:
                 result = self.decrypt(result)
                 result = pickle.loads(result)
-            except Exception, err:
-                logger.error("Can't unpickle result data {}".format(str(err)))
+            except Exception as err:
+                logger.error("Can't unpickle result data {}".format(err))
+                self.dropped()
+                return
 
         subtask_id = extra_data.get("subtask_id")
         if subtask_id:

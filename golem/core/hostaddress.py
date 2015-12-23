@@ -84,16 +84,19 @@ def get_host_address(seed_addr=None, use_ipv6=False):
         ip = get_host_address_from_connection(use_ipv6=use_ipv6)
         if ip is not None:
             return ip
-    except Exception, err:
+
+    except Exception as err:
         logger.error("Can't connect to outer service: {}".format(err))
 
-    ips = ip_addresses(use_ipv6)
     try:
+        ips = ip_addresses(use_ipv6)
         if seed_addr is not None:
             len_pref = [len(os.path.commonprefix([addr, seed_addr])) for addr in ips]
             return ips[len_pref.index(max(len_pref))]
         else:
+            if len(ips) < 1:
+                raise Exception("Netifaces return empty list of addresses")
             return ips[0]
-    except Exception, err:
+    except Exception as err:
         logger.error("get_host_address error {}".format(str(err)))
         return socket.gethostbyname(socket.gethostname())

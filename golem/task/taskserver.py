@@ -149,8 +149,8 @@ class TaskServer(PendingConnectionsServer):
             if id_ not in self.task_manager.tasks.keys():  # It is not my task id
                 self.task_keeper.add_task_header(th_dict_repr, self.client.supported_task(th_dict_repr))
             return True
-        except Exception, err:
-            logger.error("Wrong task header received {}".format(str(err)))
+        except Exception as err:
+            logger.error("Wrong task header received {}".format(err))
             return False
 
     def remove_task_header(self, task_id):
@@ -287,9 +287,13 @@ class TaskServer(PendingConnectionsServer):
 
     def global_pay_for_task(self, task_id, payments):
         global_payments = {eth_account: desc.value for eth_account, desc in payments.items()}
-        self.client.global_pay_for_task(task_id, global_payments)
-        for eth_account, v in global_payments.iteritems():
-            print "Global paying {} to {}".format(v, eth_account)
+        try:
+            self.client.global_pay_for_task(task_id, global_payments)
+            for eth_account, v in global_payments.iteritems():
+                print "Global paying {} to {}".format(v, eth_account)
+        except Exception as err:
+            #FIXME Dealing with payments errors should be much more advance
+            logger.error("Can't pay for task: {}".format(err))
 
     def reject_result(self, subtask_id, account_info):
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
