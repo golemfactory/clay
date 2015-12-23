@@ -145,8 +145,9 @@ class FrameRenderingTask(RenderingTask):
         if not final:
             img = self._paste_new_chunk(img, self.preview_file_path[num], part, self.total_tasks / len(self.frames))
 
-        img.save(self.preview_file_path[num], "BMP")
-        img.save(self.preview_task_file_path[num], "BMP")
+        if img:
+            img.save(self.preview_file_path[num], "BMP")
+            img.save(self.preview_task_file_path[num], "BMP")
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
         try:
@@ -156,12 +157,17 @@ class FrameRenderingTask(RenderingTask):
         except Exception as err:
             logger.error("Can't generate preview {}".format(err))
             img_offset = None
-        if os.path.exists(preview_file_path):
+
+        if not os.path.exists(preview_file_path):
+            return img_offset
+
+        try:
             img = Image.open(preview_file_path)
             if img_offset:
                 img = ImageChops.add(img, img_offset)
             return img
-        else:
+        except Exception as err:
+            logger.error("Can't add new chunk to preview{}".format(err))
             return img_offset
 
     def _update_frame_task_preview(self):
