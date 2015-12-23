@@ -1,5 +1,6 @@
 import unittest
-from golem.network.transport.tcpserver import TCPServer
+from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer
+from golem.network.p2p.node import Node
 
 
 class ConfigDescriptor(object):
@@ -46,3 +47,39 @@ class TestTCPServer(unittest.TestCase):
         self.__test_change_scenario(server, 10, 10, 10, False, False)
         self.__test_change_scenario(server, 11, 10, 10, True, True)
         self.__test_change_scenario(server, 0, 10, 10, False, True)
+
+
+class TestPendingConnectionServer(unittest.TestCase):
+    def test_get_tcp_addresses(self):
+        server = PendingConnectionsServer(None, Network())
+
+        node = Node()
+        port = 100
+        res = server.get_tcp_addresses(node, port, None)
+        self.assertEqual(res, [])
+        node.pub_addr = "10.10.10.10"
+        res = server.get_tcp_addresses(node, port, None)
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0].address, node.pub_addr)
+        self.assertEqual(res[0].port, port)
+        node.pub_port = 1023
+        res = server.get_tcp_addresses(node, port, None)
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0].address, node.pub_addr)
+        self.assertEqual(res[0].port, 1023)
+        node.prv_addresses = ["10.10.10.1", "10.10.10.2", "10.10.10.3", "10.10.10.4"]
+        res = server.get_tcp_addresses(node, port, None)
+        self.assertEqual(len(res), 5)
+        self.assertEqual(res[4].address, node.pub_addr)
+        self.assertEqual(res[4].port, 1023)
+        for i in range(4):
+            self.assertEqual(res[i].address, node.prv_addresses[i])
+            self.assertEqual(res[i].port, port)
+        node.pub_addr = None
+        res = server.get_tcp_addresses(node, port, None)
+        self.assertEqual(len(res), 4)
+        for i in range(4):
+            self.assertEqual(res[i].address, node.prv_addresses[i])
+            self.assertEqual(res[i].port, port)
+
+
