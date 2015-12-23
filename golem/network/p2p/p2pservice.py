@@ -408,8 +408,8 @@ class P2PService(PendingConnectionsServer):
         neighbours = self.peer_keeper.neighbours(node_key_id)
         peer_infos = []
         for peer in neighbours:
-            peer_infos.append({"address": peer.prv_addr, "port": peer.prv_port, "id": peer.node_id,
-                               "node": peer})
+            peer_infos.append({"address": peer.prv_addr, "port": peer.prv_port,
+                               "id": peer.key, "node": peer})
         return peer_infos
 
 
