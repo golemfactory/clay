@@ -25,3 +25,6 @@ class Node(object):
             return False
         return self.pub_addr == self.prv_addr
 
+    def __str__(self):
+        return "Node {}, (key: {})".format(self.node_name, self.key)
+
