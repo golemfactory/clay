@@ -9,6 +9,30 @@ from gnr.renderingdirmanager import get_test_task_path, get_test_task_directory,
 
 logger = logging.getLogger(__name__)
 
+def find_flm(directory):
+    if not os.path.exists(directory):
+        return None
+        
+    try:
+        for root, dirs, files in os.walk(directory):
+            for names in files:
+                if names[-4:] == ".flm":
+                    return os.path.join(root,names)
+
+    except:
+        import traceback
+        # Print the stack traceback
+        traceback.print_exc()
+        return None
+
+def copy_rename(old_file_name, new_file_name):
+        dst_dir= os.path.join(os.curdir , "subfolder")
+        src_file = os.path.join(src_dir, old_file_name)
+        shutil.copy(src_file,dst_dir)
+        
+        dst_file = os.path.join(dst_dir, old_file_name)
+        new_dst_file_name = os.path.join(dst_dir, new_file_name)
+        os.rename(dst_file, new_dst_file_name)
 
 class TaskTester:
     def __init__(self, task, root_path, finished_callback):
@@ -65,6 +89,27 @@ class TaskTester:
             res, est_mem = task_thread.result
         if task_thread.result and 'data' in res and res['data']:
             logger.info("Test task computation success !")
+            
+            # Search for flm - the result of testing a lux task
+            # If found one, copy it to $GOLEM/save/{task_id}.flm
+            # It's needed for verification of received results
+            flm = find_flm(self.tmp_dir)
+            if(flm != None):
+                try:
+                    filename = str(self.task.header.task_id) + ".flm"
+                    os.rename(flm, os.path.join(self.tmp_dir, filename))
+                    flm_path = os.path.join(self.tmp_dir, filename)
+                    save_path = os.path.join(os.environ["GOLEM"], "save")
+                    if not os.path.exists(save_path):
+                        os.makedirs(save_path)
+                    
+                    shutil.copy(flm_path, save_path)
+                    
+                except: 
+                    logger.warning("Couldn't rename and copy .flm file")
+            
+            
+            
             self.finished_callback(True, est_mem)
         else:
             logger.warning("Test task computation failed !!!")

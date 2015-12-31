@@ -2,6 +2,8 @@ import logging
 import random
 import os
 import tempfile
+import subprocess
+import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
 from golem.core.simpleexccmd import exec_cmd
@@ -16,6 +18,15 @@ from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from gnr.task.scenefileeditor import regenerate_lux_file
 
 logger = logging.getLogger(__name__)
+
+def merge_flm_files(flm_to_verify_and_merge_filename, output_flm_filename):
+    p = subprocess.Popen(["luxmerger", output_flm_filename, flm_to_verify_and_merge_filename, "-o", output_flm_filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    
+    if("ERROR" in err):
+        return False
+    else:
+        return True
 
 
 class LuxRenderDefaults(RendererDefaults):
@@ -344,14 +355,32 @@ class LuxTask(RenderingTask):
         os.remove(tmp_scene_file.name)
 
     def __generate_final_flm(self):
+        '''
+        Received flm files will be merged one by one with the result of task's test
+        in order to verify basic properties of the received .flms
+        returns list of wrong flms
+        '''
+        
+        # the file containing result of task test
+        test_result_flm = os.path.join(os.environ["GOLEM"], "save", str(self.header.task_id) + ".flm")
+        # output flm
         output_file_name = u"{}".format(self.output_file, self.output_format)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
-        files = " ".join(self.collected_file_names.values())
         env = LuxRenderEnvironment()
         lux_merger = env.get_lux_merger()
+        
+        
+        bad_files = []
+        
         if lux_merger is not None:
-            cmd = "{} -o {}.flm {}".format(lux_merger, self.output_file, files)
-
-            logger.debug("Lux Merger cmd: {}".format(cmd))
-            exec_cmd(cmd)
+            for f in self.collected_file_names.values():
+                logger.info("MERGE")
+                if not merge_flm_files(f, test_result_flm):
+                    bad_files.append(f)
+        else:
+            logger.error("Lux merger not found!")
+        
+        shutil.copy(test_result_flm, output_file_name)
+        logger.info("MERGE FINISHED")
+        return bad_files
 
