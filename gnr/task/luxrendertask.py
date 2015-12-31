@@ -257,7 +257,7 @@ class LuxTask(RenderingTask):
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
-        scene_src = regenerate_lux_file(self.scene_file_src, 1, 1, 5, 0, 1, [0, 1, 0, 1], "PNG")
+        scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, 1, 0, 1, [0, 1, 0, 1], "PNG")
         working_directory = self._get_working_directory()
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
@@ -374,13 +374,11 @@ class LuxTask(RenderingTask):
         
         if lux_merger is not None:
             for f in self.collected_file_names.values():
-                logger.info("MERGE")
                 if not merge_flm_files(f, test_result_flm):
                     bad_files.append(f)
         else:
             logger.error("Lux merger not found!")
         
         shutil.copy(test_result_flm, output_file_name)
-        logger.info("MERGE FINISHED")
         return bad_files
 
