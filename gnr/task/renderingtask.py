@@ -58,8 +58,8 @@ class RenderingTask(GNRTask):
         try:
             with open(main_program_file, "r") as src_file:
                 src_code = src_file.read()
-        except Exception, err:
-            logger.error("Wrong main program file: {}".format(str(err)))
+        except IOError as err:
+            logger.error("Wrong main program file: {}".format(err))
             src_code = ""
 
         resource_size = 0

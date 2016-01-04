@@ -141,7 +141,7 @@ class P2PService(PendingConnectionsServer):
         :param Node peer_info: information about new peer
         """
         peer_to_ping_info = self.peer_keeper.add_peer(peer_info)
-        if peer_to_ping_info and peer_to_ping_info.node_id in self.peers:
+        if peer_to_ping_info and peer_to_ping_info.key in self.peers:
             peer_to_ping = self.peers[peer_to_ping_info.key]
             if peer_to_ping:
                 peer_to_ping.ping(0)
@@ -260,8 +260,8 @@ class P2PService(PendingConnectionsServer):
             if self.peers[id_]:
                 th_dict_repr["address"] = self.peers[id_].address
                 th_dict_repr["port"] = self.peers[id_].port
-        except Exception, err:
-            logger.error("Wrong task representation: {}".format(str(err)))
+        except KeyError as err:
+            logger.error("Wrong task representation: {}".format(err))
 
     def get_listen_params(self, key_id, rand_val):
         """ Return parameters that are needed for listen function in tuple
@@ -408,8 +408,8 @@ class P2PService(PendingConnectionsServer):
         neighbours = self.peer_keeper.neighbours(node_key_id)
         peer_infos = []
         for peer in neighbours:
-            peer_infos.append({"address": peer.prv_addr, "port": peer.prv_port, "id": peer.node_id,
-                               "node": peer})
+            peer_infos.append({"address": peer.prv_addr, "port": peer.prv_port,
+                               "id": peer.key, "node": peer})
         return peer_infos
 
 
@@ -454,7 +454,7 @@ class P2PService(PendingConnectionsServer):
             try:
                 if peer['key_id'] != self.keys_auth.get_key_id():
                     self.resource_peers[peer['key_id']] = [peer['addr'], peer['port'], peer['node_name'], peer['node']]
-            except Exception, err:
+            except KeyError as err:
                 logger.error("Wrong set peer message (peer: {}): {}".format(peer, str(err)))
         resource_peers_copy = self.resource_peers.copy()
         if self.get_key_id() in resource_peers_copy:

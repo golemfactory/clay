@@ -6,7 +6,7 @@ import os
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMessageBox
 
-from gnr.ui.configurationdialog import ConfigurationDialog
+from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.fileshelper import get_dir_size
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
@@ -14,17 +14,10 @@ from memoryhelper import resource_size_to_display, translate_resource_index, dir
 logger = logging.getLogger(__name__)
 
 
-class ConfigurationDialogCustomizer:
+class ConfigurationDialogCustomizer(Customizer):
     def __init__(self, gui, logic):
-
-        assert isinstance(gui, ConfigurationDialog)
-
-        self.gui = gui
-        self.logic = logic
-
+        Customizer.__init__(self, gui, logic)
         self.old_plugin_port = None
-
-        self.__setup_connections()
 
     def load_config(self):
         config_desc = self.logic.get_config()
@@ -34,6 +27,41 @@ class ConfigurationDialogCustomizer:
         self.__load_resource_config()
         self.__load_payment_config(config_desc)
 
+    @staticmethod
+    def du(path):
+        try:
+            return subprocess.check_output(['du', '-sh', path]).split()[0]
+        except (OSError, subprocess.CalledProcessError):
+            try:
+                size = get_dir_size(path)
+                human_readable_size, idx = dir_size_to_display(size)
+                return "{} {}".format(human_readable_size, translate_resource_index(idx))
+            except OSError as err:
+                logger.info("Can't open dir {}: {}".format(path, str(err)))
+        return "-1"
+
+    def _setup_connections(self):
+        self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
+        self.gui.ui.recountLuxButton.clicked.connect(self.__recount_lux_performance)
+        self.gui.ui.recountBlenderButton.clicked.connect(self.__recount_blender_performance)
+        self.gui.ui.buttonBox.accepted.connect(self.__change_config)
+
+        QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
+                               self.__recount_performance)
+
+        self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
+        self.gui.ui.removeDistributedButton.clicked.connect(self.__remove_from_distributed)
+        self.gui.ui.removeReceivedButton.clicked.connect(self.__remove_from_received)
+
+        QtCore.QObject.connect(self.gui.ui.requestingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
+                               self.__requesting_trust_slider_changed)
+        QtCore.QObject.connect(self.gui.ui.computingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
+                               self.__computing_trust_slider_changed)
+        QtCore.QObject.connect(self.gui.ui.requestingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"),
+                               self.__requesting_trust_edited)
+        QtCore.QObject.connect(self.gui.ui.computingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"),
+                               self.__computing_trust_edited)
+        
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
         self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_port))
@@ -53,9 +81,9 @@ class ConfigurationDialogCustomizer:
 
         try:
             num_cores = int(config_desc.num_cores)
-        except Exception, e:
+        except (ValueError, AttributeError, TypeError) as err:
             num_cores = 1
-            logger.error("Wrong value for number of cores: {}".format(str(e)))
+            logger.error("Wrong value for number of cores: {}".format(err))
         self.gui.ui.numCoresSlider.setValue(num_cores)
 
     def __load_memory_config(self, config_desc):
@@ -64,15 +92,15 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.maxMemoryUsageComboBox.addItems(mem_tab)
         try:
             max_resource_size = long(config_desc.max_resource_size)
-        except Exception, e:
+        except (ValueError, AttributeError, TypeError) as err:
             max_resource_size = 250 * 1024
-            logger.error("Wrong value for maximum resource size: {}".format(str(e)))
+            logger.error("Wrong value for maximum resource size: {}".format(err))
 
         try:
             max_memory_size = long(config_desc.max_memory_size)
-        except Exception, e:
+        except (ValueError, AttributeError, TypeError) as err:
             max_memory_size = 250 * 1024
-            logger.error("Wrong value for maximum memory usage: {}".format(str(e)))
+            logger.error("Wrong value for maximum memory usage: {}".format(err))
 
         max_resource_size, index = resource_size_to_display(max_resource_size)
         self.gui.ui.maxResourceSizeComboBox.setCurrentIndex(index)
@@ -147,40 +175,6 @@ class ConfigurationDialogCustomizer:
         self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
         self.gui.ui.distributedResSize.setText(self.du(res_dirs['distributed']))
         self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
-
-    def du(self, path):
-        try:
-            return subprocess.check_output(['du', '-sh', path]).split()[0]
-        except:
-            try:
-                size = get_dir_size(path)
-                human_readable_size, idx = dir_size_to_display(size)
-                return "{} {}".format(human_readable_size, translate_resource_index(idx))
-            except Exception as err:
-                logger.error(str(err))
-                return "Error"
-
-    def __setup_connections(self):
-        self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
-        self.gui.ui.recountLuxButton.clicked.connect(self.__recount_lux_performance)
-        self.gui.ui.recountBlenderButton.clicked.connect(self.__recount_blender_performance)
-        self.gui.ui.buttonBox.accepted.connect(self.__change_config)
-
-        QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
-                               self.__recount_performance)
-
-        self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
-        self.gui.ui.removeDistributedButton.clicked.connect(self.__remove_from_distributed)
-        self.gui.ui.removeReceivedButton.clicked.connect(self.__remove_from_received)
-
-        QtCore.QObject.connect(self.gui.ui.requestingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
-                               self.__requesting_trust_slider_changed)
-        QtCore.QObject.connect(self.gui.ui.computingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
-                               self.__computing_trust_slider_changed)
-        QtCore.QObject.connect(self.gui.ui.requestingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"),
-                               self.__requesting_trust_edited)
-        QtCore.QObject.connect(self.gui.ui.computingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"),
-                               self.__computing_trust_edited)
 
     def __remove_from_computing(self):
         reply = QMessageBox.question(self.gui.window, 'Golem Message',

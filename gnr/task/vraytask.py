@@ -445,11 +445,11 @@ class VRayTask(FrameRenderingTask):
         self._update_frame_preview(output_file_name, frame_num, final=True)
 
     def __get_frame_number_from_name(self, frame_name):
-        frame_name, ext = os.path.splitext(frame_name)
         try:
+            frame_name, ext = os.path.splitext(frame_name)
             num = int(frame_name.split(".")[-1].lstrip("0"))
             return num
-        except Exception, err:
+        except (ValueError, TypeError, IndexError) as err:
             logger.warning("Wrong result name: {}; {} ", frame_name, str(err))
             return None
 

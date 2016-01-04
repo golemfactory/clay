@@ -455,8 +455,8 @@ class Ranking:
             return 0.0
         try:
             a, b = val
-        except Exception, err:
-            logger.warning("Wrong trust vector element {}".format(str(err)))
+        except (ValueError, TypeError) as err:
+            logger.warning("Wrong trust vector element {}".format(err))
             return None
         if a == 0.0 or b == 0.0:
             return 0.0
@@ -485,8 +485,8 @@ class Ranking:
                                                      self.__sum_gossip(req, prev_req)]
                     else:
                         self.working_vec[node_id] = [comp, req]
-                except Exception, err:
-                    logger.error("Wrong gossip {}, {}".format(gossip, str(err)))
+                except Exception as err:
+                    logger.error("Wrong gossip {}, {}".format(gossip, err))
 
         self.received_gossip = []
 

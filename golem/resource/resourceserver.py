@@ -282,15 +282,6 @@ class ResourceServer(PendingConnectionsServer):
             ResourceConnTypes.Resource: self.__connection_final_failure
         })
 
-    @staticmethod
-    def _node_info_to_tcp_addresses(node_info, port):
-        tcp_addresses = [TCPAddress(i, port) for i in node_info.prv_addresses]
-        if node_info.pub_port:
-            tcp_addresses.append(TCPAddress(node_info.pub_addr, node_info.pub_port))
-        else:
-            tcp_addresses.append(TCPAddress(node_info.pub_addr, port))
-        return tcp_addresses
-
     def __free_peer(self, addr, port):
         for key_id, peer in self.resource_peers.iteritems():
             if peer['addr'] == addr and peer['port'] == port:

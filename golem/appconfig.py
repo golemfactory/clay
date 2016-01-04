@@ -22,6 +22,7 @@ DISTRIBUTED_RES_NUM = 2
 APP_NAME = "Golem LAN Renderer"
 APP_VERSION = "1.021"
 
+logger = logging.getLogger(__name__)
 
 class CommonConfig:
 
@@ -64,12 +65,14 @@ class NodeConfig:
     def read_estimated_performance(cls):
         estm_file = SimpleEnv.env_file_name(ESTM_FILENAME)
         res = 0
-        if path.isfile(estm_file):
-            try:
-                with open(estm_file, 'r') as file_:
-                    res = "{0:.1f}".format(float(file_.read()))
-            except:
-                return 0
+        try:
+            with open(estm_file, 'r') as file_:
+                val = file_.read()
+                res = "{0:.1f}".format(float(val))
+        except IOError as err:
+            logger.warning("Can't open file {}: {}".format(estm_file, str(err)))
+        except ValueError as err:
+            logger.warning("Can't change {} to float: {}".format(val, str(err)))
         return res
 
     @classmethod
@@ -133,8 +136,6 @@ class AppConfig:
 
     @classmethod
     def load_config(cls, cfg_file=CONFIG_FILENAME):
-
-        logger = logging.getLogger(__name__)
 
         if cls.CONFIG_LOADED:
             logger.warning("Application already configured")

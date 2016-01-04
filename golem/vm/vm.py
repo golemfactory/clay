@@ -97,10 +97,10 @@ class PythonTestVM(GolemVM):
         mc.start()
         try:
             exec self.src_code in self.scope
-        except Exception, e:
-            logger.error("Execution failure {}".format(str(e)))
+        except Exception as err:
+            logger.error("Execution failure {}".format(err))
         finally:
             estimated_mem = mc.stop()
-        logger.info("Estimated memory for taks: {}".format(estimated_mem))
+        logger.info("Estimated memory for task: {}".format(estimated_mem))
         return self.scope["output"], estimated_mem
 
