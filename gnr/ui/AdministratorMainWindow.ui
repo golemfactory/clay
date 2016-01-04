@@ -589,6 +589,7 @@
     </property>
     <addaction name="actionStatus"/>
     <addaction name="actionStartNodesManager"/>
+    <addaction name="actionPayments"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
@@ -666,6 +667,11 @@
   <action name="action_identity">
    <property name="text">
     <string>Identity</string>
+   </property>
+  </action>
+  <action name="actionPayments">
+   <property name="text">
+    <string>Payments</string>
    </property>
   </action>
  </widget>

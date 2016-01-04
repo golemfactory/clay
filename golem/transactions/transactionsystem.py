@@ -88,3 +88,6 @@ class TransactionSystem(object):
         :return int: price that should be paid for a task
         """
         return int(round(price_mod * self.price_base))
+
+    def get_payments_list(self):
+        return self.payments_keeper.get_list_of_all_payments()

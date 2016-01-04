@@ -57,6 +57,27 @@ class PaymentsKeeper(object):
         """
         return task.subtasks
 
+    def get_list_of_all_payments(self):
+        #FIXME
+        all_payments = []
+        for task in self.tasks_to_pay:
+            nodes = self.__get_nodes_grouping(task.subtasks)
+            for node_id, value in nodes.iteritems():
+                all_payments.append({"task": task.task_id, "node": node_id, "amount": value, "date": "WAITING"})
+        for task in self.finished_tasks:
+            nodes = self.__get_nodes_grouping(task.subtasks)
+            for node_id, value in nodes.iteritems():
+                all_payments.append({"task": task.task_id, "node": node_id, "amount": value, "date": "FINISHED"})
+        for task in self.settled_tasks.itervalues():
+            nodes = self.__get_nodes_grouping(task.subtasks)
+            for node_id, value in nodes.iteritems():
+                all_payments.append({"task": task.task_id, "node": node_id, "amount": value, "date": "SETTLED"})
+        for task in self.computing_tasks.itervalues():
+            nodes = self.__get_nodes_grouping(task.subtasks)
+            for node_id, value in nodes.iteritems():
+                all_payments.append({"task": task.task_id, "node": node_id, "amount": value, "date": "COMPUTING"})
+        return all_payments
+
     def finished_subtasks(self, payment_info):
         """ Add new information about finished subtask
         :param PaymentInfo payment_info: full information about payment for given subtask
@@ -76,6 +97,15 @@ class PaymentsKeeper(object):
         self.tasks_to_pay.append(task)
         del self.computing_tasks[task_id]
 
+    @staticmethod
+    def __get_nodes_grouping(subtasks):
+        nodes = {}
+        for subtask in subtasks.itervalues():
+            if subtask.computer.key_id in nodes:
+                nodes[subtask.computer.key_id] += subtask.value
+            else:
+                nodes[subtask.computer.key_id] = subtask.value
+        return nodes
 
 class PaymentInfo(object):
     """ Full information about payment for a subtask. Include task id, subtask payment information and

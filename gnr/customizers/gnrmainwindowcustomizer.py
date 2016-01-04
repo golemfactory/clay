@@ -7,6 +7,7 @@ from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
 logger = logging.getLogger(__name__)
 
+from gnr.ui.dialog import PaymentsDialog
 from gnr.ui.newtaskdialog import NewTaskDialog
 from gnr.ui.tasktableelem import TaskTableElem
 from gnr.ui.taskdetailsdialog import TaskDetailsDialog
@@ -28,6 +29,7 @@ from gnr.customizers.aboutwindowcustomizer import AboutWindowCustomizer
 from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer
 from gnr.customizers.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
 from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer
+from gnr.customizers.paymentsdialogcustomizer import PaymentsDialogCustomizer
 
 from golem.core.simpleexccmd import is_windows, exec_cmd
 
@@ -138,6 +140,7 @@ class GNRMainWindowCustomizer:
         self.gui.ui.actionEdit.triggered.connect(self._show_configuration_dialog_clicked)
         self.gui.ui.actionStatus.triggered.connect(self._show_status_clicked)
         self.gui.ui.actionAbout.triggered.connect(self._show_about_clicked)
+        self.gui.ui.actionPayments.triggered.connect(self._show_payments_clicked)
         self.gui.ui.actionEnvironments.triggered.connect(self._show_environments)
         self.gui.ui.action_identity.triggered.connect(self._show_identity_dialog)
 
@@ -224,16 +227,19 @@ class GNRMainWindowCustomizer:
         AboutWindowCustomizer(about_window, self.logic)
         about_window.show()
 
+    def _show_payments_clicked(self):
+        payments_window = PaymentsDialog(self.gui.window)
+        PaymentsDialogCustomizer(payments_window, self.logic)
+        payments_window.show()
+
     def _show_configuration_dialog_clicked(self):
         self.configuration_dialog = ConfigurationDialog(self.gui.window)
         self.configuration_dialog_customizer = ConfigurationDialogCustomizer(self.configuration_dialog, self.logic)
-        self.configuration_dialog_customizer.load_config()
         self.configuration_dialog.show()
 
     def _show_identity_dialog(self):
         identity_dialog = IdentityDialog(self.gui.window)
         identity_dialog_customizer = IdentityDialogCustomizer(identity_dialog, self.logic)
-        identity_dialog_customizer.load_config()
         identity_dialog.show()
 
     def _show_environments(self):

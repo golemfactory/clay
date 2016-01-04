@@ -253,6 +253,9 @@ class Client:
     def get_new_payments_tasks(self):
         return self.transaction_system.get_new_payments_tasks()
 
+    def get_payments(self):
+        return self.transaction_system.get_payments_list()
+
     # CLIENT CONFIGURATION
     def register_listener(self, listener):
         assert isinstance(listener, GolemClientEventListener)

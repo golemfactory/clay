@@ -332,6 +332,9 @@ class GNRApplicationLogic(QtCore.QObject):
     def key_changed(self):
         self.client.key_changed()
 
+    def get_payments(self):
+        return self.client.get_payments()
+
     def show_error_window(self, text):
         from PyQt4.QtGui import QMessageBox
         ms_box = QMessageBox(QMessageBox.Critical, "Error", text)

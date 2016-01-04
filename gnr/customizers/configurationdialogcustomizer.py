@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 class ConfigurationDialogCustomizer(Customizer):
     def __init__(self, gui, logic):
-        Customizer.__init__(self, gui, logic)
         self.old_plugin_port = None
+        Customizer.__init__(self, gui, logic)
 
-    def load_config(self):
+    def load_data(self):
         config_desc = self.logic.get_config()
         self.__load_basic_config(config_desc)
         self.__load_advance_config(config_desc)
