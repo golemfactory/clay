@@ -34,7 +34,7 @@ class LuxRenderDefaults(RendererDefaults):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
         self.main_program_file = os.path.normpath(os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                                               '../tasks/luxtask.py')))
+                                                                               '../../examples/tasks/luxtask.py')))
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 5
@@ -329,7 +329,9 @@ class LuxTask(RenderingTask):
         img.save(self.preview_file_path, "BMP")
 
     def __format_lux_render_cmd(self, scene_file):
-        cmd_file = LuxRenderEnvironment().get_lux_console()
+        env = LuxRenderEnvironment()
+        cmd_file = env.get_lux_console()
+        logger.debug("Luxconsole file name: " + str(cmd_file))
         output_flm = "{}.flm".format(self.output_file)
         cmd = '"{}" "{}" -R "{}" -o "{}" '.format(cmd_file, scene_file, output_flm, self.output_file)
         logger.debug("Last flm cmd {}".format(cmd))
@@ -368,7 +370,8 @@ class LuxTask(RenderingTask):
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         env = LuxRenderEnvironment()
         lux_merger = env.get_lux_merger()
-        
+        lux_console = env.get_lux_console()
+        logger.debug("Luxconsole retrieved in __generate_final_flm: " + str(lux_console))
         
         bad_files = []
         
@@ -376,9 +379,11 @@ class LuxTask(RenderingTask):
             for f in self.collected_file_names.values():
                 if not merge_flm_files(f, test_result_flm):
                     bad_files.append(f)
+            logger.info("Merge completed. Bad files: " + str(len(bad_files)))
         else:
             logger.error("Lux merger not found!")
         
-        shutil.copy(test_result_flm, output_file_name)
+        shutil.copy(test_result_flm, self.output_file + ".flm")
+        logger.debug("Copying " + test_result_flm + " to " + self.output_file + ".flm")
         return bad_files
 
