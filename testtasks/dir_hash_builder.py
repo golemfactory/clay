@@ -26,24 +26,22 @@ def get_hash_of_dir(directory, verbose=0):
                 if verbose == 1:
                     print 'Hashing', names
                 # skip rendered images if they are there
-                if names[-4:] == ".png" or names[-5:] == ".jpeg" or names[-4:] == ".jpg":
-                    print names
-                    continue
-                filepath = os.path.join(root,names)
-                try:
-                    f1 = open(filepath, 'rb')
-                except:
-                    # You can't open the file for some reason
-                    f1.close()
-                    continue
+                if names[-4:] == ".lxs" or names[-6:] == ".blend" or names[-4:] == ".ply" or names[-4:] == ".lxo" or names[-4:] == ".lxv" or names[-4:] == ".lxm":
+                    filepath = os.path.join(root,names)
+                    try:
+                        f1 = open(filepath, 'rb')
+                    except:
+                        # You can't open the file for some reason
+                        f1.close()
+                        continue
 
-                while 1:
-                    # Read file in as little chunks
-                    buf = f1.read(4096)
-                    if not buf: 
-                        break
-                    SHAhash.update(hashlib.sha1(buf).hexdigest())
-                f1.close()
+                    while 1:
+                        # Read file in as little chunks
+                        buf = f1.read(4096)
+                        if not buf: 
+                            break
+                        SHAhash.update(hashlib.sha1(buf).hexdigest())
+                    f1.close()
 
     except:
         import traceback

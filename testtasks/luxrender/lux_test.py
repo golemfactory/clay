@@ -7,7 +7,7 @@ from PIL import Image
 # normalization constant, obtained experimentally
 MAGIC_CONSTANT = 34098
 # hash of the test task
-EXPECTED_CHECKSUM = "3a5567f7a564a6dc7aeb53a6d6ad902b5a7bbc43"
+EXPECTED_CHECKSUM = "8e6ab6acc8bea07a8d0f1c1b7f22977aedde0259"
 EXPECTED_PNG_SIZE = (201, 268)
 
 def lux_performance():
