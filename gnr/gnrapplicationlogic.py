@@ -11,6 +11,8 @@ from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.client import GolemClientEventListener
 from golem.manager.client.nodesmanagerclient import NodesManagerUidClient, NodesManagerClient
+from testtasks.luxrender.lux_test import lux_performance
+from testtasks.blender.blender_test import blender_performance
 
 from testtasks.minilight.src.minilight import makePerfTest
 
@@ -255,9 +257,29 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def recount_performance(self, num_cores):
         test_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'testtasks/minilight/cornellbox.ml.txt'))
-        result_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'examples/gnr/node_data/minilight.ini'))
+        result_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'node_data/minilight.ini'))
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
+    
+    def recount_lux_performance(self):
+        cfg_filename = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'node_data/lux.ini'))
+        
+        cfg_file = open(cfg_filename, 'w')
+        average = lux_performance()
+        cfg_file.write("{0:.1f}".format(average))
+        cfg_file.close()
+        
+        return average
+    
+    def recount_blender_performance(self):
+        cfg_filename = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'node_data/blender.ini'))
+        
+        cfg_file = open(cfg_filename, 'w')
+        average = blender_performance()
+        cfg_file.write("{0:.1f}".format(average))
+        cfg_file.close()
+        
+        return average
 
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):

@@ -1,0 +1,206 @@
+# Materials File
+
+MakeNamedVolume "world" "homogeneous"
+	"float fresnel" [1.000292658805847]
+	"color g" [-0.30000001 -0.30000001 -0.30000001]
+	"color sigma_a" [0.00000000 0.00000000 0.00000000]
+	"color sigma_s" [0.02500000 0.02500000 0.02500000]
+
+MakeNamedVolume "windows-glass" "clear"
+	"float fresnel" [1.519999980926514]
+	"color absorption" [0.31417148 0.13186521 0.20507500]
+
+MakeNamedVolume "clear-air" "clear"
+	"float fresnel" [1.000292658805847]
+	"color absorption" [0.00000000 0.00000000 0.00000000]
+
+Texture "Floor-bump" "float" "blender_musgrave"
+	"float bright" [1.000000000000000]
+	"float contrast" [1.000000000000000]
+	"string type" ["hybrid_multifractal"]
+	"float h" [1.000000000000000]
+	"float lacu" [2.000000000000000]
+	"string noisebasis" ["blender_original"]
+	"float noisesize" [0.029999999329448]
+	"float octs" [2.000000000000000]
+	"string coordinates" ["global"]
+	"vector translate" [0.000000000000000 0.000000000000000 0.000000000000000]
+	"vector rotate" [0.000000000000000 0.000000000000000 0.000000000000000]
+	"vector scale" [1.000000000000000 1.000000000000000 1.000000000000000]
+
+Texture "Floor-bump_scaled_1" "float" "scale"
+	"float tex1" [0.001000000047497]
+	"texture tex2" ["Floor-bump"]
+
+Texture "Marble-Floor-Col" "float" "blender_marble"
+	"float bright" [1.000000000000000]
+	"float contrast" [0.800000011920929]
+	"string type" ["sharper"]
+	"string noisetype" ["hard_noise"]
+	"string noisebasis" ["blender_original"]
+	"string noisebasis2" ["sin"]
+	"float noisesize" [0.059999998658895]
+	"float turbulence" [9.000000000000000]
+	"integer noisedepth" [5]
+	"string coordinates" ["global"]
+	"vector translate" [0.000000000000000 0.000000000000000 0.000000000000000]
+	"vector rotate" [0.000000000000000 0.000000000000000 0.000000000000000]
+	"vector scale" [1.000000000000000 1.000000000000000 1.000000000000000]
+
+Texture "Mix" "color" "mix"
+	"texture amount" ["Marble-Floor-Col"]
+	"color tex1" [0.48822379 0.38528973 0.35152718]
+	"color tex2" [0.74116498 0.68827158 0.67694163]
+
+Texture "Mix_scaled_2" "color" "scale"
+	"color tex1" [0.77645910 0.77645910 0.77645910]
+	"texture tex2" ["Mix"]
+
+MakeNamedMaterial "Fliesen-Mat"
+	"texture bumpmap" ["Floor-bump_scaled_1"]
+	"bool multibounce" ["true"]
+	"float d" [0.000300000014249]
+	"color Ka" [0.28234145 0.27105135 0.27105135]
+	"texture Kd" ["Mix_scaled_2"]
+	"color Ks" [0.18822381 0.18822381 0.18822381]
+	"float index" [0.000000000000000]
+	"float uroughness" [0.039999999105930]
+	"float vroughness" [0.039999999105930]
+	"string type" ["glossy"]
+
+MakeNamedMaterial "Schrank-Griff-Mat"
+	"float uroughness" [0.050000000745058]
+	"float vroughness" [0.079999998211861]
+	"string name" ["aluminium"]
+	"string type" ["metal"]
+
+Texture "Schrank-Lack-Bump" "float" "blender_musgrave"
+	"float bright" [1.000000000000000]
+	"float contrast" [0.500000000000000]
+	"string type" ["multifractal"]
+	"float h" [1.000000000000000]
+	"float lacu" [2.000000000000000]
+	"string noisebasis" ["blender_original"]
+	"float noisesize" [0.009999999776483]
+	"float octs" [2.000000000000000]
+	"string coordinates" ["global"]
+	"vector translate" [0.000000000000000 0.000000000000000 0.000000000000000]
+	"vector rotate" [0.000000000000000 0.000000000000000 0.000000000000000]
+	"vector scale" [1.000000000000000 1.000000000000000 1.000000000000000]
+
+Texture "Schrank-Lack-Bump_scaled_3" "float" "scale"
+	"float tex1" [0.000199999994948]
+	"texture tex2" ["Schrank-Lack-Bump"]
+
+MakeNamedMaterial "Schrank-Lack-Mat"
+	"texture bumpmap" ["Schrank-Lack-Bump_scaled_3"]
+	"bool multibounce" ["false"]
+	"color Kd" [0.10587087 0.10587087 0.10587087]
+	"color Ks" [0.09998851 0.09998851 0.09998851]
+	"float index" [0.000000000000000]
+	"float uroughness" [0.100000001490116]
+	"float vroughness" [0.100000001490116]
+	"string type" ["glossy"]
+
+MakeNamedMaterial "Neonroehren-Abdeckung"
+	"float uroughness" [0.140000000596046]
+	"float vroughness" [0.140000000596046]
+	"string name" ["aluminium"]
+	"string type" ["metal"]
+
+MakeNamedMaterial "Tuer-Mat"
+	"bool multibounce" ["true"]
+	"float d" [0.000009999999747]
+	"color Ka" [0.21175322 0.04517660 0.04517660]
+	"color Kd" [0.48234144 0.05145565 0.05145565]
+	"color Ks" [0.19410616 0.19410616 0.19410616]
+	"float index" [0.000000000000000]
+	"float uroughness" [0.100000001490116]
+	"float vroughness" [0.100000001490116]
+	"string type" ["glossy"]
+
+MakeNamedMaterial "Tuer-Klinke-Mat"
+	"float uroughness" [0.140000000596046]
+	"float vroughness" [0.300000011920929]
+	"string name" ["aluminium"]
+	"string type" ["metal"]
+
+MakeNamedMaterial "Fenster-Rahmen-Innen"
+	"bool multibounce" ["false"]
+	"color Kd" [0.04704734 0.04704734 0.04704734]
+	"color Ks" [0.22940028 0.22940028 0.22940028]
+	"float index" [0.000000000000000]
+	"float uroughness" [0.004499999806285]
+	"float vroughness" [0.004499999806285]
+	"string type" ["glossy"]
+
+MakeNamedMaterial "Fenster-Rahmen-Aussen"
+	"bool multibounce" ["false"]
+	"color Kd" [0.04704734 0.04704734 0.04704734]
+	"color Ks" [0.22940028 0.22940028 0.22940028]
+	"float index" [0.000000000000000]
+	"float uroughness" [0.004499999806285]
+	"float vroughness" [0.004499999806285]
+	"string type" ["glossy"]
+
+MakeNamedMaterial "Fenster-Silikon-Innen"
+	"color Kd" [0.63999999 0.63999999 0.63999999]
+	"float sigma" [0.000000000000000]
+	"string type" ["matte"]
+
+MakeNamedMaterial "Fenster-Silikon-Ausse"
+	"color Kd" [0.63999999 0.63999999 0.63999999]
+	"float sigma" [0.000000000000000]
+	"string type" ["matte"]
+
+MakeNamedMaterial "Fenster-Glas-Innen"
+	"bool architectural" ["true"]
+	"bool dispersion" ["false"]
+	"string type" ["glass2"]
+
+MakeNamedMaterial "Fenster-Glas-Aussen"
+	"bool architectural" ["true"]
+	"bool dispersion" ["false"]
+	"string type" ["glass2"]
+
+MakeNamedMaterial "Waende-Mat"
+	"color Kd" [0.63999999 0.63999999 0.63999999]
+	"float sigma" [0.000000000000000]
+	"string type" ["matte"]
+
+MakeNamedMaterial "Lichtschalter-Mat"
+	"bool multibounce" ["false"]
+	"color Kd" [0.63999999 0.63999999 0.63999999]
+	"color Ks" [0.04704734 0.04704734 0.04704734]
+	"float index" [0.000000000000000]
+	"float uroughness" [0.300000011920929]
+	"float vroughness" [0.300000011920929]
+	"string type" ["glossy"]
+
+MakeNamedMaterial "Lichtschalter-Mat.001"
+	"color Kd" [0.63999999 0.63999999 0.63999999]
+	"float sigma" [0.000000000000000]
+	"string type" ["matte"]
+
+MakeNamedMaterial "Boden-Mat"
+	"color Kd" [0.18234146 0.18234146 0.18234146]
+	"float sigma" [0.300000011920929]
+	"string type" ["matte"]
+
+MakeNamedMaterial "Licht-Mat"
+	"color Kd" [0.63999999 0.63999999 0.63999999]
+	"float sigma" [0.000000000000000]
+	"string type" ["matte"]
+
+Texture "blackbody" "color" "blackbody"
+	"float temperature" [9000.000000000000000]
+
+MakeNamedMaterial "Kabelkanal-Lack"
+	"color Kd" [0.63999999 0.63999999 0.63999999]
+	"float sigma" [0.000000000000000]
+	"string type" ["matte"]
+
+MakeNamedMaterial "Kabelkana-Matter-Lack"
+	"color Kd" [0.63999999 0.63999999 0.63999999]
+	"float sigma" [0.000000000000000]
+	"string type" ["matte"]
