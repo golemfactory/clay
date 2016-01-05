@@ -259,6 +259,12 @@ class Client:
     def get_incomes(self):
         return self.transaction_system.get_incomes_list()
 
+    def add_to_waiting_payments(self, task_id, node_id):
+        self.transaction_system.add_to_waiting_payments(task_id, node_id)
+
+    def add_to_timeouted_payments(self, task_id):
+        self.transaction_system.add_to_timeouted_payments(task_id)
+
     # CLIENT CONFIGURATION
     def register_listener(self, listener):
         assert isinstance(listener, GolemClientEventListener)

@@ -106,6 +106,7 @@ class TaskServer(PendingConnectionsServer):
         self.client.increase_trust(owner_key_id, RankingStats.requested)
 
         if subtask_id not in self.results_to_send:
+            self.client.add_to_waiting_payments(task_id, owner_key_id)
             self.task_keeper.add_to_verification(subtask_id, task_id)
             self.results_to_send[subtask_id] = WaitingTaskResult(subtask_id, result['data'], result['result_type'],
                                                                  0.0, 0.0, owner_address, owner_port, owner_key_id,
@@ -746,6 +747,7 @@ class TaskServer(PendingConnectionsServer):
         after_deadline = self.task_keeper.check_payments()
         for task_id in after_deadline:
             self.decrease_trust_payment(task_id)
+            self.client.add_to_timeouted_payments(task_id)
 
     # CONFIGURATION METHODS
     #############################

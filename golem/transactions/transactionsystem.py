@@ -94,7 +94,19 @@ class TransactionSystem(object):
         return int(round(price_mod * self.price_base))
 
     def get_payments_list(self):
+        """ Return list of all planned and made payments
+        :return list: list of dictionaries describing payments
+        """
         return self.payments_keeper.get_list_of_all_payments()
 
     def get_incomes_list(self):
+        """ Return list of all expected and received incomes
+        :return list: list of dictionaries describing incomes
+        """
         return self.incomes_keeper.get_list_of_all_incomes()
+
+    def add_to_waiting_payments(self, task_id, node_id):
+        return self.incomes_keeper.add_waiting_payment(task_id, node_id)
+
+    def add_to_timeouted_payments(self, task_id):
+        return self.incomes_keeper.add_timeouted_payment(task_id)
