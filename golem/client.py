@@ -247,14 +247,17 @@ class Client:
     def global_pay_for_task(self, task_id, payments):
         self.transaction_system.global_pay_for_task(task_id, payments)
 
-    def get_reward(self, reward):
-        self.transaction_system.get_reward(reward)
+    def get_reward(self, task_id, node_id, reward):
+        self.transaction_system.get_reward(task_id, node_id, reward)
 
     def get_new_payments_tasks(self):
         return self.transaction_system.get_new_payments_tasks()
 
     def get_payments(self):
         return self.transaction_system.get_payments_list()
+
+    def get_incomes(self):
+        return self.transaction_system.get_incomes_list()
 
     # CLIENT CONFIGURATION
     def register_listener(self, listener):

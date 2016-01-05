@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>729</width>
-    <height>621</height>
+    <width>723</width>
+    <height>636</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -32,41 +32,121 @@
     <string>OK</string>
    </property>
   </widget>
-  <widget class="QTableWidget" name="paymentsTable">
+  <widget class="QTabWidget" name="tabWidget">
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>20</y>
-     <width>711</width>
-     <height>531</height>
+     <y>10</y>
+     <width>701</width>
+     <height>571</height>
     </rect>
    </property>
-   <property name="selectionBehavior">
-    <enum>QAbstractItemView::SelectRows</enum>
+   <property name="currentIndex">
+    <number>0</number>
    </property>
-   <property name="sortingEnabled">
-    <bool>true</bool>
-   </property>
-   <column>
-    <property name="text">
-     <string>Task</string>
-    </property>
-   </column>
-   <column>
-    <property name="text">
-     <string>Node</string>
-    </property>
-   </column>
-   <column>
-    <property name="text">
-     <string>Date</string>
-    </property>
-   </column>
-   <column>
-    <property name="text">
-     <string>Amount</string>
-    </property>
-   </column>
+   <widget class="QWidget" name="paymentTab">
+    <attribute name="title">
+     <string>payments</string>
+    </attribute>
+    <widget class="QTableWidget" name="paymentsTable">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>671</width>
+       <height>521</height>
+      </rect>
+     </property>
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+     <property name="sortingEnabled">
+      <bool>true</bool>
+     </property>
+     <column>
+      <property name="text">
+       <string>Task</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Node</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>State</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Value</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Transaction</string>
+      </property>
+     </column>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="incomesTab">
+    <attribute name="title">
+     <string>incomes</string>
+    </attribute>
+    <widget class="QTableWidget" name="incomesTable">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>671</width>
+       <height>521</height>
+      </rect>
+     </property>
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+     <property name="sortingEnabled">
+      <bool>true</bool>
+     </property>
+     <column>
+      <property name="text">
+       <string>Task</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Node</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>State</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Value</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Expected Value</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Transaction</string>
+      </property>
+     </column>
+    </widget>
+   </widget>
   </widget>
  </widget>
  <resources/>

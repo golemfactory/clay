@@ -58,24 +58,10 @@ class PaymentsKeeper(object):
         return task.subtasks
 
     def get_list_of_all_payments(self):
-        #FIXME
-        all_payments = []
-        for task in self.tasks_to_pay:
-            nodes = self.__get_nodes_grouping(task.subtasks)
-            for node_id, value in nodes.iteritems():
-                all_payments.append({"task": task.task_id, "node": node_id, "amount": value, "date": "WAITING"})
-        for task in self.finished_tasks:
-            nodes = self.__get_nodes_grouping(task.subtasks)
-            for node_id, value in nodes.iteritems():
-                all_payments.append({"task": task.task_id, "node": node_id, "amount": value, "date": "FINISHED"})
-        for task in self.settled_tasks.itervalues():
-            nodes = self.__get_nodes_grouping(task.subtasks)
-            for node_id, value in nodes.iteritems():
-                all_payments.append({"task": task.task_id, "node": node_id, "amount": value, "date": "SETTLED"})
-        for task in self.computing_tasks.itervalues():
-            nodes = self.__get_nodes_grouping(task.subtasks)
-            for node_id, value in nodes.iteritems():
-                all_payments.append({"task": task.task_id, "node": node_id, "amount": value, "date": "COMPUTING"})
+        all_payments = self.__change_nodes_to_payment_info(self.tasks_to_pay, PaymentState.waiting_to_be_paid)
+        all_payments += self.__change_nodes_to_payment_info(self.settled_tasks.itervalues(), PaymentState.settled)
+        all_payments + self.__change_nodes_to_payment_info(self.computing_tasks.itervalues(),
+                                                           PaymentState.waiting_for_task_to_finish)
         return all_payments
 
     def finished_subtasks(self, payment_info):
@@ -106,6 +92,21 @@ class PaymentsKeeper(object):
             else:
                 nodes[subtask.computer.key_id] = subtask.value
         return nodes
+
+    def __change_nodes_to_payment_info(self, values, name):
+        payments = []
+        for task in values:
+            nodes = self.__get_nodes_grouping(task.subtasks)
+            for node_id, value in nodes.iteritems():
+                payments.append({"task": task.task_id, "node": node_id, "value": value, "state": name})
+        return payments
+
+
+class PaymentState(object):
+    waiting_for_task_to_finish = "Waiting for task to finish"
+    waiting_to_be_paid = "Waiting for processing"
+    settled = "Finished"
+
 
 class PaymentInfo(object):
     """ Full information about payment for a subtask. Include task id, subtask payment information and

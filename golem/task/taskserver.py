@@ -246,7 +246,8 @@ class TaskServer(PendingConnectionsServer):
             return
         try:
             logger.info("Getting {} for task {}".format(reward, task_id))
-            self.client.get_reward(int(reward))
+            node_id = self.task_keeper.get_receiver_for_task_verification_result(task_id)
+            self.client.get_reward(task_id, node_id, int(reward))
             self.increase_trust_payment(task_id)
         except ValueError:
             logger.error("Wrong reward amount {} for task {}".format(reward, task_id))
@@ -543,11 +544,13 @@ class TaskServer(PendingConnectionsServer):
             pc.time = time.time()
 
     def __connection_for_pay_for_task_established(self, session, conn_id, key_id, task_id, price):
+        print "CONNECTION FOR PAY FOR TASK ESTABLISHED"
         session.key_id = key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
         session.send_hello()
         session.send_reward_for_task(task_id, price)
+        print "SEND REWARD"
         self.client.task_reward_paid(task_id, price)
 
     def __connection_for_pay_for_task_failure(self, conn_id, key_id, task_id, price):

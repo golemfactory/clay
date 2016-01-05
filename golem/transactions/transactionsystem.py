@@ -3,6 +3,7 @@ import datetime
 
 from ethereum.ethereumpaymentskeeper import EthereumPaymentsKeeper
 from paymentskeeper import PaymentInfo
+from incomeskeeper import IncomesKeeper
 from golem.model import Bank
 from golem.core.variables import PRICE_BASE
 
@@ -18,6 +19,7 @@ class TransactionSystem(object):
         """
         self.node_id = node_id
         self.payments_keeper = EthereumPaymentsKeeper()  # Keeps information about payments that should be send
+        self.incomes_keeper = IncomesKeeper()  # Keeps information about received payments
         self.budget = Bank.get(Bank.node_id == node_id).val  # Current budget state
         self.price_base = PRICE_BASE  # Price base for price modifications
 
@@ -41,13 +43,15 @@ class TransactionSystem(object):
         self.budget += price
         self.payments_keeper.payment_failure(task_id)
 
-    def get_reward(self, reward):
+    def get_reward(self, task_id, node_id, reward):
         """ Increase information about budget with reward
+        :param task_id: return id of a task for which this reward was
         :param int reward: how much should be added to budget
         """
         self.budget += reward
         Bank.update(val=self.budget, modified_date=str(datetime.datetime.now())).where(
             Bank.node_id == self.node_id).execute()
+        self.incomes_keeper.add_income(task_id, node_id, reward)
 
     def add_payment_info(self, task_id, subtask_id, price_mod, account_info):
         """ Add to payment keeper information about new payment for subtask
@@ -91,3 +95,6 @@ class TransactionSystem(object):
 
     def get_payments_list(self):
         return self.payments_keeper.get_list_of_all_payments()
+
+    def get_incomes_list(self):
+        return self.incomes_keeper.get_list_of_all_incomes()
