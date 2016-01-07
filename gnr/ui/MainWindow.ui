@@ -225,6 +225,7 @@
     </property>
     <addaction name="actionStatus"/>
     <addaction name="actionStartNodesManager"/>
+    <addaction name="actionPayments"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
@@ -294,6 +295,11 @@
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
+   </property>
+  </action>
+  <action name="actionPayments">
+   <property name="text">
+    <string>Payments</string>
    </property>
   </action>
  </widget>
