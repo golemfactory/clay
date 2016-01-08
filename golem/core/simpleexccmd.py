@@ -4,7 +4,6 @@ from common import is_windows
 
 
 def exec_cmd(cmd, nice=20, wait=True):
-    print("Still alive0")
     """ Execute a child process from command in a new process
     :param list|str cmd: sequence of program arguments or a single string. On Unix single string is interpreted
     as the path of the program to execute, but it's only working if not passing arguments to the program.
