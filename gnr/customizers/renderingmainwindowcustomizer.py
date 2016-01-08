@@ -50,9 +50,10 @@ def insert_item(root, path_table):
 
 class AbsRenderingMainWindowCustomizer(object):
     def _set_rendering_variables(self):
-        self.previewPath = os.path.join(os.environ.get('GOLEM'), "examples\\gnr", get_preview_file())
-        self.lastPreviewPath = self.previewPath
-        self.sliderPreviews = {}
+        golem_path = os.path.normpath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../.."))
+        self.preview_path = os.path.join(golem_path, "gnr", get_preview_file())
+        self.last_preview_path = self.preview_path
+        self.slider_previews = {}
         self.gui.ui.frameSlider.setVisible(False)
 
     def _setup_rendering_connections(self):
@@ -137,7 +138,7 @@ class AbsRenderingMainWindowCustomizer(object):
 
     def __set_frame_preview(self, t):
         if "resultPreview" in t.task_state.extra_data:
-            self.sliderPreviews = t.task_state.extra_data["resultPreview"]
+            self.slider_previews = t.task_state.extra_data["resultPreview"]
         self.gui.ui.frameSlider.setVisible(True)
         self.gui.ui.frameSlider.setRange(1, len(t.definition.renderer_options.frames))
         self.gui.ui.frameSlider.setSingleStep(1)
@@ -154,10 +155,10 @@ class AbsRenderingMainWindowCustomizer(object):
             time.sleep(0.5)
             if os.path.exists(file_path):
                 self.gui.ui.previewLabel.setPixmap(QPixmap(file_path))
-                self.lastPreviewPath = file_path
+                self.last_preview_path = file_path
         else:
-            self.gui.ui.previewLabel.setPixmap(QPixmap(self.previewPath))
-            self.lastPreviewPath = self.previewPath
+            self.gui.ui.previewLabel.setPixmap(QPixmap(self.preview_path))
+            self.last_preview_path = self.preview_path
 
     def __get_frame_name(self, definition, num):
         output_name, ext = os.path.splitext(definition.output_file)
@@ -199,15 +200,15 @@ class AbsRenderingMainWindowCustomizer(object):
         num = self.gui.ui.frameSlider.value() - 1
         self.gui.ui.outputFile.setText(self.__get_frame_name(self.current_task_highlighted.definition, num))
         self.__update_output_file_color()
-        if len(self.sliderPreviews) > num:
-            if self.sliderPreviews[num]:
-                if os.path.exists(self.sliderPreviews[num]):
-                    self.gui.ui.previewLabel.setPixmap(QPixmap(self.sliderPreviews[num]))
-                    self.lastPreviewPath = self.sliderPreviews[num]
+        if len(self.slider_previews) > num:
+            if self.slider_previews[num]:
+                if os.path.exists(self.slider_previews[num]):
+                    self.gui.ui.previewLabel.setPixmap(QPixmap(self.slider_previews[num]))
+                    self.last_preview_path = self.slider_previews[num]
                     return
 
-        self.gui.ui.previewLabel.setPixmap(QPixmap(self.previewPath))
-        self.lastPreviewPath = self.previewPath
+        self.gui.ui.previewLabel.setPixmap(QPixmap(self.preview_path))
+        self.last_preview_path = self.preview_path
 
     def __open_output_file(self):
         file_ = self.gui.ui.outputFile.text()
@@ -280,11 +281,11 @@ class AbsRenderingMainWindowCustomizer(object):
                                                        self.current_task_highlighted.definition.resolution[0],
                                                        self.current_task_highlighted.definition.resolution[1])
 
-                if os.path.isfile(self.lastPreviewPath):
+                if os.path.isfile(self.last_preview_path):
                     self.__draw_boarder(border)
 
     def __draw_boarder(self, border):
-        pixmap = QPixmap(self.lastPreviewPath)
+        pixmap = QPixmap(self.last_preview_path)
         p = QPainter(pixmap)
         pen = QPen(QColor(0, 0, 0))
         pen.setWidth(3)
