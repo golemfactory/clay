@@ -1,4 +1,5 @@
-from gnr.ui.environmentsdialog import EnvironmentsDialog
+from gnr.customizers.customizer import Customizer
+
 from gnr.ui.envtableelem import EnvTableElem
 from PyQt4 import QtCore
 from PyQt4.Qt import Qt
@@ -7,18 +8,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class EnvironmentsDialogCustomizer:
+class EnvironmentsDialogCustomizer(Customizer):
     def __init__(self, gui, logic):
+        self.environments = set()
+        Customizer.__init__(self, gui, logic)
 
-        assert isinstance(gui, EnvironmentsDialog)
-
-        self.gui = gui
-        self.logic = logic
-
-        self.__init()
-        self.__setup_connections()
-
-    def __init(self):
+    def load_data(self):
         self.gui.ui.tableWidget.horizontalHeader().setStretchLastSection(True)
         self.environments = self.logic.get_environments()
         for env in self.environments:
@@ -30,16 +25,17 @@ class EnvironmentsDialogCustomizer:
             for col in range(0, 4):
                 self.gui.ui.tableWidget.setItem(current_row_count, col, env_table_elem.get_column_item(col))
 
-    def __print_supported(self, val):
+    def _setup_connections(self):
+        self.gui.ui.okButton.clicked.connect(self.gui.close)
+        QtCore.QObject.connect(self.gui.ui.tableWidget, QtCore.SIGNAL("cellClicked(int, int)"),
+                               self.__task_table_row_clicked)
+
+    @staticmethod
+    def __print_supported(val):
         if val:
             return "Supported"
         else:
             return "Not supported"
-
-    def __setup_connections(self):
-        self.gui.ui.okButton.clicked.connect(self.gui.close)
-        QtCore.QObject.connect(self.gui.ui.tableWidget, QtCore.SIGNAL("cellClicked(int, int)"),
-                               self.__task_table_row_clicked)
 
     def __task_table_row_clicked(self, row, col):
         if row < self.gui.ui.tableWidget.rowCount():

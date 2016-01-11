@@ -7,9 +7,6 @@ from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessa
 
 from golem.task.taskstate import SubtaskStatus
 
-from gnr.ui.showtaskresourcesdialog import ShowTaskResourcesDialog
-from gnr.ui.renderingnewtaskdialog import NewTaskDialog
-
 from gnr.renderingdirmanager import get_preview_file
 from gnr.renderingtaskstate import RenderingTaskDefinition
 
@@ -69,11 +66,16 @@ class AbsRenderingMainWindowCustomizer(object):
     def _setup_advance_task_connections(self):
         self.gui.ui.showResourceButton.clicked.connect(self._show_task_resource_clicked)
 
+    def _set_new_task_dialog_customizer(self):
+        self.new_task_dialog_customizer = RenderingNewTaskDialogCustomizer(self.new_task_dialog, self.logic)
+
     def _set_new_task_dialog(self):
+        from gnr.ui.renderingnewtaskdialog import NewTaskDialog
         self.new_task_dialog = NewTaskDialog(self.gui.window)
 
-    def _set_new_task_dialog_customizer(self):
-        self.new_task_dialogCustomizer = RenderingNewTaskDialogCustomizer(self.new_task_dialog, self.logic)
+    def _set_show_task_resource_dialog(self):
+        from gnr.ui.showtaskresourcesdialog import ShowTaskResourcesDialog
+        self.show_task_resources_dialog = ShowTaskResourcesDialog(self.gui.window)
 
     def update_task_additional_info(self, t):
         from gnr.renderingtaskstate import RenderingTaskState
@@ -177,24 +179,24 @@ class AbsRenderingMainWindowCustomizer(object):
         if self.current_task_highlighted:
             res = [os.path.abspath(r) for r in self.current_task_highlighted.definition.resources]
             res.sort()
-            self.showTaskResourcesDialog = ShowTaskResourcesDialog(self.gui.window)
+            self._set_show_task_resource_dialog()
 
             item = QTreeWidgetItem(["Resources"])
-            self.showTaskResourcesDialog.ui.folderTreeWidget.insertTopLevelItem(0, item)
-            self.showTaskResourcesDialog.ui.closeButton.clicked.connect(self.__show_task_res_close_button_clicked)
+            self.show_task_resources_dialog.ui.folderTreeWidget.insertTopLevelItem(0, item)
+            self.show_task_resources_dialog.ui.closeButton.clicked.connect(self.__show_task_res_close_button_clicked)
 
             for r in res:
                 after_split = r.split("\\")
                 insert_item(item, after_split)
 
-            self.showTaskResourcesDialog.ui.mainSceneFileLabel.setText(
+            self.show_task_resources_dialog.ui.mainSceneFileLabel.setText(
                 self.current_task_highlighted.definition.main_scene_file)
-            self.showTaskResourcesDialog.ui.folderTreeWidget.expandAll()
+            self.show_task_resources_dialog.ui.folderTreeWidget.expandAll()
 
-            self.showTaskResourcesDialog.show()
+            self.show_task_resources_dialog.show()
 
     def __show_task_res_close_button_clicked(self):
-        self.showTaskResourcesDialog.window.close()
+        self.show_task_resources_dialog.window.close()
 
     def __update_slider_preview(self):
         num = self.gui.ui.frameSlider.value() - 1

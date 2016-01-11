@@ -1,5 +1,4 @@
-
-from gnr.ui.changetaskdialog import ChangeTaskDialog
+from gnr.customizers.customizer import Customizer
 from gnr.renderingtaskstate import RenderingTaskDefinition
 from timehelper import set_time_spin_boxes, get_time_values
 
@@ -8,16 +7,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class ChangeTaskDialogCustomizer:
+class ChangeTaskDialogCustomizer(Customizer):
 
-    def __init__(self, gui, logic):
-        assert isinstance(gui, ChangeTaskDialog)
-        self.gui = gui
-        self.logic = logic
-
-        self.__setup_connections()
-
-    def __setup_connections(self):
+    def _setup_connections(self):
         self.gui.ui.saveButton.clicked.connect(self.__save_button_clicked)
         self.gui.ui.cancelButton.clicked.connect(self.__cancel_button_clicked)
 
