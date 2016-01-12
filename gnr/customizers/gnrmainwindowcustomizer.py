@@ -23,6 +23,7 @@ from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer
 from gnr.customizers.paymentsdialogcustomizer import PaymentsDialogCustomizer
 
 from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.core.common import get_golem_path
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +155,7 @@ class GNRMainWindowCustomizer(Customizer):
         self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.new_task_dialog, self.logic)
 
     def _load_task_button_clicked(self):
-        golem_path = os.environ.get('GOLEM')
+        golem_path = get_golem_path()
         dir_ = ""
         if golem_path:
             save_dir = os.path.join(golem_path, "save")

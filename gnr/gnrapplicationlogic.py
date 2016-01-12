@@ -6,6 +6,7 @@ from PyQt4 import QtCore
 from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
+from golem.core.common import get_golem_path
 from golem.client import GolemClientEventListener
 from golem.manager.client.nodesmanagerclient import NodesManagerUidClient, NodesManagerClient
 
@@ -44,7 +45,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.test_tasks = {}
         self.task_types = {}
         self.customizer = None
-        self.root_path = os.path.join(os.environ.get('GOLEM'), 'examples/gnr')
+        self.root_path = os.path.normpath(os.path.join(get_golem_path(), 'gnr'))
         self.nodes_manager_client = None
         self.client = None
         self.tt = None
@@ -260,13 +261,13 @@ class GNRApplicationLogic(QtCore.QObject):
             f.write(tspickled)
 
     def recount_performance(self, num_cores):
-        test_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'testtasks/minilight/cornellbox.ml.txt'))
-        result_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'node_data/minilight.ini'))
+        test_file = os.path.normpath(os.path.join(get_golem_path(), 'testtasks/minilight/cornellbox.ml.txt'))
+        result_file = os.path.normpath(os.path.join(get_golem_path(), 'gnr/node_data/minilight.ini'))
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
     
     def recount_lux_performance(self):
-        cfg_filename = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'node_data/lux.ini'))
+        cfg_filename = os.path.normpath(os.path.join(get_golem_path(), 'gnr/node_data/lux.ini'))
         
         cfg_file = open(cfg_filename, 'w')
         average = lux_performance()
@@ -276,7 +277,7 @@ class GNRApplicationLogic(QtCore.QObject):
         return average
     
     def recount_blender_performance(self):
-        cfg_filename = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'node_data/blender.ini'))
+        cfg_filename = os.path.normpath(os.path.join(get_golem_path(), 'gnr/node_data/blender.ini'))
         
         cfg_file = open(cfg_filename, 'w')
         average = blender_performance()

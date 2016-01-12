@@ -6,9 +6,12 @@ import random
 import uuid
 from copy import deepcopy, copy
 from PIL import Image, ImageChops
+
 from golem.task.taskstate import SubtaskStatus
 from golem.task.taskbase import ComputeTaskDef
 from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.core.common import get_golem_path
+
 from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
 from gnr.task.renderingtaskcollector import exr_to_pil
@@ -187,10 +190,10 @@ class RenderingTask(GNRTask):
     def _put_collected_files_together(self, output_file_name, files, arg):
         if is_windows():
             task_collector_path = os.path.normpath(
-                os.path.join(os.environ.get('GOLEM'), "tools/taskcollector/Release/taskcollector.exe"))
+                os.path.join(get_golem_path(), "tools/taskcollector/Release/taskcollector.exe"))
         else:
             task_collector_path = os.path.normpath(
-                os.path.join(os.environ.get('GOLEM'), "tools/taskcollector/Release/taskcollector"))
+                os.path.join(get_golem_path(), "tools/taskcollector/Release/taskcollector"))
         cmd = ["{}".format(task_collector_path), "{}".format(arg), "{}".format(output_file_name)] + files
         logger.debug(cmd)
         exec_cmd(cmd)
