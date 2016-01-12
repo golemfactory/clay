@@ -11,8 +11,6 @@ from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBu
 from gnr.renderingdirmanager import get_test_task_path, get_tmp_path
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingenvironment import ThreeDSMaxEnvironment
-from gnr.ui.threedsmaxdialog import ThreeDSMaxDialog
-from gnr.customizers.threedsmaxdialogcustomizer import ThreeDSMaxDialogCustomizer
 
 logger = logging.getLogger(__name__)
 

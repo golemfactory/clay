@@ -18,11 +18,7 @@ from gnr.task.vraytask import build_vray_renderer_info
 from gnr.task.luxrendertask import build_lux_render_info
 from gnr.task.blenderrendertask import build_blender_renderer_info
 
-from gnr.ui.blenderrenderdialog import BlenderRenderDialog
-from gnr.ui.luxrenderdialog import LuxRenderDialog
-from gnr.ui.pbrtdialog import PbrtDialog
-from gnr.ui.threedsmaxdialog import ThreeDSMaxDialog
-from gnr.ui.vraydialog import VRayDialog
+from gnr.ui.dialog import BlenderRenderDialog, LuxRenderDialog, PbrtDialog, ThreeDSMaxDialog, VRayDialog
 
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer

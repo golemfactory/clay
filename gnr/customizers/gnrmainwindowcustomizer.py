@@ -5,12 +5,11 @@ import cPickle
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
-logger = logging.getLogger(__name__)
-
 from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, StatusWindow, \
-                          AboutWindow, ConfigurationDialog, EnvironmentsDialog, IdentityDialog
+                          AboutWindow, ConfigurationDialog, EnvironmentsDialog, IdentityDialog, NewTaskDialog
 from gnr.ui.tasktableelem import TaskTableElem
 
+from gnr.customizers.customizer import Customizer
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
 from gnr.customizers.taskcontexmenucustomizer import TaskContextMenuCustomizer
 from gnr.customizers.taskdetailsdialogcustomizer import TaskDetailsDialogCustomizer
@@ -25,19 +24,15 @@ from gnr.customizers.paymentsdialogcustomizer import PaymentsDialogCustomizer
 
 from golem.core.simpleexccmd import is_windows, exec_cmd
 
+logger = logging.getLogger(__name__)
 
-class GNRMainWindowCustomizer:
+
+class GNRMainWindowCustomizer(Customizer):
     def __init__(self, gui, logic):
-
-        self.gui = gui
-        self.logic = logic
-
         self.current_task_highlighted = None
         self.task_details_dialog = None
         self.task_details_dialog_customizer = None
-
-        self._setup_connections()
-
+        Customizer.__init__(self, gui, logic)
         self._set_error_label()
 
     def set_options(self, cfg_desc):
@@ -153,7 +148,6 @@ class GNRMainWindowCustomizer:
         self.new_task_dialog.show()
 
     def _set_new_task_dialog(self):
-        from gnr.ui.newtaskdialog import NewTaskDialog
         self.new_task_dialog = NewTaskDialog(self.gui.window)
 
     def _set_new_task_dialog_customizer(self):

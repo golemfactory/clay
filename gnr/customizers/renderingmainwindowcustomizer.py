@@ -7,11 +7,14 @@ from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessa
 
 from golem.task.taskstate import SubtaskStatus
 
+from gnr.ui.dialog import RenderingNewTaskDialog, ShowTaskResourcesDialog
+
 from gnr.renderingdirmanager import get_preview_file
 from gnr.renderingtaskstate import RenderingTaskDefinition
 
 from gnr.customizers.gnrmainwindowcustomizer import GNRMainWindowCustomizer
 from gnr.customizers.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
+from gnr.customizers.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
 
 from gnr.customizers.memoryhelper import resource_size_to_display, translate_resource_index
 
@@ -70,12 +73,11 @@ class AbsRenderingMainWindowCustomizer(object):
         self.new_task_dialog_customizer = RenderingNewTaskDialogCustomizer(self.new_task_dialog, self.logic)
 
     def _set_new_task_dialog(self):
-        from gnr.ui.renderingnewtaskdialog import NewTaskDialog
-        self.new_task_dialog = NewTaskDialog(self.gui.window)
+        self.new_task_dialog = RenderingNewTaskDialog(self.gui.window)
 
     def _set_show_task_resource_dialog(self):
-        from gnr.ui.showtaskresourcesdialog import ShowTaskResourcesDialog
         self.show_task_resources_dialog = ShowTaskResourcesDialog(self.gui.window)
+        show_task_resources_dialog_customizer = ShowTaskResourcesDialogCustomizer(self.show_task_resources_dialog, self)
 
     def update_task_additional_info(self, t):
         from gnr.renderingtaskstate import RenderingTaskState

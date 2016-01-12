@@ -1,26 +1,20 @@
-from gnr.ui.updateothergolemsdialog import UpdateOtherGolemsDialog
+import logging
+import os
 
 from PyQt4.QtGui import QFileDialog, QMessageBox
 
-import logging
-import os
+from customizer import Customizer
 
 logger = logging.getLogger(__name__)
 
 
-class UpdateOtherGolemsDialogCustomizer:
+class UpdateOtherGolemsDialogCustomizer(Customizer):
 
     def __init__(self, gui, logic):
-
-        assert isinstance(gui, UpdateOtherGolemsDialog)
-
-        self.gui    = gui
-        self.logic  = logic
         self.golem_dir = ""
+        Customizer.__init__(self, gui, logic)
 
-        self.__setup_connections()
-
-    def __setup_connections(self):
+    def _setup_connections(self):
         self.gui.ui.folderButton.clicked.connect(self.__choose_src_folder)
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__update_other_golems())
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)

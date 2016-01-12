@@ -3,14 +3,17 @@ import logging
 import cPickle
 from PyQt4 import QtCore
 
-from gnr.ui.testingtaskprogressdialog import TestingTaskProgressDialog
 from golem.task.taskstate import TaskStatus
-from gnr.gnrtaskstate import GNRTaskState
-from gnr.task.tasktester import TaskTester
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.client import GolemClientEventListener
 from golem.manager.client.nodesmanagerclient import NodesManagerUidClient, NodesManagerClient
+
+from gnr.ui.dialog import TestingTaskProgressDialog
+from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
+from gnr.gnrtaskstate import GNRTaskState
+from gnr.task.tasktester import TaskTester
+
 from testtasks.luxrender.lux_test import lux_performance
 from testtasks.blender.blender_test import blender_performance
 
@@ -46,6 +49,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client = None
         self.tt = None
         self.progress_dialog = None
+        self.progress_dialog_customizer = None
         self.add_new_nodes_function = lambda x: None
 
     def register_gui(self, gui, customizer_class):
@@ -291,6 +295,7 @@ class GNRApplicationLogic(QtCore.QObject):
             self.tt = TaskTester(t, self.client.get_root_path(), self._test_task_computation_finished)
 
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
+            self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
             self.progress_dialog.show()
 
             self.tt.run()
@@ -307,9 +312,9 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def _test_task_computation_finished(self, success, est_mem=0):
         if success:
-            self.progress_dialog.showMessage("Test task computation success!")
+            self.progress_dialog_customizer.show_message("Test task computation success!")
         else:
-            self.progress_dialog.showMessage("Task test computation failure... Check resources.")
+            self.progress_dialog_customizer.show_mssage("Task test computation failure... Check resources.")
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(success, est_mem)
 

@@ -12,7 +12,6 @@ class TaskContextMenuCustomizer:
 
         self.__build_context_menu()
 
-
     def __build_context_menu(self):
 
         enabled_actions = self.__get_enabled_actions(self.gnr_task_state.task_state.status)
@@ -27,7 +26,6 @@ class TaskContextMenuCustomizer:
         self.__build_and_connect_action("Change Timeouts", self.__change_task_triggered,        enabled_actions)
         self.__build_and_connect_action("Show Details",    self.__show_task_details_triggered,   enabled_actions)
         self.__build_and_connect_action("Show Result",     self.__show_result_triggered,        enabled_actions)
-
 
     def __build_and_connect_action(self, name, triggered_func, enabled_actions):
         action = QAction(name, self.ui)

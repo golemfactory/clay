@@ -6,7 +6,6 @@ from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCus
 
 
 class TestRenderingMainWindowCustomizer(unittest.TestCase):
-
     @patch('gnr.customizers.gnrmainwindowcustomizer.QtCore')
     @patch('gnr.customizers.renderingmainwindowcustomizer.QtCore')
     @patch('gnr.customizers.gnrmainwindowcustomizer.QPalette')
