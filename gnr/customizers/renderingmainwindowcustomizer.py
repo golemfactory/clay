@@ -6,6 +6,7 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox
 
 from golem.task.taskstate import SubtaskStatus
+from golem.core.common import get_golem_path
 
 from gnr.ui.dialog import RenderingNewTaskDialog, ShowTaskResourcesDialog
 
@@ -50,8 +51,7 @@ def insert_item(root, path_table):
 
 class AbsRenderingMainWindowCustomizer(object):
     def _set_rendering_variables(self):
-        golem_path = os.path.normpath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../.."))
-        self.preview_path = os.path.join(golem_path, "gnr", get_preview_file())
+        self.preview_path = os.path.join(get_golem_path(), "gnr", get_preview_file())
         self.last_preview_path = self.preview_path
         self.slider_previews = {}
         self.gui.ui.frameSlider.setVisible(False)

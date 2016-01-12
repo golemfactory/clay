@@ -4,6 +4,7 @@ from os import path
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 from golem.core.simpleenv import SimpleEnv
 from golem.core.prochelper import ProcessService
+from golem.core.common import get_golem_path
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 CONFIG_FILENAME = "app_cfg.ini"
@@ -50,7 +51,7 @@ NODE_SNAPSHOT_INTERVAL = 4.0
 ADD_TASKS = 0
 MAX_SENDING_DELAY = 360
 USE_DISTRIBUTED_RESOURCE_MANAGEMENT = 1
-DEFAULT_ROOT_PATH = path.normpath(path.join(path.dirname(__file__), '..'))
+DEFAULT_ROOT_PATH = get_golem_path()
 REQUESTING_TRUST = -1.0
 COMPUTING_TRUST = -1.0
 P2P_SESSION_TIMEOUT = 240
