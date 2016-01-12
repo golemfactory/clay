@@ -24,6 +24,7 @@ APP_VERSION = "1.021"
 
 logger = logging.getLogger(__name__)
 
+
 class CommonConfig:
 
     def __init__(self, section="Common", **kwargs):
@@ -107,7 +108,6 @@ class NodeConfig:
             estimated_performance = ESTIMATED_DEFAULT
         kwargs["estimated_performance"] = estimated_performance
 
-
         estimated_lux = NodeConfig.read_estimated_lux_performance()
         if estimated_lux <= 0:
             estimated_lux = ESTIMATED_DEFAULT
@@ -162,6 +162,7 @@ class AppConfig:
                                      app_version=APP_VERSION)
 
         node_config = NodeConfig(local_id,
+                                 node_address="",
                                  seed_host="",
                                  seed_port=0,
                                  root_path=DEFAULT_ROOT_PATH,
