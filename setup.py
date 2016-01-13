@@ -7,6 +7,14 @@ from setuptools import setup, find_packages
 from setuptools.command.test import test as TestCommand
 
 
+def generate_ui_files():
+    ui_path = path.normpath(path.join(path.abspath(path.dirname(__file__)), "gnr/ui"))
+    from golem.tools.uigen import gen_ui_files
+    gen_ui_files(ui_path)
+
+generate_ui_files()
+
+
 class PyTest(TestCommand):
     ''' py.test integration with setuptools,
         https://pytest.org/latest/goodpractises.html\
