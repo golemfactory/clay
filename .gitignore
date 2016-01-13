@@ -35,6 +35,8 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+*.png
+*.flm
 
 # Golem files
 *.db
