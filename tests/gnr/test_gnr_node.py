@@ -1,6 +1,7 @@
 import unittest
 import os
 import cPickle
+import jsonpickle
 from mock import patch, call
 from gnr.node import start
 from click.testing import CliRunner
@@ -167,3 +168,49 @@ class TestNode(unittest.TestCase):
         self.assertIsInstance(task_arg[0], A)
         if os.path.exists('testclassdump'):
             os.remove('testclassdump')
+
+    @patch('gnr.node.GNRNode')
+    def test_task_from_json(self, mock_node):
+        test_json_file = 'task.json'
+        a1 = A()
+        a1.name = 'Jake the Dog'
+        a2 = A()
+        a2.child = a1
+
+        with open(test_json_file, 'w') as f:
+            j = jsonpickle.encode(a2)
+            f.write(j)
+
+        try:
+            runner = CliRunner()
+            return_value = runner.invoke(start, ['--task', test_json_file])
+            self.assertEqual(return_value.exit_code, 0)
+
+            mock_node.assert_has_calls([call().run()])
+            call_names = [name for name, arg, kwarg in mock_node.mock_calls]
+            self.assertTrue('().add_tasks' in call_names)
+            add_tasks_num = call_names.index('().add_tasks')
+            (task_arg, ) = mock_node.mock_calls[add_tasks_num][1][0]
+            self.assertIsInstance(task_arg, A)
+            self.assertEqual(task_arg.child.name, 'Jake the Dog')
+
+        finally:
+            if os.path.exists(test_json_file):
+                os.remove(test_json_file)
+
+    @patch('gnr.node.GNRNode')
+    def test_task_from_invalid_json(self, mock_node):
+        test_json_file = 'task.json'
+        with open(test_json_file, 'w') as f:
+            f.write('Clearly this is not a valid json.')
+
+        try:
+            runner = CliRunner()
+            return_value = runner.invoke(start, ['--task', test_json_file])
+            self.assertEqual(return_value.exit_code, 2)
+            self.assertIn('Invalid value for "--task"', return_value.output)
+
+        finally:
+            if os.path.exists(test_json_file):
+                os.remove(test_json_file)
+

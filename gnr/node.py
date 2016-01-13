@@ -1,7 +1,13 @@
 """GNR Compute Node"""
 
 import os
-import pickle
+
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
+import jsonpickle
 import click
 import uuid
 import logging.config
@@ -97,7 +103,14 @@ def parse_task_file(ctx, param, value):
     del ctx, param
     tasks = []
     for task_file in value:
-        task_def = pickle.loads(task_file.read())
+        if task_file.name.endswith('.json'):
+            try:
+                task_def = jsonpickle.decode(task_file.read())
+            except ValueError as e:
+                raise click.BadParameter(
+                    "Invalid task json file: {}".format(e.message))
+        else:
+            task_def = pickle.loads(task_file.read())
         task_def.task_id = str(uuid.uuid4())
         tasks.append(task_def)
     return tasks
