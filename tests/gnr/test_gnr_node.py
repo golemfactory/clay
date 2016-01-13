@@ -113,9 +113,10 @@ class TestNode(unittest.TestCase):
         self.assertTrue('Error' in return_value.output)
 
     @patch('gnr.node.GNRNode')
-    def test_wrong_peer_good_peer(self, mock_node):
+    def test_single_peer(self, mock_node):
+        addr1 = '10.30.10.216:40111'
         runner = CliRunner()
-        return_value = runner.invoke(start, ['--peer', '10.30.10.216:40111', '--peer', 'bla'])
+        return_value = runner.invoke(start, ['--peer', addr1])
         self.assertEqual(return_value.exit_code, 0)
         mock_node.assert_has_calls([call().run(), call().add_tasks([])], any_order=True)
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
@@ -123,7 +124,31 @@ class TestNode(unittest.TestCase):
         peer_num = call_names.index('().connect_with_peers')
         peer_arg = mock_node.mock_calls[peer_num][1][0]
         self.assertEqual(len(peer_arg), 1)
-        self.assertEqual(peer_arg[0], TCPAddress('10.30.10.216', 40111))
+        self.assertEqual(peer_arg[0], TCPAddress.parse(addr1))
+
+    @patch('gnr.node.GNRNode')
+    def test_many_peers(self, mock_node):
+        addr1 = '10.30.10.216:40111'
+        addr2 = '10.30.10.214:3333'
+        runner = CliRunner()
+        return_value = runner.invoke(start, ['--peer', addr1, '--peer', addr2])
+        self.assertEqual(return_value.exit_code, 0)
+        mock_node.assert_has_calls([call().run(), call().add_tasks([])], any_order=True)
+        call_names = [name for name, arg, kwarg in mock_node.mock_calls]
+        self.assertTrue('().connect_with_peers' in call_names)
+        peer_num = call_names.index('().connect_with_peers')
+        peer_arg = mock_node.mock_calls[peer_num][1][0]
+        self.assertEqual(len(peer_arg), 2)
+        self.assertEqual(peer_arg[0], TCPAddress.parse(addr1))
+        self.assertEqual(peer_arg[1], TCPAddress.parse(addr2))
+
+    @patch('gnr.node.GNRNode')
+    def test_bad_peer(self, mock_node):
+        addr1 = '10.30.10.216:40111'
+        runner = CliRunner()
+        return_value = runner.invoke(start, ['--peer', addr1, '--peer', 'bla'])
+        self.assertEqual(return_value.exit_code, 2)
+        self.assertTrue('Invalid peer address' in return_value.output)
 
     @patch('gnr.node.GNRNode')
     def test_peers(self, mock_node):
