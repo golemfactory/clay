@@ -32,12 +32,16 @@ logger = logging.getLogger(__name__)
 def empty_add_nodes(*args):
     pass
 
-def create_client():
+
+def create_client(**config_overrides):
     init_messages()
 
     app_config = AppConfig.load_config()
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
+
+    for key, val in config_overrides.iteritems():
+        setattr(config_desc, key, val)
 
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
@@ -81,7 +85,9 @@ class Client:
         self.config_approver = ConfigApprover(config_desc)
 
         # NETWORK
-        self.node = Node(self.config_desc.node_name, self.keys_auth.get_key_id())
+        self.node = Node(node_name=self.config_desc.node_name,
+                         key=self.keys_auth.get_key_id(),
+                         prv_addr=self.config_desc.node_address)
         self.node.collect_network_info(self.config_desc.seed_host, use_ipv6=self.config_desc.use_ipv6)
         logger.debug("Is super node? {}".format(self.node.is_super_node()))
         self.p2pservice = None
@@ -247,11 +253,23 @@ class Client:
     def global_pay_for_task(self, task_id, payments):
         self.transaction_system.global_pay_for_task(task_id, payments)
 
-    def get_reward(self, reward):
-        self.transaction_system.get_reward(reward)
+    def get_reward(self, task_id, node_id, reward):
+        self.transaction_system.get_reward(task_id, node_id, reward)
 
     def get_new_payments_tasks(self):
         return self.transaction_system.get_new_payments_tasks()
+
+    def get_payments(self):
+        return self.transaction_system.get_payments_list()
+
+    def get_incomes(self):
+        return self.transaction_system.get_incomes_list()
+
+    def add_to_waiting_payments(self, task_id, node_id):
+        self.transaction_system.add_to_waiting_payments(task_id, node_id)
+
+    def add_to_timeouted_payments(self, task_id):
+        self.transaction_system.add_to_timeouted_payments(task_id)
 
     # CLIENT CONFIGURATION
     def register_listener(self, listener):

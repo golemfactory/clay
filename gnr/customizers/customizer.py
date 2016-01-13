@@ -5,11 +5,12 @@ class Customizer(object):
         self.logic = logic
 
         self._setup_connections()
+        self.load_data()
 
     def _setup_connections(self):
         pass
 
-    def load_config(self):
+    def load_data(self):
         pass
 
     @staticmethod

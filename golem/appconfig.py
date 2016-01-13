@@ -8,6 +8,8 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 CONFIG_FILENAME = "app_cfg.ini"
 ESTM_FILENAME = "minilight.ini"
+ESTM_LUX_FILENAME = "lux.ini"
+ESTM_BLENDER_FILENAME = "blender.ini"
 MANAGER_PORT = 20301
 MANAGER_ADDRESS = "127.0.0.1"
 ESTIMATED_DEFAULT = 2220.0
@@ -21,6 +23,7 @@ APP_NAME = "Golem LAN Renderer"
 APP_VERSION = "1.021"
 
 logger = logging.getLogger(__name__)
+
 
 class CommonConfig:
 
@@ -73,6 +76,30 @@ class NodeConfig:
             logger.warning("Can't change {} to float: {}".format(val, str(err)))
         return res
 
+    @classmethod
+    def read_estimated_lux_performance(cls):
+        estm_file = SimpleEnv.env_file_name(ESTM_LUX_FILENAME)
+        res = 0
+        if path.isfile(estm_file):
+            try:
+                with open(estm_file, 'r') as file_:
+                    res = "{0:.1f}".format(float(file_.read()))
+            except:
+                return 0
+        return res
+
+    @classmethod
+    def read_estimated_blender_performance(cls):
+        estm_file = SimpleEnv.env_file_name(ESTM_BLENDER_FILENAME)
+        res = 0
+        if path.isfile(estm_file):
+            try:
+                with open(estm_file, 'r') as file_:
+                    res = "{0:.1f}".format(float(file_.read()))
+            except:
+                return 0
+        return res
+
     def __init__(self, node_id, **kwargs):
         self._section = "Node {}".format(node_id)
 
@@ -80,6 +107,16 @@ class NodeConfig:
         if estimated_performance == 0:
             estimated_performance = ESTIMATED_DEFAULT
         kwargs["estimated_performance"] = estimated_performance
+
+        estimated_lux = NodeConfig.read_estimated_lux_performance()
+        if estimated_lux <= 0:
+            estimated_lux = ESTIMATED_DEFAULT
+        kwargs["estimated_lux_performance"] = estimated_lux
+
+        estimated_blender = NodeConfig.read_estimated_blender_performance()
+        if estimated_blender <= 0:
+            estimated_blender = ESTIMATED_DEFAULT
+        kwargs["estimated_blender_performance"] = estimated_blender
 
         for k, v in kwargs.iteritems():
             ConfigEntry.create_property(self.section(), k.replace("_", " "), v, self, k)
@@ -125,6 +162,7 @@ class AppConfig:
                                      app_version=APP_VERSION)
 
         node_config = NodeConfig(local_id,
+                                 node_address="",
                                  seed_host="",
                                  seed_port=0,
                                  root_path=DEFAULT_ROOT_PATH,

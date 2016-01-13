@@ -116,7 +116,7 @@ class TaskKeeper(object):
     def get_receiver_for_task_verification_result(self, task_id):
         if task_id not in self.active_tasks:
             return None
-        return self.active_tasks[task_id].owner_key_id
+        return self.active_tasks[task_id].task_owner_key_id
 
     def add_to_verification(self, subtask_id, task_id):
         now = datetime.datetime.now()

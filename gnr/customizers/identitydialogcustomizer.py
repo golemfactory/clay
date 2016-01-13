@@ -20,7 +20,7 @@ class IdentityDialogCustomizer(Customizer):
         self.changed = False
         Customizer.__init__(self, gui, logic)
 
-    def load_config(self):
+    def load_data(self):
         self.keys_auth = self.logic.get_keys_auth()
         self.set_labels()
 

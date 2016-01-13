@@ -57,6 +57,13 @@ class PaymentsKeeper(object):
         """
         return task.subtasks
 
+    def get_list_of_all_payments(self):
+        all_payments = self.__change_nodes_to_payment_info(self.tasks_to_pay, PaymentState.waiting_to_be_paid)
+        all_payments += self.__change_nodes_to_payment_info(self.settled_tasks.itervalues(), PaymentState.settled)
+        all_payments + self.__change_nodes_to_payment_info(self.computing_tasks.itervalues(),
+                                                           PaymentState.waiting_for_task_to_finish)
+        return all_payments
+
     def finished_subtasks(self, payment_info):
         """ Add new information about finished subtask
         :param PaymentInfo payment_info: full information about payment for given subtask
@@ -75,6 +82,30 @@ class PaymentsKeeper(object):
             return
         self.tasks_to_pay.append(task)
         del self.computing_tasks[task_id]
+
+    @staticmethod
+    def __get_nodes_grouping(subtasks):
+        nodes = {}
+        for subtask in subtasks.itervalues():
+            if subtask.computer.key_id in nodes:
+                nodes[subtask.computer.key_id] += subtask.value
+            else:
+                nodes[subtask.computer.key_id] = subtask.value
+        return nodes
+
+    def __change_nodes_to_payment_info(self, values, name):
+        payments = []
+        for task in values:
+            nodes = self.__get_nodes_grouping(task.subtasks)
+            for node_id, value in nodes.iteritems():
+                payments.append({"task": task.task_id, "node": node_id, "value": value, "state": name})
+        return payments
+
+
+class PaymentState(object):
+    waiting_for_task_to_finish = "Waiting for task to finish"
+    waiting_to_be_paid = "Waiting for processing"
+    settled = "Finished"
 
 
 class PaymentInfo(object):

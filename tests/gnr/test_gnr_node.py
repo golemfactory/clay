@@ -2,9 +2,10 @@ import unittest
 import os
 import cPickle
 from mock import patch, call
-from gnr.node import parse_peer, start
+from gnr.node import start
 from click.testing import CliRunner
 from golem.network.transport.tcpnetwork import TCPAddress
+from golem.appconfig import AppConfig
 
 
 class A(object):
@@ -14,6 +15,11 @@ class A(object):
 
 
 class TestNode(unittest.TestCase):
+
+    def setUp(self):
+        # This is to prevent test methods from picking up AppConfigs
+        # created by previously run test methods:
+        AppConfig.CONFIG_LOADED = False
 
     @patch('gnr.node.reactor')
     def test_help(self, mock_reactor):
@@ -37,6 +43,73 @@ class TestNode(unittest.TestCase):
         return_value = runner.invoke(start)
         self.assertEqual(return_value.exit_code, 0)
         mock_reactor.run.assert_called_with()
+
+    @patch('golem.client.Client')
+    @patch('gnr.node.reactor')
+    def test_node_address_none(self, mock_reactor, mock_client):
+        """Test that without '--node-address' arg the client is started with
+        a 'config_desc' arg such that 'config_desc.node_address' is ''.
+        """
+        runner = CliRunner()
+        return_value = runner.invoke(start)
+        self.assertEqual(return_value.exit_code, 0)
+
+        self.assertGreater(len(mock_client.mock_calls), 0)
+        init_call = mock_client.mock_calls[0]
+        self.assertEqual(init_call[0], '')  # call name == '' for __init__ call
+        (config_desc, ) = init_call[1]
+        self.assertTrue(hasattr(config_desc, 'node_address'))
+        self.assertEqual(config_desc.node_address, '')
+
+    @patch('gnr.node.GNRNode')
+    def test_node_address_valid(self, mock_node):
+        node_address = '1.2.3.4'
+
+        runner = CliRunner()
+        return_value = runner.invoke(start, ['--node-address', node_address])
+        self.assertEquals(return_value.exit_code, 0)
+
+        self.assertGreater(len(mock_node.mock_calls), 0)
+        init_call = mock_node.mock_calls[0]
+        self.assertEqual(init_call[0], '')  # call name == '' for __init__ call
+        init_call_args = init_call[1]
+        init_call_kwargs = init_call[2]
+        self.assertEqual(init_call_args, ())
+        self.assertEqual(init_call_kwargs, {'node_address': node_address})
+
+    @patch('golem.client.Client')
+    @patch('gnr.node.reactor')
+    def test_node_address_passed_to_client(self, mock_reactor, mock_client):
+        """Test that with '--node-address <addr>' arg the client is started with
+        a 'config_desc' arg such that 'config_desc.node_address' is <addr>.
+        """
+        node_address = '1.2.3.4'
+
+        runner = CliRunner()
+        return_value = runner.invoke(start, ['--node-address', node_address])
+        self.assertEquals(return_value.exit_code, 0)
+
+        self.assertGreater(len(mock_client.mock_calls), 0)
+        init_call = mock_client.mock_calls[0]
+        self.assertEqual(init_call[0], '')  # call name == '' for __init__ call
+        (config_desc, ) = init_call[1]
+        self.assertTrue(hasattr(config_desc, 'node_address'))
+        self.assertEqual(config_desc.node_address, node_address)
+
+    @patch('gnr.node.GNRNode')
+    def test_node_address_invalid(self, mock_node):
+        runner = CliRunner()
+        return_value = runner.invoke(start, ['--node-address', '10.30.10.2555'])
+        self.assertEquals(return_value.exit_code, 2)
+        self.assertTrue('Invalid value for "--node-address"' in
+                        return_value.output)
+
+    @patch('gnr.node.GNRNode')
+    def test_node_address_missing(self, mock_node):
+        runner = CliRunner()
+        return_value = runner.invoke(start, ['--node-address'])
+        self.assertEquals(return_value.exit_code, 2)
+        self.assertTrue('Error' in return_value.output)
 
     @patch('gnr.node.GNRNode')
     def test_wrong_peer_good_peer(self, mock_node):
@@ -68,7 +141,6 @@ class TestNode(unittest.TestCase):
         self.assertEqual(peer_arg[0], TCPAddress('10.30.10.216', 40111))
         self.assertEqual(peer_arg[1], TCPAddress('2001:db8:85a3:8d3:1319:8a2e:370:7348', 443))
         self.assertEqual(peer_arg[2], TCPAddress('::ffff:0:0:0', 96))
-
 
     @patch('gnr.node.GNRNode')
     def test_wrong_task(self, mock_node):

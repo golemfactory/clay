@@ -106,6 +106,7 @@ class TaskServer(PendingConnectionsServer):
         self.client.increase_trust(owner_key_id, RankingStats.requested)
 
         if subtask_id not in self.results_to_send:
+            self.client.add_to_waiting_payments(task_id, owner_key_id)
             self.task_keeper.add_to_verification(subtask_id, task_id)
             self.results_to_send[subtask_id] = WaitingTaskResult(subtask_id, result['data'], result['result_type'],
                                                                  0.0, 0.0, owner_address, owner_port, owner_key_id,
@@ -246,7 +247,8 @@ class TaskServer(PendingConnectionsServer):
             return
         try:
             logger.info("Getting {} for task {}".format(reward, task_id))
-            self.client.get_reward(int(reward))
+            node_id = self.task_keeper.get_receiver_for_task_verification_result(task_id)
+            self.client.get_reward(task_id, node_id, int(reward))
             self.increase_trust_payment(task_id)
         except ValueError:
             logger.error("Wrong reward amount {} for task {}".format(reward, task_id))
@@ -543,11 +545,13 @@ class TaskServer(PendingConnectionsServer):
             pc.time = time.time()
 
     def __connection_for_pay_for_task_established(self, session, conn_id, key_id, task_id, price):
+        print "CONNECTION FOR PAY FOR TASK ESTABLISHED"
         session.key_id = key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
         session.send_hello()
         session.send_reward_for_task(task_id, price)
+        print "SEND REWARD"
         self.client.task_reward_paid(task_id, price)
 
     def __connection_for_pay_for_task_failure(self, conn_id, key_id, task_id, price):
@@ -743,6 +747,7 @@ class TaskServer(PendingConnectionsServer):
         after_deadline = self.task_keeper.check_payments()
         for task_id in after_deadline:
             self.decrease_trust_payment(task_id)
+            self.client.add_to_timeouted_payments(task_id)
 
     # CONFIGURATION METHODS
     #############################

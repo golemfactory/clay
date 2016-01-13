@@ -9,12 +9,13 @@ import logging.config
 from twisted.internet import reactor
 
 from golem.client import create_client
-from golem.network.transport.tcpnetwork import TCPAddress
+from golem.network.transport.tcpnetwork import TCPAddress, AddressValueError
 from golem.task.taskbase import Task
 
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
+
 
 config_file = os.path.join(os.path.dirname(__file__), "logging.ini")
 logging.config.fileConfig(config_file, disable_existing_loggers=False)
@@ -24,11 +25,12 @@ logger = logging.getLogger(__name__)
 
 class Node(object):
     """ Simple Golem Node connecting console user interface with Client
+    :type client golem.client.Client:
     """
     default_environments = []
 
-    def __init__(self):
-        self.client = create_client()
+    def __init__(self, **config_overrides):
+        self.client = create_client(**config_overrides)
 
     def initialize(self):
         self.client.start_network()
@@ -67,6 +69,18 @@ class GNRNode(Node):
             return LuxRenderTaskBuilder
 
 
+def parse_node_addr(ctx, param, value):
+    del ctx, param
+    if value:
+        try:
+            TCPAddress(value, 1)
+            return value
+        except AddressValueError as e:
+            raise click.BadParameter(
+                "Invalid network address specified: {}".format(e.message))
+    return ''
+
+
 def parse_peer(ctx, param, value):
     del ctx, param
     addresses = []
@@ -90,13 +104,16 @@ def parse_task_file(ctx, param, value):
 
 
 @click.command()
+@click.option('--node-address', '-a', multiple=False, type=click.STRING,
+              callback=parse_node_addr,
+              help="Network address to use for this node")
 @click.option('--peer', '-p', multiple=True, callback=parse_peer,
               help="Connect with given peer: <ipv4_addr>:port or [<ipv6_addr>]:port")
 @click.option('--task', '-t', multiple=True, type=click.File(lazy=True), callback=parse_task_file,
               help="Request task from file")
-def start(peer, task):
+def start(node_address, peer, task):
 
-    node = GNRNode()
+    node = GNRNode(node_address=node_address)
     node.initialize()
 
     node.connect_with_peers(peer)
