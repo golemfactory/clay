@@ -67,6 +67,7 @@ setup(
     author_email='contact@golemproject.net',
     url='http://golemproject.net',
     packages=find_packages(include=['golem*', 'gnr*']),
+    package_data={'gnr': ['logging.ini']},
     include_package_data=True,
     install_requires=requirements,
     dependency_links=dependency_links,
