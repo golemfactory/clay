@@ -58,18 +58,20 @@ def format_vray_cmd_with_parts(cmd_file, frames, parts, start_task, output_file,
            "-autoClose=1", "-display=0", "-rtEngine={}".format(rt_engine),  "-numThreads={}".format(num_threads)]
     return cmd
 
-def __read_from_environment():
-    default_cmd = "vray"
-    default_win_cmd = "vray.exe"
-    try:
-        from gnr.renderingenvironment import VRayEnvironment
-    except ImportError:
-        print "No Golem app found... Setting default command file"
-        if is_windows():
-            return default_win_cmd
-        else:
-            return default_cmd
+GOLEM_ENV = 'GOLEM'
 
+def __read_from_environment():
+    path = os.environ.get(GOLEM_ENV)
+    if not path:
+        print "No Golem environment variable found... Assuming that exec is in working folder"
+        if is_windows():
+            return 'vray.exe'
+        else:
+            return 'vray'
+
+    sys.path.append(path)
+
+    from gnr.renderingenvironment import VRayEnvironment
     env = VRayEnvironment()
     cmd_file = env.get_cmd_path()
     if cmd_file:
@@ -77,9 +79,9 @@ def __read_from_environment():
     else:
         print "Environment not supported... Assuming that exec is in working folder"
         if is_windows():
-            return default_win_cmd
+            return 'vray.exe'
         else:
-            return default_cmd
+            return 'vray'
 
 def output_number(num):
     num = str(num)

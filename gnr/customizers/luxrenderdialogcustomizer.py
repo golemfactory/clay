@@ -1,17 +1,29 @@
 import logging
 from PyQt4 import QtCore
+from PyQt4.QtGui import QMessageBox
 
-from renderercustomizer import RendererCustomizer
 from golem.environments.environment import Environment
 
+from gnr.ui.luxrenderdialog import LuxRenderDialog
 from gnr.renderingenvironment import LuxRenderEnvironment
 
 logger = logging.getLogger(__name__)
 
 
-class LuxRenderDialogCustomizer(RendererCustomizer):
+class LuxRenderDialogCustomizer:
+    def __init__(self, gui, logic, new_task_dialog):
+        assert isinstance(gui, LuxRenderDialog)
 
-    def load_data(self):
+        self.gui = gui
+        self.logic = logic
+        self.new_task_dialog = new_task_dialog
+
+        self.renderer_options = new_task_dialog.renderer_options
+
+        self.__init()
+        self.__setup_connections()
+
+    def __init(self):
         renderer = self.logic.get_renderer(u"LuxRender")
         self.gui.ui.haltTimeLineEdit.setText(u"{}".format(self.renderer_options.halttime))
         self.gui.ui.haltsppLineEdit.setText(u"{}".format(self.renderer_options.haltspp))
@@ -22,7 +34,7 @@ class LuxRenderDialogCustomizer(RendererCustomizer):
         self.gui.ui.luxConsoleLineEdit.setEnabled(self.renderer_options.send_binaries)
         self.gui.ui.luxConsoleLineEdit.setText(u"{}".format(self.renderer_options.luxconsole))
 
-    def _setup_connections(self):
+    def __setup_connections(self):
         self.gui.ui.cancelButton.clicked.connect(self.gui.close)
         self.gui.ui.okButton.clicked.connect(lambda: self.__change_renderer_options())
         QtCore.QObject.connect(self.gui.ui.sendLuxRadioButton, QtCore.SIGNAL("toggled(bool)"), self.__send_lux_settings_changed)

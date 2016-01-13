@@ -22,11 +22,11 @@ class TaskTableElem:
         self.progress_bar.setProperty("value", 50)
 
         self.progressBarInBoxLayoutWidget = QWidget()
-        box_layout = QVBoxLayout()
-        box_layout.setMargin(3)
-        box_layout.addWidget(self.progress_bar)
+        boxLayout = QVBoxLayout()
+        boxLayout.setMargin(3)
+        boxLayout.addWidget(self.progress_bar)
 
-        self.progressBarInBoxLayoutWidget.setLayout(box_layout)
+        self.progressBarInBoxLayoutWidget.setLayout(boxLayout)
 
         self.status_item = QTableWidgetItem()
         self.status_item.setText(self.status)

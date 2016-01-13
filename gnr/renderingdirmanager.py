@@ -12,7 +12,7 @@ def get_test_task_directory():
 
 
 def get_preview_file():
-    return os.path.normpath(PREV_FILE)
+    return PREV_FILE
 
 
 def get_test_task_path(root_path):

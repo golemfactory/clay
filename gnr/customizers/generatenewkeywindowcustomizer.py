@@ -1,11 +1,13 @@
+
 import threading
 
 
-class GenerateNewKeyWindowCustomizer(object):
+class GenerateNewKeyWindowCustomizer():
     def __init__(self, gui, parent):
         self.gui = gui
         self.parent = parent
         self.thread = None
+
         self.set_label()
 
     def set_label(self):
