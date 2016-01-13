@@ -4,7 +4,7 @@ import subprocess
 import time
 
 
-# UGLY! is_windows and exec_cmd are copy-pasted from $GOLEM/examples/tasks/luxtask.py
+# UGLY! is_windows and exec_cmd are copy-pasted from $GOLEM/gnr/task/computing_tasks/luxtask.py
 
 def is_windows():
     return sys.platform == 'win32'

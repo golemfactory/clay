@@ -36,7 +36,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         task_definition = UpdateOtherGolemsTaskDefinition()
         task_definition.task_id = "{}".format(uuid.uuid4())
         task_definition.src_file = os.path.normpath(
-            os.path.join(get_golem_path(), "examples/tasks/update_golem.py"))
+            os.path.join(get_golem_path(), "gnr/task/computing_tasks/update_golem.py"))
         task_definition.total_subtasks = 100
         task_definition.full_task_timeout = 4 * 60 * 60
         task_definition.subtask_timeout = 20 * 60
@@ -55,7 +55,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         info_task_definition = InfoTaskDefinition()
         info_task_definition.task_id = "{}".format(uuid.uuid4())
         info_task_definition.src_file = os.path.normpath(
-            os.path.join(get_golem_path(), "examples/tasks/send_snapshot.py"))
+            os.path.join(get_golem_path(), "gnr/task/computing_tasks/send_snapshot.py"))
         info_task_definition.total_subtasks = iterations
         info_task_definition.full_task_timeout = full_task_timeout
         info_task_definition.subtask_timeout = subtask_timeout

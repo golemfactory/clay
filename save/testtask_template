@@ -118,7 +118,7 @@ p51
 I1200
 sS'main_program_file'
 p52
-Vexamples/tasks/blendertask.py
+Vgnr/task/computing_tasks/blendertask.py
 p53
 sS'min_subtask_time'
 p54
@@ -134,7 +134,7 @@ c__builtin__
 set
 p58
 ((lp59
-Vexamples/tasks/blendertask.py
+Vgnr/task/computing_tasks/blendertask.py
 p60
 aVtesttasks/blender/blender_task/scene-Helicopter-27.blend
 p61

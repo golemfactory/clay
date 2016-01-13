@@ -27,7 +27,7 @@ class VrayDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
-        self.main_program_file = os.path.normpath(os.path.join(get_golem_path(), 'examples/tasks/vraytask.py'))
+        self.main_program_file = os.path.normpath(os.path.join(get_golem_path(), 'gnr/task/computing_tasks/vraytask.py'))
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
