@@ -93,9 +93,9 @@ def parse_peer(ctx, param, value):
     for arg in value:
         try:
             addresses.append(TCPAddress.parse(arg))
-        except ValueError:
-            logger.warning("Wrong peer address {}. Address should be in format <ipv4_addr>:port "
-                           "or [<ipv6_addr>]:port".format(arg))
+        except AddressValueError as e:
+            raise click.BadParameter(
+                "Invalid peer address specified: {}".format(e.message))
     return addresses
 
 
@@ -121,7 +121,7 @@ def parse_task_file(ctx, param, value):
               callback=parse_node_addr,
               help="Network address to use for this node")
 @click.option('--peer', '-p', multiple=True, callback=parse_peer,
-              help="Connect with given peer: <ipv4_addr>:port or [<ipv6_addr>]:port")
+              help="Connect with given peer: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
 @click.option('--task', '-t', multiple=True, type=click.File(lazy=True), callback=parse_task_file,
               help="Request task from file")
 def start(node_address, peer, task):
