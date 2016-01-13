@@ -2,15 +2,25 @@ import logging
 import os
 from PyQt4.QtGui import QFileDialog
 
-from gnr.customizers.renderercustomizer import RendererCustomizer
-
+from gnr.ui.pbrtdialog import PbrtDialog
 
 logger = logging.getLogger(__name__)
 
 
-class PbrtDialogCustomizer(RendererCustomizer):
+class PbrtDialogCustomizer:
+    def __init__(self, gui, logic, new_task_dialog):
 
-    def load_data(self):
+        assert isinstance(gui, PbrtDialog)
+
+        self.gui = gui
+        self.logic = logic
+        self.new_task_dialog = new_task_dialog
+        self.renderer_options = new_task_dialog.renderer_options
+
+        self.__init()
+        self.__setup_connections()
+
+    def __init(self):
         renderer = self.logic.get_renderer(u"PBRT")
 
         self.gui.ui.pixelFilterComboBox.clear()
@@ -31,7 +41,7 @@ class PbrtDialogCustomizer(RendererCustomizer):
 
         self.gui.ui.pbrtPathLineEdit.setText(self.renderer_options.pbrt_path)
 
-    def _setup_connections(self):
+    def __setup_connections(self):
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__change_renderer_options())
         self.gui.ui.pbrtPathButton.clicked.connect(self.__choose_pbrt_path)

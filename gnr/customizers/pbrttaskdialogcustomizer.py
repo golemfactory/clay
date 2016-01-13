@@ -3,21 +3,27 @@ import os
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
 from copy import deepcopy
-
+from gnr.ui.pbrttaskdialog import PbrtTaskDialog
 from verificationparamshelper import read_advance_verification_params, set_verification_widgets_state, \
     load_verification_params, verification_random_changed
-from customizer import Customizer
 
 logger = logging.getLogger(__name__)
 
 
-class PbrtTaskDialogCustomizer(Customizer):
+class PbrtTaskDialogCustomizer:
     def __init__(self, gui, logic, new_task_dialog):
+
+        assert isinstance(gui, PbrtTaskDialog)
+
+        self.gui = gui
+        self.logic = logic
         self.new_task_dialog = new_task_dialog
         self.options = deepcopy(new_task_dialog.options)
-        Customizer.__init__(self, gui,logic)
 
-    def load_data(self):
+        self.__init()
+        self.__setup_connections()
+
+    def __init(self):
         self.__set_renderer_parameters()
         self.__set_output_parameters()
         self.__set_verification_parameters()
@@ -60,7 +66,7 @@ class PbrtTaskDialogCustomizer(Customizer):
     def __set_verification_widgets_state(self, state):
         set_verification_widgets_state(self.gui, state)
 
-    def _setup_connections(self):
+    def __setup_connections(self):
         self.gui.ui.cancelButton.clicked.connect(self.gui.window.close)
         self.gui.ui.okButton.clicked.connect(lambda: self.__change_renderer_options())
         self.gui.ui.chooseOutputFileButton.clicked.connect(self.__choose_output_file_button_clicked)

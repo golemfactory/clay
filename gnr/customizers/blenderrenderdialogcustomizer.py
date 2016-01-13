@@ -1,12 +1,19 @@
 import logging
 
 from PyQt4 import QtCore
-from renderercustomizer import RendererCustomizer
+from gnr.customizers.customizer import Customizer
 
 logger = logging.getLogger(__name__)
 
 
-class BlenderRenderDialogCustomizer(RendererCustomizer):
+class BlenderRenderDialogCustomizer(Customizer):
+    def __init__(self, gui, logic, new_task_dialog):
+        Customizer.__init__(self, gui, logic)
+        self.new_task_dialog = new_task_dialog
+
+        self.renderer_options = new_task_dialog.renderer_options
+
+        self.__init()
 
     def _setup_connections(self):
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
@@ -15,7 +22,7 @@ class BlenderRenderDialogCustomizer(RendererCustomizer):
         QtCore.QObject.connect(self.gui.ui.framesCheckBox, QtCore.SIGNAL("stateChanged(int) "),
                                 self.__frames_check_box_changed)
 
-    def load_data(self):
+    def __init(self):
         renderer = self.logic.get_renderer(u"Blender")
 
         self.gui.ui.engineComboBox.addItems(self.renderer_options.engine_values)

@@ -3,29 +3,31 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog
 from copy import deepcopy
 
-from gnr.ui.dialog import AddTaskResourcesDialog
+from gnr.ui.addtaskresourcesdialog import AddTaskResourcesDialog
+
 from gnr.customizers.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.gnrtaskstate import GNRTaskDefinition
 from golem.task.taskstate import TaskStatus
 from gnr.customizers.timehelper import set_time_spin_boxes, get_time_values
-from gnr.customizers.customizer import Customizer
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class NewTaskDialogCustomizer(Customizer):
+class NewTaskDialogCustomizer:
     def __init__(self, gui, logic):
+
+        self.gui = gui
+        self.logic = logic
         self.options = None
+
         self.add_task_resource_dialog = None
         self.task_state = None
         self.add_task_resource_dialog_customizer = None
 
-        Customizer.__init__(self, gui, logic)
-
-    def load_data(self):
+        self._setup_connections()
         self._set_uid()
         self._init()
 
@@ -75,9 +77,9 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _show_add_resource_dialog(self):
         if not self.add_task_resource_dialog:
-            self.add_task_resource_dialog = self._get_add_resource_dialog()
+            self.add_task_resource_dialog = AddTaskResourcesDialog(self.gui.window)
             self.add_task_resource_dialog_customizer = AddResourcesDialogCustomizer(self.add_task_resource_dialog,
-                                                                                    self.logic)
+                                                                                 self.logic)
 
         self.add_task_resource_dialog.show()
 
@@ -106,7 +108,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.options = options
 
     def _load_resources(self, definition):
-        self.add_task_resource_dialog = self._get_add_resource_dialog()
+        self.add_task_resource_dialog = AddTaskResourcesDialog(self.gui.window)
         self.add_task_resource_dialog_customizer = AddResourcesDialogCustomizer(self.add_task_resource_dialog, self.logic)
         self.add_task_resource_dialog_customizer.resources = definition.resources
 
@@ -225,6 +227,3 @@ class NewTaskDialogCustomizer(Customizer):
         task = self.logic.get_task_type(task_name)
         self.gui.ui.optionsButton.setEnabled(task.dialog is not None and task.dialog_customizer is not None)
         self.options = deepcopy(task.options)
-
-    def _get_add_resource_dialog(self):
-        return AddTaskResourcesDialog(self.gui.window)

@@ -2,11 +2,10 @@ import os
 import shutil
 import zlib
 import pickle
-from golem.core.common import get_golem_path
 
 
 def update_golem():
-    dst = get_golem_path()
+    dst = os.environ.get('GOLEM')
     print dst
     src = resourcePath
     print src

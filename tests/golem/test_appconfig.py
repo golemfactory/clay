@@ -22,9 +22,6 @@ class TestNodeConfig(LogTestCase):
         with open(good_file, 'w') as f:
             f.write(TestNodeConfig.config_val)
 
-    def test_default_variables(self):
-        self.assertTrue(os.path.isdir(appconfig.DEFAULT_ROOT_PATH))
-
     def test_read_estimated_performance(self):
         appconfig.ESTM_FILENAME = TestNodeConfig.no_existing_name
         with self.assertLogs(logger, level=1) as l:

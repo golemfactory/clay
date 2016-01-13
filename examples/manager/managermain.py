@@ -1,8 +1,13 @@
 import sys
 import os
 
+sys.path.append(os.environ.get('GOLEM'))
+
+from golem.tools.uigen import gen_ui_files
+
+gen_ui_files("./../../golem/ui")
+
 from golem.appconfig import AppConfig
-from golem.core.common import get_golem_path
 from golem.manager.nodesmanager import NodesManager
 from gnrmanagerlogic import GNRManagerLogic
 from golem.network.transport.message import init_manager_messages
@@ -10,9 +15,7 @@ import logging.config
 
 
 def main():
-    config_path = os.path.normpath(os.path.join(get_golem_path(), "gnr/logging.ini"))
-    print config_path
-    logging.config.fileConfig(config_path, disable_existing_loggers=False)
+    logging.config.fileConfig('../gnr/logging.ini', disable_existing_loggers=False)
     init_manager_messages()
 
     try:
@@ -25,9 +28,7 @@ def main():
 
     port = AppConfig.manager_port()
     manager = NodesManager(None, port)
-    manager_logic_path = os.path.normpath(os.path.join(get_golem_path(), "gnr"))
-    print manager_logic_path
-    logic = GNRManagerLogic(manager.manager_server, manager_logic_path)
+    logic = GNRManagerLogic(manager.manager_server, "../gnr")
     manager.set_manager_logic(logic)
 
     logic.set_reactor(reactor)

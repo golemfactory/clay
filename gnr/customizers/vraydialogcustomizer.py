@@ -2,15 +2,25 @@ import logging
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog, QMessageBox
-
-from renderercustomizer import RendererCustomizer
+from gnr.ui.vraydialog import VRayDialog
 
 logger = logging.getLogger(__name__)
 
 
-class VRayDialogCustomizer(RendererCustomizer):
+class VRayDialogCustomizer:
+    def __init__(self, gui, logic, new_task_dialog):
+        assert isinstance(gui, VRayDialog)
 
-    def load_data(self):
+        self.gui = gui
+        self.logic = logic
+        self.new_task_dialog = new_task_dialog
+
+        self.renderer_options = new_task_dialog.renderer_options
+
+        self.__init()
+        self.__setup_connections()
+
+    def __init(self):
         renderer = self.logic.get_renderer(u"VRay Standalone")
         self.gui.ui.rtComboBox.addItems(self.renderer_options.rt_engine_values.values())
         rt_engine_item = self.gui.ui.rtComboBox.findText(self.renderer_options.rt_engine_values[ self.renderer_options.rt_engine ])
@@ -26,7 +36,7 @@ class VRayDialogCustomizer(RendererCustomizer):
         else:
             self.gui.ui.framesLineEdit.setText("")
 
-    def _setup_connections(self):
+    def __setup_connections(self):
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__change_renderer_options())
 

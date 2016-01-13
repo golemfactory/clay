@@ -40,21 +40,25 @@ def remove_old_files():
         os.remove(f)
 
 
+GOLEM_ENV = 'GOLEM'
+
+
 def __read_from_environment():
     default_cmd_file = 'blender'
 
-    try:
-        from gnr.renderingenvironment import BlenderEnvironment
-    except ImportError:
-        print "No Golem app found... Setting default command file"
+    path = os.environ.get(GOLEM_ENV)
+    if not path:
+        print "No Golem environment variable found..."
         return default_cmd_file
 
+    sys.path.append(path)
+
+    from gnr.renderingenvironment import BlenderEnvironment
     env = BlenderEnvironment()
     cmd_file = env.get_blender()
     if cmd_file:
         return cmd_file
     else:
-        print "Environment not supported... Setting default command file"
         return default_cmd_file
 
 

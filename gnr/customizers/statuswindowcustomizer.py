@@ -1,13 +1,22 @@
-from gnr.customizers.customizer import Customizer
+
+from gnr.ui.statuswindow import StatusWindow
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class StatusWindowCustomizer(Customizer):
+class StatusWindowCustomizer:
+    def __init__(self, gui, logic):
 
-    def _setup_connections(self):
+        assert isinstance(gui, StatusWindow)
+
+        self.gui = gui
+        self.logic = logic
+
+        self.__setup_connections()
+
+    def __setup_connections(self):
         self.gui.ui.okButton.clicked.connect(self.__ok_button_clicked)
 
     def __ok_button_clicked(self):
