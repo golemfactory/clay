@@ -3,10 +3,8 @@ import logging.config
 from os import path
 
 from golem.client import start_client
+from golem.core.common import get_golem_path
 from golem.environments.environment import Environment
-from golem.tools import uigen
-
-uigen.gen_ui_files(path.join(path.dirname(__file__), "ui"))
 
 from gnr.renderingenvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment, \
     LuxRenderEnvironment, BlenderEnvironment
@@ -18,11 +16,7 @@ from gnr.task.vraytask import build_vray_renderer_info
 from gnr.task.luxrendertask import build_lux_render_info
 from gnr.task.blenderrendertask import build_blender_renderer_info
 
-from gnr.ui.blenderrenderdialog import BlenderRenderDialog
-from gnr.ui.luxrenderdialog import LuxRenderDialog
-from gnr.ui.pbrtdialog import PbrtDialog
-from gnr.ui.threedsmaxdialog import ThreeDSMaxDialog
-from gnr.ui.vraydialog import VRayDialog
+from gnr.ui.dialog import BlenderRenderDialog, LuxRenderDialog, PbrtDialog, ThreeDSMaxDialog, VRayDialog
 
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
@@ -35,7 +29,7 @@ from examples.manager.gnrmanagerlogic import run_additional_nodes, run_manager
 
 def config_logging():
     """Config logger"""
-    config_file = path.join(path.dirname(__file__), "logging.ini")
+    config_file = path.normpath(path.join(get_golem_path(), "gnr/logging.ini"))
     logging.config.fileConfig(config_file, disable_existing_loggers=False)
 
 

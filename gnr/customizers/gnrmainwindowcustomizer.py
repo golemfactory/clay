@@ -5,20 +5,11 @@ import cPickle
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
-logger = logging.getLogger(__name__)
-
-from gnr.ui.dialog import PaymentsDialog
-from gnr.ui.newtaskdialog import NewTaskDialog
+from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, StatusWindow, \
+                          AboutWindow, ConfigurationDialog, EnvironmentsDialog, IdentityDialog, NewTaskDialog
 from gnr.ui.tasktableelem import TaskTableElem
-from gnr.ui.taskdetailsdialog import TaskDetailsDialog
-from gnr.ui.subtaskdetailsdialog import SubtaskDetailsDialog
-from gnr.ui.changetaskdialog import ChangeTaskDialog
-from gnr.ui.statuswindow import StatusWindow
-from gnr.ui.aboutwindow import AboutWindow
-from gnr.ui.configurationdialog import ConfigurationDialog
-from gnr.ui.environmentsdialog import EnvironmentsDialog
-from gnr.ui.identitydialog import IdentityDialog
 
+from gnr.customizers.customizer import Customizer
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
 from gnr.customizers.taskcontexmenucustomizer import TaskContextMenuCustomizer
 from gnr.customizers.taskdetailsdialogcustomizer import TaskDetailsDialogCustomizer
@@ -32,20 +23,17 @@ from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer
 from gnr.customizers.paymentsdialogcustomizer import PaymentsDialogCustomizer
 
 from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.core.common import get_golem_path
+
+logger = logging.getLogger(__name__)
 
 
-class GNRMainWindowCustomizer:
+class GNRMainWindowCustomizer(Customizer):
     def __init__(self, gui, logic):
-
-        self.gui = gui
-        self.logic = logic
-
         self.current_task_highlighted = None
         self.task_details_dialog = None
         self.task_details_dialog_customizer = None
-
-        self._setup_connections()
-
+        Customizer.__init__(self, gui, logic)
         self._set_error_label()
 
     def set_options(self, cfg_desc):
@@ -152,7 +140,7 @@ class GNRMainWindowCustomizer:
     def _show_new_task_dialog(self, definition):
         self._set_new_task_dialog()
         self._set_new_task_dialog_customizer()
-        self.new_task_dialogCustomizer.load_task_definition(definition)
+        self.new_task_dialog_customizer.load_task_definition(definition)
         self.new_task_dialog.show()
 
     def _show_new_task_dialog_clicked(self):
@@ -164,10 +152,10 @@ class GNRMainWindowCustomizer:
         self.new_task_dialog = NewTaskDialog(self.gui.window)
 
     def _set_new_task_dialog_customizer(self):
-        self.new_task_dialogCustomizer = NewTaskDialogCustomizer(self.new_task_dialog, self.logic)
+        self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.new_task_dialog, self.logic)
 
     def _load_task_button_clicked(self):
-        golem_path = os.environ.get('GOLEM')
+        golem_path = get_golem_path()
         dir_ = ""
         if golem_path:
             save_dir = os.path.join(golem_path, "save")

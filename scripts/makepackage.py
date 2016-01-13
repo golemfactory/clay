@@ -4,6 +4,8 @@ import os
 import sys
 import py_compile
 
+from golem.core.common import get_golem_path
+
 
 def make_folder(dest):
     if not os.path.isdir(dest):
@@ -37,12 +39,11 @@ def main():
     if len(sys.argv) > 1:
         dest = sys.argv[1]
     else:
-        dest = "C:\golem_test\package"
+        dest = os.getcwd()
 
-    src_path = os.environ.get('GOLEM')
-    print src_path
-    py_compile.compile(os.path.join(src_path, 'examples\\gnr\\main.py'))
-    py_compile.compile(os.path.join(src_path, 'examples\\gnr\\admMain.py'))
+    src_path = get_golem_path()
+    py_compile.compile(os.path.normpath(os.path.join(src_path, 'gnr/main.py')))
+    py_compile.compile(os.path.normpath(os.path.join(src_path, 'gnr/admmain.py')))
 
     make_folder(dest)
     copy_to_package(dest, src_path)

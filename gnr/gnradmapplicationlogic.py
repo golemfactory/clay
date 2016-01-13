@@ -3,8 +3,11 @@ import glob
 import uuid
 import logging
 import cPickle as pickle
+
 from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task
+from golem.core.common import get_golem_path
+
 from gnr.task.infotask import InfoTaskBuilder, InfoTaskDefinition
 from gnr.task.updateothergolemstask import UpdateOtherGolemsTaskBuilder, UpdateOtherGolemsTaskDefinition
 from gnrapplicationlogic import GNRApplicationLogic
@@ -26,14 +29,14 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         self.start_nodes_manager_function()
 
     def send_test_tasks(self):
-        path = os.path.join(os.environ.get('GOLEM'), 'save/test')
+        path = os.path.normpath(os.path.join(get_golem_path(), 'save/test'))
         self.add_and_start_tasks_from_files(glob.glob(os.path.join(path, '*.gt')))
 
     def update_other_golems(self, golem_dir):
         task_definition = UpdateOtherGolemsTaskDefinition()
         task_definition.task_id = "{}".format(uuid.uuid4())
         task_definition.src_file = os.path.normpath(
-            os.path.join(os.environ.get('GOLEM'), "examples/tasks/update_golem.py"))
+            os.path.join(get_golem_path(), "examples/tasks/update_golem.py"))
         task_definition.total_subtasks = 100
         task_definition.full_task_timeout = 4 * 60 * 60
         task_definition.subtask_timeout = 20 * 60
@@ -52,7 +55,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         info_task_definition = InfoTaskDefinition()
         info_task_definition.task_id = "{}".format(uuid.uuid4())
         info_task_definition.src_file = os.path.normpath(
-            os.path.join(os.environ.get('GOLEM'), "examples/tasks/send_snapshot.py"))
+            os.path.join(get_golem_path(), "examples/tasks/send_snapshot.py"))
         info_task_definition.total_subtasks = iterations
         info_task_definition.full_task_timeout = full_task_timeout
         info_task_definition.subtask_timeout = subtask_timeout

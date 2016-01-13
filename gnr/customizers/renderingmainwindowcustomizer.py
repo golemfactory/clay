@@ -6,15 +6,16 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox
 
 from golem.task.taskstate import SubtaskStatus
+from golem.core.common import get_golem_path
 
-from gnr.ui.showtaskresourcesdialog import ShowTaskResourcesDialog
-from gnr.ui.renderingnewtaskdialog import NewTaskDialog
+from gnr.ui.dialog import RenderingNewTaskDialog, ShowTaskResourcesDialog
 
 from gnr.renderingdirmanager import get_preview_file
 from gnr.renderingtaskstate import RenderingTaskDefinition
 
 from gnr.customizers.gnrmainwindowcustomizer import GNRMainWindowCustomizer
 from gnr.customizers.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
+from gnr.customizers.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
 
 from gnr.customizers.memoryhelper import resource_size_to_display, translate_resource_index
 
@@ -50,9 +51,9 @@ def insert_item(root, path_table):
 
 class AbsRenderingMainWindowCustomizer(object):
     def _set_rendering_variables(self):
-        self.previewPath = os.path.join(os.environ.get('GOLEM'), "examples\\gnr", get_preview_file())
-        self.lastPreviewPath = self.previewPath
-        self.sliderPreviews = {}
+        self.preview_path = os.path.join(get_golem_path(), "gnr", get_preview_file())
+        self.last_preview_path = self.preview_path
+        self.slider_previews = {}
         self.gui.ui.frameSlider.setVisible(False)
 
     def _setup_rendering_connections(self):
@@ -68,11 +69,15 @@ class AbsRenderingMainWindowCustomizer(object):
     def _setup_advance_task_connections(self):
         self.gui.ui.showResourceButton.clicked.connect(self._show_task_resource_clicked)
 
-    def _set_new_task_dialog(self):
-        self.new_task_dialog = NewTaskDialog(self.gui.window)
-
     def _set_new_task_dialog_customizer(self):
-        self.new_task_dialogCustomizer = RenderingNewTaskDialogCustomizer(self.new_task_dialog, self.logic)
+        self.new_task_dialog_customizer = RenderingNewTaskDialogCustomizer(self.new_task_dialog, self.logic)
+
+    def _set_new_task_dialog(self):
+        self.new_task_dialog = RenderingNewTaskDialog(self.gui.window)
+
+    def _set_show_task_resource_dialog(self):
+        self.show_task_resources_dialog = ShowTaskResourcesDialog(self.gui.window)
+        show_task_resources_dialog_customizer = ShowTaskResourcesDialogCustomizer(self.show_task_resources_dialog, self)
 
     def update_task_additional_info(self, t):
         from gnr.renderingtaskstate import RenderingTaskState
@@ -137,7 +142,7 @@ class AbsRenderingMainWindowCustomizer(object):
 
     def __set_frame_preview(self, t):
         if "resultPreview" in t.task_state.extra_data:
-            self.sliderPreviews = t.task_state.extra_data["resultPreview"]
+            self.slider_previews = t.task_state.extra_data["resultPreview"]
         self.gui.ui.frameSlider.setVisible(True)
         self.gui.ui.frameSlider.setRange(1, len(t.definition.renderer_options.frames))
         self.gui.ui.frameSlider.setSingleStep(1)
@@ -154,10 +159,10 @@ class AbsRenderingMainWindowCustomizer(object):
             time.sleep(0.5)
             if os.path.exists(file_path):
                 self.gui.ui.previewLabel.setPixmap(QPixmap(file_path))
-                self.lastPreviewPath = file_path
+                self.last_preview_path = file_path
         else:
-            self.gui.ui.previewLabel.setPixmap(QPixmap(self.previewPath))
-            self.lastPreviewPath = self.previewPath
+            self.gui.ui.previewLabel.setPixmap(QPixmap(self.preview_path))
+            self.last_preview_path = self.preview_path
 
     def __get_frame_name(self, definition, num):
         output_name, ext = os.path.splitext(definition.output_file)
@@ -176,38 +181,38 @@ class AbsRenderingMainWindowCustomizer(object):
         if self.current_task_highlighted:
             res = [os.path.abspath(r) for r in self.current_task_highlighted.definition.resources]
             res.sort()
-            self.showTaskResourcesDialog = ShowTaskResourcesDialog(self.gui.window)
+            self._set_show_task_resource_dialog()
 
             item = QTreeWidgetItem(["Resources"])
-            self.showTaskResourcesDialog.ui.folderTreeWidget.insertTopLevelItem(0, item)
-            self.showTaskResourcesDialog.ui.closeButton.clicked.connect(self.__show_task_res_close_button_clicked)
+            self.show_task_resources_dialog.ui.folderTreeWidget.insertTopLevelItem(0, item)
+            self.show_task_resources_dialog.ui.closeButton.clicked.connect(self.__show_task_res_close_button_clicked)
 
             for r in res:
                 after_split = r.split("\\")
                 insert_item(item, after_split)
 
-            self.showTaskResourcesDialog.ui.mainSceneFileLabel.setText(
+            self.show_task_resources_dialog.ui.mainSceneFileLabel.setText(
                 self.current_task_highlighted.definition.main_scene_file)
-            self.showTaskResourcesDialog.ui.folderTreeWidget.expandAll()
+            self.show_task_resources_dialog.ui.folderTreeWidget.expandAll()
 
-            self.showTaskResourcesDialog.show()
+            self.show_task_resources_dialog.show()
 
     def __show_task_res_close_button_clicked(self):
-        self.showTaskResourcesDialog.window.close()
+        self.show_task_resources_dialog.window.close()
 
     def __update_slider_preview(self):
         num = self.gui.ui.frameSlider.value() - 1
         self.gui.ui.outputFile.setText(self.__get_frame_name(self.current_task_highlighted.definition, num))
         self.__update_output_file_color()
-        if len(self.sliderPreviews) > num:
-            if self.sliderPreviews[num]:
-                if os.path.exists(self.sliderPreviews[num]):
-                    self.gui.ui.previewLabel.setPixmap(QPixmap(self.sliderPreviews[num]))
-                    self.lastPreviewPath = self.sliderPreviews[num]
+        if len(self.slider_previews) > num:
+            if self.slider_previews[num]:
+                if os.path.exists(self.slider_previews[num]):
+                    self.gui.ui.previewLabel.setPixmap(QPixmap(self.slider_previews[num]))
+                    self.last_preview_path = self.slider_previews[num]
                     return
 
-        self.gui.ui.previewLabel.setPixmap(QPixmap(self.previewPath))
-        self.lastPreviewPath = self.previewPath
+        self.gui.ui.previewLabel.setPixmap(QPixmap(self.preview_path))
+        self.last_preview_path = self.preview_path
 
     def __open_output_file(self):
         file_ = self.gui.ui.outputFile.text()
@@ -280,11 +285,11 @@ class AbsRenderingMainWindowCustomizer(object):
                                                        self.current_task_highlighted.definition.resolution[0],
                                                        self.current_task_highlighted.definition.resolution[1])
 
-                if os.path.isfile(self.lastPreviewPath):
+                if os.path.isfile(self.last_preview_path):
                     self.__draw_boarder(border)
 
     def __draw_boarder(self, border):
-        pixmap = QPixmap(self.lastPreviewPath)
+        pixmap = QPixmap(self.last_preview_path)
         p = QPainter(pixmap)
         pen = QPen(QColor(0, 0, 0))
         pen.setWidth(3)

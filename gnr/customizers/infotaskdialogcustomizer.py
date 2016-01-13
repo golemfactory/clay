@@ -1,22 +1,14 @@
-from gnr.ui.infotaskdialog import InfoTaskDialog
 from timehelper import get_time_values
+from customizer import Customizer
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class InfoTaskDialogCustomizer:
-    def __init__(self, gui, logic):
+class InfoTaskDialogCustomizer(Customizer):
 
-        assert isinstance(gui, InfoTaskDialog)
-
-        self.gui    = gui
-        self.logic  = logic
-
-        self.__setup_connections()
-
-    def __setup_connections(self):
+    def _setup_connections(self):
         self.gui.ui.buttonBox.accepted.connect(self.__start_info_task)
         self.gui.ui.buttonBox.rejected.connect(self.gui.close)
 

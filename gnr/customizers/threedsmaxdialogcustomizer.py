@@ -3,25 +3,15 @@ import os
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QFileDialog, QMessageBox
-from gnr.ui.threedsmaxdialog import ThreeDSMaxDialog
+
+from renderercustomizer import RendererCustomizer
 
 logger = logging.getLogger(__name__)
 
 
-class ThreeDSMaxDialogCustomizer:
-    def __init__(self, gui, logic, new_task_dialog):
-        assert isinstance(gui, ThreeDSMaxDialog)
+class ThreeDSMaxDialogCustomizer(RendererCustomizer):
 
-        self.gui = gui
-        self.logic = logic
-        self.new_task_dialog = new_task_dialog
-
-        self.renderer_options = new_task_dialog.renderer_options
-
-        self.__init()
-        self.__setup_connections()
-
-    def __init(self):
+    def load_data(self):
         renderer = self.logic.get_renderer(u"3ds Max Renderer")
         self.gui.ui.presetLineEdit.setText(self.renderer_options.preset)
         self.gui.ui.framesCheckBox.setChecked(self.renderer_options.use_frames)
@@ -31,7 +21,7 @@ class ThreeDSMaxDialogCustomizer:
         else:
             self.gui.ui.framesLineEdit.setText("")
 
-    def __setup_connections(self):
+    def _setup_connections(self):
         self.gui.ui.buttonBox.rejected.connect(self.gui.window.close)
         self.gui.ui.buttonBox.accepted.connect(lambda: self.__change_renderer_options())
         self.gui.ui.presetButton.clicked.connect(self.__choose_preset_file)
