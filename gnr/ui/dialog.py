@@ -43,15 +43,7 @@ class Dialog(object):
         self.window.close()
 
 
-class SaveKeysDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_save_keys_dialog)
-
-
-class PaymentsDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_PaymentsDialog)
-
+# TASK INFO DIALOGS
 
 class TaskDetailsDialog(Dialog):
     def __init__(self, parent):
@@ -63,10 +55,7 @@ class SubtaskDetailsDialog(Dialog):
         Dialog.__init__(self, parent, Ui_SubtaskDetailsDialog)
 
 
-class ChangeTaskDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_ChangeTaskDialog)
-
+# INFO DIALOGS
 
 class StatusWindow(Dialog):
     def __init__(self, parent):
@@ -78,6 +67,11 @@ class AboutWindow(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_AboutWindow)
 
+class PaymentsDialog(Dialog):
+    def __init__(self, parent):
+        Dialog.__init__(self, parent, Ui_PaymentsDialog)
+
+# CONFIGURATION DIALOGS
 
 class ConfigurationDialog(Dialog):
     def __init__(self, parent):
@@ -94,12 +88,14 @@ class IdentityDialog(Dialog):
         Dialog.__init__(self, parent, Ui_identity_dialog)
 
 
-
-
-
 class GeneratingKeyWindow(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_generating_key_window)
+
+
+class SaveKeysDialog(Dialog):
+    def __init__(self, parent):
+        Dialog.__init__(self, parent, Ui_save_keys_dialog)
 
 
 # ADDING TASK DIALOGS
@@ -128,8 +124,13 @@ class ShowTaskResourcesDialog(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_ShowTaskResourceDialog)
 
-# TEST TASK DIALOGS
 
+class ChangeTaskDialog(Dialog):
+    def __init__(self, parent):
+        Dialog.__init__(self, parent, Ui_ChangeTaskDialog)
+
+
+# TEST TASK DIALOGS
 
 class InfoTaskDialog(Dialog):
     def __init__(self, parent):

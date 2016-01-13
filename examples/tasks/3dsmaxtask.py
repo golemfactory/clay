@@ -35,25 +35,20 @@ def format_3ds_max_cmd_with_parts(cmd_file, frames, parts, start_task, output_fi
     return cmd
 
 
-GOLEM_ENV = 'GOLEM'
-
-
 def __read_from_environment(default_cmd_file, num_cores):
-    path = os.environ.get(GOLEM_ENV)
-    if not path:
-        print "No Golem environment variable found... Assuming that exec is in working folder"
+    try:
+        from gnr.renderingenvironment import ThreeDSMaxEnvironment
+    except ImportError:
+        print "No Golem app found... Choosing default cmd file"
         return default_cmd_file
 
-    sys.path.append(path)
-
-    from gnr.renderingenvironment import ThreeDSMaxEnvironment
     env = ThreeDSMaxEnvironment()
     cmd_file = env.get_3ds_max_cmd_path()
     if cmd_file:
-        #    env.set_n_threads(num_cores)
+        #env.set_n_threads(num_cores)
         return cmd_file
     else:
-        print "Environment not supported... Assuming that exec is in working folder"
+        print "Environment is not supported... Choosing default cmd file"
         return default_cmd_file
 
 
