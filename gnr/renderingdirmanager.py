@@ -18,11 +18,11 @@ def get_preview_file():
 
 
 def get_task_scripts_path():
-    return os.path.join(get_golem_path(), "gnr/task/scripts")
+    return os.path.normpath(os.path.join(get_golem_path(), "gnr/task/scripts"))
 
 
 def get_benchmarks_path():
-    return os.path.join(get_golem_path(), "gnr/benchmarks")
+    return os.path.normpath(os.path.join(get_golem_path(), "gnr/benchmarks"))
 
 
 def get_test_task_path(root_path):
