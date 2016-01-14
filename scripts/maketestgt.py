@@ -4,8 +4,8 @@ import appdirs
 
 from golem.core.common import get_golem_path
 
-TEMPLATE = os.path.normpath(os.path.join(get_golem_path(), "save/testtask_template"))
-RESULT_GT = os.path.normpath(os.path.join(appdirs.user_data_dir("golem"), "save/testtask.gt"))
+TEMPLATE = os.path.join(get_golem_path(), "save", "testtask_template")
+RESULT_GT = os.path.join(appdirs.user_data_dir("golem"), "save", "testtask.gt")
 
 
 def read_task(file_, file_dest):
@@ -14,7 +14,6 @@ def read_task(file_, file_dest):
     task.main_scene_file = os.path.normpath(os.path.join(get_golem_path(), task.main_scene_file))
     assert os.path.isfile(task.main_scene_file)
     task.main_program_file = os.path.normpath(os.path.join(get_golem_path(), task.main_program_file))
-    print task.main_program_file
     assert os.path.isfile(task.main_program_file)
     task.resources = set([os.path.normpath(os.path.join(get_golem_path(), res))for res in task.resources])
     for res in task.resources:

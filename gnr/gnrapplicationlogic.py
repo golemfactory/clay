@@ -263,7 +263,7 @@ class GNRApplicationLogic(QtCore.QObject):
             f.write(tspickled)
 
     def recount_performance(self, num_cores):
-        test_file = os.path.normpath(os.path.join(get_benchmarks_path(), 'minilight/cornellbox.ml.txt'))
+        test_file = os.path.join(get_benchmarks_path(), 'minilight', 'cornellbox.ml.txt')
         result_file = SimpleEnv.env_file_name("minilight.ini")
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
