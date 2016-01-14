@@ -75,9 +75,8 @@ setup(
     author_email='contact@golemproject.net',
     url='http://golemproject.net',
     packages=find_packages(include=['golem*', 'gnr*']),
-    package_data={'gnr': ['logging.ini', 'ui/nopreview.png', 'tools/taskcollector/Release/taskcollector']},
-    include_package_data=True,
     install_requires=requirements,
+    include_package_data=True,
     dependency_links=dependency_links,
     # TODO: No license yet
     # license="ISCL",
