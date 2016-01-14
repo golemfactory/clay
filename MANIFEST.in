@@ -1,4 +1,4 @@
-include gnr/benchmarks/minilight/*.txt
-include gnr/taskcollector/Release/taskcollector
-include gnr/taskcollector/Release/taskcollector.exe
-include gnr/taskcollector/Release/*.dll
+include gnr/logging.ini
+include gnr/ui/nopreview.png
+include gnr/taskcollector/Release/*
+recursive-include gnr/benchmarks *.blend *.jpg *.lxs *.ply *.lxo *.lxm *.lxv *.txt
