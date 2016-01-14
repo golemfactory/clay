@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
 # Quite stupid, but GNR is not independent yet
 COPY . /opt/golem
 
-RUN cd /opt/golem && python setup.py install
+RUN cd /opt/golem && python setup.py develop
 
 ENV GOLEM=/opt/golem \
     PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/blender
