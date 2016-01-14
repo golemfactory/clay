@@ -5,7 +5,7 @@ from gnr.task.pythongnrtask import PythonGNRTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.gnrtask import GNROptions
-from gnr.ui.pbrttaskdialog import PbrtTaskDialog
+from gnr.ui.dialog import PbrtTaskDialog
 from gnr.customizers.pbrttaskdialogcustomizer import PbrtTaskDialogCustomizer
 
 

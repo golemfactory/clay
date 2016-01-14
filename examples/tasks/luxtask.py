@@ -16,31 +16,28 @@ def format_lux_renderer_cmd(cmd_file, start_task, output_file, outfilebasename, 
     return cmd
 
 
-GOLEM_ENV = 'GOLEM'
-
-
 def __read_from_environment():
-    path = os.environ.get(GOLEM_ENV)
-    if not path:
-        print "No Golem environment variable found... Assuming that exec is in working folder"
+    win_default_cmd = "luxconsole.exe"
+    default_cmd = "luxconsole"
+    try:
+        from gnr.renderingenvironment import LuxRenderEnvironment
+    except ImportError:
+        print "No Golem app found... Setting default command file"
         if is_windows():
-            return 'luxconsole.exe'
+            return win_default_cmd
         else:
-            return 'luxconsole'
+            return default_cmd
 
-    sys.path.append(path)
-
-    from gnr.renderingenvironment import LuxRenderEnvironment
     env = LuxRenderEnvironment()
     cmd_file = env.get_lux_console()
     if cmd_file:
         return cmd_file
     else:
-        print "Environment not supported... Assuming that exec is in working folder"
+        print "Environment not supported... Setting default command file"
         if is_windows():
-            return 'luxconsole.exe'
+            return win_default_cmd
         else:
-            return 'luxconsole'
+            return default_cmd
 
 
 def return_data(files):

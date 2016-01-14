@@ -5,21 +5,16 @@ from PyQt4.QtGui import QMenu
 
 from golem.task.taskstate import ComputerState
 from subtaskcontextmenucustomizer import SubtaskContextMenuCustomizer
+from customizer import Customizer
 
 from gnr.ui.subtasktableentry import SubtaskTableElem
 
 
-class TaskDetailsDialogCustomizer:
+class TaskDetailsDialogCustomizer(Customizer):
     def __init__(self, gui, logic, gnr_task_state):
-        #    assert isinstance(gnr_task_state, RenderingTaskState)
-        self.gui = gui
-        self.logic = logic
         self.gnr_task_state = gnr_task_state
-
         self.subtask_table_elements = {}
-
-        self.__setup_connections()
-
+        Customizer.__init__(self, gui, logic)
         self.update_view(self.gnr_task_state.task_state)
 
     def update_view(self, task_state):
@@ -45,7 +40,7 @@ class TaskDetailsDialogCustomizer:
             else:
                 del self.subtask_table_elements[k]
 
-    def __setup_connections(self):
+    def _setup_connections(self):
         QtCore.QObject.connect(self.gui.ui.nodesTableWidget, QtCore.SIGNAL("cellClicked(int, int)"),
                                self.__nodes_table_row_clicked)
         QtCore.QObject.connect(self.gui.ui.nodesTableWidget, QtCore.SIGNAL("itemSelectionChanged()"),

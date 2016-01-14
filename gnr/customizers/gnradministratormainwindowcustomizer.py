@@ -1,6 +1,5 @@
 import logging
-from gnr.ui.updateothergolemsdialog import UpdateOtherGolemsDialog
-from gnr.ui.infotaskdialog import InfoTaskDialog
+from gnr.ui.dialog import InfoTaskDialog, UpdateOtherGolemsDialog
 from gnr.customizers.gnrmainwindowcustomizer import GNRMainWindowCustomizer
 from gnr.customizers.updateothergolemsdialogcustomizer import UpdateOtherGolemsDialogCustomizer
 from gnr.customizers.infotaskdialogcustomizer import InfoTaskDialogCustomizer

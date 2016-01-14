@@ -16,6 +16,7 @@ from twisted.internet import reactor
 
 from golem.client import create_client
 from golem.network.transport.tcpnetwork import TCPAddress, AddressValueError
+from golem.core.common import get_golem_path
 from golem.task.taskbase import Task
 
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
@@ -23,9 +24,13 @@ from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
 
 
-config_file = os.path.join(os.path.dirname(__file__), "logging.ini")
-logging.config.fileConfig(config_file, disable_existing_loggers=False)
+def config_logging():
+    """Config logger"""
+    config_file = os.path.normpath(os.path.join(get_golem_path(), "gnr/logging.ini"))
+    logging.config.fileConfig(config_file, disable_existing_loggers=False)
 
+
+config_logging()
 logger = logging.getLogger(__name__)
 
 
