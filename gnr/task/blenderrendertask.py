@@ -6,9 +6,8 @@ import math
 from PIL import Image, ImageChops
 
 from golem.task.taskstate import SubtaskStatus
-from golem.core.common import get_golem_path
 
-from gnr.renderingdirmanager import get_test_task_path, get_tmp_path
+from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, get_task_scripts_path
 from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
@@ -25,7 +24,7 @@ class BlenderDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
-        self.main_program_file = os.path.normpath(os.path.join(get_golem_path(), "gnr/task/computing_tasks/blendertask.py"))
+        self.main_program_file = os.path.normpath(os.path.join(get_task_scripts_path(), "blendertask.py"))
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
@@ -124,7 +123,7 @@ class BlenderRenderTask(FrameRenderingTask):
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                     root_path, estimated_memory, use_frames, frames)
 
-        crop_task = os.path.normpath(os.path.join(get_golem_path(), 'gnr/task/computing_tasks/blendercrop.py'))
+        crop_task = os.path.normpath(os.path.join(get_task_scripts_path(), "blendercrop.py"))
         try:
             with open(crop_task) as f:
                 self.script_src = f.read()

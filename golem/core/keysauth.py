@@ -137,7 +137,7 @@ class KeysAuth(object):
         # FIXME: @property would be a better design,
         # but cannot be mixed with @classmethod
         if not hasattr(cls, '_keys_dir'):
-            cls._keys_dir = appdirs.user_data_dir('Golem', 'keys')
+            cls._keys_dir = appdirs.user_data_dir('golem', 'keys')
         return cls._keys_dir
 
     @classmethod

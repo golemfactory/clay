@@ -5,7 +5,7 @@ import appdirs
 class SimpleEnv(object):
     """ Metaclass that keeps information about golem configuration files location. """
 
-    DATA_DIRECTORY = appdirs.user_config_dir("Golem")
+    DATA_DIRECTORY = os.path.join(appdirs.user_data_dir("golem"), "node_data")
 
     @classmethod
     def open_env_file(cls, filename, options='a'):
@@ -39,5 +39,3 @@ class SimpleEnv(object):
     def __env_dir_guard(cls):
         if not os.path.exists(SimpleEnv.DATA_DIRECTORY):
             os.makedirs(SimpleEnv.DATA_DIRECTORY)
-
-

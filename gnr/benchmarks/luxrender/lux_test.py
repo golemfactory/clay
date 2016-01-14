@@ -1,5 +1,5 @@
-from testtasks.execution_time_measure import measure
-from testtasks.dir_hash_builder import get_hash_of_dir, get_current_directory
+from gnr.benchmarks.execution_time_measure import measure
+from gnr.benchmarks.dir_hash_builder import get_hash_of_dir, get_current_directory
 import os
 import sys
 from PIL import Image
