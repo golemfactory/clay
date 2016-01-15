@@ -42,6 +42,51 @@ def get_node_address(node_name):
             addr_line_found = True
 
 
+def prepare_task_resources(task):
+    """Prepare a new task file with paths rewritten to match location of
+    of resource file at the target node:
+    - main scene file <scene-dir>/<scene>.blend will be copied to
+      IMUNES_TEST_DIR/scene-<scene>.blend at the requester node
+    - main program file <prog-path>/<program>.py will be copied to
+      IMUNES_TEST_DIR/program-<program>.py at the requester node
+    - task file <task-path>/<task>.json will be copied to
+      IMUNES_TEST_DIR/task.json at the requester node
+    - modified task file <task-dir>/<task>.json is stored locally as
+      imunes-<task>.json in the current working dir
+    For now we assume there are no resource files other than program
+    and scene file.
+    TODO: handle other resource files.
+
+    :param dict task: original task file, as a dict read from JSON file
+    """
+
+    orig_program_file = task["main_program_file"]
+    dest_program_file = IMUNES_TEST_DIR + "program-" + \
+        os.path.basename(orig_program_file)
+
+    orig_scene_file = task["main_scene_file"]
+    dest_scene_file = IMUNES_TEST_DIR + "scene-" + \
+        os.path.basename(orig_scene_file)
+
+    task["main_program_file"] = dest_program_file
+    task["main_scene_file"] = dest_scene_file
+    task["resources"]["py/set"] = [dest_program_file, dest_scene_file]
+
+    modified_task_file = os.path.join(os.getcwd(),
+                                      "imunes-" + os.path.basename(task_file))
+    with open(modified_task_file, 'w') as f:
+        json.dump(task, f, indent=2, separators=(',', ':'))
+
+    dest_task_file = IMUNES_TEST_DIR + "task.json"
+
+    file_mapping = {
+        modified_task_file: dest_task_file,
+        orig_program_file: dest_program_file,
+        orig_scene_file: dest_scene_file
+    }
+    return dest_task_file, file_mapping
+
+
 def start_simulation(network_file):
     print "Starting simulation, using network topology from {}...".format(
         network_file)
@@ -77,10 +122,9 @@ def stop_simulation():
 def set_default_seed_and_requester(node_names, node_infos):
     """
     Determine default seed and requester nodes, based on node names
+    :param str[] node_names: list of node names
+    :param dict(str, NodeInfo) node_infos:
     """
-    seed_name = None
-    seed_address = None
-
     # Make the first 'host*' node a seed
     host_names = [name for name in node_names if name.startswith('host')]
     if host_names:
@@ -153,53 +197,27 @@ if __name__ == "__main__":
     topology_file = sys.argv[1]
     task_file = sys.argv[2]
 
-    # "Rebase" the test task:
-    # - main scene file <scene-dir>/<scene>.blend will be copied to
-    #   IMUNES_TEST_DIR/scene-<scene>.blend at the requester node
-    # - main program file <prog-path>/<program>.py will be copied to
-    #   IMUNES_TEST_DIR/program-<program>.py at the requester node
-    # - task file <task-path>/<task>.json will be copied to
-    #   IMUNES_TEST_DIR/task.json at the requester node
-    # - modified task file <task-dir>/<task>.json is stored locally as
-    #   imunes-<task>.json in the current working dir
-    # For now we assume there are no resource files other than program
-    # and scene file.
-    # TODO: handle other resource files.
-    with open(task_file, 'r') as f:
-        task = json.load(f)
+    with open(task_file, 'r') as tf:
+        task_json = json.load(tf)
 
-    orig_program_file = task["main_program_file"]
-    dest_program_file = IMUNES_TEST_DIR + "program-" + \
-                        os.path.basename(orig_program_file)
-
-    orig_scene_file = task["main_scene_file"]
-    dest_scene_file = IMUNES_TEST_DIR + "scene-" + \
-                      os.path.basename(orig_scene_file)
-
-    dest_task_file = IMUNES_TEST_DIR + "task.json"
-
-    task["main_program_file"] = dest_program_file
-    task["main_scene_file"] = dest_scene_file
-    task["resources"]["py/set"] = [dest_program_file, dest_scene_file]
-
-    modified_task_file = os.path.join(os.getcwd(),
-                                      "imunes-" + os.path.basename(task_file))
-    with open(modified_task_file, 'w') as f:
-        json.dump(task, f, indent=2, separators=(',',':'))
+    # Convert paths in the task file to match resource file locations
+    # at the requester node
+    converted_task_file, files_to_copy = prepare_task_resources(task_json)
 
     # Start imunes
     names, infos = start_simulation(topology_file)
     requester = set_default_seed_and_requester(names, infos)
+    infos[requester].tasks = [converted_task_file]
 
     # Copy resource files to the requester node
-    infos[requester].tasks = [dest_task_file]
-    copy_file(requester, modified_task_file, dest_task_file)
-    copy_file(requester, orig_program_file, dest_program_file)
-    copy_file(requester, orig_scene_file, dest_scene_file)
+    for src, dst in files_to_copy.iteritems():
+        copy_file(requester, src, dst)
 
     # 3... 2... 1...
     time.sleep(1)
     start_golem(infos)
 
+    # TODO: instead of waiting 60 sec we should monitor the logs to see when
+    # the computation ends (or fails)
     time.sleep(60)
     # stop_simulation()
