@@ -120,7 +120,7 @@ def node(ctx, name, bootstrap_node):
 @node.command()
 @click.pass_obj
 @click.argument('recipient')
-@click.argument('value')
+@click.argument('value', type=int)
 def direct(app, recipient, value):
     me = app.services.accounts[0]
     print "MY ADDRESS", me.address.encode('hex')
@@ -131,8 +131,51 @@ def direct(app, recipient, value):
     print "VALUE", value
     tx = Transaction(nonce, 1, 21000, to=recipient.decode('hex'), value=value,
                      data='')
+    me.unlock('')
+    assert me.privkey
     tx.sign(me.privkey)
     svc.add_transaction(tx)
+
+
+@node.command()
+@click.pass_obj
+def history(app):
+    while not app.services.peermanager.num_peers():
+        print "waiting for connection..."
+        gevent.sleep(1)
+    gevent.sleep(1)
+    while app.services.chain.is_syncing:
+        print "syncing..."
+        gevent.sleep(1)
+
+    me = app.services.accounts[0]
+    print "MY ADDRESS", me.address.encode('hex')
+    svc = app.services.chain
+    head = svc.chain.head
+    nonce = head.get_nonce(me.address)
+    print "NONCE", nonce
+    balance = head.get_balance(me.address)
+    print "BALANCE", balance
+
+    incomming = []
+    outgoing = []
+    b = head
+    while b:
+        txs = b.get_transactions()
+        for tx in txs:
+            if tx.to == me.address:
+                incomming.append((tx.sender, tx.value, True))
+            if tx.sender == me.address:
+                outgoing.append((tx.to, tx.value, True))
+        b = b.get_parent() if not b.is_genesis() else None
+
+    print "OUTGOING"
+    for p in outgoing:
+        print "->", p[0].encode('hex'), p[1], "(direct)" if p[2] else "(indirect)"
+
+    print "INCOMING"
+    for p in incomming:
+        print "<-", p[0].encode('hex'), p[1], "(direct)" if p[2] else "(indirect)"
 
 
 @app.group()
