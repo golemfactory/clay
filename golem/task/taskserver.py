@@ -376,6 +376,9 @@ class TaskServer(PendingConnectionsServer):
             tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
         return tcp_addresses
 
+    def quit(self):
+        self.task_computer.quit()
+
     def _get_factory(self):
         return self.factory(self)
 

@@ -15,16 +15,7 @@ def main():
     app = GNRGui(logic, AdministrationMainWindow)
     gui = RenderingAdmMainWindowCustomizer
 
-    try:
-        start_app(logic, app, gui, rendering=True, start_add_task_client=False, start_add_task_server=False)
-    finally:
-        try:
-            logic.client.task_server.task_computer.end_task()
-        except Exception as ex:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning("Exception when closing Golem {}".format(ex))
-        sys.exit(0)
+    start_app(logic, app, gui, rendering=True, start_add_task_client=False, start_add_task_server=False)
 
 
 if __name__ == "__main__":

@@ -210,7 +210,7 @@ class TaskComputer(object):
         self.current_computations.append(tt)
         tt.start()
 
-    def end_task(self):
+    def quit(self):
         for t in self.current_computations:
             t.end_comp()
 
