@@ -225,6 +225,9 @@ class LuxTask(RenderingTask):
     def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
         tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
         self.tmp_dir = tmp_dir
+        env = LuxRenderEnvironment()
+        lux_merger = env.get_lux_merger()
+        test_result_flm = os.path.join(os.environ["GOLEM"], "save", str(self.header.task_id) + ".flm")
 
         tr_files = self.load_task_results(task_result, result_type, tmp_dir)
         if len(task_result) > 0:
@@ -236,13 +239,22 @@ class LuxTask(RenderingTask):
                     self.collected_file_names[num_start] = tr_file
                     self.num_tasks_received += 1
                     self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
+                    if self.advanceVerification and (lux_merger is not None):
+                        if not merge_flm_files(tr_file, test_result_flm):
+                            logger.info("Subtask " + str(subtask_id) + " rejected.")
+                            self._mark_subtask_failed(subtask_id)
+                        else:
+                            logger.info("Subtask " + str(subtask_id) + " successfuly verified.")
                 else:
                     self.subtasks_given[subtask_id]['previewFile'] = tr_file
                     self._update_preview(tr_file, num_start)
         else:
             self._mark_subtask_failed(subtask_id)
         if self.num_tasks_received == self.total_tasks:
-            self.__generate_final_flm()
+            if self.advanceVerification:
+                self.__generate_final_flm_advanced_verification()
+            else:
+                self.__generate_final_flm()
             self.__generate_final_file()
 
     ###################
@@ -355,33 +367,21 @@ class LuxTask(RenderingTask):
         os.remove(tmp_scene_file.name)
 
     def __generate_final_flm(self):
-        '''
-        Received flm files will be merged one by one with the result of task's test
-        in order to verify basic properties of the received .flms
-        returns list of wrong flms
-        '''
-        
-        # the file containing result of task test
-        test_result_flm = os.path.join(os.environ["GOLEM"], "save", str(self.header.task_id) + ".flm")
-        # output flm
         output_file_name = u"{}".format(self.output_file, self.output_format)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
+        files = " ".join(self.collected_file_names.values())
         env = LuxRenderEnvironment()
         lux_merger = env.get_lux_merger()
-        lux_console = env.get_lux_console()
-        logger.debug("Luxconsole retrieved in __generate_final_flm: " + str(lux_console))
-        
-        bad_files = []
-        
         if lux_merger is not None:
-            for f in self.collected_file_names.values():
-                if not merge_flm_files(f, test_result_flm):
-                    bad_files.append(f)
-            logger.info("Merge completed. Bad files: " + str(len(bad_files)))
-        else:
-            logger.error("Lux merger not found!")
+            cmd = "{} -o {}.flm {}".format(lux_merger, self.output_file, files)
+
+            logger.debug("Lux Merger cmd: {}".format(cmd))
+            exec_cmd(cmd)
+
+    def __generate_final_flm_advanced_verification(self):
+        # the file containing result of task test
+        test_result_flm = os.path.join(os.environ["GOLEM"], "save", str(self.header.task_id) + ".flm")
         
         shutil.copy(test_result_flm, self.output_file + ".flm")
         logger.debug("Copying " + test_result_flm + " to " + self.output_file + ".flm")
-        return bad_files
 
