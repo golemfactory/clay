@@ -238,6 +238,10 @@ class LuxTask(RenderingTask):
                     self.collected_file_names[num_start] = tr_file
                     self.num_tasks_received += 1
                     self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
+                elif ext == '.log':
+                    #TODO
+                    #save log
+                    pass
                 else:
                     self.subtasks_given[subtask_id]['previewFile'] = tr_file
                     self._update_preview(tr_file, num_start)
