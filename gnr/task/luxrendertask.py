@@ -227,7 +227,6 @@ class LuxTask(RenderingTask):
         self.tmp_dir = tmp_dir
 
         tr_files = self.load_task_results(task_result, result_type, tmp_dir)
-
         if len(task_result) > 0:
             num_start = self.subtasks_given[subtask_id]['start_task']
             self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
@@ -242,7 +241,6 @@ class LuxTask(RenderingTask):
                     self._update_preview(tr_file, num_start)
         else:
             self._mark_subtask_failed(subtask_id)
-
         if self.num_tasks_received == self.total_tasks:
             self.__generate_final_flm()
             self.__generate_final_file()
