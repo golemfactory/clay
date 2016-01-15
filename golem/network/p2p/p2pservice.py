@@ -244,8 +244,8 @@ class P2PService(PendingConnectionsServer):
         try:
             tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
             self.connect(tcp_address)
-        except AddressValueError, err:
-            logger.error('Invalid seed address: ' + err.messsage)
+        except AddressValueError as err:
+            logger.error('Invalid seed address: ' + str(err))
 
         if self.resource_server:
             self.resource_server.change_config(config_desc)

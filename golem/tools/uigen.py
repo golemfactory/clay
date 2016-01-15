@@ -1,7 +1,4 @@
 import os
-import logging
-
-logger = logging.getLogger(__name__)
 
 PYUIC_PATH = "pyuic.py"  # Path to Python User Interface Compiler
 
@@ -33,7 +30,6 @@ def regenerate_ui_files(root_path):
 
             assert os.path.exists(pyuic_path), "Can't open file " + pyuic_path
 
-            logger.info("Generating " + out_file)
             os.system("python " + pyuic_path + " " + os.path.join(root_path, file_) + " > " + os.path.join(root_path,
                                                                                                            out_file))
 

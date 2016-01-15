@@ -7,13 +7,12 @@ from PIL import Image, ImageChops
 from collections import OrderedDict
 
 from golem.task.taskstate import SubtaskStatus
-from golem.core.common import get_golem_path
 
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
-from gnr.renderingdirmanager import get_test_task_path
+from gnr.renderingdirmanager import get_test_task_path, find_task_script
 from gnr.task.renderingtaskcollector import RenderingTaskCollector
 from gnr.renderingenvironment import VRayEnvironment
 
@@ -27,7 +26,7 @@ class VrayDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
-        self.main_program_file = os.path.normpath(os.path.join(get_golem_path(), 'examples/tasks/vraytask.py'))
+        self.main_program_file = find_task_script('vraytask.py')
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6

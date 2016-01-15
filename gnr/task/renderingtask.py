@@ -190,10 +190,10 @@ class RenderingTask(GNRTask):
     def _put_collected_files_together(self, output_file_name, files, arg):
         if is_windows():
             task_collector_path = os.path.normpath(
-                os.path.join(get_golem_path(), "tools/taskcollector/Release/taskcollector.exe"))
+                os.path.join(get_golem_path(), "gnr/taskcollector/Release/taskcollector.exe"))
         else:
             task_collector_path = os.path.normpath(
-                os.path.join(get_golem_path(), "tools/taskcollector/Release/taskcollector"))
+                os.path.join(get_golem_path(), "gnr/taskcollector/Release/taskcollector"))
         cmd = ["{}".format(task_collector_path), "{}".format(arg), "{}".format(output_file_name)] + files
         logger.debug(cmd)
         exec_cmd(cmd)

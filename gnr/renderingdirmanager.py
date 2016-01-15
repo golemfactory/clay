@@ -1,5 +1,7 @@
 import os
 
+from golem.core.common import get_golem_path
+
 TEST_RES_DIRECTORY = "testing_task_resources"
 TEST_TMP_DIRECTORY = "testing_task_tmp"
 RES_DIRECTORY = "res"
@@ -13,6 +15,18 @@ def get_test_task_directory():
 
 def get_preview_file():
     return os.path.normpath(PREV_FILE)
+
+
+def get_task_scripts_path():
+    return os.path.normpath(os.path.join(get_golem_path(), "gnr/task/scripts"))
+
+
+def find_task_script(script_name):
+    return os.path.join(get_task_scripts_path(), script_name)
+
+
+def get_benchmarks_path():
+    return os.path.normpath(os.path.join(get_golem_path(), "gnr/benchmarks"))
 
 
 def get_test_task_path(root_path):

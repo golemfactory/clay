@@ -7,18 +7,20 @@ from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.core.common import get_golem_path
+from golem.core.simpleenv import SimpleEnv
 from golem.client import GolemClientEventListener
 from golem.manager.client.nodesmanagerclient import NodesManagerUidClient, NodesManagerClient
 
 from gnr.ui.dialog import TestingTaskProgressDialog
 from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
+from gnr.renderingdirmanager import get_benchmarks_path
 from gnr.gnrtaskstate import GNRTaskState
 from gnr.task.tasktester import TaskTester
 
-from testtasks.luxrender.lux_test import lux_performance
-from testtasks.blender.blender_test import blender_performance
+from gnr.benchmarks.luxrender.lux_test import lux_performance
+from gnr.benchmarks.blender.blender_test import blender_performance
 
-from testtasks.minilight.src.minilight import makePerfTest
+from gnr.benchmarks.minilight.src.minilight import makePerfTest
 
 logger = logging.getLogger(__name__)
 
@@ -261,13 +263,13 @@ class GNRApplicationLogic(QtCore.QObject):
             f.write(tspickled)
 
     def recount_performance(self, num_cores):
-        test_file = os.path.normpath(os.path.join(get_golem_path(), 'testtasks/minilight/cornellbox.ml.txt'))
-        result_file = os.path.normpath(os.path.join(get_golem_path(), 'gnr/node_data/minilight.ini'))
+        test_file = os.path.join(get_benchmarks_path(), 'minilight', 'cornellbox.ml.txt')
+        result_file = SimpleEnv.env_file_name("minilight.ini")
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
-    
+
     def recount_lux_performance(self):
-        cfg_filename = os.path.normpath(os.path.join(get_golem_path(), 'gnr/node_data/lux.ini'))
+        cfg_filename = SimpleEnv.env_file_name("lux.ini")
         
         cfg_file = open(cfg_filename, 'w')
         average = lux_performance()
@@ -277,7 +279,7 @@ class GNRApplicationLogic(QtCore.QObject):
         return average
     
     def recount_blender_performance(self):
-        cfg_filename = os.path.normpath(os.path.join(get_golem_path(), 'gnr/node_data/blender.ini'))
+        cfg_filename = SimpleEnv.env_file_name("blender.ini")
         
         cfg_file = open(cfg_filename, 'w')
         average = blender_performance()

@@ -1,6 +1,3 @@
-from gnr.ui.generateui import generate_ui_files
-generate_ui_files()
-
 from PyQt4.QtGui import QDialog
 
 from gen.ui_AboutWindow import Ui_AboutWindow
