@@ -265,6 +265,9 @@ if __name__ == "__main__":
               " <topology-file>.imn <task-file>.json"
         sys.exit(1)
 
+    # clean up whatever remained from previous experiments
+    subprocess.call(["cleanupAll"])
+
     topology_file = sys.argv[1]
     task_file = sys.argv[2]
 
