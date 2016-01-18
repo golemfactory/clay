@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -121,7 +122,7 @@ def stop_simulation():
 
 def set_default_seed_and_requester(node_names, node_infos):
     """
-    Determine default seed and requester nodes, based on node names
+    Determine default seed and requester nodes, based on node names.
     :param str[] node_names: list of node names
     :param dict(str, NodeInfo) node_infos:
     """
@@ -176,12 +177,82 @@ def start_golem(node_infos):
             himage_cmd += " --peer " + addr
         for task in info.tasks:
             himage_cmd += " --task " + task
+        himage_cmd += " | tee /log/golem.log"
 
-        cmd = "xterm -geom 150x30 -e himage {} {} &".format(
+        cmd = "xterm -geom 150x30 -e himage {} /bin/sh -c \"{}\" &".format(
             name, himage_cmd)
         print "Running '{}' on {}...".format(himage_cmd, name)
         info.pid = subprocess.Popen(cmd, shell=True)
         time.sleep(1)
+
+
+TASK_ADDED_RE = re.compile(".*Task ([0-9a-f\-]+) added")
+RESOURCES_SEND_RE = re.compile(".*Resources for task ([0-9a-f\-]+) sent")
+TASK_ACCEPTED_RE = re.compile(".*Task ([0-9a-f\-]+) accepted")
+TASK_NOT_ACCEPTED_RE = re.compile(".*Task ([0-9a-f\-]+) not accepted")
+
+
+class IllegalStateException(Exception):
+    def __init__(self, msg):
+        Exception.__init__(self, msg)
+
+
+def wait_for_task_completion(requester_name, num_tasks=1):
+    """
+    Watch log file /log/golem.log at the node requester_name for events related
+    to task progress.
+    :param str requester_name: name of the task requester node
+    :param num_tasks: number of tasks to watch
+    """
+    print "Waiting for tasks to complete..."
+    with open("/tmp/imunes/" + requester_name + "/golem.log", 'r') as log_file:
+        done = False
+        started_tasks = []
+        finished_tasks = []
+        while not done:
+            line = log_file.readline()
+            if not line:
+                time.sleep(0.2)
+                continue
+            m = TASK_ADDED_RE.match(line)
+            if m:
+                task_id = m.group(1)
+                print "Task {} added".format(task_id)
+                if task_id in started_tasks:
+                    raise IllegalStateException(
+                        "Task {} already started".format(task_id))
+                started_tasks.append(task_id)
+                continue
+            m = RESOURCES_SEND_RE.match(line)
+            if m:
+                task_id = m.group(1)
+                print "Resources for task {} sent".format(task_id)
+                if task_id not in started_tasks:
+                    raise IllegalStateException(
+                        "Task {} not started yet".format(task_id))
+                continue
+            m = TASK_ACCEPTED_RE.match(line)
+            if m:
+                task_id = m.group(1)
+                print "Task {} accepted".format(task_id)
+                if task_id not in started_tasks:
+                    raise IllegalStateException(
+                        "Task {} not started yet".format(task_id))
+                started_tasks.remove(task_id)
+                finished_tasks.append(task_id)
+            m = TASK_NOT_ACCEPTED_RE.match(line)
+            if m:
+                task_id = m.group(1)
+                print "Task {} not accepted".format(task_id)
+                if task_id not in started_tasks:
+                    raise IllegalStateException(
+                        "Task {} not started yet".format(task_id))
+                started_tasks.remove(task_id)
+                finished_tasks.append(task_id)
+
+            if len(finished_tasks) == num_tasks:
+                print "All tasks completed"
+                return
 
 
 if __name__ == "__main__":
@@ -219,5 +290,7 @@ if __name__ == "__main__":
 
     # TODO: instead of waiting 60 sec we should monitor the logs to see when
     # the computation ends (or fails)
-    time.sleep(60)
-    # stop_simulation()
+    wait_for_task_completion(requester)
+
+    time.sleep(10)
+    stop_simulation()

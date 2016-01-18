@@ -86,6 +86,7 @@ class TaskManager:
         ts.time_started = time.time()
 
         self.tasks_states[task.header.task_id] = ts
+        logger.info("Task {} added".format(task.header.task_id))
 
         self.__notice_task_updated(task.header.task_id)
 
@@ -93,7 +94,7 @@ class TaskManager:
         self.tasks_states[task_id].status = TaskStatus.waiting
         self.tasks[task_id].task_status = TaskStatus.waiting
         self.__notice_task_updated(task_id)
-        logger.info("Resources for task {} send".format(task_id))
+        logger.info("Resources for task {} sent".format(task_id))
 
     def get_next_subtask(self, node_id, node_name, task_id, estimated_performance, max_resource_size, max_memory_size,
                          num_cores=0):
