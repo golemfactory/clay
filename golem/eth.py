@@ -8,9 +8,9 @@ import gevent
 import pyethapp.config as konfig
 from devp2p.peermanager import PeerManager
 from devp2p.discovery import NodeDiscovery
-from ethereum import blocks, keys
+from ethereum import blocks, keys, abi
 from ethereum.transactions import Transaction
-from ethereum.utils import normalize_address, denoms
+from ethereum.utils import normalize_address, denoms, int_to_big_endian, big_endian_to_int
 from pyethapp.accounts import Account, AccountsService
 from pyethapp.app import EthApp
 from pyethapp.db_service import DBService
@@ -30,6 +30,7 @@ assert len(FAUCET_PRIVKEY) == 32
 FAUCET_PUBKEY = "f1fbbeff7e9777a3a930f1e55a5486476845f799f7d603f71be7b00898df98f2dc2e81b854d2c774c3d266f1fa105d130d4a43bc58e700155c4565726ae6804e"  # noqa
 FAUCET_ADDR = keys.privtoaddr(FAUCET_PRIVKEY)
 SERVER_ENODE = "enode://" + FAUCET_PUBKEY + "@golemproject.org:30300"
+BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
 
 PROFILES = {
     'golem': {
@@ -137,6 +138,53 @@ def direct(app, recipient, value):
     svc.add_transaction(tx)
 
 
+def encode_payment(to, value):
+    value = long(value)
+    assert value < 2**96
+    value = int_to_big_endian(value)
+    assert type(value) is str
+    if len(value) < 12:
+        value = '\0' * (12 - len(value)) + value
+    assert len(value) == 12
+    to = to.decode('hex')
+    assert len(to) == 20
+    mix = value + to
+    assert len(mix) == 32
+    return mix
+
+
+@node.command()
+@click.pass_obj
+@click.argument('payments', nargs=-1, required=True)
+def multi(app, payments):
+    print "multi payment"
+    data = ''
+    encp = []
+    value = 0
+    for p in payments:
+        p = p.split(':')
+        print "->", p[0], p[1]
+        encp.append(encode_payment(p[0], p[1]))
+        value += long(p[1])
+
+    me = app.services.accounts[0]
+    print "MY ADDRESS", me.address.encode('hex')
+    svc = app.services.chain
+    head = svc.chain.head
+    nonce = head.get_nonce(me.address)
+
+    translator = abi.ContractTranslator(BankOfDeposit.ABI)
+    data = translator.encode('transfer', [encp])
+    print "DATA: ", data.encode('hex')
+
+    gas = 21000 + len(encp) * 30000
+    tx = Transaction(nonce, 1, gas, to=BANK_ADDR, value=value, data=data)
+    me.unlock('')
+    assert me.privkey
+    tx.sign(me.privkey)
+    svc.add_transaction(tx)
+
+
 @node.command()
 @click.pass_obj
 def history(app):
@@ -162,20 +210,36 @@ def history(app):
     b = head
     while b:
         txs = b.get_transactions()
-        for tx in txs:
+        for i, tx in enumerate(txs):
             if tx.to == me.address:
-                incomming.append((tx.sender, tx.value, True))
+                incomming.append((tx.sender, tx.value, True, b.number, i))
+            elif tx.to == BANK_ADDR:
+                receipt = b.get_receipt(i)
+                for log in receipt.logs:
+                    to = int_to_big_endian(log.topics[2])
+                    if to == me.address:
+                        sender = int_to_big_endian(log.topics[1])
+                        value = big_endian_to_int(log.data)
+                        incomming.append((sender, value, False, b.number, i))
+
             if tx.sender == me.address:
-                outgoing.append((tx.to, tx.value, True))
+                if tx.to == BANK_ADDR:
+                    receipt = b.get_receipt(i)
+                    for log in receipt.logs:
+                        to = int_to_big_endian(log.topics[2])
+                        value = big_endian_to_int(log.data)
+                        outgoing.append((to, value, False, b.number, i))
+                else:
+                    outgoing.append((tx.to, tx.value, True, b.number, i))
         b = b.get_parent() if not b.is_genesis() else None
 
     print "OUTGOING"
     for p in outgoing:
-        print "->", p[0].encode('hex'), p[1], "(direct)" if p[2] else "(indirect)"
+        print "[{}]".format(p[3]), "->", p[0].encode('hex'), p[1], "(direct)" if p[2] else "(indirect)"
 
     print "INCOMING"
     for p in incomming:
-        print "<-", p[0].encode('hex'), p[1], "(direct)" if p[2] else "(indirect)"
+        print "[{}]".format(p[3]), "<-", p[0].encode('hex'), p[1], "(direct)" if p[2] else "(indirect)"
 
 
 @app.group()
