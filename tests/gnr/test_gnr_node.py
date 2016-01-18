@@ -3,7 +3,7 @@ import os
 import cPickle
 import jsonpickle
 from mock import patch, call
-from gnr.node import start
+from gnr.node import start, config_logging
 from click.testing import CliRunner
 from golem.network.transport.tcpnetwork import TCPAddress
 from golem.appconfig import AppConfig
@@ -23,7 +23,7 @@ class TestNode(unittest.TestCase):
         AppConfig.CONFIG_LOADED = False
 
     @patch('gnr.node.reactor')
-    def test_help(self, mock_reactor):
+    def test_hep(self, mock_reactor):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--help'])
         self.assertEqual(return_value.exit_code, 0)
@@ -155,7 +155,6 @@ class TestNode(unittest.TestCase):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--peer', u'10.30.10.216:40111',
                                              u'--peer', u'[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
-                                             u'--peer', u'10.30.10.216:AB',
                                              '--peer', '[::ffff:0:0:0]:96'])
         self.assertEqual(return_value.exit_code, 0)
         mock_node.assert_has_calls([call().run(), call().add_tasks([])], any_order=True)
