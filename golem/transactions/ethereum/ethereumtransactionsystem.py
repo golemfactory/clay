@@ -1,4 +1,5 @@
 from golem.transactions.transactionsystem import TransactionSystem
+from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumPaymentsKeeper
 from ethereumconnector import EthereumConnector
 
 from golem.core.variables import ETH_CONN_ADDR
@@ -6,12 +7,12 @@ from golem.core.variables import ETH_CONN_ADDR
 
 class EthereumTransactionSystem(TransactionSystem):
     """ Transaction system connected with Ethereum """
-    def __init__(self, node_id, eth_account):
+    def __init__(self, database, node_id, eth_account):
         """ Create new transaction system instance for node with given id
         :param node_id: id of a node that has this transaction system.
         :param eth_account: ethereum account address (bytes20)
         """
-        TransactionSystem.__init__(self, node_id)
+        TransactionSystem.__init__(self, database, node_id, EthereumPaymentsKeeper)
         self.eth_account = eth_account
 
     def global_pay_for_task(self, task_id, payments):

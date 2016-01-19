@@ -1,13 +1,55 @@
 import logging
+from datetime import datetime
+
 from collections import deque
+from peewee import IntegrityError
+
+from golem.model import Payment
 
 logger = logging.getLogger(__name__)
+
+
+class PaymentsDatabase(object):
+    def __init__(self, database, node_id):
+        self.db = database.db
+        self.node_id = node_id
+
+    def get_payment_value(self, payment_info):
+        try:
+            return Payment.select(Payment.val).where(self.__same_transaction(payment_info)).get().val
+        except Payment.DoesNotExist:
+            logger.warning("Can't get payment value - payment does not exist")
+            return 0
+
+    def add_payment(self, payment_info):
+        try:
+            with self.db.transaction():
+                Payment.create(paying_node_id=self.node_id,
+                               to_node_id=payment_info.computer.key_id,
+                               task=payment_info.task_id,
+                               val=payment_info.value,
+                               state=PaymentState.waiting_for_task_to_finish)
+        except IntegrityError:
+            Payment.update(val=payment_info.value + Payment.val, modified_date=str(datetime.now())).where(
+                                self.__same_transaction(payment_info)).execute()
+
+    def change_state(self, task_id, state):
+        query = Payment.update(state=state, modified_date=str(datetime.now()))
+        query = query.where(Payment.task == task_id and Payment.paying_node_id == self.node_id)
+        query.execute()
+
+    def get_newest_payment(self, num=10):
+        return Payment.select().where(Payment.paying_node_id == self.node_id).execute()
+
+    def __same_transaction(self, payment_info):
+        return Payment.paying_node_id == self.node_id and Payment.task == payment_info.task_id and \
+               Payment.to_node_id == payment_info.computer.key_id
 
 
 class PaymentsKeeper(object):
     """ Keeps information about payments for tasks that should be processed and send or received. """
 
-    def __init__(self):
+    def __init__(self, database, node_id):
         """ Create new payments keeper instance"""
         self.computing_tasks = {}  # tasks that are computed right now
         self.finished_tasks = []  # tasks that are finished and they're payment haven't been processed yet (may still
@@ -15,6 +57,9 @@ class PaymentsKeeper(object):
         self.tasks_to_pay = deque()  # finished tasks with payments have been processed but haven't been send yet
         self.waiting_for_payments = {}  # should receive payments from this dict
         self.settled_tasks = {}  # finished tasks with payments that has been pass to task server
+        self.db = PaymentsDatabase(database, node_id)
+
+    #    self.load_from_database()
 
     def task_finished(self, task_id):
         """ Add id of a task to the list of finished tasks
@@ -44,6 +89,7 @@ class PaymentsKeeper(object):
             task = self.tasks_to_pay.popleft()
             if task.value < budget:
                 self.settled_tasks[task.task_id] = task
+                self.db.change_state(task.task_id, PaymentState.settled)
                 return task, self.get_list_of_payments(task)
             else:
                 self.tasks_to_pay.append(task)
@@ -58,22 +104,26 @@ class PaymentsKeeper(object):
         return task.subtasks
 
     def get_list_of_all_payments(self):
-        all_payments = self.__change_nodes_to_payment_info(self.tasks_to_pay, PaymentState.waiting_to_be_paid)
-        all_payments += self.__change_nodes_to_payment_info(self.settled_tasks.itervalues(), PaymentState.settled)
-        all_payments + self.__change_nodes_to_payment_info(self.computing_tasks.itervalues(),
-                                                           PaymentState.waiting_for_task_to_finish)
-        return all_payments
+        return self.load_from_database()
 
     def finished_subtasks(self, payment_info):
         """ Add new information about finished subtask
         :param PaymentInfo payment_info: full information about payment for given subtask
         """
         task = self.computing_tasks.setdefault(payment_info.task_id, TaskPaymentInfo(payment_info.task_id))
+        self.add_payment_to_database(payment_info)
         task.subtasks[payment_info.subtask_id] = SubtaskPaymentInfo(payment_info.value, payment_info.computer)
         task.value += payment_info.value
         if payment_info.task_id in self.finished_tasks:
             self.finished_tasks.remove(payment_info.task_id)
             self.__put_task_in_tasks_to_pay(payment_info.task_id)
+
+    def load_from_database(self):
+        return [{"task": payment.task, "node": payment.to_node_id, "value": payment.val, "state": payment.state} for
+                payment in self.db.get_newest_payment()]
+
+    def add_payment_to_database(self, payment_info):
+        self.db.add_payment(payment_info)
 
     def __put_task_in_tasks_to_pay(self, task_id):
         task = self.computing_tasks.get(task_id)
@@ -81,6 +131,7 @@ class PaymentsKeeper(object):
             logger.error("No information about payments for task {}".format(task_id))
             return
         self.tasks_to_pay.append(task)
+        self.db.change_state(task_id, PaymentState.waiting_to_be_paid)
         del self.computing_tasks[task_id]
 
     @staticmethod

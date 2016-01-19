@@ -317,7 +317,7 @@ class GNRApplicationLogic(QtCore.QObject):
         if success:
             self.progress_dialog_customizer.show_message("Test task computation success!")
         else:
-            self.progress_dialog_customizer.show_mssage("Task test computation failure... Check resources.")
+            self.progress_dialog_customizer.show_message("Task test computation failure... Check resources.")
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(success, est_mem)
 

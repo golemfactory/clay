@@ -24,7 +24,7 @@ class Database:
         self.create_database()
 
     def create_database(self):
-        db.create_tables([Node, Bank, LocalRank, GlobalRank, NeighbourLocRank], safe=True)
+        db.create_tables([Node, Bank, LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment], safe=True)
 
     def check_node(self, node_id):
         with db.transaction():
@@ -39,20 +39,55 @@ class Database:
 class BaseModel(Model):
     class Meta:
         database = db
-
-
-class Node(BaseModel):
-    node_id = CharField(primary_key=True)
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
 
+
+###############
+# NODE MODELS #
+###############
+
+class Node(BaseModel):
+    node_id = CharField(primary_key=True)
+
+
+##################
+# PAYMENT MODELS #
+##################
 
 class Bank(BaseModel):
     node_id = ForeignKeyField(Node, related_name='has', unique=True)
     val = FloatField(default=START_BUDGET)
-    created_date = DateTimeField(default=datetime.datetime.now)
-    modified_date = DateTimeField(default=datetime.datetime.now)
 
+
+class Payment(BaseModel):
+    paying_node_id = ForeignKeyField(Node, related_name="pay")
+    to_node_id = CharField()
+    task = CharField()
+    val = FloatField()
+    state = CharField()
+
+    class Meta:
+        database = db
+        primary_key = CompositeKey('paying_node_id', 'to_node_id', 'task')
+
+
+class ReceivedPayment(BaseModel):
+    node_id = ForeignKeyField(Node, related_name="receive")
+    from_node_id = CharField()
+    task = CharField()
+    val = FloatField()
+    expected_val = FloatField()
+    state = CharField()
+
+    class Meta:
+        database = db
+        primary_key = CompositeKey('node_id', 'from_node_id', 'task')
+
+
+##################
+# RANKING MODELS #
+##################
 
 class LocalRank(BaseModel):
     node_id = CharField(unique=True)
@@ -65,8 +100,6 @@ class LocalRank(BaseModel):
     negative_payment = FloatField(default=0.0)
     positive_resource = FloatField(default=0.0)
     negative_resource = FloatField(default=0.0)
-    created_date = DateTimeField(default=datetime.datetime.now)
-    modified_date = DateTimeField(default=datetime.datetime.now)
 
 
 class GlobalRank(BaseModel):
@@ -75,8 +108,6 @@ class GlobalRank(BaseModel):
     computing_trust_value = FloatField(default=0.0)
     gossip_weight_computing = FloatField(default=0.0)
     gossip_weight_requesting = FloatField(default=0.0)
-    created_date = DateTimeField(default=datetime.datetime.now)
-    modified_date = DateTimeField(default=datetime.datetime.now)
 
 
 class NeighbourLocRank(BaseModel):
@@ -84,8 +115,7 @@ class NeighbourLocRank(BaseModel):
     about_node_id = CharField()
     requesting_trust_value = FloatField(default=0.0)
     computing_trust_value = FloatField(default=0.0)
-    created_date = DateTimeField(default=datetime.datetime.now)
-    modified_date = DateTimeField(default=datetime.datetime.now)
 
     class Meta:
+        database = db
         primary_key = CompositeKey('node_id', 'about_node_id')

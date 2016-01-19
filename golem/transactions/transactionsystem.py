@@ -1,8 +1,7 @@
 import logging
 import datetime
 
-from ethereum.ethereumpaymentskeeper import EthereumPaymentsKeeper
-from paymentskeeper import PaymentInfo
+from paymentskeeper import PaymentInfo, PaymentsKeeper
 from incomeskeeper import IncomesKeeper
 from golem.model import Bank
 from golem.core.variables import PRICE_BASE
@@ -13,13 +12,13 @@ logger = logging.getLogger(__name__)
 class TransactionSystem(object):
     """ Transaction system. Keeps information about budget, expected payments, etc. """
 
-    def __init__(self, node_id):
+    def __init__(self, database, node_id, payment_keeper_class=PaymentsKeeper):
         """ Create new transaction system instance for node with given id
         :param node_id: id of a node that has this transaction system.
         """
         self.node_id = node_id
-        self.payments_keeper = EthereumPaymentsKeeper()  # Keeps information about payments that should be send
-        self.incomes_keeper = IncomesKeeper()  # Keeps information about received payments
+        self.payments_keeper = payment_keeper_class(database, node_id)  # Keeps information about payments that should be send
+        self.incomes_keeper = IncomesKeeper(database, node_id)  # Keeps information about received payments
         self.budget = Bank.get(Bank.node_id == node_id).val  # Current budget state
         self.price_base = PRICE_BASE  # Price base for price modifications
 
