@@ -6,7 +6,7 @@ from gnr.ui.checkabledirmodel import CheckableDirModel
 
 class AddResourcesDialogCustomizer(ShowTaskResourcesDialogCustomizer):
     def __init__(self, gui, logic):
-        self.resources = set()
+        self.resources = set([])
         ShowTaskResourcesDialogCustomizer.__init__(self, gui, logic)
 
     def load_data(self):
