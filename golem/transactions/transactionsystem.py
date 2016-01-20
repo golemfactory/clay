@@ -12,13 +12,15 @@ logger = logging.getLogger(__name__)
 class TransactionSystem(object):
     """ Transaction system. Keeps information about budget, expected payments, etc. """
 
-    def __init__(self, database, node_id, payment_keeper_class=PaymentsKeeper):
+    def __init__(self, node_id, payments_keeper_class=PaymentsKeeper):
         """ Create new transaction system instance for node with given id
-        :param node_id: id of a node that has this transaction system.
+        :param node_id: id of a node that has this transaction system
+        :param payments_keeper_class: default PaymentsKeeper, payment keeper class, an instance of this class
+        while be used as a payment keeper
         """
         self.node_id = node_id
-        self.payments_keeper = payment_keeper_class(database, node_id)  # Keeps information about payments that should be send
-        self.incomes_keeper = IncomesKeeper(database, node_id)  # Keeps information about received payments
+        self.payments_keeper = payments_keeper_class(node_id)  # Keeps information about payments to send
+        self.incomes_keeper = IncomesKeeper(node_id)  # Keeps information about received payments
         self.budget = Bank.get(Bank.node_id == node_id).val  # Current budget state
         self.price_base = PRICE_BASE  # Price base for price modifications
 

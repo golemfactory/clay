@@ -115,8 +115,7 @@ class Client:
 
         self.ranking = Ranking(self, RankingDatabase(self.db))
 
-        self.transaction_system = EthereumTransactionSystem(self.db, self.keys_auth.get_key_id(),
-                                                            self.config_desc.eth_account)
+        self.transaction_system = EthereumTransactionSystem(self.keys_auth.get_key_id(), self.config_desc.eth_account)
 
         self.environments_manager = EnvironmentsManager()
 

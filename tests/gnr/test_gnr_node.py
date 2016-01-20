@@ -6,6 +6,7 @@ from gnr.node import start
 from click.testing import CliRunner
 from golem.network.transport.tcpnetwork import TCPAddress
 from golem.appconfig import AppConfig
+from golem.tools.testwithdatabase import TestWithDatabase
 
 
 class A(object):
@@ -14,12 +15,13 @@ class A(object):
         self.b = "abc"
 
 
-class TestNode(unittest.TestCase):
+class TestNode(TestWithDatabase):
 
     def setUp(self):
         # This is to prevent test methods from picking up AppConfigs
         # created by previously run test methods:
         AppConfig.CONFIG_LOADED = False
+        TestWithDatabase.setUp(self)
 
     @patch('gnr.node.reactor')
     def test_help(self, mock_reactor):

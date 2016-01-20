@@ -4,6 +4,7 @@ import datetime
 
 DATABASE_NAME = 'golem.db'
 START_BUDGET = 42000000
+NEUTRAL_TRUST = 0.0
 
 
 class SqliteFKTimeoutDatabase(SqliteDatabase):
@@ -48,6 +49,8 @@ class BaseModel(Model):
 ###############
 
 class Node(BaseModel):
+    """ Represent nodes that are active on this machine
+    """
     node_id = CharField(primary_key=True)
 
 
@@ -56,11 +59,15 @@ class Node(BaseModel):
 ##################
 
 class Bank(BaseModel):
+    """ Represents nodes local account (just for test purpose)
+    """
     node_id = ForeignKeyField(Node, related_name='has', unique=True)
     val = FloatField(default=START_BUDGET)
 
 
 class Payment(BaseModel):
+    """ Represents payments that nodes on this machine make to other nodes
+    """
     paying_node_id = ForeignKeyField(Node, related_name="pay")
     to_node_id = CharField()
     task = CharField()
@@ -73,6 +80,8 @@ class Payment(BaseModel):
 
 
 class ReceivedPayment(BaseModel):
+    """ Represent payments that nodes on this machine receive from other nodes
+    """
     node_id = ForeignKeyField(Node, related_name="receive")
     from_node_id = CharField()
     task = CharField()
@@ -90,6 +99,9 @@ class ReceivedPayment(BaseModel):
 ##################
 
 class LocalRank(BaseModel):
+    """ Represent nodes experience with other nodes, number of positive and
+    negative interactions.
+    """
     node_id = CharField(unique=True)
     positive_computed = FloatField(default=0.0)
     negative_computed = FloatField(default=0.0)
@@ -103,18 +115,22 @@ class LocalRank(BaseModel):
 
 
 class GlobalRank(BaseModel):
+    """ Represents global ranking vector estimation
+    """
     node_id = CharField(unique=True)
-    requesting_trust_value = FloatField(default=0.0)
-    computing_trust_value = FloatField(default=0.0)
+    requesting_trust_value = FloatField(default=NEUTRAL_TRUST)
+    computing_trust_value = FloatField(default=NEUTRAL_TRUST)
     gossip_weight_computing = FloatField(default=0.0)
     gossip_weight_requesting = FloatField(default=0.0)
 
 
 class NeighbourLocRank(BaseModel):
+    """ Represents neighbour trust level for other nodes
+    """
     node_id = CharField()
     about_node_id = CharField()
-    requesting_trust_value = FloatField(default=0.0)
-    computing_trust_value = FloatField(default=0.0)
+    requesting_trust_value = FloatField(default=NEUTRAL_TRUST)
+    computing_trust_value = FloatField(default=NEUTRAL_TRUST)
 
     class Meta:
         database = db

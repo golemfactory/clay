@@ -4,14 +4,14 @@ from datetime import datetime
 from collections import deque
 from peewee import IntegrityError
 
-from golem.model import Payment
+from golem.model import Payment, db
 
 logger = logging.getLogger(__name__)
 
 
 class PaymentsDatabase(object):
-    def __init__(self, database, node_id):
-        self.db = database.db
+    def __init__(self, node_id):
+        self.db = db
         self.node_id = node_id
 
     def get_payment_value(self, payment_info):
@@ -49,7 +49,7 @@ class PaymentsDatabase(object):
 class PaymentsKeeper(object):
     """ Keeps information about payments for tasks that should be processed and send or received. """
 
-    def __init__(self, database, node_id):
+    def __init__(self, node_id):
         """ Create new payments keeper instance"""
         self.computing_tasks = {}  # tasks that are computed right now
         self.finished_tasks = []  # tasks that are finished and they're payment haven't been processed yet (may still
@@ -57,7 +57,7 @@ class PaymentsKeeper(object):
         self.tasks_to_pay = deque()  # finished tasks with payments have been processed but haven't been send yet
         self.waiting_for_payments = {}  # should receive payments from this dict
         self.settled_tasks = {}  # finished tasks with payments that has been pass to task server
-        self.db = PaymentsDatabase(database, node_id)
+        self.db = PaymentsDatabase(node_id)
 
     #    self.load_from_database()
 
