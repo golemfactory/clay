@@ -18,11 +18,12 @@ assert IMUNES_TEST_DIR.endswith("/")
 
 class NodeInfo(object):
 
-    def __init__(self, address=None, peers=[], tasks=[]):
+    def __init__(self, run_golem, address=None, peers=[], tasks=[]):
         self.address = address
         self.peers = peers
         self.tasks = tasks
         self.pid = None
+        self.run_golem = run_golem
 
 
 def get_node_address(node_name):
@@ -101,16 +102,19 @@ def start_simulation(network_file):
     experiment_name, rest = output.split(" (", 1)
     node_names = rest.split()
 
-    print "Imunes experiment '{}' started, node names and addresses:"
+    print "Imunes experiment '{}' started, node names and addresses:".format(
+        EXPERIMENT_NAME)
 
     # Get eth0 network address for each node
     node_infos = {}
     for node in node_names:
         if node.startswith('switch'):
             continue
-        address = get_node_address(node)
-        node_infos[node] = NodeInfo(address)
-        print "\t{}: {}".format(node, address)
+        run_golem = node.startswith('pc') or node.startswith('host')
+        address = get_node_address(node) if run_golem else None
+        node_infos[node] = NodeInfo(run_golem, address)
+        print "\t{}: {} {}".format(node, address,
+                                   "(golem node)" if run_golem else "")
 
     return node_names, node_infos
 
@@ -118,6 +122,24 @@ def start_simulation(network_file):
 def stop_simulation():
     print "Terminating simulation..."
     subprocess.check_call(["imunes", "-b", "-e", EXPERIMENT_NAME])
+
+
+def setup_nat(node_infos):
+    """
+    Set up NAT rules at every nodes whose name matches 'nat*'.
+    Any such node is assumed to have interfaces 'eth0' (LAN) and 'eth1' (WAN).
+    :param dict(str, NodeInfo) node_infos:
+    """
+    config = ["iptables --policy FORWARD DROP",
+              "iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE",
+              "iptables -A FORWARD -i eth1 -o eth0 -m state"
+              " --state RELATED,ESTABLISHED -j ACCEPT",
+              "iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT"]
+
+    for name in node_infos:
+        if name.startswith('nat'):
+            for line in config:
+                subprocess.check_call(["himage", name] + line.split())
 
 
 def set_default_seed_and_requester(node_names, node_infos):
@@ -170,6 +192,8 @@ def copy_file(node_name, src_file, target_file):
 def start_golem(node_infos):
     print "Starting golem instances..."
     for name, info in node_infos.iteritems():
+        if not info.run_golem:
+            continue
         himage_cmd = "python {}/gnr/node.py".format(IMUNES_GOLEM_DIR)
         if info.address:
             himage_cmd += " --node-address " + info.address
@@ -179,8 +203,8 @@ def start_golem(node_infos):
             himage_cmd += " --task " + task
         himage_cmd += " | tee /log/golem.log"
 
-        cmd = "xterm -geom 150x30 -e himage {} /bin/sh -c \"{}\" &".format(
-            name, himage_cmd)
+        cmd = "xterm -title {} -geom 150x30 -e " \
+              "himage {} /bin/sh -c \"{}\" &".format(name, name, himage_cmd)
         print "Running '{}' on {}...".format(himage_cmd, name)
         info.pid = subprocess.Popen(cmd, shell=True)
         time.sleep(1)
@@ -260,32 +284,39 @@ if __name__ == "__main__":
         print "Imunes must be started as root. Sorry..."
         sys.exit(1)
 
-    if len(sys.argv) != 3:
+    if len(sys.argv) not in [2,3]:
         print "Usage: sudo python " + __file__ +\
-              " <topology-file>.imn <task-file>.json"
+              " <topology-file>.imn [<task-file>.json]"
         sys.exit(1)
+
+    topology_file = sys.argv[1]
+    task_file = sys.argv[2] if len(sys.argv) >= 3 else None
 
     # clean up whatever remained from previous experiments
     subprocess.call(["cleanupAll"])
 
-    topology_file = sys.argv[1]
-    task_file = sys.argv[2]
+    if task_file:
+        with open(task_file, 'r') as tf:
+            task_json = json.load(tf)
 
-    with open(task_file, 'r') as tf:
-        task_json = json.load(tf)
-
-    # Convert paths in the task file to match resource file locations
-    # at the requester node
-    converted_task_file, files_to_copy = prepare_task_resources(task_json)
+        # Convert paths in the task file to match resource file locations
+        # at the requester node
+        converted_task_file, files_to_copy = prepare_task_resources(task_json)
 
     # Start imunes
     names, infos = start_simulation(topology_file)
-    requester = set_default_seed_and_requester(names, infos)
-    infos[requester].tasks = [converted_task_file]
 
-    # Copy resource files to the requester node
-    for src, dst in files_to_copy.iteritems():
-        copy_file(requester, src, dst)
+    # Setup NAT on nodes matching 'nat*'
+    setup_nat(infos)
+
+    requester = set_default_seed_and_requester(names, infos)
+
+    if task_file:
+        infos[requester].tasks = [converted_task_file]
+
+        # Copy resource files to the requester node
+        for src, dst in files_to_copy.iteritems():
+            copy_file(requester, src, dst)
 
     # 3... 2... 1...
     time.sleep(1)
@@ -293,7 +324,8 @@ if __name__ == "__main__":
 
     # TODO: instead of waiting 60 sec we should monitor the logs to see when
     # the computation ends (or fails)
-    wait_for_task_completion(requester)
+    if task_file:
+        wait_for_task_completion(requester)
 
     time.sleep(10)
-    stop_simulation()
+    # stop_simulation()
