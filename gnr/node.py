@@ -61,8 +61,6 @@ class Node(object):
     def run(self):
         try:
             reactor.run()
-        except Exception as err:
-            logger.error("{}".format(err))
         finally:
             self.client.quit()
             sys.exit(0)

@@ -1,4 +1,3 @@
-import sys
 from multiprocessing import freeze_support
 
 from gnrstartapp import start_app, config_logging
