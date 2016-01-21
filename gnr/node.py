@@ -4,6 +4,7 @@ import os
 import pickle
 import click
 import uuid
+import sys
 import logging.config
 
 from twisted.internet import reactor
@@ -57,9 +58,12 @@ class Node(object):
                                                       self.client.get_root_path()))
             self.client.enqueue_new_task(golem_task)
 
-    @staticmethod
-    def run():
-        reactor.run()
+    def run(self):
+        try:
+            reactor.run()
+        finally:
+            self.client.quit()
+            sys.exit(0)
 
 
 class GNRNode(Node):

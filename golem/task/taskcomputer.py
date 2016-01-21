@@ -206,8 +206,13 @@ class TaskComputer(object):
         tt = PyTaskThread(self, subtask_id, working_directory, src_code, extra_data, short_desc,
                           self.resource_manager.get_resource_dir(task_id), self.resource_manager.get_temporary_dir(task_id),
                           task_timeout)
+        tt.setDaemon(True)
         self.current_computations.append(tt)
         tt.start()
+
+    def quit(self):
+        for t in self.current_computations:
+            t.end_comp()
 
 
 class AssignedSubTask(object):
