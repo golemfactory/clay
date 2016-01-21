@@ -63,6 +63,7 @@ class TCPServer(Server):
 class PendingConnectionsServer(TCPServer):
     """ TCP Server that keeps a list of pending connections and tries different methods
     if connection attempt is unsuccessful."""
+
     supported_nat_types = [FullCone, OpenInternet]  # NAT Types that supports Nat Punching
 
     def __init__(self, config_desc, network):
@@ -111,7 +112,7 @@ class PendingConnectionsServer(TCPServer):
         """
         conn = self.pending_connections.get(conn_id)
         if conn:
-            self.conn_final_failure_for_type[conn.type](conn_id, *conn.args)
+            self.conn_final_failure_for_type[conn.type](conn_id, **conn.args)
             del self.pending_connections[conn_id]
         else:
             logger.error("Connection {} is unknown".format(conn_id))
