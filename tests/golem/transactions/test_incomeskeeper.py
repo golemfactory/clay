@@ -99,9 +99,20 @@ class TestIncomesKeeper(TestWithDatabase):
         xyz = filter(lambda x: x["task"] == "xyz", ik.get_list_of_all_incomes())
         self.assertEqual(len(xyz), 1)
         self.assertEqual(xyz[0]["state"], IncomesState.timeout)
-        self.add_income("xyz", "DEF", 10)
-        self.add_income("zyz", "FED", 100)
-
+        ik.add_income("xyz", "DEF", 10)
+        ik.add_income("zyz", "FED", 100)
+        xyz = filter(lambda x: x["task"] == "xyz", ik.get_list_of_all_incomes())
+        self.assertEqual(len(xyz), 1)
+        self.assertEqual(xyz[0]["state"], IncomesState.finished)
+        self.assertEqual(xyz[0]["value"], 10)
+        zyz = filter(lambda x: x["task"] == "zyz", ik.get_list_of_all_incomes())
+        self.assertEqual(len(zyz), 1)
+        self.assertEqual(zyz[0]["state"], IncomesState.finished)
+        self.assertEqual(zyz[0]["value"], 100)
+        ik.add_income("xyz", "DEF", 10)
+        xyz = filter(lambda x: x["task"] == "xyz", ik.get_list_of_all_incomes())
+        self.assertEqual(xyz[0]["state"], IncomesState.finished)
+        self.assertEqual(xyz[0]["value"], 20)
 
 
 

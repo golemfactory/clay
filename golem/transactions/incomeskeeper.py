@@ -65,7 +65,7 @@ class IncomesDatabase(object):
 
     def get_newest_incomes(self, num=30):
         """ Return <num> recently modfified incomes
-        :param int num: number of payments to insert
+        :param int num: number of payments to return
         :return:
         """
         query = ReceivedPayment.select().where(ReceivedPayment.node_id == self.node_id)
@@ -134,7 +134,6 @@ class IncomesKeeper(object):
                 reward = int(old_reward) + int(reward)
             except ValueError as err:
                 logger.warning("Wrong reward value {}".format(err))
-                return
 
         self.incomes[task_id] = {"task": task_id, "node": node_id, "value": reward, "expected_value": "?",
                                  "state": IncomesState.finished}
