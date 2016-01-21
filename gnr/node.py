@@ -43,9 +43,10 @@ class Node(object):
     def __init__(self, **config_overrides):
         self.client = create_client(**config_overrides)
 
-    def initialize(self):
+    def initialize(self, enable_blender):
         self.client.start_network()
-        self.load_environments(self.default_environments)
+        if enable_blender:
+            self.load_environments(self.default_environments)
 
     def load_environments(self, environments):
         for env in environments:
@@ -125,14 +126,18 @@ def parse_task_file(ctx, param, value):
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=parse_node_addr,
               help="Network address to use for this node")
+@click.option('--public-address', '-A', multiple=False, type=click.STRING,
+              callback=parse_node_addr,
+              help="Public network address to use for this node")
 @click.option('--peer', '-p', multiple=True, callback=parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
 @click.option('--task', '-t', multiple=True, type=click.File(lazy=True), callback=parse_task_file,
               help="Request task from file")
-def start(node_address, peer, task):
+@click.option('--blender/--no-blender', default=True)
+def start(node_address, public_address, peer, task, blender):
 
-    node = GNRNode(node_address=node_address)
-    node.initialize()
+    node = GNRNode(node_address=node_address, public_address=public_address)
+    node.initialize(enable_blender=blender)
 
     node.connect_with_peers(peer)
     node.add_tasks(task)

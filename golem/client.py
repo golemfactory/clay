@@ -87,7 +87,8 @@ class Client:
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
                          key=self.keys_auth.get_key_id(),
-                         prv_addr=self.config_desc.node_address)
+                         prv_addr=self.config_desc.node_address,
+                         pub_addr=self.config_desc.public_address)
         self.node.collect_network_info(self.config_desc.seed_host, use_ipv6=self.config_desc.use_ipv6)
         logger.debug("Is super node? {}".format(self.node.is_super_node()))
         self.p2pservice = None

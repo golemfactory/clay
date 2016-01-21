@@ -350,7 +350,7 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.peer_want_task_session(msg.node_info, msg.super_node_info, msg.conn_id)
 
     def _react_to_set_task_session(self, msg):
-        self.p2p_service.want_to_set_task_session(msg.key_id, msg.node_info, msg.conn_id, msg.super_node_info)
+        self.p2p_service.want_to_start_task_session(msg.key_id, msg.node_info, msg.conn_id, msg.super_node_info)
 
     def _react_to_nat_hole(self, msg):
         self.p2p_service.traverse_nat(msg.key_id, msg.addr, msg.port, msg.conn_id, self.key_id)

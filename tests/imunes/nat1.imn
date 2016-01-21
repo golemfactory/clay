@@ -98,7 +98,7 @@ node n3 {
     type router
     model quagga
     network-config {
-	hostname nat3
+	hostname router3
 	!
 	interface eth1
 	 ipv6 address fc00:3::2/64
@@ -129,8 +129,8 @@ node n3 {
 	!
     }
     canvas c0
-    iconcoords {624.0 408.0}
-    labelcoords {624.0 438.0}
+    iconcoords {600.0 384.0}
+    labelcoords {600.0 414.0}
     interface-peer {eth0 n4}
     interface-peer {eth1 n0}
 }
@@ -142,8 +142,8 @@ node n4 {
 	!
     }
     canvas c0
-    iconcoords {792.0 432.0}
-    labelcoords {792.0 460.0}
+    iconcoords {744.0 432.0}
+    labelcoords {744.0 460.0}
     interface-peer {e0 n3}
     interface-peer {e1 n6}
     interface-peer {e2 n7}
@@ -296,7 +296,7 @@ link l7 {
 annotation a0 {
     type text
     iconcoords {314.0 517.0}
-    label {These routers perform NAT}
+    label {This router performs NAT}
     labelcolor #000061
     font {-family {DejaVu Sans} -size 12 -weight normal -slant roman -underline 0 -overstrike 0}
     canvas c0
@@ -311,25 +311,9 @@ annotation a1 {
     type freeform
 }
 
-annotation a2 {
-    type freeform
-    iconcoords {528.0 497.0 546.0 481.0 570.0 457.0 581.0 449.0 589.0 441.0 590.0 439.0 591.0 437.0}
-    color blue
-    width 2
-    canvas c0
-}
-
 annotation a3 {
     type freeform
     iconcoords {292.0 449.0 289.0 429.0 289.0 419.0 299.0 421.0 309.0 426.0 313.0 428.0 314.0 429.0}
-    color blue
-    width 2
-    canvas c0
-}
-
-annotation a4 {
-    type freeform
-    iconcoords {568.0 447.0 581.0 439.0 593.0 435.0 594.0 445.0 591.0 455.0 589.0 461.0 589.0 462.0}
     color blue
     width 2
     canvas c0

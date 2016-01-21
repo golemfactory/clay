@@ -87,7 +87,7 @@ class BasicSession(FileSession):
         """
         self.last_message_time = time.time()
 
-        # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
+        print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
 
         if not self._check_msg(msg):
             return
@@ -123,7 +123,7 @@ class BasicSession(FileSession):
         """ Send given message.
         :param Message message: message to be sent.
         """
-        # print "Sending to {}:{}: {}".format(self.address, self.port, message)
+        print "Sending to {}:{}: {}".format(self.address, self.port, message)
 
         if not self.conn.send_message(message):
             self.dropped()

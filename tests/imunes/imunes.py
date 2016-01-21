@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import re
@@ -6,7 +7,7 @@ import sys
 import time
 
 
-EXPERIMENT_NAME = "golem"
+EXPERIMENT_NAME = "GOLEM"
 DEFAULT_PORT = 40102
 
 # These paths has to end with "/":
@@ -24,6 +25,7 @@ class NodeInfo(object):
         self.tasks = tasks
         self.pid = None
         self.run_golem = run_golem
+        self.is_host_node = False
 
 
 def get_node_address(node_name):
@@ -101,6 +103,9 @@ def start_simulation(network_file):
     output = output.strip("\n )")
     experiment_name, rest = output.split(" (", 1)
     node_names = rest.split()
+
+    # Give IMUNES some time to set up the network
+    time.sleep(2.0)
 
     print "Imunes experiment '{}' started, node names and addresses:".format(
         EXPERIMENT_NAME)
@@ -196,15 +201,20 @@ def start_golem(node_infos):
             continue
         himage_cmd = "python {}/gnr/node.py".format(IMUNES_GOLEM_DIR)
         if info.address:
-            himage_cmd += " --node-address " + info.address
+            if name.startswith('pc'):
+                himage_cmd += " --node-address " + info.address
+            elif name.startswith('host'):
+                himage_cmd += " --public-address " + info.address
         for addr in info.peers:
             himage_cmd += " --peer " + addr
         for task in info.tasks:
             himage_cmd += " --task " + task
-        himage_cmd += " | tee /log/golem.log"
+        if name.startswith('host'):
+            himage_cmd += " --no-blender"
 
-        cmd = "xterm -title {} -geom 150x30 -e " \
-              "himage {} /bin/sh -c \"{}\" &".format(name, name, himage_cmd)
+        cmd = "xterm -title '{} ({})' -geom 150x30 -e " \
+              "himage {} /bin/sh -c '{} 2>&1 | tee /log/golem.log' &".format(
+                  name, himage_cmd, name, himage_cmd)
         print "Running '{}' on {}...".format(himage_cmd, name)
         info.pid = subprocess.Popen(cmd, shell=True)
         time.sleep(1)
@@ -280,9 +290,19 @@ def wait_for_task_completion(requester_name, num_tasks=1):
 
 
 if __name__ == "__main__":
+
     if os.geteuid() != 0:
         print "Imunes must be started as root. Sorry..."
         sys.exit(1)
+
+    parser = argparse.ArgumentParser(description="Run network test with IMUNES")
+    parser.add_argument("topology_file", metavar="<topology-file>.imn",
+                        type=argparse.FileType('r'),
+                        help="IMUNES topology file")
+    parser.add_argument("task_file", metavar="<task-file>.json", nargs='?',
+                        type=argparse.FileType('r'),
+                        help="Test task file")
+    args = parser.parse_args()
 
     if len(sys.argv) not in [2,3]:
         print "Usage: sudo python " + __file__ +\
