@@ -502,6 +502,9 @@ class P2PService(PendingConnectionsServer):
         if not self.task_connections_helper.is_new_conn_request(conn_id, key_id, node_info, super_node_info):
             return
 
+        if super_node_info is None and self.node.is_super_node():
+            super_node_info = self.node
+
         logger.debug("Try to start task session {}".format(key_id))
         msg_snd = False
         for peer in self.peers.itervalues():
