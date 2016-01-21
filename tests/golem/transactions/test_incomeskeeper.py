@@ -1,6 +1,6 @@
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.assertlogs import LogTestCase
-from golem.transactions.incomeskeeper import IncomesDatabase, IncomesKeeper, logger
+from golem.transactions.incomeskeeper import IncomesDatabase, IncomesKeeper, logger, IncomesState
 
 
 class TestIncomesDatabase(LogTestCase, TestWithDatabase):
@@ -85,5 +85,27 @@ class TestIncomesKeeper(TestWithDatabase):
     def test_init(self):
         ik = IncomesKeeper("ABC")
         self.assertIsInstance(ik, IncomesKeeper)
+
+    def test_add_payment(self):
+        ik = IncomesKeeper("ABC")
+        self.database.check_node("ABC")
+        ik.add_waiting_payment("xyz", "DEF")
+        ik.add_waiting_payment("zyx", "FED")
+        xyz = filter(lambda x: x["task"] == "xyz", ik.get_list_of_all_incomes())
+        self.assertEqual(len(xyz), 1)
+        self.assertEqual(xyz[0]["state"], IncomesState.waiting)
+        self.assertEqual(xyz[0]["value"], 0)
+        ik.add_timeouted_payment("xyz")
+        xyz = filter(lambda x: x["task"] == "xyz", ik.get_list_of_all_incomes())
+        self.assertEqual(len(xyz), 1)
+        self.assertEqual(xyz[0]["state"], IncomesState.timeout)
+        self.add_income("xyz", "DEF", 10)
+        self.add_income("zyz", "FED", 100)
+
+
+
+
+
+
 
 
