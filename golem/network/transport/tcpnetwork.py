@@ -698,7 +698,10 @@ class FileProducer(object):
         self.data = self.fh.read(self.buff_size)
 
     def _print_progress(self):
-        print "\rSending progress {} %                       ".format(int(100 * float(self.fh.tell()) / self.size)),
+        if self.size != 0:
+            print "\rSending progress {} %                       ".format(int(100 * float(self.fh.tell()) / self.size)),
+        else:
+            print "\rSending progress 100 %                       ",
 
 
 class EncryptFileProducer(FileProducer):
@@ -944,7 +947,10 @@ class DataProducer(object):
         self.session.production_failed(self.extra_data)
 
     def _print_progress(self):
-        percent = min(int(100 * float(self.num_send) / self.size), 100)
+        if self.size != 0:
+            percent = int(100 * float(self.num_send) / self.size)
+        else:
+            percent = 100
         if percent > self.last_percent:
             print "\rSending progress {} %                       ".format(percent),
         self.last_percent = percent
@@ -1001,7 +1007,10 @@ class DataConsumer(object):
         return data[LONG_STANDARD_SIZE:]
 
     def _print_progress(self):
-        percent = int(100 * self.recv_size / float(self.data_size))
+        if self.data_size != 0:
+            percent = int(100 * self.recv_size / float(self.data_size))
+        else:
+            percent = 100
         if percent > self.last_percent:
             print "\rFile data receiving {} %                       ".format(percent),
             self.last_percent = percent
