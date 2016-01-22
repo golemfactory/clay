@@ -228,7 +228,7 @@ class LuxTask(RenderingTask):
         self.tmp_dir = tmp_dir
         env = LuxRenderEnvironment()
         lux_merger = env.get_lux_merger()
-        test_result_flm = os.path.join(os.environ["GOLEM"], "save", str(self.header.task_id) + ".flm")
+        test_result_flm = os.path.join(tmp_dir, str(self.header.task_id) + ".flm")
 
         tr_files = self.load_task_results(task_result, result_type, tmp_dir)
         if len(task_result) > 0:
@@ -282,7 +282,7 @@ class LuxTask(RenderingTask):
             "start_task": 1,
             "end_task": 1,
             "total_tasks": 1,
-            "outfilebasename": self.outfilebasename,
+            "outfilebasename": self.header.task_id,
             "scene_file_src": scene_src,
             "scene_dir": scene_dir,
             "num_threads": 1,
@@ -381,7 +381,7 @@ class LuxTask(RenderingTask):
 
     def __generate_final_flm_advanced_verification(self):
         # the file containing result of task test
-        test_result_flm = os.path.join(os.environ["GOLEM"], "save", str(self.header.task_id) + ".flm")
+        test_result_flm = os.path.join(self.tmp_dir, str(self.header.task_id) + ".flm")
         
         shutil.copy(test_result_flm, self.output_file + ".flm")
         logger.debug("Copying " + test_result_flm + " to " + self.output_file + ".flm")
