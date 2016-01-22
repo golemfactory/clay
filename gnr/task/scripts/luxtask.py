@@ -97,16 +97,17 @@ def is_windows():
     return sys.platform == 'win32'
 
 
-def exec_cmd(cmd, nice=20):
-    pc = subprocess.Popen(cmd)
+def exec_cmd(cmd, cur_dir, files, nice=20):
+    pc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = pc.communicate()
     if is_windows():
         import win32process
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
-    else:
-        p = psutil.Process(pc.pid)
-        p.nice(nice)
-
+    stderr = open(os.path.join(cur_dir, files + ".log"), 'w')
+    stderr.write(err)
+    stderr.close()
     pc.wait()
+    
 
 
 def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir, num_cores, own_binaries, lux_console):
@@ -114,7 +115,7 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir
 
     output_files = tmp_path
 
-    files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm")
+    files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm") + glob.glob(output_files + "/*.log")
 
     for f in files:
         os.remove(f)
@@ -136,10 +137,10 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir
     prev_dir = os.getcwd()
     os.chdir(scene_dir)
 
-    exec_cmd(cmd)
+    exec_cmd(cmd, output_files, outfilebasename + str(start_task), 19)
 
     os.chdir(prev_dir)
-    files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm")
+    files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm") + glob.glob(output_files + "/*.log")
 
     os.remove(tmp_scene_file.name)
 
