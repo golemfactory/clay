@@ -19,13 +19,13 @@ assert IMUNES_TEST_DIR.endswith("/")
 
 class NodeInfo(object):
 
-    def __init__(self, run_golem, address=None, peers=[], tasks=[]):
+    def __init__(self, address, is_supernode=False, disable_blender=False):
         self.address = address
-        self.peers = peers
-        self.tasks = tasks
+        self.peers = []
+        self.tasks = []
         self.pid = None
-        self.run_golem = run_golem
-        self.is_host_node = False
+        self.disable_blender = disable_blender
+        self.is_supernode = is_supernode
 
 
 def get_node_address(node_name):
@@ -107,21 +107,37 @@ def start_simulation(network_file):
     # Give IMUNES some time to set up the network
     time.sleep(2.0)
 
-    print "Imunes experiment '{}' started, node names and addresses:".format(
-        EXPERIMENT_NAME)
+    print "Imunes experiment '{}' started".format(EXPERIMENT_NAME)
+    return node_names
 
+
+def create_node_infos(node_names, args):
     # Get eth0 network address for each node
     node_infos = {}
+    peer_addrs = []
+    print "Golem nodes:"
     for node in node_names:
-        if node.startswith('switch'):
+        if not (node.startswith('pc') or node.startswith('host')):
             continue
-        run_golem = node.startswith('pc') or node.startswith('host')
-        address = get_node_address(node) if run_golem else None
-        node_infos[node] = NodeInfo(run_golem, address)
-        print "\t{}: {} {}".format(node, address,
-                                   "(golem node)" if run_golem else "")
+        address = get_node_address(node)
+        is_supernode = node in args.supernode
+        disable_blender = node in args.disable_blender
+        node_infos[node] = NodeInfo(address, is_supernode, disable_blender)
+        print "\t{}: {}{}{}{}{}".format(
+                node, address,
+                ", super node" if is_supernode else "",
+                ", seed node" if node in args.seed else "",
+                ", requester" if node is args.requester else "",
+                ", blender disabled" if disable_blender else "")
+        if node in args.seed:
+            peer_addrs.append(address)
 
-    return node_names, node_infos
+    for info in node_infos.values():
+        for addr in peer_addrs:
+            if addr != info.address:
+                info.peers.append("{}:{}".format(addr, DEFAULT_PORT))
+
+    return node_infos
 
 
 def stop_simulation():
@@ -129,11 +145,10 @@ def stop_simulation():
     subprocess.check_call(["imunes", "-b", "-e", EXPERIMENT_NAME])
 
 
-def setup_nat(node_infos):
-    """
-    Set up NAT rules at every nodes whose name matches 'nat*'.
+def setup_nat(node_names):
+    """Set up NAT rules at every nodes whose name matches 'nat*'.
     Any such node is assumed to have interfaces 'eth0' (LAN) and 'eth1' (WAN).
-    :param dict(str, NodeInfo) node_infos:
+    :param list(str) node_names: list of all node names
     """
     config = ["iptables --policy FORWARD DROP",
               "iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE",
@@ -141,38 +156,10 @@ def setup_nat(node_infos):
               " --state RELATED,ESTABLISHED -j ACCEPT",
               "iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT"]
 
-    for name in node_infos:
+    for name in node_names:
         if name.startswith('nat'):
             for line in config:
                 subprocess.check_call(["himage", name] + line.split())
-
-
-def set_default_seed_and_requester(node_names, node_infos):
-    """
-    Determine default seed and requester nodes, based on node names.
-    :param str[] node_names: list of node names
-    :param dict(str, NodeInfo) node_infos:
-    """
-    # Make the first 'host*' node a seed
-    host_names = [name for name in node_names if name.startswith('host')]
-    if host_names:
-        seed_name = host_names[0]
-        seed_address = node_infos[seed_name].address
-        for name, info in node_infos.iteritems():
-            if name != seed_name:
-                info.peers = ["{}:{}".format(seed_address, DEFAULT_PORT)]
-    else:
-        print "No host* nodes, cannot set default seed name"
-
-    # Make the first 'pc*' node the task requester
-    requester_name = None
-    pc_names = [name for name in node_names if name.startswith('pc')]
-    if pc_names:
-        requester_name = pc_names[0]
-    else:
-        print "No pc* nodes, cannot set default requester name"
-
-    return requester_name
 
 
 def copy_file(node_name, src_file, target_file):
@@ -194,22 +181,21 @@ def copy_file(node_name, src_file, target_file):
     subprocess.check_call(["hcp", src_file, node_name + ":" + target_file])
 
 
-def start_golem(node_infos):
+def start_golem(node_infos, seed_names):
     print "Starting golem instances..."
-    for name, info in node_infos.iteritems():
-        if not info.run_golem:
-            continue
+
+    def start_node(name, info):
         himage_cmd = "python {}/gnr/node.py".format(IMUNES_GOLEM_DIR)
         if info.address:
-            if name.startswith('pc'):
-                himage_cmd += " --node-address " + info.address
-            elif name.startswith('host'):
+            if info.is_supernode:
                 himage_cmd += " --public-address " + info.address
+            else:
+                himage_cmd += " --node-address " + info.address
         for addr in info.peers:
             himage_cmd += " --peer " + addr
         for task in info.tasks:
             himage_cmd += " --task " + task
-        if name.startswith('host'):
+        if info.disable_blender:
             himage_cmd += " --no-blender"
 
         cmd = "xterm -title '{} ({})' -geom 150x30 -e " \
@@ -218,6 +204,11 @@ def start_golem(node_infos):
         print "Running '{}' on {}...".format(himage_cmd, name)
         info.pid = subprocess.Popen(cmd, shell=True)
         time.sleep(1)
+
+    # First start golem on seed nodes, then on the rest
+    [start_node(n, i) for n, i in node_infos.iteritems() if n in seed_names]
+    time.sleep(2)
+    [start_node(n, i) for n, i in node_infos.iteritems() if n not in seed_names]
 
 
 TASK_ADDED_RE = re.compile(".*Task ([0-9a-f\-]+) added")
@@ -295,22 +286,34 @@ if __name__ == "__main__":
         print "Imunes must be started as root. Sorry..."
         sys.exit(1)
 
-    parser = argparse.ArgumentParser(description="Run network test with IMUNES")
+    parser = argparse.ArgumentParser(
+        description="Run network test with specified IMUNES topology file")
     parser.add_argument("topology_file", metavar="<topology-file>.imn",
-                        type=argparse.FileType('r'),
                         help="IMUNES topology file")
-    parser.add_argument("task_file", metavar="<task-file>.json", nargs='?',
-                        type=argparse.FileType('r'),
+    parser.add_argument("task_file", nargs="?", metavar="<task-file>.json",
                         help="Test task file")
+    parser.add_argument("--supernode", action="append", metavar="<node-name>",
+                        default=[], help="Name of a super node")
+    parser.add_argument("--seed", action="append", metavar="<node-name>",
+                        default=[], help="Name of a seed node")
+    parser.add_argument("--requester", nargs="?", metavar="<node-name>",
+                        help="Name of the requester node")
+    parser.add_argument("--disable-blender", action="append",
+                        default=[], metavar="<node-name>",
+                        help="Name of a node with Blender not available")
+    parser.add_argument("--dont-terminate", action="store_true",
+                        help="Leave the simulation running on exit")
     args = parser.parse_args()
 
-    if len(sys.argv) not in [2,3]:
-        print "Usage: sudo python " + __file__ +\
-              " <topology-file>.imn [<task-file>.json]"
-        sys.exit(1)
+    topology_file = args.topology_file
+    task_file = getattr(args, "task_file", None)
 
-    topology_file = sys.argv[1]
-    task_file = sys.argv[2] if len(sys.argv) >= 3 else None
+    if task_file and not args.requester:
+        print "Task file specified but no requester node (use --requester)"
+        sys.exit(1)
+    if args.requester and not task_file:
+        print "Requester node specified but no task file"
+        sys.exit(1)
 
     # clean up whatever remained from previous experiments
     subprocess.call(["cleanupAll"])
@@ -324,28 +327,33 @@ if __name__ == "__main__":
         converted_task_file, files_to_copy = prepare_task_resources(task_json)
 
     # Start imunes
-    names, infos = start_simulation(topology_file)
+    names = start_simulation(args.topology_file)
 
     # Setup NAT on nodes matching 'nat*'
-    setup_nat(infos)
+    setup_nat(names)
 
-    requester = set_default_seed_and_requester(names, infos)
+    infos = create_node_infos(names, args)
+
+    if args.requester and args.requester not in infos:
+        print "Invalid requester node specified"
+        sys.exit(1)
 
     if task_file:
-        infos[requester].tasks = [converted_task_file]
+        infos[args.requester].tasks = [converted_task_file]
 
         # Copy resource files to the requester node
         for src, dst in files_to_copy.iteritems():
-            copy_file(requester, src, dst)
+            copy_file(args.requester, src, dst)
 
     # 3... 2... 1...
     time.sleep(1)
-    start_golem(infos)
+    start_golem(infos, args.seed)
 
     # TODO: instead of waiting 60 sec we should monitor the logs to see when
     # the computation ends (or fails)
     if task_file:
-        wait_for_task_completion(requester)
+        wait_for_task_completion(args.requester)
 
     time.sleep(10)
-    # stop_simulation()
+    if not args.dont_terminate:
+        stop_simulation()
