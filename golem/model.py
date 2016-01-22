@@ -4,6 +4,7 @@ import datetime
 
 DATABASE_NAME = 'golem.db'
 START_BUDGET = 42000000
+NEUTRAL_TRUST = 0.0
 
 
 class SqliteFKTimeoutDatabase(SqliteDatabase):
@@ -24,7 +25,7 @@ class Database:
         self.create_database()
 
     def create_database(self):
-        db.create_tables([Node, Bank, LocalRank, GlobalRank, NeighbourLocRank], safe=True)
+        db.create_tables([Node, Bank, LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment], safe=True)
 
     def check_node(self, node_id):
         with db.transaction():
@@ -39,22 +40,68 @@ class Database:
 class BaseModel(Model):
     class Meta:
         database = db
+    created_date = DateTimeField(default=datetime.datetime.now)
+    modified_date = DateTimeField(default=datetime.datetime.now)
 
+
+###############
+# NODE MODELS #
+###############
 
 class Node(BaseModel):
+    """ Represent nodes that are active on this machine
+    """
     node_id = CharField(primary_key=True)
-    created_date = DateTimeField(default=datetime.datetime.now)
-    modified_date = DateTimeField(default=datetime.datetime.now)
 
+
+##################
+# PAYMENT MODELS #
+##################
 
 class Bank(BaseModel):
+    """ Represents nodes local account (just for test purpose)
+    """
     node_id = ForeignKeyField(Node, related_name='has', unique=True)
     val = FloatField(default=START_BUDGET)
-    created_date = DateTimeField(default=datetime.datetime.now)
-    modified_date = DateTimeField(default=datetime.datetime.now)
 
+
+class Payment(BaseModel):
+    """ Represents payments that nodes on this machine make to other nodes
+    """
+    paying_node_id = ForeignKeyField(Node, related_name="pay")
+    to_node_id = CharField()
+    task = CharField()
+    val = FloatField()
+    state = CharField()
+
+    class Meta:
+        database = db
+        primary_key = CompositeKey('paying_node_id', 'to_node_id', 'task')
+
+
+class ReceivedPayment(BaseModel):
+    """ Represent payments that nodes on this machine receive from other nodes
+    """
+    node_id = ForeignKeyField(Node, related_name="receive")
+    from_node_id = CharField()
+    task = CharField()
+    val = FloatField()
+    expected_val = FloatField()
+    state = CharField()
+
+    class Meta:
+        database = db
+        primary_key = CompositeKey('node_id', 'from_node_id', 'task')
+
+
+##################
+# RANKING MODELS #
+##################
 
 class LocalRank(BaseModel):
+    """ Represent nodes experience with other nodes, number of positive and
+    negative interactions.
+    """
     node_id = CharField(unique=True)
     positive_computed = FloatField(default=0.0)
     negative_computed = FloatField(default=0.0)
@@ -65,27 +112,26 @@ class LocalRank(BaseModel):
     negative_payment = FloatField(default=0.0)
     positive_resource = FloatField(default=0.0)
     negative_resource = FloatField(default=0.0)
-    created_date = DateTimeField(default=datetime.datetime.now)
-    modified_date = DateTimeField(default=datetime.datetime.now)
 
 
 class GlobalRank(BaseModel):
+    """ Represents global ranking vector estimation
+    """
     node_id = CharField(unique=True)
-    requesting_trust_value = FloatField(default=0.0)
-    computing_trust_value = FloatField(default=0.0)
+    requesting_trust_value = FloatField(default=NEUTRAL_TRUST)
+    computing_trust_value = FloatField(default=NEUTRAL_TRUST)
     gossip_weight_computing = FloatField(default=0.0)
     gossip_weight_requesting = FloatField(default=0.0)
-    created_date = DateTimeField(default=datetime.datetime.now)
-    modified_date = DateTimeField(default=datetime.datetime.now)
 
 
 class NeighbourLocRank(BaseModel):
+    """ Represents neighbour trust level for other nodes
+    """
     node_id = CharField()
     about_node_id = CharField()
-    requesting_trust_value = FloatField(default=0.0)
-    computing_trust_value = FloatField(default=0.0)
-    created_date = DateTimeField(default=datetime.datetime.now)
-    modified_date = DateTimeField(default=datetime.datetime.now)
+    requesting_trust_value = FloatField(default=NEUTRAL_TRUST)
+    computing_trust_value = FloatField(default=NEUTRAL_TRUST)
 
     class Meta:
+        database = db
         primary_key = CompositeKey('node_id', 'about_node_id')
