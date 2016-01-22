@@ -69,7 +69,7 @@ def exec_cmd(cmd, cur_dir, files, nice=20):
         import win32process
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
     stderr = open(os.path.join(cur_dir, files + ".log"), 'w')
-    stderr.write(err)
+    stderr.write(out)
     stderr.close()
     pc.wait()
 
