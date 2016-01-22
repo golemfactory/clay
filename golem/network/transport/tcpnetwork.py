@@ -794,7 +794,10 @@ class FileConsumer(object):
         return data[LONG_STANDARD_SIZE:]
 
     def _print_progress(self):
-        percent = int(100 * self.recv_size / float(self.file_size))
+        if self.file_size != 0:
+            percent = int(100 * self.recv_size / float(self.file_size))
+        else:
+            percent = 100
         if percent > 100:
             percent = 100
         if percent > self.last_percent:
