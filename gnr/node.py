@@ -4,12 +4,14 @@ import os
 import pickle
 import click
 import uuid
+import sys
 import logging.config
 
 from twisted.internet import reactor
 
 from golem.client import create_client
 from golem.network.transport.tcpnetwork import TCPAddress, AddressValueError
+from golem.core.common import get_golem_path
 from golem.task.taskbase import Task
 
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
@@ -17,9 +19,13 @@ from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
 
 
-config_file = os.path.join(os.path.dirname(__file__), "logging.ini")
-logging.config.fileConfig(config_file, disable_existing_loggers=False)
+def config_logging():
+    """Config logger"""
+    config_file = os.path.normpath(os.path.join(get_golem_path(), "gnr/logging.ini"))
+    logging.config.fileConfig(config_file, disable_existing_loggers=False)
 
+
+config_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -52,9 +58,12 @@ class Node(object):
                                                       self.client.get_root_path()))
             self.client.enqueue_new_task(golem_task)
 
-    @staticmethod
-    def run():
-        reactor.run()
+    def run(self):
+        try:
+            reactor.run()
+        finally:
+            self.client.quit()
+            sys.exit(0)
 
 
 class GNRNode(Node):

@@ -3,16 +3,16 @@ import random
 import os
 import math
 from PIL import Image, ImageChops
+
 from golem.task.taskstate import SubtaskStatus
+
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
 from gnr.task.renderingtaskcollector import exr_to_pil
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
-from gnr.renderingdirmanager import get_test_task_path, get_tmp_path
+from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingenvironment import ThreeDSMaxEnvironment
-from gnr.ui.threedsmaxdialog import ThreeDSMaxDialog
-from gnr.customizers.threedsmaxdialogcustomizer import ThreeDSMaxDialogCustomizer
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,7 @@ class ThreeDSMaxDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
-        self.main_program_file = os.path.normpath(os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                                               '../tasks/3dsmaxtask.py')))
+        self.main_program_file = find_task_script("3dsmaxtask.py")
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6

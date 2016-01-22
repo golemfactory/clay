@@ -1,20 +1,23 @@
 import logging
 import os
 import random
-import math
 import shutil
+
+from PIL import Image, ImageChops
 from collections import OrderedDict
-from gnr.renderingtaskstate import RendererDefaults, RendererInfo
-from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
-from gnr.task.renderingtask import RenderingTask
-from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
-    get_task_num_from_pixels
-from gnr.renderingdirmanager import get_test_task_path, get_tmp_path
-from gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
-from gnr.renderingenvironment import VRayEnvironment
 
 from golem.task.taskstate import SubtaskStatus
-from PIL import Image, ImageChops
+
+from gnr.renderingtaskstate import RendererDefaults, RendererInfo
+from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
+from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
+    get_task_num_from_pixels
+from gnr.renderingdirmanager import get_test_task_path, find_task_script
+from gnr.task.renderingtaskcollector import RenderingTaskCollector
+from gnr.renderingenvironment import VRayEnvironment
+
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +26,7 @@ class VrayDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
-        self.main_program_file = os.path.normpath(os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                                               '../tasks/vraytask.py')))
+        self.main_program_file = find_task_script('vraytask.py')
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6

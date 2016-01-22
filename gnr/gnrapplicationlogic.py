@@ -3,18 +3,24 @@ import logging
 import cPickle
 from PyQt4 import QtCore
 
-from gnr.ui.testingtaskprogressdialog import TestingTaskProgressDialog
 from golem.task.taskstate import TaskStatus
-from gnr.gnrtaskstate import GNRTaskState
-from gnr.task.tasktester import TaskTester
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
+from golem.core.common import get_golem_path
+from golem.core.simpleenv import SimpleEnv
 from golem.client import GolemClientEventListener
 from golem.manager.client.nodesmanagerclient import NodesManagerUidClient, NodesManagerClient
-from testtasks.luxrender.lux_test import lux_performance
-from testtasks.blender.blender_test import blender_performance
 
-from testtasks.minilight.src.minilight import makePerfTest
+from gnr.ui.dialog import TestingTaskProgressDialog
+from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
+from gnr.renderingdirmanager import get_benchmarks_path
+from gnr.gnrtaskstate import GNRTaskState
+from gnr.task.tasktester import TaskTester
+
+from gnr.benchmarks.luxrender.lux_test import lux_performance
+from gnr.benchmarks.blender.blender_test import blender_performance
+
+from gnr.benchmarks.minilight.src.minilight import makePerfTest
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +47,12 @@ class GNRApplicationLogic(QtCore.QObject):
         self.test_tasks = {}
         self.task_types = {}
         self.customizer = None
-        self.root_path = os.path.join(os.environ.get('GOLEM'), 'examples/gnr')
+        self.root_path = os.path.normpath(os.path.join(get_golem_path(), 'gnr'))
         self.nodes_manager_client = None
         self.client = None
         self.tt = None
         self.progress_dialog = None
+        self.progress_dialog_customizer = None
         self.add_new_nodes_function = lambda x: None
 
     def register_gui(self, gui, customizer_class):
@@ -256,13 +263,13 @@ class GNRApplicationLogic(QtCore.QObject):
             f.write(tspickled)
 
     def recount_performance(self, num_cores):
-        test_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'testtasks/minilight/cornellbox.ml.txt'))
-        result_file = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'node_data/minilight.ini'))
+        test_file = os.path.join(get_benchmarks_path(), 'minilight', 'cornellbox.ml.txt')
+        result_file = SimpleEnv.env_file_name("minilight.ini")
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
-    
+
     def recount_lux_performance(self):
-        cfg_filename = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'node_data/lux.ini'))
+        cfg_filename = SimpleEnv.env_file_name("lux.ini")
         
         cfg_file = open(cfg_filename, 'w')
         average = lux_performance()
@@ -272,7 +279,7 @@ class GNRApplicationLogic(QtCore.QObject):
         return average
     
     def recount_blender_performance(self):
-        cfg_filename = os.path.normpath(os.path.join(os.environ.get('GOLEM'), 'node_data/blender.ini'))
+        cfg_filename = SimpleEnv.env_file_name("blender.ini")
         
         cfg_file = open(cfg_filename, 'w')
         average = blender_performance()
@@ -291,6 +298,7 @@ class GNRApplicationLogic(QtCore.QObject):
             self.tt = TaskTester(t, self.client.get_root_path(), self._test_task_computation_finished)
 
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
+            self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
             self.progress_dialog.show()
 
             self.tt.run()
@@ -307,11 +315,11 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def _test_task_computation_finished(self, success, est_mem=0):
         if success:
-            self.progress_dialog.showMessage("Test task computation success!")
+            self.progress_dialog_customizer.show_message("Test task computation success!")
         else:
-            self.progress_dialog.showMessage("Task test computation failure... Check resources.")
-        if self.customizer.new_task_dialogCustomizer:
-            self.customizer.new_task_dialogCustomizer.test_task_computation_finished(success, est_mem)
+            self.progress_dialog_customizer.show_mssage("Task test computation failure... Check resources.")
+        if self.customizer.new_task_dialog_customizer:
+            self.customizer.new_task_dialog_customizer.test_task_computation_finished(success, est_mem)
 
     def task_status_changed(self, task_id):
 

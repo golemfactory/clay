@@ -376,6 +376,9 @@ class TaskServer(PendingConnectionsServer):
             tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
         return tcp_addresses
 
+    def quit(self):
+        self.task_computer.quit()
+
     def _get_factory(self):
         return self.factory(self)
 
@@ -545,13 +548,11 @@ class TaskServer(PendingConnectionsServer):
             pc.time = time.time()
 
     def __connection_for_pay_for_task_established(self, session, conn_id, key_id, task_id, price):
-        print "CONNECTION FOR PAY FOR TASK ESTABLISHED"
         session.key_id = key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
         session.send_hello()
         session.send_reward_for_task(task_id, price)
-        print "SEND REWARD"
         self.client.task_reward_paid(task_id, price)
 
     def __connection_for_pay_for_task_failure(self, conn_id, key_id, task_id, price):

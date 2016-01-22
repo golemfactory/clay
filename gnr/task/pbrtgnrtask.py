@@ -2,9 +2,11 @@ import os
 import random
 import logging
 import math
+
 from golem.task.taskstate import SubtaskStatus
+
 from gnr.renderingenvironment import PBRTEnvironment
-from gnr.renderingdirmanager import get_test_task_path
+from gnr.renderingdirmanager import get_test_task_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo, RenderingTaskDefinition
 from gnr.task.scenefileeditor import regenerate_pbrt_file
 from gnr.task.gnrtask import GNROptions, GNRTaskBuilder
@@ -18,8 +20,7 @@ class PbrtDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
-        self.main_program_file = os.path.normpath(os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                                               '../tasks/pbrttask.py')))
+        self.main_program_file = find_task_script("pbrttask.py")
         self.min_subtasks = 4
         self.max_subtasks = 200
         self.default_subtasks = 60

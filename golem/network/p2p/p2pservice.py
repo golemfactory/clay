@@ -244,8 +244,8 @@ class P2PService(PendingConnectionsServer):
         try:
             tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
             self.connect(tcp_address)
-        except AddressValueError, err:
-            logger.error('Invalid seed address: ' + err.messsage)
+        except AddressValueError as err:
+            logger.error('Invalid seed address: ' + str(err))
 
         if self.resource_server:
             self.resource_server.change_config(config_desc)
@@ -501,6 +501,9 @@ class P2PService(PendingConnectionsServer):
         """
         if not self.task_connections_helper.is_new_conn_request(conn_id, key_id, node_info, super_node_info):
             return
+
+        if super_node_info is None and self.node.is_super_node():
+            super_node_info = self.node
 
         logger.debug("Try to start task session {}".format(key_id))
         msg_snd = False

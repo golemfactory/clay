@@ -6,12 +6,14 @@ import subprocess
 import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
+
 from golem.core.simpleexccmd import exec_cmd
 from golem.task.taskstate import SubtaskStatus
 from golem.environments.environment import Environment
+
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingenvironment import LuxRenderEnvironment
-from gnr.renderingdirmanager import get_test_task_path
+from gnr.renderingdirmanager import get_test_task_path, find_task_script
 from gnr.task.imgrepr import load_img, blend
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
@@ -33,8 +35,7 @@ class LuxRenderDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
-        self.main_program_file = os.path.normpath(os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                                               '../../examples/tasks/luxtask.py')))
+        self.main_program_file = find_task_script("luxtask.py")
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 5

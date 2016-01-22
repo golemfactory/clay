@@ -1,4 +1,5 @@
 import logging
+import appdirs
 from os import path
 
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
@@ -50,7 +51,7 @@ NODE_SNAPSHOT_INTERVAL = 4.0
 ADD_TASKS = 0
 MAX_SENDING_DELAY = 360
 USE_DISTRIBUTED_RESOURCE_MANAGEMENT = 1
-DEFAULT_ROOT_PATH = path.normpath(path.join(path.dirname(__file__), '..'))
+DEFAULT_ROOT_PATH = appdirs.user_data_dir('golem')
 REQUESTING_TRUST = -1.0
 COMPUTING_TRUST = -1.0
 P2P_SESSION_TIMEOUT = 240

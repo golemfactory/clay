@@ -2,11 +2,15 @@ import os
 import glob
 import uuid
 import logging
+import appdirs
 import cPickle as pickle
+
 from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task
+
 from gnr.task.infotask import InfoTaskBuilder, InfoTaskDefinition
 from gnr.task.updateothergolemstask import UpdateOtherGolemsTaskBuilder, UpdateOtherGolemsTaskDefinition
+from gnr.renderingdirmanager import find_task_script
 from gnrapplicationlogic import GNRApplicationLogic
 
 logger = logging.getLogger(__name__)
@@ -26,14 +30,13 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         self.start_nodes_manager_function()
 
     def send_test_tasks(self):
-        path = os.path.join(os.environ.get('GOLEM'), 'save/test')
+        path = os.path.join(appdirs.user_data_dir('golem'), "save", "test")
         self.add_and_start_tasks_from_files(glob.glob(os.path.join(path, '*.gt')))
 
     def update_other_golems(self, golem_dir):
         task_definition = UpdateOtherGolemsTaskDefinition()
         task_definition.task_id = "{}".format(uuid.uuid4())
-        task_definition.src_file = os.path.normpath(
-            os.path.join(os.environ.get('GOLEM'), "examples/tasks/update_golem.py"))
+        task_definition.src_file = find_task_script("update_golem.py")
         task_definition.total_subtasks = 100
         task_definition.full_task_timeout = 4 * 60 * 60
         task_definition.subtask_timeout = 20 * 60
@@ -51,8 +54,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
     def send_info_task(self, iterations, full_task_timeout, subtask_timeout):
         info_task_definition = InfoTaskDefinition()
         info_task_definition.task_id = "{}".format(uuid.uuid4())
-        info_task_definition.src_file = os.path.normpath(
-            os.path.join(os.environ.get('GOLEM'), "examples/tasks/send_snapshot.py"))
+        info_task_definition.src_file = find_task_script("send_snapshot.py")
         info_task_definition.total_subtasks = iterations
         info_task_definition.full_task_timeout = full_task_timeout
         info_task_definition.subtask_timeout = subtask_timeout
