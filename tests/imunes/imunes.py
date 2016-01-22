@@ -296,7 +296,7 @@ if __name__ == "__main__":
                         default=[], help="Name of a super node")
     parser.add_argument("--seed", action="append", metavar="<node-name>",
                         default=[], help="Name of a seed node")
-    parser.add_argument("--requester", nargs="?", metavar="<node-name>",
+    parser.add_argument("--requester", metavar="<node-name>",
                         help="Name of the requester node")
     parser.add_argument("--disable-blender", action="append",
                         default=[], metavar="<node-name>",
