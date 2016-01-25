@@ -7,7 +7,7 @@ from mock import patch, MagicMock
 import golem.appconfig as appconfig
 
 from golem.core.simpleenv import SimpleEnv
-from golem.appconfig import NodeConfig, logger, AppConfig, ClientConfigDescriptor
+from golem.appconfig import logger, AppConfig, ClientConfigDescriptor, NodeConfig
 from golem.tools.assertlogs import LogTestCase
 
 
@@ -76,6 +76,10 @@ class TestNodeConfig(LogTestCase):
         good_file = SimpleEnv.env_file_name(TestNodeConfig.good_name)
         if os.path.exists(good_file):
             os.remove(good_file)
+        if hasattr(NodeConfig, "_properties"):
+            del NodeConfig._properties
+        if hasattr(NodeConfig, "properties"):
+            del NodeConfig.properties
 
 
 class TestAppConfig(unittest.TestCase):
@@ -134,4 +138,5 @@ class TestAppConfig(unittest.TestCase):
         if os.path.isdir(SimpleEnv.DATA_DIRECTORY):
             shutil.rmtree(SimpleEnv.DATA_DIRECTORY)
 
-
+if __name__ == '__main__':
+    unittest.main()
