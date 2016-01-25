@@ -224,16 +224,8 @@ class AppConfig:
         for var, val in vars(cfg_desc).iteritems():
             set_func = getattr(self, "set_{}".format(var))
             set_func(val)
-        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), cfg_file, True)
+        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), cfg_file, refresh=True,
+                     check_uid=False)
 
     def __str__(self):
         return str(self._cfg)
-
-
-if __name__ == "__main__":
-    c = AppConfig(0)
-    print c
-    c = AppConfig(1)
-    print c
-    c = AppConfig(2)
-    print c
