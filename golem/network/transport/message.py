@@ -1554,6 +1554,29 @@ class MessageNatPunchFailure(Message):
         return {MessageNatPunchFailure.NAT_PUNCH_FAILURE_STR: True}
 
 
+class MessageRewardPaid(Message):
+    Type = TASK_MSG_BASE + 25
+
+    TASK_ID_STR = u"TASK_ID"
+    REWARD_STR = u"REWARD"
+
+    def __init__(self, task_id=None, reward=None, sig="", timestamp=None, dict_repr=None):
+        Message.__init__(self, MessageRewardPaid.Type, sig, timestamp)
+
+        self.task_id = task_id
+        self.reward = reward
+
+        if dict_repr:
+            self.task_id = dict_repr[MessageRewardPaid.TASK_ID_STR]
+            self.reward = dict_repr[MessageRewardPaid.REWARD_STR]
+
+    def dict_repr(self):
+        return {
+            MessageRewardPaid.TASK_ID_STR: self.task_id,
+            MessageRewardPaid.REWARD_STR: self.reward
+        }
+
+
 RESOURCE_MSG_BASE = 3000
 
 
@@ -1893,6 +1916,7 @@ def init_messages():
     MessageDeltaParts()
     MessageResourceFormat()
     MessageAcceptResourceFormat()
+    MessageRewardPaid()
 
     # Resource messages
     MessageGetResource()

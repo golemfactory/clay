@@ -88,7 +88,6 @@ class PaymentsKeeper(object):
         self.finished_tasks = []  # tasks that are finished and they're payment haven't been processed yet (may still
         # be waiting for last subtask value estimation
         self.tasks_to_pay = deque()  # finished tasks with payments have been processed but haven't been send yet
-        self.waiting_for_payments = {}  # should receive payments from this dict
         self.settled_tasks = {}  # finished tasks with payments that has been pass to task server
         self.db = PaymentsDatabase(node_id)
 
@@ -226,5 +225,5 @@ class AccountInfo(object):
 
     def __eq__(self, other):
         if type(other) is type(self):
-            return self.__dict__ == other.__dict__
+            return self.key_id == other.key_id
         return False
