@@ -23,7 +23,7 @@ class TestNode(unittest.TestCase):
         AppConfig.CONFIG_LOADED = False
 
     @patch('gnr.node.reactor')
-    def test_hep(self, mock_reactor):
+    def test_help(self, mock_reactor):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--help'])
         self.assertEqual(return_value.exit_code, 0)
@@ -76,7 +76,7 @@ class TestNode(unittest.TestCase):
         init_call_args = init_call[1]
         init_call_kwargs = init_call[2]
         self.assertEqual(init_call_args, ())
-        self.assertEqual(init_call_kwargs, {'node_address': node_address})
+        self.assertEqual(init_call_kwargs.get('node_address'), node_address)
 
     @patch('golem.client.Client')
     @patch('gnr.node.reactor')
