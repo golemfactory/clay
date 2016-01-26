@@ -1561,6 +1561,16 @@ class MessageRewardPaid(Message):
     REWARD_STR = u"REWARD"
 
     def __init__(self, task_id=None, reward=None, sig="", timestamp=None, dict_repr=None):
+        """ Create message that informs computing nodes that reward for his task was paid.
+        Right now is only used to simulate receiving real money (so that right steps to mark
+        this payments may be done). In the future this information may contain some info about
+        ethereum transaction or may just be completely replaced with network func. that scan blockchain
+        :param task_id: id of finished task for which payments has been made
+        :param reward: reward
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
         Message.__init__(self, MessageRewardPaid.Type, sig, timestamp)
 
         self.task_id = task_id

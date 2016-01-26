@@ -50,9 +50,6 @@ class TestEthereumPaymentsKeeper(TestWithDatabase):
         payments[addr2].vaue = 10.14 * 2
 
 
-
-
-
 class TestEthAccountInfo(unittest.TestCase):
     def test_comparison(self):
         k = EllipticalKeysAuth()
