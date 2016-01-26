@@ -238,10 +238,7 @@ class TaskServer(PendingConnectionsServer):
             self.remove_task_header(task_id)
             self.task_keeper.remove_waiting_for_verification_task_id(subtask_id)
 
-    def subtask_accepted(self, task_id, reward):
-        logger.debug("Task {} result accepted".format(task_id))
-
-        #  task_id = self.task_keeper.get_waiting_for_verification_task_id(task_id)
+    def reward_paid(self, task_id, reward):
         if not self.task_keeper.is_waiting_for_task(task_id):
             logger.error("Wasn't waiting for reward for task {}".format(task_id))
             return
@@ -254,6 +251,9 @@ class TaskServer(PendingConnectionsServer):
             logger.error("Wrong reward amount {} for task {}".format(reward, task_id))
             self.decrease_trust_payment(task_id)
         self.task_keeper.remove_waiting_for_verification(task_id)
+
+    def subtask_accepted(self, subtask_id, reward):
+        logger.debug("Subask {} result accepted".format(subtask_id))
 
     def subtask_failure(self, subtask_id, err):
         logger.info("Computation for task {} failed: {}.".format(subtask_id, err))
