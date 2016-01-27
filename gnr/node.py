@@ -43,10 +43,9 @@ class Node(object):
     def __init__(self, **config_overrides):
         self.client = create_client(**config_overrides)
 
-    def initialize(self, enable_blender):
+    def initialize(self):
         self.client.start_network()
-        if enable_blender:
-            self.load_environments(self.default_environments)
+        self.load_environments(self.default_environments)
 
     def load_environments(self, environments):
         for env in environments:
@@ -70,7 +69,14 @@ class Node(object):
 
 
 class GNRNode(Node):
-    default_environments = [BlenderEnvironment(), LuxRenderEnvironment()]
+    default_environments = []
+
+    def __init__(self, enable_blender=True, **config_overrides):
+        Node.__init__(self, **config_overrides)
+        if enable_blender:
+            self.default_environments = [
+                BlenderEnvironment(),
+                LuxRenderEnvironment()]
 
     @staticmethod
     def _get_task_builder(task_def):
@@ -136,8 +142,8 @@ def parse_task_file(ctx, param, value):
 @click.option('--blender/--no-blender', default=True)
 def start(node_address, public_address, peer, task, blender):
 
-    node = GNRNode(node_address=node_address, public_address=public_address)
-    node.initialize(enable_blender=blender)
+    node = GNRNode(enable_blender=blender, node_address=node_address, public_address=public_address)
+    node.initialize()
 
     node.connect_with_peers(peer)
     node.add_tasks(task)
