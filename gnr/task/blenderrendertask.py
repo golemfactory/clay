@@ -2,6 +2,7 @@ import logging
 import random
 import os
 import math
+from collections import OrderedDict
 
 from PIL import Image, ImageChops
 
@@ -13,7 +14,7 @@ from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
-from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
+from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil, open_exr_as_rgbf_images, get_single_rgbf_extrema, convert_rgbf_images_to_rgb8_image, print_progress 
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
 
 
@@ -155,8 +156,7 @@ class BlenderRenderTask(FrameRenderingTask):
             parts = 1
 
         if not self.use_frames:
-            min_y = (self.total_tasks - start_task) * (1.0 / float(self.total_tasks))
-            max_y = (self.total_tasks - start_task + 1) * (1.0 / float(self.total_tasks))
+            min_y, max_y = self._get_min_max_y(start_task)
         elif parts > 1:
             min_y = (parts - self._count_part(start_task, parts)) * (1.0 / float(parts))
             max_y = (parts - self._count_part(start_task, parts) + 1) * (1.0 / float(parts))
@@ -164,6 +164,7 @@ class BlenderRenderTask(FrameRenderingTask):
             min_y = 0.0
             max_y = 1.0
 
+        logger.debug("MIN MAX Y: " + str((min_y, max_y)) + " for task " + str(start_task))
         script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, 0.0, 1.0, min_y, max_y)
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
@@ -231,9 +232,26 @@ class BlenderRenderTask(FrameRenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, working_directory, 0)
 
-    def _get_part_size(self):
+    def _get_min_max_y(self, start_task):
+        if self.res_y % self.total_tasks == 0:
+            min_y = (self.total_tasks - start_task) * (1.0 / float(self.total_tasks))
+            max_y = (self.total_tasks - start_task + 1) * (1.0 / float(self.total_tasks))
+        else:
+            ceiling_height = int(math.ceil(float(self.res_y) / float(self.total_tasks)))
+            ceiling_subtasks = self.total_tasks - (ceiling_height * self.total_tasks - self.res_y)
+            if start_task > ceiling_subtasks:
+                min_y = float(self.total_tasks - start_task) * float(ceiling_height - 1) / float(self.res_y)
+                max_y = float(self.total_tasks - start_task + 1) * float(ceiling_height - 1) / float(self.res_y)
+            else:
+                min_y = float((self.total_tasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task) * (ceiling_height)) / float(self.res_y)
+                max_y = float((self.total_tasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task + 1) * (ceiling_height)) / float(self.res_y)
+        return (min_y, max_y)
+        
+    
+    def _get_part_size(self, subtask_id):
+        start_task = self.subtasks_given[subtask_id]['start_task']
         if not self.use_frames:
-            res_y = int(math.floor(float(self.res_y) / float(self.total_tasks)))
+            res_y = self._get_part_size_from_subtask_number(start_task)
         elif len(self.frames) >= self.total_tasks:
             res_y = self.res_y
         else:
@@ -241,9 +259,24 @@ class BlenderRenderTask(FrameRenderingTask):
             res_y = int(math.floor(float(self.res_y) / float(parts)))
         return self.res_x, res_y
 
+    def _get_part_size_from_subtask_number(self, subtask_number):
+        
+        if self.res_y % self.total_tasks == 0:
+            res_y = self.res_y / self.total_tasks
+        else:
+            # in this case task will be divided into not equal parts: floor or ceil of (res_y/total_tasks)
+            # ceiling will be height of subtasks with smaller num
+            ceiling_height = int(math.ceil(float(self.res_y) / float(self.total_tasks)))
+            ceiling_subtasks = self.total_tasks - (ceiling_height * self.total_tasks - self.res_y)
+            if subtask_number > ceiling_subtasks:
+                res_y = ceiling_height - 1
+            else:
+                res_y = ceiling_height
+        return res_y
+
     @check_subtask_id_wrapper
     def _get_part_img_size(self, subtask_id, adv_test_file):
-        x, y = self._get_part_size()
+        x, y = self._get_part_size(subtask_id)
         return 0, 0, x, y
 
     @check_subtask_id_wrapper
@@ -271,7 +304,9 @@ class BlenderRenderTask(FrameRenderingTask):
             else:
                 img = Image.open(new_chunk_file_path)
             img_offset = Image.new("RGB", (self.res_x, self.res_y))
-            offset = int(math.floor((chunk_num - 1) * float(self.res_y) / float(self.total_tasks)))
+            
+            _, offset = self._get_min_max_y(chunk_num)
+            offset = self.res_y - int(offset * self.res_y)
             img_offset.paste(img, (0, offset))
         except Exception as err:
             logger.error("Can't generate preview {}".format(err))
@@ -291,3 +326,102 @@ class BlenderRenderTask(FrameRenderingTask):
     def _get_output_name(self, frame_num, num_start):
         num = str(frame_num)
         return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
+    
+    def _put_image_together(self, tmp_dir):
+        logger.debug("In _put_image_together")
+        output_file_name = u"{}".format(self.output_file, self.output_format)
+        self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
+        if not self._use_outer_task_collector():
+            collector = CustomCollector(paste=True, width=self.res_x, height=self.res_y)
+            for file in self.collected_file_names.values():
+                collector.add_img_file(file)
+            collector.finalize().save(output_file_name, self.output_format)
+        else:
+            self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
+                                               self.collected_file_names.values(), "paste")
+
+class CustomCollector(RenderingTaskCollector):
+    def add_img_file(self, exr_file):
+        rgbf = open_exr_as_rgbf_images(exr_file)
+        d, l = get_single_rgbf_extrema(rgbf)
+
+        if self.darkest:
+            self.darkest = min(d, self.darkest)
+        else:
+            self.darkest = d
+
+        if self.lightest:
+            self.lightest = max(l, self.lightest)
+        else:
+            self.lightest = l
+
+        self.accepted_exr_files.append(exr_file)
+        
+    def finalize(self, show_progress=False):
+        if len(self.accepted_exr_files) == 0:
+            return None
+
+        if show_progress:
+            print "Adding all accepted chunks to the final image"
+
+        if self.lightest == self.darkest:
+            self.lightest = self.darkest + 0.1
+
+        final_img = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_exr_files[0]),
+                                                      self.lightest, self.darkest)
+
+        if self.paste:
+            if not self.width or not self.height:
+                self.width, self.height = final_img.size
+                self.height *= len(self.accepted_exr_files)
+            final_img = self.__paste_image(Image.new('RGB', (self.width, self.height)), final_img, 0)
+
+        for i in range(1, len(self.accepted_exr_files)):
+            print self.accepted_exr_files[i]
+            rgb8_im = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_exr_files[i]),
+                                                        self.lightest, self.darkest)
+            if not self.paste:
+                final_img = ImageChops.add(final_img, rgb8_im)
+            else:
+                final_img = self.__paste_image(final_img, rgb8_im, i)
+
+            if show_progress:
+                print_progress(i, len(self.accepted_exr_files))
+
+        if len(self.accepted_alpha_files) > 0:
+            final_alpha = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[0]),
+                                                         self.lightest, self.darkest)
+
+            for i in range(1, len(self.accepted_alpha_files)):
+                l_im = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[i]),
+                                                      self.lightest, self.darkest)
+                final_alpha = ImageChops.add(final_alpha, l_im)
+
+            final_img.putalpha(final_alpha)
+
+        return final_img
+    
+    def __paste_image(self, final_img, new_part, num):
+        logger.debug("In __paste_image...")
+        res_y = self.height
+        img_offset = Image.new("RGB", (self.width, self.height))
+        offset, _ = self._get_min_max_y(num, res_y)
+        offset = res_y - int(offset * res_y)
+        img_offset.paste(new_part, (0, offset))
+        return ImageChops.add(final_img, img_offset)
+    
+    def _get_min_max_y(self, start_task, res_y):
+        total_tasks = len(self.accepted_exr_files)
+        if res_y % total_tasks == 0:
+            min_y = (total_tasks - start_task) * (1.0 / float(total_tasks))
+            max_y = (total_tasks - start_task + 1) * (1.0 / float(total_tasks))
+        else:
+            ceiling_height = int(math.ceil(float(res_y) / float(total_tasks)))
+            ceiling_subtasks = total_tasks - (ceiling_height * total_tasks - res_y)
+            if start_task > ceiling_subtasks:
+                min_y = float(total_tasks - start_task) * float(ceiling_height - 1) / float(res_y)
+                max_y = float(total_tasks - start_task + 1) * float(ceiling_height - 1) / float(res_y)
+            else:
+                min_y = float((total_tasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task) * (ceiling_height)) / float(res_y)
+                max_y = float((total_tasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task + 1) * (ceiling_height)) / float(res_y)
+        return (min_y, max_y)

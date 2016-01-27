@@ -289,7 +289,7 @@ class RenderingTask(GNRTask):
 
     @check_subtask_id_wrapper
     def _verify_imgs(self, subtask_id, tr_files):
-        res_x, res_y = self._get_part_size()
+        res_x, res_y = self._get_part_size(subtask_id)
 
         adv_test_file = self._choose_adv_ver_file(tr_files, subtask_id)
         x0, y0, x1, y1 = self._get_part_img_size(subtask_id, adv_test_file)
