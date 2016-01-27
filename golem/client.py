@@ -373,9 +373,6 @@ class Client:
     def get_plugin_port(self):
         return self.config_desc.plugin_port
 
-    def get_eth_account(self):
-        return self.config_desc.eth_account
-
     def task_finished(self, task_id):
         self.transaction_system.task_finished(task_id)
 

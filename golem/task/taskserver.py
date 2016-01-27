@@ -253,7 +253,7 @@ class TaskServer(PendingConnectionsServer):
         self.task_keeper.remove_waiting_for_verification(task_id)
 
     def subtask_accepted(self, subtask_id, reward):
-        logger.debug("Subask {} result accepted".format(subtask_id))
+        logger.debug("Subtask {} result accepted".format(subtask_id))
 
     def subtask_failure(self, subtask_id, err):
         logger.info("Computation for task {} failed: {}.".format(subtask_id, err))
@@ -453,7 +453,7 @@ class TaskServer(PendingConnectionsServer):
 
         session.send_hello()
         session.send_report_computed_task(waiting_task_result, self.node.prv_addr, self.cur_port,
-                                          self.client.get_eth_account(),
+                                          self.client.transaction_system.get_eth_account(),
                                           self.node)
 
     def __connection_for_task_result_failure(self, conn_id, key_id, waiting_task_result):

@@ -20,8 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+# TODO: Those are just useful functions form pyethereum.utils. When we fully integrate pyethereum we can deleted this
+
+
 from rlp.sedes import big_endian_int
-from rlp.utils import str_to_bytes
+from rlp.utils import str_to_bytes, decode_hex
+try:
+    from Crypto.Hash import keccak
+    sha3_256 = lambda x: keccak.new(digest_bits=256, data=x).digest()
+except:
+    import sha3 as _sha3
+    sha3_256 = lambda x: _sha3.sha3_256(x).digest()
 
 
 def to_string(value):
@@ -53,3 +62,22 @@ def ceil32(x):
 
 def to_string_for_regexp(value):
     return str(value)
+
+
+def sha3(seed):
+    return sha3_256(to_string(seed))
+
+
+def normalize_address(x, allow_blank=False):
+    if allow_blank and x == '':
+        return ''
+    if len(x) in (42, 50) and x[:2] == '0x':
+        x = x[2:]
+    if len(x) in (40, 48):
+        x = decode_hex(x)
+    if len(x) == 24:
+        assert len(x) == 24 and sha3(x[:20])[:4] == x[-4:]
+        x = x[:20]
+    if len(x) != 20:
+        raise Exception("Invalid address format: %r" % x)
+    return x
