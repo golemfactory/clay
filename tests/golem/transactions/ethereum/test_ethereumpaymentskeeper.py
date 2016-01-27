@@ -1,6 +1,7 @@
 import unittest
 
 from rlp.utils import decode_hex
+from sha3 import sha3_256
 
 from golem.transactions.ethereum.ethereumpaymentskeeper import (EthAccountInfo, EthereumPaymentsKeeper, EthereumAddress,
                                                                 logger)
@@ -97,3 +98,8 @@ class TestEthereumAddress(LogTestCase):
         addr5 = decode_hex(addr1[2:])
         e = EthereumAddress(addr5)
         self.assertTrue(addr1, e.get_str_addr())
+        e = EthereumAddress(addr5 + sha3_256(addr5).digest()[:4])
+        self.assertTrue(addr1, e.get_str_addr())
+        addr6 = ""
+        e = EthereumAddress(addr6)
+        self.assertIsNone(e.get_str_addr())
