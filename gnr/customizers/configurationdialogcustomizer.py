@@ -30,7 +30,7 @@ class ConfigurationDialogCustomizer(Customizer):
     @staticmethod
     def du(path):
         try:
-            return subprocess.check_output(['du', '-sh', path]).split()[0]
+            return subprocess.check_output(['du', '-sh', path]).split()[0].replace(",", ".")
         except (OSError, subprocess.CalledProcessError):
             try:
                 size = get_dir_size(path)
