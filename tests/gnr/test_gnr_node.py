@@ -7,6 +7,7 @@ from gnr.node import start, config_logging
 from click.testing import CliRunner
 from golem.network.transport.tcpnetwork import TCPAddress
 from golem.appconfig import AppConfig
+from gnr.renderingenvironment import BlenderEnvironment
 
 
 class A(object):
@@ -238,3 +239,31 @@ class TestNode(unittest.TestCase):
             if os.path.exists(test_json_file):
                 os.remove(test_json_file)
 
+    @patch('golem.client.Client')
+    @patch('gnr.node.reactor')
+    def test_blender_enabled(self, mock_reactor, mock_client):
+        runner = CliRunner()
+        return_value = runner.invoke(start)
+        self.assertEquals(return_value.exit_code, 0)
+
+        env_types = []
+        for name, args, _ in mock_client.mock_calls:
+            if name == '().environments_manager.add_environment':
+                (env_arg, ) = args
+                self.assertTrue(env_arg.accept_tasks)
+                env_types.append(type(env_arg))
+        self.assertTrue(BlenderEnvironment in env_types)
+
+    @patch('golem.client.Client')
+    @patch('gnr.node.reactor')
+    def test_blender_disabled(self, mock_reactor, mock_client):
+        runner = CliRunner()
+        return_value = runner.invoke(start, ['--no-blender'])
+        self.assertEquals(return_value.exit_code, 0)
+
+        env_types = []
+        for name, args, _ in mock_client.mock_calls:
+            if name == '().environments_manager.add_environment':
+                (env_arg, ) = args
+                env_types.append(type(env_arg))
+        self.assertTrue(BlenderEnvironment not in env_types)
