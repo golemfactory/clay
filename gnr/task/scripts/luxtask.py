@@ -9,7 +9,40 @@ import psutil
 import shutil
 
 
+def get_directory(_file):
+    directory = os.path.dirname(os.path.abspath(_file))
+    if not os.path.exists(directory):
+        return None
+    else:
+        return directory
+
+
+def find_flm(directory):
+    if not os.path.exists(directory):
+        return None
+        
+    try:
+        for root, dirs, files in os.walk(directory):
+            for names in files:
+                if names[-4:] == ".flm":
+                    return os.path.join(root,names)
+
+    except:
+        import traceback
+        # Print the stack traceback
+        traceback.print_exc()
+        return None
+
+
 def format_lux_renderer_cmd(cmd_file, start_task, output_file, outfilebasename, scenefile, num_threads):
+    directory = get_directory(scenefile)
+    if (directory != None):
+        flm_file = find_flm(directory)
+        if (flm_file != None):
+            cmd = ["{}".format(cmd_file), "{}".format(scenefile), "-R", "{}".format(flm_file), "-o",
+           "{}/{}{}.png".format(output_file, outfilebasename, start_task), "-t", "{}".format(num_threads)]
+            print cmd
+            return cmd
     cmd = ["{}".format(cmd_file), "{}".format(scenefile), "-o",
            "{}/{}{}.png".format(output_file, outfilebasename, start_task), "-t", "{}".format(num_threads)]
     print cmd

@@ -30,7 +30,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         self.start_nodes_manager_function()
 
     def send_test_tasks(self):
-        path = os.path.join(appdirs.user_data_dir('golem'), "save" "test")
+        path = os.path.join(appdirs.user_data_dir('golem'), "save", "test")
         self.add_and_start_tasks_from_files(glob.glob(os.path.join(path, '*.gt')))
 
     def update_other_golems(self, golem_dir):

@@ -43,3 +43,8 @@ class EthAccountInfo(AccountInfo):
         AccountInfo.__init__(self, key_id, port, addr, node_name, node_info)
         self.eth_account = eth_account
 
+    def __eq__(self, other):
+        ethereum_eq = self.eth_account == other.eth_account
+        account_eq = AccountInfo.__eq__(self, other)
+        return ethereum_eq and account_eq
+

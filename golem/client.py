@@ -160,6 +160,7 @@ class Client:
         self.task_adder_server.start()
 
     def quit(self):
+        self.task_server.quit()
         if self.task_adder_server:
             self.task_adder_server.terminate()
 
