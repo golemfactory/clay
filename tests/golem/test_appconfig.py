@@ -84,6 +84,7 @@ class TestNodeConfig(LogTestCase):
 
 class TestAppConfig(unittest.TestCase):
     def setUp(self):
+        self.saved_data_directory = SimpleEnv.DATA_DIRECTORY
         SimpleEnv.DATA_DIRECTORY = os.path.abspath("tmpdir")
         if not os.path.isdir(SimpleEnv.DATA_DIRECTORY):
             os.makedirs(SimpleEnv.DATA_DIRECTORY)
@@ -137,6 +138,7 @@ class TestAppConfig(unittest.TestCase):
     def tearDown(self):
         if os.path.isdir(SimpleEnv.DATA_DIRECTORY):
             shutil.rmtree(SimpleEnv.DATA_DIRECTORY)
+        SimpleEnv.DATA_DIRECTORY = self.saved_data_directory
 
 if __name__ == '__main__':
     unittest.main()
