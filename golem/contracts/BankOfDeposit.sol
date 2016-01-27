@@ -28,20 +28,17 @@ contract BankOfDeposit {
         _balance[msg.sender] += msg.value;
     }
 
-    function withdrawAll() external {
-        msg.sender.send(_balance[msg.sender]);
-
-        // This is bad because it clears the storage and following transfers
-        // will cost more.
-        _balance[msg.sender] = 0;
-    }
-
-    function withdraw(uint value) external {
+    // Withdraw money from bank.
+    // Param `to` is the Ethereum address where the money will be send to.
+    // If not provided, message sender's address will be used.
+    function withdraw(uint value, address to) external {
         uint balance = _balance[msg.sender];
         if (balance >= value) {
-            // FIXME: send() can fail if sending to another contract.
-            msg.sender.send(value);
-            _balance[msg.sender] -= value;
+            address target = to; // Copy is needed because `to` is immutable.
+            if (target == 0)
+                target = msg.sender;
+            if (target.send(value)) // Sending money can fail
+                _balance[msg.sender] -= value;
         }
     }
 

@@ -54,9 +54,13 @@ class BankContractTest(unittest.TestCase):
     def balance_of(self, addr_idx):
         return self.c.balanceOf(tester.accounts[addr_idx])
 
-    def withdraw(self, addr_idx, value):
+    def withdraw(self, addr_idx, value, to=None):
         m = self.monitor(addr_idx)
-        o = self.c.withdraw(value, sender=m.key, profiling=True)
+        if to:
+            to_addr = tester.accounts[to]
+            o = self.c.withdraw(value, to_addr, sender=m.key, profiling=True)
+        else:
+            o = self.c.withdraw(value, sender=m.key, profiling=True)
         return o['gas']
 
     @staticmethod
@@ -92,19 +96,19 @@ class BankContractTest(unittest.TestCase):
     def test_deployment(self):
         c, g = self.deploy_contract()
         assert len(c) == 20
-        assert g == 446122
+        assert g == 414029
 
     def test_create_account(self):
         self.deploy_contract()
         g = self.deposit(1, 1)
-        assert g == 41690
+        assert g == 41668
         assert self.contract_balance() == 1
 
     def test_deposit(self):
         self.deploy_contract()
         self.deposit(1, 1)
         g = self.deposit(1, 10*9)
-        assert g == 26690
+        assert g == 26668
         assert self.contract_balance() == 10*9 + 1
 
     def test_balance(self, dep=12345678):
@@ -124,11 +128,11 @@ class BankContractTest(unittest.TestCase):
         a = tester.accounts[6]
         b0 = self.state.block.get_balance(a)
         eg = self.withdraw(6, w)
-        assert eg == 12309
+        assert eg <= 12408
         assert self.contract_balance() == v - w
         diff = self.state.block.get_balance(a) - b0
         cost = diff - w
-        g = 21000 + 5000 + 6700 + 1457
+        g = 21000 + 5000 + 6700 + 1492
         assert cost == -g
         assert self.balance_of(6) == v - w
 
@@ -142,9 +146,49 @@ class BankContractTest(unittest.TestCase):
         b0 = self.state.block.get_balance(a)
         self.withdraw(6, w)
         diff = self.state.block.get_balance(a) - b0
-        g = 21000 + 1170
+        g = 21000 + 1137
         assert diff == -g
         assert self.balance_of(6) == v
+
+    def test_withdraw_explicit_to_self(self):
+        self.deploy_contract()
+        assert self.contract_balance() == 0
+        v = 1234 * eth
+        w = 1111 * eth
+        self.deposit(6, v)
+        assert self.contract_balance() == v
+        assert self.balance_of(6) == v
+        a = tester.accounts[6]
+        b0 = self.state.block.get_balance(a)
+        eg = self.withdraw(6, w, 6)
+        assert eg <= 12408
+        assert self.contract_balance() == v - w
+        diff = self.state.block.get_balance(a) - b0
+        cost = diff - w
+        g = 21000 + 5000 + 6700 + 2888
+        assert cost == -g
+        assert self.balance_of(6) == v - w
+
+    def test_withdraw_explicit_to(self):
+        self.deploy_contract()
+        assert self.contract_balance() == 0
+        v = 1234 * eth
+        w = 1111 * eth
+        self.deposit(6, v)
+        assert self.contract_balance() == v
+        assert self.balance_of(6) == v
+        a = tester.accounts[6]
+        b0 = self.state.block.get_balance(a)
+        to = tester.accounts[7]
+        b_to = self.state.block.get_balance(to)
+        eg = self.withdraw(6, w, 7)
+        assert eg <= 12408
+        assert self.contract_balance() == v - w
+        cost = self.state.block.get_balance(a) - b0
+        g = 21000 + 5000 + 6700 + 2888
+        assert cost == -g
+        assert self.balance_of(6) == v - w
+        assert self.state.block.get_balance(to) - b_to == w
 
     def test_transfer_2(self):
         """Deposits some money, then transfers it to 2 other accounts."""
@@ -196,7 +240,7 @@ class BankContractTest(unittest.TestCase):
         v1, v7 = 1*eth, 7*eth
         v = v1 + v7
         g = self.transfer(8, [(1, v1), (7, v7)], value=v)
-        assert g == 40152
+        assert g <= 40130
         assert self.balance(8) == 0
         assert self.balance(1) == v1 + 1
         assert self.balance(7) == v7 + 1
