@@ -10,6 +10,7 @@ except ImportError:
 import jsonpickle
 import click
 import uuid
+import sys
 import logging.config
 
 from twisted.internet import reactor
@@ -63,20 +64,16 @@ class Node(object):
                                                       self.client.get_root_path()))
             self.client.enqueue_new_task(golem_task)
 
-    @staticmethod
-    def run():
-        reactor.run()
+    def run(self):
+        try:
+            reactor.run()
+        finally:
+            self.client.quit()
+            sys.exit(0)
 
 
 class GNRNode(Node):
-    default_environments = []
-
-    def __init__(self, enable_blender=True, **config_overrides):
-        Node.__init__(self, **config_overrides)
-        if enable_blender:
-            self.default_environments = [
-                BlenderEnvironment(),
-                LuxRenderEnvironment()]
+    default_environments = [BlenderEnvironment(), LuxRenderEnvironment()]
 
     @staticmethod
     def _get_task_builder(task_def):
@@ -128,7 +125,12 @@ def parse_task_file(ctx, param, value):
     return tasks
 
 
-@click.command()
+@click.group()
+def node_cli():
+    pass
+
+
+@node_cli.command()
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=parse_node_addr,
               help="Network address to use for this node")
@@ -139,10 +141,9 @@ def parse_task_file(ctx, param, value):
               help="Connect with given peer: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
 @click.option('--task', '-t', multiple=True, type=click.File(lazy=True), callback=parse_task_file,
               help="Request task from file")
-@click.option('--blender/--no-blender', default=True)
-def start(node_address, public_address, peer, task, blender):
+def start(node_address, public_address, peer, task, **kwargs):
 
-    node = GNRNode(enable_blender=blender, node_address=node_address, public_address=public_address)
+    node = GNRNode(node_address=node_address, public_address=public_address)
     node.initialize()
 
     node.connect_with_peers(peer)

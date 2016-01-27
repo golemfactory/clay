@@ -185,7 +185,7 @@ def start_golem(node_infos, seed_names):
     print "Starting golem instances..."
 
     def start_node(name, info):
-        himage_cmd = "python {}/gnr/node.py".format(IMUNES_GOLEM_DIR)
+        himage_cmd = "python {}/tests/imunes/node.py".format(IMUNES_GOLEM_DIR)
         if info.address:
             if info.is_supernode:
                 himage_cmd += " --public-address " + info.address
