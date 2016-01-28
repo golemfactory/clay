@@ -65,7 +65,7 @@ class EthereumAddress(object):
     """
     @classmethod
     def parse(cls, address):
-        if len(address) in range(40, 50):
+        if len(address) in range(40, 51):
             address = address.lower()
         return normalize_address(address)
 
