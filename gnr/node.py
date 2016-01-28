@@ -1,12 +1,7 @@
 """GNR Compute Node"""
 
 import os
-
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
-
+import cPickle as pickle
 import jsonpickle
 import click
 import uuid
