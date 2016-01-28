@@ -8,6 +8,7 @@ from click.testing import CliRunner
 from golem.network.transport.tcpnetwork import TCPAddress
 from golem.appconfig import AppConfig, CommonConfig, NodeConfig
 from golem.tools.testwithdatabase import TestWithDatabase
+from golem.tools.testwithappconfig import TestWithAppConfig
 
 
 class A(object):
@@ -16,24 +17,14 @@ class A(object):
         self.b = "abc"
 
 
-class TestNode(TestWithDatabase):
+class TestNode(TestWithDatabase, TestWithAppConfig):
 
     def setUp(self):
-        # This is to prevent test methods from picking up AppConfigs
-        # created by previously run test methods:
-        AppConfig.CONFIG_LOADED = False
+        TestWithAppConfig.setUp(self)
         TestWithDatabase.setUp(self)
 
     def tearDown(self):
-        AppConfig.CONFIG_LOADED = False
-        if hasattr(CommonConfig, "_properties"):
-            del CommonConfig._properties
-        if hasattr(CommonConfig, "properties"):
-            del CommonConfig.properties
-        if hasattr(NodeConfig, "_properties"):
-            del NodeConfig._properties
-        if hasattr(NodeConfig, "properties"):
-            del NodeConfig.properties
+        TestWithAppConfig.tearDown(self)
         TestWithDatabase.tearDown(self)
 
     @patch('gnr.node.reactor')
