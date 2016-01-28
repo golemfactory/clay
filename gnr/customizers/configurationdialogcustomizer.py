@@ -30,15 +30,15 @@ class ConfigurationDialogCustomizer(Customizer):
     @staticmethod
     def du(path):
         try:
-            return subprocess.check_output(['du', '-sh', path]).split()[0].replace(",", ".")
+            size = int(subprocess.check_output(['du', '-sb', path]).split()[0])
         except (OSError, subprocess.CalledProcessError):
             try:
-                size = get_dir_size(path)
-                human_readable_size, idx = dir_size_to_display(size)
-                return "{} {}".format(human_readable_size, translate_resource_index(idx))
+                size = int(get_dir_size(path))
             except OSError as err:
                 logger.info("Can't open dir {}: {}".format(path, str(err)))
-        return "-1"
+                return "-1"
+        human_readable_size, idx = dir_size_to_display(size)
+        return "{} {}".format(human_readable_size, translate_resource_index(idx))
 
     def _setup_connections(self):
         self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
