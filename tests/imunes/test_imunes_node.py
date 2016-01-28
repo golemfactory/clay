@@ -1,25 +1,29 @@
-import unittest
 from mock import patch
 from gnr.node import start, GNRNode
 from click.testing import CliRunner
-from golem.appconfig import AppConfig
+from golem.core.simpleenv import SimpleEnv
 from gnr.renderingenvironment import BlenderEnvironment
+from golem.tools.testwithappconfig import TestWithAppConfig
+
+import shutil
+import tempfile
 
 # Do not remove! (even if pycharm complains that this import is not used)
 import node
 
 
-class TestNode(unittest.TestCase):
+class TestNode(TestWithAppConfig):
 
     def setUp(self):
-        # This is to prevent test methods from picking up AppConfigs
-        # created by previously run test methods:
-        AppConfig.CONFIG_LOADED = False
-
+        super(TestNode, self).setUp()
         self.saved_default_environments = GNRNode.default_environments
+        self.tmpdir = tempfile.mkdtemp(prefix="golem-test-")
+        SimpleEnv.DATA_DIRECTORY = self.tmpdir
 
     def tearDown(self):
         GNRNode.default_environments = self.saved_default_environments
+        shutil.rmtree(self.tmpdir)
+        super(TestNode, self).tearDown()
 
     @patch('golem.client.Client')
     @patch('gnr.node.reactor')

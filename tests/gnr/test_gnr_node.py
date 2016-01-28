@@ -1,4 +1,3 @@
-import unittest
 import os
 import cPickle
 import jsonpickle
@@ -6,7 +5,6 @@ from mock import patch, call
 from gnr.node import start
 from click.testing import CliRunner
 from golem.network.transport.tcpnetwork import TCPAddress
-from golem.appconfig import AppConfig, CommonConfig, NodeConfig
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithappconfig import TestWithAppConfig
 
