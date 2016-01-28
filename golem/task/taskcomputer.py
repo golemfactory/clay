@@ -13,7 +13,7 @@ from golem.vm.vm import PythonProcVM, PythonTestVM, PythonVM
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
-
+from golem.task.docker_job import DockerImage, DockerJob
 
 logger = logging.getLogger(__name__)
 
@@ -203,9 +203,23 @@ class TaskComputer(object):
         task_id = self.assigned_subtasks[subtask_id].task_id
         working_directory = self.assigned_subtasks[subtask_id].working_directory
         self.dir_manager.clear_temporary(task_id)
-        tt = PyTaskThread(self, subtask_id, working_directory, src_code, extra_data, short_desc,
-                          self.resource_manager.get_resource_dir(task_id), self.resource_manager.get_temporary_dir(task_id),
-                          task_timeout)
+        # For testing only
+        extra_data["docker-image"] = "imapp/blender"
+        extra_data["docker-image-id"] = None
+        if extra_data["docker-image"]:
+            tt = DockerRunner(self, subtask_id, working_directory, src_code,
+                              extra_data["docker-image"],
+                              extra_data["docker-image-id"],
+                              extra_data, short_desc,
+                              self.resource_manager.get_resource_dir(task_id),
+                              self.resource_manager.get_temporary_dir(task_id),
+                              task_timeout)
+        else:
+            tt = PyTaskThread(self, subtask_id, working_directory, src_code,
+                              extra_data, short_desc,
+                              self.resource_manager.get_resource_dir(task_id),
+                              self.resource_manager.get_temporary_dir(task_id),
+                              task_timeout)
         tt.setDaemon(True)
         self.current_computations.append(tt)
         tt.start()
@@ -318,3 +332,35 @@ class PyTestTaskThread(PyTaskThread):
         super(PyTestTaskThread, self).__init__(task_computer, subtask_id, working_directory, src_code, extra_data,
                                                short_desc, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()
+
+
+class DockerRunner(TaskThread):
+
+    def __init__(self, task_computer, subtask_id, working_directory, src_code,
+                 image_name, image_id,
+                 extra_data, short_desc, res_path, tmp_path, timeout):
+        super(DockerRunner, self).__init__(
+            task_computer, subtask_id, working_directory, src_code, extra_data,
+            short_desc, res_path, tmp_path, timeout)
+
+        self.image = DockerImage(image_name, id=image_id)
+        self.job = None
+
+    def run(self):
+        try:
+            self.job = DockerJob(self.image)
+            self.job.start()
+            self.task_computer.task_computed(self)
+        except Exception as exc:
+            logger.error("Task computing error: {}".format(exc))
+            self.error = True
+            self.error_msg = str(exc)
+            self.done = True
+            self.task_computer.task_computed(self)
+        finally:
+            if self.job:
+                self.job.clean(force=True)
+
+    def get_progress(self):
+        # TODO: make the container update some status file?
+        return 0.0
