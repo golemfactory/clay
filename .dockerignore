@@ -20,3 +20,4 @@ testtasks
 *.egg
 *.db
 *.log
+!tests/imunes/node.py

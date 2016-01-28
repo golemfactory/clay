@@ -3,10 +3,13 @@ import os
 import shutil
 from golem.core.simpleenv import SimpleEnv
 
-SimpleEnv.DATA_DIRECTORY = os.path.abspath("tmpdir")
-
 
 class TestSimpleEnv(unittest.TestCase):
+
+    def setUp(self):
+        self.saved_data_directory = SimpleEnv.DATA_DIRECTORY
+        SimpleEnv.DATA_DIRECTORY = os.path.abspath("tmpdir")
+
     def testEnvFileName(self):
         if os.path.isdir(SimpleEnv.DATA_DIRECTORY):
             shutil.rmtree(SimpleEnv.DATA_DIRECTORY)
@@ -30,3 +33,4 @@ class TestSimpleEnv(unittest.TestCase):
     def tearDown(self):
         if os.path.isdir(SimpleEnv.DATA_DIRECTORY):
             shutil.rmtree(SimpleEnv.DATA_DIRECTORY)
+        SimpleEnv.DATA_DIRECTORY = self.saved_data_directory
