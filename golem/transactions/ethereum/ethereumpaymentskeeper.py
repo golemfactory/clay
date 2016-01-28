@@ -2,7 +2,7 @@ import logging
 from rlp.utils import encode_hex
 
 try:
-    from pyethereum.utils import normalize_address
+    from ethereum.utils import normalize_address
 except ImportError:
     from golem.transactions.ethereum.ethereumutils import normalize_address
 
