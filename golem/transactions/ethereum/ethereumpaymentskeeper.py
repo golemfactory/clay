@@ -1,11 +1,7 @@
 import logging
 from rlp.utils import encode_hex
 
-try:
-    from ethereum.utils import normalize_address
-except ImportError:
-    from golem.transactions.ethereum.ethereumutils import normalize_address
-
+from ethereum.utils import normalize_address
 
 from golem.transactions.paymentskeeper import AccountInfo, PaymentsKeeper
 
