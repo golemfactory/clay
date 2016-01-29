@@ -17,4 +17,4 @@ ENV PYTHONPATH=/golem LUXRENDER_ROOT=/usr/bin/luxrender
 
 WORKDIR /golem
 
-ENTRYPOINT ["/usr/bin/python", "/golem/job.py"]
+ENTRYPOINT ["/usr/bin/python", "/golem/input/job.py"]
