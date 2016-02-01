@@ -11,9 +11,7 @@ TEST_TAG = "latest"
 TEST_IMAGE = "{}:{}".format(TEST_REPOSITORY, TEST_TAG)
 
 
-class TestDockerImage(unittest.TestCase):
-    """TODO: Mock docker client in this test case"""
-
+class DockerTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Disable all the tests if docker is not available"""
@@ -25,8 +23,12 @@ class TestDockerImage(unittest.TestCase):
                 assert False, "Docker image {} is not available".format(
                     TEST_IMAGE)
         except requests.exceptions.ConnectionError:
-            assert False, "Docker daemon is not running"
-            #TODO: skip all tests without reporting failure
+            raise unittest.SkipTest(
+                "Skipping tests: Cannot connect with Docker daemon")
+
+
+class TestDockerImage(DockerTestCase):
+    """TODO: Mock docker client in this test case"""
 
     def setUp(self):
         client = Client()
