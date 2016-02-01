@@ -3,8 +3,8 @@ FROM ikester/blender
 MAINTAINER Artur Zawłocki <artur.zawlocki@imapp.pl>
 
 RUN apt-get update && \
-    apt-get install -y \
-      python \
+    apt-get install -y --no-install-recommends \
+      python python-psutil \
       wget && \
     apt-get clean
 
