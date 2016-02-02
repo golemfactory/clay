@@ -13,7 +13,7 @@ COPY scripts/default_job.py /golem/job.py
 
 RUN cd /tmp && wget http://www.luxrender.net/release/luxrender/1.5/linux/lux-v1.5.1-x86_64-sse2.tar.bz2 && tar jxf lux-v1.5.1-x86_64-sse2.tar.bz2 && mv lux-v1.5.1-x86_64-sse2 /usr/bin/luxrender
 
-ENV PYTHONPATH=/golem LUXRENDER_ROOT=/usr/bin/luxrender
+ENV PATH=/usr/local/blender:$PATH PYTHONPATH=/golem LUXRENDER_ROOT=/usr/bin/luxrender
 
 WORKDIR /golem
 
