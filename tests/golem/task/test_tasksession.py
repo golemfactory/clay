@@ -2,6 +2,8 @@ from mock import Mock
 
 from golem.tools.assertlogs import LogTestCase
 from golem.task.tasksession import TaskSession, logger
+from golem.network.transport.message import MessageRewardPaid
+
 
 class TestTaskSession(LogTestCase):
     def test_init(self):
@@ -46,3 +48,11 @@ class TestTaskSession(LogTestCase):
         with self.assertLogs(logger, level=1):
             self.assertEqual(ts.encrypt(data), data)
 
+    def test_reward_paid(self):
+        m = MessageRewardPaid("ABC", 131)
+        ts = TaskSession(Mock())
+        ts.verified = True
+        ts.can_be_not_encrypted.append(m.Type)
+        ts.can_be_unsigned.append(m.Type)
+        ts.interpret(m)
+        ts.task_server.reward_paid.assert_called_with("ABC", 131)

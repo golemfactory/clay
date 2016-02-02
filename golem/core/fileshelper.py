@@ -1,5 +1,8 @@
 import os
 import shutil
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def copy_file_tree(src, dst, exclude=None):
@@ -37,8 +40,11 @@ def get_dir_size(dir_):
     size = os.path.getsize(dir_)
     for el in os.listdir(dir_):
         path = os.path.join(dir_, el)
-        if os.path.isfile(path):
-            size += os.path.getsize(path)
-        elif os.path.isdir(path):
-            size += get_dir_size(path)
+        try:
+            if os.path.isfile(path):
+                size += os.path.getsize(path)
+            elif os.path.isdir(path):
+                size += get_dir_size(path)
+        except OSError as err:
+            logger.warning(err)
     return size
