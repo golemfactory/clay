@@ -203,10 +203,10 @@ class TaskComputer(object):
         task_id = self.assigned_subtasks[subtask_id].task_id
         working_directory = self.assigned_subtasks[subtask_id].working_directory
         self.dir_manager.clear_temporary(task_id)
-        # For testing only
+        # TODO: For testing only, remove
         extra_data["docker-image"] = "imapp/blender"
         extra_data["docker-image-id"] = None
-        if extra_data["docker-image"]:
+        if extra_data.get("docker-image"):
             tt = DockerRunner(self, subtask_id, working_directory, src_code,
                               extra_data["docker-image"],
                               extra_data["docker-image-id"],
@@ -348,18 +348,30 @@ class DockerRunner(TaskThread):
 
     def run(self):
         try:
-            self.job = DockerJob(self.image)
-            self.job.start()
-            self.task_computer.task_computed(self)
+            params = self.extra_data.copy()
+            del params["docker-image"]
+            del params["docker-image-id"]
+            with DockerJob(self.image, self.src_code, params,
+                           self.working_directory,
+                           self.res_path, self.tmp_path) as job:
+                self.job = job
+                self.job.start()
+                exit_code = self.job.wait()
+                if exit_code == 0:
+                    # TODO: this always returns file, implement returning data
+                    # TODO: this only collects top-level files, what if there
+                    # are output files in subdirs?
+                    out_files = [os.path.join(self.tmp_path, f)
+                                 for f in os.listdir(self.tmp_path)]
+                    out_files = filter(lambda f: os.path.isfile(f), out_files)
+                    self.result = {"data": out_files, "result_type": 1}
+                self.task_computer.task_computed(self)
         except Exception as exc:
             logger.error("Task computing error: {}".format(exc))
             self.error = True
             self.error_msg = str(exc)
             self.done = True
             self.task_computer.task_computed(self)
-        finally:
-            if self.job:
-                self.job.clean(force=True)
 
     def get_progress(self):
         # TODO: make the container update some status file?

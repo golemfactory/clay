@@ -1,37 +1,7 @@
-import tempfile
 import os
 import sys
-import glob
-import cPickle as pickle
-import zlib
 import subprocess
-import shutil
 import psutil
-
-
-def return_data(files):
-    res = []
-    for f in files:
-        with open(f, "rb") as fh:
-            file_data = fh.read()
-        file_data = zlib.compress(file_data, 9)
-        res.append(pickle.dumps((os.path.basename(f), file_data)))
-
-    return {'data': res, 'result_type': 0}
-
-
-def return_files(files):
-    copy_path = os.path.normpath(os.path.join(tmp_path, ".."))
-    for f in files:
-        shutil.copy2(f, copy_path)
-
-    files = [os.path.normpath(os.path.join(copy_path, os.path.basename(f))) for f in files]
-    return {'data': files, 'result_type': 1}
-
-
-def get_files():
-    output_files = tmp_path
-    return glob.glob(output_files + "/*.exr")
 
 
 def remove_old_files():
@@ -68,39 +38,43 @@ def exec_cmd(cmd, nice=20):
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
     else:
         p = psutil.Process(pc.pid)
-        p.nice(nice)
+        if psutil.__version__ == '1.2.1':
+            p.set_nice(nice)  # imapp/blender has psutil ver. 1.2.1
+        else:
+            p.nice(nice)
 
     pc.wait()
 
 
-def format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file, start_task, engine,
+def format_blender_render_cmd(cmd_file, output_dir, outfilebasename, scene_file, script_file, start_task, engine,
                               frame):
     cmd = ["{}".format(cmd_file), "-b", "{}".format(scene_file), "-P", "{}".format(script_file),
-           "-o", "{}\{}{}".format(output_files, outfilebasename, start_task), "-E", "{}".format(engine), "-F", "EXR",
+           "-o", "{}/{}{}".format(output_dir, outfilebasename, start_task), "-E", "{}".format(engine), "-F", "EXR",
            "-f", "{}".format(frame)]
     return cmd
 
 
-def run_blender_task(outfilebasename, scene_file, script_file, start_task, engine, frames):
-
-    output_files = tmp_path
-    # remove_old_files()
+def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames):
 
     cmd_file = __read_from_environment()
-    # scene_file = os.path.normpath(os.path.join(os.getcwd(), scene_file))
-    if not os.path.exists(os.path.normpath(scene_file)):
-        print "Scene file does not exist"
+    scene_file = os.path.normpath(scene_file)
+    if not os.path.exists(scene_file):
+        print "Scene file {} does not exist".format(scene_file)
         return {'data': [], 'result_type': 0}
 
+    with open("/golem/output/blenderscript.py", "w") as script_file:
+        script_file.write(script_src)
+
     for frame in frames:
-        cmd = format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file,
-                                        start_task, engine, frame)
+        cmd = format_blender_render_cmd(
+            cmd_file, output_dir, outfilebasename, scene_file, script_file.name,
+            start_task, engine, frame)
         print cmd
         exec_cmd(cmd)
 
-    # os.remove(script_file.name)
+    os.remove(script_file.name)
 
-    return return_files(get_files())
 
-output = run_blender_task(outfilebasename, scene_file, script_file, start_task, engine, frames)
+output_dir = "/golem/output/"
+output = run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames)
 

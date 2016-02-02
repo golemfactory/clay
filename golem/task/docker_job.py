@@ -2,9 +2,6 @@ from docker import Client
 from docker import errors
 
 from os import path
-import os
-import shutil
-import tempfile
 
 
 class DockerImage(object):
@@ -53,24 +50,16 @@ class DockerJob(object):
     STATE_KILLED = "killed"
     STATE_REMOVED = "removed"
 
-    # name of the input dir, relative to the task dir)
-    INPUT_DIR = "input"
     # name of the script file, relative to the task dir
-    TASK_SCRIPT = path.join(INPUT_DIR, "job.py")
+    TASK_SCRIPT = "job.py"
     # name of the parameters file, relative to the task dir
-    PARAMS_FILE = path.join(INPUT_DIR, "params.py")
-    # name of the resource dir, relative to the task dir
-    RESOURCE_DIR = path.join(INPUT_DIR, "res")
-    # name of the output dir, relative to the task dir
-    OUTPUT_DIR = "output"
+    PARAMS_FILE = "params.py"
 
-    # name of the dest task dir
-    DEST_TASK_DIR = "/golem"
-    DEST_INPUT_DIR = "/golem/input"
-    DEST_OUTPUT_DIR = "/golem/output"
-    DEST_TASK_FILE = "/golem/input/job.py"
+    RESOURCES_DIR = "/golem/resources/"
+    OUTPUT_DIR = "/golem/output/"
 
-    def __init__(self, image, script_src, parameters, resource_dir, output_dir):
+    def __init__(self, image, script_src, parameters,
+                 work_dir, resource_dir, output_dir):
         """
         :param DockerImage image: Docker image to use
         :param str script_src: source of the script file
@@ -80,22 +69,17 @@ class DockerJob(object):
         self.image = image
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
+        self.work_dir = work_dir
         self.resource_dir = resource_dir
         self.output_dir = output_dir
 
-        self.task_dir = None
+        self.task_dir = self.resource_dir + "/" + self.work_dir
         self.container = None
         self.container_id = None
         self.container_log = None
         self.state = self.STATE_NEW
 
     def _prepare(self):
-        # Create a temporary dir that will be mounted as a volume with
-        # task script and resources
-        self.task_dir = tempfile.mkdtemp(prefix="golem-")
-        task_input_dir = self._get_input_dir()
-        os.mkdir(task_input_dir, 0777)
-
         # Save parameters in task_dir/PARAMS_FILE
         if self.parameters:
             params_file_path = self._get_params_path()
@@ -109,25 +93,16 @@ class DockerJob(object):
         with open(task_script_path, "w") as script_file:
             script_file.write(self.script_src)
 
-        # Copy the resource files to task_dir/RESOURCE_DIR
-        task_resource_dir = self._get_resource_dir()
-        shutil.copytree(self.resource_dir, task_resource_dir)
-
-        # Create a temporary dir that will be mounted as a volume into which
-        # the output file is written
-        task_output_dir = self._get_output_dir()
-        os.mkdir(task_output_dir, 0777)
-
         # Setup volumes for the container
         client = Client()
         host_cfg = client.create_host_config(
             binds={
-                task_input_dir: {
-                    "bind": self.DEST_INPUT_DIR,
+                self.resource_dir: {
+                    "bind": self.RESOURCES_DIR,
                     "mode": "ro"
                 },
-                task_output_dir: {
-                    "bind": self.DEST_OUTPUT_DIR,
+                self.output_dir: {
+                    "bind": self.OUTPUT_DIR,
                     "mode": "rw"
                 }
             }
@@ -135,9 +110,11 @@ class DockerJob(object):
 
         self.container = client.create_container(
             image=self.image.name,
-            volumes=[self.DEST_INPUT_DIR, self.DEST_OUTPUT_DIR],
-            host_config = host_cfg,
-            network_disabled=True)
+            volumes=[self.RESOURCES_DIR, self.OUTPUT_DIR],
+            host_config=host_cfg,
+            network_disabled=True,
+            entrypoint=["/usr/bin/python", "job.py"],
+            working_dir=self.RESOURCES_DIR + "/" + self.work_dir)
 
         self.container_id = self.container["Id"]
         assert self.container_id
@@ -153,13 +130,6 @@ class DockerJob(object):
             self.container = None
             self.container_id = None
             self.state = self.STATE_REMOVED
-        if self.task_dir:
-            # Copy output file to the output dir
-            out_dir = self._get_output_dir()
-            for f in os.listdir(out_dir):
-                shutil.copy(path.join(out_dir, f), self.output_dir)
-            shutil.rmtree(self.task_dir)
-            self.task_dir = None
 
     def __enter__(self):
         self._prepare()
@@ -168,28 +138,18 @@ class DockerJob(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self._cleanup()
 
-    def _get_input_dir(self):
-        return path.join(self.task_dir, self.INPUT_DIR)
-
-    def _get_resource_dir(self):
-        return path.join(self.task_dir, self.RESOURCE_DIR)
-
     def _get_script_path(self):
         return path.join(self.task_dir, self.TASK_SCRIPT)
 
     def _get_params_path(self):
         return path.join(self.task_dir, self.PARAMS_FILE)
 
-    def _get_output_dir(self):
-        assert self.task_dir
-        return path.join(self.task_dir, self.OUTPUT_DIR)
-
     def start(self):
         if self.get_status() == self.STATE_CREATED:
             client = Client()
             client.start(self.container_id)
             result = client.inspect_container(self.container_id)
-            self.state = self.STATE_RUNNING
+            self.state = result["State"]["Status"]
             return result
         return None
 

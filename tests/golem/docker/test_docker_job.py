@@ -17,6 +17,7 @@ TEST_TAG = "latest"
 TEST_IMAGE = "{}:{}".format(TEST_REPOSITORY, TEST_TAG)
 
 
+# TODO: Does not work, needs update
 class TestDockerJob(DockerTestCase):
 
     SCRIPT = """
@@ -255,10 +256,13 @@ with open("/golem/output/out.txt", "w") as f:
 
         params = {
             "outfilebasename": "out",
-            "scene_file": "res/" + path.basename(scene_files[0]),
-            "script_file": "res/" + path.basename(crop_script),
+            "scene_file": DockerJob.DEST_RESOURCE_DIR +
+                          path.basename(scene_files[0]),
+            "script_file": DockerJob.DEST_RESOURCE_DIR +
+                           path.basename(crop_script),
             "start_task": 42,
-            "engine": "BLENDER",
+            "end_task": 42,
+            "engine": "CYCLES",
             "frames": [1]
         }
 
@@ -268,6 +272,9 @@ with open("/golem/output/out.txt", "w") as f:
             if exit_code is not 0:
                 print job.get_logs()
             self.assertEqual(exit_code, 0)
+
+        out_files = os.listdir(self.output_dir)
+        self.assertEqual(out_files, ['out420001.exr'])
 
 
 
