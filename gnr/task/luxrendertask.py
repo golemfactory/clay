@@ -8,6 +8,7 @@ from collections import OrderedDict
 from PIL import Image, ImageChops
 
 from golem.core.simpleexccmd import exec_cmd
+from golem.core.common import get_golem_path
 from golem.task.taskstate import SubtaskStatus
 from golem.environments.environment import Environment
 
@@ -365,7 +366,7 @@ class LuxTask(RenderingTask):
         '''
         
         # the file containing result of task test
-        test_result_flm = os.path.join(os.environ["GOLEM"], "save", str(self.header.task_id) + ".flm")
+        test_result_flm = os.path.join(get_golem_path(), "save", str(self.header.task_id) + ".flm")
         # output flm
         output_file_name = u"{}".format(self.output_file, self.output_format)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))

@@ -68,10 +68,12 @@ def exec_cmd(cmd, cur_dir, files, nice=20):
     if is_windows():
         import win32process
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
-    stderr = open(os.path.join(cur_dir, files + ".log"), 'w')
-    stderr.write(err)
-    stderr.close()
     pc.wait()
+    with open(os.path.join(cur_dir, files + ".err.log"), 'w') as stderr:
+        stderr.write(err)
+    with open(os.path.join(cur_dir, files + ".log"), "w") as stdout:
+        stdout.write(out)
+
 
 
 def format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file, start_task, engine,
