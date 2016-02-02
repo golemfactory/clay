@@ -62,7 +62,7 @@ def is_windows():
     return sys.platform == 'win32'
 
 
-def exec_cmd(cmd, cur_dir, files, nice=20):
+def exec_cmd(cmd, cur_dir, files):
     pc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = pc.communicate()
     if is_windows():
@@ -103,7 +103,7 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine
         cmd = format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file.name,
                                         start_task, engine, frame)
         print cmd
-        exec_cmd(cmd, output_files, outfilebasename + str(start_task) + "_" + str(frame), 19)
+        exec_cmd(cmd, output_files, outfilebasename + str(start_task) + "_" + str(frame))
 
     os.remove(script_file.name)
 

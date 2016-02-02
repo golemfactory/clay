@@ -97,7 +97,7 @@ def is_windows():
     return sys.platform == 'win32'
 
 
-def exec_cmd(cmd, cur_dir, files, nice=20):
+def exec_cmd(cmd, cur_dir, files):
     pc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = pc.communicate()
     if is_windows():
@@ -138,7 +138,7 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir
     prev_dir = os.getcwd()
     os.chdir(scene_dir)
 
-    exec_cmd(cmd, output_files, outfilebasename + str(start_task), 19)
+    exec_cmd(cmd, output_files, outfilebasename + str(start_task))
 
     os.chdir(prev_dir)
     files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm") + glob.glob(output_files + "/*.log")
