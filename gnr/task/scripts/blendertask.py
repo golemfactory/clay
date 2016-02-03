@@ -6,8 +6,6 @@ import cPickle as pickle
 import zlib
 import subprocess
 import shutil
-import psutil
-
 
 
 def return_data(files):
@@ -32,7 +30,7 @@ def return_files(files):
 
 def get_files():
     output_files = tmp_path
-    return glob.glob(output_files + "/*.exr") + glob.glob(output_files + "/*.log")
+    return glob.glob(os.path.join(output_files, "*.exr")) + glob.glob(os.path.join(output_files, "*.log"))
 
 
 def remove_old_files():
@@ -62,18 +60,17 @@ def is_windows():
     return sys.platform == 'win32'
 
 
-def exec_cmd(cmd, cur_dir, files):
+def exec_cmd(cmd, cur_dir, out_file_name):
     pc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = pc.communicate()
     if is_windows():
         import win32process
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
     pc.wait()
-    with open(os.path.join(cur_dir, files + ".err.log"), 'w') as stderr:
+    with open(os.path.join(cur_dir, out_file_name + ".err.log"), 'w') as stderr:
         stderr.write(err)
-    with open(os.path.join(cur_dir, files + ".log"), "w") as stdout:
+    with open(os.path.join(cur_dir, out_file_name + ".log"), "w") as stdout:
         stdout.write(out)
-
 
 
 def format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file, start_task, engine,

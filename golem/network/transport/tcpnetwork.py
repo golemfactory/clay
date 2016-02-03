@@ -10,8 +10,8 @@ from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, T
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.protocol import connectionDone
 from twisted.internet.interfaces import IPullProducer
-
 from zope.interface import implements
+from copy import copy
 
 from golem.core.databuffer import DataBuffer
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
@@ -620,7 +620,7 @@ class FileProducer(object):
         :param int buff_size: size of the buffer
         :param dict extra_data: additional information that should be return to the session
         """
-        self.file_list = file_list
+        self.file_list = copy(file_list)
         self.session = session
         self.buff_size = buff_size
 
@@ -732,7 +732,7 @@ class FileConsumer(object):
         :param dict extra_data: additional information that should be return to the session
         :return:
         """
-        self.file_list = file_list
+        self.file_list = copy(file_list)
 
         self.final_file_list = [os.path.normpath(os.path.join(output_dir, f)) for f in file_list]
         self.fh = None  # Current file descriptor
@@ -905,7 +905,7 @@ class DataProducer(object):
 
     def load_data(self):
         """ Load first chunk of data """
-        self.size = len(self.data_to_send)
+        self.size = len(self.data_to_send) + LONG_STANDARD_SIZE
         logger.info("Sending file size:{}".format(self.size))
         self._prepare_init_data()
         self.it = self.buff_size
@@ -928,7 +928,7 @@ class DataProducer(object):
         """ Produce data for the consumer a single time. Send a chunk of data or finish productions. """
         if self.data:
             self.session.conn.transport.write(self.data)
-            self.num_send += self.buff_size
+            self.num_send += len(self.data)
             self._print_progress()
 
             if self.it < len(self.data_to_send):
@@ -956,7 +956,7 @@ class DataProducer(object):
         self.last_percent = percent
 
     def _prepare_init_data(self):
-        self.data = struct.pack("!L", self.size) + self.data_to_send[:self.buff_size]
+        self.data = struct.pack("!L", self.size - LONG_STANDARD_SIZE) + self.data_to_send[:self.buff_size]
 
     def _prepare_data(self):
         self.data = self.data_to_send[self.it:self.it + self.buff_size]
