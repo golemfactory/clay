@@ -1,20 +1,8 @@
 import os
-import unittest
-import logging
 import shutil
-import tempfile
+
 from golem.resource.dirmanager import DirManager
-
-
-class TestDirFixture(unittest.TestCase):
-
-    def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
-        self.path = tempfile.mkdtemp(prefix='golem')
-
-    def tearDown(self):
-        if os.path.isdir(self.path):
-            shutil.rmtree(self.path)
+from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestDirManager(TestDirFixture):
