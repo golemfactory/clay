@@ -4,6 +4,7 @@ import time
 from os import path
 from subprocess import Popen
 
+import appdirs
 import psutil
 from eth_rpc_client import Client as EthereumRpcClient
 
@@ -28,19 +29,21 @@ class Client(EthereumRpcClient):
         if not Client.__client_subprocess:
             assert not Client.__client_rpc_port
             rpcport = find_free_net_port(9001)
-            # FIXME: Place Ethereum-related code in one package.
-            genesis_file = path.join(path.dirname(__file__), '..', '..',
-                                     'contracts', 'genesis_golem.json')
+            basedir = path.dirname(__file__)
+            # Data dir must be set the class user to allow multiple nodes running
+            datadir = path.join(appdirs.user_data_dir('golem'), 'ethereum9')
+            genesis_file = path.join(basedir, 'genesis_golem.json')
+            peers_file = path.join(basedir, 'peers.js')
             args = [
                 'geth',
-                '--datadir', '~/.local/share/Golem/ethereum/test',
+                '--datadir', datadir,
                 '--rpc',
                 '--rpcport', str(rpcport),
                 '--networkid', '9',
                 '--genesis', genesis_file,
                 '--nodiscover',
                 '--verbosity', '0',
-                'js', 'golem/contracts/peers.js'
+                'js', peers_file
             ]
 
             Client.__client_subprocess = Popen(args)

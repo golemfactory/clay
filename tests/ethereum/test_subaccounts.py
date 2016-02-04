@@ -4,7 +4,7 @@ tester.serpent = True  # tester tries to load serpent module, prevent that.
 from rlp.utils import decode_hex, encode_hex
 from ethereum.utils import int_to_big_endian, denoms
 
-from golem.contracts import BankOfDeposit
+from golem.ethereum.contracts import BankOfDeposit
 
 eth = denoms.ether
 
