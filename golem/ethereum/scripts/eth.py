@@ -1,3 +1,4 @@
+import logging
 from os import path
 from pprint import pprint
 
@@ -18,6 +19,7 @@ from pyethapp.eth_service import ChainService
 from pyethapp.pow_service import PoWService
 from pyethapp.utils import merge_dict
 
+from golem.ethereum import Client
 from golem.ethereum.contracts import BankOfDeposit
 
 slogging.configure(":info")
@@ -245,28 +247,25 @@ def history(app):
 @app.group()
 @click.pass_context
 def faucet(ctx):
-    data_dir = ctx.obj
-    config = _build_config(data_dir, 'faucet')
-    config['discovery']['bootstrap_nodes'].append(SERVER_ENODE)
-    app = _build_app(config)
-    app.start()
-    while not app.services.peermanager.num_peers():
-        print "waiting for connection..."
+    logging.basicConfig(level=logging.DEBUG)
+    geth = Client()
+    while not geth.get_peer_count():
         gevent.sleep(1)
-    gevent.sleep(1)
-    while app.services.chain.is_syncing:
-        print "syncing..."
+    for i in range(10):
+        gevent.sleep(1)
+        geth.is_syncing()
+    while geth.is_syncing():
         gevent.sleep(1)
 
-    svc = app.services.chain
-    head = svc.chain.head
-    nonce = head.get_nonce(FAUCET_ADDR)
+    data_dir = ctx.obj  # FIXME: set geth's data dir
+    nonce = geth.get_transaction_count(FAUCET_ADDR.encode('hex'))
+
     print "NONCE", nonce
     if nonce == 0:  # Deploy Bank of Deposit contract
         tx = Transaction(nonce, 1, 3141592, to='', value=0,
                          data=BankOfDeposit.INIT_HEX.decode('hex'))
         tx.sign(FAUCET_PRIVKEY)
-        svc.add_transaction(tx)
+        geth.send(tx)
         addr = tx.creates
         assert addr == "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
         print "ADDR", addr.encode('hex')
@@ -276,11 +275,7 @@ def faucet(ctx):
 @faucet.command('balance')
 @click.pass_obj
 def faucet_balance(app):
-    gevent.sleep(2)
-    while app.services.chain.is_syncing:
-        gevent.sleep(1)
-    print app.services.chain.chain.head.get_balance(FAUCET_ADDR)
-    # app.stop()
+    print Client().get_balance(FAUCET_ADDR.encode('hex'))
 
 
 @faucet.command('send')
@@ -288,16 +283,15 @@ def faucet_balance(app):
 @click.argument('value', default=1)
 @click.pass_obj
 def faucet_send(app, to, value):
-    svc = app.services.chain
-    chain = svc.chain
+    geth = Client()
     value = int(value * denoms.ether)
-    nonce = chain.head_candidate.get_nonce(FAUCET_ADDR)
+    nonce = geth.get_transaction_count(FAUCET_ADDR.encode('hex'))
     to = normalize_address(to)
     tx = Transaction(nonce, 1, 21000, to, value, '')
     tx.sign(FAUCET_PRIVKEY)
-    svc.add_transaction(tx)
-    print "Transaction added."
-    # app.stop()
+    r = geth.send(tx)
+    print "Transaction sent:", r
+    gevent.sleep(10)
 
 
 if __name__ == '__main__':

@@ -6,6 +6,7 @@ from subprocess import Popen
 
 import appdirs
 import psutil
+import rlp
 from eth_rpc_client import Client as EthereumRpcClient
 
 
@@ -42,6 +43,7 @@ class Client(EthereumRpcClient):
                 '--networkid', '9',
                 '--genesis', genesis_file,
                 '--nodiscover',
+                '--gasprice', '0',
                 '--verbosity', '0',
                 'js', peers_file
             ]
@@ -77,6 +79,36 @@ class Client(EthereumRpcClient):
         self.__start_client_subprocess()
         assert self.__client_subprocess and self.__client_rpc_port
         super(Client, self).__init__(port=self.__client_rpc_port)
+
+    def get_peer_count(self):
+        """
+        https://github.com/ethereum/wiki/wiki/JSON-RPC#net_peerCount
+        """
+        response = self.make_request("net_peerCount", [])
+        return int(response['result'], 16)
+
+    def is_syncing(self):
+        """
+        https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_syncing
+        """
+        response = self.make_request("eth_syncing", [])
+        result = response['result']
+        print "SYNCING", result
+        return bool(result)
+
+    def get_transaction_count(self, address):
+        """
+        https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_gettransactioncount
+        """
+        response = self.make_request("eth_getTransactionCount", [address, "pending"])
+        return int(response['result'], 16)
+
+    def send_raw_transaction(self, data):
+        response = self.make_request("eth_sendRawTransaction", [data])
+        return response['result']
+
+    def send(self, transaction):
+        return self.send_raw_transaction(rlp.encode(transaction).encode('hex'))
 
 
 if __name__ == "__main__":
