@@ -93,7 +93,6 @@ class Client(EthereumRpcClient):
         """
         response = self.make_request("eth_syncing", [])
         result = response['result']
-        print "SYNCING", result
         return bool(result)
 
     def get_transaction_count(self, address):
