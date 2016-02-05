@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 from os import path
 from pprint import pprint
 
@@ -21,6 +23,19 @@ from pyethapp.utils import merge_dict
 
 from golem.ethereum import Client
 from golem.ethereum.contracts import BankOfDeposit
+
+
+class SimpleAccount:
+    def __init__(self, datadir):
+        keyfile = path.join(datadir, 'ethkey.json')
+        if path.exists(keyfile):
+            data = json.load(open(keyfile, 'r'))
+            self.priv = keys.decode_keystore_json(data, "FIXME: password!")
+        else:
+            self.priv = os.urandom(32)
+            data = keys.make_keystore_json(self.priv, "FIXME: password!")
+            json.dump(data, open(keyfile, 'w'))
+        self.address = keys.privtoaddr(self.priv)
 
 slogging.configure(":info")
 
@@ -80,6 +95,16 @@ def app(ctx, data_dir):
         data_dir = path.join(appdirs.user_data_dir("golem"), "ethereum9")
     ctx.obj = data_dir
 
+    logging.basicConfig(level=logging.DEBUG)
+    geth = Client()
+    while not geth.get_peer_count():
+        gevent.sleep(1)
+    for i in range(10):
+        gevent.sleep(1)
+        geth.is_syncing()
+    while geth.is_syncing():
+        gevent.sleep(1)
+
 
 @app.command()
 @click.pass_obj
@@ -104,19 +129,13 @@ def server(data_dir):
 @click.pass_context
 def node(ctx, name, bootstrap_node):
     data_dir = ctx.obj
+
     config = _build_config(data_dir, name)
     if bootstrap_node:
         config['discovery']['bootstrap_nodes'].append(bootstrap_node)
     else:
         config['discovery']['bootstrap_nodes'].append(SERVER_ENODE)
     app = _build_app(config)
-    accounts = app.services.accounts
-    print accounts.keystore_dir
-    if len(accounts) == 0:
-        me = Account.new('')
-        me.path = accounts.propose_path(me.address)
-        accounts.add_account(me)
-    app.start()
     ctx.obj = app
 
 
@@ -125,19 +144,17 @@ def node(ctx, name, bootstrap_node):
 @click.argument('recipient')
 @click.argument('value', type=int)
 def direct(app, recipient, value):
-    me = app.services.accounts[0]
+    geth = Client()
+    me = SimpleAccount(path.join(app.config['data_dir']))
+
     print "MY ADDRESS", me.address.encode('hex')
-    svc = app.services.chain
-    head = svc.chain.head
-    nonce = head.get_nonce(me.address)
+    nonce = geth.get_transaction_count(me.address.encode('hex'))
     print "NONCE", nonce
     print "VALUE", value
-    tx = Transaction(nonce, 1, 21000, to=recipient.decode('hex'), value=value,
+    tx = Transaction(nonce, 1, 21000, to=recipient, value=value,
                      data='')
-    me.unlock('')
-    assert me.privkey
-    tx.sign(me.privkey)
-    svc.add_transaction(tx)
+    tx.sign(me.priv)
+    print geth.send(tx)
 
 
 def encode_payment(to, value):
@@ -148,7 +165,7 @@ def encode_payment(to, value):
     if len(value) < 12:
         value = '\0' * (12 - len(value)) + value
     assert len(value) == 12
-    to = to.decode('hex')
+    to = normalize_address(to)
     assert len(to) == 20
     mix = value + to
     assert len(mix) == 32
@@ -169,11 +186,10 @@ def multi(app, payments):
         encp.append(encode_payment(p[0], p[1]))
         value += long(p[1])
 
-    me = app.services.accounts[0]
+    geth = Client()
+    me = SimpleAccount(path.join(app.config['data_dir']))
     print "MY ADDRESS", me.address.encode('hex')
-    svc = app.services.chain
-    head = svc.chain.head
-    nonce = head.get_nonce(me.address)
+    nonce = geth.get_transaction_count(me.address.encode('hex'))
 
     translator = abi.ContractTranslator(BankOfDeposit.ABI)
     data = translator.encode('transfer', [encp])
@@ -181,67 +197,32 @@ def multi(app, payments):
 
     gas = 21000 + len(encp) * 30000
     tx = Transaction(nonce, 1, gas, to=BANK_ADDR, value=value, data=data)
-    me.unlock('')
-    assert me.privkey
-    tx.sign(me.privkey)
-    svc.add_transaction(tx)
+    tx.sign(me.priv)
+    print geth.send(tx)
 
 
 @node.command()
 @click.pass_obj
 def history(app):
-    while not app.services.peermanager.num_peers():
-        print "waiting for connection..."
-        gevent.sleep(1)
-    gevent.sleep(1)
-    while app.services.chain.is_syncing:
-        print "syncing..."
-        gevent.sleep(1)
+    geth = Client()
+    me = SimpleAccount(path.join(app.config['data_dir']))
+    id = hex(100389287136786176327247604509743168900146139575972864366142685224231313322991L)
+    outgoing = geth.get_logs(topics=[id, me.address.encode('hex')])
+    print outgoing
+    incomming = geth.get_logs(topics=[id, None, me.address.encode('hex')])
+    print incomming
 
-    me = app.services.accounts[0]
     print "MY ADDRESS", me.address.encode('hex')
-    svc = app.services.chain
-    head = svc.chain.head
-    nonce = head.get_nonce(me.address)
-    print "NONCE", nonce
-    balance = head.get_balance(me.address)
+    balance = geth.get_balance(me.address.encode('hex'))
     print "BALANCE", balance
-
-    incomming = []
-    outgoing = []
-    b = head
-    while b:
-        txs = b.get_transactions()
-        for i, tx in enumerate(txs):
-            if tx.to == me.address:
-                incomming.append((tx.sender, tx.value, True, b.number, i))
-            elif tx.to == BANK_ADDR:
-                receipt = b.get_receipt(i)
-                for log in receipt.logs:
-                    to = int_to_big_endian(log.topics[2])
-                    if to == me.address:
-                        sender = int_to_big_endian(log.topics[1])
-                        value = big_endian_to_int(log.data)
-                        incomming.append((sender, value, False, b.number, i))
-
-            if tx.sender == me.address:
-                if tx.to == BANK_ADDR:
-                    receipt = b.get_receipt(i)
-                    for log in receipt.logs:
-                        to = int_to_big_endian(log.topics[2])
-                        value = big_endian_to_int(log.data)
-                        outgoing.append((to, value, False, b.number, i))
-                else:
-                    outgoing.append((tx.to, tx.value, True, b.number, i))
-        b = b.get_parent() if not b.is_genesis() else None
 
     print "OUTGOING"
     for p in outgoing:
-        print "[{}]".format(p[3]), "->", p[0].encode('hex'), p[1], "(direct)" if p[2] else "(indirect)"
+        print "[{}] -> {} {}".format(int(p['blockNumber'], 16), p['topics'][2][-40:], int(p['data'], 16))
 
     print "INCOMING"
     for p in incomming:
-        print "[{}]".format(p[3]), "<-", p[0].encode('hex'), p[1], "(direct)" if p[2] else "(indirect)"
+        print "[{}] -> {} {}".format(p['blockNumber'], p['topics'][1][-40:], p['data'])
 
 
 @app.group()
