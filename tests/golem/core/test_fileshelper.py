@@ -24,7 +24,7 @@ class TestDirSize(unittest.TestCase):
         with self.assertRaises(OSError):
             get_dir_size("notexisting")
 
-        self.assertEqual(get_dir_size(self.testdir), 0)
+        self.assertLess(get_dir_size(self.testdir), 10000)
         with open(self.testfile1, 'w') as f:
             f.write("a" * 20000)
         os.makedirs(self.testdir2)
