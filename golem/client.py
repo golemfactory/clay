@@ -41,6 +41,9 @@ def create_client(**config_overrides):
     config_desc.init_from_app_config(app_config)
 
     for key, val in config_overrides.iteritems():
+        # For safety we only allow here overriding properties that are
+        # fields of ClientConfigDescriptor. Hence the getattr() here:
+        getattr(config_desc, key)
         setattr(config_desc, key, val)
 
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
@@ -87,8 +90,7 @@ class Client:
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
                          key=self.keys_auth.get_key_id(),
-                         prv_addr=self.config_desc.node_address,
-                         pub_addr=self.config_desc.public_address)
+                         prv_addr=self.config_desc.node_address)
         self.node.collect_network_info(self.config_desc.seed_host, use_ipv6=self.config_desc.use_ipv6)
         logger.debug("Is super node? {}".format(self.node.is_super_node()))
         self.p2pservice = None

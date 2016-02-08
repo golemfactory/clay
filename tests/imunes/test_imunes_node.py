@@ -4,6 +4,7 @@ from click.testing import CliRunner
 from golem.core.simpleenv import SimpleEnv
 from gnr.renderingenvironment import BlenderEnvironment
 from golem.tools.testwithappconfig import TestWithAppConfig
+# from golem.client import create_client
 
 import shutil
 import tempfile
@@ -53,3 +54,15 @@ class TestNode(TestWithAppConfig):
                 (env_arg, ) = args
                 env_types.append(type(env_arg))
         self.assertTrue(BlenderEnvironment not in env_types)
+
+    @patch('gnr.node.Node.initialize')
+    @patch('gnr.node.Node.run', autospec = True)
+    def test_public_address(self, mock_run, mock_initialize):
+        public_address = '1.0.0.1'
+        runner = CliRunner()
+        return_value = runner.invoke(start, ['--public-address', public_address])
+        self.assertEquals(return_value.exit_code, 0)
+        (gnr_node, ) = mock_run.call_args[0]
+        self.assertEqual(gnr_node.client.node.pub_addr, public_address)
+        self.assertTrue(gnr_node.client.node.is_super_node())
+
