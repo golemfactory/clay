@@ -189,7 +189,8 @@ class AppConfig:
                                  plugin_port=PLUGIN_PORT,
                                  eth_account=ETH_ACCOUNT_NAME,
                                  use_ipv6=USE_IP6,
-                                 node_name="")
+                                 node_name="",
+                                 public_address="")
 
         cfg = SimpleConfig(common_config, node_config, cfg_file)
 

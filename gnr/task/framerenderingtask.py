@@ -71,10 +71,14 @@ class FrameRenderingTask(RenderingTask):
             self.preview_task_file_path = [None] * len(self.frames)
 
     @check_subtask_id_wrapper
-    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
-
+    def computation_finished(self, subtask_id, task_results, dir_manager=None, result_type=0):        
         if not self.should_accept(subtask_id):
             return
+        
+        task_result = []
+        for tr in task_results:
+            if not tr.endswith(".log"):
+                task_result.append(tr)
 
         tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
         self.tmp_dir = tmp_dir

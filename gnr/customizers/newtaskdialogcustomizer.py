@@ -24,6 +24,9 @@ class NewTaskDialogCustomizer(Customizer):
         self.add_task_resource_dialog_customizer = None
 
         Customizer.__init__(self, gui, logic)
+        self.add_task_resource_dialog = self._get_add_resource_dialog()
+        self.add_task_resource_dialog_customizer = AddResourcesDialogCustomizer(self.add_task_resource_dialog,
+                                                                                logic)
 
     def load_data(self):
         self._set_uid()
