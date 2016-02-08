@@ -45,10 +45,9 @@ def app(ctx, data_dir):
     logging.basicConfig(level=logging.DEBUG)
     geth = Client()  # FIXME: set geth's data dir
     while not geth.get_peer_count():
+        print "Waiting for peers..."
         gevent.sleep(1)
-    for i in range(10):
-        gevent.sleep(1)
-        geth.is_syncing()
+    gevent.sleep(10)  # geth's downloader starts after 10s
     while geth.is_syncing():
         gevent.sleep(1)
 
@@ -81,6 +80,7 @@ def direct(o, recipient, value):
                      data='')
     tx.sign(o.me.priv)
     print o.eth.send(tx)
+    gevent.sleep(1)  # FIXME: Wait for confirmed transaction receipt.
 
 
 def encode_payment(to, value):
