@@ -4,7 +4,6 @@ from click.testing import CliRunner
 from golem.core.simpleenv import SimpleEnv
 from gnr.renderingenvironment import BlenderEnvironment
 from golem.tools.testwithappconfig import TestWithAppConfig
-# from golem.client import create_client
 
 import shutil
 import tempfile
@@ -65,4 +64,3 @@ class TestNode(TestWithAppConfig):
         (gnr_node, ) = mock_run.call_args[0]
         self.assertEqual(gnr_node.client.node.pub_addr, public_address)
         self.assertTrue(gnr_node.client.node.is_super_node())
-

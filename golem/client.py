@@ -41,10 +41,11 @@ def create_client(**config_overrides):
     config_desc.init_from_app_config(app_config)
 
     for key, val in config_overrides.iteritems():
-        # For safety we only allow here overriding properties that are
-        # fields of ClientConfigDescriptor. Hence the getattr() here:
-        getattr(config_desc, key)
-        setattr(config_desc, key, val)
+        if hasattr(config_desc, key):
+            setattr(config_desc, key, val)
+        else:
+            raise AttributeError(
+                "Can't override nonexistent config attribute '{}'".format(key))
 
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
