@@ -29,7 +29,8 @@ class EthereumTransactionSystem(TransactionSystem):
         if self.eth_account.get_str_addr():
             eth_connector.pay_for_task(self.eth_account.get_str_addr(), task_id, payments)
         else:
-            logger.warning("[!IMPORTANT!] Can't pay for task {}, no ethereum address set".format(task_id))
+            # FIXME Proper way of dealing with empty Ethereum address should be implemented
+            logger.warning("Can't pay for task {}, no ethereum address set".format(task_id))
 
     def get_eth_account(self):
         return self.eth_account.get_str_addr()
