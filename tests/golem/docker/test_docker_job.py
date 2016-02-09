@@ -9,7 +9,8 @@ import requests
 
 from gnr.renderingdirmanager import find_task_script
 from golem.core.common import get_golem_path
-from golem.task.docker_job import DockerImage, DockerJob
+from golem.task.docker.image import DockerImage
+from golem.task.docker.job import DockerJob
 from test_docker_image import DockerTestCase
 
 TEST_REPOSITORY = "imapp/blender"

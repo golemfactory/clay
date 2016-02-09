@@ -3,7 +3,7 @@ from docker import Client
 from docker import errors
 import requests
 
-from golem.task.docker_job import DockerImage
+from golem.task.docker.image import DockerImage
 
 
 TEST_REPOSITORY = "imapp/blender"
@@ -14,7 +14,7 @@ TEST_IMAGE = "{}:{}".format(TEST_REPOSITORY, TEST_TAG)
 class DockerTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        """Disable all the tests if docker is not available"""
+        """Disable all tests if Docker or the test image is not available"""
         try:
             client = Client()
             images = client.images()
