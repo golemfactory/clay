@@ -267,10 +267,10 @@ class TaskSession(MiddlemanSafeSession):
     def send_reward_for_task(self, task_id, reward):
         self.send(MessageRewardPaid(task_id, reward))
 
-    # TODO: use this method
+    # TODO: change this method and use it
     def send_message_subtask_accepted(self, subtask_id, reward):
         """ Inform that results pass verification and confirm reward
-        :param str task_id:
+        :param str subtask_id:
         :param int reward: how high is the payment
         """
         self.send(MessageSubtaskResultAccepted(subtask_id, reward))

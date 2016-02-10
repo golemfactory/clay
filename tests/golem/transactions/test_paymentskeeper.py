@@ -193,7 +193,7 @@ class TestAccountInfo(unittest.TestCase):
         b = AccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node())
         self.assertEqual(a, b)
         n = Node(prv_addr="10.10.10.10", prv_port=1031, pub_addr="10.10.10.10", pub_port=1032)
-        c = AccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", n)
+        c = AccountInfo(k.get_key_id(), 5112, "10.0.0.2", "test-test2-test", n)
         self.assertEqual(a, c)
         k.generate_new(2)
         c.key_id = k.get_key_id()
