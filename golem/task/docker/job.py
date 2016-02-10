@@ -18,8 +18,8 @@ class DockerJob(object):
     # name of the parameters file, relative to the task dir
     PARAMS_FILE = "params.py"
 
-    RESOURCES_DIR = "/golem/resources/"
-    OUTPUT_DIR = "/golem/output/"
+    RESOURCES_DIR = "/golem/resources"
+    OUTPUT_DIR = "/golem/output"
 
     def __init__(self, image, script_src, parameters,
                  work_dir, resource_dir, output_dir):
@@ -44,17 +44,17 @@ class DockerJob(object):
 
     def _prepare(self):
         # Save parameters in task_dir/PARAMS_FILE
-        if self.parameters:
-            params_file_path = self._get_params_path()
-            with open(params_file_path, "w") as params_file:
-                for key, value in self.parameters.iteritems():
-                    params_file.write("{} = {}\n".format(key, repr(value)))
-            self.script_src = "from params import *\n\n" + self.script_src
+        params_file_path = self._get_params_path()
+        with open(params_file_path, "w") as params_file:
+            for key, value in self.parameters.iteritems():
+                line = "{} = {}\n".format(key, repr(value))
+                params_file.write(bytearray(line, encoding='utf-8'))
+        self.script_src = "from params import *\n\n" + self.script_src
 
         # Save the script in task_dir/TASK_SCRIPT
         task_script_path = self._get_script_path()
         with open(task_script_path, "w") as script_file:
-            script_file.write(self.script_src)
+            script_file.write(bytearray(self.script_src, "utf-8"))
 
         # Setup volumes for the container
         client = Client()

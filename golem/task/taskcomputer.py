@@ -9,11 +9,12 @@ from threading import Thread, Lock
 
 from copy import copy
 
-from golem.vm.vm import PythonProcVM, PythonTestVM, PythonVM
+from golem.vm.vm import PythonProcVM, PythonTestVM
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
-from golem.task.docker_job import DockerImage, DockerJob
+from golem.task.docker.image import DockerImage
+from golem.task.docker.job import DockerJob
 
 logger = logging.getLogger(__name__)
 

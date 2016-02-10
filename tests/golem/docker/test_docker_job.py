@@ -1,3 +1,4 @@
+# coding: utf-8
 import glob
 import os
 from os import path
@@ -13,143 +14,127 @@ from golem.task.docker.image import DockerImage
 from golem.task.docker.job import DockerJob
 from test_docker_image import DockerTestCase
 
-TEST_REPOSITORY = "imapp/blender"
-TEST_TAG = "latest"
-TEST_IMAGE = "{}:{}".format(TEST_REPOSITORY, TEST_TAG)
 
-
-# TODO: Does not work, needs update
 class TestDockerJob(DockerTestCase):
 
-    SCRIPT = """
-    with open('/golem/output/hello.txt', 'w') as out:
-        out.write('Hello from Golem!')
-    """
+    TEST_SCRIPT = "print 'Hello World!'\n"
 
     def setUp(self):
-        self.resource_dir =  tempfile.mkdtemp()
+        self.work_dir = "work"
+        self.resource_dir = tempfile.mkdtemp()
         self.output_dir = tempfile.mkdtemp()
-        self.image = DockerImage(TEST_REPOSITORY)
+        os.mkdir(path.join(self.resource_dir, self.work_dir))
+        self.image = DockerImage(DockerTestCase.TEST_REPOSITORY)
+        self.test_job = None
 
     def tearDown(self):
+        if self.test_job:
+            if self.test_job.container:
+                client = Client()
+                client.remove_container(self.test_job.container_id, force=True)
+            self.test_job = None
         if self.resource_dir:
             shutil.rmtree(self.resource_dir)
         if self.output_dir:
             shutil.rmtree(self.output_dir)
 
-    def _create_test_job(self, script="", params=None):
-        return DockerJob(self.image, script, params,
-                         self.resource_dir, self.output_dir)
+    def _create_test_job(self, script=TEST_SCRIPT, params=None):
+        self.test_job = DockerJob(self.image, script, params, self.work_dir,
+                                  self.resource_dir, self.output_dir)
+        return self.test_job
 
     def test_create(self):
         job = self._create_test_job()
 
-        self.assertIsNone(job.task_dir)
         self.assertIsNone(job.container)
         self.assertEqual(job.state, DockerJob.STATE_NEW)
+        self.assertIsNotNone(job.resource_dir)
+        self.assertIsNotNone(job.work_dir)
+        self.assertEqual(job.task_dir, job.resource_dir + "/" + job.work_dir)
+        self.assertTrue(job._get_params_path().startswith(job.task_dir))
+        self.assertTrue(job._get_script_path().startswith(job.task_dir))
 
-    def _test_prepared_job(self, job, src):
-        task_dir = path.abspath(job.task_dir)
-        self.assertIsNotNone(task_dir)
-        self.assertTrue(path.isdir(task_dir))
+    def _load_dict(self, path):
+        with open(path, 'r') as f:
+            lines = f.readlines()
+        dict = {}
+        for l in lines:
+            key, val = l.split("=")
+            dict[key.strip()] = eval(val.strip())
+        return dict
 
-        input_dir = path.abspath(job._get_input_dir())
-        output_dir = path.abspath(job._get_output_dir())
-        resource_dir = path.abspath(job._get_resource_dir())
-        script_file = path.abspath(job._get_script_path())
+    def _test_params_saved(self, task_params):
+        with self._create_test_job(params = task_params) as job:
+            params_path = job._get_params_path()
+            self.assertTrue(path.isfile(params_path))
+            params = self._load_dict(params_path)
+            self.assertEqual(params, task_params)
 
-        with open(script_file, "r") as f:
-            test_src = f.read()
-            self.assertEqual(src, test_src)
+    def test_params_saved(self):
+        self._test_params_saved({"name": "Jake", "age": 30})
 
-        self.assertTrue(path.isdir(input_dir))
-        self.assertTrue(path.isdir(output_dir))
-        self.assertTrue(path.isdir(resource_dir))
-        self.assertTrue(path.isfile(script_file))
+    def test_params_saved_nonascii(self):
+        # key has to be a valid Python ident, so we put nonascii chars
+        # only in param values:
+        self._test_params_saved({"length": u"pięćdziesiąt łokci"})
 
-        self.assertTrue(input_dir.startswith(task_dir))
-        self.assertTrue(output_dir.startswith(task_dir))
-        self.assertTrue(resource_dir.startswith(task_dir))
-        self.assertTrue(script_file.startswith(task_dir))
+    def _test_script_saved(self, task_script = TEST_SCRIPT):
+        with self._create_test_job(script = task_script, params = None) as job:
+            script_path = job._get_script_path()
+            self.assertTrue(path.isfile(script_path))
+            with open(script_path, 'r') as f:
+                script = unicode(f.read(), "utf-8")
+            # The saved script should start with 'from params import *', them
+            # some newlines (at least one), and then the original task_script:
+            self.assertTrue(script.startswith("from params import *\n"))
+            script = script[script.index("\n"):].lstrip()
+            self.assertEqual(task_script, script)
 
-        self.assertIsNotNone(job.container)
-        self.assertIsNotNone(job.container_id)
+    def test_script_saved(self):
+        self._test_script_saved()
 
-        client = Client()
-        info = client.inspect_container(job.container_id)
-        self.assertEqual(info["State"]["Status"], "created")
-        self.assertFalse(info["State"]["Running"])
+    def test_script_saved_nonascii(self):
+        self._test_script_saved(u"print u'Halo? Świeci!'\n")
 
-        image_id = client.inspect_image(self.image.name)["Id"]
-        self.assertEqual(info["Image"], image_id)
+    def test_container_created(self):
+        with self._create_test_job() as job:
+            self.assertIsNotNone(job.container_id)
+            docker = Client()
+            info = docker.inspect_container(job.container_id)
+            self.assertEqual(info["Id"], job.container_id)
+            self.assertEqual(info["State"]["Status"], "created")
+            self.assertFalse(info["State"]["Running"])
 
-        input_mount = None
-        output_mount = None
-        for mount in info["Mounts"]:
-            if mount["Destination"] == DockerJob.DEST_INPUT_DIR:
-                input_mount = mount
-            elif mount["Destination"] == DockerJob.DEST_OUTPUT_DIR:
-                output_mount = mount
+            image_id = docker.inspect_image(self.image.name)["Id"]
+            self.assertEqual(info["Image"], image_id)
 
-        self.assertIsNotNone(input_mount)
-        self.assertEqual(input_mount["Source"], input_dir)
-        self.assertIsNotNone(output_mount)
-        self.assertEqual(output_mount["Source"], output_dir)
+    def test_mounts(self):
+        with self._create_test_job() as job:
+            docker = Client()
+            info = docker.inspect_container(job.container_id)
 
-        return task_dir
+            resources_mount = None
+            output_mount = None
+            for mount in info["Mounts"]:
+                if mount["Destination"] == DockerJob.RESOURCES_DIR:
+                    resources_mount = mount
+                elif mount["Destination"] == DockerJob.OUTPUT_DIR:
+                    output_mount = mount
 
-    def _test_cleanup(self, job, task_dir, container_id):
-        self.assertFalse(path.isdir(task_dir))
-        self.assertIsNone(job.task_dir)
-        self.assertIsNone(job.container)
-        try:
+            self.assertIsNotNone(resources_mount)
+            self.assertEqual(resources_mount["Source"], self.resource_dir)
+            self.assertIsNotNone(output_mount)
+            self.assertEqual(output_mount["Source"], self.output_dir)
+
+    def test_cleanup(self):
+        with self._create_test_job() as job:
+            container_id = job.container_id
+            self.assertIsNotNone(container_id)
+
+        self.assertIsNone(job.container_id)
+        with self.assertRaises(errors.NotFound):
             client = Client()
             client.inspect_container(container_id)
-            self.assertFalse("inspect_container should raise NotFound")
-        except errors.NotFound:
-            pass
-
-    def test_prepare_cleanup(self):
-        random_src = "# {} {}\n".format(self.resource_dir, self.output_dir)
-        job = self._create_test_job(random_src)
-
-        job._prepare()
-        try:
-            container_id = job.container_id
-            task_dir = self._test_prepared_job(job, random_src)
-        finally:
-            job._cleanup()
-        self._test_cleanup(job, task_dir, container_id)
-
-    def test_with(self):
-        random_src = "# {} {}\n".format(self.resource_dir, self.output_dir)
-
-        with self._create_test_job(random_src) as job:
-            task_dir = self._test_prepared_job(job, random_src)
-            container_id = job.container_id
-
-        self._test_cleanup(job, task_dir, container_id)
-
-    def test_resource_copying(self):
-        with open(path.join(self.resource_dir, "1.txt"), "w") as res1:
-            res1.write("I am a text resource")
-        dir2 = path.join(self.resource_dir, "2")
-        os.mkdir(dir2)
-        with open(path.join(dir2, "21.txt"), "w") as res2:
-            res2.write("I am a text resource in a nested dir")
-        dir22 = path.join(dir2, "2")
-        os.mkdir(dir22)
-        with open(path.join(dir22, "221.txt"), "w") as res3:
-            res3.write("I am a text resource in a doubly nested dir")
-
-        with self._create_test_job() as job:
-            target_resource_dir = job._get_resource_dir()
-            self.assertNotEqual(self.resource_dir, target_resource_dir)
-            source_files = [(dirs, files)
-                            for (_, dirs, files) in os.walk(self.resource_dir)]
-            target_files = [(dirs, files)
-                            for (_, dirs, files) in os.walk(target_resource_dir)]
-            self.assertEqual(source_files, target_files)
 
     def test_status(self):
         job = self._create_test_job()
@@ -174,7 +159,7 @@ class TestDockerJob(DockerTestCase):
             self.assertIn("Path", info)
             self.assertEqual(info["Path"], "/usr/bin/python")
             self.assertIn("Args", info)
-            self.assertEqual(info["Args"], [DockerJob.DEST_TASK_FILE])
+            self.assertEqual(info["Args"], [DockerJob.TASK_SCRIPT])
 
     def test_wait(self):
         src = "import time\ntime.sleep(5)\n"
@@ -185,50 +170,31 @@ class TestDockerJob(DockerTestCase):
             self.assertEquals(exit_code, 0)
             self.assertEqual(job.get_status(), DockerJob.STATE_EXITED)
 
-    COPY_SCRIPT = """
-with open("/golem/input/res/in.txt", "r") as f:
-    text = f.read()
-
-with open("/golem/output/out.txt", "w") as f:
-    f.write(text)
-"""
-
     def test_wait_timeout(self):
         src = "import time\ntime.sleep(10)\n"
-        try:
+        with self.assertRaises(requests.exceptions.ReadTimeout):
             with self._create_test_job(src) as job:
                 job.start()
                 self.assertEqual(job.get_status(), DockerJob.STATE_RUNNING)
                 job.wait(1)
-                self.fail("Timeout expected")
-        except requests.exceptions.ReadTimeout as e:
-            pass
 
     def test_copy_job(self):
         """Creates a sample resource file and a task script that copies
         the resource file to the output file.
         """
+        copy_script = """
+with open("/golem/resources/in.txt", "r") as f:
+    text = f.read()
+
+with open("/golem/output/out.txt", "w") as f:
+    f.write(text)
+"""
         sample_text = "Hello!\n"
 
         with open(path.join(self.resource_dir, "in.txt"), "w") as input:
             input.write(sample_text)
 
-        with self._create_test_job(self.COPY_SCRIPT) as job:
-            job.start()
-            job.wait()
-            outfile = path.join(job._get_output_dir(), "out.txt")
-            self.assertTrue(path.isfile(outfile))
-            with open(outfile, "r") as f:
-                text = f.read()
-            self.assertEqual(text, sample_text)
-
-    def test_get_output(self):
-        sample_text = "Hello!\n"
-
-        with open(path.join(self.resource_dir, "in.txt"), "w") as input:
-            input.write(sample_text)
-
-        with self._create_test_job(self.COPY_SCRIPT) as job:
+        with self._create_test_job(script = copy_script) as job:
             job.start()
             job.wait()
 
@@ -245,7 +211,9 @@ with open("/golem/output/out.txt", "w") as f:
 
         # copy the blender script to the resources dir
         crop_script = find_task_script("blendercrop.py")
-        shutil.copy(crop_script, self.resource_dir)
+        with open(crop_script, 'r') as src:
+            crop_script_src = src.read()
+        # shutil.copy(crop_script, self.resource_dir)
 
         # copy the scene file to the resources dir
         benchmarks_dir = path.join(get_golem_path(),
@@ -257,10 +225,11 @@ with open("/golem/output/out.txt", "w") as f:
 
         params = {
             "outfilebasename": "out",
-            "scene_file": DockerJob.DEST_RESOURCE_DIR +
+            "scene_file": DockerJob.RESOURCES_DIR + "/" +
                           path.basename(scene_files[0]),
-            "script_file": DockerJob.DEST_RESOURCE_DIR +
-                           path.basename(crop_script),
+            # "script_file": DockerJob.RESOURCES_DIR +
+            #               path.basename(crop_script),
+            "script_src": crop_script_src,
             "start_task": 42,
             "end_task": 42,
             "engine": "CYCLES",
