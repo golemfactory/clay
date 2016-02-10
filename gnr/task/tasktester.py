@@ -6,6 +6,7 @@ from golem.task.taskbase import Task, resource_types
 from golem.resource.resource import TaskResourceHeader, decompress_dir
 from golem.task.taskcomputer import PyTestTaskThread
 from gnr.renderingdirmanager import get_test_task_path, get_test_task_directory, get_test_task_tmp_path
+from golem.core.common import get_golem_path
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,7 @@ class TaskTester:
                     filename = str(self.task.header.task_id) + ".flm"
                     os.rename(flm, os.path.join(self.tmp_dir, filename))
                     flm_path = os.path.join(self.tmp_dir, filename)
-                    save_path = os.path.join(os.environ["GOLEM"], "save")
+                    save_path = get_test_task_tmp_path(get_golem_path())
                     if not os.path.exists(save_path):
                         os.makedirs(save_path)
                     

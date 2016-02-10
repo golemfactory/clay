@@ -7,13 +7,14 @@ import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
 
+from golem.core.common import get_golem_path
 from golem.core.simpleexccmd import exec_cmd
 from golem.task.taskstate import SubtaskStatus
 from golem.environments.environment import Environment
 
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingenvironment import LuxRenderEnvironment
-from gnr.renderingdirmanager import get_test_task_path, find_task_script
+from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_test_task_tmp_path
 from gnr.task.imgrepr import load_img, blend
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
@@ -224,7 +225,7 @@ class LuxTask(RenderingTask):
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
     def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
-        tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
+        tmp_dir = get_test_task_tmp_path(get_golem_path())
         self.tmp_dir = tmp_dir
         env = LuxRenderEnvironment()
         lux_merger = env.get_lux_merger()
