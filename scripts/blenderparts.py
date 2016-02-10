@@ -1,11 +1,12 @@
 import subprocess
 import os
+import posixpath
 import tempfile
 import shutil
 import click
 import appdirs
 
-from golem.core.common import get_golem_path
+from golem.core.common import get_golem_path, is_windows
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
 
 
@@ -21,20 +22,33 @@ def make_script(res_x, res_y, x0=0.0, x1=1.0, y0=0.0, y1=1.0, tmp_dir=None):
 
 
 def get_blender_cmd(scene_file, script, output_path, part=1):
+    output_path = os.path.join(output_path, "result_###_{}".format(part))
     return format_blender_render_cmd(["blender", "-b"], scene_file, script, output_path, part)
 
 
 def format_blender_render_cmd(app_cmd, scene_file, script, output_path, part=1):
-    cmd = [scene_file, "-o", os.path.join(output_path, "result_###_{}".format(part)),
-           "-P", script, "-f", "1"]
+    cmd = [scene_file, "-o", output_path, "-P", script, "-f", "1"]
     return app_cmd + cmd
+
+
+def change_to_linux_path(path_):
+    if is_windows():
+        path_ = path_.replace("\\", "/")
+        path_ = path_.split(":")
+        if len(path_) > 1:
+            return "/" + path_[0].lower() + path_[1]
+        return path_[0]
+    else:
+        return path_
 
 
 def get_docker_blender_cmd(scene_file, script, output_path, part=1, docker_name="ikester/blender",
                            working_dir="scene"):
+    scene_file = change_to_linux_path(scene_file)
     cmd = ["docker", "run", "-v", "{}:/{}".format(os.path.dirname(scene_file), working_dir), docker_name]
     scene_file = "/{}/{}".format(working_dir, os.path.basename(scene_file))
     script = "/{}/{}/{}".format(working_dir, os.path.basename(os.path.dirname(script)), os.path.basename(script))
+    output_path = posixpath.join(change_to_linux_path(output_path), "result_###_{}".format(part))
     return format_blender_render_cmd(cmd, scene_file, script, output_path, part)
 
 
