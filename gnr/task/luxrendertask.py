@@ -9,6 +9,7 @@ from PIL import Image, ImageChops
 
 from golem.core.common import get_golem_path
 from golem.core.simpleexccmd import exec_cmd
+from golem.core.common import get_golem_path
 from golem.task.taskstate import SubtaskStatus
 from golem.environments.environment import Environment
 
@@ -247,7 +248,7 @@ class LuxTask(RenderingTask):
                             self._mark_subtask_failed(subtask_id)
                         else:
                             logger.info("Subtask " + str(subtask_id) + " successfuly verified.")
-                else:
+                elif ext != '.log':
                     self.subtasks_given[subtask_id]['previewFile'] = tr_file
                     self._update_preview(tr_file, num_start)
         else:
@@ -369,6 +370,15 @@ class LuxTask(RenderingTask):
         os.remove(tmp_scene_file.name)
 
     def __generate_final_flm(self):
+        '''
+        Received flm files will be merged one by one with the result of task's test
+        in order to verify basic properties of the received .flms
+        returns list of wrong flms
+        '''
+        
+        # the file containing result of task test
+        test_result_flm = os.path.join(get_golem_path(), "save", str(self.header.task_id) + ".flm")
+        # output flm
         output_file_name = u"{}".format(self.output_file, self.output_format)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         files = " ".join(self.collected_file_names.values())

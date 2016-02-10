@@ -9,7 +9,40 @@ import psutil
 import shutil
 
 
+def get_directory(_file):
+    directory = os.path.dirname(os.path.abspath(_file))
+    if not os.path.exists(directory):
+        return None
+    else:
+        return directory
+
+
+def find_flm(directory):
+    if not os.path.exists(directory):
+        return None
+        
+    try:
+        for root, dirs, files in os.walk(directory):
+            for names in files:
+                if names[-4:] == ".flm":
+                    return os.path.join(root,names)
+
+    except:
+        import traceback
+        # Print the stack traceback
+        traceback.print_exc()
+        return None
+
+
 def format_lux_renderer_cmd(cmd_file, start_task, output_file, outfilebasename, scenefile, num_threads):
+    directory = get_directory(scenefile)
+    if (directory != None):
+        flm_file = find_flm(directory)
+        if (flm_file != None):
+            cmd = ["{}".format(cmd_file), "{}".format(scenefile), "-R", "{}".format(flm_file), "-o",
+           "{}/{}{}.png".format(output_file, outfilebasename, start_task), "-t", "{}".format(num_threads)]
+            print cmd
+            return cmd
     cmd = ["{}".format(cmd_file), "{}".format(scenefile), "-o",
            "{}/{}{}.png".format(output_file, outfilebasename, start_task), "-t", "{}".format(num_threads)]
     print cmd
@@ -64,24 +97,31 @@ def is_windows():
     return sys.platform == 'win32'
 
 
-def exec_cmd(cmd, nice=20):
-    pc = subprocess.Popen(cmd)
+def exec_cmd(cmd, cur_dir, out_file_name):
+    pc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = pc.communicate()
     if is_windows():
         import win32process
         win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
-    else:
-        p = psutil.Process(pc.pid)
-        p.nice(nice)
-
     pc.wait()
+    with open(os.path.join(cur_dir, out_file_name + ".err.log"), 'w') as stderr:
+        stderr.write(err)
+    with open(os.path.join(cur_dir, out_file_name + ".log"), 'w') as stdout:
+        stdout.write(err)
 
+
+def get_files_in_formats(dir_, formats):
+    files = []
+    for f in formats:
+        files += glob.glob(os.path.join(dir_, "*." + f))
+    return files
 
 def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir, num_cores, own_binaries, lux_console):
     print 'LuxRenderer Task'
 
     output_files = tmp_path
 
-    files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm")
+    files = get_files_in_formats(output_files, ["png", "log", "flm"])
 
     for f in files:
         os.remove(f)
@@ -103,10 +143,10 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir
     prev_dir = os.getcwd()
     os.chdir(scene_dir)
 
-    exec_cmd(cmd)
+    exec_cmd(cmd, output_files, outfilebasename + str(start_task))
 
     os.chdir(prev_dir)
-    files = glob.glob(output_files + "/*.png") + glob.glob(output_files + "/*.flm")
+    files = get_files_in_formats(output_files, ["png", "log", "flm"])
 
     os.remove(tmp_scene_file.name)
 

@@ -36,6 +36,12 @@ class TestConfigurationDialogCustomizer(unittest.TestCase):
         res = ConfigurationDialogCustomizer.du(self.testdir)
         size2, sym = re.split("[ kKmMgGbB]", res)[:2]
         self.assertGreater(float(size2), float(size1))
+        res = ConfigurationDialogCustomizer.du(".")
+        try:
+            size = float(res)
+        except ValueError:
+            size, sym = re.split("[ kKmMgGbB]", res)[:2]
+        self.assertGreater(size, 0)
 
     def tearDown(self):
         if os.path.exists(os.path.join(self.testdir2, self.testfile2)):

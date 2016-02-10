@@ -1,14 +1,14 @@
 import multiprocessing
 import logging
 import subprocess
-import os
 
 from PyQt4 import QtCore
-from PyQt4.QtGui import QMessageBox
+from PyQt4.QtGui import QMessageBox, QPalette
 
 from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.fileshelper import get_dir_size
+from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
 
 logger = logging.getLogger(__name__)
@@ -30,15 +30,15 @@ class ConfigurationDialogCustomizer(Customizer):
     @staticmethod
     def du(path):
         try:
-            return subprocess.check_output(['du', '-sh', path]).split()[0]
+            size = int(subprocess.check_output(['du', '-sb', path]).split()[0])
         except (OSError, subprocess.CalledProcessError):
             try:
-                size = get_dir_size(path)
-                human_readable_size, idx = dir_size_to_display(size)
-                return "{} {}".format(human_readable_size, translate_resource_index(idx))
+                size = int(get_dir_size(path))
             except OSError as err:
                 logger.info("Can't open dir {}: {}".format(path, str(err)))
-        return "-1"
+                return "-1"
+        human_readable_size, idx = dir_size_to_display(size)
+        return "{} {}".format(human_readable_size, translate_resource_index(idx))
 
     def _setup_connections(self):
         self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
@@ -57,10 +57,12 @@ class ConfigurationDialogCustomizer(Customizer):
                                self.__requesting_trust_slider_changed)
         QtCore.QObject.connect(self.gui.ui.computingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
                                self.__computing_trust_slider_changed)
-        QtCore.QObject.connect(self.gui.ui.requestingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"),
+        QtCore.QObject.connect(self.gui.ui.requestingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString)"),
                                self.__requesting_trust_edited)
-        QtCore.QObject.connect(self.gui.ui.computingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString & text)"),
+        QtCore.QObject.connect(self.gui.ui.computingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString)"),
                                self.__computing_trust_edited)
+        QtCore.QObject.connect(self.gui.ui.ethAccountLineEdit, QtCore.SIGNAL("textChanged(QString)"),
+                               self.__check_eth_account)
         
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
@@ -169,6 +171,8 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __load_payment_config(self, config_desc):
         self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.eth_account))
+        self.__check_eth_account()
+
 
     def __load_resource_config(self):
         res_dirs = self.logic.get_res_dirs()
@@ -324,6 +328,27 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __read_payment_config(self, cfg_desc):
         cfg_desc.eth_account = u"{}".format(self.gui.ui.ethAccountLineEdit.text())
+        self.__check_eth_account()
 
     def __show_plugin_port_warning(self):
         QMessageBox.warning(self.gui.window, 'Golem Message', "Restart application to change plugin port")
+
+    def __set_account_error(self):
+        palette = QPalette()
+        palette.setColor(QPalette.Foreground, QtCore.Qt.red)
+        self.gui.ui.accountStatusLabel.setPalette(palette)
+        self.gui.ui.accountStatusLabel.setText("Wrong")
+
+    def __set_account_ok(self):
+        palette = QPalette()
+        palette.setColor(QPalette.Foreground, QtCore.Qt.darkGreen)
+        self.gui.ui.accountStatusLabel.setPalette(palette)
+        self.gui.ui.accountStatusLabel.setText("OK")
+
+    def __check_eth_account(self):
+        try:
+            EthereumAddress.parse(u"{}".format(self.gui.ui.ethAccountLineEdit.text()))
+            self.__set_account_ok()
+        except Exception as err:
+            self.__set_account_error()
+            logger.warning("Wrong ethereum address: {}".format(str(err)))

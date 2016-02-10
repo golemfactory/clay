@@ -128,11 +128,11 @@ class RankingDatabase:
                                         requesting_trust_value=loc_rank[1], computing_trust_value=loc_rank[0])
         except IntegrityError:
             NeighbourLocRank.update(requesting_trust_value=loc_rank[1], computing_trust_value=loc_rank[0]).where(
-                NeighbourLocRank.about_node_id == about_id and NeighbourLocRank.node_id == neighbour_id).execute()
+                    (NeighbourLocRank.about_node_id == about_id) & (NeighbourLocRank.node_id == neighbour_id)).execute()
 
     def get_neighbour_loc_rank(self, neighbour_id, about_id):
         return NeighbourLocRank.select().where(
-            NeighbourLocRank.node_id == neighbour_id and NeighbourLocRank.about_node_id == about_id).first()
+                (NeighbourLocRank.node_id == neighbour_id) & (NeighbourLocRank.about_node_id == about_id)).first()
 
 
 POS_PAR = 1.0

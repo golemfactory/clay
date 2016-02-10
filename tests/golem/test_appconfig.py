@@ -1,10 +1,15 @@
 import os
+import shutil
+import unittest
+
+from mock import patch, MagicMock
 
 import golem.appconfig as appconfig
 
 from golem.core.simpleenv import SimpleEnv
-from golem.appconfig import NodeConfig, logger
+from golem.appconfig import logger, AppConfig, ClientConfigDescriptor, NodeConfig
 from golem.tools.assertlogs import LogTestCase
+from golem.tools.testwithappconfig import TestWithAppConfig
 
 
 class TestNodeConfig(LogTestCase):
@@ -72,8 +77,75 @@ class TestNodeConfig(LogTestCase):
         good_file = SimpleEnv.env_file_name(TestNodeConfig.good_name)
         if os.path.exists(good_file):
             os.remove(good_file)
+        if hasattr(NodeConfig, "_properties"):
+            del NodeConfig._properties
+        if hasattr(NodeConfig, "properties"):
+            del NodeConfig.properties
 
 
+class TestAppConfig(TestWithAppConfig):
+    def setUp(self):
+        TestWithAppConfig.setUp(self)
+        SimpleEnv.DATA_DIRECTORY = os.path.abspath("tmpdir")
+        if not os.path.isdir(SimpleEnv.DATA_DIRECTORY):
+            os.makedirs(SimpleEnv.DATA_DIRECTORY)
 
+    @patch("golem.appconfig.ProcessService", autospec=True)
+    def test_load_config(self, process_service_mock):
+        m = MagicMock()
+        m.register_self.return_value = 0
+        process_service_mock.return_value = m
+        node0 = AppConfig.load_config("test.ini").get_node_name()
+        m.register_self.return_value = 1
 
+        self.new_node()
+        node1 = AppConfig.load_config("test.ini").get_node_name()
+        self.assertNotEqual(node0, node1)
+        m.register_self.return_value = 2
 
+        self.new_node()
+        node2 = AppConfig.load_config("test.ini").get_node_name()
+        self.assertNotEqual(node0, node2)
+        self.assertNotEqual(node1, node2)
+
+        self.new_node()
+        m.register_self.return_value = 0
+        cfg = AppConfig.load_config("test.ini")
+        self.assertEqual(node0, cfg.get_node_name())
+        config_desc = ClientConfigDescriptor()
+        config_desc.init_from_app_config(cfg)
+        config_desc.use_distributed_resource_management = 0
+        config_desc.computing_trust = 0.23
+        cfg.change_config(config_desc, "test.ini")
+
+        self.new_node()
+        cfgC = AppConfig.load_config("test.ini")
+        self.assertEqual(node0, cfgC.get_node_name())
+        config_descC = ClientConfigDescriptor()
+        config_descC.init_from_app_config(cfgC)
+        self.assertFalse(config_descC.use_distributed_resource_management)
+        self.assertEqual(config_descC.computing_trust, 0.23)
+
+        self.new_node()
+        m.register_self.return_value = 1
+        cfg1 = AppConfig.load_config("test.ini")
+        self.assertEqual(node1, cfg1.get_node_name())
+        config_desc1 = ClientConfigDescriptor()
+        config_desc1.init_from_app_config(cfg1)
+        self.assertTrue(config_desc1.use_distributed_resource_management)
+        self.assertEqual(config_desc1.computing_trust, appconfig.COMPUTING_TRUST)
+        config_desc1.computing_trust = 0.38
+        cfg1.change_config(config_desc1, "test.ini")
+
+        self.new_node()
+        cfg2 = AppConfig.load_config("test.ini")
+        config_desc1.init_from_app_config(cfg2)
+        self.assertEqual(config_desc1.computing_trust, 0.38)
+
+    def tearDown(self):
+        if os.path.isdir(SimpleEnv.DATA_DIRECTORY):
+            shutil.rmtree(SimpleEnv.DATA_DIRECTORY)
+        TestWithAppConfig.tearDown(self)
+
+if __name__ == '__main__':
+    unittest.main()

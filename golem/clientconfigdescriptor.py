@@ -53,6 +53,7 @@ class ClientConfigDescriptor(object):
         self.app_name = ""
         self.app_version = ""
         self.eth_account = ""
+        self.public_address = ""
 
     def init_from_app_config(self, app_config):
         """Initializes config parameters based on the specified AppConfig

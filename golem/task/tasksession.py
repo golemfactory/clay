@@ -9,7 +9,8 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
     MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
-    MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse
+    MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse, \
+    MessageRewardPaid
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
 from golem.network.transport.session import MiddlemanSafeSession
@@ -262,8 +263,12 @@ class TaskSession(MiddlemanSafeSession):
         """
         self.send(MessageSubtaskResultRejected(subtask_id))
 
-    # TODO Trzeba zmienic nazwe tej metody
-    def send_reward_for_task(self, subtask_id, reward):
+    # TODO: by default this may be
+    def send_reward_for_task(self, task_id, reward):
+        self.send(MessageRewardPaid(task_id, reward))
+
+    # TODO: change this method and use it
+    def send_message_subtask_accepted(self, subtask_id, reward):
         """ Inform that results pass verification and confirm reward
         :param str subtask_id:
         :param int reward: how high is the payment
@@ -408,6 +413,10 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
+        self.dropped()
+
+    def _react_to_reward_paid(self, msg):
+        self.task_server.reward_paid(msg.task_id, msg.reward)
         self.dropped()
 
     def _react_to_subtask_result_rejected(self, msg):
@@ -582,7 +591,8 @@ class TaskSession(MiddlemanSafeSession):
             MessageMiddlemanAccepted.Type: self._react_to_middleman_accepted,
             MessageJoinMiddlemanConn.Type: self._react_to_join_middleman_conn,
             MessageNatPunch.Type: self._react_to_nat_punch,
-            MessageWaitForNatTraverse.Type: self._react_to_wait_for_nat_traverse
+            MessageWaitForNatTraverse.Type: self._react_to_wait_for_nat_traverse,
+            MessageRewardPaid.Type: self._react_to_reward_paid
         })
 
         # self.can_be_not_encrypted.append(MessageHello.Type)
