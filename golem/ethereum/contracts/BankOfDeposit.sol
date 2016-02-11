@@ -55,7 +55,7 @@ contract BankOfDeposit {
             // following 160 bits (20 bytes) is an address.
             bytes32 payment = payments[i];
             address addr = address(payment);
-			uint v = uint(payment) / 2**160;
+            uint v = uint(payment) / 2**160;
             if (v > value)
                 break;
             _balance[addr] += v;
