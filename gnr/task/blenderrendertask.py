@@ -328,7 +328,6 @@ class BlenderRenderTask(FrameRenderingTask):
         return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
     
     def _put_image_together(self, tmp_dir):
-        logger.debug("In _put_image_together")
         output_file_name = u"{}".format(self.output_file, self.output_format)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
@@ -341,65 +340,8 @@ class BlenderRenderTask(FrameRenderingTask):
                                                self.collected_file_names.values(), "paste")
 
 class CustomCollector(RenderingTaskCollector):
-    def add_img_file(self, exr_file):
-        rgbf = open_exr_as_rgbf_images(exr_file)
-        d, l = get_single_rgbf_extrema(rgbf)
-
-        if self.darkest:
-            self.darkest = min(d, self.darkest)
-        else:
-            self.darkest = d
-
-        if self.lightest:
-            self.lightest = max(l, self.lightest)
-        else:
-            self.lightest = l
-
-        self.accepted_exr_files.append(exr_file)
-        
-    def finalize(self, show_progress=False):
-        if len(self.accepted_exr_files) == 0:
-            return None
-
-        if show_progress:
-            print "Adding all accepted chunks to the final image"
-
-        if self.lightest == self.darkest:
-            self.lightest = self.darkest + 0.1
-
-        final_img = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_exr_files[0]),
-                                                      self.lightest, self.darkest)
-
-        if self.paste:
-            if not self.width or not self.height:
-                self.width, self.height = final_img.size
-                self.height *= len(self.accepted_exr_files)
-            final_img = self.__paste_image(Image.new('RGB', (self.width, self.height)), final_img, 0)
-
-        for i in range(1, len(self.accepted_exr_files)):
-            print self.accepted_exr_files[i]
-            rgb8_im = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_exr_files[i]),
-                                                        self.lightest, self.darkest)
-            if not self.paste:
-                final_img = ImageChops.add(final_img, rgb8_im)
-            else:
-                final_img = self.__paste_image(final_img, rgb8_im, i)
-
-            if show_progress:
-                print_progress(i, len(self.accepted_exr_files))
-
-        if len(self.accepted_alpha_files) > 0:
-            final_alpha = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[0]),
-                                                         self.lightest, self.darkest)
-
-            for i in range(1, len(self.accepted_alpha_files)):
-                l_im = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[i]),
-                                                      self.lightest, self.darkest)
-                final_alpha = ImageChops.add(final_alpha, l_im)
-
-            final_img.putalpha(final_alpha)
-
-        return final_img
+    def __init__(self, paste=False, width=1, height=1):
+        RenderingTaskCollector.__init__(self, paste, width, height)
     
     def __paste_image(self, final_img, new_part, num):
         logger.debug("In __paste_image...")

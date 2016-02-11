@@ -134,7 +134,7 @@ class RenderingTask(GNRTask):
     def get_preview_file_path(self):
         return self.preview_file_path
 
-    def _get_part_size(self):
+    def _get_part_size(self, subtask_id):
         return self.res_x, self.res_y
 
     @check_subtask_id_wrapper
