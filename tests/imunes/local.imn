@@ -1,0 +1,114 @@
+node n0 {
+    type lanswitch
+    network-config {
+	hostname switch1
+	!
+    }
+    canvas c0
+    iconcoords {432.0 264.0}
+    labelcoords {432.0 292.0}
+    interface-peer {e0 n3}
+    interface-peer {e1 n1}
+    interface-peer {e2 n2}
+}
+
+node n1 {
+    type host
+    network-config {
+	hostname host1
+	!
+	interface eth0
+	 ip address 10.0.0.10/24
+	 ipv6 address fc00:1::10/64
+	 mac address 42:00:aa:00:00:01
+	!
+	interface lo0
+	 type lo
+	 ip address 127.0.0.1/24
+	 ipv6 address ::1/128
+	!
+    }
+    canvas c0
+    iconcoords {288.0 360.0}
+    labelcoords {288.0 401.0}
+    interface-peer {eth0 n0}
+}
+
+node n2 {
+    type host
+    network-config {
+	hostname host2
+	!
+	interface eth0
+	 ip address 10.0.0.11/24
+	 ipv6 address fc00:1::11/64
+	 mac address 42:00:aa:00:00:02
+	!
+	interface lo0
+	 type lo
+	 ip address 127.0.0.1/24
+	 ipv6 address ::1/128
+	!
+    }
+    canvas c0
+    iconcoords {576.0 360.0}
+    labelcoords {576.0 401.0}
+    interface-peer {eth0 n0}
+}
+
+node n3 {
+    type pc
+    network-config {
+	hostname pc1
+	!
+	interface eth0
+	 ip address 10.0.0.20/24
+	 ipv6 address fc00:1::20/64
+	 mac address 42:00:aa:00:00:00
+	!
+	interface lo0
+	 type lo
+	 ip address 127.0.0.1/24
+	 ipv6 address ::1/128
+	!
+    }
+    canvas c0
+    iconcoords {432.0 96.0}
+    labelcoords {433.0 132.0}
+    interface-peer {eth0 n0}
+    docker-attach true
+}
+
+link l0 {
+    nodes {n3 n0}
+    bandwidth 0
+}
+
+link l1 {
+    nodes {n0 n1}
+    bandwidth 0
+}
+
+link l2 {
+    nodes {n0 n2}
+    bandwidth 0
+}
+
+canvas c0 {
+    name {Canvas0}
+}
+
+option show {
+    interface_names yes
+    ip_addresses yes
+    ipv6_addresses yes
+    node_labels yes
+    link_labels yes
+    background_images no
+    annotations yes
+    hostsAutoAssign no
+    grid yes
+    iconSize normal
+    zoom 1.0
+}
+

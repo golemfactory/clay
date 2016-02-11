@@ -4,6 +4,9 @@ from golem.core.keysauth import KeysAuth
 
 
 class KeysAuthTest(unittest.TestCase):
+    def tearDown(self):
+        if hasattr(KeysAuth, '_keys_dir'):
+            del KeysAuth._keys_dir
 
     def test_keys_dir_default(self):
         km = KeysAuth()

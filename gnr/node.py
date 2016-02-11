@@ -1,7 +1,8 @@
 """GNR Compute Node"""
 
 import os
-import pickle
+import cPickle as pickle
+import jsonpickle
 import click
 import uuid
 import sys
@@ -96,9 +97,9 @@ def parse_peer(ctx, param, value):
     for arg in value:
         try:
             addresses.append(TCPAddress.parse(arg))
-        except ValueError:
-            logger.warning("Wrong peer address {}. Address should be in format <ipv4_addr>:port "
-                           "or [<ipv6_addr>]:port".format(arg))
+        except AddressValueError as e:
+            raise click.BadParameter(
+                "Invalid peer address specified: {}".format(e.message))
     return addresses
 
 
@@ -106,21 +107,35 @@ def parse_task_file(ctx, param, value):
     del ctx, param
     tasks = []
     for task_file in value:
-        task_def = pickle.loads(task_file.read())
+        if task_file.name.endswith('.json'):
+            try:
+                task_def = jsonpickle.decode(task_file.read())
+            except ValueError as e:
+                raise click.BadParameter(
+                    "Invalid task json file: {}".format(e.message))
+        else:
+            task_def = pickle.loads(task_file.read())
         task_def.task_id = str(uuid.uuid4())
         tasks.append(task_def)
     return tasks
 
 
-@click.command()
+@click.group()
+def node_cli():
+    pass
+
+
+@node_cli.command()
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=parse_node_addr,
               help="Network address to use for this node")
 @click.option('--peer', '-p', multiple=True, callback=parse_peer,
-              help="Connect with given peer: <ipv4_addr>:port or [<ipv6_addr>]:port")
-@click.option('--task', '-t', multiple=True, type=click.File(lazy=True), callback=parse_task_file,
+              help="Connect with given peer: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
+@click.option('--task', '-t', multiple=True, type=click.File(lazy=True),
+              callback=parse_task_file,
               help="Request task from file")
-def start(node_address, peer, task):
+def start(node_address, peer, task, **extra_args):
+    del extra_args
 
     node = GNRNode(node_address=node_address)
     node.initialize()

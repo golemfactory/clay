@@ -29,16 +29,28 @@ def copy_file_tree(src, dst, exclude=None):
             shutil.copy2(src_file, dst_dir)
 
 
-def get_dir_size(dir_):
-    """ Return size of given directory and it's content
+def get_dir_size(dir_, report_error=lambda _: ()):
+    """Returns the size of the given directory and it's contents, in bytes.
+    Similar to the Linux command `du -b`. In particular, returns non-zero
+    for an empty dir.
     :param str dir_: directory name
-    :return float: size of directory and it's content
+    :param report_error: callable used to report errors
+    :return int: size of directory and it's content
     """
     size = os.path.getsize(dir_)
-    for el in os.listdir(dir_):
+    try:
+        files = os.listdir(dir_)
+    except OSError as err:
+        report_error(err)
+        files = []
+
+    for el in files:
         path = os.path.join(dir_, el)
         if os.path.isfile(path):
-            size += os.path.getsize(path)
+            try:
+                size += os.path.getsize(path)
+            except OSError as err:
+                report_error(err)
         elif os.path.isdir(path):
-            size += get_dir_size(path)
+            size += get_dir_size(path, report_error)
     return size
