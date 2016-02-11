@@ -128,16 +128,3 @@ class Client(EthereumRpcClient):
 
     def send(self, transaction):
         return self.send_raw_transaction(rlp.encode(transaction).encode('hex'))
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    c = Client()
-    prev = 0
-    while True:
-        time.sleep(1)
-        n = c.get_block_number()
-        print "Block", n
-        if n > 0 and prev != n:
-            break
-        prev = n
