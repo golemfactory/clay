@@ -43,6 +43,8 @@ class ComputeTaskDef(object):
         self.working_directory = ""
         self.performance = 0.0
         self.environment = ""
+        self.docker_image = None
+        self.docker_image_id = None
 
 
 class Task:

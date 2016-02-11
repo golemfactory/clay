@@ -50,6 +50,8 @@ class TaskComputer(object):
         self.max_assigned_tasks = 1
 
         self.delta = None
+        self.task_timeout = None
+        self.last_task_timeout_checking = None
 
     def task_given(self, ctd, subtask_timeout):
         if ctd.subtask_id not in self.assigned_subtasks:
@@ -68,10 +70,11 @@ class TaskComputer(object):
             if subtask_id in self.assigned_subtasks:
                 self.waiting_ttl = 0
                 self.counting_task = True
-                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].src_code,
-                                    self.assigned_subtasks[subtask_id].extra_data,
-                                    self.assigned_subtasks[subtask_id].short_description,
-                                    self.assigned_subtasks[subtask_id].timeout)
+                subtask = self.assigned_subtasks[subtask_id]
+                self.__compute_task(subtask_id, subtask.docker_image,
+                                    subtask.docker_image_id,
+                                    subtask.src_code, subtask.extra_data,
+                                    subtask.short_description, subtask.timeout)
                 self.waiting_for_task = None
                 return True
             else:
@@ -83,13 +86,14 @@ class TaskComputer(object):
             if subtask_id in self.assigned_subtasks:
                 self.waiting_ttl = 0
                 self.counting_task = True
-                self.task_timeout = self.assigned_subtasks[subtask_id].timeout
+                subtask = self.assigned_subtasks[subtask_id]
+                self.task_timeout = subtask.timeout
                 self.last_task_timeout_checking = time.time()
                 self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
-                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].src_code,
-                                    self.assigned_subtasks[subtask_id].extra_data,
-                                    self.assigned_subtasks[subtask_id].short_description,
-                                    self.assigned_subtasks[subtask_id].timeout)
+                self.__compute_task(subtask_id, subtask.docker_image,
+                                    subtask.docker_image_id,
+                                    subtask.src_code, subtask.extra_data,
+                                    subtask.short_description, subtask.timeout)
                 self.waiting_for_task = None
                 self.delta = None
                 return True
@@ -200,17 +204,15 @@ class TaskComputer(object):
                                                                   key_id,
                                                                   task_owner)
 
-    def __compute_task(self, subtask_id, src_code, extra_data, short_desc, task_timeout):
+    def __compute_task(self, subtask_id, docker_image, docker_image_id,
+                       src_code, extra_data, short_desc, task_timeout):
+        assert docker_image or not docker_image_id
         task_id = self.assigned_subtasks[subtask_id].task_id
         working_directory = self.assigned_subtasks[subtask_id].working_directory
         self.dir_manager.clear_temporary(task_id)
-        # TODO: For testing only, remove
-        extra_data["docker-image"] = "imapp/blender"
-        extra_data["docker-image-id"] = None
-        if extra_data.get("docker-image"):
-            tt = DockerRunner(self, subtask_id, working_directory, src_code,
-                              extra_data["docker-image"],
-                              extra_data["docker-image-id"],
+        if docker_image:
+            tt = DockerRunner(self, subtask_id, docker_image, docker_image_id,
+                              working_directory, src_code,
                               extra_data, short_desc,
                               self.resource_manager.get_resource_dir(task_id),
                               self.resource_manager.get_temporary_dir(task_id),
@@ -337,9 +339,9 @@ class PyTestTaskThread(PyTaskThread):
 
 class DockerRunner(TaskThread):
 
-    def __init__(self, task_computer, subtask_id, working_directory, src_code,
-                 image_name, image_id,
-                 extra_data, short_desc, res_path, tmp_path, timeout):
+    def __init__(self, task_computer, subtask_id, image_name, image_id,
+                 working_directory, src_code, extra_data, short_desc,
+                 res_path, tmp_path, timeout):
         super(DockerRunner, self).__init__(
             task_computer, subtask_id, working_directory, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)

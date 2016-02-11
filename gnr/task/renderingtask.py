@@ -210,6 +210,8 @@ class RenderingTask(GNRTask):
         ctd.src_code = self.src_code
         ctd.performance = perf_index
         ctd.working_directory = working_directory
+        ctd.docker_image = self.docker_image
+        ctd.docker_image_id = self.docker_image_id
         return ctd
 
     def _get_next_task(self):
