@@ -1,5 +1,7 @@
 import atexit
+import json
 import logging
+import os
 import time
 from os import path
 from subprocess import Popen
@@ -23,6 +25,8 @@ def find_free_net_port(start_port):
 
 class Client(EthereumRpcClient):
 
+    STATIC_NODES = ["enode://f1fbbeff7e9777a3a930f1e55a5486476845f799f7d603f71be7b00898df98f2dc2e81b854d2c774c3d266f1fa105d130d4a43bc58e700155c4565726ae6804e@94.23.17.170:30900"]  # noqa
+
     __client_subprocess = None
     __client_rpc_port = None
     __client_datadir = None
@@ -40,7 +44,6 @@ class Client(EthereumRpcClient):
             Client.__client_datadir = datadir
             basedir = path.dirname(__file__)
             genesis_file = path.join(basedir, 'genesis_golem.json')
-            peers_file = path.join(basedir, 'peers.js')
             args = [
                 program,
                 '--datadir', datadir,
@@ -51,9 +54,9 @@ class Client(EthereumRpcClient):
                 '--nodiscover',
                 '--gasprice', '0',
                 '--verbosity', '0',
-                'js', peers_file
             ]
 
+            Client.__config_static_nodes(datadir)
             Client.__client_subprocess = Popen(args)
             Client.__client_rpc_port = rpcport
             atexit.register(Client.__terminate_client_subprocess)
@@ -80,6 +83,15 @@ class Client(EthereumRpcClient):
             Client.__client_rpc_port = None
             duration = time.clock() - start_time
             log.info("Ethereum client terminated in {:.2f} s".format(duration))
+
+    @staticmethod
+    def __config_static_nodes(datadir):
+        if not path.exists(datadir):
+            os.makedirs(datadir)
+        assert path.isdir(datadir)
+        file = path.join(datadir, 'static-nodes.json')
+        if not path.exists(file):
+            json.dump(Client.STATIC_NODES, open(file, 'w'))
 
     def __init__(self, datadir=None):
         if datadir and self.__client_datadir:
