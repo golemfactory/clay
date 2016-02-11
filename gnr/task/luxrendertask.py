@@ -15,7 +15,7 @@ from golem.environments.environment import Environment
 
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingenvironment import LuxRenderEnvironment
-from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_test_task_tmp_path
+from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
 from gnr.task.imgrepr import load_img, blend
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
@@ -26,7 +26,6 @@ logger = logging.getLogger(__name__)
 def merge_flm_files(flm_to_verify_and_merge_filename, output_flm_filename):
     p = subprocess.Popen(["luxmerger", output_flm_filename, flm_to_verify_and_merge_filename, "-o", output_flm_filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
-    
     if("ERROR" in err):
         return False
     else:
@@ -148,13 +147,13 @@ class LuxTask(RenderingTask):
                  return_address="",
                  return_port=0,
                  key_id=""):
-
+        
         RenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                LuxRenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                main_program_file, task_resources, main_scene_dir, main_scene_file,
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                root_path, estimated_memory)
-
+        self.undeletable.append(os.path.join(get_tmp_path(self.header.node_name, self.header.task_id, self.root_path), "test_result.flm"))
         self.halttime = halttime
         self.haltspp = haltspp
         self.own_binaries = own_binaries
@@ -226,11 +225,11 @@ class LuxTask(RenderingTask):
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
     def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
-        tmp_dir = get_test_task_tmp_path(get_golem_path())
+        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         self.tmp_dir = tmp_dir
         env = LuxRenderEnvironment()
         lux_merger = env.get_lux_merger()
-        test_result_flm = os.path.join(tmp_dir, str(self.header.task_id) + ".flm")
+        test_result_flm = os.path.join(tmp_dir, "test_result.flm")
 
         tr_files = self.load_task_results(task_result, result_type, tmp_dir)
         if len(task_result) > 0:
@@ -266,7 +265,6 @@ class LuxTask(RenderingTask):
 
     def query_extra_data_for_test_task(self):
         self.test_task_res_path = get_test_task_path(self.root_path)
-        logger.debug(self.test_task_res_path)
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
@@ -370,14 +368,6 @@ class LuxTask(RenderingTask):
         os.remove(tmp_scene_file.name)
 
     def __generate_final_flm(self):
-        '''
-        Received flm files will be merged one by one with the result of task's test
-        in order to verify basic properties of the received .flms
-        returns list of wrong flms
-        '''
-        
-        # the file containing result of task test
-        test_result_flm = os.path.join(get_golem_path(), "save", str(self.header.task_id) + ".flm")
         # output flm
         output_file_name = u"{}".format(self.output_file, self.output_format)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
@@ -392,7 +382,7 @@ class LuxTask(RenderingTask):
 
     def __generate_final_flm_advanced_verification(self):
         # the file containing result of task test
-        test_result_flm = os.path.join(self.tmp_dir, str(self.header.task_id) + ".flm")
+        test_result_flm = os.path.join(self.tmp_dir, "test_result.flm")
         
         shutil.copy(test_result_flm, self.output_file + ".flm")
         logger.debug("Copying " + test_result_flm + " to " + self.output_file + ".flm")

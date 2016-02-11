@@ -5,8 +5,7 @@ import logging
 from golem.task.taskbase import Task, resource_types
 from golem.resource.resource import TaskResourceHeader, decompress_dir
 from golem.task.taskcomputer import PyTestTaskThread
-from gnr.renderingdirmanager import get_test_task_path, get_test_task_directory, get_test_task_tmp_path
-from golem.core.common import get_golem_path
+from gnr.renderingdirmanager import get_test_task_path, get_test_task_directory, get_tmp_path, get_test_task_tmp_path
 
 logger = logging.getLogger(__name__)
 
@@ -92,20 +91,18 @@ class TaskTester:
             logger.info("Test task computation success !")
             
             # Search for flm - the result of testing a lux task
-            # If found one, copy it to $GOLEM/save/{task_id}.flm
             # It's needed for verification of received results
             flm = find_flm(self.tmp_dir)
             if(flm != None):
                 try:
-                    filename = str(self.task.header.task_id) + ".flm"
-                    os.rename(flm, os.path.join(self.tmp_dir, filename))
+                    filename = "test_result.flm"
                     flm_path = os.path.join(self.tmp_dir, filename)
-                    save_path = get_test_task_tmp_path(get_golem_path())
+                    os.rename(flm, flm_path)
+                    save_path = get_tmp_path(self.task.header.node_name, self.task.header.task_id, self.task.root_path)
                     if not os.path.exists(save_path):
                         os.makedirs(save_path)
                     
                     shutil.copy(flm_path, save_path)
-                    
                 except: 
                     logger.warning("Couldn't rename and copy .flm file")
             

@@ -40,7 +40,7 @@ class DirManager(object):
         if is_windows():
             self.__get_path = self.__get_path_windows
 
-    def clear_dir(self, d):
+    def clear_dir(self, d, undeletable=[]):
         """ Remove everything form given directory
         :param str d: directory that should be cleared
         """
@@ -48,10 +48,11 @@ class DirManager(object):
             return
         for i in os.listdir(d):
             path = os.path.join(d, i)
-            if os.path.isfile(path):
-                os.remove(path)
-            if os.path.isdir(path):
-                shutil.rmtree(path, ignore_errors=True)
+            if path not in undeletable:
+                if os.path.isfile(path):
+                    os.remove(path)
+                if os.path.isdir(path):
+                    shutil.rmtree(path, ignore_errors=True)
 
     def create_dir(self, full_path):
         """ Create new directory, remove old directory if it exists.
@@ -112,11 +113,12 @@ class DirManager(object):
         full_path = self.__get_out_path(task_id)
         return self.get_dir(full_path, create, "output dir does not exist")
 
-    def clear_temporary(self, task_id):
+    def clear_temporary(self, task_id, undeletable=[]):
         """ Remove everything from temporary directory for given task
         :param task_id: temporary directory of a task with that id should be cleared
+        :param undeletable is list of files/directories which shouldn't be removed
         """
-        self.clear_dir(self.__get_tmp_path(task_id))
+        self.clear_dir(self.__get_tmp_path(task_id), undeletable)
 
     def clear_resource(self, task_id):
         """ Remove everything from resource directory for given task
