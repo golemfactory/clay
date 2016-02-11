@@ -241,7 +241,10 @@ class LuxTask(RenderingTask):
                     self.collected_file_names[num_start] = tr_file
                     self.num_tasks_received += 1
                     self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
-                    if self.advanceVerification and (lux_merger is not None):
+                    if self.advanceVerification and not os.path.isfile(test_result_flm):
+                        logger.warning("Advanced verification set, but couldn't find test result!")
+                        logger.info("Skipping verification")
+                    elif self.advanceVerification and (lux_merger is not None):
                         if not merge_flm_files(tr_file, test_result_flm):
                             logger.info("Subtask " + str(subtask_id) + " rejected.")
                             self._mark_subtask_failed(subtask_id)
@@ -253,7 +256,7 @@ class LuxTask(RenderingTask):
         else:
             self._mark_subtask_failed(subtask_id)
         if self.num_tasks_received == self.total_tasks:
-            if self.advanceVerification:
+            if self.advanceVerification and os.path.isfile(test_result_flm):
                 self.__generate_final_flm_advanced_verification()
             else:
                 self.__generate_final_flm()
