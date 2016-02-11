@@ -9,6 +9,7 @@ import psutil
 import rlp
 from eth_rpc_client import Client as EthereumRpcClient
 
+from golem.environments.utils import find_program
 
 log = logging.getLogger('golem.eth.rpc')
 
@@ -29,6 +30,8 @@ class Client(EthereumRpcClient):
     def __start_client_subprocess():
         if not Client.__client_subprocess:
             assert not Client.__client_rpc_port
+            program = find_program('geth')
+            assert program  # TODO: Replace with a nice exception
             rpcport = find_free_net_port(9001)
             basedir = path.dirname(__file__)
             # Data dir must be set the class user to allow multiple nodes running
@@ -36,7 +39,7 @@ class Client(EthereumRpcClient):
             genesis_file = path.join(basedir, 'genesis_golem.json')
             peers_file = path.join(basedir, 'peers.js')
             args = [
-                'geth',
+                program,
                 '--datadir', datadir,
                 '--rpc',
                 '--rpcport', str(rpcport),
