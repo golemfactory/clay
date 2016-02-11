@@ -25,17 +25,20 @@ class Client(EthereumRpcClient):
 
     __client_subprocess = None
     __client_rpc_port = None
+    __client_datadir = None
 
     @staticmethod
-    def __start_client_subprocess():
+    def __start_client_subprocess(datadir):
         if not Client.__client_subprocess:
             assert not Client.__client_rpc_port
             program = find_program('geth')
             assert program  # TODO: Replace with a nice exception
             rpcport = find_free_net_port(9001)
-            basedir = path.dirname(__file__)
             # Data dir must be set the class user to allow multiple nodes running
-            datadir = path.join(appdirs.user_data_dir('golem'), 'ethereum9')
+            if not datadir:
+                datadir = path.join(appdirs.user_data_dir('golem'), 'ethereum9')
+            Client.__client_datadir = datadir
+            basedir = path.dirname(__file__)
             genesis_file = path.join(basedir, 'genesis_golem.json')
             peers_file = path.join(basedir, 'peers.js')
             args = [
@@ -78,8 +81,10 @@ class Client(EthereumRpcClient):
             duration = time.clock() - start_time
             log.info("Ethereum client terminated in {:.2f} s".format(duration))
 
-    def __init__(self):
-        self.__start_client_subprocess()
+    def __init__(self, datadir=None):
+        if datadir and self.__client_datadir:
+            assert datadir == self.__client_datadir
+        self.__start_client_subprocess(datadir)
         assert self.__client_subprocess and self.__client_rpc_port
         super(Client, self).__init__(port=self.__client_rpc_port)
 

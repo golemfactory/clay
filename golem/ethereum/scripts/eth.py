@@ -38,12 +38,13 @@ BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
 @click.group()
 @click.pass_context
 @click.option('--data-dir')
-def app(ctx, data_dir):
+@click.option('--name')
+def app(ctx, data_dir, name):
     if not data_dir:
         data_dir = path.join(appdirs.user_data_dir("golem"), "ethereum9")
 
     logging.basicConfig(level=logging.DEBUG)
-    geth = Client()  # FIXME: set geth's data dir
+    geth = Client(data_dir)
     while not geth.get_peer_count():
         print "Waiting for peers..."
         gevent.sleep(1)
@@ -61,9 +62,7 @@ def app(ctx, data_dir):
 
 @app.group()
 @click.pass_obj
-@click.option('--name', default='node')
-def node(o, name):
-    o.dir = path.join(o.dir, name)
+def node(o):
     o.me = SimpleAccount(o.dir)
     print "MY ADDRESS", o.me.address.encode('hex')
 
