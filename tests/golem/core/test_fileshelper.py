@@ -24,10 +24,6 @@ class TestDirSize(unittest.TestCase):
         with self.assertRaises(OSError):
             get_dir_size("notexisting")
 
-        self.assertFalse(os.listdir(self.testdir))
-        empty_dir_size = get_dir_size(self.testdir)
-        self.assertIsInstance(empty_dir_size, int)
-
         with open(self.testfile1, 'w') as f:
             f.write("a" * 20000)
         os.makedirs(self.testdir2)
@@ -35,7 +31,6 @@ class TestDirSize(unittest.TestCase):
             f.write("b" * 30000)
         size = get_dir_size(self.testdir)
 
-        self.assertGreater(size, empty_dir_size)
         self.assertGreaterEqual(size, 50000)
 
         self.assertGreater(get_dir_size(get_golem_path()), 3 * 1024 * 1024)
