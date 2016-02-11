@@ -14,7 +14,7 @@ from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
-from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil, open_exr_as_rgbf_images, get_single_rgbf_extrema, convert_rgbf_images_to_rgb8_image, print_progress 
+from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
 
 
