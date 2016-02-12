@@ -17,3 +17,7 @@ class EthereumClientTest(unittest.TestCase):
         client = Client()
         self.assertRaises(ValueError,
                           lambda: client.send_raw_transaction("fake data"))
+
+    def test_start_terminate(self):
+        client = Client()
+        client._Client__terminate_client_subprocess()
