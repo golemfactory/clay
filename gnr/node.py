@@ -107,14 +107,15 @@ def parse_task_file(ctx, param, value):
     del ctx, param
     tasks = []
     for task_file in value:
-        if task_file.name.endswith('.json'):
-            try:
-                task_def = jsonpickle.decode(task_file.read())
-            except ValueError as e:
-                raise click.BadParameter(
-                    "Invalid task json file: {}".format(e.message))
-        else:
-            task_def = pickle.loads(task_file.read())
+        with open(task_file, 'r') as f:
+            if f.name.endswith('.json'):
+                try:
+                    task_def = jsonpickle.decode(f.read())
+                except ValueError as e:
+                    raise click.BadParameter(
+                        "Invalid task json file: {}".format(e.message))
+            else:
+                task_def = pickle.loads(f.read())
         task_def.task_id = str(uuid.uuid4())
         tasks.append(task_def)
     return tasks
@@ -131,7 +132,7 @@ def node_cli():
               help="Network address to use for this node")
 @click.option('--peer', '-p', multiple=True, callback=parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
-@click.option('--task', '-t', multiple=True, type=click.File(lazy=True),
+@click.option('--task', '-t', multiple=True, type=click.Path(exists=True),
               callback=parse_task_file,
               help="Request task from file")
 def start(node_address, peer, task, **extra_args):
