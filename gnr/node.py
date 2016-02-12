@@ -129,16 +129,15 @@ def node_cli():
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=parse_node_addr,
               help="Network address to use for this node")
-@click.option('--public-address', '-A', multiple=False, type=click.STRING,
-              callback=parse_node_addr,
-              help="Public network address to use for this node")
 @click.option('--peer', '-p', multiple=True, callback=parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
-@click.option('--task', '-t', multiple=True, type=click.File(lazy=True), callback=parse_task_file,
+@click.option('--task', '-t', multiple=True, type=click.File(lazy=True),
+              callback=parse_task_file,
               help="Request task from file")
-def start(node_address, public_address, peer, task, **kwargs):
+def start(node_address, peer, task, **extra_args):
+    del extra_args
 
-    node = GNRNode(node_address=node_address, public_address=public_address)
+    node = GNRNode(node_address=node_address)
     node.initialize()
 
     node.connect_with_peers(peer)
