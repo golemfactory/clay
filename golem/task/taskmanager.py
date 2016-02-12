@@ -70,7 +70,7 @@ class TaskManager:
         self.node.pub_addr, self.node.pub_port, self.node.nat_type = get_external_address(self.listen_port)
         task.header.task_owner = self.node
 
-        self.dir_manager.clear_temporary(task.header.task_id)
+        self.dir_manager.clear_temporary(task.header.task_id, undeletable=task.undeletable)
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
 
         task.initialize(self.dir_manager)
@@ -267,7 +267,7 @@ class TaskManager:
     def restart_task(self, task_id):
         if task_id in self.tasks:
             logger.info("restarting task")
-            self.dir_manager.clear_temporary(task_id)
+            self.dir_manager.clear_temporary(task_id, undeletable=self.tasks[task_id].undeletable)
 
             self.tasks[task_id].restart()
             self.tasks[task_id].task_status = TaskStatus.waiting

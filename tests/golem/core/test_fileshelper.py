@@ -16,21 +16,21 @@ class TestDirSize(unittest.TestCase):
     testfile3 = os.path.join(testdir3, "testfile3")
 
     def setUp(self):
-        if os.path.isdir(self.testdir):
-            shutil.rmtree(self.testdir)
+        self.tearDown()
+        self.assertFalse(os.path.exists(self.testdir))
         os.makedirs(self.testdir)
 
     def test_dir_size(self):
         with self.assertRaises(OSError):
             get_dir_size("notexisting")
 
-        self.assertEqual(get_dir_size(self.testdir), 0)
         with open(self.testfile1, 'w') as f:
             f.write("a" * 20000)
         os.makedirs(self.testdir2)
         with open(self.testfile2, 'w') as f:
             f.write("b" * 30000)
         size = get_dir_size(self.testdir)
+
         self.assertGreaterEqual(size, 50000)
 
         self.assertGreater(get_dir_size(get_golem_path()), 3 * 1024 * 1024)
@@ -41,7 +41,12 @@ class TestDirSize(unittest.TestCase):
                 f.write("c" * 30000)
             os.chmod(self.testdir3, 0o200)
             new_size = get_dir_size(self.testdir)
-            self.assertLess(new_size - size, 10000)
+            self.assertGreaterEqual(new_size, size)
+
+            errors = []
+            get_dir_size(self.testdir, report_error = errors.append)
+            self.assertEqual(len(errors), 1)
+            self.assertIs(type(errors[0]), OSError)
 
     def tearDown(self):
         if not is_windows():

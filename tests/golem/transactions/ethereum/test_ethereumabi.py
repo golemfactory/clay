@@ -1,5 +1,5 @@
 import unittest
-from golem.transactions.ethereum.ethereumabi import encode_abi
+from ethereum.abi import encode_abi
 
 
 class TestEthereumAbi(unittest.TestCase):

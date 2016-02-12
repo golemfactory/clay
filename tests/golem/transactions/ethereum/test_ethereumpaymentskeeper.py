@@ -1,8 +1,13 @@
 import unittest
 
-from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo, EthereumPaymentsKeeper
+from rlp.utils import decode_hex
+from sha3 import sha3_256
+
+from golem.transactions.ethereum.ethereumpaymentskeeper import (EthAccountInfo, EthereumPaymentsKeeper, EthereumAddress,
+                                                                logger)
 from golem.transactions.transactionsystem import PaymentInfo
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.network.p2p.node import Node
 
@@ -68,3 +73,33 @@ class TestEthAccountInfo(unittest.TestCase):
         self.assertNotEqual(a, b)
         a.eth_account = addr2
         self.assertEqual(a, b)
+
+
+class TestEthereumAddress(LogTestCase):
+    def test_init(self):
+        addr1 = "0x7b82fd1672b8020415d269c53cd1a2230fde9386"
+        e = EthereumAddress(addr1)
+        self.assertEqual(addr1, e.get_str_addr())
+
+        addr2 = addr1.upper()
+        e2 = EthereumAddress(addr2)
+        self.assertEqual(addr1, e2.get_str_addr())
+        addr3 = "0x0121121"
+        with self.assertLogs(logger, level=1) as l:
+            e = EthereumAddress(addr3)
+        self.assertTrue(any(["Can't" in log for log in l.output]))
+        self.assertIsNone(e.address)
+        # We may think about allowing to add address in such formats in the future
+        addr4 = bin(int(addr1, 16))[2:].zfill(160)
+        with self.assertLogs(logger, level=1) as l:
+            e = EthereumAddress(addr4)
+        self.assertTrue(any(["Can't" in log for log in l.output]))
+        self.assertIsNone(e.address)
+        addr5 = decode_hex(addr1[2:])
+        e = EthereumAddress(addr5)
+        self.assertTrue(addr1, e.get_str_addr())
+        e = EthereumAddress(addr5 + sha3_256(addr5).digest()[:4])
+        self.assertTrue(addr1, e.get_str_addr())
+        addr6 = ""
+        e = EthereumAddress(addr6)
+        self.assertIsNone(e.get_str_addr())
