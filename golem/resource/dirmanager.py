@@ -40,10 +40,13 @@ class DirManager(object):
         if is_windows():
             self.__get_path = self.__get_path_windows
 
-    def clear_dir(self, d, undeletable=[]):
-        """ Remove everything form given directory
+    def clear_dir(self, d, undeletable=None):
+        """ Remove everything but undeletable from given directory
         :param str d: directory that should be cleared
+        :param list undeletable: files and directories to skip while deleting
         """
+        if undeletable is None:
+            undeletable = []
         if not os.path.isdir(d):
             return
         for i in os.listdir(d):
@@ -52,7 +55,9 @@ class DirManager(object):
                 if os.path.isfile(path):
                     os.remove(path)
                 if os.path.isdir(path):
-                    shutil.rmtree(path, ignore_errors=True)
+                    self.clear_dir(path, undeletable)
+                    if os.listdir(path) == []:
+                        shutil.rmtree(path, ignore_errors=True)
 
     def create_dir(self, full_path):
         """ Create new directory, remove old directory if it exists.
