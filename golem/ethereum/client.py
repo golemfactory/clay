@@ -12,15 +12,9 @@ import rlp
 from eth_rpc_client import Client as EthereumRpcClient
 
 from golem.environments.utils import find_program
+from golem.utils import find_free_net_port
 
 log = logging.getLogger('golem.eth.rpc')
-
-
-def find_free_net_port(start_port):
-    open_ports = set(c.laddr[1] for c in psutil.net_connections())
-    while start_port in open_ports:
-        start_port += 1
-    return start_port
 
 
 class Client(EthereumRpcClient):
