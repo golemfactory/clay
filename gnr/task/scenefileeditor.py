@@ -60,7 +60,12 @@ def regenerate_lux_file(scene_file_src, xres, yres, halttime, haltspp, writeinte
         add_crop_window = False
     else:
         add_crop_window = True
-
+    
+    if '"bool write_resume_flm" ["true"]' in scene_file_src:
+        add_write_resume_flm = False
+    else:
+        add_write_resume_flm = True
+    
     exr = "false"
     png = "false"
     tga = "false"
@@ -74,6 +79,7 @@ def regenerate_lux_file(scene_file_src, xres, yres, halttime, haltspp, writeinte
     next_line_add_halt = False
     next_line_add_crop = False
     next_line_add_haltspp = False
+    next_line_add_write_resume_flm = False
     for l in scene_file_src.splitlines():
         if next_line_add_halt:
             next_line_add_halt = False
@@ -84,6 +90,9 @@ def regenerate_lux_file(scene_file_src, xres, yres, halttime, haltspp, writeinte
         if next_line_add_crop:
             next_line_add_crop = False
             out += '\t"float cropwindow" [{} {} {} {}]\n'.format(crop[0], crop[1], crop[2], crop[3])
+        if next_line_add_write_resume_flm:
+            next_line_add_write_resume_flm = False
+            out += '\t"bool write_resume_flm" ["true"]\n'
         line = re.sub(r'("integer\s+xresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(xres), l)
         line = re.sub(r'("integer\s+yresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(yres), line)
         line = re.sub(r'("integer\s+halttime"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(halttime), line)
@@ -102,6 +111,8 @@ def regenerate_lux_file(scene_file_src, xres, yres, halttime, haltspp, writeinte
             next_line_add_crop = True
         if add_haltspp and 'Film' in line:
             next_line_add_haltspp = True
+        if add_write_resume_flm and 'Film' in line:
+            next_line_add_write_resume_flm = True
 
     return out
 
