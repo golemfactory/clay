@@ -10,8 +10,11 @@ class EthereumClientTest(unittest.TestCase):
         assert type(p) is int
         s = client.is_syncing()
         assert type(s) is bool
-        c = client.get_transaction_count(b'Fake Ethereum Address')
+        addr = b'FakeEthereumAddress!'
+        assert len(addr) == 20
+        c = client.get_transaction_count(addr.encode('hex'))
         assert type(c) is int
+        assert c == 0
 
     def test_send_transaction(self):
         client = Client()
