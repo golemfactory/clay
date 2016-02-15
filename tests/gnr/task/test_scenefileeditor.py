@@ -1,8 +1,8 @@
-import os
-import shutil
+import re
 
 from golem.tools.testdirfixture import TestDirFixture
 from gnr.task.scenefileeditor import regenerate_lux_file
+
 
 class TestSceneFileEditor(TestDirFixture):
     
@@ -23,6 +23,13 @@ class TestSceneFileEditor(TestDirFixture):
         self.assertTrue('"integer haltspp" [' + str(haltspp) + ']' in out)
         self.assertTrue('"integer writeinterval" [' + str(writeinterval) + ']' in out)
         self.assertTrue('"float cropwindow" [' + str(crop[0]) + ' ' + str(crop[1]) + ' ' + str(crop[2]) + ' ' + str(crop[3]) + ']' in out)
+        scene_file_src2 = 'Film "fleximage"\n "bool write_resume_flm" ["true"]\n "integer xresolution" [200] "integer yresolution" [100]\n "integer writeinterval" [15]\n "float cropwindow" [0, 1, 0, 1]'
+
+        out = regenerate_lux_file(scene_file_src2, xres, yres, halttime, haltspp, writeinterval, crop, output_format)
+        self.assertEqual(len(re.findall("bool write_resume_flm", out)), 1)
+
+
+
         
         
         
