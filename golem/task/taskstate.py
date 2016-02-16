@@ -46,6 +46,8 @@ class SubtaskState(object):
         self.subtask_rem_time = 0
         self.subtask_status = ""
         self.value = 0
+        self.stdout = ""
+        self.stderr = ""
 
         self.computer = ComputerState()
 

@@ -19,6 +19,8 @@ class SubtaskDetailsDialogCustomizer(Customizer):
         self.gui.ui.statusLabel.setText(self.subtask_state.subtask_status)
         self.gui.ui.performanceLabel.setText("{}".format(self.subtask_state.computer.performance))
         self.gui.ui.subtaskDefinitionTextEdit.setPlainText(self.subtask_state.subtask_definition)
+        self.gui.ui.subtaskOutputLogTextEdit.setPlainText(self.subtask_state.stdout)
+        self.gui.ui.subtaskErrorLogTextEdit.setPlainText(self.subtask_state.stderr)
 
     def _setup_connections(self):
         self.gui.ui.closeButton.clicked.connect(self.gui.window.close)

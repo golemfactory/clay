@@ -79,6 +79,10 @@ class FrameRenderingTask(RenderingTask):
         for tr in task_results:
             if not tr.endswith(".log"):
                 task_result.append(tr)
+            elif tr.endswith(".err.log"):
+                self.stderr[subtask_id] = tr
+            else:
+                self.stdout[subtask_id] = tr
 
         tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
         self.tmp_dir = tmp_dir

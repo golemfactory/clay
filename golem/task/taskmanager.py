@@ -170,6 +170,8 @@ class TaskManager:
             ss.subtask_progress = 1.0
             ss.subtask_rem_time = 0.0
             ss.subtask_status = SubtaskStatus.finished
+            ss.stdout = self.tasks[task_id].get_stdout(subtask_id)
+            ss.stderr = self.tasks[task_id].get_stderr(subtask_id)
 
             if not self.tasks[task_id].verify_subtask(subtask_id):
                 logger.debug("Subtask {} not accepted\n".format(subtask_id))

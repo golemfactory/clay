@@ -77,6 +77,9 @@ class GNRTask(Task):
         self.full_task_timeout = 2200
         self.counting_nodes = {}
 
+        self.stdout = {}
+        self.stderr = {}
+
         self.res_files = {}
 
     def initialize(self, dir_manager):
@@ -181,6 +184,28 @@ class GNRTask(Task):
         if self.subtasks_given[subtask_id]['status'] != SubtaskStatus.starting:
             return False
         return True
+
+    @check_subtask_id_wrapper
+    def get_stderr(self, subtask_id):
+        err = self.stderr.get(subtask_id)
+        return self._interpret_log(err)
+
+    @check_subtask_id_wrapper
+    def get_stdout(self, subtask_id):
+        out = self.stdout.get(subtask_id)
+        return self._interpret_log(out)
+
+    @staticmethod
+    def _interpret_log(log):
+        if not os.path.isfile(log):
+            return log
+        try:
+            with open(log) as f:
+                res = f.read()
+            return res
+        except IOError as err:
+            logger.error("Can't read file {}: {}".format(f, err))
+            return ""
 
     @check_subtask_id_wrapper
     def _mark_subtask_failed(self, subtask_id):

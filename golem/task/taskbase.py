@@ -226,6 +226,21 @@ class Task:
         """
         return  # Implement in derived class
 
+    def get_stdout(self, subtask_id):
+        """ Return stdout received after computation of subtask_id, if there is no data available
+        return empty string
+        :param subtask_id:
+        :return str:
+        """
+        return "OUT"
+
+    def get_stderr(self, subtask_id):
+        """ Return stderr received after computation of subtask_id, if there is no data available
+        return emtpy string
+        :param subtask_id:
+        :return:
+        """
+        return "ERR"
 
 result_types = {'data': 0, 'files': 1}
 resource_types = {'zip': 0, 'parts': 1}
