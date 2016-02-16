@@ -53,6 +53,10 @@ contract Lottery {
         return lotteries[lotteryHash].maturity;
     }
 
+    function getRandomValue(bytes32 lotteryHash) external constant returns (uint32) {
+        return lotteries[lotteryHash].randVal;
+    }
+
     function check(bytes32 lotteryHash, uint256 uid, address winner, uint32 rangeStart,
             uint32 rangeLength, bytes32[] values) external {
         var proof = WinnerProof(uid, winner, rangeStart, rangeLength, values);

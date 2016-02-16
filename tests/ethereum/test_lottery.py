@@ -123,7 +123,9 @@ class LotteryTest(unittest.TestCase):
 
     def lottery_init(self, addr_idx, lottery):
         m = self.monitor(addr_idx)
-        self.c.init(lottery.hash, value=lottery.value, sender=m.key)
+        payer_deposit = lottery.value / 10
+        v = lottery.value + payer_deposit
+        self.c.init(lottery.hash, value=v, sender=m.key)
         return m.gas()
 
     def lottery_get_value(self, lottery):
@@ -132,10 +134,18 @@ class LotteryTest(unittest.TestCase):
     def lottery_get_maturity(self, lottery):
         return self.c.getMaturity(lottery.hash, sender=tester.k9)
 
+    def lottery_get_rand(self, lottery):
+        return self.c.getRandomValue(lottery.hash, sender=tester.k9)
+
+    def lottery_randomise(self, addr_idx, lottery):
+        m = self.monitor(addr_idx)
+        self.c.randomize(lottery.hash, value=0, sender=m.key)
+        return m.gas()
+
     def test_deployment(self):
         c, g = self.deploy_contract(9)
         assert len(c) == 20
-        assert g <= 681642
+        assert g <= 713635
 
         assert self.c.owner().decode('hex') == tester.a9
         assert self.c.ownerDeposit() == 0
@@ -179,8 +189,26 @@ class LotteryTest(unittest.TestCase):
 
     def test_lottery_init(self):
         self.deploy_contract()
-        lottery = Lottery({tester.a1: 1, tester.a2: 2})
+        lottery = Lottery({tester.a1: 9, tester.a2: 1})
         g = self.lottery_init(2, lottery)
-        assert g <= 84062
-        assert self.lottery_get_value(lottery) == 3
+        assert g <= 84092
+        assert self.lottery_get_value(lottery) == 10
         assert self.lottery_get_maturity(lottery) == 10
+
+    def test_lottery_randomise(self):
+        self.deploy_contract()
+        lottery = Lottery({tester.a1: 50 * eth, tester.a2: 50 * eth})
+        assert lottery.value == 100 * eth
+        self.lottery_init(3, lottery)
+        assert self.lottery_get_value(lottery) == lottery.value
+        self.state.mine(11)
+        assert self.state.block.number == 11
+        assert self.state.block.number > self.lottery_get_maturity(lottery)
+        r = self.lottery_get_rand(lottery)
+        assert r == 0
+        g = self.lottery_randomise(3, lottery)
+        assert g <= 44919
+        r = self.lottery_get_rand(lottery)
+        assert int_to_big_endian(r) == self.state.block.get_parent().hash[-4:]
+        assert self.lottery_get_maturity(lottery) == 0
+        assert self.lottery_get_value(lottery) == lottery.value
