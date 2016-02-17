@@ -269,6 +269,7 @@ class PbrtRenderTask(RenderingTask):
         tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
         self.tmp_dir = tmp_dir
         tr_files = self.load_task_results(task_result, result_type, tmp_dir)
+        tr_files = self.filter_task_results(tr_files, subtask_id)
 
         if not self._verify_imgs(subtask_id, tr_files):
             self._mark_subtask_failed(subtask_id)

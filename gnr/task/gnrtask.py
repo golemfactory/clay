@@ -179,6 +179,17 @@ class GNRTask(Task):
             logger.error("Task result type not supported {}".format(result_type))
             return []
 
+    def filter_task_results(self, task_results, subtask_id, log_ext=".log", err_log_ext=".err.log"):
+        filtered_task_results = []
+        for tr in task_results:
+            if not tr.endswith(log_ext):
+                filtered_task_results.append(tr)
+            elif tr.endswith(err_log_ext):
+                self.stderr[subtask_id] = tr
+            else:
+                self.stdout[subtask_id] = tr
+        return filtered_task_results
+
     @check_subtask_id_wrapper
     def should_accept(self, subtask_id):
         if self.subtasks_given[subtask_id]['status'] != SubtaskStatus.starting:
@@ -197,6 +208,8 @@ class GNRTask(Task):
 
     @staticmethod
     def _interpret_log(log):
+        if log is None:
+            return ""
         if not os.path.isfile(log):
             return log
         try:

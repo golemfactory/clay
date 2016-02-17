@@ -74,20 +74,14 @@ class FrameRenderingTask(RenderingTask):
     def computation_finished(self, subtask_id, task_results, dir_manager=None, result_type=0):        
         if not self.should_accept(subtask_id):
             return
-        
-        task_result = []
-        for tr in task_results:
-            if not tr.endswith(".log"):
-                task_result.append(tr)
-            elif tr.endswith(".err.log"):
-                self.stderr[subtask_id] = tr
-            else:
-                self.stdout[subtask_id] = tr
 
         tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
         self.tmp_dir = tmp_dir
 
-        if len(task_result) > 0:
+        tr_files = self.load_task_results(task_results, result_type, tmp_dir)
+        tr_files = self.filter_task_results(tr_files, subtask_id)
+
+        if len(tr_files) > 0:
             num_start = self.subtasks_given[subtask_id]['start_task']
             parts = self.subtasks_given[subtask_id]['parts']
             num_end = self.subtasks_given[subtask_id]['end_task']
@@ -96,15 +90,13 @@ class FrameRenderingTask(RenderingTask):
 
             if self.use_frames and self.total_tasks <= len(self.frames):
                 frames_list = self.subtasks_given[subtask_id]['frames']
-                if len(task_result) < len(frames_list):
+                if len(tr_files) < len(frames_list):
                     self._mark_subtask_failed(subtask_id)
                     if not self.use_frames:
                         self._update_task_preview()
                     else:
                         self._update_frame_task_preview()
                     return
-
-            tr_files = self.load_task_results(task_result, result_type, tmp_dir)
 
             if not self._verify_imgs(subtask_id, tr_files):
                 self._mark_subtask_failed(subtask_id)
