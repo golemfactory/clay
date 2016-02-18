@@ -65,22 +65,33 @@ contract Lottery {
         delete lotteries[lotteryHash];
     }
 
+    // Fetch and set a random value for a given lottery.
     function randomize(bytes32 lotteryHash) {
         var lottery = lotteries[lotteryHash];
-        if (lottery.value == 0)
-            return;
-        if (lottery.randVal != 0)
-            return;
+
+        // Check if the lottery maturity has been reached.
         if (block.number <= lottery.maturity)
             return;
 
-        var randomizerReward = calculatePayerDeposit(lottery.value);
+        // Do not allow reseting random value.
+        if (lottery.randVal != 0)
+            return;
+
+        // Find the receiver of randomization reward.
+        address randomizer;
+        // The lottery payer can get back its deposit.
         if (block.number <= lottery.maturity + 128)
-            lottery.payer.send(randomizerReward); // FIXME: this can fail
+            randomizer = lottery.payer;
+        // Otherwise anyone can get the reward.
         else if (block.number <= lottery.maturity + 256)
-            msg.sender.send(randomizerReward); // FIXME: this can fail
-        else
-            ownerDeposit += randomizerReward; // TODO: Send the money directly.
+            randomizer = msg.sender;
+
+        // Sent the reward if possible. Otherwise the owner gets the reward.
+        var reward = calculatePayerDeposit(lottery.value);
+        if (randomizer == 0 || !randomizer.send(reward))
+            ownerDeposit += reward;
+
+        // Set the random value and clear unneed data.
         lottery.randVal = random(lottery.maturity);
         lottery.maturity = 0;
         lottery.payer = 0;
