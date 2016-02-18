@@ -22,6 +22,10 @@ class Customizer(object):
 
     @staticmethod
     def show_file(file_name):
+        """ Open file with given using specific program that is connected with this file
+        extension
+        :param file_name: file that should be opened
+        """
         if is_windows():
             os.startfile(file_name)
         else:

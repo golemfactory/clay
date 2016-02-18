@@ -1,10 +1,11 @@
 import unittest
 import math
 import os
-import shutil
 
-from golem.network.transport.tcpnetwork import DataProducer, DataConsumer, FileProducer, FileConsumer
+from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer, FileProducer, FileConsumer,
+                                                EncryptDataProducer, DecryptDataConsumer)
 from golem.core.variables import BUFF_SIZE
+from golem.core.keysauth import EllipticalKeysAuth
 from golem.tools.captureoutput import captured_output
 from golem.tools.testdirfixture import TestDirFixture
 from mock import MagicMock
@@ -18,21 +19,48 @@ class TestDataProducerAndConsumer(unittest.TestCase):
         short_string = "abcde"
         empty_string = ""
 
-        self.__producer_consumer_test(short_string)
-        self.__producer_consumer_test(empty_string)
-        self.__producer_consumer_test(long_string, 8)
-        self.__producer_consumer_test(long_string * 1000, 16)
-        self.__producer_consumer_test(long_string * 10000, 128)
-        self.__producer_consumer_test(long_string * 1000 * 1000 * 10)
+        self.__producer_consumer_test(short_string, session=MagicMock())
+        self.__producer_consumer_test(empty_string, session=MagicMock())
+        self.__producer_consumer_test(long_string, 8, session=MagicMock())
+        self.__producer_consumer_test(long_string * 1000, 16, session=MagicMock())
+        self.__producer_consumer_test(long_string * 10000, 128, session=MagicMock())
+        self.__producer_consumer_test(long_string * 1000 * 1000 * 10, session=MagicMock())
 
-    def __producer_consumer_test(self, data, buff_size=None):
+        self.ek = EllipticalKeysAuth()
+        self.__producer_consumer_test(short_string, data_producer_cls=EncryptDataProducer,
+                                      data_consumer_cls=DecryptDataConsumer,
+                                      session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(empty_string, data_producer_cls=EncryptDataProducer,
+                                      data_consumer_cls=DecryptDataConsumer,
+                                      session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(long_string, 8, data_producer_cls=EncryptDataProducer,
+                                      data_consumer_cls=DecryptDataConsumer,
+                                      session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(long_string * 1000, 16, data_producer_cls=EncryptDataProducer,
+                                      data_consumer_cls=DecryptDataConsumer,
+                                      session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(long_string * 10000, 128, data_producer_cls=EncryptDataProducer,
+                                      data_consumer_cls=DecryptDataConsumer,
+                                      session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(long_string * 1000 * 1000, data_producer_cls=EncryptDataProducer,
+                                      data_consumer_cls=DecryptDataConsumer,
+                                      session=self.__make_encrypted_session_mock())
+
+
+    def __make_encrypted_session_mock(self):
+        session = MagicMock()
+        session.encrypt.side_effect = self.ek.encrypt
+        session.decrypt.side_effect = self.ek.decrypt
+        return session
+
+    def __producer_consumer_test(self, data, buff_size=None, data_producer_cls=DataProducer, data_consumer_cls=DataConsumer,
+                                 session=MagicMock()):
         producer_progress_value = "Sending progress 100 %"
         consumer_progress_value = "File data receiving 100 %"
-        session = MagicMock()
         if buff_size:
-            d = DataProducer(data, session, buff_size)
+            d = data_producer_cls(data, session, buff_size)
         else:
-            d = DataProducer(data, session)
+            d = data_producer_cls(data, session)
             buff_size = BUFF_SIZE
         with captured_output() as (out, err):
             while session.conn.transport.unregisterProducer.call_count == 0:
@@ -44,10 +72,11 @@ class TestDataProducerAndConsumer(unittest.TestCase):
         self.assertEqual(err.getvalue().strip(), "")
 
         extra_data = {}
-        c = DataConsumer(MagicMock(), extra_data)
+        c = data_consumer_cls(session, extra_data)
         with captured_output() as (out, err):
             for chunk in session.conn.transport.write.call_args_list:
                 c.dataReceived(chunk[0][0])
+
         self.assertEqual(extra_data["result"], data)
         self.assertEqual(out.getvalue().strip().split("\r")[-1], consumer_progress_value)
         self.assertGreaterEqual(out.getvalue().strip().split("\r"), min_num)

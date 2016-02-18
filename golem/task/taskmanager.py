@@ -98,6 +98,21 @@ class TaskManager:
 
     def get_next_subtask(self, node_id, node_name, task_id, estimated_performance, max_resource_size, max_memory_size,
                          num_cores=0, address=""):
+        """ Assign next subtask from task <task_id> to node with given id <node_id> and name. If subtask is assigned
+        the function is returning a tuple (
+        :param node_id:
+        :param node_name:
+        :param task_id:
+        :param estimated_performance:
+        :param max_resource_size:
+        :param max_memory_size:
+        :param num_cores:
+        :param address:
+        :return (ComputeTaskDef|None, bool): Function return a pair. First element is either ComputeTaskDef that
+        describe assigned subtask or None. The second element describes whether the task_id is a wrong task that isn't
+        in task manager register. If task with <task_id> it's a known task then second element of a pair is always
+        False (regardless new subtask was assigned or not).
+        """
         if task_id in self.tasks:
             task = self.tasks[task_id]
             ts = self.tasks_states[task_id]
@@ -159,9 +174,11 @@ class TaskManager:
         task_state = self.tasks_states.get(task_id)
         if task_state is None:
             logger.warning("This is not my task {}".format(task_id))
+            return
         subtask_state = task_state.subtask_states.get(subtask_id)
         if subtask_state is None:
             logger.warning("This is not my subtask {}".format(subtask_id))
+            return
         subtask_state.value = value
 
     def computed_task_received(self, subtask_id, result, result_type):

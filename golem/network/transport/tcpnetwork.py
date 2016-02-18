@@ -1028,15 +1028,30 @@ class DataConsumer(object):
 class EncryptDataProducer(DataProducer):
     """ Data producer that encrypt data chunks """
 
+    # IPullProducer methods
+    def resumeProducing(self):
+        if self.data:
+            self.session.conn.transport.write(self.data)
+            self._print_progress()
+
+            if self.it < len(self.data_to_send):
+                self._prepare_data()
+                self.it += self.buff_size
+            else:
+                self.data = None
+                self.end_producing()
+        else:
+            self.end_producing()
+
     def _prepare_init_data(self):
         data = self.session.encrypt(self.data_to_send[:self.buff_size])
         self.data = struct.pack("!L", self.size) + struct.pack("!L", len(data)) + data
-        self.num_send -= 2 * LONG_STANDARD_SIZE
+        self.num_send += len(self.data_to_send[:self.buff_size])
 
     def _prepare_data(self):
         data = self.session.encrypt(self.data_to_send[self.it:self.it + self.buff_size])
         self.data = struct.pack("!L", len(data)) + data
-        self.num_send -= LONG_STANDARD_SIZE
+        self.num_send += len(self.data_to_send[self.it:self.it + self.buff_size])
 
 
 class DecryptDataConsumer(DataConsumer):

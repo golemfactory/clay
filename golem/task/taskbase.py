@@ -245,7 +245,7 @@ class Task:
     def get_results(self, subtask_id):
         """ Return list of files containing results for subtask with given id
         :param subtask_id:
-        :return []:
+        :return list:
         """
         return []
 
