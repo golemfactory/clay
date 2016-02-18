@@ -205,10 +205,16 @@ class LotteryTest(unittest.TestCase):
                      ticket.address, ticket.begin, ticket.length, proof, sender=tester.keys[addr_idx])
         return m.gas()
 
+    def lottery_get_owner_deposit(self):
+        return self.c.getOwnerDeposit()
+
+    def lottery_owner_payout(self):
+        return self.c.payout()
+
     def test_deployment(self):
         c, g = self.deploy_contract(9)
         assert len(c) == 20
-        assert g <= 713635
+        assert g <= 730736
 
         assert self.c.owner().decode('hex') == tester.a9
         assert self.c.ownerDeposit() == 0
@@ -254,7 +260,7 @@ class LotteryTest(unittest.TestCase):
         self.deploy_contract()
         lottery = Lottery({tester.a1: 9, tester.a2: 1})
         g = self.lottery_init(2, lottery)
-        assert g <= 84092
+        assert g <= 84103
         assert self.lottery_get_value(lottery) == 10
         assert self.lottery_get_maturity(lottery) == 10
 
@@ -322,6 +328,34 @@ class LotteryTest(unittest.TestCase):
         assert b == -(v + deposit + g1)
         s = self.state.block.get_balance(tester.a8) - s0
         assert s == deposit - g2
+
+    def test_lottery_payer_deposit_owner(self):
+        self.deploy_contract(9)
+        payer = tester.a6
+        w0 = self.state.block.get_balance(payer)
+        lottery = Lottery({tester.a1: 11 * eth, tester.a2: 39 * eth})
+        g1 = self.lottery_init(6, lottery)
+        v = 50 * eth
+        deposit = v / 10
+        assert self.lottery_get_value(lottery) == v
+        assert self.lottery_get_maturity(lottery) == 10
+        b = self.state.block.get_balance(payer) - w0
+        assert b == -(v + deposit + g1)
+        self.state.mine(256 + 11)
+        expected_rand = self.state.block.get_parent().hash[-4:]
+        # Owner gets the deposit
+        self.lottery_randomise(8, lottery)
+        r = self.lottery_get_rand(lottery)
+        assert int_to_big_endian(r) == expected_rand
+        assert b == -(v + deposit + g1)
+
+        assert self.lottery_get_owner_deposit() == deposit
+
+        b0 = self.state.block.get_balance(tester.a9)
+        self.lottery_owner_payout()
+        b = self.state.block.get_balance(tester.a9) - b0
+        assert b == deposit
+        assert self.lottery_get_owner_deposit() == 0
 
     def test_lottery_find_winner(self):
         lottery = Lottery({tester.a1: 50, tester.a2: 50})
