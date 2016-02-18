@@ -1,4 +1,8 @@
+import os
+
 from PyQt4.QtGui import QMessageBox
+
+from golem.core.simpleexccmd import is_windows, exec_cmd
 
 
 class Customizer(object):
@@ -15,6 +19,14 @@ class Customizer(object):
 
     def load_data(self):
         pass
+
+    @staticmethod
+    def show_file(file_name):
+        if is_windows():
+            os.startfile(file_name)
+        else:
+            opener = "see"
+            exec_cmd([opener, file_name], wait=False)
 
     @staticmethod
     def show_error_window(text):

@@ -48,6 +48,7 @@ class SubtaskState(object):
         self.value = 0
         self.stdout = ""
         self.stderr = ""
+        self.results = []
 
         self.computer = ComputerState()
 

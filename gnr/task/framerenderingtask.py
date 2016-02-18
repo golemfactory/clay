@@ -78,8 +78,8 @@ class FrameRenderingTask(RenderingTask):
         tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
         self.tmp_dir = tmp_dir
 
-        tr_files = self.load_task_results(task_results, result_type, tmp_dir)
-        tr_files = self.filter_task_results(tr_files, subtask_id)
+        self.interpret_task_results(subtask_id, task_results, result_type, tmp_dir)
+        tr_files = self.results[subtask_id]
 
         if len(tr_files) > 0:
             num_start = self.subtasks_given[subtask_id]['start_task']

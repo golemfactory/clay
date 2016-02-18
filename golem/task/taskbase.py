@@ -232,15 +232,22 @@ class Task:
         :param subtask_id:
         :return str:
         """
-        return "OUT"
+        return ""
 
     def get_stderr(self, subtask_id):
         """ Return stderr received after computation of subtask_id, if there is no data available
         return emtpy string
         :param subtask_id:
-        :return:
+        :return str:
         """
-        return "ERR"
+        return ""
+
+    def get_results(self, subtask_id):
+        """ Return list of files containing results for subtask with given id
+        :param subtask_id:
+        :return []:
+        """
+        return []
 
 result_types = {'data': 0, 'files': 1}
 resource_types = {'zip': 0, 'parts': 1}

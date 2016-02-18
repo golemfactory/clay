@@ -231,8 +231,8 @@ class LuxTask(RenderingTask):
         lux_merger = env.get_lux_merger()
         test_result_flm = os.path.join(tmp_dir, "test_result.flm")
 
-        tr_files = self.load_task_results(task_result, result_type, tmp_dir)
-        tr_files = self.filter_task_results(tr_files, subtask_id)
+        self.interpret_task_results(subtask_id, task_result, result_type, tmp_dir)
+        tr_files = self.results[subtask_id]
 
         if len(tr_files) > 0:
             num_start = self.subtasks_given[subtask_id]['start_task']

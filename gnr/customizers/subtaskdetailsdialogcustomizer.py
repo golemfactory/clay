@@ -12,6 +12,10 @@ class SubtaskDetailsDialogCustomizer(Customizer):
         self.subtask_state = subtask_state
         self.__update_data()
 
+    def _setup_connections(self):
+        self.gui.ui.closeButton.clicked.connect(self.gui.window.close)
+        self.gui.ui.showResultButton.clicked.connect(lambda: self.__show_result_clicked())
+
     def __update_data(self):
         self.gui.ui.subtaskIdLabel.setText(self.subtask_state.subtask_id)
         self.gui.ui.nodeNameLabel.setText(self.subtask_state.computer.node_name)
@@ -21,6 +25,16 @@ class SubtaskDetailsDialogCustomizer(Customizer):
         self.gui.ui.subtaskDefinitionTextEdit.setPlainText(self.subtask_state.subtask_definition)
         self.gui.ui.subtaskOutputLogTextEdit.setPlainText(self.subtask_state.stdout)
         self.gui.ui.subtaskErrorLogTextEdit.setPlainText(self.subtask_state.stderr)
+        self.gui.ui.priceLabel.setText(str(self.subtask_state.value))
+        self.gui.ui.nodeIpAddressLabel.setText(self.subtask_state.computer.ip_address)
+        self.__update_results()
 
-    def _setup_connections(self):
-        self.gui.ui.closeButton.clicked.connect(self.gui.window.close)
+    def __update_results(self):
+        n = len(self.subtask_state.results)
+        self.gui.ui.resultSlider.setMaximum(n)
+        self.gui.ui.resultSlider.setEnabled(n > 1)
+        self.gui.ui.showResultButton.setEnabled(n > 0)
+
+    def __show_result_clicked(self):
+        num = self.gui.ui.resultSlider.value() - 1
+        self.show_file(self.subtask_state.results[num])

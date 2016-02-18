@@ -79,6 +79,7 @@ class GNRTask(Task):
 
         self.stdout = {}
         self.stderr = {}
+        self.results = {}
 
         self.res_files = {}
 
@@ -163,9 +164,27 @@ class GNRTask(Task):
     def add_resources(self, res_files):
         self.res_files = res_files
 
+    @check_subtask_id_wrapper
+    def get_stderr(self, subtask_id):
+        err = self.stderr.get(subtask_id)
+        return self._interpret_log(err)
+
+    @check_subtask_id_wrapper
+    def get_stdout(self, subtask_id):
+        out = self.stdout.get(subtask_id)
+        return self._interpret_log(out)
+
+    @check_subtask_id_wrapper
+    def get_results(self, subtask_id):
+        return self.results[subtask_id]
+
     #########################
     # Specific task methods #
     #########################
+
+    def interpret_task_results(self, subtask_id, task_results, result_type, tmp_dir):
+        tr_files = self.load_task_results(task_results, result_type, tmp_dir)
+        self.results[subtask_id] = self.filter_task_results(tr_files, subtask_id)
 
     def query_extra_data_for_test_task(self):
         return None  # Implement in derived methods
@@ -195,16 +214,6 @@ class GNRTask(Task):
         if self.subtasks_given[subtask_id]['status'] != SubtaskStatus.starting:
             return False
         return True
-
-    @check_subtask_id_wrapper
-    def get_stderr(self, subtask_id):
-        err = self.stderr.get(subtask_id)
-        return self._interpret_log(err)
-
-    @check_subtask_id_wrapper
-    def get_stdout(self, subtask_id):
-        out = self.stdout.get(subtask_id)
-        return self._interpret_log(out)
 
     @staticmethod
     def _interpret_log(log):

@@ -155,6 +155,15 @@ class TaskManager:
         else:
             return None
 
+    def set_value(self, task_id, subtask_id, value):
+        task_state = self.tasks_states.get(task_id)
+        if task_state is None:
+            logger.warning("This is not my task {}".format(task_id))
+        subtask_state = task_state.subtask_states.get(subtask_id)
+        if subtask_state is None:
+            logger.warning("This is not my subtask {}".format(subtask_id))
+        subtask_state.value = value
+
     def computed_task_received(self, subtask_id, result, result_type):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
@@ -172,6 +181,7 @@ class TaskManager:
             ss.subtask_status = SubtaskStatus.finished
             ss.stdout = self.tasks[task_id].get_stdout(subtask_id)
             ss.stderr = self.tasks[task_id].get_stderr(subtask_id)
+            ss.results = self.tasks[task_id].get_results(subtask_id)
 
             if not self.tasks[task_id].verify_subtask(subtask_id):
                 logger.debug("Subtask {} not accepted\n".format(subtask_id))
