@@ -106,9 +106,8 @@ class Lottery(object):
 
                 return t, proof
 
-    def _print_tree(self, q=None):
-        if not q:
-            q = [self.root]
+    def _print_tree(self):
+        q = [self.root]
         while q:
             node = q.pop(0)
             print("*", node.hash.encode('hex'),
