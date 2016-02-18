@@ -101,7 +101,7 @@ contract Lottery {
         bytes32 h = sha3(proof.winner, proof.rangeStart, proof.rangeLength);
         // Update h with hashes hd−1, ... , h0
         for (uint i = 0; i < proof.values.length; ++i)
-            h = sha3(h | proof.values[i]);
+            h = sha3(h ^ proof.values[i]);
         // Mix with uid
         h = sha3(proof.uid, h);
         return h == lotteryHash;
@@ -128,5 +128,4 @@ contract Lottery {
     function calculatePayerDeposit(uint val) internal constant returns (uint) {
         return val / 10;
     }
-
 }
