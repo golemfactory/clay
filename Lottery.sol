@@ -82,9 +82,9 @@ contract Lottery {
             return;
 
         var randomizerReward = calculatePayerDeposit(lottery.value);
-        if (lottery.maturity + 128 <= block.number)
+        if (block.number <= lottery.maturity + 128)
             lottery.payer.send(randomizerReward); // FIXME: this can fail
-        else if (lottery.maturity + 256 <= block.number)
+        else if (block.number <= lottery.maturity + 256)
             msg.sender.send(randomizerReward); // FIXME: this can fail
         else
             ownerDeposit += randomizerReward;
