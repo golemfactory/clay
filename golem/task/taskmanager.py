@@ -97,7 +97,7 @@ class TaskManager:
         logger.info("Resources for task {} sent".format(task_id))
 
     def get_next_subtask(self, node_id, node_name, task_id, estimated_performance, max_resource_size, max_memory_size,
-                         num_cores=0):
+                         num_cores=0, address=""):
         if task_id in self.tasks:
             task = self.tasks[task_id]
             ts = self.tasks_states[task_id]
@@ -108,7 +108,7 @@ class TaskManager:
                     return None, False
                 ctd.key_id = th.task_owner_key_id
                 self.subtask2task_mapping[ctd.subtask_id] = task_id
-                self.__add_subtask_to_tasks_states(node_name, node_id, ctd)
+                self.__add_subtask_to_tasks_states(node_name, node_id, ctd, address)
                 self.__notice_task_updated(task_id)
                 return ctd, False
             logger.info("Cannot get next task for estimated performence {}".format(estimated_performance))
@@ -395,7 +395,7 @@ class TaskManager:
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
-    def __add_subtask_to_tasks_states(self, node_name, node_id, ctd):
+    def __add_subtask_to_tasks_states(self, node_name, node_id, ctd, address):
 
         if ctd.task_id not in self.tasks_states:
             assert False, "Should never be here!"
@@ -406,6 +406,7 @@ class TaskManager:
             ss.computer.node_id = node_id
             ss.computer.node_name = node_name
             ss.computer.performance = ctd.performance
+            ss.computer.ip_address = address
             ss.time_started = time.time()
             ss.ttl = self.tasks[ctd.task_id].header.subtask_timeout
             # TODO: read node ip address
