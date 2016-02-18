@@ -1,4 +1,4 @@
-from docker import Client
+from client import local_client
 
 from os import path
 
@@ -57,7 +57,7 @@ class DockerJob(object):
             script_file.write(bytearray(self.script_src, "utf-8"))
 
         # Setup volumes for the container
-        client = Client()
+        client = local_client()
         host_cfg = client.create_host_config(
             binds={
                 self.resource_dir: {
@@ -85,7 +85,7 @@ class DockerJob(object):
     def _cleanup(self):
         """Removes the temporary directory task_dir"""
         if self.container:
-            client = Client()
+            client = local_client()
             if self.get_status() == self.STATE_RUNNING:
                 client.kill(self.container_id)
                 self.state = self.STATE_KILLED
@@ -109,7 +109,7 @@ class DockerJob(object):
 
     def start(self):
         if self.get_status() == self.STATE_CREATED:
-            client = Client()
+            client = local_client()
             client.start(self.container_id)
             result = client.inspect_container(self.container_id)
             self.state = result["State"]["Status"]
@@ -122,18 +122,18 @@ class DockerJob(object):
         :returns container exit code
         """
         if self.get_status() in [self.STATE_RUNNING, self.STATE_EXITED]:
-            client = Client()
+            client = local_client()
             return client.wait(self.container_id, timeout)
         return -1
 
     def get_logs(self):
         if self.container:
-            client = Client()
+            client = local_client()
             return client.logs(self.container_id, stdout=True, stderr=True)
 
     def get_status(self):
         if self.container:
-            client = Client()
+            client = local_client()
             inspect = client.inspect_container(self.container_id)
             return inspect["State"]["Status"]
         return self.state

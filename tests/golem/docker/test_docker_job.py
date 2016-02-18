@@ -4,7 +4,6 @@ import os
 from os import path
 import shutil
 import tempfile
-from docker import Client
 from docker import errors
 import requests
 
@@ -30,7 +29,7 @@ class TestDockerJob(DockerTestCase):
     def tearDown(self):
         if self.test_job:
             if self.test_job.container:
-                client = Client()
+                client = self.test_client()
                 client.remove_container(self.test_job.container_id, force=True)
             self.test_job = None
         if self.resource_dir:
@@ -99,7 +98,7 @@ class TestDockerJob(DockerTestCase):
     def test_container_created(self):
         with self._create_test_job() as job:
             self.assertIsNotNone(job.container_id)
-            docker = Client()
+            docker = self.test_client()
             info = docker.inspect_container(job.container_id)
             self.assertEqual(info["Id"], job.container_id)
             self.assertEqual(info["State"]["Status"], "created")
@@ -110,7 +109,7 @@ class TestDockerJob(DockerTestCase):
 
     def test_mounts(self):
         with self._create_test_job() as job:
-            docker = Client()
+            docker = self.test_client()
             info = docker.inspect_container(job.container_id)
 
             resources_mount = None
@@ -133,7 +132,7 @@ class TestDockerJob(DockerTestCase):
 
         self.assertIsNone(job.container_id)
         with self.assertRaises(errors.NotFound):
-            client = Client()
+            client = self.test_client()
             client.inspect_container(container_id)
 
     def test_status(self):
@@ -154,7 +153,7 @@ class TestDockerJob(DockerTestCase):
     def test_start(self):
         with self._create_test_job() as job:
             job.start()
-            client = Client()
+            client = self.test_client()
             info = client.inspect_container(job.container_id)
             self.assertIn("Path", info)
             self.assertEqual(info["Path"], "/usr/bin/python")

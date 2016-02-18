@@ -1,6 +1,6 @@
 import unittest
 from docker import Client
-from docker import errors
+from docker.utils import kwargs_from_env
 import requests
 
 from golem.task.docker.image import DockerImage
@@ -14,10 +14,14 @@ class DockerTestCase(unittest.TestCase):
     TEST_IMAGE_ID = None
 
     @classmethod
+    def test_client(cls):
+        return Client(**kwargs_from_env(assert_hostname = False))
+
+    @classmethod
     def setUpClass(cls):
         """Disable all tests if Docker or the test image is not available."""
         try:
-            client = Client()
+            client = cls.test_client()
             images = client.images()
             repo_tags = sum([img["RepoTags"] for img in images], [])
             if cls.TEST_IMAGE not in repo_tags:
@@ -33,7 +37,7 @@ class DockerTestCase(unittest.TestCase):
 class TestDockerImage(DockerTestCase):
 
     def tearDown(self):
-        client = Client()
+        client = self.test_client()
         for c in client.containers(all=True):
             if c["Image"] == self.TEST_IMAGE:
                 client.remove_container(c["Id"], force=True)

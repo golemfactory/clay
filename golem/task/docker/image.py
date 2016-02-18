@@ -1,4 +1,4 @@
-from docker import Client
+from client import local_client
 from docker import errors
 
 
@@ -13,7 +13,7 @@ class DockerImage(object):
             raise ValueError("Image name does not match image ID")
 
     def _check(self):
-        client = Client()
+        client = local_client()
         if self.id:
             info = client.inspect_image(self.id)
         else:
