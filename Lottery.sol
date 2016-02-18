@@ -8,13 +8,6 @@ contract Lottery {
         owner = msg.sender;
     }
 
-    function payout() {
-        if (msg.sender == owner) {
-            if (msg.sender.send(ownerDeposit))
-                ownerDeposit = 0;
-        }
-    }
-
     // in real-life this struct can fill 2 storage words
     struct LotteryData {
         uint value;
@@ -87,7 +80,7 @@ contract Lottery {
         else if (block.number <= lottery.maturity + 256)
             msg.sender.send(randomizerReward); // FIXME: this can fail
         else
-            ownerDeposit += randomizerReward;
+            ownerDeposit += randomizerReward; // TODO: Send the money directly.
         lottery.randVal = random(lottery.maturity);
         lottery.maturity = 0;
         lottery.payer = 0;
@@ -127,5 +120,14 @@ contract Lottery {
     }
     function calculatePayerDeposit(uint val) internal constant returns (uint) {
         return val / 10;
+    }
+
+    function getOwnerDeposit() external constant returns (uint) {
+        return ownerDeposit;
+    }
+
+    function payout() {
+        if (owner.send(ownerDeposit))
+            ownerDeposit = 0;
     }
 }
