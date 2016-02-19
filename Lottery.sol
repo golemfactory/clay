@@ -8,7 +8,10 @@ contract Lottery {
         owner = msg.sender;
     }
 
-    // in real-life this struct can fill 2 storage words
+    // Lottery data.
+    // OPT: This can be compressed to 2 words:
+    //      - maturity can be uint64, also consider using lottery init stamp,
+    //      - not all data is needed in the same time.
     struct LotteryData {
         uint value;
         uint maturity;
@@ -26,6 +29,8 @@ contract Lottery {
 
     mapping (bytes32 => LotteryData) lotteries;
 
+    // Initialize a lottery by depositing its value in the contract.
+    // TODO: Consider renaming it to deposit().
     function init(bytes32 lotteryHash) external {
         var lottery = lotteries[lotteryHash];
         if (lottery.value != 0)
@@ -50,8 +55,10 @@ contract Lottery {
         return lotteries[lotteryHash].randVal;
     }
 
+    // Validates the lottery winner using attached proof. If valid, the reward
+    // is payed out to the winner.
     function check(bytes32 lotteryHash, uint256 uid, address winner, uint32 rangeStart,
-            uint32 rangeLength, bytes32[] values) external {
+                   uint32 rangeLength, bytes32[] values) external {
         var proof = WinnerProof(uid, winner, rangeStart, rangeLength, values);
         var lottery = lotteries[lotteryHash];
         if (lottery.value == 0 || block.number <= lottery.maturity)
@@ -61,8 +68,12 @@ contract Lottery {
         if (!validateProof(lottery.randVal, lotteryHash, proof))
             return;
 
-        winner.send(lottery.value); // FIXME: this can fail
-        delete lotteries[lotteryHash];
+        // Payout the reward.
+        // In case send fails we allow rechecking in future.
+        // Becouse msg.sender may not be the winner, this prevents attacks
+        // on a winner being a contract.
+        if (winner.send(lottery.value))
+            delete lotteries[lotteryHash];
     }
 
     // Fetch and set a random value for a given lottery.
