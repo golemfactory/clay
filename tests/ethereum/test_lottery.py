@@ -18,23 +18,30 @@ class Lottery(object):
             self.address = address
             self.begin = begin
             self.length = length
+            self.node = None
 
     class Node:
         def __init__(self, left=None, right=None, value=None):
+            self.parent = None
             if value:
                 begin = int_to_big_endian(value.begin)
-                begin = b'0' * (4 - len(begin)) + begin
+                begin = b'\0' * (4 - len(begin)) + begin
                 assert len(begin) == 4
                 length = int_to_big_endian(value.length)
-                length = b'0' * (4 - len(length)) + length
+                length = b'\0' * (4 - len(length)) + length
                 assert len(length) == 4
-                self.hash = sha3(value.address + begin + length)
+                data = value.address + begin + length
+                assert len(data) == 20 + 4 + 4
+                self.hash = sha3(data)
                 self.value = value
+                self.value.node = self
             else:
-                xor = [chr(ord(a) | ord(b)) for a, b in zip(left.hash, right.hash)]
+                xor = b''.join(chr(ord(a) ^ ord(b)) for a, b in zip(left.hash, right.hash))
                 self.hash = sha3(xor)
                 self.left = left
                 self.right = right
+                self.left.parent = self
+                self.right.parent = self
 
     def __init__(self, payments):
         # Payments should be a dictionary. This is quite important to avoid
@@ -86,6 +93,55 @@ class Lottery(object):
         self.nonce = urandom(32)
         self.hash = sha3(self.nonce + self.root.hash)
 
+    def find_winner(self, rand):
+        proof = []
+        for t in self.tickets:
+            if rand < t.begin + t.length:
+                n = t.node
+                # first hash is a sibling
+                while n.parent:
+                    p = n.parent
+                    proof.append(p.right.hash if p.left == n else p.left.hash)
+                    n = p
+
+                return t, proof
+
+    def _print_tree(self):
+        q = [self.root]
+        while q:
+            node = q.pop(0)
+            print("*", node.hash.encode('hex'),
+                  node.parent.hash.encode('hex')[:6] if node.parent else "")
+            if hasattr(node, "value"):
+                v = node.value
+                print("  [{:.2}, {:.2}] {} {}"
+                      .format(v.begin / float(2**32),
+                              (v.begin + v.length - 1) / float(2**32),
+                              v.length, v.address.encode('hex')))
+            else:
+                q.extend((node.left, node.right))
+
+
+def validate_proof(lottery, ticket, proof):
+    start = int_to_big_endian(ticket.begin)
+    start = (4 - len(start)) * '\0' + start
+    assert len(start) == 4
+
+    length = int_to_big_endian(ticket.length)
+    length = (4 - len(length)) * '\0' + length
+    assert len(length) == 4
+
+    h = sha3(ticket.address + start + length)
+    assert h == ticket.node.hash
+
+    for p in proof:
+        xor = b''.join(chr(ord(a) ^ ord(b)) for a, b in zip(h, p))
+        h = sha3(xor)
+    assert h == lottery.root.hash
+
+    h = sha3(lottery.nonce + h)
+    assert h == lottery.hash
+
 
 class LotteryTest(unittest.TestCase):
 
@@ -122,8 +178,10 @@ class LotteryTest(unittest.TestCase):
         return self.state.block.get_balance(self.c.address)
 
     def lottery_init(self, addr_idx, lottery):
-        m = self.monitor(addr_idx)
-        self.c.init(lottery.hash, value=lottery.value, sender=m.key)
+        payer_deposit = lottery.value / 10
+        v = lottery.value + payer_deposit
+        m = self.monitor(addr_idx, v)
+        self.c.init(lottery.hash, value=v, sender=m.key)
         return m.gas()
 
     def lottery_get_value(self, lottery):
@@ -132,10 +190,31 @@ class LotteryTest(unittest.TestCase):
     def lottery_get_maturity(self, lottery):
         return self.c.getMaturity(lottery.hash, sender=tester.k9)
 
+    def lottery_get_rand(self, lottery):
+        return self.c.getRandomValue(lottery.hash, sender=tester.k9)
+
+    def lottery_randomise(self, addr_idx, lottery, deposit=0):
+        m = self.monitor(addr_idx, -deposit)
+        self.c.randomize(lottery.hash, value=0, sender=m.key)
+        return m.gas()
+
+    def lottery_payout(self, addr_idx, lottery, rand):
+        ticket, proof = lottery.find_winner(rand)
+        m = self.monitor(addr_idx)
+        self.c.check(lottery.hash, lottery.nonce,
+                     ticket.address, ticket.begin, ticket.length, proof, sender=tester.keys[addr_idx])
+        return m.gas()
+
+    def lottery_get_owner_deposit(self):
+        return self.c.getOwnerDeposit()
+
+    def lottery_owner_payout(self):
+        return self.c.payout()
+
     def test_deployment(self):
         c, g = self.deploy_contract(9)
         assert len(c) == 20
-        assert g <= 681642
+        assert g <= 730736
 
         assert self.c.owner().decode('hex') == tester.a9
         assert self.c.ownerDeposit() == 0
@@ -154,7 +233,7 @@ class LotteryTest(unittest.TestCase):
         assert lottery.root.left.value == lottery.tickets[0]
         assert lottery.root.right.value == lottery.tickets[1]
 
-        assert lottery.root.hash.encode('hex') == '8db72c55e30b6e3c685f464236d4eb188d0ad2d12ad946676e640da047f4da95'
+        assert lottery.root.hash.encode('hex') == '033978b28985c7e15b104b1c123511ae240b6a5cec8f07e718dcedc21e1067d7'
 
     def test_lottery_5(self):
         payments = {
@@ -175,12 +254,148 @@ class LotteryTest(unittest.TestCase):
         assert lottery.root.right.right.left.value == lottery.tickets[3]
         assert lottery.root.right.right.right.value == lottery.tickets[4]
 
-        assert lottery.root.hash.encode('hex') == '5bb0c968c380f1d55ef24f0d17274c438a2d2cb01e6314150238c6a71ac321e8'
+        assert lottery.root.hash.encode('hex') == 'a4a2fe70f894005badf01e06726c770f100f0969c491b065ef252f5ea48b87df'
 
     def test_lottery_init(self):
         self.deploy_contract()
-        lottery = Lottery({tester.a1: 1, tester.a2: 2})
+        lottery = Lottery({tester.a1: 9, tester.a2: 1})
         g = self.lottery_init(2, lottery)
-        assert g <= 84062
-        assert self.lottery_get_value(lottery) == 3
+        assert g <= 84103
+        assert self.lottery_get_value(lottery) == 10
         assert self.lottery_get_maturity(lottery) == 10
+
+    def test_lottery_randomise(self):
+        self.deploy_contract()
+        lottery = Lottery({tester.a1: 50 * eth, tester.a2: 50 * eth})
+        assert lottery.value == 100 * eth
+        self.lottery_init(3, lottery)
+        assert self.lottery_get_value(lottery) == lottery.value
+        self.state.mine(11)
+        assert self.state.block.number == 11
+        assert self.state.block.number > self.lottery_get_maturity(lottery)
+        r = self.lottery_get_rand(lottery)
+        assert r == 0
+        g = self.lottery_randomise(3, lottery)
+        assert g <= 44919
+        r = self.lottery_get_rand(lottery)
+        assert int_to_big_endian(r) == self.state.block.get_parent().hash[-4:]
+        assert self.lottery_get_maturity(lottery) == 0
+        assert self.lottery_get_value(lottery) == lottery.value
+
+    def test_lottery_payer_deposit(self):
+        self.deploy_contract()
+        payer = tester.a6
+        w0 = self.state.block.get_balance(payer)
+        lottery = Lottery({tester.a1: 33 * eth, tester.a2: 17 * eth})
+        g1 = self.lottery_init(6, lottery)
+        v = 50 * eth
+        deposit = v / 10
+        assert self.lottery_get_value(lottery) == v
+        assert self.lottery_get_maturity(lottery) == 10
+        b = self.state.block.get_balance(payer) - w0
+        assert b == -(v + deposit + g1)
+        self.state.mine(11)
+        expected_rand = self.state.block.get_parent().hash[-4:]
+        self.state.mine(127)
+        self.lottery_randomise(9, lottery)  # Payer gets the deposit
+        r = self.lottery_get_rand(lottery)
+        assert int_to_big_endian(r) == expected_rand
+        b = self.state.block.get_balance(payer) - w0
+        assert b == -(v + g1)
+
+    def test_lottery_payer_deposit_sender(self):
+        self.deploy_contract()
+        payer = tester.a6
+        w0 = self.state.block.get_balance(payer)
+        lottery = Lottery({tester.a1: 11 * eth, tester.a2: 39 * eth})
+        g1 = self.lottery_init(6, lottery)
+        v = 50 * eth
+        deposit = v / 10
+        assert self.lottery_get_value(lottery) == v
+        assert self.lottery_get_maturity(lottery) == 10
+        b = self.state.block.get_balance(payer) - w0
+        assert b == -(v + deposit + g1)
+        self.state.mine(11)
+        expected_rand = self.state.block.get_parent().hash[-4:]
+        self.state.mine(255)
+        s0 = self.state.block.get_balance(tester.a8)
+        # Sender gets the deposit
+        g2 = self.lottery_randomise(8, lottery, deposit)
+        assert g2 > 0 and g2 <= 32000
+        r = self.lottery_get_rand(lottery)
+        assert int_to_big_endian(r) == expected_rand
+        b = self.state.block.get_balance(payer) - w0
+        assert b == -(v + deposit + g1)
+        s = self.state.block.get_balance(tester.a8) - s0
+        assert s == deposit - g2
+
+    def test_lottery_payer_deposit_owner(self):
+        self.deploy_contract(9)
+        payer = tester.a6
+        w0 = self.state.block.get_balance(payer)
+        lottery = Lottery({tester.a1: 11 * eth, tester.a2: 39 * eth})
+        g1 = self.lottery_init(6, lottery)
+        v = 50 * eth
+        deposit = v / 10
+        assert self.lottery_get_value(lottery) == v
+        assert self.lottery_get_maturity(lottery) == 10
+        b = self.state.block.get_balance(payer) - w0
+        assert b == -(v + deposit + g1)
+        self.state.mine(256 + 11)
+        expected_rand = self.state.block.get_parent().hash[-4:]
+        # Owner gets the deposit
+        self.lottery_randomise(8, lottery)
+        r = self.lottery_get_rand(lottery)
+        assert int_to_big_endian(r) == expected_rand
+        assert b == -(v + deposit + g1)
+
+        assert self.lottery_get_owner_deposit() == deposit
+
+        b0 = self.state.block.get_balance(tester.a9)
+        self.lottery_owner_payout()
+        b = self.state.block.get_balance(tester.a9) - b0
+        assert b == deposit
+        assert self.lottery_get_owner_deposit() == 0
+
+    def test_lottery_find_winner(self):
+        lottery = Lottery({tester.a1: 50, tester.a2: 50})
+        r = 2**32/2
+        assert lottery.find_winner(r - 1)[0].address == tester.a1
+        assert lottery.find_winner(r)[0].address == tester.a2
+
+    def test_lottery_find_winner2(self):
+        lottery = Lottery({
+            tester.a4: 40 * eth,
+            tester.a3: 30 * eth,
+            tester.a2: 20 * eth,
+            tester.a1: 10 * eth,
+        })
+        r = int(2**32 * 0.4)
+        assert lottery.find_winner(r)[0].address == tester.a3
+
+    def test_lottery_payout(self):
+        self.deploy_contract()
+        lottery = Lottery({
+            tester.a4: 40 * eth,
+            tester.a3: 30 * eth,
+            tester.a2: 20 * eth,
+            tester.a1: 10 * eth,
+        })
+        self.lottery_init(5, lottery)
+        self.state.mine(100)
+        self.lottery_randomise(5, lottery)
+        self.state.mine(1)
+        self.lottery_get_value(lottery) != 0
+
+        lottery._print_tree()
+
+        r = self.lottery_get_rand(lottery)
+        assert r != 0
+        winner, proof = lottery.find_winner(r)
+        validate_proof(lottery, winner, proof)
+        assert winner.address in (tester.a1, tester.a2, tester.a3, tester.a4)
+        w0 = self.state.block.get_balance(winner.address)
+        g = self.lottery_payout(5, lottery, r)
+        assert g <= 50000
+        win = self.state.block.get_balance(winner.address) - w0
+        assert win == lottery.value
