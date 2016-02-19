@@ -4,7 +4,10 @@ tester.serpent = True  # tester tries to load serpent module, prevent that.
 from rlp.utils import decode_hex, encode_hex
 from ethereum.utils import int_to_big_endian, denoms
 
-from golem.ethereum.contracts import BankOfDeposit
+try:
+    from golem.ethereum.contracts import BankOfDeposit
+except ImportError:
+    from BankOfDeposit import BankOfDeposit
 
 eth = denoms.ether
 
@@ -128,7 +131,7 @@ class BankContractTest(unittest.TestCase):
         a = tester.accounts[6]
         b0 = self.state.block.get_balance(a)
         eg = self.withdraw(6, w)
-        assert eg <= 12408
+        assert eg <= 13408
         assert self.contract_balance() == v - w
         diff = self.state.block.get_balance(a) - b0
         g = w - diff
