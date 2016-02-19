@@ -4,7 +4,7 @@ from os import urandom
 from ethereum import tester
 tester.serpent = True  # tester tries to load serpent module, prevent that.
 from rlp.utils import decode_hex
-from ethereum.utils import int_to_big_endian, denoms, sha3
+from ethereum.utils import int_to_big_endian, denoms, sha3, zpad
 
 try:
     from golem.ethereum.contracts import Lottery as LotteryContract
@@ -27,11 +27,9 @@ class Lottery(object):
         def __init__(self, left=None, right=None, value=None):
             self.parent = None
             if value:
-                begin = int_to_big_endian(value.begin)
-                begin = b'\0' * (4 - len(begin)) + begin
+                begin = zpad(int_to_big_endian(value.begin), 4)
                 assert len(begin) == 4
-                length = int_to_big_endian(value.length)
-                length = b'\0' * (4 - len(length)) + length
+                length = zpad(int_to_big_endian(value.length), 4)
                 assert len(length) == 4
                 data = value.address + begin + length
                 assert len(data) == 20 + 4 + 4
@@ -126,12 +124,10 @@ class Lottery(object):
 
 
 def validate_proof(lottery, ticket, proof):
-    start = int_to_big_endian(ticket.begin)
-    start = (4 - len(start)) * '\0' + start
+    start = zpad(int_to_big_endian(ticket.begin), 4)
     assert len(start) == 4
 
-    length = int_to_big_endian(ticket.length)
-    length = (4 - len(length)) * '\0' + length
+    length = zpad(int_to_big_endian(ticket.length), 4)
     assert len(length) == 4
 
     h = sha3(ticket.address + start + length)
@@ -281,7 +277,8 @@ class LotteryTest(unittest.TestCase):
         g = self.lottery_randomise(3, lottery)
         assert g <= 44919
         r = self.lottery_get_rand(lottery)
-        assert int_to_big_endian(r) == self.state.block.get_parent().hash[-4:]
+        r = zpad(int_to_big_endian(r), 4)
+        assert r == self.state.block.get_parent().hash[-4:]
         assert self.lottery_get_maturity(lottery) == 0
         assert self.lottery_get_value(lottery) == lottery.value
 
@@ -302,7 +299,8 @@ class LotteryTest(unittest.TestCase):
         self.state.mine(127)
         self.lottery_randomise(9, lottery)  # Payer gets the deposit
         r = self.lottery_get_rand(lottery)
-        assert int_to_big_endian(r) == expected_rand
+        r = zpad(int_to_big_endian(r), 4)
+        assert r == expected_rand
         b = self.state.block.get_balance(payer) - w0
         assert b == -(v + g1)
 
@@ -326,7 +324,8 @@ class LotteryTest(unittest.TestCase):
         g2 = self.lottery_randomise(8, lottery, deposit)
         assert g2 > 0 and g2 <= 32000
         r = self.lottery_get_rand(lottery)
-        assert int_to_big_endian(r) == expected_rand
+        r = zpad(int_to_big_endian(r), 4)
+        assert r == expected_rand
         b = self.state.block.get_balance(payer) - w0
         assert b == -(v + deposit + g1)
         s = self.state.block.get_balance(tester.a8) - s0
@@ -349,7 +348,8 @@ class LotteryTest(unittest.TestCase):
         # Owner gets the deposit
         self.lottery_randomise(8, lottery)
         r = self.lottery_get_rand(lottery)
-        assert int_to_big_endian(r) == expected_rand
+        r = zpad(int_to_big_endian(r), 4)
+        assert r == expected_rand
         assert b == -(v + deposit + g1)
 
         assert self.lottery_get_owner_deposit() == deposit
