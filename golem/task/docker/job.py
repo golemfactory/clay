@@ -1,3 +1,5 @@
+from golem.core.common import is_windows, nt_path_to_posix_path
+
 from client import local_client
 
 from os import path
@@ -36,7 +38,7 @@ class DockerJob(object):
         self.resource_dir = resource_dir
         self.output_dir = output_dir
 
-        self.task_dir = self.resource_dir + "/" + self.work_dir
+        self.task_dir = path.join(self.resource_dir, self.work_dir)
         self.container = None
         self.container_id = None
         self.container_log = None
@@ -58,13 +60,19 @@ class DockerJob(object):
 
         # Setup volumes for the container
         client = local_client()
+
+        resource_dir_key = self.resource_dir if not is_windows() \
+            else nt_path_to_posix_path(self.resource_dir)
+        output_dir_key = self.output_dir if not is_windows()\
+            else nt_path_to_posix_path(self.output_dir)
+
         host_cfg = client.create_host_config(
             binds={
-                self.resource_dir: {
+                resource_dir_key: {
                     "bind": self.RESOURCES_DIR,
                     "mode": "ro"
                 },
-                self.output_dir: {
+                output_dir_key: {
                     "bind": self.OUTPUT_DIR,
                     "mode": "rw"
                 }
@@ -86,9 +94,6 @@ class DockerJob(object):
         """Removes the temporary directory task_dir"""
         if self.container:
             client = local_client()
-            if self.get_status() == self.STATE_RUNNING:
-                client.kill(self.container_id)
-                self.state = self.STATE_KILLED
             client.remove_container(self.container_id, force=True)
             self.container = None
             self.container_id = None

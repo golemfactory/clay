@@ -8,7 +8,7 @@ from docker import errors
 import requests
 
 from gnr.renderingdirmanager import find_task_script
-from golem.core.common import get_golem_path
+from golem.core.common import get_golem_path, is_windows, nt_path_to_posix_path
 from golem.task.docker.image import DockerImage
 from golem.task.docker.job import DockerJob
 from test_docker_image import DockerTestCase
@@ -20,8 +20,21 @@ class TestDockerJob(DockerTestCase):
 
     def setUp(self):
         self.work_dir = "work"
-        self.resource_dir = tempfile.mkdtemp()
-        self.output_dir = tempfile.mkdtemp()
+
+        tmpdir = path.expandvars("$TMP")
+        if tmpdir != "$TMP":
+            # $TMP should be set on Windows, e.g. to
+            # "C:\Users\<user>\AppData\Local\Temp".
+            # Without 'dir = tmpdir' we would get a dir inside $TMP,
+            # but with a path converted to lowercase, e.g.
+            # "c:\users\<user>\appdata\local\temp\golem-<random-string>".
+            # This wouldn't work with Docker.
+            self.resource_dir = tempfile.mkdtemp(prefix ="golem-", dir = tmpdir)
+            self.output_dir = tempfile.mkdtemp(prefix ="golem-", dir = tmpdir)
+        else:
+            self.resource_dir = tempfile.mkdtemp(prefix = "golem-")
+            self.output_dir = tempfile.mkdtemp(prefix = "golem-")
+
         os.mkdir(path.join(self.resource_dir, self.work_dir))
         self.image = DockerImage(DockerTestCase.TEST_REPOSITORY)
         self.test_job = None
@@ -49,7 +62,8 @@ class TestDockerJob(DockerTestCase):
         self.assertEqual(job.state, DockerJob.STATE_NEW)
         self.assertIsNotNone(job.resource_dir)
         self.assertIsNotNone(job.work_dir)
-        self.assertEqual(job.task_dir, job.resource_dir + "/" + job.work_dir)
+        self.assertEqual(job.task_dir,
+                         path.join(job.resource_dir, job.work_dir))
         self.assertTrue(job._get_params_path().startswith(job.task_dir))
         self.assertTrue(job._get_script_path().startswith(job.task_dir))
 
@@ -120,10 +134,15 @@ class TestDockerJob(DockerTestCase):
                 elif mount["Destination"] == DockerJob.OUTPUT_DIR:
                     output_mount = mount
 
+            resource_dir = self.resource_dir if not is_windows() \
+                else nt_path_to_posix_path(self.resource_dir)
+            output_dir = self.output_dir if not is_windows()\
+                else nt_path_to_posix_path(self.output_dir)
+
             self.assertIsNotNone(resources_mount)
-            self.assertEqual(resources_mount["Source"], self.resource_dir)
+            self.assertEqual(resources_mount["Source"], resource_dir)
             self.assertIsNotNone(output_mount)
-            self.assertEqual(output_mount["Source"], self.output_dir)
+            self.assertEqual(output_mount["Source"], output_dir)
 
     def test_cleanup(self):
         with self._create_test_job() as job:
@@ -226,8 +245,6 @@ with open("/golem/output/out.txt", "w") as f:
             "outfilebasename": "out",
             "scene_file": DockerJob.RESOURCES_DIR + "/" +
                           path.basename(scene_files[0]),
-            # "script_file": DockerJob.RESOURCES_DIR +
-            #               path.basename(crop_script),
             "script_src": crop_script_src,
             "start_task": 42,
             "end_task": 42,
