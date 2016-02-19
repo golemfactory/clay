@@ -6,7 +6,10 @@ tester.serpent = True  # tester tries to load serpent module, prevent that.
 from rlp.utils import decode_hex
 from ethereum.utils import int_to_big_endian, denoms, sha3
 
-from golem.ethereum.contracts import Lottery as LotteryContract
+try:
+    from golem.ethereum.contracts import Lottery as LotteryContract
+except ImportError:
+    from Lottery import Lottery as LotteryContract
 
 eth = denoms.ether
 
