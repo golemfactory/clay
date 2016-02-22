@@ -99,7 +99,7 @@ class BankContractTest(unittest.TestCase):
     def test_deployment(self):
         c, g = self.deploy_contract()
         assert len(c) == 20
-        assert g <= 414029
+        assert g <= 431741
 
     def test_create_account(self):
         self.deploy_contract()
