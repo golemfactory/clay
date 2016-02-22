@@ -237,6 +237,7 @@ class TaskManager:
             ss.subtask_progress = 1.0
             ss.subtask_rem_time = 0.0
             ss.subtask_status = SubtaskStatus.failure
+            ss.stderr = str(err)
 
             self.__notice_task_updated(task_id)
             return True
@@ -268,6 +269,7 @@ class TaskManager:
                         s.subtask_status = SubtaskStatus.failure
                         nodes_with_timeouts.append(s.computer.node_id)
                         t.computation_failed(s.subtask_id)
+                        s.stderr = "[GOLEM] Timeout"
                         self.__notice_task_updated(th.task_id)
         return nodes_with_timeouts
 
@@ -312,7 +314,7 @@ class TaskManager:
             logger.error("Task {} not in the active tasks queue ".format(task_id))
 
     def restart_subtask(self, subtask_id):
-        if not subtask_id in self.subtask2task_mapping:
+        if subtask_id not in self.subtask2task_mapping:
             logger.error("Subtask {} not in subtasks queue".format(subtask_id))
             return
 
@@ -320,6 +322,7 @@ class TaskManager:
         self.tasks[task_id].restart_subtask(subtask_id)
         self.tasks_states[task_id].status = TaskStatus.computing
         self.tasks_states[task_id].subtask_states[subtask_id].subtask_status = SubtaskStatus.failure
+        self.tasks_states[task_id].subtask_states[subtask_id].stderr = "[GOLEM] Restarted"
 
         self.__notice_task_updated(task_id)
 
