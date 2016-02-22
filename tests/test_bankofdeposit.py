@@ -99,19 +99,19 @@ class BankContractTest(unittest.TestCase):
     def test_deployment(self):
         c, g = self.deploy_contract()
         assert len(c) == 20
-        assert g <= 431741
+        assert g <= 236904
 
     def test_create_account(self):
         self.deploy_contract()
         g = self.deposit(1, 1)
-        assert g <= 41668
+        assert g <= 41672
         assert self.contract_balance() == 1
 
     def test_deposit(self):
         self.deploy_contract()
         self.deposit(1, 1)
         g = self.deposit(1, 10*9)
-        assert g <= 26668
+        assert g <= 26672
         assert self.contract_balance() == 10*9 + 1
 
     def test_balance(self, dep=12345678):
@@ -131,7 +131,7 @@ class BankContractTest(unittest.TestCase):
         a = tester.accounts[6]
         b0 = self.state.block.get_balance(a)
         eg = self.withdraw(6, w)
-        assert eg <= 13408
+        assert eg <= 12393
         assert self.contract_balance() == v - w
         diff = self.state.block.get_balance(a) - b0
         g = w - diff
@@ -149,7 +149,7 @@ class BankContractTest(unittest.TestCase):
         b0 = self.state.block.get_balance(a)
         self.withdraw(6, w)
         g = b0 - self.state.block.get_balance(a)
-        limit = 21000 + 1137
+        limit = 21000 + 1097
         assert g <= limit
         assert self.balance_of(6) == v
 
@@ -168,7 +168,7 @@ class BankContractTest(unittest.TestCase):
         assert self.contract_balance() == v - w
         diff = self.state.block.get_balance(a) - b0
         g = w - diff
-        limit = 21000 + 5000 + 6700 + 2888
+        limit = 21000 + 5000 + 6700 + 2881
         assert g <= limit
         assert self.balance_of(6) == v - w
 
@@ -188,7 +188,7 @@ class BankContractTest(unittest.TestCase):
         assert eg <= 12408
         assert self.contract_balance() == v - w
         g = b0 - self.state.block.get_balance(a)
-        limit = 21000 + 5000 + 6700 + 2888
+        limit = 21000 + 5000 + 6700 + 2881
         assert g <= limit
         assert self.balance_of(6) == v - w
         assert self.state.block.get_balance(to) - b_to == w
@@ -206,14 +206,22 @@ class BankContractTest(unittest.TestCase):
     def test_transfer_value_4(self):
         """Transfers value included in transaction to 4 other accounts."""
         self.deploy_contract()
+        self.deposit(1, 1)
+        self.deposit(2, 1)
+        self.deposit(3, 1)
+        self.deposit(4, 1)
+        self.deposit(5, 1)
         v = 1000 * eth
-        self.transfer(1, [(2, 2*eth), (3, 3*eth), (4, 4*eth), (5, 5*eth)],
-                      value=v)
-        assert self.balance(2) == 2*eth
-        assert self.balance(3) == 3*eth
-        assert self.balance(4) == 4*eth
-        assert self.balance(5) == 5*eth
-        assert self.balance(1) == (1000-2-3-4-5)*eth  # Rest should go to 1
+        g = self.transfer(1, [(2, 2*eth), (3, 3*eth), (4, 4*eth), (5, 5*eth)],
+                          value=v)
+        assert self.balance(2) == 2*eth + 1
+        assert self.balance(3) == 3*eth + 1
+        assert self.balance(4) == 4*eth + 1
+        assert self.balance(5) == 5*eth + 1
+        b1 = self.balance(1)
+        assert b1 == (1000-2-3-4-5)*eth + 1  # Rest should go to 1
+        g -= b1
+        assert g <= 63032
 
     def test_transfer_mixed_4(self):
         """Deposits some value, then transfers bigger amount to 4 other
@@ -243,7 +251,7 @@ class BankContractTest(unittest.TestCase):
         v1, v7 = 1*eth, 7*eth
         v = v1 + v7
         g = self.transfer(8, [(1, v1), (7, v7)], value=v)
-        assert g <= 40130
+        assert g <= 39975
         assert self.balance(8) == 0
         assert self.balance(1) == v1 + 1
         assert self.balance(7) == v7 + 1
@@ -260,9 +268,9 @@ class BankContractTest(unittest.TestCase):
         v1, v7 = 1*eth, 7*eth
         v = v1 + v7
         g = self.transfer_external_value(8, [(1, v1), (7, v7)], value=v)
-        savings = 1 - (g / 40152.0)
-        assert g <= 39985
-        assert savings < 0.01
+        savings = 1 - (g / 39975.0)
+        assert g <= 39843
+        assert savings < 0.005
         assert self.balance(8) == 0
         assert self.balance(1) == v1 + 1
         assert self.balance(7) == v7 + 1
