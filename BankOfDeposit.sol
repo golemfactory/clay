@@ -12,7 +12,7 @@ contract BankOfDeposit {
     // interface.
     event Transfer(address indexed from, address indexed to, uint256 value);
 
-    // Check balance of an account
+    // Check balance of an account.
     function balanceOf(address addr) constant external returns (uint) {
         return _balance[addr];
     }
@@ -22,9 +22,13 @@ contract BankOfDeposit {
         return _balance[msg.sender];
     }
 
+    // Deposit ethers to sender's account.
     function deposit() external {
-        // TODO: Use it as an anonymous method? That might be useful in case
-        // someone misuse this contract
+        _balance[msg.sender] += msg.value;
+    }
+
+    // Fallback function, the same as deposit().
+    function() external {
         _balance[msg.sender] += msg.value;
     }
 
