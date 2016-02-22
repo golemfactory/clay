@@ -16,7 +16,7 @@ Only one of the participants becomes a winner and gets the right to collect the 
 
 ## Testing
 
-The repository contains Python unit tests for the contracts. The pyethereum is used to implement the tests.
+The repository contains Python unit tests for the contracts. The [pyethereum](https://github.com/ethereum/pyethereum) is used to implement the tests.
 ```
 pip install -r requirements.txt
 python -m unittest discover tests
