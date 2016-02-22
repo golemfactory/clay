@@ -1,5 +1,5 @@
 # Ethereum Contracts for Golem
-Ethereum contracts for nanopayments schemes used in Golem Worldwide Supercomputer.
+Ethereum contracts for nanopayments schemes used in [Golem Worldwide Supercomputer](http://golemproject.net).
 
 ## [Bank Of Deposit](BankOfDeposit.sol)
 
