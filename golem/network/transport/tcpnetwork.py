@@ -455,7 +455,7 @@ class BasicProtocol(SessionProtocol):
     def _interpret(self, data):
         self.db.append_string(data)
         mess = self._data_to_messages()
-        if mess is None or len(mess) == 0:
+        if mess is None:
             logger.error("Deserialization message failed")
             return None
 
