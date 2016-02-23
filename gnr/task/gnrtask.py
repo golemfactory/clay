@@ -60,9 +60,11 @@ class GNRTask(Task):
     ################
 
     def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                 ttl, subtask_ttl, resource_size, estimated_memory):
+                 ttl, subtask_ttl, resource_size, estimated_memory,
+                 docker_images = None):
         th = TaskHeader(node_name, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
-                        ttl, subtask_ttl, resource_size, estimated_memory)
+                        ttl, subtask_ttl, resource_size, estimated_memory,
+                        docker_images)
         Task.__init__(self, th, src_code)
 
         self.task_resources = []

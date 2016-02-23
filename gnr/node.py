@@ -18,6 +18,7 @@ from golem.task.taskbase import Task
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
+from gnr.docker_environments import BlenderDockerEnvironment
 
 
 def config_logging():
@@ -68,7 +69,9 @@ class Node(object):
 
 
 class GNRNode(Node):
-    default_environments = [BlenderEnvironment(), LuxRenderEnvironment()]
+    default_environments = [BlenderEnvironment(),
+                            LuxRenderEnvironment(),
+                            BlenderDockerEnvironment()]
 
     @staticmethod
     def _get_task_builder(task_def):

@@ -4,7 +4,8 @@ import abc
 
 class TaskHeader:
     def __init__(self, node_name, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
-                 task_owner=None, ttl=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0, min_version=1.0):
+                 task_owner=None, ttl=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0, min_version=1.0,
+                 docker_image=None, docker_image_id=None):
         self.task_id = task_id
         self.task_owner_key_id = task_owner_key_id
         self.task_owner_address = task_owner_address
@@ -18,6 +19,8 @@ class TaskHeader:
         self.environment = environment
         self.estimated_memory = estimated_memory
         self.min_version = min_version
+        self.docker_image = None
+        self.docker_image_id = None
 
 
 class TaskBuilder:

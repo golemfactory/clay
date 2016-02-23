@@ -2,6 +2,7 @@ from golem.task.taskstate import TaskState
 
 
 class GNRTaskDefinition:
+
     def __init__(self):
         self.task_id = ""
         self.full_task_timeout = 0
@@ -18,6 +19,7 @@ class GNRTaskDefinition:
 
         self.verification_options = None
         self.options = GNROptions
+        self.docker_images = None
 
 
 advanceVerificationTypes = ['forAll', 'forFirst', 'random']
