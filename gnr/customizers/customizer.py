@@ -1,8 +1,9 @@
 import os
+import subprocess
 
 from PyQt4.QtGui import QMessageBox
 
-from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.core.simpleexccmd import is_windows
 
 
 class Customizer(object):
@@ -29,8 +30,8 @@ class Customizer(object):
         if is_windows():
             os.startfile(file_name)
         else:
-            opener = "see"
-            exec_cmd([opener, file_name], wait=False)
+            opener = "xdg-open"
+            subprocess.call([opener, file_name])
 
     @staticmethod
     def show_error_window(text):
