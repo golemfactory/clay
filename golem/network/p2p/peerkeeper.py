@@ -6,7 +6,7 @@ from collections import deque
 
 logger = logging.getLogger(__name__)
 
-K = 4  # Bucket size
+K = 16  # Bucket size
 CONCURRENCY = 3  # parallel find node lookup
 K_SIZE = 512  # pubkey size
 PONG_TIMEOUT = 5   # don't wait for pong longer than this time

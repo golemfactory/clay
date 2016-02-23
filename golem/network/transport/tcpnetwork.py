@@ -733,8 +733,10 @@ class FileConsumer(object):
         :return:
         """
         self.file_list = copy(file_list)
+        print "FILE TO RECEIVE {}".format(self.file_list)
 
         self.final_file_list = [os.path.normpath(os.path.join(output_dir, f)) for f in file_list]
+        print "FINAL FILE LIST {}".format(self.final_file_list)
         self.fh = None  # Current file descriptor
         self.file_size = -1  # Current file expected size
         self.recv_size = 0  # Received data size
@@ -757,6 +759,7 @@ class FileConsumer(object):
         """ Receive new chunk of data
         :param data: data received with transport layer
         """
+        print "dataRECEIVED"
         loc_data = data
         if self.file_size == -1:
             loc_data = self._get_first_chunk(self.last_data + data)
@@ -808,12 +811,14 @@ class FileConsumer(object):
             self.last_percent = percent
 
     def _end_receiving_file(self):
+        print "END RECEIVING FILES"
         self.fh.close()
         self.fh = None
         self.extra_data["file_received"].append(self.file_list[-1])
         self.file_list.pop()
         self.recv_size = 0
         self.file_size = -1
+        print "file list {}".format(len(self.file_list))
         if len(self.file_list) == 0:
             self.session.conn.file_mode = False
             self.session.full_data_received(self.extra_data)
@@ -860,7 +865,6 @@ class DecryptFileConsumer(FileConsumer):
                 self.recv_chunk_size = 0
                 self.chunk_size = 0
                 loc_data = self.last_data
-
                 if len(self.last_data) <= LONG_STANDARD_SIZE:
                     receive_next = True
             else:
@@ -872,6 +876,8 @@ class DecryptFileConsumer(FileConsumer):
             if self.recv_size >= self.file_size:
                 self._end_receiving_file()
                 receive_next = True
+        if len(self.file_list) > 0 and len(self.last_data) >= 2 * LONG_STANDARD_SIZE and self.chunk_size == 0:
+            self.dataReceived("")
 
     def _end_receiving_file(self):
         self.chunk_size = 0
