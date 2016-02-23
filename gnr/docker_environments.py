@@ -5,7 +5,7 @@ from golem.task.docker.image import DockerImage
 class BlenderDockerEnvironment(DockerEnvironment):
     @classmethod
     def get_id(cls):
-        return "Blender in Docker"
+        return "BLENDER@DOCKER"
 
     def __init__(self, tag = "latest", id = None):
         image = DockerImage(id = id) if id \
