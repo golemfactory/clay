@@ -61,6 +61,19 @@ class GNRTask(Task):
 
     def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
                  ttl, subtask_ttl, resource_size, estimated_memory):
+        """ Create more specific task implementation
+        :param src_code:
+        :param node_name:
+        :param task_id:
+        :param owner_address:
+        :param owner_port:
+        :param owner_key_id:
+        :param environment:
+        :param ttl:
+        :param subtask_ttl:
+        :param resource_size:
+        :param estimated_memory:
+        """
         th = TaskHeader(node_name, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
                         ttl, subtask_ttl, resource_size, estimated_memory)
         Task.__init__(self, th, src_code)
@@ -76,6 +89,10 @@ class GNRTask(Task):
 
         self.full_task_timeout = 2200
         self.counting_nodes = {}
+
+        self.stdout = {}  # for each subtask keep information about stdout received from computing node
+        self.stderr = {}  # for each subtask keep information about stderr received from computing node
+        self.results = {}  # for each subtask keep information about files containing results
 
         self.res_files = {}
 
@@ -160,27 +177,102 @@ class GNRTask(Task):
     def add_resources(self, res_files):
         self.res_files = res_files
 
+    @check_subtask_id_wrapper
+    def get_stderr(self, subtask_id):
+        err = self.stderr.get(subtask_id)
+        return self._interpret_log(err)
+
+    @check_subtask_id_wrapper
+    def get_stdout(self, subtask_id):
+        out = self.stdout.get(subtask_id)
+        return self._interpret_log(out)
+
+    @check_subtask_id_wrapper
+    def get_results(self, subtask_id):
+        return self.results.get(subtask_id, [])
+
     #########################
     # Specific task methods #
     #########################
 
+    def interpret_task_results(self, subtask_id, task_results, result_type, tmp_dir):
+        """ Change received results into a list of image files, filter out ".log" files that should
+        represents stdout and stderr from computing machine.
+        :param subtask_id: id of a subtask for which results are received
+        :param task_results: it may be a list of files if result_type is equal to result_types["files"] or
+        it may be a pickled zip file containing all files if result_type is equal to result_types["data"]
+        :param result_type: a number from result_types, it may represents data format or files format
+        :param tmp_dir: directory where received files should be or where they should be saved
+        :return: list of files that don't have .log extension
+        """
+        self.stdout[subtask_id] = ""
+        self.stderr[subtask_id] = ""
+        tr_files = self.load_task_results(task_results, result_type, tmp_dir, subtask_id)
+        self.results[subtask_id] = self.filter_task_results(tr_files, subtask_id)
+
     def query_extra_data_for_test_task(self):
         return None  # Implement in derived methods
 
-    def load_task_results(self, task_result, result_type, tmp_dir):
+    def load_task_results(self, task_result, result_type, tmp_dir, subtask_id):
+        """ Change results to a list of files. If result_type is equal to result_types["files"} this
+        function only return task_results without making any changes. If result_type is equal to
+        result_types["data"] tham task_result is unpickled and unzipped and files are saved in tmp_dir.
+        :param task_result: list of files of pickles ziped file with files
+        :param result_type: result_types element
+        :param tmp_dir: directory where files should be written if result_type is equal to result_types["data"]
+        :param str subtask_id:
+        :return:
+        """
         if result_type == result_types['data']:
             return [self._unpack_task_result(trp, tmp_dir) for trp in task_result]
         elif result_type == result_types['files']:
             return task_result
         else:
             logger.error("Task result type not supported {}".format(result_type))
+            self.stderr[subtask_id] = "[GOLEM] Task result {} not supported".format(result_type)
             return []
+
+    def filter_task_results(self, task_results, subtask_id, log_ext=".log", err_log_ext=".err.log"):
+        """ From a list of files received in task_results, return only files that don't have extension
+        <log_ext> or <err_log_ext>. File with log_ext is saved as stdout for this subtask (only one file
+        is currently supported). File with err_log_ext is save as stderr for this subtask (only one file is
+        currently supported).
+        :param list task_results: list of files
+        :param str subtask_id: if of a given subtask
+        :param str log_ext: extension that stdout files have
+        :param str err_log_ext: extension that stderr files have
+        :return:
+        """
+        filtered_task_results = []
+        for tr in task_results:
+            if tr.endswith(err_log_ext):
+                self.stderr[subtask_id] = tr
+            elif tr.endswith(log_ext):
+                self.stdout[subtask_id] = tr
+            else:
+                filtered_task_results.append(tr)
+
+        return filtered_task_results
 
     @check_subtask_id_wrapper
     def should_accept(self, subtask_id):
         if self.subtasks_given[subtask_id]['status'] != SubtaskStatus.starting:
             return False
         return True
+
+    @staticmethod
+    def _interpret_log(log):
+        if log is None:
+            return ""
+        if not os.path.isfile(log):
+            return log
+        try:
+            with open(log) as f:
+                res = f.read()
+            return res
+        except IOError as err:
+            logger.error("Can't read file {}: {}".format(f, err))
+            return ""
 
     @check_subtask_id_wrapper
     def _mark_subtask_failed(self, subtask_id):

@@ -97,7 +97,22 @@ class TaskManager:
         logger.info("Resources for task {} sent".format(task_id))
 
     def get_next_subtask(self, node_id, node_name, task_id, estimated_performance, max_resource_size, max_memory_size,
-                         num_cores=0):
+                         num_cores=0, address=""):
+        """ Assign next subtask from task <task_id> to node with given id <node_id> and name. If subtask is assigned
+        the function is returning a tuple (
+        :param node_id:
+        :param node_name:
+        :param task_id:
+        :param estimated_performance:
+        :param max_resource_size:
+        :param max_memory_size:
+        :param num_cores:
+        :param address:
+        :return (ComputeTaskDef|None, bool): Function return a pair. First element is either ComputeTaskDef that
+        describe assigned subtask or None. The second element describes whether the task_id is a wrong task that isn't
+        in task manager register. If task with <task_id> it's a known task then second element of a pair is always
+        False (regardless new subtask was assigned or not).
+        """
         if task_id in self.tasks:
             task = self.tasks[task_id]
             ts = self.tasks_states[task_id]
@@ -108,7 +123,7 @@ class TaskManager:
                     return None, False
                 ctd.key_id = th.task_owner_key_id
                 self.subtask2task_mapping[ctd.subtask_id] = task_id
-                self.__add_subtask_to_tasks_states(node_name, node_id, ctd)
+                self.__add_subtask_to_tasks_states(node_name, node_id, ctd, address)
                 self.__notice_task_updated(task_id)
                 return ctd, False
             logger.info("Cannot get next task for estimated performence {}".format(estimated_performance))
@@ -155,6 +170,17 @@ class TaskManager:
         else:
             return None
 
+    def set_value(self, task_id, subtask_id, value):
+        task_state = self.tasks_states.get(task_id)
+        if task_state is None:
+            logger.warning("This is not my task {}".format(task_id))
+            return
+        subtask_state = task_state.subtask_states.get(subtask_id)
+        if subtask_state is None:
+            logger.warning("This is not my subtask {}".format(subtask_id))
+            return
+        subtask_state.value = value
+
     def computed_task_received(self, subtask_id, result, result_type):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
@@ -170,6 +196,9 @@ class TaskManager:
             ss.subtask_progress = 1.0
             ss.subtask_rem_time = 0.0
             ss.subtask_status = SubtaskStatus.finished
+            ss.stdout = self.tasks[task_id].get_stdout(subtask_id)
+            ss.stderr = self.tasks[task_id].get_stderr(subtask_id)
+            ss.results = self.tasks[task_id].get_results(subtask_id)
 
             if not self.tasks[task_id].verify_subtask(subtask_id):
                 logger.debug("Subtask {} not accepted\n".format(subtask_id))
@@ -208,6 +237,7 @@ class TaskManager:
             ss.subtask_progress = 1.0
             ss.subtask_rem_time = 0.0
             ss.subtask_status = SubtaskStatus.failure
+            ss.stderr = str(err)
 
             self.__notice_task_updated(task_id)
             return True
@@ -239,6 +269,7 @@ class TaskManager:
                         s.subtask_status = SubtaskStatus.failure
                         nodes_with_timeouts.append(s.computer.node_id)
                         t.computation_failed(s.subtask_id)
+                        s.stderr = "[GOLEM] Timeout"
                         self.__notice_task_updated(th.task_id)
         return nodes_with_timeouts
 
@@ -283,7 +314,7 @@ class TaskManager:
             logger.error("Task {} not in the active tasks queue ".format(task_id))
 
     def restart_subtask(self, subtask_id):
-        if not subtask_id in self.subtask2task_mapping:
+        if subtask_id not in self.subtask2task_mapping:
             logger.error("Subtask {} not in subtasks queue".format(subtask_id))
             return
 
@@ -291,6 +322,7 @@ class TaskManager:
         self.tasks[task_id].restart_subtask(subtask_id)
         self.tasks_states[task_id].status = TaskStatus.computing
         self.tasks_states[task_id].subtask_states[subtask_id].subtask_status = SubtaskStatus.failure
+        self.tasks_states[task_id].subtask_states[subtask_id].stderr = "[GOLEM] Restarted"
 
         self.__notice_task_updated(task_id)
 
@@ -383,7 +415,7 @@ class TaskManager:
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
-    def __add_subtask_to_tasks_states(self, node_name, node_id, ctd):
+    def __add_subtask_to_tasks_states(self, node_name, node_id, ctd, address):
 
         if ctd.task_id not in self.tasks_states:
             assert False, "Should never be here!"
@@ -394,6 +426,7 @@ class TaskManager:
             ss.computer.node_id = node_id
             ss.computer.node_name = node_name
             ss.computer.performance = ctd.performance
+            ss.computer.ip_address = address
             ss.time_started = time.time()
             ss.ttl = self.tasks[ctd.task_id].header.subtask_timeout
             # TODO: read node ip address

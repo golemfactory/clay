@@ -182,7 +182,10 @@ class VRayTask(FrameRenderingTask):
         tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
         self.tmp_dir = tmp_dir
 
-        if len(task_result) > 0:
+        self.interpret_task_results(subtask_id, task_result, result_type, tmp_dir)
+        tr_files = self.results[subtask_id]
+
+        if len(tr_files) > 0:
             num_start = self.subtasks_given[subtask_id]['start_task']
             parts = self.subtasks_given[subtask_id]['parts']
             num_end = self.subtasks_given[subtask_id]['end_task']
@@ -192,8 +195,6 @@ class VRayTask(FrameRenderingTask):
                 if len(task_result) < len(self.subtasks_given[subtask_id]['frames']):
                     self._mark_subtask_failed(subtask_id)
                     return
-
-            tr_files = self.load_task_results(task_result, result_type, tmp_dir)
 
             if not self._verify_imgs(subtask_id, tr_files):
                 self._mark_subtask_failed(subtask_id)
