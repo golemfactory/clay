@@ -26,7 +26,9 @@ def find_pow(input_data, difficulty, result_size):
     :param int result_size:
     :rtype long:
     """
-    solution = random.getrandbits(result_size * 4)
+    num_bits = result_size * 4
+    # This ensures that the generated number will not start with 0's as hex
+    solution = random.getrandbits(num_bits - 1) + (1 << (num_bits - 1))
     while True:
         if check_pow(solution, input_data, difficulty):
             return solution
