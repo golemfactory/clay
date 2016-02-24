@@ -93,7 +93,8 @@ class DummyTask(Task):
 
         # write some random shared data, 4 bits for one char
         with open(self.shared_data_file, 'w') as shared:
-            r = random.getrandbits(self.task_params.shared_data_size * 4)
+            num_bits = self.task_params.shared_data_size * 4
+            r = random.getrandbits(num_bits - 1) + (1 << (num_bits - 1))
             data = '%x' % r
             assert len(data) == self.task_params.shared_data_size
             shared.write(data)
