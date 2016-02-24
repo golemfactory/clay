@@ -1,4 +1,9 @@
+import os
+import subprocess
+
 from PyQt4.QtGui import QMessageBox
+
+from golem.core.simpleexccmd import is_windows
 
 
 class Customizer(object):
@@ -15,6 +20,18 @@ class Customizer(object):
 
     def load_data(self):
         pass
+
+    @staticmethod
+    def show_file(file_name):
+        """ Open file with given using specific program that is connected with this file
+        extension
+        :param file_name: file that should be opened
+        """
+        if is_windows():
+            os.startfile(file_name)
+        else:
+            opener = "xdg-open"
+            subprocess.call([opener, file_name])
 
     @staticmethod
     def show_error_window(text):

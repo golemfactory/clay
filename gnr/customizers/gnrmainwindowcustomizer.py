@@ -23,8 +23,6 @@ from gnr.customizers.environmentsdialogcustomizer import EnvironmentsDialogCusto
 from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer
 from gnr.customizers.paymentsdialogcustomizer import PaymentsDialogCustomizer
 
-from golem.core.simpleexccmd import is_windows, exec_cmd
-
 logger = logging.getLogger(__name__)
 
 
@@ -72,9 +70,9 @@ class GNRMainWindowCustomizer(Customizer):
     def show_task_result(self, task_id):
         t = self.logic.get_task(task_id)
         if hasattr(t.definition, 'output_file') and os.path.isfile(t.definition.output_file):
-            self._show_file(t.definition.output_file)
+            self.show_file(t.definition.output_file)
         elif hasattr(t.definition.options, 'output_file') and os.path.isfile(t.definition.options.output_file):
-            self._show_file(t.definition.options.output_file)
+            self.show_file(t.definition.options.output_file)
         else:
             msg_box = QMessageBox()
             msg_box.setText("No output file defined.")
@@ -180,14 +178,6 @@ class GNRMainWindowCustomizer(Customizer):
 
         if definition:
             self._show_new_task_dialog(definition)
-
-    @staticmethod
-    def _show_file(file_name):
-        if is_windows():
-            os.startfile(file_name)
-        else:
-            opener = "see"
-            exec_cmd([opener, file_name], wait=False)
 
     def _add_task(self, task_id, status):
         current_row_count = self.gui.ui.taskTableWidget.rowCount()

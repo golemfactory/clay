@@ -15,5 +15,5 @@ requests==2.8.1
 six==1.10.0
 Twisted>=15.4
 ethereum-rpc-client
-https://github.com/ethereum/pydevp2p/tarball/develop#egg=devp2p
+devp2p
 https://github.com/ethereum/pyethereum/tarball/develop#egg=ethereum

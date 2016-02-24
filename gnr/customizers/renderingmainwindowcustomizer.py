@@ -107,7 +107,7 @@ class AbsRenderingMainWindowCustomizer(object):
         else:
             file_ = t.definition.output_file
         if os.path.isfile(file_):
-            self._show_file(file_)
+            self.show_file(file_)
         else:
             msg_box = QMessageBox()
             msg_box.setText("No output file defined.")
@@ -217,7 +217,7 @@ class AbsRenderingMainWindowCustomizer(object):
     def __open_output_file(self):
         file_ = self.gui.ui.outputFile.text()
         if os.path.isfile(file_):
-            self._show_file(file_)
+            self.show_file(file_)
 
     def __get_task_num_from_pixels(self, x, y):
         num = None

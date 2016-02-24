@@ -107,7 +107,7 @@ def exec_cmd(cmd, cur_dir, out_file_name):
     with open(os.path.join(cur_dir, out_file_name + ".err.log"), 'w') as stderr:
         stderr.write(err)
     with open(os.path.join(cur_dir, out_file_name + ".log"), 'w') as stdout:
-        stdout.write(err)
+        stdout.write(out)
 
 
 def get_files_in_formats(dir_, formats):
@@ -115,6 +115,7 @@ def get_files_in_formats(dir_, formats):
     for f in formats:
         files += glob.glob(os.path.join(dir_, "*." + f))
     return files
+
 
 def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, scene_dir, num_cores, own_binaries, lux_console):
     print 'LuxRenderer Task'
