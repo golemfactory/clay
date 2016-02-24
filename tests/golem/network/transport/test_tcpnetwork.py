@@ -1,17 +1,21 @@
 import unittest
 import math
 import os
+import struct
 
 from mock import MagicMock
 
 from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer, FileProducer, FileConsumer,
                                                 EncryptFileProducer, DecryptFileConsumer,
-                                                EncryptDataProducer, DecryptDataConsumer)
+                                                EncryptDataProducer, DecryptDataConsumer, BasicProtocol,
+                                                logger)
+from golem.network.transport.message import MessageDisconnect
 
 from golem.core.variables import BUFF_SIZE
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.tools.captureoutput import captured_output
 from golem.tools.testdirfixture import TestDirFixture
+from golem.tools.assertlogs import LogTestCase
 
 
 class TestDataProducerAndConsumer(unittest.TestCase):
@@ -169,3 +173,26 @@ class TestFileProducerAndConsumer(TestDirFixture):
             self.assertGreaterEqual(out.getvalue().strip().split("\r"), min_num)
         self.assertEqual(err.getvalue().strip(), "")
 
+
+class TestBasicProtocol(LogTestCase):
+    def test_init(self):
+        protocol = BasicProtocol()
+        self.assertIsInstance(protocol, BasicProtocol)
+        self.assertFalse(protocol.opened)
+
+    def test_dataReceived(self):
+        data = "abc"
+        protocol = BasicProtocol()
+        self.assertIsNone(protocol.dataReceived(data))
+        protocol.opened = True
+        self.assertIsNone(protocol.dataReceived(data))
+        protocol.session = MagicMock()
+        with self.assertNoLogs(logger, level=40):
+            self.assertIsNone(protocol.dataReceived(data))
+        protocol.db.clear_buffer()
+
+        m = MessageDisconnect()
+        data = m.serialize()
+        packed_data = struct.pack("!L", len(data)) + data
+        protocol.dataReceived(packed_data)
+        self.assertEqual(protocol.session.interpret.call_args[0][0].get_type(), m.get_type())

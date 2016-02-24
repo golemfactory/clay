@@ -41,9 +41,10 @@ class _AssertLogsContext(_BaseTestCaseContext):
 
     LOGGING_FORMAT = "%(levelname)s:%(name)s:%(message)s"
 
-    def __init__(self, test_case, logger_name, level):
+    def __init__(self, test_case, logger_name, level, assert_logs=True):
         _BaseTestCaseContext.__init__(self, test_case)
         self.logger_name = logger_name
+        self.assert_logs = assert_logs
         if level:
             self.level = logging._levelNames.get(level, level)
         else:
@@ -74,10 +75,14 @@ class _AssertLogsContext(_BaseTestCaseContext):
         if exc_type is not None:
             # let unexpected exceptions pass through
             return False
-        if len(self.watcher.records) == 0:
+        if len(self.watcher.records) == 0 and self.assert_logs:
             self._raiseFailure(
                 "no logs of level {} or higher triggered on {}"
                 .format(logging.getLevelName(self.level), self.logger.name))
+        elif len(self.watcher.records) > 0 and not self.assert_logs:
+            self._raiseFailure(
+                "logs of level {} or higher triggered on {}"
+                .format(logging.getLevelName(self.level), self.logger_name))
 
 
 class LogTestCase(unittest.TestCase):
@@ -103,3 +108,6 @@ class LogTestCase(unittest.TestCase):
                                          'ERROR:foo.bar:second message'])
         """
         return _AssertLogsContext(self, logger, level)
+
+    def assertNoLogs(self, logger=None, level=None):
+        return _AssertLogsContext(self, logger, level, assert_logs=False)
