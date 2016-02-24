@@ -455,7 +455,7 @@ class BasicProtocol(SessionProtocol):
     def _interpret(self, data):
         self.db.append_string(data)
         mess = self._data_to_messages()
-        if mess is None or len(mess) == 0:
+        if mess is None:
             logger.error("Deserialization message failed")
             return None
 
@@ -860,7 +860,6 @@ class DecryptFileConsumer(FileConsumer):
                 self.recv_chunk_size = 0
                 self.chunk_size = 0
                 loc_data = self.last_data
-
                 if len(self.last_data) <= LONG_STANDARD_SIZE:
                     receive_next = True
             else:
@@ -872,6 +871,8 @@ class DecryptFileConsumer(FileConsumer):
             if self.recv_size >= self.file_size:
                 self._end_receiving_file()
                 receive_next = True
+        if len(self.file_list) > 0 and len(self.last_data) >= 2 * LONG_STANDARD_SIZE and self.chunk_size == 0:
+            self.dataReceived("")
 
     def _end_receiving_file(self):
         self.chunk_size = 0
