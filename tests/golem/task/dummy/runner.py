@@ -17,7 +17,7 @@ logging.config.fileConfig(config_file, disable_existing_loggers = False)
 client = start_client()
 
 params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
-task = DummyTask(client.get_id(), params, 3)
+task = DummyTask(client.get_node_name(), params, 3)
 client.enqueue_new_task(task)
 
 

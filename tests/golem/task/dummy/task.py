@@ -53,7 +53,7 @@ class DummyTask(Task):
         owner_address = ''
         owner_port = 0
         owner_key_id = ''
-        environment = 'DEFAULT'
+        environment = 'DUMMY'
         header = TaskHeader(
             client_id, task_id,
             owner_address, owner_port, owner_key_id, environment,
@@ -115,11 +115,12 @@ class DummyTask(Task):
     def finished_computation(self):
         return self.get_tasks_left() == 0
 
-    def query_extra_data(self, perf_index, num_cores=1, client_id=None):
+    def query_extra_data(self, perf_index, num_cores=1, node_id=None, node_name=None):
         """Returns data for the next subtask.
         :param int perf_index:
         :param int num_cores:
-        :param Node | None client_id:
+        :param str | None node_id:
+        :param str | None node_name:
         :rtype: ComputeTaskDef"""
         # create new subtask_id
         import uuid
@@ -143,6 +144,8 @@ class DummyTask(Task):
         }
         subtask_def.task_owner = self.header.task_owner
         subtask_def.environment = self.header.environment
+        subtask_def.return_address = self.header.task_owner_address
+        subtask_def.return_port = self.header.task_owner_port
         return subtask_def
 
     def verify_task(self):
