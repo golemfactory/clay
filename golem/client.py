@@ -1,5 +1,6 @@
 import time
-import datetime
+import os
+import appdirs
 import logging
 
 from twisted.internet import task
@@ -114,7 +115,7 @@ class Client:
         self.send_snapshot = False
         self.snapshot_lock = Lock()
 
-        self.db = Database()
+        self.db = Database(self.__get_database_name())
         self.db.check_node(self.keys_auth.get_key_id())
 
         self.ranking = Ranking(self, RankingDatabase(self.db))
@@ -380,6 +381,9 @@ class Client:
 
     def task_finished(self, task_id):
         self.transaction_system.task_finished(task_id)
+
+    def __get_database_name(self):
+        return os.path.join(appdirs.user_data_dir('golem'), self.keys_auth.get_key_id()[-10:] + ".db")
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:
