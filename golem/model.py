@@ -1,8 +1,10 @@
 from peewee import SqliteDatabase, Model, CharField, ForeignKeyField, FloatField, DateTimeField, CompositeKey
 
 import datetime
+import appdirs
+import os
 
-DATABASE_NAME = 'golem.db'
+DATABASE_NAME = os.path.join(appdirs.user_data_dir('golem'), 'golem.db')
 START_BUDGET = 42000000
 NEUTRAL_TRUST = 0.0
 
@@ -13,14 +15,18 @@ class SqliteFKTimeoutDatabase(SqliteDatabase):
         self.execute_sql('PRAGMA busy_timeout = 30000')
 
 
-db = SqliteFKTimeoutDatabase(DATABASE_NAME, threadlocals=True)
+db = SqliteFKTimeoutDatabase(None, threadlocals=True)
 
 
 class Database:
-    def __init__(self):
-        self.db = db
-        self.name = DATABASE_NAME
+    def __init__(self, name=None):
+        if name is None:
+            name = DATABASE_NAME
 
+        self.name = name
+        self.db = db
+
+        db.init(name)
         db.connect()
         self.create_database()
 
