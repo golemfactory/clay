@@ -325,7 +325,7 @@ class RenderingTask(GNRTask):
     @check_subtask_id_wrapper
     def _change_scope(self, subtask_id, start_box, tr_file):
         extra_data = copy(self.subtasks_given[subtask_id])
-        extra_data['outfilebasename'] = uuid.uuid4()
+        extra_data['outfilebasename'] = str(uuid.uuid4())
         extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(self.subtasks_given[subtask_id]['start_task']))
         if not os.path.isdir(extra_data['tmp_path']):
             os.mkdir(extra_data['tmp_path'])
