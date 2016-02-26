@@ -184,7 +184,7 @@ class AbsRenderingMainWindowCustomizer(object):
             self._set_show_task_resource_dialog()
 
             item = QTreeWidgetItem(["Resources"])
-            self.show_task_resources_dialog.ui.folderTreeWidget.insertTopLevelItem(0, item)
+            self.show_task_resources_dialog.ui.folderTreeView.insertTopLevelItem(0, item)
             self.show_task_resources_dialog.ui.closeButton.clicked.connect(self.__show_task_res_close_button_clicked)
 
             for r in res:
@@ -193,7 +193,7 @@ class AbsRenderingMainWindowCustomizer(object):
 
             self.show_task_resources_dialog.ui.mainSceneFileLabel.setText(
                 self.current_task_highlighted.definition.main_scene_file)
-            self.show_task_resources_dialog.ui.folderTreeWidget.expandAll()
+            self.show_task_resources_dialog.ui.folderTreeView.expandAll()
 
             self.show_task_resources_dialog.show()
 

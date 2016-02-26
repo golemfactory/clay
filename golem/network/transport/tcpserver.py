@@ -229,7 +229,7 @@ class PendingConnection(object):
         :param func|None failure: connection errback
         :param dict args: arguments that should be passed to established or failure function
         """
-        self.id = uuid.uuid4()
+        self.id = str(uuid.uuid4())
         self.tcp_addresses = tcp_addresses
         self.last_try_time = time.time()
         self.established = established
@@ -249,7 +249,7 @@ class PendingListening(object):
         :param func|None failure: listening errback
         :param dict args: arguments that should be passed to established or failure function
         """
-        self.id = uuid.uuid4()
+        self.id = str(uuid.uuid4())
         self.time = time.time()
         self.established = established
         self.failure = failure

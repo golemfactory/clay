@@ -1,12 +1,17 @@
-import unittest
 import tempfile
-from golem.core.keysauth import KeysAuth
+from random import random
+
+from golem.core.keysauth import KeysAuth, EllipticalKeysAuth
+from golem.tools.testdirfixture import TestDirFixture
 
 
-class KeysAuthTest(unittest.TestCase):
+class KeysAuthTestBase(TestDirFixture):
     def tearDown(self):
         if hasattr(KeysAuth, '_keys_dir'):
             del KeysAuth._keys_dir
+
+
+class KeysAuthTest(KeysAuthTestBase):
 
     def test_keys_dir_default(self):
         km = KeysAuth()
@@ -19,7 +24,7 @@ class KeysAuthTest(unittest.TestCase):
 
     def test_keys_dir_setter(self):
         km = KeysAuth()
-        d = "/tmp/keys"
+        d = self.path
         km.set_keys_dir(d)
         self.assertEqual(d, km.get_keys_dir())
 
@@ -28,3 +33,13 @@ class KeysAuthTest(unittest.TestCase):
         with self.assertRaises(AssertionError):
             km = KeysAuth()
             km.set_keys_dir(file.name)
+
+
+class TestEllipticalKeysAuth(KeysAuthTestBase):
+    def test_init(self):
+        EllipticalKeysAuth.set_keys_dir(self.path)
+        for i in range(100):
+            ek = EllipticalKeysAuth(random())
+            self.assertEqual(len(ek._private_key), 32)
+            self.assertEqual(len(ek.public_key), 64)
+            self.assertEqual(len(ek.key_id), 128)
