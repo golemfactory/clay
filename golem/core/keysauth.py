@@ -6,7 +6,7 @@ from random import random
 
 from Crypto.PublicKey import RSA
 from simplehash import SimpleHash
-from devp2p.crypto import mk_privkey, privtopub, ECCx
+from golem.core.crypto import mk_privkey, privtopub, ECCx
 from sha3 import sha3_256
 from hashlib import sha256
 
