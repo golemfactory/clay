@@ -50,18 +50,14 @@ class TestPayment(TestWithDatabase):
         self.assertGreaterEqual(datetime.now(), p.modified_date)
 
     def test_create(self):
-        p = Payment(paying_node_id="ABC", to_node_id="DEF", task="xyz", val="5.232", state="SOMESTATE")
-        with self.assertRaises(Node.DoesNotExist):
-            p.save(force_insert=True)
-        Node.create(node_id="ABC")
+        p = Payment(to_node_id="DEF", task="xyz", val="5.232", state="SOMESTATE")
         self.assertEquals(p.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
-            Payment.create(paying_node_id="ABC", to_node_id="DEF", task="xyz", val="5.132", state="SOMESTATEX")
-        Payment.create(paying_node_id="ABC", to_node_id="DEF", task="xyz2", val="5.132", state="SOMESTATEX")
-        Payment.create(paying_node_id="ABC", to_node_id="DEF2", task="xyz", val="5.132", state="SOMESTATEX")
-        Node.create(node_id="ABC2")
-        Payment.create(paying_node_id="ABC2", to_node_id="DEF", task="xyz", val="5.132", state="SOMESTATEX")
-        self.assertEqual(3, len([payment for payment in Payment.select().where(Payment.paying_node_id == "ABC")]))
+            Payment.create(to_node_id="DEF", task="xyz", val="5.132", state="SOMESTATEX")
+        Payment.create(to_node_id="DEF", task="xyz2", val="5.132", state="SOMESTATEX")
+        Payment.create( to_node_id="DEF2", task="xyz", val="5.132", state="SOMESTATEX")
+
+        self.assertEqual(3, len([payment for payment in Payment.select()]))
 
 
 class TestReceivedPayment(TestWithDatabase):

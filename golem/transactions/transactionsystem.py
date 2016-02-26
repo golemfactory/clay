@@ -19,7 +19,7 @@ class TransactionSystem(object):
         while be used as a payment keeper
         """
         self.node_id = node_id
-        self.payments_keeper = payments_keeper_class(node_id)  # Keeps information about payments to send
+        self.payments_keeper = payments_keeper_class()  # Keeps information about payments to send
         self.incomes_keeper = incomes_keeper_class()  # Keeps information about received payments
         self.budget = Bank.get(Bank.node_id == node_id).val  # Current budget state
         self.price_base = PRICE_BASE  # Price base for price modifications

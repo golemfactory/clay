@@ -74,7 +74,6 @@ class Bank(BaseModel):
 class Payment(BaseModel):
     """ Represents payments that nodes on this machine make to other nodes
     """
-    paying_node_id = ForeignKeyField(Node, related_name="pay")
     to_node_id = CharField()
     task = CharField()
     val = FloatField()
@@ -82,7 +81,7 @@ class Payment(BaseModel):
 
     class Meta:
         database = db
-        primary_key = CompositeKey('paying_node_id', 'to_node_id', 'task')
+        primary_key = CompositeKey('to_node_id', 'task')
 
 
 class ReceivedPayment(BaseModel):
