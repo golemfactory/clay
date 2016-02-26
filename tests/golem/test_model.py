@@ -1,9 +1,18 @@
+import unittest
 from datetime import datetime
 
 from peewee import IntegrityError
 from golem.model import Node, Bank, START_BUDGET, Payment, ReceivedPayment, LocalRank, GlobalRank, \
-    NeighbourLocRank, NEUTRAL_TRUST
+    NeighbourLocRank, NEUTRAL_TRUST, Database, DATABASE_NAME
 from golem.tools.testwithdatabase import TestWithDatabase
+
+
+class TestDatabase(unittest.TestCase):
+    def test_init(self):
+        db = Database()
+        self.assertEqual(db.name, DATABASE_NAME)
+        self.assertFalse(db.db.is_closed())
+        db.db.close()
 
 
 class TestNode(TestWithDatabase):
