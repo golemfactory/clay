@@ -10,15 +10,15 @@ from golem.network.transport.tcpnetwork import TCPAddress
 
 import os
 import re
-import select
 import subprocess
 import sys
+from threading import Thread
 import time
 from twisted.internet import reactor
 
 
-REQUESTING_NODE_ARG = "requester"
-COMPUTING_NODE_ARG = "computer"
+REQUESTING_NODE_KIND = "requester"
+COMPUTING_NODE_KIND = "computer"
 
 
 def run_requesting_node(num_subtasks = 3):
@@ -52,7 +52,7 @@ def run_requesting_node(num_subtasks = 3):
     reactor.run()
 
 
-def run_computing_node(peer_address):
+def run_computing_node(peer_address, fail_after = None):
 
     def report(msg):
         print "[COMPUTING NODE {}] {}".format(os.getpid(), msg)
@@ -75,26 +75,42 @@ def run_computing_node(peer_address):
            .format(peer_address.address, peer_address.port))
     client.connect(peer_address)
 
-    def report_status():
+    def report_status(fail_after = None):
+        t0 = time.time()
+        n = 0
         while True:
-            time.sleep(5)
-            report("Ping!")
+            if fail_after and time.time() - t0 > fail_after:
+                report("Failure!")
+                reactor.callFromThread(reactor.stop)
+                time.sleep(5)
+                return
+            n += 1
+            if n % 5 == 0:
+                report("Ping!")
+            time.sleep(1)
 
-    reactor.callInThread(report_status)
+    reactor.callInThread(report_status, fail_after)
     reactor.run()
+    sys.exit(1)
 
 
-def run_simulation(num_computing_nodes = 2, num_subtasks = 3, timeout = 120):
+# Global var set by a thread monitoring the status of the requester node
+task_finished = False
+
+
+def run_simulation(num_computing_nodes = 2, num_subtasks = 3, timeout = 120,
+                   node_failure_times = None):
+
     # We need to pass the PYTHONPATH to the child processes
-    pythonpath = "".join(dir + ":" for dir in sys.path)
-    env = os.environ
+    pythonpath = "".join(dir + os.pathsep for dir in sys.path)
+    env = os.environ.copy()
     env["PYTHONPATH"] = pythonpath
 
     start_time = time.time()
 
     # Start the requesting node in a separate process
     requesting_proc = subprocess.Popen(
-        ["python", "-u", __file__, REQUESTING_NODE_ARG, str(num_subtasks)],
+        ["python", "-u", __file__, REQUESTING_NODE_KIND, str(num_subtasks)],
         bufsize = 1,  # line buffered
         env = env,
         stdout = subprocess.PIPE)
@@ -112,59 +128,73 @@ def run_simulation(num_computing_nodes = 2, num_subtasks = 3, timeout = 120):
     # Start computing nodes in a separate processes
     computing_procs = []
     for n in range(0, num_computing_nodes):
+        cmdline = [
+            "python", "-u", __file__, COMPUTING_NODE_KIND, requester_address]
+        if node_failure_times and len(node_failure_times) > n:
+            # Simulate failure of a computing node
+            cmdline.append(str(node_failure_times[n]))
         proc = subprocess.Popen(
-            ["python", "-u", __file__, COMPUTING_NODE_ARG, requester_address],
+            cmdline,
             bufsize = 1,
             env = env,
             stdout = subprocess.PIPE)
-
         computing_procs.append(proc)
 
     all_procs = computing_procs + [requesting_proc]
     task_finished_status = "[REQUESTING NODE {}] Task finished".format(
         requesting_proc.pid)
 
-    def monitor(processes):
-        descriptors = [proc.stdout for proc in processes]
+    global task_finished
+    task_finished = False
 
-        while True:
-            if time.time() - start_time > timeout:
-                return "Computation timed out"
-
-            # Check if all subprocesses are alive
-            for proc in processes:
-                if proc.returncode:
-                    return "Node exited with return code {}".\
-                        format(proc.returncode)
-
-            # Monitor subprocesses' output
-            ready = select.select(descriptors, [], [], 5.0)[0]
-            for f in ready:
-                line = f.readline().strip()
+    def monitor_subprocess(proc):
+        global task_finished
+        while not proc.returncode:
+            line = proc.stdout.readline().strip()
+            if line:
                 print line
-                if line == task_finished_status:
-                    return None
+            if line == task_finished_status:
+                task_finished = True
 
-            if not ready:
-                time.sleep(1.0)
+    monitor_threads = [Thread(target = monitor_subprocess,
+                              name = "monitor {}".format(proc.pid),
+                              args=(proc,))
+                       for proc in all_procs]
+
+    for th in monitor_threads:
+        th.setDaemon(True)
+        th.start()
 
     # Wait until timeout elapses or the task is computed
     try:
-        error_msg = monitor(all_procs)
-        return error_msg
+        while not task_finished:
+            if time.time() - start_time > timeout:
+                return "Computation timed out"
+            # Check if all subprocesses are alive
+            for proc in all_procs:
+                proc.poll()
+                if proc.returncode:
+                    return "Node exited with return code {}".format(
+                        proc.returncode)
+            time.sleep(1.0)
+        return None
     finally:
+        print "Stopping nodes..."
+
         for proc in all_procs:
+            proc.poll()
             if not proc.returncode:
                 proc.kill()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == REQUESTING_NODE_ARG:
+    if len(sys.argv) == 3 and sys.argv[1] == REQUESTING_NODE_KIND:
         # I'm a requesting node, second arg is the number of subtasks
         run_requesting_node(int(sys.argv[2]))
-    elif len(sys.argv) == 3 and sys.argv[1] == COMPUTING_NODE_ARG:
+    elif len(sys.argv) in [3,4] and sys.argv[1] == COMPUTING_NODE_KIND:
         # I'm a computing node, second arg is the address to connect to
-        run_computing_node(TCPAddress.parse(sys.argv[2]))
+        fail_after = float(sys.argv[3]) if len(sys.argv) == 4 else None
+        run_computing_node(TCPAddress.parse(sys.argv[2]), fail_after=fail_after)
     elif len(sys.argv) == 1:
         # I'm the main script, run simulation
         error_msg = run_simulation(
