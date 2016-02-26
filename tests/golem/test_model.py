@@ -63,24 +63,19 @@ class TestReceivedPayment(TestWithDatabase):
         self.assertGreaterEqual(datetime.now(), r.modified_date)
 
     def test_create(self):
-        r = ReceivedPayment(node_id="ABC", from_node_id="DEF", task="xyz", val="5.232", expected_val="3131.23",
+        r = ReceivedPayment(from_node_id="DEF", task="xyz", val="5.232", expected_val="3131.23",
                             state="SOMESTATE")
-        with self.assertRaises(Node.DoesNotExist):
-            r.save(force_insert=True)
-        Node.create(node_id="ABC")
         self.assertEquals(r.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
-            ReceivedPayment.create(node_id="ABC", from_node_id="DEF", task="xyz", val="5.132", expected_val="3132.33",
+            ReceivedPayment.create(from_node_id="DEF", task="xyz", val="5.132", expected_val="3132.33",
                                    state="SOMESTATEX")
-        ReceivedPayment.create(node_id="ABC", from_node_id="DEF", task="xyz2", val="5.132", expected_val="3132.33",
+        ReceivedPayment.create(from_node_id="DEF", task="xyz2", val="5.132", expected_val="3132.33",
                                state="SOMESTATEX")
-        ReceivedPayment.create(node_id="ABC", from_node_id="DEF2", task="xyz", val="5.132", expected_val="3132.33",
+        ReceivedPayment.create(from_node_id="DEF2", task="xyz", val="5.132", expected_val="3132.33",
                                state="SOMESTATEX")
-        Node.create(node_id="ABC2")
-        ReceivedPayment.create(node_id="ABC2", from_node_id="DEF", task="xyz", val="5.132", expected_val="3132.33",
-                               state="SOMESTATEX")
+
         self.assertEqual(3,
-                         len([payment for payment in ReceivedPayment.select().where(ReceivedPayment.node_id == "ABC")]))
+                         len([payment for payment in ReceivedPayment.select()]))
 
 
 class TestLocalRank(TestWithDatabase):

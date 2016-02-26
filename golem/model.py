@@ -88,7 +88,6 @@ class Payment(BaseModel):
 class ReceivedPayment(BaseModel):
     """ Represent payments that nodes on this machine receive from other nodes
     """
-    node_id = ForeignKeyField(Node, related_name="receive")
     from_node_id = CharField()
     task = CharField()
     val = FloatField()
@@ -97,7 +96,7 @@ class ReceivedPayment(BaseModel):
 
     class Meta:
         database = db
-        primary_key = CompositeKey('node_id', 'from_node_id', 'task')
+        primary_key = CompositeKey('from_node_id', 'task')
 
 
 ##################

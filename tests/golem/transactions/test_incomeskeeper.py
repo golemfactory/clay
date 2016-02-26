@@ -5,12 +5,11 @@ from golem.transactions.incomeskeeper import IncomesDatabase, IncomesKeeper, log
 
 class TestIncomesDatabase(LogTestCase, TestWithDatabase):
     def test_init(self):
-        id = IncomesDatabase("ABC")
+        id = IncomesDatabase()
         self.assertIsInstance(id, IncomesDatabase)
 
     def test_get_income_value(self):
-        id = IncomesDatabase("ABC")
-        self.database.check_node("ABC")
+        id = IncomesDatabase()
         with self.assertLogs(logger, level=1) as l:
             self.assertEquals((0, 0), id.get_income_value("xyz", "DEF"))
         self.assertTrue(any(["not exist" in log for log in l.output]))
@@ -19,8 +18,7 @@ class TestIncomesDatabase(LogTestCase, TestWithDatabase):
         id.update_income("xyz", "DEF", "20.0", "30.0", "SOMESTATE")
 
     def test_change_state(self):
-        id = IncomesDatabase("ABC")
-        self.database.check_node("ABC")
+        id = IncomesDatabase()
         id.change_state("xyz", "DEF", "DIFFSTATE")
         id.update_income("xyz", "DEF", "20.0", "30.0", "SOMESTATE")
         id.update_income("abc", "DEF", "20.0", "30.0", "SOMEOTHERSTATE")
@@ -45,15 +43,13 @@ class TestIncomesDatabase(LogTestCase, TestWithDatabase):
         self.assertEqual(id.get_state("xyz", "GHI"), "DIFFSTATE3")
 
     def test_get_state(self):
-        id = IncomesDatabase("ABC")
-        self.database.check_node("ABC")
+        id = IncomesDatabase()
         self.assertIsNone(id.get_state("xyz", "DEF"))
         id.update_income("xyz", "DEF", 30.0, 20.0, "SOMESTATE")
         self.assertEqual(id.get_state("xyz", "DEF"), "SOMESTATE")
 
     def test_update_income(self):
-        id = IncomesDatabase("ABC")
-        self.database.check_node("ABC")
+        id = IncomesDatabase()
         id.update_income("xyz", "DEF", 30.0, 20.0, "SOMESTATE")
         self.assertEqual(id.get_income_value("xyz", "DEF"), (30, 20))
         id.update_income("xyz", "DEF", 10.0, 30.0, "SOMESTATE", add_income=True)
@@ -64,8 +60,7 @@ class TestIncomesDatabase(LogTestCase, TestWithDatabase):
         self.assertEqual(id.get_income_value("xyz", "DEF"), (10, 10))
 
     def test_get_newest_incomes(self):
-        id = IncomesDatabase("ABC")
-        self.database.check_node("ABC")
+        id = IncomesDatabase()
         for i in range(10):
             id.update_income("xyz{}".format(i), "DEF", i, i, "s")
 
@@ -83,12 +78,11 @@ class TestIncomesDatabase(LogTestCase, TestWithDatabase):
 
 class TestIncomesKeeper(TestWithDatabase):
     def test_init(self):
-        ik = IncomesKeeper("ABC")
+        ik = IncomesKeeper()
         self.assertIsInstance(ik, IncomesKeeper)
 
     def test_add_payment(self):
-        ik = IncomesKeeper("ABC")
-        self.database.check_node("ABC")
+        ik = IncomesKeeper()
         ik.add_waiting_payment("xyz", "DEF")
         ik.add_waiting_payment("zyx", "FED")
         xyz = filter(lambda x: x["task"] == "xyz", ik.get_list_of_all_incomes())
