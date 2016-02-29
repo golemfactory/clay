@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 class PaymentsDatabase(object):
     """ Save and retrieve from database information about payments that this node has to make / made
     """
-    def __init__(self):
-        self.db = db
 
     def get_payment_value(self, payment_info):
         """ Return value of a payment that was done to the same node and for the same task as payment for payment_info
@@ -33,7 +31,7 @@ class PaymentsDatabase(object):
         :param payment_info:
         """
         try:
-            with self.db.transaction():
+            with db.transaction():
                 Payment.create(to_node_id=payment_info.computer.key_id,
                                task=payment_info.task_id,
                                val=payment_info.value,

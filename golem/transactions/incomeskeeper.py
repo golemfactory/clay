@@ -11,8 +11,6 @@ logger = logging.getLogger(__name__)
 class IncomesDatabase(object):
     """ Save and retrieve from database information about incomes
     """
-    def __init__(self):
-        self.db = db
 
     def get_income_value(self, task_id, node_id):
         """ Retrieve information about recieved value and expected value of a payment that node should receive from
@@ -82,7 +80,7 @@ class IncomesDatabase(object):
             return None
 
     def __create_new_income(self, task_id, node_id, value, expected_value, state):
-        with self.db.transaction():
+        with db.transaction():
             ReceivedPayment.create(from_node_id=node_id, task=task_id, val=value,
                                    expected_val=expected_value, state=state)
 

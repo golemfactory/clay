@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 from peewee import IntegrityError
-from golem.model import Node, Payment, ReceivedPayment, LocalRank, GlobalRank, \
+from golem.model import Payment, ReceivedPayment, LocalRank, GlobalRank, \
     NeighbourLocRank, NEUTRAL_TRUST, Database, DATABASE_NAME
 from golem.tools.testwithdatabase import TestWithDatabase, TestDirFixture
 
@@ -18,25 +18,6 @@ class TestDatabase(TestDirFixture):
         self.assertEqual(db.name, DATABASE_NAME)
         self.assertFalse(db.db.is_closed())
         db.db.close()
-
-
-class TestNode(TestWithDatabase):
-    def test_default_fields(self):
-        n = Node()
-        self.assertGreaterEqual(datetime.now(), n.created_date)
-        self.assertGreaterEqual(datetime.now(), n.modified_date)
-
-    def test_create(self):
-        with self.assertRaises(Node.DoesNotExist):
-            Node.select().where(Node.node_id == "ABC").get()
-        n = Node.create(node_id="ABC")
-        n2 = Node.select().where(Node.node_id == "ABC").get()
-        self.assertEquals(n.created_date, n2.created_date)
-        self.assertEquals(n.modified_date, n2.modified_date)
-        with self.assertRaises(IntegrityError):
-            Node.create(node_id="ABC")
-        Node.create(node_id="DEF")
-        self.assertEquals(len([node for node in Node.select()]), 2)
 
 
 class TestPayment(TestWithDatabase):

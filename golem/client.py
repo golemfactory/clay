@@ -116,9 +116,8 @@ class Client:
         self.snapshot_lock = Lock()
 
         self.db = Database(self.__get_database_name())
-        self.db.check_node(self.keys_auth.get_key_id())
 
-        self.ranking = Ranking(self, RankingDatabase(self.db))
+        self.ranking = Ranking(self)
 
         self.transaction_system = EthereumTransactionSystem(self.keys_auth.get_key_id(), self.config_desc.eth_account)
 

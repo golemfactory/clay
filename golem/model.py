@@ -18,9 +18,7 @@ db = SqliteFKTimeoutDatabase(None, threadlocals=True)
 
 
 class Database:
-    def __init__(self, name=None):
-        if name is None:
-            name = DATABASE_NAME
+    def __init__(self, name=DATABASE_NAME):
 
         self.name = name
         self.db = db
@@ -29,14 +27,9 @@ class Database:
         db.connect()
         self.create_database()
 
-    def create_database(self):
-        db.create_tables([Node, LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment], safe=True)
-
-    def check_node(self, node_id):
-        with db.transaction():
-            nodes = [n for n in Node.select().where(Node.node_id == node_id)]
-            if len(nodes) == 0:
-                Node.create(node_id=node_id)
+    @staticmethod
+    def create_database():
+        db.create_tables([LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment], safe=True)
 
 
 class BaseModel(Model):
@@ -44,16 +37,6 @@ class BaseModel(Model):
         database = db
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
-
-
-###############
-# NODE MODELS #
-###############
-
-class Node(BaseModel):
-    """ Represent nodes that are active on this machine
-    """
-    node_id = CharField(primary_key=True)
 
 
 ##################
