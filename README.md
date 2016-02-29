@@ -1,6 +1,8 @@
 # Ethereum Contracts for Golem
 Ethereum contracts for nanopayment schemes used in [Golem Worldwide Supercomputer](http://golemproject.net).
 
+The contracts have been created thanks to the [BlockGrantX #1:Genesis](http://blockchainlabs.org/blockgrant-x-en).
+
 Copyright © 2016
 
 This program is free software: you can redistribute it and/or modify
