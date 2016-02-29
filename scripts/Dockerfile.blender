@@ -10,7 +10,8 @@ RUN apt-get update && \
 
 RUN mkdir /golem && mkdir /golem/resources && mkdir /golem/output
 
-RUN cd /tmp && wget http://www.luxrender.net/release/luxrender/1.5/linux/lux-v1.5.1-x86_64-sse2.tar.bz2 && tar jxf lux-v1.5.1-x86_64-sse2.tar.bz2 && mv lux-v1.5.1-x86_64-sse2 /usr/bin/luxrender
+RUN cd /tmp && wget https://github.com/imapp-pl/golem-binary-dependencies/releases/download/luxrender-v1.5.1/lux-v1.5.1-x86_64-sse2.tar.bz2 \
+            && tar jxf lux-v1.5.1-x86_64-sse2.tar.bz2 && mv lux-v1.5.1-x86_64-sse2 /usr/bin/luxrender
 
 ENV PATH=/usr/local/blender:$PATH PYTHONPATH=/golem LUXRENDER_ROOT=/usr/bin/luxrender
 

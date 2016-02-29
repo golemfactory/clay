@@ -15,6 +15,28 @@ def generate_ui_files():
 generate_ui_files()
 
 
+def build_docker_image():
+    import docker
+    from golem.task.docker.client import local_client
+    client = local_client()
+    # Build imapp/blender
+    dockerfile_path = path.join(path.join(path.dirname(__file__), "scripts"),
+                                "Dockerfile.blender")
+    with open(dockerfile_path, 'r') as dockerfile:
+        print "Building Docker image imapp/blender..."
+        for line in client.build(tag="imapp/blender", fileobj=dockerfile,
+                                 pull=True, rm=True, decode=True):
+            key = line.keys()[0]
+            msg = line[key]
+    if key == "stream" and msg.startswith("Successfully"):
+        print msg
+    else:
+        print "Error when building image, try to run docker build manually"
+        sys.exit(1)
+
+build_docker_image()
+
+
 class PyTest(TestCommand):
     ''' py.test integration with setuptools,
         https://pytest.org/latest/goodpractises.html\
