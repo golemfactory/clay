@@ -16,8 +16,10 @@ generate_ui_files()
 
 
 def build_docker_image():
-    import docker
-    from golem.task.docker.client import local_client
+    from golem.task.docker.client import disable_docker, local_client
+    if disable_docker():
+        return
+
     client = local_client()
     # Build imapp/blender
     dockerfile_path = path.join(path.join(path.dirname(__file__), "scripts"),
