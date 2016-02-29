@@ -1,14 +1,19 @@
-import unittest
+import os
 from datetime import datetime
 
 from peewee import IntegrityError
-from golem.model import Node, Bank, START_BUDGET, Payment, ReceivedPayment, LocalRank, GlobalRank, \
+from golem.model import Node, Payment, ReceivedPayment, LocalRank, GlobalRank, \
     NeighbourLocRank, NEUTRAL_TRUST, Database, DATABASE_NAME
-from golem.tools.testwithdatabase import TestWithDatabase
+from golem.tools.testwithdatabase import TestWithDatabase, TestDirFixture
 
 
-class TestDatabase(unittest.TestCase):
+class TestDatabase(TestDirFixture):
     def test_init(self):
+        db = Database(os.path.join(self.path, "abcdef.db"))
+        self.assertEqual(db.name, os.path.join(self.path, "abcdef.db"))
+        self.assertFalse(db.db.is_closed())
+        db.db.close()
+
         db = Database()
         self.assertEqual(db.name, DATABASE_NAME)
         self.assertFalse(db.db.is_closed())
@@ -32,14 +37,6 @@ class TestNode(TestWithDatabase):
             Node.create(node_id="ABC")
         Node.create(node_id="DEF")
         self.assertEquals(len([node for node in Node.select()]), 2)
-
-
-class TestBank(TestWithDatabase):
-    def test_default_fields(self):
-        b = Bank()
-        self.assertGreaterEqual(datetime.now(), b.created_date)
-        self.assertGreaterEqual(datetime.now(), b.modified_date)
-        self.assertEqual(b.val, START_BUDGET)
 
 
 class TestPayment(TestWithDatabase):

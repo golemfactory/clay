@@ -6,14 +6,10 @@ from golem.network.p2p.node import Node
 
 class TestTransactionSystem(TestWithDatabase):
     def test_init(self):
-        with self.assertRaises(Exception):
-            TransactionSystem("ABC")
-        self.database.check_node("ABC")
         e = TransactionSystem("ABC")
         self.assertIsInstance(e, TransactionSystem)
 
     def test_add_payment_info(self):
-        self.database.check_node("ABC")
         e = TransactionSystem("ABC")
         ai = AccountInfo("DEF", 2010, "10.0.0.1", "node1", Node())
         price_mod = 10

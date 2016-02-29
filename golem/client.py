@@ -251,9 +251,6 @@ class Client:
         price = self.transaction_system.add_payment_info(task_id, subtask_id, price_mod, account_info)
         self.task_server.task_manager.set_value(task_id, subtask_id, price)
 
-    def task_reward_paid(self, task_id, price):
-        return self.transaction_system.task_reward_paid(task_id, price)
-
     def task_reward_payment_failure(self, task_id, price):
         return self.transaction_system.task_reward_payment_failure(task_id, price)
 
