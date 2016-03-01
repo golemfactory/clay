@@ -70,8 +70,7 @@ class TaskComputer(object):
                 self.waiting_ttl = 0
                 self.counting_task = True
                 subtask = self.assigned_subtasks[subtask_id]
-                self.__compute_task(subtask_id, subtask.docker_image,
-                                    subtask.docker_image_id,
+                self.__compute_task(subtask_id, subtask.docker_images,
                                     subtask.src_code, subtask.extra_data,
                                     subtask.short_description, subtask.timeout)
                 self.waiting_for_task = None
