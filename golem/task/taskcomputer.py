@@ -13,7 +13,6 @@ from golem.vm.vm import PythonProcVM, PythonTestVM
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
-from golem.task.docker.image import DockerImage
 from golem.task.docker.job import DockerJob
 
 logger = logging.getLogger(__name__)
@@ -90,8 +89,7 @@ class TaskComputer(object):
                 self.task_timeout = subtask.timeout
                 self.last_task_timeout_checking = time.time()
                 self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
-                self.__compute_task(subtask_id, subtask.docker_image,
-                                    subtask.docker_image_id,
+                self.__compute_task(subtask_id, subtask.docker_images,
                                     subtask.src_code, subtask.extra_data,
                                     subtask.short_description, subtask.timeout)
                 self.waiting_for_task = None
@@ -204,19 +202,18 @@ class TaskComputer(object):
                                                                   key_id,
                                                                   task_owner)
 
-    def __compute_task(self, subtask_id, docker_image, docker_image_id,
+    def __compute_task(self, subtask_id, docker_images,
                        src_code, extra_data, short_desc, task_timeout):
-        assert docker_image or not docker_image_id
         task_id = self.assigned_subtasks[subtask_id].task_id
         working_directory = self.assigned_subtasks[subtask_id].working_directory
         self.dir_manager.clear_temporary(task_id)
-        if docker_image:
-            tt = DockerRunner(self, subtask_id, docker_image, docker_image_id,
-                              working_directory, src_code,
-                              extra_data, short_desc,
-                              self.resource_manager.get_resource_dir(task_id),
-                              self.resource_manager.get_temporary_dir(task_id),
-                              task_timeout)
+        if docker_images:
+            tt = DockerRunnerThread( self, subtask_id, docker_images,
+                                     working_directory, src_code,
+                                     extra_data, short_desc,
+                                     self.resource_manager.get_resource_dir(task_id),
+                                     self.resource_manager.get_temporary_dir(task_id),
+                                     task_timeout )
         else:
             tt = PyTaskThread(self, subtask_id, working_directory, src_code,
                               extra_data, short_desc,
@@ -337,23 +334,31 @@ class PyTestTaskThread(PyTaskThread):
         self.vm = PythonTestVM()
 
 
-class DockerRunner(TaskThread):
+class DockerRunnerThread(TaskThread):
 
-    def __init__(self, task_computer, subtask_id, image_name, image_id,
+    def __init__(self, task_computer, subtask_id, docker_images,
                  working_directory, src_code, extra_data, short_desc,
                  res_path, tmp_path, timeout):
-        super(DockerRunner, self).__init__(
+        super( DockerRunnerThread, self ).__init__(
             task_computer, subtask_id, working_directory, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
 
-        self.image = DockerImage(image_name, id=image_id)
+        assert docker_images
+        # Find available image
+        self.image = None
+        for img in docker_images:
+            if img.is_available():
+                self.image = img
+                break
+        if not self.image:
+            raise RuntimeError("None of the images is available: {}".format(
+                [img.name for img in docker_images]))
+
         self.job = None
 
     def run(self):
         try:
             params = self.extra_data.copy()
-            del params["docker-image"]
-            del params["docker-image-id"]
             with DockerJob(self.image, self.src_code, params,
                            self.working_directory,
                            self.res_path, self.tmp_path) as job:
