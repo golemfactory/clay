@@ -22,7 +22,8 @@ class TaskServer(PendingConnectionsServer):
 
         self.node = node
         self.task_keeper = TaskKeeper()
-        self.task_manager = TaskManager(config_desc.node_name, self.node, key_id=self.keys_auth.get_key_id(),
+        self.task_manager = TaskManager(config_desc.node_name, self.node, max_price=config_desc.max_price,
+                                        key_id=self.keys_auth.get_key_id(),
                                         root_path=TaskServer.__get_task_manager_root(config_desc),
                                         use_distributed_resources=config_desc.use_distributed_resource_management)
         self.task_computer = TaskComputer(config_desc.node_name, self)
@@ -140,7 +141,8 @@ class TaskServer(PendingConnectionsServer):
                         "subtask_timeout": th.subtask_timeout,
                         "node_name": th.node_name,
                         "environment": th.environment,
-                        "min_version": th.min_version})
+                        "min_version": th.min_version,
+                        "max_price": th.max_price})
 
         return ret
 
@@ -221,7 +223,7 @@ class TaskServer(PendingConnectionsServer):
         self.config_desc = config_desc
         self.last_message_time_threshold = config_desc.task_session_timeout
         self.task_manager.change_config(self.__get_task_manager_root(config_desc),
-                                        config_desc.use_distributed_resource_management)
+                                        config_desc.use_distributed_resource_management, config_desc.max_price)
         self.task_computer.change_config()
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):

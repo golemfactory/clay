@@ -45,7 +45,8 @@ class TaskKeeper(object):
                     self.task_headers[id_] = TaskHeader(th_dict_repr["node_name"], id_, th_dict_repr["address"],
                                                         th_dict_repr["port"], th_dict_repr["key_id"],
                                                         th_dict_repr["environment"], th_dict_repr["task_owner"],
-                                                        th_dict_repr["ttl"], th_dict_repr["subtask_timeout"])
+                                                        th_dict_repr["ttl"], th_dict_repr["subtask_timeout"],
+                                                        th_dict_repr["max_price"])
                     if is_supported:
                         self.supported_tasks.append(id_)
             return True

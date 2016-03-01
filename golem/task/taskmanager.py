@@ -21,7 +21,7 @@ class TaskManagerEventListener:
 
 
 class TaskManager:
-    def __init__(self, node_name, node, listen_address="", listen_port=0, key_id="", root_path="res",
+    def __init__(self, node_name, node, max_price, listen_address="", listen_port=0, key_id="", root_path="res",
                  use_distributed_resources=True):
         self.node_name = node_name
         self.node = node
@@ -32,6 +32,7 @@ class TaskManager:
         self.listen_address = listen_address
         self.listen_port = listen_port
         self.key_id = key_id
+        self.max_price = max_price
 
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root(), self.node_name)
@@ -67,6 +68,7 @@ class TaskManager:
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
         task.header.task_owner_key_id = self.key_id
+        task.header.max_price = self.max_price
         self.node.pub_addr, self.node.pub_port, self.node.nat_type = get_external_address(self.listen_port)
         task.header.task_owner = self.node
 
@@ -390,9 +392,10 @@ class TaskManager:
         else:
             assert False, "Should never be here!"
 
-    def change_config(self, root_path, use_distributed_resource_management):
+    def change_config(self, root_path, use_distributed_resource_management, max_price):
         self.dir_manager = DirManager(root_path, self.node_name)
         self.use_distributed_resources = use_distributed_resource_management
+        self.max_price = max_price
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
         if task_id in self.tasks:

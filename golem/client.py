@@ -312,6 +312,7 @@ class Client:
 
     def supported_task(self, th_dict_repr):
         supported = self.__check_supported_environment(th_dict_repr)
+        supported = supported and self.__check_price(th_dict_repr)
         return supported and self.__check_supported_version(th_dict_repr)
 
     def get_res_dirs(self):
@@ -415,6 +416,9 @@ class Client:
                 )
             )
             return False
+
+    def __check_price(self, th_dict_repr):
+        return th_dict_repr["max_price"] >= self.config_desc.min_price
 
     def __do_work(self):
         if self.p2pservice:

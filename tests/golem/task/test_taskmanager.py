@@ -9,7 +9,7 @@ from golem.network.p2p.node import Node
 class TestTaskManager(LogTestCase, TestDirFixture):
 
     def test_get_next_subtask(self):
-        tm = TaskManager("ABC", Node(), root_path=self.path)
+        tm = TaskManager("ABC", Node(), max_price=10000, root_path=self.path)
         self.assertIsInstance(tm, TaskManager)
 
         subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 5, 10, 2, "10.10.10.10")
@@ -36,7 +36,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.assertEqual(wrong_task, False)
 
     def test_set_value(self):
-        tm = TaskManager("ABC", Node(), root_path=self.path)
+        tm = TaskManager("ABC", Node(), max_price=1000, root_path=self.path)
         with self.assertLogs(logger, level=1) as l:
             tm.set_value("xyz", "xxyyzz", 13)
         self.assertTrue(any(["not my task" in log for log in l.output]))

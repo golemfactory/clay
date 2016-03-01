@@ -57,11 +57,12 @@ class DummyTask(Task):
         header = TaskHeader(
             client_id, task_id,
             owner_address, owner_port, owner_key_id, environment,
-            task_owner = Node(),
-            ttl = 14400,
-            subtask_timeout = 1200,
-            resource_size = params.shared_data_size + params.subtask_data_size,
-            estimated_memory = 0)
+            task_owner=Node(),
+            ttl=14400,
+            subtask_timeout=1200,
+            resource_size=params.shared_data_size + params.subtask_data_size,
+            estimated_memory=0,
+            max_price=1000000)
 
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')
