@@ -553,7 +553,6 @@ class TaskServer(PendingConnectionsServer):
         self._mark_connected(conn_id, session.address, session.port)
         session.send_hello()
         session.send_reward_for_task(task_id, price)
-        self.client.task_reward_paid(task_id, price)
 
     def __connection_for_pay_for_task_failure(self, conn_id, key_id, task_id, price):
 

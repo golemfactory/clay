@@ -12,9 +12,6 @@ logger = logging.getLogger(__name__)
 class PaymentsDatabase(object):
     """ Save and retrieve from database information about payments that this node has to make / made
     """
-    def __init__(self, node_id):
-        self.db = db
-        self.node_id = node_id
 
     def get_payment_value(self, payment_info):
         """ Return value of a payment that was done to the same node and for the same task as payment for payment_info
@@ -34,9 +31,8 @@ class PaymentsDatabase(object):
         :param payment_info:
         """
         try:
-            with self.db.transaction():
-                Payment.create(paying_node_id=self.node_id,
-                               to_node_id=payment_info.computer.key_id,
+            with db.transaction():
+                Payment.create(to_node_id=payment_info.computer.key_id,
                                task=payment_info.task_id,
                                val=payment_info.value,
                                state=PaymentState.waiting_for_task_to_finish)
@@ -51,7 +47,7 @@ class PaymentsDatabase(object):
         :return:
         """
         query = Payment.update(state=state, modified_date=str(datetime.now()))
-        query = query.where((Payment.task == task_id) & (Payment.paying_node_id == self.node_id))
+        query = query.where(Payment.task == task_id)
         query.execute()
 
     def get_state(self, payment_info):
@@ -65,31 +61,31 @@ class PaymentsDatabase(object):
                                                                                   payment_info.computer.key_id))
             return None
 
-    def get_newest_payment(self, num=30):
+    @staticmethod
+    def get_newest_payment(num=30):
         """ Return specific number of recently modified payments
         :param num: number of payments to return
         :return:
         """
-        query = Payment.select().where(Payment.paying_node_id == self.node_id)
-        query = query.order_by(Payment.modified_date.desc()).limit(num)
+        query = Payment.select().order_by(Payment.modified_date.desc()).limit(num)
         return query.execute()
 
-    def __same_transaction(self, payment_info):
-        return (Payment.paying_node_id == self.node_id) & (Payment.task == payment_info.task_id) \
-               & (Payment.to_node_id == payment_info.computer.key_id)
+    @staticmethod
+    def __same_transaction(payment_info):
+        return (Payment.task == payment_info.task_id) & (Payment.to_node_id == payment_info.computer.key_id)
 
 
 class PaymentsKeeper(object):
     """ Keeps information about payments for tasks that should be processed and send or received. """
 
-    def __init__(self, node_id):
+    def __init__(self):
         """ Create new payments keeper instance"""
         self.computing_tasks = {}  # tasks that are computed right now
         self.finished_tasks = []  # tasks that are finished and they're payment haven't been processed yet (may still
         # be waiting for last subtask value estimation
         self.tasks_to_pay = deque()  # finished tasks with payments have been processed but haven't been send yet
         self.settled_tasks = {}  # finished tasks with payments that has been pass to task server
-        self.db = PaymentsDatabase(node_id)
+        self.db = PaymentsDatabase()
 
     #    self.load_from_database()
 

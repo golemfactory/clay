@@ -7,16 +7,12 @@ from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransa
 
 class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase):
     def test_init(self):
-        with self.assertRaises(Exception):
-            EthereumTransactionSystem("ABC", "0x0")
-        self.database.check_node("ABC")
         e = EthereumTransactionSystem("ABC", "0x0")
         self.assertIsInstance(e, EthereumTransactionSystem)
         self.assertIsNone(e.get_eth_account())
 
     @patch("golem.transactions.ethereum.ethereumtransactionsystem.EthereumConnector")
     def test_wrong_address_in_global_pay_for_task(self, mock_connector):
-        self.database.check_node("ABC")
         e = EthereumTransactionSystem("ABC", "0x0")
         with self.assertLogs(logger, level=1) as l:
             e.global_pay_for_task("xyz", [])
