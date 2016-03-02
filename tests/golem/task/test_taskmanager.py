@@ -58,3 +58,11 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.assertEqual(wrong_task, False)
         tm.set_value("xyz", "xxyyzz", 13)
         self.assertEqual(tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 13)
+
+    def test_change_config(self):
+        tm = TaskManager("ABC", Node(), max_price=1000, root_path=self.path)
+        self.assertEqual(tm.max_price, 1000)
+        self.assertTrue(tm.use_distributed_resources)
+        tm.change_config(self.path, False, 300)
+        self.assertEqual(tm.max_price, 300)
+        self.assertFalse(tm.use_distributed_resources)

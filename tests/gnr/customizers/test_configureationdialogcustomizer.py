@@ -7,10 +7,11 @@ from PyQt4.QtCore import Qt
 
 from mock import MagicMock
 
+from golem.tools.assertlogs import LogTestCase
+
 from gnr.application import GNRGui
 from gnr.ui.dialog import ConfigurationDialog
-
-from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer
+from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer, logger
 from gnr.ui.administrationmainwindow import AdministrationMainWindow
 
 
@@ -63,7 +64,7 @@ class TestDu(unittest.TestCase):
             os.removedirs(self.testdir)
 
 
-class TestConfigurationDialogCustomizer(unittest.TestCase):
+class TestConfigurationDialogCustomizer(LogTestCase):
     def test_min_max_price(self):
         logic_mock = MagicMock()
         gnrgui = GNRGui(MagicMock(), AdministrationMainWindow)
@@ -79,7 +80,17 @@ class TestConfigurationDialogCustomizer(unittest.TestCase):
         self.assertEqual(float(customizer.gui.ui.minPriceLineEdit.text()), 2.3)
         customizer.gui.ui.maxPriceLineEdit.setText(u"{}".format(11.5))
         customizer.gui.ui.minPriceLineEdit.setText(u"{}".format(1.1))
-        QTest.mouseClick(customizer.gui.ui.buttonBox.button(customizer.gui.ui.buttonBox.Ok), Qt.LeftButton)
+        self.__click_ok(customizer)
         ccd = logic_mock.change_config.call_args_list[0][0][0]
         self.assertEqual(ccd.min_price, 1.1)
         self.assertEqual(ccd.max_price, 11.5)
+        customizer.gui.ui.maxPriceLineEdit.setText(u"ABCDEF")
+        with self.assertLogs(logger, level=1):
+            self.__click_ok(customizer)
+        customizer.gui.ui.maxPriceLineEdit.setText(u"{}".format(0.3))
+        customizer.gui.ui.minPriceLineEdit.setText(u"XYZ")
+        with self.assertLogs(logger, level=1):
+            self.__click_ok(customizer)
+
+    def __click_ok(self, customizer):
+        QTest.mouseClick(customizer.gui.ui.buttonBox.button(customizer.gui.ui.buttonBox.Ok), Qt.LeftButton)
