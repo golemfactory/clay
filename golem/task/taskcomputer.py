@@ -349,13 +349,19 @@ class DockerRunnerThread(TaskThread):
             if img.is_available():
                 self.image = img
                 break
-        if not self.image:
-            raise RuntimeError("None of the images is available: {}".format(
-                [img.name for img in docker_images]))
-
         self.job = None
 
+    def _fail(self, error_obj):
+        logger.error("Task computing error: {}".format(error_obj))
+        self.error = True
+        self.error_msg = str(error_obj)
+        self.done = True
+        self.task_computer.task_computed(self)
+
     def run(self):
+        if not self.image:
+            self._fail("None of the images is available")
+            return
         try:
             params = self.extra_data.copy()
             with DockerJob(self.image, self.src_code, params,
@@ -374,11 +380,7 @@ class DockerRunnerThread(TaskThread):
                     self.result = {"data": out_files, "result_type": 1}
                 self.task_computer.task_computed(self)
         except Exception as exc:
-            logger.error("Task computing error: {}".format(exc))
-            self.error = True
-            self.error_msg = str(exc)
-            self.done = True
-            self.task_computer.task_computed(self)
+            self._fail(str(exc))
 
     def get_progress(self):
         # TODO: make the container update some status file?
