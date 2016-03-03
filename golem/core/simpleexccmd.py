@@ -1,5 +1,4 @@
 import subprocess
-import psutil
 from common import is_windows
 
 
@@ -19,7 +18,6 @@ def exec_cmd(cmd, nice=20, wait=True):
         import win32con
         handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pc.pid)
         win32process.SetPriorityClass(handle, win32process.IDLE_PRIORITY_CLASS)
-
 
     if wait:
         pc.wait()

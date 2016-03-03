@@ -1,13 +1,19 @@
 import datetime
+import logging
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMenu
 
 from golem.task.taskstate import ComputerState
+from gnr.ui.dialog import SubtaskDetailsDialog
 from subtaskcontextmenucustomizer import SubtaskContextMenuCustomizer
 from customizer import Customizer
+from subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
 
 from gnr.ui.subtasktableentry import SubtaskTableElem
+
+
+logger = logging.getLogger(__name__)
 
 
 class TaskDetailsDialogCustomizer(Customizer):
@@ -20,6 +26,21 @@ class TaskDetailsDialogCustomizer(Customizer):
     def update_view(self, task_state):
         self.gnr_task_state.task_state = task_state
         self.__update_data()
+
+    def show_subtask_info_dialog(self, subtask_id):
+        subtask = self.__get_subtask(subtask_id)
+        if subtask is None:
+            logger.error("There's no such subtask: {}".format(subtask_id))
+            return
+        dialog = SubtaskDetailsDialog(self.gui.window)
+        SubtaskDetailsDialogCustomizer(dialog, self, subtask)
+        dialog.show()
+
+    def __get_subtask(self, subtask_id):
+        for subtask in self.gnr_task_state.task_state.subtask_states.itervalues():
+            if subtask.subtask_id == subtask_id:
+                return subtask
+        return None
 
     def __update_data(self):
         self.gui.ui.totalTaskProgressBar.setProperty("value", int(self.gnr_task_state.task_state.progress * 100))
@@ -45,6 +66,8 @@ class TaskDetailsDialogCustomizer(Customizer):
                                self.__nodes_table_row_clicked)
         QtCore.QObject.connect(self.gui.ui.nodesTableWidget, QtCore.SIGNAL("itemSelectionChanged()"),
                                self.__nodes_table_row_selected)
+        QtCore.QObject.connect(self.gui.ui.nodesTableWidget, QtCore.SIGNAL("doubleClicked(const QModelIndex)"),
+                               self.__nodes_table_row_double_clicked)
         self.gui.ui.nodesTableWidget.customContextMenuRequested.connect(self.__context_menu_requested)
         self.gui.ui.closeButton.clicked.connect(self.__close_button_clicked)
 
@@ -92,6 +115,11 @@ class TaskDetailsDialogCustomizer(Customizer):
             node_name = "{}".format(self.gui.ui.nodesTableWidget.item(row, 0).text())
             subtask_id = "{}".format(self.gui.ui.nodesTableWidget.item(row, 1).text())
             self.__update_node_additional_info(node_name, subtask_id)
+
+    def __nodes_table_row_double_clicked(self, m):
+        row = m.row()
+        subtask_id = "{}".format(self.gui.ui.nodesTableWidget.item(row, 1).text())
+        self.show_subtask_info_dialog(subtask_id)
 
     def __close_button_clicked(self):
         self.gui.window.close()

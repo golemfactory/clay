@@ -9,7 +9,7 @@ class ShowTaskResourcesDialogCustomizer(Customizer):
         Customizer.__init__(self, gui, logic)
 
     def _set_folder_tree(self, gui):
-        self.folder_tree = gui.ui.folderTreeWidget
+        self.folder_tree = gui.ui.folderTreeView
 
     def _setup_connections(self):
         QtCore.QObject.connect(self.folder_tree

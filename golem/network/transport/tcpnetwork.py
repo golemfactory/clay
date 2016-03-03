@@ -455,7 +455,7 @@ class BasicProtocol(SessionProtocol):
     def _interpret(self, data):
         self.db.append_string(data)
         mess = self._data_to_messages()
-        if mess is None or len(mess) == 0:
+        if mess is None:
             logger.error("Deserialization message failed")
             return None
 
@@ -860,7 +860,6 @@ class DecryptFileConsumer(FileConsumer):
                 self.recv_chunk_size = 0
                 self.chunk_size = 0
                 loc_data = self.last_data
-
                 if len(self.last_data) <= LONG_STANDARD_SIZE:
                     receive_next = True
             else:
@@ -872,6 +871,8 @@ class DecryptFileConsumer(FileConsumer):
             if self.recv_size >= self.file_size:
                 self._end_receiving_file()
                 receive_next = True
+        if len(self.file_list) > 0 and len(self.last_data) >= 2 * LONG_STANDARD_SIZE and self.chunk_size == 0:
+            self.dataReceived("")
 
     def _end_receiving_file(self):
         self.chunk_size = 0
@@ -905,7 +906,7 @@ class DataProducer(object):
 
     def load_data(self):
         """ Load first chunk of data """
-        self.size = len(self.data_to_send) + LONG_STANDARD_SIZE
+        self.size = len(self.data_to_send)
         logger.info("Sending file size:{}".format(self.size))
         self._prepare_init_data()
         self.it = self.buff_size
@@ -956,7 +957,8 @@ class DataProducer(object):
         self.last_percent = percent
 
     def _prepare_init_data(self):
-        self.data = struct.pack("!L", self.size - LONG_STANDARD_SIZE) + self.data_to_send[:self.buff_size]
+        self.data = struct.pack("!L", self.size) + self.data_to_send[:self.buff_size]
+        self.num_send -= LONG_STANDARD_SIZE
 
     def _prepare_data(self):
         self.data = self.data_to_send[self.it:self.it + self.buff_size]
@@ -986,7 +988,7 @@ class DataConsumer(object):
         """
         if self.data_size == -1:
             self.loc_data.append(self._get_first_chunk(data))
-            self.recv_size = len(data) - LONG_STANDARD_SIZE
+            self.recv_size = len(self.loc_data[-1])
         else:
             self.loc_data.append(data)
             self.recv_size += len(data)
@@ -1027,13 +1029,30 @@ class DataConsumer(object):
 class EncryptDataProducer(DataProducer):
     """ Data producer that encrypt data chunks """
 
+    # IPullProducer methods
+    def resumeProducing(self):
+        if self.data:
+            self.session.conn.transport.write(self.data)
+            self._print_progress()
+
+            if self.it < len(self.data_to_send):
+                self._prepare_data()
+                self.it += self.buff_size
+            else:
+                self.data = None
+                self.end_producing()
+        else:
+            self.end_producing()
+
     def _prepare_init_data(self):
         data = self.session.encrypt(self.data_to_send[:self.buff_size])
         self.data = struct.pack("!L", self.size) + struct.pack("!L", len(data)) + data
+        self.num_send += len(self.data_to_send[:self.buff_size])
 
     def _prepare_data(self):
         data = self.session.encrypt(self.data_to_send[self.it:self.it + self.buff_size])
         self.data = struct.pack("!L", len(data)) + data
+        self.num_send += len(self.data_to_send[self.it:self.it + self.buff_size])
 
 
 class DecryptDataConsumer(DataConsumer):

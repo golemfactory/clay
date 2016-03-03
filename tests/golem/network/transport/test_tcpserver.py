@@ -1,5 +1,6 @@
 import unittest
-from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer
+from golem.network.transport.tcpserver import (TCPServer, PendingConnectionsServer, PendingConnection,
+                                               PendingListening)
 from golem.network.p2p.node import Node
 
 
@@ -82,4 +83,15 @@ class TestPendingConnectionServer(unittest.TestCase):
             self.assertEqual(res[i].address, node.prv_addresses[i])
             self.assertEqual(res[i].port, port)
 
+
+class TestPendingConnection(unittest.TestCase):
+    def test_init(self):
+        pc = PendingConnection(1, "10.10.10.10")
+        self.assertIsInstance(pc, PendingConnection)
+
+
+class TestPendingListening(unittest.TestCase):
+    def test_init(self):
+        pl = PendingListening(1, 1020)
+        self.assertIsInstance(pl, PendingListening)
 
