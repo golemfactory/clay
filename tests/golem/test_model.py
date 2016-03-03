@@ -1,36 +1,23 @@
+import os
 from datetime import datetime
 
 from peewee import IntegrityError
-from golem.model import Node, Bank, START_BUDGET, Payment, ReceivedPayment, LocalRank, GlobalRank, \
-    NeighbourLocRank, NEUTRAL_TRUST
-from golem.tools.testwithdatabase import TestWithDatabase
+from golem.model import Payment, ReceivedPayment, LocalRank, GlobalRank, \
+    NeighbourLocRank, NEUTRAL_TRUST, Database, DATABASE_NAME
+from golem.tools.testwithdatabase import TestWithDatabase, TestDirFixture
 
 
-class TestNode(TestWithDatabase):
-    def test_default_fields(self):
-        n = Node()
-        self.assertGreaterEqual(datetime.now(), n.created_date)
-        self.assertGreaterEqual(datetime.now(), n.modified_date)
+class TestDatabase(TestDirFixture):
+    def test_init(self):
+        db = Database(os.path.join(self.path, "abcdef.db"))
+        self.assertEqual(db.name, os.path.join(self.path, "abcdef.db"))
+        self.assertFalse(db.db.is_closed())
+        db.db.close()
 
-    def test_create(self):
-        with self.assertRaises(Node.DoesNotExist):
-            Node.select().where(Node.node_id == "ABC").get()
-        n = Node.create(node_id="ABC")
-        n2 = Node.select().where(Node.node_id == "ABC").get()
-        self.assertEquals(n.created_date, n2.created_date)
-        self.assertEquals(n.modified_date, n2.modified_date)
-        with self.assertRaises(IntegrityError):
-            Node.create(node_id="ABC")
-        Node.create(node_id="DEF")
-        self.assertEquals(len([node for node in Node.select()]), 2)
-
-
-class TestBank(TestWithDatabase):
-    def test_default_fields(self):
-        b = Bank()
-        self.assertGreaterEqual(datetime.now(), b.created_date)
-        self.assertGreaterEqual(datetime.now(), b.modified_date)
-        self.assertEqual(b.val, START_BUDGET)
+        db = Database()
+        self.assertEqual(db.name, DATABASE_NAME)
+        self.assertFalse(db.db.is_closed())
+        db.db.close()
 
 
 class TestPayment(TestWithDatabase):
@@ -41,18 +28,14 @@ class TestPayment(TestWithDatabase):
         self.assertGreaterEqual(datetime.now(), p.modified_date)
 
     def test_create(self):
-        p = Payment(paying_node_id="ABC", to_node_id="DEF", task="xyz", val="5.232", state="SOMESTATE")
-        with self.assertRaises(Node.DoesNotExist):
-            p.save(force_insert=True)
-        Node.create(node_id="ABC")
+        p = Payment(to_node_id="DEF", task="xyz", val="5.232", state="SOMESTATE")
         self.assertEquals(p.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
-            Payment.create(paying_node_id="ABC", to_node_id="DEF", task="xyz", val="5.132", state="SOMESTATEX")
-        Payment.create(paying_node_id="ABC", to_node_id="DEF", task="xyz2", val="5.132", state="SOMESTATEX")
-        Payment.create(paying_node_id="ABC", to_node_id="DEF2", task="xyz", val="5.132", state="SOMESTATEX")
-        Node.create(node_id="ABC2")
-        Payment.create(paying_node_id="ABC2", to_node_id="DEF", task="xyz", val="5.132", state="SOMESTATEX")
-        self.assertEqual(3, len([payment for payment in Payment.select().where(Payment.paying_node_id == "ABC")]))
+            Payment.create(to_node_id="DEF", task="xyz", val="5.132", state="SOMESTATEX")
+        Payment.create(to_node_id="DEF", task="xyz2", val="5.132", state="SOMESTATEX")
+        Payment.create( to_node_id="DEF2", task="xyz", val="5.132", state="SOMESTATEX")
+
+        self.assertEqual(3, len([payment for payment in Payment.select()]))
 
 
 class TestReceivedPayment(TestWithDatabase):
@@ -63,24 +46,19 @@ class TestReceivedPayment(TestWithDatabase):
         self.assertGreaterEqual(datetime.now(), r.modified_date)
 
     def test_create(self):
-        r = ReceivedPayment(node_id="ABC", from_node_id="DEF", task="xyz", val="5.232", expected_val="3131.23",
+        r = ReceivedPayment(from_node_id="DEF", task="xyz", val="5.232", expected_val="3131.23",
                             state="SOMESTATE")
-        with self.assertRaises(Node.DoesNotExist):
-            r.save(force_insert=True)
-        Node.create(node_id="ABC")
         self.assertEquals(r.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
-            ReceivedPayment.create(node_id="ABC", from_node_id="DEF", task="xyz", val="5.132", expected_val="3132.33",
+            ReceivedPayment.create(from_node_id="DEF", task="xyz", val="5.132", expected_val="3132.33",
                                    state="SOMESTATEX")
-        ReceivedPayment.create(node_id="ABC", from_node_id="DEF", task="xyz2", val="5.132", expected_val="3132.33",
+        ReceivedPayment.create(from_node_id="DEF", task="xyz2", val="5.132", expected_val="3132.33",
                                state="SOMESTATEX")
-        ReceivedPayment.create(node_id="ABC", from_node_id="DEF2", task="xyz", val="5.132", expected_val="3132.33",
+        ReceivedPayment.create(from_node_id="DEF2", task="xyz", val="5.132", expected_val="3132.33",
                                state="SOMESTATEX")
-        Node.create(node_id="ABC2")
-        ReceivedPayment.create(node_id="ABC2", from_node_id="DEF", task="xyz", val="5.132", expected_val="3132.33",
-                               state="SOMESTATEX")
+
         self.assertEqual(3,
-                         len([payment for payment in ReceivedPayment.select().where(ReceivedPayment.node_id == "ABC")]))
+                         len([payment for payment in ReceivedPayment.select()]))
 
 
 class TestLocalRank(TestWithDatabase):

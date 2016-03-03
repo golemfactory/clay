@@ -1,5 +1,6 @@
 import time
-import datetime
+import os
+import appdirs
 import logging
 
 from twisted.internet import task
@@ -114,10 +115,9 @@ class Client:
         self.send_snapshot = False
         self.snapshot_lock = Lock()
 
-        self.db = Database()
-        self.db.check_node(self.keys_auth.get_key_id())
+        self.db = Database(self.__get_database_name())
 
-        self.ranking = Ranking(self, RankingDatabase(self.db))
+        self.ranking = Ranking(self)
 
         self.transaction_system = EthereumTransactionSystem(self.keys_auth.get_key_id(), self.config_desc.eth_account)
 
@@ -250,9 +250,6 @@ class Client:
         price = self.transaction_system.add_payment_info(task_id, subtask_id, price_mod, account_info)
         self.task_server.task_manager.set_value(task_id, subtask_id, price)
 
-    def task_reward_paid(self, task_id, price):
-        return self.transaction_system.task_reward_paid(task_id, price)
-
     def task_reward_payment_failure(self, task_id, price):
         return self.transaction_system.task_reward_payment_failure(task_id, price)
 
@@ -380,6 +377,9 @@ class Client:
 
     def task_finished(self, task_id):
         self.transaction_system.task_finished(task_id)
+
+    def __get_database_name(self):
+        return os.path.join(appdirs.user_data_dir('golem'), self.keys_auth.get_key_id()[-10:] + ".db")
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:
