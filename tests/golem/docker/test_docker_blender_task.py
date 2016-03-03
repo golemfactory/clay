@@ -33,8 +33,18 @@ class TestDockerBlenderTask(unittest.TestCase):
         TaskServer.send_task_failed = self.task_computer_send_task_failed
 
     def _test_task_definition(self):
-        with open(TASK_FILE, "r") as f:
+        task_file = path.join(path.dirname(__file__), TASK_FILE)
+        with open(task_file, "r") as f:
             task_def = jsonpickle.decode(f.read())
+
+        # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
+        golem_dir = get_golem_path()
+
+        def set_root_dir(p): return p.replace("$GOLEM_DIR", golem_dir)
+
+        task_def.resources = set(set_root_dir(p) for p in task_def.resources)
+        task_def.main_scene_file = set_root_dir(task_def.main_scene_file)
+        task_def.main_program_file = set_root_dir(task_def.main_program_file)
         return task_def
 
     def _run_docker_task(self, task_def):
@@ -69,7 +79,6 @@ class TestDockerBlenderTask(unittest.TestCase):
             shutil.copyfile(res_file, dest_file)
 
         def send_task_failed(self_, subtask_id, task_id, error_msg_, *args):
-            # global error_msg
             self.error_msg = error_msg_
 
         TaskServer.send_task_failed = send_task_failed
@@ -104,8 +113,16 @@ class TestDockerBlenderTask(unittest.TestCase):
 
     def test_wrong_image_repository_specified(self):
         task_def = self._test_task_definition()
-        # image = task_def.docker_images[0]
         task_def.docker_images = [DockerImage("%$#@!!!")]
+        task_thread, error_msg, out_dir = self._run_docker_task(task_def)
+        if task_thread:
+            self.assertIsNone(task_thread.result)
+        self.assertIsInstance(error_msg, str)
+
+    def test_wrong_image_id_specified(self):
+        task_def = self._test_task_definition()
+        image = task_def.docker_images[0]
+        task_def.docker_images = [DockerImage(image.repository, id = "%$#@!!!")]
         task_thread, error_msg, out_dir = self._run_docker_task(task_def)
         if task_thread:
             self.assertIsNone(task_thread.result)

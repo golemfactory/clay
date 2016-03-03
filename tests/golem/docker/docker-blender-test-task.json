@@ -46,11 +46,11 @@
   "task_id":"7220aa01-ad45-4fb4-b199-ba72b37a1f0c",
   "resources":{
     "py/set":[
-      "/home/artur/golem/golem-repo/gnr/benchmarks/blender/blender_task/scene-Helicopter-27.blend",
-      "/home/artur/golem/golem-repo/gnr/task/scripts/docker_blendertask.py"
+      "$GOLEM_DIR/gnr/benchmarks/blender/blender_task/scene-Helicopter-27.blend",
+      "$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py"
     ]
   },
-  "main_scene_file":"/home/artur/golem/golem-repo/gnr/benchmarks/blender/blender_task/scene-Helicopter-27.blend",
+  "main_scene_file":"$GOLEM_DIR/gnr/benchmarks/blender/blender_task/scene-Helicopter-27.blend",
   "resolution":[
     800,
     600
@@ -62,7 +62,7 @@
   "estimated_memory":0,
   "full_task_timeout":14400,
   "renderer":"Blender",
-  "main_program_file":"/home/artur/golem/golem-repo/gnr/task/scripts/docker_blendertask.py",
+  "main_program_file":"$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py",
   "min_subtask_time":60,
   "options":{
     "py/type":"gnr.gnrtaskstate.GNROptions"
