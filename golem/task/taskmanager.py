@@ -98,14 +98,15 @@ class TaskManager:
         self.__notice_task_updated(task_id)
         logger.info("Resources for task {} sent".format(task_id))
 
-    def get_next_subtask(self, node_id, node_name, task_id, estimated_performance, max_resource_size, max_memory_size,
-                         num_cores=0, address=""):
+    def get_next_subtask(self, node_id, node_name, task_id, estimated_performance, price, max_resource_size,
+                         max_memory_size, num_cores=0, address=""):
         """ Assign next subtask from task <task_id> to node with given id <node_id> and name. If subtask is assigned
         the function is returning a tuple (
         :param node_id:
         :param node_name:
         :param task_id:
         :param estimated_performance:
+        :param price:
         :param max_resource_size:
         :param max_memory_size:
         :param num_cores:
@@ -125,7 +126,7 @@ class TaskManager:
                     return None, False
                 ctd.key_id = th.task_owner_key_id
                 self.subtask2task_mapping[ctd.subtask_id] = task_id
-                self.__add_subtask_to_tasks_states(node_name, node_id, ctd, address)
+                self.__add_subtask_to_tasks_states(node_name, node_id, price, ctd, address)
                 self.__notice_task_updated(task_id)
                 return ctd, False
             logger.info("Cannot get next task for estimated performence {}".format(estimated_performance))
@@ -418,7 +419,7 @@ class TaskManager:
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
-    def __add_subtask_to_tasks_states(self, node_name, node_id, ctd, address):
+    def __add_subtask_to_tasks_states(self, node_name, node_id, price, ctd, address):
 
         if ctd.task_id not in self.tasks_states:
             assert False, "Should never be here!"
@@ -430,6 +431,7 @@ class TaskManager:
             ss.computer.node_name = node_name
             ss.computer.performance = ctd.performance
             ss.computer.ip_address = address
+            ss.computer.price = price
             ss.time_started = time.time()
             ss.ttl = self.tasks[ctd.task_id].header.subtask_timeout
             # TODO: read node ip address

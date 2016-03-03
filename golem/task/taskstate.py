@@ -32,6 +32,7 @@ class ComputerState(object):
         self.ip_address = ""
         self.port = 0
         self.node_name = ""
+        self.price = 0
 
 
 class SubtaskState(object):

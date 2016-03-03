@@ -832,9 +832,10 @@ class MessageWantToComputeTask(Message):
     MAX_RES_STR = u"MAX_RES"
     MAX_MEM_STR = u"MAX_MEM"
     NUM_CORES_STR = u"NUM_CORES"
+    PRICE_STR = u"PRICE"
 
-    def __init__(self, node_name=0, task_id=0, perf_index=0, max_resource_size=0, max_memory_size=0, num_cores=0,
-                 sig="", timestamp=None, dict_repr=None):
+    def __init__(self, node_name=0, task_id=0, perf_index=0, price=0, max_resource_size=0, max_memory_size=0,
+                 num_cores=0, sig="", timestamp=None, dict_repr=None):
         """
         Create message with information that node wants to compute given task
         :param str node_name: id of that node
@@ -855,6 +856,7 @@ class MessageWantToComputeTask(Message):
         self.max_resource_size = max_resource_size
         self.max_memory_size = max_memory_size
         self.num_cores = num_cores
+        self.price = price
 
         if dict_repr:
             self.node_name = dict_repr[MessageWantToComputeTask.NODE_NAME_STR]
@@ -863,6 +865,7 @@ class MessageWantToComputeTask(Message):
             self.max_resource_size = dict_repr[MessageWantToComputeTask.MAX_RES_STR]
             self.max_memory_size = dict_repr[MessageWantToComputeTask.MAX_MEM_STR]
             self.num_cores = dict_repr[MessageWantToComputeTask.NUM_CORES_STR]
+            self.price = dict_repr[MessageWantToComputeTask.PRICE_STR]
 
     def dict_repr(self):
         return {MessageWantToComputeTask.NODE_NAME_STR: self.node_name,
@@ -870,7 +873,8 @@ class MessageWantToComputeTask(Message):
                 MessageWantToComputeTask.PERF_INDEX_STR: self.perf_index,
                 MessageWantToComputeTask.MAX_RES_STR: self.max_resource_size,
                 MessageWantToComputeTask.MAX_MEM_STR: self.max_memory_size,
-                MessageWantToComputeTask.NUM_CORES_STR: self.num_cores}
+                MessageWantToComputeTask.NUM_CORES_STR: self.num_cores,
+                MessageWantToComputeTask.PRICE_STR: self.price}
 
 
 class MessageTaskToCompute(Message):

@@ -115,7 +115,7 @@ class Client:
         self.send_snapshot = False
         self.snapshot_lock = Lock()
 
-        self.db = Database(self.__get_database_name())
+        self.db = Database(self.get_database_name())
 
         self.ranking = Ranking(self)
 
@@ -268,8 +268,8 @@ class Client:
     def get_incomes(self):
         return self.transaction_system.get_incomes_list()
 
-    def add_to_waiting_payments(self, task_id, node_id):
-        self.transaction_system.add_to_waiting_payments(task_id, node_id)
+    def add_to_waiting_payments(self, task_id, node_id, value):
+        self.transaction_system.add_to_waiting_payments(task_id, node_id, value)
 
     def add_to_timeouted_payments(self, task_id):
         self.transaction_system.add_to_timeouted_payments(task_id)
@@ -379,7 +379,7 @@ class Client:
     def task_finished(self, task_id):
         self.transaction_system.task_finished(task_id)
 
-    def __get_database_name(self):
+    def get_database_name(self):
         return os.path.join(appdirs.user_data_dir('golem'), self.keys_auth.get_key_id()[-10:] + ".db")
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):

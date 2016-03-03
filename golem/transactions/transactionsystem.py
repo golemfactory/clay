@@ -95,8 +95,8 @@ class TransactionSystem(object):
         """
         return self.incomes_keeper.get_list_of_all_incomes()
 
-    def add_to_waiting_payments(self, task_id, node_id):
-        return self.incomes_keeper.add_waiting_payment(task_id, node_id)
+    def add_to_waiting_payments(self, task_id, node_id, value):
+        return self.incomes_keeper.add_waiting_payment(task_id, node_id, expected_value = value)
 
     def add_to_timeouted_payments(self, task_id):
         return self.incomes_keeper.add_timeouted_payment(task_id)

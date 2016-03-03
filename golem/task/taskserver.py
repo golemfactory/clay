@@ -65,7 +65,7 @@ class TaskServer(PendingConnectionsServer):
 
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
-        theader = self.task_keeper.get_task()
+        theader = self.task_keeper.get_task(self.config_desc.max_price)
         if theader is not None:
             trust = self.client.get_requesting_trust(theader.task_owner_key_id)
             logger.debug("Requesting trust level: {}".format(trust))
@@ -75,6 +75,7 @@ class TaskServer(PendingConnectionsServer):
                     'key_id': theader.task_owner_key_id,
                     'task_id': theader.task_id,
                     'estimated_performance': self.config_desc.estimated_performance,
+                    'price': self.config_desc.min_price,
                     'max_resource_size': self.config_desc.max_resource_size,
                     'max_memory_size': self.config_desc.max_memory_size,
                     'num_cores': self.config_desc.num_cores
@@ -98,7 +99,8 @@ class TaskServer(PendingConnectionsServer):
     def pull_resources(self, task_id, list_files):
         self.client.pull_resources(task_id, list_files)
 
-    def send_results(self, subtask_id, task_id, result, owner_address, owner_port, owner_key_id, owner, node_name):
+    def send_results(self, subtask_id, task_id, result, computing_time, owner_address, owner_port, owner_key_id, owner,
+                     node_name):
 
         if 'data' not in result or 'result_type' not in result:
             logger.error("Wrong result format")
@@ -107,11 +109,11 @@ class TaskServer(PendingConnectionsServer):
         self.client.increase_trust(owner_key_id, RankingStats.requested)
 
         if subtask_id not in self.results_to_send:
-            self.client.add_to_waiting_payments(task_id, owner_key_id)
-            self.task_keeper.add_to_verification(subtask_id, task_id)
+            value = self.task_keeper.add_to_verification(subtask_id, task_id, computing_time)
+            self.client.add_to_waiting_payments(task_id, owner_key_id, value)
             self.results_to_send[subtask_id] = WaitingTaskResult(subtask_id, result['data'], result['result_type'],
-                                                                 0.0, 0.0, owner_address, owner_port, owner_key_id,
-                                                                 owner)
+                                                                 computing_time, 0.0, 0.0, owner_address, owner_port,
+                                                                 owner_key_id, owner)
         else:
             assert False
 
@@ -418,7 +420,8 @@ class TaskServer(PendingConnectionsServer):
     #   CONNECTION REACTIONS    #
     #############################
     def __connection_for_task_request_established(self, session, conn_id, node_name, key_id, task_id,
-                                                  estimated_performance, max_resource_size, max_memory_size, num_cores):
+                                                  estimated_performance, price, max_resource_size, max_memory_size,
+                                                  num_cores):
 
         session.task_id = task_id
         session.key_id = key_id
@@ -426,13 +429,13 @@ class TaskServer(PendingConnectionsServer):
         self._mark_connected(conn_id, session.address, session.port)
         self.task_sessions[task_id] = session
         session.send_hello()
-        session.request_task(node_name, task_id, estimated_performance, max_resource_size, max_memory_size, num_cores)
+        session.request_task(node_name, task_id, estimated_performance, price, max_resource_size, max_memory_size, num_cores)
 
-    def __connection_for_task_request_failure(self, conn_id, node_name, key_id, task_id, estimated_performance,
+    def __connection_for_task_request_failure(self, conn_id, node_name, key_id, task_id, estimated_performance, price,
                                               max_resource_size, max_memory_size, num_cores, *args):
 
         response = lambda session: self.__connection_for_task_request_established(session, conn_id, node_name, key_id,
-                                                                                  task_id, estimated_performance,
+                                                                                  task_id, estimated_performance, price,
                                                                                   max_resource_size, max_memory_size,
                                                                                   num_cores)
         if key_id in self.response_list:

@@ -15,11 +15,12 @@ class TaskKeeper(object):
         self.active_tasks = {}
         self.active_requests = {}
         self.waiting_for_verification = {}
+        self.declared_prices = {}
 
         self.verification_timeout = verification_timeout
         self.removed_task_timeout = remove_task_timeout
 
-    def get_task(self):
+    def get_task(self, price):
         if len(self.supported_tasks) > 0:
             tn = random.randrange(0, len(self.supported_tasks))
             task_id = self.supported_tasks[tn]
@@ -27,7 +28,7 @@ class TaskKeeper(object):
             if task_id in self.active_requests:
                 self.active_requests[task_id] += 1
             else:
-                self.active_tasks[task_id] = theader
+                self.active_tasks[task_id] = {'header': theader, 'price': price}
                 self.active_requests[task_id] = 1
             return theader
         else:
@@ -42,11 +43,16 @@ class TaskKeeper(object):
             if id_ not in self.task_headers.keys():  # don't have it
                 if id_ not in self.removed_tasks.keys():  # not removed recently
                     logger.info("Adding task {} is_supported={}".format(id_, is_supported))
-                    self.task_headers[id_] = TaskHeader(th_dict_repr["node_name"], id_, th_dict_repr["address"],
-                                                        th_dict_repr["port"], th_dict_repr["key_id"],
-                                                        th_dict_repr["environment"], th_dict_repr["task_owner"],
-                                                        th_dict_repr["ttl"], th_dict_repr["subtask_timeout"],
-                                                        th_dict_repr["max_price"])
+                    self.task_headers[id_] = TaskHeader(node_name=th_dict_repr["node_name"],
+                                                        task_id=id_,
+                                                        task_owner_address=th_dict_repr["address"],
+                                                        task_owner_port=th_dict_repr["port"],
+                                                        task_owner_key_id=th_dict_repr["key_id"],
+                                                        environment=th_dict_repr["environment"],
+                                                        task_owner=th_dict_repr["task_owner"],
+                                                        ttl=th_dict_repr["ttl"],
+                                                        subtask_timeout=th_dict_repr["subtask_timeout"],
+                                                        max_price=th_dict_repr["max_price"])
                     if is_supported:
                         self.supported_tasks.append(id_)
             return True
@@ -117,11 +123,17 @@ class TaskKeeper(object):
     def get_receiver_for_task_verification_result(self, task_id):
         if task_id not in self.active_tasks:
             return None
-        return self.active_tasks[task_id].task_owner_key_id
+        return self.active_tasks[task_id]['header'].task_owner_key_id
 
-    def add_to_verification(self, subtask_id, task_id):
+    def add_to_verification(self, subtask_id, task_id, computing_time):
         now = datetime.datetime.now()
         self.waiting_for_verification[subtask_id] = [task_id, now, self.__count_deadline(now)]
+        tk = self.active_tasks.get(task_id)
+        if tk:
+            return tk['price'] * computing_time
+        else:
+            logger.error("Unknown price for task {}".format(task_id))
+            return 0
 
     def check_payments(self):
         now = datetime.datetime.now()

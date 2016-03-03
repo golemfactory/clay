@@ -1,5 +1,4 @@
 from mock import patch
-import unittest
 
 from golem.client import create_client, Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -59,5 +58,15 @@ class TestClient(TestWithDatabase):
         c.config_desc.min_price = 13.0
         self.assertFalse(c.supported_task(task))
 
-
+    @patch("golem.client.Client.get_database_name")
+    def test_add_to_waiting_payments(self, mock_database_name):
+        mock_database_name.return_value = self.database.name
+        c = Client(ClientConfigDescriptor())
+        c.add_to_waiting_payments("xyz", "ABC", 10)
+        incomes = c.transaction_system.get_incomes_list()
+        self.assertEqual(len(incomes), 1)
+        self.assertEqual(incomes[0]["node"], "ABC")
+        self.assertEqual(incomes[0]["expected_value"], 10.0)
+        self.assertEqual(incomes[0]["task"], "xyz")
+        self.assertEqual(incomes[0]["value"], 0.0)
 

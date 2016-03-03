@@ -114,6 +114,10 @@ class TaskComputer(object):
     def task_computed(self, task_thread):
         with self.lock:
             self.counting_task = False
+            if task_thread.end_time is None:
+                task_thread.end_time = time.time()
+
+            time_ = task_thread.end_time - task_thread.start_time
             if task_thread in self.current_computations:
                 self.current_computations.remove(task_thread)
 
@@ -132,7 +136,7 @@ class TaskComputer(object):
                                                   subtask.task_owner, self.node_name)
             elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
                 logger.info("Task {} computed".format(subtask_id))
-                self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, subtask.return_address,
+                self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_, subtask.return_address,
                                               subtask.return_port, subtask.key_id, subtask.task_owner, self.node_name)
             else:
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",
@@ -244,6 +248,8 @@ class TaskThread(Thread):
         self.lock = Lock()
         self.error = False
         self.error_msg = ""
+        self.start_time = time.time()
+        self.end_time = None
         self.use_timeout = timeout != 0
         self.task_timeout = timeout
         self.last_time_checking = time.time()
@@ -286,6 +292,7 @@ class TaskThread(Thread):
             self.task_computer.task_computed(self)
 
     def end_comp(self):
+        self.end_time = time.time()
         self.vm.end_comp()
 
     def __do_work(self):
@@ -301,6 +308,7 @@ class TaskThread(Thread):
             extra_data["tmp_path"] = abs_tmp_path
             self.result = self.vm.run_task(self.src_code, extra_data)
         finally:
+            self.end_time = time.time()
             os.chdir(self.prev_working_directory)
 
 

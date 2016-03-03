@@ -206,18 +206,19 @@ class TaskSession(MiddlemanSafeSession):
         self.dropped()
 
     # TODO Wszystkie parametry klienta powinny zostac zapisane w jednej spojnej klasie
-    def request_task(self, node_name, task_id, performance_index, max_resource_size, max_memory_size, num_cores):
+    def request_task(self, node_name, task_id, performance_index, price, max_resource_size, max_memory_size, num_cores):
         """ Inform that node wants to compute given task
         :param str node_name: name of that node
         :param uuid task_id: if of a task that node wants to compute
         :param float performance_index: benchmark result for this task type
+        :param float price: price for an hour
         :param int max_resource_size: how much disk space can this node offer
         :param int max_memory_size: how much ram can this node offer
         :param int num_cores: how many cpu cores this node can offer
         :return:
         """
-        self.send(MessageWantToComputeTask(node_name, task_id, performance_index, max_resource_size, max_memory_size,
-                                           num_cores))
+        self.send(MessageWantToComputeTask(node_name, task_id, performance_index, price, max_resource_size,
+                                           max_memory_size, num_cores))
 
     def request_resource(self, task_id, resource_header):
         """ Ask for a resources for a given task. Task owner should compare given resource header with
@@ -322,9 +323,9 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_want_to_compute_task(self, msg):
         trust = self.task_server.get_computing_trust(self.key_id)
         logger.debug("Computing trust level: {}".format(trust))
-        if trust >= self.task_server.config_desc.computing_trust:
+        if trust >= self.task_server.config_desc.computing_trust and self.__check_price(msg):
             ctd, wrong_task = self.task_manager.get_next_subtask(self.key_id, msg.node_name, msg.task_id,
-                                                                 msg.perf_index, msg.max_resource_size,
+                                                                 msg.perf_index, msg.price, msg.max_resource_size,
                                                                  msg.max_memory_size, msg.num_cores, self.address)
         else:
             ctd, wrong_task = None, False
@@ -566,6 +567,9 @@ class TaskSession(MiddlemanSafeSession):
         self.conn.stream_mode = True
         self.subtask_id = msg.subtask_id
 
+    def __check_price(self, msg):
+        return msg.price <= self.task_server.config_desc.max_price
+
     def __set_msg_interpretations(self):
         self._interpretation.update({
             MessageWantToComputeTask.Type: self._react_to_want_to_compute_task,
@@ -598,3 +602,4 @@ class TaskSession(MiddlemanSafeSession):
         # self.can_be_not_encrypted.append(MessageHello.Type)
         self.can_be_unsigned.append(MessageHello.Type)
         self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type])
+
