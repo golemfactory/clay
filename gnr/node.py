@@ -13,6 +13,7 @@ from twisted.internet import reactor
 from golem.client import create_client
 from golem.network.transport.tcpnetwork import TCPAddress, AddressValueError
 from golem.core.common import get_golem_path
+from golem.task.docker.client import disable_docker
 from golem.task.taskbase import Task
 
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
@@ -69,9 +70,10 @@ class Node(object):
 
 
 class GNRNode(Node):
-    default_environments = [BlenderEnvironment(),
-                            LuxRenderEnvironment(),
-                            BlenderDockerEnvironment()]
+    default_environments = (
+        [BlenderEnvironment(), LuxRenderEnvironment()] +
+        [] if disable_docker() else [BlenderDockerEnvironment()]
+    )
 
     @staticmethod
     def _get_task_builder(task_def):

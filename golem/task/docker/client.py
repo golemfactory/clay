@@ -15,4 +15,7 @@ def local_client( ):
 def disable_docker():
     """Checks if Docker should be disabled in the current running environment.
     """
-    return os.getenv("CIRCLECI")  # Docker not available in CircleCI
+    return (
+        os.getenv("CIRCLECI") or       # Disable Docker when running in CircleCI
+        os.path.isfile("/.dockerenv")  # or in Docker container
+    )
