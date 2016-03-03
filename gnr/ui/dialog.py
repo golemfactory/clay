@@ -64,9 +64,11 @@ class AboutWindow(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_AboutWindow)
 
+
 class PaymentsDialog(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_PaymentsDialog)
+
 
 # CONFIGURATION DIALOGS
 

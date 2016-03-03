@@ -6,7 +6,7 @@ from random import random
 
 from Crypto.PublicKey import RSA
 from simplehash import SimpleHash
-from crypto import mk_privkey, privtopub, ECCx
+from devp2p.crypto import mk_privkey, privtopub, ECCx
 from sha3 import sha3_256
 from hashlib import sha256
 
@@ -340,10 +340,6 @@ class EllipticalKeysAuth(KeysAuth):
             self.ecc = ECCx(None, self._private_key)
         except AssertionError:
             self._generate_keys(uuid)
-            self._private_key = self._load_private_key(uuid)
-            self.public_key = self._load_public_key(uuid)
-            self.key_id = self.cnt_key_id(self.public_key)
-            self.ecc = ECCx(None, self._private_key)
 
     def cnt_key_id(self, public_key):
         """ Return id generated from given public key (in hex format).
@@ -377,7 +373,7 @@ class EllipticalKeysAuth(KeysAuth):
         :param str data: data to be signed
         :return: signed data
         """
-        return self.ecc.sign(data)
+        return self.ecc.sign(sha3(data))
 
     def verify(self, sig, data, public_key=None):
         """
@@ -396,7 +392,7 @@ class EllipticalKeysAuth(KeysAuth):
             if len(public_key) == 128:
                 public_key = public_key.decode('hex')
             ecc = ECCx(public_key)
-            return ecc.verify(sig, data)
+            return ecc.verify(sig, sha3(data))
         except AssertionError:
             logger.info("Wrong key format")
             return False
@@ -467,7 +463,7 @@ class EllipticalKeysAuth(KeysAuth):
         public_key = EllipticalKeysAuth._get_public_key_loc(uuid)
         if not os.path.isfile(private_key) or not os.path.isfile(public_key):
             EllipticalKeysAuth._generate_keys(uuid)
-        with open(private_key) as f:
+        with open(private_key, 'rb') as f:
             key = f.read()
         return key
 
@@ -477,7 +473,7 @@ class EllipticalKeysAuth(KeysAuth):
         public_key = EllipticalKeysAuth._get_public_key_loc(uuid)
         if not os.path.isfile(private_key) or not os.path.isfile(public_key):
             EllipticalKeysAuth._generate_keys(uuid)
-        with open(public_key) as f:
+        with open(public_key, 'rb') as f:
             key = f.read()
         return key
 

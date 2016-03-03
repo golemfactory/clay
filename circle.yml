@@ -1,0 +1,17 @@
+checkout:
+  post:
+    - git submodule update --init
+
+dependencies:
+  pre:
+    - sudo apt-get install -y python-qt4
+    - if [ ! -e /home/ubuntu/virtualenvs/venv-system/lib/python2.7/site-packages/PyQt4 ]; then ln -s /usr/lib/python2.7/dist-packages/PyQt4/ /home/ubuntu/virtualenvs/venv-system/lib/python2.7/site-packages/; ln -s /usr/lib/python2.7/dist-packages/sip.so /home/ubuntu/virtualenvs/venv-system/lib/python2.7/site-packages/; ln -s /usr/lib/python2.7/dist-packages/sip.x86_64-linux-gnu.so /home/ubuntu/virtualenvs/venv-system/lib/python2.7/site-packages/; fi
+    - sudo add-apt-repository -y ppa:ethereum/ethereum && sudo apt-get update && sudo apt-get install geth
+
+test:
+  pre:
+    - pip install coverage codecov
+  override:
+    - coverage run --branch --source=. setup.py test
+  post:
+    - codecov

@@ -13,12 +13,11 @@ from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentInfo, Acc
 class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
 
     def test_init(self):
-        pd = PaymentsDatabase("ABC")
+        pd = PaymentsDatabase()
         self.assertIsInstance(pd, PaymentsDatabase)
 
     def test_payments(self):
-        pd = PaymentsDatabase("ABC")
-        self.database.check_node("ABC")
+        pd = PaymentsDatabase()
 
         # test get payments
         ai = AccountInfo("DEF", 20400, "10.0.0.1", "node1", "node_info")
@@ -103,11 +102,11 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
 
 class TestPaymentsKeeper(TestWithDatabase):
     def test_init(self):
-        pk = PaymentsKeeper("ABC")
+        pk = PaymentsKeeper()
         self.assertIsInstance(pk, PaymentsKeeper)
 
     def test_task_finished(self):
-        pk = PaymentsKeeper("ABC")
+        pk = PaymentsKeeper()
         pk.task_finished("xyz")
         self.assertEqual(pk.finished_tasks[len(pk.finished_tasks) - 1], "xyz")
         pk.task_finished("zyx")
@@ -115,8 +114,7 @@ class TestPaymentsKeeper(TestWithDatabase):
         self.assertEqual(pk.finished_tasks[0], "xyz")
 
     def test_database(self):
-        pk = PaymentsKeeper("ABC")
-        self.database.check_node("ABC")
+        pk = PaymentsKeeper()
         ai = AccountInfo("DEF", 20400, "10.0.0.1", "node1", "node_info")
         pi = PaymentInfo("xyz", "xxyyzz", 20.23, ai)
         pk.finished_subtasks(pi)
@@ -150,40 +148,40 @@ class TestPaymentsKeeper(TestWithDatabase):
         all_payments = pk.get_list_of_all_payments()
         self.assertEqual(len(all_payments), 3)
 
-        xyzCalled = False
+        xyz_called = False
         for payment in all_payments:
             if payment["task"] == "xyz":
                 self.assertEqual(payment["state"], PaymentState.waiting_to_be_paid)
-                xyzCalled = True
+                xyz_called = True
             else:
                 self.assertEqual(payment["state"], PaymentState.waiting_for_task_to_finish)
-        self.assertTrue(xyzCalled)
+        self.assertTrue(xyz_called)
 
-        t, list = pk.get_new_payments_task(1000)
+        t, list_ = pk.get_new_payments_task(1000)
         self.assertIsNotNone(t)
-        self.assertIsNotNone(list)
+        self.assertIsNotNone(list_)
         all_payments = pk.get_list_of_all_payments()
         self.assertEqual(len(all_payments), 3)
-        xyzCalled = False
+        xyz_called = False
         for payment in all_payments:
             if payment["task"] == "xyz":
                 self.assertEqual(payment["state"], PaymentState.settled)
-                xyzCalled = True
+                xyz_called = True
             else:
                 self.assertEqual(payment["state"], PaymentState.waiting_for_task_to_finish)
-        self.assertTrue(xyzCalled)
+        self.assertTrue(xyz_called)
 
         pk.payment_failure("xyz")
         all_payments = pk.get_list_of_all_payments()
         self.assertEqual(len(all_payments), 3)
-        xyzCalled = False
+        xyz_called = False
         for payment in all_payments:
             if payment["task"] == "xyz":
                 self.assertEqual(payment["state"], PaymentState.waiting_to_be_paid)
-                xyzCalled = True
+                xyz_called = True
             else:
                 self.assertEqual(payment["state"], PaymentState.waiting_for_task_to_finish)
-        self.assertTrue(xyzCalled)
+        self.assertTrue(xyz_called)
 
 
 class TestAccountInfo(unittest.TestCase):

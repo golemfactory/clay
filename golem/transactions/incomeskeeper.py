@@ -11,9 +11,6 @@ logger = logging.getLogger(__name__)
 class IncomesDatabase(object):
     """ Save and retrieve from database information about incomes
     """
-    def __init__(self, node_id):
-        self.db = db
-        self.node_id = node_id
 
     def get_income_value(self, task_id, node_id):
         """ Retrieve information about recieved value and expected value of a payment that node should receive from
@@ -68,8 +65,7 @@ class IncomesDatabase(object):
         :param int num: number of payments to return
         :return:
         """
-        query = ReceivedPayment.select().where(ReceivedPayment.node_id == self.node_id)
-        query = query.order_by(ReceivedPayment.modified_date.desc()).limit(num)
+        query = ReceivedPayment.select().order_by(ReceivedPayment.modified_date.desc()).limit(num)
         return query.execute()
 
     def get_state(self, task_id, from_node):
@@ -84,8 +80,8 @@ class IncomesDatabase(object):
             return None
 
     def __create_new_income(self, task_id, node_id, value, expected_value, state):
-        with self.db.transaction():
-            ReceivedPayment.create(node_id=self.node_id, from_node_id=node_id, task=task_id, val=value,
+        with db.transaction():
+            ReceivedPayment.create(from_node_id=node_id, task=task_id, val=value,
                                    expected_val=expected_value, state=state)
 
     def __add_income(self, task_id, node_id, value, expected_value, state):
@@ -105,21 +101,19 @@ class IncomesDatabase(object):
         query.execute()
 
     def __same_transaction(self, task_id, node_id):
-        return (ReceivedPayment.from_node_id == node_id) & (ReceivedPayment.node_id == self.node_id) \
-               & (ReceivedPayment.task == task_id)
+        return (ReceivedPayment.from_node_id == node_id) & (ReceivedPayment.task == task_id)
 
 
 class IncomesKeeper(object):
     """ Keeps information about payments received from other nodes
     """
 
-    def __init__(self, node_id):
+    def __init__(self):
         """ Create new instance of income keeper
-        :param node_id: id of this node
         :return:
         """
         self.incomes = {}
-        self.db = IncomesDatabase(node_id)
+        self.db = IncomesDatabase()
 
     def get_list_of_all_incomes(self):
         database_incomes = [{"task": income.task, "node": income.from_node_id, "value": income.val,

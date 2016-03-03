@@ -9,5 +9,5 @@ class TestCheckCmd(unittest.TestCase):
         self.assertFalse(find_program('afjaljl'))
 
         if os.name == 'nt':
-            cmd = find_program('cmd')
-            assert cmd.lower().endswith('cmd.exe')
+            cmd = find_program('explorer')
+            assert cmd.lower().endswith('explorer.exe')

@@ -62,6 +62,7 @@ def parse_requirements(requirements_file):
 requirements, dependency_links = parse_requirements('requirements.txt')
 
 test_requirements = [
+    'mock',
     'pytest'
 ]
 

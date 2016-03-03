@@ -1,6 +1,8 @@
 import unittest
 from golem.appconfig import AppConfig, CommonConfig, NodeConfig
 from golem.core.simpleenv import SimpleEnv
+from golem.core.keysauth import KeysAuth
+from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestWithAppConfig(unittest.TestCase):
@@ -27,3 +29,9 @@ class TestWithAppConfig(unittest.TestCase):
     def tearDown(self):
         SimpleEnv.DATA_DIRECTORY = self.prev_simple_env
         self.clear_config()
+
+
+class TestWithKeysAuth(TestDirFixture):
+    def tearDown(self):
+        if hasattr(KeysAuth, '_keys_dir'):
+            del KeysAuth._keys_dir
