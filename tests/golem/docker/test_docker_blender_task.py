@@ -11,18 +11,18 @@ from golem.task.taskserver import TaskServer
 from golem.task.docker.image import DockerImage
 import gnr.node
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
-
+from golem.tools.testwithappconfig import TestWithAppConfig
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")
 
 
-TASK_FILE = "docker-blender-test-task.json"
+class TestDockerBlenderTask(TestWithAppConfig):
 
-
-class TestDockerBlenderTask(unittest.TestCase):
+    TASK_FILE = "docker-blender-test-task.json"
 
     def setUp(self):
+        TestWithAppConfig.setUp(self)
         self.error_msg = None
         self.dirs_to_remove = []
         self.task_computer_send_task_failed = TaskServer.send_task_failed
@@ -31,9 +31,10 @@ class TestDockerBlenderTask(unittest.TestCase):
         for dir in self.dirs_to_remove:
             shutil.rmtree(dir)
         TaskServer.send_task_failed = self.task_computer_send_task_failed
+        TestWithAppConfig.tearDown(self)
 
     def _test_task_definition(self):
-        task_file = path.join(path.dirname(__file__), TASK_FILE)
+        task_file = path.join(path.dirname(__file__), self.TASK_FILE)
         with open(task_file, "r") as f:
             task_def = jsonpickle.decode(f.read())
 
@@ -52,7 +53,7 @@ class TestDockerBlenderTask(unittest.TestCase):
         root_path = get_golem_path()
         task_builder = BlenderRenderTaskBuilder(node_name, task_def, root_path)
         render_task = task_builder.build()
-        render_task.__class__._update_task_preview = lambda s: ()
+        render_task.__class__._update_task_preview = lambda self_: ()
         task_id = render_task.header.task_id
         ctd = render_task.query_extra_data(1.0)
 
@@ -78,8 +79,8 @@ class TestDockerBlenderTask(unittest.TestCase):
                 makedirs(dest_dirname)
             shutil.copyfile(res_file, dest_file)
 
-        def send_task_failed(self_, subtask_id, task_id, error_msg_, *args):
-            self.error_msg = error_msg_
+        def send_task_failed(self_, subtask_id, task_id, error_msg, *args):
+            self.error_msg = error_msg
 
         TaskServer.send_task_failed = send_task_failed
 
@@ -90,7 +91,6 @@ class TestDockerBlenderTask(unittest.TestCase):
         self.assertTrue(result)
 
         # Thread for task computation should be created by now
-        # self.assertEqual(len(task_computer.current_computations), 1)
         task_thread = None
         if task_computer.current_computations:
             task_thread = task_computer.current_computations[0]
