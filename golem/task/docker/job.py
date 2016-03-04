@@ -84,7 +84,10 @@ class DockerJob(object):
             volumes=[self.RESOURCES_DIR, self.OUTPUT_DIR],
             host_config=host_cfg,
             network_disabled=True,
-            entrypoint=["/usr/bin/python", "job.py"],
+            command="/bin/sh -c '/usr/bin/python job.py "
+                    "> /golem/output/stdout.log "
+                    "2> /golem/output/stderr.log'",
+            entrypoint=[],  # disable default entrypoint set in the Dockerfile
             working_dir=self.RESOURCES_DIR + "/" + self.work_dir)
 
         self.container_id = self.container["Id"]

@@ -105,12 +105,25 @@ class TestDockerBlenderTask(TestWithAppConfig):
         self.assertIsInstance(task_thread, DockerRunnerThread)
         self.assertIsNone(error_msg)
 
-        # Check if the result is there
+        # Check the number and type of result files:
         result = task_thread.result
         self.assertEqual(result["result_type"], result_types["files"])
-        result_file = result["data"][0]
-        self.assertTrue(result_file.startswith(out_dir))
-        self.assertTrue(path.isfile(result_file))
+        self.assertEqual(len(result["data"]), 3)
+        exr_file_present = False
+        stdout_file_present = False
+        stderr_file_present = False
+        for result_file in result["data"]:
+            self.assertTrue(result_file.startswith(out_dir))
+            self.assertTrue(path.isfile(result_file))
+            if result_file.endswith(".exr"):
+                exr_file_present = True
+            elif result_file.endswith("stdout.log"):
+                stdout_file_present = True
+            elif result_file.endswith("stderr.log"):
+                stderr_file_present = True
+        self.assertTrue(exr_file_present)
+        self.assertTrue(stdout_file_present)
+        self.assertTrue(stderr_file_present)
 
     def test_blender_subtask_timeout(self):
         task_def = self._test_task_definition()
@@ -135,3 +148,14 @@ class TestDockerBlenderTask(TestWithAppConfig):
         if task_thread:
             self.assertIsNone(task_thread.result)
         self.assertIsInstance(error_msg, str)
+
+    def test_blender_subtask_script_error(self):
+        task_def = self._test_task_definition()
+        # Break main script file in task definition; container will be started
+        # but blender will not be run.
+        task_def.main_program_file = path.join(
+            path.dirname(task_def.main_program_file), "blendertask.py")
+        task_thread, error_msg, out_dir = self._run_docker_task(task_def)
+        self.assertIsInstance(task_thread, DockerRunnerThread)
+        self.assertIsInstance(error_msg, str)
+        self.assertNotEqual(error_msg, "Wrong result format")

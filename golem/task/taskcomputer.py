@@ -382,7 +382,10 @@ class DockerRunnerThread(TaskThread):
                                  for f in os.listdir(self.tmp_path)]
                     out_files = filter(lambda f: os.path.isfile(f), out_files)
                     self.result = {"data": out_files, "result_type": 1}
-                self.task_computer.task_computed(self)
+                    self.task_computer.task_computed(self)
+                else:
+                    self._fail("Subtask computation failed " +
+                               "with exit code {}".format(exit_code))
         except requests.exceptions.ReadTimeout as exc:
             if self.use_timeout:
                 self._fail("Task timed out after {:.1f}s".
