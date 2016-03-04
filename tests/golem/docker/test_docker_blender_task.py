@@ -2,7 +2,6 @@ import jsonpickle
 import logging
 from os import makedirs, path
 import shutil
-import unittest
 
 from golem.core.common import get_golem_path
 from golem.task.taskbase import result_types
@@ -48,7 +47,7 @@ class TestDockerBlenderTask(TestWithAppConfig):
         task_def.main_program_file = set_root_dir(task_def.main_program_file)
         return task_def
 
-    def _run_docker_task(self, task_def):
+    def _run_docker_task(self, task_def, timeout=0):
         node_name = "0123456789abcdef"
         root_path = get_golem_path()
         task_builder = BlenderRenderTaskBuilder(node_name, task_def, root_path)
@@ -85,15 +84,17 @@ class TestDockerBlenderTask(TestWithAppConfig):
         TaskServer.send_task_failed = send_task_failed
 
         # Start task computation
-        subtask_timeout = 600
-        task_computer.task_given(ctd, subtask_timeout)
+        task_computer.task_given(ctd, timeout)
         result = task_computer.resource_given(ctd.task_id)
         self.assertTrue(result)
 
         # Thread for task computation should be created by now
         task_thread = None
-        if task_computer.current_computations:
-            task_thread = task_computer.current_computations[0]
+        with task_computer.lock:
+            if task_computer.current_computations:
+                task_thread = task_computer.current_computations[0]
+
+        if task_thread:
             task_thread.join(60.0)
 
         return task_thread, self.error_msg, temp_dir
@@ -111,6 +112,13 @@ class TestDockerBlenderTask(TestWithAppConfig):
         self.assertTrue(result_file.startswith(out_dir))
         self.assertTrue(path.isfile(result_file))
 
+    def test_blender_subtask_timeout(self):
+        task_def = self._test_task_definition()
+        task_thread, error_msg, out_dir = self._run_docker_task(task_def, timeout=1)
+        self.assertIsInstance(task_thread, DockerRunnerThread)
+        self.assertIsInstance(error_msg, str)
+        self.assertTrue(error_msg.startswith("Task timed out"))
+
     def test_wrong_image_repository_specified(self):
         task_def = self._test_task_definition()
         task_def.docker_images = [DockerImage("%$#@!!!")]
@@ -127,4 +135,3 @@ class TestDockerBlenderTask(TestWithAppConfig):
         if task_thread:
             self.assertIsNone(task_thread.result)
         self.assertIsInstance(error_msg, str)
-

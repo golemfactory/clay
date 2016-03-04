@@ -2,6 +2,7 @@ import sys
 import time
 import os
 import logging
+import requests
 
 sys.path.append('../manager')
 
@@ -338,7 +339,7 @@ class DockerRunnerThread(TaskThread):
     def __init__(self, task_computer, subtask_id, docker_images,
                  working_directory, src_code, extra_data, short_desc,
                  res_path, tmp_path, timeout):
-        super( DockerRunnerThread, self ).__init__(
+        super(DockerRunnerThread, self).__init__(
             task_computer, subtask_id, working_directory, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
 
@@ -360,7 +361,7 @@ class DockerRunnerThread(TaskThread):
 
     def run(self):
         if not self.image:
-            self._fail("None of the images is available")
+            self._fail("None of the Docker images is available")
             return
         try:
             params = self.extra_data.copy()
@@ -369,7 +370,10 @@ class DockerRunnerThread(TaskThread):
                            self.res_path, self.tmp_path) as job:
                 self.job = job
                 self.job.start()
-                exit_code = self.job.wait()
+                if self.use_timeout:
+                    exit_code = self.job.wait(self.task_timeout)
+                else:
+                    exit_code = self.job.wait()
                 if exit_code == 0:
                     # TODO: this always returns file, implement returning data
                     # TODO: this only collects top-level files, what if there
@@ -379,9 +383,21 @@ class DockerRunnerThread(TaskThread):
                     out_files = filter(lambda f: os.path.isfile(f), out_files)
                     self.result = {"data": out_files, "result_type": 1}
                 self.task_computer.task_computed(self)
+        except requests.exceptions.ReadTimeout as exc:
+            if self.use_timeout:
+                self._fail("Task timed out after {:.1f}s".
+                           format(self.task_timeout))
+            else:
+                self._fail(exc)
         except Exception as exc:
-            self._fail(str(exc))
+            self._fail(exc)
 
     def get_progress(self):
         # TODO: make the container update some status file?
         return 0.0
+
+    def end_comp(self):
+        pass
+
+    def check_timeout(self):
+        pass
