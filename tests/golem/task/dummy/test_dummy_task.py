@@ -1,10 +1,7 @@
-import mock
-
 import runner
 from golem.tools.testwithappconfig import TestWithAppConfig
 
 
-#  @mock.patch('golem.transactions.incomeskeeper.IncomesDatabase')
 class TestDummyTask(TestWithAppConfig):
 
     def test_dummy_task_computation(self, *mocks):

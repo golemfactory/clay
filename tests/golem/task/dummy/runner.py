@@ -1,7 +1,8 @@
-# Test script for running a single instance of a dummy task.
-# The task simply computes hashes of some random data and requires
-# no external tools. The amount of data processed (ie hashed) and computational
-# difficulty is configurable, see comments in DummyTaskParameters.
+"""Test script for running a single instance of a dummy task.
+The task simply computes hashes of some random data and requires
+no external tools. The amount of data processed (ie hashed) and computational
+difficulty is configurable, see comments in DummyTaskParameters.
+"""
 
 from task import DummyTask, DummyTaskParameters
 from golem.client import start_client
