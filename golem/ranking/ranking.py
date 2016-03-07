@@ -8,7 +8,7 @@ from twisted.internet.task import deferLater
 from itertools import izip
 from peewee import IntegrityError
 
-from golem.model import LocalRank, GlobalRank, NeighbourLocRank
+from golem.model import LocalRank, GlobalRank, NeighbourLocRank, db
 from golem.core.variables import BREAK_TIME, ROUND_TIME, END_ROUND_TIME, STAGE_TIME
 
 
@@ -23,91 +23,101 @@ class RankingStats(object):
     resource = "resource"
 
 
-class RankingDatabase:
-    def __init__(self, database):
-        self.db = database.db
+class RankingDatabase(object):
 
-    def increase_positive_computing(self, node_id, trust_mod):
+    @staticmethod
+    def increase_positive_computing(node_id, trust_mod):
         try:
-            with self.db.transaction():
+            with db.transaction():
                 LocalRank.create(node_id=node_id, positive_computed=trust_mod)
         except IntegrityError:
             LocalRank.update(positive_computed=LocalRank.positive_computed + trust_mod,
                              modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
-    def increase_negative_computing(self, node_id, trust_mod):
+    @staticmethod
+    def increase_negative_computing(node_id, trust_mod):
         try:
-            with self.db.transaction():
+            with db.transaction():
                 LocalRank.create(node_id=node_id, negative_computed=trust_mod)
         except IntegrityError:
             LocalRank.update(negative_computed=LocalRank.negative_computed + trust_mod,
                              modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
-    def increase_wrong_computed(self, node_id, trust_mod):
+    @staticmethod
+    def increase_wrong_computed(node_id, trust_mod):
         try:
-            with self.db.transaction():
+            with db.transaction():
                 LocalRank.create(node_id=node_id, wrong_computed=trust_mod)
         except IntegrityError:
             LocalRank.update(wrong_computed=LocalRank.wrong_computed + trust_mod,
                              modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
-    def increase_positive_requested(self, node_id, trust_mod):
+    @staticmethod
+    def increase_positive_requested(node_id, trust_mod):
         try:
-            with self.db.transaction():
+            with db.transaction():
                 LocalRank.create(node_id=node_id, positive_requested=trust_mod)
         except IntegrityError:
             LocalRank.update(positive_requested=LocalRank.positive_requested + trust_mod,
                              modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
-    def increase_negative_requested(self, node_id, trust_mod):
+    @staticmethod
+    def increase_negative_requested(node_id, trust_mod):
         try:
-            with self.db.transaction():
+            with db.transaction():
                 LocalRank.create(node_id=node_id, negative_requested=trust_mod)
         except IntegrityError:
             LocalRank.update(negative_requested=LocalRank.negative_requested + trust_mod,
                              modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
-    def increase_positive_payment(self, node_id, trust_mod):
+    @staticmethod
+    def increase_positive_payment(node_id, trust_mod):
         try:
-            with self.db.transaction():
+            with db.transaction():
                 LocalRank.create(node_id=node_id, positive_payment=trust_mod)
         except IntegrityError:
             LocalRank.update(positive_payment=LocalRank.positive_payment + trust_mod,
                              modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
-    def increase_negative_payment(self, node_id, trust_mod):
+    @staticmethod
+    def increase_negative_payment(node_id, trust_mod):
         try:
-            with self.db.transaction():
+            with db.transaction():
                 LocalRank.create(node_id=node_id, negative_payment=trust_mod)
         except IntegrityError:
             LocalRank.update(negative_payment=LocalRank.negative_payment + trust_mod,
                              modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
-    def increase_positive_resource(self, node_id, trust_mod):
+    @staticmethod
+    def increase_positive_resource(node_id, trust_mod):
         try:
-            with self.db.transaction():
+            with db.transaction():
                 LocalRank.create(node_id=node_id, positive_resource=trust_mod)
         except IntegrityError:
             LocalRank.update(positive_resource=LocalRank.positive_resource + trust_mod,
                              modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
-    def increase_negative_resource(self, node_id, trust_mod):
+    @staticmethod
+    def increase_negative_resource(node_id, trust_mod):
         try:
-            with self.db.transaction():
+            with db.transaction():
                 LocalRank.create(node_id=node_id, negative_resource=trust_mod)
         except IntegrityError:
-            LocalRank.update(positive_resource=LocalRank.negative_resource + trust_mod,
+            LocalRank.update(negative_resource=LocalRank.negative_resource + trust_mod,
                              modified_date=str(datetime.datetime.now())).where(LocalRank.node_id == node_id).execute()
 
-    def get_local_rank(self, node_id):
+    @staticmethod
+    def get_local_rank(node_id):
         return LocalRank.select().where(LocalRank.node_id == node_id).first()
 
-    def get_global_rank(self, node_id):
+    @staticmethod
+    def get_global_rank(node_id):
         return GlobalRank.select().where(GlobalRank.node_id == node_id).first()
 
-    def insert_or_update_global_rank(self, node_id, comp_trust, req_trust, comp_weight, req_weight):
+    @staticmethod
+    def insert_or_update_global_rank(node_id, comp_trust, req_trust, comp_weight, req_weight):
         try:
-            with self.db.transaction():
+            with db.transaction():
                 GlobalRank.create(node_id=node_id, requesting_trust_value=req_trust, computing_trust_value=comp_trust,
                                   gossip_weight_computing=comp_weight, gossip_weight_requesting=req_weight)
         except IntegrityError:
@@ -115,22 +125,25 @@ class RankingDatabase:
                               gossip_weight_computing=comp_weight, gossip_weight_requesting=req_weight,
                               modified_date=str(datetime.datetime.now())).where(GlobalRank.node_id == node_id).execute()
 
-    def get_all_local_rank(self):
+    @staticmethod
+    def get_all_local_rank():
         return LocalRank.select()
 
-    def insert_or_update_neighbour_loc_rank(self, neighbour_id, about_id, loc_rank):
+    @staticmethod
+    def insert_or_update_neighbour_loc_rank(neighbour_id, about_id, loc_rank):
         try:
             if neighbour_id == about_id:
                 logger.warning("Removing {} selftrust".format(about_id))
                 return
-            with self.db.transaction():
+            with db.transaction():
                 NeighbourLocRank.create(node_id=neighbour_id, about_node_id=about_id,
                                         requesting_trust_value=loc_rank[1], computing_trust_value=loc_rank[0])
         except IntegrityError:
             NeighbourLocRank.update(requesting_trust_value=loc_rank[1], computing_trust_value=loc_rank[0]).where(
                     (NeighbourLocRank.about_node_id == about_id) & (NeighbourLocRank.node_id == neighbour_id)).execute()
 
-    def get_neighbour_loc_rank(self, neighbour_id, about_id):
+    @staticmethod
+    def get_neighbour_loc_rank(neighbour_id, about_id):
         return NeighbourLocRank.select().where(
                 (NeighbourLocRank.node_id == neighbour_id) & (NeighbourLocRank.about_node_id == about_id)).first()
 
@@ -146,11 +159,11 @@ EPSILON = 0.01
 LOC_RANK_PUSH_DELTA = 0.1
 
 
-class Ranking:
-    def __init__(self, client, database, pos_par=POS_PAR, neg_par=NEG_PAR, max_trust=MAX_TRUST, min_trust=MIN_TRUST,
+class Ranking(object):
+    def __init__(self, client, pos_par=POS_PAR, neg_par=NEG_PAR, max_trust=MAX_TRUST, min_trust=MIN_TRUST,
                  min_op_num=MIN_OP_NUM, unknown_trust=UNKNOWN_TRUST, max_steps=MAX_STEPS, epsilon=EPSILON,
                  loc_rank_push_delta=LOC_RANK_PUSH_DELTA):
-        self.db = database
+        self.db = RankingDatabase()
         self.client = client
         self.pos_par = pos_par
         self.neg_par = neg_par

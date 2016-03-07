@@ -1,6 +1,8 @@
 import time
 import logging
 
+from devp2p.crypto import ECIESDecryptionError
+
 from golem.network.transport.message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers,\
     MessagePeers, MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
     MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, MessageRandVal, \
@@ -115,12 +117,9 @@ class PeerSession(BasicSafeSession):
 
         try:
             msg = self.p2p_service.decrypt(data)
-        except AssertionError:
-            logger.warning("Failed to decrypt message, maybe it's not encrypted?")
+        except ECIESDecryptionError as err:
+            logger.warning("Failed to decrypt message, maybe it's not encrypted? {}".format(err))
             msg = data
-        except Exception as err:
-            logger.error("Failed to decrypt message {}".format(str(err)))
-            assert False
 
         return msg
 

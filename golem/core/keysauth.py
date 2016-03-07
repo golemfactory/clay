@@ -6,7 +6,7 @@ from random import random
 
 from Crypto.PublicKey import RSA
 from simplehash import SimpleHash
-from golem.core.crypto import mk_privkey, privtopub, ECCx
+from devp2p.crypto import mk_privkey, privtopub, ECCx
 from sha3 import sha3_256
 from hashlib import sha256
 
@@ -373,7 +373,7 @@ class EllipticalKeysAuth(KeysAuth):
         :param str data: data to be signed
         :return: signed data
         """
-        return self.ecc.sign(data)
+        return self.ecc.sign(sha3(data))
 
     def verify(self, sig, data, public_key=None):
         """
@@ -392,7 +392,7 @@ class EllipticalKeysAuth(KeysAuth):
             if len(public_key) == 128:
                 public_key = public_key.decode('hex')
             ecc = ECCx(public_key)
-            return ecc.verify(sig, data)
+            return ecc.verify(sig, sha3(data))
         except AssertionError:
             logger.info("Wrong key format")
             return False

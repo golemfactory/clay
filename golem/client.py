@@ -116,9 +116,8 @@ class Client:
         self.snapshot_lock = Lock()
 
         self.db = Database(self.__get_database_name())
-        self.db.check_node(self.keys_auth.get_key_id())
 
-        self.ranking = Ranking(self, RankingDatabase(self.db))
+        self.ranking = Ranking(self)
 
         self.transaction_system = EthereumTransactionSystem(self.keys_auth.get_key_id(), self.config_desc.eth_account)
 
@@ -250,9 +249,6 @@ class Client:
     def accept_result(self, task_id, subtask_id, price_mod, account_info):
         price = self.transaction_system.add_payment_info(task_id, subtask_id, price_mod, account_info)
         self.task_server.task_manager.set_value(task_id, subtask_id, price)
-
-    def task_reward_paid(self, task_id, price):
-        return self.transaction_system.task_reward_paid(task_id, price)
 
     def task_reward_payment_failure(self, task_id, price):
         return self.transaction_system.task_reward_payment_failure(task_id, price)

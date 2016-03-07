@@ -14,8 +14,7 @@ from golem.network.p2p.node import Node
 
 class TestEthereumPaymentsKeeper(TestWithDatabase):
     def test_get_list_of_payment(self):
-        e = EthereumPaymentsKeeper("ABC")
-        self.database.check_node("ABC")
+        e = EthereumPaymentsKeeper()
 
         addr1 = "0x09197b95a57ad20ee68b53e0843fb1d218db6a78"
         ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "node1", Node(), addr1)
