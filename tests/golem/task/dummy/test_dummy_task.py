@@ -3,6 +3,7 @@ from golem.tools.testwithappconfig import TestWithAppConfig
 
 
 class TestDummyTask(TestWithAppConfig):
+    """Tests for the dummy task computation using the runner script"""
 
     def test_dummy_task_computation(self, *mocks):
         error_msg = runner.run_simulation(

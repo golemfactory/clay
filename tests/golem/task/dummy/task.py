@@ -43,6 +43,8 @@ class DummyTask(Task):
     did not pass verification
     """
 
+    ENVIRONMENT_NAME = "DUMMY"
+
     def __init__(self, client_id, params, num_subtasks):
         """Creates a new dummy task
         :param string client_id: client id
@@ -53,7 +55,7 @@ class DummyTask(Task):
         owner_address = ''
         owner_port = 0
         owner_key_id = ''
-        environment = 'DUMMY'
+        environment = self.ENVIRONMENT_NAME
         header = TaskHeader(
             client_id, task_id,
             owner_address, owner_port, owner_key_id, environment,

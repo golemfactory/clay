@@ -51,6 +51,7 @@ def run_requesting_node(num_subtasks = 3):
 
     reactor.callInThread(report_status)
     reactor.run()
+    return client  # Used in tests, with mocked reactor
 
 
 def run_computing_node(peer_address, fail_after = None):
@@ -66,7 +67,7 @@ def run_computing_node(peer_address, fail_after = None):
     class DummyEnvironment(Environment):
         @classmethod
         def get_id(cls):
-            return "DUMMY"
+            return DummyTask.ENVIRONMENT_NAME
 
     dummy_env = DummyEnvironment()
     dummy_env.accept_tasks = True
@@ -92,7 +93,7 @@ def run_computing_node(peer_address, fail_after = None):
 
     reactor.callInThread(report_status, fail_after)
     reactor.run()
-    sys.exit(1)
+    return client  # Used in tests, with mocked reactor
 
 
 # Global var set by a thread monitoring the status of the requester node
@@ -173,8 +174,7 @@ def run_simulation(num_computing_nodes = 2, num_subtasks = 3, timeout = 120,
                 return "Computation timed out"
             # Check if all subprocesses are alive
             for proc in all_procs:
-                proc.poll()
-                if proc.returncode:
+                if proc.poll() is not None:
                     return "Node exited with return code {}".format(
                         proc.returncode)
             time.sleep(1.0)
@@ -183,23 +183,26 @@ def run_simulation(num_computing_nodes = 2, num_subtasks = 3, timeout = 120,
         print "Stopping nodes..."
 
         for proc in all_procs:
-            proc.poll()
-            if not proc.returncode:
+            if proc.poll() is None:
                 proc.kill()
 
 
-if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == REQUESTING_NODE_KIND:
+def dispatch(args):
+    if len(args) == 3 and args[1] == REQUESTING_NODE_KIND:
         # I'm a requesting node, second arg is the number of subtasks
-        run_requesting_node(int(sys.argv[2]))
-    elif len(sys.argv) in [3,4] and sys.argv[1] == COMPUTING_NODE_KIND:
+        run_requesting_node(int(args[2]))
+    elif len(args) in [3,4] and args[1] == COMPUTING_NODE_KIND:
         # I'm a computing node, second arg is the address to connect to
-        fail_after = float(sys.argv[3]) if len(sys.argv) == 4 else None
-        run_computing_node(TCPAddress.parse(sys.argv[2]), fail_after=fail_after)
-    elif len(sys.argv) == 1:
+        fail_after = float(args[3]) if len(args) == 4 else None
+        run_computing_node(TCPAddress.parse(args[2]), fail_after=fail_after)
+    elif len(args) == 1:
         # I'm the main script, run simulation
         error_msg = run_simulation(
             num_computing_nodes = 2, num_subtasks = 4, timeout = 120)
         if error_msg:
             print "Dummy task computation failed:", error_msg
             sys.exit(1)
+
+
+if __name__ == "__main__":
+    dispatch(sys.argv)
