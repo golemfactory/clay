@@ -15,6 +15,11 @@ from test_docker_image import DockerTestCase
 
 
 class TestDockerJob(DockerTestCase):
+    """Common superclass for Docker job tests"""
+
+    def _get_test_repository(self):
+        """Abstract method, should be overriden by subclasses"""
+        pass
 
     TEST_SCRIPT = "print 'Hello World!'\n"
 
@@ -36,7 +41,7 @@ class TestDockerJob(DockerTestCase):
             self.output_dir = tempfile.mkdtemp(prefix = "golem-")
 
         os.mkdir(path.join(self.resource_dir, self.work_dir))
-        self.image = DockerImage(DockerTestCase.TEST_REPOSITORY)
+        self.image = DockerImage(self._get_test_repository())
         self.test_job = None
 
     def tearDown(self):
@@ -54,6 +59,13 @@ class TestDockerJob(DockerTestCase):
         self.test_job = DockerJob(self.image, script, params, self.work_dir,
                                   self.resource_dir, self.output_dir)
         return self.test_job
+
+
+class TestBaseDockerJob(TestDockerJob):
+    """Tests Docker job using the base image golem/base"""
+
+    def _get_test_repository(self):
+        return "golem/base"
 
     def test_create(self):
         job = self._create_test_job()
@@ -91,7 +103,7 @@ class TestDockerJob(DockerTestCase):
         # only in param values:
         self._test_params_saved({"length": u"pięćdziesiąt łokci"})
 
-    def _test_script_saved(self, task_script = TEST_SCRIPT):
+    def _test_script_saved(self, task_script):
         with self._create_test_job(script = task_script, params = None) as job:
             script_path = job._get_script_path()
             self.assertTrue(path.isfile(script_path))
@@ -104,7 +116,7 @@ class TestDockerJob(DockerTestCase):
             self.assertEqual(task_script, script)
 
     def test_script_saved(self):
-        self._test_script_saved()
+        self._test_script_saved(TestDockerJob.TEST_SCRIPT)
 
     def test_script_saved_nonascii(self):
         self._test_script_saved(u"print u'Halo? Świeci!'\n")
@@ -177,7 +189,32 @@ class TestDockerJob(DockerTestCase):
             self.assertIn("Path", info)
             self.assertEqual(info["Path"], "/usr/bin/python")
             self.assertIn("Args", info)
-            self.assertEqual(info["Args"], [DockerJob.TASK_SCRIPT])
+            self.assertEqual(info["Args"], ["/golem/resources/work/job.py"])
+
+    def test_logs_stdout(self):
+        text = "Adventure Time!"
+        src = "print '{}'\n".format(text)
+        with self._create_test_job(src) as job:
+            job.start()
+            out_file = path.join(self.output_dir, "stdout.log")
+            err_file = path.join(self.output_dir, "stderr.log")
+            job.dump_logs(out_file, err_file)
+        out_files = os.listdir(self.output_dir)
+        self.assertEqual(set(out_files), set(["stdout.log", "stderr.log"]))
+        with open(out_file, "r") as out:
+            line = out.readline().strip()
+        self.assertEqual(line, text)
+
+    def test_logs_stderr(self):
+        with self._create_test_job("syntax error!@#$%!") as job:
+            job.start()
+            err_file = path.join(self.output_dir, "stderr.log")
+            job.dump_logs(stderr_file=err_file)
+        out_files = os.listdir(self.output_dir)
+        self.assertEqual(out_files, ["stderr.log"])
+        with open(err_file, "r") as out:
+            line = out.readline().strip()
+        self.assertTrue(line.startswith('File "/golem/resources/work/job.py"'))
 
     def test_wait(self):
         src = "import time\ntime.sleep(5)\n"
@@ -222,6 +259,13 @@ with open("/golem/output/out.txt", "w") as f:
             text = f.read()
         self.assertEqual(text, sample_text)
 
+
+class TestBlenderDockerJob(TestDockerJob):
+    """Tests for Docker image golem/base"""
+
+    def _get_test_repository(self):
+        return "golem/blender"
+
     def test_blender_job(self):
         task_script = find_task_script("docker_blendertask.py")
         with open(task_script) as f:
@@ -255,8 +299,6 @@ with open("/golem/output/out.txt", "w") as f:
         with self._create_test_job(task_script_src, params) as job:
             job.start()
             exit_code = job.wait()
-            if exit_code is not 0:
-                print job.get_logs()
             self.assertEqual(exit_code, 0)
 
         out_files = os.listdir(self.output_dir)
