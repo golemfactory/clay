@@ -14,9 +14,9 @@
       "docker_images":[
         {
           "py/object": "golem.task.docker.image.DockerImage",
-          "repository": "imapp/blender",
+          "repository": "golem/blender",
           "tag": "latest",
-          "name": "imapp/blender:latest",
+          "name": "golem/blender:latest",
           "id": null
         }
       ],
@@ -72,9 +72,9 @@
   "docker_images":[
     {
       "py/object": "golem.task.docker.image.DockerImage",
-      "repository": "imapp/blender",
+      "repository": "golem/blender",
       "tag": "latest",
-      "name": "imapp/blender:latest",
+      "name": "golem/blender:latest",
       "id": null
     }
   ]

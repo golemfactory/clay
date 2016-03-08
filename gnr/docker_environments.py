@@ -9,7 +9,7 @@ class BlenderDockerEnvironment(DockerEnvironment):
 
     def __init__(self, tag = "latest", id = None):
         image = DockerImage(id = id) if id \
-            else DockerImage("imapp/blender", tag = tag)
+            else DockerImage("golem/blender", tag = tag)
         DockerEnvironment.__init__(self, [image])
 
         self.short_description = "Blender (http://www.blender.org/) " \

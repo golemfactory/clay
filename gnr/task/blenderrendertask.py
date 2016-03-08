@@ -89,7 +89,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
         return new_task
 
 
-DEFAULT_BLENDER_DOCKER_IMAGE = "imapp/blender:latest"
+DEFAULT_BLENDER_DOCKER_IMAGE = "golem/blender:latest"
 
 
 class BlenderRenderTask(FrameRenderingTask):
