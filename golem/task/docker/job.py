@@ -79,22 +79,21 @@ class DockerJob(object):
             }
         )
 
+        # The location of the task script when mounted in the container
+        container_script_path = "/".join(
+            [self.RESOURCES_DIR, self.work_dir, self.TASK_SCRIPT])
         self.container = client.create_container(
             image=self.image.name,
             volumes=[self.RESOURCES_DIR, self.OUTPUT_DIR],
             host_config=host_cfg,
             network_disabled=True,
-            command="/bin/sh -c '/usr/bin/python job.py "
-                    "> /golem/output/stdout.log "
-                    "2> /golem/output/stderr.log'",
-            entrypoint=[],  # disable default entrypoint set in the Dockerfile
-            working_dir=self.RESOURCES_DIR + "/" + self.work_dir)
+            command=[container_script_path]
+        )
 
         self.container_id = self.container["Id"]
         assert self.container_id
 
     def _cleanup(self):
-        """Removes the temporary directory task_dir"""
         if self.container:
             client = local_client()
             client.remove_container(self.container_id, force=True)
@@ -134,10 +133,25 @@ class DockerJob(object):
             return client.wait(self.container_id, timeout)
         return -1
 
-    def get_logs(self):
-        if self.container:
-            client = local_client()
-            return client.logs(self.container_id, stdout=True, stderr=True)
+    def dump_logs(self, stdout_file=None, stderr_file=None):
+        if not self.container:
+            return
+        client = local_client()
+
+        def dump_stream(stream, path):
+            with open(path, "w") as f:
+                for line in stream:
+                    f.write(line)
+                f.flush()
+
+        if stdout_file:
+            stdout = client.logs(self.container_id,
+                                 stream=True, stdout=True, stderr=False)
+            dump_stream(stdout, stdout_file)
+        if stderr_file:
+            stderr = client.logs(self.container_id,
+                                 stream=True, stdout=False, stderr=True)
+            dump_stream(stderr, stderr_file)
 
     def get_status(self):
         if self.container:
