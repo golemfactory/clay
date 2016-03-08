@@ -8,7 +8,7 @@ from golem.task.docker.image import DockerImage
 
 class DockerTestCase(unittest.TestCase):
 
-    TEST_REPOSITORY = "imapp/blender"
+    TEST_REPOSITORY = "golem/blender"
     TEST_TAG = "latest"
     TEST_IMAGE = "{}:{}".format(TEST_REPOSITORY, TEST_TAG)
     TEST_IMAGE_ID = None
