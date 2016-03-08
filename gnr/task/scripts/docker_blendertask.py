@@ -1,7 +1,6 @@
 import os
 import sys
 import subprocess
-import psutil
 
 
 def remove_old_files():
@@ -31,18 +30,8 @@ def is_windows():
     return sys.platform == 'win32'
 
 
-def exec_cmd(cmd, nice=20):
+def exec_cmd(cmd):
     pc = subprocess.Popen(cmd)
-    if is_windows():
-        import win32process
-        win32process.SetPriorityClass(pc._handle, win32process.IDLE_PRIORITY_CLASS)
-    else:
-        p = psutil.Process(pc.pid)
-        if psutil.__version__ == '1.2.1':
-            p.set_nice(nice)  # imapp/blender has psutil ver. 1.2.1
-        else:
-            p.nice(nice)
-
     pc.wait()
 
 
