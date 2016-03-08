@@ -65,7 +65,7 @@ class TaskServer(PendingConnectionsServer):
 
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
-        theader = self.task_keeper.get_task(self.config_desc.max_price)
+        theader = self.task_keeper.get_task(self.config_desc.min_price)
         if theader is not None:
             trust = self.client.get_requesting_trust(theader.task_owner_key_id)
             logger.debug("Requesting trust level: {}".format(trust))
@@ -111,6 +111,7 @@ class TaskServer(PendingConnectionsServer):
         if subtask_id not in self.results_to_send:
             value = self.task_keeper.add_to_verification(subtask_id, task_id, computing_time)
             self.client.add_to_waiting_payments(task_id, owner_key_id, value)
+            # TODO Add computing time
             self.results_to_send[subtask_id] = WaitingTaskResult(subtask_id, result['data'], result['result_type'],
                                                                  computing_time, 0.0, 0.0, owner_address, owner_port,
                                                                  owner_key_id, owner)
@@ -664,7 +665,7 @@ class TaskServer(PendingConnectionsServer):
         open_session.open_session = session
 
     def __connection_for_task_request_final_failure(self, conn_id, node_name, key_id, task_id, estimated_performance,
-                                                    max_resource_size, max_memory_size, num_cores, *args):
+                                                    price, max_resource_size, max_memory_size, num_cores, *args):
         logger.warning("Cannot connect to task {} owner".format(task_id))
         logger.warning("Removing task {} from task list".format(task_id))
 
@@ -811,11 +812,12 @@ class TaskServer(PendingConnectionsServer):
 
 
 class WaitingTaskResult(object):
-    def __init__(self, subtask_id, result, result_type, last_sending_trial, delay_time, owner_address, owner_port,
-                 owner_key_id, owner):
+    def __init__(self, subtask_id, result, result_type, computing_time, last_sending_trial, delay_time, owner_address,
+                 owner_port, owner_key_id, owner):
         self.subtask_id = subtask_id
         self.result = result
         self.result_type = result_type
+        self.computing_time = computing_time
         self.last_sending_trial = last_sending_trial
         self.delay_time = delay_time
         self.owner_address = owner_address

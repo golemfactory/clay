@@ -2,7 +2,8 @@ from mock import Mock
 
 from golem.tools.assertlogs import LogTestCase
 from golem.task.tasksession import TaskSession, logger
-from golem.network.transport.message import MessageRewardPaid
+from golem.network.transport.message import (MessageRewardPaid, MessageWantToComputeTask, MessageCannotAssignTask,
+                                             MessageTaskToCompute, MessageRemoveTask)
 
 
 class TestTaskSession(LogTestCase):
@@ -56,3 +57,47 @@ class TestTaskSession(LogTestCase):
         ts.can_be_unsigned.append(m.Type)
         ts.interpret(m)
         ts.task_server.reward_paid.assert_called_with("ABC", 131)
+
+    def test_request_task(self):
+        ts = TaskSession(Mock())
+        ts.verified = True
+        ts.request_task("ABC", "xyz", 1030, 30, 3, 1, 8)
+        mt = ts.conn.send_message.call_args[0][0]
+        self.assertIsInstance(mt, MessageWantToComputeTask)
+        self.assertEqual(mt.node_name, "ABC")
+        self.assertEqual(mt.task_id, "xyz")
+        self.assertEqual(mt.perf_index, 1030)
+        self.assertEqual(mt.price, 30)
+        self.assertEqual(mt.max_resource_size, 3)
+        self.assertEqual(mt.max_memory_size, 1)
+        self.assertEqual(mt.num_cores, 8)
+        ts2 = TaskSession(Mock())
+        ts2.verified = True
+        ts2.key_id = "DEF"
+        ts2.can_be_not_encrypted.append(mt.Type)
+        ts2.can_be_unsigned.append(mt.Type)
+        ts2.task_server.get_computing_trust.return_value = 0.1
+        ts2.task_server.config_desc.computing_trust = 0.2
+        ts2.task_server.config_desc.max_price = 100
+        ts2.task_manager.get_next_subtask.return_value = ("CTD", False)
+        ts2.interpret(mt)
+        ts2.task_server.get_computing_trust.assert_called_with("DEF")
+        ms = ts2.conn.send_message.call_args[0][0]
+        self.assertIsInstance(ms, MessageCannotAssignTask)
+        self.assertEqual(ms.task_id, mt.task_id)
+        ts2.task_server.get_computing_trust.return_value = 0.8
+        ts2.interpret(mt)
+        ms = ts2.conn.send_message.call_args[0][0]
+        self.assertIsInstance(ms, MessageTaskToCompute)
+        ts2.task_manager.get_next_subtask.return_value = ("CTD", True)
+        ts2.interpret(mt)
+        ms = ts2.conn.send_message.call_args[0][0]
+        self.assertIsInstance(ms, MessageRemoveTask)
+        self.assertEqual(ms.task_id, mt.task_id)
+        ts2.task_manager.get_next_subtask.return_value = ("CTD", False)
+        ts2.task_server.config_desc.max_price = 10
+        ts2.interpret(mt)
+        ms = ts2.conn.send_message.call_args[0][0]
+        self.assertIsInstance(ms, MessageCannotAssignTask)
+        self.assertEqual(ms.task_id, mt.task_id)
+

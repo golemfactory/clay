@@ -55,8 +55,8 @@ class TaskComputer(object):
             self.assigned_subtasks[ctd.subtask_id] = ctd
             self.assigned_subtasks[ctd.subtask_id].timeout = subtask_timeout
             self.task_to_subtask_mapping[ctd.task_id] = ctd.subtask_id
-            self.__request_resource(ctd.task_id, self.resource_manager.get_resource_header(ctd.task_id), ctd.return_address,
-                                    ctd.return_port, ctd.key_id, ctd.task_owner)
+            self.__request_resource(ctd.task_id, self.resource_manager.get_resource_header(ctd.task_id),
+                                    ctd.return_address, ctd.return_port, ctd.key_id, ctd.task_owner)
             return True
         else:
             return False
