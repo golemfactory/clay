@@ -1,20 +1,31 @@
-FROM ikester/blender
+# Dockerfile for tasks requiring Blender.
+# Blender setup is based on
+# https://github.com/ikester/blender-docker/blob/master/Dockerfile
+
+FROM golem/base
 
 MAINTAINER Artur Zawłocki <artur.zawlocki@imapp.pl>
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      python python-psutil \
-      wget && \
-    apt-get clean
+	apt-get install -y \
+		curl \
+		bzip2 \
+		libfreetype6 \
+		libgl1-mesa-dev \
+		libglu1-mesa \
+		libxi6 && \
+	apt-get -y autoremove && \
+	rm -rf /var/lib/apt/lists/*
 
-RUN mkdir /golem && mkdir /golem/resources && mkdir /golem/output
+ENV BLENDER_MAJOR 2.76
+ENV BLENDER_VERSION 2.76b
+ENV BLENDER_BZ2_URL http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc211-x86_64.tar.bz2
+ENV LUXRENDER_BZ2_URL https://github.com/imapp-pl/golem-binary-dependencies/releases/download/luxrender-v1.5.1/lux-v1.5.1-x86_64-sse2.tar.bz2
 
-RUN cd /tmp && wget https://github.com/imapp-pl/golem-binary-dependencies/releases/download/luxrender-v1.5.1/lux-v1.5.1-x86_64-sse2.tar.bz2 \
-            && tar jxf lux-v1.5.1-x86_64-sse2.tar.bz2 && mv lux-v1.5.1-x86_64-sse2 /usr/bin/luxrender
+RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C /opt && \
+    ln -s /opt/blender-${BLENDER_VERSION}-linux-glibc211-x86_64 /opt/blender
 
-ENV PATH=/usr/local/blender:$PATH PYTHONPATH=/golem LUXRENDER_ROOT=/usr/bin/luxrender
+RUN curl -SL ${LUXRENDER_BZ2_URL} | tar -xjv -C /opt && \
+    ln -s /opt/lux-v1.5.1-x86_64-sse2 /opt/luxrender
 
-WORKDIR /golem
-
-ENTRYPOINT ["/usr/bin/python", "/golem/input/job.py"]
+ENV PATH=/opt/blender:/opt/luxrender:$PATH LUXRENDER_ROOT=/opt/luxrender
