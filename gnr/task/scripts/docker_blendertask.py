@@ -1,11 +1,5 @@
 import os
-import sys
 import subprocess
-
-
-def remove_old_files():
-    for f in get_files():
-        os.remove(f)
 
 
 def __read_from_environment():
@@ -24,10 +18,6 @@ def __read_from_environment():
     else:
         print "Environment not supported... Setting default command file"
         return default_cmd_file
-
-
-def is_windows():
-    return sys.platform == 'win32'
 
 
 def exec_cmd(cmd):
