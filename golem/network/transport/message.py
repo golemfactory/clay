@@ -939,6 +939,7 @@ class MessageReportComputedTask(Message):
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     RESULT_TYPE_STR = u"RESULT_TYPE"
+    COMPUTATION_TIME_STR = u"COMPUTATION_TIME"
     NODE_NAME_STR = u"NODE_NAME"
     ADDR_STR = u"ADDR"
     NODE_INFO_STR = u"NODE_INFO"
@@ -947,13 +948,14 @@ class MessageReportComputedTask(Message):
     EXTRA_DATA_STR = u"EXTRA_DATA"
     ETH_ACCOUNT_STR = u"ETH_ACCOUNT"
 
-    def __init__(self, subtask_id=0, result_type=None, node_name='', address='',
+    def __init__(self, subtask_id=0, result_type=None, computation_time = '', node_name='', address='',
                  port='', key_id='', node_info=None, eth_account='', extra_data=None,
                  sig="", timestamp=None, dict_repr=None):
         """
         Create message with information about finished computation
         :param str subtask_id: finished subtask id
         :param int result_type: type of a result (from result_types dict)
+        :param int computation_time: how long does it take to  compute this subtask
         :param node_name: task result owner name
         :param str address: task result owner address
         :param int port: task result owner port
@@ -970,6 +972,7 @@ class MessageReportComputedTask(Message):
         self.subtask_id = subtask_id
         self.result_type = result_type
         self.extra_data = extra_data
+        self.computation_time = computation_time
         self.node_name = node_name
         self.address = address
         self.port = port
@@ -980,6 +983,7 @@ class MessageReportComputedTask(Message):
         if dict_repr:
             self.subtask_id = dict_repr[MessageReportComputedTask.SUB_TASK_ID_STR]
             self.result_type = dict_repr[MessageReportComputedTask.RESULT_TYPE_STR]
+            self.computation_time = dict_repr[MessageReportComputedTask.COMPUTATION_TIME_STR]
             self.node_name = dict_repr[MessageReportComputedTask.NODE_NAME_STR]
             self.address = dict_repr[MessageReportComputedTask.ADDR_STR]
             self.port = dict_repr[MessageReportComputedTask.PORT_STR]
@@ -991,6 +995,7 @@ class MessageReportComputedTask(Message):
     def dict_repr(self):
         return {MessageReportComputedTask.SUB_TASK_ID_STR: self.subtask_id,
                 MessageReportComputedTask.RESULT_TYPE_STR: self.result_type,
+                MessageReportComputedTask.COMPUTATION_TIME_STR: self.computation_time,
                 MessageReportComputedTask.NODE_NAME_STR: self.node_name,
                 MessageReportComputedTask.ADDR_STR: self.address,
                 MessageReportComputedTask.PORT_STR: self.port,

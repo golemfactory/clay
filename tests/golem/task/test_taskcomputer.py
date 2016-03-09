@@ -26,7 +26,7 @@ class TestTaskComputer(TestDirFixture):
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.waiting_for_task)
         tc.run()
-        time.sleep(1)
+        time.sleep(1.5)
         tc.run()
         task_server.request_task.assert_called_with()
 
@@ -55,7 +55,7 @@ class TestTaskComputer(TestDirFixture):
         tc.task_server.unpack_delta.assert_called_with(tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
         self.assertIsNone(tc.waiting_for_task)
         self.assertEqual(len(tc.current_computations), 1)
-        time.sleep(1)
+        time.sleep(0.5)
         self.assertFalse(tc.counting_task)
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.assigned_subtasks.get("xxyyzz"))
@@ -82,7 +82,7 @@ class TestTaskComputer(TestDirFixture):
         tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
                                                            "10.10.10.10", 10203, "key", "owner")
         self.assertTrue(tc.task_resource_collected("xyz"))
-        time.sleep(1)
+        time.sleep(0.5)
         self.assertFalse(tc.counting_task)
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.assigned_subtasks.get("aabbcc"))
@@ -93,9 +93,20 @@ class TestTaskComputer(TestDirFixture):
         ctd.src_code = "print 'Hello world'"
         tc.task_given(ctd, 5)
         self.assertTrue(tc.task_resource_collected("xyz"))
-        time.sleep(1)
+        time.sleep(0.5)
         task_server.send_task_failed.assert_called_with("aabbcc2", "xyz", "Wrong result format", "10.10.10.10", 10203,
                                                         "key", "owner", "ABC")
+
+        ctd.subtask_id = "xxyyzz2"
+        tc.task_given(ctd, 1)
+        self.assertTrue(tc.task_resource_collected("xyz"))
+        tt = tc.current_computations[0]
+        tc.task_computed(tc.current_computations[0])
+        self.assertEqual(len(tc.current_computations), 0)
+        task_server.send_task_failed.assert_called_with("xxyyzz2", "xyz", "Wrong result format", "10.10.10.10", 10203,
+                                                        "key", "owner", "ABC")
+        tt.end_comp()
+        time.sleep(0.5)
 
 
 class TestTaskThread(TestDirFixture):

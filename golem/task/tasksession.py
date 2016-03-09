@@ -248,8 +248,9 @@ class TaskSession(MiddlemanSafeSession):
             return
         node_name = self.task_server.get_node_name()
 
-        self.send(MessageReportComputedTask(task_result.subtask_id, task_result.result_type, node_name, address, port,
-                                            self.task_server.get_key_id(), node_info, eth_account, extra_data))
+        self.send(MessageReportComputedTask(task_result.subtask_id, task_result.result_type, task_result.computing_time,
+                                            node_name, address, port, self.task_server.get_key_id(), node_info,
+                                            eth_account, extra_data))
 
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
@@ -349,6 +350,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_report_computed_task(self, msg):
         if msg.subtask_id in self.task_manager.subtask2task_mapping:
+            self.task_server.receive_subtask_computation_time(msg.subtask_id, msg.computation_time)
             delay = self.task_manager.accept_results_delay(self.task_manager.subtask2task_mapping[msg.subtask_id])
 
             if delay == -1.0:

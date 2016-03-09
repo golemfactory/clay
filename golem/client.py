@@ -380,6 +380,9 @@ class Client:
         self.transaction_system.task_finished(task_id)
 
     def get_database_name(self):
+        """ Return the database file name that this golem instance should use to save and load data.
+        :return str: path to the database file
+        """
         return os.path.join(appdirs.user_data_dir('golem'), self.keys_auth.get_key_id()[-10:] + ".db")
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):

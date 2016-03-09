@@ -1,5 +1,5 @@
 import os
-from threading import Thread, Lock
+from threading import Lock
 import shutil
 import logging
 from golem.task.taskbase import Task, resource_types
@@ -24,17 +24,6 @@ def find_flm(directory):
         # Print the stack traceback
         traceback.print_exc()
         return None
-
-
-def copy_rename(old_file_name, new_file_name):
-        dst_dir= os.path.join(os.curdir , "subfolder")
-        src_file = os.path.join(src_dir, old_file_name)
-        shutil.copy(src_file,dst_dir)
-        
-        dst_file = os.path.join(dst_dir, old_file_name)
-        new_dst_file_name = os.path.join(dst_dir, new_file_name)
-        os.rename(dst_file, new_dst_file_name)
-
 
 class TaskTester:
     def __init__(self, task, root_path, finished_callback):
@@ -81,7 +70,7 @@ class TaskTester:
             with self.lock:
                 if self.tt.get_error():
                     logger.warning("Task not tested properly")
-                    self.finished_callback(False, self.tt.error_msg)
+                    self.finished_callback(False, error=self.tt.error_msg)
                     return 0
                 return self.tt.get_progress()
         return None
@@ -125,8 +114,8 @@ class TaskTester:
             shutil.rmtree(self.test_task_res_path, True)
             os.makedirs(self.test_task_res_path)
 
-        self.test_taskResDir = get_test_task_directory()
-        rh = TaskResourceHeader(self.test_taskResDir)
+        self.test_task_res_dir = get_test_task_directory()
+        rh = TaskResourceHeader(self.test_task_res_dir)
         res_file = self.task.get_resources(self.task.header.task_id, rh, resource_types["zip"])
 
         if res_file:
