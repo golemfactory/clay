@@ -3,19 +3,20 @@ The task simply computes hashes of some random data and requires
 no external tools. The amount of data processed (ie hashed) and computational
 difficulty is configurable, see comments in DummyTaskParameters.
 """
-
-from task import DummyTask, DummyTaskParameters
-from golem.client import start_client
-from golem.environments.environment import Environment
-from golem.network.transport.tcpnetwork import TCPAddress
-
 import os
 import re
 import subprocess
 import sys
-from threading import Thread
 import time
+from threading import Thread
+
 from twisted.internet import reactor
+
+import golem.client
+from golem.environments.environment import Environment
+from golem.network.transport.tcpnetwork import TCPAddress
+
+from task import DummyTask, DummyTaskParameters
 
 
 REQUESTING_NODE_KIND = "requester"
@@ -40,7 +41,7 @@ def run_requesting_node(num_subtasks = 3):
 
     start_time = time.time()
     report("Starting...")
-    client = start_client()
+    client = golem.client.start_client()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
@@ -71,7 +72,7 @@ def run_computing_node(peer_address, fail_after = None):
 
     start_time = time.time()
     report("Starting...")
-    client = start_client()
+    client = golem.client.start_client()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     class DummyEnvironment(Environment):

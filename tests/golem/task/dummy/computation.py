@@ -1,4 +1,4 @@
-# Functions used in the computation of subtasks of the dummy task
+"""Functions used in the computation of subtasks of the dummy task"""
 
 import hashlib
 import random

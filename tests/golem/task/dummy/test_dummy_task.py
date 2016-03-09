@@ -1,5 +1,6 @@
-import runner
 from golem.tools.testwithappconfig import TestWithAppConfig
+
+import runner
 
 
 class TestDummyTask(TestWithAppConfig):

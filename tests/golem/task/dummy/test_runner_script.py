@@ -1,9 +1,10 @@
 import mock
 
-import runner
-import task
 from golem.network.transport.tcpnetwork import TCPAddress
 from golem.tools.testwithappconfig import TestWithAppConfig
+
+import runner
+import task
 
 
 class TestDummyTaskRunnerScript(TestWithAppConfig):

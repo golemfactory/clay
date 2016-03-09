@@ -1,10 +1,10 @@
+import random
+from os import path
+
 from golem.core.simpleauth import SimpleAuth
 from golem.network.p2p.node import Node
 from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, resource_types
-
-import random
-from os import path
 
 
 class DummyTaskParameters(object):
