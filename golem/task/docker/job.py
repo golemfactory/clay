@@ -51,7 +51,6 @@ class DockerJob(object):
             for key, value in self.parameters.iteritems():
                 line = "{} = {}\n".format(key, repr(value))
                 params_file.write(bytearray(line, encoding='utf-8'))
-        self.script_src = "from params import *\n\n" + self.script_src
 
         # Save the script in task_dir/TASK_SCRIPT
         task_script_path = self._get_script_path()

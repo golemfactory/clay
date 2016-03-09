@@ -104,15 +104,11 @@ class TestBaseDockerJob(TestDockerJob):
         self._test_params_saved({"length": u"pięćdziesiąt łokci"})
 
     def _test_script_saved(self, task_script):
-        with self._create_test_job(script = task_script) as job:
+        with self._create_test_job(script=task_script) as job:
             script_path = job._get_script_path()
             self.assertTrue(path.isfile(script_path))
             with open(script_path, 'r') as f:
                 script = unicode(f.read(), "utf-8")
-            # The saved script should start with 'from params import *', them
-            # some newlines (at least one), and then the original task_script:
-            self.assertTrue(script.startswith("from params import *\n"))
-            script = script[script.index("\n"):].lstrip()
             self.assertEqual(task_script, script)
 
     def test_script_saved(self):

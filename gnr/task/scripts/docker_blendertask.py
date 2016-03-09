@@ -1,28 +1,19 @@
+from __future__ import print_function
+
 import os
+import sys
 import subprocess
 
+from params import *
 
-def __read_from_environment():
-    default_cmd_file = 'blender'
 
-    try:
-        from gnr.renderingenvironment import BlenderEnvironment
-    except ImportError:
-        print "No Golem app found... Setting default command file"
-        return default_cmd_file
-
-    env = BlenderEnvironment()
-    cmd_file = env.get_blender()
-    if cmd_file:
-        return cmd_file
-    else:
-        print "Environment not supported... Setting default command file"
-        return default_cmd_file
+BLENDER_COMMAND = "blender"
+OUTPUT_DIR = "/golem/output"
 
 
 def exec_cmd(cmd):
     pc = subprocess.Popen(cmd)
-    pc.wait()
+    return pc.wait()
 
 
 def format_blender_render_cmd(cmd_file, output_dir, outfilebasename, scene_file, script_file, start_task, engine,
@@ -35,25 +26,29 @@ def format_blender_render_cmd(cmd_file, output_dir, outfilebasename, scene_file,
 
 def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames):
 
-    cmd_file = __read_from_environment()
     scene_file = os.path.normpath(scene_file)
     if not os.path.exists(scene_file):
-        print "Scene file {} does not exist".format(scene_file)
-        return {'data': [], 'result_type': 0}
+        print("Scene file '{}' does not exist".format(scene_file),
+              file=sys.stderr)
+        sys.exit(1)
 
-    with open("/golem/output/blenderscript.py", "w") as script_file:
+    blender_script_path = OUTPUT_DIR + "/blenderscript.py"
+    with open(blender_script_path, "w") as script_file:
         script_file.write(script_src)
 
-    for frame in frames:
-        cmd = format_blender_render_cmd(
-            cmd_file, output_dir, outfilebasename, scene_file, script_file.name,
-            start_task, engine, frame)
-        print cmd
-        exec_cmd(cmd)
+    try:
+        for frame in frames:
+            cmd = format_blender_render_cmd(
+                BLENDER_COMMAND, OUTPUT_DIR, outfilebasename, scene_file,
+                script_file.name, start_task, engine, frame)
+            print(cmd)
+            exit_code = exec_cmd(cmd)
+            if exit_code is not 0:
+                sys.exit(exit_code)
+    finally:
+        os.remove(script_file.name)
 
-    os.remove(script_file.name)
 
-
-output_dir = "/golem/output/"
-output = run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames)
+output = run_blender_task(outfilebasename, scene_file, script_src,
+                          start_task, engine, frames)
 
