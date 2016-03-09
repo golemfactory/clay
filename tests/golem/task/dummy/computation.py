@@ -1,4 +1,4 @@
-# Functions used in the computation of subtasks of the dummy task
+"""Functions used in the computation of subtasks of the dummy task"""
 
 import hashlib
 import random
@@ -26,7 +26,9 @@ def find_pow(input_data, difficulty, result_size):
     :param int result_size:
     :rtype long:
     """
-    solution = random.getrandbits(result_size * 4)
+    num_bits = result_size * 4
+    # This ensures that the generated number will not start with 0's as hex
+    solution = (1 << (num_bits - 1)) | random.getrandbits(num_bits - 1)
     while True:
         if check_pow(solution, input_data, difficulty):
             return solution

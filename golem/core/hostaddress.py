@@ -59,14 +59,14 @@ def get_host_address_from_connection(connect_to=DEFAULT_CONNECT_TO, connect_to_p
 
 def get_external_address(source_port=None):
     """ Method try to get host public address with STUN protocol
-    :param int source_port: port that should be used for connection. Otherwise default 54320 port will be used
+    :param int source_port: port that should be used for connection. Otherwise a free port picked by the OS will be used
     :return (str, int, str): tuple with host public address, public port that is mapped to local <source_port> and
      this host nat type
     """
     if source_port:
         nat_type, external_ip, external_port = stun.get_ip_info(source_port=source_port)
     else:
-        nat_type, external_ip, external_port = stun.get_ip_info()
+        nat_type, external_ip, external_port = stun.get_ip_info(source_port=0)
     logger.debug("nat_type {}, external_ip {}, external_port {}".format(nat_type, external_ip, external_port))
     return external_ip, external_port, nat_type
 
