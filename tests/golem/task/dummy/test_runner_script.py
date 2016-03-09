@@ -85,6 +85,6 @@ class TestDummyTaskRunnerScript(TestWithAppConfig):
     def test_run_simulation(self, mock_popen):
         mock_process = mock.MagicMock()
         mock_popen.return_value = mock_process
-        mock_process.stdout.readline.return_value = \
-            "[REQUESTING NODE 1] Listening on: 1.2.3.4:5678"
+        mock_process.stdout.readline.return_value = runner.format_msg(
+            "REQUESTER", 12345, "Listening on 1.2.3.4:5678")
         runner.run_simulation()

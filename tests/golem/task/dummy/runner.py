@@ -22,10 +22,21 @@ REQUESTING_NODE_KIND = "requester"
 COMPUTING_NODE_KIND = "computer"
 
 
-def run_requesting_node(num_subtasks = 3):
+def format_msg(kind, pid, msg):
+    return "[{} {:>5}] {}".format(kind, pid, msg)
 
-    def report(msg):
-        print "[REQUESTING NODE {}] {}".format(os.getpid(), msg)
+
+node_kind = ""
+
+
+def report(msg):
+    global node_kind
+    print format_msg(node_kind, os.getpid(), msg)
+
+
+def run_requesting_node(num_subtasks = 3):
+    global node_kind
+    node_kind = "REQUESTER"
 
     start_time = time.time()
     report("Starting...")
@@ -38,7 +49,7 @@ def run_requesting_node(num_subtasks = 3):
 
     port = client.p2pservice.cur_port
     requester_addr = "{}:{}".format(client.node.prv_addr, port)
-    report("Listening on: {}".format(requester_addr))
+    report("Listening on {}".format(requester_addr))
 
     def report_status():
         finished = False
@@ -55,9 +66,8 @@ def run_requesting_node(num_subtasks = 3):
 
 
 def run_computing_node(peer_address, fail_after = None):
-
-    def report(msg):
-        print "[COMPUTING NODE {}] {}".format(os.getpid(), msg)
+    global node_kind
+    node_kind = "COMPUTER "
 
     start_time = time.time()
     report("Starting...")
@@ -73,7 +83,7 @@ def run_computing_node(peer_address, fail_after = None):
     dummy_env.accept_tasks = True
     client.environments_manager.add_environment(dummy_env)
 
-    report("Connecting to requester node at {}:{} ..."
+    report("Connecting to requesting node at {}:{} ..."
            .format(peer_address.address, peer_address.port))
     client.connect(peer_address)
 
@@ -118,7 +128,7 @@ def run_simulation(num_computing_nodes = 2, num_subtasks = 3, timeout = 120,
         stdout = subprocess.PIPE)
 
     # Scan the requesting node's stdout for the address
-    address_re = re.compile("\[REQUESTING NODE [0-9]+\] Listening on: (.+)")
+    address_re = re.compile(".+REQUESTER.+Listening on (.+)")
     while True:
         line = requesting_proc.stdout.readline().strip()
         print line
@@ -143,8 +153,8 @@ def run_simulation(num_computing_nodes = 2, num_subtasks = 3, timeout = 120,
         computing_procs.append(proc)
 
     all_procs = computing_procs + [requesting_proc]
-    task_finished_status = "[REQUESTING NODE {}] Task finished".format(
-        requesting_proc.pid)
+    task_finished_status = format_msg(
+        "REQUESTER", requesting_proc.pid, "Task finished")
 
     global task_finished
     task_finished = False
