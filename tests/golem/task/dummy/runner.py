@@ -66,7 +66,7 @@ def run_requesting_node(num_subtasks = 3):
     return client  # Used in tests, with mocked reactor
 
 
-def run_computing_node(peer_address, fail_after = None):
+def run_computing_node(peer_address, fail_after=None):
     global node_kind
     node_kind = "COMPUTER "
 
@@ -111,8 +111,8 @@ def run_computing_node(peer_address, fail_after = None):
 task_finished = False
 
 
-def run_simulation(num_computing_nodes = 2, num_subtasks = 3, timeout = 120,
-                   node_failure_times = None):
+def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
+                   node_failure_times=None):
 
     # We need to pass the PYTHONPATH to the child processes
     pythonpath = "".join(dir + os.pathsep for dir in sys.path)
@@ -124,9 +124,9 @@ def run_simulation(num_computing_nodes = 2, num_subtasks = 3, timeout = 120,
     # Start the requesting node in a separate process
     requesting_proc = subprocess.Popen(
         ["python", "-u", __file__, REQUESTING_NODE_KIND, str(num_subtasks)],
-        bufsize = 1,  # line buffered
-        env = env,
-        stdout = subprocess.PIPE)
+        bufsize=1,  # line buffered
+        env=env,
+        stdout=subprocess.PIPE)
 
     # Scan the requesting node's stdout for the address
     address_re = re.compile(".+REQUESTER.+Listening on (.+)")
@@ -148,9 +148,9 @@ def run_simulation(num_computing_nodes = 2, num_subtasks = 3, timeout = 120,
             cmdline.append(str(node_failure_times[n]))
         proc = subprocess.Popen(
             cmdline,
-            bufsize = 1,
-            env = env,
-            stdout = subprocess.PIPE)
+            bufsize=1,
+            env=env,
+            stdout=subprocess.PIPE)
         computing_procs.append(proc)
 
     all_procs = computing_procs + [requesting_proc]
@@ -169,8 +169,8 @@ def run_simulation(num_computing_nodes = 2, num_subtasks = 3, timeout = 120,
             if line == task_finished_status:
                 task_finished = True
 
-    monitor_threads = [Thread(target = monitor_subprocess,
-                              name = "monitor {}".format(proc.pid),
+    monitor_threads = [Thread(target=monitor_subprocess,
+                              name="monitor {}".format(proc.pid),
                               args=(proc,))
                        for proc in all_procs]
 
@@ -202,7 +202,7 @@ def dispatch(args):
     if len(args) == 3 and args[1] == REQUESTING_NODE_KIND:
         # I'm a requesting node, second arg is the number of subtasks
         run_requesting_node(int(args[2]))
-    elif len(args) in [3,4] and args[1] == COMPUTING_NODE_KIND:
+    elif len(args) in [3, 4] and args[1] == COMPUTING_NODE_KIND:
         # I'm a computing node, second arg is the address to connect to
         fail_after = float(args[3]) if len(args) == 4 else None
         run_computing_node(TCPAddress.parse(args[2]), fail_after=fail_after)

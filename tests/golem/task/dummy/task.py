@@ -59,11 +59,11 @@ class DummyTask(Task):
         header = TaskHeader(
             client_id, task_id,
             owner_address, owner_port, owner_key_id, environment,
-            task_owner = Node(),
-            ttl = 14400,
-            subtask_timeout = 1200,
-            resource_size = params.shared_data_size + params.subtask_data_size,
-            estimated_memory = 0)
+            task_owner=Node(),
+            ttl=14400,
+            subtask_timeout=1200,
+            resource_size=params.shared_data_size + params.subtask_data_size,
+            estimated_memory=0)
 
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')
@@ -103,7 +103,7 @@ class DummyTask(Task):
 
         self.task_resources = [self.shared_data_file]
 
-    def short_extra_data_repr(self, perf_index = None):
+    def short_extra_data_repr(self, perf_index=None):
         return "dummy task " + self.task_id
 
     def get_total_tasks(self):
@@ -181,7 +181,7 @@ class DummyTask(Task):
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 
-    def get_resources(self, task_id, resource_header, resource_type = 0):
+    def get_resources(self, task_id, resource_header, resource_type=0):
         if resource_type == resource_types['parts']:
             dir_name = path.dirname(self.shared_data_file)
             delta_header, parts = \
