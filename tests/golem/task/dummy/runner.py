@@ -35,7 +35,7 @@ def report(msg):
     print format_msg(node_kind, os.getpid(), msg)
 
 
-def run_requesting_node(num_subtasks = 3):
+def run_requesting_node(num_subtasks=3):
     global node_kind
     node_kind = "REQUESTER"
 
@@ -55,8 +55,7 @@ def run_requesting_node(num_subtasks = 3):
     def report_status():
         finished = False
         while True:
-            time.sleep(5)
-            report("Ping!")
+            time.sleep(1)
             if not finished and task.finished_computation():
                 report("Task finished")
                 finished = True
@@ -88,18 +87,13 @@ def run_computing_node(peer_address, fail_after=None):
            .format(peer_address.address, peer_address.port))
     client.connect(peer_address)
 
-    def report_status(fail_after = None):
+    def report_status(fail_after=None):
         t0 = time.time()
-        n = 0
         while True:
             if fail_after and time.time() - t0 > fail_after:
                 report("Failure!")
                 reactor.callFromThread(reactor.stop)
-                time.sleep(5)
                 return
-            n += 1
-            if n % 5 == 0:
-                report("Ping!")
             time.sleep(1)
 
     reactor.callInThread(report_status, fail_after)
@@ -188,7 +182,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
                 if proc.poll() is not None:
                     return "Node exited with return code {}".format(
                         proc.returncode)
-            time.sleep(1.0)
+            time.sleep(1)
         return None
     finally:
         print "Stopping nodes..."
