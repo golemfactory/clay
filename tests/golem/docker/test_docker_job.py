@@ -104,7 +104,7 @@ class TestBaseDockerJob(TestDockerJob):
         self._test_params_saved({"length": u"pięćdziesiąt łokci"})
 
     def _test_script_saved(self, task_script):
-        with self._create_test_job(script = task_script, params = None) as job:
+        with self._create_test_job(script = task_script) as job:
             script_path = job._get_script_path()
             self.assertTrue(path.isfile(script_path))
             with open(script_path, 'r') as f:
@@ -194,7 +194,7 @@ class TestBaseDockerJob(TestDockerJob):
     def test_logs_stdout(self):
         text = "Adventure Time!"
         src = "print '{}'\n".format(text)
-        with self._create_test_job(src) as job:
+        with self._create_test_job(script = src) as job:
             job.start()
             out_file = path.join(self.output_dir, "stdout.log")
             err_file = path.join(self.output_dir, "stderr.log")
@@ -206,7 +206,7 @@ class TestBaseDockerJob(TestDockerJob):
         self.assertEqual(line, text)
 
     def test_logs_stderr(self):
-        with self._create_test_job("syntax error!@#$%!") as job:
+        with self._create_test_job(script = "syntax error!@#$%!") as job:
             job.start()
             err_file = path.join(self.output_dir, "stderr.log")
             job.dump_logs(stderr_file=err_file)
@@ -218,7 +218,7 @@ class TestBaseDockerJob(TestDockerJob):
 
     def test_wait(self):
         src = "import time\ntime.sleep(5)\n"
-        with self._create_test_job(src) as job:
+        with self._create_test_job(script = src) as job:
             job.start()
             self.assertEqual(job.get_status(), DockerJob.STATE_RUNNING)
             exit_code = job.wait()
@@ -228,23 +228,24 @@ class TestBaseDockerJob(TestDockerJob):
     def test_wait_timeout(self):
         src = "import time\ntime.sleep(10)\n"
         with self.assertRaises(requests.exceptions.ReadTimeout):
-            with self._create_test_job(src) as job:
+            with self._create_test_job(script = src) as job:
                 job.start()
                 self.assertEqual(job.get_status(), DockerJob.STATE_RUNNING)
                 job.wait(1)
 
     def test_copy_job(self):
         """Creates a sample resource file and a task script that copies
-        the resource file to the output file.
+        the resource file to the output file. Also tests if the work_dir
+        is set to the script dir (by using paths relative to the script dir).
         """
         copy_script = """
-with open("/golem/resources/in.txt", "r") as f:
+with open("../in.txt", "r") as f:
     text = f.read()
 
-with open("/golem/output/out.txt", "w") as f:
+with open("../../output/out.txt", "w") as f:
     f.write(text)
 """
-        sample_text = "Hello!\n"
+        sample_text = "Adventure Time!\n"
 
         with open(path.join(self.resource_dir, "in.txt"), "w") as input:
             input.write(sample_text)
@@ -275,7 +276,6 @@ class TestBlenderDockerJob(TestDockerJob):
         crop_script = find_task_script("blendercrop.py")
         with open(crop_script, 'r') as src:
             crop_script_src = src.read()
-        # shutil.copy(crop_script, self.resource_dir)
 
         # copy the scene file to the resources dir
         benchmarks_dir = path.join(get_golem_path(),
@@ -296,7 +296,7 @@ class TestBlenderDockerJob(TestDockerJob):
             "frames": [1]
         }
 
-        with self._create_test_job(task_script_src, params) as job:
+        with self._create_test_job(script=task_script_src,params=params) as job:
             job.start()
             exit_code = job.wait()
             self.assertEqual(exit_code, 0)

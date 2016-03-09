@@ -87,7 +87,8 @@ class DockerJob(object):
             volumes=[self.RESOURCES_DIR, self.OUTPUT_DIR],
             host_config=host_cfg,
             network_disabled=True,
-            command=[container_script_path]
+            command=[container_script_path],
+            working_dir=path.dirname(container_script_path)
         )
 
         self.container_id = self.container["Id"]
