@@ -61,8 +61,11 @@ class GolemVM(IGolemVM):
 class PythonVM(GolemVM):
 
     def _interpret(self):
-        exec self.src_code in self.scope
-        return self.scope["output"]
+        try:
+            exec self.src_code in self.scope
+        except Exception as err:
+            self.scope["error"] = str(err)
+        return self.scope.get("output"), self.scope.get("error")
 
 
 class PythonProcVM(GolemVM):
@@ -99,8 +102,10 @@ class PythonTestVM(GolemVM):
         mc.start()
         try:
             exec self.src_code in self.scope
+        except Exception as err:
+            self.scope["error"] = str(err)
         finally:
             estimated_mem = mc.stop()
         logger.info("Estimated memory for task: {}".format(estimated_mem))
-        return self.scope["output"], estimated_mem
+        return (self.scope.get("output"), estimated_mem), self.scope.get("error")
 

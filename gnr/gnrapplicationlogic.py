@@ -313,11 +313,16 @@ class GNRApplicationLogic(QtCore.QObject):
     def change_accept_tasks_for_environment(self, env_id, state):
         self.client.change_accept_tasks_for_environment(env_id, state)
 
-    def _test_task_computation_finished(self, success, est_mem=0):
+    def _test_task_computation_finished(self, success, est_mem=0, error=""):
         if success:
             self.progress_dialog_customizer.show_message("Test task computation success!")
         else:
-            self.progress_dialog_customizer.show_message("Task test computation failure... Check resources.")
+            err_msg = "Task test computaion failure... "
+            if error:
+                err_msg += error
+            else:
+                err_msg += "Check resources."
+            self.progress_dialog_customizer.show_message(err_msg)
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(success, est_mem)
 
