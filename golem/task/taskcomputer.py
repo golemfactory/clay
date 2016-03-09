@@ -336,6 +336,11 @@ class PyTestTaskThread(PyTaskThread):
 
 class DockerRunnerThread(TaskThread):
 
+    # These files will be placed in the output dir (self.tmp_path)
+    # and will contain dumps of the task script's stdout and stderr.
+    STDOUT_FILE = "stdout.log"
+    STDERR_FILE = "stderr.log"
+
     def __init__(self, task_computer, subtask_id, docker_images,
                  working_directory, src_code, extra_data, short_desc,
                  res_path, tmp_path, timeout):
@@ -374,6 +379,12 @@ class DockerRunnerThread(TaskThread):
                     exit_code = self.job.wait(self.task_timeout)
                 else:
                     exit_code = self.job.wait()
+
+                # Get stdout and stderr
+                stdout_file = os.path.join(self.tmp_path, self.STDOUT_FILE)
+                stderr_file = os.path.join(self.tmp_path, self.STDERR_FILE)
+                self.job.dump_logs(stdout_file, stderr_file)
+
                 if exit_code == 0:
                     # TODO: this always returns file, implement returning data
                     # TODO: this only collects top-level files, what if there

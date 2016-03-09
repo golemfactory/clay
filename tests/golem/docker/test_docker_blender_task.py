@@ -117,9 +117,9 @@ class TestDockerBlenderTask(TestWithAppConfig):
             self.assertTrue(path.isfile(result_file))
             if result_file.endswith(".exr"):
                 exr_file_present = True
-            elif result_file.endswith("stdout.log"):
+            elif result_file.endswith(DockerRunnerThread.STDOUT_FILE):
                 stdout_file_present = True
-            elif result_file.endswith("stderr.log"):
+            elif result_file.endswith(DockerRunnerThread.STDERR_FILE):
                 stderr_file_present = True
         self.assertTrue(exr_file_present)
         self.assertTrue(stdout_file_present)
@@ -127,7 +127,8 @@ class TestDockerBlenderTask(TestWithAppConfig):
 
     def test_blender_subtask_timeout(self):
         task_def = self._test_task_definition()
-        task_thread, error_msg, out_dir = self._run_docker_task(task_def, timeout=1)
+        task_thread, error_msg, out_dir = \
+            self._run_docker_task(task_def, timeout=1)
         self.assertIsInstance(task_thread, DockerRunnerThread)
         self.assertIsInstance(error_msg, str)
         self.assertTrue(error_msg.startswith("Task timed out"))
@@ -151,11 +152,21 @@ class TestDockerBlenderTask(TestWithAppConfig):
 
     def test_blender_subtask_script_error(self):
         task_def = self._test_task_definition()
-        # Break main script file in task definition; container will be started
-        # but blender will not be run.
+        # Replace the main script file with another python script that will
+        # produce errors when run in the task environment:
         task_def.main_program_file = path.join(
-            path.dirname(task_def.main_program_file), "blendertask.py")
+            path.join(get_golem_path(), "gnr"), "node.py")
+        task_def.resources = set(
+            [task_def.main_program_file, task_def.main_scene_file])
         task_thread, error_msg, out_dir = self._run_docker_task(task_def)
         self.assertIsInstance(task_thread, DockerRunnerThread)
         self.assertIsInstance(error_msg, str)
-        self.assertNotEqual(error_msg, "Wrong result format")
+        self.assertTrue(error_msg.startswith("Subtask computation failed"))
+
+    def test_blender_scene_file_error(self):
+        task_def = self._test_task_definition()
+        # Replace scene file with some other, non-blender file:
+        task_def.main_scene_file = task_def.main_program_file
+        task_thread, error_msg, out_dir = self._run_docker_task(task_def)
+        self.assertIsInstance(task_thread, DockerRunnerThread)
+        self.assertIsInstance(error_msg, str)
