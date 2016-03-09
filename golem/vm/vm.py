@@ -46,7 +46,7 @@ class GolemVM(IGolemVM):
     def run_task(self, src_code, extra_data):
         self.src_code = src_code
         self.scope = extra_data
-        self.scope[ "taskProgress" ] = self.progress
+        self.scope["taskProgress"] = self.progress
 
         return self._interpret()
 
@@ -62,8 +62,7 @@ class PythonVM(GolemVM):
 
     def _interpret(self):
         exec self.src_code in self.scope
-        return self.scope[ "output" ]
-
+        return self.scope["output"]
 
 
 class PythonProcVM(GolemVM):
@@ -79,15 +78,18 @@ class PythonProcVM(GolemVM):
         del self.scope['taskProgress']
         manager = mp.Manager()
         scope = manager.dict(self.scope)
-        self.proc = mp.Process(target = exec_code, args=(self.src_code, scope))
+        self.proc = mp.Process(target=exec_code, args=(self.src_code, scope))
         self.proc.start()
         self.proc.join()
-        return scope.get("output")
+        return scope.get("output"), scope.get('error')
 
 
 def exec_code(src_code, scope_manager):
     scope = dict(scope_manager)
-    exec src_code in scope
+    try:
+        exec src_code in scope
+    except Exception as err:
+        scope_manager["error"] = str(err)
     scope_manager["output"] = scope["output"]
 
 
@@ -97,8 +99,6 @@ class PythonTestVM(GolemVM):
         mc.start()
         try:
             exec self.src_code in self.scope
-        except Exception as err:
-            logger.error("Execution failure {}".format(err))
         finally:
             estimated_mem = mc.stop()
         logger.info("Estimated memory for task: {}".format(estimated_mem))

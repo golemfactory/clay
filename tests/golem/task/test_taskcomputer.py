@@ -65,16 +65,42 @@ class TestTaskComputer(TestDirFixture):
         self.assertEqual(args[0], "xxyyzz")
         self.assertEqual(args[1], "xyz")
         self.assertEqual(args[2]["data"], 10000)
+        self.assertGreater(args[3], 0)
+        self.assertLess(args[3], 10)
         self.assertEqual(args[4], "10.10.10.10")
         self.assertEqual(args[5], 10203)
         self.assertEqual(args[6], "key")
         self.assertEqual(args[7], "owner")
         self.assertEqual(args[8], "ABC")
 
+        ctd.subtask_id = "aabbcc"
+        ctd.src_code = "raise Exception('some exception')"
+        tc.task_given(ctd, 5)
+        self.assertEqual(tc.assigned_subtasks["aabbcc"], ctd)
+        self.assertEqual(tc.assigned_subtasks["aabbcc"].timeout, 5)
+        self.assertEqual(tc.task_to_subtask_mapping["xyz"], "aabbcc")
+        tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
+                                                           "10.10.10.10", 10203, "key", "owner")
+        self.assertTrue(tc.task_resource_collected("xyz"))
+        time.sleep(1)
+        self.assertFalse(tc.counting_task)
+        self.assertEqual(len(tc.current_computations), 0)
+        self.assertIsNone(tc.assigned_subtasks.get("aabbcc"))
+        task_server.send_task_failed.assert_called_with("aabbcc", "xyz", 'some exception', "10.10.10.10",
+                                                        10203, "key", "owner", "ABC")
+
+        ctd.subtask_id = "aabbcc2"
+        ctd.src_code = "print 'Hello world'"
+        tc.task_given(ctd, 5)
+        self.assertTrue(tc.task_resource_collected("xyz"))
+        time.sleep(1)
+        task_server.send_task_failed.assert_called_with("aabbcc2", "xyz", "Wrong result format", "10.10.10.10", 10203,
+                                                        "key", "owner", "ABC")
+
 
 class TestTaskThread(TestDirFixture):
     def test_thread(self):
-        files_ = self.additional_dir_content([0, [1], [1]])
+        files_ = self.additional_dir_content([0, [1], [1], [1], [1]])
         tc = TaskComputer("ABC", MagicMock())
         tc.counting_task = True
         tt = PyTaskThread(tc, "xxyyzz", self.path, "cnt=0\nfor i in range(1000000):\n\tcnt += 1\noutput=cnt", {},

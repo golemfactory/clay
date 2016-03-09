@@ -130,7 +130,7 @@ class TaskComputer(object):
                 logger.error("No subtask with id {}".format(subtask_id))
                 return
 
-            if task_thread.error:
+            if task_thread.error or task_thread.error_msg:
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, task_thread.error_msg,
                                                   subtask.return_address, subtask.return_port, subtask.key_id,
                                                   subtask.task_owner, self.node_name)
@@ -306,8 +306,9 @@ class TaskThread(Thread):
         try:
             extra_data["resourcePath"] = abs_res_path
             extra_data["tmp_path"] = abs_tmp_path
-            self.result = self.vm.run_task(self.src_code, extra_data)
+            self.result, self.error_msg = self.vm.run_task(self.src_code, extra_data)
         finally:
+
             self.end_time = time.time()
             os.chdir(self.prev_working_directory)
 
