@@ -1,20 +1,17 @@
 import sys
 import time
-import os
 import logging
-import requests
+from threading import Lock
 
-sys.path.append('../manager')
-
-from threading import Thread, Lock
-
-from copy import copy
+# sys.path.append('../manager')
 
 from golem.vm.vm import PythonProcVM, PythonTestVM
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
-from golem.task.docker.job import DockerJob
+from golem.task.taskthread import TaskThread
+from golem.task.docker.task_thread import DockerTaskThread
+
 
 logger = logging.getLogger(__name__)
 
@@ -205,20 +202,17 @@ class TaskComputer(object):
     def __compute_task(self, subtask_id, docker_images,
                        src_code, extra_data, short_desc, task_timeout):
         task_id = self.assigned_subtasks[subtask_id].task_id
-        working_directory = self.assigned_subtasks[subtask_id].working_directory
         self.dir_manager.clear_temporary(task_id)
+        working_dir = self.assigned_subtasks[subtask_id].working_directory
+        resource_dir = self.resource_manager.get_resource_dir(task_id)
+        temp_dir = self.resource_manager.get_temporary_dir(task_id)
         if docker_images:
-            tt = DockerRunnerThread( self, subtask_id, docker_images,
-                                     working_directory, src_code,
-                                     extra_data, short_desc,
-                                     self.resource_manager.get_resource_dir(task_id),
-                                     self.resource_manager.get_temporary_dir(task_id),
-                                     task_timeout )
+            tt = DockerTaskThread(self, subtask_id, docker_images, working_dir,
+                                  src_code, extra_data, short_desc,
+                                  resource_dir, temp_dir, task_timeout)
         else:
-            tt = PyTaskThread(self, subtask_id, working_directory, src_code,
-                              extra_data, short_desc,
-                              self.resource_manager.get_resource_dir(task_id),
-                              self.resource_manager.get_temporary_dir(task_id),
+            tt = PyTaskThread(self, subtask_id, working_dir, src_code,
+                              extra_data, short_desc, resource_dir, temp_dir,
                               task_timeout)
         tt.setDaemon(True)
         self.current_computations.append(tt)
@@ -238,86 +232,6 @@ class AssignedSubTask(object):
         self.owner_port = owner_port
 
 
-class TaskThread(Thread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path, tmp_path,
-                 timeout=0):
-        super(TaskThread, self).__init__()
-
-        self.task_computer = task_computer
-        self.vm = None
-        self.subtask_id = subtask_id
-        self.src_code = src_code
-        self.extra_data = extra_data
-        self.short_desc = short_desc
-        self.result = None
-        self.done = False
-        self.res_path = res_path
-        self.tmp_path = tmp_path
-        self.working_directory = working_directory
-        self.prev_working_directory = ""
-        self.lock = Lock()
-        self.error = False
-        self.error_msg = ""
-        self.use_timeout = timeout != 0
-        self.task_timeout = timeout
-        self.last_time_checking = time.time()
-
-    def check_timeout(self):
-        if not self.use_timeout:
-            return
-        time_ = time.time()
-        self.task_timeout -= time_ - self.last_time_checking
-        self.last_time_checking = time_
-        if self.task_timeout < 0:
-            self.error = True
-            self.error_msg = "Timeout"
-            self.end_comp()
-
-    def get_subtask_id(self):
-        return self.subtask_id
-
-    def get_task_short_desc(self):
-        return self.short_desc
-
-    def get_progress(self):
-        with self.lock:
-            return self.vm.get_progress()
-
-    def get_error(self):
-        with self.lock:
-            return self.error
-
-    def run(self):
-        logger.info("RUNNING ")
-        try:
-            self.__do_work()
-            self.task_computer.task_computed(self)
-        except Exception as exc:
-            logger.error("Task computing error: {}".format(exc))
-            self.error = True
-            self.error_msg = str(exc)
-            self.done = True
-            self.task_computer.task_computed(self)
-
-    def end_comp(self):
-        self.vm.end_comp()
-
-    def __do_work(self):
-        extra_data = copy(self.extra_data)
-
-        abs_res_path = os.path.abspath(os.path.normpath(self.res_path))
-        abs_tmp_path = os.path.abspath(os.path.normpath(self.tmp_path))
-
-        self.prev_working_directory = os.getcwd()
-        os.chdir(os.path.join(abs_res_path, os.path.normpath(self.working_directory)))
-        try:
-            extra_data["resourcePath"] = abs_res_path
-            extra_data["tmp_path"] = abs_tmp_path
-            self.result = self.vm.run_task(self.src_code, extra_data)
-        finally:
-            os.chdir(self.prev_working_directory)
-
-
 class PyTaskThread(TaskThread):
     def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path,
                  tmp_path, timeout):
@@ -334,84 +248,3 @@ class PyTestTaskThread(PyTaskThread):
         self.vm = PythonTestVM()
 
 
-class DockerRunnerThread(TaskThread):
-
-    # These files will be placed in the output dir (self.tmp_path)
-    # and will contain dumps of the task script's stdout and stderr.
-    STDOUT_FILE = "stdout.log"
-    STDERR_FILE = "stderr.log"
-
-    def __init__(self, task_computer, subtask_id, docker_images,
-                 working_directory, src_code, extra_data, short_desc,
-                 res_path, tmp_path, timeout):
-        super(DockerRunnerThread, self).__init__(
-            task_computer, subtask_id, working_directory, src_code, extra_data,
-            short_desc, res_path, tmp_path, timeout)
-
-        assert docker_images
-        # Find available image
-        self.image = None
-        for img in docker_images:
-            if img.is_available():
-                self.image = img
-                break
-        self.job = None
-
-    def _fail(self, error_obj):
-        logger.error("Task computing error: {}".format(error_obj))
-        self.error = True
-        self.error_msg = str(error_obj)
-        self.done = True
-        self.task_computer.task_computed(self)
-
-    def run(self):
-        if not self.image:
-            self._fail("None of the Docker images is available")
-            return
-        try:
-            params = self.extra_data.copy()
-            with DockerJob(self.image, self.src_code, params,
-                           self.working_directory,
-                           self.res_path, self.tmp_path) as job:
-                self.job = job
-                self.job.start()
-                if self.use_timeout:
-                    exit_code = self.job.wait(self.task_timeout)
-                else:
-                    exit_code = self.job.wait()
-
-                # Get stdout and stderr
-                stdout_file = os.path.join(self.tmp_path, self.STDOUT_FILE)
-                stderr_file = os.path.join(self.tmp_path, self.STDERR_FILE)
-                self.job.dump_logs(stdout_file, stderr_file)
-
-                if exit_code == 0:
-                    # TODO: this always returns file, implement returning data
-                    # TODO: this only collects top-level files, what if there
-                    # are output files in subdirs?
-                    out_files = [os.path.join(self.tmp_path, f)
-                                 for f in os.listdir(self.tmp_path)]
-                    out_files = filter(lambda f: os.path.isfile(f), out_files)
-                    self.result = {"data": out_files, "result_type": 1}
-                    self.task_computer.task_computed(self)
-                else:
-                    self._fail("Subtask computation failed " +
-                               "with exit code {}".format(exit_code))
-        except requests.exceptions.ReadTimeout as exc:
-            if self.use_timeout:
-                self._fail("Task timed out after {:.1f}s".
-                           format(self.task_timeout))
-            else:
-                self._fail(exc)
-        except Exception as exc:
-            self._fail(exc)
-
-    def get_progress(self):
-        # TODO: make the container update some status file?
-        return 0.0
-
-    def end_comp(self):
-        pass
-
-    def check_timeout(self):
-        pass

@@ -5,7 +5,7 @@ import shutil
 
 from golem.core.common import get_golem_path
 from golem.task.taskbase import result_types
-from golem.task.taskcomputer import DockerRunnerThread
+from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.docker.image import DockerImage
 import gnr.node
@@ -102,7 +102,7 @@ class TestDockerBlenderTask(TestWithAppConfig):
     def test_blender_subtask(self):
         task_def = self._test_task_definition()
         task_thread, error_msg, out_dir = self._run_docker_task(task_def)
-        self.assertIsInstance(task_thread, DockerRunnerThread)
+        self.assertIsInstance(task_thread, DockerTaskThread)
         self.assertIsNone(error_msg)
 
         # Check the number and type of result files:
@@ -117,9 +117,9 @@ class TestDockerBlenderTask(TestWithAppConfig):
             self.assertTrue(path.isfile(result_file))
             if result_file.endswith(".exr"):
                 exr_file_present = True
-            elif result_file.endswith(DockerRunnerThread.STDOUT_FILE):
+            elif result_file.endswith(DockerTaskThread.STDOUT_FILE):
                 stdout_file_present = True
-            elif result_file.endswith(DockerRunnerThread.STDERR_FILE):
+            elif result_file.endswith(DockerTaskThread.STDERR_FILE):
                 stderr_file_present = True
         self.assertTrue(exr_file_present)
         self.assertTrue(stdout_file_present)
@@ -129,7 +129,7 @@ class TestDockerBlenderTask(TestWithAppConfig):
         task_def = self._test_task_definition()
         task_thread, error_msg, out_dir = \
             self._run_docker_task(task_def, timeout=1)
-        self.assertIsInstance(task_thread, DockerRunnerThread)
+        self.assertIsInstance(task_thread, DockerTaskThread)
         self.assertIsInstance(error_msg, str)
         self.assertTrue(error_msg.startswith("Task timed out"))
 
@@ -159,7 +159,7 @@ class TestDockerBlenderTask(TestWithAppConfig):
         task_def.resources = set(
             [task_def.main_program_file, task_def.main_scene_file])
         task_thread, error_msg, out_dir = self._run_docker_task(task_def)
-        self.assertIsInstance(task_thread, DockerRunnerThread)
+        self.assertIsInstance(task_thread, DockerTaskThread)
         self.assertIsInstance(error_msg, str)
         self.assertTrue(error_msg.startswith("Subtask computation failed"))
 
@@ -168,5 +168,5 @@ class TestDockerBlenderTask(TestWithAppConfig):
         # Replace scene file with some other, non-blender file:
         task_def.main_scene_file = task_def.main_program_file
         task_thread, error_msg, out_dir = self._run_docker_task(task_def)
-        self.assertIsInstance(task_thread, DockerRunnerThread)
+        self.assertIsInstance(task_thread, DockerTaskThread)
         self.assertIsInstance(error_msg, str)
