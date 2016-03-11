@@ -1,5 +1,5 @@
 import os
-from PyQt4 import QtCore
+from PyQt4.QtCore import QObject, SIGNAL
 from PyQt4.QtGui import QFileDialog
 from copy import deepcopy
 
@@ -34,69 +34,62 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         pass
 
     def _setup_renderers_connections(self):
-        QtCore.QObject.connect(self.gui.ui.rendererComboBox, QtCore.SIGNAL("currentIndexChanged(const QString)"),
-                               self.__renderer_combo_box_value_changed)
+        QObject.connect(self.gui.ui.rendererComboBox, SIGNAL("currentIndexChanged(const QString)"),
+                        self.__renderer_combo_box_value_changed)
         self.gui.ui.chooseMainSceneFileButton.clicked.connect(self._choose_main_scene_file_button_clicked)
 
     def _setup_output_connections(self):
         self.gui.ui.chooseOutputFileButton.clicked.connect(self.__choose_output_file_button_clicked)
-        QtCore.QObject.connect(self.gui.ui.outputResXSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__res_x_changed)
-        QtCore.QObject.connect(self.gui.ui.outputResYSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__res_y_changed)
+        QObject.connect(self.gui.ui.outputResXSpinBox, SIGNAL("valueChanged(const QString)"),
+                        self.__res_x_changed)
+        QObject.connect(self.gui.ui.outputResYSpinBox, SIGNAL("valueChanged(const QString)"),
+                        self.__res_y_changed)
 
     def _setup_advance_new_task_connections(self):
         NewTaskDialogCustomizer._setup_advance_new_task_connections(self)
         self.gui.ui.testTaskButton.clicked.connect(self.__test_task_button_clicked)
         self.gui.ui.resetToDefaultButton.clicked.connect(self.__reset_to_default_button_clicked)
 
-        QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutHourSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutMinSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.fullTaskTimeoutSecSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.minSubtaskTimeHourSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.minSubtaskTimeMinSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.minSubtaskTimeSecSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.subtaskTimeoutHourSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.subtaskTimeoutMinSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.subtaskTimeoutSecSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.mainProgramFileLineEdit, QtCore.SIGNAL("textChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.mainSceneFileLineEdit, QtCore.SIGNAL("textChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.outputFormatsComboBox, QtCore.SIGNAL("currentIndexChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.outputFileLineEdit, QtCore.SIGNAL("textChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.totalSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.verificationSizeXSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.verificationSizeYSpinBox, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.verificationForAllRadioButton, QtCore.SIGNAL("toggled(bool)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.verificationForFirstRadioButton, QtCore.SIGNAL("toggled(bool)"),
-                               self.__task_settings_changed)
-        QtCore.QObject.connect(self.gui.ui.probabilityLineEdit, QtCore.SIGNAL("valueChanged(const QString)"),
-                               self.__task_settings_changed)
+        QObject.connect(self.gui.ui.fullTaskTimeoutHourSpinBox, SIGNAL("valueChanged(const QString)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.fullTaskTimeoutMinSpinBox, SIGNAL("valueChanged(const QString)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.fullTaskTimeoutSecSpinBox, SIGNAL("valueChanged(const QString)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.minSubtaskTimeHourSpinBox, SIGNAL("valueChanged(const QString)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.minSubtaskTimeMinSpinBox, SIGNAL("valueChanged(const QString)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.minSubtaskTimeSecSpinBox, SIGNAL("valueChanged(const QString)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.mainProgramFileLineEdit, SIGNAL("textChanged(const QString)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.mainSceneFileLineEdit, SIGNAL("textChanged(const QString)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.outputFormatsComboBox, SIGNAL("currentIndexChanged(const QString)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.outputFileLineEdit, SIGNAL("textChanged(const QString)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.verificationSizeXSpinBox, SIGNAL("valueChanged(const QString)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.verificationSizeYSpinBox, SIGNAL("valueChanged(const QString)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.verificationForAllRadioButton, SIGNAL("toggled(bool)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.verificationForFirstRadioButton, SIGNAL("toggled(bool)"),
+                        self.__task_settings_changed)
+        QObject.connect(self.gui.ui.probabilityLineEdit, SIGNAL("valueChanged(const QString)"),
+                        self.__task_settings_changed)
 
     def _setup_verification_connections(self):
-        QtCore.QObject.connect(self.gui.ui.verificationRandomRadioButton, QtCore.SIGNAL("toggled(bool)"),
-                               self.__verification_random_changed)
-        QtCore.QObject.connect(self.gui.ui.advanceVerificationCheckBox, QtCore.SIGNAL("stateChanged(int)"),
-                               self.__advance_verification_changed)
+        QObject.connect(self.gui.ui.verificationRandomRadioButton, SIGNAL("toggled(bool)"),
+                        self.__verification_random_changed)
+        QObject.connect(self.gui.ui.advanceVerificationCheckBox, SIGNAL("stateChanged(int)"),
+                        self.__advance_verification_changed)
 
     def _init(self):
         self._set_uid()
+        self._set_max_price()
 
         renderers = self.logic.get_renderers()
         dr = self.logic.get_default_renderer()
@@ -134,6 +127,10 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         if file_name != '':
             self.gui.ui.mainSceneFileLineEdit.setText(file_name)
 
+    def _set_new_pessimistic_cost(self):
+        NewTaskDialogCustomizer._set_new_pessimistic_cost(self)
+        self.__task_settings_changed()
+
     def __update_renderer_options(self, name):
         r = self.logic.get_renderer(name)
 
@@ -151,7 +148,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
 
             set_time_spin_boxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout,
-                             r.defaults.min_subtask_time)
+                                r.defaults.min_subtask_time)
 
             self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
 
@@ -174,7 +171,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.mainProgramFileLineEdit.setText(dr.defaults.main_program_file)
 
         set_time_spin_boxes(self.gui, dr.defaults.full_task_timeout, dr.defaults.subtask_timeout,
-                         dr.defaults.min_subtask_time)
+                            dr.defaults.min_subtask_time)
 
         self.gui.ui.outputFileLineEdit.clear()
 
@@ -194,24 +191,9 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.totalSpinBox.setValue(dr.defaults.default_subtasks)
         self.gui.ui.totalSpinBox.setEnabled(True)
         self.gui.ui.optimizeTotalCheckBox.setChecked(False)
+        self._set_max_price()
 
     # SLOTS
-    def __task_table_row_clicked(self, row):
-        if row < self.gui.ui.taskTableWidget.rowCount():
-            task_id = self.gui.ui.taskTableWidget.item(row, 0).text()
-            task_id = "{}".format(task_id)
-            self.update_task_additional_info(task_id)
-
-    def __show_new_task_dialog_clicked(self):
-        renderers = self.logic.get_renderers()
-
-        self.__setupNewTaskDialogConnections(self.gui.ui)
-
-        self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())
-
-        for k in renderers:
-            r = renderers[k]
-            self.gui.ui.rendererComboBox.addItem(r.name)
 
     def __renderer_combo_box_value_changed(self, name):
         self.__update_renderer_options("{}".format(name))
@@ -263,6 +245,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self._load_advance_task_params(definition)
         self._load_resources(definition)
         self._load_verification_params(definition)
+        self._load_payment_params(definition)
 
     def _load_options(self, definition):
         pass
@@ -344,9 +327,10 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
     def _query_task_definition(self):
         definition = RenderingTaskDefinition()
-        definition = self._read_basic_task_params(definition)
-        definition = self._read_renderer_params(definition)
-        definition = self._read_advance_verification_params(definition)
+        self._read_basic_task_params(definition)
+        self._read_renderer_params(definition)
+        self._read_advance_verification_params(definition)
+        self._read_price_params(definition)
 
         return definition
 
@@ -365,10 +349,9 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         if self.add_task_resource_dialog_customizer:
             definition.resources = self.renderer_options.add_to_resources(definition.resources)
             definition.resources.add(os.path.normpath(definition.main_scene_file))
-        return definition
 
     def _read_advance_verification_params(self, definition):
-        return read_advance_verification_params(self.gui, definition)
+        read_advance_verification_params(self.gui, definition)
 
     def _optimize_total_check_box_changed(self):
         NewTaskDialogCustomizer._optimize_total_check_box_changed(self)

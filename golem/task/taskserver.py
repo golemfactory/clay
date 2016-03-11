@@ -385,8 +385,7 @@ class TaskServer(PendingConnectionsServer):
         self.task_computer.quit()
 
     def receive_subtask_computation_time(self, subtask_id, computation_time):
-        pass # TODO Add method implementation
-      #  self.task_manager.set_value(subtask_id, computation_time * self.task_keeper.get_priceprice)
+        self.task_manager.set_computation_time(subtask_id, computation_time)
 
     def _get_factory(self):
         return self.factory(self)

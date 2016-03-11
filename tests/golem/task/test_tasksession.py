@@ -1,9 +1,12 @@
 from mock import Mock
 
-from golem.tools.assertlogs import LogTestCase
-from golem.task.tasksession import TaskSession, logger
+from golem.network.p2p.node import Node
 from golem.network.transport.message import (MessageRewardPaid, MessageWantToComputeTask, MessageCannotAssignTask,
-                                             MessageTaskToCompute, MessageRemoveTask)
+                                             MessageTaskToCompute, MessageRemoveTask, MessageReportComputedTask)
+from golem.task.taskbase import result_types
+from golem.task.taskserver import WaitingTaskResult
+from golem.task.tasksession import TaskSession, logger
+from golem.tools.assertlogs import LogTestCase
 
 
 class TestTaskSession(LogTestCase):
@@ -101,3 +104,25 @@ class TestTaskSession(LogTestCase):
         self.assertIsInstance(ms, MessageCannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
 
+    def test_send_report_computed_task(self):
+
+        #FIXME We should make this message simple
+        ts = TaskSession(Mock())
+        ts.verified = True
+        ts.task_server.get_node_name.return_value = "ABC"
+        n = Node()
+        wtr = WaitingTaskResult("xxyyzz", "result", result_types["data"], 13190, 10, 0, "10.10.10.10",
+                                30102, "key1", n)
+
+        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+        ms = ts.conn.send_message.call_args[0][0]
+        self.assertIsInstance(ms, MessageReportComputedTask)
+        self.assertEqual(ms.subtask_id, "xxyyzz")
+        self.assertEqual(ms.result_type, 0)
+        self.assertEqual(ms.computation_time, 13190)
+        self.assertEqual(ms.node_name, "ABC")
+        self.assertEqual(ms.address, "10.10.10.10")
+        self.assertEqual(ms.port, 30102)
+        self.assertEqual(ms.eth_account, "0x00")
+        self.assertEqual(ms.extra_data, [])
+        self.assertEqual(ms.node_info, n)

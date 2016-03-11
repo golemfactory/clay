@@ -351,6 +351,9 @@ class GNRApplicationLogic(QtCore.QObject):
     def get_incomes(self):
         return self.client.get_incomes()
 
+    def get_max_price(self):
+        return self.get_config().max_price
+
     def show_error_window(self, text):
         from PyQt4.QtGui import QMessageBox
         ms_box = QMessageBox(QMessageBox.Critical, "Error", text)

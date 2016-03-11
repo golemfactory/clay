@@ -42,6 +42,8 @@ class TestTaskManager(LogTestCase, TestDirFixture):
             tm.set_value("xyz", "xxyyzz", 13)
         self.assertTrue(any(["not my task" in log for log in l.output]))
 
+        with self.assertLogs(logger, level=1) as l:
+            tm.set_computation_time("xxyyzz", 12)
         task_mock = Mock()
         task_mock.header.task_id = "xyz"
         task_mock.header.resource_size = 2 * 1024
@@ -60,6 +62,9 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         tm.set_value("xyz", "xxyyzz", 13)
         self.assertEqual(tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 13)
 
+        tm.set_computation_time("xxyyzz", 12)
+        self.assertEqual(tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 120)
+
     def test_change_config(self):
         tm = TaskManager("ABC", Node(), max_price=1000, root_path=self.path)
         self.assertEqual(tm.max_price, 1000)
@@ -67,3 +72,8 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         tm.change_config(self.path, False, 300)
         self.assertEqual(tm.max_price, 300)
         self.assertFalse(tm.use_distributed_resources)
+
+    def test_get_subtask_price(self):
+        self.assertEqual(TaskManager.get_subtask_price(30, 121), 3630)
+        self.assertEqual(TaskManager.get_subtask_price(0, 20), 0)
+        self.assertEqual(TaskManager.get_subtask_price(0.23, 0.154), 0.03542)

@@ -419,6 +419,18 @@ class TaskManager:
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
+    def set_computation_time(self, subtask_id, computation_time):
+        try:
+            task_id = self.subtask2task_mapping[subtask_id]
+            ss = self.tasks_states[task_id].subtask_states[subtask_id]
+            ss.value = self.get_subtask_price(ss.computer.price, computation_time)
+        except KeyError as err:
+            logger.warning("Not my subtask {}: {}".format(subtask_id, err))
+
+    @staticmethod
+    def get_subtask_price(price, computation_time):
+        return price * computation_time
+
     def __add_subtask_to_tasks_states(self, node_name, node_id, price, ctd, address):
 
         if ctd.task_id not in self.tasks_states:
