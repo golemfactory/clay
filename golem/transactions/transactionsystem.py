@@ -1,5 +1,4 @@
 import logging
-import datetime
 
 from paymentskeeper import PaymentInfo, PaymentsKeeper
 from incomeskeeper import IncomesKeeper

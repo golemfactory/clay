@@ -453,7 +453,7 @@ class TaskServer(PendingConnectionsServer):
 
         session.send_hello()
         session.send_report_computed_task(waiting_task_result, self.node.prv_addr, self.cur_port,
-                                          self.client.transaction_system.get_eth_account(),
+                                          self.client.transaction_system.get_payment_address(),
                                           self.node)
 
     def __connection_for_task_result_failure(self, conn_id, key_id, waiting_task_result):

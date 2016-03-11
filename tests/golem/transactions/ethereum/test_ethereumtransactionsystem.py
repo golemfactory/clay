@@ -12,7 +12,7 @@ class TestEthereumTransactionSystem(TestWithDatabase):
     def test_init(self):
         e = EthereumTransactionSystem("ABC", PRIV_KEY)
         self.assertIsInstance(e, EthereumTransactionSystem)
-        assert e.get_eth_account()
+        assert type(e.get_payment_address()) is str
 
     def test_invalid_private_key(self):
         with self.assertRaises(AssertionError):
@@ -22,9 +22,7 @@ class TestEthereumTransactionSystem(TestWithDatabase):
     def test_wrong_address_in_global_pay_for_task(self, mock_connector):
         addr = keys.privtoaddr(PRIV_KEY)
         e = EthereumTransactionSystem("ABC", PRIV_KEY)
-        assert e.get_eth_account()
-        assert e.eth_account
-        assert e.eth_account.get_str_addr()
+        assert e.get_payment_address()
         e.global_pay_for_task("xyz", [])
         addr_str = '0x' + addr.encode('hex')
         mock_connector.return_value.pay_for_task.assert_called_with(addr_str, "xyz", [])

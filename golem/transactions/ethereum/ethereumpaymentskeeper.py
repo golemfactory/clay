@@ -62,10 +62,6 @@ class EthereumAddress(object):
     """
 
     @classmethod
-    def from_priv_key(cls, priv_key):
-        return cls(keys.privtoaddr(priv_key))
-
-    @classmethod
     def __parse(cls, address):
         if len(address) in range(40, 51):
             address = address.lower()
