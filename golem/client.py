@@ -23,7 +23,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.resource.resourceserver import ResourceServer
 from golem.resource.dirmanager import DirManager
-from golem.ranking.ranking import Ranking, RankingDatabase
+from golem.ranking.ranking import Ranking
 
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
@@ -119,7 +119,8 @@ class Client:
 
         self.ranking = Ranking(self)
 
-        self.transaction_system = EthereumTransactionSystem(self.keys_auth.get_key_id(), self.config_desc.eth_account)
+        self.transaction_system = EthereumTransactionSystem(
+            self.keys_auth.get_key_id(), self.keys_auth._private_key)
 
         self.environments_manager = EnvironmentsManager()
 

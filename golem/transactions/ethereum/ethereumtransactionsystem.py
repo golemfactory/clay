@@ -12,13 +12,16 @@ logger = logging.getLogger(__name__)
 
 class EthereumTransactionSystem(TransactionSystem):
     """ Transaction system connected with Ethereum """
-    def __init__(self, node_id, eth_account):
+    def __init__(self, node_id, node_priv_key):
         """ Create new transaction system instance for node with given id
         :param node_id: id of a node that has this transaction system.
-        :param eth_account: ethereum account address (bytes20)
+        :param node_priv_key str: node's private key for Ethereum account (32b)
         """
         TransactionSystem.__init__(self, node_id, EthereumPaymentsKeeper)
-        self.eth_account = EthereumAddress(eth_account)
+        # FIXME: Passing private key all around might be a security issue.
+        #        Proper account managment is needed.
+        assert type(node_priv_key) is str and len(node_priv_key) is 32
+        self.eth_account = EthereumAddress.from_priv_key(node_priv_key)
 
     def global_pay_for_task(self, task_id, payments):
         """ Pay for task using Ethereum connector
@@ -34,6 +37,3 @@ class EthereumTransactionSystem(TransactionSystem):
 
     def get_eth_account(self):
         return self.eth_account.get_str_addr()
-
-
-

@@ -1,6 +1,7 @@
 import logging
 from rlp.utils import encode_hex
 
+from ethereum import keys
 from ethereum.utils import normalize_address
 
 from golem.transactions.paymentskeeper import AccountInfo, PaymentsKeeper
@@ -59,8 +60,13 @@ class EthAccountInfo(AccountInfo):
 class EthereumAddress(object):
     """ Keeps information about ethereum addresses in normalized format
     """
+
     @classmethod
-    def parse(cls, address):
+    def from_priv_key(cls, priv_key):
+        return cls(keys.privtoaddr(priv_key))
+
+    @classmethod
+    def __parse(cls, address):
         if len(address) in range(40, 51):
             address = address.lower()
         return normalize_address(address)
@@ -68,7 +74,7 @@ class EthereumAddress(object):
     def __init__(self, address):
         self.address = None
         try:
-            self.address = self.parse(address)
+            self.address = self.__parse(address)
         except Exception as err:
             logger.warning("Can't set Ethereum address, {} is not a proper value: {}".format(address, err))
 
