@@ -1,5 +1,3 @@
-from mock import patch
-
 from ethereum import keys
 
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -18,11 +16,8 @@ class TestEthereumTransactionSystem(TestWithDatabase):
         with self.assertRaises(AssertionError):
             EthereumTransactionSystem("ABC", "not a private key")
 
-    @patch("golem.transactions.ethereum.ethereumtransactionsystem.EthereumConnector")
-    def test_wrong_address_in_global_pay_for_task(self, mock_connector):
+    def test_wrong_address_in_global_pay_for_task(self):
         addr = keys.privtoaddr(PRIV_KEY)
         e = EthereumTransactionSystem("ABC", PRIV_KEY)
-        assert e.get_payment_address()
+        assert e.get_payment_address() == '0x' + addr.encode('hex')
         e.global_pay_for_task("xyz", [])
-        addr_str = '0x' + addr.encode('hex')
-        mock_connector.return_value.pay_for_task.assert_called_with(addr_str, "xyz", [])

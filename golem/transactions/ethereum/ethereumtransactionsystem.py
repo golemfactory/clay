@@ -3,10 +3,6 @@ import logging
 from ethereum import keys
 
 from golem.transactions.transactionsystem import TransactionSystem
-from ethereumconnector import EthereumConnector
-
-from golem.core.variables import ETH_CONN_ADDR
-
 from .ethereumpaymentskeeper import EthereumPaymentsKeeper
 
 logger = logging.getLogger(__name__)
@@ -37,5 +33,3 @@ class EthereumTransactionSystem(TransactionSystem):
         :param task_id: pay for task with given id
         :param dict payments: all payments group by ethereum address
         """
-        eth_connector = EthereumConnector(ETH_CONN_ADDR)
-        eth_connector.pay_for_task(self.get_payment_address(), task_id, payments)
