@@ -76,7 +76,7 @@ class TaskComputer(object):
             else:
                 return False
 
-    def task_resource_collected(self, task_id):
+    def task_resource_collected(self, task_id, unpack_delta=True):
         if task_id in self.task_to_subtask_mapping:
             subtask_id = self.task_to_subtask_mapping[task_id]
             if subtask_id in self.assigned_subtasks:
@@ -84,7 +84,12 @@ class TaskComputer(object):
                 self.counting_task = True
                 self.task_timeout = self.assigned_subtasks[subtask_id].timeout
                 self.last_task_timeout_checking = time.time()
-                self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
+
+                if unpack_delta:
+                    self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
+                else:
+                    self.task_server.client.resource_server.resource_manager
+
                 self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].src_code,
                                     self.assigned_subtasks[subtask_id].extra_data,
                                     self.assigned_subtasks[subtask_id].short_description,
@@ -202,6 +207,11 @@ class TaskComputer(object):
     def __compute_task(self, subtask_id, src_code, extra_data, short_desc, task_timeout):
         task_id = self.assigned_subtasks[subtask_id].task_id
         working_directory = self.assigned_subtasks[subtask_id].working_directory
+
+        logger.debug("Task computer working directory %s" % working_directory)
+        logger.debug("Task resource dir %s" % self.resource_manager.get_resource_dir(task_id))
+        logger.debug("Task tmp dir %s" % self.resource_manager.get_temporary_dir(task_id))
+
         self.dir_manager.clear_temporary(task_id)
         tt = PyTaskThread(self, subtask_id, working_directory, src_code, extra_data, short_desc,
                           self.resource_manager.get_resource_dir(task_id), self.resource_manager.get_temporary_dir(task_id),

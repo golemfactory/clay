@@ -77,12 +77,17 @@ class TaskManager:
         self.tasks[task.header.task_id] = task
 
         ts = TaskState()
-        if self.use_distributed_resources:
-            task.task_status = TaskStatus.sending
-            ts.status = TaskStatus.sending
-        else:
-            task.task_status = TaskStatus.waiting
-            ts.status = TaskStatus.waiting
+
+        # if self.use_distributed_resources:
+        #     task.task_status = TaskStatus.sending
+        #     ts.status = TaskStatus.sending
+        # else:
+        #     task.task_status = TaskStatus.waiting
+        #     ts.status = TaskStatus.waiting
+
+        task.task_status = TaskStatus.waiting
+        ts.status = TaskStatus.waiting
+
         ts.time_started = time.time()
 
         self.tasks_states[task.header.task_id] = ts

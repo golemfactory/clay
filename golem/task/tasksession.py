@@ -10,7 +10,8 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
     MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse, \
-    MessageRewardPaid
+    MessageRewardPaid, \
+    MessageResourceList
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
 from golem.network.transport.session import MiddlemanSafeSession
@@ -399,7 +400,8 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_accept_resource_format(self, msg):
         if self.last_resource_msg is not None:
             if self.task_server.config_desc.use_distributed_resource_management:
-                self.__send_resource_parts_list(self.last_resource_msg)
+                self.__send_resource_list(self.last_resource_msg)
+                #self.__send_resource_parts_list(self.last_resource_msg)
             else:
                 self.__send_delta_resource(self.last_resource_msg)
             self.last_resource_msg = None
@@ -432,6 +434,11 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.pull_resources(self.task_id, msg.parts)
         self.task_server.add_resource_peer(msg.node_name, msg.addr, msg.port, self.key_id, msg.node_info)
         self.dropped()
+
+    def _react_to_resource_list(self, msg):
+        resources = msg.resources
+        self.task_computer.wait_for_resources(self.task_id, resources)
+        self.task_server.pull_resources(self.task_id, resources)
 
     def _react_to_resource_format(self, msg):
         if not msg.use_distributed_resource:
@@ -536,6 +543,18 @@ class TaskSession(MiddlemanSafeSession):
                                     self.task_server.get_resource_port())
                   )
 
+    def __send_resource_list(self, msg):
+
+        files = self.task_manager.get_resources(msg.task_id, None, resource_types["hashes"])
+
+        resource_manager = self.task_server.client.resource_server.resource_manager
+        resource_manager.add_task(files, msg.task_id)
+        res = resource_manager.list_resources(msg.task_id)
+
+        logger.debug("IPFS: resource list: %r" % res)
+
+        self.send(MessageResourceList(res))
+
     def __send_resource_format(self, use_distributed_resource):
         self.send(MessageResourceFormat(use_distributed_resource))
 
@@ -577,6 +596,7 @@ class TaskSession(MiddlemanSafeSession):
             MessageGetResource.Type: self._react_to_get_resource,
             MessageAcceptResourceFormat.Type: self._react_to_accept_resource_format,
             MessageResource.Type: self._react_to_resource,
+            MessageResourceList.Type: self._react_to_resource_list,
             MessageSubtaskResultAccepted.Type: self._react_to_subtask_result_accepted,
             MessageSubtaskResultRejected.Type: self._react_to_subtask_result_rejected,
             MessageTaskFailure.Type: self._react_to_task_failure,

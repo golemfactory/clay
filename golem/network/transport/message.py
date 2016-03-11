@@ -1740,6 +1740,29 @@ class MessageSendResource(Message):
         return {MessageSendResource.RESOURCE_STR: self.resource}
 
 
+class MessageResourceList(Message):
+    Type = RESOURCE_MSG_BASE + 7
+
+    RESOURCES_STR = u"resources"
+
+    def __init__(self, resources=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with resource request
+        :param str resources: resource list
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessageResourceList.Type, sig, timestamp)
+        self.resources = resources
+
+        if dict_repr:
+            self.resources = dict_repr[MessageResourceList.RESOURCES_STR]
+
+    def dict_repr(self):
+        return {MessageResourceList.RESOURCES_STR: self.resources}
+
+
 MANAGER_MSG_BASE = 5000
 
 
@@ -1937,6 +1960,7 @@ def init_messages():
     MessagePullResource()
     MessagePullAnswer()
     MessageSendResource()
+    MessageResourceList()
 
     # Manager messages
     init_manager_messages()
