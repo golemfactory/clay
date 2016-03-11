@@ -16,6 +16,7 @@ from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBu
     get_task_num_from_pixels
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
+from gnr.task.imgrepr import load_img
 
 
 logger = logging.getLogger(__name__)
@@ -164,7 +165,6 @@ class BlenderRenderTask(FrameRenderingTask):
             min_y = 0.0
             max_y = 1.0
 
-        logger.debug("MIN MAX Y: " + str((min_y, max_y)) + " for task " + str(start_task))
         script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, 0.0, 1.0, min_y, max_y)
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
@@ -342,28 +342,14 @@ class BlenderRenderTask(FrameRenderingTask):
 class CustomCollector(RenderingTaskCollector):
     def __init__(self, paste=False, width=1, height=1):
         RenderingTaskCollector.__init__(self, paste, width, height)
+        self.current_offset = 0
     
-    def __paste_image(self, final_img, new_part, num):
-        logger.debug("In __paste_image...")
+    def _paste_image(self, final_img, new_part, num):
         res_y = self.height
         img_offset = Image.new("RGB", (self.width, self.height))
-        offset, _ = self._get_min_max_y(num, res_y)
-        offset = res_y - int(offset * res_y)
+        offset = self.current_offset
+        _, new_img_res_y = new_part.size
+        self.current_offset += new_img_res_y
         img_offset.paste(new_part, (0, offset))
         return ImageChops.add(final_img, img_offset)
     
-    def _get_min_max_y(self, start_task, res_y):
-        total_tasks = len(self.accepted_exr_files)
-        if res_y % total_tasks == 0:
-            min_y = (total_tasks - start_task) * (1.0 / float(total_tasks))
-            max_y = (total_tasks - start_task + 1) * (1.0 / float(total_tasks))
-        else:
-            ceiling_height = int(math.ceil(float(res_y) / float(total_tasks)))
-            ceiling_subtasks = total_tasks - (ceiling_height * total_tasks - res_y)
-            if start_task > ceiling_subtasks:
-                min_y = float(total_tasks - start_task) * float(ceiling_height - 1) / float(res_y)
-                max_y = float(total_tasks - start_task + 1) * float(ceiling_height - 1) / float(res_y)
-            else:
-                min_y = float((total_tasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task) * (ceiling_height)) / float(res_y)
-                max_y = float((total_tasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task + 1) * (ceiling_height)) / float(res_y)
-        return (min_y, max_y)
