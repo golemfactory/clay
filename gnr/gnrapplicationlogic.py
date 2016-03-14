@@ -352,6 +352,9 @@ class GNRApplicationLogic(QtCore.QObject):
         return self.client.get_incomes()
 
     def get_max_price(self):
+        """ Return suggested max price per hour of computation
+        :return:
+        """
         return self.get_config().max_price
 
     def show_error_window(self, text):

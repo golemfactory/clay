@@ -97,12 +97,6 @@ class TestTaskSession(LogTestCase):
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, MessageRemoveTask)
         self.assertEqual(ms.task_id, mt.task_id)
-        ts2.task_manager.get_next_subtask.return_value = ("CTD", False)
-        ts2.task_server.config_desc.max_price = 10
-        ts2.interpret(mt)
-        ms = ts2.conn.send_message.call_args[0][0]
-        self.assertIsInstance(ms, MessageCannotAssignTask)
-        self.assertEqual(ms.task_id, mt.task_id)
 
     def test_send_report_computed_task(self):
 

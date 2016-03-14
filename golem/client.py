@@ -310,11 +310,6 @@ class Client:
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)
 
-    def supported_task(self, th_dict_repr):
-        supported = self.__check_supported_environment(th_dict_repr)
-        supported = supported and self.__check_price(th_dict_repr)
-        return supported and self.__check_supported_version(th_dict_repr)
-
     def get_res_dirs(self):
         dirs = {"computing": self.get_computed_files_dir(),
                 "received": self.get_received_files_dir(),
@@ -395,33 +390,6 @@ class Client:
             logger.warning("{} value '{}' is not a number".format(name, new_value))
             new_value = old_value
         return new_value
-
-    def __check_supported_environment(self, th_dict_repr):
-        env = th_dict_repr.get("environment")
-        if not env:
-            return False
-        if not self.environments_manager.supported(env):
-            return False
-        return self.environments_manager.accept_tasks(env)
-
-    def __check_supported_version(self, th_dict_repr):
-        min_v = th_dict_repr.get("min_version")
-        if not min_v:
-            return True
-        try:
-            supported = float(self.config_desc.app_version) >= float(min_v)
-            return supported
-        except ValueError:
-            logger.error(
-                "Wrong app version - app version {}, required version {}".format(
-                    self.config_desc.app_version,
-                    min_v
-                )
-            )
-            return False
-
-    def __check_price(self, th_dict_repr):
-        return th_dict_repr["max_price"] >= self.config_desc.min_price
 
     def __do_work(self):
         if self.p2pservice:

@@ -21,8 +21,9 @@ class TaskServer(PendingConnectionsServer):
         self.config_desc = config_desc
 
         self.node = node
-        self.task_keeper = TaskKeeper()
-        self.task_manager = TaskManager(config_desc.node_name, self.node, max_price=config_desc.max_price,
+        self.task_keeper = TaskKeeper(client.environments_manager, min_price=config_desc.min_price,
+                                      app_version=config_desc.app_version)
+        self.task_manager = TaskManager(config_desc.node_name, self.node,
                                         key_id=self.keys_auth.get_key_id(),
                                         root_path=TaskServer.__get_task_manager_root(config_desc),
                                         use_distributed_resources=config_desc.use_distributed_resource_management)
@@ -153,7 +154,7 @@ class TaskServer(PendingConnectionsServer):
         try:
             id_ = th_dict_repr["id"]
             if id_ not in self.task_manager.tasks.keys():  # It is not my task id
-                self.task_keeper.add_task_header(th_dict_repr, self.client.supported_task(th_dict_repr))
+                self.task_keeper.add_task_header(th_dict_repr)
             return True
         except Exception as err:
             logger.error("Wrong task header received {}".format(err))
@@ -226,8 +227,9 @@ class TaskServer(PendingConnectionsServer):
         self.config_desc = config_desc
         self.last_message_time_threshold = config_desc.task_session_timeout
         self.task_manager.change_config(self.__get_task_manager_root(config_desc),
-                                        config_desc.use_distributed_resource_management, config_desc.max_price)
+                                        config_desc.use_distributed_resource_management)
         self.task_computer.change_config()
+        self.task_keeper.change_config(config_desc)
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
         self.task_manager.change_timeouts(task_id, full_task_timeout, subtask_timeout, min_subtask_time)

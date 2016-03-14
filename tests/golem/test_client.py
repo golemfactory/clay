@@ -6,6 +6,7 @@ from golem.tools.testwithappconfig import TestWithAppConfig
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.environments.environment import Environment
 
+
 class TestCreateClient(TestWithAppConfig):
 
     @patch('golem.client.Client')
@@ -40,23 +41,6 @@ class TestCreateClient(TestWithAppConfig):
 
 
 class TestClient(TestWithDatabase):
-
-    def test_supported_task(self):
-        c = Client(ClientConfigDescriptor())
-        self.assertFalse(c.supported_task({}))
-        task = {"environment": Environment.get_id(), 'max_price': 0}
-        self.assertFalse(c.supported_task(task))
-        e = Environment()
-        e.accept_tasks = True
-        c.config_desc.min_price = 10.0
-        c.environments_manager.add_environment(e)
-        self.assertFalse(c.supported_task(task))
-        task["max_price"] = 10.0
-        self.assertTrue(c.supported_task(task))
-        task["max_price"] = 10.5
-        self.assertTrue(c.supported_task(task))
-        c.config_desc.min_price = 13.0
-        self.assertFalse(c.supported_task(task))
 
     @patch("golem.client.Client.get_database_name")
     def test_add_to_waiting_payments(self, mock_database_name):

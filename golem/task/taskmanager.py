@@ -20,8 +20,8 @@ class TaskManagerEventListener:
         pass
 
 
-class TaskManager:
-    def __init__(self, node_name, node, max_price, listen_address="", listen_port=0, key_id="", root_path="res",
+class TaskManager(object):
+    def __init__(self, node_name, node, listen_address="", listen_port=0, key_id="", root_path="res",
                  use_distributed_resources=True):
         self.node_name = node_name
         self.node = node
@@ -32,7 +32,6 @@ class TaskManager:
         self.listen_address = listen_address
         self.listen_port = listen_port
         self.key_id = key_id
-        self.max_price = max_price
 
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root(), self.node_name)
@@ -68,7 +67,6 @@ class TaskManager:
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
         task.header.task_owner_key_id = self.key_id
-        task.header.max_price = self.max_price
         self.node.pub_addr, self.node.pub_port, self.node.nat_type = get_external_address(self.listen_port)
         task.header.task_owner = self.node
 
@@ -120,6 +118,9 @@ class TaskManager:
             task = self.tasks[task_id]
             ts = self.tasks_states[task_id]
             th = task.header
+            if th.max_price < price:
+                return None, False
+
             if self.__has_subtasks(ts, task, max_resource_size, max_memory_size):
                 ctd = task.query_extra_data(estimated_performance, num_cores, node_id, node_name)
                 if ctd is None or ctd.subtask_id is None:
@@ -129,7 +130,7 @@ class TaskManager:
                 self.__add_subtask_to_tasks_states(node_name, node_id, price, ctd, address)
                 self.__notice_task_updated(task_id)
                 return ctd, False
-            logger.info("Cannot get next task for estimated performence {}".format(estimated_performance))
+            logger.info("Cannot get next task for estimated performance {}".format(estimated_performance))
             return None, False
         else:
             logger.info("Cannot find task {} in my tasks".format(task_id))
@@ -150,6 +151,9 @@ class TaskManager:
         else:
             logger.error("This is not my subtask {}".format(subtask_id))
             return 0
+
+    def get_price(self, task_id):
+        th = self.tasks[task_id]
 
     def get_trust_mod(self, subtask_id):
         if subtask_id in self.subtask2task_mapping:
@@ -393,10 +397,9 @@ class TaskManager:
         else:
             assert False, "Should never be here!"
 
-    def change_config(self, root_path, use_distributed_resource_management, max_price):
+    def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path, self.node_name)
         self.use_distributed_resources = use_distributed_resource_management
-        self.max_price = max_price
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
         if task_id in self.tasks:

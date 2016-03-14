@@ -60,7 +60,7 @@ class GNRTask(Task):
     ################
 
     def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                 ttl, subtask_ttl, resource_size, estimated_memory):
+                 ttl, subtask_ttl, resource_size, estimated_memory, max_price):
         """ Create more specific task implementation
         :param src_code:
         :param node_name:
@@ -73,9 +73,10 @@ class GNRTask(Task):
         :param subtask_ttl:
         :param resource_size:
         :param estimated_memory:
+        :param max_price:
         """
         th = TaskHeader(node_name, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
-                        ttl, subtask_ttl, resource_size, estimated_memory)
+                        ttl, subtask_ttl, resource_size, estimated_memory, max_price=max_price)
         Task.__init__(self, th, src_code)
 
         self.task_resources = []

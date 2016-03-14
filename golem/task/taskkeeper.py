@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 
 
 class TaskKeeper(object):
-    def __init__(self, remove_task_timeout=240.0, verification_timeout=3600):
+    def __init__(self, environments_manager, min_price=0.0, app_version=1.0, remove_task_timeout=240.0,
+                 verification_timeout=3600):
         self.task_headers = {}
         self.supported_tasks = []
         self.removed_tasks = {}
@@ -16,9 +17,17 @@ class TaskKeeper(object):
         self.active_requests = {}
         self.waiting_for_verification = {}
         self.declared_prices = {}
+        self.min_price = min_price
+        self.app_version = app_version
 
         self.verification_timeout = verification_timeout
         self.removed_task_timeout = remove_task_timeout
+        self.environments_manager = environments_manager
+
+    def is_supported(self, th_dict_repr):
+        supported = self.check_environment(th_dict_repr)
+        supported = supported and self.check_price(th_dict_repr)
+        return supported and self.check_version(th_dict_repr)
 
     def get_task(self, price):
         if len(self.supported_tasks) > 0:
@@ -34,14 +43,51 @@ class TaskKeeper(object):
         else:
             return None
 
+    def check_environment(self, th_dict_repr):
+        env = th_dict_repr.get("environment")
+        if not env:
+            return False
+        if not self.environments_manager.supported(env):
+            return False
+        return self.environments_manager.accept_tasks(env)
+
+    def check_price(self, th_dict_repr):
+        return th_dict_repr.get("max_price") >= self.min_price
+
+    def check_version(self, th_dict_repr):
+        min_v = th_dict_repr.get("min_version")
+        if not min_v:
+            return True
+        try:
+            supported = float(self.app_version) >= float(min_v)
+            return supported
+        except ValueError:
+            logger.error(
+                "Wrong app version - app version {}, required version {}".format(
+                    self.app_version,
+                    min_v
+                )
+            )
+            return False
+
     def get_all_tasks(self):
         return self.task_headers.values()
 
-    def add_task_header(self, th_dict_repr, is_supported):
+    def change_config(self, config_desc):
+        if config_desc.min_price == self.min_price:
+            return
+        self.min_price = config_desc.min_price
+        self.supported_tasks = []
+        for id_, th in self.task_headers.iteritems():
+            if self.is_supported(th.__dict__):
+                self.supported_tasks.append(id_)
+
+    def add_task_header(self, th_dict_repr):
         try:
             id_ = th_dict_repr["id"]
             if id_ not in self.task_headers.keys():  # don't have it
                 if id_ not in self.removed_tasks.keys():  # not removed recently
+                    is_supported = self.is_supported(th_dict_repr)
                     logger.info("Adding task {} is_supported={}".format(id_, is_supported))
                     self.task_headers[id_] = TaskHeader(node_name=th_dict_repr["node_name"],
                                                         task_id=id_,

@@ -190,8 +190,8 @@ class AppConfig:
                                  resource_session_timeout=RESOURCE_SESSION_TIMEOUT,
                                  plugin_port=PLUGIN_PORT,
                                  eth_account=ETH_ACCOUNT_NAME,
-                                 min_price = MIN_PRICE,
-                                 max_price = MAX_PRICE,
+                                 min_price=MIN_PRICE,
+                                 max_price=MAX_PRICE,
                                  use_ipv6=USE_IP6,
                                  node_name="",
                                  public_address="")

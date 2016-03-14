@@ -239,7 +239,6 @@ class NewTaskDialogCustomizer(Customizer):
             definition.max_price = float(self.gui.ui.maxPriceLineEdit.text())
         except ValueError:
             logger.warning("Wrong price value")
-        print "SETttin price {}".format(definition.max_price)
 
     def _optimize_total_check_box_changed(self):
         self.gui.ui.totalSpinBox.setEnabled(not self.gui.ui.optimizeTotalCheckBox.isChecked())

@@ -2,15 +2,20 @@ import time
 import abc
 
 
-class TaskHeader:
+class TaskHeader(object):
+    """ Task header describe general information about task as an request and is propagated in the
+        network as an offer for computing nodes
+    """
     def __init__(self, node_name, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
                  task_owner=None, ttl=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0, min_version=1.0,
                  max_price=0.0):
         self.task_id = task_id
+        # TODO Remove task_owner_key_id, task_onwer_address and task_owner_port
         self.task_owner_key_id = task_owner_key_id
         self.task_owner_address = task_owner_address
         self.task_owner_port = task_owner_port
         self.task_owner = task_owner
+        # TODO change somehow last_checking param
         self.last_checking = time.time()
         self.ttl = ttl
         self.subtask_timeout = subtask_timeout
