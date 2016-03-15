@@ -76,7 +76,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
             self.task_definition.renderer_options.use_frames,
             self.task_definition.renderer_options.frames,
             self.task_definition.renderer_options.engine,
-            docker_images = self.task_definition.docker_images,
+            docker_images=self.task_definition.docker_images,
             )
         return self._set_verification_options(vray_task)
 
@@ -121,7 +121,7 @@ class BlenderRenderTask(FrameRenderingTask):
                  return_address="",
                  return_port=0,
                  key_id="",
-                 docker_images = None):
+                 docker_images=None):
 
         FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                     BlenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
