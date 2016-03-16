@@ -1,10 +1,10 @@
+import random
+from os import path
+
 from golem.core.simpleauth import SimpleAuth
 from golem.network.p2p.node import Node
 from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, resource_types
-
-import random
-from os import path
 
 
 class DummyTaskParameters(object):
@@ -43,6 +43,8 @@ class DummyTask(Task):
     did not pass verification
     """
 
+    ENVIRONMENT_NAME = "DUMMY"
+
     def __init__(self, client_id, params, num_subtasks):
         """Creates a new dummy task
         :param string client_id: client id
@@ -53,15 +55,15 @@ class DummyTask(Task):
         owner_address = ''
         owner_port = 0
         owner_key_id = ''
-        environment = 'DEFAULT'
+        environment = self.ENVIRONMENT_NAME
         header = TaskHeader(
             client_id, task_id,
             owner_address, owner_port, owner_key_id, environment,
-            task_owner = Node(),
-            ttl = 14400,
-            subtask_timeout = 1200,
-            resource_size = params.shared_data_size + params.subtask_data_size,
-            estimated_memory = 0)
+            task_owner=Node(),
+            ttl=14400,
+            subtask_timeout=1200,
+            resource_size=params.shared_data_size + params.subtask_data_size,
+            estimated_memory=0)
 
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')
@@ -93,14 +95,15 @@ class DummyTask(Task):
 
         # write some random shared data, 4 bits for one char
         with open(self.shared_data_file, 'w') as shared:
-            r = random.getrandbits(self.task_params.shared_data_size * 4)
+            num_bits = self.task_params.shared_data_size * 4
+            r = random.getrandbits(num_bits - 1) + (1 << (num_bits - 1))
             data = '%x' % r
             assert len(data) == self.task_params.shared_data_size
             shared.write(data)
 
         self.task_resources = [self.shared_data_file]
 
-    def short_extra_data_repr(self, perf_index = None):
+    def short_extra_data_repr(self, perf_index=None):
         return "dummy task " + self.task_id
 
     def get_total_tasks(self):
@@ -115,11 +118,12 @@ class DummyTask(Task):
     def finished_computation(self):
         return self.get_tasks_left() == 0
 
-    def query_extra_data(self, perf_index, num_cores=1, client_id=None):
+    def query_extra_data(self, perf_index, num_cores=1, node_id=None, node_name=None):
         """Returns data for the next subtask.
         :param int perf_index:
         :param int num_cores:
-        :param Node | None client_id:
+        :param str | None node_id:
+        :param str | None node_name:
         :rtype: ComputeTaskDef"""
         # create new subtask_id
         import uuid
@@ -143,6 +147,8 @@ class DummyTask(Task):
         }
         subtask_def.task_owner = self.header.task_owner
         subtask_def.environment = self.header.environment
+        subtask_def.return_address = self.header.task_owner_address
+        subtask_def.return_port = self.header.task_owner_port
         return subtask_def
 
     def verify_task(self):
@@ -175,7 +181,7 @@ class DummyTask(Task):
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 
-    def get_resources(self, task_id, resource_header, resource_type = 0):
+    def get_resources(self, task_id, resource_header, resource_type=0):
         if resource_type == resource_types['parts']:
             dir_name = path.dirname(self.shared_data_file)
             delta_header, parts = \
