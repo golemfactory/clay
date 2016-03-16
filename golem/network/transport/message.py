@@ -948,14 +948,14 @@ class MessageReportComputedTask(Message):
     EXTRA_DATA_STR = u"EXTRA_DATA"
     ETH_ACCOUNT_STR = u"ETH_ACCOUNT"
 
-    def __init__(self, subtask_id=0, result_type=None, computation_time = '', node_name='', address='',
+    def __init__(self, subtask_id=0, result_type=None, computation_time='', node_name='', address='',
                  port='', key_id='', node_info=None, eth_account='', extra_data=None,
                  sig="", timestamp=None, dict_repr=None):
         """
         Create message with information about finished computation
         :param str subtask_id: finished subtask id
         :param int result_type: type of a result (from result_types dict)
-        :param int computation_time: how long does it take to  compute this subtask
+        :param float computation_time: how long does it take to  compute this subtask
         :param node_name: task result owner name
         :param str address: task result owner address
         :param int port: task result owner port
@@ -1563,39 +1563,6 @@ class MessageNatPunchFailure(Message):
         return {MessageNatPunchFailure.NAT_PUNCH_FAILURE_STR: True}
 
 
-class MessageRewardPaid(Message):
-    Type = TASK_MSG_BASE + 25
-
-    TASK_ID_STR = u"TASK_ID"
-    REWARD_STR = u"REWARD"
-
-    def __init__(self, task_id=None, reward=None, sig="", timestamp=None, dict_repr=None):
-        """ Create message that informs computing nodes that reward for his task was paid.
-        Right now is only used to simulate receiving real money (so that right steps to mark
-        this payments may be done). In the future this information may contain some info about
-        ethereum transaction or may just be completely replaced with network func. that scan blockchain
-        :param task_id: id of finished task for which payments has been made
-        :param reward: reward
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        Message.__init__(self, MessageRewardPaid.Type, sig, timestamp)
-
-        self.task_id = task_id
-        self.reward = reward
-
-        if dict_repr:
-            self.task_id = dict_repr[MessageRewardPaid.TASK_ID_STR]
-            self.reward = dict_repr[MessageRewardPaid.REWARD_STR]
-
-    def dict_repr(self):
-        return {
-            MessageRewardPaid.TASK_ID_STR: self.task_id,
-            MessageRewardPaid.REWARD_STR: self.reward
-        }
-
-
 RESOURCE_MSG_BASE = 3000
 
 
@@ -1935,7 +1902,6 @@ def init_messages():
     MessageDeltaParts()
     MessageResourceFormat()
     MessageAcceptResourceFormat()
-    MessageRewardPaid()
 
     # Resource messages
     MessageGetResource()

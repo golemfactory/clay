@@ -313,14 +313,6 @@ class PbrtRenderTask(RenderingTask):
         RenderingTask.restart_subtask(self, subtask_id)
         self._update_task_preview()
 
-    def get_price_mod(self, subtask_id):
-        if subtask_id not in self.subtasks_given:
-            logger.error("Not my subtask {}".format(subtask_id))
-            return 0
-        perf = (self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task'])
-        perf *= float(self.subtasks_given[subtask_id]['perf']) / 1000
-        return perf
-
     ###################
     # GNRTask methods #
     ###################

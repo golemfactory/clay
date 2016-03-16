@@ -1,5 +1,5 @@
 import os
-from PyQt4.QtCore import QObject, SIGNAL
+from PyQt4.QtCore import QString
 from PyQt4.QtGui import QFileDialog
 from copy import deepcopy
 
@@ -34,58 +34,40 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         pass
 
     def _setup_renderers_connections(self):
-        QObject.connect(self.gui.ui.rendererComboBox, SIGNAL("currentIndexChanged(const QString)"),
-                        self.__renderer_combo_box_value_changed)
+        self.gui.ui.rendererComboBox.currentIndexChanged[QString].connect(self.__renderer_combo_box_value_changed)
         self.gui.ui.chooseMainSceneFileButton.clicked.connect(self._choose_main_scene_file_button_clicked)
 
     def _setup_output_connections(self):
         self.gui.ui.chooseOutputFileButton.clicked.connect(self.__choose_output_file_button_clicked)
-        QObject.connect(self.gui.ui.outputResXSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self.__res_x_changed)
-        QObject.connect(self.gui.ui.outputResYSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self.__res_y_changed)
+        self.gui.ui.outputResXSpinBox.valueChanged.connect(self.__res_x_changed)
+        self.gui.ui.outputResYSpinBox.valueChanged.connect(self.__res_y_changed)
 
     def _setup_advance_new_task_connections(self):
         NewTaskDialogCustomizer._setup_advance_new_task_connections(self)
         self.gui.ui.testTaskButton.clicked.connect(self.__test_task_button_clicked)
         self.gui.ui.resetToDefaultButton.clicked.connect(self.__reset_to_default_button_clicked)
-
-        QObject.connect(self.gui.ui.fullTaskTimeoutHourSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.fullTaskTimeoutMinSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.fullTaskTimeoutSecSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.minSubtaskTimeHourSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.minSubtaskTimeMinSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.minSubtaskTimeSecSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.mainProgramFileLineEdit, SIGNAL("textChanged(const QString)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.mainSceneFileLineEdit, SIGNAL("textChanged(const QString)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.outputFormatsComboBox, SIGNAL("currentIndexChanged(const QString)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.outputFileLineEdit, SIGNAL("textChanged(const QString)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.verificationSizeXSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.verificationSizeYSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.verificationForAllRadioButton, SIGNAL("toggled(bool)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.verificationForFirstRadioButton, SIGNAL("toggled(bool)"),
-                        self.__task_settings_changed)
-        QObject.connect(self.gui.ui.probabilityLineEdit, SIGNAL("valueChanged(const QString)"),
-                        self.__task_settings_changed)
+        self.__connect_with_task_settings_changed([self.gui.ui.fullTaskTimeoutSecSpinBox.valueChanged,
+                                                   self.gui.ui.fullTaskTimeoutMinSpinBox.valueChanged,
+                                                   self.gui.ui.fullTaskTimeoutHourSpinBox.valueChanged,
+                                                   self.gui.ui.minSubtaskTimeSecSpinBox.valueChanged,
+                                                   self.gui.ui.minSubtaskTimeMinSpinBox.valueChanged,
+                                                   self.gui.ui.minSubtaskTimeHourSpinBox.valueChanged,
+                                                   self.gui.ui.mainProgramFileLineEdit.textChanged,
+                                                   self.gui.ui.mainSceneFileLineEdit.textChanged,
+                                                   self.gui.ui.outputFormatsComboBox.currentIndexChanged,
+                                                   self.gui.ui.outputFileLineEdit.textChanged,
+                                                   self.gui.ui.outputFormatsComboBox.currentIndexChanged,
+                                                   self.gui.ui.outputFileLineEdit.textChanged,
+                                                   self.gui.ui.verificationSizeXSpinBox.valueChanged,
+                                                   self.gui.ui.verificationSizeYSpinBox.valueChanged,
+                                                   self.gui.ui.verificationForAllRadioButton.toggled,
+                                                   self.gui.ui.verificationForFirstRadioButton.toggled,
+                                                   self.gui.ui.probabilityLineEdit.textChanged
+                                                   ])
 
     def _setup_verification_connections(self):
-        QObject.connect(self.gui.ui.verificationRandomRadioButton, SIGNAL("toggled(bool)"),
-                        self.__verification_random_changed)
-        QObject.connect(self.gui.ui.advanceVerificationCheckBox, SIGNAL("stateChanged(int)"),
-                        self.__advance_verification_changed)
+        self.gui.ui.verificationRandomRadioButton.toggled.connect(self.__verification_random_changed)
+        self.gui.ui.advanceVerificationCheckBox.stateChanged.connect(self.__advance_verification_changed)
 
     def _init(self):
         self._set_uid()
@@ -389,3 +371,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def __verification_random_changed(self):
         verification_random_changed(self.gui)
         self.__task_settings_changed()
+
+    def __connect_with_task_settings_changed(self, list_gui_el):
+        for gui_el in list_gui_el:
+            gui_el.connect(self.__task_settings_changed)

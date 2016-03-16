@@ -4,13 +4,11 @@ import struct
 import logging
 import os
 from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, \
-    MessageTaskToCompute, \
-    MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, \
+    MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, \
     MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
-    MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse, \
-    MessageRewardPaid
+    MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
 from golem.network.transport.session import MiddlemanSafeSession
@@ -265,10 +263,6 @@ class TaskSession(MiddlemanSafeSession):
         """
         self.send(MessageSubtaskResultRejected(subtask_id))
 
-    # TODO: by default this may be
-    def send_reward_for_task(self, task_id, reward):
-        self.send(MessageRewardPaid(task_id, reward))
-
     # TODO: change this method and use it
     def send_message_subtask_accepted(self, subtask_id, reward):
         """ Inform that results pass verification and confirm reward
@@ -392,9 +386,6 @@ class TaskSession(MiddlemanSafeSession):
             res.already_sending = False
             self.dropped()
 
-    def _react_to_task_result(self, msg):
-        self.__receive_task_result(msg.subtask_id, msg.result)
-
     def _react_to_get_resource(self, msg):
         self.last_resource_msg = msg
         self.__send_resource_format(self.task_server.config_desc.use_distributed_resource_management)
@@ -416,10 +407,6 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
-        self.dropped()
-
-    def _react_to_reward_paid(self, msg):
-        self.task_server.reward_paid(msg.task_id, msg.reward)
         self.dropped()
 
     def _react_to_subtask_result_rejected(self, msg):
@@ -576,7 +563,6 @@ class TaskSession(MiddlemanSafeSession):
             MessageCannotAssignTask.Type: self._react_to_cannot_assign_task,
             MessageReportComputedTask.Type: self._react_to_report_computed_task,
             MessageGetTaskResult.Type: self._react_to_get_task_result,
-            MessageTaskResult.Type: self._react_to_task_result,
             MessageGetResource.Type: self._react_to_get_resource,
             MessageAcceptResourceFormat.Type: self._react_to_accept_resource_format,
             MessageResource.Type: self._react_to_resource,
@@ -595,7 +581,6 @@ class TaskSession(MiddlemanSafeSession):
             MessageJoinMiddlemanConn.Type: self._react_to_join_middleman_conn,
             MessageNatPunch.Type: self._react_to_nat_punch,
             MessageWaitForNatTraverse.Type: self._react_to_wait_for_nat_traverse,
-            MessageRewardPaid.Type: self._react_to_reward_paid
         })
 
         # self.can_be_not_encrypted.append(MessageHello.Type)

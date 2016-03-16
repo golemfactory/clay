@@ -246,18 +246,12 @@ class Client:
         self.p2pservice.inform_about_nat_traverse_failure(key_id, res_key_id, conn_id)
 
     # TRANSACTION SYSTEM OPERATIONS
-    def accept_result(self, task_id, subtask_id, price_mod, account_info):
-        price = self.transaction_system.add_payment_info(task_id, subtask_id, price_mod, account_info)
-        self.task_server.task_manager.set_value(task_id, subtask_id, price)
 
     def task_reward_payment_failure(self, task_id, price):
         return self.transaction_system.task_reward_payment_failure(task_id, price)
 
-    def global_pay_for_task(self, task_id, payments):
-        self.transaction_system.global_pay_for_task(task_id, payments)
-
-    def get_reward(self, task_id, node_id, reward):
-        self.transaction_system.get_reward(task_id, node_id, reward)
+    def pay_for_task(self, task_id, payments):
+        self.transaction_system.pay_for_task(task_id, payments)
 
     def get_new_payments_tasks(self):
         return self.transaction_system.get_new_payments_tasks()

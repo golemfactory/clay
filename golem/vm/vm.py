@@ -36,6 +36,9 @@ class TaskProgress:
 
 
 class GolemVM(IGolemVM):
+    """ Base class for golem virtual machines based on simple code that should be run and scope with extra data.
+    Derived classes should implement _interpret method.
+    """
     def __init__(self):
         IGolemVM.__init__(self)
         self.src_code = ""
@@ -61,7 +64,8 @@ class GolemVM(IGolemVM):
 
 
 class PythonVM(GolemVM):
-
+    """ Golem Virtual Machine that executes python code.
+    """
     def _interpret(self):
         try:
             exec self.src_code in self.scope
@@ -71,6 +75,8 @@ class PythonVM(GolemVM):
 
 
 class PythonProcVM(GolemVM):
+    """ Golem Virtual Machine that starts a new process that executes python code.
+    """
     def __init__(self):
         GolemVM.__init__(self)
         self.proc = None
@@ -90,6 +96,11 @@ class PythonProcVM(GolemVM):
 
 
 def exec_code(src_code, scope_manager):
+    """ Simple method that is executed by process in PythonProcVm. After execution computation results should be saved
+    in scope_manager["output"] and potential error's in scope_manager["error"].
+    :param str src_code: python code that should be executed
+    :param Manager scope_manager: Manager class from multiprocessing
+    """
     scope = dict(scope_manager)
     try:
         exec src_code in scope

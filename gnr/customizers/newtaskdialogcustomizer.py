@@ -4,7 +4,7 @@ import logging
 
 from copy import deepcopy
 
-from PyQt4.QtCore import QObject, SIGNAL
+from PyQt4.QtCore import QString
 from PyQt4.QtGui import QFileDialog
 
 from gnr.ui.dialog import AddTaskResourcesDialog
@@ -42,8 +42,7 @@ class NewTaskDialogCustomizer(Customizer):
         self._setup_payment_connections()
 
     def _setup_task_type_connections(self):
-        QObject.connect(self.gui.ui.taskTypeComboBox, SIGNAL("currentIndexChanged(const QString)"),
-                        self._task_type_value_changed)
+        self.gui.ui.taskTypeComboBox.currentIndexChanged[QString].connect(self._task_type_value_changed)
 
     def _setup_basic_new_task_connections(self):
         self.gui.ui.saveButton.clicked.connect(self._save_task_button_clicked)
@@ -53,23 +52,17 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.cancelButton.clicked.connect(self._cancel_button_clicked)
 
     def _setup_advance_new_task_connections(self):
-        QObject.connect(self.gui.ui.optimizeTotalCheckBox, SIGNAL("stateChanged(int) "),
-                        self._optimize_total_check_box_changed)
-        QObject.connect(self.gui.ui.subtaskTimeoutHourSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self._set_new_pessimistic_cost)
-        QObject.connect(self.gui.ui.subtaskTimeoutMinSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self._set_new_pessimistic_cost)
-        QObject.connect(self.gui.ui.subtaskTimeoutSecSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self._set_new_pessimistic_cost)
-        QObject.connect(self.gui.ui.totalSpinBox, SIGNAL("valueChanged(const QString)"),
-                        self._set_new_pessimistic_cost)
+        self.gui.ui.optimizeTotalCheckBox.stateChanged.connect(self._optimize_total_check_box_changed)
+        self.gui.ui.subtaskTimeoutHourSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
+        self.gui.ui.subtaskTimeoutMinSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
+        self.gui.ui.subtaskTimeoutSecSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
+        self.gui.ui.totalSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
 
     def _setup_options_connections(self):
         self.gui.ui.optionsButton.clicked.connect(self._open_options)
 
     def _setup_payment_connections(self):
-        QObject.connect(self.gui.ui.maxPriceLineEdit, SIGNAL("textChanged(QString)"),
-                        self._set_new_pessimistic_cost)
+        self.gui.ui.maxPriceLineEdit.textChanged.connect(self._set_new_pessimistic_cost)
 
     def _set_uid(self):
         self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())

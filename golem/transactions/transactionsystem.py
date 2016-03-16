@@ -1,9 +1,7 @@
 import logging
-import datetime
 
 from paymentskeeper import PaymentInfo, PaymentsKeeper
 from incomeskeeper import IncomesKeeper
-from golem.core.variables import PRICE_BASE
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +19,6 @@ class TransactionSystem(object):
         self.payments_keeper = payments_keeper_class()  # Keeps information about payments to send
         self.incomes_keeper = incomes_keeper_class()  # Keeps information about received payments
         self.budget = 10000  # TODO Add method that set proper budget value
-        self.price_base = PRICE_BASE  # Price base for price modifications
 
     # TODO Powinno dzialac tez dla subtask id
     # Price tu chyba nie potrzebne tylko powinno byc pobierane z payment keepera
@@ -42,17 +39,15 @@ class TransactionSystem(object):
         self.budget += reward
         self.incomes_keeper.add_income(task_id, node_id, reward)
 
-    def add_payment_info(self, task_id, subtask_id, price_mod, account_info):
+    def add_payment_info(self, task_id, subtask_id, value, account_info):
         """ Add to payment keeper information about new payment for subtask
         :param task_id: id of a task that this payment is apply to
         :param subtask_id: if of a subtask that this payment is apply to (node finished computation for that subtask)
-        :param float price_mod: valuation of a given subtask
+        :param float value: valuation of a given subtask
         :param AccountInfo account_info: billing account for a node that has computed a task
         """
-        price = self.count_price(price_mod)
-        payment_info = PaymentInfo(task_id, subtask_id, price, account_info)
+        payment_info = PaymentInfo(task_id, subtask_id, value, account_info)
         self.payments_keeper.finished_subtasks(payment_info)
-        return price
 
     def task_finished(self, task_id):
         """ Inform payments keeper that task with given id has been finished and payments for that task may be
@@ -76,13 +71,6 @@ class TransactionSystem(object):
             logger.warning("Can't paid for the task, not enough money")
             return None, None
 
-    def count_price(self, price_mod):
-        """ Count price for a task based on base price and given price mod
-        :param float price_mod: price modification that should be used to count real price for task
-        :return int: price that should be paid for a task
-        """
-        return int(round(price_mod * self.price_base))
-
     def get_payments_list(self):
         """ Return list of all planned and made payments
         :return list: list of dictionaries describing payments
@@ -100,3 +88,10 @@ class TransactionSystem(object):
 
     def add_to_timeouted_payments(self, task_id):
         return self.incomes_keeper.add_timeouted_payment(task_id)
+
+    def pay_for_task(self, task_id, payments):
+        """ Pay for task using specific system. This method should be implemented in derived classes
+        :param str task_id: finished task
+        :param payments: payments representation
+        """
+        raise NotImplementedError

@@ -196,6 +196,3 @@ class DummyTask(Task):
         :param map[str, list[str]] resource_parts:
         """
         self.resource_parts = resource_parts
-
-    def get_price_mod(self, subtask_id):
-        return 1

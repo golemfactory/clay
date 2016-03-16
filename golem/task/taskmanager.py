@@ -20,7 +20,20 @@ class TaskManagerEventListener:
         pass
 
 
+def react_to_key_error(func):
+    def func_wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except KeyError:
+            logger.exception("This is not my subtask {}".format(args[1]))
+            return None
+
+    return func_wrapper
+
+
 class TaskManager(object):
+    """ Keeps and manages information about requested tasks
+    """
     def __init__(self, node_name, node, listen_address="", listen_port=0, key_id="", root_path="res",
                  use_distributed_resources=True):
         self.node_name = node_name
@@ -144,17 +157,6 @@ class TaskManager(object):
 
         return ret
 
-    def get_price_mod(self, subtask_id):
-        if subtask_id in self.subtask2task_mapping:
-            task_id = self.subtask2task_mapping[subtask_id]
-            return self.tasks[task_id].get_price_mod(subtask_id)
-        else:
-            logger.error("This is not my subtask {}".format(subtask_id))
-            return 0
-
-    def get_price(self, task_id):
-        th = self.tasks[task_id]
-
     def get_trust_mod(self, subtask_id):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
@@ -187,6 +189,15 @@ class TaskManager(object):
             logger.warning("This is not my subtask {}".format(subtask_id))
             return
         subtask_state.value = value
+
+    @react_to_key_error
+    def get_value(self, subtask_id):
+        """ Return value of a given subtask
+        :param subtask_id:  id of a computed subtask
+        :return float: price that should be paid for given subtask
+        """
+        task_id = self.subtask2task_mapping[subtask_id]
+        return self.tasks_states[task_id].subtask_states[subtask_id].value
 
     def computed_task_received(self, subtask_id, result, result_type):
         if subtask_id in self.subtask2task_mapping:
@@ -422,16 +433,21 @@ class TaskManager(object):
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
+    @react_to_key_error
     def set_computation_time(self, subtask_id, computation_time):
-        try:
-            task_id = self.subtask2task_mapping[subtask_id]
-            ss = self.tasks_states[task_id].subtask_states[subtask_id]
-            ss.value = self.get_subtask_price(ss.computer.price, computation_time)
-        except KeyError as err:
-            logger.warning("Not my subtask {}: {}".format(subtask_id, err))
+        """
+        Set computation time for subtask and also compute and set new value based on saved price for this subtask
+        :param str subtask_id: subtask which was computed in given computation_time
+        :param float computation_time: how long does it take to compute this task
+        :return:
+        """
+        task_id = self.subtask2task_mapping[subtask_id]
+        ss = self.tasks_states[task_id].subtask_states[subtask_id]
+        ss.computation_time = computation_time
+        ss.value = self.compute_subtask_value(ss.computer.price, computation_time)
 
     @staticmethod
-    def get_subtask_price(price, computation_time):
+    def compute_subtask_value(price, computation_time):
         return price * computation_time
 
     def __add_subtask_to_tasks_states(self, node_name, node_id, price, ctd, address):

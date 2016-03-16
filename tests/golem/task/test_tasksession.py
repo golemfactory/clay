@@ -1,8 +1,8 @@
 from mock import Mock
 
 from golem.network.p2p.node import Node
-from golem.network.transport.message import (MessageRewardPaid, MessageWantToComputeTask, MessageCannotAssignTask,
-                                             MessageTaskToCompute, MessageRemoveTask, MessageReportComputedTask)
+from golem.network.transport.message import (MessageWantToComputeTask, MessageCannotAssignTask, MessageTaskToCompute,
+                                             MessageRemoveTask, MessageReportComputedTask)
 from golem.task.taskbase import result_types
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger
@@ -51,15 +51,6 @@ class TestTaskSession(LogTestCase):
         data = "ABC"
         with self.assertLogs(logger, level=1):
             self.assertEqual(ts.encrypt(data), data)
-
-    def test_reward_paid(self):
-        m = MessageRewardPaid("ABC", 131)
-        ts = TaskSession(Mock())
-        ts.verified = True
-        ts.can_be_not_encrypted.append(m.Type)
-        ts.can_be_unsigned.append(m.Type)
-        ts.interpret(m)
-        ts.task_server.reward_paid.assert_called_with("ABC", 131)
 
     def test_request_task(self):
         ts = TaskSession(Mock())
@@ -120,3 +111,11 @@ class TestTaskSession(LogTestCase):
         self.assertEqual(ms.eth_account, "0x00")
         self.assertEqual(ms.extra_data, [])
         self.assertEqual(ms.node_info, n)
+        ts2 = TaskSession(Mock())
+        ts2.verified = True
+        ts2.key_id = "DEF"
+        ts2.can_be_not_encrypted.append(ms.Type)
+        ts2.can_be_unsigned.append(ms.Type)
+        ts2.task_manager.subtask2task_mapping = {"xxyyzz": "xyz"}
+        ts2.interpret(ms)
+        ts2.task_server.receive_subtask_computation_time.assert_called_with("xxyyzz", 13190)

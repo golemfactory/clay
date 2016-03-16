@@ -43,7 +43,7 @@ class TestCreateClient(TestWithAppConfig):
 class TestClient(TestWithDatabase):
 
     @patch("golem.client.Client.get_database_name")
-    def test_add_to_waiting_payments(self, mock_database_name):
+    def test_payment_func(self, mock_database_name):
         mock_database_name.return_value = self.database.name
         c = Client(ClientConfigDescriptor())
         c.add_to_waiting_payments("xyz", "ABC", 10)
@@ -54,3 +54,4 @@ class TestClient(TestWithDatabase):
         self.assertEqual(incomes[0]["task"], "xyz")
         self.assertEqual(incomes[0]["value"], 0.0)
 
+        c.pay_for_task("xyz", [])

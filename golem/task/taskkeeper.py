@@ -15,7 +15,7 @@ class TaskKeeper(object):
         self.removed_tasks = {}
         self.active_tasks = {}
         self.active_requests = {}
-        self.waiting_for_verification = {}
+        self.completed = {}
         self.declared_prices = {}
         self.min_price = min_price
         self.app_version = app_version
@@ -127,25 +127,27 @@ class TaskKeeper(object):
         if self.active_requests[task_id] <= 0 and task_id not in self.task_headers:
             self.__del_active_task(task_id)
 
-    def get_waiting_for_verification_task_id(self, subtask_id):
-        if subtask_id not in self.waiting_for_verification:
+    def get_task_id_for_subtask(self, subtask_id):
+        if subtask_id not in self.completed:
             return None
-        return self.waiting_for_verification[subtask_id][0]
+        return self.completed[subtask_id][0]
+
+    def is_waiting_for_subtask(self, subtask_id):
+        return self.completed.get(subtask_id) is not None
 
     def is_waiting_for_task(self, task_id):
-        for v in self.waiting_for_verification.itervalues():
+        for v in self.completed.itervalues():
             if v[0] == task_id:
                 return True
         return False
 
-    def remove_waiting_for_verification(self, task_id):
-        subtasks = [subId for subId, val in self.waiting_for_verification.iteritems() if val[0] == task_id]
-        for subtask_id in subtasks:
-            del self.waiting_for_verification[subtask_id]
-
-    def remove_waiting_for_verification_task_id(self, subtask_id):
-        if subtask_id in self.waiting_for_verification:
-            del self.waiting_for_verification[subtask_id]
+    def remove_completed(self, task_id=None, subtask_id=None):
+        if task_id:
+            subtasks = [sub_id for sub_id, val in self.completed.iteritems() if val[0] == task_id]
+            for sub_id in subtasks:
+                del self.completed[sub_id]
+        if subtask_id:
+            del self.completed[subtask_id]
 
     def remove_old_tasks(self):
         for t in self.task_headers.values():
@@ -171,9 +173,9 @@ class TaskKeeper(object):
             return None
         return self.active_tasks[task_id]['header'].task_owner_key_id
 
-    def add_to_verification(self, subtask_id, task_id, computing_time):
+    def add_completed(self, subtask_id, task_id, computing_time):
         now = datetime.datetime.now()
-        self.waiting_for_verification[subtask_id] = [task_id, now, self.__count_deadline(now)]
+        self.completed[subtask_id] = [task_id, now, self.__count_deadline(now)]
         tk = self.active_tasks.get(task_id)
         if tk:
             return tk['price'] * computing_time
@@ -182,12 +184,13 @@ class TaskKeeper(object):
             return 0
 
     def check_payments(self):
+        # TODO Save unpaid tasks somewhere else
         now = datetime.datetime.now()
         after_deadline = []
-        for subtask_id, [task_id, task_date, deadline] in self.waiting_for_verification.items():
+        for subtask_id, [task_id, task_date, deadline] in self.completed.items():
             if deadline < now:
                 after_deadline.append(task_id)
-                del self.waiting_for_verification[subtask_id]
+                del self.completed[subtask_id]
         return after_deadline
 
     def __count_deadline(self, date):  # FIXME Cos zdecydowanie bardziej zaawansowanego i moze dopasowanego do kwoty

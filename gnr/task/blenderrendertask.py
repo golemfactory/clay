@@ -53,9 +53,11 @@ class BlenderRendererOptions(GNROptions):
 
 
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
+    """ Build new Blender tasks using RenderingTaskDefintions and BlenderRendererOptions as taskdefinition
+    renderer options
+    """
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
-        print "Building blender render task builder {}".format(self.task_definition.max_price)
         blender_task = BlenderRenderTask(self.node_name,
                                          self.task_definition.task_id,
                                          main_scene_dir,
@@ -76,7 +78,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.frames,
                                          self.task_definition.max_price,
                                          self.task_definition.renderer_options.engine
-                                      )
+                                        )
         return self._set_verification_options(blender_task)
 
     def _set_verification_options(self, new_task):

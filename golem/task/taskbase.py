@@ -208,14 +208,6 @@ class Task:
         """
         return  # Implement in derived class
 
-    @abc.abstractmethod
-    def get_price_mod(self, subtask_id):
-        """ Return price modifier for given subtask. This number may be taken into account during increasing
-        or decreasing trust for given node after successful or failed computation.
-        :param subtask_id:
-        :return int:
-        """
-        return  # Implement in derived class
 
     @abc.abstractmethod
     def get_trust_mod(self, subtask_id):

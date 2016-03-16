@@ -185,13 +185,6 @@ class ThreeDSMaxTask(FrameRenderingTask):
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
     @check_subtask_id_wrapper
-    def get_price_mod(self, subtask_id):
-        perf = (self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task']) + 1
-        perf *= float(self.subtasks_given[subtask_id]['perf']) / 1000
-        perf *= 50
-        return perf
-
-    @check_subtask_id_wrapper
     def restart_subtask(self, subtask_id):
         FrameRenderingTask.restart_subtask(self, subtask_id)
         if not self.use_frames:
