@@ -9,13 +9,15 @@ logger = logging.getLogger(__name__)
 
 
 class IGolemVM:
+    """ Golem Virtual Machine Interface
+    """
     def __init__(self):
         pass
 
     def get_progress(self):
         assert False
 
-    def interpret(self, code_resource):
+    def run_task(self, src_code, extra_data):
         pass
 
 
@@ -97,6 +99,8 @@ def exec_code(src_code, scope_manager):
 
 
 class PythonTestVM(GolemVM):
+    """  Python VM for tests with additional memory usage estimation
+    """
     def _interpret(self):
         mc = MemoryChecker()
         mc.start()

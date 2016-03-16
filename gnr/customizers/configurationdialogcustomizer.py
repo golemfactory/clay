@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 class ConfigurationDialogCustomizer(Customizer):
+    """ Customizer for gui with all golem configuration option that can be changed by user
+    """
+
     def __init__(self, gui, logic):
         self.old_plugin_port = None
         Customizer.__init__(self, gui, logic)
@@ -29,6 +32,10 @@ class ConfigurationDialogCustomizer(Customizer):
 
     @staticmethod
     def du(path):
+        """ Imitates bash "du -h <path>" command behaviour. Returns the estiamted size of this directory
+        :param str path: path to directory which size should be measured
+        :return str: directory size in human readeable format (eg. 1 Mb) or "-1" if an error occurs.
+        """
         try:
             size = int(subprocess.check_output(['du', '-sb', path]).split()[0])
         except (OSError, subprocess.CalledProcessError):
