@@ -10,14 +10,20 @@ class IPFSResourceManager:
 
     root_path = os.path.abspath(os.sep)
 
-    def __init__(self, dir_manager, node_name):
+    def __init__(self, dir_manager, node_name, resource_dir_method=None):
+
+        self.node_name = node_name
+        self.dir_manager = dir_manager
+
         self.hash_to_file = dict()
         self.file_to_hash = dict()
         self.task_id_to_files = dict()
         self.task_common_prefixes = dict()
 
-        self.dir_manager = dir_manager
-        self.node_name = node_name
+        if not resource_dir_method:
+            self.resource_dir_method = dir_manager.get_task_resource_dir
+        else:
+            self.resource_dir_method = resource_dir_method
 
         # self.resource_dir = dir_manager.get_task_resource_dir('')
         # self.add_resource_dir(self.resource_dir)
@@ -38,11 +44,18 @@ class IPFSResourceManager:
     #     self.__init__(self.dir_manager, resource_dir)
 
     def get_resource_dir(self, task_id):
-        return self.dir_manager.get_task_resource_dir(task_id)
+        return self.resource_dir_method(task_id)
 
     def get_resource_path(self, resource, task_id):
         resource_dir = self.get_resource_dir(task_id)
         return os.path.join(resource_dir, resource)
+
+    def get_temporary_dir(self, task_id):
+        return self.dir_manager.get_task_temporary_dir(task_id)
+
+    def get_temporary_path(self, resource, task_id):
+        temp_dir = self.get_temporary_dir(task_id)
+        return os.path.join(temp_dir, resource)
 
     def add_resource_dir(self, dir_name, client=None):
         if not client:
@@ -66,10 +79,11 @@ class IPFSResourceManager:
         if not client:
             client = self.__new_ipfs_client()
 
-        for resource in resource_coll:
-            self.add_resource(resource, task_id,
-                              absolute_path=absolute_path,
-                              client=client)
+        if resource_coll:
+            for resource in resource_coll:
+                self.add_resource(resource, task_id,
+                                  absolute_path=absolute_path,
+                                  client=client)
 
     def add_resource(self, fs_object, task_id, absolute_path=False, client=None):
 
@@ -141,7 +155,10 @@ class IPFSResourceManager:
             client = self.__new_ipfs_client()
         return client.pin_rm(multihash)
 
-    def pull_resource(self, filename, multihash, task_id, success, error):
+    def pull_resource(self, filename, multihash, task_id,
+                      success, error,
+                      temporary=False):
+
         client = self.__new_ipfs_client()
 
         def success_wrapper(*args, **kwargs):
@@ -149,16 +166,20 @@ class IPFSResourceManager:
             filename = result[0]
             multihash = result[1]
 
-            #self.add_resource(filename, task_id)
             self.pin_resource(multihash, client=client)
-            success(filename, multihash)
+            success(filename, multihash, task_id)
 
         def error_wrapper(*args, **kwargs):
             error(*args, **kwargs)
 
-        res_dir = self.get_resource_dir(task_id)
-        outpath = self.get_resource_path(filename, task_id)
-        out_dir = outpath.rsplit(os.sep, 1)
+        if temporary:
+            res_dir = self.get_temporary_dir(task_id)
+            out_path = self.get_temporary_path(filename, task_id)
+        else:
+            res_dir = self.get_resource_dir(task_id)
+            out_path = self.get_resource_path(filename, task_id)
+
+        out_dir = out_path.rsplit(os.sep, 1)
 
         if out_dir and len(out_dir) > 1:
             if not os.path.exists(out_dir[0]):

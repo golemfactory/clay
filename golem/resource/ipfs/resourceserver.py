@@ -1,9 +1,7 @@
 import logging
+import time
 from threading import Lock
 
-import time
-
-from golem.resource.dirmanager import DirManager
 from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
 
 logger = logging.getLogger(__name__)
@@ -42,7 +40,8 @@ class IPFSResourceServer:
 
     def start_accepting(self):
         try:
-            self.resource_manager.id()
+            ipfs_id = self.resource_manager.id()
+            logger.debug("IPFS: id %r" % ipfs_id)
         except:
             raise EnvironmentError("IPFS daemon is not running or is not properly configured")
 
@@ -65,10 +64,11 @@ class IPFSResourceServer:
         num = 0
 
         with IPFSResourceServer.lock:
-            for filename, multihash in files:
-                if not self.resource_manager.check_resource(filename, task_id):
-                    num += 1
-                    self.add_resource_to_get(filename, multihash, task_id)
+            if files:
+                for filename, multihash in files:
+                    if not self.resource_manager.check_resource(filename, task_id):
+                        num += 1
+                        self.add_resource_to_get(filename, multihash, task_id)
 
             if num > 0:
                 self.waiting_tasks_to_compute[task_id] = num
@@ -117,7 +117,7 @@ class IPFSResourceServer:
     def prepare_resource(self, file_name):
         return self.resource_manager.get_resource_path(file_name)
 
-    def resource_downloaded(self, filename, multihash):
+    def resource_downloaded(self, filename, multihash, *args):
 
         if not multihash:
             self.resource_download_error(multihash)
@@ -132,14 +132,14 @@ class IPFSResourceServer:
                     del self.waiting_tasks_to_compute[task_id]
             del self.waiting_resources[multihash]
 
-            for entry, i in enumerate(self.resources_to_get):
+            for i, entry in enumerate(self.resources_to_get):
                 if multihash == entry[1]:
                     del self.resources_to_get[i]
                     break
 
-        logger.debug("IPFS: Resource %s (%s) downloaded [%r]" % (filename, multihash, time.time() * 1000))
+        logger.debug("IPFS: Resource %s (%s) downloaded" % (filename, multihash))
 
-    def resource_download_error(self, resource):
+    def resource_download_error(self, resource, *args):
 
         (filename, multihash) = resource if isinstance(resource, tuple) else (None, resource)
 
@@ -150,7 +150,7 @@ class IPFSResourceServer:
                     entry[2] = IPFSTransferStatus.failed
                     break
 
-        logger.error("IPFS: Resource %s failed to download [%r]" % (resource, time.time() * 1000))
+        logger.error("IPFS: Resource %s (%s) failed to download" % (filename, multihash))
 
     def get_key_id(self):
         return self.keys_auth.get_key_id()

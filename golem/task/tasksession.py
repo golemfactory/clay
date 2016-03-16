@@ -11,7 +11,7 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
     MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse, \
     MessageRewardPaid, \
-    MessageResourceList
+    MessageResourceHashList, MessageTaskResultHash
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
 from golem.network.transport.session import MiddlemanSafeSession
@@ -188,7 +188,7 @@ class TaskSession(MiddlemanSafeSession):
 
         if result_type == result_types['data']:
             try:
-                result = self.decrypt(result)
+                # result = self.decrypt(result)
                 result = pickle.loads(result)
             except Exception as err:
                 logger.error("Can't unpickle result data {}".format(err))
@@ -358,32 +358,47 @@ class TaskSession(MiddlemanSafeSession):
                 self.result_owner = EthAccountInfo(msg.key_id, msg.port, msg.address, msg.node_name, msg.node_info,
                                                    msg.eth_account)
 
-                if msg.result_type == result_types['data']:
-                    self.__receive_data_result(msg)
-                elif msg.result_type == result_types['files']:
-                    self.__receive_files_result(msg)
-                else:
-                    logger.error("Unknown result type {}".format(msg.result_type))
-                    self.dropped()
+                # if msg.result_type == result_types['data']:
+                #     self.__receive_data_result(msg)
+                # elif msg.result_type == result_types['files']:
+                #     self.__receive_files_result(msg)
+                # else:
+                #     logger.error("Unknown result type {}".format(msg.result_type))
+                #     self.dropped()
             else:
                 self.send(MessageGetTaskResult(msg.subtask_id, delay))
                 self.dropped()
         else:
             self.dropped()
 
+    # def _react_to_get_task_result(self, msg):
+    #     res = self.task_server.get_waiting_task_result(msg.subtask_id)
+    #     if res is None:
+    #         return
+    #     if msg.delay == 0.0:
+    #         res.already_sending = True
+    #         if res.result_type == result_types['data']:
+    #             self.__send_data_results(res)
+    #         elif res.result_type == result_types['files']:
+    #             self.__send_files_results(res)
+    #         else:
+    #             logger.error("Unknown result type {}".format(res.result_type))
+    #             self.dropped()
+    #     else:
+    #         res.last_sending_trial = time.time()
+    #         res.delay_time = msg.delay
+    #         res.already_sending = False
+    #         self.dropped()
+
     def _react_to_get_task_result(self, msg):
         res = self.task_server.get_waiting_task_result(msg.subtask_id)
         if res is None:
+            logger.error("Task result res is none")
             return
-        if msg.delay == 0.0:
+
+        if msg.delay <= 0.0:
             res.already_sending = True
-            if res.result_type == result_types['data']:
-                self.__send_data_results(res)
-            elif res.result_type == result_types['files']:
-                self.__send_files_results(res)
-            else:
-                logger.error("Unknown result type {}".format(res.result_type))
-                self.dropped()
+            self.__send_result_hash(res)
         else:
             res.last_sending_trial = time.time()
             res.delay_time = msg.delay
@@ -392,6 +407,28 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_task_result(self, msg):
         self.__receive_task_result(msg.subtask_id, msg.result)
+
+    def _react_to_task_result_hash(self, msg):
+        secret = msg.secret
+        multihash = msg.multihash
+        subtask_id = msg.subtask_id
+
+        task_id = self.task_manager.subtask2task_mapping.get(subtask_id)
+        task_result_manager = self.task_manager.task_result_manager
+
+        def on_success(extracted_pkg, *args, **kwargs):
+            extra_data = extracted_pkg.to_extra_data()
+            self.result_received(extra_data)
+
+        def on_error(*args, **kwargs):
+            self.send(MessageSubtaskResultRejected(subtask_id))
+
+        task_result_manager.pull_package(multihash,
+                                         task_id,
+                                         subtask_id,
+                                         secret,
+                                         success=on_success,
+                                         error=on_error)
 
     def _react_to_get_resource(self, msg):
         self.last_resource_msg = msg
@@ -553,7 +590,7 @@ class TaskSession(MiddlemanSafeSession):
 
         logger.debug("IPFS: resource list: %r" % res)
 
-        self.send(MessageResourceList(res))
+        self.send(MessageResourceHashList(res))
 
     def __send_resource_format(self, use_distributed_resource):
         self.send(MessageResourceFormat(use_distributed_resource))
@@ -569,6 +606,19 @@ class TaskSession(MiddlemanSafeSession):
     def __send_files_results(self, res):
         extra_data = {"subtask_id": res.subtask_id}
         self.conn.producer = EncryptFileProducer(res.result, self, extra_data=extra_data)
+
+    def __send_result_hash(self, res):
+        task_result_manager = self.task_manager.task_result_manager
+
+        secret = task_result_manager.gen_secret()
+        output = task_result_manager.create(self.task_server.node, res, secret)
+
+        if output:
+            file_name, multihash = output
+            self.send(MessageTaskResultHash(res.subtask_id, multihash, secret))
+        else:
+            logger.error("Couldn't create a task result package for {}".format(res.subtask_id))
+            self.dropped()
 
     def __receive_data_result(self, msg):
         extra_data = {"subtask_id": msg.subtask_id, "result_type": msg.result_type, "data_type": "result"}
@@ -593,10 +643,11 @@ class TaskSession(MiddlemanSafeSession):
             MessageReportComputedTask.Type: self._react_to_report_computed_task,
             MessageGetTaskResult.Type: self._react_to_get_task_result,
             MessageTaskResult.Type: self._react_to_task_result,
+            MessageTaskResultHash.Type: self._react_to_task_result_hash,
             MessageGetResource.Type: self._react_to_get_resource,
             MessageAcceptResourceFormat.Type: self._react_to_accept_resource_format,
             MessageResource.Type: self._react_to_resource,
-            MessageResourceList.Type: self._react_to_resource_list,
+            MessageResourceHashList.Type: self._react_to_resource_list,
             MessageSubtaskResultAccepted.Type: self._react_to_subtask_result_accepted,
             MessageSubtaskResultRejected.Type: self._react_to_subtask_result_rejected,
             MessageTaskFailure.Type: self._react_to_task_failure,

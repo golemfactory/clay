@@ -108,9 +108,10 @@ class TaskServer(PendingConnectionsServer):
         if subtask_id not in self.results_to_send:
             self.client.add_to_waiting_payments(task_id, owner_key_id)
             self.task_keeper.add_to_verification(subtask_id, task_id)
-            self.results_to_send[subtask_id] = WaitingTaskResult(subtask_id, result['data'], result['result_type'],
-                                                                 0.0, 0.0, owner_address, owner_port, owner_key_id,
-                                                                 owner)
+            self.results_to_send[subtask_id] = WaitingTaskResult(task_id, subtask_id,
+                                                                 result['data'], result['result_type'],
+                                                                 0.0, 0.0,
+                                                                 owner_address, owner_port, owner_key_id, owner)
         else:
             assert False
 
@@ -119,8 +120,8 @@ class TaskServer(PendingConnectionsServer):
     def send_task_failed(self, subtask_id, task_id, err_msg, owner_address, owner_port, owner_key_id, owner, node_name):
         self.client.decrease_trust(owner_key_id, RankingStats.requested)
         if subtask_id not in self.failures_to_send:
-            self.failures_to_send[subtask_id] = WaitingTaskFailure(subtask_id, err_msg, owner_address, owner_port,
-                                                                   owner_key_id, owner)
+            self.failures_to_send[subtask_id] = WaitingTaskFailure(task_id, subtask_id, err_msg,
+                                                                   owner_address, owner_port, owner_key_id, owner)
 
     def new_connection(self, session):
         self.task_sessions_incoming.append(session)
@@ -806,8 +807,9 @@ class TaskServer(PendingConnectionsServer):
 
 
 class WaitingTaskResult(object):
-    def __init__(self, subtask_id, result, result_type, last_sending_trial, delay_time, owner_address, owner_port,
-                 owner_key_id, owner):
+    def __init__(self, task_id, subtask_id, result, result_type, last_sending_trial, delay_time,
+                 owner_address, owner_port, owner_key_id, owner):
+        self.task_id = task_id
         self.subtask_id = subtask_id
         self.result = result
         self.result_type = result_type
@@ -821,7 +823,8 @@ class WaitingTaskResult(object):
 
 
 class WaitingTaskFailure(object):
-    def __init__(self, subtask_id, err_msg, owner_address, owner_port, owner_key_id, owner):
+    def __init__(self, task_id, subtask_id, err_msg, owner_address, owner_port, owner_key_id, owner):
+        self.task_id = task_id
         self.subtask_id = subtask_id
         self.owner_address = owner_address
         self.owner_port = owner_port

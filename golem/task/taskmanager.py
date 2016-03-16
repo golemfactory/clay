@@ -2,6 +2,8 @@ import time
 import logging
 
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
+from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
+from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 from golem.resource.dirmanager import DirManager
 from golem.core.hostaddress import get_external_address
@@ -35,6 +37,10 @@ class TaskManager:
 
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root(), self.node_name)
+
+        resource_manager = IPFSResourceManager(self.dir_manager, self.node_name,
+                                               resource_dir_method=self.dir_manager.get_task_output_dir)
+        self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
         self.subtask2task_mapping = {}
 
