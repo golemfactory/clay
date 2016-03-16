@@ -1,8 +1,10 @@
-from golem.core.common import is_windows, nt_path_to_posix_path
+import logging
+from os import path
 
+from golem.core.common import is_windows, nt_path_to_posix_path
 from client import local_client
 
-from os import path
+logger = logging.getLogger(__name__)
 
 
 class DockerJob(object):
@@ -91,12 +93,16 @@ class DockerJob(object):
         )
 
         self.container_id = self.container["Id"]
+        logger.debug("Container {} prepared, image: {}, resources: {}, output: {}"
+                     .format(self.container_id, self.image.name, 
+                             self.resource_dir, self.output_dir))
         assert self.container_id
 
     def _cleanup(self):
         if self.container:
             client = local_client()
             client.remove_container(self.container_id, force=True)
+            logger.debug("Container {} removed".format(self.container_id))
             self.container = None
             self.container_id = None
             self.state = self.STATE_REMOVED
@@ -120,7 +126,9 @@ class DockerJob(object):
             client.start(self.container_id)
             result = client.inspect_container(self.container_id)
             self.state = result["State"]["Status"]
+            logger.debug("Container {} started".format(self.container_id))
             return result
+        logger.debug("Container {} not started, status = {}".format(self.container_id, self.get_status()))
         return None
 
     def wait(self, timeout=None):
@@ -131,6 +139,7 @@ class DockerJob(object):
         if self.get_status() in [self.STATE_RUNNING, self.STATE_EXITED]:
             client = local_client()
             return client.wait(self.container_id, timeout)
+        logger.debug("Cannot wait for container {}, status = {}".format(self.container_id, self.get_status()))
         return -1
 
     def dump_logs(self, stdout_file=None, stderr_file=None):

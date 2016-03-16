@@ -4,14 +4,19 @@ import os
 from os import path
 import shutil
 import tempfile
-from docker import errors
+import logging.config
+
 import requests
+from docker import errors
 
 from gnr.renderingdirmanager import find_task_script
 from golem.core.common import get_golem_path, is_windows, nt_path_to_posix_path
 from golem.task.docker.image import DockerImage
 from golem.task.docker.job import DockerJob
 from test_docker_image import DockerTestCase
+
+logging.config.fileConfig(path.join(path.dirname(__file__), "logging.ini"), 
+                          disable_existing_loggers=False)
 
 
 class TestDockerJob(DockerTestCase):
