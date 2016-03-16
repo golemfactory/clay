@@ -38,19 +38,21 @@ class DockerJob(object):
     PARAMS_FILE = "params.py"
 
     def __init__(self, image, script_src, parameters,
-                 work_dir, resources_dir, output_dir):
+                 resources_dir, work_dir, output_dir):
         """
         :param DockerImage image: Docker image to use
-        :param str script_src: source of the script file
-        :param str output_dir:
-        :param str resource_dir:
+        :param str script_src: source of the task script file
+        :param dict parameters: parameters for the task script
+        :param str resources_dir: directory with task resources
+        :param str work_dir: directory for temporary work files
+        :param str output_dir: directory for output files
         """
         self.image = image
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
 
-        self.work_dir = work_dir
         self.resources_dir = resources_dir
+        self.work_dir = work_dir
         self.output_dir = output_dir
 
         self.container = None
@@ -149,7 +151,8 @@ class DockerJob(object):
             self.state = result["State"]["Status"]
             logger.debug("Container {} started".format(self.container_id))
             return result
-        logger.debug("Container {} not started, status = {}".format(self.container_id, self.get_status()))
+        logger.debug("Container {} not started, status = {}"
+                     .format(self.container_id, self.get_status()))
         return None
 
     def wait(self, timeout=None):
@@ -160,7 +163,8 @@ class DockerJob(object):
         if self.get_status() in [self.STATE_RUNNING, self.STATE_EXITED]:
             client = local_client()
             return client.wait(self.container_id, timeout)
-        logger.debug("Cannot wait for container {}, status = {}".format(self.container_id, self.get_status()))
+        logger.debug("Cannot wait for container {}, status = {}"
+                     .format(self.container_id, self.get_status()))
         return -1
 
     def dump_logs(self, stdout_file=None, stderr_file=None):

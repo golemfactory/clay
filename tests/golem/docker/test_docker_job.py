@@ -57,8 +57,9 @@ class TestDockerJob(DockerTestCase):
                 shutil.rmtree(d)
 
     def _create_test_job(self, script=TEST_SCRIPT, params=None):
-        self.test_job = DockerJob(self.image, script, params, self.work_dir,
-                                  self.resources_dir, self.output_dir)
+        self.test_job = DockerJob(
+            self.image, script, params,
+            self.resources_dir, self.work_dir, self.output_dir)
         return self.test_job
 
 
@@ -206,7 +207,7 @@ class TestBaseDockerJob(TestDockerJob):
             err_file = path.join(self.output_dir, "stderr.log")
             job.dump_logs(out_file, err_file)
         out_files = os.listdir(self.output_dir)
-        self.assertEqual(set(out_files), set(["stdout.log", "stderr.log"]))
+        self.assertEqual(set(out_files), {"stdout.log", "stderr.log"})
         with open(out_file, "r") as out:
             line = out.readline().strip()
         self.assertEqual(line, text)

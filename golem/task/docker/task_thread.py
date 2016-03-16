@@ -1,6 +1,6 @@
 import logging
 import os
-
+import posixpath
 import requests
 
 from golem.task.docker.job import DockerJob
@@ -18,10 +18,10 @@ class DockerTaskThread(TaskThread):
     STDERR_FILE = "stderr.log"
 
     def __init__(self, task_computer, subtask_id, docker_images,
-                 working_directory, src_code, extra_data, short_desc,
+                 orig_script_dir, src_code, extra_data, short_desc,
                  res_path, tmp_path, timeout):
         super(DockerTaskThread, self).__init__(
-            task_computer, subtask_id, working_directory, src_code, extra_data,
+            task_computer, subtask_id, orig_script_dir, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
 
         assert docker_images
@@ -46,9 +46,24 @@ class DockerTaskThread(TaskThread):
             return
         try:
             params = self.extra_data.copy()
+            # For backwards-compatibility (with pre-docker code)
+            # params["scene_file"] is a path relative to the original location
+            # of the script file, stored in self.working_directory
+            # (for historical reasons).
+            # Here we compute the absolute path of the scene file in
+            # the container filesystem:
+            scene_file = posixpath.join(DockerJob.RESOURCES_DIR,
+                                        posixpath.join(self.working_directory,
+                                                       params["scene_file"]))
+            params["scene_file"] = posixpath.normpath(scene_file)
+
+            work_dir = os.path.join(self.tmp_path, "work")
+            output_dir = os.path.join(self.tmp_path, "output")
+            os.mkdir(work_dir)
+            os.mkdir(output_dir)
+
             with DockerJob(self.image, self.src_code, params,
-                           self.working_directory,
-                           self.res_path, self.tmp_path) as job:
+                           self.res_path, work_dir, output_dir) as job:
                 self.job = job
                 self.job.start()
                 if self.use_timeout:
@@ -57,16 +72,16 @@ class DockerTaskThread(TaskThread):
                     exit_code = self.job.wait()
 
                 # Get stdout and stderr
-                stdout_file = os.path.join(self.tmp_path, self.STDOUT_FILE)
-                stderr_file = os.path.join(self.tmp_path, self.STDERR_FILE)
+                stdout_file = os.path.join(output_dir, self.STDOUT_FILE)
+                stderr_file = os.path.join(output_dir, self.STDERR_FILE)
                 self.job.dump_logs(stdout_file, stderr_file)
 
                 if exit_code == 0:
                     # TODO: this always returns file, implement returning data
                     # TODO: this only collects top-level files, what if there
                     # are output files in subdirs?
-                    out_files = [os.path.join(self.tmp_path, f)
-                                 for f in os.listdir(self.tmp_path)]
+                    out_files = [os.path.join(output_dir, f)
+                                 for f in os.listdir(output_dir)]
                     out_files = filter(lambda f: os.path.isfile(f), out_files)
                     self.result = {"data": out_files, "result_type": 1}
                     self.task_computer.task_computed(self)
