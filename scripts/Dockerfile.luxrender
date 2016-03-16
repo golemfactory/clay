@@ -8,10 +8,8 @@ RUN apt-get update && \
 	apt-get install -y \
 		curl \
 		bzip2 \
-		libfreetype6 \
-		libgl1-mesa-dev \
 		libglu1-mesa \
-		libxi6 && \
+		libgomp1 && \
 	apt-get -y autoremove && \
 	rm -rf /var/lib/apt/lists/*
 
