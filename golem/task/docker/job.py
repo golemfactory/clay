@@ -1,5 +1,7 @@
 import logging
+import posixpath
 from os import path
+
 
 from golem.core.common import is_windows, nt_path_to_posix_path
 from client import local_client
@@ -17,16 +19,26 @@ class DockerJob(object):
     STATE_KILLED = "killed"
     STATE_REMOVED = "removed"
 
-    # name of the script file, relative to the task dir
-    TASK_SCRIPT = "job.py"
-    # name of the parameters file, relative to the task dir
-    PARAMS_FILE = "params.py"
-
+    # This dir contains static task resources.
+    # Mounted read-only in the container.
     RESOURCES_DIR = "/golem/resources"
+
+    # This dir contains task script and params file.
+    # Mounted read-write in the container.
+    WORK_DIR = "/golem/work"
+
+    # All files in this dir are treated as output files after the task finishes.
+    # Mounted read-write in the container.
     OUTPUT_DIR = "/golem/output"
 
+    # Name of the script file, relative to WORK_DIR
+    TASK_SCRIPT = "job.py"
+
+    # Name of the parameters file, relative to WORK_DIR
+    PARAMS_FILE = "params.py"
+
     def __init__(self, image, script_src, parameters,
-                 work_dir, resource_dir, output_dir):
+                 work_dir, resources_dir, output_dir):
         """
         :param DockerImage image: Docker image to use
         :param str script_src: source of the script file
@@ -36,44 +48,50 @@ class DockerJob(object):
         self.image = image
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
+
         self.work_dir = work_dir
-        self.resource_dir = resource_dir
+        self.resources_dir = resources_dir
         self.output_dir = output_dir
 
-        self.task_dir = path.join(self.resource_dir, self.work_dir)
         self.container = None
         self.container_id = None
         self.container_log = None
         self.state = self.STATE_NEW
 
     def _prepare(self):
-        # Save parameters in task_dir/PARAMS_FILE
-        params_file_path = self._get_params_path()
+        # Save parameters in work_dir/PARAMS_FILE
+        params_file_path = self._get_host_params_path()
         with open(params_file_path, "w") as params_file:
             for key, value in self.parameters.iteritems():
                 line = "{} = {}\n".format(key, repr(value))
                 params_file.write(bytearray(line, encoding='utf-8'))
 
-        # Save the script in task_dir/TASK_SCRIPT
-        task_script_path = self._get_script_path()
+        # Save the script in work_dir/TASK_SCRIPT
+        task_script_path = self._get_host_script_path()
         with open(task_script_path, "w") as script_file:
             script_file.write(bytearray(self.script_src, "utf-8"))
 
         # Setup volumes for the container
         client = local_client()
 
-        resource_dir_key = self.resource_dir if not is_windows() \
-            else nt_path_to_posix_path(self.resource_dir)
-        output_dir_key = self.output_dir if not is_windows()\
-            else nt_path_to_posix_path(self.output_dir)
+        # Docker config requires binds to be specified using posix paths,
+        # even on Windows. Hence this function:
+        def posix_path(path):
+            if is_windows():
+                return nt_path_to_posix_path(path)
+            return path
 
         host_cfg = client.create_host_config(
             binds={
-                resource_dir_key: {
+                posix_path(self.work_dir): {
+                    "bind": self.WORK_DIR,
+                    "mode": "rw"
+                },
+                posix_path(self.resources_dir): {
                     "bind": self.RESOURCES_DIR,
                     "mode": "ro"
                 },
-                output_dir_key: {
+                posix_path(self.output_dir): {
                     "bind": self.OUTPUT_DIR,
                     "mode": "rw"
                 }
@@ -81,21 +99,21 @@ class DockerJob(object):
         )
 
         # The location of the task script when mounted in the container
-        container_script_path = "/".join(
-            [self.RESOURCES_DIR, self.work_dir, self.TASK_SCRIPT])
+        container_script_path = self._get_container_script_path()
         self.container = client.create_container(
             image=self.image.name,
-            volumes=[self.RESOURCES_DIR, self.OUTPUT_DIR],
+            volumes=[self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR],
             host_config=host_cfg,
             network_disabled=True,
             command=[container_script_path],
-            working_dir=path.dirname(container_script_path)
+            working_dir=self.WORK_DIR
         )
 
         self.container_id = self.container["Id"]
-        logger.debug("Container {} prepared, image: {}, resources: {}, output: {}"
+        logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
                      .format(self.container_id, self.image.name, 
-                             self.resource_dir, self.output_dir))
+                             self.work_dir, self.resources_dir, self.output_dir)
+                     )
         assert self.container_id
 
     def _cleanup(self):
@@ -114,11 +132,14 @@ class DockerJob(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self._cleanup()
 
-    def _get_script_path(self):
-        return path.join(self.task_dir, self.TASK_SCRIPT)
+    def _get_host_script_path(self):
+        return path.join(self.work_dir, self.TASK_SCRIPT)
 
-    def _get_params_path(self):
-        return path.join(self.task_dir, self.PARAMS_FILE)
+    def _get_host_params_path(self):
+        return path.join(self.work_dir, self.PARAMS_FILE)
+
+    def _get_container_script_path(self):
+        return posixpath.join(self.WORK_DIR, self.TASK_SCRIPT)
 
     def start(self):
         if self.get_status() == self.STATE_CREATED:

@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y python \
  && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir /golem \
+ && mkdir /golem/work \
  && mkdir /golem/resources \
  && mkdir /golem/output
 

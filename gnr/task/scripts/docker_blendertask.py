@@ -4,10 +4,10 @@ import os
 import sys
 import subprocess
 
-from params import *
-
+import params  # This module is generated before this script is run
 
 BLENDER_COMMAND = "blender"
+WORK_DIR = "/golem/work"
 OUTPUT_DIR = "/golem/output"
 
 
@@ -16,15 +16,22 @@ def exec_cmd(cmd):
     return pc.wait()
 
 
-def format_blender_render_cmd(cmd_file, output_dir, outfilebasename, scene_file, script_file, start_task, engine,
-                              frame):
-    cmd = ["{}".format(cmd_file), "-b", "{}".format(scene_file), "-P", "{}".format(script_file),
-           "-o", "{}/{}{}".format(output_dir, outfilebasename, start_task), "-E", "{}".format(engine), "-F", "EXR",
-           "-f", "{}".format(frame)]
+def format_blender_render_cmd(outfilebasename, scene_file, script_file,
+                              start_task, engine, frame):
+    cmd = [
+        "{}".format(BLENDER_COMMAND),
+        "-b", "{}".format(scene_file),
+        "-P", "{}".format(script_file),
+        "-o", "{}/{}{}".format(OUTPUT_DIR, outfilebasename, start_task),
+        "-E", "{}".format(engine),
+        "-F", "EXR",
+        "-f", "{}".format(frame)
+    ]
     return cmd
 
 
-def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames):
+def run_blender_task(outfilebasename, scene_file, script_src, start_task,
+                     engine, frames):
 
     scene_file = os.path.normpath(scene_file)
     if not os.path.exists(scene_file):
@@ -32,23 +39,19 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine
               file=sys.stderr)
         sys.exit(1)
 
-    blender_script_path = OUTPUT_DIR + "/blenderscript.py"
+    blender_script_path = WORK_DIR + "/blenderscript.py"
     with open(blender_script_path, "w") as script_file:
         script_file.write(script_src)
 
-    try:
-        for frame in frames:
-            cmd = format_blender_render_cmd(
-                BLENDER_COMMAND, OUTPUT_DIR, outfilebasename, scene_file,
-                script_file.name, start_task, engine, frame)
-            print(cmd)
-            exit_code = exec_cmd(cmd)
-            if exit_code is not 0:
-                sys.exit(exit_code)
-    finally:
-        os.remove(script_file.name)
+    for frame in frames:
+        cmd = format_blender_render_cmd(outfilebasename, scene_file,
+              script_file.name, start_task, engine, frame)
+        print(cmd, file=sys.stderr)
+        exit_code = exec_cmd(cmd)
+        if exit_code is not 0:
+            sys.exit(exit_code)
 
 
-output = run_blender_task(outfilebasename, scene_file, script_src,
-                          start_task, engine, frames)
+run_blender_task(params.outfilebasename, params.scene_file, params.script_src,
+                 params.start_task, params.engine, params.frames)
 
