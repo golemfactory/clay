@@ -31,6 +31,54 @@ class BlenderDefaults(RendererDefaults):
         self.max_subtasks = 100
         self.default_subtasks = 6
 
+class PreviewUpdater:
+    def __init__(self, preview_file_path, scene_res_x, scene_res_y, expected_offsets):
+        # pairs of (subtask_number, its_image_filepath)
+        # careful: chunks' numbers start from 1
+        self.chunks = {}
+        self.scene_res_x = scene_res_x
+        self.scene_res_y = scene_res_y
+        self.preview_file_path = preview_file_path
+        self.expected_offsets = expected_offsets
+        
+        # where the match ends - since the chunks have unexpectable sizes, we 
+        # don't know where to paste new chunk unless all of the above are in 
+        # their correct places
+        self.perfect_match_area_y = 0
+        self.perfectly_placed_subtasks = 0
+        
+    def update_preview(self, subtask_path, subtask_number):
+        if subtask_number not in self.chunks:
+            self.chunks[subtask_number] = subtask_path
+        
+        try:
+            if subtask_path.endswith(".exr"):
+                img = exr_to_pil(subtask_path)
+            else:
+                img = Image.open(subtask_path)
+            if subtask_number == self.perfectly_placed_subtasks + 1:
+                offset = self.perfect_match_area_y
+                _, img_y = img.size
+                self.perfect_match_area_y += img_y
+                self.perfectly_placed_subtasks += 1
+            else:
+                offset = self.expected_offsets[subtask_number]
+            
+            if os.path.exists(self.preview_file_path):
+                img_current = Image.open(self.preview_file_path)
+                img_current.paste(img, (0, offset))
+                img_current.save(self.preview_file_path, "BMP")            
+            else:
+                img_offset = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
+                img_offset.paste(img, (0, offset))
+                img_offset.save(self.preview_file_path, "BMP")
+        except Exception as err:
+            logger.error("Can't generate preview {}".format(err))
+            return
+        
+        if subtask_number == self.perfectly_placed_subtasks and (subtask_number + 1) in self.chunks:
+            self.update_preview(self.chunks[subtask_number + 1], subtask_number + 1)
+
 
 def build_blender_renderer_info(dialog, customizer):
     defaults = BlenderDefaults()
@@ -138,6 +186,17 @@ class BlenderRenderTask(FrameRenderingTask):
         self.frames_given = {}
         for frame in frames:
             self.frames_given[frame] = {}
+        
+        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+        self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
+        expected_offsets = {}
+        
+        for i in range(1, self.total_tasks):
+            _, expected_offset = self._get_min_max_y(i)
+            expected_offset =  self.res_y - int(expected_offset * float(self.res_y))
+            expected_offsets[i] = expected_offset
+        
+        self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
@@ -298,30 +357,7 @@ class BlenderRenderTask(FrameRenderingTask):
         return int(file_name[idx + len(self.outfilebasename):])
 
     def _update_preview(self, new_chunk_file_path, chunk_num):
-        try:
-            if new_chunk_file_path.endswith(".exr"):
-                img = exr_to_pil(new_chunk_file_path)
-            else:
-                img = Image.open(new_chunk_file_path)
-            img_offset = Image.new("RGB", (self.res_x, self.res_y))
-            
-            _, offset = self._get_min_max_y(chunk_num)
-            offset = self.res_y - int(offset * self.res_y)
-            img_offset.paste(img, (0, offset))
-        except Exception as err:
-            logger.error("Can't generate preview {}".format(err))
-            return
-
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-
-        self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
-
-        if os.path.exists(self.preview_file_path):
-            img_current = Image.open(self.preview_file_path)
-            img_current = ImageChops.add(img_current, img_offset)
-            img_current.save(self.preview_file_path, "BMP")
-        else:
-            img_offset.save(self.preview_file_path, "BMP")
+        self.preview_updater.update_preview(new_chunk_file_path, chunk_num)
 
     def _get_output_name(self, frame_num, num_start):
         num = str(frame_num)
