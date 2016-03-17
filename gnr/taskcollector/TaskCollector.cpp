@@ -10,7 +10,7 @@ struct Deleter
 {
 	void operator()(FIBITMAP* ptr) const
 	{
-		//FreeImage_Unload(ptr);
+		FreeImage_Unload(ptr);
 	}
 };
 
@@ -226,17 +226,17 @@ public:
 		const auto it = chunks.begin();
 		const auto width = FreeImage_GetWidth(it->get());
 		auto height = 0;
-                
-                for (auto i = chunks.begin(); i != chunks.end(); ++i)
-                    height += FreeImage_GetHeight(i->get());
-                
-                
-		auto currentHeight = 1;
-                
+		
+		for (auto i = chunks.begin(); i != chunks.end(); ++i)
+			height += FreeImage_GetHeight(i->get());
+		
+		
+		auto currentHeight = 0;
+		
 		const auto type = FreeImage_GetImageType(it->get());
 		const auto bpp = FreeImage_GetBPP(it->get());
 		bitmap_ptr finalImage(FreeImage_AllocateT(type, width, height, bpp));
-                
+		
 		auto RGBChunkWorker = [=, &finalImage, &currentHeight](const bitmap_ptr& el)
 		{
                         auto chunkHeight = FreeImage_GetHeight(el.get());
@@ -251,10 +251,10 @@ public:
 			}
 			currentHeight += chunkHeight;
 		};
-
+		
 		auto RGBAChunkWorker = [=, &finalImage, &currentHeight](const bitmap_ptr& el)
 		{
-                        auto chunkHeight = FreeImage_GetHeight(el.get());
+			auto chunkHeight = FreeImage_GetHeight(el.get());
 			for (unsigned int y = 0; y < chunkHeight; ++y) {
 				const auto srcbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(el.get(), y));
 				auto dstbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(finalImage.get(), y + currentHeight));
@@ -267,7 +267,7 @@ public:
 			}
 			currentHeight += chunkHeight;
 		};
-                
+		
  		if (type == FIT_RGBF)
  			std::for_each(chunks.rbegin(), chunks.rend(), RGBChunkWorker);
 		else if (type == FIT_RGBAF)
