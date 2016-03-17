@@ -45,24 +45,12 @@ class DockerTaskThread(TaskThread):
             self._fail("None of the Docker images is available")
             return
         try:
-            params = self.extra_data.copy()
-            # For backwards-compatibility (with pre-docker code)
-            # params["scene_file"] is a path relative to the original location
-            # of the script file, stored in self.working_directory
-            # (for historical reasons).
-            # Here we compute the absolute path of the scene file in
-            # the container filesystem:
-            scene_file = posixpath.join(DockerJob.RESOURCES_DIR,
-                                        posixpath.join(self.working_directory,
-                                                       params["scene_file"]))
-            params["scene_file"] = posixpath.normpath(scene_file)
-
             work_dir = os.path.join(self.tmp_path, "work")
             output_dir = os.path.join(self.tmp_path, "output")
             os.mkdir(work_dir)
             os.mkdir(output_dir)
 
-            with DockerJob(self.image, self.src_code, params,
+            with DockerJob(self.image, self.src_code, self.extra_data,
                            self.res_path, work_dir, output_dir) as job:
                 self.job = job
                 self.job.start()

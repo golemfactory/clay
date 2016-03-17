@@ -71,12 +71,14 @@ class TestDockerBlenderTask(TestWithAppConfig):
         self.dirs_to_remove.append(temp_dir)
 
         # Copy the task resources
-        common_prefix = path.commonprefix(render_task.task_resources)
+        all_resources = render_task.task_resources.copy()
+        all_resources.add(render_task.main_program_file)
+        common_prefix = path.commonprefix(all_resources)
         common_prefix = path.dirname(common_prefix)
 
-        for res_file in render_task.task_resources:
+        for res_file in all_resources:
             dest_file = path.join(resource_dir,
-                                  res_file[len(common_prefix) + 1:])
+                                  path.relpath(res_file, common_prefix))
             dest_dirname = path.dirname(dest_file)
             if not path.exists(dest_dirname):
                 makedirs(dest_dirname)
@@ -112,22 +114,13 @@ class TestDockerBlenderTask(TestWithAppConfig):
         # Check the number and type of result files:
         result = task_thread.result
         self.assertEqual(result["result_type"], result_types["files"])
-        self.assertEqual(len(result["data"]), 3)
-        exr_file_present = False
-        stdout_file_present = False
-        stderr_file_present = False
-        for result_file in result["data"]:
-            self.assertTrue(result_file.startswith(out_dir))
-            self.assertTrue(path.isfile(result_file))
-            if result_file.endswith(".exr"):
-                exr_file_present = True
-            elif result_file.endswith(DockerTaskThread.STDOUT_FILE):
-                stdout_file_present = True
-            elif result_file.endswith(DockerTaskThread.STDERR_FILE):
-                stderr_file_present = True
-        self.assertTrue(exr_file_present)
-        self.assertTrue(stdout_file_present)
-        self.assertTrue(stderr_file_present)
+        self.assertGreaterEqual(len(result["data"]), 3)
+        self.assertTrue(
+            any(f == DockerTaskThread.STDOUT_FILE) for f in result["data"])
+        self.assertTrue(
+            any(f == DockerTaskThread.STDERR_FILE) for f in result["data"])
+        self.assertTrue(
+            any(f.endswith(".exr") for f in result["data"]))
 
     def test_blender_subtask_timeout(self):
         task = self._test_task()
@@ -162,8 +155,7 @@ class TestDockerBlenderTask(TestWithAppConfig):
         task.src_code = 'main :: IO()\nmain = putStrLn "Hello, Haskell World"\n'
         task.main_program_file = path.join(
             path.join(get_golem_path(), "gnr"), "node.py")
-        task.task_resources = set(
-            [task.main_program_file, task.main_scene_file])
+        task.task_resources = {task.main_program_file, task.main_scene_file}
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         self.assertIsInstance(task_thread, DockerTaskThread)
         self.assertIsInstance(error_msg, str)

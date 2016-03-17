@@ -140,8 +140,14 @@ class DockerJob(object):
     def _get_host_params_path(self):
         return path.join(self.work_dir, self.PARAMS_FILE)
 
-    def _get_container_script_path(self):
-        return posixpath.join(self.WORK_DIR, self.TASK_SCRIPT)
+    @staticmethod
+    def _get_container_script_path():
+        return posixpath.join(DockerJob.WORK_DIR, DockerJob.TASK_SCRIPT)
+
+    @staticmethod
+    def get_absolute_resource_path(relative_path):
+        return posixpath.join(DockerJob.RESOURCES_DIR,
+                              nt_path_to_posix_path(relative_path))
 
     def start(self):
         if self.get_status() == self.STATE_CREATED:

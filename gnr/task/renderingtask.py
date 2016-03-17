@@ -11,6 +11,7 @@ from golem.task.taskstate import SubtaskStatus
 from golem.task.taskbase import ComputeTaskDef
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.core.common import get_golem_path
+from golem.task.docker.job import DockerJob
 
 from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
@@ -239,9 +240,22 @@ class RenderingTask(GNRTask):
         return self.__get_path(working_directory)
 
     def _get_scene_file_rel_path(self):
-        scene_file = os.path.relpath(os.path.dirname(self.main_scene_file), os.path.dirname(self.main_program_file))
-        scene_file = os.path.normpath(os.path.join(scene_file, os.path.basename(self.main_scene_file)))
-        return self.__get_path(scene_file)
+        """Returns the path to the secene file relative to the directory where
+        the task srcipt is run.
+        """
+        if self.is_docker_task():
+            # In a Docker container we know the absolute path:
+            # First compute the path relative to the resources root dir:
+            rel_scene_path = os.path.relpath(self.main_scene_file,
+                                             self._get_resources_root_dir())
+            # Then prefix with the resources dir in the container:
+            abs_scene_path = DockerJob.get_absolute_resource_path(
+                rel_scene_path)
+            return abs_scene_path
+        else:
+            scene_file = os.path.relpath(os.path.dirname(self.main_scene_file), os.path.dirname(self.main_program_file))
+            scene_file = os.path.normpath(os.path.join(scene_file, os.path.basename(self.main_scene_file)))
+            return self.__get_path(scene_file)
 
     def _short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data

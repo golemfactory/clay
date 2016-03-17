@@ -54,7 +54,8 @@ def exec_cmd(cmd):
     return pc.wait()
 
 
-def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, num_cores):
+def run_lux_renderer_task(start_task, outfilebasename, scene_file_src,
+                          scene_dir, num_cores):
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=WORK_DIR,
                                      delete=False) as tmp_scene_file:
@@ -63,9 +64,10 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, num_cores
     cmd = format_lux_renderer_cmd(start_task, outfilebasename,
                                   tmp_scene_file.name, num_cores)
 
-    # Create symlinks from the resources dir to the work dir
-    for f in os.listdir(RESOURCES_DIR):
-        source = os.path.join(RESOURCES_DIR, f)
+    # Create symlinks for all the resources from the scene dir
+    # (from which scene_file_src is read) to the work dir:
+    for f in os.listdir(scene_dir):
+        source = os.path.join(scene_dir, f)
         target = os.path.join(WORK_DIR, f)
         os.symlink(source, target)
 
@@ -75,4 +77,5 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src, num_cores
 
 
 run_lux_renderer_task(params.start_task, params.outfilebasename,
-                      params.scene_file_src, params.num_threads)
+                      params.scene_file_src, params.scene_dir,
+                      params.num_threads)

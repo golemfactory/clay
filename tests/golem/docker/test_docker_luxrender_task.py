@@ -16,6 +16,8 @@ from golem.tools.testwithappconfig import TestWithAppConfig
 logging.getLogger("peewee").setLevel("INFO")
 
 
+# TODO: extract code common to this class and TestDockerBlenderTask to a superclass
+# TODO: test luxrender tasks with .flm file
 class TestDockerLuxrenderTask(TestWithAppConfig):
 
     TASK_FILE = "docker-luxrender-test-task.json"
@@ -107,6 +109,19 @@ class TestDockerLuxrenderTask(TestWithAppConfig):
     def test_luxrender_subtask(self):
         task = self._test_task()
         task_thread, error_msg, out_dir = self._run_docker_task(task)
-        #self.assertIsInstance(task_thread, DockerTaskThread)
-        #self.assertIsNone(error_msg)
+        self.assertIsInstance(task_thread, DockerTaskThread)
+        self.assertIsNone(error_msg)
+
+        # Check the number and type of result files:
+        result = task_thread.result
+        self.assertEqual(result["result_type"], result_types["files"])
+        self.assertGreaterEqual(len(result["data"]), 3)
+        self.assertTrue(
+            any(f == DockerTaskThread.STDOUT_FILE) for f in result["data"])
+        self.assertTrue(
+            any(f == DockerTaskThread.STDERR_FILE) for f in result["data"])
+        self.assertTrue(
+            any(f.endswith(".flm") for f in result["data"]))
+
+
 
