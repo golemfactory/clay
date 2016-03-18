@@ -1,12 +1,20 @@
 import logging
 import posixpath
+import threading
 from os import path
 
 
 from golem.core.common import is_windows, nt_path_to_posix_path
 from client import local_client
 
+"""
+Name of the logger used for logging stdout and stderr of the process running
+in container.
+"""
+DOCKER_CONTAINER_LOGGER_NAME = __name__ + ".container"
+
 logger = logging.getLogger(__name__)
+container_logger = logging.getLogger(DOCKER_CONTAINER_LOGGER_NAME)
 
 
 class DockerJob(object):
@@ -59,6 +67,10 @@ class DockerJob(object):
         self.container_id = None
         self.container_log = None
         self.state = self.STATE_NEW
+
+        container_log_level = container_logger.getEffectiveLevel()
+        self.log_std_streams = 0 < container_log_level <= logging.DEBUG
+        self.logging_thread = None
 
     def _prepare(self):
         # Save parameters in work_dir/PARAMS_FILE
@@ -126,6 +138,8 @@ class DockerJob(object):
             self.container = None
             self.container_id = None
             self.state = self.STATE_REMOVED
+        if self.logging_thread:
+            self.logging_thread.join(0)
 
     def __enter__(self):
         self._prepare()
@@ -149,6 +163,18 @@ class DockerJob(object):
         return posixpath.join(DockerJob.RESOURCES_DIR,
                               nt_path_to_posix_path(relative_path))
 
+    def _start_logging_thread(self, client):
+
+        def log_stream(s):
+            for chunk in s:
+                container_logger.debug(chunk)
+
+        stream = client.attach(self.container_id, stdout=True, stderr=True,
+                               stream=True, logs=True)
+        self.logging_thread = threading.Thread(
+            target=log_stream, args=(stream,), name="ContainerLoggingThread")
+        self.logging_thread.start()
+
     def start(self):
         if self.get_status() == self.STATE_CREATED:
             client = local_client()
@@ -156,6 +182,8 @@ class DockerJob(object):
             result = client.inspect_container(self.container_id)
             self.state = result["State"]["Status"]
             logger.debug("Container {} started".format(self.container_id))
+            if self.log_std_streams:
+                self._start_logging_thread(client)
             return result
         logger.debug("Container {} not started, status = {}"
                      .format(self.container_id, self.get_status()))

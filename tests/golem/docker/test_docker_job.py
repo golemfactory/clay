@@ -10,7 +10,7 @@ from docker import errors
 
 from golem.core.common import is_windows, nt_path_to_posix_path
 from golem.task.docker.image import DockerImage
-from golem.task.docker.job import DockerJob
+from golem.task.docker.job import DockerJob, DOCKER_CONTAINER_LOGGER_NAME
 from test_docker_image import DockerTestCase
 
 logging.config.fileConfig(path.join(path.dirname(__file__), "logging.ini"), 
@@ -24,7 +24,7 @@ class TestDockerJob(DockerTestCase):
         """Abstract method, should be overriden by subclasses"""
         pass
 
-    TEST_SCRIPT = "print 'Hello World!'\n"
+    TEST_SCRIPT = "print 'Adventure Time!'\n"
 
     def setUp(self):
         tmpdir = path.expandvars("$TMP")
@@ -240,6 +240,40 @@ class TestBaseDockerJob(TestDockerJob):
                 job.start()
                 self.assertEqual(job.get_status(), DockerJob.STATE_RUNNING)
                 job.wait(1)
+
+    def test_start_cleanup(self):
+        # Ensure logging thread is created
+        container_logger = logging.getLogger(DOCKER_CONTAINER_LOGGER_NAME)
+        prev_level = container_logger.getEffectiveLevel()
+        container_logger.setLevel(logging.DEBUG)
+        with self._create_test_job() as job:
+            job.start()
+            self.assertIsNotNone(job.logging_thread)
+            self.assertTrue(job.logging_thread.is_alive())
+            job.wait()
+        self.assertFalse(job.logging_thread.is_alive())
+        container_logger.setLevel(prev_level)
+
+    def test_logger_thread(self):
+        # Ensure logging thread is created
+        container_logger = logging.getLogger(DOCKER_CONTAINER_LOGGER_NAME)
+        prev_level = container_logger.getEffectiveLevel()
+
+        container_logger.setLevel(logging.DEBUG)
+        with self._create_test_job() as job:
+            job.start()
+            self.assertIsNotNone(job.logging_thread)
+            self.assertTrue(job.logging_thread.is_alive())
+            job.wait()
+        self.assertFalse(job.logging_thread.is_alive())
+
+        container_logger.setLevel(logging.INFO)
+        with self._create_test_job() as job:
+            job.start()
+            self.assertIsNone(job.logging_thread)
+            job.wait()
+
+        container_logger.setLevel(prev_level)
 
     def test_working_dir_set(self):
         script = "import os\nprint os.getcwd()\n"
