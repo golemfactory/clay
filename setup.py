@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+import os
 import re
+import subprocess
 import sys
 from os import path
 from setuptools import setup, find_packages
@@ -15,28 +17,33 @@ def generate_ui_files():
 generate_ui_files()
 
 
-def build_docker_image():
-    from golem.task.docker.client import disable_docker, local_client
-    if disable_docker():
+def try_building_docker_images():
+    try:
+        subprocess.call(["docker", "--version"])
+    except OSError as err:
+        print ""
+        print "***************************************************************"
+        print "Docker not available, not building images"
+        print "Output from 'docker --version': {}".format(err)
+        print "***************************************************************"
+        print ""
         return
 
-    client = local_client()
-    # Build imapp/blender
-    dockerfile_path = path.join(path.join(path.dirname(__file__), "scripts"),
-                                "Dockerfile.blender")
-    with open(dockerfile_path, 'r') as dockerfile:
-        print "Building Docker image imapp/blender..."
-        for line in client.build(tag="imapp/blender", fileobj=dockerfile,
-                                 pull=True, rm=True, decode=True):
-            key = line.keys()[0]
-            msg = line[key]
-    if key == "stream" and msg.startswith("Successfully"):
-        print msg
-    else:
-        print "Error when building image, try to run docker build manually"
-        sys.exit(1)
+    dockerfiles_dir = path.join("scripts")
+    for f in os.listdir(dockerfiles_dir):
+        if f.startswith("Dockerfile."):
+            try:
+                name = "golem/{}".format(f.split(".", 1)[-1])
+                cmd = "docker build -t {} -f scripts/{} .".format(name, f)
+                print "\nRunning '{}' ...\n".format(cmd)
+                subprocess.check_call(cmd.split(" "))
+            except ValueError:
+                print "Skipping file scripts/{}".format(f)
+            except subprocess.CalledProcessError as err:
+                print "Docker build failed: {}".format(err)
+                sys.exit(1)
 
-build_docker_image()
+try_building_docker_images()
 
 
 class PyTest(TestCommand):
