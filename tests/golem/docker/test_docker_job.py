@@ -1,19 +1,20 @@
 # coding: utf-8
+import logging.config
 import os
-from os import path
+import requests
 import shutil
 import tempfile
-import logging.config
+from os import path
 
-import requests
 from docker import errors
 
 from golem.core.common import is_windows, nt_path_to_posix_path
 from golem.task.docker.image import DockerImage
-from golem.task.docker.job import DockerJob, DOCKER_CONTAINER_LOGGER_NAME
+from golem.task.docker.job import DockerJob, container_logger
+
 from test_docker_image import DockerTestCase
 
-logging.config.fileConfig(path.join(path.dirname(__file__), "logging.ini"), 
+logging.config.fileConfig(path.join(path.dirname(__file__), "logging.ini"),
                           disable_existing_loggers=False)
 
 
@@ -243,7 +244,6 @@ class TestBaseDockerJob(TestDockerJob):
 
     def test_start_cleanup(self):
         # Ensure logging thread is created
-        container_logger = logging.getLogger(DOCKER_CONTAINER_LOGGER_NAME)
         prev_level = container_logger.getEffectiveLevel()
         container_logger.setLevel(logging.DEBUG)
         with self._create_test_job() as job:
@@ -256,7 +256,6 @@ class TestBaseDockerJob(TestDockerJob):
 
     def test_logger_thread(self):
         # Ensure logging thread is created
-        container_logger = logging.getLogger(DOCKER_CONTAINER_LOGGER_NAME)
         prev_level = container_logger.getEffectiveLevel()
 
         container_logger.setLevel(logging.DEBUG)

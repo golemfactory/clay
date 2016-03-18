@@ -1,10 +1,10 @@
-import unittest
-
 from gnr.docker_environments import BlenderDockerEnvironment
 from golem.task.docker.image import DockerImage
 
+from test_docker_image import DockerTestCase
 
-class TestDockerEnvironment(unittest.TestCase):
+
+class TestDockerEnvironment(DockerTestCase):
 
     def test_blender_docker_env(self):
         env = BlenderDockerEnvironment()

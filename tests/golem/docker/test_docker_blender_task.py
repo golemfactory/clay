@@ -1,24 +1,27 @@
 import jsonpickle
 import logging
-from os import makedirs, path
 import shutil
+from os import makedirs, path
 
+import gnr.node
 from golem.core.common import get_golem_path
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.docker.image import DockerImage
-import gnr.node
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from golem.tools.testwithappconfig import TestWithAppConfig
+
+from test_docker_image import DockerTestCase
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")
 
 
-class TestDockerBlenderTask(TestWithAppConfig):
+class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
 
-    TASK_FILE = "docker-blender-test-task.json"
+    CYCLES_TASK_FILE = "docker-blender-cycles-task.json"
+    BLENDER_TASK_FILE = "docker-blender-render-task.json"
 
     def setUp(self):
         TestWithAppConfig.setUp(self)
@@ -32,8 +35,8 @@ class TestDockerBlenderTask(TestWithAppConfig):
         TaskServer.send_task_failed = self.task_computer_send_task_failed
         TestWithAppConfig.tearDown(self)
 
-    def _test_task_definition(self):
-        task_file = path.join(path.dirname(__file__), self.TASK_FILE)
+    def _load_test_task_definition(self, task_file):
+        task_file = path.join(path.dirname(__file__), task_file)
         with open(task_file, "r") as f:
             task_def = jsonpickle.decode(f.read())
 
@@ -47,8 +50,8 @@ class TestDockerBlenderTask(TestWithAppConfig):
         task_def.main_program_file = set_root_dir(task_def.main_program_file)
         return task_def
 
-    def _test_task(self):
-        task_def = self._test_task_definition()
+    def _create_test_task(self, task_file=CYCLES_TASK_FILE):
+        task_def = self._load_test_task_definition(task_file)
         node_name = "0123456789abcdef"
         root_path = get_golem_path()
         task_builder = BlenderRenderTaskBuilder(node_name, task_def, root_path)
@@ -105,8 +108,8 @@ class TestDockerBlenderTask(TestWithAppConfig):
 
         return task_thread, self.error_msg, temp_dir
 
-    def test_blender_subtask(self):
-        task = self._test_task()
+    def _test_blender_subtask(self, task_file):
+        task = self._create_test_task(task_file)
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         self.assertIsInstance(task_thread, DockerTaskThread)
         self.assertIsNone(error_msg)
@@ -122,8 +125,14 @@ class TestDockerBlenderTask(TestWithAppConfig):
         self.assertTrue(
             any(f.endswith(".exr") for f in result["data"]))
 
+    def test_blender_render_subtask(self):
+        self._test_blender_subtask(self.BLENDER_TASK_FILE)
+
+    def test_blender_cycles_subtask(self):
+        self._test_blender_subtask(self.CYCLES_TASK_FILE)
+
     def test_blender_subtask_timeout(self):
-        task = self._test_task()
+        task = self._create_test_task()
         task_thread, error_msg, out_dir = \
             self._run_docker_task(task, timeout=1)
         self.assertIsInstance(task_thread, DockerTaskThread)
@@ -131,7 +140,7 @@ class TestDockerBlenderTask(TestWithAppConfig):
         self.assertTrue(error_msg.startswith("Task timed out"))
 
     def test_wrong_image_repository_specified(self):
-        task = self._test_task()
+        task = self._create_test_task()
         task.header.docker_images = [DockerImage("%$#@!!!")]
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         if task_thread:
@@ -139,7 +148,7 @@ class TestDockerBlenderTask(TestWithAppConfig):
         self.assertIsInstance(error_msg, str)
 
     def test_wrong_image_id_specified(self):
-        task = self._test_task()
+        task = self._create_test_task()
         image = task.header.docker_images[0]
         task.header.docker_images = [
             DockerImage(image.repository, id = "%$#@!!!")]
@@ -149,7 +158,7 @@ class TestDockerBlenderTask(TestWithAppConfig):
         self.assertIsInstance(error_msg, str)
 
     def test_blender_subtask_script_error(self):
-        task = self._test_task()
+        task = self._create_test_task()
         # Replace the main script source with another script that will
         # produce errors when run in the task environment:
         task.src_code = 'main :: IO()\nmain = putStrLn "Hello, Haskell World"\n'
@@ -162,7 +171,7 @@ class TestDockerBlenderTask(TestWithAppConfig):
         self.assertTrue(error_msg.startswith("Subtask computation failed"))
 
     def test_blender_scene_file_error(self):
-        task = self._test_task()
+        task = self._create_test_task()
         # Replace scene file with some other, non-blender file:
         task.main_scene_file = task.main_program_file
         task_thread, error_msg, out_dir = self._run_docker_task(task)

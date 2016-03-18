@@ -19,12 +19,12 @@ generate_ui_files()
 
 def try_building_docker_images():
     try:
-        subprocess.call(["docker", "--version"])
-    except OSError as err:
+        subprocess.check_call(["docker", "info"])
+    except Exception as err:
         print ""
         print "***************************************************************"
-        print "Docker not available, not building images"
-        print "Output from 'docker --version': {}".format(err)
+        print "Docker not available, not building images."
+        print "Command 'docker info' returned {}".format(err)
         print "***************************************************************"
         print ""
         return

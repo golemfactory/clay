@@ -1,6 +1,5 @@
 import logging
 import os
-import posixpath
 import requests
 
 from golem.task.docker.job import DockerJob

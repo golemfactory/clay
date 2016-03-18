@@ -1,21 +1,22 @@
+import requests
 import unittest
+
 from docker import Client
 from docker.utils import kwargs_from_env
-import requests
 
 from golem.task.docker.image import DockerImage
 
 
 class DockerTestCase(unittest.TestCase):
 
-    TEST_REPOSITORY = "golem/blender"
+    TEST_REPOSITORY = "golem/base"
     TEST_TAG = "latest"
     TEST_IMAGE = "{}:{}".format(TEST_REPOSITORY, TEST_TAG)
     TEST_IMAGE_ID = None
 
     @classmethod
     def test_client(cls):
-        return Client(**kwargs_from_env(assert_hostname = False))
+        return Client(**kwargs_from_env(assert_hostname=False))
 
     @classmethod
     def setUpClass(cls):

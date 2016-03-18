@@ -3,18 +3,15 @@ import posixpath
 import threading
 from os import path
 
-
 from golem.core.common import is_windows, nt_path_to_posix_path
 from client import local_client
 
-"""
-Name of the logger used for logging stdout and stderr of the process running
-in container.
-"""
-DOCKER_CONTAINER_LOGGER_NAME = __name__ + ".container"
-
 logger = logging.getLogger(__name__)
-container_logger = logging.getLogger(DOCKER_CONTAINER_LOGGER_NAME)
+
+"""
+The logger used for logging std streams of the process running in container.
+"""
+container_logger = logging.getLogger(__name__ + ".container")
 
 
 class DockerJob(object):
