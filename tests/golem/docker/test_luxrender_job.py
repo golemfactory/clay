@@ -43,6 +43,7 @@ class TestLuxRenderDockerJob(TestDockerJob):
             "start_task": 42,
             "end_task": 42,
             "frames": [1],
+            "scene_dir": "/golem/resources/",
             "num_threads": 1
         }
 
