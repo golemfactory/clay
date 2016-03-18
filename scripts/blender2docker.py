@@ -1,8 +1,8 @@
+#!/usr/bin/env python
 """
 Converts an old-school Blender task definition in pickled or JSON format to
 an equivalent task definition that can be run with Docker image 'golem/blender'.
 """
-
 import json
 import jsonpickle
 import pickle
@@ -51,4 +51,3 @@ with open(output_file, "w") as outfile:
     # For pretty printing we need to read the json back :(
     json_dict = json.loads(json_str)
     json.dump(json_dict, outfile, indent=2, separators=(',', ':'))
-
