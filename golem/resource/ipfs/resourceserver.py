@@ -25,7 +25,8 @@ class IPFSResourceServer:
         self.dir_manager = dir_manager
 
         self.resource_dir = self.dir_manager.res
-        self.resource_manager = IPFSResourceManager(self.dir_manager, config_desc.node_name)
+        self.resource_manager = IPFSResourceManager(self.dir_manager,
+                                                    config_desc.node_name)
 
         self.resources_to_get = []
         self.waiting_resources = {}
@@ -34,16 +35,22 @@ class IPFSResourceServer:
     def change_resource_dir(self, config_desc):
         if self.dir_manager.root_path == config_desc.root_path:
             return
+
+        old_resource_dir = self.resource_manager.get_resource_root_dir()
+
         self.dir_manager.root_path = config_desc.root_path
         self.dir_manager.node_name = config_desc.node_name
-        self.resource_manager.change_resource_dir(self.dir_manager.get_resource_dir())
+
+        self.resource_manager.copy_resources(old_resource_dir)
+        self.resource_manager.update_resource_dir()
 
     def start_accepting(self):
         try:
             ipfs_id = self.resource_manager.id()
             logger.debug("IPFS: id %r" % ipfs_id)
-        except:
-            raise EnvironmentError("IPFS daemon is not running or is not properly configured")
+        except Exception as e:
+            raise EnvironmentError("IPFS daemon is not running "
+                                   "or is not properly configured: %s" % e.message)
 
     def set_resource_peers(self, *args, **kwargs):
         pass
@@ -63,12 +70,11 @@ class IPFSResourceServer:
     def add_files_to_get(self, files, task_id):
         num = 0
 
-        with IPFSResourceServer.lock:
-            if files:
-                for filename, multihash in files:
-                    if not self.resource_manager.check_resource(filename, task_id):
-                        num += 1
-                        self.add_resource_to_get(filename, multihash, task_id)
+        with self.lock:
+            for filename, multihash in files:
+                if not self.resource_manager.check_resource(filename, task_id):
+                    num += 1
+                    self.add_resource_to_get(filename, multihash, task_id)
 
             if num > 0:
                 self.waiting_tasks_to_compute[task_id] = num
@@ -88,11 +94,14 @@ class IPFSResourceServer:
         self.resources_to_get.append(resource)
 
     def get_resources(self):
-        if self.resources_to_get:
-            for resource in self.resources_to_get:
-                if resource[-1] in [IPFSTransferStatus.idle, IPFSTransferStatus.failed]:
-                    resource[-1] = IPFSTransferStatus.transferring
-                    self.pull_resource(resource)
+
+        with self.lock:
+
+            if self.resources_to_get:
+                for resource in self.resources_to_get:
+                    if resource[-1] in [IPFSTransferStatus.idle, IPFSTransferStatus.failed]:
+                        resource[-1] = IPFSTransferStatus.transferring
+                        self.pull_resource(resource)
 
     def pull_resource(self, resource):
 
@@ -123,14 +132,15 @@ class IPFSResourceServer:
             self.resource_download_error(multihash)
             return
 
-        with IPFSResourceServer.lock:
+        with self.lock:
 
-            for task_id in self.waiting_resources[multihash]:
+            for task_id in self.waiting_resources.get(multihash, []):
                 self.waiting_tasks_to_compute[task_id] -= 1
                 if self.waiting_tasks_to_compute[task_id] <= 0:
                     self.client.task_resource_collected(task_id, unpack_delta=False)
                     del self.waiting_tasks_to_compute[task_id]
-            del self.waiting_resources[multihash]
+
+            self.waiting_resources.pop(multihash)
 
             for i, entry in enumerate(self.resources_to_get):
                 if multihash == entry[1]:
@@ -141,9 +151,9 @@ class IPFSResourceServer:
 
     def resource_download_error(self, resource, *args):
 
-        (filename, multihash) = resource if isinstance(resource, tuple) else (None, resource)
+        filename, multihash = resource if isinstance(resource, tuple) else (None, resource)
 
-        with IPFSResourceServer.lock:
+        with self.lock:
 
             for entry in self.resources_to_get:
                 if multihash == entry[1]:

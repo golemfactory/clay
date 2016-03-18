@@ -1,8 +1,11 @@
+import logging
 import os
+from collections import deque
+from threading import Lock
 
+from golem.core.fileshelper import copy_file_tree
 from golem.resource.ipfs.client import IPFSClient, IPFSAsyncCall, IPFSAsyncExecutor
 
-import logging
 logger = logging.getLogger(__name__)
 
 
@@ -10,38 +13,53 @@ class IPFSResourceManager:
 
     root_path = os.path.abspath(os.sep)
 
-    def __init__(self, dir_manager, node_name, resource_dir_method=None):
+    def __init__(self, dir_manager, node_name,
+                 ipfs_client_config=None,
+                 resource_dir_method=None,
+                 max_concurrent_downloads=8):
+
+        self.lock = Lock()
 
         self.node_name = node_name
         self.dir_manager = dir_manager
+        self.ipfs_client_config = ipfs_client_config
+
+        self.current_downloads = 0
+        self.max_concurrent_downloads = max_concurrent_downloads
 
         self.hash_to_file = dict()
         self.file_to_hash = dict()
         self.task_id_to_files = dict()
         self.task_common_prefixes = dict()
+        self.download_queue = deque()
 
         if not resource_dir_method:
             self.resource_dir_method = dir_manager.get_task_resource_dir
         else:
             self.resource_dir_method = resource_dir_method
 
-        # self.resource_dir = dir_manager.get_task_resource_dir('')
-        # self.add_resource_dir(self.resource_dir)
+        self.add_resource_dir(self.get_resource_root_dir())
 
-    def make_relative_path(self, path, task_id):
+    def _make_relative_path(self, path, task_id):
         common_prefix = self.task_common_prefixes.get(task_id, '')
         return path.replace(common_prefix, '', 1)
 
-    # def copy_resources(self, new_resource_dir):
-    #     copy_file_tree(self.resource_dir, new_resource_dir)
-    #     file_names = next(os.walk(self.resource_dir))[2]
-    #     for f in file_names:
-    #         os.remove(os.path.join(self.resource_dir, f))
-    #
-    # def change_resource_dir(self, resource_dir):
-    #     self.copy_resources(resource_dir)
-    #     self.resource_dir = resource_dir
-    #     self.__init__(self.dir_manager, resource_dir)
+    def copy_resources(self, from_dir):
+        resource_dir = self.get_resource_root_dir()
+        copy_file_tree(from_dir, resource_dir)
+        file_names = next(os.walk(from_dir))[2]
+        for f in file_names:
+            os.remove(os.path.join(from_dir, f))
+
+    def update_resource_dir(self):
+        self.__init__(self.dir_manager,
+                      self.node_name,
+                      self.ipfs_client_config,
+                      self.resource_dir_method,
+                      self.max_concurrent_downloads)
+
+    def get_resource_root_dir(self):
+        return self.get_resource_dir('')
 
     def get_resource_dir(self, task_id):
         return self.resource_dir_method(task_id)
@@ -57,27 +75,74 @@ class IPFSResourceManager:
         temp_dir = self.get_temporary_dir(task_id)
         return os.path.join(temp_dir, resource)
 
+    def new_ipfs_client(self):
+        return IPFSClient()
+
+    def check_resource(self, fs_object, task_id, absolute_path=False):
+        if absolute_path:
+            res_path = fs_object
+        else:
+            res_path = self.get_resource_path(fs_object, task_id)
+
+        return fs_object in self.file_to_hash and os.path.exists(res_path)
+
+    def list_resources(self, task_id):
+        if task_id in self.task_id_to_files:
+            return self.task_id_to_files[task_id]
+        return []
+
+    def list_split_resources(self, task_id):
+        if task_id in self.task_id_to_files:
+            files = self.task_id_to_files[task_id]
+            if files:
+                return [[os.path.split(f[0])] + f[1:] for f in files]
+        return []
+
+    def join_split_resources(self, resources):
+        results = []
+        for resource in resources:
+            if resource:
+                if not isinstance(resource[0], basestring):
+                    results.append([os.path.join(*resource[0])] + resource[1:])
+                else:
+                    results.append(resource)
+        return results
+
     def add_resource_dir(self, dir_name, client=None):
         if not client:
-            client = self.__new_ipfs_client()
+            client = self.new_ipfs_client()
 
-        task_ids = next(os.walk(dir_name))[1]
-        if task_ids:
-            for task_id in task_ids:
-                self.add_resource(task_id,
-                                  task_id=task_id,
-                                  client=client)
+        task_ids = self.dir_manager.list_task_ids_in_dir(dir_name)
 
-    def add_task(self, resource_coll, task_id):
+        for task_id in task_ids:
+            self.add_resource(task_id,
+                              task_id=task_id,
+                              client=client)
+
+    def add_task(self, resource_coll, task_id, client=None):
         if task_id in self.task_common_prefixes:
             return
 
         self.task_common_prefixes[task_id] = os.path.commonprefix(resource_coll)
-        self.add_resources(resource_coll, task_id, absolute_path=True)
+        self.add_resources(resource_coll, task_id,
+                           absolute_path=True,
+                           client=client)
+
+    def remove_task(self, task_id):
+        if task_id in self.task_id_to_files:
+            files = self.task_id_to_files[task_id]
+
+            if files:
+                for file_name in files:
+                    self.file_to_hash.pop(file_name)
+
+            del self.task_id_to_files[task_id]
+
+        self.task_common_prefixes.pop(task_id)
 
     def add_resources(self, resource_coll, task_id, absolute_path=False, client=None):
         if not client:
-            client = self.__new_ipfs_client()
+            client = self.new_ipfs_client()
 
         if resource_coll:
             for resource in resource_coll:
@@ -88,7 +153,7 @@ class IPFSResourceManager:
     def add_resource(self, fs_object, task_id, absolute_path=False, client=None):
 
         if not client:
-            client = self.__new_ipfs_client()
+            client = self.new_ipfs_client()
 
         if absolute_path:
             resource_path = fs_object
@@ -115,7 +180,7 @@ class IPFSResourceManager:
         else:
             if add_response and 'Hash' in add_response and 'Name' in add_response:
 
-                name = self.make_relative_path(add_response.get('Name'), task_id)
+                name = self._make_relative_path(add_response.get('Name'), task_id)
                 multihash = add_response.get('Hash')
 
                 if multihash in self.hash_to_file:
@@ -132,36 +197,26 @@ class IPFSResourceManager:
             else:
                 logging.error("IPFS: Invalid resource %r" % add_response)
 
-    def check_resource(self, fs_object, task_id, absolute_path=False):
-        if absolute_path:
-            res_path = fs_object
-        else:
-            res_path = self.get_resource_path(fs_object, task_id)
-
-        return fs_object in self.file_to_hash and os.path.exists(res_path)
-
-    def list_resources(self, task_id):
-        if task_id in self.task_id_to_files:
-            return self.task_id_to_files[task_id]
-        return []
-
     def pin_resource(self, multihash, client=None):
         if not client:
-            client = self.__new_ipfs_client()
+            client = self.new_ipfs_client()
         return client.pin_add(multihash)
 
     def unpin_resource(self, multihash, client=None):
         if not client:
-            client = self.__new_ipfs_client()
+            client = self.new_ipfs_client()
         return client.pin_rm(multihash)
 
     def pull_resource(self, filename, multihash, task_id,
-                      success, error,
-                      temporary=False):
+                      success, error, client=None):
 
-        client = self.__new_ipfs_client()
+        if not client:
+            client = self.new_ipfs_client()
 
         def success_wrapper(*args, **kwargs):
+            with self.lock:
+                self.current_downloads -= 1
+
             result = args[0][0]
             filename = result[0]
             multihash = result[1]
@@ -169,37 +224,56 @@ class IPFSResourceManager:
             self.pin_resource(multihash, client=client)
             success(filename, multihash, task_id)
 
+            self.__process_queue()
+
         def error_wrapper(*args, **kwargs):
+            with self.lock:
+                self.current_downloads -= 1
+
             error(*args, **kwargs)
+            self.__process_queue()
 
-        if temporary:
-            res_dir = self.get_temporary_dir(task_id)
-            out_path = self.get_temporary_path(filename, task_id)
-        else:
-            res_dir = self.get_resource_dir(task_id)
-            out_path = self.get_resource_path(filename, task_id)
-
+        res_dir = self.get_resource_dir(task_id)
+        out_path = self.get_resource_path(filename, task_id)
         out_dir = out_path.rsplit(os.sep, 1)
 
         if out_dir and len(out_dir) > 1:
             if not os.path.exists(out_dir[0]):
                 os.makedirs(out_dir[0])
 
-        self.__ipfs_async_call(client.get_file,
-                               success_wrapper,
-                               error_wrapper,
-                               multihash=multihash,
-                               filename=filename,
-                               filepath=res_dir)
+        if self.__can_download():
+            with self.lock:
+                self.current_downloads += 1
+            self.__ipfs_async_call(client.get_file,
+                                   success_wrapper,
+                                   error_wrapper,
+                                   multihash=multihash,
+                                   filename=filename,
+                                   filepath=res_dir)
+        else:
+            self.__push_to_queue(filename, multihash, task_id,
+                                 success, error)
 
     def id(self, client=None):
         if not client:
-            client = self.__new_ipfs_client()
+            client = self.new_ipfs_client()
         return client.id()
 
-    def __new_ipfs_client(self):
-        # todo: pass (optional) server config to the client
-        return IPFSClient()
+    def __can_download(self):
+        with self.lock:
+            return self.max_concurrent_downloads < 1 or \
+                   self.current_downloads < self.max_concurrent_downloads
+
+    def __push_to_queue(self, filename, multihash, task_id,
+                        success, error):
+        with self.lock:
+            self.download_queue.append([filename, multihash, task_id,
+                                        success, error])
+
+    def __process_queue(self):
+        with self.lock:
+            if self.download_queue:
+                self.pull_resource(self.download_queue.popleft())
 
     def __ipfs_async_call(self, method, success, error, *args, **kwargs):
         call = IPFSAsyncCall(method, *args, **kwargs)

@@ -215,11 +215,11 @@ class IPFSAsyncCall(object):
 
 class IPFSAsyncExecutor(object):
 
-    """ Execute a deferred job in a separate thread (Twisted reactor) """
+    """ Execute a deferred job in a separate thread (Twisted) """
 
     @classmethod
-    def run(cls, deffered_call, success, error):
-        deferred = threads.deferToThread(deffered_call.method,
-                                         *deffered_call.args,
-                                         **deffered_call.kwargs)
+    def run(cls, deferred_call, success, error):
+        deferred = threads.deferToThread(deferred_call.method,
+                                         *deferred_call.args,
+                                         **deferred_call.kwargs)
         deferred.addCallbacks(success, error)

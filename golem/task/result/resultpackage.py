@@ -152,10 +152,11 @@ class EncryptingTaskResultPackager(EncryptingPackager):
                                   pickle_files=pickle_files)
 
     def extract(self, input_path):
+
         files, files_dir = self.parent.extract(input_path)
+        descriptor_path = os.path.join(files_dir, self.descriptor_file_name)
 
         try:
-            descriptor_path = os.path.join(files_dir, self.descriptor_file_name)
 
             with open(descriptor_path, 'r') as src:
                 descriptor = pickle.loads(src.read())

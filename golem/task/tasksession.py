@@ -149,7 +149,7 @@ class TaskSession(MiddlemanSafeSession):
         if data_type == "resource":
             self.resource_received(extra_data)
         elif data_type == "result":
-            self.result_received(extra_data)
+            self.result_received(extra_data, self.result_owner)
         else:
             logger.error("Unknown data type {}".format(data_type))
             self.conn.producer = None
@@ -178,6 +178,7 @@ class TaskSession(MiddlemanSafeSession):
     def result_received(self, extra_data):
         """ Inform server about received result
         :param dict extra_data: dictionary with information about received result
+        :param dict result_owner: dictionary with information about the result owner
         """
         result = extra_data.get('result')
         result_type = extra_data.get("result_type")
@@ -473,7 +474,9 @@ class TaskSession(MiddlemanSafeSession):
         self.dropped()
 
     def _react_to_resource_list(self, msg):
-        resources = msg.resources
+        resource_manager = self.task_server.client.resource_server.resource_manager
+        resources = resource_manager.join_split_resources(msg.resources)
+
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources)
 
@@ -586,7 +589,7 @@ class TaskSession(MiddlemanSafeSession):
 
         resource_manager = self.task_server.client.resource_server.resource_manager
         resource_manager.add_task(files, msg.task_id)
-        res = resource_manager.list_resources(msg.task_id)
+        res = resource_manager.list_split_resources(msg.task_id)
 
         logger.debug("IPFS: resource list: %r" % res)
 
@@ -617,7 +620,7 @@ class TaskSession(MiddlemanSafeSession):
             file_name, multihash = output
             self.send(MessageTaskResultHash(res.subtask_id, multihash, secret))
         else:
-            logger.error("Couldn't create a task result package for {}".format(res.subtask_id))
+            logger.error("Couldn't create a task result package for subtask {}".format(res.subtask_id))
             self.dropped()
 
     def __receive_data_result(self, msg):
