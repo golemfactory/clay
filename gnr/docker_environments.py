@@ -1,5 +1,5 @@
-from golem.task.docker.environment import DockerEnvironment
-from golem.task.docker.image import DockerImage
+from golem.docker.image import DockerImage
+from golem.docker.environment import DockerEnvironment
 
 
 class BlenderDockerEnvironment(DockerEnvironment):

@@ -1,10 +1,10 @@
-import requests
 import unittest
 
+import requests
 from docker import Client
 from docker.utils import kwargs_from_env
 
-from golem.task.docker.image import DockerImage
+from golem.docker.image import DockerImage
 
 
 class DockerTestCase(unittest.TestCase):

@@ -13,7 +13,7 @@
       "py/object":"gnr.docker_environments.BlenderDockerEnvironment",
       "docker_images":[
         {
-          "py/object": "golem.task.docker.image.DockerImage",
+          "py/object": "golem.docker.image.DockerImage",
           "repository": "golem/blender",
           "tag": "latest",
           "name": "golem/blender:latest",
@@ -71,7 +71,7 @@
   "total_subtasks":6,
   "docker_images":[
     {
-      "py/object": "golem.task.docker.image.DockerImage",
+      "py/object": "golem.docker.image.DockerImage",
       "repository": "golem/blender",
       "tag": "latest",
       "name": "golem/blender:latest",

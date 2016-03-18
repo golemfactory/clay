@@ -1,8 +1,6 @@
-import sys
-import time
 import logging
+import time
 from threading import Lock
-
 # sys.path.append('../manager')
 
 from golem.vm.vm import PythonProcVM, PythonTestVM
@@ -10,7 +8,7 @@ from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
 from golem.task.taskthread import TaskThread
-from golem.task.docker.task_thread import DockerTaskThread
+from golem.docker.task_thread import DockerTaskThread
 
 
 logger = logging.getLogger(__name__)

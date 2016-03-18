@@ -1,17 +1,17 @@
-import jsonpickle
 import logging
 import shutil
 from os import makedirs, path
 
+import jsonpickle
+
 import gnr.node
+from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from golem.core.common import get_golem_path
+from golem.docker.image import DockerImage
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
-from golem.task.docker.image import DockerImage
-from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from golem.tools.testwithappconfig import TestWithAppConfig
-
 from test_docker_image import DockerTestCase
 
 # Make peewee logging less verbose

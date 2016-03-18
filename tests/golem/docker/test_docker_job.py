@@ -1,17 +1,16 @@
 # coding: utf-8
 import logging.config
 import os
-import requests
 import shutil
 import tempfile
 from os import path
 
+import requests
 from docker import errors
 
 from golem.core.common import is_windows, nt_path_to_posix_path
-from golem.task.docker.image import DockerImage
-from golem.task.docker.job import DockerJob, container_logger
-
+from golem.docker.image import DockerImage
+from golem.docker.job import DockerJob, container_logger
 from test_docker_image import DockerTestCase
 
 logging.config.fileConfig(path.join(path.dirname(__file__), "logging.ini"),

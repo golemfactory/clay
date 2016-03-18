@@ -5,8 +5,7 @@ from os import path
 
 from gnr.renderingdirmanager import find_task_script
 from golem.core.common import get_golem_path
-from golem.task.docker.job import DockerJob
-
+from golem.docker.job import DockerJob
 from test_docker_job import TestDockerJob
 
 

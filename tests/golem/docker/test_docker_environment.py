@@ -1,5 +1,5 @@
 from gnr.docker_environments import BlenderDockerEnvironment
-from golem.task.docker.image import DockerImage
+from golem.docker.image import DockerImage
 
 from test_docker_image import DockerTestCase
 
