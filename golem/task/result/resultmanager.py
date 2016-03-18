@@ -1,11 +1,16 @@
 import abc
+import logging
 import os
 import uuid
 import time
 
 from threading import Lock
 from golem.core.fileencrypt import FileEncryptor
+from golem.resource.ipfs.resourceserver import IPFSTransferStatus
+
 from .resultpackage import EncryptingTaskResultPackager
+
+logger = logging.getLogger(__name__)
 
 
 class TaskResultPackageManager(object):
@@ -29,9 +34,10 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
     package_class = EncryptingTaskResultPackager
     lock = Lock()
 
-    def __init__(self, resource_manager):
+    def __init__(self, resource_manager, max_retries=5):
         super(EncryptedResultPackageManager, self).__init__(resource_manager)
         self.pending_results = {}
+        self.max_retries = max_retries
 
     def gen_secret(self):
         return FileEncryptor.gen_secret(12, 24)
@@ -50,14 +56,22 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
             success(extracted_pkg, multihash, task_id, subtask_id)
 
         def error_wrapper(*args, **kwargs):
+            self._pending_result_failed(subtask_id)
             error(multihash, task_id)
 
-        self._add_pending_result(subtask_id, task_id, path, multihash)
+        self._add_pending_result(multihash, task_id, subtask_id, key_or_secret)
         self.resource_manager.pull_resource(filename,
                                             multihash,
                                             task_id,
                                             success=success_wrapper,
                                             error=error_wrapper)
+
+    def pull_results(self):
+        with self.lock:
+            for result in self.pending_results:
+                if result[-1] in [IPFSTransferStatus.idle, IPFSTransferStatus.failed]:
+                    result[-1] = IPFSTransferStatus.transferring
+                    self.pull_package(*result[:-3])
 
     def create(self, node, task_result, key_or_secret):
 
@@ -85,9 +99,25 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         packager = self.package_class(key_or_secret)
         return packager.extract(path)
 
-    def _add_pending_result(self, subtask_id, task_id, path, multihash):
+    def _add_pending_result(self, multihash, task_id, subtask_id, key_or_secret,
+                            status=IPFSTransferStatus.transferring):
         with self.lock:
-            self.pending_results[subtask_id] = [task_id, path, multihash, time.time()]
+            self.pending_results[subtask_id] = [multihash,
+                                                task_id, subtask_id,
+                                                key_or_secret,
+                                                time.time(), 0,
+                                                status]
+
+    def _pending_result_failed(self, subtask_id):
+        with self.lock:
+            pending_result = self.pending_results[subtask_id]
+            pending_result[-1] = IPFSTransferStatus.failed
+            pending_result[subtask_id][-2] += 1
+
+            if self.pending_results[subtask_id][-2] > self.max_retries:
+                logger.error("IPFS: max retries reached for %r" %
+                             self.pending_results[subtask_id])
+                self._remove_pending_result(subtask_id)
 
     def _remove_pending_result(self, subtask_id):
         with self.lock:

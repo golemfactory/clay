@@ -417,8 +417,11 @@ class TaskSession(MiddlemanSafeSession):
         task_id = self.task_manager.subtask2task_mapping.get(subtask_id)
         task_result_manager = self.task_manager.task_result_manager
 
+        logger.debug("IPFS: Task result hash received: %s" % multihash)
+
         def on_success(extracted_pkg, *args, **kwargs):
             extra_data = extracted_pkg.to_extra_data()
+            logger.debug("IPFS: Task result extracted %r" % extracted_pkg.__dict__)
             self.result_received(extra_data)
 
         def on_error(*args, **kwargs):
@@ -618,6 +621,7 @@ class TaskSession(MiddlemanSafeSession):
 
         if output:
             file_name, multihash = output
+            logger.debug("IPFS: sending task result hash: %s (%s)" % (file_name, multihash))
             self.send(MessageTaskResultHash(res.subtask_id, multihash, secret))
         else:
             logger.error("Couldn't create a task result package for subtask {}".format(res.subtask_id))

@@ -96,12 +96,10 @@ class IPFSResourceServer:
     def get_resources(self):
 
         with self.lock:
-
-            if self.resources_to_get:
-                for resource in self.resources_to_get:
-                    if resource[-1] in [IPFSTransferStatus.idle, IPFSTransferStatus.failed]:
-                        resource[-1] = IPFSTransferStatus.transferring
-                        self.pull_resource(resource)
+            for resource in self.resources_to_get:
+                if resource[-1] in [IPFSTransferStatus.idle, IPFSTransferStatus.failed]:
+                    resource[-1] = IPFSTransferStatus.transferring
+                    self.pull_resource(resource)
 
     def pull_resource(self, resource):
 
@@ -147,8 +145,6 @@ class IPFSResourceServer:
                     del self.resources_to_get[i]
                     break
 
-        logger.debug("IPFS: Resource %s (%s) downloaded" % (filename, multihash))
-
     def resource_download_error(self, resource, *args):
 
         filename, multihash = resource if isinstance(resource, tuple) else (None, resource)
@@ -159,8 +155,6 @@ class IPFSResourceServer:
                 if multihash == entry[1]:
                     entry[2] = IPFSTransferStatus.failed
                     break
-
-        logger.error("IPFS: Resource %s (%s) failed to download" % (filename, multihash))
 
     def get_key_id(self):
         return self.keys_auth.get_key_id()

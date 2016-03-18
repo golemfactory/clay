@@ -95,7 +95,7 @@ class IPFSResourceManager:
         if task_id in self.task_id_to_files:
             files = self.task_id_to_files[task_id]
             if files:
-                return [[os.path.split(f[0])] + f[1:] for f in files]
+                return [[f[0].split(os.path.sep)] + f[1:] for f in files]
         return []
 
     def join_split_resources(self, resources):
@@ -183,8 +183,8 @@ class IPFSResourceManager:
                 name = self._make_relative_path(add_response.get('Name'), task_id)
                 multihash = add_response.get('Hash')
 
-                if multihash in self.hash_to_file:
-                    return
+                #if multihash in self.hash_to_file:
+                #    return
 
                 if task_id not in self.task_id_to_files:
                     self.task_id_to_files[task_id] = []
@@ -221,6 +221,8 @@ class IPFSResourceManager:
             filename = result[0]
             multihash = result[1]
 
+            logger.debug("IPFS: %r (%r) downloaded" % (filename, multihash))
+
             self.pin_resource(multihash, client=client)
             success(filename, multihash, task_id)
 
@@ -229,6 +231,8 @@ class IPFSResourceManager:
         def error_wrapper(*args, **kwargs):
             with self.lock:
                 self.current_downloads -= 1
+
+            logger.error("IPFS: error downloading %r (%r %r)" % (args, kwargs))
 
             error(*args, **kwargs)
             self.__process_queue()
