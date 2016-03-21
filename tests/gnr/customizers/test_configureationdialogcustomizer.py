@@ -79,6 +79,7 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         customizer.gui.ui.minPriceLineEdit.setText(u"XYZ")
         with self.assertLogs(logger, level=1):
             self.__click_ok(customizer)
+        gnrgui.app.deleteLater()
 
     def __click_ok(self, customizer):
         QTest.mouseClick(customizer.gui.ui.buttonBox.button(customizer.gui.ui.buttonBox.Ok), Qt.LeftButton)

@@ -80,6 +80,4 @@ class TestGNRApplicationLogic(TestDirFixture):
         time.sleep(0.5)
         success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
         self.assertEqual(success, False)
-
-
-
+        gnrgui.app.deleteLater()

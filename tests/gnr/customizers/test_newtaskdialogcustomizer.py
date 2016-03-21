@@ -18,3 +18,4 @@ class TestNewTaskDialogCustomizer(TestCase):
         gnrgui = GNRGui(Mock(), AdministrationMainWindow)
         customizer = NewTaskDialogCustomizer(NewTaskDialog(gnrgui.main_window.window), logic)
         self.assertIsInstance(customizer, NewTaskDialogCustomizer)
+        gnrgui.app.deleteLater()
