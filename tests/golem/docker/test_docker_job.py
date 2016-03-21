@@ -52,7 +52,7 @@ class TestDockerJob(DockerTestCase):
             try:
                 client.remove_container(self.test_job.container_id, force=True)
             except errors.APIError:
-                # Already removed?
+                pass  # Already removed?
         self.test_job = None
         for d in [self.work_dir, self.resources_dir, self.output_dir]:
             if d:
