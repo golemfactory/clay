@@ -1,17 +1,19 @@
 import os
-from PyQt4 import QtCore
-from PyQt4.QtGui import QFileDialog
+import appdirs
+import logging
+
 from copy import deepcopy
+
+from PyQt4.QtCore import QString
+from PyQt4.QtGui import QFileDialog
 
 from gnr.ui.dialog import AddTaskResourcesDialog
 from gnr.customizers.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.gnrtaskstate import GNRTaskDefinition
 from golem.task.taskstate import TaskStatus
-from gnr.customizers.timehelper import set_time_spin_boxes, get_time_values
+from gnr.customizers.timehelper import set_time_spin_boxes, get_time_values, get_subtask_hours
 from gnr.customizers.customizer import Customizer
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +39,10 @@ class NewTaskDialogCustomizer(Customizer):
         self._setup_basic_new_task_connections()
         self._setup_advance_new_task_connections()
         self._setup_options_connections()
+        self._setup_payment_connections()
 
     def _setup_task_type_connections(self):
-        QtCore.QObject.connect(self.gui.ui.taskTypeComboBox, QtCore.SIGNAL("currentIndexChanged(const QString)"),
-                               self._task_type_value_changed)
+        self.gui.ui.taskTypeComboBox.currentIndexChanged[QString].connect(self._task_type_value_changed)
 
     def _setup_basic_new_task_connections(self):
         self.gui.ui.saveButton.clicked.connect(self._save_task_button_clicked)
@@ -50,21 +52,32 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.cancelButton.clicked.connect(self._cancel_button_clicked)
 
     def _setup_advance_new_task_connections(self):
-        QtCore.QObject.connect(self.gui.ui.optimizeTotalCheckBox, QtCore.SIGNAL("stateChanged(int) "),
-                               self._optimize_total_check_box_changed)
+        self.gui.ui.optimizeTotalCheckBox.stateChanged.connect(self._optimize_total_check_box_changed)
+        self.gui.ui.subtaskTimeoutHourSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
+        self.gui.ui.subtaskTimeoutMinSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
+        self.gui.ui.subtaskTimeoutSecSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
+        self.gui.ui.totalSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
 
     def _setup_options_connections(self):
         self.gui.ui.optionsButton.clicked.connect(self._open_options)
+
+    def _setup_payment_connections(self):
+        self.gui.ui.maxPriceLineEdit.textChanged.connect(self._set_new_pessimistic_cost)
 
     def _set_uid(self):
         self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())
 
     def _init(self):
         self._set_uid()
+        self._set_max_price()
 
         task_types = self.logic.get_task_types()
         for t in task_types.values():
             self.gui.ui.taskTypeComboBox.addItem(t.name)
+
+    def _set_max_price(self):
+        self.gui.ui.maxPriceLineEdit.setText(u"{}".format(self.logic.get_max_price()))
+        self._set_new_pessimistic_cost()
 
     def _choose_main_program_file_button_clicked(self):
 
@@ -85,8 +98,11 @@ class NewTaskDialogCustomizer(Customizer):
         self.add_task_resource_dialog.show()
 
     def _save_task_button_clicked(self):
+        dir_ = os.path.join(appdirs.user_data_dir("golem"), "save")
+        if not os.path.isdir(dir_):
+            dir_ = ""
         file_name = QFileDialog.getSaveFileName(self.gui.window,
-                                                "Choose save file", "", "Golem Task (*.gt)")
+                                                "Choose save file", dir_, "Golem Task (*.gt)")
 
         if file_name != "":
             self._save_task(file_name)
@@ -104,6 +120,7 @@ class NewTaskDialogCustomizer(Customizer):
         self._load_basic_task_params(definition)
         self._load_advance_task_params(definition)
         self._load_resources(definition)
+        self._load_payment_params(definition)
 
     def set_options(self, options):
         self.options = options
@@ -160,6 +177,10 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.totalSpinBox.setEnabled(not definition.optimize_total)
         self.gui.ui.optimizeTotalCheckBox.setChecked(definition.optimize_total)
 
+    def _load_payment_params(self, definition):
+        self.gui.ui.maxPriceLineEdit.setText(u"{}".format(definition.max_price))
+        self._set_new_pessimistic_cost()
+
     def _finish_button_clicked(self):
         self.task_state = RenderingTaskState()
         self.task_state.status = TaskStatus.notStarted
@@ -180,8 +201,9 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _query_task_definition(self):
         definition = GNRTaskDefinition()
-        definition = self._read_basic_task_params(definition)
-        definition = self._read_task_type(definition)
+        self._read_basic_task_params(definition)
+        self._read_task_type(definition)
+        self._read_price_params(definition)
         definition.options = self.options
         return definition
 
@@ -202,14 +224,18 @@ class NewTaskDialogCustomizer(Customizer):
 
         definition.resources.add(os.path.normpath(definition.main_program_file))
 
-        return definition
-
     def _read_task_type(self, definition):
         definition.task_type = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
-        return definition
+
+    def _read_price_params(self, definition):
+        try:
+            definition.max_price = float(self.gui.ui.maxPriceLineEdit.text())
+        except ValueError:
+            logger.warning("Wrong price value")
 
     def _optimize_total_check_box_changed(self):
         self.gui.ui.totalSpinBox.setEnabled(not self.gui.ui.optimizeTotalCheckBox.isChecked())
+        self._set_new_pessimistic_cost()
 
     def _open_options(self):
         task_name = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
@@ -231,3 +257,14 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _get_add_resource_dialog(self):
         return AddTaskResourcesDialog(self.gui.window)
+
+    def _set_new_pessimistic_cost(self):
+        try:
+            price = float(self.gui.ui.maxPriceLineEdit.text())
+            if self.gui.ui.optimizeTotalCheckBox.isChecked():
+                self.gui.ui.pessimisticCostLabel.setText("unknown")
+            else:
+                time_ = get_subtask_hours(self.gui) * float(self.gui.ui.totalSpinBox.value())
+                self.gui.ui.pessimisticCostLabel.setText(u"{}".format(price * time_))
+        except ValueError:
+            self.gui.ui.pessimisticCostLabel.setText("unknown")

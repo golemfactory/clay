@@ -53,30 +53,33 @@ class BlenderRendererOptions(GNROptions):
 
 
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
+    """ Build new Blender tasks using RenderingTaskDefintions and BlenderRendererOptions as taskdefinition
+    renderer options
+    """
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
-
-        vray_task = BlenderRenderTask(self.node_name,
-                                      self.task_definition.task_id,
-                                      main_scene_dir,
-                                      self.task_definition.main_scene_file,
-                                      self.task_definition.main_program_file,
-                                      self._calculate_total(BlenderDefaults(), self.task_definition),
-                                      self.task_definition.resolution[0],
-                                      self.task_definition.resolution[1],
-                                      os.path.splitext(os.path.basename(self.task_definition.output_file))[0],
-                                      self.task_definition.output_file,
-                                      self.task_definition.output_format,
-                                      self.task_definition.full_task_timeout,
-                                      self.task_definition.subtask_timeout,
-                                      self.task_definition.resources,
-                                      self.task_definition.estimated_memory,
-                                      self.root_path,
-                                      self.task_definition.renderer_options.use_frames,
-                                      self.task_definition.renderer_options.frames,
-                                      self.task_definition.renderer_options.engine
-                                      )
-        return self._set_verification_options(vray_task)
+        blender_task = BlenderRenderTask(self.node_name,
+                                         self.task_definition.task_id,
+                                         main_scene_dir,
+                                         self.task_definition.main_scene_file,
+                                         self.task_definition.main_program_file,
+                                         self._calculate_total(BlenderDefaults(), self.task_definition),
+                                         self.task_definition.resolution[0],
+                                         self.task_definition.resolution[1],
+                                         os.path.splitext(os.path.basename(self.task_definition.output_file))[0],
+                                         self.task_definition.output_file,
+                                         self.task_definition.output_format,
+                                         self.task_definition.full_task_timeout,
+                                         self.task_definition.subtask_timeout,
+                                         self.task_definition.resources,
+                                         self.task_definition.estimated_memory,
+                                         self.root_path,
+                                         self.task_definition.renderer_options.use_frames,
+                                         self.task_definition.renderer_options.frames,
+                                         self.task_definition.max_price,
+                                         self.task_definition.renderer_options.engine
+                                        )
+        return self._set_verification_options(blender_task)
 
     def _set_verification_options(self, new_task):
         new_task = FrameRenderingTaskBuilder._set_verification_options(self, new_task)
@@ -112,6 +115,7 @@ class BlenderRenderTask(FrameRenderingTask):
                  root_path,
                  use_frames,
                  frames,
+                 max_price,
                  engine,
                  return_address="",
                  return_port=0,
@@ -121,7 +125,7 @@ class BlenderRenderTask(FrameRenderingTask):
                                     BlenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                     main_program_file, task_resources, main_scene_dir, main_scene_file,
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                                    root_path, estimated_memory, use_frames, frames)
+                                    root_path, estimated_memory, use_frames, frames, max_price)
 
         crop_task = find_task_script("blendercrop.py")
         try:

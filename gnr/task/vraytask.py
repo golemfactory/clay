@@ -232,13 +232,6 @@ class VRayTask(FrameRenderingTask):
                 output_file_name = u"{}".format(self.output_file, self.output_format)
                 self.__put_image_together(output_file_name)
 
-    @check_subtask_id_wrapper
-    def get_price_mod(self, subtask_id):
-        perf = (self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task']) + 1
-        perf *= float(self.subtasks_given[subtask_id]['perf']) / 1000
-        perf *= 10
-        return perf
-
     ###################
     # GNRTask methods #
     ###################

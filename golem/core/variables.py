@@ -37,8 +37,3 @@ BREAK_TIME = 2400
 END_ROUND_TIME = 1200
 ROUND_TIME = 1800
 STAGE_TIME = 36000
-
-######################
-# TRANSACTION SYSTEM #
-######################
-PRICE_BASE = 10.0

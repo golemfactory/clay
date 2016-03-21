@@ -16,8 +16,8 @@ class TestEthereumTransactionSystem(TestWithDatabase):
         with self.assertRaises(AssertionError):
             EthereumTransactionSystem("ABC", "not a private key")
 
-    def test_wrong_address_in_global_pay_for_task(self):
+    def test_wrong_address_in_pay_for_task(self):
         addr = keys.privtoaddr(PRIV_KEY)
         e = EthereumTransactionSystem("ABC", PRIV_KEY)
         assert e.get_payment_address() == '0x' + addr.encode('hex')
-        e.global_pay_for_task("xyz", [])
+        e.pay_for_task("xyz", [])

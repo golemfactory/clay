@@ -56,7 +56,7 @@ class RenderingTask(GNRTask):
     def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                 estimated_memory):
+                 estimated_memory, max_price):
 
         try:
             with open(main_program_file, "r") as src_file:
@@ -71,7 +71,7 @@ class RenderingTask(GNRTask):
             resource_size += os.stat(resource).st_size
 
         GNRTask.__init__(self, src_code, node_id, task_id, owner_address, owner_port, owner_key_id, environment,
-                         ttl, subtask_ttl, resource_size, estimated_memory)
+                         ttl, subtask_ttl, resource_size, estimated_memory, max_price)
 
         self.full_task_timeout = ttl
         self.header.ttl = self.full_task_timeout

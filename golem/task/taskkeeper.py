@@ -8,18 +8,28 @@ logger = logging.getLogger(__name__)
 
 
 class TaskKeeper(object):
-    def __init__(self, remove_task_timeout=240.0, verification_timeout=3600):
+    def __init__(self, environments_manager, min_price=0.0, app_version=1.0, remove_task_timeout=240.0,
+                 verification_timeout=3600):
         self.task_headers = {}
         self.supported_tasks = []
         self.removed_tasks = {}
         self.active_tasks = {}
         self.active_requests = {}
-        self.waiting_for_verification = {}
+        self.completed = {}
+        self.declared_prices = {}
+        self.min_price = min_price
+        self.app_version = app_version
 
         self.verification_timeout = verification_timeout
         self.removed_task_timeout = remove_task_timeout
+        self.environments_manager = environments_manager
 
-    def get_task(self):
+    def is_supported(self, th_dict_repr):
+        supported = self.check_environment(th_dict_repr)
+        supported = supported and self.check_price(th_dict_repr)
+        return supported and self.check_version(th_dict_repr)
+
+    def get_task(self, price):
         if len(self.supported_tasks) > 0:
             tn = random.randrange(0, len(self.supported_tasks))
             task_id = self.supported_tasks[tn]
@@ -27,25 +37,68 @@ class TaskKeeper(object):
             if task_id in self.active_requests:
                 self.active_requests[task_id] += 1
             else:
-                self.active_tasks[task_id] = theader
+                self.active_tasks[task_id] = {'header': theader, 'price': price}
                 self.active_requests[task_id] = 1
             return theader
         else:
             return None
 
+    def check_environment(self, th_dict_repr):
+        env = th_dict_repr.get("environment")
+        if not env:
+            return False
+        if not self.environments_manager.supported(env):
+            return False
+        return self.environments_manager.accept_tasks(env)
+
+    def check_price(self, th_dict_repr):
+        return th_dict_repr.get("max_price") >= self.min_price
+
+    def check_version(self, th_dict_repr):
+        min_v = th_dict_repr.get("min_version")
+        if not min_v:
+            return True
+        try:
+            supported = float(self.app_version) >= float(min_v)
+            return supported
+        except ValueError:
+            logger.error(
+                "Wrong app version - app version {}, required version {}".format(
+                    self.app_version,
+                    min_v
+                )
+            )
+            return False
+
     def get_all_tasks(self):
         return self.task_headers.values()
 
-    def add_task_header(self, th_dict_repr, is_supported):
+    def change_config(self, config_desc):
+        if config_desc.min_price == self.min_price:
+            return
+        self.min_price = config_desc.min_price
+        self.supported_tasks = []
+        for id_, th in self.task_headers.iteritems():
+            if self.is_supported(th.__dict__):
+                self.supported_tasks.append(id_)
+
+    def add_task_header(self, th_dict_repr):
         try:
             id_ = th_dict_repr["id"]
             if id_ not in self.task_headers.keys():  # don't have it
                 if id_ not in self.removed_tasks.keys():  # not removed recently
+                    is_supported = self.is_supported(th_dict_repr)
                     logger.info("Adding task {} is_supported={}".format(id_, is_supported))
-                    self.task_headers[id_] = TaskHeader(th_dict_repr["node_name"], id_, th_dict_repr["address"],
-                                                        th_dict_repr["port"], th_dict_repr["key_id"],
-                                                        th_dict_repr["environment"], th_dict_repr["task_owner"],
-                                                        th_dict_repr["ttl"], th_dict_repr["subtask_timeout"])
+                    self.task_headers[id_] = TaskHeader(node_name=th_dict_repr["node_name"],
+                                                        task_id=id_,
+                                                        task_owner_address=th_dict_repr["address"],
+                                                        task_owner_port=th_dict_repr["port"],
+                                                        task_owner_key_id=th_dict_repr["key_id"],
+                                                        environment=th_dict_repr["environment"],
+                                                        task_owner=th_dict_repr["task_owner"],
+                                                        ttl=th_dict_repr["ttl"],
+                                                        subtask_timeout=th_dict_repr["subtask_timeout"],
+                                                        max_price=th_dict_repr["max_price"])
                     if is_supported:
                         self.supported_tasks.append(id_)
             return True
@@ -74,25 +127,27 @@ class TaskKeeper(object):
         if self.active_requests[task_id] <= 0 and task_id not in self.task_headers:
             self.__del_active_task(task_id)
 
-    def get_waiting_for_verification_task_id(self, subtask_id):
-        if subtask_id not in self.waiting_for_verification:
+    def get_task_id_for_subtask(self, subtask_id):
+        if subtask_id not in self.completed:
             return None
-        return self.waiting_for_verification[subtask_id][0]
+        return self.completed[subtask_id][0]
+
+    def is_waiting_for_subtask(self, subtask_id):
+        return self.completed.get(subtask_id) is not None
 
     def is_waiting_for_task(self, task_id):
-        for v in self.waiting_for_verification.itervalues():
+        for v in self.completed.itervalues():
             if v[0] == task_id:
                 return True
         return False
 
-    def remove_waiting_for_verification(self, task_id):
-        subtasks = [subId for subId, val in self.waiting_for_verification.iteritems() if val[0] == task_id]
-        for subtask_id in subtasks:
-            del self.waiting_for_verification[subtask_id]
-
-    def remove_waiting_for_verification_task_id(self, subtask_id):
-        if subtask_id in self.waiting_for_verification:
-            del self.waiting_for_verification[subtask_id]
+    def remove_completed(self, task_id=None, subtask_id=None):
+        if task_id:
+            subtasks = [sub_id for sub_id, val in self.completed.iteritems() if val[0] == task_id]
+            for sub_id in subtasks:
+                del self.completed[sub_id]
+        if subtask_id:
+            del self.completed[subtask_id]
 
     def remove_old_tasks(self):
         for t in self.task_headers.values():
@@ -116,19 +171,26 @@ class TaskKeeper(object):
     def get_receiver_for_task_verification_result(self, task_id):
         if task_id not in self.active_tasks:
             return None
-        return self.active_tasks[task_id].task_owner_key_id
+        return self.active_tasks[task_id]['header'].task_owner_key_id
 
-    def add_to_verification(self, subtask_id, task_id):
+    def add_completed(self, subtask_id, task_id, computing_time):
         now = datetime.datetime.now()
-        self.waiting_for_verification[subtask_id] = [task_id, now, self.__count_deadline(now)]
+        self.completed[subtask_id] = [task_id, now, self.__count_deadline(now)]
+        tk = self.active_tasks.get(task_id)
+        if tk:
+            return tk['price'] * computing_time
+        else:
+            logger.error("Unknown price for task {}".format(task_id))
+            return 0
 
     def check_payments(self):
+        # TODO Save unpaid tasks somewhere else
         now = datetime.datetime.now()
         after_deadline = []
-        for subtask_id, [task_id, task_date, deadline] in self.waiting_for_verification.items():
+        for subtask_id, [task_id, task_date, deadline] in self.completed.items():
             if deadline < now:
                 after_deadline.append(task_id)
-                del self.waiting_for_verification[subtask_id]
+                del self.completed[subtask_id]
         return after_deadline
 
     def __count_deadline(self, date):  # FIXME Cos zdecydowanie bardziej zaawansowanego i moze dopasowanego do kwoty
