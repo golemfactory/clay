@@ -135,7 +135,7 @@ class DockerJob(object):
             try:
                 client.remove_container(self.container_id, force=True)
                 logger.debug("Container {} removed".format(self.container_id))
-            except errors.APIError:
+            except docker.errors.APIError:
                 pass  # Already removed? Sometimes happens in CircleCI.
             self.container = None
             self.container_id = None

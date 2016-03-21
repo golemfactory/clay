@@ -6,7 +6,7 @@ import tempfile
 from os import path
 
 import requests
-from docker import errors
+import docker.errors
 
 from golem.core.common import is_windows, nt_path_to_posix_path
 from golem.docker.image import DockerImage
@@ -51,7 +51,7 @@ class TestDockerJob(DockerTestCase):
             client = self.test_client()
             try:
                 client.remove_container(self.test_job.container_id, force=True)
-            except errors.APIError:
+            except docker.errors.APIError:
                 pass  # Already removed?
         self.test_job = None
         for d in [self.work_dir, self.resources_dir, self.output_dir]:
@@ -171,7 +171,7 @@ class TestBaseDockerJob(TestDockerJob):
             self.assertIsNotNone(container_id)
 
         self.assertIsNone(job.container_id)
-        with self.assertRaises(errors.NotFound):
+        with self.assertRaises(docker.errors.NotFound):
             client = self.test_client()
             client.inspect_container(container_id)
 
