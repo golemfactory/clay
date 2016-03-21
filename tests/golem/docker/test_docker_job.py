@@ -47,11 +47,13 @@ class TestDockerJob(DockerTestCase):
         self.test_job = None
 
     def tearDown(self):
-        if self.test_job:
-            if self.test_job.container:
-                client = self.test_client()
+        if self.test_job and self.test_job.container:
+            client = self.test_client()
+            try:
                 client.remove_container(self.test_job.container_id, force=True)
-            self.test_job = None
+            except errors.APIError:
+                # Already removed?
+        self.test_job = None
         for d in [self.work_dir, self.resources_dir, self.output_dir]:
             if d:
                 shutil.rmtree(d)

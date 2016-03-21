@@ -3,6 +3,8 @@ import posixpath
 import threading
 from os import path
 
+import docker.errors
+
 from golem.core.common import is_windows, nt_path_to_posix_path
 from client import local_client
 
@@ -130,8 +132,11 @@ class DockerJob(object):
     def _cleanup(self):
         if self.container:
             client = local_client()
-            client.remove_container(self.container_id, force=True)
-            logger.debug("Container {} removed".format(self.container_id))
+            try:
+                client.remove_container(self.container_id, force=True)
+                logger.debug("Container {} removed".format(self.container_id))
+            except errors.APIError:
+                # Already removed? Sometimes happens in CircleCI.
             self.container = None
             self.container_id = None
             self.state = self.STATE_REMOVED
