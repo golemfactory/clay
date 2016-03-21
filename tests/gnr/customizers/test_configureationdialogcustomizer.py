@@ -1,9 +1,5 @@
-import unittest
 import os
 import re
-
-from PyQt4.QtTest import QTest
-from PyQt4.QtCore import Qt
 
 from mock import MagicMock
 
@@ -68,17 +64,14 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         self.assertEqual(float(customizer.gui.ui.minPriceLineEdit.text()), 2.3)
         customizer.gui.ui.maxPriceLineEdit.setText(u"{}".format(11.5))
         customizer.gui.ui.minPriceLineEdit.setText(u"{}".format(1.1))
-        self.__click_ok(customizer)
+        customizer.gui.ui.buttonBox.accepted.emit()
         ccd = logic_mock.change_config.call_args_list[0][0][0]
         self.assertEqual(ccd.min_price, 1.1)
         self.assertEqual(ccd.max_price, 11.5)
         customizer.gui.ui.maxPriceLineEdit.setText(u"ABCDEF")
         with self.assertLogs(logger, level=1):
-            self.__click_ok(customizer)
+            customizer.gui.ui.buttonBox.accepted.emit()
         customizer.gui.ui.maxPriceLineEdit.setText(u"{}".format(0.3))
         customizer.gui.ui.minPriceLineEdit.setText(u"XYZ")
         with self.assertLogs(logger, level=1):
-            self.__click_ok(customizer)
-
-    def __click_ok(self, customizer):
-        QTest.mouseClick(customizer.gui.ui.buttonBox.button(customizer.gui.ui.buttonBox.Ok), Qt.LeftButton)
+            customizer.gui.ui.buttonBox.accepted.emit()
