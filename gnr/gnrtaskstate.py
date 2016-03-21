@@ -1,7 +1,7 @@
 from golem.task.taskstate import TaskState
 
 
-class GNRTaskDefinition:
+class GNRTaskDefinition(object):
     def __init__(self):
         self.task_id = ""
         self.full_task_timeout = 0
@@ -15,6 +15,8 @@ class GNRTaskDefinition:
         self.optimize_total = False
         self.main_program_file = ""
         self.task_type = None
+
+        self.max_price = 0
 
         self.verification_options = None
         self.options = GNROptions

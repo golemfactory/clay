@@ -1,5 +1,5 @@
 import os
-from threading import Thread, Lock
+from threading import Lock
 import shutil
 import logging
 from golem.task.taskbase import Task, resource_types
@@ -24,15 +24,6 @@ def find_flm(directory):
         # Print the stack traceback
         traceback.print_exc()
         return None
-
-def copy_rename(old_file_name, new_file_name):
-        dst_dir= os.path.join(os.curdir , "subfolder")
-        src_file = os.path.join(src_dir, old_file_name)
-        shutil.copy(src_file,dst_dir)
-        
-        dst_file = os.path.join(dst_dir, old_file_name)
-        new_dst_file_name = os.path.join(dst_dir, new_file_name)
-        os.rename(dst_file, new_dst_file_name)
 
 class TaskTester:
     def __init__(self, task, root_path, finished_callback):
@@ -79,7 +70,7 @@ class TaskTester:
             with self.lock:
                 if self.tt.get_error():
                     logger.warning("Task not tested properly")
-                    self.finished_callback(False)
+                    self.finished_callback(False, error=self.tt.error_msg)
                     return 0
                 return self.tt.get_progress()
         return None
@@ -87,13 +78,13 @@ class TaskTester:
     def task_computed(self, task_thread):
         if task_thread.result:
             res, est_mem = task_thread.result
-        if task_thread.result and 'data' in res and res['data']:
+        if task_thread.result and res and res.get("data"):
             logger.info("Test task computation success !")
             
             # Search for flm - the result of testing a lux task
             # It's needed for verification of received results
             flm = find_flm(self.tmp_dir)
-            if(flm != None):
+            if flm is not None:
                 try:
                     filename = "test_result.flm"
                     flm_path = os.path.join(self.tmp_dir, filename)
@@ -105,13 +96,14 @@ class TaskTester:
                     shutil.copy(flm_path, save_path)
                 except: 
                     logger.warning("Couldn't rename and copy .flm file")
-            
-            
-            
+
             self.finished_callback(True, est_mem)
         else:
-            logger.warning("Test task computation failed !!!")
-            self.finished_callback(False)
+            logger_msg = "Test task computation failed!"
+            if task_thread.error_msg:
+                logger_msg += " " + task_thread.error_msg
+            logger.warning(logger_msg)
+            self.finished_callback(False, error=task_thread.error_msg)
 
     def __prepare_resources(self):
 
@@ -122,8 +114,8 @@ class TaskTester:
             shutil.rmtree(self.test_task_res_path, True)
             os.makedirs(self.test_task_res_path)
 
-        self.test_taskResDir = get_test_task_directory()
-        rh = TaskResourceHeader(self.test_taskResDir)
+        self.test_task_res_dir = get_test_task_directory()
+        rh = TaskResourceHeader(self.test_task_res_dir)
         res_file = self.task.get_resources(self.task.header.task_id, rh, resource_types["zip"])
 
         if res_file:

@@ -4,13 +4,11 @@ import struct
 import logging
 import os
 from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, \
-    MessageTaskToCompute, \
-    MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, MessageTaskResult, \
+    MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, \
     MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
-    MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse, \
-    MessageRewardPaid
+    MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
 from golem.network.transport.session import MiddlemanSafeSession
@@ -206,18 +204,19 @@ class TaskSession(MiddlemanSafeSession):
         self.dropped()
 
     # TODO Wszystkie parametry klienta powinny zostac zapisane w jednej spojnej klasie
-    def request_task(self, node_name, task_id, performance_index, max_resource_size, max_memory_size, num_cores):
+    def request_task(self, node_name, task_id, performance_index, price, max_resource_size, max_memory_size, num_cores):
         """ Inform that node wants to compute given task
         :param str node_name: name of that node
         :param uuid task_id: if of a task that node wants to compute
         :param float performance_index: benchmark result for this task type
+        :param float price: price for an hour
         :param int max_resource_size: how much disk space can this node offer
         :param int max_memory_size: how much ram can this node offer
         :param int num_cores: how many cpu cores this node can offer
         :return:
         """
-        self.send(MessageWantToComputeTask(node_name, task_id, performance_index, max_resource_size, max_memory_size,
-                                           num_cores))
+        self.send(MessageWantToComputeTask(node_name, task_id, performance_index, price, max_resource_size,
+                                           max_memory_size, num_cores))
 
     def request_resource(self, task_id, resource_header):
         """ Ask for a resources for a given task. Task owner should compare given resource header with
@@ -247,8 +246,9 @@ class TaskSession(MiddlemanSafeSession):
             return
         node_name = self.task_server.get_node_name()
 
-        self.send(MessageReportComputedTask(task_result.subtask_id, task_result.result_type, node_name, address, port,
-                                            self.task_server.get_key_id(), node_info, eth_account, extra_data))
+        self.send(MessageReportComputedTask(task_result.subtask_id, task_result.result_type, task_result.computing_time,
+                                            node_name, address, port, self.task_server.get_key_id(), node_info,
+                                            eth_account, extra_data))
 
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
@@ -262,10 +262,6 @@ class TaskSession(MiddlemanSafeSession):
         :param str subtask_id: subtask that has wrong result
         """
         self.send(MessageSubtaskResultRejected(subtask_id))
-
-    # TODO: by default this may be
-    def send_reward_for_task(self, task_id, reward):
-        self.send(MessageRewardPaid(task_id, reward))
 
     # TODO: change this method and use it
     def send_message_subtask_accepted(self, subtask_id, reward):
@@ -324,7 +320,7 @@ class TaskSession(MiddlemanSafeSession):
         logger.debug("Computing trust level: {}".format(trust))
         if trust >= self.task_server.config_desc.computing_trust:
             ctd, wrong_task = self.task_manager.get_next_subtask(self.key_id, msg.node_name, msg.task_id,
-                                                                 msg.perf_index, msg.max_resource_size,
+                                                                 msg.perf_index, msg.price, msg.max_resource_size,
                                                                  msg.max_memory_size, msg.num_cores, self.address)
         else:
             ctd, wrong_task = None, False
@@ -348,6 +344,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_report_computed_task(self, msg):
         if msg.subtask_id in self.task_manager.subtask2task_mapping:
+            self.task_server.receive_subtask_computation_time(msg.subtask_id, msg.computation_time)
             delay = self.task_manager.accept_results_delay(self.task_manager.subtask2task_mapping[msg.subtask_id])
 
             if delay == -1.0:
@@ -389,9 +386,6 @@ class TaskSession(MiddlemanSafeSession):
             res.already_sending = False
             self.dropped()
 
-    def _react_to_task_result(self, msg):
-        self.__receive_task_result(msg.subtask_id, msg.result)
-
     def _react_to_get_resource(self, msg):
         self.last_resource_msg = msg
         self.__send_resource_format(self.task_server.config_desc.use_distributed_resource_management)
@@ -413,10 +407,6 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
-        self.dropped()
-
-    def _react_to_reward_paid(self, msg):
-        self.task_server.reward_paid(msg.task_id, msg.reward)
         self.dropped()
 
     def _react_to_subtask_result_rejected(self, msg):
@@ -573,7 +563,6 @@ class TaskSession(MiddlemanSafeSession):
             MessageCannotAssignTask.Type: self._react_to_cannot_assign_task,
             MessageReportComputedTask.Type: self._react_to_report_computed_task,
             MessageGetTaskResult.Type: self._react_to_get_task_result,
-            MessageTaskResult.Type: self._react_to_task_result,
             MessageGetResource.Type: self._react_to_get_resource,
             MessageAcceptResourceFormat.Type: self._react_to_accept_resource_format,
             MessageResource.Type: self._react_to_resource,
@@ -592,9 +581,9 @@ class TaskSession(MiddlemanSafeSession):
             MessageJoinMiddlemanConn.Type: self._react_to_join_middleman_conn,
             MessageNatPunch.Type: self._react_to_nat_punch,
             MessageWaitForNatTraverse.Type: self._react_to_wait_for_nat_traverse,
-            MessageRewardPaid.Type: self._react_to_reward_paid
         })
 
         # self.can_be_not_encrypted.append(MessageHello.Type)
         self.can_be_unsigned.append(MessageHello.Type)
         self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type])
+

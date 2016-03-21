@@ -57,12 +57,13 @@ class InfoTask(GNRTask):
                  subtask_ttl,
                  resource_size,
                  estimated_memory,
+                 max_price,
                  nodes_manager_address,
                  nodes_manager_port,
                  iterations):
 
         GNRTask.__init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                         ttl, subtask_ttl, resource_size, estimated_memory)
+                         ttl, subtask_ttl, resource_size, estimated_memory, max_price)
 
         self.total_tasks = iterations
 

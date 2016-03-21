@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 class ConfigurationDialogCustomizer(Customizer):
+    """ Customizer for gui with all golem configuration option that can be changed by user
+    """
+
     def __init__(self, gui, logic):
         self.old_plugin_port = None
         Customizer.__init__(self, gui, logic)
@@ -29,6 +32,10 @@ class ConfigurationDialogCustomizer(Customizer):
 
     @staticmethod
     def du(path):
+        """ Imitates bash "du -h <path>" command behaviour. Returns the estiamted size of this directory
+        :param str path: path to directory which size should be measured
+        :return str: directory size in human readeable format (eg. 1 Mb) or "-1" if an error occurs.
+        """
         try:
             size = int(subprocess.check_output(['du', '-sb', path]).split()[0])
         except (OSError, subprocess.CalledProcessError):
@@ -172,7 +179,8 @@ class ConfigurationDialogCustomizer(Customizer):
     def __load_payment_config(self, config_desc):
         self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.eth_account))
         self.__check_eth_account()
-
+        self.gui.ui.minPriceLineEdit.setText(u"{}".format(config_desc.min_price))
+        self.gui.ui.maxPriceLineEdit.setText(u"{}".format(config_desc.max_price))
 
     def __load_resource_config(self):
         res_dirs = self.logic.get_res_dirs()
@@ -328,6 +336,14 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __read_payment_config(self, cfg_desc):
         cfg_desc.eth_account = u"{}".format(self.gui.ui.ethAccountLineEdit.text())
+        try:
+            cfg_desc.min_price = float(self.gui.ui.minPriceLineEdit.text())
+        except ValueError as err:
+            logger.warning("Wrong min_payment value: {}".format(err))
+        try:
+            cfg_desc.max_price = float(self.gui.ui.maxPriceLineEdit.text())
+        except ValueError as err:
+            logger.warning("Wrong max_payment value: {}".format(err))
         self.__check_eth_account()
 
     def __show_plugin_port_warning(self):
