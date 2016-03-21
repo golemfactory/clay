@@ -99,6 +99,7 @@
   "renderer":"LuxRender",
   "main_program_file":"$GOLEM_DIR/gnr/task/scripts/docker_luxtask.py",
   "min_subtask_time":60,
+  "max_price": 10.2,
   "options":{
     "py/type":"gnr.gnrtaskstate.GNROptions"
   },

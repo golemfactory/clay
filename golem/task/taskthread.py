@@ -28,6 +28,8 @@ class TaskThread(Thread):
         self.lock = Lock()
         self.error = False
         self.error_msg = ""
+        self.start_time = time.time()
+        self.end_time = None
         self.use_timeout = timeout != 0
         self.task_timeout = timeout
         self.last_time_checking = time.time()
@@ -70,6 +72,7 @@ class TaskThread(Thread):
             self.task_computer.task_computed(self)
 
     def end_comp(self):
+        self.end_time = time.time()
         self.vm.end_comp()
 
     def __do_work(self):
@@ -84,6 +87,7 @@ class TaskThread(Thread):
         try:
             extra_data["resourcePath"] = abs_res_path
             extra_data["tmp_path"] = abs_tmp_path
-            self.result = self.vm.run_task(self.src_code, extra_data)
+            self.result, self.error_msg = self.vm.run_task(self.src_code, extra_data)
         finally:
+            self.end_time = time.time()
             os.chdir(self.prev_working_directory)
