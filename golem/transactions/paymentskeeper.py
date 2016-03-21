@@ -160,24 +160,6 @@ class PaymentsKeeper(object):
         self.db.change_state(task_id, PaymentState.waiting_to_be_paid)
         del self.computing_tasks[task_id]
 
-    @staticmethod
-    def __get_nodes_grouping(subtasks):
-        nodes = {}
-        for subtask in subtasks.itervalues():
-            if subtask.computer.key_id in nodes:
-                nodes[subtask.computer.key_id] += subtask.value
-            else:
-                nodes[subtask.computer.key_id] = subtask.value
-        return nodes
-
-    def __change_nodes_to_payment_info(self, values, name):
-        payments = []
-        for task in values:
-            nodes = self.__get_nodes_grouping(task.subtasks)
-            for node_id, value in nodes.iteritems():
-                payments.append({"task": task.task_id, "node": node_id, "value": value, "state": name})
-        return payments
-
 
 class PaymentState(object):
     waiting_for_task_to_finish = "Waiting for task to finish"
