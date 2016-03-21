@@ -8,6 +8,7 @@ from PyQt4.QtCore import Qt
 from mock import MagicMock
 
 from golem.tools.assertlogs import LogTestCase
+from golem.tools.testdirfixture import TestDirFixture
 
 from gnr.application import GNRGui
 from gnr.ui.dialog import ConfigurationDialog
@@ -15,35 +16,32 @@ from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCus
 from gnr.ui.administrationmainwindow import AdministrationMainWindow
 
 
-class TestDu(unittest.TestCase):
-    testdir = "testdir"
-    testdir2 = os.path.join(testdir, "testdir2")
-    testfile1 = "testfile1"
-    testfile2 = "testfile2"
-
-    def setUp(self):
-        if not os.path.exists(self.testdir):
-            os.makedirs(self.testdir)
+class TestDu(TestDirFixture):
 
     def test_du(self):
+        files_ = self.additional_dir_content([1, [1]])
+        testdir = self.path
+        testdir2 = os.path.dirname(files_[1])
+        testfile1 = files_[0]
+        testfile2 = files_[1]
         res = ConfigurationDialogCustomizer.du("notexisting")
         self.assertEqual(res, "-1")
-        res = ConfigurationDialogCustomizer.du(self.testdir)
+        res = ConfigurationDialogCustomizer.du(testdir)
         try:
             size = float(res)
         except ValueError:
             size, sym = re.split("[ kKmMgGbB]", res)[:2]
         self.assertGreaterEqual(float(size), 0.0)
-        with open(os.path.join(self.testdir, self.testfile1), 'w') as f:
+        with open(os.path.join(testdir, testfile1), 'w') as f:
             f.write("a" * 10000)
-        res = ConfigurationDialogCustomizer.du(self.testdir)
+        res = ConfigurationDialogCustomizer.du(testdir)
         size1, sym = re.split("[ kKmMgGbB]", res)[:2]
         self.assertGreater(float(size1), float(size))
-        if not os.path.exists(self.testdir2):
-            os.makedirs(self.testdir2)
-        with open(os.path.join(self.testdir2, self.testfile2), 'w') as f:
+        if not os.path.exists(testdir2):
+            os.makedirs(testdir2)
+        with open(os.path.join(testdir2, testfile2), 'w') as f:
             f.write("123" * 10000)
-        res = ConfigurationDialogCustomizer.du(self.testdir)
+        res = ConfigurationDialogCustomizer.du(testdir)
         size2, sym = re.split("[ kKmMgGbB]", res)[:2]
         self.assertGreater(float(size2), float(size1))
         res = ConfigurationDialogCustomizer.du(".")
@@ -52,16 +50,6 @@ class TestDu(unittest.TestCase):
         except ValueError:
             size, sym = re.split("[ kKmMgGbB]", res)[:2]
         self.assertGreater(size, 0)
-
-    def tearDown(self):
-        if os.path.exists(os.path.join(self.testdir2, self.testfile2)):
-            os.remove(os.path.join(self.testdir2, self.testfile2))
-        if os.path.exists(self.testdir2):
-            os.removedirs(self.testdir2)
-        if os.path.exists(os.path.join(self.testdir, self.testfile1)):
-            os.remove(os.path.join(self.testdir, self.testfile1))
-        if os.path.exists(self.testdir):
-            os.removedirs(self.testdir)
 
 
 class TestConfigurationDialogCustomizer(LogTestCase):
