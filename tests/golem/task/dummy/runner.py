@@ -15,9 +15,7 @@ from twisted.internet import reactor
 import golem.client
 from golem.environments.environment import Environment
 from golem.network.transport.tcpnetwork import TCPAddress
-
 from task import DummyTask, DummyTaskParameters
-
 
 REQUESTING_NODE_KIND = "requester"
 COMPUTING_NODE_KIND = "computer"
@@ -34,14 +32,15 @@ def report(msg):
     global node_kind
     print format_msg(node_kind, os.getpid(), msg)
 
-
 def run_requesting_node(num_subtasks=3):
     global node_kind
     node_kind = "REQUESTER"
 
     start_time = time.time()
     report("Starting...")
+
     client = golem.client.start_client()
+
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
@@ -126,11 +125,12 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     address_re = re.compile(".+REQUESTER.+Listening on (.+)")
     while True:
         line = requesting_proc.stdout.readline().strip()
-        print line
-        m = address_re.match(line)
-        if m:
-            requester_address = m.group(1)
-            break
+        if line:
+            print line
+            m = address_re.match(line)
+            if m:
+                requester_address = m.group(1)
+                break
 
     # Start computing nodes in a separate processes
     computing_procs = []

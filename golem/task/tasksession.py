@@ -149,7 +149,7 @@ class TaskSession(MiddlemanSafeSession):
         if data_type == "resource":
             self.resource_received(extra_data)
         elif data_type == "result":
-            self.result_received(extra_data, self.result_owner)
+            self.result_received(extra_data)
         else:
             logger.error("Unknown data type {}".format(data_type))
             self.conn.producer = None
@@ -175,10 +175,11 @@ class TaskSession(MiddlemanSafeSession):
         self.conn.producer = None
         self.dropped()
 
-    def result_received(self, extra_data):
+    def result_received(self, extra_data, decrypt=True):
         """ Inform server about received result
         :param dict extra_data: dictionary with information about received result
         :param dict result_owner: dictionary with information about the result owner
+        :param bool decrypt: tells whether result decryption should be performed
         """
         result = extra_data.get('result')
         result_type = extra_data.get("result_type")
@@ -189,7 +190,8 @@ class TaskSession(MiddlemanSafeSession):
 
         if result_type == result_types['data']:
             try:
-                # result = self.decrypt(result)
+                if decrypt:
+                    result = self.decrypt(result)
                 result = pickle.loads(result)
             except Exception as err:
                 logger.error("Can't unpickle result data {}".format(err))
@@ -422,7 +424,7 @@ class TaskSession(MiddlemanSafeSession):
         def on_success(extracted_pkg, *args, **kwargs):
             extra_data = extracted_pkg.to_extra_data()
             logger.debug("IPFS: Task result extracted %r" % extracted_pkg.__dict__)
-            self.result_received(extra_data)
+            self.result_received(extra_data, decrypt=False)
 
         def on_error(*args, **kwargs):
             self.send(MessageSubtaskResultRejected(subtask_id))

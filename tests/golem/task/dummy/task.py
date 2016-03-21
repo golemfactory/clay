@@ -3,8 +3,7 @@ from os import path
 
 from golem.core.simpleauth import SimpleAuth
 from golem.network.p2p.node import Node
-from golem.resource.resource import TaskResourceHeader
-from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, resource_types
+from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef
 
 
 class DummyTaskParameters(object):
@@ -177,18 +176,22 @@ class DummyTask(Task):
 
     def computation_finished(self, subtask_id, task_result,
                              dir_manager = None, result_type = 0):
+
         self.subtask_results[subtask_id] = task_result
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 
     def get_resources(self, task_id, resource_header, resource_type=0):
-        if resource_type == resource_types['parts']:
-            dir_name = path.dirname(self.shared_data_file)
-            delta_header, parts = \
-                TaskResourceHeader.build_parts_header_delta_from_chosen(
-                    resource_header, dir_name, self.resource_parts)
-            return delta_header, parts
-        return None
+        # if resource_type == resource_types['parts']:
+        #     dir_name = path.dirname(self.shared_data_file)
+        #     delta_header, parts = \
+        #         TaskResourceHeader.build_parts_header_delta_from_chosen(
+        #             resource_header, dir_name, self.resource_parts)
+        #     return delta_header, parts
+
+        # file list is expected
+
+        return self.task_resources
 
     def add_resources(self, resource_parts):
         """Add resources to this task.

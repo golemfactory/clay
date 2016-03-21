@@ -214,11 +214,16 @@ class ExtractedPackage:
             full_path = os.path.join(self.files_dir, filename)
             full_path_files.append(full_path)
 
+        result_type = self.descriptor.result_type
         extra_data = {
             "subtask_id": self.descriptor.subtask_id,
-            "result_type": self.descriptor.result_type,
-            "result": full_path_files
+            "result_type": self.descriptor.result_type
         }
+
+        if result_type == result_types['files']:
+            extra_data["result"] = full_path_files
+        elif result_type == result_types['data']:
+            extra_data["result"] = self.result
 
         if self.result:
             extra_data["data_type"] = "result"

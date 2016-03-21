@@ -21,9 +21,12 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.query_extra_data.return_value.task_id = "xyz"
         tm.add_new_task(task_mock)
+
         subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 5, 10, 2, "10.10.10.10")
-        self.assertIsNone(subtask)
+        # task manager's resource distribution method has changed and so did the default task state
+        self.assertIsNotNone(subtask)
         self.assertEqual(wrong_task, False)
+
         tm.tasks_states["xyz"].status = tm.activeStatus[0]
         subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 1, 10, 2, "10.10.10.10")
         self.assertIsNone(subtask)
