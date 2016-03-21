@@ -115,7 +115,7 @@ class Client:
         self.send_snapshot = False
         self.snapshot_lock = Lock()
 
-        self.db = Database(self.__get_database_name())
+        self.db = Database(self.get_database_name())
 
         self.ranking = Ranking(self)
 
@@ -246,18 +246,12 @@ class Client:
         self.p2pservice.inform_about_nat_traverse_failure(key_id, res_key_id, conn_id)
 
     # TRANSACTION SYSTEM OPERATIONS
-    def accept_result(self, task_id, subtask_id, price_mod, account_info):
-        price = self.transaction_system.add_payment_info(task_id, subtask_id, price_mod, account_info)
-        self.task_server.task_manager.set_value(task_id, subtask_id, price)
 
     def task_reward_payment_failure(self, task_id, price):
         return self.transaction_system.task_reward_payment_failure(task_id, price)
 
-    def global_pay_for_task(self, task_id, payments):
-        self.transaction_system.global_pay_for_task(task_id, payments)
-
-    def get_reward(self, task_id, node_id, reward):
-        self.transaction_system.get_reward(task_id, node_id, reward)
+    def pay_for_task(self, task_id, payments):
+        self.transaction_system.pay_for_task(task_id, payments)
 
     def get_new_payments_tasks(self):
         return self.transaction_system.get_new_payments_tasks()
@@ -268,8 +262,8 @@ class Client:
     def get_incomes(self):
         return self.transaction_system.get_incomes_list()
 
-    def add_to_waiting_payments(self, task_id, node_id):
-        self.transaction_system.add_to_waiting_payments(task_id, node_id)
+    def add_to_waiting_payments(self, task_id, node_id, value):
+        self.transaction_system.add_to_waiting_payments(task_id, node_id, value)
 
     def add_to_timeouted_payments(self, task_id):
         self.transaction_system.add_to_timeouted_payments(task_id)
@@ -309,10 +303,6 @@ class Client:
 
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)
-
-    def supported_task(self, th_dict_repr):
-        supported = self.__check_supported_environment(th_dict_repr)
-        return supported and self.__check_supported_version(th_dict_repr)
 
     def get_res_dirs(self):
         dirs = {"computing": self.get_computed_files_dir(),
@@ -378,7 +368,10 @@ class Client:
     def task_finished(self, task_id):
         self.transaction_system.task_finished(task_id)
 
-    def __get_database_name(self):
+    def get_database_name(self):
+        """ Return the database file name that this golem instance should use to save and load data.
+        :return str: path to the database file
+        """
         return os.path.join(appdirs.user_data_dir('golem'), self.keys_auth.get_key_id()[-10:] + ".db")
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
@@ -391,30 +384,6 @@ class Client:
             logger.warning("{} value '{}' is not a number".format(name, new_value))
             new_value = old_value
         return new_value
-
-    def __check_supported_environment(self, th_dict_repr):
-        env = th_dict_repr.get("environment")
-        if not env:
-            return False
-        if not self.environments_manager.supported(env):
-            return False
-        return self.environments_manager.accept_tasks(env)
-
-    def __check_supported_version(self, th_dict_repr):
-        min_v = th_dict_repr.get("min_version")
-        if not min_v:
-            return True
-        try:
-            supported = float(self.config_desc.app_version) >= float(min_v)
-            return supported
-        except ValueError:
-            logger.error(
-                "Wrong app version - app version {}, required version {}".format(
-                    self.config_desc.app_version,
-                    min_v
-                )
-            )
-            return False
 
     def __do_work(self):
         if self.p2pservice:

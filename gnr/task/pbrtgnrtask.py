@@ -81,6 +81,7 @@ class PbrtGNRTaskBuilder(GNRTaskBuilder):
         rtd.main_program_file = self.task_definition.main_program_file
         rtd.task_type = self.task_definition.task_type
         rtd.verification_options = self.task_definition.verification_options
+        rtd.max_price = self.task_definition.max_price
 
         rtd.resolution = self.task_definition.options.resolution
         rtd.renderer = self.task_definition.task_type
@@ -121,7 +122,8 @@ class PbrtTaskBuilder(RenderingTaskBuilder):
                                    self.task_definition.estimated_memory,
                                    self.task_definition.output_file,
                                    self.task_definition.output_format,
-                                   self.root_path
+                                   self.root_path,
+                                   self.task_definition.max_price
                                    )
 
         return self._set_verification_options(pbrt_task)
@@ -186,6 +188,7 @@ class PbrtRenderTask(RenderingTask):
                  output_file,
                  output_format,
                  root_path,
+                 max_price,
                  return_address="",
                  return_port=0,
                  key_id=""
@@ -195,7 +198,7 @@ class PbrtRenderTask(RenderingTask):
                                PBRTEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                main_program_file, task_resources, main_scene_dir, scene_file,
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                               root_path, estimated_memory)
+                               root_path, estimated_memory, max_price)
 
         self.collected_file_names = set()
 
@@ -309,14 +312,6 @@ class PbrtRenderTask(RenderingTask):
             self.num_tasks_received += 1
         RenderingTask.restart_subtask(self, subtask_id)
         self._update_task_preview()
-
-    def get_price_mod(self, subtask_id):
-        if subtask_id not in self.subtasks_given:
-            logger.error("Not my subtask {}".format(subtask_id))
-            return 0
-        perf = (self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task'])
-        perf *= float(self.subtasks_given[subtask_id]['perf']) / 1000
-        return perf
 
     ###################
     # GNRTask methods #

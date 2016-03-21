@@ -53,8 +53,8 @@ class TaskComputer(object):
             self.assigned_subtasks[ctd.subtask_id] = ctd
             self.assigned_subtasks[ctd.subtask_id].timeout = subtask_timeout
             self.task_to_subtask_mapping[ctd.task_id] = ctd.subtask_id
-            self.__request_resource(ctd.task_id, self.resource_manager.get_resource_header(ctd.task_id), ctd.return_address,
-                                    ctd.return_port, ctd.key_id, ctd.task_owner)
+            self.__request_resource(ctd.task_id, self.resource_manager.get_resource_header(ctd.task_id),
+                                    ctd.return_address, ctd.return_port, ctd.key_id, ctd.task_owner)
             return True
         else:
             return False
@@ -112,6 +112,10 @@ class TaskComputer(object):
     def task_computed(self, task_thread):
         with self.lock:
             self.counting_task = False
+            if task_thread.end_time is None:
+                task_thread.end_time = time.time()
+
+            time_ = task_thread.end_time - task_thread.start_time
             if task_thread in self.current_computations:
                 self.current_computations.remove(task_thread)
 
@@ -124,13 +128,13 @@ class TaskComputer(object):
                 logger.error("No subtask with id {}".format(subtask_id))
                 return
 
-            if task_thread.error:
+            if task_thread.error or task_thread.error_msg:
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, task_thread.error_msg,
                                                   subtask.return_address, subtask.return_port, subtask.key_id,
                                                   subtask.task_owner, self.node_name)
             elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
                 logger.info("Task {} computed".format(subtask_id))
-                self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, subtask.return_address,
+                self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_, subtask.return_address,
                                               subtask.return_port, subtask.key_id, subtask.task_owner, self.node_name)
             else:
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",

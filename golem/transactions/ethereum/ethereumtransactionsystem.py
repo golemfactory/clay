@@ -20,7 +20,7 @@ class EthereumTransactionSystem(TransactionSystem):
         TransactionSystem.__init__(self, node_id, EthereumPaymentsKeeper)
         self.eth_account = EthereumAddress(eth_account)
 
-    def global_pay_for_task(self, task_id, payments):
+    def pay_for_task(self, task_id, payments):
         """ Pay for task using Ethereum connector
         :param task_id: pay for task with given id
         :param dict payments: all payments group by ethereum address

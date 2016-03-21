@@ -2,15 +2,20 @@ import time
 import abc
 
 
-class TaskHeader:
+class TaskHeader(object):
+    """ Task header describe general information about task as an request and is propagated in the
+        network as an offer for computing nodes
+    """
     def __init__(self, node_name, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
                  task_owner=None, ttl=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0, min_version=1.0,
-                 docker_images=None):
+                 max_price=0.0, docker_images=None):
         self.task_id = task_id
+        # TODO Remove task_owner_key_id, task_onwer_address and task_owner_port
         self.task_owner_key_id = task_owner_key_id
         self.task_owner_address = task_owner_address
         self.task_owner_port = task_owner_port
         self.task_owner = task_owner
+        # TODO change somehow last_checking param
         self.last_checking = time.time()
         self.ttl = ttl
         self.subtask_timeout = subtask_timeout
@@ -20,6 +25,7 @@ class TaskHeader:
         self.estimated_memory = estimated_memory
         self.min_version = min_version
         self.docker_images = docker_images
+        self.max_price = max_price
 
 
 class TaskBuilder:
@@ -201,15 +207,6 @@ class Task:
     def update_task_state(self, task_state):
         """Update some task information taking into account new state.
         :param TaskState task_state:
-        """
-        return  # Implement in derived class
-
-    @abc.abstractmethod
-    def get_price_mod(self, subtask_id):
-        """ Return price modifier for given subtask. This number may be taken into account during increasing
-        or decreasing trust for given node after successful or failed computation.
-        :param subtask_id:
-        :return int:
         """
         return  # Implement in derived class
 

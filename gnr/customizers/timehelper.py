@@ -31,3 +31,12 @@ def get_time_values(gui):
     min_subtask_time += gui.ui.minSubtaskTimeMinSpinBox.value() * 60
     min_subtask_time += gui.ui.minSubtaskTimeSecSpinBox.value()
     return full_task_timeout, subtask_timeout, min_subtask_time
+
+
+def get_subtask_hours(gui):
+    """ Get subtask timeout in hours
+    :param gui: dialog customizer containing subtaskTimeoutHourSpinBoxes
+    :return float: subtask timeout in hours
+    """
+    return gui.ui.subtaskTimeoutHourSpinBox.value() + gui.ui.subtaskTimeoutMinSpinBox.value() / 60.0 + \
+           gui.ui.subtaskTimeoutSecSpinBox.value() / 3600.0
