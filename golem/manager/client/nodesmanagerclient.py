@@ -1,6 +1,6 @@
 
 from clientmanagersession import ClientManagerSessionFactory
-from golem.network.transport.tcpnetwork import TCPNetwork, TCPAddress, TCPConnectInfo
+from golem.network.transport.tcpnetwork import TCPNetwork, SocketAddress, TCPConnectInfo
 from golem.network.transport.network import ProtocolFactory
 from golem.manager.managerconnstate import ManagerConnState
 
@@ -51,7 +51,7 @@ class NodesManagerClient:
 
         assert not self.client_manager_session # connection already established
 
-        connect_info = TCPConnectInfo([TCPAddress(self.manager_server_address, self.manager_server_port)], self.__connection_established, self.__connection_failure)
+        connect_info = TCPConnectInfo([SocketAddress(self.manager_server_address, self.manager_server_port)], self.__connection_established, self.__connection_failure)
         self.network.connect(connect_info)
 
     def __connection_established(self, session):

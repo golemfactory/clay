@@ -1,7 +1,8 @@
-from mock import Mock
+from mock import Mock, patch
 
 from golem.task.taskserver import TaskServer, WaitingTaskResult, TaskConnTypes, logger
 from golem.network.p2p.node import Node
+from golem.network.transport.tcpnetwork import SocketAddress
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
@@ -171,3 +172,12 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.accept_result("xxyyzz", account_info)
         ts.client.transaction_system.add_payment_info.assert_called_with("xyz", "xxyyzz", 10310, account_info)
         self.assertGreater(ts.client.increase_trust.call_count, prev_calls)
+
+    def test_traverse_nat(self):
+        ccd = ClientConfigDescriptor()
+        ccd.root_path = self.path
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), Mock())
+        ts.network = Mock()
+        ts.traverse_nat("ABC", "10.10.10.10", 1312, 310319041904, "DEF")
+        self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].address,  "10.10.10.10")
+        self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].port,  1312)
