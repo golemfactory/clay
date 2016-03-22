@@ -1,0 +1,100 @@
+import os
+import unittest
+import uuid
+
+from golem.core.fileencrypt import FileEncryptor
+from golem.resource.dirmanager import DirManager
+from golem.task.result.resultpackage import ZipPackager, EncryptingPackager, ExtractedPackage
+from golem.tools.testdirfixture import TestDirFixture
+
+node_name = 'test_suite'
+task_id = 'deadbeef-deadbeef'
+
+
+@unittest.skip("Helper class")
+class MockNode:
+    def __init__(self, name, key=None):
+        if not key:
+            key = uuid.uuid4()
+
+        self.node_name = name
+        self.key = key
+
+
+@unittest.skip("Helper class")
+class MockDirPopulator(object):
+
+    @staticmethod
+    def populate(dest_obj, dir_manager):
+        res_dir = dir_manager.get_task_temporary_dir(task_id)
+
+        out_file = os.path.join(res_dir, 'out_file')
+        out_dir = os.path.join(res_dir, 'out_dir')
+        out_dir_file = os.path.join(out_dir, 'dir_file')
+        files = [out_file, out_dir_file]
+        pickle_files = [('pickle1', 'pickle_data1'), ('pickle2', 'pickle_data2')]
+
+        with open(out_file, 'w') as f:
+            f.write("File contents")
+
+        if not os.path.isdir(out_dir):
+            os.makedirs(out_dir)
+
+        with open(out_dir_file, 'w') as f:
+            f.write("Dir file contents")
+
+        dest_obj.file_list = MockDirPopulator.create_file_list(files, pickle_files)
+        dest_obj.res_dir = res_dir
+        dest_obj.files = files
+        dest_obj.pickle_files = pickle_files
+        dest_obj.out_dir = dest_obj.dir_manager.get_task_temporary_dir(task_id + '-extracted')
+        dest_obj.out_path = os.path.join(dest_obj.out_dir, str(uuid.uuid4()))
+
+    @staticmethod
+    def create_file_list(files, pickle_files):
+        return [os.path.basename(f) for f in files] + [p[0] for p in pickle_files]
+
+
+class TestZipPackager(TestDirFixture):
+
+    def setUp(self):
+        TestDirFixture.setUp(self)
+
+        self.dir_manager = DirManager(self.path, node_name)
+        MockDirPopulator.populate(self, self.dir_manager)
+
+    def testCreate(self):
+        zp = ZipPackager()
+        path = zp.create(self.out_path, self.files, self.pickle_files)
+
+        self.assertTrue(os.path.exists(path))
+
+    def testExtract(self):
+        zp = ZipPackager()
+        zp.create(self.out_path, self.files, self.pickle_files)
+        files, out_dir = zp.extract(self.out_path)
+
+        self.assertTrue(len(files) == len(self.file_list))
+
+
+class TestEncryptingPackager(TestDirFixture):
+
+    def setUp(self):
+        TestDirFixture.setUp(self)
+
+        self.dir_manager = DirManager(self.path, node_name)
+        self.secret = FileEncryptor.gen_secret(10, 20)
+        MockDirPopulator.populate(self, self.dir_manager)
+
+    def testCreate(self):
+        ep = EncryptingPackager(self.secret)
+        path = ep.create(self.out_path, self.files, self.pickle_files)
+
+        self.assertTrue(os.path.exists(path))
+
+    def testExtract(self):
+        ep = EncryptingPackager(self.secret)
+        ep.create(self.out_path, self.files, self.pickle_files)
+        files, outdir = ep.extract(self.out_path)
+
+        self.assertTrue(len(files) == len(self.file_list))

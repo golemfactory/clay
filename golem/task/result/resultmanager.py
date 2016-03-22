@@ -31,6 +31,8 @@ class TaskResultPackageManager(object):
 
 class EncryptedResultPackageManager(TaskResultPackageManager):
 
+    min_secret_len = 12
+    max_secret_len = 24
     package_class = EncryptingTaskResultPackager
     lock = Lock()
 
@@ -40,7 +42,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         self.max_retries = max_retries
 
     def gen_secret(self):
-        return FileEncryptor.gen_secret(12, 24)
+        return FileEncryptor.gen_secret(self.min_secret_len, self.max_secret_len)
 
     # Using a temp path
     def pull_package(self, multihash, task_id, subtask_id, key_or_secret,

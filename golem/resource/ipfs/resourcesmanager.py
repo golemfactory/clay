@@ -40,7 +40,7 @@ class IPFSResourceManager:
 
         self.add_resource_dir(self.get_resource_root_dir())
 
-    def _make_relative_path(self, path, task_id):
+    def make_relative_path(self, path, task_id):
         common_prefix = self.task_common_prefixes.get(task_id, '')
         return path.replace(common_prefix, '', 1)
 
@@ -180,7 +180,7 @@ class IPFSResourceManager:
         else:
             if add_response and 'Hash' in add_response and 'Name' in add_response:
 
-                name = self._make_relative_path(add_response.get('Name'), task_id)
+                name = self.make_relative_path(add_response.get('Name'), task_id)
                 multihash = add_response.get('Hash')
 
                 #if multihash in self.hash_to_file:
@@ -232,7 +232,7 @@ class IPFSResourceManager:
             with self.lock:
                 self.current_downloads -= 1
 
-            logger.error("IPFS: error downloading %r (%r %r)" % (args, kwargs))
+            logger.error("IPFS: error downloading %r (%r)" % (filename, multihash))
 
             error(*args, **kwargs)
             self.__process_queue()

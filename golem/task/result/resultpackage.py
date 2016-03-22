@@ -12,7 +12,7 @@ class Packager(object):
     def create(self, output_path, disk_files=None, pickle_files=None):
 
         if not disk_files and not pickle_files:
-            raise ValueError('No files to package')
+            raise ValueError('No files to pack')
 
         with self.generator(output_path) as of:
 
@@ -130,8 +130,8 @@ class TaskResultDescriptor(object):
 
 class EncryptingTaskResultPackager(EncryptingPackager):
 
-    descriptor_file_name = 'package.desc'
-    result_file_name = 'result.pickle'
+    descriptor_file_name = '.package.desc'
+    result_file_name = '.result.pickle'
 
     def __init__(self, key_or_secret):
         self.parent = super(EncryptingTaskResultPackager, self)

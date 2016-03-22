@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-import sys
-import re
 import copy
-import subprocess
-import time
-import itertools
-import traceback
+import os
+import re
 import shlex
-
+import subprocess
+import sys
+import time
+import traceback
 from abc import ABCMeta, abstractmethod
 
 import concurrent.futures
@@ -374,7 +372,7 @@ class NodeCommand(Command, NodeNameValidatorMixin):
                        if _any or self._valid_node(name, _nodes, _neg)}
 
             if not futures:
-                raise CommandException('Invalid node name {}'.format(node))
+                raise CommandException('Invalid nodes {}'.format(_nodes))
 
             for future in concurrent.futures.as_completed(futures):
                 try:
@@ -451,7 +449,7 @@ class NodeDumpOutputCommand(Command):
         return context_update
 
 
-class NodeIpAddr(Command, NodeNameValidatorMixin):
+class NodeIpAddrCommand(Command, NodeNameValidatorMixin):
 
     def __init__(self):
 
@@ -460,15 +458,16 @@ class NodeIpAddr(Command, NodeNameValidatorMixin):
                                         1: StringContextEntry()
                                         })
 
-        desc = """Export first ip addr toenv var
+        desc = """Export node's ip addr to an env var
             {name} [node] [var_name]
         """
 
-        super(NodeIpAddr, self).__init__("ip-addr", desc,
-                                         None,
-                                         cmd_required)
+        super(NodeIpAddrCommand, self).__init__("ip-addr", desc,
+                                                None,
+                                                cmd_required)
 
     def get_node_address(self, node_name):
+
         output = subprocess.check_output(["himage", node_name, "ifconfig"])
         addr_line_found = False
         for line in output.split("\n"):
@@ -487,7 +486,7 @@ class NodeIpAddr(Command, NodeNameValidatorMixin):
 
     def execute(self, context, n_calls=None):
 
-        super(NodeIpAddr, self).execute(context)
+        super(NodeIpAddrCommand, self).execute(context)
 
         environment = context.get('environment')
         cmd = context.get('cmd')
@@ -502,6 +501,45 @@ class NodeIpAddr(Command, NodeNameValidatorMixin):
                 value = self.get_node_address(name)
 
         variables[variable_name] = value or ''
+
+
+class NodeNatCommand(Command, NodeNameValidatorMixin):
+
+    iptables_nat_cmds = ["iptables --policy FORWARD DROP".split(),
+        "iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE".split(),
+        "iptables -A FORWARD -i eth1 -o eth0 -m state"
+        " --state RELATED,ESTABLISHED -j ACCEPT".split(),
+        "iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT".split()]
+
+
+    def __init__(self):
+
+        cmd_required = ParamConstraints(1, {
+                                        0: StringContextEntry()
+                                        })
+
+        desc = """Configure (iptables) NAT on node
+            {name} [node]
+        """
+
+        super(NodeNatCommand, self).__init__("nat", desc,
+                                             None,
+                                             cmd_required)
+
+    def execute(self, context, n_calls=None):
+
+        super(NodeNatCommand, self).execute(context)
+
+        environment = context.get('environment')
+        cmd = context.get('cmd')
+        nodes = context.get('nodes')
+
+        _any, _neg, _nodes = self._extract_nodes(cmd[0])
+
+        for name in nodes:
+            if _any or self._valid_node(name, _nodes, _neg):
+                for line in self.iptables_nat_cmds:
+                    subprocess.check_call(["himage", name] + line)
 
 
 class NodeCopyCommand(Command, NodeNameValidatorMixin):
@@ -605,14 +643,13 @@ class SimulatorStartCommand(SimulatorCommand):
         time.sleep(2)
 
         output = subprocess.check_output(["himage", "-l"])
+        nodes = []
 
         for line in output.splitlines():
             if line.startswith(experiment):
                 output = output.strip("\n )")
                 _name, rest = output.split(" (", 1) if output else (None, "")
                 nodes = rest.split()
-
-        print "Nodes: ", nodes
 
         context_update = {
             'state': SimulatorState.started,
@@ -849,7 +886,8 @@ class Simulator(object):
         self.__add_command(NodeCopyCommand())
         self.__add_command(NodeCaptureOutputCommand())
         self.__add_command(NodeDumpOutputCommand())
-        self.__add_command(NodeIpAddr())
+        self.__add_command(NodeIpAddrCommand())
+        self.__add_command(NodeNatCommand())
 
     def start(self):
 
@@ -864,23 +902,24 @@ class Simulator(object):
             'capture_data': []
         }
 
-        file = sys.stdin
+        source = sys.stdin
         if self.environment.file:
-            file = open(self.environment.file)
+            source = open(self.environment.file)
 
-        self._start(file, context)
+        self._start(source, context)
 
-        file.close()
+        if self.environment.file:
+            source.close()
 
-    def _start(self, file, context):
+    def _start(self, source, context):
         working = True
 
         while working:
-            line = file.readline()
-            parsed = shlex.split(line)
-
-            if not parsed or parsed[0].startswith('#'):
+            line = source.readline().strip()
+            if not line or line.startswith('#'):
                 continue
+
+            parsed = shlex.split(line)
 
             name = parsed[0]
             data = parsed[1:] if len(parsed) > 1 else []
@@ -893,14 +932,13 @@ class Simulator(object):
                     try:
                         with open(data[0]) as source:
                             self._start(source, context)
-                    except:
-                        print ':: Cannot open file', data[0]
+                    except Exception as e:
+                        print ':: Cannot open file', data[0], e.message
 
             elif name in self.commands:
 
                 command = self.commands.get(name)
                 context['cmd'] = self._set_cmd_vars(context, data)
-                result = None
 
                 print '[dbg]', name, context['cmd']
 
