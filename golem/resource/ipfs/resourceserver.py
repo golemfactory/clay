@@ -138,7 +138,7 @@ class IPFSResourceServer:
                     self.client.task_resource_collected(task_id, unpack_delta=False)
                     del self.waiting_tasks_to_compute[task_id]
 
-            self.waiting_resources.pop(multihash)
+            self.waiting_resources.pop(multihash, None)
 
             for i, entry in enumerate(self.resources_to_get):
                 if multihash == entry[1]:
