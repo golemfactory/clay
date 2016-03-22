@@ -8,7 +8,7 @@ import click
 import gevent
 from ethereum import keys, abi
 from ethereum.transactions import Transaction
-from ethereum.utils import normalize_address, denoms, int_to_big_endian
+from ethereum.utils import normalize_address, denoms, int_to_big_endian, zpad
 
 from golem.ethereum import Client
 from golem.ethereum.contracts import BankOfDeposit
@@ -85,10 +85,8 @@ def direct(o, recipient, value):
 def encode_payment(to, value):
     value = long(value)
     assert value < 2**96
-    value = int_to_big_endian(value)
+    value = zpad(int_to_big_endian(value), 12)
     assert type(value) is str
-    if len(value) < 12:
-        value = '\0' * (12 - len(value)) + value
     assert len(value) == 12
     to = normalize_address(to)
     assert len(to) == 20
