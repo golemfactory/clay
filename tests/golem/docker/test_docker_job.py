@@ -271,7 +271,7 @@ class TestBaseDockerJob(TestDockerJob):
             self.assertIsNotNone(logging_thread)
             self.assertTrue(logging_thread.is_alive())
             job.wait()
-        if (logging_thread.is_alive())
+        if logging_thread.is_alive():
             time.sleep(1)
         self.assertIsNone(job.logging_thread)
         self.assertFalse(logging_thread.is_alive())
