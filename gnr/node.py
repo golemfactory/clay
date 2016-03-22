@@ -17,7 +17,6 @@ from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from golem.client import create_client
 from golem.core.common import get_golem_path
-from golem.docker.client import disable_docker
 from golem.network.transport.tcpnetwork import TCPAddress, AddressValueError
 from golem.task.taskbase import Task
 
@@ -71,10 +70,10 @@ class Node(object):
 
 
 class GNRNode(Node):
-    default_environments = (
-        [BlenderEnvironment(), LuxRenderEnvironment()] if disable_docker()
-        else [BlenderDockerEnvironment(), LuxRenderDockerEnvironment()]
-    )
+    default_environments = [
+        BlenderDockerEnvironment(),
+        LuxRenderDockerEnvironment()
+    ]
 
     @staticmethod
     def _get_task_builder(task_def):
