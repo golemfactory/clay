@@ -48,17 +48,40 @@ class TestAESFileEncryptor(TestDirFixture):
                                  decrypted_path,
                                  secret)
 
+        self.assertTrue(os.path.getsize(self.test_file_path) ==
+                        os.path.getsize(decrypted_path))
+
         with open(self.test_file_path) as f1, open(decrypted_path) as f2:
-            self.assertTrue(f1.read(32) == f2.read(32))
+
+            while True:
+                chunk1 = f1.read(32)
+                chunk2 = f2.read(32)
+
+                if chunk1 != chunk2:
+                    raise ValueError("Invalid decrypted file chunk")
+                elif not chunk1 and not chunk2:
+                    break
+
+        AESFileEncryptor.decrypt(self.enc_file_path,
+                                 decrypted_path,
+                                 secret + "0")
 
         decrypted = True
 
-        try:
-            AESFileEncryptor.decrypt(self.enc_file_path,
-                                     decrypted_path,
-                                     secret + "0")
-        except:
+        if os.path.getsize(self.test_file_path) != os.path.getsize(decrypted_path):
             decrypted = False
+        else:
+
+            with open(self.test_file_path) as f1, open(decrypted_path) as f2:
+                while True:
+                    chunk1 = f1.read(32)
+                    chunk2 = f2.read(32)
+
+                    if chunk1 != chunk2:
+                        decrypted = False
+                        break
+                    elif not chunk1 and not chunk2:
+                        break
 
         self.assertFalse(decrypted)
 
