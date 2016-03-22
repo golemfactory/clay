@@ -2,7 +2,7 @@ import unittest
 from ethereum import tester
 tester.serpent = True  # tester tries to load serpent module, prevent that.
 from rlp.utils import decode_hex, encode_hex
-from ethereum.utils import int_to_big_endian, denoms
+from ethereum.utils import int_to_big_endian, denoms, zpad
 
 try:
     from golem.ethereum.contracts import BankOfDeposit
@@ -75,9 +75,7 @@ class BankContractTest(unittest.TestCase):
             value_sum += v
             v = long(v)
             assert v < 2**96
-            vv = int_to_big_endian(v)
-            if len(vv) < 12:
-                vv = '\0' * (12 - len(vv)) + vv
+            vv = zpad(int_to_big_endian(v), 12)
             mix = vv + addr
             assert len(mix) == 32
             print encode_hex(mix), "v: ", v, "addr", encode_hex(addr)
