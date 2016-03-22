@@ -267,11 +267,16 @@ class TestBaseDockerJob(TestDockerJob):
         container_logger.setLevel(logging.DEBUG)
         with self._create_test_job() as job:
             job.start()
-            self.assertIsNotNone(job.logging_thread)
-            self.assertTrue(job.logging_thread.is_alive())
+            logging_thread = job.logging_thread
+            self.assertIsNotNone(logging_thread)
+            self.assertTrue(logging_thread.is_alive())
             job.wait()
-        self.assertFalse(job.logging_thread.is_alive())
+        if (logging_thread.is_alive())
+            time.sleep(1)
+        self.assertIsNone(job.logging_thread)
+        self.assertFalse(logging_thread.is_alive())
 
+        # Ensure the thread is not created if level > DEBUG
         container_logger.setLevel(logging.INFO)
         with self._create_test_job() as job:
             job.start()
