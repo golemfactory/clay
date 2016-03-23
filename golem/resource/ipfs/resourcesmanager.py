@@ -9,6 +9,12 @@ from golem.resource.ipfs.client import IPFSClient, IPFSAsyncCall, IPFSAsyncExecu
 logger = logging.getLogger(__name__)
 
 
+def to_unicode(source):
+    if not isinstance(source, unicode):
+        return unicode(source)
+    return source
+
+
 class IPFSResourceManager:
 
     root_path = os.path.abspath(os.sep)
@@ -84,12 +90,10 @@ class IPFSResourceManager:
         else:
             res_path = self.get_resource_path(fs_object, task_id)
 
-        return fs_object in self.file_to_hash and os.path.exists(res_path)
+        return to_unicode(res_path) in self.file_to_hash and os.path.exists(res_path)
 
     def list_resources(self, task_id):
-        if task_id in self.task_id_to_files:
-            return self.task_id_to_files[task_id]
-        return []
+        return self.task_id_to_files.get(task_id, [])
 
     def list_split_resources(self, task_id):
         if task_id in self.task_id_to_files:
@@ -134,11 +138,11 @@ class IPFSResourceManager:
 
             if files:
                 for file_name in files:
-                    self.file_to_hash.pop(file_name)
+                    self.file_to_hash.pop(file_name, None)
 
             del self.task_id_to_files[task_id]
 
-        self.task_common_prefixes.pop(task_id)
+        self.task_common_prefixes.pop(task_id, None)
 
     def add_resources(self, resource_coll, task_id, absolute_path=False, client=None):
         if not client:
@@ -163,7 +167,7 @@ class IPFSResourceManager:
         if not os.path.exists(resource_path):
             logger.error("IPFS: resource '%s' does not exist" % resource_path)
             return
-        elif fs_object in self.file_to_hash:
+        elif self.check_resource(fs_object, task_id):
             return
 
         is_dir = os.path.isdir(resource_path)
@@ -183,8 +187,8 @@ class IPFSResourceManager:
                 name = self.make_relative_path(add_response.get('Name'), task_id)
                 multihash = add_response.get('Hash')
 
-                #if multihash in self.hash_to_file:
-                #    return
+                name = to_unicode(name)
+                multihash = to_unicode(multihash)
 
                 if task_id not in self.task_id_to_files:
                     self.task_id_to_files[task_id] = []
@@ -208,7 +212,7 @@ class IPFSResourceManager:
         return client.pin_rm(multihash)
 
     def pull_resource(self, filename, multihash, task_id,
-                      success, error, client=None):
+                      success, error, client=None, async=True):
 
         if not client:
             client = self.new_ipfs_client()
@@ -248,12 +252,22 @@ class IPFSResourceManager:
         if self.__can_download():
             with self.lock:
                 self.current_downloads += 1
-            self.__ipfs_async_call(client.get_file,
-                                   success_wrapper,
-                                   error_wrapper,
-                                   multihash=multihash,
-                                   filename=filename,
-                                   filepath=res_dir)
+
+            if async:
+                self.__ipfs_async_call(client.get_file,
+                                       success_wrapper,
+                                       error_wrapper,
+                                       multihash=multihash,
+                                       filename=filename,
+                                       filepath=res_dir)
+            else:
+                try:
+                    data = client.get_file(multihash,
+                                           filename=filename,
+                                           filepath=res_dir)
+                    success_wrapper(data)
+                except Exception as e:
+                    error_wrapper(e)
         else:
             self.__push_to_queue(filename, multihash, task_id,
                                  success, error)

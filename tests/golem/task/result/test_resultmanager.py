@@ -1,5 +1,4 @@
 import os
-import unittest
 import uuid
 
 from golem.resource.dirmanager import DirManager
@@ -10,7 +9,6 @@ from golem.task.taskbase import result_types
 from golem.tools.testdirfixture import TestDirFixture
 
 
-@unittest.skip("Helper class")
 class MockNode:
     def __init__(self, name, key=None):
         if not key:
@@ -19,20 +17,25 @@ class MockNode:
         self.node_name = name
         self.key = key
 
-@unittest.skip("Helper class")
+
 class MockTaskResult:
-    def __init__(self, task_id, result, result_type=None, owner_key_id=None):
-        if not result_type:
+    def __init__(self, task_id, result, result_type=None,
+                 owner_key_id=None, owner=None):
+
+        if result_type is None:
             result_type = result_types['files']
-        if not owner_key_id:
+        if owner_key_id is None:
             owner_key_id = str(uuid.uuid4())
+        if owner is None:
+            owner = str(uuid.uuid4())
 
         self.task_id = task_id
         self.subtask_id = task_id
         self.result = result
         self.result_type = result_type
         self.owner_key_id = owner_key_id
-        self.owner = str(uuid.uuid4())
+        self.owner = owner
+
 
 class TestEncryptedResultPackageManager(TestDirFixture):
 

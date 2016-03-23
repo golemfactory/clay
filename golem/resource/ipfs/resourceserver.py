@@ -15,9 +15,18 @@ class IPFSTransferStatus(object):
     failed = 4
 
 
+class DummyContext(object):
+    def __enter__(self):
+        return None
+
+    def __exit__(self, *args):
+        return False
+
+
 class IPFSResourceServer:
 
     lock = Lock()
+    dummy_lock = DummyContext()
 
     def __init__(self, dir_manager, config_desc, keys_auth, client):
         self.client = client
@@ -93,15 +102,14 @@ class IPFSResourceServer:
         self.waiting_resources[multihash].append(task_id)
         self.resources_to_get.append(resource)
 
-    def get_resources(self):
-
-        with self.lock:
+    def get_resources(self, async=True):
+        with self.lock if async else self.dummy_lock:
             for resource in self.resources_to_get:
                 if resource[-1] in [IPFSTransferStatus.idle, IPFSTransferStatus.failed]:
                     resource[-1] = IPFSTransferStatus.transferring
-                    self.pull_resource(resource)
+                    self.pull_resource(resource, async=async)
 
-    def pull_resource(self, resource):
+    def pull_resource(self, resource, async=True):
 
         filename = resource[0]
         multihash = resource[1]
@@ -113,16 +121,8 @@ class IPFSResourceServer:
                                             multihash,
                                             task_id,
                                             self.resource_downloaded,
-                                            self.resource_download_error)
-
-    def has_resource(self, resource, *args):
-        return self.check_resource(resource)
-
-    def check_resource(self, resource):
-        return self.resource_manager.check_resource(resource)
-
-    def prepare_resource(self, file_name):
-        return self.resource_manager.get_resource_path(file_name)
+                                            self.resource_download_error,
+                                            async=async)
 
     def resource_downloaded(self, filename, multihash, *args):
 

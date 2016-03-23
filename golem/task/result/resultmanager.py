@@ -123,4 +123,4 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
 
     def _remove_pending_result(self, subtask_id):
         with self.lock:
-            self.pending_results.pop(subtask_id)
+            self.pending_results.pop(subtask_id, None)

@@ -130,8 +130,8 @@ class TaskResultDescriptor(object):
 
 class EncryptingTaskResultPackager(EncryptingPackager):
 
-    descriptor_file_name = '.package.desc'
-    result_file_name = '.result.pickle'
+    descriptor_file_name = '.package_desc'
+    result_file_name = '.result_pickle'
 
     def __init__(self, key_or_secret):
         self.parent = super(EncryptingTaskResultPackager, self)

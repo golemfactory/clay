@@ -306,13 +306,12 @@ class NodeNameValidatorMixin(object):
                 result = True
                 break
 
-        #if not result if negated else result:
-        #    print "\tNode", node
-
         return not result if negated else result
 
 
 def node_submit_command(node, commands, detached=False):
+
+    print "Node submit cmd: %r %r %r" % (node, commands, detached)
 
     if detached:
         args = ["himage", '-b', node]
@@ -611,6 +610,9 @@ class SimulatorCommand(Command):
 
 class SimulatorStartCommand(SimulatorCommand):
 
+    _nodes_regex_postfix = '[ \t\r\n]+\((.*[^\)])\)'
+    _nodes_regex = None
+
     def __init__(self):
 
         context_required = {
@@ -638,18 +640,19 @@ class SimulatorStartCommand(SimulatorCommand):
         environment = context.get('environment')
         network_file = environment.full_from_relative_path(context.get('cmd')[0])
 
+        if not self._nodes_regex:
+            self._nodes_regex = re.compile(experiment + self._nodes_regex_postfix)
+
         subprocess.check_call(["imunes", "-e", experiment, "-b", network_file])
 
         time.sleep(2)
 
         output = subprocess.check_output(["himage", "-l"])
+        matches = self._nodes_regex.search(output).groups()
         nodes = []
 
-        for line in output.splitlines():
-            if line.startswith(experiment):
-                output = output.strip("\n )")
-                _name, rest = output.split(" (", 1) if output else (None, "")
-                nodes = rest.split()
+        if matches:
+            nodes = matches[0].replace('\n', '').split()
 
         context_update = {
             'state': SimulatorState.started,

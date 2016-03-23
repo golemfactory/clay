@@ -1,6 +1,5 @@
 import os
 import random
-import unittest
 
 from golem.core.fileencrypt import FileHelper, FileEncryptor, AESFileEncryptor
 from golem.resource.dirmanager import DirManager
