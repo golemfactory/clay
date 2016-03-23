@@ -1,5 +1,6 @@
 appdirs>=1.4
 click>=4.0
+enum34
 ipaddress
 jsonpickle
 netifaces==0.10.4
