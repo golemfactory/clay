@@ -1,6 +1,6 @@
 import mock
 
-from golem.network.transport.tcpnetwork import TCPAddress
+from golem.network.transport.tcpnetwork import SocketAddress
 from golem.tools.testwithappconfig import TestWithAppConfig
 
 import runner
@@ -34,7 +34,7 @@ class TestDummyTaskRunnerScript(TestWithAppConfig):
         self.assertFalse(mock_run_requesting_node.called)
         self.assertTrue(mock_run_computing_node.called)
         self.assertEqual(mock_run_computing_node.call_args[0],
-                         (TCPAddress("1.2.3.4", 5678),))
+                         (SocketAddress("1.2.3.4", 5678),))
         self.assertEqual(mock_run_computing_node.call_args[1],
                          {"fail_after": None})
         self.assertFalse(mock_run_simulation.called)
@@ -50,7 +50,7 @@ class TestDummyTaskRunnerScript(TestWithAppConfig):
         self.assertFalse(mock_run_requesting_node.called)
         self.assertTrue(mock_run_computing_node.called)
         self.assertEqual(mock_run_computing_node.call_args[0],
-                         (TCPAddress("1.2.3.4", 5678),))
+                         (SocketAddress("1.2.3.4", 5678),))
         self.assertEqual(mock_run_computing_node.call_args[1],
                          {"fail_after": 25.0})
         self.assertFalse(mock_run_simulation.called)
@@ -77,7 +77,7 @@ class TestDummyTaskRunnerScript(TestWithAppConfig):
 
     @mock.patch("runner.reactor")
     def test_run_computing_node(self, mock_reactor):
-        client = runner.run_computing_node(TCPAddress("127.0.0.1", 40102))
+        client = runner.run_computing_node(SocketAddress("127.0.0.1", 40102))
         environments = list(client.environments_manager.environments)
         self.assertTrue(any(env.get_id() == task.DummyTask.ENVIRONMENT_NAME
                             for env in environments))
