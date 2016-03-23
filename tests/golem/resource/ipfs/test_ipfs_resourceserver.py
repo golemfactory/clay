@@ -93,6 +93,25 @@ class TestResourceServer(TestDirFixture):
         rs.get_resources(async=False)
         self.assertTrue(client.downloaded)
 
+    def testVerifySig(self):
+        keys_auth = EllipticalKeysAuth()
+        client = MockClient()
+        rs = IPFSResourceServer(self.dir_manager, self.config_desc,
+                                keys_auth, client)
+
+        test_str = "A test string to sign"
+        sig = rs.sign(test_str)
+        self.assertTrue(rs.verify_sig(sig, test_str, keys_auth.get_public_key()))
+
+    def testGetDistributedResourceRoot(self):
+        keys_auth = EllipticalKeysAuth()
+        client = MockClient()
+        rs = IPFSResourceServer(self.dir_manager, self.config_desc,
+                                keys_auth, client)
+        expected = self.dir_manager.get_task_resource_dir('')
+
+        self.assertEqual(rs.get_distributed_resource_root(), expected)
+
 
 class TestDummyContext(unittest.TestCase):
     def test(self):

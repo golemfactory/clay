@@ -68,7 +68,7 @@ class IPFSResourceServer:
         pass
 
     def get_distributed_resource_root(self):
-        return self.dir_manager.get_resource_dir()
+        return self.resource_manager.get_resource_root_dir()
 
     def get_peers(self):
         self.client.get_resource_peers()

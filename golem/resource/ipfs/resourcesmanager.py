@@ -1,7 +1,13 @@
 import logging
 import os
+import socket
+import urllib3
 from collections import deque
 from threading import Lock
+
+import requests
+import twisted
+from requests.packages.urllib3.exceptions import ConnectionError
 
 from golem.core.fileshelper import copy_file_tree
 from golem.resource.ipfs.client import IPFSClient, IPFSAsyncCall, IPFSAsyncExecutor
@@ -18,11 +24,17 @@ def to_unicode(source):
 class IPFSResourceManager:
 
     root_path = os.path.abspath(os.sep)
+    timeout_exceptions = [socket.timeout,
+                          requests.exceptions.Timeout,
+                          urllib3.exceptions.TimeoutError,
+                          twisted.internet.defer.TimeoutError,
+                          ConnectionError]
 
     def __init__(self, dir_manager, node_name,
                  ipfs_client_config=None,
                  resource_dir_method=None,
-                 max_concurrent_downloads=8):
+                 max_concurrent_downloads=8,
+                 max_retries=5):
 
         self.lock = Lock()
 
@@ -31,12 +43,14 @@ class IPFSResourceManager:
         self.ipfs_client_config = ipfs_client_config
 
         self.current_downloads = 0
+        self.max_retries = max_retries
         self.max_concurrent_downloads = max_concurrent_downloads
 
         self.hash_to_file = dict()
         self.file_to_hash = dict()
         self.task_id_to_files = dict()
         self.task_common_prefixes = dict()
+        self.download_retries = dict()
         self.download_queue = deque()
 
         if not resource_dir_method:
@@ -227,19 +241,27 @@ class IPFSResourceManager:
 
             logger.debug("IPFS: %r (%r) downloaded" % (filename, multihash))
 
+            self.download_retries.pop(multihash, None)
             self.pin_resource(multihash, client=client)
-            success(filename, multihash, task_id)
 
+            success(filename, multihash, task_id)
             self.__process_queue()
 
-        def error_wrapper(*args, **kwargs):
+        def error_wrapper(exc, *args, **kwargs):
             with self.lock:
                 self.current_downloads -= 1
 
-            logger.error("IPFS: error downloading %r (%r)" % (filename, multihash))
-
-            error(*args, **kwargs)
-            self.__process_queue()
+            if self.__can_retry(exc, multihash):
+                self.pull_resource(filename, multihash,
+                                   task_id,
+                                   success=success,
+                                   error=error,
+                                   client=client,
+                                   async=async)
+            else:
+                logger.error("IPFS: error downloading %r (%r)" % (filename, multihash))
+                error(*args, **kwargs)
+                self.__process_queue()
 
         res_dir = self.get_resource_dir(task_id)
         out_path = self.get_resource_path(filename, task_id)
@@ -281,6 +303,20 @@ class IPFSResourceManager:
         with self.lock:
             return self.max_concurrent_downloads < 1 or \
                    self.current_downloads < self.max_concurrent_downloads
+
+    def __can_retry(self, exc, multihash):
+        if type(exc) in self.timeout_exceptions:
+            if multihash not in self.download_retries:
+                self.download_retries[multihash] = 0
+
+            if self.download_retries[multihash] < self.max_retries:
+                self.download_retries[multihash] += 1
+                return True
+            else:
+                self.download_retries.pop(multihash)
+                return False
+
+        return False
 
     def __push_to_queue(self, filename, multihash, task_id,
                         success, error):

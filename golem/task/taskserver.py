@@ -61,7 +61,6 @@ class TaskServer(PendingConnectionsServer):
         self._remove_old_listenings()
         self.__send_payments()
         self.__check_payments()
-        self.task_manager.pull_results()
 
     # This method chooses random task from the network to compute on our machine
     def request_task(self):

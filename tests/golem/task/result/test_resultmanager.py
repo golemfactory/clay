@@ -111,3 +111,29 @@ class TestEncryptedResultPackageManager(TestDirFixture):
 
         for f in extracted.files:
             self.assertTrue(os.path.exists(os.path.join(extracted.files_dir, f)))
+
+    def testPullPackage(self):
+        manager = EncryptedResultPackageManager(self.resource_manager)
+        data, secret = self.TestPackageCreator.create(manager,
+                                                      self.node_name,
+                                                      self.task_id)
+        path, multihash = data
+
+        def success(*args, **kwargs):
+            pass
+
+        def error(*args, **kwargs):
+            self.fail("Error downloading package")
+
+        node_name = self.dir_manager.node_name + "2"
+        dir_manager = DirManager(self.path, node_name)
+        resource_manager = IPFSResourceManager(dir_manager, node_name,
+                                               resource_dir_method=dir_manager.get_task_temporary_dir)
+
+        new_manager = EncryptedResultPackageManager(resource_manager)
+        new_manager.pull_package(multihash,
+                                 self.task_id, self.task_id,
+                                 secret,
+                                 success=success,
+                                 error=error,
+                                 async=False)

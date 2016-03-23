@@ -47,9 +47,6 @@ class TaskManager:
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
         self.use_distributed_resources = use_distributed_resources
 
-    def pull_results(self):
-        self.task_result_manager.pull_results()
-
     def get_task_manager_root(self):
         return self.root_path
 

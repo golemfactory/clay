@@ -173,6 +173,14 @@ class TestResourcesManager(TestDirFixture):
 
         self.assertEqual(len(rm.list_resources(self.task_id)), 1)
 
+    def testPinResource(self):
+        rm = IPFSResourceManager(self.dir_manager, self.node_name)
+        rm.add_resources(self.target_resources, self.task_id)
+        resources = rm.list_resources(self.task_id)
+
+        result = rm.pin_resource(resources[0][1])
+        self.assertTrue(result)
+
     def testUnpinResource(self):
         rm = IPFSResourceManager(self.dir_manager, self.node_name)
         rm.add_resources(self.target_resources, self.task_id)
