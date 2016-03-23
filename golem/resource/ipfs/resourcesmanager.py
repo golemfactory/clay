@@ -7,7 +7,6 @@ from threading import Lock
 
 import requests
 import twisted
-from requests.packages.urllib3.exceptions import ConnectionError
 
 from golem.core.fileshelper import copy_file_tree
 from golem.resource.ipfs.client import IPFSClient, IPFSAsyncCall, IPFSAsyncExecutor
@@ -28,8 +27,7 @@ class IPFSResourceManager:
                           requests.exceptions.Timeout,
                           urllib2.exceptions.TimeoutError,
                           urllib2.URLError,
-                          twisted.internet.defer.TimeoutError,
-                          ConnectionError]
+                          twisted.internet.defer.TimeoutError]
 
     def __init__(self, dir_manager, node_name,
                  ipfs_client_config=None,
