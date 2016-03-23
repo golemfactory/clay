@@ -14,7 +14,7 @@ from twisted.internet import reactor
 
 import golem.client
 from golem.environments.environment import Environment
-from golem.network.transport.tcpnetwork import TCPAddress
+from golem.network.transport.tcpnetwork import SocketAddress
 
 from task import DummyTask, DummyTaskParameters
 
@@ -199,7 +199,7 @@ def dispatch(args):
     elif len(args) in [3, 4] and args[1] == COMPUTING_NODE_KIND:
         # I'm a computing node, second arg is the address to connect to
         fail_after = float(args[3]) if len(args) == 4 else None
-        run_computing_node(TCPAddress.parse(args[2]), fail_after=fail_after)
+        run_computing_node(SocketAddress.parse(args[2]), fail_after=fail_after)
     elif len(args) == 1:
         # I'm the main script, run simulation
         error_msg = run_simulation(
