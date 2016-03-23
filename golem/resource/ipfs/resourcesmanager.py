@@ -1,7 +1,7 @@
 import logging
 import os
 import socket
-import urllib3
+import urllib2
 from collections import deque
 from threading import Lock
 
@@ -26,7 +26,8 @@ class IPFSResourceManager:
     root_path = os.path.abspath(os.sep)
     timeout_exceptions = [socket.timeout,
                           requests.exceptions.Timeout,
-                          urllib3.exceptions.TimeoutError,
+                          urllib2.exceptions.TimeoutError,
+                          urllib2.URLError,
                           twisted.internet.defer.TimeoutError,
                           ConnectionError]
 
