@@ -24,9 +24,8 @@ class IPFSResourceManager:
 
     root_path = os.path.abspath(os.sep)
     timeout_exceptions = [socket.timeout,
-                          requests.exceptions.Timeout,
-                          urllib2.exceptions.TimeoutError,
                           urllib2.URLError,
+                          requests.exceptions.Timeout,
                           twisted.internet.defer.TimeoutError]
 
     def __init__(self, dir_manager, node_name,
