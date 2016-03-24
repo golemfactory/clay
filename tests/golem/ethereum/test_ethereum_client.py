@@ -1,9 +1,14 @@
+import logging
 import unittest
 
 from golem.ethereum import Client
 
 
 class EthereumClientTest(unittest.TestCase):
+    def setUp(self):
+        # Show information about Ethereum node starting and terminating.
+        logging.basicConfig(level=logging.INFO)
+
     def test_client(self):
         client = Client()
         p = client.get_peer_count()
@@ -21,6 +26,13 @@ class EthereumClientTest(unittest.TestCase):
         self.assertRaises(ValueError,
                           lambda: client.send_raw_transaction("fake data"))
 
+    # @unittest.skip("This is quite fragile and affects other tests")
     def test_start_terminate(self):
         client = Client()
-        client._Client__terminate_client_subprocess()
+        assert client.node.is_running()
+        client.node.stop()
+        assert not client.node.is_running()
+        client.node.start()
+        assert client.node.is_running()
+        client.node.stop()
+        assert not client.node.is_running()
