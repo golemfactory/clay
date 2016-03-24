@@ -10,7 +10,7 @@ from gnr.customizers.pbrttaskdialogcustomizer import PbrtTaskDialogCustomizer
 
 
 def build_pbrt_task_type():
-    renderer = build_pbrt_renderer_info()
+    renderer = build_pbrt_renderer_info(PbrtTaskDialog, PbrtTaskDialogCustomizer)
     options = GNROptions()
     options.output_formats = renderer.output_formats
     options.scene_file_ext = renderer.scene_file_ext
@@ -33,7 +33,7 @@ def build_pbrt_task_type():
     options.output_file = ''
     options.verification_options = None
 
-    return TaskType("PBRT", PbrtGNRTaskBuilder, options, PbrtTaskDialog, PbrtTaskDialogCustomizer)
+    return TaskType("PBRT", PbrtGNRTaskBuilder, options)
 
 
 def build_3ds_max_task_type():

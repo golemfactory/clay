@@ -6,7 +6,7 @@ from stun import FullCone, OpenInternet
 from collections import deque
 
 from server import Server
-from tcpnetwork import TCPListeningInfo, TCPListenInfo, TCPAddress, TCPConnectInfo
+from tcpnetwork import TCPListeningInfo, TCPListenInfo, SocketAddress, TCPConnectInfo
 from golem.core.variables import LISTEN_WAIT_TIME, LISTENING_REFRESH_TIME, LISTEN_PORT_TTL
 
 logger = logging.getLogger(__name__)
@@ -118,8 +118,8 @@ class PendingConnectionsServer(TCPServer):
             logger.error("Connection {} is unknown".format(conn_id))
 
     def _add_pending_request(self, type_, task_owner, port, key_id, args):
-        tcp_addresses = self.get_tcp_addresses(task_owner, port, key_id)
-        pc = PendingConnection(type_, tcp_addresses, self.conn_established_for_type[type_],
+        socket_addresses = self.get_socket_addresses(task_owner, port, key_id)
+        pc = PendingConnection(type_, socket_addresses, self.conn_established_for_type[type_],
                                self.conn_failure_for_type[type_], args)
         self.pending_connections[pc.id] = pc
 
@@ -144,7 +144,7 @@ class PendingConnectionsServer(TCPServer):
                  pen.status in PendingConnection.connect_statuses]
         # TODO Zmiany dla innych statusow
         for conn in conns:
-            if len(conn.tcp_addresses) == 0:
+            if len(conn.socket_addresses) == 0:
                 conn.status = PenConnStatus.WaitingAlt
                 conn.failure(conn.id, **conn.args)
                 # TODO Dalsze dzialanie w razie niepowodzenia
@@ -152,7 +152,7 @@ class PendingConnectionsServer(TCPServer):
                 conn.status = PenConnStatus.Waiting
                 conn.last_try_time = time.time()
 
-                connect_info = TCPConnectInfo(conn.tcp_addresses, conn.established, conn.failure)
+                connect_info = TCPConnectInfo(conn.socket_addresses, conn.established, conn.failure)
                 self.network.connect(connect_info, conn_id=conn.id, **conn.args)
 
     def _remove_old_listenings(self):
@@ -167,8 +167,8 @@ class PendingConnectionsServer(TCPServer):
             for ol_id in listenings_to_remove:
                 del self.open_listenings[ol_id]
 
-    def get_tcp_addresses(self, node_info, port, key_id):
-        return PendingConnectionsServer._node_info_to_tcp_addresses(node_info, port)
+    def get_socket_addresses(self, node_info, port, key_id):
+        return PendingConnectionsServer._node_info_to_socket_addresses(node_info, port)
 
     def _set_conn_established(self):
         pass
@@ -186,26 +186,26 @@ class PendingConnectionsServer(TCPServer):
         pass
 
     def _mark_connected(self, conn_id, addr, port):
-        ad = TCPAddress(addr, port)
+        ad = SocketAddress(addr, port)
         pc = self.pending_connections.get(conn_id)
         if pc is not None:
             pc.status = PenConnStatus.Connected
             try:
-                idx = pc.tcp_addresses.index(ad)
-                pc.tcp_addresses = pc.tcp_addresses[idx + 1:]
+                idx = pc.socket_addresses.index(ad)
+                pc.socket_addresses = pc.socket_addresses[idx + 1:]
             except ValueError:
-                logger.warning("{}:{} not in connection tcp_addresses".format(addr, port))
+                logger.warning("{}:{} not in connection socket_addresses".format(addr, port))
 
     @staticmethod
-    def _node_info_to_tcp_addresses(node_info, port):
-        tcp_addresses = [TCPAddress(i, port) for i in node_info.prv_addresses]
+    def _node_info_to_socket_addresses(node_info, port):
+        socket_addresses = [SocketAddress(i, port) for i in node_info.prv_addresses]
         if node_info.pub_addr is None:
-            return tcp_addresses
+            return socket_addresses
         if node_info.pub_port:
-            tcp_addresses.append(TCPAddress(node_info.pub_addr, node_info.pub_port))
+            socket_addresses.append(SocketAddress(node_info.pub_addr, node_info.pub_port))
         else:
-            tcp_addresses.append(TCPAddress(node_info.pub_addr, port))
-        return tcp_addresses
+            socket_addresses.append(SocketAddress(node_info.pub_addr, port))
+        return socket_addresses
 
 
 class PenConnStatus(object):
@@ -221,16 +221,16 @@ class PendingConnection(object):
     """ Describe pending connections parameters for PendingConnectionsServer  """
     connect_statuses = [PenConnStatus.Inactive, PenConnStatus.Failure]
 
-    def __init__(self, type_, tcp_addresses, established=None, failure=None, args=None):
+    def __init__(self, type_, socket_addresses, established=None, failure=None, args=None):
         """ Create new pending connection
         :param int type_: connection type that allows to select proper reactions
-        :param list tcp_addresses: list of tcp_addresses that the node should try to connect to
+        :param list socket_addresses: list of socket_addresses that the node should try to connect to
         :param func|None established: established connection callback
         :param func|None failure: connection errback
         :param dict args: arguments that should be passed to established or failure function
         """
         self.id = str(uuid.uuid4())
-        self.tcp_addresses = tcp_addresses
+        self.socket_addresses = socket_addresses
         self.last_try_time = time.time()
         self.established = established
         self.failure = failure

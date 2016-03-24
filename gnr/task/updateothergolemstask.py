@@ -55,7 +55,8 @@ class UpdateOtherGolemsTaskBuilder(GNRTaskBuilder):
                                      self.task_definition.task_resources,
                                      resource_size,
                                      0,
-                                     self.task_definition.total_subtasks
+                                     self.task_definition.total_subtasks,
+                                     self.task_definition.max_price
                                      )
 
 
@@ -74,10 +75,11 @@ class UpdateOtherGolemsTask(GNRTask):
                  resources,
                  resource_size,
                  estimated_memory,
+                 max_price,
                  total_tasks):
 
         GNRTask.__init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                         ttl, subtask_ttl, resource_size, estimated_memory)
+                         ttl, subtask_ttl, resource_size, estimated_memory, max_price)
 
         self.total_tasks = total_tasks
         self.root_path = root_path

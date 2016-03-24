@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>441</width>
-    <height>352</height>
+    <width>561</width>
+    <height>460</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -27,13 +27,13 @@
     <rect>
      <x>12</x>
      <y>50</y>
-     <width>414</width>
-     <height>281</height>
+     <width>541</width>
+     <height>391</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QTabWidget" name="tabWidget">
+     <widget class="QTabWidget" name="paymentSettingsTab">
       <property name="currentIndex">
        <number>0</number>
       </property>
@@ -46,8 +46,8 @@
          <rect>
           <x>10</x>
           <y>30</y>
-          <width>391</width>
-          <height>171</height>
+          <width>511</width>
+          <height>261</height>
          </rect>
         </property>
         <layout class="QFormLayout" name="formLayout">
@@ -76,9 +76,9 @@
        <widget class="QPushButton" name="optionsButton">
         <property name="geometry">
          <rect>
-          <x>10</x>
-          <y>200</y>
-          <width>389</width>
+          <x>0</x>
+          <y>300</y>
+          <width>521</width>
           <height>23</height>
          </rect>
         </property>
@@ -99,8 +99,8 @@
          <rect>
           <x>10</x>
           <y>10</y>
-          <width>360</width>
-          <height>212</height>
+          <width>521</width>
+          <height>321</height>
          </rect>
         </property>
         <layout class="QFormLayout" name="formLayout_2">
@@ -432,38 +432,12 @@
               <bool>true</bool>
              </property>
              <property name="sizePolicy">
-              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
              </property>
             </widget>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer_8">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer_9">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
            </item>
            <item>
             <widget class="QPushButton" name="chooseMainProgramFileButton">
@@ -497,38 +471,12 @@
               <bool>true</bool>
              </property>
              <property name="sizePolicy">
-              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
              </property>
             </widget>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer_10">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer_11">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
            </item>
            <item>
             <widget class="QPushButton" name="chooseMainSceneFileButton">
@@ -566,8 +514,8 @@
          <rect>
           <x>10</x>
           <y>10</y>
-          <width>333</width>
-          <height>201</height>
+          <width>521</width>
+          <height>311</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -676,25 +624,12 @@
                <item>
                 <widget class="QLineEdit" name="outputFileLineEdit">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
                  </property>
                 </widget>
-               </item>
-               <item>
-                <spacer name="horizontalSpacer_5">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
                </item>
                <item>
                 <widget class="QPushButton" name="chooseOutputFileButton">
@@ -722,38 +657,12 @@
              </item>
             </layout>
            </item>
-           <item>
-            <spacer name="horizontalSpacer_3">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
           </layout>
-         </item>
-         <item>
-          <spacer name="verticalSpacer">
-           <property name="orientation">
-            <enum>Qt::Vertical</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>20</width>
-             <height>40</height>
-            </size>
-           </property>
-          </spacer>
          </item>
         </layout>
        </widget>
       </widget>
-      <widget class="QWidget" name="VerificationSettings">
+      <widget class="QWidget" name="verificationSettingsTab">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -765,8 +674,8 @@
          <rect>
           <x>20</x>
           <y>20</y>
-          <width>361</width>
-          <height>191</height>
+          <width>511</width>
+          <height>301</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -851,8 +760,8 @@
              <rect>
               <x>0</x>
               <y>99</y>
-              <width>359</width>
-              <height>91</height>
+              <width>341</width>
+              <height>141</height>
              </rect>
             </property>
             <property name="title">
@@ -965,6 +874,47 @@
         </layout>
        </widget>
       </widget>
+      <widget class="QWidget" name="paymentSettingTab">
+       <attribute name="title">
+        <string>Payment Settings</string>
+       </attribute>
+       <widget class="QWidget" name="formLayoutWidget_3">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>511</width>
+          <height>301</height>
+         </rect>
+        </property>
+        <layout class="QFormLayout" name="formLayout_4">
+         <item row="0" column="0">
+          <widget class="QLabel" name="maxPriceLabel">
+           <property name="text">
+            <string>max price</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="maxPriceLineEdit"/>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>pessimistic cost</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="pessimisticCostLabel">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </widget>
      </widget>
     </item>
     <item>
@@ -1022,7 +972,7 @@
     <rect>
      <x>10</x>
      <y>30</y>
-     <width>341</width>
+     <width>541</width>
      <height>16</height>
     </rect>
    </property>
@@ -1035,7 +985,7 @@
     <rect>
      <x>10</x>
      <y>10</y>
-     <width>341</width>
+     <width>541</width>
      <height>22</height>
     </rect>
    </property>

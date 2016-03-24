@@ -80,6 +80,7 @@ class ThreeDSMaxTaskBuilder(FrameRenderingTaskBuilder):
                                            self.task_definition.resources,
                                            self.task_definition.estimated_memory,
                                            self.root_path,
+                                           self.task_definition.max_price,
                                            self.task_definition.renderer_options.preset,
                                            self.task_definition.renderer_options.cmd,
                                            self.task_definition.renderer_options.use_frames,
@@ -112,6 +113,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
                  task_resources,
                  estimated_memory,
                  root_path,
+                 max_price,
                  preset_file,
                  cmd_file,
                  use_frames,
@@ -124,7 +126,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
                                     ThreeDSMaxEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                     main_program_file, task_resources, main_scene_dir, main_scene_file,
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                                    root_path, estimated_memory, use_frames, frames)
+                                    root_path, estimated_memory, use_frames, frames, max_price)
 
         self.preset_file = preset_file
         self.cmd = cmd_file
@@ -181,13 +183,6 @@ class ThreeDSMaxTask(FrameRenderingTask):
             self._update_frame_task_preview()
 
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
-
-    @check_subtask_id_wrapper
-    def get_price_mod(self, subtask_id):
-        perf = (self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task']) + 1
-        perf *= float(self.subtasks_given[subtask_id]['perf']) / 1000
-        perf *= 50
-        return perf
 
     @check_subtask_id_wrapper
     def restart_subtask(self, subtask_id):

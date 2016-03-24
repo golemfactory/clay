@@ -21,7 +21,7 @@ class PeerSession(BasicSafeSession):
 
     # Disconnect reason
     DCRDuplicatePeers = "Duplicate peers"
-    DCRTooManyPeer = "Too many peers"
+    DCRTooManyPeers = "Too many peers"
     DCRRefresh = "Refresh"
 
     def __init__(self, conn):

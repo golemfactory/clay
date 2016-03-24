@@ -5,7 +5,10 @@ from random import randrange, shuffle
 from PIL import Image
 import OpenEXR, array
 
-from gnr.task.blenderrendertask import BlenderDefaults, BlenderRenderTask, PreviewUpdater
+from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
+                                        BlenderRendererOptions, PreviewUpdater)
+from gnr.renderingtaskstate import RenderingTaskDefinition
+from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -35,6 +38,7 @@ class TestBlenderTaskDivision(unittest.TestCase):
                  root_path = os.getcwd(),
                  use_frames = False,
                  frames = [1],
+                 max_price = 10,
                  engine = "CYCLES"
                  )
     
@@ -107,4 +111,11 @@ class TestPreviewUpdater(unittest.TestCase):
             for f in chunks_files:
                 os.remove(chunks_files[f])
             self.assertTrue(pu.perfect_match_area_y == res_y and pu.perfectly_placed_subtasks == chunks)
-                
+
+class TestBlenderRenderTaskBuilder(TestDirFixture):
+    def test_build(self):
+        definition = RenderingTaskDefinition()
+        definition.renderer_options = BlenderRendererOptions()
+        builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=definition, root_path=self.path)
+        blender_task = builder.build()
+        self.assertIsInstance(blender_task, BlenderRenderTask)

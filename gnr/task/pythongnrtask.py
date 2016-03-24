@@ -30,16 +30,16 @@ class PythonGNRTaskBuilder(GNRTaskBuilder):
                              resource_size,
                              0,
                              self.task_definition.total_subtasks,
-                             self.root_path
+                             self.root_path,
+                             self.task_definition.max_price
                              )
 
 
 class PythonGNRTask(GNRTask):
     def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                 ttl, subtask_ttl, resource_size, estimated_memory, total_tasks, root_path):
+                 ttl, subtask_ttl, resource_size, estimated_memory, total_tasks, root_path, max_price):
         GNRTask.__init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
-                         subtask_ttl,
-                         resource_size, estimated_memory)
+                         subtask_ttl, resource_size, estimated_memory, max_price)
 
         self.total_tasks = total_tasks
         self.root_path = root_path

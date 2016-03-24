@@ -23,10 +23,11 @@ from gnr.task.scenefileeditor import regenerate_lux_file
 
 logger = logging.getLogger(__name__)
 
+
 def merge_flm_files(flm_to_verify_and_merge_filename, output_flm_filename):
     p = subprocess.Popen(["luxmerger", output_flm_filename, flm_to_verify_and_merge_filename, "-o", output_flm_filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
-    if("ERROR" in err):
+    if "ERROR" in err:
         return False
     else:
         return True
@@ -108,10 +109,11 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                            self.task_definition.resources,
                            self.task_definition.estimated_memory,
                            self.root_path,
+                           self.task_definition.max_price,
                            self.task_definition.renderer_options.halttime,
                            self.task_definition.renderer_options.haltspp,
                            self.task_definition.renderer_options.send_binaries,
-                           self.task_definition.renderer_options.luxconsole
+                           self.task_definition.renderer_options.luxconsole,
                            )
 
         return self._set_verification_options(lux_task)
@@ -140,6 +142,7 @@ class LuxTask(RenderingTask):
                  task_resources,
                  estimated_memory,
                  root_path,
+                 max_price,
                  halttime,
                  haltspp,
                  own_binaries,
@@ -152,7 +155,7 @@ class LuxTask(RenderingTask):
                                LuxRenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                main_program_file, task_resources, main_scene_dir, main_scene_file,
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                               root_path, estimated_memory)
+                               root_path, estimated_memory, max_price)
         self.undeletable.append(os.path.join(get_tmp_path(self.header.node_name, self.header.task_id, self.root_path), "test_result.flm"))
         self.halttime = halttime
         self.haltspp = haltspp

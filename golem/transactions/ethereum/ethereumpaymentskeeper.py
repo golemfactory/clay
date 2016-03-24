@@ -59,8 +59,9 @@ class EthAccountInfo(AccountInfo):
 class EthereumAddress(object):
     """ Keeps information about ethereum addresses in normalized format
     """
+
     @classmethod
-    def parse(cls, address):
+    def __parse(cls, address):
         if len(address) in range(40, 51):
             address = address.lower()
         return normalize_address(address)
@@ -68,7 +69,7 @@ class EthereumAddress(object):
     def __init__(self, address):
         self.address = None
         try:
-            self.address = self.parse(address)
+            self.address = self.__parse(address)
         except Exception as err:
             logger.warning("Can't set Ethereum address, {} is not a proper value: {}".format(address, err))
 
@@ -79,3 +80,6 @@ class EthereumAddress(object):
 
     def __eq__(self, other):
         return self.address == other.address
+
+    def __nonzero__(self):
+        return self.address is not None

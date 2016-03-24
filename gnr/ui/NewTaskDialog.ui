@@ -135,6 +135,16 @@
     <property name="fieldGrowthPolicy">
      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
     </property>
+    <item row="0" column="0">
+     <widget class="QLabel" name="label">
+      <property name="text">
+       <string>Task Type</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="1">
+     <widget class="QComboBox" name="taskTypeComboBox"/>
+    </item>
     <item row="1" column="0">
      <widget class="QLabel" name="label_5">
       <property name="text">
@@ -507,22 +517,36 @@
       </item>
      </layout>
     </item>
-    <item row="0" column="1">
-     <widget class="QComboBox" name="taskTypeComboBox"/>
-    </item>
-    <item row="0" column="0">
-     <widget class="QLabel" name="label">
+    <item row="8" column="0">
+     <widget class="QLabel" name="label_2">
       <property name="text">
-       <string>Task Type</string>
+       <string>Max price</string>
       </property>
      </widget>
     </item>
-    <item row="7" column="0" colspan="2">
+    <item row="10" column="0" colspan="2">
      <widget class="QPushButton" name="optionsButton">
       <property name="text">
        <string>Task options</string>
       </property>
      </widget>
+    </item>
+    <item row="9" column="0">
+     <widget class="QLabel" name="label_3">
+      <property name="text">
+       <string>Pessimistic cost</string>
+      </property>
+     </widget>
+    </item>
+    <item row="9" column="1">
+     <widget class="QLabel" name="pessimisticCostLabel">
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+    </item>
+    <item row="8" column="1">
+     <widget class="QLineEdit" name="maxPriceLineEdit"/>
     </item>
    </layout>
   </widget>

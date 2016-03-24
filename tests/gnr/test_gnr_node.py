@@ -4,7 +4,7 @@ import jsonpickle
 from mock import patch, call
 from gnr.node import start
 from click.testing import CliRunner
-from golem.network.transport.tcpnetwork import TCPAddress
+from golem.network.transport.tcpnetwork import SocketAddress
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithappconfig import TestWithAppConfig
 
@@ -127,7 +127,7 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
         peer_num = call_names.index('().connect_with_peers')
         peer_arg = mock_node.mock_calls[peer_num][1][0]
         self.assertEqual(len(peer_arg), 1)
-        self.assertEqual(peer_arg[0], TCPAddress.parse(addr1))
+        self.assertEqual(peer_arg[0], SocketAddress.parse(addr1))
 
     @patch('gnr.node.GNRNode')
     def test_many_peers(self, mock_node):
@@ -142,8 +142,8 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
         peer_num = call_names.index('().connect_with_peers')
         peer_arg = mock_node.mock_calls[peer_num][1][0]
         self.assertEqual(len(peer_arg), 2)
-        self.assertEqual(peer_arg[0], TCPAddress.parse(addr1))
-        self.assertEqual(peer_arg[1], TCPAddress.parse(addr2))
+        self.assertEqual(peer_arg[0], SocketAddress.parse(addr1))
+        self.assertEqual(peer_arg[1], SocketAddress.parse(addr2))
 
     @patch('gnr.node.GNRNode')
     def test_bad_peer(self, mock_node):
@@ -166,9 +166,9 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
         peer_num = call_names.index('().connect_with_peers')
         peer_arg = mock_node.mock_calls[peer_num][1][0]
         self.assertEqual(len(peer_arg), 3)
-        self.assertEqual(peer_arg[0], TCPAddress('10.30.10.216', 40111))
-        self.assertEqual(peer_arg[1], TCPAddress('2001:db8:85a3:8d3:1319:8a2e:370:7348', 443))
-        self.assertEqual(peer_arg[2], TCPAddress('::ffff:0:0:0', 96))
+        self.assertEqual(peer_arg[0], SocketAddress('10.30.10.216', 40111))
+        self.assertEqual(peer_arg[1], SocketAddress('2001:db8:85a3:8d3:1319:8a2e:370:7348', 443))
+        self.assertEqual(peer_arg[2], SocketAddress('::ffff:0:0:0', 96))
 
     @patch('gnr.node.GNRNode')
     def test_wrong_task(self, mock_node):

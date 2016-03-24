@@ -4,7 +4,7 @@ import random
 from ipaddress import AddressValueError
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, TCPAddress, SafeProtocol
+from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, SafeProtocol
 from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer, PenConnStatus
 from golem.network.p2p.peersession import PeerSession
 from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
@@ -76,13 +76,13 @@ class P2PService(PendingConnectionsServer):
         """ Start listening on the port from configuration and try to connect to the seed node """
         self.start_accepting()
         try:
-            tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
-            self.connect(tcp_address)
+            socket_address = SocketAddress(self.config_desc.seed_host, self.config_desc.seed_port)
+            self.connect(socket_address)
         except AddressValueError, err:
             logger.error("Invalid seed address: " + err.message)
 
-    def connect(self, tcp_address):
-        connect_info = TCPConnectInfo([tcp_address], self.__connection_established,
+    def connect(self, socket_address):
+        connect_info = TCPConnectInfo([socket_address], self.__connection_established,
                                       P2PService.__connection_failure)
         self.network.connect(connect_info)
 
@@ -242,8 +242,8 @@ class P2PService(PendingConnectionsServer):
                 return
 
         try:
-            tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
-            self.connect(tcp_address)
+            socket_address = SocketAddress(self.config_desc.seed_host, self.config_desc.seed_port)
+            self.connect(socket_address)
         except AddressValueError as err:
             logger.error('Invalid seed address: ' + str(err))
 
@@ -324,8 +324,8 @@ class P2PService(PendingConnectionsServer):
             p.dropped()
 
         try:
-            tcp_address = TCPAddress(self.config_desc.seed_host, self.config_desc.seed_port)
-            self.connect(tcp_address)
+            socket_address = SocketAddress(self.config_desc.seed_host, self.config_desc.seed_port)
+            self.connect(socket_address)
         except AddressValueError, err:
             logger.error("Invalid seed address: " + err.message)
 
@@ -372,18 +372,18 @@ class P2PService(PendingConnectionsServer):
         """
         self.suggested_address[client_key_id] = addr
 
-    def get_tcp_addresses(self, node_info, port, key_id):
+    def get_socket_addresses(self, node_info, port, key_id):
         """ Change node info into tcp addresses. Add suggested address
         :param Node node_info: node information
         :param int port: port that should be used
         :param key_id: node's public key
         :return:
         """
-        tcp_addresses = PendingConnectionsServer.get_tcp_addresses(self, node_info, port, key_id)
+        socket_addresses = PendingConnectionsServer.get_socket_addresses(self, node_info, port, key_id)
         addr = self.suggested_address.get(key_id)
         if addr:
-            tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
-        return tcp_addresses
+            socket_addresses = [SocketAddress(addr, port)] + socket_addresses
+        return socket_addresses
 
     # Kademlia functions
     #############################
