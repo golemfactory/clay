@@ -113,6 +113,20 @@ class TestIncomesKeeper(TestWithDatabase):
         self.assertEqual(xyz[0]["value"], 20)
         self.assertEqual(xyz[0]["expected_value"], 10)
 
+    def test_get_income(self):
+        ik = IncomesKeeper()
+        self.assertIsNone(ik.get_income("ABC", 0))
+        self.assertEqual(ik.get_income("ABC", 10), [])
+        ik.add_waiting_payment("xyz", "ABC", 3)
+        ik.add_waiting_payment("abc", "ABC", 2)
+        ik.add_waiting_payment("qvu", "DEF", 1)
+        ik.add_waiting_payment("def", "ABC", 10)
+        self.assertEqual(ik.get_income("ABC", 10), ["xyz", "abc"])
+        self.assertEqual(ik.get_income("ABC", 2), [])
+        self.assertEqual(ik.get_income("ABC", 3), ["def"])
+
+
+
 
 
 

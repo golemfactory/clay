@@ -31,13 +31,13 @@ class TransactionSystem(object):
         self.budget += price
         self.payments_keeper.payment_failure(task_id)
 
-    def get_reward(self, task_id, node_id, reward):
+    def get_income(self, addr_info, value):
         """ Increase information about budget with reward
         :param task_id: return id of a task for which this reward was
         :param int reward: how much should be added to budget
         """
-        self.budget += reward
-        self.incomes_keeper.add_income(task_id, node_id, reward)
+        self.budget += value
+        self.incomes_keeper.add_income(addr_info, value)
 
     def add_payment_info(self, task_id, subtask_id, value, account_info):
         """ Add to payment keeper information about new payment for subtask

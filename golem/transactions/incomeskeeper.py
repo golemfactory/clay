@@ -79,6 +79,12 @@ class IncomesDatabase(object):
         except ReceivedPayment.DoesNotExist:
             return None
 
+    @staticmethod
+    def get_waiting():
+        query = ReceivedPayment.select().where(ReceivedPayment.state == IncomesState.waiting)
+        query = query.order_by(ReceivedPayment.created_date.desc())
+        return query
+
     def __create_new_income(self, task_id, node_id, value, expected_value, state):
         with db.transaction():
             ReceivedPayment.create(from_node_id=node_id, task=task_id, val=value,
@@ -114,12 +120,50 @@ class IncomesKeeper(object):
         """
         self.incomes = {}
         self.db = IncomesDatabase()
+        self.load_incomes()
+
+    def load_incomes(self):
+        for income in self.db.get_waiting():
+            self.incomes[income.task] = {"task": income.task, "node": income.from_node_id, "value": income.val,
+                                         "expected_value": income.expected_val, "state": income.state,
+                                         "created": income.created_date}
 
     def get_list_of_all_incomes(self):
         database_incomes = [{"task": income.task, "node": income.from_node_id, "value": income.val,
                              "expected_value": income.expected_val, "state": income.state} for income in
                             self.db.get_newest_incomes()]
         return database_incomes
+
+    def get_income(self, addr_info, value):
+        if value <= 0:
+            logger.warning("Wrong income value {}, value should be greater then 0".format(value))
+            return None
+        finished = []
+
+        def is_not_finished_income(income):
+            return income["state"] != IncomesState.finished and self._same_node(addr_info, income["node"])
+
+        not_finished_incomes = filter(is_not_finished_income, self.incomes.values())
+        not_finished_incomes.sort(key=lambda x: x["created"])
+
+        for income in not_finished_incomes:
+            remain_value = income["expected_value"] - income["value"]
+            if value >= remain_value:
+                income["value"] += remain_value
+                value -= remain_value
+                self.finish_task(income["task"])
+                finished.append(income["task"])
+                if value == 0:
+                    return finished
+            else:
+                income["value"] += value
+                return finished
+        return finished
+
+    def finish_task(self, task_id):
+        self.incomes[task_id]["state"] = IncomesState.finished
+        self.db.update_income(task_id, self.incomes[task_id]["node"], self.incomes[task_id]["value"],
+                              self.incomes[task_id]["expected_value"], IncomesState.finished)
 
     def add_income(self, task_id, node_id, reward):
         expected_value = 0
@@ -133,12 +177,12 @@ class IncomesKeeper(object):
             expected_value = self.incomes[task_id]["expected_value"]
 
         self.incomes[task_id] = {"task": task_id, "node": node_id, "value": reward, "expected_value": expected_value,
-                                 "state": IncomesState.finished}
+                                 "state": IncomesState.finished, "created": datetime.now()}
         self.db.update_income(task_id, node_id, reward, expected_value, IncomesState.finished)
 
     def add_waiting_payment(self, task_id, node_id, expected_value):
-        self.incomes[task_id] = {"task": task_id, "node": node_id, "value": "?", "expected_value": expected_value,
-                                 "state": IncomesState.waiting}
+        self.incomes[task_id] = {"task": task_id, "node": node_id, "value": 0, "expected_value": expected_value,
+                                 "state": IncomesState.waiting, "created": datetime.now()}
         self.db.update_income(task_id, node_id, 0, expected_value, IncomesState.waiting, add_income=True)
 
     def add_timeouted_payment(self, task_id):
@@ -148,6 +192,10 @@ class IncomesKeeper(object):
             return
         self.incomes[task_id]["state"] = IncomesState.timeout
         self.db.change_state(task_id, self.incomes[task_id]["node"], IncomesState.timeout)
+
+    @staticmethod
+    def _same_node(addr_info, node_id):
+        return addr_info == node_id
 
 
 class IncomesState(object):
