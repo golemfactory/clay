@@ -32,7 +32,7 @@ class EthereumClientTest(unittest.TestCase):
         assert client.node.is_running()
         client.node.stop()
         assert not client.node.is_running()
-        client.node.start()
+        client.node.start(rpc=False)
         assert client.node.is_running()
         client.node.stop()
         assert not client.node.is_running()

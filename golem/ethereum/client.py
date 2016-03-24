@@ -16,11 +16,14 @@ class Client(EthereumRpcClient):
 
     def __init__(self, datadir=None):
         if not Client.node:
-            Client.node = NodeProcess(Client.STATIC_NODES, datadir)
+            if datadir:
+                Client.node = NodeProcess(Client.STATIC_NODES, datadir)
+            else:
+                Client.node = NodeProcess(Client.STATIC_NODES)
         elif datadir:
             assert Client.node.datadir == datadir
         if not Client.node.is_running():
-            Client.node.start()
+            Client.node.start(rpc=True)
         super(Client, self).__init__(port=Client.node.rpcport)
 
     def get_peer_count(self):
