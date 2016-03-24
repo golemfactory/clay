@@ -277,7 +277,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
         num = str(frame_num)
         return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
 
-    def _get_part_size(self):
+    def _get_part_size(self, subtask_id):
         if not self.use_frames:
             res_y = int(math.floor(float(self.res_y) / float(self.total_tasks)))
         elif len(self.frames) >= self.total_tasks:
@@ -289,7 +289,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
 
     @check_subtask_id_wrapper
     def _get_part_img_size(self, subtask_id, adv_test_file):
-        x, y = self._get_part_size()
+        x, y = self._get_part_size(subtask_id)
         return 0, 0, x, y
 
     @check_subtask_id_wrapper
