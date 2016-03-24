@@ -1,7 +1,10 @@
 import unittest
 import os
+from random import randrange, shuffle
 
-from gnr.task.blenderrendertask import BlenderDefaults, BlenderRenderTask
+from PIL import Image
+
+from gnr.task.blenderrendertask import BlenderDefaults, BlenderRenderTask, PreviewUpdater
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -55,3 +58,32 @@ class TestBlenderTaskDivision(unittest.TestCase):
                     cur_max_y = min_y
                 self.assertTrue(cur_max_y == 0)
         
+        
+class TestPreviewUpdater(unittest.TestCase):
+    def test_update_preview(self):
+        preview_file = os.path.join(os.getcwd(), 'sample_img.png')
+        res_x = 200
+        
+        for chunks in range (1, 100):
+            res_y = 0
+            expected_offsets = {}
+            chunks_sizes = {}
+            for i in range (1, chunks + 1): #subtask numbers start from 1
+                y = randrange(1, 100)
+                expected_offsets[i] = res_y
+                chunks_sizes[i] = y
+                res_y += y
+            pu = PreviewUpdater(preview_file, res_x, res_y, expected_offsets)
+            chunks_list = range (1, chunks + 1)
+            shuffle(chunks_list)
+            chunks_files = {}
+            for i in chunks_list:
+                img = Image.new("RGB", (res_x, chunks_sizes[i]))
+                file1 = os.path.join(os.getcwd(), 'chunk{}.png'.format(i))
+                img.save(file1)
+                chunks_files[i] = file1
+                pu.update_preview(file1, i)
+            for f in chunks_files:
+                os.remove(chunks_files[f])
+            self.assertTrue(pu.perfect_match_area_y == res_y and pu.perfectly_placed_subtasks == chunks)
+                
