@@ -8,11 +8,15 @@ logger = logging.getLogger(__name__)
 
 
 class TaskKeeper(object):
+    """ Keeps information about tasks living in Golem Network. Node may choose one of those task
+    to compute or will pass these informations to other nodes.
+    """
+
     def __init__(self, environments_manager, min_price=0.0, app_version=1.0, remove_task_timeout=240.0,
                  verification_timeout=3600):
-        self.task_headers = {}
-        self.supported_tasks = []
-        self.removed_tasks = {}
+        self.task_headers = {}  # all computing tasks that this node now about
+        self.supported_tasks = []  # ids of tasks that this node may try to compute
+        self.removed_tasks = {}  # tasks that were removed from network recently, so they won't be add to again
         self.active_tasks = {}
         self.active_requests = {}
         self.completed = {}
@@ -25,11 +29,21 @@ class TaskKeeper(object):
         self.environments_manager = environments_manager
 
     def is_supported(self, th_dict_repr):
+        """ Returns information whether task described with given task header dict representation may be computed
+        by this node. This node must support proper environment, be allowed to make computation cheaper than with
+        max price declared in task and have proper application verison.
+        :param dict th_dict_repr: task header dictionary representation
+        :return bool: True if this node may compute a task
+        """
         supported = self.check_environment(th_dict_repr)
         supported = supported and self.check_price(th_dict_repr)
         return supported and self.check_version(th_dict_repr)
 
     def get_task(self, price):
+        """ Returns random task from supported tasks that may be computed
+        :param price:
+        :return:
+        """
         if len(self.supported_tasks) > 0:
             tn = random.randrange(0, len(self.supported_tasks))
             task_id = self.supported_tasks[tn]
