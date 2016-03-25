@@ -22,12 +22,13 @@ class EthereumClientTest(unittest.TestCase):
                                 stderr=subprocess.STDOUT)
 
         # Read first 6 lines searching for "started".
+        started = False
         for _ in range(6):
             log = proc.stdout.readline()
             if "started" in log:
+                started = True
                 break
-        else:
-            assert False, "No 'started' word in logs"
+        assert started, "No 'started' word in logs"
 
         assert proc.returncode is None
         proc.send_signal(signal.SIGINT)

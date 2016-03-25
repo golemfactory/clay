@@ -12,6 +12,14 @@ from golem.transactions.ethereum.paymentprocessor import (
 )
 
 
+def wait_for(condition, timeout, step=0.1):
+    for _ in xrange(int(timeout / step)):
+        if condition():
+            return True
+        time.sleep(step)
+    return False
+
+
 class PaymentStatusTest(unittest.TestCase):
     def test_status(self):
         s = Status(1)
@@ -73,12 +81,7 @@ class EthereumMiningNodeFixture(TestDirFixture):
         self.addr = privtoaddr(self.privkey)
         Client._kill_node()  # Kill the node to use random datadir
         self.client = Client(datadir=node_dir, nodes=[enode])
-        for _ in xrange(20):
-            time.sleep(0.1)
-            if self.client.get_peer_count() > 0:
-                break
-        else:
-            assert False, "Cannot connect to miner."
+        assert wait_for(lambda: self.client.get_peer_count() > 0, 20), "Cannot connect to miner"
         self.proc = PaymentProcessor(self.client, self.privkey)
 
 
@@ -88,12 +91,9 @@ class PaymentProcessorFullTest(EthereumMiningNodeFixture):
         value = 12 * 10**18
         Faucet.gimme_money(self.client, self.addr, value)
         assert self.proc.available_balance() is 0
-        for _ in xrange(30 * 60 * 10):  # 30 min to allow DAG generation
-            time.sleep(0.1)
-            b = self.proc.available_balance(refresh=True)
-            if b != 0:
-                break
-        else:
-            assert False, "Faucet does not work"
+        # 30 min to allow DAG generation
+        assert wait_for(lambda: self.proc.available_balance(refresh=True) > 0,
+                        30 * 60 * 10), "No income from faucet"
+        b = self.proc.available_balance()
         assert b < 12 * 10**18
         assert b > 10 * 10**18
