@@ -56,8 +56,10 @@ class PaymentProcessorTest(EthereumNodeFixture):
         self.proc.available_balance(refresh=True) is 0
 
     def test_add_failure(self):
-        p1 = OutgoingPayment("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 1)
-        p2 = OutgoingPayment("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab", 2)
+        a1 = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'.decode('hex')
+        a2 = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'.decode('hex')
+        p1 = OutgoingPayment(a1, 1)
+        p2 = OutgoingPayment(a2, 2)
 
         assert p1.status is Status.init
         assert p2.status is Status.init
@@ -97,3 +99,13 @@ class PaymentProcessorFullTest(EthereumMiningNodeFixture):
         b = self.proc.available_balance()
         assert b < 12 * 10**18
         assert b > 10 * 10**18
+
+        a1 = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'.decode('hex')
+        a2 = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'.decode('hex')
+        p1 = OutgoingPayment(a1, 1 * 10**15)
+        p2 = OutgoingPayment(a2, 2 * 10**15)
+
+        assert self.proc.add(p1)
+        assert self.proc.add(p2)
+
+        self.proc.sendout()

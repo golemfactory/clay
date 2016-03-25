@@ -44,7 +44,7 @@ def _encode_payments(payments):
 
     args = []
     value = 0L
-    for to, v in paymap:
+    for to, v in paymap.iteritems():
         value += v
         assert v < 2**96
         v = utils.zpad(utils.int_to_big_endian(v), 12)
@@ -95,7 +95,7 @@ class PaymentProcessor(object):
         payments = self.__awaiting  # FIXME: Should this list be synchronized?
         self.__awaiting = []
         addr = keys.privtoaddr(self.__privkey)  # TODO: Should be done once?
-        nonce = self.__client.get_transaction_count(addr)
+        nonce = self.__client.get_transaction_count(addr.encode('hex'))
         p, value = _encode_payments(payments)
         data = bank_contract.encode('transfer', [p])
         gas = 21000 + len(p) * 30000
@@ -115,7 +115,7 @@ class PaymentProcessor(object):
             payment.extra['tx'] = h
         try:
             tx_hash = self.__client.send(tx)
-            assert tx_hash == h
+            assert tx_hash[2:].decode('hex') == h  # FIXME: Improve Client.
         except:
             log.exception("Problem with sending transaction. Reverting.")
             # In case of any problems revert payments status.
