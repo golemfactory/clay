@@ -17,13 +17,18 @@ class EthereumClientTest(unittest.TestCase):
 
     def test_full_node_remotely(self):
         args = ['python', '-m', 'golem.ethereum.node']
-        proc = subprocess.Popen(args, bufsize=1, stdout=subprocess.PIPE,
+        proc = subprocess.Popen(args, bufsize=1,
+                                stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
-        # while proc.stdout.read(1):
-        #     time.sleep(0.1)
 
-        start_log = proc.stdout.readline()
-        assert "started" in start_log
+        # Read first 6 lines searching for "started".
+        for _ in range(6):
+            log = proc.stdout.readline()
+            if "started" in log:
+                break
+        else:
+            assert False, "No 'started' word in logs"
+
         assert proc.returncode is None
         proc.send_signal(signal.SIGINT)
         proc.wait()

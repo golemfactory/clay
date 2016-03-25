@@ -73,8 +73,8 @@ class PaymentProcessor(object):
         self.__awaiting = []    # Awaiting individual payments
         self.__inprogress = {}  # Sent transactions.
 
-    def __available_balance(self):
-        if self.__balance is None:
+    def available_balance(self, refresh=False):
+        if self.__balance is None or refresh:
             addr = keys.privtoaddr(self.__privkey)
             # TODO: Hack RPC client to allow using raw address.
             self.__balance = self.__client.get_balance(addr.encode('hex'))
@@ -84,7 +84,7 @@ class PaymentProcessor(object):
 
     def add(self, payment):
         assert payment.status is Status.init
-        if payment.value > self.__available_balance():
+        if payment.value > self.available_balance():
             return False
         self.__awaiting.append(payment)
         self.__reserved += payment.value

@@ -9,10 +9,35 @@ from subprocess import Popen
 import appdirs
 import psutil
 
+from devp2p.crypto import privtopub
+from ethereum.keys import privtoaddr
+from ethereum.transactions import Transaction
+from ethereum.utils import normalize_address
+
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
 
 log = logging.getLogger('golem.ethereum')
+
+
+class Faucet(object):
+    PRIVKEY = "{:32}".format("Golem Faucet")
+    assert len(PRIVKEY) == 32
+    PUBKEY = privtopub(PRIVKEY)
+    ADDR = privtoaddr(PRIVKEY)
+
+    @staticmethod
+    def gimme_money(ethnode, addr, value):
+        nonce = ethnode.get_transaction_count(Faucet.ADDR.encode('hex'))
+        addr = normalize_address(addr)
+        tx = Transaction(nonce, 1, 21000, addr, value, '')
+        tx.sign(Faucet.PRIVKEY)
+        h = ethnode.send(tx)
+        log.info("Faucet --({} ETH)--> {} ({})".format(float(value) / 10**18,
+                                                       addr.encode('hex'), h))
+        h = h[2:].decode('hex')
+        assert h == tx.hash
+        return h
 
 
 class NodeProcess(object):
@@ -97,8 +122,8 @@ class FullNode(object):
         basedir = path.dirname(__file__)
         mining_script = path.join(basedir, 'mine_pending_transactions.json')
         args = [
-            '--nodekeyhex', '476f6c656d204661756365742020202020202020202020202020202020202020',
-            '--etherbase', 'cfdc7367e9ece2588afe4f530a9adaa69d5eaedb',
+            '--nodekeyhex', Faucet.PRIVKEY.encode('hex'),
+            '--etherbase', Faucet.ADDR.encode('hex'),
             'js', mining_script,
         ]
         self.proc = NodeProcess(nodes=[], datadir=datadir)
