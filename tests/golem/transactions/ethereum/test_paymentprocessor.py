@@ -5,6 +5,7 @@ from ethereum.keys import privtoaddr
 
 from golem.ethereum import Client
 from golem.ethereum.node import Faucet
+from golem.tools.testdirfixture import TestDirFixture
 from golem.transactions.ethereum.paymentprocessor import (
     Status, OutgoingPayment, PaymentProcessor
 )
@@ -20,14 +21,18 @@ class PaymentStatusTest(unittest.TestCase):
         assert s == Status.init
 
 
-class PaymentProcessorTest(unittest.TestCase):
+class EthereumNodeFixture(TestDirFixture):
     def setUp(self):
+        super(EthereumNodeFixture, self).setUp()
         self.privkey = urandom(32)
         self.addr = privtoaddr(self.privkey)
         # FIXME: Rename "client" to "node" or "eth_node"
-        self.client = Client()
+        Client._kill_node()  # Kill the node to use random datadir
+        self.client = Client(datadir=self.path)
         self.proc = PaymentProcessor(self.client, self.privkey)
 
+
+class PaymentProcessorTest(EthereumNodeFixture):
     def test_balance0(self):
         b = self.proc.available_balance()
         assert b == 0

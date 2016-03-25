@@ -52,14 +52,14 @@ class NodeProcess(object):
             nodes_file = path.join(datadir, 'static-nodes.json')
             if not path.exists(nodes_file):
                 json.dump(nodes, open(nodes_file, 'w'))
-        self.__datadir = datadir
+        self.datadir = datadir
         self.__subprocess = None
         self.rpcport = None
 
     def is_running(self):
         return self.__subprocess is not None
 
-    def start(self, rpc, mining=False):
+    def start(self, rpc, mining=False, nodekey=None):
         if self.__subprocess:
             return
 
@@ -71,7 +71,7 @@ class NodeProcess(object):
         genesis_file = path.join(basedir, 'genesis_golem.json')
         args = [
             program,
-            '--datadir', self.__datadir,
+            '--datadir', self.datadir,
             '--networkid', '9',
             '--genesis', genesis_file,
             '--nodiscover',
@@ -86,10 +86,15 @@ class NodeProcess(object):
                 '--rpcport', str(self.rpcport)
             ]
 
+        if nodekey:
+            self.pubkey = privtopub(nodekey)
+            args += [
+                '--nodekeyhex', nodekey.encode('hex'),
+            ]
+
         if mining:
             mining_script = path.join(basedir, 'mine_pending_transactions.json')
             args += [
-                '--nodekeyhex', Faucet.PRIVKEY.encode('hex'),
                 '--etherbase', Faucet.ADDR.encode('hex'),
                 'js', mining_script,
             ]
@@ -126,7 +131,7 @@ class FullNode(object):
     def __init__(self):
         datadir = path.join(NodeProcess.DEFAULT_DATADIR, 'full_node')
         self.proc = NodeProcess(nodes=[], datadir=datadir)
-        self.proc.start(rpc=False, mining=True)
+        self.proc.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY)
 
 if __name__ == "__main__":
     import signal

@@ -26,6 +26,13 @@ class Client(EthereumRpcClient):
             Client.node.start(rpc=True)
         super(Client, self).__init__(port=Client.node.rpcport)
 
+    @staticmethod
+    def _kill_node():
+        # FIXME: Keeping the node as a static object might not be the best.
+        if Client.node:
+            Client.node.stop()
+            Client.node = None
+
     def get_peer_count(self):
         """
         https://github.com/ethereum/wiki/wiki/JSON-RPC#net_peerCount
