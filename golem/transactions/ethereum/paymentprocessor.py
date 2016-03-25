@@ -29,11 +29,6 @@ class OutgoingPayment(object):
         self.extra = {}  # For additional data.
 
 
-class BatchPayment(object):
-    def __init__(self):
-        pass
-
-
 def _encode_payments(payments):
     paymap = {}
     for p in payments:
