@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import copy
+import netifaces
 import os
+import pprint
 import re
 import shlex
 import subprocess
@@ -12,6 +14,8 @@ import traceback
 from abc import ABCMeta, abstractmethod
 
 import concurrent.futures
+
+DETACHED_PROCESS = 0x00000008
 
 
 class Environment(object):
@@ -311,7 +315,7 @@ class NodeNameValidatorMixin(object):
 
 def node_submit_command(node, commands, detached=False):
 
-    print "Node submit cmd: %r %r %r" % (node, commands, detached)
+    print "Node [%r]: %r" % (node, ' '.join(commands))
 
     if detached:
         args = ["himage", '-b', node]
@@ -448,6 +452,31 @@ class NodeDumpOutputCommand(Command):
         return context_update
 
 
+def parse_ifconfig_output(output, iface=None):
+    addr_line_found = False
+
+    for line in output.split("\n"):
+
+        if addr_line_found:
+            prefix = "inet addr:"
+            i = line.index(prefix)
+            j = i + len(prefix)
+            k = line.index(" ", j)
+            return line[j:k]
+
+        # skip to the first interface other than 'lo' or 'ext0'
+        if line == "" or line.startswith(" "):
+            continue
+
+        intf_name = line.split(" ", 1)[0]
+        if intf_name != "lo" and intf_name != "ext0" and not iface \
+                or iface and intf_name.startswith(iface):
+
+            addr_line_found = True
+
+    return None
+
+
 class NodeIpAddrCommand(Command, NodeNameValidatorMixin):
 
     def __init__(self):
@@ -466,28 +495,13 @@ class NodeIpAddrCommand(Command, NodeNameValidatorMixin):
                                                 cmd_required)
 
     def get_node_address(self, node_name):
-
         output = subprocess.check_output(["himage", node_name, "ifconfig"])
-        addr_line_found = False
-        for line in output.split("\n"):
-            if addr_line_found:
-                prefix = "inet addr:"
-                i = line.index(prefix)
-                j = i + len(prefix)
-                k = line.index(" ", j)
-                return line[j:k]
-            # skip to the first interface other than 'lo' or 'ext0'
-            if line == "" or line.startswith(" "):
-                continue
-            intf_name = line.split(" ", 1)[0]
-            if intf_name != "lo" and intf_name != "ext0":
-                addr_line_found = True
+        return parse_ifconfig_output(output)
 
     def execute(self, context, n_calls=None):
 
         super(NodeIpAddrCommand, self).execute(context)
 
-        environment = context.get('environment')
         cmd = context.get('cmd')
         nodes = context.get('nodes')
         variables = context.get('variables')
@@ -502,19 +516,71 @@ class NodeIpAddrCommand(Command, NodeNameValidatorMixin):
         variables[variable_name] = value or ''
 
 
+class NodeExportCommand(Command, NodeNameValidatorMixin):
+
+    def __init__(self):
+
+        cmd_required = ParamConstraints(3, {
+                                        0: StringContextEntry(),
+                                        1: StringContextEntry(),
+                                        2: StringContextEntry()
+                                        })
+
+        desc = """Export node cmd execution output to a variable
+            {name} [node] [var_name] [cmd]
+        """
+
+        super(NodeExportCommand, self).__init__("node-export", desc,
+                                                None,
+                                                cmd_required)
+
+    def execute(self, context, n_calls=None):
+
+        super(NodeExportCommand, self).execute(context)
+
+        cmd = context.get('cmd')
+        nodes = context.get('nodes')
+        variables = context.get('variables')
+
+        _any, _neg, _nodes = self._extract_nodes(cmd[0])
+        variable_name = cmd[1]
+        node_cmd = cmd[2:]
+
+        result = ''
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+
+            futures = {executor.submit(node_submit_command, name, node_cmd, False):
+                       name for name in nodes
+                       if _any or self._valid_node(name, _nodes, _neg)}
+
+            if not futures:
+                raise CommandException('Invalid nodes {}'.format(_nodes))
+
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    result += future.result()
+                except subprocess.CalledProcessError as e:
+                    print ':: Node error:', e.returncode, e.output
+                    raise NodeExecException(e.message)
+
+        variables[variable_name] = result.strip().rstrip("\n") or ''
+
+
 class NodeNatCommand(Command, NodeNameValidatorMixin):
 
     iptables_nat_cmds = ["iptables --policy FORWARD DROP".split(),
-        "iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE".split(),
-        "iptables -A FORWARD -i eth1 -o eth0 -m state"
+        "iptables -t nat -A POSTROUTING -o {{if1}} -j MASQUERADE".split(),
+        "iptables -A FORWARD -i {{if1}} -o {{if2}} -m state"
         " --state RELATED,ESTABLISHED -j ACCEPT".split(),
-        "iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT".split()]
-
+        "iptables -A FORWARD -i {{if2}} -o {{if1}} -j ACCEPT".split()]
 
     def __init__(self):
 
         cmd_required = ParamConstraints(1, {
-                                        0: StringContextEntry()
+                                        0: StringContextEntry(),
+                                        1: StringContextEntry(),
+                                        2: StringContextEntry()
                                         })
 
         desc = """Configure (iptables) NAT on node
@@ -529,15 +595,25 @@ class NodeNatCommand(Command, NodeNameValidatorMixin):
 
         super(NodeNatCommand, self).execute(context)
 
-        environment = context.get('environment')
         cmd = context.get('cmd')
         nodes = context.get('nodes')
+        if1 = cmd[1]
+        if2 = cmd[2]
 
         _any, _neg, _nodes = self._extract_nodes(cmd[0])
 
+        nat_cmd = copy.copy(self.iptables_nat_cmds)
+
+        for line in nat_cmd:
+            for i, sub_line in enumerate(line):
+                if sub_line == '{{if1}}':
+                    line[i] = if1
+                elif sub_line == '{{if2}}':
+                    line[i] = if2
+
         for name in nodes:
             if _any or self._valid_node(name, _nodes, _neg):
-                for line in self.iptables_nat_cmds:
+                for line in nat_cmd:
                     subprocess.check_call(["himage", name] + line)
 
 
@@ -576,8 +652,6 @@ class NodeCopyCommand(Command, NodeNameValidatorMixin):
 
         src_file = environment.full_from_relative_path(cmd[1])
         target_file = cmd[2]
-        target_dir = environment.get_dir(target_file)
-        calls = n_calls if n_calls is not None else 0
 
         for name in nodes:
             if _any or self._valid_node(name, _nodes, _neg):
@@ -654,11 +728,20 @@ class SimulatorStartCommand(SimulatorCommand):
         if matches:
             nodes = matches[0].replace('\n', '').split()
 
+        node_map = {}
+        for node in nodes:
+            try:
+                sim_name = subprocess.check_output(["himage", "-v", node])
+                node_map[node] = sim_name.replace("\n", '').strip()
+            except:
+                pass
+
         context_update = {
             'state': SimulatorState.started,
             'experiment': experiment,
             'network': network_file,
-            'nodes': nodes
+            'nodes': nodes,
+            'node_map': node_map
         }
 
         return context_update
@@ -676,7 +759,8 @@ class SimulatorStopCommand(SimulatorCommand):
             {name} ([experiment])
         """
 
-        super(SimulatorStopCommand, self).__init__("stop", desc)
+        super(SimulatorStopCommand, self).__init__("stop", desc,
+                                                   context_required)
 
     def execute(self, context):
 
@@ -752,17 +836,26 @@ class SimulatorHelpCommand(SimulatorCommand):
 class SimulatorPrintCommand(SimulatorCommand):
 
     def __init__(self):
-        super(SimulatorCommand, self).__init__("print", "([command])")
+
+        desc = """Print a string.
+            {name} [string]
+        """
+
+        super(SimulatorCommand, self).__init__("print", desc)
 
     def execute(self, context):
 
-        commands = context.get('commands')
         cmd = context.get('cmd')
+        capture = context.get('capture')
+        capture_data = context.get('capture_data')
+        data = ''
 
         if cmd:
-            print ' '.join(cmd)
-        else:
-            print ''
+            data = ' '.join(cmd)
+        if capture:
+            capture_data.append(data)
+
+        print data
 
 
 class SimulatorEnvCommand(SimulatorCommand):
@@ -779,7 +872,6 @@ class SimulatorEnvCommand(SimulatorCommand):
                                                   None, cmd_required)
 
     def execute(self, context):
-        environment = context.get('environment')
         cmd = context.get('cmd')
 
         if cmd:
@@ -790,22 +882,30 @@ class SimulatorEnvCommand(SimulatorCommand):
 
 class SimulatorLocalCommand(SimulatorCommand):
 
-    def __init__(self):
+    def __init__(self, name, detached=False):
 
-        desc = """Print env variable.
+        desc = """Run command locally.
             {name} [command(s)]
         """
 
         cmd_required = ParamConstraints(1, {0: StringContextEntry()})
 
-        super(SimulatorLocalCommand, self).__init__("local", desc,
+        self.detached = detached
+
+        super(SimulatorLocalCommand, self).__init__(name, desc,
                                                     None, cmd_required)
 
     def execute(self, context):
 
         cmd = context.get('cmd')
-        output = subprocess.check_output(cmd)
-        print output,
+        if self.detached:
+            subprocess.Popen(cmd[0:],
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             stdin=subprocess.PIPE)
+        else:
+            output = subprocess.check_output(cmd)
+            print output,
 
 
 class SimulatorExperimentCommand(SimulatorCommand):
@@ -824,11 +924,10 @@ class SimulatorExperimentCommand(SimulatorCommand):
         cmd = context.get('cmd')
         state = context.get('state')
         experiment = context.get('experiment')
-        context_update = None
 
         if cmd:
             context_update = {'experiment': cmd[0]}
-            return (state, context_update)
+            return state, context_update
 
         print experiment
 
@@ -858,6 +957,235 @@ class SimulatorExportCommand(SimulatorCommand):
         variables[var] = output[:-1] if output else ''
 
 
+class SimulatorInterfacesCommand(Command):
+
+    def __init__(self):
+
+        cmd_required = ParamConstraints(1, {
+                                        0: StringContextEntry()
+                                        })
+
+        desc = """Export local interfaces to an env var
+            {name} [var_name]
+        """
+
+        super(SimulatorInterfacesCommand, self).__init__("ifaces", desc,
+                                                         None,
+                                                         cmd_required)
+
+    def execute(self, context, n_calls=None):
+
+        super(SimulatorInterfacesCommand, self).execute(context)
+
+        variables = context.get('variables')
+        cmd = context.get('cmd')
+        variable = cmd[0]
+
+        interfaces = netifaces.interfaces()
+
+        if "lo" in interfaces:
+            interfaces.remove("lo")
+
+        variables[variable] = interfaces
+
+
+class SimulatorNodesCommand(Command):
+
+    def __init__(self):
+
+        cmd_required = ParamConstraints(1, {
+                                        0: StringContextEntry()
+                                        })
+
+        desc = """Export imunes' nodes to an env var
+            {name} [var_name]
+        """
+
+        super(SimulatorNodesCommand, self).__init__("nodes", desc,
+                                                         None,
+                                                         cmd_required)
+
+    def execute(self, context, n_calls=None):
+
+        super(SimulatorNodesCommand, self).execute(context)
+
+        variables = context.get('variables')
+        nodes = context.get('nodes')
+        cmd = context.get('cmd')
+        variable = cmd[0]
+        variables[variable] = [n for n in nodes if not n.startswith('switch')]
+
+
+class SimulatorNodeMapCommand(Command):
+
+    def __init__(self):
+
+        cmd_required = ParamConstraints(1, {
+                                        0: StringContextEntry()
+                                        })
+
+        desc = """Export node mapping to an env var
+            {name} [var_name]
+        """
+
+        super(SimulatorNodeMapCommand, self).__init__("node-map", desc,
+                                                      None,
+                                                      cmd_required)
+
+    def execute(self, context, n_calls=None):
+
+        super(SimulatorNodeMapCommand, self).execute(context)
+
+        variables = context.get('variables')
+        node_map = context.get('node_map')
+        cmd = context.get('cmd')
+        variable = cmd[0]
+        variables[variable] = node_map
+
+
+class SimulatorForEachCommand(Command):
+
+    def __init__(self):
+
+        cmd_required = ParamConstraints(2, {
+                                        0: StringContextEntry(),
+                                        1: StringContextEntry()
+                                        })
+
+        desc = """ForEach loop start
+            {name} [var_name] [element_name]
+        """
+
+        super(SimulatorForEachCommand, self).__init__("for", desc,
+                                                      None,
+                                                      cmd_required)
+
+    def execute(self, context, n_calls=None):
+
+        super(SimulatorForEachCommand, self).execute(context)
+
+        loop_stack = context.get('loop_stack')
+        variables = context.get('variables')
+        cmd = context.get('cmd')
+
+        source = variables.get(cmd[0], [])
+        var = cmd[1]
+
+        loop = {
+            'source': source,
+            'source_idx': -1,
+            'source_len': len(source),
+            'var': var,
+            'value': variables.get(var, None),
+            'commands': [],
+            'command_idx': 0,
+            'command_len': 0,
+            'record': True
+        }
+
+        loop_stack.append(loop)
+
+
+class SimulatorEndForEachCommand(Command):
+
+    def __init__(self):
+        desc = """ForEach loop end
+            {name}
+        """
+
+        super(SimulatorEndForEachCommand, self).__init__("endfor", desc,
+                                                         None)
+
+    def execute(self, context):
+        loop_stack = context.get('loop_stack')
+        loop = loop_stack[-1] if loop_stack else None
+
+        if loop:
+            commands = loop['commands']
+            loop['record'] = False
+            if commands:
+                loop['commands'] = commands[:-1]
+                loop['command_len'] = len(loop['commands'])
+
+
+class SimulatorEvalCommand(Command):
+
+    def __init__(self):
+        desc = """Eval command and store the result in a variable
+            {name} [variable] [code]
+        """
+
+        cmd_required = ParamConstraints(2, {
+                                        0: StringContextEntry(),
+                                        1: StringContextEntry()
+                                        })
+
+        super(SimulatorEvalCommand, self).__init__("eval", desc,
+                                                   None,
+                                                   cmd_required)
+
+    def execute(self, context):
+
+        super(SimulatorEvalCommand, self).execute(context)
+
+        cmd = context.get('cmd')
+        var = cmd[0]
+        variables = context.get('variables')
+        variables[var] = eval(' '.join(cmd[1:]))
+
+
+class SimulatorLetCommand(Command):
+
+    def __init__(self):
+        desc = """Store the value in a variable
+            {name} [variable] [value]
+        """
+
+        cmd_required = ParamConstraints(2, {
+                                        0: StringContextEntry(),
+                                        1: StringContextEntry()
+                                        })
+
+        super(SimulatorLetCommand, self).__init__("let", desc,
+                                                  None,
+                                                  cmd_required)
+
+    def execute(self, context):
+
+        super(SimulatorLetCommand, self).execute(context)
+
+        cmd = context.get('cmd')
+        var = cmd[0]
+        variables = context.get('variables')
+        variables[var] = ' '.join(cmd[1:])
+
+
+class SimulatorExecFileCommand(Command):
+
+    def __init__(self):
+        desc = """Eval command and store the result in a variable
+            {name} [variable] [file]
+        """
+
+        cmd_required = ParamConstraints(2, {
+                                        0: StringContextEntry(),
+                                        1: StringContextEntry()
+                                        })
+
+        super(SimulatorExecFileCommand, self).__init__("execfile", desc,
+                                                       None,
+                                                       cmd_required)
+
+    def execute(self, context):
+
+        super(SimulatorExecFileCommand, self).execute(context)
+
+        cmd = context.get('cmd')
+        var = cmd[0]
+        variables = context.get('variables')
+        variables[var] = execfile(cmd[1])
+
+
 class Simulator(object):
     """
         Main project class. Reads commands from stdin and executes
@@ -878,9 +1206,18 @@ class Simulator(object):
         self.__add_command(SimulatorSleepCommand())
         self.__add_command(SimulatorHelpCommand())
         self.__add_command(SimulatorEnvCommand())
-        self.__add_command(SimulatorLocalCommand())
+        self.__add_command(SimulatorLocalCommand("local"))
+        self.__add_command(SimulatorLocalCommand("local-d", detached=True))
+        self.__add_command(SimulatorInterfacesCommand())
+        self.__add_command(SimulatorNodesCommand())
+        self.__add_command(SimulatorNodeMapCommand())
         self.__add_command(SimulatorExportCommand())
+        self.__add_command(SimulatorEvalCommand())
+        self.__add_command(SimulatorLetCommand())
+        self.__add_command(SimulatorExecFileCommand())
         self.__add_command(SimulatorExperimentCommand())
+        self.__add_command(SimulatorForEachCommand())
+        self.__add_command(SimulatorEndForEachCommand())
         self.__add_command(SimulatorPrintCommand())
         self.__add_command(SimulatorExitCommand())
 
@@ -890,6 +1227,7 @@ class Simulator(object):
         self.__add_command(NodeCaptureOutputCommand())
         self.__add_command(NodeDumpOutputCommand())
         self.__add_command(NodeIpAddrCommand())
+        self.__add_command(NodeExportCommand())
         self.__add_command(NodeNatCommand())
 
     def start(self):
@@ -902,28 +1240,40 @@ class Simulator(object):
             'state': SimulatorState.idle,
             'variables': {},
             'capture': False,
-            'capture_data': []
+            'capture_data': [],
+            'loop_stack': []
         }
 
         source = sys.stdin
         if self.environment.file:
             source = open(self.environment.file)
 
-        self._start(source, context)
+        try:
+            self._start(source, context)
+        except ExitException:
+            pass
+        except:
+            raise
 
         if self.environment.file:
             source.close()
 
     def _start(self, source, context):
-        working = True
 
+        working = True
         while working:
-            line = source.readline().strip()
+
+            loop = context['loop_stack'][-1] if context['loop_stack'] else None
+
+            if loop:
+                line = self._process_loop(source, context, loop)
+            else:
+                line = self._read_source(source)
+
             if not line or line.startswith('#'):
                 continue
 
             parsed = shlex.split(line)
-
             name = parsed[0]
             data = parsed[1:] if len(parsed) > 1 else []
 
@@ -943,7 +1293,7 @@ class Simulator(object):
                 command = self.commands.get(name)
                 context['cmd'] = self._set_cmd_vars(context, data)
 
-                print '[dbg]', name, context['cmd']
+                print '[dbg]', name, ' '.join(context['cmd'] or [])
 
                 try:
                     result = command.execute(context)
@@ -965,9 +1315,47 @@ class Simulator(object):
 
         self._cleanup(context)
 
+    def _read_source(self, source):
+        line = source.readline()
+        if not line:
+            raise ExitException()
+        return line.strip()
+
+    def _process_loop(self, source, context, loop):
+
+        record = loop['record']
+        variables = context['variables']
+
+        if loop['command_idx'] == 0:
+            loop['source_idx'] += 1
+
+            if loop['source_idx'] >= loop['source_len']:
+                value = loop['value']
+                variables[loop['var']] = value
+                context['loop_stack'].pop()
+                return None
+
+            var = loop['var']
+            variables[var] = loop['source'][loop['source_idx']]
+
+        if record:
+            line = self._read_source(source)
+            loop['commands'].append(line)
+        else:
+            if loop['command_idx'] >= loop['command_len']:
+                loop['command_idx'] = 0
+                return None
+            line = loop['commands'][loop['command_idx']]
+            loop['command_idx'] += 1
+
+        return line
+
     def _cleanup(self, context):
         if context.get('state') == SimulatorState.started:
             self.commands.get('stop').execute(context)
+        sys.stderr.flush()
+        sys.stdout.flush()
+        sys.stdout = sys.__stdout__
 
     def __add_command(self, command):
         self.commands[command.name] = command
@@ -1006,9 +1394,13 @@ class Simulator(object):
     def _replace_vars(self, line, extracted, env_variables):
         for e in extracted:
             if e in env_variables:
+
                 value = env_variables.get(e)
+                if isinstance(value, dict) or isinstance(value, list):
+                    value = pprint.pformat(value)
+
                 decorated = self._decorate_var(e)
-                line = line.replace(decorated, value)
+                line = line.replace(decorated, unicode(value))
         return line
 
 

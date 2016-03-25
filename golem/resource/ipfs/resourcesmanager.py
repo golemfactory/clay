@@ -7,6 +7,8 @@ from threading import Lock
 
 import requests
 import twisted
+
+import time
 from requests.packages.urllib3.exceptions import ConnectionError
 
 from golem.core.fileshelper import copy_file_tree
@@ -239,6 +241,7 @@ class IPFSResourceManager:
             filename = result[0]
             multihash = result[1]
 
+            logger.error("[IPFS]:success:{}:{}".format(multihash, time.time()))
             logger.debug("IPFS: %r (%r) downloaded" % (filename, multihash))
 
             self.download_retries.pop(multihash, None)
@@ -259,6 +262,7 @@ class IPFSResourceManager:
                                    client=client,
                                    async=async)
             else:
+                logger.error("[IPFS]:error:{}:{}".format(multihash, time.time()))
                 logger.error("IPFS: error downloading %r (%r)" % (filename, multihash))
                 error(*args, **kwargs)
                 self.__process_queue()
@@ -272,6 +276,8 @@ class IPFSResourceManager:
                 os.makedirs(out_dir[0])
 
         if self.__can_download():
+            logger.error("[IPFS]:start:{}:{}".format(multihash, time.time()))
+
             with self.lock:
                 self.current_downloads += 1
 
