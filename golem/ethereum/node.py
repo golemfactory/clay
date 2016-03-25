@@ -59,7 +59,7 @@ class NodeProcess(object):
     def is_running(self):
         return self.__subprocess is not None
 
-    def start(self, rpc, extra_args=None):
+    def start(self, rpc, mining=False):
         if self.__subprocess:
             return
 
@@ -86,8 +86,13 @@ class NodeProcess(object):
                 '--rpcport', str(self.rpcport)
             ]
 
-        if extra_args:
-            args += extra_args
+        if mining:
+            mining_script = path.join(basedir, 'mine_pending_transactions.json')
+            args += [
+                '--nodekeyhex', Faucet.PRIVKEY.encode('hex'),
+                '--etherbase', Faucet.ADDR.encode('hex'),
+                'js', mining_script,
+            ]
 
         self.__subprocess = Popen(args)
         atexit.register(lambda: self.stop())
@@ -116,18 +121,12 @@ class NodeProcess(object):
             log.info("Node terminated in {:.2f} s".format(duration))
 
 
+# TODO: Refactor, use inheritance FullNode(NodeProcess)
 class FullNode(object):
     def __init__(self):
         datadir = path.join(NodeProcess.DEFAULT_DATADIR, 'full_node')
-        basedir = path.dirname(__file__)
-        mining_script = path.join(basedir, 'mine_pending_transactions.json')
-        args = [
-            '--nodekeyhex', Faucet.PRIVKEY.encode('hex'),
-            '--etherbase', Faucet.ADDR.encode('hex'),
-            'js', mining_script,
-        ]
         self.proc = NodeProcess(nodes=[], datadir=datadir)
-        self.proc.start(rpc=False, extra_args=args)
+        self.proc.start(rpc=False, mining=True)
 
 if __name__ == "__main__":
     import signal
