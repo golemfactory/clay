@@ -7,7 +7,80 @@ from taskbase import TaskHeader
 logger = logging.getLogger(__name__)
 
 
-class TaskKeeper(object):
+class CompTaskInfo(object):
+    def __init__(self, header, price):
+        self.header = header
+        self.price = price
+        self.requests = 1
+        self.timeout = time.time() + header.ttl
+        self.subtasks = {}
+
+
+class CompSubtaskInfo(object):
+    def __init__(self, subtask_id):
+        self.subtask_id = subtask_id
+
+
+class CompTaskKeeper(object):
+    def __init__(self):
+        self.active_tasks = {}
+        self.subtask_to_task = {}
+
+    def add_request(self, theader, price):
+        task_id = theader.task_id
+        if task_id in self.active_tasks:
+            self.active_tasks[task_id].requests += 1
+        else:
+            self.active_tasks[task_id] = CompTaskInfo(theader, price)
+
+    def get_subtask_ttl(self, task_id):
+        task = self.active_tasks.get(task_id)
+        if task:
+            return task.header.subtask_timeout
+
+    def receive_subtask(self, comp_task_def):
+        task = self.active_tasks.get(comp_task_def.task_id)
+        if task and task.requests > 0 and comp_task_def.subtask_id not in task.subtasks:
+            task.requests -= 1
+            task.subtasks[comp_task_def.subtask_id] = comp_task_def
+            return True
+        else:
+            logger.warning("Wasn't waiting for task {}".format(comp_task_def.task_id))
+            return False
+
+    def get_task_id_for_subtask(self, subtask_id):
+        return self.subtask_to_task.get(subtask_id)
+
+    def get_node_for_task_id(self, task_id):
+        task = self.active_tasks.get(task_id)
+        if task:
+            return task.header.task_owner_key_id
+
+    def get_value(self, task_id, computing_time):
+        task = self.active_tasks.get(task_id)
+        if task:
+            return task.price * computing_time
+        else:
+            logger.error("Unknown price for task {}".format(task_id))
+            return 0
+
+    def remove_task(self, task_id):
+        if task_id in self.active_tasks:
+            del self.active_tasks[task_id]
+
+    def request_failure(self, task_id):
+        task = self.active_tasks.get(task_id)
+        if task:
+            task.requests -= 1
+
+    def remove_old_tasks(self):
+        time_ = time.time()
+        for task_id, task in self.active_tasks.items():
+            if time_ > task.timeout and len(task.subtasks) == 0:
+                self.remove_task(task_id)
+
+
+class TaskHeaderKeeper(object):
     """ Keeps information about tasks living in Golem Network. Node may choose one of those task
     to compute or will pass these informations to other nodes.
     """
@@ -17,21 +90,17 @@ class TaskKeeper(object):
         self.task_headers = {}  # all computing tasks that this node now about
         self.supported_tasks = []  # ids of tasks that this node may try to compute
         self.removed_tasks = {}  # tasks that were removed from network recently, so they won't be add to again
-        self.active_tasks = {}
-        self.active_requests = {}
-        self.completed = {}
-        self.declared_prices = {}
+
         self.min_price = min_price
         self.app_version = app_version
-
         self.verification_timeout = verification_timeout
         self.removed_task_timeout = remove_task_timeout
         self.environments_manager = environments_manager
 
     def is_supported(self, th_dict_repr):
-        """ Returns information whether task described with given task header dict representation may be computed
+        """ Checks if task described with given task header dict representation may be computed
         by this node. This node must support proper environment, be allowed to make computation cheaper than with
-        max price declared in task and have proper application verison.
+        max price declared in task and have proper application version.
         :param dict th_dict_repr: task header dictionary representation
         :return bool: True if this node may compute a task
         """
@@ -39,25 +108,11 @@ class TaskKeeper(object):
         supported = supported and self.check_price(th_dict_repr)
         return supported and self.check_version(th_dict_repr)
 
-    def get_task(self, price):
-        """ Returns random task from supported tasks that may be computed
-        :param price:
-        :return:
-        """
-        if len(self.supported_tasks) > 0:
-            tn = random.randrange(0, len(self.supported_tasks))
-            task_id = self.supported_tasks[tn]
-            theader = self.task_headers[task_id]
-            if task_id in self.active_requests:
-                self.active_requests[task_id] += 1
-            else:
-                self.active_tasks[task_id] = {'header': theader, 'price': price}
-                self.active_requests[task_id] = 1
-            return theader
-        else:
-            return None
-
     def check_environment(self, th_dict_repr):
+        """ Checks if this node supports environment necessary to compute task described with task header.
+        :param dict th_dict_repr: task header dictionary representation
+        :return bool: True if this node support environment for this task, False otherwise
+        """
         env = th_dict_repr.get("environment")
         if not env:
             return False
@@ -66,9 +121,18 @@ class TaskKeeper(object):
         return self.environments_manager.accept_tasks(env)
 
     def check_price(self, th_dict_repr):
+        """ Check if this node offers prices that isn't greater than maximum price described in task header.
+        :param dict th_dict_repr: task header dictionary representation
+        :return bool: False if price offered by this node is higher that maximum price for this task, True otherwise.
+        """
         return th_dict_repr.get("max_price") >= self.min_price
 
     def check_version(self, th_dict_repr):
+        """ Check if this node has a version that isn't less than minimum version described in task header. If there
+        is no version specified it will return True.
+        :param dict th_dict_repr: task header dictionary representation
+        :return bool: False if node's version is lower than minimum version for this task, False otherwise.
+        """
         min_v = th_dict_repr.get("min_version")
         if not min_v:
             return True
@@ -85,9 +149,16 @@ class TaskKeeper(object):
             return False
 
     def get_all_tasks(self):
+        """ Return all known tasks
+        :return list: list of all known tasks
+        """
         return self.task_headers.values()
 
     def change_config(self, config_desc):
+        """ Change config options, ie. minimal price that this node may offer for computation. If a minimal price
+         didn't change it won't do anything. If it has changed it will try again to check which tasks are supported.
+        :param ClientConfigDescriptor config_desc: new config descriptor
+        """
         if config_desc.min_price == self.min_price:
             return
         self.min_price = config_desc.min_price
@@ -97,12 +168,16 @@ class TaskKeeper(object):
                 self.supported_tasks.append(id_)
 
     def add_task_header(self, th_dict_repr):
+        """ This function will try to add a task header to a list of known headers. The header will be added only
+        if it isn't already placed in taks_headers or wasn't remove recently. If it's new and supported its id will be
+        put in supported task list.
+        :param dict th_dict_repr: task dictionary representation
+        :return bool: True if task header was well formatted and no error occurs, False otherwise
+        """
         try:
             id_ = th_dict_repr["id"]
             if id_ not in self.task_headers.keys():  # don't have it
                 if id_ not in self.removed_tasks.keys():  # not removed recently
-                    is_supported = self.is_supported(th_dict_repr)
-                    logger.info("Adding task {} is_supported={}".format(id_, is_supported))
                     self.task_headers[id_] = TaskHeader(node_name=th_dict_repr["node_name"],
                                                         task_id=id_,
                                                         task_owner_address=th_dict_repr["address"],
@@ -113,6 +188,8 @@ class TaskKeeper(object):
                                                         ttl=th_dict_repr["ttl"],
                                                         subtask_timeout=th_dict_repr["subtask_timeout"],
                                                         max_price=th_dict_repr["max_price"])
+                    is_supported = self.is_supported(th_dict_repr)
+                    logger.info("Adding task {} is_supported={}".format(id_, is_supported))
                     if is_supported:
                         self.supported_tasks.append(id_)
             return True
@@ -121,47 +198,22 @@ class TaskKeeper(object):
             return False
 
     def remove_task_header(self, task_id):
+        """ Removes task with given id from a list of known task headers.
+        """
         if task_id in self.task_headers:
             del self.task_headers[task_id]
         if task_id in self.supported_tasks:
             self.supported_tasks.remove(task_id)
         self.removed_tasks[task_id] = time.time()
-        if task_id in self.active_requests and self.active_requests[task_id] <= 0:
-            self.__del_active_task(task_id)
 
-    def get_subtask_ttl(self, task_id):
-        if task_id in self.task_headers:
-            return self.task_headers[task_id].subtask_timeout
-
-    def receive_task_verification(self, task_id):
-        if task_id not in self.active_tasks:
-            logger.warning("Wasn't waiting for verification result for {}").format(task_id)
-            return
-        self.active_requests[task_id] -= 1
-        if self.active_requests[task_id] <= 0 and task_id not in self.task_headers:
-            self.__del_active_task(task_id)
-
-    def get_task_id_for_subtask(self, subtask_id):
-        if subtask_id not in self.completed:
-            return None
-        return self.completed[subtask_id][0]
-
-    def is_waiting_for_subtask(self, subtask_id):
-        return self.completed.get(subtask_id) is not None
-
-    def is_waiting_for_task(self, task_id):
-        for v in self.completed.itervalues():
-            if v[0] == task_id:
-                return True
-        return False
-
-    def remove_completed(self, task_id=None, subtask_id=None):
-        if task_id:
-            subtasks = [sub_id for sub_id, val in self.completed.iteritems() if val[0] == task_id]
-            for sub_id in subtasks:
-                del self.completed[sub_id]
-        if subtask_id:
-            del self.completed[subtask_id]
+    def get_task(self):
+        """ Returns random task from supported tasks that may be computed
+        :return TaskHeader|None: returns either None if there are no tasks that this node may want to compute
+        """
+        if len(self.supported_tasks) > 0:
+            tn = random.randrange(0, len(self.supported_tasks))
+            task_id = self.supported_tasks[tn]
+            return self.task_headers[task_id]
 
     def remove_old_tasks(self):
         for t in self.task_headers.values():
@@ -178,38 +230,5 @@ class TaskKeeper(object):
                 del self.removed_tasks[task_id]
 
     def request_failure(self, task_id):
-        if task_id in self.active_requests:
-            self.active_requests[task_id] -= 1
         self.remove_task_header(task_id)
 
-    def get_receiver_for_task_verification_result(self, task_id):
-        if task_id not in self.active_tasks:
-            return None
-        return self.active_tasks[task_id]['header'].task_owner_key_id
-
-    def add_completed(self, subtask_id, task_id, computing_time):
-        now = datetime.datetime.now()
-        self.completed[subtask_id] = [task_id, now, self.__count_deadline(now)]
-        tk = self.active_tasks.get(task_id)
-        if tk:
-            return tk['price'] * computing_time
-        else:
-            logger.error("Unknown price for task {}".format(task_id))
-            return 0
-
-    def check_payments(self):
-        # TODO Save unpaid tasks somewhere else
-        now = datetime.datetime.now()
-        after_deadline = []
-        for subtask_id, [task_id, task_date, deadline] in self.completed.items():
-            if deadline < now:
-                after_deadline.append(task_id)
-                del self.completed[subtask_id]
-        return after_deadline
-
-    def __count_deadline(self, date):  # FIXME Cos zdecydowanie bardziej zaawansowanego i moze dopasowanego do kwoty
-        return datetime.datetime.fromtimestamp(time.time() + self.verification_timeout)
-
-    def __del_active_task(self, task_id):
-        del self.active_tasks[task_id]
-        del self.active_requests[task_id]

@@ -95,3 +95,15 @@ class TransactionSystem(object):
         :param payments: payments representation
         """
         raise NotImplementedError
+
+    def check_payments(self):
+        # TODO Some code from taskkeeper
+        # now = datetime.datetime.now()
+        # after_deadline = []
+        # for subtask_id, [task_id, task_date, deadline] in self.completed.items():
+        #     if deadline < now:
+        #         after_deadline.append(task_id)
+        #         del self.completed[subtask_id]
+        # return after_deadline
+
+        return []

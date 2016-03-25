@@ -58,22 +58,12 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
         with self.assertLogs(logger, level='WARNING'):
             ts.subtask_rejected("aabbcc")
-        self.assertIsNotNone(ts.task_keeper.completed.get("xxyyzz"))
         self.assertIsNotNone(ts.task_keeper.task_headers.get("xyz"))
-        with self.assertNoLogs(logger, level='WARNING'):
-            ts.subtask_rejected("xxyyzz")
-        self.assertIsNone(ts.task_keeper.completed.get("xxyyzz"))
-        self.assertIsNone(ts.task_keeper.task_headers.get("xyz"))
-        self.assertIsNotNone(ts.task_keeper.completed.get("xyzxyz"))
 
         prev_call_count = ts.client.increase_trust.call_count
         with self.assertLogs(logger, level="WARNING"):
-            ts.reward_for_subtask_paid("aabbcc")
+            ts.reward_for_subtask_paid("aa2bb2cc")
         self.assertEqual(ts.client.increase_trust.call_count, prev_call_count)
-        ts.reward_for_subtask_paid("xyzxyz")
-        print ts.client.increase_trust
-        self.assertIsNone(ts.task_keeper.completed.get("xyzxyz"))
-        self.assertGreater(ts.client.increase_trust.call_count, prev_call_count)
 
     def __get_example_task_header(self):
         node = Node()
