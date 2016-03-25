@@ -23,36 +23,23 @@ class TestDataProducerAndConsumer(unittest.TestCase):
     def test_progress(self):
 
         long_string = "abcdefghijklmn opqrstuvwxyz"
-        short_string = "abcde"
-        empty_string = ""
+        datas = (
+            ("", None),
+            ("abcde", None),
+            (long_string, 8),
+            (long_string * 1000, 16),
+            (long_string * 1000, 128),
+            # (long_string * 1000 * 1000 * 10, None)  # This takes some time.
+        )
 
-        self.__producer_consumer_test(short_string, session=MagicMock())
-        self.__producer_consumer_test(empty_string, session=MagicMock())
-        self.__producer_consumer_test(long_string, 8, session=MagicMock())
-        self.__producer_consumer_test(long_string * 1000, 16, session=MagicMock())
-        self.__producer_consumer_test(long_string * 10000, 128, session=MagicMock())
-        self.__producer_consumer_test(long_string * 1000 * 1000 * 10, session=MagicMock())
+        for args in datas:
+            self.__producer_consumer_test(*args, session=MagicMock())
 
         self.ek = EllipticalKeysAuth()
-        self.__producer_consumer_test(short_string, data_producer_cls=EncryptDataProducer,
-                                      data_consumer_cls=DecryptDataConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test(empty_string, data_producer_cls=EncryptDataProducer,
-                                      data_consumer_cls=DecryptDataConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test(long_string, 8, data_producer_cls=EncryptDataProducer,
-                                      data_consumer_cls=DecryptDataConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test(long_string * 1000, 16, data_producer_cls=EncryptDataProducer,
-                                      data_consumer_cls=DecryptDataConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test(long_string * 10000, 128, data_producer_cls=EncryptDataProducer,
-                                      data_consumer_cls=DecryptDataConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test(long_string * 1000 * 1000, data_producer_cls=EncryptDataProducer,
-                                      data_consumer_cls=DecryptDataConsumer,
-                                      session=self.__make_encrypted_session_mock())
-
+        for args in datas:
+            self.__producer_consumer_test(*args, data_producer_cls=EncryptDataProducer,
+                                          data_consumer_cls=DecryptDataConsumer,
+                                          session=self.__make_encrypted_session_mock())
 
     def __make_encrypted_session_mock(self):
         session = MagicMock()
@@ -60,7 +47,9 @@ class TestDataProducerAndConsumer(unittest.TestCase):
         session.decrypt.side_effect = self.ek.decrypt
         return session
 
-    def __producer_consumer_test(self, data, buff_size=None, data_producer_cls=DataProducer, data_consumer_cls=DataConsumer,
+    def __producer_consumer_test(self, data, buff_size=None,
+                                 data_producer_cls=DataProducer,
+                                 data_consumer_cls=DataConsumer,
                                  session=MagicMock()):
         producer_progress_value = "Sending progress 100 %"
         consumer_progress_value = "File data receiving 100 %"
@@ -99,7 +88,7 @@ class TestFileProducerAndConsumer(TestDirFixture):
         with open(self.tmp_file1, 'w') as f:
             f.write(long_text)
         with open(self.tmp_file3, 'w') as f:
-            f.write(long_text * 10000)
+            f.write(long_text * 1000)
         with open(self.tmp_file2, 'w'):
             pass
 

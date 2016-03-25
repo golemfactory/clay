@@ -102,3 +102,13 @@ class TestEthereumAddress(LogTestCase):
         addr6 = ""
         e = EthereumAddress(addr6)
         self.assertIsNone(e.get_str_addr())
+
+    def test_init2(self):
+        addr = EthereumAddress("0x7b82fd1672b8020415d269c53cd1a2230fde9386")
+        assert addr
+
+        addr = EthereumAddress("7b82fd1672b8020415d269c53cd1a2230fde9386")
+        assert addr
+
+        addr = EthereumAddress("Invalid")
+        assert not addr

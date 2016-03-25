@@ -17,7 +17,7 @@ from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from golem.client import create_client
 from golem.core.common import get_golem_path
-from golem.network.transport.tcpnetwork import TCPAddress, AddressValueError
+from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
 from golem.task.taskbase import Task
 
 
@@ -68,6 +68,10 @@ class Node(object):
             self.client.quit()
             sys.exit(0)
 
+    @staticmethod
+    def _get_task_builder(task_def):
+        raise NotImplementedError
+
 
 class GNRNode(Node):
     default_environments = [
@@ -88,7 +92,7 @@ def parse_node_addr(ctx, param, value):
     del ctx, param
     if value:
         try:
-            TCPAddress(value, 1)
+            SocketAddress(value, 1)
             return value
         except AddressValueError as e:
             raise click.BadParameter(
@@ -101,7 +105,7 @@ def parse_peer(ctx, param, value):
     addresses = []
     for arg in value:
         try:
-            addresses.append(TCPAddress.parse(arg))
+            addresses.append(SocketAddress.parse(arg))
         except AddressValueError as e:
             raise click.BadParameter(
                 "Invalid peer address specified: {}".format(e.message))

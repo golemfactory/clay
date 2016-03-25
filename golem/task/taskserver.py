@@ -7,7 +7,7 @@ from taskcomputer import TaskComputer
 from tasksession import TaskSession
 from taskkeeper import TaskKeeper
 from golem.ranking.ranking import RankingStats
-from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, TCPAddress, MidAndFilesProtocol
+from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpserver import PendingConnectionsServer, PendingConnection, PenConnStatus
 
@@ -362,7 +362,7 @@ class TaskServer(PendingConnectionsServer):
         self.client.inform_about_task_nat_hole(asking_node.key, client_key_id, addr, port, ans_conn_id)
 
     def traverse_nat(self, key_id, addr, port, conn_id, super_key_id):
-        connect_info = TCPConnectInfo([TCPAddress(addr, port)], self.__connection_for_traverse_nat_established,
+        connect_info = TCPConnectInfo([SocketAddress(addr, port)], self.__connection_for_traverse_nat_established,
                                       self.__connection_for_traverse_nat_failure)
         self.network.connect(connect_info, client_key_id=key_id, conn_id=conn_id, super_key_id=super_key_id)
 
@@ -371,12 +371,12 @@ class TaskServer(PendingConnectionsServer):
         if pc:
             pc.failure(conn_id, *pc.args)
 
-    def get_tcp_addresses(self, node_info, port, key_id):
-        tcp_addresses = PendingConnectionsServer.get_tcp_addresses(self, node_info, port, key_id)
+    def get_socket_addresses(self, node_info, port, key_id):
+        socket_addresses = PendingConnectionsServer.get_socket_addresses(self, node_info, port, key_id)
         addr = self.client.get_suggested_addr(key_id)
         if addr:
-            tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
-        return tcp_addresses
+            socket_addresses = [SocketAddress(addr, port)] + socket_addresses
+        return socket_addresses
 
     def quit(self):
         self.task_computer.quit()
@@ -459,7 +459,7 @@ class TaskServer(PendingConnectionsServer):
 
         session.send_hello()
         session.send_report_computed_task(waiting_task_result, self.node.prv_addr, self.cur_port,
-                                          self.client.transaction_system.get_eth_account(),
+                                          self.client.transaction_system.get_payment_address(),
                                           self.node)
 
     def __connection_for_task_result_failure(self, conn_id, key_id, waiting_task_result):

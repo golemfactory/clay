@@ -2,15 +2,15 @@ import sys
 import unittest
 from ipaddress import AddressValueError
 
-from golem.network.transport.tcpnetwork import TCPAddress
+from golem.network.transport.tcpnetwork import SocketAddress
 
 
-class TestTCPAddressParsing(unittest.TestCase):
-    """Test suite for TCPAddress.parse()"""
+class TestSocketAddressParsing(unittest.TestCase):
+    """Test suite for SocketAddress.parse()"""
 
     def __expect_exception(self, value, exception):
         try:
-            TCPAddress.parse(value)
+            SocketAddress.parse(value)
             suffix = ', not succeed'
         except exception:
             return
@@ -18,7 +18,7 @@ class TestTCPAddressParsing(unittest.TestCase):
             exc = sys.exc_info()[0]
             suffix = ', not ' + exc.__name__
 
-        self.fail('TCPAddress.parse("' + str(value) +
+        self.fail('SocketAddress.parse("' + str(value) +
                   '") should raise ' + exception.__name__ +
                   suffix)
 
@@ -28,7 +28,7 @@ class TestTCPAddressParsing(unittest.TestCase):
             addr = addr[1:]
         else:
             addr, port = value.split(':')
-        a = TCPAddress.parse(value)
+        a = SocketAddress.parse(value)
         self.assertTrue(a.address == addr)
         self.assertTrue(a.port == int(port))
 

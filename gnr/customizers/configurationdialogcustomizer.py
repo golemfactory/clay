@@ -70,7 +70,7 @@ class ConfigurationDialogCustomizer(Customizer):
                                self.__computing_trust_edited)
         QtCore.QObject.connect(self.gui.ui.ethAccountLineEdit, QtCore.SIGNAL("textChanged(QString)"),
                                self.__check_eth_account)
-        
+
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
         self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_port))
@@ -327,10 +327,10 @@ class ConfigurationDialogCustomizer(Customizer):
         except ValueError:
             num_cores = 1
         self.gui.ui.performanceLabel.setText(str(self.logic.recount_performance(num_cores)))
-    
+
     def __recount_lux_performance(self):
         self.gui.ui.luxPerformanceLabel.setText(str(self.logic.recount_lux_performance()))
-    
+
     def __recount_blender_performance(self):
         self.gui.ui.blenderPerformanceLabel.setText(str(self.logic.recount_blender_performance()))
 
@@ -362,9 +362,9 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.accountStatusLabel.setText("OK")
 
     def __check_eth_account(self):
-        try:
-            EthereumAddress.parse(u"{}".format(self.gui.ui.ethAccountLineEdit.text()))
+        text = self.gui.ui.ethAccountLineEdit.text()
+        if EthereumAddress(text):
             self.__set_account_ok()
-        except Exception as err:
+        else:
             self.__set_account_error()
-            logger.warning("Wrong ethereum address: {}".format(str(err)))
+            logger.warning("Wrong ethereum address: {}".format(text))

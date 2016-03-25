@@ -212,7 +212,7 @@ class RenderingTaskCollector:
             if not self.width or not self.height:
                 self.width, self.height = final_img.size
                 self.height *= len(self.accepted_exr_files)
-            final_img = self.__paste_image(Image.new('RGB', (self.width, self.height)), final_img, 0)
+            final_img = self._paste_image(Image.new('RGB', (self.width, self.height)), final_img, 0)
 
         for i in range(1, len(self.accepted_exr_files)):
             print self.accepted_exr_files[i]
@@ -221,7 +221,7 @@ class RenderingTaskCollector:
             if not self.paste:
                 final_img = ImageChops.add(final_img, rgb8_im)
             else:
-                final_img = self.__paste_image(final_img, rgb8_im, i)
+                final_img = self._paste_image(final_img, rgb8_im, i)
 
             if show_progress:
                 print_progress(i, len(self.accepted_exr_files))
@@ -239,7 +239,7 @@ class RenderingTaskCollector:
 
         return final_img
 
-    def __paste_image(self, final_img, new_part, num):
+    def _paste_image(self, final_img, new_part, num):
         img_offset = Image.new("RGB", (self.width, self.height))
         offset = int(math.floor(num * float(self.height) / float(len(self.accepted_exr_files))))
         img_offset.paste(new_part, (0, offset))
