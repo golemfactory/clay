@@ -1,15 +1,13 @@
 import logging
 import os
 import socket
-import urllib3
+import urllib2
 from collections import deque
 from threading import Lock
 
 import requests
 import twisted
-
 import time
-from requests.packages.urllib3.exceptions import ConnectionError
 
 from golem.core.fileshelper import copy_file_tree
 from golem.resource.ipfs.client import IPFSClient, IPFSAsyncCall, IPFSAsyncExecutor
@@ -27,10 +25,9 @@ class IPFSResourceManager:
 
     root_path = os.path.abspath(os.sep)
     timeout_exceptions = [socket.timeout,
+                          urllib2.URLError,
                           requests.exceptions.Timeout,
-                          urllib3.exceptions.TimeoutError,
-                          twisted.internet.defer.TimeoutError,
-                          ConnectionError]
+                          twisted.internet.defer.TimeoutError]
 
     def __init__(self, dir_manager, node_name,
                  ipfs_client_config=None,
