@@ -14,12 +14,14 @@ class Client(EthereumRpcClient):
 
     node = None
 
-    def __init__(self, datadir=None):
+    def __init__(self, datadir=None, nodes=None):
+        if not nodes:
+            nodes = Client.STATIC_NODES
         if not Client.node:
             if datadir:
-                Client.node = NodeProcess(Client.STATIC_NODES, datadir)
+                Client.node = NodeProcess(nodes, datadir)
             else:
-                Client.node = NodeProcess(Client.STATIC_NODES)
+                Client.node = NodeProcess(nodes)
         elif datadir:
             assert Client.node.datadir == datadir
         if not Client.node.is_running():

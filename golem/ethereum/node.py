@@ -69,14 +69,16 @@ class NodeProcess(object):
         # Data dir must be set the class user to allow multiple nodes running
         basedir = path.dirname(__file__)
         genesis_file = path.join(basedir, 'genesis_golem.json')
+        self.port = find_free_net_port(8001)
         args = [
             program,
             '--datadir', self.datadir,
             '--networkid', '9',
+            '--port', str(self.port),
             '--genesis', genesis_file,
             '--nodiscover',
             '--gasprice', '0',
-            '--verbosity', '0',
+            '--verbosity', '6',
         ]
 
         if rpc:
@@ -93,7 +95,7 @@ class NodeProcess(object):
             ]
 
         if mining:
-            mining_script = path.join(basedir, 'mine_pending_transactions.json')
+            mining_script = path.join(basedir, 'mine_pending_transactions.js')
             args += [
                 '--etherbase', Faucet.ADDR.encode('hex'),
                 'js', mining_script,
@@ -128,8 +130,9 @@ class NodeProcess(object):
 
 # TODO: Refactor, use inheritance FullNode(NodeProcess)
 class FullNode(object):
-    def __init__(self):
-        datadir = path.join(NodeProcess.DEFAULT_DATADIR, 'full_node')
+    def __init__(self, datadir=None):
+        if not datadir:
+            datadir = path.join(NodeProcess.DEFAULT_DATADIR, 'full_node')
         self.proc = NodeProcess(nodes=[], datadir=datadir)
         self.proc.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY)
 
