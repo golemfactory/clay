@@ -21,9 +21,10 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 10000
         task_mock.query_extra_data.return_value.task_id = "xyz"
+        # Task's initial state is set to 'waiting' (found in activeStatus)
         tm.add_new_task(task_mock)
         subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
-        self.assertIsNone(subtask)
+        self.assertIsNotNone(subtask)
         self.assertEqual(wrong_task, False)
         tm.tasks_states["xyz"].status = tm.activeStatus[0]
         subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 1, 10, 2, "10.10.10.10")
