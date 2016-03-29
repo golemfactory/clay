@@ -9,6 +9,7 @@ import os
 import logging
 import time
 import pickle
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -152,15 +153,19 @@ class GNRTask(Task):
 
     def get_resources(self, task_id, resource_header, resource_type=0):
         common_path_prefix, dir_name, tmp_dir = self.__get_task_dir_params()
+
         if resource_type == resource_types["zip"] and not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
+
         if os.path.exists(dir_name):
             if resource_type == resource_types["zip"]:
                 return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
+
             elif resource_type == resource_types["parts"]:
-                delta_header, parts = TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name,
-                                                                                              self.res_files)
-                return delta_header, parts
+                return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name,
+                                                                               self.res_files)
+            elif resource_type == resource_types["hashes"]:
+                return copy.copy(self.task_resources)
 
         return None
 

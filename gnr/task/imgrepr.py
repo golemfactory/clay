@@ -111,10 +111,12 @@ def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file, c
 
 
 def verify_img(file_, res_x, res_y):
+    # allow +/-1 difference in y size - workaround for blender inproperly rounding floats
     img = load_img(file_)
     if img is None:
         return False
-    return img.get_size() == (res_x, res_y)
+    img_x, img_y = img.get_size()
+    return (img_x == res_x) and (abs(img_y - res_y) <= 1)
 
 
 def compare_pil_imgs(file1, file2):

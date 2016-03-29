@@ -10,14 +10,21 @@ def exec_cmd(cmd, nice=20, wait=True):
     :param bool wait: *Default: True* if True, program will wait for child process to terminate
     :return:
     """
-    pc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    stdout, stderr = pc.communicate()
     if is_windows():
+        pc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        stdout, stderr = pc.communicate()
         import win32process
         import win32api
         import win32con
         handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pc.pid)
         win32process.SetPriorityClass(handle, win32process.IDLE_PRIORITY_CLASS)
-
+    else:
+        command = ""
+        for c in cmd:
+            command += " " + c
+        print command
+        pc = subprocess.Popen(["/bin/sh", "-c", command], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = pc.communicate()
     if wait:
         pc.wait()
+    print str(stderr) + "\n" + str(stdout)

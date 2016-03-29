@@ -2,6 +2,7 @@ appdirs>=1.4
 click>=4.0
 enum34
 ipaddress
+ipfs-api
 jsonpickle
 netifaces==0.10.4
 OpenEXR==1.2.0
@@ -16,5 +17,6 @@ requests==2.8.1
 six==1.10.0
 Twisted>=15.4
 ethereum-rpc-client
-devp2p
+devp2p>=0.5.1
+cffi>=1.1.2
 https://github.com/ethereum/pyethereum/tarball/develop#egg=ethereum
