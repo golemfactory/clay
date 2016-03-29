@@ -3,6 +3,7 @@ import logging
 import math
 import OpenEXR
 import Imath
+import os
 from PIL import Image, ImageChops
 
 logger = logging.getLogger(__name__)
@@ -164,35 +165,9 @@ class RenderingTaskCollector:
         self.height = height
 
     def add_img_file(self, exr_file):
-        rgbf = open_exr_as_rgbf_images(exr_file)
-        d, l = get_single_rgbf_extrema(rgbf)
-
-        if self.darkest:
-            self.darkest = min(d, self.darkest)
-        else:
-            self.darkest = d
-
-        if self.lightest:
-            self.lightest = max(l, self.lightest)
-        else:
-            self.lightest = l
-
         self.accepted_exr_files.append(exr_file)
 
     def add_alpha_file(self, exr_file):
-        rgbf = open_exr_as_rgbf_images(exr_file)
-        d, l = get_single_rgbf_extrema(rgbf)
-
-        if self.alpha_darkest:
-            self.alpha_darkest = min(d, self.alpha_darkest)
-        else:
-            self.alpha_darkest = d
-
-        if self.alpha_lightest:
-            self.alpha_lightest = max(l, self.alpha_lightest)
-        else:
-            self.alpha_lightest = l
-
         self.accepted_alpha_files.append(exr_file)
 
     def finalize(self, show_progress=False):
@@ -202,40 +177,49 @@ class RenderingTaskCollector:
         if show_progress:
             print "Adding all accepted chunks to the final image"
 
-        if self.lightest == self.darkest:
-            self.lightest = self.darkest + 0.1
-
-        final_img = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_exr_files[0]),
-                                                      self.lightest, self.darkest)
-
-        if self.paste:
-            if not self.width or not self.height:
-                self.width, self.height = final_img.size
-                self.height *= len(self.accepted_exr_files)
-            final_img = self.__paste_image(Image.new('RGB', (self.width, self.height)), final_img, 0)
-
-        for i in range(1, len(self.accepted_exr_files)):
-            print self.accepted_exr_files[i]
-            rgb8_im = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_exr_files[i]),
-                                                        self.lightest, self.darkest)
+        _, output_format = os.path.splitext(self.accepted_exr_files[0])
+        output_format = output_format[1:].upper()
+        
+        res_y = 0
+        
+        for name in self.accepted_exr_files:
+            img = Image.open(name)
+            res_x, img_y = img.size
+            res_y += img_y
+        
+        self.width = res_x
+        self.height = res_y
+        bands = Image.open(self.accepted_exr_files[0]).getbands()
+        band = ""
+        for b in bands:
+            band += b
+        logger.debug("BANDS: " + band)
+        logger.debug("RES: " + str(res_x) + " " + str(res_y))
+        final_img = Image.new(band, (res_x, res_y))
+        #self.accepted_exr_files.sort()
+        offset = 0
+        for f in self.accepted_exr_files:
+            print f
             if not self.paste:
-                final_img = ImageChops.add(final_img, rgb8_im)
+                final_img = ImageChops.add(final_img, f)
             else:
-                final_img = self.__paste_image(final_img, rgb8_im, i)
-
+                img = Image.open(f)
+                final_img.paste(img, (0, offset))
+                _, img_y = img.size
+                offset += img_y
             if show_progress:
                 print_progress(i, len(self.accepted_exr_files))
 
-        if len(self.accepted_alpha_files) > 0:
-            final_alpha = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[0]),
-                                                         self.lightest, self.darkest)
+        #if len(self.accepted_alpha_files) > 0:
+            #final_alpha = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[0]),
+                                                         #self.lightest, self.darkest)
 
-            for i in range(1, len(self.accepted_alpha_files)):
-                l_im = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[i]),
-                                                      self.lightest, self.darkest)
-                final_alpha = ImageChops.add(final_alpha, l_im)
+            #for i in range(1, len(self.accepted_alpha_files)):
+                #l_im = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[i]),
+                                                      #self.lightest, self.darkest)
+                #final_alpha = ImageChops.add(final_alpha, l_im)
 
-            final_img.putalpha(final_alpha)
+            #final_img.putalpha(final_alpha)
 
         return final_img
 
