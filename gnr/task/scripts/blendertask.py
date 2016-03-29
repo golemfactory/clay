@@ -33,6 +33,7 @@ def get_files():
     return  glob.glob(os.path.join(output_files, "*.exr")) + \
             glob.glob(os.path.join(output_files, "*.png")) + \
             glob.glob(os.path.join(output_files, "*.jpeg")) + \
+            glob.glob(os.path.join(output_files, "*.jpg")) + \
             glob.glob(os.path.join(output_files, "*.tga")) + \
             glob.glob(os.path.join(output_files, "*.bmp")) + \
             glob.glob(os.path.join(output_files, "*.log"))
