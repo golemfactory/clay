@@ -28,7 +28,7 @@ def react_to_key_error(func):
         try:
             return func(*args, **kwargs)
         except KeyError:
-            logger.exception("This is not my subtask {}".format(args[1]))
+            logger.warning("This is not my subtask {}".format(args[1]))
             return None
 
     return func_wrapper

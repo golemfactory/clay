@@ -1,8 +1,7 @@
 import logging
 import random
 import time
-import datetime
-from taskbase import TaskHeader
+from taskbase import TaskHeader, ComputeTaskDef
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +20,20 @@ class CompSubtaskInfo(object):
         self.subtask_id = subtask_id
 
 
+def react_to_key_error(func):
+    def func_wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except KeyError:
+            if isinstance(args[1], ComputeTaskDef):
+                task_id = args[1].task_id
+            else:
+                task_id = args[1]
+            logger.warning("This is not my task {}".format(task_id))
+            return None
+    return func_wrapper
+
+
 class CompTaskKeeper(object):
     def __init__(self):
         self.active_tasks = {}
@@ -33,45 +46,37 @@ class CompTaskKeeper(object):
         else:
             self.active_tasks[task_id] = CompTaskInfo(theader, price)
 
+    @react_to_key_error
     def get_subtask_ttl(self, task_id):
-        task = self.active_tasks.get(task_id)
-        if task:
-            return task.header.subtask_timeout
+        return self.active_tasks[task_id].header.subtask_timeout
 
+    @react_to_key_error
     def receive_subtask(self, comp_task_def):
-        task = self.active_tasks.get(comp_task_def.task_id)
-        if task and task.requests > 0 and comp_task_def.subtask_id not in task.subtasks:
+        task = self.active_tasks[comp_task_def.task_id]
+        if task.requests > 0 and comp_task_def.subtask_id not in task.subtasks:
             task.requests -= 1
             task.subtasks[comp_task_def.subtask_id] = comp_task_def
+            self.subtask_to_task[comp_task_def.subtask_id] = comp_task_def.task_id
             return True
-        else:
-            logger.warning("Wasn't waiting for task {}".format(comp_task_def.task_id))
-            return False
 
     def get_task_id_for_subtask(self, subtask_id):
         return self.subtask_to_task.get(subtask_id)
 
+    @react_to_key_error
     def get_node_for_task_id(self, task_id):
-        task = self.active_tasks.get(task_id)
-        if task:
-            return task.header.task_owner_key_id
+        return self.active_tasks[task_id].header.task_owner_key_id
 
+    @react_to_key_error
     def get_value(self, task_id, computing_time):
-        task = self.active_tasks.get(task_id)
-        if task:
-            return task.price * computing_time
-        else:
-            logger.error("Unknown price for task {}".format(task_id))
-            return 0
+        return self.active_tasks[task_id].price * computing_time
 
+    @react_to_key_error
     def remove_task(self, task_id):
-        if task_id in self.active_tasks:
-            del self.active_tasks[task_id]
+        del self.active_tasks[task_id]
 
+    @react_to_key_error
     def request_failure(self, task_id):
-        task = self.active_tasks.get(task_id)
-        if task:
-            task.requests -= 1
+        self.active_tasks[task_id].requests -= 1
 
     def remove_old_tasks(self):
         time_ = time.time()

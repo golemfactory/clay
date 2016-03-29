@@ -13,16 +13,16 @@ class TestIncomesDatabase(LogTestCase, TestWithDatabase):
         with self.assertLogs(logger, level=1) as l:
             self.assertEquals((0, 0), id.get_income_value("xyz", "DEF"))
         self.assertTrue(any(["not exist" in log for log in l.output]))
-        id.update_income("xyz", "DEF", "20.0", "30.0", "SOMESTATE")
+        id.update_income("xyz", "DEF", 20, 30, "SOMESTATE")
         self.assertEquals((20, 30), id.get_income_value("xyz", "DEF"))
-        id.update_income("xyz", "DEF", "20.0", "30.0", "SOMESTATE")
+        id.update_income("xyz", "DEF", 20, 30, "SOMESTATE")
 
     def test_change_state(self):
         id = IncomesDatabase()
         id.change_state("xyz", "DEF", "DIFFSTATE")
-        id.update_income("xyz", "DEF", "20.0", "30.0", "SOMESTATE")
-        id.update_income("abc", "DEF", "20.0", "30.0", "SOMEOTHERSTATE")
-        id.update_income("xyz", "GHI", "20.0", "30.0", "SOMEOTHERSTATE")
+        id.update_income("xyz", "DEF", 20, 30, "SOMESTATE")
+        id.update_income("abc", "DEF", 20, 30, "SOMEOTHERSTATE")
+        id.update_income("xyz", "GHI", 20, 30, "SOMEOTHERSTATE")
 
         incomes = [income for income in id.get_newest_incomes()]
         self.assertEquals(len(incomes), 3)
@@ -45,18 +45,18 @@ class TestIncomesDatabase(LogTestCase, TestWithDatabase):
     def test_get_state(self):
         id = IncomesDatabase()
         self.assertIsNone(id.get_state("xyz", "DEF"))
-        id.update_income("xyz", "DEF", 30.0, 20.0, "SOMESTATE")
+        id.update_income("xyz", "DEF", 30, 20, "SOMESTATE")
         self.assertEqual(id.get_state("xyz", "DEF"), "SOMESTATE")
 
     def test_update_income(self):
         id = IncomesDatabase()
-        id.update_income("xyz", "DEF", 30.0, 20.0, "SOMESTATE")
+        id.update_income("xyz", "DEF", 30, 20, "SOMESTATE")
         self.assertEqual(id.get_income_value("xyz", "DEF"), (30, 20))
-        id.update_income("xyz", "DEF", 10.0, 30.0, "SOMESTATE", add_income=True)
+        id.update_income("xyz", "DEF", 10, 30, "SOMESTATE", add_income=True)
         self.assertEqual(id.get_income_value("xyz", "DEF"), (40, 50))
-        id.update_income("xyz", "DEF", 20.0, 50.0, "SOMESTATE", add_income=True)
+        id.update_income("xyz", "DEF", 20, 50, "SOMESTATE", add_income=True)
         self.assertEqual(id.get_income_value("xyz", "DEF"), (60, 100))
-        id.update_income("xyz", "DEF", 10.0, 10.0, "SOMESTATE")
+        id.update_income("xyz", "DEF", 10, 10, "SOMESTATE")
         self.assertEqual(id.get_income_value("xyz", "DEF"), (10, 10))
 
     def test_get_newest_incomes(self):
@@ -78,8 +78,12 @@ class TestIncomesDatabase(LogTestCase, TestWithDatabase):
 
 class TestIncomesKeeper(TestWithDatabase):
     def test_init(self):
+        id = IncomesDatabase()
+        id.update_income("xyz", "ABC", 10, 100, IncomesState.waiting)
         ik = IncomesKeeper()
         self.assertIsInstance(ik, IncomesKeeper)
+        self.assertEqual(len(ik.incomes), 1)
+        self.assertEqual(ik.incomes["xyz"]["expected_value"], 100)
 
     def test_add_payment(self):
         ik = IncomesKeeper()

@@ -229,7 +229,7 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _read_price_params(self, definition):
         try:
-            definition.max_price = float(self.gui.ui.maxPriceLineEdit.text())
+            definition.max_price = int(self.gui.ui.maxPriceLineEdit.text())
         except ValueError:
             logger.warning("Wrong price value")
 

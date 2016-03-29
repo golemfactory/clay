@@ -17,7 +17,7 @@ class IncomesDatabase(object):
         node_id for computing task_id. If payment for such task doesn't exists write warning and return (0.0, 0.0)
         :param task_id: id of a task that current node computed for node_id
         :param node_id: id of a node that should pay computation
-        :return float, float: received value, expected value
+        :return int, int: received value, expected value
         """
         try:
             rp = ReceivedPayment.select(ReceivedPayment.val, ReceivedPayment.expected_val).where(
@@ -25,7 +25,7 @@ class IncomesDatabase(object):
             return rp.val, rp.expected_val
         except ReceivedPayment.DoesNotExist:
             logger.warning("Can't get income value - payment does not exist")
-            return 0.0, 0.0
+            return 0, 0
 
     def update_income(self, task_id, node_id, value, expected_value, state, add_income=False):
         """ Update information about payment from node_id. If there was not payment from this node for that
@@ -33,10 +33,10 @@ class IncomesDatabase(object):
         and flag add_income is set to False, then information about income in database will be change. If
         flag add_income is set to True, then value will be added to the value in database and expected value
         will be added to the expected value in database.
-        :param task_id: id of a computed task
-        :param node_id: node that should pay for computed task
-        :param value: received payment
-        :param expected_value: expected income (important for lottery payments)
+        :param str task_id: id of a computed task
+        :param str node_id: node that should pay for computed task
+        :param int value: received payment
+        :param int expected_value: expected income (important for lottery payments)
         :param str state: payment state
         :param bool add_income: if flag is set to True than value and expected value will be added to old
         database data. Otherwise they will replace the old values.
@@ -52,8 +52,8 @@ class IncomesDatabase(object):
 
     def change_state(self, task_id, from_node, state):
         """ Change state of payment that node <from_node> should have made for computin task <task_id>
-        :param task_id: computed task
-        :param from_node: node whose payment's state we want to change
+        :param str task_id: computed task
+        :param str from_node: node whose payment's state we want to change
         :param state: new state
         """
         query = ReceivedPayment.update(state=state, modified_date=str(datetime.now()))
@@ -70,8 +70,8 @@ class IncomesDatabase(object):
 
     def get_state(self, task_id, from_node):
         """ Return state of an income received from <from_node> for computing task <task_id>
-        :param task_id: computed task
-        :param from_node: node who should pay for computed task
+        :param str task_id: computed task
+        :param str from_node: node who should pay for computed task
         :return str|None: return state of a payment if it's exist in database, otherwise return None
         """
         try:
@@ -132,6 +132,7 @@ class IncomesKeeper(object):
         database_incomes = [{"task": income.task, "node": income.from_node_id, "value": income.val,
                              "expected_value": income.expected_val, "state": income.state} for income in
                             self.db.get_newest_incomes()]
+        print database_incomes
         return database_incomes
 
     def get_income(self, addr_info, value):
@@ -157,6 +158,7 @@ class IncomesKeeper(object):
                     return finished
             else:
                 income["value"] += value
+                self.update_task(income["task"])
                 return finished
         return finished
 
@@ -164,6 +166,10 @@ class IncomesKeeper(object):
         self.incomes[task_id]["state"] = IncomesState.finished
         self.db.update_income(task_id, self.incomes[task_id]["node"], self.incomes[task_id]["value"],
                               self.incomes[task_id]["expected_value"], IncomesState.finished)
+
+    def update_task(self, task_id):
+        self.db.update_income(task_id, self.incomes[task_id]["node"], self.incomes[task_id]["value"],
+                              self.incomes[task_id]["expected_value"], self.incomes[task_id]["state"])
 
     def add_income(self, task_id, node_id, reward):
         expected_value = 0

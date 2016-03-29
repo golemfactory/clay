@@ -24,7 +24,7 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 #from golem.resource.resourceserver import ResourceServer
 from golem.resource.ipfs.resourceserver import IPFSResourceServer
 from golem.resource.dirmanager import DirManager
-from golem.ranking.ranking import Ranking
+from golem.ranking.ranking import Ranking, RankingStats
 
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
@@ -383,7 +383,7 @@ class Client:
     def check_payments(self):
         after_deadline_nodes = self.transaction_system.check_payments()
         for node_id in after_deadline_nodes:
-            self.decrease_trust(node_id)
+            self.decrease_trust(node_id, RankingStats.payment)
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:
