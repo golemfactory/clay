@@ -4,6 +4,7 @@ from os import path, urandom
 
 from ethereum.keys import privtoaddr
 
+from golem.ethereum.contracts import BankOfDeposit
 from golem.ethereum import Client
 from golem.ethereum.node import Faucet, FullNode
 from golem.tools.testdirfixture import TestDirFixture
@@ -85,6 +86,9 @@ class EthereumMiningNodeFixture(TestDirFixture):
         self.client = Client(datadir=node_dir, nodes=[enode])
         assert wait_for(lambda: self.client.get_peer_count() > 0, 20), "Cannot connect to miner"
         self.proc = PaymentProcessor(self.client, self.privkey)
+
+        self.bank_addr = Faucet.deploy_contract(self.client, BankOfDeposit.INIT_HEX.decode('hex'))
+        assert self.bank_addr == PaymentProcessor.BANK_ADDR
 
 
 class PaymentProcessorFullTest(EthereumMiningNodeFixture):

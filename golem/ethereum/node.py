@@ -39,6 +39,14 @@ class Faucet(object):
         assert h == tx.hash
         return h
 
+    @staticmethod
+    def deploy_contract(ethnode, init_code):
+        nonce = ethnode.get_transaction_count(Faucet.ADDR.encode('hex'))
+        tx = Transaction(nonce, 0, 3141592, to='', value=0, data=init_code)
+        tx.sign(Faucet.PRIVKEY)
+        ethnode.send(tx)
+        return tx.creates
+
 
 class NodeProcess(object):
 
