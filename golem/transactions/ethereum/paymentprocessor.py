@@ -4,6 +4,7 @@ from enum import Enum
 
 from ethereum import abi, keys, utils
 from ethereum.transactions import Transaction
+from twisted.internet.task import LoopingCall
 
 from golem.ethereum.contracts import BankOfDeposit
 
@@ -60,6 +61,8 @@ class PaymentProcessor(object):
 
     BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
 
+    SENDOUT_TIMEOUT = 1
+
     def __init__(self, client, privkey):
         self.__client = client
         self.__privkey = privkey
@@ -67,6 +70,13 @@ class PaymentProcessor(object):
         self.__reserved = 0
         self.__awaiting = []    # Awaiting individual payments
         self.__inprogress = {}  # Sent transactions.
+
+        # Very simple sendout scheduler.
+        # TODO: Maybe it should not be the part of this class
+        # TODO: Allow seting timeout
+        # TODO: Defer a call only if payments waiting
+        scheduler = LoopingCall(lambda: self.sendout())
+        scheduler.start(self.SENDOUT_TIMEOUT)
 
     def available_balance(self, refresh=False):
         if self.__balance is None or refresh:
@@ -87,6 +97,10 @@ class PaymentProcessor(object):
         return True
 
     def sendout(self):
+        log.info("Sendout")
+        if not self.__awaiting:
+            return
+
         payments = self.__awaiting  # FIXME: Should this list be synchronized?
         self.__awaiting = []
         addr = keys.privtoaddr(self.__privkey)  # TODO: Should be done once?
