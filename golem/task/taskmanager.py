@@ -2,6 +2,8 @@ import time
 import logging
 
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
+from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
+from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 from golem.resource.dirmanager import DirManager
 from golem.core.hostaddress import get_external_address
@@ -41,6 +43,7 @@ class TaskManager(object):
 
         self.tasks = {}
         self.tasks_states = {}
+        self.subtask2task_mapping = {}
 
         self.listen_address = listen_address
         self.listen_port = listen_port
@@ -49,11 +52,12 @@ class TaskManager(object):
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root(), self.node_name)
 
-        self.subtask2task_mapping = {}
+        resource_manager = IPFSResourceManager(self.dir_manager, self.node_name,
+                                               resource_dir_method=self.dir_manager.get_task_temporary_dir)
+        self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
         self.listeners = []
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
-
         self.use_distributed_resources = use_distributed_resources
 
     def get_task_manager_root(self):
@@ -90,12 +94,17 @@ class TaskManager(object):
         self.tasks[task.header.task_id] = task
 
         ts = TaskState()
-        if self.use_distributed_resources:
-            task.task_status = TaskStatus.sending
-            ts.status = TaskStatus.sending
-        else:
-            task.task_status = TaskStatus.waiting
-            ts.status = TaskStatus.waiting
+
+        # if self.use_distributed_resources:
+        #     task.task_status = TaskStatus.sending
+        #     ts.status = TaskStatus.sending
+        # else:
+        #     task.task_status = TaskStatus.waiting
+        #     ts.status = TaskStatus.waiting
+
+        task.task_status = TaskStatus.waiting
+        ts.status = TaskStatus.waiting
+
         ts.time_started = time.time()
 
         self.tasks_states[task.header.task_id] = ts

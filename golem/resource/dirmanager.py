@@ -118,6 +118,15 @@ class DirManager(object):
         full_path = self.__get_out_path(task_id)
         return self.get_dir(full_path, create, "output dir does not exist")
 
+    def list_task_ids_in_dir(self, task_dir):
+        """ Get the names of subdirectories as task ids
+        :param task_dir: Task temporary / resource / output directory
+        :return list: list of task ids
+        """
+        if os.path.isdir(task_dir):
+            return next(os.walk(task_dir))[1]
+        return []
+
     def clear_temporary(self, task_id, undeletable=[]):
         """ Remove everything from temporary directory for given task
         :param task_id: temporary directory of a task with that id should be cleared
