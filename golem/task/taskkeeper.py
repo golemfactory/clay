@@ -82,7 +82,7 @@ class CompTaskKeeper(object):
 
 class TaskHeaderKeeper(object):
     """ Keeps information about tasks living in Golem Network. Node may choose one of those task
-    to compute or will pass these informations to other nodes.
+    to compute or will pass information to other nodes.
     """
 
     def __init__(self, environments_manager, min_price=0.0, app_version=1.0, remove_task_timeout=240.0,
@@ -114,8 +114,6 @@ class TaskHeaderKeeper(object):
         :return bool: True if this node support environment for this task, False otherwise
         """
         env = th_dict_repr.get("environment")
-        if not env:
-            return False
         if not self.environments_manager.supported(env):
             return False
         return self.environments_manager.accept_tasks(env)

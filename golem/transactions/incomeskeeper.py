@@ -80,7 +80,7 @@ class IncomesDatabase(object):
             return None
 
     @staticmethod
-    def get_waiting():
+    def get_awaiting():
         query = ReceivedPayment.select().where(ReceivedPayment.state == IncomesState.waiting)
         query = query.order_by(ReceivedPayment.created_date.desc())
         return query
@@ -123,7 +123,7 @@ class IncomesKeeper(object):
         self.load_incomes()
 
     def load_incomes(self):
-        for income in self.db.get_waiting():
+        for income in self.db.get_awaiting():
             self.incomes[income.task] = {"task": income.task, "node": income.from_node_id, "value": income.val,
                                          "expected_value": income.expected_val, "state": income.state,
                                          "created": income.created_date}
