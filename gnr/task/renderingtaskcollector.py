@@ -176,7 +176,7 @@ class RenderingTaskCollector:
 
         if show_progress:
             print "Adding all accepted chunks to the final image"
-
+            
         _, output_format = os.path.splitext(self.accepted_exr_files[0])
         output_format = output_format[1:].upper()
         
@@ -223,7 +223,7 @@ class RenderingTaskCollector:
 
         return final_img
 
-    def __paste_image(self, final_img, new_part, num):
+    def _paste_image(self, final_img, new_part, num):
         img_offset = Image.new("RGB", (self.width, self.height))
         offset = int(math.floor(num * float(self.height) / float(len(self.accepted_exr_files))))
         img_offset.paste(new_part, (0, offset))

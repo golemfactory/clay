@@ -249,4 +249,4 @@ class Task:
         return []
 
 result_types = {'data': 0, 'files': 1}
-resource_types = {'zip': 0, 'parts': 1}
+resource_types = {'zip': 0, 'parts': 1, 'hashes': 2}

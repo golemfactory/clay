@@ -1065,6 +1065,32 @@ class MessageTaskResult(Message):
                 MessageTaskResult.RESULT_STR: self.result}
 
 
+class MessageTaskResultHash(Message):
+    Type = TASK_MSG_BASE + 7
+
+    SUB_TASK_ID_STR = u"SUB_TASK_ID"
+    MULTIHASH_STR = u"MULTIHASH"
+    SECRET_STR = u"SECRET"
+
+    def __init__(self, subtask_id=0, multihash="", secret="", sig="", timestamp=None, dict_repr=None):
+
+        Message.__init__(self, MessageTaskResultHash.Type, sig, timestamp)
+
+        self.subtask_id = subtask_id
+        self.multihash = multihash
+        self.secret = secret
+
+        if dict_repr:
+            self.subtask_id = dict_repr[MessageTaskResultHash.SUB_TASK_ID_STR]
+            self.multihash = dict_repr[MessageTaskResultHash.MULTIHASH_STR]
+            self.secret = dict_repr[MessageTaskResultHash.SECRET_STR]
+
+    def dict_repr(self):
+        return {MessageTaskResultHash.SUB_TASK_ID_STR: self.subtask_id,
+                MessageTaskResultHash.MULTIHASH_STR: self.multihash,
+                MessageTaskResultHash.SECRET_STR: self.secret}
+
+
 class MessageGetResource(Message):
     Type = TASK_MSG_BASE + 8
 
@@ -1716,6 +1742,29 @@ class MessageSendResource(Message):
         return {MessageSendResource.RESOURCE_STR: self.resource}
 
 
+class MessageResourceHashList(Message):
+    Type = RESOURCE_MSG_BASE + 7
+
+    RESOURCES_STR = u"resources"
+
+    def __init__(self, resources=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Create message with resource request
+        :param str resources: resource list
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessageResourceHashList.Type, sig, timestamp)
+        self.resources = resources
+
+        if dict_repr:
+            self.resources = dict_repr[MessageResourceHashList.RESOURCES_STR]
+
+    def dict_repr(self):
+        return {MessageResourceHashList.RESOURCES_STR: self.resources}
+
+
 MANAGER_MSG_BASE = 5000
 
 
@@ -1886,6 +1935,7 @@ def init_messages():
     MessageWantToComputeTask()
     MessageReportComputedTask()
     MessageTaskResult()
+    MessageTaskResultHash()
     MessageTaskFailure()
     MessageGetTaskResult()
     MessageStartSessionResponse()
@@ -1912,6 +1962,7 @@ def init_messages():
     MessagePullResource()
     MessagePullAnswer()
     MessageSendResource()
+    MessageResourceHashList()
 
     # Manager messages
     init_manager_messages()
