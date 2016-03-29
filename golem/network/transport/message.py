@@ -832,9 +832,10 @@ class MessageWantToComputeTask(Message):
     MAX_RES_STR = u"MAX_RES"
     MAX_MEM_STR = u"MAX_MEM"
     NUM_CORES_STR = u"NUM_CORES"
+    PRICE_STR = u"PRICE"
 
-    def __init__(self, node_name=0, task_id=0, perf_index=0, max_resource_size=0, max_memory_size=0, num_cores=0,
-                 sig="", timestamp=None, dict_repr=None):
+    def __init__(self, node_name=0, task_id=0, perf_index=0, price=0, max_resource_size=0, max_memory_size=0,
+                 num_cores=0, sig="", timestamp=None, dict_repr=None):
         """
         Create message with information that node wants to compute given task
         :param str node_name: id of that node
@@ -855,6 +856,7 @@ class MessageWantToComputeTask(Message):
         self.max_resource_size = max_resource_size
         self.max_memory_size = max_memory_size
         self.num_cores = num_cores
+        self.price = price
 
         if dict_repr:
             self.node_name = dict_repr[MessageWantToComputeTask.NODE_NAME_STR]
@@ -863,6 +865,7 @@ class MessageWantToComputeTask(Message):
             self.max_resource_size = dict_repr[MessageWantToComputeTask.MAX_RES_STR]
             self.max_memory_size = dict_repr[MessageWantToComputeTask.MAX_MEM_STR]
             self.num_cores = dict_repr[MessageWantToComputeTask.NUM_CORES_STR]
+            self.price = dict_repr[MessageWantToComputeTask.PRICE_STR]
 
     def dict_repr(self):
         return {MessageWantToComputeTask.NODE_NAME_STR: self.node_name,
@@ -870,7 +873,8 @@ class MessageWantToComputeTask(Message):
                 MessageWantToComputeTask.PERF_INDEX_STR: self.perf_index,
                 MessageWantToComputeTask.MAX_RES_STR: self.max_resource_size,
                 MessageWantToComputeTask.MAX_MEM_STR: self.max_memory_size,
-                MessageWantToComputeTask.NUM_CORES_STR: self.num_cores}
+                MessageWantToComputeTask.NUM_CORES_STR: self.num_cores,
+                MessageWantToComputeTask.PRICE_STR: self.price}
 
 
 class MessageTaskToCompute(Message):
@@ -935,6 +939,7 @@ class MessageReportComputedTask(Message):
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     RESULT_TYPE_STR = u"RESULT_TYPE"
+    COMPUTATION_TIME_STR = u"COMPUTATION_TIME"
     NODE_NAME_STR = u"NODE_NAME"
     ADDR_STR = u"ADDR"
     NODE_INFO_STR = u"NODE_INFO"
@@ -943,13 +948,14 @@ class MessageReportComputedTask(Message):
     EXTRA_DATA_STR = u"EXTRA_DATA"
     ETH_ACCOUNT_STR = u"ETH_ACCOUNT"
 
-    def __init__(self, subtask_id=0, result_type=None, node_name='', address='',
+    def __init__(self, subtask_id=0, result_type=None, computation_time='', node_name='', address='',
                  port='', key_id='', node_info=None, eth_account='', extra_data=None,
                  sig="", timestamp=None, dict_repr=None):
         """
         Create message with information about finished computation
         :param str subtask_id: finished subtask id
         :param int result_type: type of a result (from result_types dict)
+        :param float computation_time: how long does it take to  compute this subtask
         :param node_name: task result owner name
         :param str address: task result owner address
         :param int port: task result owner port
@@ -966,6 +972,7 @@ class MessageReportComputedTask(Message):
         self.subtask_id = subtask_id
         self.result_type = result_type
         self.extra_data = extra_data
+        self.computation_time = computation_time
         self.node_name = node_name
         self.address = address
         self.port = port
@@ -976,6 +983,7 @@ class MessageReportComputedTask(Message):
         if dict_repr:
             self.subtask_id = dict_repr[MessageReportComputedTask.SUB_TASK_ID_STR]
             self.result_type = dict_repr[MessageReportComputedTask.RESULT_TYPE_STR]
+            self.computation_time = dict_repr[MessageReportComputedTask.COMPUTATION_TIME_STR]
             self.node_name = dict_repr[MessageReportComputedTask.NODE_NAME_STR]
             self.address = dict_repr[MessageReportComputedTask.ADDR_STR]
             self.port = dict_repr[MessageReportComputedTask.PORT_STR]
@@ -987,6 +995,7 @@ class MessageReportComputedTask(Message):
     def dict_repr(self):
         return {MessageReportComputedTask.SUB_TASK_ID_STR: self.subtask_id,
                 MessageReportComputedTask.RESULT_TYPE_STR: self.result_type,
+                MessageReportComputedTask.COMPUTATION_TIME_STR: self.computation_time,
                 MessageReportComputedTask.NODE_NAME_STR: self.node_name,
                 MessageReportComputedTask.ADDR_STR: self.address,
                 MessageReportComputedTask.PORT_STR: self.port,
@@ -1580,39 +1589,6 @@ class MessageNatPunchFailure(Message):
         return {MessageNatPunchFailure.NAT_PUNCH_FAILURE_STR: True}
 
 
-class MessageRewardPaid(Message):
-    Type = TASK_MSG_BASE + 25
-
-    TASK_ID_STR = u"TASK_ID"
-    REWARD_STR = u"REWARD"
-
-    def __init__(self, task_id=None, reward=None, sig="", timestamp=None, dict_repr=None):
-        """ Create message that informs computing nodes that reward for his task was paid.
-        Right now is only used to simulate receiving real money (so that right steps to mark
-        this payments may be done). In the future this information may contain some info about
-        ethereum transaction or may just be completely replaced with network func. that scan blockchain
-        :param task_id: id of finished task for which payments has been made
-        :param reward: reward
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        Message.__init__(self, MessageRewardPaid.Type, sig, timestamp)
-
-        self.task_id = task_id
-        self.reward = reward
-
-        if dict_repr:
-            self.task_id = dict_repr[MessageRewardPaid.TASK_ID_STR]
-            self.reward = dict_repr[MessageRewardPaid.REWARD_STR]
-
-    def dict_repr(self):
-        return {
-            MessageRewardPaid.TASK_ID_STR: self.task_id,
-            MessageRewardPaid.REWARD_STR: self.reward
-        }
-
-
 RESOURCE_MSG_BASE = 3000
 
 
@@ -1976,7 +1952,6 @@ def init_messages():
     MessageDeltaParts()
     MessageResourceFormat()
     MessageAcceptResourceFormat()
-    MessageRewardPaid()
 
     # Resource messages
     MessageGetResource()

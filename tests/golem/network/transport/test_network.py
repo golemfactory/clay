@@ -4,7 +4,7 @@ import os
 import time
 
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, TCPListeningInfo, TCPConnectInfo, \
-    TCPAddress, BasicProtocol, ServerProtocol, SafeProtocol
+    SocketAddress, BasicProtocol, ServerProtocol, SafeProtocol
 from golem.network.transport.network import ProtocolFactory, SessionFactory, SessionProtocol
 from golem.network.transport.message import Message, MessageHello
 from golem.core.databuffer import DataBuffer
@@ -115,20 +115,20 @@ class TestNetwork(unittest.TestCase):
     @unittest.skip("Fix me (testing takes too long)")
     def test2_connect(self):
         try:
-            address = TCPAddress('127.0.0.1', 1111)
+            address = SocketAddress('127.0.0.1', 1111)
             connect_info = TCPConnectInfo([address], self.__connection_success, self.__connection_failure)
             self.network.connect(connect_info)
             time.sleep(5)
             self.assertTrue(self.connect_success)
 
-            address2 = TCPAddress('127.0.0.1', 2)
+            address2 = SocketAddress('127.0.0.1', 2)
             connect_info = TCPConnectInfo([address2], self.__connection_success, self.__connection_failure)
             self.network.connect(connect_info)
             time.sleep(5)
             self.assertFalse(self.connect_success)
 
-            connect_info.tcp_addresses.append(address2)
-            connect_info.tcp_addresses.append(address)
+            connect_info.socket_addresses.append(address2)
+            connect_info.socket_addresses.append(address)
             self.network.connect(connect_info)
             time.sleep(15)
             self.assertTrue(self.connect_success)

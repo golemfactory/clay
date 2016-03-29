@@ -61,7 +61,7 @@ class GNRTask(Task):
     ################
 
     def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                 ttl, subtask_ttl, resource_size, estimated_memory):
+                 ttl, subtask_ttl, resource_size, estimated_memory, max_price):
         """ Create more specific task implementation
         :param src_code:
         :param node_name:
@@ -74,9 +74,10 @@ class GNRTask(Task):
         :param subtask_ttl:
         :param resource_size:
         :param estimated_memory:
+        :param float max_price: maximum price that this node may par for an hour of computation 
         """
         th = TaskHeader(node_name, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
-                        ttl, subtask_ttl, resource_size, estimated_memory)
+                        ttl, subtask_ttl, resource_size, estimated_memory, max_price=max_price)
         Task.__init__(self, th, src_code)
 
         self.task_resources = []
@@ -170,10 +171,6 @@ class GNRTask(Task):
 
     def update_task_state(self, task_state):
         pass
-
-    @check_subtask_id_wrapper
-    def get_price_mod(self, subtask_id):
-        return 1
 
     @check_subtask_id_wrapper
     def get_trust_mod(self, subtask_id):

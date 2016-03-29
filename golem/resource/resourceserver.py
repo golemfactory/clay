@@ -5,7 +5,7 @@ import time
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpserver import PendingConnectionsServer
-from golem.network.transport.tcpnetwork import TCPConnectInfo, TCPAddress, TCPListenInfo, TCPNetwork, FilesProtocol
+from golem.network.transport.tcpnetwork import TCPConnectInfo, SocketAddress, TCPListenInfo, TCPNetwork, FilesProtocol
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import DistributedResourceManager
 from golem.resource.resourcesession import ResourceSession
@@ -237,12 +237,12 @@ class ResourceServer(PendingConnectionsServer):
     def get_key_id(self):
         return self.keys_auth.get_key_id()
 
-    def get_tcp_addresses(self, node_info, port, key_id):
-        tcp_addresses = PendingConnectionsServer.get_tcp_addresses(self, node_info, port, key_id)
+    def get_socket_addresses(self, node_info, port, key_id):
+        socket_addresses = PendingConnectionsServer.get_socket_addresses(self, node_info, port, key_id)
         addr = self.client.get_suggested_addr(key_id)
         if addr:
-            tcp_addresses = [TCPAddress(addr, port)] + tcp_addresses
-        return tcp_addresses
+            socket_addresses = [SocketAddress(addr, port)] + socket_addresses
+        return socket_addresses
 
     def encrypt(self, message, public_key):
         if public_key == 0:

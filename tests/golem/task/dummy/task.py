@@ -62,7 +62,8 @@ class DummyTask(Task):
             ttl=14400,
             subtask_timeout=1200,
             resource_size=params.shared_data_size + params.subtask_data_size,
-            estimated_memory=0)
+            estimated_memory=0,
+            max_price=1000000)
 
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')
@@ -198,6 +199,3 @@ class DummyTask(Task):
         :param map[str, list[str]] resource_parts:
         """
         self.resource_parts = resource_parts
-
-    def get_price_mod(self, subtask_id):
-        return 1

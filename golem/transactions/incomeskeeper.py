@@ -122,21 +122,24 @@ class IncomesKeeper(object):
         return database_incomes
 
     def add_income(self, task_id, node_id, reward):
-        if task_id in self.incomes and self.incomes[task_id]["state"] != IncomesState.waiting:
-            old_reward = self.incomes[task_id]["value"]
-            try:
-                reward = int(old_reward) + int(reward)
-            except ValueError as err:
-                logger.warning("Wrong reward value {}".format(err))
+        expected_value = 0
+        if task_id in self.incomes:
+            if self.incomes[task_id]["state"] != IncomesState.waiting:
+                old_reward = self.incomes[task_id]["value"]
+                try:
+                    reward = int(old_reward) + int(reward)
+                except ValueError as err:
+                    logger.warning("Wrong reward value {}".format(err))
+            expected_value = self.incomes[task_id]["expected_value"]
 
-        self.incomes[task_id] = {"task": task_id, "node": node_id, "value": reward, "expected_value": "?",
+        self.incomes[task_id] = {"task": task_id, "node": node_id, "value": reward, "expected_value": expected_value,
                                  "state": IncomesState.finished}
-        self.db.update_income(task_id, node_id, reward, 0, IncomesState.finished)
+        self.db.update_income(task_id, node_id, reward, expected_value, IncomesState.finished)
 
-    def add_waiting_payment(self, task_id, node_id):
-        self.incomes[task_id] = {"task": task_id, "node": node_id, "value": "?", "expected_value": "?",
+    def add_waiting_payment(self, task_id, node_id, expected_value):
+        self.incomes[task_id] = {"task": task_id, "node": node_id, "value": "?", "expected_value": expected_value,
                                  "state": IncomesState.waiting}
-        self.db.update_income(task_id, node_id, 0, 0, IncomesState.waiting, add_income=True)
+        self.db.update_income(task_id, node_id, 0, expected_value, IncomesState.waiting, add_income=True)
 
     def add_timeouted_payment(self, task_id):
         if task_id not in self.incomes:

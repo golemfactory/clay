@@ -14,8 +14,9 @@ from golem.tools.testdirfixture import TestDirFixture
 class TestGNRTask(LogTestCase, TestDirFixture):
     def test_gnr_task(self):
         task = GNRTask("src code", "ABC", "xyz", "10.10.10.10", 123, "key",
-                       "environment", 3000, 30, 1024, 1024)
+                       "environment", 3000, 30, 1024, 1024, 100)
         self.assertIsInstance(task, GNRTask)
+        self.assertEqual(task.header.max_price, 100)
 
         subtask_id = "xxyyzz"
         with self.assertLogs(logger, level=0) as l:
@@ -55,7 +56,7 @@ class TestGNRTask(LogTestCase, TestDirFixture):
 
     def test_interpret_task_results(self):
         task = GNRTask("src code", "ABC", "xyz", "10.10.10.10", 123, "key",
-                       "environment", 3000, 30, 1024, 1024)
+                       "environment", 3000, 30, 1024, 1024, 100)
 
         files = self.additional_dir_content([5])
         shutil.move(files[2], files[2]+".log")

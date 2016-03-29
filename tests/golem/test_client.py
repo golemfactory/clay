@@ -1,9 +1,10 @@
 from mock import patch
-import unittest
 
-from golem.client import create_client
+from golem.client import create_client, Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.tools.testwithappconfig import TestWithAppConfig
+from golem.tools.testwithdatabase import TestWithDatabase
+from golem.environments.environment import Environment
 
 
 class TestCreateClient(TestWithAppConfig):
@@ -38,3 +39,19 @@ class TestCreateClient(TestWithAppConfig):
         with self.assertRaises(AttributeError):
             create_client(node_colour='magenta')
 
+
+class TestClient(TestWithDatabase):
+
+    @patch("golem.client.Client.get_database_name")
+    def test_payment_func(self, mock_database_name):
+        mock_database_name.return_value = self.database.name
+        c = Client(ClientConfigDescriptor())
+        c.add_to_waiting_payments("xyz", "ABC", 10)
+        incomes = c.transaction_system.get_incomes_list()
+        self.assertEqual(len(incomes), 1)
+        self.assertEqual(incomes[0]["node"], "ABC")
+        self.assertEqual(incomes[0]["expected_value"], 10.0)
+        self.assertEqual(incomes[0]["task"], "xyz")
+        self.assertEqual(incomes[0]["value"], 0.0)
+
+        c.pay_for_task("xyz", [])

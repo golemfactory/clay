@@ -26,14 +26,14 @@ logger = logging.getLogger(__name__)
 ##########################
 
 
-class TCPAddress(object):
+class SocketAddress(object):
     """TCP socket address (host and port)"""
 
     _dns_label_pattern = re.compile('(?!-)[a-z\d-]{1,63}(?<!-)\Z', re.IGNORECASE)
     _all_numeric_pattern = re.compile('[0-9\.]+\Z')
 
     def __init__(self, address, port):
-        """Creates and validates TCPAddress. Raises
+        """Creates and validates SocketAddress. Raises
         AddressValueError if 'address' or 'port' is invalid.
         :param str address: IPv4/IPv6 address or hostname
         :param int port:
@@ -63,7 +63,7 @@ class TCPAddress(object):
             if self._all_numeric_pattern.match(self.address):
                 IPv4Address(self.address.decode('utf8'))
             else:
-                TCPAddress.validate_hostname(self.address)
+                SocketAddress.validate_hostname(self.address)
 
         if not (MIN_PORT <= self.port <= MAX_PORT):
             raise ValueError('Port out of range ({} .. {}): {}'.format(
@@ -96,7 +96,7 @@ class TCPAddress(object):
         if hostname.endswith('.'):
             hostname = hostname[:-1]
         segments = hostname.split('.')
-        if not all(TCPAddress._dns_label_pattern.match(s) for s in segments):
+        if not all(SocketAddress._dns_label_pattern.match(s) for s in segments):
             raise ValueError('Invalid host name: ' + hostname)
 
     @staticmethod
@@ -107,8 +107,8 @@ class TCPAddress(object):
         DNS syntax:  <hostname> ':' <port>
         Raises AddressValueError if the input cannot be parsed.
         :param str string:
-        :returns parsed TCPAddress
-        :rtype TCPAddress
+        :returns parsed SocketAddress
+        :rtype SocketAddress
         """
         if type(string) is unicode:
             string = string.encode()
@@ -130,7 +130,7 @@ class TCPAddress(object):
         except ValueError:
             raise AddressValueError('Invalid address: port missing or invalid')
 
-        return TCPAddress(addr_str, port)
+        return SocketAddress(addr_str, port)
 
 
 class TCPListenInfo(object):
@@ -176,20 +176,20 @@ class TCPListeningInfo(object):
 
 
 class TCPConnectInfo(object):
-    def __init__(self, tcp_addresses,  established_callback=None, failure_callback=None):
+    def __init__(self, socket_addresses,  established_callback=None, failure_callback=None):
         """
         Information for TCP connect function
-        :param list tcp_addresses: list of TCPAddresses
+        :param list socket_addresses: list of SocketAddresses
         :param fun|None established_callback:
         :param fun|None failure_callback:
         :return None:
         """
-        self.tcp_addresses = tcp_addresses
+        self.socket_addresses = socket_addresses
         self.established_callback = established_callback
         self.failure_callback = failure_callback
 
     def __str__(self):
-        return "TCP connection information: addresses {}, callback {}, errback {}".format(self.tcp_addresses,
+        return "TCP connection information: addresses {}, callback {}, errback {}".format(self.socket_addresses,
                                                                                           self.established_callback,
                                                                                           self.failure_callback)
 
@@ -221,7 +221,7 @@ class TCPNetwork(Network):
         :param kwargs: any additional parameters
         :return None:
         """
-        self.__try_to_connect_to_addresses(connect_info.tcp_addresses, connect_info.established_callback,
+        self.__try_to_connect_to_addresses(connect_info.socket_addresses, connect_info.established_callback,
                                            connect_info.failure_callback, **kwargs)
 
     def listen(self, listen_info, **kwargs):

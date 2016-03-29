@@ -56,7 +56,7 @@ class RenderingTask(GNRTask):
     def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                 estimated_memory):
+                 estimated_memory, max_price):
 
         try:
             with open(main_program_file, "r") as src_file:
@@ -71,7 +71,7 @@ class RenderingTask(GNRTask):
             resource_size += os.stat(resource).st_size
 
         GNRTask.__init__(self, src_code, node_id, task_id, owner_address, owner_port, owner_key_id, environment,
-                         ttl, subtask_ttl, resource_size, estimated_memory)
+                         ttl, subtask_ttl, resource_size, estimated_memory, max_price)
 
         self.full_task_timeout = ttl
         self.header.ttl = self.full_task_timeout
@@ -134,7 +134,7 @@ class RenderingTask(GNRTask):
     def get_preview_file_path(self):
         return self.preview_file_path
 
-    def _get_part_size(self):
+    def _get_part_size(self, subtask_id):
         return self.res_x, self.res_y
 
     @check_subtask_id_wrapper
@@ -195,7 +195,6 @@ class RenderingTask(GNRTask):
             task_collector_path = os.path.normpath(
                 os.path.join(get_golem_path(), "gnr/taskcollector/Release/taskcollector"))
         cmd = ["{}".format(task_collector_path), "{}".format(arg), "{}".format(output_file_name)] + files
-        logger.debug(cmd)
         exec_cmd(cmd)
 
     def _new_compute_task_def(self, hash, extra_data, working_directory, perf_index):
@@ -289,7 +288,7 @@ class RenderingTask(GNRTask):
 
     @check_subtask_id_wrapper
     def _verify_imgs(self, subtask_id, tr_files):
-        res_x, res_y = self._get_part_size()
+        res_x, res_y = self._get_part_size(subtask_id)
 
         adv_test_file = self._choose_adv_ver_file(tr_files, subtask_id)
         x0, y0, x1, y1 = self._get_part_img_size(subtask_id, adv_test_file)
