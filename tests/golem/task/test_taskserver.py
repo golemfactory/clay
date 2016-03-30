@@ -1,8 +1,8 @@
-from mock import Mock, patch
+from mock import Mock
 
 from golem.task.taskserver import TaskServer, WaitingTaskResult, TaskConnTypes, logger
+from golem.task.taskbase import ComputeTaskDef
 from golem.network.p2p.node import Node
-from golem.network.transport.tcpnetwork import SocketAddress
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
@@ -41,6 +41,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         th = ts.request_task()
         self.assertTrue(ts.send_results("xxyyzz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
         self.assertTrue(ts.send_results("xyzxyz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
+        self.assertEqual(ts.get_subtask_ttl("xyz"), 120)
         wtr = ts.results_to_send["xxyyzz"]
         self.assertIsInstance(wtr, WaitingTaskResult)
         self.assertEqual(wtr.subtask_id, "xxyyzz")
@@ -58,39 +59,26 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
         with self.assertLogs(logger, level='WARNING'):
             ts.subtask_rejected("aabbcc")
-        self.assertIsNotNone(ts.task_keeper.completed.get("xxyyzz"))
         self.assertIsNotNone(ts.task_keeper.task_headers.get("xyz"))
-        with self.assertNoLogs(logger, level='WARNING'):
-            ts.subtask_rejected("xxyyzz")
-        self.assertIsNone(ts.task_keeper.completed.get("xxyyzz"))
-        self.assertIsNone(ts.task_keeper.task_headers.get("xyz"))
-        self.assertIsNotNone(ts.task_keeper.completed.get("xyzxyz"))
 
         prev_call_count = ts.client.increase_trust.call_count
         with self.assertLogs(logger, level="WARNING"):
-            ts.reward_for_subtask_paid("aabbcc")
+            ts.reward_for_subtask_paid("aa2bb2cc")
         self.assertEqual(ts.client.increase_trust.call_count, prev_call_count)
-        ts.reward_for_subtask_paid("xyzxyz")
-        print ts.client.increase_trust
-        self.assertIsNone(ts.task_keeper.completed.get("xyzxyz"))
-        self.assertGreater(ts.client.increase_trust.call_count, prev_call_count)
 
-    def __get_example_task_header(self):
-        node = Node()
-        task_header = {"id": "uvw",
-                       "node_name": "ABC",
-                       "address": "10.10.10.10",
-                       "port": 10101,
-                       "key_id": "kkkk",
-                       "environment": "DEFAULT",
-                       "task_owner": node,
-                       "task_owner_port": 10101,
-                       "task_owner_key_id": "key",
-                       "ttl": 1201,
-                       "subtask_timeout": 120,
-                       "max_price": 20
-                       }
-        return task_header
+        ctd = ComputeTaskDef()
+        ctd.task_id = "xyz"
+        ctd.subtask_id = "xxyyzz"
+        ts.task_manager.comp_task_keeper.receive_subtask(ctd)
+        ts.reward_for_subtask_paid("xxyyzz")
+        self.assertGreater(ts.client.increase_trust.call_count, prev_call_count)
+        prev_call_count = ts.client.increase_trust.call_count
+        ts.increase_trust_payment("xyz")
+        self.assertGreater(ts.client.increase_trust.call_count, prev_call_count)
+        prev_call_count = ts.client.decrease_trust.call_count
+        ts.decrease_trust_payment("xyz")
+        self.assertGreater(ts.client.decrease_trust.call_count, prev_call_count)
+
 
     def test_connection_for_task_request_established(self):
         ccd = ClientConfigDescriptor()
@@ -181,3 +169,21 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.traverse_nat("ABC", "10.10.10.10", 1312, 310319041904, "DEF")
         self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].address,  "10.10.10.10")
         self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].port,  1312)
+
+    @staticmethod
+    def __get_example_task_header():
+        node = Node()
+        task_header = {"id": "uvw",
+                       "node_name": "ABC",
+                       "address": "10.10.10.10",
+                       "port": 10101,
+                       "key_id": "kkkk",
+                       "environment": "DEFAULT",
+                       "task_owner": node,
+                       "task_owner_port": 10101,
+                       "task_owner_key_id": "key",
+                       "ttl": 1201,
+                       "subtask_timeout": 120,
+                       "max_price": 20
+                       }
+        return task_header

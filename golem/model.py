@@ -1,4 +1,4 @@
-from peewee import SqliteDatabase, Model, CharField, ForeignKeyField, FloatField, DateTimeField, CompositeKey
+from peewee import SqliteDatabase, Model, CharField, IntegerField, FloatField, DateTimeField, CompositeKey
 
 import datetime
 import appdirs
@@ -49,7 +49,7 @@ class Payment(BaseModel):
     """
     to_node_id = CharField()
     task = CharField()
-    val = FloatField()
+    val = IntegerField()
     state = CharField()
     details = CharField(default="")
 
@@ -63,8 +63,8 @@ class ReceivedPayment(BaseModel):
     """
     from_node_id = CharField()
     task = CharField()
-    val = FloatField()
-    expected_val = FloatField()
+    val = IntegerField()
+    expected_val = IntegerField()
     state = CharField()
     details = CharField(default="")
 

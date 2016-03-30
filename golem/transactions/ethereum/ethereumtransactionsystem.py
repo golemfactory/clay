@@ -4,6 +4,7 @@ from ethereum import keys
 
 from golem.transactions.transactionsystem import TransactionSystem
 from .ethereumpaymentskeeper import EthereumPaymentsKeeper
+from .ethereumincomeskeeper import EthereumIncomesKeeper
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ class EthereumTransactionSystem(TransactionSystem):
         :param node_id: id of a node that has this transaction system.
         :param node_priv_key str: node's private key for Ethereum account (32b)
         """
-        TransactionSystem.__init__(self, node_id, EthereumPaymentsKeeper)
+        TransactionSystem.__init__(self, node_id, EthereumPaymentsKeeper, EthereumIncomesKeeper)
 
         # FIXME: Passing private key all around might be a security issue.
         #        Proper account managment is needed.
@@ -33,3 +34,4 @@ class EthereumTransactionSystem(TransactionSystem):
         :param task_id: pay for task with given id
         :param dict payments: all payments group by ethereum address
         """
+        pass

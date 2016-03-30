@@ -5,7 +5,7 @@ from collections import deque
 from taskmanager import TaskManager
 from taskcomputer import TaskComputer
 from tasksession import TaskSession
-from taskkeeper import TaskKeeper
+from taskkeeper import TaskHeaderKeeper
 from golem.ranking.ranking import RankingStats
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -21,8 +21,8 @@ class TaskServer(PendingConnectionsServer):
         self.config_desc = config_desc
 
         self.node = node
-        self.task_keeper = TaskKeeper(client.environments_manager, min_price=config_desc.min_price,
-                                      app_version=config_desc.app_version)
+        self.task_keeper = TaskHeaderKeeper(client.environments_manager, min_price=config_desc.min_price,
+                                            app_version=config_desc.app_version)
         self.task_manager = TaskManager(config_desc.node_name, self.node,
                                         key_id=self.keys_auth.get_key_id(),
                                         root_path=TaskServer.__get_task_manager_root(config_desc),
@@ -62,15 +62,15 @@ class TaskServer(PendingConnectionsServer):
         self.__remove_old_sessions()
         self._remove_old_listenings()
         self.__send_payments()
-        self.__check_payments()
 
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
-        theader = self.task_keeper.get_task(self.config_desc.min_price)
+        theader = self.task_keeper.get_task()
         if theader is not None:
             trust = self.client.get_requesting_trust(theader.task_owner_key_id)
             logger.debug("Requesting trust level: {}".format(trust))
             if trust >= self.config_desc.requesting_trust:
+                self.task_manager.add_comp_task_request(theader, self.config_desc.min_price)
                 args = {
                     'node_name': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,
@@ -110,7 +110,7 @@ class TaskServer(PendingConnectionsServer):
         self.client.increase_trust(owner_key_id, RankingStats.requested)
 
         if subtask_id not in self.results_to_send:
-            value = self.task_keeper.add_completed(subtask_id, task_id, computing_time)
+            value = self.task_manager.comp_task_keeper.get_value(task_id, computing_time)
             self.client.add_to_waiting_payments(task_id, owner_key_id, value)
             # TODO Add computing time
             self.results_to_send[subtask_id] = WaitingTaskResult(task_id, subtask_id, result['data'],
@@ -211,7 +211,7 @@ class TaskServer(PendingConnectionsServer):
         return self.client.resource_port
 
     def get_subtask_ttl(self, task_id):
-        return self.task_keeper.get_subtask_ttl(task_id)
+        return self.task_manager.comp_task_keeper.get_subtask_ttl(task_id)
 
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
@@ -239,24 +239,26 @@ class TaskServer(PendingConnectionsServer):
 
     def subtask_rejected(self, subtask_id):
         logger.debug("Subtask {} result rejected".format(subtask_id))
-        task_id = self.task_keeper.get_task_id_for_subtask(subtask_id)
+        task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(subtask_id)
         if task_id is not None:
             self.decrease_trust_payment(task_id)
             self.remove_task_header(task_id)
-            self.task_keeper.remove_completed(subtask_id=subtask_id)
+            # TODO Inform transaction system and task manager about failed payment
         else:
             logger.warning("Not my subtask rejected {}".format(subtask_id))
 
     def reward_for_subtask_paid(self, subtask_id):
-        if not self.task_keeper.is_waiting_for_subtask(subtask_id):
-            logger.error("Wasn't waiting for reward for subtask {}".format(subtask_id))
-            return
-
         logger.info("Receive payment for subtask {}".format(subtask_id))
-        task_id = self.task_keeper.get_task_id_for_subtask(subtask_id)
-        node_id = self.task_keeper.get_receiver_for_task_verification_result(task_id)
+        task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(subtask_id)
+        if task_id is None:
+            logger.warning("Received payment for unknown subtask {}".format(subtask_id))
+            return
+        node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(task_id)
+        if node_id is None:
+            logger.warning("Unknown node try to make a payment for task {}".format(task_id))
+            return
         self.client.increase_trust(node_id, RankingStats.payment, self.max_trust)
-        self.task_keeper.remove_completed(subtask_id=subtask_id)
+        # TODO Inform task manager about payment (if it's possible)
 
     def subtask_accepted(self, subtask_id, reward):
         logger.debug("Subtask {} result accepted".format(subtask_id))
@@ -275,17 +277,12 @@ class TaskServer(PendingConnectionsServer):
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
         self.client.increase_trust(account_info.key_id, RankingStats.computed, mod)
 
-    def receive_task_verification(self, task_id):
-        self.task_keeper.receive_task_verification(task_id)
-
     def increase_trust_payment(self, task_id):
-        node_id = self.task_keeper.get_receiver_for_task_verification_result(task_id)
-        self.receive_task_verification(task_id)
+        node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(task_id)
         self.client.increase_trust(node_id, RankingStats.payment, self.max_trust)
 
     def decrease_trust_payment(self, task_id):
-        node_id = self.task_keeper.get_receiver_for_task_verification_result(task_id)
-        self.receive_task_verification(task_id)
+        node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(task_id)
         self.client.decrease_trust(node_id, RankingStats.payment, self.max_trust)
 
     def pay_for_task(self, task_id, payments):
@@ -647,6 +644,7 @@ class TaskServer(PendingConnectionsServer):
 
         self.task_computer.task_request_rejected(task_id, "Connection failed")
         self.task_keeper.request_failure(task_id)
+        self.task_manager.comp_task_keeper.request_failure(task_id)
 
     def __connection_for_resource_request_final_failure(self, conn_id, key_id, subtask_id, resource_header):
         logger.warning("Cannot connect to task {} owner".format(subtask_id))
@@ -716,12 +714,6 @@ class TaskServer(PendingConnectionsServer):
         task_id, payments = self.client.get_new_payments_tasks()
         if payments:
             self.pay_for_task(task_id, payments)
-
-    def __check_payments(self):
-        after_deadline = self.task_keeper.check_payments()
-        for task_id in after_deadline:
-            self.decrease_trust_payment(task_id)
-            self.client.add_to_timeouted_payments(task_id)
 
     # CONFIGURATION METHODS
     #############################

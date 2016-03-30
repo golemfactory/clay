@@ -926,7 +926,7 @@
           <item>
            <widget class="QLabel" name="label_41">
             <property name="text">
-             <string>ETH / H</string>
+             <string>WEI / H</string>
             </property>
            </widget>
           </item>
@@ -968,7 +968,7 @@
           <item>
            <widget class="QLabel" name="label_43">
             <property name="text">
-             <string>ETH / H</string>
+             <string>WEI / H</string>
             </property>
            </widget>
           </item>

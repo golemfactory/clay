@@ -24,7 +24,7 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 #from golem.resource.resourceserver import ResourceServer
 from golem.resource.ipfs.resourceserver import IPFSResourceServer
 from golem.resource.dirmanager import DirManager
-from golem.ranking.ranking import Ranking
+from golem.ranking.ranking import Ranking, RankingStats
 
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
@@ -380,6 +380,11 @@ class Client:
         """
         return os.path.join(appdirs.user_data_dir('golem'), self.keys_auth.get_key_id()[-10:] + ".db")
 
+    def check_payments(self):
+        after_deadline_nodes = self.transaction_system.check_payments()
+        for node_id in after_deadline_nodes:
+            self.decrease_trust(node_id, RankingStats.payment)
+
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:
             if to_int:
@@ -400,6 +405,8 @@ class Client:
             self.task_server.sync_network()
             self.resource_server.sync_network()
             self.ranking.sync_network()
+
+            self.check_payments()
 
             if time.time() - self.last_nss_time > self.config_desc.node_snapshot_interval:
                 with self.snapshot_lock:

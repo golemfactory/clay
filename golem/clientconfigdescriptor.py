@@ -53,8 +53,8 @@ class ClientConfigDescriptor(object):
         self.app_name = ""
         self.app_version = ""
         self.eth_account = ""
-        self.min_price = 0.0
-        self.max_price = 0.0
+        self.min_price = 0
+        self.max_price = 0
         self.public_address = ""
 
     def init_from_app_config(self, app_config):
@@ -99,9 +99,11 @@ class ConfigApprover(object):
                            'use_ipv6', 'eth_account', 'root_path']
         to_int_opt = ['seed_port', 'manager_port', 'num_cores', 'opt_peer_num', 'dist_res_num',
                       'waiting_for_task_timeout', 'p2p_session_timeout', 'task_session_timeout',
-                      'resource_session_timeout', 'pings_interval', 'max_results_sending_delay', ]
-        to_float_opt = ['estimated_performance', 'estimated_lux_performance', 'estimated_blender_performance', 'getting_peers_interval', 'getting_tasks_interval',
-                        'node_snapshot_interval', 'computing_trust', 'requesting_trust', 'min_price', 'max_price']
+                      'resource_session_timeout', 'pings_interval', 'max_results_sending_delay', 'min_price',
+                      'max_price']
+        to_float_opt = ['estimated_performance', 'estimated_lux_performance', 'estimated_blender_performance',
+                        'getting_peers_interval', 'getting_tasks_interval', 'node_snapshot_interval',
+                        'computing_trust', 'requesting_trust']
         self._opts_to_change = dont_change_opt + to_int_opt + to_float_opt
         for opt in dont_change_opt:
             self._actions[opt] = ConfigApprover._empty_action

@@ -337,11 +337,11 @@ class ConfigurationDialogCustomizer(Customizer):
     def __read_payment_config(self, cfg_desc):
         cfg_desc.eth_account = u"{}".format(self.gui.ui.ethAccountLineEdit.text())
         try:
-            cfg_desc.min_price = float(self.gui.ui.minPriceLineEdit.text())
+            cfg_desc.min_price = int(self.gui.ui.minPriceLineEdit.text())
         except ValueError as err:
             logger.warning("Wrong min_payment value: {}".format(err))
         try:
-            cfg_desc.max_price = float(self.gui.ui.maxPriceLineEdit.text())
+            cfg_desc.max_price = int(self.gui.ui.maxPriceLineEdit.text())
         except ValueError as err:
             logger.warning("Wrong max_payment value: {}".format(err))
         self.__check_eth_account()
