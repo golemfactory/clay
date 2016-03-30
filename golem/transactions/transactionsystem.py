@@ -31,19 +31,19 @@ class TransactionSystem(object):
         self.budget += price
         self.payments_keeper.payment_failure(task_id)
 
-    def get_reward(self, task_id, node_id, reward):
+    def get_income(self, addr_info, value):
         """ Increase information about budget with reward
-        :param task_id: return id of a task for which this reward was
-        :param int reward: how much should be added to budget
+        :param str addr_info: return information about address of a node that send this payment
+        :param int value: value of the payment
         """
-        self.budget += reward
-        self.incomes_keeper.add_income(task_id, node_id, reward)
+        self.budget += value
+        self.incomes_keeper.get_income(addr_info, value)
 
     def add_payment_info(self, task_id, subtask_id, value, account_info):
         """ Add to payment keeper information about new payment for subtask
-        :param task_id: id of a task that this payment is apply to
-        :param subtask_id: if of a subtask that this payment is apply to (node finished computation for that subtask)
-        :param float value: valuation of a given subtask
+        :param str task_id: id of a task that this payment is apply to
+        :param str subtask_id: if of a subtask that this payment is apply to (node finished computation for that subtask)
+        :param int value: valuation of a given subtask
         :param AccountInfo account_info: billing account for a node that has computed a task
         """
         payment_info = PaymentInfo(task_id, subtask_id, value, account_info)
@@ -52,7 +52,7 @@ class TransactionSystem(object):
     def task_finished(self, task_id):
         """ Inform payments keeper that task with given id has been finished and payments for that task may be
         appraise.
-        :param task_id: id of a finished task
+        :param str task_id: id of a finished task
         """
         self.payments_keeper.task_finished(task_id)
 
@@ -84,7 +84,7 @@ class TransactionSystem(object):
         return self.incomes_keeper.get_list_of_all_incomes()
 
     def add_to_waiting_payments(self, task_id, node_id, value):
-        return self.incomes_keeper.add_waiting_payment(task_id, node_id, expected_value = value)
+        return self.incomes_keeper.add_waiting_payment(task_id, node_id, expected_value=value)
 
     def add_to_timeouted_payments(self, task_id):
         return self.incomes_keeper.add_timeouted_payment(task_id)
@@ -95,3 +95,15 @@ class TransactionSystem(object):
         :param payments: payments representation
         """
         raise NotImplementedError
+
+    def check_payments(self):
+        # TODO Some code from taskkeeper
+        # now = datetime.datetime.now()
+        # after_deadline = []
+        # for subtask_id, [task_id, task_date, deadline] in self.completed.items():
+        #     if deadline < now:
+        #         after_deadline.append(task_id)
+        #         del self.completed[subtask_id]
+        # return after_deadline
+
+        return []

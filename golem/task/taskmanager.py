@@ -2,6 +2,9 @@ import time
 import logging
 
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
+from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
+from golem.task.result.resultmanager import EncryptedResultPackageManager
+from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 from golem.resource.dirmanager import DirManager
 from golem.core.hostaddress import get_external_address
@@ -25,7 +28,7 @@ def react_to_key_error(func):
         try:
             return func(*args, **kwargs)
         except KeyError:
-            logger.exception("This is not my subtask {}".format(args[1]))
+            logger.warning("This is not my subtask {}".format(args[1]))
             return None
 
     return func_wrapper
@@ -41,6 +44,7 @@ class TaskManager(object):
 
         self.tasks = {}
         self.tasks_states = {}
+        self.subtask2task_mapping = {}
 
         self.listen_address = listen_address
         self.listen_port = listen_port
@@ -49,12 +53,15 @@ class TaskManager(object):
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root(), self.node_name)
 
-        self.subtask2task_mapping = {}
+        resource_manager = IPFSResourceManager(self.dir_manager, self.node_name,
+                                               resource_dir_method=self.dir_manager.get_task_temporary_dir)
+        self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
         self.listeners = []
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
-
         self.use_distributed_resources = use_distributed_resources
+
+        self.comp_task_keeper = CompTaskKeeper()
 
     def get_task_manager_root(self):
         return self.root_path
@@ -90,12 +97,17 @@ class TaskManager(object):
         self.tasks[task.header.task_id] = task
 
         ts = TaskState()
-        if self.use_distributed_resources:
-            task.task_status = TaskStatus.sending
-            ts.status = TaskStatus.sending
-        else:
-            task.task_status = TaskStatus.waiting
-            ts.status = TaskStatus.waiting
+
+        # if self.use_distributed_resources:
+        #     task.task_status = TaskStatus.sending
+        #     ts.status = TaskStatus.sending
+        # else:
+        #     task.task_status = TaskStatus.waiting
+        #     ts.status = TaskStatus.waiting
+
+        task.task_status = TaskStatus.waiting
+        ts.status = TaskStatus.waiting
+
         ts.time_started = time.time()
 
         self.tasks_states[task.header.task_id] = ts
@@ -266,6 +278,7 @@ class TaskManager(object):
     # CHANGE TO RETURN KEY_ID (check IF SUBTASK COMPUTER HAS KEY_ID
     def remove_old_tasks(self):
         nodes_with_timeouts = []
+        self.comp_task_keeper.remove_old_tasks()
         for t in self.tasks.values():
             th = t.header
             if self.tasks_states[th.task_id].status not in self.activeStatus:
@@ -449,6 +462,10 @@ class TaskManager(object):
     @staticmethod
     def compute_subtask_value(price, computation_time):
         return price * computation_time
+
+    def add_comp_task_request(self, theader, price):
+        """ Add a header of a task which this node may try to compute """
+        self.comp_task_keeper.add_request(theader, price)
 
     def __add_subtask_to_tasks_states(self, node_name, node_id, price, ctd, address):
 

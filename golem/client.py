@@ -21,9 +21,10 @@ from golem.model import Database
 from golem.network.transport.message import init_messages
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.resource.resourceserver import ResourceServer
+#from golem.resource.resourceserver import ResourceServer
+from golem.resource.ipfs.resourceserver import IPFSResourceServer
 from golem.resource.dirmanager import DirManager
-from golem.ranking.ranking import Ranking
+from golem.ranking.ranking import Ranking, RankingStats
 
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
@@ -136,15 +137,19 @@ class Client:
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth)
         time.sleep(1.0)
 
+        #self.resource_server = ResourceServer(self.config_desc, self.keys_auth, self, use_ipv6=self.config_desc.use_ipv6)
+
+        self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
+                                      use_ipv6=self.config_desc.use_ipv6)
+        self.resource_server = IPFSResourceServer(self.task_server.task_computer.dir_manager,
+                                                  self.config_desc, self.keys_auth, self)
+
         logger.info("Starting resource server...")
-        self.resource_server = ResourceServer(self.config_desc, self.keys_auth, self, use_ipv6=self.config_desc.use_ipv6)
         self.resource_server.start_accepting()
         time.sleep(1.0)
         self.p2pservice.set_resource_server(self.resource_server)
 
         logger.info("Starting task server ...")
-        self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
-                                      use_ipv6=self.config_desc.use_ipv6)
         self.task_server.start_accepting()
 
         self.p2pservice.set_task_server(self.task_server)
@@ -193,8 +198,8 @@ class Client:
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
 
-    def task_resource_collected(self, task_id):
-        self.task_server.task_computer.task_resource_collected(task_id)
+    def task_resource_collected(self, task_id, unpack_delta=True):
+        self.task_server.task_computer.task_resource_collected(task_id, unpack_delta)
 
     def set_resource_port(self, resource_port):
         self.resource_port = resource_port
@@ -375,6 +380,11 @@ class Client:
         """
         return os.path.join(appdirs.user_data_dir('golem'), self.keys_auth.get_key_id()[-10:] + ".db")
 
+    def check_payments(self):
+        after_deadline_nodes = self.transaction_system.check_payments()
+        for node_id in after_deadline_nodes:
+            self.decrease_trust(node_id, RankingStats.payment)
+
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:
             if to_int:
@@ -395,6 +405,8 @@ class Client:
             self.task_server.sync_network()
             self.resource_server.sync_network()
             self.ranking.sync_network()
+
+            self.check_payments()
 
             if time.time() - self.last_nss_time > self.config_desc.node_snapshot_interval:
                 with self.snapshot_lock:

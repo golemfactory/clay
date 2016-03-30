@@ -96,7 +96,7 @@ class TestTaskSession(LogTestCase):
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
         n = Node()
-        wtr = WaitingTaskResult("xxyyzz", "result", result_types["data"], 13190, 10, 0, "10.10.10.10",
+        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", result_types["data"], 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
 
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)

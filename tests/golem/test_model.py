@@ -28,12 +28,12 @@ class TestPayment(TestWithDatabase):
         self.assertGreaterEqual(datetime.now(), p.modified_date)
 
     def test_create(self):
-        p = Payment(to_node_id="DEF", task="xyz", val="5.232", state="SOMESTATE")
+        p = Payment(to_node_id="DEF", task="xyz", val=5, state="SOMESTATE")
         self.assertEquals(p.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
-            Payment.create(to_node_id="DEF", task="xyz", val="5.132", state="SOMESTATEX")
-        Payment.create(to_node_id="DEF", task="xyz2", val="5.132", state="SOMESTATEX")
-        Payment.create( to_node_id="DEF2", task="xyz", val="5.132", state="SOMESTATEX")
+            Payment.create(to_node_id="DEF", task="xyz", val=5, state="SOMESTATEX")
+        Payment.create(to_node_id="DEF", task="xyz2", val=4, state="SOMESTATEX")
+        Payment.create( to_node_id="DEF2", task="xyz", val=5, state="SOMESTATEX")
 
         self.assertEqual(3, len([payment for payment in Payment.select()]))
 
@@ -46,19 +46,18 @@ class TestReceivedPayment(TestWithDatabase):
         self.assertGreaterEqual(datetime.now(), r.modified_date)
 
     def test_create(self):
-        r = ReceivedPayment(from_node_id="DEF", task="xyz", val="5.232", expected_val="3131.23",
+        r = ReceivedPayment(from_node_id="DEF", task="xyz", val=4, expected_val=3131,
                             state="SOMESTATE")
         self.assertEquals(r.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
-            ReceivedPayment.create(from_node_id="DEF", task="xyz", val="5.132", expected_val="3132.33",
+            ReceivedPayment.create(from_node_id="DEF", task="xyz", val=5, expected_val=3132,
                                    state="SOMESTATEX")
-        ReceivedPayment.create(from_node_id="DEF", task="xyz2", val="5.132", expected_val="3132.33",
+        ReceivedPayment.create(from_node_id="DEF", task="xyz2", val=5, expected_val=3132,
                                state="SOMESTATEX")
-        ReceivedPayment.create(from_node_id="DEF2", task="xyz", val="5.132", expected_val="3132.33",
+        ReceivedPayment.create(from_node_id="DEF2", task="xyz", val=5, expected_val=3132,
                                state="SOMESTATEX")
 
-        self.assertEqual(3,
-                         len([payment for payment in ReceivedPayment.select()]))
+        self.assertEqual(3, len([payment for payment in ReceivedPayment.select()]))
 
 
 class TestLocalRank(TestWithDatabase):

@@ -74,7 +74,7 @@ class TaskComputer(object):
             else:
                 return False
 
-    def task_resource_collected(self, task_id):
+    def task_resource_collected(self, task_id, unpack_delta=True):
         if task_id in self.task_to_subtask_mapping:
             subtask_id = self.task_to_subtask_mapping[task_id]
             if subtask_id in self.assigned_subtasks:
@@ -83,10 +83,15 @@ class TaskComputer(object):
                 subtask = self.assigned_subtasks[subtask_id]
                 self.task_timeout = subtask.timeout
                 self.last_task_timeout_checking = time.time()
-                self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
-                self.__compute_task(subtask_id, subtask.docker_images,
-                                    subtask.src_code, subtask.extra_data,
-                                    subtask.short_description, subtask.timeout)
+                if unpack_delta:
+                    self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
+
+                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].docker_images,
+                                    self.assigned_subtasks[subtask_id].src_code,
+                                    self.assigned_subtasks[subtask_id].extra_data,
+                                    self.assigned_subtasks[subtask_id].short_description,
+                                    self.assigned_subtasks[subtask_id].timeout)
+
                 self.waiting_for_task = None
                 self.delta = None
                 return True

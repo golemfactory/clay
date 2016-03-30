@@ -154,6 +154,6 @@ def start_app(logic, app, gui, rendering=False, start_manager=False, start_manag
     if start_add_task_server:
         run_add_task_server(client)
 
-    app.execute(False)
+    app.execute(True)
 
     reactor.run()

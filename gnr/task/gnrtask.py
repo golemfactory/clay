@@ -9,6 +9,7 @@ import os
 import logging
 import time
 import pickle
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,8 @@ class GNRTask(Task):
         self.full_task_timeout = 2200
         self.counting_nodes = {}
 
+        self.root_path = None
+
         self.stdout = {}  # for each subtask keep information about stdout received from computing node
         self.stderr = {}  # for each subtask keep information about stderr received from computing node
         self.results = {}  # for each subtask keep information about files containing results
@@ -158,17 +161,22 @@ class GNRTask(Task):
         return float(self.last_task) / self.total_tasks
 
     def get_resources(self, task_id, resource_header, resource_type=0):
+
         dir_name = self._get_resources_root_dir()
         tmp_dir = self.__get_tmp_dir()
+
         if resource_type == resource_types["zip"] and not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
+
         if os.path.exists(dir_name):
             if resource_type == resource_types["zip"]:
                 return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
+
             elif resource_type == resource_types["parts"]:
-                delta_header, parts = TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name,
-                                                                                              self.res_files)
-                return delta_header, parts
+                return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name,
+                                                                               self.res_files)
+            elif resource_type == resource_types["hashes"]:
+                return copy.copy(self.task_resources)
 
         return None
 
@@ -301,3 +309,4 @@ class GNRTask(Task):
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
         return tmp_dir
+
