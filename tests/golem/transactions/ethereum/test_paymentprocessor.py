@@ -11,6 +11,7 @@ from golem.tools.testdirfixture import TestDirFixture
 from golem.transactions.ethereum.paymentprocessor import (
     Status, OutgoingPayment, PaymentProcessor
 )
+from golem.transactions.ethereum.paymentmonitor import PaymentMonitor
 
 
 def wait_for(condition, timeout, step=0.1):
@@ -113,3 +114,11 @@ class PaymentProcessorFullTest(EthereumMiningNodeFixture):
         assert self.proc.add(p2)
 
         self.proc.sendout()
+
+        monitor = PaymentMonitor(self.client, a1)
+        wait_for(lambda: monitor.get_incoming_payments(), 60)
+        incoming = monitor.get_incoming_payments()
+        assert incoming
+        p = incoming[0]
+        assert p.payer == self.addr
+        assert p.value == 1 * 10**15
