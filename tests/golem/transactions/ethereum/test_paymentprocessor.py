@@ -72,6 +72,10 @@ class PaymentProcessorTest(EthereumNodeFixture):
         assert p1.status is Status.init
         assert p2.status is Status.init
 
+    def test_double_kill(self):
+        Client._kill_node()
+        Client._kill_node()
+
 
 class EthereumMiningNodeFixture(TestDirFixture):
     def setUp(self):
@@ -122,3 +126,29 @@ class PaymentProcessorFullTest(EthereumMiningNodeFixture):
         p = incoming[0]
         assert p.payer == self.addr
         assert p.value == 1 * 10**15
+
+    def test_payment_aggregation(self):
+        a1 = urandom(20)
+        a2 = urandom(20)
+        a3 = urandom(20)
+
+        Faucet.gimme_money(self.client, self.addr, 100 * 10**18)
+        assert wait_for(lambda: self.proc.available_balance(refresh=True) > 0,
+                        30 * 60 * 10), "No income from faucet"
+
+        assert self.proc.add(OutgoingPayment(a1, 1))
+        assert self.proc.add(OutgoingPayment(a2, 1))
+        assert self.proc.add(OutgoingPayment(a2, 1))
+        assert self.proc.add(OutgoingPayment(a3, 1))
+        assert self.proc.add(OutgoingPayment(a3, 1))
+        assert self.proc.add(OutgoingPayment(a3, 1))
+
+        self.proc.sendout()
+
+        monitor = PaymentMonitor(self.client, a3)
+        wait_for(lambda: monitor.get_incoming_payments(), 60)
+        incoming = monitor.get_incoming_payments()
+        assert incoming
+        p = incoming[0]
+        assert p.payer == self.addr
+        assert p.value == 3
