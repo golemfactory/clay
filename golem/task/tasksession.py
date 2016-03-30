@@ -339,7 +339,8 @@ class TaskSession(MiddlemanSafeSession):
             self.send(MessageCannotAssignTask(msg.task_id, "No more subtasks in {}".format(msg.task_id)))
 
     def _react_to_task_to_compute(self, msg):
-        self.task_computer.task_given(msg.ctd, self.task_server.get_subtask_ttl(msg.ctd.task_id))
+        if self.task_manager.comp_task_keeper.receive_subtask(msg.ctd):
+            self.task_computer.task_given(msg.ctd, self.task_server.get_subtask_ttl(msg.ctd.task_id))
         self.dropped()
 
     def _react_to_cannot_assign_task(self, msg):

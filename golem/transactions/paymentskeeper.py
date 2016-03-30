@@ -17,7 +17,7 @@ class PaymentsDatabase(object):
         """ Return value of a payment that was done to the same node and for the same task as payment for payment_info
         :param PaymentInfo payment_info: payment structure from which the database should retrieve information about
          computing node and task id.
-        :return: value of a previous similiar payment or 0 if there is no such payment in database
+        :return int: value of a previous similiar payment or 0 if there is no such payment in database
         """
         try:
             return Payment.select(Payment.val).where(self.__same_transaction(payment_info)).get().val
@@ -42,7 +42,7 @@ class PaymentsDatabase(object):
 
     def change_state(self, task_id, state):
         """ Change state for all payments for task_id
-        :param task_id: change state of all payments that should be done for computing this task
+        :param str task_id: change state of all payments that should be done for computing this task
         :param state: new state
         :return:
         """
@@ -87,7 +87,7 @@ class PaymentsKeeper(object):
         self.settled_tasks = {}  # finished tasks with payments that has been pass to task server
         self.db = PaymentsDatabase()
 
-    #    self.load_from_database()
+    #   self.load_from_database()
 
     def task_finished(self, task_id):
         """ Add id of a task to the list of finished tasks

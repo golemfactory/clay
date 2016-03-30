@@ -1,13 +1,13 @@
 import logging
 import os
 import socket
+import time
 import urllib2
 from collections import deque
 from threading import Lock
 
 import requests
 import twisted
-import time
 
 from golem.core.fileshelper import copy_file_tree
 from golem.resource.ipfs.client import IPFSClient, IPFSAsyncCall, IPFSAsyncExecutor
@@ -273,7 +273,7 @@ class IPFSResourceManager:
                 os.makedirs(out_dir[0])
 
         if self.__can_download():
-            logger.error("[IPFS]:start:{}:{}".format(multihash, time.time()))
+            logger.debug("[IPFS]:start:{}:{}".format(multihash, time.time()))
 
             with self.lock:
                 self.current_downloads += 1
@@ -328,9 +328,14 @@ class IPFSResourceManager:
                                         success, error])
 
     def __process_queue(self):
+        params = None
+
         with self.lock:
             if self.download_queue:
-                self.pull_resource(self.download_queue.popleft())
+                params = self.download_queue.popleft()
+
+        if params:
+            self.pull_resource(*params)
 
     def __ipfs_async_call(self, method, success, error, *args, **kwargs):
         call = IPFSAsyncCall(method, *args, **kwargs)
