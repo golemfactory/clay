@@ -158,7 +158,7 @@ class RenderingTaskCollector:
         self.lightest = None
         self.alpha_darkest = None
         self.alpha_lightest = None
-        self.accepted_exr_files = []
+        self.accepted_img_files = []
         self.accepted_alpha_files = []
         self.paste = paste
         self.width = width
@@ -179,7 +179,7 @@ class RenderingTaskCollector:
             else:
                 self.lightest = l
         
-        self.accepted_exr_files.append(img_file)
+        self.accepted_img_files.append(img_file)
 
     def add_alpha_file(self, img_file):
         if img_file.upper().endswith("EXR"):
@@ -199,68 +199,15 @@ class RenderingTaskCollector:
         self.accepted_alpha_files.append(img_file)
 
     def finalize(self, show_progress=False):
-        if len(self.accepted_exr_files) == 0:
+        if len(self.accepted_img_files) == 0:
             return None
-        are_exr = self.accepted_exr_files[0].upper().endswith("EXR")
+        are_exr = self.accepted_img_files[0].upper().endswith("EXR")
         if show_progress:
             print "Adding all accepted chunks to the final image"
         if are_exr:
-            if self.lightest == self.darkest:
-                self.lightest = self.darkest + 0.1
-
-            final_img = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_exr_files[0]),
-                                                      self.lightest, self.darkest)
-
-            if self.paste:
-                if not self.width or not self.height:
-                    self.width, self.height = final_img.size
-                    self.height *= len(self.accepted_exr_files)
-                final_img = self._paste_image(Image.new('RGB', (self.width, self.height)), final_img, 0)
-
-            for i in range(1, len(self.accepted_exr_files)):
-                print self.accepted_exr_files[i]
-                rgb8_im = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_exr_files[i]),
-                                                            self.lightest, self.darkest)
-                if not self.paste:
-                    final_img = ImageChops.add(final_img, rgb8_im)
-                else:
-                    final_img = self._paste_image(final_img, rgb8_im, i)
-
-                if show_progress:
-                    print_progress(i, len(self.accepted_exr_files))
+            final_img = self.finalize_exr(show_progress)
         else:
-            _, output_format = os.path.splitext(self.accepted_exr_files[0])
-            output_format = output_format[1:].upper()
-            res_y = 0
-            
-            for name in self.accepted_exr_files:
-                img = Image.open(name)
-                res_x, img_y = img.size
-                res_y += img_y
-            
-            self.width = res_x
-            self.height = res_y
-            bands = Image.open(self.accepted_exr_files[0]).getbands()
-            band = ""
-            for b in bands:
-                band += b
-            logger.debug("BANDS: " + band)
-            logger.debug("RES: " + str(res_x) + " " + str(res_y))
-            final_img = Image.new(band, (res_x, res_y))
-            #self.accepted_exr_files.sort()
-            offset = 0
-            for f in self.accepted_exr_files:
-                print f
-                if not self.paste:
-                    final_img = ImageChops.add(final_img, f)
-                else:
-                    img = Image.open(f)
-                    final_img.paste(img, (0, offset))
-                    _, img_y = img.size
-                    offset += img_y
-                    img.Image.close()
-                if show_progress:
-                    print_progress(i, len(self.accepted_exr_files))
+            final_img = self.finalize_not_exr(show_progress)
                     
         if len(self.accepted_alpha_files) > 0:
             final_alpha = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[0]),
@@ -274,10 +221,66 @@ class RenderingTaskCollector:
             final_img.putalpha(final_alpha)
 
         return final_img
+    def finalize_exr(self, show_progress=False):
+        if self.lightest == self.darkest:
+            self.lightest = self.darkest + 0.1
 
+        final_img = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_img_files[0]),
+                                                    self.lightest, self.darkest)
+
+        if self.paste:
+            if not self.width or not self.height:
+                self.width, self.height = final_img.size
+                self.height *= len(self.accepted_img_files)
+            final_img = self._paste_image(Image.new('RGB', (self.width, self.height)), final_img, 0)
+
+        for i in range(1, len(self.accepted_img_files)):
+            rgb8_im = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_img_files[i]),
+                                                        self.lightest, self.darkest)
+            if not self.paste:
+                final_img = ImageChops.add(final_img, rgb8_im)
+            else:
+                final_img = self._paste_image(final_img, rgb8_im, i)
+
+            if show_progress:
+                print_progress(i, len(self.accepted_img_files))
+        return final_img
+        
+    def finalize_not_exr(self, show_progress=False):
+        _, output_format = os.path.splitext(self.accepted_img_files[0])
+        output_format = output_format[1:].upper()
+        res_y = 0
+        
+        for name in self.accepted_img_files:
+            img = Image.open(name)
+            res_x, img_y = img.size
+            res_y += img_y
+        
+        self.width = res_x
+        self.height = res_y
+        bands = Image.open(self.accepted_img_files[0]).getbands()
+        band = ""
+        for b in bands:
+            band += b
+        logger.debug("BANDS: " + band)
+        logger.debug("RES: " + str(res_x) + " " + str(res_y))
+        final_img = Image.new(band, (res_x, res_y))
+        #self.accepted_img_files.sort()
+        offset = 0
+        for i in range(0, len(self.accepted_img_files)):
+            if not self.paste:
+                final_img = ImageChops.add(final_img, self.accepted_img_files[i])
+            else:
+                img = Image.open(self.accepted_img_files[i])
+                final_img.paste(img, (0, offset))
+                _, img_y = img.size
+                offset += img_y
+            if show_progress:
+                print_progress(i, len(self.accepted_img_files))        
+        return final_img
     def _paste_image(self, final_img, new_part, num):
         img_offset = Image.new("RGB", (self.width, self.height))
-        offset = int(math.floor(num * float(self.height) / float(len(self.accepted_exr_files))))
+        offset = int(math.floor(num * float(self.height) / float(len(self.accepted_img_files))))
         img_offset.paste(new_part, (0, offset))
         return ImageChops.add(final_img, img_offset)
 
@@ -288,34 +291,3 @@ class RenderingTaskCollector:
 # wszystkich, bo na to jest za malo miejsca)
 # kazdy skonwertowany dodaje od razu do final image i tylko ten final jest trzymany w pamieci - troche wolniej bedzie,
 # ale za to nie zabraknie RAMU teraz obrazek fullhd podzielony na 1000-2000 chunkow wywali manager pamieci
-
-if __name__ == "__main__":
-
-    def test_task_collector(path, result_name):
-        files = get_exr_files(path)
-
-        if len(files) == 0:
-            print "No test data provided"
-            return
-
-        ptc = RenderingTaskCollector()
-
-        print "Accepting incoming tasks"
-        for i, f in enumerate(files):
-            ptc.add_img_file(f)
-            print_progress(i, len(files))
-
-        print ""
-
-        im = ptc.finalize(True)
-
-        im.save("{}.png".format(result_name), "PNG")
-
-
-    def sys_test():
-        import sys
-        for e in sys.path:
-            print e
-
-
-    test_task_collector("test_run1", "result_64")
