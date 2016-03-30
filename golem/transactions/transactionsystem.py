@@ -49,13 +49,6 @@ class TransactionSystem(object):
         payment_info = PaymentInfo(task_id, subtask_id, value, account_info)
         self.payments_keeper.finished_subtasks(payment_info)
 
-    def task_finished(self, task_id):
-        """ Inform payments keeper that task with given id has been finished and payments for that task may be
-        appraise.
-        :param str task_id: id of a finished task
-        """
-        self.payments_keeper.task_finished(task_id)
-
     def get_payments_list(self):
         """ Return list of all planned and made payments
         :return list: list of dictionaries describing payments

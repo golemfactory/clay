@@ -369,7 +369,8 @@ class Client:
         return self.config_desc.plugin_port
 
     def task_finished(self, task_id):
-        self.transaction_system.task_finished(task_id)
+        # FIXME: Remove. Not needed.
+        pass
 
     def get_database_name(self):
         """ Return the database file name that this golem instance should use to save and load data.

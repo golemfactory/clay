@@ -80,20 +80,12 @@ class PaymentsKeeper(object):
 
     def __init__(self):
         """ Create new payments keeper instance"""
-        self.computing_tasks = {}  # tasks that are computed right now
-        self.finished_tasks = []  # tasks that are finished and they're payment haven't been processed yet (may still
         # be waiting for last subtask value estimation
         self.tasks_to_pay = deque()  # finished tasks with payments have been processed but haven't been send yet
         self.settled_tasks = {}  # finished tasks with payments that has been pass to task server
         self.db = PaymentsDatabase()
 
     #   self.load_from_database()
-
-    def task_finished(self, task_id):
-        """ Add id of a task to the list of finished tasks
-        :param task_id: finished task id
-        """
-        self.finished_tasks.append(task_id)
 
     def payment_failure(self, task_id):
         """ React to the fact that payment operation for task with given id failed. Remove given task form list of
@@ -108,13 +100,6 @@ class PaymentsKeeper(object):
         self.tasks_to_pay.append(task)
         del self.settled_tasks[task_id]
 
-    def get_list_of_payments(self, task):
-        """ Extract information about subtask payment from given task payment info
-        :param TaskPaymentInfo task: information about payments for a task
-        :return dict: dictionary with information about subtask payments
-        """
-        return task.subtasks
-
     def get_list_of_all_payments(self):
         return self.load_from_database()
 
@@ -122,26 +107,15 @@ class PaymentsKeeper(object):
         """ Add new information about finished subtask
         :param PaymentInfo payment_info: full information about payment for given subtask
         """
-        task = self.computing_tasks.setdefault(payment_info.task_id, TaskPaymentInfo(payment_info.task_id))
+        task = TaskPaymentInfo(payment_info.task_id)
         self.db.add_payment(payment_info)
         task.subtasks[payment_info.subtask_id] = SubtaskPaymentInfo(payment_info.value, payment_info.computer)
         task.value += payment_info.value
-        if payment_info.task_id in self.finished_tasks:
-            self.finished_tasks.remove(payment_info.task_id)
-            self.__put_task_in_tasks_to_pay(payment_info.task_id)
+        self.tasks_to_pay.append(task)
 
     def load_from_database(self):
         return [{"task": payment.task, "node": payment.to_node_id, "value": payment.val, "state": payment.state} for
                 payment in self.db.get_newest_payment()]
-
-    def __put_task_in_tasks_to_pay(self, task_id):
-        task = self.computing_tasks.get(task_id)
-        if task is None:
-            logger.error("No information about payments for task {}".format(task_id))
-            return
-        self.tasks_to_pay.append(task)
-        self.db.change_state(task_id, PaymentState.waiting_to_be_paid)
-        del self.computing_tasks[task_id]
 
     @staticmethod
     def __get_nodes_grouping(subtasks):

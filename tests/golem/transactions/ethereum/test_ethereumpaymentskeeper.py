@@ -44,14 +44,6 @@ class TestEthereumPaymentsKeeper(TestWithDatabase):
         pi.computer = ai
         pi.subtask_id = "qw12wuo131uaoa"
         e.finished_subtasks(pi)
-        payments = e.get_list_of_payments(e.computing_tasks["x-y-z"])
-        self.assertEqual(len(payments), 2)
-        payments[addr1].value = 19.26 * 3
-        payments[addr2].vaue = 19.26
-        payments2 = e.get_list_of_payments(e.computing_tasks["a-b-c"])
-        self.assertEqual(len(payments2), 2)
-        payments[addr1].value = 10.14
-        payments[addr2].vaue = 10.14 * 2
 
 
 class TestEthAccountInfo(unittest.TestCase):
