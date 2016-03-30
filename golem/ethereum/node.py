@@ -152,6 +152,8 @@ if __name__ == "__main__":
     FullNode()
 
     # The best I have to make the node running untill interrupted.
-    signal.signal(signal.SIGINT, lambda *unused: sys.exit())
+    handler = lambda *unused: sys.exit()
+    signal.signal(signal.SIGINT, handler)
+    signal.signal(signal.SIGTERM, handler)
     while True:
         time.sleep(60 * 60 * 24)

@@ -31,7 +31,7 @@ class EthereumClientTest(unittest.TestCase):
         assert started, "No 'started' word in logs"
 
         assert proc.returncode is None
-        proc.send_signal(signal.SIGINT)
+        proc.send_signal(signal.SIGTERM)
         proc.wait()
         log = proc.stdout.read()
         assert "terminated" in log
