@@ -56,21 +56,6 @@ class TransactionSystem(object):
         """
         self.payments_keeper.task_finished(task_id)
 
-    def get_new_payments_tasks(self):
-        """ Return new payment for a computed task that hasn't been processed yet.
-        :return tuple: return task id and list of payments for this task or a pair with two None
-        """
-        task, payments = self.payments_keeper.get_new_payments_task(self.budget)
-        if task is None:
-            return None, None
-        if self.budget >= task.value:
-            self.budget -= task.value
-            return task.task_id, payments
-        else:
-            self.payments_keeper.payment_failure(task.task_id)
-            logger.warning("Can't paid for the task, not enough money")
-            return None, None
-
     def get_payments_list(self):
         """ Return list of all planned and made payments
         :return list: list of dictionaries describing payments

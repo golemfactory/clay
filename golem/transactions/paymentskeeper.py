@@ -108,23 +108,6 @@ class PaymentsKeeper(object):
         self.tasks_to_pay.append(task)
         del self.settled_tasks[task_id]
 
-    def get_new_payments_task(self, budget):
-        """ Return new payment for a computed task that hasn't been processed yet and that is not higher than node's
-        budget
-        :param int budget: current node's budget
-        :return tuple: return task id and list of payments for this task or a pair with two None
-        """
-        if len(self.tasks_to_pay) > 0:
-            task = self.tasks_to_pay.popleft()
-            if task.value < budget:
-                self.settled_tasks[task.task_id] = task
-                self.db.change_state(task.task_id, PaymentState.settled)
-                return task, self.get_list_of_payments(task)
-            else:
-                self.tasks_to_pay.append(task)
-        else:
-            return None, None
-
     def get_list_of_payments(self, task):
         """ Extract information about subtask payment from given task payment info
         :param TaskPaymentInfo task: information about payments for a task

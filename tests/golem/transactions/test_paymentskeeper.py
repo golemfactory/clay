@@ -34,7 +34,6 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         self.assertEquals(14, pd.get_payment_value(pi2))
         self.assertEquals(20, pd.get_payment_value(pi))
 
-
         # test add_payment
         pd.add_payment(pi)
         self.assertEquals(30., pd.get_payment_value(pi))
@@ -152,20 +151,6 @@ class TestPaymentsKeeper(TestWithDatabase):
         for payment in all_payments:
             if payment["task"] == "xyz":
                 self.assertEqual(payment["state"], PaymentState.waiting_to_be_paid)
-                xyz_called = True
-            else:
-                self.assertEqual(payment["state"], PaymentState.waiting_for_task_to_finish)
-        self.assertTrue(xyz_called)
-
-        t, list_ = pk.get_new_payments_task(1000)
-        self.assertIsNotNone(t)
-        self.assertIsNotNone(list_)
-        all_payments = pk.get_list_of_all_payments()
-        self.assertEqual(len(all_payments), 3)
-        xyz_called = False
-        for payment in all_payments:
-            if payment["task"] == "xyz":
-                self.assertEqual(payment["state"], PaymentState.settled)
                 xyz_called = True
             else:
                 self.assertEqual(payment["state"], PaymentState.waiting_for_task_to_finish)
