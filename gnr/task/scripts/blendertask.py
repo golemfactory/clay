@@ -81,7 +81,7 @@ def exec_cmd(cmd, cur_dir, out_file_name):
 
 def format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file, start_task, engine,
                               frame, output_format):
-    if str(output_format).upper() not in ["EXR", "PNG", "JPEG", "BMP", "TGA"]:
+    if str(output_format).upper() not in ["EXR", "PNG", "JPEG", "JPG", "BMP", "TGA"]:
         print "Wrong output format. Setting to EXR."
         output_format = "EXR"
     cmd = ["{}".format(cmd_file), "-b", "{}".format(scene_file), "-P", "{}".format(script_file),
