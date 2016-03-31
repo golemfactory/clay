@@ -19,6 +19,16 @@ class TestDatabase(TestDirFixture):
         self.assertFalse(db.db.is_closed())
         db.db.close()
 
+    def test_schema_version(self):
+        db = Database(os.path.join(self.path, "version0.db"))
+        assert db._get_user_version() == db.SCHEMA_VERSION
+        assert db.SCHEMA_VERSION != 0
+
+        db._set_user_version(0)
+        assert db._get_user_version() == 0
+        db = Database(os.path.join(self.path, "version0.db"))
+        assert db._get_user_version() == db.SCHEMA_VERSION
+
 
 class TestPayment(TestWithDatabase):
 
@@ -33,7 +43,7 @@ class TestPayment(TestWithDatabase):
         with self.assertRaises(IntegrityError):
             Payment.create(to_node_id="DEF", task="xyz", val=5, state="SOMESTATEX")
         Payment.create(to_node_id="DEF", task="xyz2", val=4, state="SOMESTATEX")
-        Payment.create( to_node_id="DEF2", task="xyz", val=5, state="SOMESTATEX")
+        Payment.create(to_node_id="DEF2", task="xyz", val=5, state="SOMESTATEX")
 
         self.assertEqual(3, len([payment for payment in Payment.select()]))
 

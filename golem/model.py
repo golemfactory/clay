@@ -2,9 +2,13 @@ from peewee import SqliteDatabase, Model, CharField, IntegerField, FloatField, D
 
 import datetime
 import appdirs
+import logging
 import os
 
+log = logging.getLogger('golem.db')
+
 DATABASE_NAME = os.path.join(appdirs.user_data_dir('golem'), 'golem.db')
+
 NEUTRAL_TRUST = 0.0
 
 
@@ -12,6 +16,9 @@ db = SqliteDatabase(None, threadlocals=True, pragmas=(('foreign_keys', True), ('
 
 
 class Database:
+    # Database user schema version, bump to recreate the database
+    SCHEMA_VERSION = 1
+
     def __init__(self, name=DATABASE_NAME):
 
         self.name = name
@@ -22,8 +29,22 @@ class Database:
         self.create_database()
 
     @staticmethod
+    def _get_user_version():
+        return db.execute_sql('PRAGMA user_version').fetchone()[0]
+
+    @staticmethod
+    def _set_user_version(version):
+        db.execute_sql('PRAGMA user_version = {}'.format(version))
+
+    @staticmethod
     def create_database():
-        db.create_tables([LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment], safe=True)
+        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment]
+        version = Database._get_user_version()
+        if version != Database.SCHEMA_VERSION:
+            log.info("New database version {}, previous {}".format(Database.SCHEMA_VERSION, version))
+            db.drop_tables(tables, safe=True)
+            Database._set_user_version(Database.SCHEMA_VERSION)
+        db.create_tables(tables, safe=True)
 
 
 class BaseModel(Model):
