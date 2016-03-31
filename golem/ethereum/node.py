@@ -85,6 +85,7 @@ class NodeProcess(object):
             '--port', str(self.port),
             '--genesis', genesis_file,
             '--nodiscover',
+            '--ipcdisable',  # Disable IPC transport - conflicts on Windows.
             '--gasprice', '0',
             '--verbosity', '6',
         ]

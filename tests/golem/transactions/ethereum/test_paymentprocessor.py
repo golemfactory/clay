@@ -85,6 +85,7 @@ class PaymentProcessorTest(EthereumNodeFixture):
 
 class EthereumMiningNodeFixture(TestDirFixture):
     def setUp(self):
+        logging.basicConfig(level=logging.DEBUG)
         super(EthereumMiningNodeFixture, self).setUp()
         miner_dir = path.join(self.path, "miner")
         node_dir = path.join(self.path, "node")
@@ -102,11 +103,15 @@ class EthereumMiningNodeFixture(TestDirFixture):
         assert self.bank_addr == PaymentProcessor.BANK_ADDR
 
     def tearDown(self):
-        Client._kill_node()  # Kill the node to allow temp files removal
-        super(EthereumNodeFixture, self).tearDown()
+        self.miner.proc.stop()  # Kill the miner to allow temp files removal.
+        Client._kill_node()     # Kill the node to allow temp files removal.
+        super(EthereumMiningNodeFixture, self).tearDown()
 
 
 class PaymentProcessorFullTest(EthereumMiningNodeFixture):
+    def test_setup(self):
+        pass
+
     def test_balance1(self):
         assert self.proc.available_balance() is 0
         value = 12 * 10**18
