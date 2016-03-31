@@ -1,4 +1,5 @@
 import logging
+import platform
 import signal
 import subprocess
 import unittest
@@ -15,6 +16,7 @@ class EthereumClientTest(unittest.TestCase):
         n = FullNode()
         n.proc.stop()
 
+    @unittest.skipIf(platform.system() == 'Windows', 'On Windows killing is hard')
     def test_full_node_remotely(self):
         args = ['python', '-m', 'golem.ethereum.node']
         proc = subprocess.Popen(args, bufsize=1,
