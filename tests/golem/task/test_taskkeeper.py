@@ -1,21 +1,22 @@
-import datetime
 import time
+from unittest import TestCase
 
 from mock import Mock
 
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.task.taskkeeper import TaskKeeper, logger
+from golem.task.taskbase import TaskHeader, ComputeTaskDef
+from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, CompSubtaskInfo, logger
 from golem.tools.assertlogs import LogTestCase
 
 
-class TestTaskKeeper(LogTestCase):
+class TestTaskHeaderKeeper(LogTestCase):
     def test_init(self):
-        tk = TaskKeeper(EnvironmentsManager(), 10.0)
-        self.assertIsInstance(tk, TaskKeeper)
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
+        self.assertIsInstance(tk, TaskHeaderKeeper)
 
     def test_is_supported(self):
-        tk = TaskKeeper(EnvironmentsManager(), 10.0)
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
         self.assertFalse(tk.is_supported({}))
         task = {"environment": Environment.get_id(), 'max_price': 0}
         self.assertFalse(tk.is_supported(task))
@@ -43,11 +44,11 @@ class TestTaskKeeper(LogTestCase):
             self.assertFalse(tk.is_supported(task))
 
     def test_change_config(self):
-        tk = TaskKeeper(EnvironmentsManager(), 10.0)
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
-        task_header = self.__get_task_header()
+        task_header = get_task_header()
         task_header["max_price"] = 9.0
         tk.add_task_header(task_header)
         self.assertNotIn("xyz", tk.supported_tasks)
@@ -71,33 +72,20 @@ class TestTaskKeeper(LogTestCase):
         self.assertNotIn("xyz", tk.supported_tasks)
         self.assertNotIn("abc", tk.supported_tasks)
 
-    def __get_task_header(self):
-        return {"id": "xyz",
-                "node_name": "ABC",
-                "address": "10.10.10.10",
-                "port": 10101,
-                "key_id": "kkkk",
-                "environment": "DEFAULT",
-                "task_owner": "task_owner",
-                "ttl": 1201,
-                "subtask_timeout": 120,
-                "max_price": 10
-                }
-
     def test_get_task(self):
-        tk = TaskKeeper(EnvironmentsManager(), 10)
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
 
-        self.assertIsNone(tk.get_task(5))
-        task_header = self.__get_task_header()
+        self.assertIsNone(tk.get_task())
+        task_header = get_task_header()
         task_header["id"] = "uvw"
         self.assertTrue(tk.add_task_header(task_header))
-        self.assertIsNone(tk.get_task(5))
+        self.assertIsNone(tk.get_task())
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
         task_header["id"] = "xyz"
         self.assertTrue(tk.add_task_header(task_header))
-        th = tk.get_task(5)
+        th = tk.get_task()
         self.assertEqual(task_header["id"], th.task_id)
         self.assertEqual(task_header["max_price"], th.max_price)
         self.assertEqual(task_header["node_name"], th.node_name)
@@ -108,64 +96,80 @@ class TestTaskKeeper(LogTestCase):
         self.assertEqual(task_header["ttl"], th.ttl)
         self.assertEqual(task_header["subtask_timeout"], th.subtask_timeout)
         self.assertEqual(task_header["max_price"], th.max_price)
-        self.assertEqual(tk.active_tasks[th.task_id]["price"], 5)
-        self.assertEqual(tk.active_tasks[th.task_id]["header"], th)
-        self.assertEqual(tk.active_requests[th.task_id], 1)
-        th = tk.get_task(5)
+        th = tk.get_task()
         self.assertEqual(task_header["id"], th.task_id)
-        self.assertEqual(tk.active_tasks[th.task_id]["header"], th)
-        self.assertEqual(tk.active_requests[th.task_id], 2)
 
-    def test_get_receiver_for_task_verification_results(self):
-        tk = TaskKeeper(EnvironmentsManager(), 10)
-        e = Environment()
-        e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
-        task_header = self.__get_task_header()
-        tk.add_task_header(task_header)
-        th = tk.get_task(5)
-        key_id = tk.get_receiver_for_task_verification_result(th.task_id)
-        self.assertEqual(key_id, "kkkk")
 
-    def test_completed(self):
-        tk = TaskKeeper(EnvironmentsManager(), 10)
-        task_header = self.__get_task_header()
-        e = Environment()
-        e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
-        tk.add_task_header(task_header)
-        with self.assertLogs(logger, level=1):
-            price = tk.add_completed("uuvvww", "xyz", 100)
-        self.assertEqual(price, 0)
-        th = tk.get_task(5)
-        price = tk.add_completed("xxyyzz", "xyz", 100)
-        self.assertEqual(price, 500)
-        sv = tk.completed["xxyyzz"]
-        self.assertEqual(sv[0], "xyz")
-        self.assertLessEqual(sv[1], datetime.datetime.now())
-        self.assertLessEqual(sv[2], datetime.datetime.now() + datetime.timedelta(0, tk.verification_timeout))
-        self.assertEqual(tk.get_task_id_for_subtask("xxyyzz"), "xyz")
-        self.assertIsNone(tk.get_task_id_for_subtask("abcabc"))
-        task_header["id"] = "abc"
-        tk.add_task_header(task_header)
-        tk.get_task(5)
-        self.assertFalse(tk.is_waiting_for_task("abc"))
-        tk.add_completed("aabbcc", "abc", 20)
-        self.assertTrue(tk.is_waiting_for_task("abc"))
-        tk.remove_completed(task_id="xyz")
-        self.assertIsNone(tk.completed.get("xxyyzz"))
-        self.assertIsNone(tk.completed.get("uuvvww"))
-        self.assertIsNotNone(tk.completed.get("aabbcc"))
-        self.assertEqual(tk.check_payments(), [])
-        tk.verification_timeout = 0.5
-        tk.add_task_header(task_header)
-        tk.get_task(5)
-        tk.add_completed("ababac", "abc", 13)
-        l_completed = len(tk.completed)
-        time.sleep(0.8)
-        after_deadline = tk.check_payments()
-        self.assertEqual(after_deadline, ["abc"])
-        self.assertLess(len(tk.completed), l_completed)
+def get_task_header():
+    return {"id": "xyz",
+            "node_name": "ABC",
+            "address": "10.10.10.10",
+            "port": 10101,
+            "key_id": "kkkk",
+            "environment": "DEFAULT",
+            "task_owner": "task_owner",
+            "ttl": 1201,
+            "subtask_timeout": 120,
+            "max_price": 10
+            }
+
+
+class TestCompSubtaskInfo(TestCase):
+    def test_init(self):
+        csi = CompSubtaskInfo("xxyyzz")
+        self.assertIsInstance(csi, CompSubtaskInfo)
+
+
+class TestCompTaskKeeper(LogTestCase):
+    def test_comp_keeper(self):
+        ctk = CompTaskKeeper()
+        header = get_task_header()
+        header = TaskHeader(header["node_name"], header["id"], header["address"], header["port"], header["key_id"],
+                            header["environment"], header["task_owner"], header["ttl"], header["subtask_timeout"],
+                            1024, 1.0, 1000)
+        header.task_id = "xyz"
+        ctk.add_request(header, 5)
+        self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
+        self.assertEqual(ctk.active_tasks["xyz"].price, 5)
+        self.assertEqual(ctk.active_tasks["xyz"].header, header)
+        ctk.add_request(header, 23)
+        self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
+        self.assertEqual(ctk.active_tasks["xyz"].price, 5)
+        self.assertEqual(ctk.active_tasks["xyz"].header, header)
+        self.assertIsNone(ctk.get_subtask_ttl("abc"))
+        ctd = ComputeTaskDef()
+        with self.assertLogs(logger, level="WARNING"):
+            self.assertFalse(ctk.receive_subtask(ctd))
+        with self.assertLogs(logger, level="WARNING"):
+            self.assertIsNone(ctk.get_node_for_task_id("abc"))
+        with self.assertLogs(logger, level="WARNING"):
+            self.assertIsNone(ctk.get_value("abc", 10))
+
+        with self.assertLogs(logger, level="WARNING"):
+            ctk.request_failure("abc")
+        ctk.request_failure("xyz")
+        self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
+
+        with self.assertLogs(logger, level="WARNING"):
+            ctk.remove_task("abc")
+        self.assertIsNotNone(ctk.active_tasks.get("xyz"))
+        with self.assertNoLogs(logger, level="WARNING"):
+            ctk.remove_task("xyz")
+        self.assertIsNone(ctk.active_tasks.get("xyz"))
+
+        header.ttl = -1
+        ctk.add_request(header, 23)
+        self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
+        ctk.remove_old_tasks()
+        self.assertIsNone(ctk.active_tasks.get("xyz"))
+        ctk.add_request(header, 23)
+        ctd.task_id = "xyz"
+        ctd.subtask_id = "xxyyzz"
+        ctk.receive_subtask(ctd)
+        ctk.remove_old_tasks()
+        self.assertIsNotNone(ctk.active_tasks.get("xyz"))
+
+
 
 
 

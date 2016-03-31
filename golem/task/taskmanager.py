@@ -4,6 +4,7 @@ import logging
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
+from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 from golem.resource.dirmanager import DirManager
 from golem.core.hostaddress import get_external_address
@@ -27,7 +28,7 @@ def react_to_key_error(func):
         try:
             return func(*args, **kwargs)
         except KeyError:
-            logger.exception("This is not my subtask {}".format(args[1]))
+            logger.warning("This is not my subtask {}".format(args[1]))
             return None
 
     return func_wrapper
@@ -59,6 +60,8 @@ class TaskManager(object):
         self.listeners = []
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
         self.use_distributed_resources = use_distributed_resources
+
+        self.comp_task_keeper = CompTaskKeeper()
 
     def get_task_manager_root(self):
         return self.root_path
@@ -275,6 +278,7 @@ class TaskManager(object):
     # CHANGE TO RETURN KEY_ID (check IF SUBTASK COMPUTER HAS KEY_ID
     def remove_old_tasks(self):
         nodes_with_timeouts = []
+        self.comp_task_keeper.remove_old_tasks()
         for t in self.tasks.values():
             th = t.header
             if self.tasks_states[th.task_id].status not in self.activeStatus:
@@ -458,6 +462,10 @@ class TaskManager(object):
     @staticmethod
     def compute_subtask_value(price, computation_time):
         return price * computation_time
+
+    def add_comp_task_request(self, theader, price):
+        """ Add a header of a task which this node may try to compute """
+        self.comp_task_keeper.add_request(theader, price)
 
     def __add_subtask_to_tasks_states(self, node_name, node_id, price, ctd, address):
 
