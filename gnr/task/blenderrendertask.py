@@ -85,7 +85,7 @@ def build_blender_renderer_info(dialog, customizer):
 
     renderer = RendererInfo("Blender", defaults, BlenderRenderTaskBuilder, dialog,
                             customizer, BlenderRendererOptions)
-    renderer.output_formats = ["PNG", "TGA", "EXR"]
+    renderer.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
     renderer.scene_file_ext = ["blend"]
     renderer.get_task_num_from_pixels = get_task_num_from_pixels
     renderer.get_task_boarder = get_task_boarder
@@ -238,6 +238,7 @@ class BlenderRenderTask(FrameRenderingTask):
                       "script_src": script_src,
                       "engine": self.engine,
                       "frames": frames,
+                      "output_format": self.output_format
                       }
 
         hash = "{}".format(random.getrandbits(128))
@@ -283,7 +284,8 @@ class BlenderRenderTask(FrameRenderingTask):
                       "scene_file": scene_file,
                       "script_src": script_src,
                       "engine": self.engine,
-                      "frames": frames
+                      "frames": frames,
+                      "output_format": self.output_format
                       }
 
         hash = "{}".format(random.getrandbits(128))
@@ -352,6 +354,7 @@ class BlenderRenderTask(FrameRenderingTask):
         min_y = max(float(self.res_y - start_y - self.verification_options.box_size[1] - 1) / self.res_y, 0.0)
         script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, min_x, max_x, min_y, max_y)
         extra_data['script_src'] = script_src
+        extra_data['output_format'] = self.output_format
         return extra_data, (0, 0)
 
     def __get_frame_num_from_output_file(self, file_):
