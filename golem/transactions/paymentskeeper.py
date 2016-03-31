@@ -35,7 +35,7 @@ class PaymentsDatabase(object):
                 Payment.create(to_node_id=payment_info.computer.key_id,
                                task=payment_info.task_id,
                                val=payment_info.value,
-                               state=PaymentState.waiting_for_task_to_finish)
+                               state=PaymentState.waiting_to_be_paid)
         except IntegrityError:
             query = Payment.update(val=payment_info.value + Payment.val, modified_date=str(datetime.now()))
             query.where(self.__same_transaction(payment_info)).execute()
@@ -137,7 +137,6 @@ class PaymentsKeeper(object):
 
 
 class PaymentState(object):
-    waiting_for_task_to_finish = "Waiting for task to finish"
     waiting_to_be_paid = "Waiting for processing"
     settled = "Finished"
 
