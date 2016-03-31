@@ -1,6 +1,5 @@
 from docker import Client
 from docker.utils import kwargs_from_env
-import os
 
 
 def local_client():

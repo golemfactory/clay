@@ -7,6 +7,7 @@ import json
 import jsonpickle
 import pickle
 import sys
+from os import path
 
 from gnr.renderingtaskstate import RenderingTaskDefinition
 from gnr.renderingenvironment import BlenderEnvironment
@@ -33,8 +34,8 @@ if not isinstance(task_def, RenderingTaskDefinition):
 if isinstance(task_def.renderer_options.environment, BlenderEnvironment):
     task_def.renderer_options.environment = BlenderDockerEnvironment()
 
-BLENDER_TASK_SCRIPT = "/gnr/task/scripts/blendertask.py"
-DOCKER_TASK_SCRIPT = "/gnr/task/scripts/docker_blendertask.py"
+BLENDER_TASK_SCRIPT = path.normpath("/gnr/task/scripts/blendertask.py")
+DOCKER_TASK_SCRIPT = path.normpath("/gnr/task/scripts/docker_blendertask.py")
 
 # Replace main script file 'blendertask.py' with 'docker_blendertask.py':
 task_def.main_program_file = \

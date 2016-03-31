@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -69,7 +70,13 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src,
     for f in os.listdir(scene_dir):
         source = os.path.join(scene_dir, f)
         target = os.path.join(WORK_DIR, f)
-        os.symlink(source, target)
+        try:
+            os.symlink(source, target)
+        except OSError:
+            if os.path.isfile(source):
+                shutil.copy(source, target)
+            else:
+                shutil.copytree(source, target)
 
     exit_code = exec_cmd(cmd)
     if exit_code is not 0:

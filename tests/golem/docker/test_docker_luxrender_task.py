@@ -71,8 +71,8 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
         task_computer = node.client.task_server.task_computer
         resource_dir = task_computer.resource_manager.get_resource_dir(task_id)
         temp_dir = task_computer.resource_manager.get_temporary_dir(task_id)
-        self.dirs_to_remove.append(resource_dir)
-        self.dirs_to_remove.append(temp_dir)
+#        self.dirs_to_remove.append(resource_dir)
+#        self.dirs_to_remove.append(temp_dir)
 
         # Copy the task resources
         common_prefix = path.commonprefix(render_task.task_resources)
@@ -118,11 +118,11 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
         self.assertEqual(result["result_type"], result_types["files"])
         self.assertGreaterEqual(len(result["data"]), 3)
         self.assertTrue(
-            any(f == DockerTaskThread.STDOUT_FILE) for f in result["data"])
+            any([path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"]]))
         self.assertTrue(
-            any(f == DockerTaskThread.STDERR_FILE) for f in result["data"])
+            any([path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"]]))
         self.assertTrue(
-            any(f.endswith(".flm") for f in result["data"]))
+            any([f.endswith(".flm") for f in result["data"]]))
 
 
 
