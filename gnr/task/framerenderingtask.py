@@ -51,11 +51,11 @@ class FrameRenderingTask(RenderingTask):
     def __init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                 estimated_memory, use_frames, frames, max_price):
+                 estimated_memory, use_frames, frames, max_price, docker_images=None):
         RenderingTask.__init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                                subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                               estimated_memory, max_price)
+                               estimated_memory, max_price, docker_images)
 
         self.use_frames = use_frames
         self.frames = frames

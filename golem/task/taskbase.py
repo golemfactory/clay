@@ -8,7 +8,7 @@ class TaskHeader(object):
     """
     def __init__(self, node_name, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
                  task_owner=None, ttl=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0, min_version=1.0,
-                 max_price=0.0):
+                 max_price=0.0, docker_images=None):
         self.task_id = task_id
         # TODO Remove task_owner_key_id, task_onwer_address and task_owner_port
         self.task_owner_key_id = task_owner_key_id
@@ -24,6 +24,7 @@ class TaskHeader(object):
         self.environment = environment
         self.estimated_memory = estimated_memory
         self.min_version = min_version
+        self.docker_images = docker_images
         self.max_price = max_price
 
 
@@ -50,6 +51,7 @@ class ComputeTaskDef(object):
         self.working_directory = ""
         self.performance = 0.0
         self.environment = ""
+        self.docker_images = None
 
 
 class Task:
@@ -207,7 +209,6 @@ class Task:
         :param TaskState task_state:
         """
         return  # Implement in derived class
-
 
     @abc.abstractmethod
     def get_trust_mod(self, subtask_id):

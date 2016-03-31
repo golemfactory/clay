@@ -61,7 +61,8 @@ class GNRTask(Task):
     ################
 
     def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                 ttl, subtask_ttl, resource_size, estimated_memory, max_price):
+                 ttl, subtask_ttl, resource_size, estimated_memory, max_price, docker_images=None):
+
         """ Create more specific task implementation
         :param src_code:
         :param node_name:
@@ -74,13 +75,16 @@ class GNRTask(Task):
         :param subtask_ttl:
         :param resource_size:
         :param estimated_memory:
-        :param float max_price: maximum price that this node may par for an hour of computation 
+        :param float max_price: maximum price that this node may par for an hour of computation
+        :param docker_images: docker image specification
         """
         th = TaskHeader(node_name, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
-                        ttl, subtask_ttl, resource_size, estimated_memory, max_price=max_price)
+                        ttl, subtask_ttl, resource_size, estimated_memory, max_price=max_price,
+                        docker_images=docker_images)
+
         Task.__init__(self, th, src_code)
 
-        self.task_resources = []
+        self.task_resources = set()
 
         self.total_tasks = 0
         self.last_task = 0
@@ -92,11 +96,16 @@ class GNRTask(Task):
         self.full_task_timeout = 2200
         self.counting_nodes = {}
 
+        self.root_path = None
+
         self.stdout = {}  # for each subtask keep information about stdout received from computing node
         self.stderr = {}  # for each subtask keep information about stderr received from computing node
         self.results = {}  # for each subtask keep information about files containing results
 
         self.res_files = {}
+
+    def is_docker_task(self):
+        return self.header.docker_images is not None
 
     def initialize(self, dir_manager):
         pass
@@ -152,7 +161,9 @@ class GNRTask(Task):
         return float(self.last_task) / self.total_tasks
 
     def get_resources(self, task_id, resource_header, resource_type=0):
-        common_path_prefix, dir_name, tmp_dir = self.__get_task_dir_params()
+
+        dir_name = self._get_resources_root_dir()
+        tmp_dir = self.__get_tmp_dir()
 
         if resource_type == resource_types["zip"] and not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
@@ -288,12 +299,14 @@ class GNRTask(Task):
             fh.write(decompress(tr[1]))
         return os.path.join(tmp_dir, tr[0])
 
-    def __get_task_dir_params(self):
-        common_path_prefix = os.path.commonprefix(self.task_resources)
-        common_path_prefix = os.path.dirname(common_path_prefix)
-        dir_name = common_path_prefix  # os.path.join("res", self.header.node_name, self.header.task_id, "resources")
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+    def _get_resources_root_dir(self):
+        prefix = os.path.commonprefix(self.task_resources)
+        return os.path.dirname(prefix)
+
+    def __get_tmp_dir(self):
+        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id,
+                               self.root_path)
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
+        return tmp_dir
 
-        return common_path_prefix, dir_name, tmp_dir

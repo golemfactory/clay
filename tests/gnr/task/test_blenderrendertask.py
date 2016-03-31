@@ -23,13 +23,14 @@ class TestBlenderTaskDivision(unittest.TestCase):
     def setUp(self):
         self.program_file = NamedTemporaryFile(prefix='blender_program_', delete=False).name
         self.output_file = NamedTemporaryFile(prefix='blender_output_', delete=False).name
+        self.to_delete = []
         self.bt = BlenderRenderTask(node_name="example-node-name",
                                     task_id="example-task-id",
                                     main_scene_dir=os.getcwd(),
                                     main_scene_file="example.blend",
                                     main_program_file=self.program_file,
                                     total_tasks=7,
-                                    res_x=200,
+                                    res_x=2,
                                     res_y=300,
                                     outfilebasename="example_out",
                                     output_file=self.output_file,
@@ -47,18 +48,20 @@ class TestBlenderTaskDivision(unittest.TestCase):
     def tearDown(self):
         os.remove(self.program_file)
         os.remove(self.output_file)
+        for f in set(self.to_delete):
+            os.remove(f)
 
     def test_blender_task(self):
         self.assertIsInstance(self.bt, BlenderRenderTask)
         self.assertTrue(self.bt.main_scene_file == "example.blend")
 
     def test_get_min_max_y(self):
-        self.assertTrue(self.bt.res_x == 200)
+        self.assertTrue(self.bt.res_x == 2)
         self.assertTrue(self.bt.res_y == 300)
         self.assertTrue(self.bt.total_tasks == 7)
         for tasks in [1, 6, 7, 20, 60]:
             self.bt.total_tasks = tasks
-            for yres in range(100, 1000):
+            for yres in range(1, 100):
                 self.bt.res_y = yres
                 cur_max_y = self.bt.res_y
                 for i in range(1, self.bt.total_tasks + 1):
@@ -69,7 +72,7 @@ class TestBlenderTaskDivision(unittest.TestCase):
                     cur_max_y = min_y
                 self.assertTrue(cur_max_y == 0)
 
-    def test_put_img_together(self):
+    def test_put_img_together_exr(self):
         for chunks in [1, 5, 7, 11, 13, 31, 57, 100]:
             res_y = 0
             self.bt.collected_file_names = {}
@@ -77,6 +80,7 @@ class TestBlenderTaskDivision(unittest.TestCase):
                 y = randrange(1, 100)
                 res_y += y
                 file1 = os.path.join(os.getcwd(), 'chunk{}.exr'.format(i))
+                self.to_delete.append(file1)
                 exr = OpenEXR.OutputFile(file1, OpenEXR.Header(self.bt.res_x, y))
                 data = array.array('f', [1.0] * (self.bt.res_x * y)).tostring()
                 exr.writePixels({'R': data, 'G': data, 'B': data, 'F': data, 'A': data})
@@ -89,7 +93,28 @@ class TestBlenderTaskDivision(unittest.TestCase):
             img_x, img_y = img.size
             self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
 
-
+    def test_put_img_together_not_exr(self):
+        for output_format in ["TGA", "PNG", "JPEG", "BMP"]:
+            self.bt.output_format = output_format.lower()
+            for chunks in [1, 5, 7, 11, 13, 31, 57, 100]:
+                res_y = 0
+                chunks_sizes = {}
+                self.bt.collected_file_names = {}
+                for i in range (1, chunks + 1): #subtask numbers start from 1
+                    y = randrange(1, 100)
+                    res_y += y
+                    file1 = os.path.join(os.getcwd(), 'chunk{}.{}'.format(i, output_format.lower()))
+                    self.to_delete.append(file1)
+                    img = Image.new("RGB", (self.bt.res_x, y))
+                    img.save(file1, output_format.upper())
+                    self.bt.collected_file_names[i] = file1
+                self.bt.res_y = res_y
+                self.bt._put_image_together(os.getcwd())
+                self.assertTrue(os.path.isfile(self.bt.output_file))
+                img = Image.open(self.bt.output_file)
+                img_x, img_y = img.size
+                self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
+        
 class TestPreviewUpdater(unittest.TestCase):
     def test_update_preview(self):
         preview_file = os.path.join(os.getcwd(), 'sample_img.png')

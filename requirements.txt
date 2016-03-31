@@ -1,5 +1,6 @@
 appdirs>=1.4
 click>=4.0
+docker-py>=1.6.0
 ipaddress
 ipfs-api
 jsonpickle

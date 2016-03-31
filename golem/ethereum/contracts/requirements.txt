@@ -1,0 +1,1 @@
+https://github.com/ethereum/pyethereum/tarball/develop#egg=ethereum
