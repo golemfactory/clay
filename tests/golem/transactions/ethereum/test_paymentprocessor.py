@@ -1,3 +1,4 @@
+import logging
 import time
 import unittest
 from os import path, urandom
@@ -34,6 +35,7 @@ class PaymentStatusTest(unittest.TestCase):
 
 class EthereumNodeFixture(TestDirFixture):
     def setUp(self):
+        logging.basicConfig(level=logging.DEBUG)
         super(EthereumNodeFixture, self).setUp()
         self.privkey = urandom(32)
         self.addr = privtoaddr(self.privkey)
@@ -41,6 +43,10 @@ class EthereumNodeFixture(TestDirFixture):
         Client._kill_node()  # Kill the node to use random datadir
         self.client = Client(datadir=self.path)
         self.proc = PaymentProcessor(self.client, self.privkey)
+
+    def tearDown(self):
+        Client._kill_node()  # Kill the node to allow temp files removal
+        super(EthereumNodeFixture, self).tearDown()
 
 
 class PaymentProcessorTest(EthereumNodeFixture):
@@ -94,6 +100,10 @@ class EthereumMiningNodeFixture(TestDirFixture):
 
         self.bank_addr = Faucet.deploy_contract(self.client, BankOfDeposit.INIT_HEX.decode('hex'))
         assert self.bank_addr == PaymentProcessor.BANK_ADDR
+
+    def tearDown(self):
+        Client._kill_node()  # Kill the node to allow temp files removal
+        super(EthereumNodeFixture, self).tearDown()
 
 
 class PaymentProcessorFullTest(EthereumMiningNodeFixture):
