@@ -63,7 +63,7 @@ class TestBlenderTaskDivision(unittest.TestCase):
                     cur_max_y = min_y
                 self.assertTrue(cur_max_y == 0)
 
-    def test_put_img_together(self):
+    def test_put_img_together_exr(self):
         for chunks in [1, 5, 7, 11, 13, 31, 57, 100]:
             res_y = 0
             chunks_sizes = {}
@@ -83,6 +83,27 @@ class TestBlenderTaskDivision(unittest.TestCase):
             img = Image.open(self.bt.output_file)
             img_x, img_y = img.size
             self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
+
+    def test_put_img_together_not_exr(self):
+        for output_format in ["TGA"]:
+            self.bt.output_format = output_format.lower()
+            for chunks in [1, 5, 7, 11, 13, 31, 57, 100]:
+                res_y = 0
+                chunks_sizes = {}
+                self.bt.collected_file_names = {}
+                for i in range (1, chunks + 1): #subtask numbers start from 1
+                    y = randrange(1, 100)
+                    res_y += y
+                    file1 = os.path.join(os.getcwd(), 'chunk{}.{}'.format(i, output_format.lower()))
+                    img = Image.new("RGB", (self.bt.res_x, y))
+                    img.save(file1, output_format.upper())
+                    self.bt.collected_file_names[i] = file1
+                self.bt.res_y = res_y
+                self.bt._put_image_together(os.getcwd())
+                self.assertTrue(os.path.isfile(self.bt.output_file))
+                img = Image.open(self.bt.output_file)
+                img_x, img_y = img.size
+                self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
         
 class TestPreviewUpdater(unittest.TestCase):
     def test_update_preview(self):
