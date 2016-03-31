@@ -4,9 +4,9 @@ from docker import errors
 
 class DockerImage(object):
 
-    def __init__(self, repository, id=None, tag=None):
+    def __init__(self, repository=None, image_id=None, tag=None):
         self.repository = repository
-        self.id = id
+        self.id = image_id
         self.tag = tag if tag else "latest"
         self.name = "{}:{}".format(self.repository, self.tag)
 

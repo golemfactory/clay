@@ -2,7 +2,7 @@ from golem.docker.image import DockerImage
 from golem.docker.environment import DockerEnvironment
 
 
-class BlenderDockerEnvironment(DockerEnvironment):
+class BlenderEnvironment(DockerEnvironment):
 
     BLENDER_DOCKER_IMAGE = "golem/blender"
 
@@ -10,15 +10,15 @@ class BlenderDockerEnvironment(DockerEnvironment):
     def get_id(cls):
         return "BLENDER"
 
-    def __init__(self, tag="latest", id=None):
-        image = DockerImage(id=id) if id \
+    def __init__(self, tag="latest", image_id=None):
+        image = DockerImage(image_id=id) if image_id \
             else DockerImage(self.BLENDER_DOCKER_IMAGE, tag=tag)
         DockerEnvironment.__init__(self, [image])
 
         self.short_description = "Blender (www.blender.org)"
 
 
-class LuxRenderDockerEnvironment(DockerEnvironment):
+class LuxRenderEnvironment(DockerEnvironment):
 
     LUXRENDER_DOCKER_IMAGE = "golem/luxrender"
 
@@ -26,8 +26,8 @@ class LuxRenderDockerEnvironment(DockerEnvironment):
     def get_id(cls):
         return "LUXRENDER"
 
-    def __init__(self, tag="latest", id=None):
-        image = DockerImage(id=id) if id \
+    def __init__(self, tag="latest", image_id=None):
+        image = DockerImage(image_id=image_id) if image_id \
             else DockerImage(self.LUXRENDER_DOCKER_IMAGE, tag=tag)
         DockerEnvironment.__init__(self, [image])
 

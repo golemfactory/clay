@@ -7,14 +7,12 @@ import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
 
-from golem.core.common import get_golem_path
 from golem.core.simpleexccmd import exec_cmd
-from golem.core.common import get_golem_path
 from golem.task.taskstate import SubtaskStatus
 from golem.environments.environment import Environment
 
+from gnr.docker_environments import LuxRenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
-from gnr.renderingenvironment import LuxRenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
 from gnr.task.imgrepr import load_img, blend
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
@@ -37,7 +35,7 @@ class LuxRenderDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
-        self.main_program_file = find_task_script("luxtask.py")
+        self.main_program_file = find_task_script("docker_luxtask.py")
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 5
@@ -92,6 +90,8 @@ class LuxRenderOptions(GNROptions):
 class LuxRenderTaskBuilder(RenderingTaskBuilder):
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
+        if self.task_definition.docker_images is None:
+            self.task_definition.docker_images = LuxRenderEnvironment().docker_images
 
         lux_task = LuxTask(self.node_name,
                            self.task_definition.task_id,
