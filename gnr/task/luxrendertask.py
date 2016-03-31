@@ -1,6 +1,8 @@
 import logging
+import platform
 import random
 import os
+import shlex
 import tempfile
 import subprocess
 import shutil
@@ -382,11 +384,15 @@ class LuxTask(RenderingTask):
         files = " ".join(self.collected_file_names.values())
         env = LuxRenderEnvironment()
         lux_merger = env.get_lux_merger()
+
         if lux_merger is not None:
             cmd = "{} -o {}.flm {}".format(lux_merger, self.output_file, files)
 
             logger.debug("Lux Merger cmd: {}".format(cmd))
-            exec_cmd(cmd)
+            if env.is_windows():
+                exec_cmd(cmd)
+            else:
+                exec_cmd(shlex.split(cmd))
 
     def __generate_final_flm_advanced_verification(self):
         # the file containing result of task test

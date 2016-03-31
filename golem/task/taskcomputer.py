@@ -87,8 +87,6 @@ class TaskComputer(object):
 
                 if unpack_delta:
                     self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
-                else:
-                    self.task_server.client.resource_server.resource_manager
 
                 self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].src_code,
                                     self.assigned_subtasks[subtask_id].extra_data,

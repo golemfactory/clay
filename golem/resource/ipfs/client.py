@@ -17,6 +17,8 @@ from ipfsApi.commands import ArgCommand
 import logging
 logger = logging.getLogger(__name__)
 
+__all__ = ['IPFSCommands', 'IPFSClient', 'IPFSAsyncCall', 'IPFSAsyncExecutor', 'StreamFileObject']
+
 
 class StreamFileObject:
 
@@ -80,28 +82,29 @@ class ChunkedHTTPClient(HTTPClient):
                                    params=params, stream=True, **kwargs)
 
         res.raise_for_status()
-
         fileobj = StreamFileObject(res)
 
         with tarfile.open(fileobj=fileobj, mode=mode) as tar_file:
             return self._tar_extract(tar_file, wd, filename,
                                      multihash=args[0])
 
-    def _tar_extract(self, tf, wd, filename, multihash):
-        dest_path = os.path.join(wd, filename)
-        tmp_dir = os.path.join(wd, str(uuid.uuid4()))
+    @staticmethod
+    def _tar_extract(tar_file, work_dir, filename, multihash):
+
+        dest_path = os.path.join(work_dir, filename)
+        tmp_dir = os.path.join(work_dir, str(uuid.uuid4()))
+        result = (filename, multihash)
 
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
 
-        for member in tf:
-            tf.extract(member, tmp_dir)
+        for member in tar_file:
+            tar_file.extract(member, tmp_dir)
 
         with ChunkedHTTPClient.lock:
-
             if os.path.exists(dest_path):
                 if os.path.isdir(dest_path):
-                    return filename, multihash
+                    return result
                 else:
                     os.remove(dest_path)
 
@@ -109,7 +112,7 @@ class ChunkedHTTPClient(HTTPClient):
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
         logger.debug("IPFS downloaded %s (%s) to %s" % (filename, multihash, dest_path))
-        return filename, multihash
+        return result
 
 
 def parse_response(resp):
@@ -151,6 +154,14 @@ def response_wrapper(func):
     def wrapped(*args, **kwargs):
         return parse_response(func(*args, **kwargs))
     return wrapped
+
+
+class IPFSCommands(object):
+    pin = 0
+    unpin = 1
+    add = 2
+    pull = 3
+    id = 4
 
 
 class IPFSClientMetaClass(type):
