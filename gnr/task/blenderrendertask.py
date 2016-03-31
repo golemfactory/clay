@@ -108,6 +108,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     """
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
+
         blender_task = BlenderRenderTask(self.node_name,
                                          self.task_definition.task_id,
                                          main_scene_dir,
@@ -127,7 +128,8 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.use_frames,
                                          self.task_definition.renderer_options.frames,
                                          self.task_definition.max_price,
-                                         self.task_definition.renderer_options.engine
+                                         self.task_definition.renderer_options.engine,
+                                         docker_images=self.task_definition.docker_images,
                                         )
         return self._set_verification_options(blender_task)
 
@@ -138,6 +140,9 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
             box_y = max(new_task.verification_options.box_size[1], 8)
             new_task.box_size = (box_x, box_y)
         return new_task
+
+
+DEFAULT_BLENDER_DOCKER_IMAGE = "golem/blender:latest"
 
 
 class BlenderRenderTask(FrameRenderingTask):
@@ -169,13 +174,14 @@ class BlenderRenderTask(FrameRenderingTask):
                  engine,
                  return_address="",
                  return_port=0,
-                 key_id=""):
+                 key_id="",
+                 docker_images=None):
 
         FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                     BlenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                     main_program_file, task_resources, main_scene_dir, main_scene_file,
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                                    root_path, estimated_memory, use_frames, frames, max_price)
+                                    root_path, estimated_memory, use_frames, frames, max_price, docker_images)
 
         crop_task = find_task_script("blendercrop.py")
         try:

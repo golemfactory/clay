@@ -114,6 +114,7 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                            self.task_definition.renderer_options.haltspp,
                            self.task_definition.renderer_options.send_binaries,
                            self.task_definition.renderer_options.luxconsole,
+                           docker_images=self.task_definition.docker_images
                            )
 
         return self._set_verification_options(lux_task)
@@ -149,13 +150,15 @@ class LuxTask(RenderingTask):
                  luxconsole,
                  return_address="",
                  return_port=0,
-                 key_id=""):
+                 key_id="",
+                 docker_images=None):
         
         RenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                LuxRenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                main_program_file, task_resources, main_scene_dir, main_scene_file,
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                               root_path, estimated_memory, max_price)
+                               root_path, estimated_memory, max_price, docker_images)
+
         self.undeletable.append(os.path.join(get_tmp_path(self.header.node_name, self.header.task_id, self.root_path), "test_result.flm"))
         self.halttime = halttime
         self.haltspp = haltspp
