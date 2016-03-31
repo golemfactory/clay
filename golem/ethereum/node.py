@@ -77,7 +77,7 @@ class NodeProcess(object):
         # Data dir must be set the class user to allow multiple nodes running
         basedir = path.dirname(__file__)
         genesis_file = path.join(basedir, 'genesis_golem.json')
-        self.port = find_free_net_port(8001)
+        self.port = find_free_net_port()
         args = [
             program,
             '--datadir', self.datadir,
@@ -90,7 +90,7 @@ class NodeProcess(object):
         ]
 
         if rpc:
-            self.rpcport = find_free_net_port(9001)
+            self.rpcport = find_free_net_port()
             args += [
                 '--rpc',
                 '--rpcport', str(self.rpcport)

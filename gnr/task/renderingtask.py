@@ -1,22 +1,22 @@
-import os
 import logging
-import subprocess
 import math
+import os
 import random
 import uuid
 from copy import deepcopy, copy
-from PIL import Image, ImageChops
 
-from golem.task.taskstate import SubtaskStatus
-from golem.task.taskbase import ComputeTaskDef
-from golem.core.simpleexccmd import is_windows, exec_cmd
-from golem.core.common import get_golem_path
+from PIL import Image, ImageChops
 
 from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
-from gnr.task.renderingtaskcollector import exr_to_pil
-from gnr.task.imgrepr import verify_img, advance_verify_img
 from gnr.task.gnrtask import GNRTask, GNRTaskBuilder, check_subtask_id_wrapper
+from gnr.task.imgrepr import verify_img, advance_verify_img
+from gnr.task.renderingtaskcollector import exr_to_pil
+from golem.core.common import get_golem_path
+from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.docker.job import DockerJob
+from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskstate import SubtaskStatus
 
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
@@ -56,7 +56,7 @@ class RenderingTask(GNRTask):
     def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                 estimated_memory, max_price):
+                 estimated_memory, max_price, docker_images=None):
 
         try:
             with open(main_program_file, "r") as src_file:
@@ -71,7 +71,7 @@ class RenderingTask(GNRTask):
             resource_size += os.stat(resource).st_size
 
         GNRTask.__init__(self, src_code, node_id, task_id, owner_address, owner_port, owner_key_id, environment,
-                         ttl, subtask_ttl, resource_size, estimated_memory, max_price)
+                         ttl, subtask_ttl, resource_size, estimated_memory, max_price, docker_images)
 
         self.full_task_timeout = ttl
         self.header.ttl = self.full_task_timeout
@@ -209,6 +209,7 @@ class RenderingTask(GNRTask):
         ctd.src_code = self.src_code
         ctd.performance = perf_index
         ctd.working_directory = working_directory
+        ctd.docker_images = self.header.docker_images
         return ctd
 
     def _get_next_task(self):
@@ -236,9 +237,22 @@ class RenderingTask(GNRTask):
         return self.__get_path(working_directory)
 
     def _get_scene_file_rel_path(self):
-        scene_file = os.path.relpath(os.path.dirname(self.main_scene_file), os.path.dirname(self.main_program_file))
-        scene_file = os.path.normpath(os.path.join(scene_file, os.path.basename(self.main_scene_file)))
-        return self.__get_path(scene_file)
+        """Returns the path to the secene file relative to the directory where
+        the task srcipt is run.
+        """
+        if self.is_docker_task():
+            # In a Docker container we know the absolute path:
+            # First compute the path relative to the resources root dir:
+            rel_scene_path = os.path.relpath(self.main_scene_file,
+                                             self._get_resources_root_dir())
+            # Then prefix with the resources dir in the container:
+            abs_scene_path = DockerJob.get_absolute_resource_path(
+                rel_scene_path)
+            return abs_scene_path
+        else:
+            scene_file = os.path.relpath(os.path.dirname(self.main_scene_file), os.path.dirname(self.main_program_file))
+            scene_file = os.path.normpath(os.path.join(scene_file, os.path.basename(self.main_scene_file)))
+            return self.__get_path(scene_file)
 
     def _short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data

@@ -30,7 +30,13 @@ def return_files(files):
 
 def get_files():
     output_files = tmp_path
-    return glob.glob(os.path.join(output_files, "*.exr")) + glob.glob(os.path.join(output_files, "*.log"))
+    return  glob.glob(os.path.join(output_files, "*.exr")) + \
+            glob.glob(os.path.join(output_files, "*.png")) + \
+            glob.glob(os.path.join(output_files, "*.jpeg")) + \
+            glob.glob(os.path.join(output_files, "*.jpg")) + \
+            glob.glob(os.path.join(output_files, "*.tga")) + \
+            glob.glob(os.path.join(output_files, "*.bmp")) + \
+            glob.glob(os.path.join(output_files, "*.log"))
 
 
 def remove_old_files():
@@ -74,14 +80,17 @@ def exec_cmd(cmd, cur_dir, out_file_name):
 
 
 def format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file, start_task, engine,
-                              frame):
+                              frame, output_format):
+    if str(output_format).upper() not in ["EXR", "PNG", "JPEG", "JPG", "BMP", "TGA"]:
+        print "Wrong output format. Setting to EXR."
+        output_format = "EXR"
     cmd = ["{}".format(cmd_file), "-b", "{}".format(scene_file), "-P", "{}".format(script_file),
-           "-o", "{}\{}{}".format(output_files, outfilebasename, start_task), "-E", "{}".format(engine), "-F", "EXR",
+           "-o", "{}\{}{}".format(output_files, outfilebasename, start_task), "-E", "{}".format(engine), "-F", str(output_format).upper(),
            "-f", "{}".format(frame)]
     return cmd
 
 
-def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames):
+def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames, output_format):
 
     output_files = tmp_path
     remove_old_files()
@@ -98,7 +107,7 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine
 
     for frame in frames:
         cmd = format_blender_render_cmd(cmd_file, output_files, outfilebasename, scene_file, script_file.name,
-                                        start_task, engine, frame)
+                                        start_task, engine, frame, output_format)
         print cmd
         exec_cmd(cmd, output_files, outfilebasename + str(start_task) + "_" + str(frame))
 
@@ -107,4 +116,4 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task, engine
     return return_files(get_files())
 
 
-output = run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames)
+output = run_blender_task(outfilebasename, scene_file, script_src, start_task, engine, frames, output_format)
