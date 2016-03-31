@@ -253,9 +253,6 @@ class Client:
 
     # TRANSACTION SYSTEM OPERATIONS
 
-    def task_reward_payment_failure(self, task_id, price):
-        return self.transaction_system.task_reward_payment_failure(task_id, price)
-
     def pay_for_task(self, task_id, payments):
         self.transaction_system.pay_for_task(task_id, payments)
 

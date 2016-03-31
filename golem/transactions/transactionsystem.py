@@ -20,17 +20,6 @@ class TransactionSystem(object):
         self.incomes_keeper = incomes_keeper_class()  # Keeps information about received payments
         self.budget = 10000  # TODO Add method that set proper budget value
 
-    # TODO Powinno dzialac tez dla subtask id
-    # Price tu chyba nie potrzebne tylko powinno byc pobierane z payment keepera
-    def task_reward_payment_failure(self, task_id, price):
-        """ Inform payment keeper about payment failure. If it keeps information about payments for this subtask it
-        should be removed. Specific amount should also return to the budget.
-        :param task_id: payment for task with this id has failed
-        :param int price:
-        """
-        self.budget += price
-        self.payments_keeper.payment_failure(task_id)
-
     def get_income(self, addr_info, value):
         """ Increase information about budget with reward
         :param str addr_info: return information about address of a node that send this payment

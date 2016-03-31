@@ -1,9 +1,6 @@
 import logging
 from datetime import datetime
 
-from collections import deque
-from peewee import IntegrityError
-
 from golem.model import Payment, db
 
 logger = logging.getLogger(__name__)
@@ -71,25 +68,7 @@ class PaymentsKeeper(object):
 
     def __init__(self):
         """ Create new payments keeper instance"""
-        # be waiting for last subtask value estimation
-        self.tasks_to_pay = deque()  # finished tasks with payments have been processed but haven't been send yet
-        self.settled_tasks = {}  # finished tasks with payments that has been pass to task server
         self.db = PaymentsDatabase()
-
-    #   self.load_from_database()
-
-    def payment_failure(self, task_id):
-        """ React to the fact that payment operation for task with given id failed. Remove given task form list of
-        settled tasks
-        :param task_id: payment for this task failed
-        """
-        task = self.settled_tasks.get(task_id)
-        if task is None:
-            logger.error("Unknown payment for task {}".format(task_id))
-            return
-        self.db.change_state(task_id, PaymentState.waiting_to_be_paid)
-        self.tasks_to_pay.append(task)
-        del self.settled_tasks[task_id]
 
     def get_list_of_all_payments(self):
         # FIXME: Used only in tests!
@@ -99,11 +78,7 @@ class PaymentsKeeper(object):
         """ Add new information about finished subtask
         :param PaymentInfo payment_info: full information about payment for given subtask
         """
-        task = TaskPaymentInfo(payment_info.task_id)
         self.db.add_payment(payment_info)
-        task.subtasks[payment_info.subtask_id] = SubtaskPaymentInfo(payment_info.value, payment_info.computer)
-        task.value += payment_info.value
-        self.tasks_to_pay.append(task)
 
     def load_from_database(self):
         return [{"subtask": payment.subtask,
@@ -111,24 +86,6 @@ class PaymentsKeeper(object):
                  "value": payment.value,
                  "state": payment.state} for
                 payment in self.db.get_newest_payment()]
-
-    @staticmethod
-    def __get_nodes_grouping(subtasks):
-        nodes = {}
-        for subtask in subtasks.itervalues():
-            if subtask.computer.key_id in nodes:
-                nodes[subtask.computer.key_id] += subtask.value
-            else:
-                nodes[subtask.computer.key_id] = subtask.value
-        return nodes
-
-    def __change_nodes_to_payment_info(self, values, name):
-        payments = []
-        for task in values:
-            nodes = self.__get_nodes_grouping(task.subtasks)
-            for node_id, value in nodes.iteritems():
-                payments.append({"task": task.task_id, "node": node_id, "value": value, "state": name})
-        return payments
 
 
 class PaymentState(object):
@@ -142,21 +99,6 @@ class PaymentInfo(object):
     def __init__(self, task_id, subtask_id, value, computer):
         self.task_id = task_id
         self.subtask_id = subtask_id
-        self.value = value
-        self.computer = computer
-
-
-class TaskPaymentInfo(object):
-    """ Information about reward for task """
-    def __init__(self, task_id):
-        self.task_id = task_id
-        self.subtasks = {}
-        self.value = 0
-
-
-class SubtaskPaymentInfo(object):
-    """ Information about reward for subtask """
-    def __init__(self, value, computer):
         self.value = value
         self.computer = computer
 
