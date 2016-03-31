@@ -24,7 +24,7 @@ class TestEthereumPaymentsKeeper(TestWithDatabase):
 
         pi = PaymentInfo("x-y-z", "xx-yy-zz", 19.26, ai)
 
-        pi2 = PaymentInfo("a-b-c", "xx-yy-zz", 10.14, ai)
+        pi2 = PaymentInfo("a-b-c", "xx-yy-abc", 10.14, ai)
         e.finished_subtasks(pi)
         e.finished_subtasks(pi2)
 
@@ -32,7 +32,7 @@ class TestEthereumPaymentsKeeper(TestWithDatabase):
 
         e.finished_subtasks(pi)
         pi.computer = ai2
-        pi.subtask_id = 'subtask3'
+        pi.subtask_id = 'subtask1'
         e.finished_subtasks(pi)
 
         pi2.computer = ai2

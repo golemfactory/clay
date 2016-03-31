@@ -62,15 +62,11 @@ class BaseModel(Model):
 class Payment(BaseModel):
     """ Represents payments that nodes on this machine make to other nodes
     """
-    to_node_id = CharField()
-    task = CharField()
-    val = IntegerField()
-    state = CharField()
-    details = CharField(default="")
-
-    class Meta:
-        database = db
-        primary_key = CompositeKey('to_node_id', 'task')
+    subtask = CharField(primary_key=True)
+    state = CharField(index=True)
+    payee = CharField()
+    value = IntegerField()
+    details = CharField(null=True)
 
 
 class ReceivedPayment(BaseModel):

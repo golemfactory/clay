@@ -38,12 +38,12 @@ class TestPayment(TestWithDatabase):
         self.assertGreaterEqual(datetime.now(), p.modified_date)
 
     def test_create(self):
-        p = Payment(to_node_id="DEF", task="xyz", val=5, state="SOMESTATE")
+        p = Payment(payee="DEF", subtask="xyz", value=5, state="SOMESTATE")
         self.assertEquals(p.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
-            Payment.create(to_node_id="DEF", task="xyz", val=5, state="SOMESTATEX")
-        Payment.create(to_node_id="DEF", task="xyz2", val=4, state="SOMESTATEX")
-        Payment.create(to_node_id="DEF2", task="xyz", val=5, state="SOMESTATEX")
+            Payment.create(payee="DEF", subtask="xyz", value=5, state="SOMESTATEX")
+        Payment.create(payee="DEF", subtask="xyz2", value=4, state="SOMESTATEX")
+        Payment.create(payee="DEF2", subtask="xyz4", value=5, state="SOMESTATEX")
 
         self.assertEqual(3, len([payment for payment in Payment.select()]))
 

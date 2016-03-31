@@ -20,34 +20,29 @@ class PaymentsDatabase(object):
         :return int: value of a previous similiar payment or 0 if there is no such payment in database
         """
         try:
-            return Payment.select(Payment.val).where(self.__same_transaction(payment_info)).get().val
+            return Payment.get(Payment.subtask == payment_info.subtask_id).value
         except Payment.DoesNotExist:
             logger.warning("Can't get payment value - payment does not exist")
             return 0
 
     def add_payment(self, payment_info):
-        """ Add new payment to the database. If the payment already existed than add new payment value
-        to the old value.
+        """ Add new payment to the database.
         :param payment_info:
         """
-        try:
-            with db.transaction():
-                Payment.create(to_node_id=payment_info.computer.key_id,
-                               task=payment_info.task_id,
-                               val=payment_info.value,
-                               state=PaymentState.waiting_to_be_paid)
-        except IntegrityError:
-            query = Payment.update(val=payment_info.value + Payment.val, modified_date=str(datetime.now()))
-            query.where(self.__same_transaction(payment_info)).execute()
+        with db.transaction():
+            Payment.create(subtask=payment_info.subtask_id,
+                           state=PaymentState.waiting_to_be_paid,
+                           payee=payment_info.computer.key_id,
+                           value=payment_info.value)
 
-    def change_state(self, task_id, state):
+    def change_state(self, subtask_id, state):
         """ Change state for all payments for task_id
         :param str task_id: change state of all payments that should be done for computing this task
         :param state: new state
         :return:
         """
         query = Payment.update(state=state, modified_date=str(datetime.now()))
-        query = query.where(Payment.task == task_id)
+        query = query.where(Payment.subtask == subtask_id)
         query.execute()
 
     def get_state(self, payment_info):
@@ -55,10 +50,10 @@ class PaymentsDatabase(object):
         :return str|None: return state of payment or none if such payment don't exist in database
         """
         try:
-            return Payment.select().where(self.__same_transaction(payment_info)).get().state
+            return Payment.get(Payment.subtask == payment_info.subtask_id).state
         except Payment.DoesNotExist:
-            logger.warning("Payment for task {} to node {} does not exist".format(payment_info.task_id,
-                                                                                  payment_info.computer.key_id))
+            logger.warning("Payment for subtask {} to node {} does not exist"
+                           .format(payment_info.subtask_id, payment_info.computer.key_id))
             return None
 
     @staticmethod
@@ -69,10 +64,6 @@ class PaymentsDatabase(object):
         """
         query = Payment.select().order_by(Payment.modified_date.desc()).limit(num)
         return query.execute()
-
-    @staticmethod
-    def __same_transaction(payment_info):
-        return (Payment.task == payment_info.task_id) & (Payment.to_node_id == payment_info.computer.key_id)
 
 
 class PaymentsKeeper(object):
@@ -101,6 +92,7 @@ class PaymentsKeeper(object):
         del self.settled_tasks[task_id]
 
     def get_list_of_all_payments(self):
+        # FIXME: Used only in tests!
         return self.load_from_database()
 
     def finished_subtasks(self, payment_info):
@@ -114,7 +106,10 @@ class PaymentsKeeper(object):
         self.tasks_to_pay.append(task)
 
     def load_from_database(self):
-        return [{"task": payment.task, "node": payment.to_node_id, "value": payment.val, "state": payment.state} for
+        return [{"subtask": payment.subtask,
+                 "payee": payment.payee,
+                 "value": payment.value,
+                 "state": payment.state} for
                 payment in self.db.get_newest_payment()]
 
     @staticmethod

@@ -1,6 +1,6 @@
 import unittest
-
 from copy import deepcopy
+from peewee import IntegrityError
 
 from golem.network.p2p.node import Node
 from golem.core.keysauth import EllipticalKeysAuth
@@ -28,49 +28,50 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         pd.add_payment(pi)
         self.assertEquals(20, pd.get_payment_value(pi))
         pi = PaymentInfo("xyz", "aabbcc", 10, ai)
-        self.assertEquals(20, pd.get_payment_value(pi))
-        pi2 = PaymentInfo("zzz", "xxyyzz", "14", ai)
+        self.assertEquals(0, pd.get_payment_value(pi))
+        pi2 = PaymentInfo("zzz", "xxyyxx", "14", ai)
         pd.add_payment(pi2)
         self.assertEquals(14, pd.get_payment_value(pi2))
-        self.assertEquals(20, pd.get_payment_value(pi))
+        self.assertEquals(0, pd.get_payment_value(pi))
 
         # test add_payment
         pd.add_payment(pi)
-        self.assertEquals(30., pd.get_payment_value(pi))
-        pd.add_payment(pi)
-        self.assertEquals(40, pd.get_payment_value(pi))
-        pi.task_id = "bbb"
+        self.assertEquals(pi.value, pd.get_payment_value(pi))
+        self.assertRaises(IntegrityError, lambda: pd.add_payment(pi))
+        self.assertEquals(pi.value, pd.get_payment_value(pi))
+        pi.subtask_id = "bbb"
         pd.add_payment(pi)
         self.assertEquals(10, pd.get_payment_value(pi))
-        pi.task_id = "xyz"
-        self.assertEquals(40, pd.get_payment_value(pi))
+        pi.subtask_id = "xyz"
+        self.assertEquals(0, pd.get_payment_value(pi))
 
         # test change state
         pi3 = deepcopy(pi)
-        pi3.task_id = "bbb"
+        pi3.subtask_id = "bbbxxx"
         pi4 = deepcopy(pi)
         pi4.computer.key_id = "GHI"
+        pi4.subtask_id = "ghighi"
         with self.assertLogs(logger, level=1) as l:
             self.assertIsNone(pd.get_state(pi4))
         pd.add_payment(pi3)
         pd.add_payment(pi4)
         self.assertTrue(any(["not exist" in log for log in l.output]))
-        self.assertEquals(pd.get_state(pi), PaymentState.waiting_to_be_paid)
+        self.assertEquals(pd.get_state(pi), None)
         self.assertEquals(pd.get_state(pi2), PaymentState.waiting_to_be_paid)
         self.assertEquals(pd.get_state(pi3), PaymentState.waiting_to_be_paid)
         self.assertEquals(pd.get_state(pi4), PaymentState.waiting_to_be_paid)
-        pd.change_state(pi.task_id, "XXXXX31")
-        self.assertEquals(pd.get_state(pi), "XXXXX31")
+        pd.change_state(pi4.subtask_id, "XXXXX31")
+        self.assertEquals(pd.get_state(pi), None)
         self.assertEquals(pd.get_state(pi2), PaymentState.waiting_to_be_paid)
         self.assertEquals(pd.get_state(pi3), PaymentState.waiting_to_be_paid)
         self.assertEquals(pd.get_state(pi4), "XXXXX31")
-        pd.change_state(pi.task_id, PaymentState.waiting_to_be_paid)
-        self.assertEquals(pd.get_state(pi), PaymentState.waiting_to_be_paid)
+        pd.change_state(pi4.subtask_id, PaymentState.waiting_to_be_paid)
+        self.assertEquals(pd.get_state(pi), None)
         self.assertEquals(pd.get_state(pi2), PaymentState.waiting_to_be_paid)
         self.assertEquals(pd.get_state(pi3), PaymentState.waiting_to_be_paid)
         self.assertEquals(pd.get_state(pi4), PaymentState.waiting_to_be_paid)
-        pd.change_state(pi2.task_id, PaymentState.settled)
-        self.assertEquals(pd.get_state(pi), PaymentState.waiting_to_be_paid)
+        pd.change_state(pi2.subtask_id, PaymentState.settled)
+        self.assertEquals(pd.get_state(pi), None)
         self.assertEquals(pd.get_state(pi2), PaymentState.settled)
         self.assertEquals(pd.get_state(pi3), PaymentState.waiting_to_be_paid)
         self.assertEquals(pd.get_state(pi3), PaymentState.waiting_to_be_paid)
@@ -78,25 +79,25 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         # test newest payments
         res = [p for p in pd.get_newest_payment(2)]
         self.assertEqual(len(res), 2)
-        self.assertEqual(res[0].task, pi2.task_id)
-        self.assertEqual(res[0].to_node_id, pi2.computer.key_id)
-        self.assertEqual(res[1].task, pi.task_id)
+        self.assertEqual(res[0].subtask, pi2.subtask_id)
+        self.assertEqual(res[0].payee, pi2.computer.key_id)
+        self.assertEqual(res[1].subtask, pi4.subtask_id)
 
         for i in range(10, 0, -1):
-            pi.task_id = "xyz{}".format(i)
+            pi.subtask_id = "xyz{}".format(i)
             pd.add_payment(pi)
         res = [p for p in pd.get_newest_payment(3)]
         self.assertEqual(len(res), 3)
-        self.assertEqual(res[0].task, "xyz1")
-        self.assertEqual(res[1].task, "xyz2")
-        self.assertEqual(res[2].task, "xyz3")
+        self.assertEqual(res[0].subtask, "xyz1")
+        self.assertEqual(res[1].subtask, "xyz2")
+        self.assertEqual(res[2].subtask, "xyz3")
         for i in range(11, 20):
-            pi.task_id = "xyz{}".format(i)
+            pi.subtask_id = "xyz{}".format(i)
             pd.add_payment(pi)
         res = [p for p in pd.get_newest_payment(3)]
-        self.assertEqual(res[0].task, "xyz19")
-        self.assertEqual(res[1].task, "xyz18")
-        self.assertEqual(res[2].task, "xyz17")
+        self.assertEqual(res[0].subtask, "xyz19")
+        self.assertEqual(res[1].subtask, "xyz18")
+        self.assertEqual(res[2].subtask, "xyz17")
 
 
 class TestPaymentsKeeper(TestWithDatabase):
@@ -112,54 +113,33 @@ class TestPaymentsKeeper(TestWithDatabase):
         pi.subtask_id = "aabbcc"
         pk.finished_subtasks(pi)
         pi2 = deepcopy(pi)
-        pi2.task_id = "xxx"
+        pi2.subtask_id = "xxxyyy"
         pk.finished_subtasks(pi2)
         pi3 = deepcopy(pi)
         pi3.value = 10
         pi3.computer.key_id = "GHI"
+        pi3.subtask_id = "zzzzzz"
         pk.finished_subtasks(pi3)
-        pi3.subtask_id = "xxxxxxx"
+        pi3.subtask_id = "xxxxxx"
         pk.finished_subtasks(pi3)
         all_payments = pk.get_list_of_all_payments()
-        self.assertEqual(len(all_payments), 3)
-        self.assertEqual(all_payments[0]["task"], "xyz")
-        self.assertEqual(all_payments[0]["node"], "GHI")
-        self.assertEqual(all_payments[0]["value"], 20)
+        self.assertEqual(len(all_payments), 5)
+        self.assertEqual(all_payments[0]["subtask"], "xxxxxx")
+        self.assertEqual(all_payments[0]["payee"], "GHI")
+        self.assertEqual(all_payments[0]["value"], 10)
         self.assertEqual(all_payments[0]["state"], PaymentState.waiting_to_be_paid)
-        self.assertEqual(all_payments[1]["task"], "xxx")
-        self.assertEqual(all_payments[1]["node"], "DEF")
-        self.assertEqual(all_payments[1]["value"], 20)
+        self.assertEqual(all_payments[1]["subtask"], "zzzzzz")
+        self.assertEqual(all_payments[1]["payee"], "GHI")
+        self.assertEqual(all_payments[1]["value"], 10)
         self.assertEqual(all_payments[1]["state"], PaymentState.waiting_to_be_paid)
-        self.assertEqual(all_payments[2]["task"], "xyz")
-        self.assertEqual(all_payments[2]["node"], "DEF")
-        self.assertEqual(all_payments[2]["value"], 40)
+        self.assertEqual(all_payments[2]["subtask"], "xxxyyy")
+        self.assertEqual(all_payments[2]["payee"], "DEF")
+        self.assertEqual(all_payments[2]["value"], 20)
         self.assertEqual(all_payments[2]["state"], PaymentState.waiting_to_be_paid)
+        pi3.subtask_id = "whaooa!"
         pk.finished_subtasks(pi3)
         all_payments = pk.get_list_of_all_payments()
-        self.assertEqual(len(all_payments), 3)
-
-        xyz_called = False
-        for payment in all_payments:
-            if payment["task"] == "xyz":
-                # FIXME: Fix the Payment states later
-                self.assertEqual(payment["state"], PaymentState.waiting_to_be_paid)
-                xyz_called = True
-            else:
-                self.assertEqual(payment["state"], PaymentState.waiting_to_be_paid)
-        self.assertTrue(xyz_called)
-
-        pk.payment_failure("xyz")
-        all_payments = pk.get_list_of_all_payments()
-        self.assertEqual(len(all_payments), 3)
-        xyz_called = False
-        for payment in all_payments:
-            if payment["task"] == "xyz":
-                # FIXME: Fix the Payment states later
-                self.assertEqual(payment["state"], PaymentState.waiting_to_be_paid)
-                xyz_called = True
-            else:
-                self.assertEqual(payment["state"], PaymentState.waiting_to_be_paid)
-        self.assertTrue(xyz_called)
+        self.assertEqual(len(all_payments), 6)
 
 
 class TestAccountInfo(unittest.TestCase):
