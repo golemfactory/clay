@@ -8,13 +8,7 @@ DATABASE_NAME = os.path.join(appdirs.user_data_dir('golem'), 'golem.db')
 NEUTRAL_TRUST = 0.0
 
 
-class SqliteFKTimeoutDatabase(SqliteDatabase):
-    def initialize_connection(self, conn):
-        self.execute_sql('PRAGMA foreign_keys = ON')
-        self.execute_sql('PRAGMA busy_timeout = 30000')
-
-
-db = SqliteFKTimeoutDatabase(None, threadlocals=True)
+db = SqliteDatabase(None, threadlocals=True, pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
 
 
 class Database:
