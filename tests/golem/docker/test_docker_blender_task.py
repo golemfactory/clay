@@ -151,7 +151,7 @@ class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
         task = self._create_test_task()
         image = task.header.docker_images[0]
         task.header.docker_images = [
-            DockerImage(image.repository, id = "%$#@!!!")]
+            DockerImage(image.repository, image_id= "%$#@!!!")]
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         if task_thread:
             self.assertIsNone(task_thread.result)

@@ -5,6 +5,7 @@ import requests
 
 from golem.docker.job import DockerJob
 from golem.task.taskthread import TaskThread
+from golem.vm.memorychecker import MemoryChecker
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class DockerTaskThread(TaskThread):
 
     def __init__(self, task_computer, subtask_id, docker_images,
                  orig_script_dir, src_code, extra_data, short_desc,
-                 res_path, tmp_path, timeout):
+                 res_path, tmp_path, timeout, check_mem=False):
         super(DockerTaskThread, self).__init__(
             task_computer, subtask_id, orig_script_dir, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
@@ -31,6 +32,7 @@ class DockerTaskThread(TaskThread):
                 self.image = img
                 break
         self.job = None
+        self.check_mem = check_mem
 
     def _fail(self, error_obj):
         logger.error("Task computing error: {}".format(error_obj))
@@ -52,6 +54,9 @@ class DockerTaskThread(TaskThread):
             with DockerJob(self.image, self.src_code, self.extra_data,
                            self.res_path, work_dir, output_dir) as job:
                 self.job = job
+                if self.check_mem:
+                    mc = MemoryChecker()
+                    mc.start()
                 self.job.start()
                 if self.use_timeout:
                     exit_code = self.job.wait(self.task_timeout)
@@ -71,6 +76,9 @@ class DockerTaskThread(TaskThread):
                                  for f in os.listdir(output_dir)]
                     out_files = filter(lambda f: os.path.isfile(f), out_files)
                     self.result = {"data": out_files, "result_type": 1}
+                    if self.check_mem:
+                        estm_mem = mc.stop()
+                        self.result = (self.result, estm_mem)
                     self.task_computer.task_computed(self)
                 else:
                     self._fail("Subtask computation failed " +

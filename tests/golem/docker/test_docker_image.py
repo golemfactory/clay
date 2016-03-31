@@ -59,31 +59,31 @@ class TestDockerImage(DockerTestCase):
         self.assertFalse(nimg.is_available())
 
     def test_is_available_by_repo_and_tag(self):
-        img = DockerImage(self.TEST_REPOSITORY, tag = self.TEST_TAG)
+        img = DockerImage(self.TEST_REPOSITORY, tag=self.TEST_TAG)
         self.assertTrue(img.is_available())
         self._is_test_image(img)
 
-        nimg = DockerImage(self.TEST_REPOSITORY, tag = "bogus")
+        nimg = DockerImage(self.TEST_REPOSITORY, tag="bogus")
         self.assertFalse(nimg.is_available())
 
     def test_is_available_by_id(self):
-        img = DockerImage(self.TEST_REPOSITORY, id = self.TEST_IMAGE_ID)
+        img = DockerImage(self.TEST_REPOSITORY, image_id=self.TEST_IMAGE_ID)
         self.assertTrue(img.is_available)
         self._is_test_image(img)
 
-        nimg = DockerImage(self.TEST_REPOSITORY, id = "deadface")
+        nimg = DockerImage(self.TEST_REPOSITORY, image_id="deadface")
         self.assertFalse(nimg.is_available())
 
     def test_is_available_by_id_and_tag(self):
-        img = DockerImage(self.TEST_REPOSITORY, tag = self.TEST_TAG,
-                          id = self.TEST_IMAGE_ID)
+        img = DockerImage(self.TEST_REPOSITORY, tag=self.TEST_TAG,
+                          image_id=self.TEST_IMAGE_ID)
         self.assertTrue(img.is_available())
 
         nimg = DockerImage(self.TEST_REPOSITORY, tag = "bogus",
-                           id = self.TEST_IMAGE_ID)
+                           image_id=self.TEST_IMAGE_ID)
         self.assertFalse(nimg.is_available())
 
-        nimg2 = DockerImage(self.TEST_REPOSITORY, tag = self.TEST_TAG,
-                           id = "deadface")
+        nimg2 = DockerImage(self.TEST_REPOSITORY, tag=self.TEST_TAG,
+                            image_id="deadface")
         self.assertFalse(nimg2.is_available())
 
