@@ -31,7 +31,7 @@ class Client(EthereumRpcClient):
             assert not Client.__client_rpc_port
             program = find_program('geth')
             assert program  # TODO: Replace with a nice exception
-            rpcport = find_free_net_port(9001)
+            rpcport = find_free_net_port()
             # Data dir must be set the class user to allow multiple nodes running
             if not datadir:
                 datadir = path.join(appdirs.user_data_dir('golem'), 'ethereum9')

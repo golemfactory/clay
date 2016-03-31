@@ -1,9 +1,8 @@
-import psutil
+import socket
 
 
-def find_free_net_port(start_port):
-    """Finds first free port on host starting from given one"""
-    open_ports = set(c.laddr[1] for c in psutil.net_connections())
-    while start_port in open_ports:
-        start_port += 1
-    return start_port
+def find_free_net_port():
+    """Finds a free port on the host"""
+    s = socket.socket()
+    s.bind(('', 0))            # Bind to a free port provided by the host.
+    return s.getsockname()[1]  # Return the port assigned.
