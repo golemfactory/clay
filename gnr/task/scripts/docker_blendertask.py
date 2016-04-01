@@ -24,7 +24,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-P", "{}".format(script_file),
         "-o", "{}/{}{}".format(OUTPUT_DIR, outfilebasename, start_task),
         "-E", "{}".format(engine),
-        "-F",  str(output_format).upper(),
+        "-F", "{}".format(output_format.upper()),
         "-f", "{}".format(frame)
     ]
     return cmd

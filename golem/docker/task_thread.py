@@ -68,6 +68,8 @@ class DockerTaskThread(TaskThread):
                 stderr_file = os.path.join(output_dir, self.STDERR_FILE)
                 self.job.dump_logs(stdout_file, stderr_file)
 
+                if self.check_mem:
+                    estm_mem = mc.stop()
                 if exit_code == 0:
                     # TODO: this always returns file, implement returning data
                     # TODO: this only collects top-level files, what if there
@@ -77,7 +79,6 @@ class DockerTaskThread(TaskThread):
                     out_files = filter(lambda f: os.path.isfile(f), out_files)
                     self.result = {"data": out_files, "result_type": 1}
                     if self.check_mem:
-                        estm_mem = mc.stop()
                         self.result = (self.result, estm_mem)
                     self.task_computer.task_computed(self)
                 else:
