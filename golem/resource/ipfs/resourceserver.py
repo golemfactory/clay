@@ -58,8 +58,8 @@ class IPFSResourceServer:
             ipfs_id = self.resource_manager.id()
             logger.debug("IPFS: id %r" % ipfs_id)
         except Exception as e:
-            raise EnvironmentError("IPFS daemon is not running "
-                                   "or is not properly configured: %s" % e.message)
+            logger.error("IPFS: daemon is not running "
+                         "or is not properly configured: %s" % e.message)
 
     def set_resource_peers(self, *args, **kwargs):
         pass
@@ -82,8 +82,8 @@ class IPFSResourceServer:
         with self.lock:
             for filename, multihash in files:
                 if not self.resource_manager.check_resource(filename, task_id):
-                    num += 1
-                    self.add_resource_to_get(filename, multihash, task_id)
+                    if self.add_resource_to_get(filename, multihash, task_id):
+                        num += 1
 
             if num > 0:
                 self.waiting_tasks_to_compute[task_id] = num
@@ -93,14 +93,15 @@ class IPFSResourceServer:
     def add_resource_to_get(self, filename, multihash, task_id):
         resource = [filename, multihash, task_id, IPFSTransferStatus.idle]
 
-        if filename not in self.waiting_resources:
+        if multihash not in self.waiting_resources:
             self.waiting_resources[multihash] = []
 
-        if task_id in self.waiting_resources[multihash]:
-            return
+        if task_id not in self.waiting_resources[multihash]:
+            self.waiting_resources[multihash].append(task_id)
+            self.resources_to_get.append(resource)
+            return True
 
-        self.waiting_resources[multihash].append(task_id)
-        self.resources_to_get.append(resource)
+        return False
 
     def get_resources(self, async=True):
         with self.lock if async else self.dummy_lock:
@@ -115,7 +116,7 @@ class IPFSResourceServer:
         multihash = resource[1]
         task_id = resource[2]
 
-        logger.debug("IPFS: Resource %s (%s) requested [%r]" % (filename, multihash, time.time() * 1000))
+        logger.debug("[IPFS]:pull:%s:%r" % (multihash, time.time() * 1000))
 
         self.resource_manager.pull_resource(filename,
                                             multihash,
@@ -125,13 +126,11 @@ class IPFSResourceServer:
                                             async=async)
 
     def resource_downloaded(self, filename, multihash, *args):
-
         if not multihash:
             self.resource_download_error(multihash)
             return
 
         with self.lock:
-
             for task_id in self.waiting_resources.get(multihash, []):
                 self.waiting_tasks_to_compute[task_id] -= 1
                 if self.waiting_tasks_to_compute[task_id] <= 0:

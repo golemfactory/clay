@@ -85,7 +85,7 @@ def build_blender_renderer_info(dialog, customizer):
 
     renderer = RendererInfo("Blender", defaults, BlenderRenderTaskBuilder, dialog,
                             customizer, BlenderRendererOptions)
-    renderer.output_formats = ["PNG", "TGA", "EXR"]
+    renderer.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
     renderer.scene_file_ext = ["blend"]
     renderer.get_task_num_from_pixels = get_task_num_from_pixels
     renderer.get_task_boarder = get_task_boarder
@@ -108,6 +108,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     """
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
+
         blender_task = BlenderRenderTask(self.node_name,
                                          self.task_definition.task_id,
                                          main_scene_dir,
@@ -127,7 +128,8 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.use_frames,
                                          self.task_definition.renderer_options.frames,
                                          self.task_definition.max_price,
-                                         self.task_definition.renderer_options.engine
+                                         self.task_definition.renderer_options.engine,
+                                         docker_images=self.task_definition.docker_images,
                                         )
         return self._set_verification_options(blender_task)
 
@@ -138,6 +140,9 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
             box_y = max(new_task.verification_options.box_size[1], 8)
             new_task.box_size = (box_x, box_y)
         return new_task
+
+
+DEFAULT_BLENDER_DOCKER_IMAGE = "golem/blender:latest"
 
 
 class BlenderRenderTask(FrameRenderingTask):
@@ -169,13 +174,14 @@ class BlenderRenderTask(FrameRenderingTask):
                  engine,
                  return_address="",
                  return_port=0,
-                 key_id=""):
+                 key_id="",
+                 docker_images=None):
 
         FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                     BlenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                     main_program_file, task_resources, main_scene_dir, main_scene_file,
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                                    root_path, estimated_memory, use_frames, frames, max_price)
+                                    root_path, estimated_memory, use_frames, frames, max_price, docker_images)
 
         crop_task = find_task_script("blendercrop.py")
         try:
@@ -238,6 +244,7 @@ class BlenderRenderTask(FrameRenderingTask):
                       "script_src": script_src,
                       "engine": self.engine,
                       "frames": frames,
+                      "output_format": self.output_format
                       }
 
         hash = "{}".format(random.getrandbits(128))
@@ -283,7 +290,8 @@ class BlenderRenderTask(FrameRenderingTask):
                       "scene_file": scene_file,
                       "script_src": script_src,
                       "engine": self.engine,
-                      "frames": frames
+                      "frames": frames,
+                      "output_format": self.output_format
                       }
 
         hash = "{}".format(random.getrandbits(128))
@@ -352,6 +360,7 @@ class BlenderRenderTask(FrameRenderingTask):
         min_y = max(float(self.res_y - start_y - self.verification_options.box_size[1] - 1) / self.res_y, 0.0)
         script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, min_x, max_x, min_y, max_y)
         extra_data['script_src'] = script_src
+        extra_data['output_format'] = self.output_format
         return extra_data, (0, 0)
 
     def __get_frame_num_from_output_file(self, file_):

@@ -17,7 +17,7 @@ class TestResourcesManager(TestDirFixture):
         self.dir_manager = DirManager(self.path, self.node_name)
         self.target_resources = [
             'test_file',
-            'test_dir/dir_file'
+            os.path.join('test_dir', 'dir_file')
         ]
         self.split_resources = [
             ['test_file'],
@@ -121,7 +121,7 @@ class TestResourcesManager(TestDirFixture):
         self.assertTrue(len(rsl) == len(self.split_resources))
 
         for elem in rsl:
-            self.assertTrue(elem[0] in split_res)
+            assert elem[0] in split_res
 
     def testJoinSplitResources(self):
         rm = IPFSResourceManager(self.dir_manager, self.node_name)

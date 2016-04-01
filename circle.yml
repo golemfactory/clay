@@ -1,3 +1,7 @@
+machine:
+  services:
+    - docker
+
 checkout:
   post:
     - git submodule update --init
@@ -10,6 +14,9 @@ dependencies:
     - /usr/local/bin/ipfs daemon:
         background: true
     - sudo add-apt-repository -y ppa:ethereum/ethereum && sudo apt-get update && sudo apt-get install geth
+    - geth --nodiscover --maxpeers 0 --exec "miner.makeDAG(0)" console
+  cache_directories:
+    - ~/.ethash
 
 test:
   pre:

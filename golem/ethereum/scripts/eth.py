@@ -8,10 +8,11 @@ import click
 import gevent
 from ethereum import keys, abi
 from ethereum.transactions import Transaction
-from ethereum.utils import normalize_address, denoms, int_to_big_endian
+from ethereum.utils import normalize_address, denoms, int_to_big_endian, zpad
 
 from golem.ethereum import Client
 from golem.ethereum.contracts import BankOfDeposit
+from golem.ethereum.node import Faucet
 
 
 class SimpleAccount:
@@ -27,11 +28,7 @@ class SimpleAccount:
         self.address = keys.privtoaddr(self.priv)
 
 
-FAUCET_PRIVKEY = "{:32}".format("Golem Faucet")
-assert len(FAUCET_PRIVKEY) == 32
-FAUCET_PUBKEY = "f1fbbeff7e9777a3a930f1e55a5486476845f799f7d603f71be7b00898df98f2dc2e81b854d2c774c3d266f1fa105d130d4a43bc58e700155c4565726ae6804e"  # noqa
-FAUCET_ADDR = keys.privtoaddr(FAUCET_PRIVKEY)
-SERVER_ENODE = "enode://" + FAUCET_PUBKEY + "@golemproject.org:30900"
+SERVER_ENODE = "enode://" + Faucet.PUBKEY.encode('hex') + "@golemproject.org:30900"
 BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
 
 
@@ -85,10 +82,8 @@ def direct(o, recipient, value):
 def encode_payment(to, value):
     value = long(value)
     assert value < 2**96
-    value = int_to_big_endian(value)
+    value = zpad(int_to_big_endian(value), 12)
     assert type(value) is str
-    if len(value) < 12:
-        value = '\0' * (12 - len(value)) + value
     assert len(value) == 12
     to = normalize_address(to)
     assert len(to) == 20
@@ -144,12 +139,12 @@ def history(o):
 @app.group()
 @click.pass_obj
 def faucet(o):
-    nonce = o.eth.get_transaction_count(FAUCET_ADDR.encode('hex'))
+    nonce = o.eth.get_transaction_count(Faucet.ADDR.encode('hex'))
     print "NONCE", nonce
     if nonce == 0:  # Deploy Bank of Deposit contract
         tx = Transaction(nonce, 1, 3141592, to='', value=0,
                          data=BankOfDeposit.INIT_HEX.decode('hex'))
-        tx.sign(FAUCET_PRIVKEY)
+        tx.sign(Faucet.PRIVKEY)
         o.eth.send(tx)
         addr = tx.creates
         assert addr == "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
@@ -159,7 +154,7 @@ def faucet(o):
 @faucet.command('balance')
 @click.pass_obj
 def faucet_balance(o):
-    print o.eth.get_balance(FAUCET_ADDR.encode('hex'))
+    print o.eth.get_balance(Faucet.ADDR.encode('hex'))
 
 
 @faucet.command('send')
@@ -168,10 +163,10 @@ def faucet_balance(o):
 @click.argument('value', default=1)
 def faucet_send(o, to, value):
     value = int(value * denoms.ether)
-    nonce = o.eth.get_transaction_count(FAUCET_ADDR.encode('hex'))
+    nonce = o.eth.get_transaction_count(Faucet.ADDR.encode('hex'))
     to = normalize_address(to)
     tx = Transaction(nonce, 1, 21000, to, value, '')
-    tx.sign(FAUCET_PRIVKEY)
+    tx.sign(Faucet.PRIVKEY)
     r = o.eth.send(tx)
     print "Transaction sent:", r
     gevent.sleep(10)
