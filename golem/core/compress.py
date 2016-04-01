@@ -42,14 +42,3 @@ def decompress(data):
     :return str: string containing uncompressed data
     """
     return zlib.decompress(data)
-
-if __name__ == "__main__":
-    def main():
-        c = compress("12334231234434123452341234")
-        with open("tezt.gz", "wb") as f:
-            f.write(c)
-        print c 
-        d = decompress(c)
-        print d
-
-    main()
