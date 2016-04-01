@@ -4,7 +4,7 @@ from PyQt4 import QtCore
 from renderercustomizer import RendererCustomizer
 from golem.environments.environment import Environment
 
-from gnr.renderingenvironment import LuxRenderEnvironment
+from gnr.docker_environments import LuxRenderEnvironment
 
 logger = logging.getLogger(__name__)
 

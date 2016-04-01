@@ -119,11 +119,11 @@ class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
         self.assertEqual(result["result_type"], result_types["files"])
         self.assertGreaterEqual(len(result["data"]), 3)
         self.assertTrue(
-            any(f == DockerTaskThread.STDOUT_FILE) for f in result["data"])
+            any(path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"]))
         self.assertTrue(
-            any(f == DockerTaskThread.STDERR_FILE) for f in result["data"])
+            any(path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"]))
         self.assertTrue(
-            any(f.endswith(".exr") for f in result["data"]))
+            any(f.endswith(".png") for f in result["data"]))
 
     def test_blender_render_subtask(self):
         self._test_blender_subtask(self.BLENDER_TASK_FILE)
