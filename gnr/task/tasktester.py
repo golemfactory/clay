@@ -1,10 +1,13 @@
-import os
-from threading import Lock
-import shutil
 import logging
+import os
+import shutil
+from threading import Lock
+
+from golem.docker.task_thread import DockerTaskThread
 from golem.task.taskbase import Task, resource_types
-from golem.resource.resource import TaskResourceHeader, decompress_dir
 from golem.task.taskcomputer import PyTestTaskThread
+from golem.resource.resource import TaskResourceHeader, decompress_dir
+
 from gnr.renderingdirmanager import get_test_task_path, get_test_task_directory, get_tmp_path, get_test_task_tmp_path
 
 logger = logging.getLogger(__name__)
@@ -47,15 +50,28 @@ class TaskTester:
 
             ctd = self.task.query_extra_data_for_test_task()
 
-            self.tt = PyTestTaskThread(self,
-                                       ctd.subtask_id,
-                                       ctd.working_directory,
-                                       ctd.src_code,
-                                       ctd.extra_data,
-                                       ctd.short_description,
-                                       self.test_task_res_path,
-                                       self.tmp_dir,
-                                       0)
+            if ctd.docker_images:
+                self.tt = DockerTaskThread(self,
+                                           ctd.subtask_id,
+                                           ctd.docker_images,
+                                           ctd.working_directory,
+                                           ctd.src_code,
+                                           ctd.extra_data,
+                                           ctd.short_description,
+                                           self.test_task_res_path,
+                                           self.tmp_dir,
+                                           0,
+                                           True)
+            else:
+                self.tt = PyTestTaskThread(self,
+                                           ctd.subtask_id,
+                                           ctd.working_directory,
+                                           ctd.src_code,
+                                           ctd.extra_data,
+                                           ctd.short_description,
+                                           self.test_task_res_path,
+                                           self.tmp_dir,
+                                           0)
             self.tt.start()
 
         except Exception as exc:

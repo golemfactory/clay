@@ -10,8 +10,7 @@ import sys
 from os import path
 
 from gnr.renderingtaskstate import RenderingTaskDefinition
-from gnr.renderingenvironment import BlenderEnvironment
-from gnr.docker_environments import BlenderDockerEnvironment
+from gnr.docker_environments import BlenderEnvironment
 
 output_file = None
 task_def = None
@@ -31,8 +30,7 @@ if not isinstance(task_def, RenderingTaskDefinition):
     sys.exit(1)
 
 # Replace BlenderEnvironment with BlenderDockerEnvironment
-if isinstance(task_def.renderer_options.environment, BlenderEnvironment):
-    task_def.renderer_options.environment = BlenderDockerEnvironment()
+task_def.renderer_options.environment = BlenderEnvironment()
 
 BLENDER_TASK_SCRIPT = path.normpath("/gnr/task/scripts/blendertask.py")
 DOCKER_TASK_SCRIPT = path.normpath("/gnr/task/scripts/docker_blendertask.py")
@@ -45,7 +43,7 @@ new_resources = set(path.replace(BLENDER_TASK_SCRIPT, DOCKER_TASK_SCRIPT)
 task_def.resources = new_resources
 
 # Add docker images to task definition
-task_def.docker_images = BlenderDockerEnvironment().docker_images
+task_def.docker_images = BlenderEnvironment().docker_images
 
 with open(output_file, "w") as outfile:
     json_str = jsonpickle.encode(task_def)

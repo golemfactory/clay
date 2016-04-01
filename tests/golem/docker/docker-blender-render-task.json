@@ -10,7 +10,7 @@
     ],
     "use_frames":false,
     "environment":{
-      "py/object":"gnr.docker_environments.BlenderDockerEnvironment",
+      "py/object":"gnr.docker_environments.BlenderEnvironment",
       "accept_tasks":false,
       "docker_images":[
         {

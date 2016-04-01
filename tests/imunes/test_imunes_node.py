@@ -2,8 +2,7 @@ from mock import patch
 from gnr.node import start, GNRNode
 from click.testing import CliRunner
 from golem.core.simpleenv import SimpleEnv
-from gnr.renderingenvironment import BlenderEnvironment
-from gnr.docker_environments import BlenderDockerEnvironment
+from gnr.docker_environments import BlenderEnvironment
 from golem.tools.testwithappconfig import TestWithAppConfig
 
 import shutil
@@ -39,8 +38,7 @@ class TestNode(TestWithAppConfig):
                 (env_arg, ) = args
                 self.assertTrue(env_arg.accept_tasks)
                 env_types.append(type(env_arg))
-        self.assertTrue((BlenderEnvironment in env_types) or
-                        (BlenderDockerEnvironment in env_types))
+        self.assertTrue((BlenderEnvironment in env_types))
 
     @patch('golem.client.Client')
     @patch('gnr.node.reactor')

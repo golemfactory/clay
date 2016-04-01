@@ -6,8 +6,8 @@ from golem.client import start_client
 from golem.core.common import get_golem_path
 from golem.environments.environment import Environment
 
-from gnr.renderingenvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment, \
-    LuxRenderEnvironment, BlenderEnvironment
+from gnr.renderingenvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
+from gnr.docker_environments import BlenderEnvironment, LuxRenderEnvironment
 from gnr.tasktype import build_pbrt_task_type, build_3ds_max_task_type, build_vray_task_type, \
     build_python_gnr_task_type, build_luxrender_task_type, build_blender_render_task_type
 from gnr.task.pbrtgnrtask import build_pbrt_renderer_info
@@ -29,7 +29,7 @@ from examples.manager.gnrmanagerlogic import run_additional_nodes, run_manager
 
 def config_logging():
     """Config logger"""
-    config_file = path.normpath(path.join(get_golem_path(), "gnr/logging.ini"))
+    config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
     logging.config.fileConfig(config_file, disable_existing_loggers=False)
 
 

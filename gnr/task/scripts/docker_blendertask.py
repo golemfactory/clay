@@ -17,21 +17,21 @@ def exec_cmd(cmd):
 
 
 def format_blender_render_cmd(outfilebasename, scene_file, script_file,
-                              start_task, engine, frame):
+                              start_task, engine, frame, output_format):
     cmd = [
         "{}".format(BLENDER_COMMAND),
         "-b", "{}".format(scene_file),
         "-P", "{}".format(script_file),
         "-o", "{}/{}{}".format(OUTPUT_DIR, outfilebasename, start_task),
         "-E", "{}".format(engine),
-        "-F", "EXR",
+        "-F", "{}".format(output_format.upper()),
         "-f", "{}".format(frame)
     ]
     return cmd
 
 
 def run_blender_task(outfilebasename, scene_file, script_src, start_task,
-                     engine, frames):
+                     engine, frames, output_format):
 
     scene_file = os.path.normpath(scene_file)
     if not os.path.exists(scene_file):
@@ -45,7 +45,7 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
 
     for frame in frames:
         cmd = format_blender_render_cmd(outfilebasename, scene_file,
-              script_file.name, start_task, engine, frame)
+              script_file.name, start_task, engine, frame, output_format)
         print(cmd, file=sys.stderr)
         exit_code = exec_cmd(cmd)
         if exit_code is not 0:
@@ -53,5 +53,5 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
 
 
 run_blender_task(params.outfilebasename, params.scene_file, params.script_src,
-                 params.start_task, params.engine, params.frames)
+                 params.start_task, params.engine, params.frames, params.output_format)
 

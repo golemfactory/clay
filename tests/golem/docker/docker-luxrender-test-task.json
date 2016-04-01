@@ -5,7 +5,7 @@
     "luxconsole":"",
     "send_binaries":false,
     "environment":{
-	"py/object":"gnr.docker_environments.LuxRenderDockerEnvironment",
+	"py/object":"gnr.docker_environments.LuxRenderEnvironment",
 	"docker_images":[
 	    {
 		"py/object": "golem.docker.image.DockerImage",

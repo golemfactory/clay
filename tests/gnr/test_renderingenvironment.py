@@ -1,5 +1,5 @@
 import unittest
-from gnr.renderingenvironment import BlenderEnvironment
+from gnr.docker_environments import BlenderEnvironment
 
 
 class BlenderEnvTest(unittest.TestCase):

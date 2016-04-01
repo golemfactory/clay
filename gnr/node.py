@@ -2,17 +2,16 @@
 
 import cPickle as pickle
 import logging.config
-import os
 import sys
 import uuid
+from os import path
 
 import click
 import jsonpickle
 from twisted.internet import reactor
 
-from gnr.docker_environments import BlenderDockerEnvironment, \
-    LuxRenderDockerEnvironment
-from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
+from gnr.docker_environments import BlenderEnvironment, \
+    LuxRenderEnvironment
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from golem.client import create_client
@@ -23,8 +22,7 @@ from golem.task.taskbase import Task
 
 def config_logging():
     """Config logger"""
-    config_file = os.path.normpath(os.path.join(get_golem_path(),
-                                                "gnr/logging.ini"))
+    config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
     logging.config.fileConfig(config_file, disable_existing_loggers=False)
 
 
@@ -75,8 +73,8 @@ class Node(object):
 
 class GNRNode(Node):
     default_environments = [
-        BlenderDockerEnvironment(),
-        LuxRenderDockerEnvironment()
+        BlenderEnvironment(),
+        LuxRenderEnvironment()
     ]
 
     @staticmethod

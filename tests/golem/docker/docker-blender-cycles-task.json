@@ -10,7 +10,7 @@
     ],
     "use_frames":false,
     "environment":{
-      "py/object":"gnr.docker_environments.BlenderDockerEnvironment",
+      "py/object":"gnr.docker_environments.BlenderEnvironment",
       "docker_images":[
         {
           "py/object": "golem.docker.image.DockerImage",
