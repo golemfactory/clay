@@ -81,8 +81,10 @@ class PaymentsKeeper(object):
         self.db.add_payment(payment_info)
 
     def load_from_database(self):
-        return [{"subtask": payment.subtask,
-                 "payee": payment.payee,
+        # This data is used by UI.
+        # TODO: Update the UI to reflect Payment changes.
+        return [{"task": payment.subtask,
+                 "node": payment.payee,
                  "value": payment.value,
                  "state": payment.state} for
                 payment in self.db.get_newest_payment()]
