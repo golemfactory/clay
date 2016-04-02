@@ -35,11 +35,11 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="rendererSettingsTab">
        <attribute name="title">
-        <string>Rendere Settings</string>
+        <string>Renderer Settings</string>
        </attribute>
        <widget class="QWidget" name="layoutWidget">
         <property name="geometry">
@@ -162,7 +162,7 @@
          <rect>
           <x>10</x>
           <y>10</y>
-          <width>333</width>
+          <width>371</width>
           <height>201</height>
          </rect>
         </property>
@@ -369,7 +369,7 @@
          <item>
           <widget class="QCheckBox" name="advanceVerificationCheckBox">
            <property name="text">
-            <string>Advance verification enabled</string>
+            <string>Advanced verification enabled</string>
            </property>
            <property name="tristate">
             <bool>false</bool>
@@ -386,8 +386,8 @@
              <rect>
               <x>10</x>
               <y>30</y>
-              <width>161</width>
-              <height>65</height>
+              <width>167</width>
+              <height>80</height>
              </rect>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -524,7 +524,7 @@
               <x>190</x>
               <y>70</y>
               <width>151</width>
-              <height>22</height>
+              <height>29</height>
              </rect>
             </property>
             <layout class="QHBoxLayout" name="horizontalLayout_14">
