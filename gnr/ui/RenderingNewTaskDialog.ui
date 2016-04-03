@@ -83,7 +83,7 @@
          </rect>
         </property>
         <property name="text">
-         <string>RendererOptions</string>
+         <string>Renderer Options</string>
         </property>
         <property name="autoDefault">
          <bool>false</bool>
