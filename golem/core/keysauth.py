@@ -113,7 +113,6 @@ class KeysAuth(object):
         :param str file_name: file containing private key
         :return bool: information if keys have been changed
         """
-        return False
 
     @abc.abstractmethod
     def save_to_files(self, private_key_loc, public_key_loc):
@@ -122,14 +121,14 @@ class KeysAuth(object):
         :param str public_key_loc: where should public key be saved
         :return boolean: return True if keys have been saved, False otherwise
         """
-        return False
+        pass
 
     @abc.abstractmethod
     def generate_new(self, difficulty):
         """ Generate new pair of keys with given difficulty
         :param int difficulty: desired key difficulty level
         """
-        return
+        pass
 
     @classmethod
     def get_keys_dir(cls):

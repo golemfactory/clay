@@ -177,7 +177,6 @@ class TaskSession(MiddlemanSafeSession):
     def result_received(self, extra_data, decrypt=True):
         """ Inform server about received result
         :param dict extra_data: dictionary with information about received result
-        :param dict result_owner: dictionary with information about the result owner
         :param bool decrypt: tells whether result decryption should be performed
         """
         result = extra_data.get('result')
@@ -647,4 +646,3 @@ class TaskSession(MiddlemanSafeSession):
         # self.can_be_not_encrypted.append(MessageHello.Type)
         self.can_be_unsigned.append(MessageHello.Type)
         self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type])
-
