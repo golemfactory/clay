@@ -53,7 +53,7 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         pi3 = deepcopy(pi)
         pi3.subtask_id = "bbbxxx"
         pi4 = deepcopy(pi)
-        pi4.computer.key_id = "GHI"
+        pi4.computer.eth_account.address = "GHI"
         pi4.subtask_id = "ghighi"
         with self.assertLogs(logger, level=1) as l:
             self.assertIsNone(pd.get_state(pi4))
@@ -84,7 +84,7 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         res = [p for p in pd.get_newest_payment(2)]
         self.assertEqual(len(res), 2)
         self.assertEqual(res[0].subtask, pi2.subtask_id)
-        self.assertEqual(res[0].payee, pi2.computer.key_id)
+        self.assertEqual(res[0].payee, pi2.computer.eth_account.address)
         self.assertEqual(res[1].subtask, pi4.subtask_id)
 
         for i in range(10, 0, -1):
@@ -111,7 +111,9 @@ class TestPaymentsKeeper(TestWithDatabase):
 
     def test_database(self):
         pk = PaymentsKeeper()
-        ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "1", "i", urandom(20))
+        addr = urandom(20)
+        addr2 = urandom(20)
+        ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "1", "i", addr2)
         pi = PaymentInfo("xyz", "xxyyzz", 20.23, ai)
         pk.finished_subtasks(pi)
         pi.subtask_id = "aabbcc"
@@ -121,7 +123,7 @@ class TestPaymentsKeeper(TestWithDatabase):
         pk.finished_subtasks(pi2)
         pi3 = deepcopy(pi)
         pi3.value = 10
-        pi3.computer.key_id = "GHI"
+        pi3.computer.eth_account.address = addr
         pi3.subtask_id = "zzzzzz"
         pk.finished_subtasks(pi3)
         pi3.subtask_id = "xxxxxx"
@@ -129,15 +131,15 @@ class TestPaymentsKeeper(TestWithDatabase):
         all_payments = pk.get_list_of_all_payments()
         self.assertEqual(len(all_payments), 5)
         self.assertEqual(all_payments[0]["task"], "xxxxxx")
-        self.assertEqual(all_payments[0]["node"], "GHI")
+        self.assertEqual(all_payments[0]["node"], addr)
         self.assertEqual(all_payments[0]["value"], 10)
         self.assertEqual(all_payments[0]["state"], PaymentStatus.awaiting)
         self.assertEqual(all_payments[1]["task"], "zzzzzz")
-        self.assertEqual(all_payments[1]["node"], "GHI")
+        self.assertEqual(all_payments[1]["node"], addr)
         self.assertEqual(all_payments[1]["value"], 10)
         self.assertEqual(all_payments[1]["state"], PaymentStatus.awaiting)
         self.assertEqual(all_payments[2]["task"], "xxxyyy")
-        self.assertEqual(all_payments[2]["node"], "DEF")
+        self.assertEqual(all_payments[2]["node"], addr2)
         self.assertEqual(all_payments[2]["value"], 20)
         self.assertEqual(all_payments[2]["state"], PaymentStatus.awaiting)
         pi3.subtask_id = "whaooa!"

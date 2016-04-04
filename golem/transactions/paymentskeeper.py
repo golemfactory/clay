@@ -26,11 +26,9 @@ class PaymentsDatabase(object):
         """ Add new payment to the database.
         :param payment_info:
         """
-        with db.transaction():
-            Payment.create(subtask=payment_info.subtask_id,
-                           status=PaymentStatus.awaiting,
-                           payee=payment_info.computer.key_id,
-                           value=payment_info.value)
+        Payment.create(subtask=payment_info.subtask_id,
+                       payee=payment_info.computer.eth_account.address,
+                       value=payment_info.value)
 
     def change_state(self, subtask_id, state):
         """ Change state for all payments for task_id
