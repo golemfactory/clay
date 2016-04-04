@@ -5,7 +5,7 @@ from sha3 import sha3_256
 
 from golem.transactions.ethereum.ethereumpaymentskeeper import (EthAccountInfo, EthereumPaymentsKeeper, EthereumAddress,
                                                                 logger)
-from golem.transactions.transactionsystem import PaymentInfo
+from golem.transactions.paymentskeeper import PaymentInfo
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase

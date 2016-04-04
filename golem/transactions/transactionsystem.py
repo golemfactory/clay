@@ -1,9 +1,7 @@
-import logging
+from golem.model import Payment
 
-from paymentskeeper import PaymentInfo, PaymentsKeeper
+from paymentskeeper import PaymentsKeeper
 from incomeskeeper import IncomesKeeper
-
-logger = logging.getLogger(__name__)
 
 
 class TransactionSystem(object):
@@ -29,14 +27,16 @@ class TransactionSystem(object):
         self.incomes_keeper.get_income(addr_info, value)
 
     def add_payment_info(self, task_id, subtask_id, value, account_info):
-        """ Add to payment keeper information about new payment for subtask
-        :param str task_id: id of a task that this payment is apply to
-        :param str subtask_id: if of a subtask that this payment is apply to (node finished computation for that subtask)
-        :param int value: valuation of a given subtask
-        :param AccountInfo account_info: billing account for a node that has computed a task
+        """ Add to payment keeper information about new payment for subtask.
+        :param str task_id:    ID if a task the payment is related to.
+        :param str subtask_id: the id of the compleated
+                               subtask this payment is for.
+        :param int value:      Aggreed value of the computed subtask.
+        :param AccountInfo account_info: Billing account.
         """
-        payment_info = PaymentInfo(task_id, subtask_id, value, account_info)
-        self.payments_keeper.finished_subtasks(payment_info)
+        payee = account_info.eth_account.address
+        assert len(payee) == 20
+        payment = Payment.create(subtask=subtask_id, payee=payee, value=value)
 
     def get_payments_list(self):
         """ Return list of all planned and made payments

@@ -71,16 +71,6 @@ class PaymentsKeeper(object):
         self.db = PaymentsDatabase()
 
     def get_list_of_all_payments(self):
-        # FIXME: Used only in tests!
-        return self.load_from_database()
-
-    def finished_subtasks(self, payment_info):
-        """ Add new information about finished subtask
-        :param PaymentInfo payment_info: full information about payment for given subtask
-        """
-        self.db.add_payment(payment_info)
-
-    def load_from_database(self):
         # This data is used by UI.
         # TODO: Update the UI to reflect Payment changes.
         return [{"task": payment.subtask,
@@ -88,6 +78,12 @@ class PaymentsKeeper(object):
                  "value": payment.value,
                  "state": payment.status} for
                 payment in self.db.get_newest_payment()]
+
+    def finished_subtasks(self, payment_info):
+        """ Add new information about finished subtask
+        :param PaymentInfo payment_info: full information about payment for given subtask
+        """
+        self.db.add_payment(payment_info)
 
 
 class PaymentInfo(object):
