@@ -1,14 +1,16 @@
 import unittest
 from copy import deepcopy
 from peewee import IntegrityError
+from os import urandom
 
 from golem.network.p2p.node import Node
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.model import PaymentStatus
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.assertlogs import LogTestCase
-from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentInfo, AccountInfo, logger, \
+from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentInfo, logger, \
     PaymentsKeeper
+from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 
 class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
@@ -21,7 +23,8 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         pd = PaymentsDatabase()
 
         # test get payments
-        ai = AccountInfo("DEF", 20400, "10.0.0.1", "node1", "node_info")
+        addr = urandom(20)
+        ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "node1", "info", addr)
         pi = PaymentInfo("xyz", "xxyyzz", 20, ai)
         with self.assertLogs(logger, level=1) as l:
             self.assertEquals(0, pd.get_payment_value(pi))
@@ -108,7 +111,7 @@ class TestPaymentsKeeper(TestWithDatabase):
 
     def test_database(self):
         pk = PaymentsKeeper()
-        ai = AccountInfo("DEF", 20400, "10.0.0.1", "node1", "node_info")
+        ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "1", "i", urandom(20))
         pi = PaymentInfo("xyz", "xxyyzz", 20.23, ai)
         pk.finished_subtasks(pi)
         pi.subtask_id = "aabbcc"
@@ -146,11 +149,12 @@ class TestPaymentsKeeper(TestWithDatabase):
 class TestAccountInfo(unittest.TestCase):
     def test_comparison(self):
         k = EllipticalKeysAuth()
-        a = AccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node())
-        b = AccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node())
+        e = urandom(20)
+        a = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node(), e)
+        b = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node(), e)
         self.assertEqual(a, b)
         n = Node(prv_addr="10.10.10.10", prv_port=1031, pub_addr="10.10.10.10", pub_port=1032)
-        c = AccountInfo(k.get_key_id(), 5112, "10.0.0.2", "test-test2-test", n)
+        c = EthAccountInfo(k.get_key_id(), 5112, "10.0.0.2", "test-test2-test", n, e)
         self.assertEqual(a, c)
         k.generate_new(2)
         c.key_id = k.get_key_id()

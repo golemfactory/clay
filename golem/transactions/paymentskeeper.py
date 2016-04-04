@@ -104,6 +104,8 @@ class PaymentInfo(object):
 
 class AccountInfo(object):
     """ Information about node's payment account """
+    # FIXME: Remove this class
+
     def __init__(self, key_id, port, addr, node_name, node_info):
         self.key_id = key_id
         self.port = port
