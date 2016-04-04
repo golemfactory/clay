@@ -18,13 +18,6 @@ class BlenderRenderDialogCustomizer(RendererCustomizer):
     def load_data(self):
         renderer = self.logic.get_renderer(u"Blender")
 
-        self.gui.ui.engineComboBox.addItems(self.renderer_options.engine_values)
-        engine_item = self.gui.ui.engineComboBox.findText(self.renderer_options.engine)
-        if engine_item != -1:
-            self.gui.ui.engineComboBox.setCurrentIndex(engine_item)
-        else:
-            logger.error("Wrong engine type ")
-
         self.gui.ui.framesCheckBox.setChecked(self.renderer_options.use_frames)
         self.gui.ui.framesLineEdit.setEnabled(self.renderer_options.use_frames)
         if self.renderer_options.use_frames:
@@ -38,8 +31,6 @@ class BlenderRenderDialogCustomizer(RendererCustomizer):
             self.gui.ui.framesLineEdit.setText(self.frames_to_string(self.renderer_options.frames))
 
     def __change_renderer_options(self):
-        index = self.gui.ui.engineComboBox.currentIndex()
-        self.renderer_options.engine = u"{}".format(self.gui.ui.engineComboBox.itemText(index))
         self.renderer_options.use_frames = self.gui.ui.framesCheckBox.isChecked()
         if self.renderer_options.use_frames:
             frames = self.string_to_frames(self.gui.ui.framesLineEdit.text())

@@ -26,7 +26,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -505,7 +505,7 @@
       </widget>
       <widget class="QWidget" name="widget">
        <attribute name="title">
-        <string>Advance Options</string>
+        <string>Advanced Options</string>
        </attribute>
        <widget class="QWidget" name="gridLayoutWidget_3">
         <property name="geometry">

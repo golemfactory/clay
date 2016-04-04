@@ -2,12 +2,6 @@
   "py/object":"gnr.renderingtaskstate.RenderingTaskDefinition",
   "renderer_options":{
     "py/object":"gnr.task.blenderrendertask.BlenderRendererOptions",
-    "engine":"CYCLES",
-    "engine_values":[
-      "BLENDER_RENDER",
-      "BLENDER_GAME",
-      "CYCLES"
-    ],
     "use_frames":false,
     "environment":{
       "py/object":"gnr.docker_environments.BlenderEnvironment",
@@ -46,11 +40,11 @@
   "task_id":"7220aa01-ad45-4fb4-b199-ba72b37a1f0c",
   "resources":{
     "py/set":[
-      "$GOLEM_DIR/gnr/benchmarks/blender/blender_task/scene-Helicopter-27.blend",
+      "$GOLEM_DIR/gnr/benchmarks/blender/blender_task/scene-Helicopter-27-cycles.blend",
       "$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py"
     ]
   },
-  "main_scene_file":"$GOLEM_DIR/gnr/benchmarks/blender/blender_task/scene-Helicopter-27.blend",
+  "main_scene_file":"$GOLEM_DIR/gnr/benchmarks/blender/blender_task/scene-Helicopter-27-cycles.blend",
   "resolution":[
     800,
     600

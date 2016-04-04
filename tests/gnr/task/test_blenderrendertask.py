@@ -42,8 +42,7 @@ class TestBlenderTaskDivision(unittest.TestCase):
                                     root_path=os.getcwd(),
                                     use_frames=False,
                                     frames=[1],
-                                    max_price=10,
-                                    engine="CYCLES")
+                                    max_price=10)
 
     def tearDown(self):
         os.remove(self.program_file)
