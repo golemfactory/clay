@@ -10,6 +10,7 @@ from collections import OrderedDict
 from PIL import Image, ImageChops
 
 from golem.core.simpleexccmd import exec_cmd
+from golem.docker.task_thread import  DockerTaskThread
 from golem.task.taskstate import SubtaskStatus
 from golem.environments.environment import Environment
 
@@ -18,6 +19,7 @@ from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
 from gnr.task.imgrepr import load_img, blend
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
+from gnr.task.localcomputer import LocalComputer
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from gnr.task.scenefileeditor import regenerate_lux_file
 
@@ -232,12 +234,13 @@ class LuxTask(RenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
-    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0, update_task_callback=None):
         tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         self.tmp_dir = tmp_dir
         env = LuxRenderEnvironment()
         lux_merger = env.get_lux_merger()
         test_result_flm = os.path.join(tmp_dir, "test_result.flm")
+        self.update_task_callback = update_task_callback
 
         self.interpret_task_results(subtask_id, task_result, result_type, tmp_dir)
         tr_files = self.results[subtask_id]
@@ -353,6 +356,9 @@ class LuxTask(RenderingTask):
         img.save(self.preview_file_path, "BMP")
 
     def __format_lux_render_cmd(self, scene_file):
+
+
+
         env = LuxRenderEnvironment()
         cmd_file = env.get_lux_console()
         logger.debug("Luxconsole file name: " + str(cmd_file))
@@ -365,7 +371,15 @@ class LuxTask(RenderingTask):
         os.chdir(prev_path)
 
     def __generate_final_file(self):
+        self.cmp = LocalComputer(self, self.root_path, self.__final_img_ready, self.query_extra_data_for_merge)
+        self.cmp.output_file = self.output_file + "." + self.output_format
+        print self.cmp.output_file
+        self.cmp.run()
+        #self.__format_lux_render_cmd(tmp_scene_file.name)
 
+
+
+    def query_extra_data_for_merge(self):
         if self.halttime > 0:
             write_interval = int(self.halttime / 2)
         else:
@@ -373,12 +387,29 @@ class LuxTask(RenderingTask):
 
         scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, self.halttime, self.haltspp,
                                         write_interval, [0, 1, 0, 1], self.output_format)
-        dir_name = os.path.dirname(self.main_scene_file)
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=dir_name, delete=False) as tmp_scene_file:
-            tmp_scene_file.write(scene_src)
-        self.__format_lux_render_cmd(tmp_scene_file.name)
 
-        os.remove(tmp_scene_file.name)
+        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+  #      with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=dir_name, delete=False) as tmp_scene_file:
+#            tmp_scene_file.write(scene_src)
+        extra_data = {"path_root": self.main_scene_dir,
+                      "start_task": 0,
+                      "end_task": 0,
+                      "total_tasks": 0,
+                      "outfilebasename": self.outfilebasename,
+                      "scene_file_src": scene_src,
+                      "scene_dir": scene_dir,
+                      "num_threads": 4,
+                      "own_binaries": True,
+                      "lux_console": None}
+
+        return self._new_compute_task_def("FINALTASK", extra_data, scene_dir, 0)
+        #os.remove(tmp_scene_file.name)
+
+    def __final_img_ready(self, *args, **kwargs):
+        print args
+        print kwargs
+        print "FINAL IMAGE GENERATED!"
+        self.update_task_callback(self.header.task_id)
 
     def __generate_final_flm(self):
         # output flm
@@ -403,4 +434,3 @@ class LuxTask(RenderingTask):
         
         shutil.copy(test_result_flm, self.output_file + ".flm")
         logger.debug("Copying " + test_result_flm + " to " + self.output_file + ".flm")
-

@@ -1,10 +1,10 @@
 import unittest
 import os
 import shutil
-import stat
 
-from golem.core.fileshelper import get_dir_size
+from golem.core.fileshelper import get_dir_size, find_file_with_ext
 from golem.core.common import get_golem_path, is_windows
+from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestDirSize(unittest.TestCase):
@@ -57,3 +57,18 @@ class TestDirSize(unittest.TestCase):
 
         if os.path.isdir(self.testdir):
             shutil.rmtree(self.testdir)
+
+
+class TestFindFileWithExt(TestDirFixture):
+    def test_ext(self):
+        files = self.additional_dir_content([3, [2], [0, [1]]])
+        print files
+        os.rename(files[0], files[0] + ".abc.def")
+        os.rename(files[4], files[4] + ".abc")
+        os.rename(files[5], files[5] + ".xyz")
+        dir_name = os.path.dirname(files[0])
+        assert find_file_with_ext(dir_name, [".abc"]) == files[4] + ".abc"
+        assert find_file_with_ext(dir_name, [".xyz"]) == files[5] + ".xyz"
+        assert find_file_with_ext(dir_name, [".def"]) == files[0] + ".abc.def"
+
+
