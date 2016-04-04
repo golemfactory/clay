@@ -96,8 +96,6 @@ def build_blender_renderer_info(dialog, customizer):
 class BlenderRendererOptions(GNROptions):
     def __init__(self):
         self.environment = BlenderEnvironment()
-        self.engine_values = ["BLENDER_RENDER", "BLENDER_GAME", "CYCLES"]
-        self.engine = "BLENDER_RENDER"
         self.use_frames = False
         self.frames = range(1, 11)
 
@@ -127,7 +125,6 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.use_frames,
                                          self.task_definition.renderer_options.frames,
                                          self.task_definition.max_price,
-                                         self.task_definition.renderer_options.engine
                                         )
         return self._set_verification_options(blender_task)
 
@@ -166,7 +163,6 @@ class BlenderRenderTask(FrameRenderingTask):
                  use_frames,
                  frames,
                  max_price,
-                 engine,
                  return_address="",
                  return_port=0,
                  key_id=""):
@@ -185,7 +181,6 @@ class BlenderRenderTask(FrameRenderingTask):
             logger.error("Wrong script file: {}".format(err))
             self.script_src = ""
 
-        self.engine = engine
 
         self.frames_given = {}
         for frame in frames:
@@ -236,7 +231,6 @@ class BlenderRenderTask(FrameRenderingTask):
                       "outfilebasename": self.outfilebasename,
                       "scene_file": scene_file,
                       "script_src": script_src,
-                      "engine": self.engine,
                       "frames": frames,
                       "output_format": self.output_format
                       }
@@ -283,7 +277,6 @@ class BlenderRenderTask(FrameRenderingTask):
                       "outfilebasename": self.outfilebasename,
                       "scene_file": scene_file,
                       "script_src": script_src,
-                      "engine": self.engine,
                       "frames": frames,
                       "output_format": self.output_format
                       }
