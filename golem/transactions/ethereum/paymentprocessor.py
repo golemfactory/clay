@@ -15,20 +15,20 @@ bank_contract = abi.ContractTranslator(BankOfDeposit.ABI)
 
 class OutgoingPayment(object):
 
-    def __init__(self, to, value):
+    def __init__(self, payee, value):
         self.status = PaymentStatus.awaiting
-        self.to = to
+        self.payee = payee
         self.value = value
-        self.extra = {}  # For additional data.
+        self.details = {}  # For additional data.
 
 
 def _encode_payments(payments):
     paymap = {}
     for p in payments:
-        if p.to in paymap:
-            paymap[p.to] += p.value
+        if p.payee in paymap:
+            paymap[p.payee] += p.value
         else:
-            paymap[p.to] = p.value
+            paymap[p.payee] = p.value
 
     args = []
     value = 0L
@@ -112,7 +112,7 @@ class PaymentProcessor(object):
         for payment in payments:
             assert payment.status == PaymentStatus.awaiting
             payment.status = PaymentStatus.sent
-            payment.extra['tx'] = h
+            payment.details['tx'] = h
         try:
             tx_hash = self.__client.send(tx)
             assert tx_hash[2:].decode('hex') == h  # FIXME: Improve Client.
@@ -121,7 +121,7 @@ class PaymentProcessor(object):
             # In case of any problems revert payments status.
             for payment in payments:
                 payment.status = PaymentStatus.awaiting
-                del payment.extra['tx']
+                del payment.details['tx']
             self.__awaiting = payments
             raise
 
