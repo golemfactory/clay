@@ -130,7 +130,6 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.use_frames,
                                          self.task_definition.renderer_options.frames,
                                          self.task_definition.max_price,
-                                         self.task_definition.renderer_options.engine,
                                          docker_images=self.task_definition.docker_images)
         return self._set_verification_options(blender_task)
 
