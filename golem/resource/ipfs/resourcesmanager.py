@@ -302,8 +302,10 @@ class IPFSResourceManager:
                 os.makedirs(out_dir[0])
 
         self.__pull(filename, multihash, task_id,
-                    success=success_wrapper,
-                    error=error_wrapper,
+                    success_wrapper=success_wrapper,
+                    error_wrapper=error_wrapper,
+                    success=success,
+                    error=error,
                     async=async,
                     client=client)
 
@@ -318,36 +320,38 @@ class IPFSResourceManager:
                    self.current_downloads < self.max_concurrent_downloads
 
     def __pull(self, filename, multihash, task_id,
-               success, error, async, client=None):
+               success_wrapper, error_wrapper,
+               success, error,
+               async=True, client=None):
+
+        if not self.__can_download():
+            self.__push_to_queue(filename, multihash, task_id,
+                                 success, error)
+            return
 
         if not client:
             client = self.new_ipfs_client()
 
         res_dir = self.get_resource_dir(task_id)
 
-        if self.__can_download():
-            with self.lock:
-                self.current_downloads += 1
+        with self.lock:
+            self.current_downloads += 1
 
-            if async:
-                self.__ipfs_async_call(client.get_file,
-                                       success,
-                                       error,
-                                       multihash=multihash,
+        if async:
+            self.__ipfs_async_call(client.get_file,
+                                   success_wrapper,
+                                   error_wrapper,
+                                   multihash=multihash,
+                                   filename=filename,
+                                   filepath=res_dir)
+        else:
+            try:
+                data = client.get_file(multihash,
                                        filename=filename,
                                        filepath=res_dir)
-            else:
-                try:
-                    data = client.get_file(multihash,
-                                           filename=filename,
-                                           filepath=res_dir)
-                    success(data)
-                except Exception as e:
-                    error(e)
-        else:
-            self.__push_to_queue(filename, multihash,
-                                 task_id,
-                                 success, error)
+                success(data)
+            except Exception as e:
+                error(e)
 
     def __can_retry(self, exc, cmd, obj_id):
         if type(exc) in self.timeout_exceptions:

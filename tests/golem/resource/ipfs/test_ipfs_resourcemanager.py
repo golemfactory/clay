@@ -15,13 +15,15 @@ class TestResourcesManager(TestDirFixture):
         TestDirFixture.setUp(self)
 
         self.dir_manager = DirManager(self.path, self.node_name)
-        self.target_resources = [
-            'test_file',
-            os.path.join('test_dir', 'dir_file')
-        ]
+
         self.split_resources = [
             ['test_file'],
             ['test_dir', 'dir_file']
+        ]
+
+        self.target_resources = [
+            os.path.join(*self.split_resources[0]),
+            os.path.join(*self.split_resources[1])
         ]
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
@@ -207,6 +209,14 @@ class TestResourcesManager(TestDirFixture):
         def error(*args, **kwargs):
             status[0] = False
             raise ValueError("Invalid value downloaded %r" % args)
+
+        rm.pull_resource('other_resource',
+                         multihash,
+                         self.task_id,
+                         success, error,
+                         async=False)
+
+        self.assertTrue(status[1])
 
         rm.pull_resource('other_resource',
                          multihash,
