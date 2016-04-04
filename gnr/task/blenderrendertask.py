@@ -8,8 +8,8 @@ from PIL import Image, ImageChops
 
 from golem.task.taskstate import SubtaskStatus
 
+from gnr.docker_environments import BlenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, find_task_script
-from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
@@ -26,12 +26,13 @@ class BlenderDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
-        self.main_program_file = find_task_script("blendertask.py")
+        self.main_program_file = find_task_script("docker_blendertask.py")
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
 
-class PreviewUpdater:
+
+class PreviewUpdater(object):
     def __init__(self, preview_file_path, scene_res_x, scene_res_y, expected_offsets):
         # pairs of (subtask_number, its_image_filepath)
         # careful: chunks' numbers start from 1
@@ -106,6 +107,10 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     """
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
+        if self.task_definition.docker_images is None:
+            self.task_definition.docker_images = BlenderEnvironment().docker_images
+        print self.task_definition.docker_images
+
         blender_task = BlenderRenderTask(self.node_name,
                                          self.task_definition.task_id,
                                          main_scene_dir,
@@ -125,7 +130,8 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.use_frames,
                                          self.task_definition.renderer_options.frames,
                                          self.task_definition.max_price,
-                                        )
+                                         self.task_definition.renderer_options.engine,
+                                         docker_images=self.task_definition.docker_images)
         return self._set_verification_options(blender_task)
 
     def _set_verification_options(self, new_task):
@@ -135,6 +141,9 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
             box_y = max(new_task.verification_options.box_size[1], 8)
             new_task.box_size = (box_x, box_y)
         return new_task
+
+
+DEFAULT_BLENDER_DOCKER_IMAGE = "golem/blender:latest"
 
 
 class BlenderRenderTask(FrameRenderingTask):
@@ -165,13 +174,14 @@ class BlenderRenderTask(FrameRenderingTask):
                  max_price,
                  return_address="",
                  return_port=0,
-                 key_id=""):
+                 key_id="",
+                 docker_images=None):
 
         FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                     BlenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                     main_program_file, task_resources, main_scene_dir, main_scene_file,
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                                    root_path, estimated_memory, use_frames, frames, max_price)
+                                    root_path, estimated_memory, use_frames, frames, max_price, docker_images)
 
         crop_task = find_task_script("blendercrop.py")
         try:

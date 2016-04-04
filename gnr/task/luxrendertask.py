@@ -1,20 +1,20 @@
 import logging
+import platform
 import random
 import os
+import shlex
 import tempfile
 import subprocess
 import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
 
-from golem.core.common import get_golem_path
 from golem.core.simpleexccmd import exec_cmd
-from golem.core.common import get_golem_path
 from golem.task.taskstate import SubtaskStatus
 from golem.environments.environment import Environment
 
+from gnr.docker_environments import LuxRenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
-from gnr.renderingenvironment import LuxRenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
 from gnr.task.imgrepr import load_img, blend
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
@@ -37,7 +37,7 @@ class LuxRenderDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
-        self.main_program_file = find_task_script("luxtask.py")
+        self.main_program_file = find_task_script("docker_luxtask.py")
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 5
@@ -92,6 +92,8 @@ class LuxRenderOptions(GNROptions):
 class LuxRenderTaskBuilder(RenderingTaskBuilder):
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
+        if self.task_definition.docker_images is None:
+            self.task_definition.docker_images = LuxRenderEnvironment().docker_images
 
         lux_task = LuxTask(self.node_name,
                            self.task_definition.task_id,
@@ -114,6 +116,7 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                            self.task_definition.renderer_options.haltspp,
                            self.task_definition.renderer_options.send_binaries,
                            self.task_definition.renderer_options.luxconsole,
+                           docker_images=self.task_definition.docker_images
                            )
 
         return self._set_verification_options(lux_task)
@@ -149,13 +152,15 @@ class LuxTask(RenderingTask):
                  luxconsole,
                  return_address="",
                  return_port=0,
-                 key_id=""):
+                 key_id="",
+                 docker_images=None):
         
         RenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                LuxRenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                main_program_file, task_resources, main_scene_dir, main_scene_file,
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                               root_path, estimated_memory, max_price)
+                               root_path, estimated_memory, max_price, docker_images)
+
         self.undeletable.append(os.path.join(get_tmp_path(self.header.node_name, self.header.task_id, self.root_path), "test_result.flm"))
         self.halttime = halttime
         self.haltspp = haltspp
@@ -382,11 +387,15 @@ class LuxTask(RenderingTask):
         files = " ".join(self.collected_file_names.values())
         env = LuxRenderEnvironment()
         lux_merger = env.get_lux_merger()
+
         if lux_merger is not None:
             cmd = "{} -o {}.flm {}".format(lux_merger, self.output_file, files)
 
             logger.debug("Lux Merger cmd: {}".format(cmd))
-            exec_cmd(cmd)
+            if env.is_windows():
+                exec_cmd(cmd)
+            else:
+                exec_cmd(shlex.split(cmd))
 
     def __generate_final_flm_advanced_verification(self):
         # the file containing result of task test

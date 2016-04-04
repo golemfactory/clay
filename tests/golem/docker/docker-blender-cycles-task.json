@@ -1,0 +1,82 @@
+{
+  "py/object":"gnr.renderingtaskstate.RenderingTaskDefinition",
+  "renderer_options":{
+    "py/object":"gnr.task.blenderrendertask.BlenderRendererOptions",
+    "engine":"CYCLES",
+    "engine_values":[
+      "BLENDER_RENDER",
+      "BLENDER_GAME",
+      "CYCLES"
+    ],
+    "use_frames":false,
+    "environment":{
+      "py/object":"gnr.docker_environments.BlenderEnvironment",
+      "docker_images":[
+        {
+          "py/object": "golem.docker.image.DockerImage",
+          "repository": "golem/blender",
+          "tag": "latest",
+          "name": "golem/blender:latest",
+          "id": null
+        }
+      ],
+      "software_name":null,
+      "accept_tasks":false,
+      "caps":[],
+      "short_description":"Blender (http://www.blender.org/)",
+      "long_description":"",
+      "software":[
+        "Docker"
+      ]
+    },
+    "frames":[
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "task_type":null,
+  "task_id":"7220aa01-ad45-4fb4-b199-ba72b37a1f0c",
+  "resources":{
+    "py/set":[
+      "$GOLEM_DIR/gnr/benchmarks/blender/blender_task/scene-Helicopter-27.blend",
+      "$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py"
+    ]
+  },
+  "main_scene_file":"$GOLEM_DIR/gnr/benchmarks/blender/blender_task/scene-Helicopter-27.blend",
+  "resolution":[
+    800,
+    600
+  ],
+  "output_format":"PNG",
+  "output_file":"hel.png",
+  "optimize_total":false,
+  "verification_options":null,
+  "estimated_memory":0,
+  "full_task_timeout":14400,
+  "renderer":"Blender",
+  "main_program_file":"$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py",
+  "min_subtask_time":60,
+  "options":{
+    "py/type":"gnr.gnrtaskstate.GNROptions"
+  },
+  "subtask_timeout":1200,
+  "total_subtasks":6,
+  "max_price": 10.2,
+  "docker_images":[
+    {
+      "py/object": "golem.docker.image.DockerImage",
+      "repository": "golem/blender",
+      "tag": "latest",
+      "name": "golem/blender:latest",
+      "id": null
+    }
+  ]
+}

@@ -1,18 +1,14 @@
-import sys
-import time
-import os
 import logging
+import time
+from threading import Lock
+# sys.path.append('../manager')
 
-sys.path.append('../manager')
-
-from threading import Thread, Lock
-
-from copy import copy
-
-from golem.vm.vm import PythonProcVM, PythonTestVM, PythonVM
+from golem.vm.vm import PythonProcVM, PythonTestVM
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
+from golem.task.taskthread import TaskThread
+from golem.docker.task_thread import DockerTaskThread
 
 
 logger = logging.getLogger(__name__)
@@ -49,6 +45,8 @@ class TaskComputer(object):
         self.max_assigned_tasks = 1
 
         self.delta = None
+        self.task_timeout = None
+        self.last_task_timeout_checking = None
 
     def task_given(self, ctd, subtask_timeout):
         if ctd.subtask_id not in self.assigned_subtasks:
@@ -67,10 +65,10 @@ class TaskComputer(object):
             if subtask_id in self.assigned_subtasks:
                 self.waiting_ttl = 0
                 self.counting_task = True
-                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].src_code,
-                                    self.assigned_subtasks[subtask_id].extra_data,
-                                    self.assigned_subtasks[subtask_id].short_description,
-                                    self.assigned_subtasks[subtask_id].timeout)
+                subtask = self.assigned_subtasks[subtask_id]
+                self.__compute_task(subtask_id, subtask.docker_images,
+                                    subtask.src_code, subtask.extra_data,
+                                    subtask.short_description, subtask.timeout)
                 self.waiting_for_task = None
                 return True
             else:
@@ -82,18 +80,18 @@ class TaskComputer(object):
             if subtask_id in self.assigned_subtasks:
                 self.waiting_ttl = 0
                 self.counting_task = True
-                self.task_timeout = self.assigned_subtasks[subtask_id].timeout
+                subtask = self.assigned_subtasks[subtask_id]
+                self.task_timeout = subtask.timeout
                 self.last_task_timeout_checking = time.time()
-
                 if unpack_delta:
                     self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
-                else:
-                    self.task_server.client.resource_server.resource_manager
 
-                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].src_code,
+                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].docker_images,
+                                    self.assigned_subtasks[subtask_id].src_code,
                                     self.assigned_subtasks[subtask_id].extra_data,
                                     self.assigned_subtasks[subtask_id].short_description,
                                     self.assigned_subtasks[subtask_id].timeout)
+
                 self.waiting_for_task = None
                 self.delta = None
                 return True
@@ -208,13 +206,21 @@ class TaskComputer(object):
                                                                   key_id,
                                                                   task_owner)
 
-    def __compute_task(self, subtask_id, src_code, extra_data, short_desc, task_timeout):
+    def __compute_task(self, subtask_id, docker_images,
+                       src_code, extra_data, short_desc, task_timeout):
         task_id = self.assigned_subtasks[subtask_id].task_id
-        working_directory = self.assigned_subtasks[subtask_id].working_directory
         self.dir_manager.clear_temporary(task_id)
-        tt = PyTaskThread(self, subtask_id, working_directory, src_code, extra_data, short_desc,
-                          self.resource_manager.get_resource_dir(task_id), self.resource_manager.get_temporary_dir(task_id),
-                          task_timeout)
+        working_dir = self.assigned_subtasks[subtask_id].working_directory
+        resource_dir = self.resource_manager.get_resource_dir(task_id)
+        temp_dir = self.resource_manager.get_temporary_dir(task_id)
+        if docker_images:
+            tt = DockerTaskThread(self, subtask_id, docker_images, working_dir,
+                                  src_code, extra_data, short_desc,
+                                  resource_dir, temp_dir, task_timeout)
+        else:
+            tt = PyTaskThread(self, subtask_id, working_dir, src_code,
+                              extra_data, short_desc, resource_dir, temp_dir,
+                              task_timeout)
         tt.setDaemon(True)
         self.current_computations.append(tt)
         tt.start()
@@ -233,91 +239,6 @@ class AssignedSubTask(object):
         self.owner_port = owner_port
 
 
-class TaskThread(Thread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path, tmp_path,
-                 timeout=0):
-        super(TaskThread, self).__init__()
-
-        self.task_computer = task_computer
-        self.vm = None
-        self.subtask_id = subtask_id
-        self.src_code = src_code
-        self.extra_data = extra_data
-        self.short_desc = short_desc
-        self.result = None
-        self.done = False
-        self.res_path = res_path
-        self.tmp_path = tmp_path
-        self.working_directory = working_directory
-        self.prev_working_directory = ""
-        self.lock = Lock()
-        self.error = False
-        self.error_msg = ""
-        self.start_time = time.time()
-        self.end_time = None
-        self.use_timeout = timeout != 0
-        self.task_timeout = timeout
-        self.last_time_checking = time.time()
-
-    def check_timeout(self):
-        if not self.use_timeout:
-            return
-        time_ = time.time()
-        self.task_timeout -= time_ - self.last_time_checking
-        self.last_time_checking = time_
-        if self.task_timeout < 0:
-            self.error = True
-            self.error_msg = "Timeout"
-            self.end_comp()
-
-    def get_subtask_id(self):
-        return self.subtask_id
-
-    def get_task_short_desc(self):
-        return self.short_desc
-
-    def get_progress(self):
-        with self.lock:
-            return self.vm.get_progress()
-
-    def get_error(self):
-        with self.lock:
-            return self.error
-
-    def run(self):
-        logger.info("RUNNING ")
-        try:
-            self.__do_work()
-            self.task_computer.task_computed(self)
-        except Exception as exc:
-            logger.error("Task computing error: {}".format(exc))
-            self.error = True
-            self.error_msg = str(exc)
-            self.done = True
-            self.task_computer.task_computed(self)
-
-    def end_comp(self):
-        self.end_time = time.time()
-        self.vm.end_comp()
-
-    def __do_work(self):
-        extra_data = copy(self.extra_data)
-
-        abs_res_path = os.path.abspath(os.path.normpath(self.res_path))
-        abs_tmp_path = os.path.abspath(os.path.normpath(self.tmp_path))
-
-        self.prev_working_directory = os.getcwd()
-        os.chdir(os.path.join(abs_res_path, os.path.normpath(self.working_directory)))
-        try:
-            extra_data["resourcePath"] = abs_res_path
-            extra_data["tmp_path"] = abs_tmp_path
-            self.result, self.error_msg = self.vm.run_task(self.src_code, extra_data)
-        finally:
-
-            self.end_time = time.time()
-            os.chdir(self.prev_working_directory)
-
-
 class PyTaskThread(TaskThread):
     def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path,
                  tmp_path, timeout):
@@ -332,3 +253,5 @@ class PyTestTaskThread(PyTaskThread):
         super(PyTestTaskThread, self).__init__(task_computer, subtask_id, working_directory, src_code, extra_data,
                                                short_desc, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()
+
+

@@ -1,28 +1,28 @@
 """GNR Compute Node"""
 
-import os
 import cPickle as pickle
-import jsonpickle
-import click
-import uuid
-import sys
 import logging.config
+import sys
+import uuid
+from os import path
 
+import click
+import jsonpickle
 from twisted.internet import reactor
 
-from golem.client import create_client
-from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
-from golem.core.common import get_golem_path
-from golem.task.taskbase import Task
-
+from gnr.docker_environments import BlenderEnvironment, \
+    LuxRenderEnvironment
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
-from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
+from golem.client import create_client
+from golem.core.common import get_golem_path
+from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
+from golem.task.taskbase import Task
 
 
 def config_logging():
     """Config logger"""
-    config_file = os.path.normpath(os.path.join(get_golem_path(), "gnr/logging.ini"))
+    config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
     logging.config.fileConfig(config_file, disable_existing_loggers=False)
 
 
@@ -66,9 +66,16 @@ class Node(object):
             self.client.quit()
             sys.exit(0)
 
+    @staticmethod
+    def _get_task_builder(task_def):
+        raise NotImplementedError
+
 
 class GNRNode(Node):
-    default_environments = [BlenderEnvironment(), LuxRenderEnvironment()]
+    default_environments = [
+        BlenderEnvironment(),
+        LuxRenderEnvironment()
+    ]
 
     @staticmethod
     def _get_task_builder(task_def):

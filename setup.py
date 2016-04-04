@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+import os
 import re
+import subprocess
 import sys
 from os import path
 from setuptools import setup, find_packages
@@ -13,6 +15,35 @@ def generate_ui_files():
     gen_ui_files(ui_path)
 
 generate_ui_files()
+
+
+def try_building_docker_images():
+    try:
+        subprocess.check_call(["docker", "info"])
+    except Exception as err:
+        print ""
+        print "***************************************************************"
+        print "Docker not available, not building images."
+        print "Command 'docker info' returned {}".format(err)
+        print "***************************************************************"
+        print ""
+        return
+
+    dockerfiles_dir = path.join("scripts")
+    for f in os.listdir(dockerfiles_dir):
+        if f.startswith("Dockerfile."):
+            try:
+                name = "golem/{}".format(f.split(".", 1)[-1])
+                cmd = "docker build -t {} -f scripts/{} .".format(name, f)
+                print "\nRunning '{}' ...\n".format(cmd)
+                subprocess.check_call(cmd.split(" "))
+            except ValueError:
+                print "Skipping file scripts/{}".format(f)
+            except subprocess.CalledProcessError as err:
+                print "Docker build failed: {}".format(err)
+                sys.exit(1)
+
+try_building_docker_images()
 
 
 class PyTest(TestCommand):
