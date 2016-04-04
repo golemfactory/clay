@@ -25,7 +25,7 @@ class TaskServer(PendingConnectionsServer):
                                             app_version=config_desc.app_version)
         self.task_manager = TaskManager(config_desc.node_name, self.node,
                                         key_id=self.keys_auth.get_key_id(),
-                                        root_path=TaskServer.__get_task_manager_root(config_desc),
+                                        root_path=TaskServer.__get_task_manager_root(client.datadir),
                                         use_distributed_resources=config_desc.use_distributed_resource_management)
         self.task_computer = TaskComputer(config_desc.node_name, self)
         self.task_sessions = {}
@@ -225,7 +225,7 @@ class TaskServer(PendingConnectionsServer):
         PendingConnectionsServer.change_config(self, config_desc)
         self.config_desc = config_desc
         self.last_message_time_threshold = config_desc.task_session_timeout
-        self.task_manager.change_config(self.__get_task_manager_root(config_desc),
+        self.task_manager.change_config(self.__get_task_manager_root(self.client.datadir),
                                         config_desc.use_distributed_resource_management)
         self.task_computer.change_config()
         self.task_keeper.change_config(config_desc)
@@ -234,7 +234,7 @@ class TaskServer(PendingConnectionsServer):
         self.task_manager.change_timeouts(task_id, full_task_timeout, subtask_timeout, min_subtask_time)
 
     def get_task_computer_root(self):
-        return os.path.join(self.config_desc.root_path, "ComputerRes")
+        return os.path.join(self.client.datadir, "ComputerRes")
 
     def subtask_rejected(self, subtask_id):
         logger.debug("Subtask {} result rejected".format(subtask_id))
@@ -712,8 +712,8 @@ class TaskServer(PendingConnectionsServer):
     # CONFIGURATION METHODS
     #############################
     @staticmethod
-    def __get_task_manager_root(config_desc):
-        return os.path.join(config_desc.root_path, "res")
+    def __get_task_manager_root(datadir):
+        return os.path.join(datadir, "res")
 
     def _set_conn_established(self):
         self.conn_established_for_type.update({

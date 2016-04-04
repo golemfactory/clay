@@ -4,7 +4,7 @@ from golem.client import create_client, Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.tools.testwithappconfig import TestWithAppConfig
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.environments.environment import Environment
+from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestCreateClient(TestWithAppConfig):
@@ -40,12 +40,12 @@ class TestCreateClient(TestWithAppConfig):
             create_client(node_colour='magenta')
 
 
-class TestClient(TestWithDatabase):
+class TestClient(TestWithDatabase, TestDirFixture):
 
     @patch("golem.client.Client.get_database_name")
     def test_payment_func(self, mock_database_name):
         mock_database_name.return_value = self.database.name
-        c = Client(ClientConfigDescriptor())
+        c = Client(ClientConfigDescriptor(), datadir=self.path)
         c.add_to_waiting_payments("xyz", "ABC", 10)
         incomes = c.transaction_system.get_incomes_list()
         self.assertEqual(len(incomes), 1)

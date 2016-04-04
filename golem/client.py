@@ -21,7 +21,6 @@ from golem.model import Database
 from golem.network.transport.message import init_messages
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.environments.environmentsmanager import EnvironmentsManager
-#from golem.resource.resourceserver import ResourceServer
 from golem.resource.ipfs.resourceserver import IPFSResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.ranking.ranking import Ranking, RankingStats
@@ -31,11 +30,7 @@ from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransa
 logger = logging.getLogger(__name__)
 
 
-def empty_add_nodes(*args):
-    pass
-
-
-def create_client(**config_overrides):
+def create_client(datadir=None, **config_overrides):
     init_messages()
 
     app_config = AppConfig.load_config()
@@ -49,9 +44,13 @@ def create_client(**config_overrides):
             raise AttributeError(
                 "Can't override nonexistent config attribute '{}'".format(key))
 
+    if not datadir:
+        repo_root = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+        datadir = os.path.join(repo_root, 'data', 'default')
+
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
-    return Client(config_desc, config=app_config)
+    return Client(config_desc, datadir=datadir, config=app_config)
 
 
 def start_client():
@@ -85,7 +84,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 
 
 class Client:
-    def __init__(self, config_desc, root_path="", config=""):
+    def __init__(self, config_desc, datadir, config=""):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
@@ -95,6 +94,7 @@ class Client:
                          key=self.keys_auth.get_key_id(),
                          prv_addr=self.config_desc.node_address)
         self.node.collect_network_info(self.config_desc.seed_host, use_ipv6=self.config_desc.use_ipv6)
+        logger.info('Client "{}", datadir: {}'.format(self.config_desc.node_name, datadir))
         logger.debug("Is super node? {}".format(self.node.is_super_node()))
         self.p2pservice = None
 
@@ -111,7 +111,7 @@ class Client:
 
         self.listeners = []
 
-        self.root_path = root_path
+        self.datadir = datadir
         self.cfg = config
         self.send_snapshot = False
         self.snapshot_lock = Lock()
@@ -226,9 +226,6 @@ class Client:
 
     def get_node_name(self):
         return self.config_desc.node_name
-
-    def get_root_path(self):
-        return self.config_desc.root_path
 
     def increase_trust(self, node_id, stat, mod=1.0):
         self.ranking.increase_trust(node_id, stat, mod)
