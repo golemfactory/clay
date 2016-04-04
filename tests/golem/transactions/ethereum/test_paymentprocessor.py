@@ -8,9 +8,10 @@ from ethereum.keys import privtoaddr
 from golem.ethereum.contracts import BankOfDeposit
 from golem.ethereum import Client
 from golem.ethereum.node import Faucet, FullNode
+from golem.model import PaymentStatus
 from golem.tools.testdirfixture import TestDirFixture
 from golem.transactions.ethereum.paymentprocessor import (
-    Status, OutgoingPayment, PaymentProcessor
+    OutgoingPayment, PaymentProcessor
 )
 from golem.transactions.ethereum.paymentmonitor import PaymentMonitor
 
@@ -25,12 +26,12 @@ def wait_for(condition, timeout, step=0.1):
 
 class PaymentStatusTest(unittest.TestCase):
     def test_status(self):
-        s = Status(1)
-        assert s == Status.init
+        s = PaymentStatus(1)
+        assert s == PaymentStatus.awaiting
 
     def test_status2(self):
-        s = Status.init
-        assert s == Status.init
+        s = PaymentStatus.awaiting
+        assert s == PaymentStatus.awaiting
 
 
 class EthereumNodeFixture(TestDirFixture):
@@ -69,14 +70,14 @@ class PaymentProcessorTest(EthereumNodeFixture):
         p1 = OutgoingPayment(a1, 1)
         p2 = OutgoingPayment(a2, 2)
 
-        assert p1.status is Status.init
-        assert p2.status is Status.init
+        assert p1.status is PaymentStatus.awaiting
+        assert p2.status is PaymentStatus.awaiting
 
         assert self.proc.add(p1) is False
         assert self.proc.add(p2) is False
 
-        assert p1.status is Status.init
-        assert p2.status is Status.init
+        assert p1.status is PaymentStatus.awaiting
+        assert p2.status is PaymentStatus.awaiting
 
     def test_double_kill(self):
         Client._kill_node()
