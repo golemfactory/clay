@@ -1,9 +1,11 @@
-from peewee import SqliteDatabase, Model, CharField, IntegerField, FloatField, DateTimeField, CompositeKey
-
 import datetime
 import appdirs
 import logging
 import os
+from enum import Enum
+
+from peewee import SqliteDatabase, Model, CharField, IntegerField, FloatField, DateTimeField, CompositeKey
+
 
 log = logging.getLogger('golem.db')
 
@@ -17,7 +19,7 @@ db = SqliteDatabase(None, threadlocals=True, pragmas=(('foreign_keys', True), ('
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 1
+    SCHEMA_VERSION = 2
 
     def __init__(self, name=DATABASE_NAME):
 
@@ -58,12 +60,34 @@ class BaseModel(Model):
 # PAYMENT MODELS #
 ##################
 
+class EnumField(IntegerField):
+    """ Database field that maps enum type to integer."""
+
+    def __init__(self, enum_type, *args, **kwargs):
+        super(EnumField, self).__init__(*args, **kwargs)
+        self.enum_type = enum_type
+
+    def db_value(self, value):
+        if not isinstance(value, self.enum_type):
+            raise TypeError("Expected {} type".format(self.enum_type.__name__))
+        return value.value  # Get the integer value of an enum.
+
+    def python_value(self, value):
+        return self.enum_type(value)
+
+
+class PaymentStatus(Enum):
+    """ The status of a payment. """
+    awaiting = 1    # Created but not introduced to the payment network.
+    sent = 2        # Sent to the payment network.
+    confirmed = 3   # Confirmed on the payment network.
+
 
 class Payment(BaseModel):
     """ Represents payments that nodes on this machine make to other nodes
     """
     subtask = CharField(primary_key=True)
-    state = CharField(index=True)
+    status = EnumField(enum_type=PaymentStatus, index=True)
     payee = CharField()
     value = IntegerField()
     details = CharField(null=True)

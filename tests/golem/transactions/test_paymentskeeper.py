@@ -4,9 +4,10 @@ from peewee import IntegrityError
 
 from golem.network.p2p.node import Node
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.model import PaymentStatus
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.assertlogs import LogTestCase
-from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentInfo, AccountInfo, logger, PaymentState, \
+from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentInfo, AccountInfo, logger, \
     PaymentsKeeper
 
 
@@ -57,24 +58,24 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         pd.add_payment(pi4)
         self.assertTrue(any(["not exist" in log for log in l.output]))
         self.assertEquals(pd.get_state(pi), None)
-        self.assertEquals(pd.get_state(pi2), PaymentState.waiting_to_be_paid)
-        self.assertEquals(pd.get_state(pi3), PaymentState.waiting_to_be_paid)
-        self.assertEquals(pd.get_state(pi4), PaymentState.waiting_to_be_paid)
-        pd.change_state(pi4.subtask_id, "XXXXX31")
+        self.assertEquals(pd.get_state(pi2), PaymentStatus.awaiting)
+        self.assertEquals(pd.get_state(pi3), PaymentStatus.awaiting)
+        self.assertEquals(pd.get_state(pi4), PaymentStatus.awaiting)
+        pd.change_state(pi4.subtask_id, PaymentStatus.sent)
         self.assertEquals(pd.get_state(pi), None)
-        self.assertEquals(pd.get_state(pi2), PaymentState.waiting_to_be_paid)
-        self.assertEquals(pd.get_state(pi3), PaymentState.waiting_to_be_paid)
-        self.assertEquals(pd.get_state(pi4), "XXXXX31")
-        pd.change_state(pi4.subtask_id, PaymentState.waiting_to_be_paid)
+        self.assertEquals(pd.get_state(pi2), PaymentStatus.awaiting)
+        self.assertEquals(pd.get_state(pi3), PaymentStatus.awaiting)
+        self.assertEquals(pd.get_state(pi4), PaymentStatus.sent)
+        pd.change_state(pi4.subtask_id, PaymentStatus.awaiting)
         self.assertEquals(pd.get_state(pi), None)
-        self.assertEquals(pd.get_state(pi2), PaymentState.waiting_to_be_paid)
-        self.assertEquals(pd.get_state(pi3), PaymentState.waiting_to_be_paid)
-        self.assertEquals(pd.get_state(pi4), PaymentState.waiting_to_be_paid)
-        pd.change_state(pi2.subtask_id, PaymentState.settled)
+        self.assertEquals(pd.get_state(pi2), PaymentStatus.awaiting)
+        self.assertEquals(pd.get_state(pi3), PaymentStatus.awaiting)
+        self.assertEquals(pd.get_state(pi4), PaymentStatus.awaiting)
+        pd.change_state(pi2.subtask_id, PaymentStatus.confirmed)
         self.assertEquals(pd.get_state(pi), None)
-        self.assertEquals(pd.get_state(pi2), PaymentState.settled)
-        self.assertEquals(pd.get_state(pi3), PaymentState.waiting_to_be_paid)
-        self.assertEquals(pd.get_state(pi3), PaymentState.waiting_to_be_paid)
+        self.assertEquals(pd.get_state(pi2), PaymentStatus.confirmed)
+        self.assertEquals(pd.get_state(pi3), PaymentStatus.awaiting)
+        self.assertEquals(pd.get_state(pi3), PaymentStatus.awaiting)
 
         # test newest payments
         res = [p for p in pd.get_newest_payment(2)]
@@ -127,15 +128,15 @@ class TestPaymentsKeeper(TestWithDatabase):
         self.assertEqual(all_payments[0]["task"], "xxxxxx")
         self.assertEqual(all_payments[0]["node"], "GHI")
         self.assertEqual(all_payments[0]["value"], 10)
-        self.assertEqual(all_payments[0]["state"], PaymentState.waiting_to_be_paid)
+        self.assertEqual(all_payments[0]["state"], PaymentStatus.awaiting)
         self.assertEqual(all_payments[1]["task"], "zzzzzz")
         self.assertEqual(all_payments[1]["node"], "GHI")
         self.assertEqual(all_payments[1]["value"], 10)
-        self.assertEqual(all_payments[1]["state"], PaymentState.waiting_to_be_paid)
+        self.assertEqual(all_payments[1]["state"], PaymentStatus.awaiting)
         self.assertEqual(all_payments[2]["task"], "xxxyyy")
         self.assertEqual(all_payments[2]["node"], "DEF")
         self.assertEqual(all_payments[2]["value"], 20)
-        self.assertEqual(all_payments[2]["state"], PaymentState.waiting_to_be_paid)
+        self.assertEqual(all_payments[2]["state"], PaymentStatus.awaiting)
         pi3.subtask_id = "whaooa!"
         pk.finished_subtasks(pi3)
         all_payments = pk.get_list_of_all_payments()

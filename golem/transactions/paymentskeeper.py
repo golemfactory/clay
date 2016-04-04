@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from golem.model import Payment, db
+from golem.model import db, Payment, PaymentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class PaymentsDatabase(object):
         """
         with db.transaction():
             Payment.create(subtask=payment_info.subtask_id,
-                           state=PaymentState.waiting_to_be_paid,
+                           status=PaymentStatus.awaiting,
                            payee=payment_info.computer.key_id,
                            value=payment_info.value)
 
@@ -38,7 +38,8 @@ class PaymentsDatabase(object):
         :param state: new state
         :return:
         """
-        query = Payment.update(state=state, modified_date=str(datetime.now()))
+        # FIXME: Remove this method
+        query = Payment.update(status=state, modified_date=str(datetime.now()))
         query = query.where(Payment.subtask == subtask_id)
         query.execute()
 
@@ -46,8 +47,9 @@ class PaymentsDatabase(object):
         """ Return state of a payment for given task that should be / was made to given node
         :return str|None: return state of payment or none if such payment don't exist in database
         """
+        # FIXME: Remove this method
         try:
-            return Payment.get(Payment.subtask == payment_info.subtask_id).state
+            return Payment.get(Payment.subtask == payment_info.subtask_id).status
         except Payment.DoesNotExist:
             logger.warning("Payment for subtask {} to node {} does not exist"
                            .format(payment_info.subtask_id, payment_info.computer.key_id))
@@ -86,13 +88,8 @@ class PaymentsKeeper(object):
         return [{"task": payment.subtask,
                  "node": payment.payee,
                  "value": payment.value,
-                 "state": payment.state} for
+                 "state": payment.status} for
                 payment in self.db.get_newest_payment()]
-
-
-class PaymentState(object):
-    waiting_to_be_paid = "Waiting for processing"
-    settled = "Finished"
 
 
 class PaymentInfo(object):

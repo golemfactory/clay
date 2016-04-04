@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 from peewee import IntegrityError
-from golem.model import Payment, ReceivedPayment, LocalRank, GlobalRank, \
+from golem.model import Payment, PaymentStatus, ReceivedPayment, LocalRank, GlobalRank, \
     NeighbourLocRank, NEUTRAL_TRUST, Database, DATABASE_NAME
 from golem.tools.testwithdatabase import TestWithDatabase, TestDirFixture
 
@@ -38,14 +38,19 @@ class TestPayment(TestWithDatabase):
         self.assertGreaterEqual(datetime.now(), p.modified_date)
 
     def test_create(self):
-        p = Payment(payee="DEF", subtask="xyz", value=5, state="SOMESTATE")
+        p = Payment(payee="DEF", subtask="xyz", value=5,
+                    status=PaymentStatus.awaiting)
         self.assertEquals(p.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
-            Payment.create(payee="DEF", subtask="xyz", value=5, state="SOMESTATEX")
-        Payment.create(payee="DEF", subtask="xyz2", value=4, state="SOMESTATEX")
-        Payment.create(payee="DEF2", subtask="xyz4", value=5, state="SOMESTATEX")
+            Payment.create(payee="DEF", subtask="xyz", value=5, status=PaymentStatus.awaiting)
+        Payment.create(payee="DEF", subtask="xyz2", value=4, status=PaymentStatus.confirmed)
+        Payment.create(payee="DEF2", subtask="xyz4", value=5, status=PaymentStatus.sent)
 
         self.assertEqual(3, len([payment for payment in Payment.select()]))
+
+    def test_invalid_status(self):
+        with self.assertRaises(TypeError):
+            Payment.create(payee="XX", subtask="zz", value=5, status=1)
 
 
 class TestReceivedPayment(TestWithDatabase):
