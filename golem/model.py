@@ -1,10 +1,12 @@
 import datetime
 import appdirs
+import json
 import logging
 import os
 from enum import Enum
 
-from peewee import SqliteDatabase, Model, CharField, IntegerField, FloatField, DateTimeField, CompositeKey
+from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
+                    DateTimeField, TextField, CompositeKey)
 
 
 log = logging.getLogger('golem.db')
@@ -19,7 +21,7 @@ db = SqliteDatabase(None, threadlocals=True, pragmas=(('foreign_keys', True), ('
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 2
+    SCHEMA_VERSION = 3
 
     def __init__(self, name=DATABASE_NAME):
 
@@ -60,6 +62,16 @@ class BaseModel(Model):
 # PAYMENT MODELS #
 ##################
 
+class RawCharField(CharField):
+    """ Char field without auto utf-8 encoding."""
+
+    def db_value(self, value):
+        return unicode(value.encode('hex'))
+
+    def python_value(self, value):
+        return value.decode('hex')
+
+
 class EnumField(IntegerField):
     """ Database field that maps enum type to integer."""
 
@@ -76,6 +88,16 @@ class EnumField(IntegerField):
         return self.enum_type(value)
 
 
+class JsonField(TextField):
+    """ Database field that stores a Python value in JSON format. """
+
+    def db_value(self, value):
+        return json.dumps(value)
+
+    def python_value(self, value):
+        return json.loads(value)
+
+
 class PaymentStatus(Enum):
     """ The status of a payment. """
     awaiting = 1    # Created but not introduced to the payment network.
@@ -87,10 +109,10 @@ class Payment(BaseModel):
     """ Represents payments that nodes on this machine make to other nodes
     """
     subtask = CharField(primary_key=True)
-    status = EnumField(enum_type=PaymentStatus, index=True)
-    payee = CharField()
+    status = EnumField(enum_type=PaymentStatus, index=True, default=PaymentStatus.awaiting)
+    payee = RawCharField()
     value = IntegerField()
-    details = CharField(null=True)
+    details = JsonField(default={})
 
 
 class ReceivedPayment(BaseModel):

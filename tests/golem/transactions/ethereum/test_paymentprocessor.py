@@ -8,11 +8,10 @@ from ethereum.keys import privtoaddr
 from golem.ethereum.contracts import BankOfDeposit
 from golem.ethereum import Client
 from golem.ethereum.node import Faucet, FullNode
-from golem.model import PaymentStatus
+from golem.model import Payment, PaymentStatus
 from golem.tools.testdirfixture import TestDirFixture
-from golem.transactions.ethereum.paymentprocessor import (
-    OutgoingPayment, PaymentProcessor
-)
+from golem.tools.testwithdatabase import TestWithDatabase
+from golem.transactions.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.ethereum.paymentmonitor import PaymentMonitor
 
 
@@ -50,7 +49,7 @@ class EthereumNodeFixture(TestDirFixture):
         super(EthereumNodeFixture, self).tearDown()
 
 
-class PaymentProcessorTest(EthereumNodeFixture):
+class PaymentProcessorTest(EthereumNodeFixture, TestWithDatabase):
     def test_balance0(self):
         b = self.proc.available_balance()
         assert b == 0
@@ -65,10 +64,10 @@ class PaymentProcessorTest(EthereumNodeFixture):
         self.proc.available_balance(refresh=True) is 0
 
     def test_add_failure(self):
-        a1 = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'.decode('hex')
-        a2 = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'.decode('hex')
-        p1 = OutgoingPayment(a1, 1)
-        p2 = OutgoingPayment(a2, 2)
+        a1 = urandom(20)
+        a2 = urandom(20)
+        p1 = Payment.create(subtask="p1", payee=a1, value=1)
+        p2 = Payment.create(subtask="p2", payee=a2, value=2)
 
         assert p1.status is PaymentStatus.awaiting
         assert p2.status is PaymentStatus.awaiting
@@ -109,7 +108,7 @@ class EthereumMiningNodeFixture(TestDirFixture):
         super(EthereumMiningNodeFixture, self).tearDown()
 
 
-class PaymentProcessorFullTest(EthereumMiningNodeFixture):
+class PaymentProcessorFullTest(EthereumMiningNodeFixture, TestWithDatabase):
     def test_setup(self):
         pass
 
@@ -125,15 +124,20 @@ class PaymentProcessorFullTest(EthereumMiningNodeFixture):
         assert b < 12 * 10**18
         assert b > 10 * 10**18
 
-        a1 = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'.decode('hex')
-        a2 = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'.decode('hex')
-        p1 = OutgoingPayment(a1, 1 * 10**15)
-        p2 = OutgoingPayment(a2, 2 * 10**15)
+        a1 = urandom(20)
+        a2 = urandom(20)
+        p1 = Payment.create(subtask="p1", payee=a1, value=1 * 10**15)
+        p2 = Payment.create(subtask="p2", payee=a2, value=2 * 10**15)
 
         assert self.proc.add(p1)
         assert self.proc.add(p2)
 
         self.proc.sendout()
+
+        test1 = Payment.get(Payment.subtask == "p1")
+        test2 = Payment.get(Payment.subtask == "p2")
+        assert test1.status == PaymentStatus.sent
+        assert test2.status == PaymentStatus.sent
 
         monitor = PaymentMonitor(self.client, a1)
         wait_for(lambda: monitor.get_incoming_payments(), 60)
@@ -152,12 +156,12 @@ class PaymentProcessorFullTest(EthereumMiningNodeFixture):
         assert wait_for(lambda: self.proc.available_balance(refresh=True) > 0,
                         30 * 60 * 10), "No income from faucet"
 
-        assert self.proc.add(OutgoingPayment(a1, 1))
-        assert self.proc.add(OutgoingPayment(a2, 1))
-        assert self.proc.add(OutgoingPayment(a2, 1))
-        assert self.proc.add(OutgoingPayment(a3, 1))
-        assert self.proc.add(OutgoingPayment(a3, 1))
-        assert self.proc.add(OutgoingPayment(a3, 1))
+        assert self.proc.add(Payment.create(subtask="p1", payee=a1, value=1))
+        assert self.proc.add(Payment.create(subtask="p2", payee=a2, value=1))
+        assert self.proc.add(Payment.create(subtask="p3", payee=a2, value=1))
+        assert self.proc.add(Payment.create(subtask="p4", payee=a3, value=1))
+        assert self.proc.add(Payment.create(subtask="p5", payee=a3, value=1))
+        assert self.proc.add(Payment.create(subtask="p6", payee=a3, value=1))
 
         self.proc.sendout()
 
