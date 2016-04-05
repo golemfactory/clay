@@ -25,11 +25,9 @@ class TestWithAppConfig(unittest.TestCase):
         AppConfig.CONFIG_LOADED = False
 
     def setUp(self):
-        self.prev_simple_env = SimpleEnv.DATA_DIRECTORY
         self.clear_config()
 
     def tearDown(self):
-        SimpleEnv.DATA_DIRECTORY = self.prev_simple_env
         self.clear_config()
 
 

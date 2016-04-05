@@ -1,6 +1,4 @@
 import os
-import shutil
-import unittest
 
 from mock import patch, MagicMock
 
@@ -40,7 +38,7 @@ class TestNodeConfig(LogTestCase):
 
         appconfig.ESTM_FILENAME = TestNodeConfig.wrong_name
 
-        not_file = SimpleEnv.env_file_name(appconfig.ESTM_FILENAME)
+        SimpleEnv.env_file_name(appconfig.ESTM_FILENAME)
         with self.assertLogs(logger, level=1) as l:
             res = NodeConfig.read_estimated_performance()
         self.assertEqual(res, 0)
@@ -84,11 +82,6 @@ class TestNodeConfig(LogTestCase):
 
 
 class TestAppConfig(TestWithAppConfig):
-    def setUp(self):
-        TestWithAppConfig.setUp(self)
-        SimpleEnv.DATA_DIRECTORY = os.path.abspath("tmpdir")
-        if not os.path.isdir(SimpleEnv.DATA_DIRECTORY):
-            os.makedirs(SimpleEnv.DATA_DIRECTORY)
 
     @patch("golem.appconfig.ProcessService", autospec=True)
     def test_load_config(self, process_service_mock):
@@ -141,11 +134,3 @@ class TestAppConfig(TestWithAppConfig):
         cfg2 = AppConfig.load_config("test.ini")
         config_desc1.init_from_app_config(cfg2)
         self.assertEqual(config_desc1.computing_trust, 0.38)
-
-    def tearDown(self):
-        if os.path.isdir(SimpleEnv.DATA_DIRECTORY):
-            shutil.rmtree(SimpleEnv.DATA_DIRECTORY)
-        TestWithAppConfig.tearDown(self)
-
-if __name__ == '__main__':
-    unittest.main()

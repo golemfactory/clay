@@ -9,7 +9,7 @@ import shutil
 import tempfile
 
 # Do not remove! (even if pycharm complains that this import is not used)
-import node
+import node  # noqa
 
 
 class TestNode(TestWithAppConfig):
@@ -55,7 +55,7 @@ class TestNode(TestWithAppConfig):
         self.assertTrue(BlenderEnvironment not in env_types)
 
     @patch('gnr.node.Node.initialize')
-    @patch('gnr.node.Node.run', autospec = True)
+    @patch('gnr.node.Node.run', autospec=True)
     def test_public_address(self, mock_run, mock_initialize):
         public_address = '1.0.0.1'
         runner = CliRunner()

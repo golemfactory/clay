@@ -16,6 +16,7 @@ from golem.core.keysauth import EllipticalKeysAuth
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 
 from golem.appconfig import AppConfig
+from golem.core.simpleenv import _get_local_datadir
 
 from golem.model import Database
 from golem.network.transport.message import init_messages
@@ -45,8 +46,7 @@ def create_client(datadir=None, **config_overrides):
                 "Can't override nonexistent config attribute '{}'".format(key))
 
     if not datadir:
-        repo_root = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
-        datadir = os.path.join(repo_root, 'data', 'default')
+        datadir = _get_local_datadir('default')
 
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
