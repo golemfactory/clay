@@ -134,6 +134,7 @@ def node_cli():
 
 
 @node_cli.command()
+@click.option('--datadir', '-d', type=click.Path())
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=parse_node_addr,
               help="Network address to use for this node")
@@ -142,10 +143,10 @@ def node_cli():
 @click.option('--task', '-t', multiple=True, type=click.Path(exists=True),
               callback=parse_task_file,
               help="Request task from file")
-def start(node_address, peer, task, **extra_args):
-    del extra_args
+def start(datadir, node_address, peer, task, **extra_args):
+    del extra_args  # FIXME: What is this?
 
-    node = GNRNode(node_address=node_address)
+    node = GNRNode(datadir=datadir, node_address=node_address)
     node.initialize()
 
     node.connect_with_peers(peer)
