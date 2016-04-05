@@ -14,20 +14,20 @@ from golem.docker.image import DockerImage
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
-from golem.tools.testwithappconfig import TestWithAppConfig
+from golem.tools.testdirfixture import TestDirFixture
 from test_docker_image import DockerTestCase
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")
 
 
-class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
+class TestDockerBlenderTask(TestDirFixture, DockerTestCase):
 
     CYCLES_TASK_FILE = "docker-blender-cycles-task.json"
     BLENDER_TASK_FILE = "docker-blender-render-task.json"
 
     def setUp(self):
-        TestWithAppConfig.setUp(self)
+        super(TestDockerBlenderTask, self).setUp()
         self.error_msg = None
         self.dirs_to_remove = []
         self.task_computer_send_task_failed = TaskServer.send_task_failed
@@ -36,7 +36,7 @@ class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
         for dir in self.dirs_to_remove:
             shutil.rmtree(dir)
         TaskServer.send_task_failed = self.task_computer_send_task_failed
-        TestWithAppConfig.tearDown(self)
+        super(TestDockerBlenderTask, self).tearDown()
 
     def _load_test_task_definition(self, task_file):
         task_file = path.join(path.dirname(__file__), task_file)
@@ -46,7 +46,8 @@ class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()
 
-        def set_root_dir(p): return p.replace("$GOLEM_DIR", golem_dir)
+        def set_root_dir(p):
+            return p.replace("$GOLEM_DIR", golem_dir)
 
         task_def.resources = set(set_root_dir(p) for p in task_def.resources)
         task_def.main_scene_file = set_root_dir(task_def.main_scene_file)
@@ -67,7 +68,7 @@ class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
         ctd = render_task.query_extra_data(1.0)
 
         # Create the computing node
-        node = gnr.node.GNRNode()
+        node = gnr.node.GNRNode(datadir=self.path)
         node.initialize()
 
         task_computer = node.client.task_server.task_computer
@@ -167,7 +168,7 @@ class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
         task = self._create_test_task()
         image = task.header.docker_images[0]
         task.header.docker_images = [
-            DockerImage(image.repository, image_id= "%$#@!!!")]
+            DockerImage(image.repository, image_id="%$#@!!!")]
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         if task_thread:
             self.assertIsNone(task_thread.result)

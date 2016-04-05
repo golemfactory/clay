@@ -4,7 +4,6 @@ from os import path
 
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 from golem.core.simpleenv import SimpleEnv
-from golem.core.prochelper import ProcessService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 CONFIG_FILENAME = "app_cfg.ini"
@@ -131,29 +130,21 @@ class NodeConfig:
 
 
 class AppConfig:
-    CONFIG_LOADED = False
+    __loaded_configs = set()
 
     @classmethod
     def manager_port(cls):
         return MANAGER_PORT
 
     @classmethod
-    def load_config(cls, cfg_file=CONFIG_FILENAME):
+    def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
 
-        if cls.CONFIG_LOADED:
-            logger.warning("Application already configured")
-            return None
+        # FIXME: This check is only for transition to separeted datadirs.
+        cfg_file = path.join(datadir, cfg_file_name)
+        assert cfg_file not in cls.__loaded_configs, "Config has been loaded: " + cfg_file
+        cls.__loaded_configs.add(cfg_file)
 
-        logger.info("Starting generic process service...")
-        ps = ProcessService()
-        logger.info("Generic process service started")
-
-        logger.info("Trying to register current process")
-        local_id = ps.register_self()
-
-        if local_id < 0:
-            logger.error("Failed to register current process - bailing out")
-            return None
+        local_id = 0  # FIXME: Transitional. local_id should not be needed.
 
         common_config = CommonConfig(manager_address=MANAGER_ADDRESS,
                                      manager_port=MANAGER_PORT,
@@ -196,12 +187,10 @@ class AppConfig:
                                  public_address="")
 
         cfg = SimpleConfig(common_config, node_config, cfg_file)
+        return AppConfig(cfg, cfg_file)
 
-        cls.CONFIG_LOADED = True
-
-        return AppConfig(cfg)
-
-    def __init__(self, cfg):
+    def __init__(self, cfg, config_file):
+        self.config_file = config_file
         self._cfg = cfg
         for prop in self._cfg.get_common_config().prop_names:
             setattr(self, "get_{}".format(prop), self.get_common_property(prop))
@@ -222,13 +211,13 @@ class AppConfig:
     def set_node_property(self, prop):
         return getattr(self._cfg.get_node_config(), "set_{}".format(prop))
 
-    def change_config(self, cfg_desc, cfg_file=CONFIG_FILENAME, ):
+    def change_config(self, cfg_desc):
         assert isinstance(cfg_desc, ClientConfigDescriptor)
 
         for var, val in vars(cfg_desc).iteritems():
             set_func = getattr(self, "set_{}".format(var))
             set_func(val)
-        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), cfg_file, refresh=True,
+        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), self.config_file, refresh=True,
                      check_uid=False)
 
     def __str__(self):

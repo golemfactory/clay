@@ -36,8 +36,8 @@ class Node(object):
     """
     default_environments = []
 
-    def __init__(self, **config_overrides):
-        self.client = create_client(**config_overrides)
+    def __init__(self, datadir=None, **config_overrides):
+        self.client = create_client(datadir, **config_overrides)
 
     def initialize(self):
         self.client.start_network()
@@ -79,7 +79,7 @@ class GNRNode(Node):
 
     @staticmethod
     def _get_task_builder(task_def):
-        #FIXME: temporary solution
+        # FIXME: temporary solution.
         if task_def.main_scene_file.endswith('.blend'):
             return BlenderRenderTaskBuilder
         else:

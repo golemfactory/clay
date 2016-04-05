@@ -5,7 +5,6 @@ import shutil
 import logging
 
 from simpleauth import SimpleAuth
-from simpleenv import SimpleEnv
 
 logger = logging.getLogger(__name__)
 
@@ -76,15 +75,17 @@ class ConfigEntry(object):
         def get_properties(_self):
             return getattr(_self, '_properties')
 
-        setattr(other.__class__, prop_name, property_)
+        setattr(other, prop_name, property_)
         setattr(other.__class__, getter_name, get_prop)
         setattr(other.__class__, setter_name, set_prop)
 
+        if not hasattr(other, '_properties'):
+            setattr(other, '_properties', [])
+
         if not hasattr(other.__class__, 'properties'):
-            setattr(other.__class__, '_properties', [])
             setattr(other.__class__, 'properties', get_properties)
 
-        getattr(other.__class__, '_properties').append(getattr(other.__class__, prop_name))
+        other._properties.append(property_)
 
 
 class SimpleConfig(object):
@@ -102,8 +103,6 @@ class SimpleConfig(object):
         """
         self._common_config = common_config
         self._node_config = node_config
-
-        cfg_file = SimpleEnv.env_file_name(cfg_file)
 
         logger_msg = "Reading config from file {}".format(cfg_file)
 
@@ -169,6 +168,8 @@ class SimpleConfig(object):
             backup_file_name = "{}.bak".format(cfg_file)
             logger.info("Creating backup configuration file {}".format(backup_file_name))
             shutil.copy(cfg_file, backup_file_name)
+        elif not os.path.exists(os.path.dirname(cfg_file)):
+            os.makedirs(os.path.dirname(cfg_file))
 
         with open(cfg_file, 'w') as f:
             cfg.write(f)

@@ -2,12 +2,11 @@ from mock import patch, Mock
 
 from golem.client import create_client, Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.tools.testwithappconfig import TestWithAppConfig
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testdirfixture import TestDirFixture
 
 
-class TestCreateClient(TestWithAppConfig):
+class TestCreateClient(TestDirFixture):
 
     @patch('golem.client.Client')
     def test_config_default(self, mock_client):
@@ -22,7 +21,7 @@ class TestCreateClient(TestWithAppConfig):
     @patch('golem.client.Client')
     def test_config_override_valid(self, mock_client):
         self.assertTrue(hasattr(ClientConfigDescriptor(), "node_address"))
-        create_client(node_address='1.0.0.0')
+        create_client(datadir=self.path, node_address='1.0.0.0')
         for name, args, kwargs in mock_client.mock_calls:
             if name == "":  # __init__ call
                 config_desc = args[0]
@@ -37,7 +36,7 @@ class TestCreateClient(TestWithAppConfig):
         """
         self.assertFalse(hasattr(ClientConfigDescriptor(), "node_colour"))
         with self.assertRaises(AttributeError):
-            create_client(node_colour='magenta')
+            create_client(datadir=self.path, node_colour='magenta')
 
 
 class TestClient(TestWithDatabase, TestDirFixture):

@@ -32,9 +32,13 @@ logger = logging.getLogger(__name__)
 
 
 def create_client(datadir=None, **config_overrides):
+    # TODO: All these feature should be move to Client()
     init_messages()
 
-    app_config = AppConfig.load_config()
+    if not datadir:
+        datadir = _get_local_datadir('default')
+
+    app_config = AppConfig.load_config(datadir)
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
 
@@ -44,9 +48,6 @@ def create_client(datadir=None, **config_overrides):
         else:
             raise AttributeError(
                 "Can't override nonexistent config attribute '{}'".format(key))
-
-    if not datadir:
-        datadir = _get_local_datadir('default')
 
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
