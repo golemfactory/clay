@@ -1,16 +1,15 @@
 import logging
-import platform
-import random
 import os
+import random
 import shlex
-import tempfile
-import subprocess
 import shutil
+import subprocess
+
 from collections import OrderedDict
 from PIL import Image, ImageChops
 
 from golem.core.simpleexccmd import exec_cmd
-from golem.docker.task_thread import  DockerTaskThread
+from golem.core.fileshelper import find_file_with_ext
 from golem.task.taskstate import SubtaskStatus
 from golem.environments.environment import Environment
 
@@ -234,13 +233,12 @@ class LuxTask(RenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
-    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0, update_task_callback=None):
+    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
         tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         self.tmp_dir = tmp_dir
         env = LuxRenderEnvironment()
         lux_merger = env.get_lux_merger()
         test_result_flm = os.path.join(tmp_dir, "test_result.flm")
-        self.update_task_callback = update_task_callback
 
         self.interpret_task_results(subtask_id, task_result, result_type, tmp_dir)
         tr_files = self.results[subtask_id]
@@ -310,6 +308,23 @@ class LuxTask(RenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, working_directory, 0)
 
+    def after_test(self, results, tmp_dir):
+        # Search for flm - the result of testing a lux task
+        # It's needed for verification of received results
+        flm = find_file_with_ext(tmp_dir, [".flm"])
+        if flm is not None:
+            try:
+                filename = "test_result.flm"
+                flm_path = os.path.join(tmp_dir, filename)
+                os.rename(flm, flm_path)
+                save_path = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+                if not os.path.exists(save_path):
+                    os.makedirs(save_path)
+                shutil.copy(flm_path, save_path)
+            except (OSError, IOError) as err:
+                logger.warning("Couldn't rename and copy .flm file. {}".format(err))
+
+
     def _short_extra_data_repr(self, perf_index, extra_data):
         return "start_task: {start_task}, outfilebasename: {outfilebasename}, " \
                "scene_file_src: {scene_file_src}".format(**extra_data)
@@ -371,9 +386,9 @@ class LuxTask(RenderingTask):
         os.chdir(prev_path)
 
     def __generate_final_file(self):
-        self.cmp = LocalComputer(self, self.root_path, self.__final_img_ready, self.query_extra_data_for_merge)
+        self.cmp = LocalComputer(self, self.root_path, self.__final_img_ready, self.__final_img_error,
+                                 self.query_extra_data_for_merge)
         self.cmp.output_file = self.output_file + "." + self.output_format
-        print self.cmp.output_file
         self.cmp.run()
         #self.__format_lux_render_cmd(tmp_scene_file.name)
 
@@ -405,11 +420,19 @@ class LuxTask(RenderingTask):
         return self._new_compute_task_def("FINALTASK", extra_data, scene_dir, 0)
         #os.remove(tmp_scene_file.name)
 
-    def __final_img_ready(self, *args, **kwargs):
-        print args
-        print kwargs
-        print "FINAL IMAGE GENERATED!"
-        self.update_task_callback(self.header.task_id)
+    def __final_img_ready(self, results):
+        commonprefix = os.path.commonprefix(results)
+        png = find_file_with_ext(commonprefix, [".png"])
+        if png is not None:
+            try:
+                shutil.copy(png, self.output_file)
+            except (IOError, OSError) as err:
+                logger.warning("Couldn't rename and copy .png file. {}".format(err))
+        self.notify_update_task(self.header.task_id)
+
+    def __final_img_error(self, error):
+        logger.error("Cannot generate final image: {}".format(error))
+        # TODO What should we do in this situation?
 
     def __generate_final_flm(self):
         # output flm

@@ -295,7 +295,8 @@ class GNRApplicationLogic(QtCore.QObject):
 
             t = Task.build_task(tb)
 
-            self.tt = TaskTester(t, self.client.get_root_path(), self._test_task_computation_finished)
+            self.tt = TaskTester(t, self.client.get_root_path(), self._test_task_computation_success,
+                                 self._test_task_computation_error)
 
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
@@ -313,18 +314,20 @@ class GNRApplicationLogic(QtCore.QObject):
     def change_accept_tasks_for_environment(self, env_id, state):
         self.client.change_accept_tasks_for_environment(env_id, state)
 
-    def _test_task_computation_finished(self, success, est_mem=0, error=""):
-        if success:
-            self.progress_dialog_customizer.show_message("Test task computation success!")
-        else:
-            err_msg = "Task test computaion failure... "
-            if error:
-                err_msg += error
-            else:
-                err_msg += "Check resources."
-            self.progress_dialog_customizer.show_message(err_msg)
+    def _test_task_computation_success(self, results, est_mem):
+        self.progress_dialog_customizer.show_message("Test task computation success!")
         if self.customizer.new_task_dialog_customizer:
-            self.customizer.new_task_dialog_customizer.test_task_computation_finished(success, est_mem)
+            self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)
+
+    def _test_task_computation_error(self, error=""):
+        err_msg = "Task test computation failure... "
+        if error:
+            err_msg += error
+        else:
+            err_msg += "Check resources."
+        self.progress_dialog_customizer.show_message(err_msg)
+        if self.customizer.new_task_dialog_customizer:
+            self.customizer.new_task_dialog_customizer.test_task_computation_finished(False, 0)
 
     def task_status_changed(self, task_id):
 

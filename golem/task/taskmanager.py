@@ -94,6 +94,7 @@ class TaskManager(object):
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
 
         task.initialize(self.dir_manager)
+        task.notify_update_task = self.__notice_task_updated
         self.tasks[task.header.task_id] = task
 
         ts = TaskState()
@@ -221,8 +222,7 @@ class TaskManager(object):
                 self.__notice_task_updated(task_id)
                 return False
 
-            self.tasks[task_id].computation_finished(subtask_id, result, self.dir_manager, result_type,
-                                                     update_task_callback=self.__notice_task_updated)
+            self.tasks[task_id].computation_finished(subtask_id, result, self.dir_manager, result_type)
             ss = self.tasks_states[task_id].subtask_states[subtask_id]
             ss.subtask_progress = 1.0
             ss.subtask_rem_time = 0.0
@@ -396,6 +396,7 @@ class TaskManager(object):
                 del self.subtask2task_mapping[sub.subtask_id]
             self.tasks_states[task_id].subtask_states.clear()
 
+            self.tasks[task_id].notify_update_task = None
             del self.tasks[task_id]
             del self.tasks_states[task_id]
 
