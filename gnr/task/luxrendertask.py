@@ -361,7 +361,10 @@ class LuxTask(RenderingTask):
         logger.debug("Last flm cmd {}".format(cmd))
         prev_path = os.getcwd()
         os.chdir(os.path.dirname(self.main_scene_file))
-        exec_cmd(cmd)
+        if env.is_windows():
+            exec_cmd(cmd)
+        else:
+            exec_cmd(shlex.split(cmd))
         os.chdir(prev_path)
 
     def __generate_final_file(self):
