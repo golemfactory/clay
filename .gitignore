@@ -9,35 +9,17 @@ ui_*.py
 
 # Distribution / packaging
 .Python
-env/
 build/
 .cache/
-ComputerRes/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-golemres/
 .idea
 lib/
 lib64/
-parts/
-examples/gnr/node_data/
-res/
 sdist/
-testdata/
-testing_task_tmp/
-testing_task_resources/
-var/
-*.exr
-*.gt
 *.egg-info/
 .installed.cfg
 *.egg
-*.png
-*.flm
-
-# Golem files
-*.db
-*.log
