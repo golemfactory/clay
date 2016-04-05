@@ -53,8 +53,8 @@ def create_client(datadir=None, **config_overrides):
     return Client(config_desc, datadir=datadir, config=app_config)
 
 
-def start_client():
-    c = create_client()
+def start_client(datadir):
+    c = create_client(datadir)
     logger.info("Starting all asynchronous services")
     c.start_network()
     return c
