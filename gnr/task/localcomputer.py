@@ -17,7 +17,8 @@ class LocalComputer(object):
     DEFAULT_SUCCESS = "Task computation success!"
 
     def __init__(self, task, root_path, success_callback, error_callback, get_compute_task_def, check_mem=False,
-                 comp_failed_warning=DEFAULT_WARNING, comp_success_message=DEFAULT_SUCCESS):
+                 comp_failed_warning=DEFAULT_WARNING, comp_success_message=DEFAULT_SUCCESS, use_task_resources=True,
+                 additional_resources=[]):
         assert isinstance(task, Task)
         self.task = task
         self.res_path = None
@@ -32,6 +33,8 @@ class LocalComputer(object):
         self.check_mem = check_mem
         self.comp_failed_warning = comp_failed_warning
         self.comp_success_message = comp_success_message
+        self.use_task_resources = use_task_resources
+        self.additional_resources = additional_resources
 
     def run(self):
         try:
@@ -83,11 +86,14 @@ class LocalComputer(object):
             os.makedirs(self.test_task_res_path)
 
         self.test_task_res_dir = get_test_task_directory()
-        rh = TaskResourceHeader(self.test_task_res_dir)
-        res_file = self.task.get_resources(self.task.header.task_id, rh, resource_types["zip"])
+        if self.use_task_resources:
+            rh = TaskResourceHeader(self.test_task_res_dir)
+            res_file = self.task.get_resources(self.task.header.task_id, rh, resource_types["zip"])
 
-        if res_file:
-            decompress_dir(self.test_task_res_path, res_file)
+            if res_file:
+                decompress_dir(self.test_task_res_path, res_file)
+        for res in self.additional_resources:
+            shutil.copy(res, self.test_task_res_path)
 
         return True
 

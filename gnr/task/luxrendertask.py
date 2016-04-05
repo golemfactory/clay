@@ -271,7 +271,6 @@ class LuxTask(RenderingTask):
                 self.__generate_final_flm_advanced_verification()
             else:
                 self.__generate_final_flm()
-            self.__generate_final_file()
 
     ###################
     # GNRTask methods #
@@ -324,7 +323,6 @@ class LuxTask(RenderingTask):
             except (OSError, IOError) as err:
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
 
-
     def _short_extra_data_repr(self, perf_index, extra_data):
         return "start_task: {start_task}, outfilebasename: {outfilebasename}, " \
                "scene_file_src: {scene_file_src}".format(**extra_data)
@@ -370,29 +368,10 @@ class LuxTask(RenderingTask):
         img = self.preview_exr.to_pil()
         img.save(self.preview_file_path, "BMP")
 
-    def __format_lux_render_cmd(self, scene_file):
-
-
-
-        env = LuxRenderEnvironment()
-        cmd_file = env.get_lux_console()
-        logger.debug("Luxconsole file name: " + str(cmd_file))
-        output_flm = "{}.flm".format(self.output_file)
-        cmd = '"{}" "{}" -R "{}" -o "{}" '.format(cmd_file, scene_file, output_flm, self.output_file)
-        logger.debug("Last flm cmd {}".format(cmd))
-        prev_path = os.getcwd()
-        os.chdir(os.path.dirname(self.main_scene_file))
-        exec_cmd(cmd)
-        os.chdir(prev_path)
-
-    def __generate_final_file(self):
-        self.cmp = LocalComputer(self, self.root_path, self.__final_img_ready, self.__final_img_error,
-                                 self.query_extra_data_for_merge)
-        self.cmp.output_file = self.output_file + "." + self.output_format
-        self.cmp.run()
-        #self.__format_lux_render_cmd(tmp_scene_file.name)
-
-
+    def __generate_final_file(self, flm):
+        computer = LocalComputer(self, self.root_path, self.__final_img_ready, self.__final_img_error,
+                                 self.query_extra_data_for_merge, additional_resources=[flm])
+        computer.run()
 
     def query_extra_data_for_merge(self):
         if self.halttime > 0:
@@ -404,8 +383,6 @@ class LuxTask(RenderingTask):
                                         write_interval, [0, 1, 0, 1], self.output_format)
 
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
-  #      with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=dir_name, delete=False) as tmp_scene_file:
-#            tmp_scene_file.write(scene_src)
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": 0,
                       "end_task": 0,
@@ -418,7 +395,6 @@ class LuxTask(RenderingTask):
                       "lux_console": None}
 
         return self._new_compute_task_def("FINALTASK", extra_data, scene_dir, 0)
-        #os.remove(tmp_scene_file.name)
 
     def __final_img_ready(self, results):
         commonprefix = os.path.commonprefix(results)
@@ -435,21 +411,49 @@ class LuxTask(RenderingTask):
         # TODO What should we do in this situation?
 
     def __generate_final_flm(self):
-        # output flm
-        output_file_name = u"{}".format(self.output_file, self.output_format)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
-        files = " ".join(self.collected_file_names.values())
-        env = LuxRenderEnvironment()
-        lux_merger = env.get_lux_merger()
+        computer = LocalComputer(self, self.root_path, self.__final_flm_ready, self.__final_flm_failure,
+                                 self.query_extra_data_for_final_flm, use_task_resources=False,
+                                 additional_resources=self.collected_file_names.values())
+        computer.run()
 
-        if lux_merger is not None:
-            cmd = "{} -o {}.flm {}".format(lux_merger, self.output_file, files)
+    def __final_flm_ready(self, results):
+        commonprefix = os.path.commonprefix(results['data'])
+        flm = find_file_with_ext(commonprefix, [".flm"])
+        if flm is None:
+            self.__final_flm_failure("No flm file created")
+            return
+        shutil.copy(flm, os.path.dirname(self.output_file))
+        new_flm = os.path.join(os.path.dirname(self.output_file), os.path.basename(flm))
+        self.__generate_final_file(new_flm)
 
-            logger.debug("Lux Merger cmd: {}".format(cmd))
-            if env.is_windows():
-                exec_cmd(cmd)
-            else:
-                exec_cmd(shlex.split(cmd))
+    def __final_flm_failure(self, error):
+        logger.error("Cannot generate final flm: {}".format(error))
+        # TODO What should we do in this sitution?
+
+    def query_extra_data_for_final_flm(self):
+        files = [os.path.basename(x) for x in self.collected_file_names.values()]
+        with open(find_task_script("docker_luxmerge.py")) as f:
+            src_code = f.read()
+        if src_code is None:
+            logger.error("Cannot find merger script")
+            return
+
+        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+        extra_data = {'output_flm': self.output_file,
+                      'flm_files': files,
+                      'scene_src': src_code,
+                      'start_task': 0,
+                      'end_task': 0,
+                      'total_tasks': 0,
+                      'outfilebasename': None,
+                      'scene_file': None,
+                      'scene_file_src': None,
+                      'path_root': self.root_path
+                      }
+        ctd = self._new_compute_task_def("MERGETASK", extra_data, scene_dir, 0)
+        ctd.src_code = src_code
+        return ctd
 
     def __generate_final_flm_advanced_verification(self):
         # the file containing result of task test
