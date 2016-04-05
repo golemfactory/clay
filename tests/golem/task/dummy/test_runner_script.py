@@ -16,10 +16,10 @@ class TestDummyTaskRunnerScript(TestDirFixture):
     def test_runner_dispatch_requesting(
             self, mock_run_simulation, mock_run_computing_node,
             mock_run_requesting_node):
-        args = ["runner.py", runner.REQUESTING_NODE_KIND, "datadir", "7"]
+        args = ["runner.py", runner.REQUESTING_NODE_KIND, self.path, "7"]
         runner.dispatch(args)
         self.assertTrue(mock_run_requesting_node.called)
-        self.assertEqual(mock_run_requesting_node.call_args[0], ("datadir", 7))
+        self.assertEqual(mock_run_requesting_node.call_args[0], (self.path, 7))
         self.assertFalse(mock_run_computing_node.called)
         self.assertFalse(mock_run_simulation.called)
 
