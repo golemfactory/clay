@@ -61,7 +61,6 @@ class TaskServer(PendingConnectionsServer):
         self.__send_waiting_results()
         self.__remove_old_sessions()
         self._remove_old_listenings()
-        self.__send_payments()
 
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
@@ -709,11 +708,6 @@ class TaskServer(PendingConnectionsServer):
             self._add_pending_request(TaskConnTypes.TaskFailure, wtf.owner, wtf.owner_port, wtf.owner_key_id, args)
 
         self.failures_to_send.clear()
-
-    def __send_payments(self):
-        task_id, payments = self.client.get_new_payments_tasks()
-        if payments:
-            self.pay_for_task(task_id, payments)
 
     # CONFIGURATION METHODS
     #############################

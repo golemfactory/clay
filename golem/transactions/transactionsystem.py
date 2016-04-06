@@ -20,17 +20,6 @@ class TransactionSystem(object):
         self.incomes_keeper = incomes_keeper_class()  # Keeps information about received payments
         self.budget = 10000  # TODO Add method that set proper budget value
 
-    # TODO Powinno dzialac tez dla subtask id
-    # Price tu chyba nie potrzebne tylko powinno byc pobierane z payment keepera
-    def task_reward_payment_failure(self, task_id, price):
-        """ Inform payment keeper about payment failure. If it keeps information about payments for this subtask it
-        should be removed. Specific amount should also return to the budget.
-        :param task_id: payment for task with this id has failed
-        :param int price:
-        """
-        self.budget += price
-        self.payments_keeper.payment_failure(task_id)
-
     def get_income(self, addr_info, value):
         """ Increase information about budget with reward
         :param str addr_info: return information about address of a node that send this payment
@@ -48,28 +37,6 @@ class TransactionSystem(object):
         """
         payment_info = PaymentInfo(task_id, subtask_id, value, account_info)
         self.payments_keeper.finished_subtasks(payment_info)
-
-    def task_finished(self, task_id):
-        """ Inform payments keeper that task with given id has been finished and payments for that task may be
-        appraise.
-        :param str task_id: id of a finished task
-        """
-        self.payments_keeper.task_finished(task_id)
-
-    def get_new_payments_tasks(self):
-        """ Return new payment for a computed task that hasn't been processed yet.
-        :return tuple: return task id and list of payments for this task or a pair with two None
-        """
-        task, payments = self.payments_keeper.get_new_payments_task(self.budget)
-        if task is None:
-            return None, None
-        if self.budget >= task.value:
-            self.budget -= task.value
-            return task.task_id, payments
-        else:
-            self.payments_keeper.payment_failure(task.task_id)
-            logger.warning("Can't paid for the task, not enough money")
-            return None, None
 
     def get_payments_list(self):
         """ Return list of all planned and made payments

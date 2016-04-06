@@ -38,7 +38,7 @@ class TestResourceServer(TestDirFixture):
         self.config_desc = MockConfig()
         self.target_resources = [
             'test_file',
-            'test_dir/dir_file'
+            os.path.join('test_dir', 'dir_file')
         ]
 
         res_path = self.dir_manager.get_task_resource_dir(task_id)

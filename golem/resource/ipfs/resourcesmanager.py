@@ -35,32 +35,31 @@ class IPFSResourceManager:
     root_path = os.path.abspath(os.sep)
     timeout_exceptions = urllib_exceptions + [socket.timeout,
                                               requests.exceptions.Timeout,
+                                              requests.exceptions.ConnectionError,
                                               twisted.internet.defer.TimeoutError]
 
     def __init__(self, dir_manager, node_name,
-                 ipfs_client_config=None,
+                 client_config=None,
                  resource_dir_method=None,
                  max_concurrent_downloads=8,
-                 max_retries=5):
+                 max_retries=10):
 
         self.lock = Lock()
 
         self.node_name = node_name
         self.dir_manager = dir_manager
-        self.ipfs_client_config = ipfs_client_config
 
         self.current_downloads = 0
         self.max_retries = max_retries
         self.max_concurrent_downloads = max_concurrent_downloads
 
         self.client_config = {
-            'timeout': (5000, 5000)
+            'timeout': (10000, 10000)
         }
 
-        if ipfs_client_config:
-            self.client_config.update(ipfs_client_config)
+        if client_config:
+            self.client_config.update(client_config)
 
-        self.hash_to_file = dict()
         self.file_to_hash = dict()
         self.task_id_to_files = dict()
         self.task_common_prefixes = dict()
@@ -94,7 +93,7 @@ class IPFSResourceManager:
     def update_resource_dir(self):
         self.__init__(self.dir_manager,
                       self.node_name,
-                      self.ipfs_client_config,
+                      self.client_config,
                       self.resource_dir_method,
                       self.max_concurrent_downloads)
 
@@ -118,13 +117,21 @@ class IPFSResourceManager:
     def new_ipfs_client(self):
         return IPFSClient(**self.client_config)
 
-    def check_resource(self, fs_object, task_id, absolute_path=False):
-        if absolute_path:
-            res_path = fs_object
-        else:
-            res_path = self.get_resource_path(fs_object, task_id)
+    def check_resource(self, resource, task_id,
+                       absolute_path=False, multihash=None):
 
-        return to_unicode(res_path) in self.file_to_hash and os.path.exists(res_path)
+        if absolute_path:
+            res_path = resource
+        else:
+            res_path = self.get_resource_path(resource, task_id)
+
+        uni_path = to_unicode(res_path)
+        if uni_path in self.file_to_hash:
+            local_hash = self.file_to_hash[uni_path]
+            if multihash and local_hash != unicode(multihash):
+                return False
+            return os.path.exists(res_path)
+        return False
 
     def list_resources(self, task_id):
         return self.task_id_to_files.get(task_id, [])
@@ -168,12 +175,9 @@ class IPFSResourceManager:
 
     def remove_task(self, task_id):
         if task_id in self.task_id_to_files:
-            files = self.task_id_to_files[task_id]
-
-            if files:
-                for file_name in files:
-                    self.file_to_hash.pop(file_name, None)
-
+            files = self.task_id_to_files.get(task_id, [])
+            for file_name in files:
+                self.file_to_hash.pop(file_name, None)
             del self.task_id_to_files[task_id]
 
         self.task_common_prefixes.pop(task_id, None)
@@ -188,20 +192,20 @@ class IPFSResourceManager:
                                   absolute_path=absolute_path,
                                   client=client)
 
-    def add_resource(self, fs_object, task_id, absolute_path=False, client=None):
+    def add_resource(self, resource, task_id, absolute_path=False, client=None):
 
         if not client:
             client = self.new_ipfs_client()
 
         if absolute_path:
-            resource_path = fs_object
+            resource_path = resource
         else:
-            resource_path = self.get_resource_path(fs_object, task_id)
+            resource_path = self.get_resource_path(resource, task_id)
 
         if not os.path.exists(resource_path):
             logger.error("IPFS: resource '%s' does not exist" % resource_path)
             return
-        elif self.check_resource(fs_object, task_id):
+        elif self.check_resource(resource, task_id):
             return
 
         is_dir = os.path.isdir(resource_path)
@@ -231,7 +235,6 @@ class IPFSResourceManager:
             if task_id not in self.task_id_to_files:
                 self.task_id_to_files[task_id] = []
 
-            self.hash_to_file[multihash] = name
             self.file_to_hash[name] = multihash
             self.task_id_to_files[task_id].append([name, multihash])
 
@@ -256,7 +259,7 @@ class IPFSResourceManager:
     def pull_resource(self, filename, multihash, task_id,
                       success, error, client=None, async=True):
 
-        if multihash in self.hash_to_file:
+        if self.check_resource(filename, task_id, multihash=multihash):
             success(filename, multihash, task_id)
             return
 
@@ -265,16 +268,18 @@ class IPFSResourceManager:
                 self.current_downloads -= 1
 
             result = args[0][0]
-            filename = result[0]
-            multihash = result[1]
+            result_filename = result[0]
+            result_multihash = result[1]
 
-            logger.error("[IPFS]:success:{}:{}".format(multihash, time.time()))
-            logger.debug("IPFS: %r (%r) downloaded" % (filename, multihash))
+            logger.debug("[IPFS]:success:%s:%r" %
+                         (result_multihash, time.time()))
+            logger.debug("IPFS: %r (%r) downloaded" %
+                         (result_filename, result_multihash))
 
-            self.__clear_retry(IPFSCommands.pull, multihash)
-            self.pin_resource(multihash)
+            self.__clear_retry(IPFSCommands.pull, result_multihash)
+            self.pin_resource(result_multihash)
 
-            success(filename, multihash, task_id)
+            success(filename, result_multihash, task_id)
             self.__process_queue()
 
         def error_wrapper(exc, *args, **kwargs):
@@ -289,9 +294,12 @@ class IPFSResourceManager:
                                    error=error,
                                    async=async)
             else:
-                logger.error("[IPFS]:error:{}:{}".format(multihash, time.time()))
-                logger.error("IPFS: error downloading %r (%r)" % (filename, multihash))
-                error(*args, **kwargs)
+                logger.error("[IPFS]:error:%s:%r" %
+                             (multihash, time.time()))
+                logger.error("IPFS: error downloading %r (%r)" %
+                             (filename, multihash))
+
+                error(filename, task_id)
                 self.__process_queue()
 
         out_path = self.get_resource_path(filename, task_id)
@@ -302,8 +310,10 @@ class IPFSResourceManager:
                 os.makedirs(out_dir[0])
 
         self.__pull(filename, multihash, task_id,
-                    success=success_wrapper,
-                    error=error_wrapper,
+                    success_wrapper=success_wrapper,
+                    error_wrapper=error_wrapper,
+                    success=success,
+                    error=error,
                     async=async,
                     client=client)
 
@@ -318,36 +328,38 @@ class IPFSResourceManager:
                    self.current_downloads < self.max_concurrent_downloads
 
     def __pull(self, filename, multihash, task_id,
-               success, error, async, client=None):
+               success_wrapper, error_wrapper,
+               success, error,
+               async=True, client=None):
+
+        if not self.__can_download():
+            self.__push_to_queue(filename, multihash, task_id,
+                                 success, error)
+            return
 
         if not client:
             client = self.new_ipfs_client()
 
         res_dir = self.get_resource_dir(task_id)
 
-        if self.__can_download():
-            with self.lock:
-                self.current_downloads += 1
+        with self.lock:
+            self.current_downloads += 1
 
-            if async:
-                self.__ipfs_async_call(client.get_file,
-                                       success,
-                                       error,
-                                       multihash=multihash,
+        if async:
+            self.__ipfs_async_call(client.get_file,
+                                   success_wrapper,
+                                   error_wrapper,
+                                   multihash=multihash,
+                                   filename=filename,
+                                   filepath=res_dir)
+        else:
+            try:
+                data = client.get_file(multihash,
                                        filename=filename,
                                        filepath=res_dir)
-            else:
-                try:
-                    data = client.get_file(multihash,
-                                           filename=filename,
-                                           filepath=res_dir)
-                    success(data)
-                except Exception as e:
-                    error(e)
-        else:
-            self.__push_to_queue(filename, multihash,
-                                 task_id,
-                                 success, error)
+                success(data)
+            except Exception as e:
+                error(e)
 
     def __can_retry(self, exc, cmd, obj_id):
         if type(exc) in self.timeout_exceptions:

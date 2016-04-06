@@ -1,23 +1,28 @@
-from peewee import SqliteDatabase, Model, CharField, IntegerField, FloatField, DateTimeField, CompositeKey
-
 import datetime
 import appdirs
+import json
+import logging
 import os
+from enum import Enum
+
+from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
+                    DateTimeField, TextField, CompositeKey)
+
+
+log = logging.getLogger('golem.db')
 
 DATABASE_NAME = os.path.join(appdirs.user_data_dir('golem'), 'golem.db')
+
 NEUTRAL_TRUST = 0.0
 
 
-class SqliteFKTimeoutDatabase(SqliteDatabase):
-    def initialize_connection(self, conn):
-        self.execute_sql('PRAGMA foreign_keys = ON')
-        self.execute_sql('PRAGMA busy_timeout = 30000')
-
-
-db = SqliteFKTimeoutDatabase(None, threadlocals=True)
+db = SqliteDatabase(None, threadlocals=True, pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
 
 
 class Database:
+    # Database user schema version, bump to recreate the database
+    SCHEMA_VERSION = 3
+
     def __init__(self, name=DATABASE_NAME):
 
         self.name = name
@@ -28,8 +33,22 @@ class Database:
         self.create_database()
 
     @staticmethod
+    def _get_user_version():
+        return db.execute_sql('PRAGMA user_version').fetchone()[0]
+
+    @staticmethod
+    def _set_user_version(version):
+        db.execute_sql('PRAGMA user_version = {}'.format(version))
+
+    @staticmethod
     def create_database():
-        db.create_tables([LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment], safe=True)
+        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment]
+        version = Database._get_user_version()
+        if version != Database.SCHEMA_VERSION:
+            log.info("New database version {}, previous {}".format(Database.SCHEMA_VERSION, version))
+            db.drop_tables(tables, safe=True)
+            Database._set_user_version(Database.SCHEMA_VERSION)
+        db.create_tables(tables, safe=True)
 
 
 class BaseModel(Model):
@@ -43,19 +62,57 @@ class BaseModel(Model):
 # PAYMENT MODELS #
 ##################
 
+class RawCharField(CharField):
+    """ Char field without auto utf-8 encoding."""
+
+    def db_value(self, value):
+        return unicode(value.encode('hex'))
+
+    def python_value(self, value):
+        return value.decode('hex')
+
+
+class EnumField(IntegerField):
+    """ Database field that maps enum type to integer."""
+
+    def __init__(self, enum_type, *args, **kwargs):
+        super(EnumField, self).__init__(*args, **kwargs)
+        self.enum_type = enum_type
+
+    def db_value(self, value):
+        if not isinstance(value, self.enum_type):
+            raise TypeError("Expected {} type".format(self.enum_type.__name__))
+        return value.value  # Get the integer value of an enum.
+
+    def python_value(self, value):
+        return self.enum_type(value)
+
+
+class JsonField(TextField):
+    """ Database field that stores a Python value in JSON format. """
+
+    def db_value(self, value):
+        return json.dumps(value)
+
+    def python_value(self, value):
+        return json.loads(value)
+
+
+class PaymentStatus(Enum):
+    """ The status of a payment. """
+    awaiting = 1    # Created but not introduced to the payment network.
+    sent = 2        # Sent to the payment network.
+    confirmed = 3   # Confirmed on the payment network.
+
 
 class Payment(BaseModel):
     """ Represents payments that nodes on this machine make to other nodes
     """
-    to_node_id = CharField()
-    task = CharField()
-    val = IntegerField()
-    state = CharField()
-    details = CharField(default="")
-
-    class Meta:
-        database = db
-        primary_key = CompositeKey('to_node_id', 'task')
+    subtask = CharField(primary_key=True)
+    status = EnumField(enum_type=PaymentStatus, index=True, default=PaymentStatus.awaiting)
+    payee = RawCharField()
+    value = IntegerField()
+    details = JsonField(default={})
 
 
 class ReceivedPayment(BaseModel):

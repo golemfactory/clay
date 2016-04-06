@@ -48,8 +48,11 @@ class DockerTaskThread(TaskThread):
         try:
             work_dir = os.path.join(self.tmp_path, "work")
             output_dir = os.path.join(self.tmp_path, "output")
-            os.mkdir(work_dir)
-            os.mkdir(output_dir)
+
+            if not os.path.exists(work_dir):
+                os.mkdir(work_dir)
+            if not os.path.exists(output_dir):
+                os.mkdir(output_dir)
 
             with DockerJob(self.image, self.src_code, self.extra_data,
                            self.res_path, work_dir, output_dir) as job:
