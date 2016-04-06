@@ -1,8 +1,6 @@
 import os
 from os import path
 
-from mock import patch, MagicMock
-
 import golem.appconfig as appconfig
 
 from golem.core.simpleenv import SimpleEnv
@@ -25,9 +23,6 @@ class TestNodeConfig(LogTestCase):
         good_file = SimpleEnv.env_file_name(TestNodeConfig.good_name)
         with open(good_file, 'w') as f:
             f.write(TestNodeConfig.config_val)
-
-    def test_default_variables(self):
-        self.assertTrue(os.path.isdir(appconfig.DEFAULT_ROOT_PATH))
 
     def test_read_estimated_performance(self):
         appconfig.ESTM_FILENAME = TestNodeConfig.no_existing_name
