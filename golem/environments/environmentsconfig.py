@@ -39,15 +39,18 @@ class EnvironmentsConfig(object):
         cfg = SimpleConfig(CommonConfig(), NodeConfig(environments),
                            cfg_file, refresh=False, check_uid=False)
 
-        return EnvironmentsConfig(cfg)
+        return EnvironmentsConfig(cfg, cfg_file)
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, cfg_file):
         self._cfg = cfg
+        self.cfg_file = cfg_file
 
     def get_config_entries(self):
         return self._cfg.get_node_config()
 
-    def change_config(self, cfg_file=CONFIG_FILENAME):
+    def change_config(self):
         return EnvironmentsConfig(
-            SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), cfg_file, refresh=True,
+            SimpleConfig(self._cfg.get_common_config(),
+                         self._cfg.get_node_config(),
+                         self.cfg_file, refresh=True,
                          check_uid=False))
