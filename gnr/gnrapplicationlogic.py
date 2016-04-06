@@ -270,22 +270,22 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def recount_lux_performance(self):
         cfg_filename = SimpleEnv.env_file_name("lux.ini")
-        
+
         cfg_file = open(cfg_filename, 'w')
         average = lux_performance()
         cfg_file.write("{0:.1f}".format(average))
         cfg_file.close()
-        
+
         return average
-    
+
     def recount_blender_performance(self):
         cfg_filename = SimpleEnv.env_file_name("blender.ini")
-        
+
         cfg_file = open(cfg_filename, 'w')
         average = blender_performance()
         cfg_file.write("{0:.1f}".format(average))
         cfg_file.close()
-        
+
         return average
 
     def run_test_task(self, task_state):

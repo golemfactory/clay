@@ -1,6 +1,4 @@
 import time
-import os
-import appdirs
 import logging
 
 from twisted.internet import task
