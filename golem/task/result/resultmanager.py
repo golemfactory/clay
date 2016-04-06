@@ -72,10 +72,10 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         out_path = self.resource_manager.get_resource_path(out_name, task_id)
 
         if os.path.exists(out_path):
-            package = out_path
-        else:
-            packager = self.package_class(key_or_secret)
-            package = packager.create(out_path, node, task_result)
+            os.remove(out_path)
+
+        packager = self.package_class(key_or_secret)
+        package = packager.create(out_path, node, task_result)
 
         self.resource_manager.add_resource(package, task_id)
         files = self.resource_manager.list_resources(task_id)
