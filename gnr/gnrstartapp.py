@@ -1,4 +1,3 @@
-import os
 import logging.config
 from os import path
 
@@ -24,7 +23,7 @@ from gnr.customizers.pbrtdialogcustomizer import PbrtDialogCustomizer
 from gnr.customizers.threedsmaxdialogcustomizer import ThreeDSMaxDialogCustomizer
 from gnr.customizers.vraydialogcustomizer import VRayDialogCustomizer
 
-from examples.manager.gnrmanagerlogic import run_additional_nodes, run_manager
+from examples.manager.gnrmanagerlogic import run_manager
 
 
 def config_logging():
@@ -74,8 +73,8 @@ def load_environments():
             Environment()]
 
 
-def start_and_configure_client(logic, environments):
-    client = start_client()
+def start_and_configure_client(logic, environments, datadir):
+    client = start_client(datadir)
     for env in environments:
         client.environments_manager.add_environment(env)
 
@@ -113,7 +112,8 @@ def run_add_task_server(client):
 
 
 def start_app(logic, app, gui, rendering=False, start_manager=False, start_manager_client=False,
-              start_info_server=False, start_ranking=True, start_add_task_client=False, start_add_task_server=False):
+              start_info_server=False, start_ranking=True, start_add_task_client=False, start_add_task_server=False,
+              datadir=None):
     reactor = install_reactor()
     register_gui(logic, app, gui)
     if rendering:
@@ -122,7 +122,7 @@ def start_app(logic, app, gui, rendering=False, start_manager=False, start_manag
         register_task_types(logic)
     environments = load_environments()
 
-    client = start_and_configure_client(logic, environments)
+    client = start_and_configure_client(logic, environments, datadir)
 
     if start_manager:
         run_manager(logic, client)
