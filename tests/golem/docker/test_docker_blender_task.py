@@ -1,6 +1,5 @@
 import logging
 import shutil
-import appdirs
 from os import makedirs, path
 
 import jsonpickle
@@ -113,8 +112,7 @@ class TestDockerBlenderTask(TestDirFixture, DockerTestCase):
         return task_thread, self.error_msg, temp_dir
 
     def _run_docker_test_task(self, render_task, timeout=0):
-
-        task_computer = TaskTester(render_task, appdirs.user_data_dir('golem'), Mock())
+        task_computer = TaskTester(render_task, self.path, Mock())
         task_computer.run()
         task_computer.tt.join(60.0)
         return task_computer.tt
