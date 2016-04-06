@@ -74,9 +74,12 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src,
             os.symlink(source, target)
         except OSError:
             if os.path.isfile(source):
+                if os.path.exists(target):
+                    os.remove(target)
                 shutil.copy(source, target)
             else:
-                shutil.copytree(source, target)
+                from distutils import dir_util
+                dir_util.copy_tree(source, target, update=1)
 
     exit_code = exec_cmd(cmd)
     if exit_code is not 0:

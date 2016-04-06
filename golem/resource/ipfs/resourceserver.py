@@ -1,5 +1,6 @@
 import logging
 import time
+import copy
 from threading import Lock
 
 from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
@@ -66,37 +67,43 @@ class IPFSResourceServer:
 
     def add_files_to_get(self, files, task_id):
         num = 0
+        collected = False
 
         with self.lock:
             for filename, multihash in files:
-                if not self.resource_manager.check_resource(filename, task_id):
-                    if self.add_resource_to_get(filename, multihash, task_id):
-                        num += 1
+                exists = self.resource_manager.check_resource(filename, task_id,
+                                                              multihash=multihash)
+                if not exists:
+                    self._add_resource_to_get(filename, multihash, task_id)
+                    num += 1
 
             if num > 0:
                 self.waiting_tasks_to_compute[task_id] = num
             else:
-                self.client.task_resource_collected(task_id, unpack_delta=False)
+                collected = True
 
-    def add_resource_to_get(self, filename, multihash, task_id):
+        if collected:
+            self.client.task_resource_collected(task_id, unpack_delta=False)
+
+    def _add_resource_to_get(self, filename, multihash, task_id):
         resource = [filename, multihash, task_id, IPFSTransferStatus.idle]
 
-        if multihash not in self.waiting_resources:
-            self.waiting_resources[multihash] = []
+        if filename not in self.waiting_resources:
+            self.waiting_resources[filename] = []
 
-        if task_id not in self.waiting_resources[multihash]:
-            self.waiting_resources[multihash].append(task_id)
-            self.resources_to_get.append(resource)
-            return True
+        if task_id not in self.waiting_resources[filename]:
+            self.waiting_resources[filename].append(task_id)
 
-        return False
+        self.resources_to_get.append(resource)
 
     def get_resources(self, async=True):
         with self.lock if async else self.dummy_lock:
-            for resource in self.resources_to_get:
-                if resource[-1] in [IPFSTransferStatus.idle, IPFSTransferStatus.failed]:
-                    resource[-1] = IPFSTransferStatus.transferring
-                    self.pull_resource(resource, async=async)
+            resources = copy.copy(self.resources_to_get)
+
+        for resource in resources:
+            if resource[-1] in [IPFSTransferStatus.idle, IPFSTransferStatus.failed]:
+                resource[-1] = IPFSTransferStatus.transferring
+                self.pull_resource(resource, async=async)
 
     def pull_resource(self, resource, async=True):
 
@@ -104,7 +111,7 @@ class IPFSResourceServer:
         multihash = resource[1]
         task_id = resource[2]
 
-        logger.debug("[IPFS]:pull:%s:%r" % (multihash, time.time() * 1000))
+        logger.debug("[IPFS]:pull:%s:%r:%s" % (multihash, time.time() * 1000, filename))
 
         self.resource_manager.pull_resource(filename,
                                             multihash,
@@ -113,34 +120,37 @@ class IPFSResourceServer:
                                             self.resource_download_error,
                                             async=async)
 
-    def resource_downloaded(self, filename, multihash, *args):
-        if not multihash:
-            self.resource_download_error(multihash)
+    def resource_downloaded(self, filename, multihash, task_id, *args):
+        if not filename or not multihash:
+            self.resource_download_error(filename, task_id)
             return
 
-        with self.lock:
-            for task_id in self.waiting_resources.get(multihash, []):
-                self.waiting_tasks_to_compute[task_id] -= 1
-                if self.waiting_tasks_to_compute[task_id] <= 0:
-                    self.client.task_resource_collected(task_id, unpack_delta=False)
-                    del self.waiting_tasks_to_compute[task_id]
+        collected = None
 
-            self.waiting_resources.pop(multihash, None)
+        with self.lock:
+            for waiting_task_id in self.waiting_resources.get(filename, []):
+                self.waiting_tasks_to_compute[waiting_task_id] -= 1
+
+                if self.waiting_tasks_to_compute[waiting_task_id] <= 0:
+                    collected = waiting_task_id
+                    del self.waiting_tasks_to_compute[waiting_task_id]
+
+            self.waiting_resources.pop(filename, None)
 
             for i, entry in enumerate(self.resources_to_get):
-                if multihash == entry[1]:
+                if task_id == entry[2] and filename == entry[0]:
                     del self.resources_to_get[i]
                     break
 
-    def resource_download_error(self, resource, *args):
+        if collected:
+            self.client.task_resource_collected(collected,
+                                                unpack_delta=False)
 
-        filename, multihash = resource if isinstance(resource, tuple) else (None, resource)
-
+    def resource_download_error(self, filename, task_id, *args):
         with self.lock:
-
             for entry in self.resources_to_get:
-                if multihash == entry[1]:
-                    entry[2] = IPFSTransferStatus.failed
+                if task_id == entry[2] and filename == entry[0]:
+                    entry[-1] = IPFSTransferStatus.failed
                     break
 
     def get_key_id(self):
