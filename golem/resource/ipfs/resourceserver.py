@@ -41,9 +41,6 @@ class IPFSResourceServer:
         self.waiting_resources = {}
         self.waiting_tasks_to_compute = {}
 
-    def change_resource_dir(self, config_desc):
-        pass  # FIXME: Obsolate.
-
     def start_accepting(self):
         try:
             ipfs_id = self.resource_manager.id()

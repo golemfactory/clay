@@ -272,7 +272,6 @@ class Client:
     def change_config(self, new_config_desc):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
-        self.resource_server.change_resource_dir(self.config_desc)
         self.p2pservice.change_config(self.config_desc)
         self.task_server.change_config(self.config_desc)
 
