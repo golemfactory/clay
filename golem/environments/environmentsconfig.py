@@ -21,8 +21,8 @@ class CommonConfig(object):
 
 
 class NodeConfig(object):
-    def __init__(self, node_name, environments):
-        self._section = "Node {}".format(node_name)
+    def __init__(self, environments):
+        self._section = "Node"
 
         for env_id, (env_name, supported) in environments.iteritems():
             ConfigEntry.create_property(self.section(), env_id.lower(), int(supported), self, env_name)
@@ -34,9 +34,9 @@ class NodeConfig(object):
 class EnvironmentsConfig(object):
     """Manage config file describing whether user want to compute tasks from given environment or not."""
     @classmethod
-    def load_config(cls, node_name, environments, datadir):
+    def load_config(cls, environments, datadir):
         cfg_file = path.join(datadir, CONFIG_FILENAME)
-        cfg = SimpleConfig(CommonConfig(), NodeConfig(node_name, environments),
+        cfg = SimpleConfig(CommonConfig(), NodeConfig(environments),
                            cfg_file, refresh=False, check_uid=False)
 
         return EnvironmentsConfig(cfg)

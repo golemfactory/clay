@@ -78,7 +78,7 @@ def start_and_configure_client(logic, environments, datadir):
     for env in environments:
         client.environments_manager.add_environment(env)
 
-    client.environments_manager.load_config(client.config_desc.node_name, client.datadir)
+    client.environments_manager.load_config(client.datadir)
 
     logic.register_client(client)
     logic.check_network_state()
