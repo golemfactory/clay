@@ -113,7 +113,7 @@ class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
 
     def _run_docker_test_task(self, render_task, timeout=0):
 
-        task_computer = TaskTester(render_task, appdirs.user_data_dir('golem'), Mock())
+        task_computer = TaskTester(render_task, appdirs.user_data_dir('golem'), Mock(), Mock())
         task_computer.run()
         task_computer.tt.join(60.0)
         return task_computer.tt

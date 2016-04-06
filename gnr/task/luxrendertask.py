@@ -1,15 +1,14 @@
 import logging
 import os
 import random
-import shlex
 import shutil
 import subprocess
 
 from collections import OrderedDict
 from PIL import Image, ImageChops
 
-from golem.core.simpleexccmd import exec_cmd
 from golem.core.fileshelper import find_file_with_ext
+from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 from golem.environments.environment import Environment
 
@@ -23,15 +22,6 @@ from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from gnr.task.scenefileeditor import regenerate_lux_file
 
 logger = logging.getLogger(__name__)
-
-
-def merge_flm_files(flm_to_verify_and_merge_filename, output_flm_filename):
-    p = subprocess.Popen(["luxmerger", output_flm_filename, flm_to_verify_and_merge_filename, "-o", output_flm_filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = p.communicate()
-    if "ERROR" in err:
-        return False
-    else:
-        return True
 
 
 class LuxRenderDefaults(RendererDefaults):
@@ -162,7 +152,8 @@ class LuxTask(RenderingTask):
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                root_path, estimated_memory, max_price, docker_images)
 
-        self.undeletable.append(os.path.join(get_tmp_path(self.header.node_name, self.header.task_id, self.root_path), "test_result.flm"))
+        self.tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+        self.undeletable.append(self.__get_test_flm())
         self.halttime = halttime
         self.haltspp = haltspp
         self.own_binaries = own_binaries
@@ -234,33 +225,31 @@ class LuxTask(RenderingTask):
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
     def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-        self.tmp_dir = tmp_dir
-        env = LuxRenderEnvironment()
-        lux_merger = env.get_lux_merger()
-        test_result_flm = os.path.join(tmp_dir, "test_result.flm")
+        test_result_flm = self.__get_test_flm()
 
-        self.interpret_task_results(subtask_id, task_result, result_type, tmp_dir)
+        self.interpret_task_results(subtask_id, task_result, result_type, self.tmp_dir)
         tr_files = self.results[subtask_id]
 
         if len(tr_files) > 0:
             num_start = self.subtasks_given[subtask_id]['start_task']
             self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
             for tr_file in tr_files:
+                tr_file = os.path.normpath(tr_file)
                 _, ext = os.path.splitext(tr_file)
                 if ext == '.flm':
                     self.collected_file_names[num_start] = tr_file
                     self.num_tasks_received += 1
                     self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
-                    if self.advanceVerification and not os.path.isfile(test_result_flm):
-                        logger.warning("Advanced verification set, but couldn't find test result!")
-                        logger.info("Skipping verification")
-                    elif self.advanceVerification and (lux_merger is not None):
-                        if not merge_flm_files(tr_file, test_result_flm):
-                            logger.info("Subtask " + str(subtask_id) + " rejected.")
-                            self._mark_subtask_failed(subtask_id)
+                    if self.advanceVerification:
+                        if not os.path.isfile(test_result_flm):
+                            logger.warning("Advanced verification set, but couldn't find test result!")
+                            logger.info("Skipping verification")
                         else:
-                            logger.info("Subtask " + str(subtask_id) + " successfuly verified.")
+                            if not self.merge_flm_files(tr_file, test_result_flm):
+                                logger.info("Subtask " + str(subtask_id) + " rejected.")
+                                self._mark_subtask_failed(subtask_id)
+                            else:
+                                logger.info("Subtask " + str(subtask_id) + " successfully verified.")
                 elif ext != '.log':
                     self.subtasks_given[subtask_id]['previewFile'] = tr_file
                     self._update_preview(tr_file, num_start)
@@ -313,15 +302,86 @@ class LuxTask(RenderingTask):
         flm = find_file_with_ext(tmp_dir, [".flm"])
         if flm is not None:
             try:
-                filename = "test_result.flm"
-                flm_path = os.path.join(tmp_dir, filename)
-                os.rename(flm, flm_path)
-                save_path = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-                if not os.path.exists(save_path):
-                    os.makedirs(save_path)
-                shutil.copy(flm_path, save_path)
+                if not os.path.exists(self.tmp_dir):
+                    os.makedirs(self.tmp_dir)
+                shutil.copy(flm, self.__get_test_flm())
             except (OSError, IOError) as err:
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
+
+    def query_extra_data_for_merge(self):
+        if self.halttime > 0:
+            write_interval = int(self.halttime / 2)
+        else:
+            write_interval = 60
+
+        scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, self.halttime, self.haltspp,
+                                        write_interval, [0, 1, 0, 1], self.output_format)
+
+        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+        extra_data = {"path_root": self.main_scene_dir,
+                      "start_task": 0,
+                      "end_task": 0,
+                      "total_tasks": 0,
+                      "outfilebasename": self.outfilebasename,
+                      "scene_file_src": scene_src,
+                      "scene_dir": scene_dir,
+                      "num_threads": 4,
+                      "own_binaries": True,
+                      "lux_console": None}
+
+        return self._new_compute_task_def("FINALTASK", extra_data, scene_dir, 0)
+
+    def merge_flm_files(self, new_flm, output):
+        computer = LocalComputer(self, self.root_path, self.__verify_flm_ready, self.__verify_flm_failure,
+                                 lambda: self.query_extra_data_for_advance_verification(new_flm),
+                                 use_task_resources=False,
+                                 additional_resources=[self.__get_test_flm(), new_flm])
+        computer.run()
+        if computer.tt is not None:
+            computer.tt.join()
+        else:
+            return False
+        commonprefix = os.path.commonprefix(computer.tt.result['data'])
+        flm = find_file_with_ext(commonprefix, [".flm"])
+        logs = find_file_with_ext(commonprefix, [".log"])
+        stderr = filter(lambda x: os.path.basename(x) == "stderr.log", computer.tt.result['data'])
+        if flm is None or len(stderr) == 0:
+            return False
+        else:
+            try:
+                with open(stderr[0]) as f:
+                    stderr_in = f.read()
+                if "ERROR" in stderr_in:
+                    return False
+            except (IOError, OSError):
+                return False
+
+            shutil.copy(flm, os.path.join(self.tmp_dir, "test_result.flm"))
+            return True
+
+    def query_extra_data_for_final_flm(self):
+        files = [os.path.basename(x) for x in self.collected_file_names.values()]
+        return self.__get_merge_ctd(files)
+
+    def query_extra_data_for_advance_verification(self, new_flm):
+        files = [os.path.basename(new_flm), os.path.basename(self.__get_test_flm())]
+        return self.__get_merge_ctd(files)
+
+    def __get_merge_ctd(self, files):
+        with open(find_task_script("docker_luxmerge.py")) as f:
+            src_code = f.read()
+        if src_code is None:
+            logger.error("Cannot find merger script")
+            return
+
+        ctd = ComputeTaskDef()
+        ctd.task_id = self.header.task_id
+        ctd.subtask_id = self.header.task_id
+        ctd.extra_data = {'output_flm': self.output_file, 'flm_files': files}
+        ctd.src_code = src_code
+        ctd.working_directory = "."
+        ctd.docker_images = self.header.docker_images
+        return ctd
 
     def _short_extra_data_repr(self, perf_index, extra_data):
         return "start_task: {start_task}, outfilebasename: {outfilebasename}, " \
@@ -373,28 +433,11 @@ class LuxTask(RenderingTask):
                                  self.query_extra_data_for_merge, additional_resources=[flm])
         computer.run()
 
-    def query_extra_data_for_merge(self):
-        if self.halttime > 0:
-            write_interval = int(self.halttime / 2)
-        else:
-            write_interval = 60
+    def __verify_flm_ready(self, results):
+        logger.info("Advance verification finished")
 
-        scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, self.halttime, self.haltspp,
-                                        write_interval, [0, 1, 0, 1], self.output_format)
-
-        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
-        extra_data = {"path_root": self.main_scene_dir,
-                      "start_task": 0,
-                      "end_task": 0,
-                      "total_tasks": 0,
-                      "outfilebasename": self.outfilebasename,
-                      "scene_file_src": scene_src,
-                      "scene_dir": scene_dir,
-                      "num_threads": 4,
-                      "own_binaries": True,
-                      "lux_console": None}
-
-        return self._new_compute_task_def("FINALTASK", extra_data, scene_dir, 0)
+    def __verify_flm_failure(self, error):
+        logger.info("Advance verification failure {}".format(error))
 
     def __final_img_ready(self, results):
         commonprefix = os.path.commonprefix(results)
@@ -431,33 +474,14 @@ class LuxTask(RenderingTask):
         logger.error("Cannot generate final flm: {}".format(error))
         # TODO What should we do in this sitution?
 
-    def query_extra_data_for_final_flm(self):
-        files = [os.path.basename(x) for x in self.collected_file_names.values()]
-        with open(find_task_script("docker_luxmerge.py")) as f:
-            src_code = f.read()
-        if src_code is None:
-            logger.error("Cannot find merger script")
-            return
-
-        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
-        extra_data = {'output_flm': self.output_file,
-                      'flm_files': files,
-                      'scene_src': src_code,
-                      'start_task': 0,
-                      'end_task': 0,
-                      'total_tasks': 0,
-                      'outfilebasename': None,
-                      'scene_file': None,
-                      'scene_file_src': None,
-                      'path_root': self.root_path
-                      }
-        ctd = self._new_compute_task_def("MERGETASK", extra_data, scene_dir, 0)
-        ctd.src_code = src_code
-        return ctd
-
     def __generate_final_flm_advanced_verification(self):
         # the file containing result of task test
-        test_result_flm = os.path.join(self.tmp_dir, "test_result.flm")
-        
-        shutil.copy(test_result_flm, self.output_file + ".flm")
-        logger.debug("Copying " + test_result_flm + " to " + self.output_file + ".flm")
+        test_result_flm = self.__get_test_flm()
+
+        new_flm = self.output_file + ".flm"
+        shutil.copy(test_result_flm, new_flm)
+        logger.debug("Copying " + test_result_flm + " to " + new_flm)
+        self.__generate_final_file(new_flm)
+
+    def __get_test_flm(self):
+        return os.path.join(self.tmp_dir, "test_result.flm")

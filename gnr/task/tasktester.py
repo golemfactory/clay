@@ -45,11 +45,12 @@ class TaskTester(LocalComputer):
             if res and res.get("data"):
                 self.task.after_test(res, self.tmp_dir)
                 self.success_callback(res, est_mem)
-        else:
-            logger_msg = self.comp_failed_warning
-            if task_thread.error_msg:
-                logger_msg += " " + task_thread.error_msg
-            logger.warning(logger_msg)
-            self.error_callback(task_thread.error_msg)
+                return
+
+        logger_msg = self.comp_failed_warning
+        if task_thread.error_msg:
+            logger_msg += " " + task_thread.error_msg
+        logger.warning(logger_msg)
+        self.error_callback(task_thread.error_msg)
 
 

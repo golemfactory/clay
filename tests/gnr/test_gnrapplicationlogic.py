@@ -16,6 +16,9 @@ class TTask(Task):
         Task.__init__(self, Mock(), Mock())
         self.src_code = ""
         self.extra_data = {}
+        self.test_finished = False
+        self.results = None
+        self.tmp_dir = None
 
     def query_extra_data_for_test_task(self):
         ctd = ComputeTaskDef()
@@ -26,6 +29,11 @@ class TTask(Task):
         ctd.extra_data = self.extra_data
         ctd.short_description = ""
         return ctd
+
+    def after_test(self, results, tmp_dir):
+        self.test_finished = True
+        self.results = results
+        self.tmp_dir = tmp_dir
 
 
 class TTaskBuilder(TaskBuilder):
@@ -67,17 +75,17 @@ class TestGNRApplicationLogic(TestDirFixture):
         task_type.task_builder_type.return_value = ttb
         logic.task_types["TESTTASK"] = task_type
         logic.run_test_task(ts)
-        time.sleep(0.5)
+        time.sleep(2)
         success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
         self.assertEqual(success, True)
         ttb.src_code = "raise Exception('some error')"
         logic.run_test_task(ts)
-        time.sleep(0.5)
+        time.sleep(2)
         success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
         self.assertEqual(success, False)
         ttb.src_code = "print 'hello'"
         logic.run_test_task(ts)
-        time.sleep(0.5)
+        time.sleep(2)
         success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
         self.assertEqual(success, False)
         gnrgui.app.deleteLater()
