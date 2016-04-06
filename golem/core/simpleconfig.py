@@ -47,9 +47,6 @@ class ConfigEntry(object):
         """
         self.set_value(self._value_type(val))
 
-    def __str__(self):
-        return "Section {0._section:7} prop: {0._key:17} -> {0._value:10} {0._value_type}".format(self)
-
     @classmethod
     def create_property(cls, section, key, value, other, prop_name):
         """ Create new property: config entry with getter and setter method for this property in other object.
@@ -191,11 +188,3 @@ class SimpleConfig(object):
 
         for prop in self.get_common_config().properties() + self.get_node_config().properties():
             self.__write_option(cfg, prop)
-
-    def __str__(self):
-        rs = "DefaultConfig\n"
-
-        for prop in self.get_common_config().properties() + self.get_node_config().properties():
-            rs += "{}\n".format(str(prop))
-
-        return rs
