@@ -1,5 +1,6 @@
 import os
 import unittest
+import shutil
 
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.resource.dirmanager import DirManager
@@ -35,16 +36,19 @@ class TestResourceServer(TestDirFixture):
         TestDirFixture.setUp(self)
 
         self.dir_manager = DirManager(self.path, node_name)
+        self.dir_manager_aux = DirManager(self.path, node_name + "-aux")
         self.config_desc = MockConfig()
         self.target_resources = [
             'test_file',
-            os.path.join('test_dir', 'dir_file')
+            os.path.join('test_dir', 'dir_file'),
+            os.path.join('test_dir', 'dir_file_copy')
         ]
 
         res_path = self.dir_manager.get_task_resource_dir(task_id)
         test_file = os.path.join(res_path, 'test_file')
         test_dir = os.path.join(res_path, 'test_dir')
         test_dir_file = os.path.join(test_dir, 'dir_file')
+        test_dir_file_copy = os.path.join(test_dir, 'dir_file_copy')
 
         open(test_file, 'w').close()
 
@@ -53,6 +57,11 @@ class TestResourceServer(TestDirFixture):
 
         with open(test_dir_file, 'w') as f:
             f.write("test content")
+
+        if os.path.exists(test_dir_file_copy):
+            os.remove(test_dir_file_copy)
+
+        shutil.copy(test_dir_file, test_dir_file_copy)
 
     def testStartAccepting(self):
         keys_auth = EllipticalKeysAuth()
@@ -73,26 +82,43 @@ class TestResourceServer(TestDirFixture):
 
         self.assertEqual(decrypted, to_encrypt)
 
-    @unittest.skip("Unskip me")
     def testGetResources(self):
         keys_auth = EllipticalKeysAuth()
         client = MockClient()
         rs = IPFSResourceServer(self.dir_manager, self.config_desc,
                                 keys_auth, client)
+
         rs.resource_manager.add_resources(self.target_resources, task_id)
         resources = rs.resource_manager.list_resources(task_id)
+        resources_len = len(resources)
+
+        filenames = []
+        for entry in resources:
+            filenames.append(entry[0])
+        common_path = os.path.commonprefix(filenames)
+
+        relative_resources = []
+        for resource in resources:
+            relative_resources.append((resource[0].replace(common_path, '', 1),
+                                       resource[1]))
 
         rs.add_files_to_get(resources, task_id)
-        self.assertEqual(len(rs.waiting_resources), 0)
+        assert len(rs.waiting_resources) == 0
 
-        self.dir_manager.node_name += "2"
+        rs_aux = IPFSResourceServer(self.dir_manager_aux, self.config_desc,
+                                    keys_auth, client)
 
-        rs = IPFSResourceServer(self.dir_manager, self.config_desc,
-                                keys_auth, client)
+        rs_aux.add_files_to_get(relative_resources, task_id)
+        assert len(rs_aux.waiting_resources) == resources_len
 
-        rs.add_files_to_get(resources, task_id)
-        rs.get_resources(async=False)
-        self.assertTrue(client.downloaded)
+        rs_aux.get_resources(async=False)
+        rm_aux = rs_aux.resource_manager
+
+        for entry in relative_resources:
+            new_path = rm_aux.get_resource_path(entry[0], task_id)
+            assert os.path.exists(new_path)
+
+        assert client.downloaded
 
     def testVerifySig(self):
         keys_auth = EllipticalKeysAuth()
