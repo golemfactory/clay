@@ -79,29 +79,12 @@ def start_and_configure_client(logic, environments):
     for env in environments:
         client.environments_manager.add_environment(env)
 
-    client.environments_manager.load_config(client.config_desc.node_name)
+    client.environments_manager.load_config(client.config_desc.node_name, client.datadir)
 
     logic.register_client(client)
     logic.check_network_state()
 
     return client
-
-
-def run_manager(logic, client):
-    path = os.getcwd()
-
-    def run_gnr_nodes(num_nodes):
-        run_additional_nodes(path, num_nodes)
-
-    nm_path = os.path.join(path, "..\\manager\\")
-
-    def run_gnr_manager():
-        run_manager(nm_path)
-
-    logic.register_start_new_node_function(run_gnr_nodes)
-    logic.register_start_nodes_manager_function(run_gnr_manager)
-
-    client.environments_manager.load_config(client.config_desc.node_name)
 
 
 def run_info_server(client, start_port=55555, next_port=55556, end_port=59999):

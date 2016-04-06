@@ -11,11 +11,12 @@ class EnvironmentsManager(object):
         self.environments = set()
         self.env_config = None
 
-    def load_config(self, node_name):
+    def load_config(self, node_name, datadir):
         """ Load acceptance of environments from the config file
         :param node_name:
         """
-        self.env_config = EnvironmentsConfig.load_config(node_name, self.get_environments_to_config())
+        # FIXME: Remove node name from configs.
+        self.env_config = EnvironmentsConfig.load_config(node_name, self.get_environments_to_config(), datadir)
         config_entries = self.env_config.get_config_entries()
         for env in self.environments:
             getter_for_env = getattr(config_entries, "get_" + env.get_id())
