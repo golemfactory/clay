@@ -56,7 +56,7 @@ class Node(object):
         for task_def in tasks:
             task_builder = self._get_task_builder(task_def)
             golem_task = Task.build_task(task_builder(self.client.get_node_name(), task_def,
-                                                      self.client.get_root_path()))
+                                                      self.client.datadir))
             self.client.enqueue_new_task(golem_task)
 
     def run(self):

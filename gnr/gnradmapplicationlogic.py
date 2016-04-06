@@ -44,7 +44,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
 
         task_builder = UpdateOtherGolemsTaskBuilder(self.client.get_node_name(),
                                                     task_definition,
-                                                    self.client.get_root_path(), golem_dir)
+                                                    self.client.datadir, golem_dir)
 
         task = Task.build_task(task_builder)
         self.add_task_from_definition(task_definition)
@@ -64,7 +64,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
 
         task_builder = InfoTaskBuilder(self.client.get_node_name(),
                                        info_task_definition,
-                                       self.client.get_root_path())
+                                       self.client.datadir)
 
         task = Task.build_task(task_builder)
         self.add_task_from_definition(info_task_definition)

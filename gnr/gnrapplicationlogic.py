@@ -173,7 +173,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         return self.task_types[task_state.definition.task_type].task_builder_type(self.client.get_node_name(),
                                                                                   task_state.definition,
-                                                                                  self.client.get_root_path())
+                                                                                  self.client.datadir)
 
     def restart_task(self, task_id):
         self.client.restart_task(task_id)
@@ -295,7 +295,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
             t = Task.build_task(tb)
 
-            self.tt = TaskTester(t, self.client.get_root_path(), self._test_task_computation_finished)
+            self.tt = TaskTester(t, self.client.datadir, self._test_task_computation_finished)
 
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
