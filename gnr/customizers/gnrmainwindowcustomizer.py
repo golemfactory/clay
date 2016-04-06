@@ -1,7 +1,6 @@
 import logging
 import os
 import cPickle
-import appdirs
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
@@ -22,6 +21,8 @@ from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCus
 from gnr.customizers.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
 from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer
 from gnr.customizers.paymentsdialogcustomizer import PaymentsDialogCustomizer
+
+from golem.core.simpleenv import _get_local_datadir
 
 logger = logging.getLogger(__name__)
 
@@ -153,12 +154,10 @@ class GNRMainWindowCustomizer(Customizer):
         self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.new_task_dialog, self.logic)
 
     def _load_task_button_clicked(self):
-        save_path = appdirs.user_data_dir("golem")
+        save_dir = _get_local_datadir("save")
         dir_ = ""
-        if save_path:
-            save_dir = os.path.join(save_path, "save")
-            if os.path.isdir(save_dir):
-                dir_ = save_dir
+        if os.path.isdir(save_dir):
+            dir_ = save_dir
 
         file_name = QFileDialog.getOpenFileName(self.gui.window,
                                                 "Choose task file", dir_, "Golem Task (*.gt)")

@@ -1,5 +1,4 @@
 import logging
-import appdirs
 from os import path
 
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
