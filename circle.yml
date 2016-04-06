@@ -15,8 +15,12 @@ dependencies:
         background: true
     - sudo add-apt-repository -y ppa:ethereum/ethereum && sudo apt-get update && sudo apt-get install geth
     - geth --nodiscover --maxpeers 0 --exec "miner.makeDAG(0)" console
+    - if [ -e ~/.cache/docker-images.tar ]; then docker load < ~/.cache/docker-images.tar; fi
+  post:
+    - docker save golem/base golem/blender golem/luxrender > ~/.cache/docker-images.tar
   cache_directories:
     - ~/.ethash
+    - ~/.cache/docker-images.tar
 
 test:
   pre:
