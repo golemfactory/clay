@@ -100,8 +100,8 @@ class NodeConfig:
                 return 0
         return res
 
-    def __init__(self, node_id, **kwargs):
-        self._section = "Node {}".format(node_id)
+    def __init__(self, **kwargs):
+        self._section = "Node"
 
         estimated_performance = NodeConfig.read_estimated_performance()
         if estimated_performance == 0:
@@ -142,8 +142,6 @@ class AppConfig:
         assert cfg_file not in cls.__loaded_configs, "Config has been loaded: " + cfg_file
         cls.__loaded_configs.add(cfg_file)
 
-        local_id = 0  # FIXME: Transitional. local_id should not be needed.
-
         common_config = CommonConfig(manager_address=MANAGER_ADDRESS,
                                      manager_port=MANAGER_PORT,
                                      start_port=START_PORT,
@@ -153,8 +151,7 @@ class AppConfig:
                                      app_name=APP_NAME,
                                      app_version=APP_VERSION)
 
-        node_config = NodeConfig(local_id,
-                                 node_address="",
+        node_config = NodeConfig(node_address="",
                                  seed_host="",
                                  seed_port=0,
                                  num_cores=4,
