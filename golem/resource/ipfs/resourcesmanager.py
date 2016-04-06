@@ -357,9 +357,9 @@ class IPFSResourceManager:
                 data = client.get_file(multihash,
                                        filename=filename,
                                        filepath=res_dir)
-                success(data)
+                success_wrapper(data)
             except Exception as e:
-                error(e)
+                error_wrapper(e)
 
     def __can_retry(self, exc, cmd, obj_id):
         if type(exc) in self.timeout_exceptions:
