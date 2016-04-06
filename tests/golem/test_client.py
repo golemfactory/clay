@@ -39,11 +39,9 @@ class TestCreateClient(TestDirFixture):
             create_client(datadir=self.path, node_colour='magenta')
 
 
-class TestClient(TestWithDatabase, TestDirFixture):
+class TestClient(TestWithDatabase):
 
-    @patch("golem.client.Client.get_database_name")
-    def test_payment_func(self, mock_database_name):
-        mock_database_name.return_value = self.database.name
+    def test_payment_func(self):
         c = Client(ClientConfigDescriptor(), datadir=self.path)
         c.add_to_waiting_payments("xyz", "ABC", 10)
         incomes = c.transaction_system.get_incomes_list()

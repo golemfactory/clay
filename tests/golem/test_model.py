@@ -1,32 +1,25 @@
-import os
 from datetime import datetime
 
 from peewee import IntegrityError
 from golem.model import Payment, PaymentStatus, ReceivedPayment, LocalRank, GlobalRank, \
-    NeighbourLocRank, NEUTRAL_TRUST, Database, DATABASE_NAME
+    NeighbourLocRank, NEUTRAL_TRUST, Database
 from golem.tools.testwithdatabase import TestWithDatabase, TestDirFixture
 
 
 class TestDatabase(TestDirFixture):
     def test_init(self):
-        db = Database(os.path.join(self.path, "abcdef.db"))
-        self.assertEqual(db.name, os.path.join(self.path, "abcdef.db"))
-        self.assertFalse(db.db.is_closed())
-        db.db.close()
-
-        db = Database()
-        self.assertEqual(db.name, DATABASE_NAME)
+        db = Database(self.path)
         self.assertFalse(db.db.is_closed())
         db.db.close()
 
     def test_schema_version(self):
-        db = Database(os.path.join(self.path, "version0.db"))
+        db = Database(self.path)
         assert db._get_user_version() == db.SCHEMA_VERSION
         assert db.SCHEMA_VERSION != 0
 
         db._set_user_version(0)
         assert db._get_user_version() == 0
-        db = Database(os.path.join(self.path, "version0.db"))
+        db = Database(self.path)
         assert db._get_user_version() == db.SCHEMA_VERSION
 
 

@@ -117,7 +117,7 @@ class Client:
         self.send_snapshot = False
         self.snapshot_lock = Lock()
 
-        self.db = Database(self.get_database_name())
+        self.db = Database(datadir)
 
         self.ranking = Ranking(self)
 
@@ -366,12 +366,6 @@ class Client:
     def task_finished(self, task_id):
         # FIXME: Remove. Not needed.
         pass
-
-    def get_database_name(self):
-        """ Return the database file name that this golem instance should use to save and load data.
-        :return str: path to the database file
-        """
-        return os.path.join(appdirs.user_data_dir('golem'), self.keys_auth.get_key_id()[-10:] + ".db")
 
     def check_payments(self):
         after_deadline_nodes = self.transaction_system.check_payments()
