@@ -23,3 +23,6 @@ sdist/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Local data
+data/
