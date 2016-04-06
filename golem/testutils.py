@@ -2,13 +2,16 @@ import logging
 import shutil
 import tempfile
 import unittest
-from os import path
+from os import path, mkdir
 
 
 class TempDirFixture(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
-        self.tempdir = tempfile.mkdtemp(prefix='golem')
+        root = path.join(tempfile.gettempdir(), 'golem')
+        if not path.exists(root):
+            mkdir(root)
+        self.tempdir = tempfile.mkdtemp(prefix=self.id(), dir=root)
         self.path = self.tempdir  # Alias for legacy tests
 
     def tearDown(self):
