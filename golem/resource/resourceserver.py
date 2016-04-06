@@ -44,11 +44,7 @@ class ResourceServer(PendingConnectionsServer):
         PendingConnectionsServer.start_accepting(self)
 
     def change_resource_dir(self, config_desc):
-        if self.dir_manager.root_path == config_desc.root_path:
-            return
-        self.dir_manager.root_path = config_desc.root_path
-        self.dir_manager.node_name = config_desc.node_name
-        self.resource_manager.change_resource_dir(self.dir_manager.get_resource_dir())
+        pass  # FIXME: Obsolate.
 
     def get_distributed_resource_root(self):
         return self.dir_manager.get_resource_dir()
