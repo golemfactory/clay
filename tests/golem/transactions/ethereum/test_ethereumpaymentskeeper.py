@@ -24,7 +24,7 @@ class TestEthereumPaymentsKeeper(TestWithDatabase):
 
         pi = PaymentInfo("x-y-z", "xx-yy-zz", 19.26, ai)
 
-        pi2 = PaymentInfo("a-b-c", "xx-yy-zz", 10.14, ai)
+        pi2 = PaymentInfo("a-b-c", "xx-yy-abc", 10.14, ai)
         e.finished_subtasks(pi)
         e.finished_subtasks(pi2)
 
@@ -32,7 +32,7 @@ class TestEthereumPaymentsKeeper(TestWithDatabase):
 
         e.finished_subtasks(pi)
         pi.computer = ai2
-        pi.subtask_id = 'subtask3'
+        pi.subtask_id = 'subtask1'
         e.finished_subtasks(pi)
 
         pi2.computer = ai2
@@ -44,14 +44,6 @@ class TestEthereumPaymentsKeeper(TestWithDatabase):
         pi.computer = ai
         pi.subtask_id = "qw12wuo131uaoa"
         e.finished_subtasks(pi)
-        payments = e.get_list_of_payments(e.computing_tasks["x-y-z"])
-        self.assertEqual(len(payments), 2)
-        payments[addr1].value = 19.26 * 3
-        payments[addr2].vaue = 19.26
-        payments2 = e.get_list_of_payments(e.computing_tasks["a-b-c"])
-        self.assertEqual(len(payments2), 2)
-        payments[addr1].value = 10.14
-        payments[addr2].vaue = 10.14 * 2
 
 
 class TestEthAccountInfo(unittest.TestCase):

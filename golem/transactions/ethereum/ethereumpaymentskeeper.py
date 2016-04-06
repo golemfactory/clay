@@ -10,17 +10,6 @@ logger = logging.getLogger(__name__)
 
 class EthereumPaymentsKeeper(PaymentsKeeper):
     """ Keeps information about payments for tasks that should be processed and send or received via Ethereum. """
-    def get_list_of_payments(self, task):
-        """ Extract information about subtask payment from given task payment info. Group information by ethereum
-        address
-        :param EthereumPaymentInfo task: information about payments for a task
-        :return dict: dictionary with information about subtask payments
-        """
-        payments = {}
-        for subtask in task.subtasks.itervalues():
-            payment = payments.setdefault(subtask.computer.eth_account.get_str_addr(), EthereumPaymentInfo())
-            payment.add_subtask_payment(subtask)
-        return payments
 
 
 class EthereumPaymentInfo(object):

@@ -1,12 +1,11 @@
-
 import logging
-from enum import Enum
 
 from ethereum import abi, keys, utils
 from ethereum.transactions import Transaction
 from twisted.internet.task import LoopingCall
 
 from golem.ethereum.contracts import BankOfDeposit
+from golem.model import Payment, PaymentStatus
 
 
 log = logging.getLogger("golem.pay")
@@ -14,29 +13,13 @@ log = logging.getLogger("golem.pay")
 bank_contract = abi.ContractTranslator(BankOfDeposit.ABI)
 
 
-class Status(Enum):
-    init = 1
-    awaiting = 2
-    sent = 3
-    confirmed = 4
-
-
-class OutgoingPayment(object):
-
-    def __init__(self, to, value):
-        self.status = Status.init
-        self.to = to
-        self.value = value
-        self.extra = {}  # For additional data.
-
-
 def _encode_payments(payments):
     paymap = {}
     for p in payments:
-        if p.to in paymap:
-            paymap[p.to] += p.value
+        if p.payee in paymap:
+            paymap[p.payee] += p.value
         else:
-            paymap[p.to] = p.value
+            paymap[p.payee] = p.value
 
     args = []
     value = 0L
@@ -88,12 +71,11 @@ class PaymentProcessor(object):
         return max(available, 0)
 
     def add(self, payment):
-        assert payment.status is Status.init
+        assert payment.status is PaymentStatus.awaiting
         if payment.value > self.available_balance():
             return False
         self.__awaiting.append(payment)
         self.__reserved += payment.value
-        payment.status = Status.awaiting
         return True
 
     def sendout(self):
@@ -118,20 +100,14 @@ class PaymentProcessor(object):
         # remembered before sending the transaction to the Ethereum node in
         # case communication with the node is interrupted and it will be not
         # known if the transaction has been sent or not.
-        for payment in payments:
-            assert payment.status == Status.awaiting
-            payment.status = Status.sent
-            payment.extra['tx'] = h
-        try:
+        with Payment._meta.database.transaction():
+            for payment in payments:
+                assert payment.status == PaymentStatus.awaiting
+                payment.status = PaymentStatus.sent
+                payment.details['tx'] = h.encode('hex')
+                payment.save()
+
             tx_hash = self.__client.send(tx)
             assert tx_hash[2:].decode('hex') == h  # FIXME: Improve Client.
-        except:
-            log.exception("Problem with sending transaction. Reverting.")
-            # In case of any problems revert payments status.
-            for payment in payments:
-                payment.status = Status.awaiting
-                del payment.extra['tx']
-            self.__awaiting = payments
-            raise
 
-        self.__inprogress[h] = payments
+            self.__inprogress[h] = payments

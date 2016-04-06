@@ -253,14 +253,8 @@ class Client:
 
     # TRANSACTION SYSTEM OPERATIONS
 
-    def task_reward_payment_failure(self, task_id, price):
-        return self.transaction_system.task_reward_payment_failure(task_id, price)
-
     def pay_for_task(self, task_id, payments):
         self.transaction_system.pay_for_task(task_id, payments)
-
-    def get_new_payments_tasks(self):
-        return self.transaction_system.get_new_payments_tasks()
 
     def get_payments(self):
         return self.transaction_system.get_payments_list()
@@ -372,7 +366,8 @@ class Client:
         return self.config_desc.plugin_port
 
     def task_finished(self, task_id):
-        self.transaction_system.task_finished(task_id)
+        # FIXME: Remove. Not needed.
+        pass
 
     def get_database_name(self):
         """ Return the database file name that this golem instance should use to save and load data.

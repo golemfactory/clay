@@ -124,15 +124,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertEqual(ts.task_computer.use_waiting_ttl, False)
 
     def test_sync(self):
-        class Payment:
-            def __init__(self, value):
-                self.value = value
         ts = TaskServer(Node(), ClientConfigDescriptor(), EllipticalKeysAuth(), Mock())
-
-        ts.client.get_new_payments_tasks.return_value = None, None
-        ts.sync_network()
-
-        ts.client.get_new_payments_tasks.return_value = "xyz", {"eth1": Payment(2.1), "eth2": Payment(3.2)}
         ts.sync_network()
 
     def test_results(self):

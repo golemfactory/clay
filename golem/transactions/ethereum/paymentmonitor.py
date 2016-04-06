@@ -1,9 +1,11 @@
-from .paymentprocessor import PaymentProcessor, Status, log
+from golem.model import PaymentStatus
+
+from .paymentprocessor import PaymentProcessor
 
 
 class IncomingPayment(object):
     def __init__(self, payer, value):
-        self.status = Status.confirmed
+        self.status = PaymentStatus.confirmed
         self.payer = payer
         self.value = value
         self.extra = {}  # For additional data.

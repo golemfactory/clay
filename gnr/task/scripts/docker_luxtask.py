@@ -20,9 +20,12 @@ def symlink_or_copy(source, target):
         os.symlink(source, target)
     except OSError:
         if os.path.isfile(source):
+            if os.path.exists(target):
+                os.remove(target)
             shutil.copy(source, target)
         else:
-            shutil.copytree(source, target)
+            from distutils import dir_util
+            dir_util.copy_tree(source, target, update=1)
 
 
 def find_flm(directory):
@@ -96,7 +99,7 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src,
             png_file = flm_file[:-4] + ".png"
             if not os.path.isfile(png_file):
                 print("No png file produced", file=sys.stderr)
-                sys.error()
+                sys.exit(-1)
             else:
                 shutil.copy(png_file, outfile)
 

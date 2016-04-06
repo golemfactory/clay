@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>Golem LAN Renderer</string>
+   <string>Golem App</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -521,7 +521,7 @@
          </size>
         </property>
         <property name="text">
-         <string>Golem LAN Renderer</string>
+         <string>Golem App</string>
         </property>
         <property name="textFormat">
          <enum>Qt::AutoText</enum>
