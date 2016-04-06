@@ -83,9 +83,9 @@ def run_blender(scene, result, output, n, m, res_x, res_y, docker, inner):
     try:
         results = []
         if docker:
-            tmp_dir = tempfile.mkdtemp(dir=os.path.dirname(scene), prefix='golem')
+            tmp_dir = tempfile.mkdtemp(dir=os.path.dirname(scene), prefix='golem-blender-')
         else:
-            tmp_dir = tempfile.mkdtemp(prefix='golem')
+            tmp_dir = tempfile.mkdtemp(prefix='golem-blender-')
         if inner:
 
             make_inner_blend(n, m, res_x, res_y, scene, docker, tmp_dir, output, results)
@@ -165,4 +165,3 @@ def regenerate_blender_crop_file(crop_file_src, xres, yres, min_x=None, max_x=No
 
 if __name__ == "__main__":
     run_blender()
-
