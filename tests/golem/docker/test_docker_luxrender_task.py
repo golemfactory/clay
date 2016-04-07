@@ -55,8 +55,7 @@ class TestDockerLuxrenderTask(TestDirFixture, DockerTestCase):
     def _test_task(self):
         task_def = self._test_task_definition()
         node_name = "0123456789abcdef"
-        root_path = get_golem_path()
-        task_builder = LuxRenderTaskBuilder(node_name, task_def, root_path)
+        task_builder = LuxRenderTaskBuilder(node_name, task_def, self.tempdir)
         render_task = task_builder.build()
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
