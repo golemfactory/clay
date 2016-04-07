@@ -40,11 +40,8 @@ class LocalComputer(object):
 
     def run(self):
         try:
-            success = self.__prepare_resources()
+            self.__prepare_resources()
             self.__prepare_tmp_dir()
-
-            if not success:
-                return False
 
             ctd = self.get_compute_task_def()
 
@@ -54,9 +51,6 @@ class LocalComputer(object):
         except Exception as exc:
             logger.warning("{}: {}".format(self.comp_failed_warning, exc))
             self.error_callback(str(exc))
-
-    def increase_request_trust(self, subtask_id):
-        pass
 
     def get_progress(self):
         if self.tt:

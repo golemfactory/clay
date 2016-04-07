@@ -30,8 +30,9 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
         self.task_computer_send_task_failed = TaskServer.send_task_failed
 
     def tearDown(self):
-        for dir in self.dirs_to_remove:
-            shutil.rmtree(dir)
+        for dir_ in self.dirs_to_remove:
+            if path.isdir(dir_):
+                shutil.rmtree(dir_)
         TaskServer.send_task_failed = self.task_computer_send_task_failed
         TestWithAppConfig.tearDown(self)
 
@@ -71,8 +72,8 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
         task_computer = node.client.task_server.task_computer
         resource_dir = task_computer.resource_manager.get_resource_dir(task_id)
         temp_dir = task_computer.resource_manager.get_temporary_dir(task_id)
-#        self.dirs_to_remove.append(resource_dir)
-#        self.dirs_to_remove.append(temp_dir)
+        self.dirs_to_remove.append(resource_dir)
+        self.dirs_to_remove.append(temp_dir)
 
         # Copy the task resources
         common_prefix = path.commonprefix(render_task.task_resources)

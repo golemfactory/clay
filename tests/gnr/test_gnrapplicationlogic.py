@@ -75,17 +75,17 @@ class TestGNRApplicationLogic(TestDirFixture):
         task_type.task_builder_type.return_value = ttb
         logic.task_types["TESTTASK"] = task_type
         logic.run_test_task(ts)
-        time.sleep(2)
+        time.sleep(0.5)
         success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
         self.assertEqual(success, True)
         ttb.src_code = "raise Exception('some error')"
         logic.run_test_task(ts)
-        time.sleep(2)
+        time.sleep(0.5)
         success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
         self.assertEqual(success, False)
         ttb.src_code = "print 'hello'"
         logic.run_test_task(ts)
-        time.sleep(2)
+        time.sleep(0.5)
         success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
         self.assertEqual(success, False)
         gnrgui.app.deleteLater()

@@ -158,6 +158,7 @@ class LuxTask(RenderingTask):
         self.haltspp = haltspp
         self.own_binaries = own_binaries
         self.luxconsole = luxconsole
+        self.verification_error = False
 
         try:
             with open(main_scene_file) as f:
@@ -209,6 +210,7 @@ class LuxTask(RenderingTask):
                       "end_task": end_task,
                       "total_tasks": self.total_tasks,
                       "outfilebasename": self.outfilebasename,
+                      "output_format": self.output_format,
                       "scene_file_src": scene_src,
                       "scene_dir": scene_dir,
                       "num_threads": num_threads,
@@ -285,6 +287,7 @@ class LuxTask(RenderingTask):
             "end_task": 1,
             "total_tasks": 1,
             "outfilebasename": self.header.task_id,
+            "output_format": self.output_format,
             "scene_file_src": scene_src,
             "scene_dir": scene_dir,
             "num_threads": 1,
@@ -307,6 +310,8 @@ class LuxTask(RenderingTask):
                 shutil.copy(flm, self.__get_test_flm())
             except (OSError, IOError) as err:
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
+        else:
+            logger.warning("Couldn't find flm file.")
 
     def query_extra_data_for_merge(self):
         if self.halttime > 0:
@@ -323,6 +328,7 @@ class LuxTask(RenderingTask):
                       "end_task": 0,
                       "total_tasks": 0,
                       "outfilebasename": self.outfilebasename,
+                      "output_format": self.output_format,
                       "scene_file_src": scene_src,
                       "scene_dir": scene_dir,
                       "num_threads": 4,
@@ -340,6 +346,8 @@ class LuxTask(RenderingTask):
         if computer.tt is not None:
             computer.tt.join()
         else:
+            return False
+        if self.verification_error:
             return False
         commonprefix = os.path.commonprefix(computer.tt.result['data'])
         flm = find_file_with_ext(commonprefix, [".flm"])
@@ -435,18 +443,27 @@ class LuxTask(RenderingTask):
 
     def __verify_flm_ready(self, results):
         logger.info("Advance verification finished")
+        self.verification_error = False
 
     def __verify_flm_failure(self, error):
         logger.info("Advance verification failure {}".format(error))
+        self.verification_error = True
 
     def __final_img_ready(self, results):
-        commonprefix = os.path.commonprefix(results)
-        png = find_file_with_ext(commonprefix, [".png"])
-        if png is not None:
+        print results
+        commonprefix = os.path.commonprefix(results["data"])
+        print commonprefix
+        img = find_file_with_ext(commonprefix, ["." + self.output_format])
+        print img
+        if img is None:
+            # TODO Maybe we should try again?
+            logger.error("No final file generated...")
+        else:
             try:
-                shutil.copy(png, self.output_file)
+                shutil.copy(img, self.output_file + "." + self.output_format)
             except (IOError, OSError) as err:
-                logger.warning("Couldn't rename and copy .png file. {}".format(err))
+                logger.warning("Couldn't rename and copy img file. {}".format(err))
+
         self.notify_update_task(self.header.task_id)
 
     def __final_img_error(self, error):

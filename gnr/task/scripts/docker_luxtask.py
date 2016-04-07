@@ -43,7 +43,7 @@ def find_flm(directory):
         return None
 
 
-def format_lux_renderer_cmd(start_task, output_basename, scene_file, num_cores):
+def format_lux_renderer_cmd(start_task, output_basename, output_format, scene_file, num_cores):
     flm_file = find_flm(WORK_DIR)
     if flm_file is not None:
         cmd = [
@@ -56,7 +56,7 @@ def format_lux_renderer_cmd(start_task, output_basename, scene_file, num_cores):
         cmd = [
             "{}".format(LUXRENDER_COMMAND),
             "{}".format(scene_file),
-            "-o", "{}/{}{}.png".format(OUTPUT_DIR, output_basename, start_task),
+            "-o", "{}/{}{}.{}".format(OUTPUT_DIR, output_basename, start_task, output_format),
             "-t", "{}".format(num_cores)
         ]
     print(cmd, file=sys.stderr)
@@ -68,7 +68,7 @@ def exec_cmd(cmd):
     return pc.wait()
 
 
-def run_lux_renderer_task(start_task, outfilebasename, scene_file_src,
+def run_lux_renderer_task(start_task, outfilebasename, output_format, scene_file_src,
                           scene_dir, num_cores):
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=WORK_DIR,
@@ -84,28 +84,28 @@ def run_lux_renderer_task(start_task, outfilebasename, scene_file_src,
 
     flm_file = find_flm(RESOURCES_DIR)
     if flm_file:
-        symlink_or_copy(flm_file, WORK_DIR)
+        symlink_or_copy(flm_file, os.path.join(WORK_DIR, os.path.basename(flm_file)))
 
-    cmd = format_lux_renderer_cmd(start_task, outfilebasename,
+    cmd = format_lux_renderer_cmd(start_task, outfilebasename, output_format,
                                   tmp_scene_file.name, num_cores)
 
     exit_code = exec_cmd(cmd)
     if exit_code is not 0:
         sys.exit(exit_code)
     else:
-        outfile = "{}/{}{}.png".format(OUTPUT_DIR, outfilebasename, start_task)
+        outfile = "{}/{}{}.{}".format(OUTPUT_DIR, outfilebasename, start_task, output_format)
         if not os.path.isfile(outfile):
             flm_file = find_flm(WORK_DIR)
-            png_file = flm_file[:-4] + ".png"
-            if not os.path.isfile(png_file):
-                print("No png file produced", file=sys.stderr)
+            print(flm_file, file=sys.stdout)
+            img = flm_file[:-4] + "." + output_format
+            if not os.path.isfile(img):
+                print("No img produced", file=sys.stderr)
                 sys.exit(-1)
             else:
-                shutil.copy(png_file, outfile)
+                shutil.copy(img, outfile)
 
 
-run_lux_renderer_task(params.start_task, params.outfilebasename,
-                      params.scene_file_src, params.scene_dir,
-                      params.num_threads)
+run_lux_renderer_task(params.start_task, params.outfilebasename, params.output_format,
+                      params.scene_file_src, params.scene_dir, params.num_threads)
 
 

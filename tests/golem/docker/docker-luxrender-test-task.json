@@ -89,7 +89,7 @@
     800,
     600
   ],
-  "output_format":"EXR",
+  "output_format":"png",
   "output_file":"$GOLEM_DIR/luxrender-output",
   "optimize_total":false,
   "main_scene_file":"$GOLEM_DIR/gnr/benchmarks/luxrender/lux_task/schoolcorridor.lxs",
