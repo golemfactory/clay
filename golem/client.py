@@ -1,9 +1,11 @@
 import time
 import logging
+from os import path
 
 from twisted.internet import task
 from threading import Lock
 
+from golem.tools import filelock
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.node import Node
 from golem.task.taskserver import TaskServer
@@ -93,6 +95,8 @@ class Client:
                          key=self.keys_auth.get_key_id(),
                          prv_addr=self.config_desc.node_address)
         self.node.collect_network_info(self.config_desc.seed_host, use_ipv6=self.config_desc.use_ipv6)
+        self.datadir = datadir
+        self.__lock_datadir()
         logger.info('Client "{}", datadir: {}'.format(self.config_desc.node_name, datadir))
         logger.debug("Is super node? {}".format(self.node.is_super_node()))
         self.p2pservice = None
@@ -110,7 +114,6 @@ class Client:
 
         self.listeners = []
 
-        self.datadir = datadir
         self.cfg = config
         self.send_snapshot = False
         self.snapshot_lock = Lock()
@@ -135,8 +138,6 @@ class Client:
         logger.info("Starting p2p server ...")
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth)
         time.sleep(1.0)
-
-        #self.resource_server = ResourceServer(self.config_desc, self.keys_auth, self, use_ipv6=self.config_desc.use_ipv6)
 
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
                                       use_ipv6=self.config_desc.use_ipv6)
@@ -411,16 +412,16 @@ class Client:
             remote_tasks_progresses = self.task_server.task_computer.get_progresses()
             local_tasks_progresses = self.task_server.task_manager.get_progresses()
             last_task_messages = self.task_server.get_last_messages()
-            self.last_node_state_snapshot = NodeStateSnapshot(is_running
-                                                           , self.config_desc.node_name
-                                                           , peers_num
-                                                           , tasks_num
-                                                           , self.p2pservice.node.pub_addr
-                                                           , self.p2pservice.node.pub_port
-                                                           , last_network_messages
-                                                           , last_task_messages
-                                                           , remote_tasks_progresses
-                                                           , local_tasks_progresses)
+            self.last_node_state_snapshot = NodeStateSnapshot(is_running,
+                                                              self.config_desc.node_name,
+                                                              peers_num,
+                                                              tasks_num,
+                                                              self.p2pservice.node.pub_addr,
+                                                              self.p2pservice.node.pub_port,
+                                                              last_network_messages,
+                                                              last_task_messages,
+                                                              remote_tasks_progresses,
+                                                              local_tasks_progresses)
         else:
             self.last_node_state_snapshot = NodeStateSnapshot(self.config_desc.node_name, peers_num)
 
@@ -444,3 +445,12 @@ class Client:
 
     def get_about_info(self):
         return self.config_desc.app_name, self.config_desc.app_version
+
+    def __lock_datadir(self):
+        self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
+        flags = filelock.LOCK_EX | filelock.LOCK_NB
+        try:
+            filelock.lock(self.__datadir_lock, flags)
+        except IOError:
+            raise IOError("Data dir {} used by other Golem instance"
+                          .format(self.datadir))

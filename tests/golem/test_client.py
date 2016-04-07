@@ -79,3 +79,9 @@ class TestClient(TestWithDatabase):
         self.additional_dir_content([3], d)
         c.remove_received_files()
         assert not os.listdir(d)
+
+    def test_datadir_lock(self):
+        c = Client(ClientConfigDescriptor(), datadir=self.path)
+        with self.assertRaises(IOError):
+            Client(ClientConfigDescriptor(), datadir=self.path)
+        assert c
