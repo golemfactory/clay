@@ -13,8 +13,7 @@ from gnr.gnrtaskstate import GNRTaskDefinition
 from golem.task.taskstate import TaskStatus
 from gnr.customizers.timehelper import set_time_spin_boxes, get_time_values, get_subtask_hours
 from gnr.customizers.customizer import Customizer
-
-from golem.core.simpleenv import _get_local_datadir
+from gnr.customizers.common import get_save_dir
 
 logger = logging.getLogger(__name__)
 
@@ -99,11 +98,9 @@ class NewTaskDialogCustomizer(Customizer):
         self.add_task_resource_dialog.show()
 
     def _save_task_button_clicked(self):
-        dir_ = _get_local_datadir("save")
-        if not os.path.isdir(dir_):
-            dir_ = ""
+        save_dir = get_save_dir()
         file_name = QFileDialog.getSaveFileName(self.gui.window,
-                                                "Choose save file", dir_, "Golem Task (*.gt)")
+                                                "Choose save file", save_dir, "Golem Task (*.gt)")
 
         if file_name != "":
             self._save_task(file_name)
