@@ -1,6 +1,7 @@
 import os
 import unittest
 import shutil
+import uuid
 
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.resource.dirmanager import DirManager
@@ -8,7 +9,6 @@ from golem.resource.ipfs.resourceserver import IPFSResourceServer, DummyContext
 from golem.tools.testdirfixture import TestDirFixture
 
 node_name = 'test_suite'
-task_id = 'deadbeef-deadbeef'
 
 
 class MockClient:
@@ -35,6 +35,8 @@ class TestResourceServer(TestDirFixture):
 
         TestDirFixture.setUp(self)
 
+        self.task_id = str(uuid.uuid4())
+
         self.dir_manager = DirManager(self.path, node_name)
         self.dir_manager_aux = DirManager(self.path, node_name + "-aux")
         self.config_desc = MockConfig()
@@ -44,7 +46,7 @@ class TestResourceServer(TestDirFixture):
             os.path.join('test_dir', 'dir_file_copy')
         ]
 
-        res_path = self.dir_manager.get_task_resource_dir(task_id)
+        res_path = self.dir_manager.get_task_resource_dir(self.task_id)
         test_file = os.path.join(res_path, 'test_file')
         test_dir = os.path.join(res_path, 'test_dir')
         test_dir_file = os.path.join(test_dir, 'dir_file')
@@ -88,8 +90,8 @@ class TestResourceServer(TestDirFixture):
         rs = IPFSResourceServer(self.dir_manager, self.config_desc,
                                 keys_auth, client)
 
-        rs.resource_manager.add_resources(self.target_resources, task_id)
-        resources = rs.resource_manager.list_resources(task_id)
+        rs.resource_manager.add_resources(self.target_resources, self.task_id)
+        resources = rs.resource_manager.list_resources(self.task_id)
         resources_len = len(resources)
 
         filenames = []
@@ -102,20 +104,20 @@ class TestResourceServer(TestDirFixture):
             relative_resources.append((resource[0].replace(common_path, '', 1),
                                        resource[1]))
 
-        rs.add_files_to_get(resources, task_id)
+        rs.add_files_to_get(resources, self.task_id)
         assert len(rs.waiting_resources) == 0
 
         rs_aux = IPFSResourceServer(self.dir_manager_aux, self.config_desc,
                                     keys_auth, client)
 
-        rs_aux.add_files_to_get(relative_resources, task_id)
+        rs_aux.add_files_to_get(relative_resources, self.task_id)
         assert len(rs_aux.waiting_resources) == resources_len
 
         rs_aux.get_resources(async=False)
         rm_aux = rs_aux.resource_manager
 
         for entry in relative_resources:
-            new_path = rm_aux.get_resource_path(entry[0], task_id)
+            new_path = rm_aux.get_resource_path(entry[0], self.task_id)
             assert os.path.exists(new_path)
 
         assert client.downloaded

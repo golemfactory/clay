@@ -9,12 +9,12 @@ from golem.tools.testdirfixture import TestDirFixture
 class TestResourcesManager(TestDirFixture):
 
     node_name = 'test_suite'
-    task_id = 'deadbeef-deadbeef'
 
     def setUp(self):
         TestDirFixture.setUp(self)
 
         self.dir_manager = DirManager(self.path, self.node_name)
+        self.task_id = str(uuid.uuid4())
 
         self.split_resources = [
             ['test_file'],

@@ -10,14 +10,15 @@ from golem.tools.testdirfixture import TestDirFixture
 class TestIpfsClient(TestDirFixture):
 
     node_name = 'test_suite'
-    task_id = 'deadbeef-deadbeef'
 
     def setUp(self):
         TestDirFixture.setUp(self)
 
+        task_id = str(uuid.uuid4())
+
         self.dir_manager = DirManager(self.path, self.node_name)
 
-        res_path = self.dir_manager.get_task_resource_dir(self.task_id)
+        res_path = self.dir_manager.get_task_resource_dir(task_id)
         self.test_dir = os.path.join(res_path, 'test_dir')
         self.test_dir_file = os.path.join(self.test_dir, 'dir_file')
 

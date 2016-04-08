@@ -40,7 +40,6 @@ class MockTaskResult:
 class TestEncryptedResultPackageManager(TestDirFixture):
 
     node_name = 'test_suite'
-    task_id = 'deadbeef-deadbeef'
 
     class TestPackageCreator(object):
         @staticmethod
@@ -75,6 +74,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
     def setUp(self):
         TestDirFixture.setUp(self)
 
+        self.task_id = str(uuid.uuid4())
         self.dir_manager = DirManager(self.path, self.node_name)
         self.resource_manager = IPFSResourceManager(self.dir_manager, self.node_name,
                                                     resource_dir_method=self.dir_manager.get_task_output_dir)
