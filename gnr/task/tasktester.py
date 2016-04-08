@@ -1,17 +1,7 @@
 import logging
-import os
-import shutil
-from threading import Lock
 
 from gnr.task.localcomputer import LocalComputer
-
-from golem.core.fileshelper import find_file_with_ext
-from golem.docker.task_thread import DockerTaskThread
-from golem.task.taskbase import Task, resource_types
 from golem.task.taskcomputer import PyTestTaskThread
-from golem.resource.resource import TaskResourceHeader, decompress_dir
-
-from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, get_test_task_tmp_path
 
 logger = logging.getLogger(__name__)
 
