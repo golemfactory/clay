@@ -7,6 +7,7 @@ from collections import deque
 from threading import Lock
 
 import requests
+import shutil
 import twisted
 
 from golem.core.fileshelper import copy_file_tree
@@ -61,6 +62,7 @@ class IPFSResourceManager:
             self.client_config.update(client_config)
 
         self.file_to_hash = dict()
+        self.hash_to_path = dict()
         self.task_id_to_files = dict()
         self.task_common_prefixes = dict()
         self.download_queue = deque()
@@ -87,8 +89,36 @@ class IPFSResourceManager:
         resource_dir = self.get_resource_root_dir()
         copy_file_tree(from_dir, resource_dir)
         file_names = next(os.walk(from_dir))[2]
+
         for f in file_names:
             os.remove(os.path.join(from_dir, f))
+
+        self.update_resource_dir()
+
+    def _copy_resource(self, src_path, filename, multihash, task_id):
+        dst_path = self.get_resource_path(filename, task_id)
+
+        if not os.path.exists(src_path):
+            logger.error("IPFS: cached file does not exist: {}"
+                         .format(src_path))
+            self.hash_to_path.pop(multihash, None)
+            return None
+
+        if src_path == dst_path:
+            logger.error("IPFS: cannot copy file over itself: {}"
+                         .format(src_path, dst_path))
+            return None
+
+        dst_dir = os.path.dirname(dst_path)
+        if not os.path.exists(dst_dir):
+            os.makedirs(dst_dir)
+        if os.path.exists(dst_path):
+            os.remove(dst_path)
+
+        # we might perform linking instead, but it may eventually
+        # result in a broken link chain
+        shutil.copyfile(src_path, dst_path)
+        return filename
 
     def update_resource_dir(self):
         self.__init__(self.dir_manager,
@@ -104,8 +134,9 @@ class IPFSResourceManager:
         return self.resource_dir_method(task_id)
 
     def get_resource_path(self, resource, task_id):
-        resource_dir = self.get_resource_dir(task_id)
-        return os.path.join(resource_dir, resource)
+        resource_dir = self.dir_manager.get_task_resource_dir(task_id)
+        result = os.path.join(resource_dir, resource)
+        return result
 
     def get_temporary_dir(self, task_id):
         return self.dir_manager.get_task_temporary_dir(task_id)
@@ -132,6 +163,9 @@ class IPFSResourceManager:
                 return False
             return os.path.exists(res_path)
         return False
+
+    def get_cached(self, multihash):
+        return self.hash_to_path.get(multihash, None)
 
     def list_resources(self, task_id):
         return self.task_id_to_files.get(task_id, [])
@@ -219,33 +253,35 @@ class IPFSResourceManager:
                                          resource_path,
                                          recursive=is_dir)
 
-        self._register_resource(response, task_id, absolute_path=absolute_path)
+        self._register_response(response, task_id, absolute_path=absolute_path)
 
-    def _register_resource(self, add_response, task_id, absolute_path=False):
-        # response consists of multihashes and absolute paths
-
+    def _register_response(self, add_response, task_id, absolute_path=False):
         if isinstance(add_response, list):
             for entry in add_response:
-                self._register_resource(entry, task_id, absolute_path=absolute_path)
+                self._register_response(entry, task_id, absolute_path=absolute_path)
             return
 
         if add_response and 'Hash' in add_response and 'Name' in add_response:
+            path = to_unicode(add_response.get('Name'))
+            multihash = to_unicode(add_response.get('Hash'))
 
-            name = self.make_relative_path(add_response.get('Name'), task_id)
-            multihash = add_response.get('Hash')
-
-            name = to_unicode(name)
-            multihash = to_unicode(multihash)
-
-            if task_id not in self.task_id_to_files:
-                self.task_id_to_files[task_id] = []
-
-            self.file_to_hash[name] = multihash
-            self.task_id_to_files[task_id].append([name, multihash])
-
-            logging.debug("IPFS: Adding resource %s (%s)" % (name, multihash))
+            self._register_resource(path, multihash, task_id,
+                                    absolute_path=absolute_path)
         else:
-            logging.error("IPFS: Invalid resource %r" % add_response)
+            logging.error("IPFS: Invalid resource {}".format(add_response))
+
+    def _register_resource(self, file_path, multihash, task_id, absolute_path=False):
+        name = self.make_relative_path(file_path, task_id)
+
+        if task_id not in self.task_id_to_files:
+            self.task_id_to_files[task_id] = []
+
+        self.file_to_hash[name] = multihash
+        self.hash_to_path[multihash] = file_path
+        self.task_id_to_files[task_id].append([name, multihash])
+
+        logging.debug("IPFS: Resource registered {} ({})".format(file_path, multihash))
+        return name
 
     def pin_resource(self, multihash, client=None):
         if not client:
@@ -275,6 +311,7 @@ class IPFSResourceManager:
             result = args[0][0]
             result_filename = result[0]
             result_multihash = result[1]
+            result_path = self.get_resource_path(result_filename, task_id)
 
             logger.debug("[IPFS]:success:%s:%r" %
                          (result_multihash, time.time()))
@@ -282,6 +319,7 @@ class IPFSResourceManager:
                          (result_filename, result_multihash))
 
             self.__clear_retry(IPFSCommands.pull, result_multihash)
+            self._register_resource(result_path, result_multihash, task_id)
             self.pin_resource(result_multihash)
 
             success(filename, result_multihash, task_id)
@@ -307,6 +345,11 @@ class IPFSResourceManager:
                 error(filename, task_id)
                 self.__process_queue()
 
+        copied = self.__copy_cached(filename, multihash, task_id)
+        if copied:
+            success_wrapper([[filename, multihash]])
+            return
+
         out_path = self.get_resource_path(filename, task_id)
         out_dir = out_path.rsplit(os.sep, 1)
 
@@ -326,6 +369,20 @@ class IPFSResourceManager:
         if not client:
             client = self.new_ipfs_client()
         return self.__handle_retries(client.id, IPFSCommands.id, 'id')
+
+    def __copy_cached(self, filename, multihash, task_id):
+        cached_path = self.get_cached(multihash)
+        if cached_path and os.path.exists(cached_path):
+            copied_filename = self._copy_resource(cached_path,
+                                                  filename,
+                                                  multihash,
+                                                  task_id)
+
+            if copied_filename:
+                logger.debug("IPFS: Resource copied {} ({})"
+                             .format(copied_filename, multihash))
+                return True
+        return None
 
     def __can_download(self):
         with self.lock:

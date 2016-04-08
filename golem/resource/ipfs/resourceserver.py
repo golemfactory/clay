@@ -52,7 +52,6 @@ class IPFSResourceServer:
         self.dir_manager.node_name = config_desc.node_name
 
         self.resource_manager.copy_resources(old_resource_dir)
-        self.resource_manager.update_resource_dir()
 
     def start_accepting(self):
         try:
@@ -76,6 +75,11 @@ class IPFSResourceServer:
 
     def sync_network(self):
         self.get_resources()
+
+    def add_task(self, files, task_id):
+        self.resource_manager.add_task(files, task_id)
+        res = self.resource_manager.list_split_resources(task_id)
+        logger.debug("IPFS: resource list: %r" % res)
 
     def add_files_to_get(self, files, task_id):
         num = 0

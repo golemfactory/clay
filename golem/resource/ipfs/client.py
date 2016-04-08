@@ -50,7 +50,7 @@ class ChunkedHTTPClient(HTTPClient):
                  filepath=None,
                  filename=None,
                  args=[], opts={},
-                 compress=True, **kwargs):
+                 compress=False, **kwargs):
         """
         Downloads a file or files from IPFS into the current working
         directory, or the directory given by :filepath:.
@@ -58,11 +58,12 @@ class ChunkedHTTPClient(HTTPClient):
         Support for :filename: was added (which replaces file's hash)
         """
         url = self.base + path
-        wd = filepath or '.'
+        work_dir = filepath or '.'
+        params = [
+            ('stream-channels', 'true'),
+            ('archive', 'true')
+        ]
 
-        params = []
-        params.append(('stream-channels', 'true'))
-        params.append(('archive', 'true'))
         if compress:
             params.append(('compress', 'true'))
 
@@ -82,37 +83,40 @@ class ChunkedHTTPClient(HTTPClient):
                                    params=params, stream=True, **kwargs)
 
         res.raise_for_status()
-        fileobj = StreamFileObject(res)
+        stream = StreamFileObject(res)
 
-        with tarfile.open(fileobj=fileobj, mode=mode) as tar_file:
-            return self._tar_extract(tar_file, wd, filename,
+        with tarfile.open(fileobj=stream, mode=mode) as tar_file:
+            return self._tar_extract(tar_file, work_dir, filename,
                                      multihash=args[0])
 
-    @staticmethod
-    def _tar_extract(tar_file, work_dir, filename, multihash):
+    @classmethod
+    def _tar_extract(cls, tar_file, work_dir, filename, multihash):
 
-        dest_path = os.path.join(work_dir, filename)
+        dst_path = os.path.join(work_dir, filename)
         tmp_dir = os.path.join(work_dir, str(uuid.uuid4()))
-        result = (filename, multihash)
+        tmp_path = os.path.join(tmp_dir, multihash)
 
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
 
-        for member in tar_file:
-            tar_file.extract(member, tmp_dir)
+        with cls.lock:
+            if os.path.exists(dst_path):
+                os.remove(dst_path)
 
-        with ChunkedHTTPClient.lock:
-            if os.path.exists(dest_path):
-                if os.path.isdir(dest_path):
-                    return result
-                else:
-                    os.remove(dest_path)
+        tar_file.extractall(tmp_dir)
 
-            shutil.move(os.path.join(tmp_dir, multihash), dest_path)
+        if os.path.exists(tmp_path):
+
+            with cls.lock:
+                shutil.move(tmp_path, dst_path)
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        logger.debug("IPFS downloaded %s (%s) to %s" % (filename, multihash, dest_path))
-        return result
+            logger.debug("IPFS: downloaded {} ({}) to {}".format(filename,
+                                                                 multihash,
+                                                                 dst_path))
+        else:
+            return None, None
+        return filename, multihash
 
 
 def parse_response(resp):

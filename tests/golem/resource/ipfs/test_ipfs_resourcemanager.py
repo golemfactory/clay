@@ -52,6 +52,26 @@ class TestResourcesManager(TestDirFixture):
 
         self.assertTrue(cur_list == prev_list)
 
+    def testCopyResource(self):
+        dir_manager = DirManager(self.path, 'test_suite_copy')
+        rm = IPFSResourceManager(dir_manager, self.node_name)
+        rm.add_resources(self.target_resources, self.task_id)
+        resources = rm.list_resources(self.task_id)
+
+        new_task_id = self.task_id + "-new"
+
+        for filename, multihash in resources:
+            dst_path = rm.get_resource_path(filename, new_task_id)
+            src_path = rm.get_resource_path(filename, self.task_id)
+
+            copied_name = rm._copy_resource(src_path,
+                                            filename,
+                                            multihash,
+                                            new_task_id)
+
+            assert filename == copied_name
+            assert os.path.exists(dst_path)
+
     def testNewIpfsClient(self):
         rm = IPFSResourceManager(self.dir_manager, self.node_name)
         from golem.resource.ipfs.client import IPFSClient
@@ -74,6 +94,7 @@ class TestResourcesManager(TestDirFixture):
         res_dir = rm.get_resource_dir(self.task_id)
         self.assertTrue(os.path.isdir(res_dir))
         self.assertEqual(res_dir, self.dir_manager.get_task_resource_dir(self.task_id))
+        self.assertNotEqual(res_dir, rm.get_resource_dir(self.task_id + "-other"))
 
     def testGetTemporaryDir(self):
         rm = IPFSResourceManager(self.dir_manager, self.node_name)
@@ -174,6 +195,14 @@ class TestResourcesManager(TestDirFixture):
         rm.add_resources([test_dir_file], self.task_id)
 
         self.assertEqual(len(rm.list_resources(self.task_id)), 1)
+
+    def testGetCached(self):
+        rm = IPFSResourceManager(self.dir_manager, self.node_name)
+        rm.add_resources(self.target_resources, self.task_id)
+        resources = rm.list_resources(self.task_id)
+
+        for filename, multihash in resources:
+            assert rm.get_cached(multihash) == filename
 
     def testPinResource(self):
         rm = IPFSResourceManager(self.dir_manager, self.node_name)
