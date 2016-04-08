@@ -2,14 +2,14 @@ from mock import patch
 from gnr.node import start, GNRNode
 from click.testing import CliRunner
 from gnr.docker_environments import BlenderEnvironment
-from golem.tools.testdirfixture import TestDirFixture
+from golem.testutils import DatabaseFixture
 
 
 # Do not remove! (even if pycharm complains that this import is not used)
 import node  # noqa
 
 
-class TestNode(TestDirFixture):
+class TestNode(DatabaseFixture):
 
     def setUp(self):
         super(TestNode, self).setUp()

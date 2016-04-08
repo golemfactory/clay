@@ -3,10 +3,10 @@ from datetime import datetime
 from peewee import IntegrityError
 from golem.model import Payment, PaymentStatus, ReceivedPayment, LocalRank, GlobalRank, \
     NeighbourLocRank, NEUTRAL_TRUST, Database
-from golem.tools.testwithdatabase import TestWithDatabase, TestDirFixture
+from golem.testutils import DatabaseFixture, TempDirFixture
 
 
-class TestDatabase(TestDirFixture):
+class TestDatabase(TempDirFixture):
     def test_init(self):
         db = Database(self.path)
         self.assertFalse(db.db.is_closed())
@@ -24,7 +24,7 @@ class TestDatabase(TestDirFixture):
         db.db.close()
 
 
-class TestPayment(TestWithDatabase):
+class TestPayment(DatabaseFixture):
 
     def test_default_fields(self):
         p = Payment()
@@ -47,7 +47,7 @@ class TestPayment(TestWithDatabase):
             Payment.create(payee="XX", subtask="zz", value=5, status=1)
 
 
-class TestReceivedPayment(TestWithDatabase):
+class TestReceivedPayment(DatabaseFixture):
 
     def test_default_fields(self):
         r = ReceivedPayment()
@@ -69,7 +69,7 @@ class TestReceivedPayment(TestWithDatabase):
         self.assertEqual(3, len([payment for payment in ReceivedPayment.select()]))
 
 
-class TestLocalRank(TestWithDatabase):
+class TestLocalRank(DatabaseFixture):
 
     def test_default_fields(self):
         r = LocalRank()
@@ -86,7 +86,7 @@ class TestLocalRank(TestWithDatabase):
         self.assertEqual(0, r.negative_resource)
 
 
-class TestGlobalRank(TestWithDatabase):
+class TestGlobalRank(DatabaseFixture):
 
     def test_default_fields(self):
         r = GlobalRank()
@@ -98,7 +98,7 @@ class TestGlobalRank(TestWithDatabase):
         self.assertEqual(0, r.gossip_weight_requesting)
 
 
-class TestNeighbourRank(TestWithDatabase):
+class TestNeighbourRank(DatabaseFixture):
 
     def test_default_fields(self):
         r = NeighbourLocRank()

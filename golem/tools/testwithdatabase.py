@@ -1,1 +1,1 @@
-from golem.tools.testutils import DatabaseFixture as TestWithDatabase
+from golem.testutils import DatabaseFixture as TestWithDatabase
