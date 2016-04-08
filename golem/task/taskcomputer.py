@@ -189,10 +189,6 @@ class TaskComputer(object):
             self.waiting_for_task = None
             self.waiting_ttl = 0
 
-    def increase_request_trust(self, subtask_id):
-        with self.lock:
-            self.increase_trust_val = True
-
     def __request_task(self):
         self.waiting_ttl = self.waiting_for_task_timeout
         self.last_checking = time.time()

@@ -66,6 +66,8 @@ class Task:
         self.header = header
         self.undeletable = []
 
+        self.notify_update_task = lambda task_id: None
+
     @abc.abstractmethod
     def initialize(self, dir_manager):
         """Called after adding a new task, may initialize or create some resources

@@ -40,6 +40,9 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 20000, 5, 10, 2, "10.10.10.10")
         self.assertIsNone(subtask)
         self.assertFalse(wrong_task)
+        tm.delete_task("xyz")
+        assert tm.tasks.get("xyz") is None
+        assert tm.tasks_states.get("xyz") is None
 
     def test_get_and_set_value(self):
         tm = TaskManager("ABC", Node(), root_path=self.path)
