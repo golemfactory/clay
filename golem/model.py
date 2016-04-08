@@ -1,9 +1,8 @@
 import datetime
-import appdirs
 import json
 import logging
-import os
 from enum import Enum
+from os import path
 
 from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
                     DateTimeField, TextField, CompositeKey)
@@ -11,24 +10,21 @@ from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
 
 log = logging.getLogger('golem.db')
 
-DATABASE_NAME = os.path.join(appdirs.user_data_dir('golem'), 'golem.db')
-
 NEUTRAL_TRUST = 0.0
 
 
-db = SqliteDatabase(None, threadlocals=True, pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
+db = SqliteDatabase(None, threadlocals=True,
+                    pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
 
 
 class Database:
     # Database user schema version, bump to recreate the database
     SCHEMA_VERSION = 3
 
-    def __init__(self, name=DATABASE_NAME):
-
-        self.name = name
+    def __init__(self, datadir):
+        # TODO: Global database is bad idea. Check peewee for other solutions.
         self.db = db
-
-        db.init(name)
+        db.init(path.join(datadir, 'golem.db'))
         db.connect()
         self.create_database()
 

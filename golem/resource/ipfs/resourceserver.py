@@ -42,18 +42,6 @@ class IPFSResourceServer:
         self.waiting_resources = {}
         self.waiting_tasks_to_compute = {}
 
-    def change_resource_dir(self, config_desc):
-        if self.dir_manager.root_path == config_desc.root_path:
-            return
-
-        old_resource_dir = self.resource_manager.get_resource_root_dir()
-
-        self.dir_manager.root_path = config_desc.root_path
-        self.dir_manager.node_name = config_desc.node_name
-
-        self.resource_manager.copy_resources(old_resource_dir)
-        self.resource_manager.update_resource_dir()
-
     def start_accepting(self):
         try:
             ipfs_id = self.resource_manager.id()

@@ -173,7 +173,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         return self.task_types[task_state.definition.task_type].task_builder_type(self.client.get_node_name(),
                                                                                   task_state.definition,
-                                                                                  self.client.get_root_path())
+                                                                                  self.client.datadir)
 
     def restart_task(self, task_id):
         self.client.restart_task(task_id)
@@ -270,22 +270,22 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def recount_lux_performance(self):
         cfg_filename = SimpleEnv.env_file_name("lux.ini")
-        
+
         cfg_file = open(cfg_filename, 'w')
         average = lux_performance()
         cfg_file.write("{0:.1f}".format(average))
         cfg_file.close()
-        
+
         return average
-    
+
     def recount_blender_performance(self):
         cfg_filename = SimpleEnv.env_file_name("blender.ini")
-        
+
         cfg_file = open(cfg_filename, 'w')
         average = blender_performance()
         cfg_file.write("{0:.1f}".format(average))
         cfg_file.close()
-        
+
         return average
 
     def run_test_task(self, task_state):
@@ -295,7 +295,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
             t = Task.build_task(tb)
 
-            self.tt = TaskTester(t, self.client.get_root_path(), self._test_task_computation_finished)
+            self.tt = TaskTester(t, self.client.datadir, self._test_task_computation_finished)
 
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)

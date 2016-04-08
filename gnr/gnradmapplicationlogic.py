@@ -2,7 +2,6 @@ import os
 import glob
 import uuid
 import logging
-import appdirs
 import cPickle as pickle
 
 from golem.task.taskstate import TaskStatus
@@ -12,6 +11,7 @@ from gnr.task.infotask import InfoTaskBuilder, InfoTaskDefinition
 from gnr.task.updateothergolemstask import UpdateOtherGolemsTaskBuilder, UpdateOtherGolemsTaskDefinition
 from gnr.renderingdirmanager import find_task_script
 from gnrapplicationlogic import GNRApplicationLogic
+from gnr.customizers.common import get_save_dir
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
         self.start_nodes_manager_function()
 
     def send_test_tasks(self):
-        path = os.path.join(appdirs.user_data_dir('golem'), "save", "test")
+        path = os.path.join(get_save_dir(), "test")
         self.add_and_start_tasks_from_files(glob.glob(os.path.join(path, '*.gt')))
 
     def update_other_golems(self, golem_dir):
@@ -43,7 +43,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
 
         task_builder = UpdateOtherGolemsTaskBuilder(self.client.get_node_name(),
                                                     task_definition,
-                                                    self.client.get_root_path(), golem_dir)
+                                                    self.client.datadir, golem_dir)
 
         task = Task.build_task(task_builder)
         self.add_task_from_definition(task_definition)
@@ -63,7 +63,7 @@ class GNRAdmApplicationLogic(GNRApplicationLogic):
 
         task_builder = InfoTaskBuilder(self.client.get_node_name(),
                                        info_task_definition,
-                                       self.client.get_root_path())
+                                       self.client.datadir)
 
         task = Task.build_task(task_builder)
         self.add_task_from_definition(info_task_definition)

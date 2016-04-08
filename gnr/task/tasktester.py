@@ -8,25 +8,27 @@ from golem.task.taskbase import Task, resource_types
 from golem.task.taskcomputer import PyTestTaskThread
 from golem.resource.resource import TaskResourceHeader, decompress_dir
 
-from gnr.renderingdirmanager import get_test_task_path, get_test_task_directory, get_tmp_path, get_test_task_tmp_path
+from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, get_test_task_tmp_path
 
 logger = logging.getLogger(__name__)
+
 
 def find_flm(directory):
     if not os.path.exists(directory):
         return None
-        
+
     try:
         for root, dirs, files in os.walk(directory):
             for names in files:
                 if names[-4:] == ".flm":
-                    return os.path.join(root,names)
+                    return os.path.join(root, names)
 
     except:
         import traceback
         # Print the stack traceback
         traceback.print_exc()
         return None
+
 
 class TaskTester:
     def __init__(self, task, root_path, finished_callback):
@@ -96,7 +98,7 @@ class TaskTester:
             res, est_mem = task_thread.result
         if task_thread.result and res and res.get("data"):
             logger.info("Test task computation success !")
-            
+
             # Search for flm - the result of testing a lux task
             # It's needed for verification of received results
             flm = find_flm(self.tmp_dir)
@@ -108,9 +110,9 @@ class TaskTester:
                     save_path = get_tmp_path(self.task.header.node_name, self.task.header.task_id, self.task.root_path)
                     if not os.path.exists(save_path):
                         os.makedirs(save_path)
-                    
+
                     shutil.copy(flm_path, save_path)
-                except: 
+                except:
                     logger.warning("Couldn't rename and copy .flm file")
 
             self.finished_callback(True, est_mem)
@@ -122,7 +124,6 @@ class TaskTester:
             self.finished_callback(False, error=task_thread.error_msg)
 
     def __prepare_resources(self):
-
         self.test_task_res_path = get_test_task_path(self.root_path)
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
@@ -130,7 +131,7 @@ class TaskTester:
             shutil.rmtree(self.test_task_res_path, True)
             os.makedirs(self.test_task_res_path)
 
-        self.test_task_res_dir = get_test_task_directory()
+        self.test_task_res_dir = get_test_task_path(self.root_path)
         rh = TaskResourceHeader(self.test_task_res_dir)
         res_file = self.task.get_resources(self.task.header.task_id, rh, resource_types["zip"])
 
@@ -140,11 +141,9 @@ class TaskTester:
         return True
 
     def __prepare_tmp_dir(self):
-
         self.tmp_dir = get_test_task_tmp_path(self.root_path)
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
         else:
             shutil.rmtree(self.tmp_dir, True)
             os.makedirs(self.tmp_dir)
-

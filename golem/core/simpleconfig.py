@@ -5,7 +5,6 @@ import shutil
 import logging
 
 from simpleauth import SimpleAuth
-from simpleenv import SimpleEnv
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +47,6 @@ class ConfigEntry(object):
         """
         self.set_value(self._value_type(val))
 
-    def __str__(self):
-        return "Section {0._section:7} prop: {0._key:17} -> {0._value:10} {0._value_type}".format(self)
-
     @classmethod
     def create_property(cls, section, key, value, other, prop_name):
         """ Create new property: config entry with getter and setter method for this property in other object.
@@ -76,15 +72,17 @@ class ConfigEntry(object):
         def get_properties(_self):
             return getattr(_self, '_properties')
 
-        setattr(other.__class__, prop_name, property_)
+        setattr(other, prop_name, property_)
         setattr(other.__class__, getter_name, get_prop)
         setattr(other.__class__, setter_name, set_prop)
 
+        if not hasattr(other, '_properties'):
+            setattr(other, '_properties', [])
+
         if not hasattr(other.__class__, 'properties'):
-            setattr(other.__class__, '_properties', [])
             setattr(other.__class__, 'properties', get_properties)
 
-        getattr(other.__class__, '_properties').append(getattr(other.__class__, prop_name))
+        other._properties.append(property_)
 
 
 class SimpleConfig(object):
@@ -102,8 +100,6 @@ class SimpleConfig(object):
         """
         self._common_config = common_config
         self._node_config = node_config
-
-        cfg_file = SimpleEnv.env_file_name(cfg_file)
 
         logger_msg = "Reading config from file {}".format(cfg_file)
 
@@ -169,6 +165,8 @@ class SimpleConfig(object):
             backup_file_name = "{}.bak".format(cfg_file)
             logger.info("Creating backup configuration file {}".format(backup_file_name))
             shutil.copy(cfg_file, backup_file_name)
+        elif not os.path.exists(os.path.dirname(cfg_file)):
+            os.makedirs(os.path.dirname(cfg_file))
 
         with open(cfg_file, 'w') as f:
             cfg.write(f)
@@ -190,11 +188,3 @@ class SimpleConfig(object):
 
         for prop in self.get_common_config().properties() + self.get_node_config().properties():
             self.__write_option(cfg, prop)
-
-    def __str__(self):
-        rs = "DefaultConfig\n"
-
-        for prop in self.get_common_config().properties() + self.get_node_config().properties():
-            rs += "{}\n".format(str(prop))
-
-        return rs

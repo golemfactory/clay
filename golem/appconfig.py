@@ -1,10 +1,8 @@
 import logging
-import appdirs
 from os import path
 
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 from golem.core.simpleenv import SimpleEnv
-from golem.core.prochelper import ProcessService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 CONFIG_FILENAME = "app_cfg.ini"
@@ -51,7 +49,6 @@ NODE_SNAPSHOT_INTERVAL = 4.0
 ADD_TASKS = 0
 MAX_SENDING_DELAY = 360
 USE_DISTRIBUTED_RESOURCE_MANAGEMENT = 1
-DEFAULT_ROOT_PATH = appdirs.user_data_dir('golem')
 REQUESTING_TRUST = -1.0
 COMPUTING_TRUST = -1.0
 P2P_SESSION_TIMEOUT = 240
@@ -103,8 +100,8 @@ class NodeConfig:
                 return 0
         return res
 
-    def __init__(self, node_id, **kwargs):
-        self._section = "Node {}".format(node_id)
+    def __init__(self, **kwargs):
+        self._section = "Node"
 
         estimated_performance = NodeConfig.read_estimated_performance()
         if estimated_performance == 0:
@@ -131,29 +128,19 @@ class NodeConfig:
 
 
 class AppConfig:
-    CONFIG_LOADED = False
+    __loaded_configs = set()
 
     @classmethod
     def manager_port(cls):
         return MANAGER_PORT
 
     @classmethod
-    def load_config(cls, cfg_file=CONFIG_FILENAME):
+    def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
 
-        if cls.CONFIG_LOADED:
-            logger.warning("Application already configured")
-            return None
-
-        logger.info("Starting generic process service...")
-        ps = ProcessService()
-        logger.info("Generic process service started")
-
-        logger.info("Trying to register current process")
-        local_id = ps.register_self()
-
-        if local_id < 0:
-            logger.error("Failed to register current process - bailing out")
-            return None
+        # FIXME: This check is only for transition to separeted datadirs.
+        cfg_file = path.join(datadir, cfg_file_name)
+        assert cfg_file not in cls.__loaded_configs, "Config has been loaded: " + cfg_file
+        cls.__loaded_configs.add(cfg_file)
 
         common_config = CommonConfig(manager_address=MANAGER_ADDRESS,
                                      manager_port=MANAGER_PORT,
@@ -164,11 +151,9 @@ class AppConfig:
                                      app_name=APP_NAME,
                                      app_version=APP_VERSION)
 
-        node_config = NodeConfig(local_id,
-                                 node_address="",
+        node_config = NodeConfig(node_address="",
                                  seed_host="",
                                  seed_port=0,
-                                 root_path=DEFAULT_ROOT_PATH,
                                  num_cores=4,
                                  max_resource_size=MAX_RESOURCE_SIZE,
                                  max_memory_size=MAX_MEMORY_SIZE,
@@ -197,12 +182,10 @@ class AppConfig:
                                  public_address="")
 
         cfg = SimpleConfig(common_config, node_config, cfg_file)
+        return AppConfig(cfg, cfg_file)
 
-        cls.CONFIG_LOADED = True
-
-        return AppConfig(cfg)
-
-    def __init__(self, cfg):
+    def __init__(self, cfg, config_file):
+        self.config_file = config_file
         self._cfg = cfg
         for prop in self._cfg.get_common_config().prop_names:
             setattr(self, "get_{}".format(prop), self.get_common_property(prop))
@@ -223,14 +206,11 @@ class AppConfig:
     def set_node_property(self, prop):
         return getattr(self._cfg.get_node_config(), "set_{}".format(prop))
 
-    def change_config(self, cfg_desc, cfg_file=CONFIG_FILENAME, ):
+    def change_config(self, cfg_desc):
         assert isinstance(cfg_desc, ClientConfigDescriptor)
 
         for var, val in vars(cfg_desc).iteritems():
             set_func = getattr(self, "set_{}".format(var))
             set_func(val)
-        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), cfg_file, refresh=True,
+        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), self.config_file, refresh=True,
                      check_uid=False)
-
-    def __str__(self):
-        return str(self._cfg)

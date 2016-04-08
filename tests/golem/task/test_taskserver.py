@@ -1,5 +1,4 @@
 from mock import Mock
-
 from golem.task.taskserver import TaskServer, WaitingTaskResult, TaskConnTypes, logger
 from golem.task.taskbase import ComputeTaskDef
 from golem.network.p2p.node import Node
@@ -15,7 +14,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd.min_price = 10
         n = Node()
         ka = EllipticalKeysAuth()
-        ts = TaskServer(n, ccd, ka, Mock())
+        ts = TaskServer(n, ccd, ka, self.client)
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         self.assertIsInstance(ts, TaskServer)
         self.assertEqual(0, ts.request_task())
@@ -32,16 +31,16 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd.min_price = 11
         n = Node()
         ka = EllipticalKeysAuth()
-        ts = TaskServer(n, ccd, ka, Mock())
+        ts = TaskServer(n, ccd, ka, self.client)
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         results = {"data": "", "result_type": 0}
         task_header = self.__get_example_task_header()
         task_header["id"] = "xyz"
         ts.add_task_header(task_header)
-        th = ts.request_task()
+        ts.request_task()
         self.assertTrue(ts.send_results("xxyyzz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
         self.assertTrue(ts.send_results("xyzxyz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
-        self.assertEqual(ts.get_subtask_ttl("xyz"), 120)
+        assert ts.get_subtask_ttl("xyz") == 120
         wtr = ts.results_to_send["xxyyzz"]
         self.assertIsInstance(wtr, WaitingTaskResult)
         self.assertEqual(wtr.subtask_id, "xxyyzz")
@@ -79,13 +78,12 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.decrease_trust_payment("xyz")
         self.assertGreater(ts.client.decrease_trust.call_count, prev_call_count)
 
-
     def test_connection_for_task_request_established(self):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 11
         n = Node()
         ka = EllipticalKeysAuth()
-        ts = TaskServer(n, ccd, ka, Mock())
+        ts = TaskServer(n, ccd, ka, self.client)
         session = Mock()
         session.address = "10.10.10.10"
         session.port = 1020
@@ -106,7 +104,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd.task_request_interval = 10
         ccd.use_waiting_for_task_timeout = True
         ccd.waiting_for_task_timeout = 19
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), Mock())
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
         ccd2 = ClientConfigDescriptor()
         ccd2.task_session_timeout = 124
         ccd2.min_price = 0.0057
@@ -124,13 +122,13 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertEqual(ts.task_computer.use_waiting_ttl, False)
 
     def test_sync(self):
-        ts = TaskServer(Node(), ClientConfigDescriptor(), EllipticalKeysAuth(), Mock())
+        ts = TaskServer(Node(), ClientConfigDescriptor(), EllipticalKeysAuth(), self.client)
         ts.sync_network()
 
     def test_results(self):
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), Mock())
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         task_mock = Mock()
         task_mock.header.task_id = "xyz"
@@ -155,8 +153,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
     def test_traverse_nat(self):
         ccd = ClientConfigDescriptor()
-        ccd.root_path = self.path
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), Mock())
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
         ts.network = Mock()
         ts.traverse_nat("ABC", "10.10.10.10", 1312, 310319041904, "DEF")
         self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].address,  "10.10.10.10")

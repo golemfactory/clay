@@ -1,11 +1,11 @@
 import cPickle as pickle
 import os
-import appdirs
 
 from golem.core.common import get_golem_path
+from golem.core.simpleenv import _get_local_datadir
 
 TEMPLATE = os.path.join(get_golem_path(), "save", "testtask_template")
-RESULT_GT = os.path.join(appdirs.user_data_dir("golem"), "save", "testtask.gt")
+RESULT_GT = os.path.join(_get_local_datadir("save"), "testtask.gt")
 
 
 def read_task(file_, file_dest):

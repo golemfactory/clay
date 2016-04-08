@@ -5,9 +5,12 @@ difficulty is configurable, see comments in DummyTaskParameters.
 """
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
+from os import path
 from threading import Thread
 
 from twisted.internet import reactor
@@ -32,13 +35,14 @@ def report(msg):
     global node_kind
     print format_msg(node_kind, os.getpid(), msg)
 
-def run_requesting_node(num_subtasks=3):
+
+def run_requesting_node(datadir, num_subtasks=3):
     global node_kind
     node_kind = "REQUESTER"
 
     start_time = time.time()
-    report("Starting...")
-    client = golem.client.start_client()
+    report("Starting in {}".format(datadir))
+    client = golem.client.start_client(datadir)
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
@@ -62,13 +66,13 @@ def run_requesting_node(num_subtasks=3):
     return client  # Used in tests, with mocked reactor
 
 
-def run_computing_node(peer_address, fail_after=None):
+def run_computing_node(datadir, peer_address, fail_after=None):
     global node_kind
     node_kind = "COMPUTER "
 
     start_time = time.time()
-    report("Starting...")
-    client = golem.client.start_client()
+    report("Starting in {}".format(datadir))
+    client = golem.client.start_client(datadir)
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     class DummyEnvironment(Environment):
@@ -110,11 +114,14 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     env = os.environ.copy()
     env["PYTHONPATH"] = pythonpath
 
+    datadir = tempfile.mkdtemp(prefix='golem_dummy_simulation_')
+
     start_time = time.time()
 
     # Start the requesting node in a separate process
+    reqdir = path.join(datadir, REQUESTING_NODE_KIND)
     requesting_proc = subprocess.Popen(
-        ["python", "-u", __file__, REQUESTING_NODE_KIND, str(num_subtasks)],
+        ["python", "-u", __file__, REQUESTING_NODE_KIND, reqdir, str(num_subtasks)],
         bufsize=1,  # line buffered
         env=env,
         stdout=subprocess.PIPE)
@@ -133,8 +140,9 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     # Start computing nodes in a separate processes
     computing_procs = []
     for n in range(0, num_computing_nodes):
+        compdir = path.join(datadir, COMPUTING_NODE_KIND + str(n))
         cmdline = [
-            "python", "-u", __file__, COMPUTING_NODE_KIND, requester_address]
+            "python", "-u", __file__, COMPUTING_NODE_KIND, compdir, requester_address]
         if node_failure_times and len(node_failure_times) > n:
             # Simulate failure of a computing node
             cmdline.append(str(node_failure_times[n]))
@@ -162,9 +170,9 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
                 task_finished = True
 
     monitor_threads = [Thread(target=monitor_subprocess,
-                              name="monitor {}".format(proc.pid),
-                              args=(proc,))
-                       for proc in all_procs]
+                              name="monitor {}".format(p.pid),
+                              args=(p,))
+                       for p in all_procs]
 
     for th in monitor_threads:
         th.setDaemon(True)
@@ -189,19 +197,26 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
             if proc.poll() is None:
                 proc.kill()
 
+        shutil.rmtree(datadir)
+
 
 def dispatch(args):
-    if len(args) == 3 and args[1] == REQUESTING_NODE_KIND:
-        # I'm a requesting node, second arg is the number of subtasks
-        run_requesting_node(int(args[2]))
-    elif len(args) in [3, 4] and args[1] == COMPUTING_NODE_KIND:
-        # I'm a computing node, second arg is the address to connect to
-        fail_after = float(args[3]) if len(args) == 4 else None
-        run_computing_node(SocketAddress.parse(args[2]), fail_after=fail_after)
+    if len(args) == 4 and args[1] == REQUESTING_NODE_KIND:
+        # I'm a requesting node,
+        # second arg is the data dir,
+        # third arg is the number of subtasks.
+        run_requesting_node(args[2], int(args[3]))
+    elif len(args) in [4, 5] and args[1] == COMPUTING_NODE_KIND:
+        # I'm a computing node,
+        # second arg is the data dir,
+        # third arg is the address to connect to,
+        # forth arg is the timeout (optional).
+        fail_after = float(args[4]) if len(args) == 5 else None
+        run_computing_node(args[2], SocketAddress.parse(args[3]), fail_after=fail_after)
     elif len(args) == 1:
         # I'm the main script, run simulation
-        error_msg = run_simulation(
-            num_computing_nodes = 2, num_subtasks = 4, timeout = 120)
+        error_msg = run_simulation(num_computing_nodes=2, num_subtasks=4,
+                                   timeout=120)
         if error_msg:
             print "Dummy task computation failed:", error_msg
             sys.exit(1)

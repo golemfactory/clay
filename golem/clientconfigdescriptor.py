@@ -40,7 +40,6 @@ class ClientConfigDescriptor(object):
         self.estimated_blender_performance = 0.0
         self.node_snapshot_interval = 0.0
         self.max_results_sending_delay = 0.0
-        self.root_path = u""
         self.num_cores = 0
         self.max_resource_size = 0
         self.max_memory_size = 0
@@ -94,9 +93,9 @@ class ConfigApprover(object):
         return self.config_desc
 
     def _init_actions(self):
-        dont_change_opt = ['seed_host', 'root_path', 'max_resource_size', 'max_memory_size',
+        dont_change_opt = ['seed_host', 'max_resource_size', 'max_memory_size',
                            'use_distributed_resource_management', 'use_waiting_for_task_timeout', 'send_pings',
-                           'use_ipv6', 'eth_account', 'root_path']
+                           'use_ipv6', 'eth_account']
         to_int_opt = ['seed_port', 'manager_port', 'num_cores', 'opt_peer_num', 'dist_res_num',
                       'waiting_for_task_timeout', 'p2p_session_timeout', 'task_session_timeout',
                       'resource_session_timeout', 'pings_interval', 'max_results_sending_delay', 'min_price',
