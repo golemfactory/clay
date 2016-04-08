@@ -241,8 +241,8 @@ class LuxTask(RenderingTask):
                 _, ext = os.path.splitext(tr_file)
                 if ext == '.flm':
                     self.collected_file_names[num_start] = tr_file
-                    self.num_tasks_received += 1
                     self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
+                    self.num_tasks_received += 1
                     if self.advanceVerification:
                         if not os.path.isfile(test_result_flm):
                             logger.warning("Advanced verification set, but couldn't find test result!")
@@ -251,6 +251,7 @@ class LuxTask(RenderingTask):
                             if not self.merge_flm_files(tr_file, test_result_flm):
                                 logger.info("Subtask " + str(subtask_id) + " rejected.")
                                 self._mark_subtask_failed(subtask_id)
+                                self.num_tasks_received -= 1
                             else:
                                 logger.info("Subtask " + str(subtask_id) + " successfully verified.")
                 elif ext != '.log':
@@ -438,7 +439,6 @@ class LuxTask(RenderingTask):
                                  self.query_extra_data_for_merge, additional_resources=[flm])
         computer.run()
         computer.tt.join()
-        print computer.tt.result
 
     def __verify_flm_ready(self, results):
         logger.info("Advance verification finished")
@@ -472,6 +472,7 @@ class LuxTask(RenderingTask):
                                  self.query_extra_data_for_final_flm, use_task_resources=False,
                                  additional_resources=self.collected_file_names.values())
         computer.run()
+        computer.tt.join()
 
     def __final_flm_ready(self, results):
         commonprefix = os.path.commonprefix(results['data'])

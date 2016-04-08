@@ -2,7 +2,7 @@ import appdirs
 import jsonpickle
 import logging
 import shutil
-from os import makedirs, path
+from os import makedirs, path, remove
 
 from mock import Mock
 
@@ -32,9 +32,13 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
         TestWithAppConfig.setUp(self)
         self.error_msg = None
         self.dirs_to_remove = []
+        self.files_to_remove = []
         self.task_computer_send_task_failed = TaskServer.send_task_failed
 
     def tearDown(self):
+        for f in self.files_to_remove:
+            if path.isfile(f):
+                remove(f)
         for dir_ in self.dirs_to_remove:
             if path.isdir(dir_):
                 shutil.rmtree(dir_)
@@ -126,12 +130,43 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
         ctd = task.query_extra_data(10000)
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
         assert task.verify_subtask(ctd.subtask_id)
-        ctd = task.query_extra_data(10000)
+
+        ctd = task.query_extra_data(10000, node_id="Bla")
         task.advanceVerification = True
+        bad_file = path.join(path.dirname(test_file), "badfile.flm")
+        open(bad_file, "w").close()
+        task.computation_finished(ctd.subtask_id, [bad_file], result_type=result_types["files"])
+        assert not task.verify_subtask(ctd.subtask_id)
+
+        ctd = task.query_extra_data(10000)
+        shutil.move(test_file, test_file + "copy")
+        task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
+        assert task.verify_subtask(ctd.subtask_id)
+        shutil.move(test_file + "copy", test_file)
+
+        ctd = task.query_extra_data(10)
+        assert task.num_tasks_received == 2
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
         assert task.verify_subtask(ctd.subtask_id)
         assert task.verify_task()
-        assert path.isfile(task.output_file + "." + task.output_format)
+        outfile = task.output_file + "." + task.output_format
+        outflm = task.output_file + "." + "flm"
+        self.files_to_remove.append(outfile)
+        self.files_to_remove.append(outflm)
+        assert path.isfile(outfile)
+
+        task.num_tasks_received -= 1
+        task.start_task = 0
+        task.end_task = 0
+        task.last_task = 0
+        assert not task.verify_task()
+        remove(outfile)
+        task.advanceVerification = False
+        ctd = task.query_extra_data(10)
+        task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
+        assert task.verify_subtask(ctd.subtask_id)
+        assert task.verify_task()
+        assert path.isfile(outfile)
 
     def test_luxrender_subtask(self):
         task = self._test_task()

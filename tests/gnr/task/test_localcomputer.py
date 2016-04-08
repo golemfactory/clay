@@ -41,6 +41,10 @@ class TestLocalComputer(TestDirFixture):
         lc.task_computed(tt)
         assert self.last_error == "some error"
 
+        tt = self.TestTaskThread({}, None)
+        lc.task_computed(tt)
+        assert self.last_error is None
+
     def _get_bad_task_def(self):
         ctd = ComputeTaskDef()
         return ctd
