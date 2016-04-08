@@ -1,6 +1,14 @@
+""" Portable file locking.
+
+This module creates common interface for file locking implemented differently
+on Windows and Posix systems.
+
+Based on article
+https://www.safaribooksonline.com/library/view/python-cookbook/0596001673/ch04s25.html.
+"""
 import os
 
-# needs win32all to work on Windows
+# Needs win32all to work on Windows.
 if os.name == 'nt':
     import win32con
     import win32file
