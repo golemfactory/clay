@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from os import path, mkdir
 
+from golem.model import Database
+
 
 class TempDirFixture(unittest.TestCase):
     def setUp(self):
@@ -44,3 +46,15 @@ class TempDirFixture(unittest.TestCase):
                 new_dir = tempfile.mkdtemp(dir=dir_)
                 self.additional_dir_content(el, new_dir, results)
         return results
+
+
+class DatabaseFixture(TempDirFixture):
+    """ Setups temporary database for tests."""
+
+    def setUp(self):
+        super(DatabaseFixture, self).setUp()
+        self.database = Database(self.tempdir)
+
+    def tearDown(self):
+        self.database.db.close()
+        super(DatabaseFixture, self).tearDown()
