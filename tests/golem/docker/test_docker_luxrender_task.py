@@ -1,9 +1,14 @@
+import appdirs
 import jsonpickle
 import logging
 import shutil
 from os import makedirs, path
 
+from mock import Mock
+
 import gnr.node
+
+from gnr.task.tasktester import TaskTester
 from golem.core.common import get_golem_path
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
@@ -55,7 +60,7 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
     def _test_task(self):
         task_def = self._test_task_definition()
         node_name = "0123456789abcdef"
-        root_path = get_golem_path()
+        root_path = appdirs.user_data_dir("golem")
         task_builder = LuxRenderTaskBuilder(node_name, task_def, root_path)
         render_task = task_builder.build()
         render_task.__class__._update_task_preview = lambda self_: ()
@@ -107,6 +112,26 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
             task_thread.join(60.0)
 
         return task_thread, self.error_msg, temp_dir
+
+    def test_luxrender_test(self):
+        task = self._test_task()
+        computer = TaskTester(task, appdirs.user_data_dir('golem'), Mock(), Mock())
+        computer.run()
+        computer.tt.join(60.0)
+        test_file = task._LuxTask__get_test_flm()
+        self.dirs_to_remove.append(path.dirname(test_file))
+        assert path.isfile(task._LuxTask__get_test_flm())
+        new_file = path.join(path.dirname(test_file), "newfile.flm")
+        shutil.copy(test_file, new_file)
+        ctd = task.query_extra_data(10000)
+        task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
+        assert task.verify_subtask(ctd.subtask_id)
+        ctd = task.query_extra_data(10000)
+        task.advanceVerification = True
+        task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
+        assert task.verify_subtask(ctd.subtask_id)
+        assert task.verify_task()
+        assert path.isfile(task.output_file + "." + task.output_format)
 
     def test_luxrender_subtask(self):
         task = self._test_task()

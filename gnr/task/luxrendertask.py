@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class LuxRenderDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
-        self.output_format = "EXR"
+        self.output_format = "exr"
         self.main_program_file = find_task_script("docker_luxtask.py")
         self.min_subtasks = 1
         self.max_subtasks = 100
@@ -38,7 +38,7 @@ def build_lux_render_info(dialog, customizer):
     defaults = LuxRenderDefaults()
 
     renderer = RendererInfo("LuxRender", defaults, LuxRenderTaskBuilder, dialog, customizer, LuxRenderOptions)
-    renderer.output_formats = ["EXR", "PNG", "TGA"]
+    renderer.output_formats = ["exr", "png", "tga"]
     renderer.scene_file_ext = ["lxs"]
     renderer.get_task_num_from_pixels = get_task_num_from_pixels
     renderer.get_task_boarder = get_task_boarder
@@ -168,6 +168,7 @@ class LuxTask(RenderingTask):
             self.scene_file_src = ""
 
         self.output_file, _ = os.path.splitext(self.output_file)
+        self.output_format = self.output_format.lower()
         self.numAdd = 0
 
         self.preview_exr = None
@@ -195,7 +196,7 @@ class LuxTask(RenderingTask):
         else:
             write_interval = 60
         scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, self.halttime, self.haltspp,
-                                        write_interval, [0, 1, 0, 1], "PNG")
+                                        write_interval, [0, 1, 0, 1], "png")
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
         if self.own_binaries:
@@ -272,7 +273,7 @@ class LuxTask(RenderingTask):
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
-        scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, 1, 0, 1, [0, 1, 0, 1], "PNG")
+        scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, 1, 0, 1, [0, 1, 0, 1], "png")
         working_directory = self._get_working_directory()
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
@@ -314,13 +315,9 @@ class LuxTask(RenderingTask):
             logger.warning("Couldn't find flm file.")
 
     def query_extra_data_for_merge(self):
-        if self.halttime > 0:
-            write_interval = int(self.halttime / 2)
-        else:
-            write_interval = 60
 
-        scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, self.halttime, self.haltspp,
-                                        write_interval, [0, 1, 0, 1], self.output_format)
+        scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, 10, 0,
+                                        5, [0, 1, 0, 1], self.output_format)
 
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
         extra_data = {"path_root": self.main_scene_dir,
@@ -440,6 +437,8 @@ class LuxTask(RenderingTask):
         computer = LocalComputer(self, self.root_path, self.__final_img_ready, self.__final_img_error,
                                  self.query_extra_data_for_merge, additional_resources=[flm])
         computer.run()
+        computer.tt.join()
+        print computer.tt.result
 
     def __verify_flm_ready(self, results):
         logger.info("Advance verification finished")
@@ -450,11 +449,8 @@ class LuxTask(RenderingTask):
         self.verification_error = True
 
     def __final_img_ready(self, results):
-        print results
         commonprefix = os.path.commonprefix(results["data"])
-        print commonprefix
         img = find_file_with_ext(commonprefix, ["." + self.output_format])
-        print img
         if img is None:
             # TODO Maybe we should try again?
             logger.error("No final file generated...")
