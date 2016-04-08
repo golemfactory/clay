@@ -1,11 +1,14 @@
 import logging
 import shutil
+import appdirs
 from os import makedirs, path
 
 import jsonpickle
+from mock import Mock
 
 import gnr.node
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
+from gnr.task.tasktester import TaskTester
 from golem.core.common import get_golem_path
 from golem.docker.image import DockerImage
 from golem.task.taskbase import result_types
@@ -108,6 +111,13 @@ class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
 
         return task_thread, self.error_msg, temp_dir
 
+    def _run_docker_test_task(self, render_task, timeout=0):
+
+        task_computer = TaskTester(render_task, appdirs.user_data_dir('golem'), Mock())
+        task_computer.run()
+        task_computer.tt.join(60.0)
+        return task_computer.tt
+
     def _test_blender_subtask(self, task_file):
         task = self._create_test_task(task_file)
         task_thread, error_msg, out_dir = self._run_docker_task(task)
@@ -119,11 +129,17 @@ class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
         self.assertEqual(result["result_type"], result_types["files"])
         self.assertGreaterEqual(len(result["data"]), 3)
         self.assertTrue(
-            any(f == DockerTaskThread.STDOUT_FILE) for f in result["data"])
+            any(path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"]))
         self.assertTrue(
-            any(f == DockerTaskThread.STDERR_FILE) for f in result["data"])
+            any(path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"]))
         self.assertTrue(
-            any(f.endswith(".exr") for f in result["data"]))
+            any(f.endswith(".png") for f in result["data"]))
+
+    def test_blender_test(self):
+        render_task = self._create_test_task()
+        tt = self._run_docker_test_task(render_task)
+        result, mem = tt.result
+        assert mem > 0
 
     def test_blender_render_subtask(self):
         self._test_blender_subtask(self.BLENDER_TASK_FILE)
@@ -151,7 +167,7 @@ class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
         task = self._create_test_task()
         image = task.header.docker_images[0]
         task.header.docker_images = [
-            DockerImage(image.repository, id = "%$#@!!!")]
+            DockerImage(image.repository, image_id= "%$#@!!!")]
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         if task_thread:
             self.assertIsNone(task_thread.result)

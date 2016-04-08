@@ -40,6 +40,7 @@ class TestBlenderDockerJob(TestDockerJob):
             "script_src": crop_script_src,
             "start_task": 42,
             "end_task": 42,
+            "output_format": "EXR",
             "engine": "CYCLES",
             "frames": [1]
         }
