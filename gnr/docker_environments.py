@@ -46,10 +46,12 @@ class LuxRenderEnvironment(DockerEnvironment):
     def check_software(self):
         lux_installed = False
         for var in self.software_env_variables:
-            self.lux_console_path = path.join(environ.get(var), self.software_name[0])
-            self.lux_merger_path = path.join(environ.get(var), self.software_name[1])
-            if path.isfile(self.lux_console_path) and path.isfile(self.lux_merger_path):
-                lux_installed = True
+            lux_path = environ.get(var)
+            if lux_path:
+                self.lux_console_path = path.join(lux_path, self.software_name[0])
+                self.lux_merger_path = path.join(lux_path, self.software_name[1])
+                if path.isfile(self.lux_console_path) and path.isfile(self.lux_merger_path):
+                    lux_installed = True
 
         return lux_installed
 

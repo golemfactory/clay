@@ -33,32 +33,27 @@ class TestTaskTester(TestDirFixture, LogTestCase):
     task_name = 'task1'
     
     def test_init(self):
-        self.assertIsNotNone(TaskTester(self.task, self.path, None))
+        self.task.query_extra_data_for_test_task = Mock()
+        self.assertIsNotNone(TaskTester(self.task, self.path, None, None))
         
     def test_task_computed(self):
         result = [{"data": True}, 123]
-        file1 = os.path.join(self.path, 'file1.flm')
-        
-        open(file1, 'w').close()
-        
-        self.assertTrue(os.path.isfile(file1))
-        
+
         self.task.header.node_name = self.node
         self.task.header.task_id = self.task_name
         self.task.root_path = self.path
-        
-        tt = TaskTester(self.task, self.path, Mock())
+        self.task.after_test = Mock()
+        self.task.query_extra_data_for_test_task = Mock()
+
+        tt = TaskTester(self.task, self.path, Mock(), Mock())
         tt.tmp_dir = self.path
         task_thread = TaskThread(result)
         tt.task_computed(task_thread)
-        
-        copied_filepath = os.path.join(get_tmp_path(self.node, self.task_name, self.path), "test_result.flm")
-        self.assertTrue(os.path.isfile(copied_filepath))
 
         task_thread = MemTaskThread(None, 30210, "Some error")
         with self.assertLogs(logger, level=1):
             tt.task_computed(task_thread)
-        tt.finished_callback.assert_called_with(False, error="Some error")
+        tt.error_callback.assert_called_with("Some error")
 
         task_thread = MemTaskThread("result", 2010, "Another error")
         self.assertIsNone(tt.get_progress())
@@ -66,7 +61,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         self.assertEqual(tt.get_progress(), "30%")
         task_thread.error = True
         self.assertEqual(tt.get_progress(), 0)
-        tt.finished_callback.assert_called_with(False, error="Another error")
+        tt.error_callback.assert_called_with("Another error")
 
 
 
