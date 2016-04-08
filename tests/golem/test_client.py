@@ -69,7 +69,7 @@ class TestClient(TestWithDatabase):
         assert not os.listdir(d)
 
         d = c.get_distributed_files_dir()
-        assert self.path in d
+        assert self.path in os.path.normpath(d)  # normpath for mingw
         self.additional_dir_content([3], d)
         c.remove_distributed_files()
         assert not os.listdir(d)
