@@ -21,6 +21,7 @@ class TestDatabase(TestDirFixture):
         assert db._get_user_version() == 0
         db = Database(self.path)
         assert db._get_user_version() == db.SCHEMA_VERSION
+        db.db.close()
 
 
 class TestPayment(TestWithDatabase):

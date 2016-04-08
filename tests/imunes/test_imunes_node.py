@@ -57,3 +57,4 @@ class TestNode(TestDirFixture):
         (gnr_node, ) = mock_run.call_args[0]
         self.assertEqual(gnr_node.client.node.pub_addr, public_address)
         self.assertTrue(gnr_node.client.node.is_super_node())
+        gnr_node.client._unlock_datadir()

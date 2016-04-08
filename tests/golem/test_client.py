@@ -57,6 +57,7 @@ class TestClient(TestWithDatabase):
         c.transaction_system.check_payments = Mock()
         c.transaction_system.check_payments.return_value = ["ABC", "DEF"]
         c.check_payments()
+        c._unlock_datadir()
 
     def test_remove_resources(self):
         c = Client(ClientConfigDescriptor(), datadir=self.path)
@@ -79,9 +80,10 @@ class TestClient(TestWithDatabase):
         self.additional_dir_content([3], d)
         c.remove_received_files()
         assert not os.listdir(d)
+        c._unlock_datadir()
 
     def test_datadir_lock(self):
         c = Client(ClientConfigDescriptor(), datadir=self.path)
         with self.assertRaises(IOError):
             Client(ClientConfigDescriptor(), datadir=self.path)
-        assert c
+        c._unlock_datadir()
