@@ -1,20 +1,19 @@
-from types import FunctionType
-from functools import wraps
-
-import os
 import json
-import tarfile
-import requests
-import ipfsApi
+import logging
+import os
 import shutil
+import tarfile
 import uuid
-
+from functools import wraps
 from threading import Lock
 from twisted.internet import threads
-from ipfsApi.http import HTTPClient, pass_defaults
-from ipfsApi.commands import ArgCommand
+from types import FunctionType
 
-import logging
+import ipfsApi
+import requests
+from ipfsApi.commands import ArgCommand
+from ipfsApi.http import HTTPClient, pass_defaults
+
 logger = logging.getLogger(__name__)
 
 __all__ = ['IPFSCommands', 'IPFSClient', 'IPFSAsyncCall', 'IPFSAsyncExecutor', 'StreamFileObject']
@@ -39,6 +38,7 @@ class StreamFileObject:
 class ChunkedHTTPClient(HTTPClient):
 
     lock = Lock()
+    chunk_size = 1024
 
     """
     Class implements a workaround for the download method,
@@ -46,48 +46,50 @@ class ChunkedHTTPClient(HTTPClient):
     """
 
     @pass_defaults
-    def download(self, path,
-                 filepath=None,
-                 filename=None,
-                 args=[], opts={},
-                 compress=False, **kwargs):
+    def download(self, path, args=[], opts={},
+                 filepath=None, filename=None,
+                 compress=False, archive=True, **kwargs):
         """
-        Downloads a file or files from IPFS into the current working
-        directory, or the directory given by :filepath:.
-
+        Downloads a file from IPFS to the directory given by :filepath:
         Support for :filename: was added (which replaces file's hash)
         """
+        method = 'get'
+        multihash = args[0]
+
         url = self.base + path
         work_dir = filepath or '.'
-        params = [
-            ('stream-channels', 'true'),
-            ('archive', 'true')
-        ]
+        params = [('stream-channels', 'true')]
 
         if compress:
-            params.append(('compress', 'true'))
+            params += [('compress', 'true')]
+            archive = True
+        if archive:
+            params += [('archive', 'true')]
 
         for opt in opts.items():
             params.append(opt)
         for arg in args:
             params.append(('arg', arg))
 
-        method = 'get'
-        mode = 'r|gz' if compress else 'r|'
-
         if self._session:
             res = self._session.request(method, url,
-                                        params=params, stream=True, **kwargs)
+                                        params=params, stream=True,
+                                        **kwargs)
         else:
             res = requests.request(method, url,
-                                   params=params, stream=True, **kwargs)
+                                   params=params, stream=True,
+                                   **kwargs)
 
         res.raise_for_status()
-        stream = StreamFileObject(res)
 
-        with tarfile.open(fileobj=stream, mode=mode) as tar_file:
-            return self._tar_extract(tar_file, work_dir, filename,
-                                     multihash=args[0])
+        if archive:
+            stream = StreamFileObject(res)
+            mode = 'r|gz' if compress else 'r|'
+            with tarfile.open(fileobj=stream, mode=mode) as tar_file:
+                return self._tar_extract(tar_file, work_dir,
+                                         filename, multihash)
+        else:
+            return self._write_file(res, work_dir, filename, multihash)
 
     @classmethod
     def _tar_extract(cls, tar_file, work_dir, filename, multihash):
@@ -106,17 +108,30 @@ class ChunkedHTTPClient(HTTPClient):
         tar_file.extractall(tmp_dir)
 
         if os.path.exists(tmp_path):
-
             with cls.lock:
                 shutil.move(tmp_path, dst_path)
-            shutil.rmtree(tmp_dir, ignore_errors=True)
 
-            logger.debug("IPFS: downloaded {} ({}) to {}".format(filename,
-                                                                 multihash,
-                                                                 dst_path))
-        else:
-            return None, None
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            cls.__log_downloaded(filename, multihash, dst_path)
+            return filename, multihash
+
+        return None, None
+
+    @classmethod
+    def _write_file(cls, res, work_dir, filename, multihash):
+        dst_path = os.path.join(work_dir, filename)
+        with open(dst_path, 'wb') as f:
+            for chunk in res.iter_content(cls.chunk_size, False):
+                if chunk:
+                    f.write(chunk)
+
+        cls.__log_downloaded(filename, multihash, dst_path)
         return filename, multihash
+
+    @classmethod
+    def __log_downloaded(cls, filename, multihash, dst_path):
+        logger.debug("IPFS: downloaded {} ({}) to {}"
+                     .format(filename, multihash, dst_path))
 
 
 def parse_response(resp):
@@ -216,6 +231,9 @@ class IPFSClient(ipfsApi.Client):
 
     def get_file(self, multihash, **kwargs):
         return self._get.request(self._client, multihash, **kwargs)
+
+    def get(self, multihash, **kwargs):
+        raise NotImplementedError("Please use the get_file method")
 
 
 class IPFSAsyncCall(object):

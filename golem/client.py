@@ -143,7 +143,7 @@ class Client:
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
                                       use_ipv6=self.config_desc.use_ipv6)
         self.resource_server = IPFSResourceServer(self.task_server.task_computer.dir_manager,
-                                                  self.config_desc, self.keys_auth, self)
+                                                  self.keys_auth, self)
 
         logger.info("Starting resource server...")
         self.resource_server.start_accepting()

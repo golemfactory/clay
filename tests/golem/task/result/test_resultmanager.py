@@ -76,7 +76,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
 
         self.task_id = str(uuid.uuid4())
         self.dir_manager = DirManager(self.path, self.node_name)
-        self.resource_manager = IPFSResourceManager(self.dir_manager, self.node_name,
+        self.resource_manager = IPFSResourceManager(self.dir_manager,
                                                     resource_dir_method=self.dir_manager.get_task_output_dir)
 
     def testGenSecret(self):
@@ -119,15 +119,17 @@ class TestEncryptedResultPackageManager(TestDirFixture):
                                                       self.task_id)
         path, multihash = data
 
+        assert os.path.exists(path)
+
         def success(*args, **kwargs):
             pass
 
         def error(*args, **kwargs):
-            self.fail("Error downloading package")
+            self.fail("Error downloading package: {}".format(args[0]))
 
         node_name = self.dir_manager.node_name + "2"
         dir_manager = DirManager(self.path, node_name)
-        resource_manager = IPFSResourceManager(dir_manager, node_name,
+        resource_manager = IPFSResourceManager(dir_manager,
                                                resource_dir_method=dir_manager.get_task_temporary_dir)
 
         new_manager = EncryptedResultPackageManager(resource_manager)
