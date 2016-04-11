@@ -63,6 +63,10 @@ class DockerJob(object):
         self.work_dir = work_dir
         self.output_dir = output_dir
 
+        self.resources_dir_mod = None
+        self.work_dir_mod = None
+        self.output_dir_mod = None
+
         self.container = None
         self.container_id = None
         self.container_log = None
@@ -73,9 +77,9 @@ class DockerJob(object):
         self.logging_thread = None
 
     def _prepare(self):
-        self._host_dir_chmod(self.work_dir, "rw")
-        self._host_dir_chmod(self.resources_dir, "ro")
-        self._host_dir_chmod(self.output_dir, "rw")
+        self.work_dir_mod = self._host_dir_chmod(self.work_dir, "rw")
+        self.resources_dir_mod = self._host_dir_chmod(self.resources_dir, "ro")
+        self.output_dir_mod = self._host_dir_chmod(self.output_dir, "rw")
 
         # Save parameters in work_dir/PARAMS_FILE
         params_file_path = self._get_host_params_path()
@@ -136,6 +140,9 @@ class DockerJob(object):
     def _cleanup(self):
         if self.container:
             client = local_client()
+            self._host_dir_chmod(self.work_dir, self.work_dir_mod)
+            self._host_dir_chmod(self.resources_dir, self.resources_dir_mod)
+            self._host_dir_chmod(self.output_dir, self.output_dir_mod)
             try:
                 client.remove_container(self.container_id, force=True)
                 logger.debug("Container {} removed".format(self.container_id))
@@ -162,13 +169,25 @@ class DockerJob(object):
         return path.join(self.work_dir, self.PARAMS_FILE)
 
     @staticmethod
-    def _host_dir_chmod(dst_dir, mode):
-        mod = 0770 if mode == 'rw' else \
-              0550 if mode == 'ro' else 0
+    def _host_dir_chmod(dst_dir, mod):
+        if isinstance(mod, basestring):
+            mod = 0770 if mod == 'rw' else \
+                  0550 if mod == 'ro' else 0
+        prev_mod = None
+
         try:
-            os.chmod(dst_dir, mod)
-        except Exception as e:
-            logger.debug("Cannot chmod {} ({}): {}".format(dst_dir, mode, e))
+            import stat
+            prev_mod = stat.S_IMODE(os.stat(dst_dir).st_mode)
+        except:
+            pass
+
+        if mod is not None:
+            try:
+                os.chmod(dst_dir, mod)
+            except Exception as e:
+                logger.debug("Cannot chmod {} ({}): {}".format(dst_dir, mod, e))
+
+        return prev_mod
 
     @staticmethod
     def _get_container_script_path():
