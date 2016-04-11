@@ -78,7 +78,7 @@ class DockerJob(object):
 
     def _prepare(self):
         self.work_dir_mod = self._host_dir_chmod(self.work_dir, "rw")
-        self.resources_dir_mod = self._host_dir_chmod(self.resources_dir, "ro")
+        self.resources_dir_mod = self._host_dir_chmod(self.resources_dir, "rw")
         self.output_dir_mod = self._host_dir_chmod(self.output_dir, "rw")
 
         # Save parameters in work_dir/PARAMS_FILE
