@@ -1,4 +1,5 @@
 import logging
+import os
 import posixpath
 import threading
 from os import path
@@ -72,6 +73,10 @@ class DockerJob(object):
         self.logging_thread = None
 
     def _prepare(self):
+        self._host_dir_chmod(self.work_dir, "rw")
+        self._host_dir_chmod(self.resources_dir, "ro")
+        self._host_dir_chmod(self.output_dir, "rw")
+
         # Save parameters in work_dir/PARAMS_FILE
         params_file_path = self._get_host_params_path()
         with open(params_file_path, "w") as params_file:
@@ -155,6 +160,15 @@ class DockerJob(object):
 
     def _get_host_params_path(self):
         return path.join(self.work_dir, self.PARAMS_FILE)
+
+    @staticmethod
+    def _host_dir_chmod(dst_dir, mode):
+        mod = 0770 if mode == 'rw' else \
+              0550 if mode == 'ro' else 0
+        try:
+            os.chmod(dst_dir, mod)
+        except Exception as e:
+            logger.debug("Cannot chmod {} ({}): {}".format(dst_dir, mode, e))
 
     @staticmethod
     def _get_container_script_path():
