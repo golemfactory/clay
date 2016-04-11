@@ -59,7 +59,7 @@ class PaymentProcessor(object):
         # TODO: Maybe it should not be the part of this class
         # TODO: Allow seting timeout
         # TODO: Defer a call only if payments waiting
-        scheduler = LoopingCall(lambda: self.sendout())
+        scheduler = LoopingCall(lambda: self.run())
         scheduler.start(self.SENDOUT_TIMEOUT)
 
         if faucet and self.balance() == 0:
@@ -129,3 +129,29 @@ class PaymentProcessor(object):
             assert tx_hash[2:].decode('hex') == h  # FIXME: Improve Client.
 
             self.__inprogress[h] = payments
+
+    def monitor_progress(self):
+        confirmed = []
+        for h, payments in self.__inprogress.iteritems():
+            hstr = h.encode('hex')
+            log.info("Checking {} transaction".format(hstr))
+            info = self.__client.get_transaction_by_hash(hstr)
+            assert info, "Transaction has been lost"
+            if info['blockHash']:
+                block_hash = info['blockHash'][2:]
+                assert len(block_hash) == 2 * 32
+                block_number = int(info['blockNumber'], 16)
+                log.info("{}: block {} ({})".format(hstr, block_hash, block_number))
+                with Payment._meta.database.transaction():
+                    for p in payments:
+                        p.status = PaymentStatus.confirmed
+                        p.details['block_number'] = block_number
+                        p.details['block_hash'] = block_hash
+                        p.save()
+                confirmed.append(h)
+        for h in confirmed:
+            del self.__inprogress[h]
+
+    def run(self):
+        self.sendout()
+        self.monitor_progress()
