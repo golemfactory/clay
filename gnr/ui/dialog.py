@@ -1,6 +1,5 @@
 from PyQt4.QtGui import QDialog
 
-from gen.ui_AboutWindow import Ui_AboutWindow
 from gen.ui_AddTaskResourcesDialog import Ui_AddTaskResourcesDialog
 from gen.ui_BlenderRenderDialog import Ui_BlenderRenderDialog
 from gen.ui_ChangeTaskDialog import Ui_ChangeTaskDialog
@@ -58,11 +57,6 @@ class StatusWindow(Dialog):
     def __init__(self, parent):
 
         Dialog.__init__(self, parent, Ui_StatusWindow)
-
-
-class AboutWindow(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_AboutWindow)
 
 
 class PaymentsDialog(Dialog):

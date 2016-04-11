@@ -115,9 +115,6 @@ class GNRApplicationLogic(QtCore.QObject):
     def get_status(self):
         return self.client.get_status()
 
-    def get_about_info(self):
-        return self.client.get_about_info()
-
     def get_config(self):
         return self.client.config_desc
 

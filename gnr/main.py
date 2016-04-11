@@ -1,6 +1,6 @@
 from gnrstartapp import start_app, config_logging
 from renderingapplicationlogic import RenderingApplicationLogic
-from gnr.ui.renderingmainwindow import AppMainWindow
+from gnr.ui.appmainwindow import AppMainWindow
 from gnr.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 

@@ -7,7 +7,7 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
 from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, StatusWindow, \
-                          AboutWindow, ConfigurationDialog, EnvironmentsDialog, IdentityDialog, NewTaskDialog
+                          ConfigurationDialog, EnvironmentsDialog, IdentityDialog, NewTaskDialog
 from gnr.ui.tasktableelem import TaskTableElem
 
 from gnr.customizers.customizer import Customizer
@@ -17,7 +17,6 @@ from gnr.customizers.taskdetailsdialogcustomizer import TaskDetailsDialogCustomi
 from gnr.customizers.subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
 from gnr.customizers.changetaskdialogcustomizer import ChangeTaskDialogCustomizer
 from gnr.customizers.statuswindowcustomizer import StatusWindowCustomizer
-from gnr.customizers.aboutwindowcustomizer import AboutWindowCustomizer
 from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer
 from gnr.customizers.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
 from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer
@@ -35,7 +34,7 @@ class GNRMainWindowCustomizer(Customizer):
         self._set_error_label()
 
     def set_options(self, cfg_desc):
-        self.gui.ui.appVer.setText(u"{} - {}".format(cfg_desc.app_name, cfg_desc.app_version))
+        self.gui.ui.appVer.setText(u"{} ({})".format(cfg_desc.app_name, cfg_desc.app_version))
         self.gui.ui.nodeNameLabel.setText(u"Id: {}".format(cfg_desc.node_name))
 
     # Add new task to golem client
@@ -116,7 +115,6 @@ class GNRMainWindowCustomizer(Customizer):
 
 
     def _setup_connections(self):
-        self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
         self._setup_basic_task_connections()
         self._setup_basic_app_connections()
 
@@ -130,9 +128,9 @@ class GNRMainWindowCustomizer(Customizer):
         self.gui.ui.taskTableWidget.customContextMenuRequested.connect(self._context_menu_requested)
 
     def _setup_basic_app_connections(self):
+        self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
         self.gui.ui.actionEdit.triggered.connect(self._show_configuration_dialog_clicked)
         self.gui.ui.actionStatus.triggered.connect(self._show_status_clicked)
-        self.gui.ui.actionAbout.triggered.connect(self._show_about_clicked)
         self.gui.ui.actionPayments.triggered.connect(self._show_payments_clicked)
         self.gui.ui.actionEnvironments.triggered.connect(self._show_environments)
         self.gui.ui.actionIdentity.triggered.connect(self._show_identity_dialog)
@@ -201,16 +199,10 @@ class GNRMainWindowCustomizer(Customizer):
         self.update_task_additional_info(self.logic.get_task(task_id))
 
     def _show_status_clicked(self):
-        self.status_window = StatusWindow(self.gui.window)
 
         self.status_window_customizer = StatusWindowCustomizer(self.status_window, self.logic)
         self.status_window_customizer.get_status()
         self.status_window.show()
-
-    def _show_about_clicked(self):
-        about_window = AboutWindow(self.gui.window)
-        AboutWindowCustomizer(about_window, self.logic)
-        about_window.show()
 
     def _show_payments_clicked(self):
         payments_window = PaymentsDialog(self.gui.window)

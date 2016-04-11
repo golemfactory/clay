@@ -452,6 +452,3 @@ class Client:
         msg += "Active peers in network: {}\n".format(len(peers))
         msg += "Budget: {}\n".format(self.transaction_system.budget)
         return msg
-
-    def get_about_info(self):
-        return self.config_desc.app_name, self.config_desc.app_version
