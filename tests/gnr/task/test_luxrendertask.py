@@ -36,7 +36,7 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
             os.remove(luxtask.tmp_dir)
         luxtask.after_test({}, self.path)
         prev_tmp_dir = luxtask.tmp_dir
-        luxtask.tmp_dir = "/:L:LJFLd/x/errors"
+        luxtask.tmp_dir = "/dev/:L:LJFLd/x/errors"
         with self.assertLogs(logger, level="WARNING"):
             luxtask.after_test({}, self.path)
         luxtask.tmp_dir = prev_tmp_dir
