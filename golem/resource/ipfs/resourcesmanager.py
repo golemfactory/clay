@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import socket
 import time
 import urllib2
@@ -7,10 +8,9 @@ from collections import deque
 from threading import Lock
 
 import requests
-import shutil
 import twisted
 
-from golem.core.fileshelper import copy_file_tree
+from golem.core.fileshelper import copy_file_tree, common_dir
 from golem.resource.ipfs.client import IPFSClient, IPFSAsyncCall, IPFSAsyncExecutor, IPFSCommands
 
 __all__ = ['IPFSResourceManager']
@@ -196,12 +196,7 @@ class IPFSResourceManager:
         if task_id in self.task_common_prefixes:
             return
 
-        if resource_coll and len(resource_coll) > 1:
-            common_prefix = os.path.commonprefix(resource_coll)
-        else:
-            common_prefix = ''
-
-        self.task_common_prefixes[task_id] = common_prefix
+        self.task_common_prefixes[task_id] = common_dir(resource_coll)
         self.add_resources(resource_coll, task_id,
                            absolute_path=True,
                            client=client)
