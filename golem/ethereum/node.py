@@ -87,7 +87,7 @@ class NodeProcess(object):
             '--nodiscover',
             '--ipcdisable',  # Disable IPC transport - conflicts on Windows.
             '--gasprice', '0',
-            '--verbosity', '6',
+            '--verbosity', '3',
         ]
 
         if rpc:

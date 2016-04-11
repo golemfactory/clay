@@ -9,6 +9,7 @@ log = logging.getLogger('golem.ethereum')
 
 
 class Client(EthereumRpcClient):
+    """ RPC interface client for Ethereum node."""
 
     STATIC_NODES = ["enode://f1fbbeff7e9777a3a930f1e55a5486476845f799f7d603f71be7b00898df98f2dc2e81b854d2c774c3d266f1fa105d130d4a43bc58e700155c4565726ae6804e@94.23.17.170:30900"]  # noqa
 

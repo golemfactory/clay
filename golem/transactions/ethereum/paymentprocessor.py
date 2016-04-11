@@ -5,6 +5,7 @@ from ethereum.transactions import Transaction
 from twisted.internet.task import LoopingCall
 
 from golem.ethereum.contracts import BankOfDeposit
+from golem.ethereum.node import Faucet
 from golem.model import Payment, PaymentStatus
 
 
@@ -46,7 +47,7 @@ class PaymentProcessor(object):
 
     SENDOUT_TIMEOUT = 1 * 60
 
-    def __init__(self, client, privkey):
+    def __init__(self, client, privkey, faucet=False):
         self.__client = client
         self.__privkey = privkey
         self.__balance = None
@@ -61,24 +62,37 @@ class PaymentProcessor(object):
         scheduler = LoopingCall(lambda: self.sendout())
         scheduler.start(self.SENDOUT_TIMEOUT)
 
-    def available_balance(self, refresh=False):
+        if faucet and self.balance() == 0:
+            value = 100
+            log.info("Requesting {} ETH from Golem Faucet".format(value))
+            addr = keys.privtoaddr(self.__privkey)
+            Faucet.gimme_money(client, addr, value * 10**18)
+
+    def balance(self, refresh=False):
+        # FIXME: The balance must be actively monitored!
         if self.__balance is None or refresh:
             addr = keys.privtoaddr(self.__privkey)
             # TODO: Hack RPC client to allow using raw address.
             self.__balance = self.__client.get_balance(addr.encode('hex'))
+            log.info("Balance: {}".format(self.__balance / float(10**18)))
+        return self.__balance
+
+    def available_balance(self, refresh=False):
         fee_reservation = self.GAS_RESERVATION * self.GAS_PRICE
-        available = self.__balance - self.__reserved - fee_reservation
+        available = self.balance(refresh) - self.__reserved - fee_reservation
         return max(available, 0)
 
     def add(self, payment):
         assert payment.status is PaymentStatus.awaiting
+        value = payment.value
+        assert type(value) in (int, long)
         balance = self.available_balance()
-        log.info("Payment to {} ({})".format(payment.payee, payment.value))
-        if payment.value > balance:
+        log.info("Payment to {} ({})".format(payment.payee, value))
+        if value > balance:
             log.warning("Not enough money: {}".format(balance))
             return False
         self.__awaiting.append(payment)
-        self.__reserved += payment.value
+        self.__reserved += value
         log.info("Balance: {}, reserved {}".format(balance, self.__reserved))
         return True
 

@@ -26,7 +26,8 @@ class EthereumTransactionSystem(TransactionSystem):
         log.info("Node Ethereum address: " + self.get_payment_address())
 
         datadir = path.join(datadir, "ethereum")
-        self.__proc = PaymentProcessor(Client(datadir=datadir), node_priv_key)
+        eth_node = Client(datadir=datadir)
+        self.__proc = PaymentProcessor(eth_node, node_priv_key, faucet=True)
 
     def add_payment_info(self, *args, **kwargs):
         payment = super(EthereumTransactionSystem, self).add_payment_info(*args, **kwargs)
