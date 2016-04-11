@@ -1,6 +1,6 @@
 from gnrstartapp import start_app, config_logging
 from renderingapplicationlogic import RenderingApplicationLogic
-from gnr.ui.renderingmainwindow import RenderingMainWindow
+from gnr.ui.renderingmainwindow import AppMainWindow
 from gnr.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 
@@ -9,7 +9,7 @@ def main():
     config_logging()
 
     logic = RenderingApplicationLogic()
-    app = GNRGui(logic, RenderingMainWindow)
+    app = GNRGui(logic, AppMainWindow)
     gui = RenderingMainWindowCustomizer
 
     start_app(logic, app, gui, rendering=True)

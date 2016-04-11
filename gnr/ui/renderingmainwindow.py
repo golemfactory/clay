@@ -1,11 +1,11 @@
 from PyQt4.QtGui import QMainWindow, QPixmap, QMessageBox
 
-from gen.ui_RenderingMainWindow import Ui_MainWindow
+from gen.ui_AppMainWindow import Ui_MainWindow
 
 from mainwindow import MainWindow
 
 
-class RenderingMainWindow:
+class AppMainWindow(object):
 
     def __init__(self):
         self.window = MainWindow()

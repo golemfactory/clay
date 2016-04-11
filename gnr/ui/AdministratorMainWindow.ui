@@ -10,11 +10,11 @@
     <height>690</height>
    </rect>
   </property>
-  <property name="maximumSize">
-   <size>
-    <width>900</width>
-    <height>690</height>
-   </size>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>Golem App</string>
@@ -581,7 +581,7 @@
     </property>
     <addaction name="actionEdit"/>
     <addaction name="actionEnvironments"/>
-    <addaction name="action_identity"/>
+    <addaction name="actionIdentity"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -664,7 +664,7 @@
     <string>Start Nodes Manager</string>
    </property>
   </action>
-  <action name="action_identity">
+  <action name="actionIdentity">
    <property name="text">
     <string>Identity</string>
    </property>

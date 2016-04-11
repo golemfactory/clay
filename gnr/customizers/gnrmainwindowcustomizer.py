@@ -109,7 +109,14 @@ class GNRMainWindowCustomizer(Customizer):
         change_task_dialog_customizer.load_task_definition(ts.definition)
         change_task_dialog.show()
 
+    def change_page(self, current, previous):
+        if not current:
+            current = previous
+        self.gui.ui.stackedWidget.setCurrentIndex(self.gui.ui.listWidget.row(current))
+
+
     def _setup_connections(self):
+        self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
         self._setup_basic_task_connections()
         self._setup_basic_app_connections()
 
@@ -128,7 +135,7 @@ class GNRMainWindowCustomizer(Customizer):
         self.gui.ui.actionAbout.triggered.connect(self._show_about_clicked)
         self.gui.ui.actionPayments.triggered.connect(self._show_payments_clicked)
         self.gui.ui.actionEnvironments.triggered.connect(self._show_environments)
-        self.gui.ui.action_identity.triggered.connect(self._show_identity_dialog)
+        self.gui.ui.actionIdentity.triggered.connect(self._show_identity_dialog)
 
     def _set_error_label(self):
         palette = QPalette()
