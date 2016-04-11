@@ -65,7 +65,7 @@ class NodeProcess(object):
     def is_running(self):
         return self.__subprocess is not None
 
-    def start(self, rpc, mining=False, nodekey=None):
+    def start(self, rpc, mining=False, nodekey=None, port=None):
         if self.__subprocess:
             return
 
@@ -75,7 +75,9 @@ class NodeProcess(object):
         # Data dir must be set the class user to allow multiple nodes running
         basedir = path.dirname(__file__)
         genesis_file = path.join(basedir, 'genesis_golem.json')
-        self.port = find_free_net_port()
+        if not port:
+            port = find_free_net_port()
+        self.port = port
         args = [
             program,
             '--datadir', self.datadir,
@@ -141,7 +143,8 @@ class FullNode(object):
         if not datadir:
             datadir = path.join(_get_local_datadir('ethereum'), 'full_node')
         self.proc = NodeProcess(nodes=[], datadir=datadir)
-        self.proc.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY)
+        self.proc.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY,
+                        port=30900)
 
 if __name__ == "__main__":
     import signal
