@@ -44,7 +44,7 @@ class PaymentProcessor(object):
 
     BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
 
-    SENDOUT_TIMEOUT = 1
+    SENDOUT_TIMEOUT = 1 * 60
 
     def __init__(self, client, privkey):
         self.__client = client
@@ -72,14 +72,18 @@ class PaymentProcessor(object):
 
     def add(self, payment):
         assert payment.status is PaymentStatus.awaiting
-        if payment.value > self.available_balance():
+        balance = self.available_balance()
+        log.info("Payment to {} ({})".format(payment.payee, payment.value))
+        if payment.value > balance:
+            log.warning("Not enough money: {}".format(balance))
             return False
         self.__awaiting.append(payment)
         self.__reserved += payment.value
+        log.info("Balance: {}, reserved {}".format(balance, self.__reserved))
         return True
 
     def sendout(self):
-        log.info("Sendout")
+        log.debug("Sendout ping")
         if not self.__awaiting:
             return
 
