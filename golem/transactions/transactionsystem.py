@@ -7,13 +7,11 @@ from incomeskeeper import IncomesKeeper
 class TransactionSystem(object):
     """ Transaction system. Keeps information about budget, expected payments, etc. """
 
-    def __init__(self, node_id, payments_keeper_class=PaymentsKeeper, incomes_keeper_class=IncomesKeeper):
-        """ Create new transaction system instance for node with given id
-        :param node_id: id of a node that has this transaction system
+    def __init__(self, payments_keeper_class=PaymentsKeeper, incomes_keeper_class=IncomesKeeper):
+        """ Create new transaction system instance.
         :param payments_keeper_class: default PaymentsKeeper, payment keeper class, an instance of this class
         while be used as a payment keeper
         """
-        self.node_id = node_id
         self.payments_keeper = payments_keeper_class()  # Keeps information about payments to send
         self.incomes_keeper = incomes_keeper_class()  # Keeps information about received payments
         self.budget = 10000  # TODO Add method that set proper budget value
@@ -36,7 +34,7 @@ class TransactionSystem(object):
         """
         payee = account_info.eth_account.address
         assert len(payee) == 20
-        payment = Payment.create(subtask=subtask_id, payee=payee, value=value)
+        return Payment.create(subtask=subtask_id, payee=payee, value=value)
 
     def get_payments_list(self):
         """ Return list of all planned and made payments
