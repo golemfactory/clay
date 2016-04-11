@@ -5,6 +5,9 @@ on Windows and Posix systems.
 
 Based on article
 https://www.safaribooksonline.com/library/view/python-cookbook/0596001673/ch04s25.html.
+
+TODO: Consider using improved implementation:
+https://github.com/WoLpH/portalocker/blob/develop/portalocker/portalocker.py
 """
 import os
 
@@ -20,11 +23,14 @@ if os.name == 'nt':
 
     def lock(file, flags):
         hfile = win32file._get_osfhandle(file.fileno())
-        win32file.LockFileEx(hfile, flags, 0, 0xffff0000, __overlapped)
+        try:
+            win32file.LockFileEx(hfile, flags, 0, -0x10000, __overlapped)
+        except win32file.error as err:
+            raise IOError(*err.args)
 
     def unlock(file):
         hfile = win32file._get_osfhandle(file.fileno())
-        win32file.UnlockFileEx(hfile, 0, 0xffff0000, __overlapped)
+        win32file.UnlockFileEx(hfile, 0, -0x10000, __overlapped)
 
 elif os.name == 'posix':
     import fcntl

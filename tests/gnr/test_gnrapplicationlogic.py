@@ -16,6 +16,9 @@ class TTask(Task):
         Task.__init__(self, Mock(), Mock())
         self.src_code = ""
         self.extra_data = {}
+        self.test_finished = False
+        self.results = None
+        self.tmp_dir = None
 
     def query_extra_data_for_test_task(self):
         ctd = ComputeTaskDef()
@@ -26,6 +29,11 @@ class TTask(Task):
         ctd.extra_data = self.extra_data
         ctd.short_description = ""
         return ctd
+
+    def after_test(self, results, tmp_dir):
+        self.test_finished = True
+        self.results = results
+        self.tmp_dir = tmp_dir
 
 
 class TTaskBuilder(TaskBuilder):

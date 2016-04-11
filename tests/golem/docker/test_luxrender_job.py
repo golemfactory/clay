@@ -21,7 +21,7 @@ class TestLuxRenderDockerJob(TestDockerJob):
 
         # read the scene file and copy the resources to the resources dir
         lux_task_dir = path.join(get_golem_path(),
-                                 "gnr/benchmarks/luxrender/lux_task")
+                                 "gnr", "benchmarks", "luxrender", "lux_task")
         scene_src = None
         for f in os.listdir(lux_task_dir):
             task_file = path.join(lux_task_dir, f)
@@ -39,6 +39,7 @@ class TestLuxRenderDockerJob(TestDockerJob):
 
         params = {
             "outfilebasename": "out",
+            "output_format": "png",
             "scene_file_src": scene_src,
             "start_task": 42,
             "end_task": 42,
@@ -47,7 +48,7 @@ class TestLuxRenderDockerJob(TestDockerJob):
             "num_threads": 1
         }
 
-        with self._create_test_job(script=task_script_src,params=params) as job:
+        with self._create_test_job(script=task_script_src, params=params) as job:
             job.start()
             exit_code = job.wait()
             self.assertEqual(exit_code, 0)

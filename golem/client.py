@@ -454,3 +454,7 @@ class Client:
         except IOError:
             raise IOError("Data dir {} used by other Golem instance"
                           .format(self.datadir))
+
+    def _unlock_datadir(self):
+        # FIXME: Client should have close() method?
+        self.__datadir_lock.close()  # Closing file unlocks it.

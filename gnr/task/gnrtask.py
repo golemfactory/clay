@@ -267,6 +267,9 @@ class GNRTask(Task):
 
         return filtered_task_results
 
+    def after_test(self, results, tmp_dir):
+        pass
+
     @check_subtask_id_wrapper
     def should_accept(self, subtask_id):
         if self.subtasks_given[subtask_id]['status'] != SubtaskStatus.starting:
