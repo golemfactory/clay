@@ -5,7 +5,7 @@ def __count_time(timeout):
     return hours, minutes, seconds
 
 
-def set_time_spin_boxes(gui, full_task_timeout, subtask_timeout, min_subtask_time):
+def set_time_spin_boxes(gui, full_task_timeout, subtask_timeout):
     hours, minutes, seconds = __count_time(full_task_timeout)
     gui.ui.fullTaskTimeoutHourSpinBox.setValue(hours)
     gui.ui.fullTaskTimeoutMinSpinBox.setValue(minutes)

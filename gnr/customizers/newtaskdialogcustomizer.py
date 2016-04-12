@@ -148,8 +148,7 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _load_basic_task_params(self, definition):
         self._load_task_type(definition)
-        set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout,
-                         definition.min_subtask_time)
+        set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout)
         self.gui.ui.mainProgramFileLineEdit.setText(definition.main_program_file)
         self.gui.ui.totalSpinBox.setValue(definition.total_subtasks)
 

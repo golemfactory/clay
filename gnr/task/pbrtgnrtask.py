@@ -73,7 +73,6 @@ class PbrtGNRTaskBuilder(GNRTaskBuilder):
         rtd.task_id = self.task_definition.task_id
         rtd.full_task_timeout = self.task_definition.full_task_timeout
         rtd.subtask_timeout = self.task_definition.subtask_timeout
-        rtd.min_subtask_time = self.task_definition.min_subtask_time
         rtd.resources = self.task_definition.resources
         rtd.estimated_memory = self.task_definition.estimated_memory
         rtd.total_subtasks = self.task_definition.total_subtasks

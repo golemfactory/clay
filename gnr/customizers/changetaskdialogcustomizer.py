@@ -14,15 +14,15 @@ class ChangeTaskDialogCustomizer(Customizer):
         self.gui.ui.cancelButton.clicked.connect(self.__cancel_button_clicked)
 
     def __save_button_clicked(self):
-        full_task_timeout, subtask_timeout, min_subtask_time = get_time_values(self.gui)
-        self.logic.change_timeouts(u"{}".format(self.gui.ui.taskIdLabel.text()), full_task_timeout, subtask_timeout, min_subtask_time)
+        full_task_timeout, subtask_timeout = get_time_values(self.gui)
+        self.logic.change_timeouts(u"{}".format(self.gui.ui.taskIdLabel.text()), full_task_timeout, subtask_timeout)
         self.gui.window.close()
 
     def load_task_definition(self, definition):
         assert isinstance(definition, RenderingTaskDefinition)
 
         self.gui.ui.taskIdLabel.setText(u"{}".format(definition.task_id))
-        set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout, definition.min_subtask_time)
+        set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout)
 
     def __cancel_button_clicked(self):
         self.gui.window.close()

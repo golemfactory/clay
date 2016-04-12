@@ -283,8 +283,8 @@ class Client:
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
 
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
-        self.task_server.change_timeouts(task_id, full_task_timeout, subtask_timeout, min_subtask_time)
+    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
+        self.task_server.change_timeouts(task_id, full_task_timeout, subtask_timeout)
 
     def unregister_listener(self, listener):
         assert isinstance(listener, GolemClientEventListener)

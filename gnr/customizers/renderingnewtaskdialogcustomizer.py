@@ -126,8 +126,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
             self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
 
-            set_time_spin_boxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout,
-                                r.defaults.min_subtask_time)
+            set_time_spin_boxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout)
 
             self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
 
@@ -149,8 +148,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
         self.gui.ui.mainProgramFileLineEdit.setText(dr.defaults.main_program_file)
 
-        set_time_spin_boxes(self.gui, dr.defaults.full_task_timeout, dr.defaults.subtask_timeout,
-                            dr.defaults.min_subtask_time)
+        set_time_spin_boxes(self.gui, dr.defaults.full_task_timeout, dr.defaults.subtask_timeout)
 
         self.gui.ui.outputFileLineEdit.clear()
 
