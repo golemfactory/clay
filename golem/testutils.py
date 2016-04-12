@@ -13,7 +13,8 @@ class TempDirFixture(unittest.TestCase):
         root = path.join(tempfile.gettempdir(), 'golem')
         if not path.exists(root):
             mkdir(root)
-        self.tempdir = tempfile.mkdtemp(prefix=self.id(), dir=root)
+        dir_name = self.id().rsplit('.', 1)[1]  # Use test method name
+        self.tempdir = tempfile.mkdtemp(prefix=dir_name, dir=root)
         self.path = self.tempdir  # Alias for legacy tests
 
     def tearDown(self):
