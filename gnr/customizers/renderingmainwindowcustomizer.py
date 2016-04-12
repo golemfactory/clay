@@ -3,7 +3,7 @@ import datetime
 import time
 import logging
 from PyQt4 import QtCore
-from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox
+from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox, QIcon
 
 from golem.task.taskstate import SubtaskStatus
 from golem.core.common import get_golem_path
@@ -55,6 +55,16 @@ class AbsRenderingMainWindowCustomizer(object):
         self.last_preview_path = self.preview_path
         self.slider_previews = {}
         self.gui.ui.frameSlider.setVisible(False)
+        self._set_icons()
+
+    def _set_icons(self):
+        icons = ["task.png", "eye.png", "settings.png", "user.png"]
+        for i in range(len(icons)):
+            item = self.gui.ui.listWidget.item(i)
+            icon_path = os.path.join(get_golem_path(), "gnr", "ui", "img", icons[i])
+            icon = QIcon()
+            icon.addPixmap(QPixmap(icon_path), QIcon.Normal, QIcon.Off)
+            item.setIcon(icon)
 
     def _setup_rendering_connections(self):
         QtCore.QObject.connect(self.gui.ui.frameSlider, QtCore.SIGNAL("valueChanged(int)"), self.__update_slider_preview)
