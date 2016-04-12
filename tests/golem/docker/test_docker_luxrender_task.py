@@ -9,6 +9,7 @@ import gnr.node
 
 from gnr.task.tasktester import TaskTester
 from golem.core.common import get_golem_path
+from golem.model import db
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
@@ -32,9 +33,14 @@ class TestDockerLuxrenderTask(TestDirFixture, DockerTestCase):
         self.error_msg = None
         self.dirs_to_remove = []
         self.files_to_remove = []
+        self.node = None
         self.task_computer_send_task_failed = TaskServer.send_task_failed
 
     def tearDown(self):
+        if self.node:
+            self.node.client._unlock_datadir()
+        if not db.is_closed():
+            db.close()
         for f in self.files_to_remove:
             if path.isfile(f):
                 remove(f)
@@ -74,10 +80,10 @@ class TestDockerLuxrenderTask(TestDirFixture, DockerTestCase):
         ctd = render_task.query_extra_data(1.0)
 
         # Create the computing node
-        node = gnr.node.GNRNode(datadir=self.path)
-        node.initialize()
+        self.node = gnr.node.GNRNode(datadir=self.path)
+        self.node.initialize()
 
-        task_computer = node.client.task_server.task_computer
+        task_computer = self.node.client.task_server.task_computer
         resource_dir = task_computer.resource_manager.get_resource_dir(task_id)
         temp_dir = task_computer.resource_manager.get_temporary_dir(task_id)
         self.dirs_to_remove.append(resource_dir)
