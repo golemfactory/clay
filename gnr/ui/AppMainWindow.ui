@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>951</width>
-    <height>766</height>
+    <width>976</width>
+    <height>650</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -75,7 +75,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>../../../../Users/Ola/Downloads/g.png</normaloff>../../../../Users/Ola/Downloads/g.png</iconset>
+             <normaloff>img/task.png</normaloff>img/task.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -90,7 +90,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>../../../../Users/Ola/Downloads/g.png</normaloff>../../../../Users/Ola/Downloads/g.png</iconset>
+             <normaloff>img/eye.png</normaloff>img/eye.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -105,7 +105,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>../../../../Users/Ola/Downloads/g.png</normaloff>../../../../Users/Ola/Downloads/g.png</iconset>
+             <normaloff>img/settings.png</normaloff>img/settings.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
@@ -120,13 +120,16 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>../../../../Users/Ola/Downloads/g.png</normaloff>../../../../Users/Ola/Downloads/g.png</iconset>
+             <normaloff>img/user.png</normaloff>img/user.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsDragEnabled|ItemIsEnabled</set>
            </property>
           </item>
          </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout"/>
         </item>
         <item>
          <widget class="QStackedWidget" name="stackedWidget">
@@ -137,17 +140,32 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="taskPage">
-           <layout class="QGridLayout" name="gridLayout_3">
+           <property name="layoutDirection">
+            <enum>Qt::LeftToRight</enum>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_3" rowstretch="0,0" columnstretch="5,0">
+            <property name="margin">
+             <number>0</number>
+            </property>
+            <property name="spacing">
+             <number>0</number>
+            </property>
             <item row="0" column="0" rowspan="2">
              <widget class="QTableWidget" name="taskTableWidget">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
               </property>
               <property name="contextMenuPolicy">
                <enum>Qt::CustomContextMenu</enum>
@@ -231,6 +249,9 @@
             </item>
             <item row="0" column="1">
              <layout class="QHBoxLayout" name="horizontalPreviewLayout">
+              <property name="sizeConstraint">
+               <enum>QLayout::SetFixedSize</enum>
+              </property>
               <property name="margin">
                <number>5</number>
               </property>
@@ -238,6 +259,9 @@
                <spacer name="horizontalSpacerLeft">
                 <property name="orientation">
                  <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeType">
+                 <enum>QSizePolicy::Fixed</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -249,6 +273,9 @@
               </item>
               <item>
                <layout class="QVBoxLayout" name="verticalPreviewLayout">
+                <property name="sizeConstraint">
+                 <enum>QLayout::SetFixedSize</enum>
+                </property>
                 <property name="leftMargin">
                  <number>0</number>
                 </property>
@@ -256,6 +283,9 @@
                  <spacer name="verticalSpacerUp">
                   <property name="orientation">
                    <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeType">
+                   <enum>QSizePolicy::Fixed</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -316,6 +346,18 @@
                 </item>
                 <item>
                  <widget class="QSlider" name="frameSlider">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>300</width>
+                    <height>0</height>
+                   </size>
+                  </property>
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
                   </property>
@@ -325,6 +367,9 @@
                  <spacer name="verticalSpacerDown">
                   <property name="orientation">
                    <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeType">
+                   <enum>QSizePolicy::Fixed</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -341,6 +386,9 @@
                 <property name="orientation">
                  <enum>Qt::Horizontal</enum>
                 </property>
+                <property name="sizeType">
+                 <enum>QSizePolicy::Fixed</enum>
+                </property>
                 <property name="sizeHint" stdset="0">
                  <size>
                   <width>40</width>
@@ -353,6 +401,9 @@
             </item>
             <item row="1" column="1">
              <layout class="QVBoxLayout" name="taskConfLayout">
+              <property name="sizeConstraint">
+               <enum>QLayout::SetFixedSize</enum>
+              </property>
               <property name="margin">
                <number>5</number>
               </property>
@@ -369,7 +420,7 @@
               <item>
                <layout class="QFormLayout" name="taskConfGridLayout">
                 <property name="fieldGrowthPolicy">
-                 <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                 <enum>QFormLayout::FieldsStayAtSizeHint</enum>
                 </property>
                 <item row="0" column="0">
                  <widget class="QLabel" name="label_4">
@@ -449,28 +500,17 @@
                  </widget>
                 </item>
                 <item row="6" column="1">
-                 <layout class="QHBoxLayout" name="horizontalLayout_3">
-                  <item>
-                   <widget class="QPushButton" name="showResourceButton">
-                    <property name="text">
-                     <string>Show Resources</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <spacer name="horizontalSpacer">
-                    <property name="orientation">
-                     <enum>Qt::Horizontal</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>40</width>
-                      <height>20</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                 </layout>
+                 <widget class="QPushButton" name="showResourceButton">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="text">
+                   <string>Show Resources</string>
+                  </property>
+                 </widget>
                 </item>
                 <item row="7" column="1">
                  <widget class="QLabel" name="taskResource">
@@ -478,19 +518,6 @@
                    <string/>
                   </property>
                  </widget>
-                </item>
-                <item row="11" column="1">
-                 <spacer name="verticalSpacer">
-                  <property name="orientation">
-                   <enum>Qt::Vertical</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>20</width>
-                    <height>40</height>
-                   </size>
-                  </property>
-                 </spacer>
                 </item>
                </layout>
               </item>
@@ -543,15 +570,15 @@
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="1">
-                 <widget class="QTextBrowser" name="textBrowser"/>
-                </item>
                 <item row="1" column="0">
                  <widget class="QLabel" name="statusTextBrowser">
                   <property name="text">
                    <string>Status:</string>
                   </property>
                  </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QTextBrowser" name="textBrowser"/>
                 </item>
                </layout>
               </item>
@@ -623,7 +650,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>951</width>
+     <width>976</width>
      <height>21</height>
     </rect>
    </property>
