@@ -9,6 +9,7 @@ from mock import Mock
 import gnr.node
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.tasktester import TaskTester
+from gnr.task.localcomputer import LocalComputer
 from golem.core.common import get_golem_path
 from golem.docker.image import DockerImage
 from golem.task.taskbase import result_types
@@ -113,10 +114,17 @@ class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
 
     def _run_docker_test_task(self, render_task, timeout=0):
 
-        task_computer = TaskTester(render_task, appdirs.user_data_dir('golem'), Mock())
+        task_computer = TaskTester(render_task, appdirs.user_data_dir('golem'), Mock(), Mock())
         task_computer.run()
         task_computer.tt.join(60.0)
         return task_computer.tt
+
+    def _run_docker_local_comp_task(self, render_task, timeout=0):
+        local_computer = LocalComputer(render_task, appdirs.user_data_dir('golem'), Mock(), Mock(),
+                                       render_task.query_extra_data_for_test_task)
+        local_computer.run()
+        local_computer.tt.join(60)
+        return local_computer.tt
 
     def _test_blender_subtask(self, task_file):
         task = self._create_test_task(task_file)
@@ -140,6 +148,9 @@ class TestDockerBlenderTask(TestWithAppConfig, DockerTestCase):
         tt = self._run_docker_test_task(render_task)
         result, mem = tt.result
         assert mem > 0
+
+        tt = self._run_docker_local_comp_task(render_task)
+        assert tt.result is not None
 
     def test_blender_render_subtask(self):
         self._test_blender_subtask(self.BLENDER_TASK_FILE)

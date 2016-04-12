@@ -168,7 +168,12 @@ class IPFSResourceManager:
         if task_id in self.task_common_prefixes:
             return
 
-        self.task_common_prefixes[task_id] = os.path.commonprefix(resource_coll)
+        if resource_coll and len(resource_coll) > 1:
+            common_prefix = os.path.commonprefix(resource_coll)
+        else:
+            common_prefix = ''
+
+        self.task_common_prefixes[task_id] = common_prefix
         self.add_resources(resource_coll, task_id,
                            absolute_path=True,
                            client=client)
@@ -357,9 +362,9 @@ class IPFSResourceManager:
                 data = client.get_file(multihash,
                                        filename=filename,
                                        filepath=res_dir)
-                success(data)
+                success_wrapper(data)
             except Exception as e:
-                error(e)
+                error_wrapper(e)
 
     def __can_retry(self, exc, cmd, obj_id):
         if type(exc) in self.timeout_exceptions:
