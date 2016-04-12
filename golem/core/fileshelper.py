@@ -127,3 +127,17 @@ def common_dir(arr, plus_sep=None, ign_case=None):
                     return _case(s[:si])
         m.remove(_s)
     return _case(s)
+
+
+def find_file_with_ext(directory, extensions):
+    """ Return first file with one of the given extension from directory.
+    :param str directory: name of the directory
+    :param list extensions: list of acceptable extensions (with dot, ie. ".png", ".txt")
+    :return str: name of the first file wich extension is in
+    """
+    extensions = map(lambda y: y.lower(), extensions)
+    for root, dirs, files in os.walk(directory):
+        for name in files:
+            _, ext = os.path.splitext(name)
+            if ext.lower() in extensions:
+                return os.path.join(root, name)
