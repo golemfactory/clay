@@ -1,6 +1,8 @@
 import os
 import shutil
 
+from golem.core.common import is_windows
+
 
 def copy_file_tree(src, dst, exclude=None):
     """
@@ -54,6 +56,77 @@ def get_dir_size(dir_, report_error=lambda _: ()):
         elif os.path.isdir(path):
             size += get_dir_size(path, report_error)
     return size
+
+
+def common_dir(arr, plus_sep=None, ign_case=None):
+    """
+    Returns a common directory for paths
+    :param arr: Array of paths
+    :param plus_sep: Extra path separator to include
+    :param ign_case: Ignore case in paths
+    :return: Common directory prefix as unicode string
+    """
+    if not arr or len(arr) < 2:
+        return ''
+
+    if plus_sep and plus_sep != os.path.sep:
+        seps = [os.path.sep, plus_sep]
+    else:
+        seps = [os.path.sep]
+
+    if os.path.sep != '/':
+        seps.append('/')
+
+    if ign_case is None:
+        ign_case = is_windows()
+
+    def _strip(x):
+        if isinstance(x, unicode):
+            return unicode.strip(x)
+        return str.strip(x)
+
+    def _case(v):
+        if v and v[-1] in seps:
+            r = v[:-1]
+        else:
+            r = v
+        return r.lower() if ign_case else r
+
+    m = filter(_strip, arr[:])
+    s = min(arr, key=len)
+    n = len(s)
+    si = 0
+
+    for i, c in enumerate(s):
+        c_sep = c in seps
+        a_sep = c_sep
+
+        for sx in m:
+            if sx is s:
+                continue
+
+            cx = sx[i]
+            cx_sep = cx in seps
+            a_sep = a_sep and cx_sep
+
+            if c != cx and not (cx_sep and c_sep):
+                if ign_case:
+                    if c.lower() != cx.lower():
+                        return _case(s[:si])
+                else:
+                    return _case(s[:si])
+        if a_sep:
+            si = i + 1
+
+    m.remove(s)
+    while m:
+        _s = min(m, key=len)
+        if _s and len(_s) > n:
+            for _s in m:
+                if _s[n] not in seps:
+                    return _case(s[:si])
+        m.remove(_s)
+    return _case(s)
 
 
 def find_file_with_ext(directory, extensions):
