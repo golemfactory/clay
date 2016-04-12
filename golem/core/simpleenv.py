@@ -1,4 +1,5 @@
 import os
+import appdirs
 
 
 def _get_local_datadir(name):
@@ -8,8 +9,7 @@ def _get_local_datadir(name):
         Usage should be avoid at all costs. It is always better to ask for
         a dir the upper layer (like Client instance).
         """
-    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-    return os.path.join(repo_root, 'data', name)
+    return os.path.join(appdirs.user_data_dir('golem'), 'data', name)
 
 
 class SimpleEnv(object):
