@@ -196,6 +196,8 @@ class IPFSClientMetaClass(type):
 
         for name, attribute in all_items:
             if type(attribute) == FunctionType and not name.startswith('_'):
+                if name in class_dict:
+                    attribute = class_dict.get(name)
                 attribute = response_wrapper(attribute)
             new_dict[name] = attribute
 

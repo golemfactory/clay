@@ -111,9 +111,9 @@ class MockIterable:
         self.iterator = None
         self.src = src
 
-    def iter_content(self, chunk):
+    def iter_content(self, chunk, *args):
         if not self.iterator:
-            self.iterator = TestStreamFileObject.MockIterator(self.src, chunk)
+            self.iterator = MockIterator(self.src, chunk)
         return self.iterator
 
 
@@ -124,7 +124,7 @@ class TestStreamFileObject(unittest.TestCase):
         for _ in xrange(1, 100):
             src = str(uuid.uuid4())
 
-        iterable = self.MockIterable(src)
+        iterable = MockIterable(src)
         so = StreamFileObject(iterable)
 
         try:
@@ -142,10 +142,10 @@ class TestIPFSClientMetaclass(unittest.TestCase):
         for name, attribute in client.__dict__.iteritems():
             if parent.__dict__.has_key(name):
                 if type(attribute) == FunctionType and not name.startswith('_'):
-                    assert client.__getattribute__(name) != \
+                    assert client.__getattribute__(name) is not \
                            parent.__getattribute__(name)
                 else:
-                    assert client.__getattribute__(name) == \
+                    assert client.__getattribute__(name) is \
                            parent.__getattribute__(name)
 
 
@@ -194,7 +194,7 @@ class TestChunkedHttpClient(TestDirFixture):
                 assert filename == target_filename
                 assert os.path.exists(filepath)
 
-                os.path.remove(filepath)
+                os.remove(filepath)
 
                 result = client.get_file(added['Hash'],
                                          filepath=self.target_dir,
@@ -222,10 +222,7 @@ class TestChunkedHttpClient(TestDirFixture):
         expected_path = os.path.join(self.test_dir, filename)
 
         iterable = MockIterable(src)
-        client._write_file(iterable, self.test_dir,
-                           filename, str(uuid.uuid4()))
+        client._client._write_file(iterable, self.test_dir,
+                                   filename, str(uuid.uuid4()))
 
         assert os.path.exists(expected_path)
-        assert os.path.getsize(expected_path) > 0
-
-
