@@ -94,13 +94,10 @@ class LocalComputer(object):
         return True
 
     def __prepare_tmp_dir(self):
-
         self.tmp_dir = get_test_task_tmp_path(self.root_path)
-        if not os.path.exists(self.tmp_dir):
-            os.makedirs(self.tmp_dir)
-        else:
+        if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir, True)
-            os.makedirs(self.tmp_dir)
+        os.makedirs(self.tmp_dir)
 
     def _get_task_thread(self, ctd):
         return DockerTaskThread(self,
