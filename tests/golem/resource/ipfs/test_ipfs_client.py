@@ -85,37 +85,39 @@ class TestParseResponse(unittest.TestCase):
         self.assertEqual(other_obj, parse_response(other_response))
 
 
+class MockIterator:
+    def __init__(self, src, chunk):
+        self.src = src
+        self.len = len(src)
+        self.chunk = chunk
+        self.pos = 0
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        prev_pos = self.pos
+        self.pos += self.chunk
+
+        if prev_pos > self.len:
+            raise StopIteration
+        else:
+            new_pos = max(prev_pos, self.len - self.pos)
+            return self.src[prev_pos:new_pos]
+
+
+class MockIterable:
+    def __init__(self, src):
+        self.iterator = None
+        self.src = src
+
+    def iter_content(self, chunk):
+        if not self.iterator:
+            self.iterator = TestStreamFileObject.MockIterator(self.src, chunk)
+        return self.iterator
+
+
 class TestStreamFileObject(unittest.TestCase):
-
-    class MockIterator:
-        def __init__(self, src, chunk):
-            self.src = src
-            self.len = len(src)
-            self.chunk = chunk
-            self.pos = 0
-
-        def __iter__(self):
-            return self
-
-        def next(self):
-            prev_pos = self.pos
-            self.pos += self.chunk
-
-            if prev_pos > self.len:
-                raise StopIteration
-            else:
-                new_pos = max(prev_pos, self.len - self.pos)
-                return self.src[prev_pos:new_pos]
-
-    class MockIterable:
-        def __init__(self, src):
-            self.iterator = None
-            self.src = src
-
-        def iter_content(self, chunk):
-            if not self.iterator:
-                self.iterator = TestStreamFileObject.MockIterator(self.src, chunk)
-            return self.iterator
 
     def test(self):
         src = ''
@@ -158,7 +160,6 @@ class TestChunkedHttpClient(TestDirFixture):
         self.test_dir = os.path.join(self.path, 'test_dir')
         self.test_dir_file_path = os.path.join(self.test_dir, 'test_dir_file')
         self.test_file_path = os.path.join(self.path, 'test_file')
-        self.client = IPFSClient()
 
         if not os.path.isdir(self.test_dir):
             os.mkdir(self.test_dir)
@@ -171,21 +172,60 @@ class TestChunkedHttpClient(TestDirFixture):
         with open(self.test_dir_file_path, 'w') as f:
             f.write("test content 2")
 
-    def testDownload(self):
+    def testGetFile(self):
         root_path = os.path.abspath(os.sep)
+        client = IPFSClient()
 
         self.added_files = []
-        self.added_files += self.client.add(self.test_dir_file_path)
-        self.added_files += self.client.add(self.test_file_path)
+        self.added_files += client.add(self.test_dir_file_path)
+        self.added_files += client.add(self.test_file_path)
 
         for added in self.added_files:
             name = added['Name']
             if name.startswith(root_path):
                 target_filename = 'downloaded_file'
-                result = self.client.get(added['Hash'],
+
+                result = client.get_file(added['Hash'],
                                          filepath=self.target_dir,
                                          filename=target_filename)
+
                 filename, multihash = result[0]
                 filepath = os.path.join(self.target_dir, filename)
                 assert filename == target_filename
                 assert os.path.exists(filepath)
+
+                os.path.remove(filepath)
+
+                result = client.get_file(added['Hash'],
+                                         filepath=self.target_dir,
+                                         filename=target_filename,
+                                         compress=True,
+                                         archive=True)
+
+                filename, multihash = result[0]
+                filepath = os.path.join(self.target_dir, filename)
+                assert filename == target_filename
+                assert os.path.exists(filepath)
+
+    def testGet(self):
+        client = IPFSClient()
+        with self.assertRaises(NotImplementedError):
+            client.get("-")
+
+    def testWriteFile(self):
+        client = IPFSClient()
+        src = ''
+        for _ in xrange(1, 100):
+            src = str(uuid.uuid4())
+
+        filename = str(uuid.uuid4())
+        expected_path = os.path.join(self.test_dir, filename)
+
+        iterable = MockIterable(src)
+        client._write_file(iterable, self.test_dir,
+                           filename, str(uuid.uuid4()))
+
+        assert os.path.exists(expected_path)
+        assert os.path.getsize(expected_path) > 0
+
+

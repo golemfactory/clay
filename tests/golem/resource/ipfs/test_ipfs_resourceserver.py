@@ -73,12 +73,11 @@ class TestResourceServer(TestDirFixture):
         rs.start_accepting()
 
     def testChangeResourceDir(self):
-        keys_auth = EllipticalKeysAuth()
-        client = MockClient()
-
-        rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
+        rs = self.testAddTask()
         rm = rs.resource_manager
         resources = rm.list_resources(self.task_id)
+
+        assert resources
 
         new_config_desc = MockConfig(self.path, node_name + "-new")
         rs.change_resource_dir(new_config_desc)
@@ -138,6 +137,9 @@ class TestResourceServer(TestDirFixture):
     def testRemoveTask(self):
         rs = self.testAddTask()
         rm = rs.resource_manager
+
+        assert rm.list_resources(self.task_id)
+
         rs.remove_task(self.task_id)
         resources = rm.list_resources(self.task_id)
 
@@ -187,14 +189,6 @@ class TestResourceServer(TestDirFixture):
         test_str = "A test string to sign"
         sig = rs.sign(test_str)
         self.assertTrue(rs.verify_sig(sig, test_str, keys_auth.get_public_key()))
-
-    def testGetDistributedResourceRoot(self):
-        keys_auth = EllipticalKeysAuth()
-        client = MockClient()
-        rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
-        expected = self.dir_manager.get_task_resource_dir('')
-
-        self.assertEqual(rs.get_distributed_resource_root(), expected)
 
     def testAddFilesToGet(self):
         keys_auth = EllipticalKeysAuth()

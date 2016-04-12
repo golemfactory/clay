@@ -115,6 +115,16 @@ class TestDirSize(unittest.TestCase):
                  ],
                  '/var'),
                 ([
+                    u'/var/log-other/daemon/daemon.log',
+                    '/var/log/daemon.log',
+                 ],
+                 '/var'),
+                ([
+                    u'/var/log-other/daemon/daemon.log',
+                    u'/var/log/daemon.log',
+                 ],
+                 '/var'),
+                ([
                     '/var/log-other/daemon/daemon.log',
                     '/var/log/daemon.log',
                     '/var/run/daemon.sock'
