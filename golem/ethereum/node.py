@@ -4,9 +4,8 @@ import logging
 import os
 import time
 from os import path
-from subprocess import Popen
 
-import psutil  # FIXME: Use Popen from psutil
+import psutil
 
 from devp2p.crypto import privtopub
 from ethereum.keys import privtoaddr
@@ -110,10 +109,8 @@ class NodeProcess(object):
                 'js', mining_script,
             ]
 
-        self.__subprocess = Popen(args)
+        self.__subprocess = psutil.Popen(args)
         atexit.register(lambda: self.stop())
-        # FIXME: We should check if the process was started.
-        ps = psutil.Process(self.__subprocess.pid)
         WAIT_PERIOD = 0.01
         wait_time = 0
         while True:
@@ -122,7 +119,8 @@ class NodeProcess(object):
             wait_time += WAIT_PERIOD
             if not self.rpcport:
                 break
-            if self.rpcport in set(c.laddr[1] for c in ps.connections('tcp')):
+            if self.rpcport in set(c.laddr[1] for c
+                                   in self.__subprocess.connections('tcp')):
                 break
         log.info("Node started in {} s: `{}`".format(wait_time, " ".join(args)))
 
