@@ -27,5 +27,5 @@ class TestTimeHelper(TestCase):
         gui.ui.subtaskTimeoutSecSpinBox.value.return_value = 45
     
         full_tt, sub_tt = get_time_values(gui)
-        self.assertAlmostEqual(full_tt, 2.51, 2)
-        self.assertAlmostEqual(sub_tt, 3.26, 2)
+        self.assertTrue(full_tt == 9045)
+        self.assertTrue(sub_tt == 11745)
