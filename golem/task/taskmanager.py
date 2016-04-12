@@ -427,13 +427,12 @@ class TaskManager(object):
         self.dir_manager = DirManager(root_path, self.node_name)
         self.use_distributed_resources = use_distributed_resource_management
 
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
+    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
             task = self.tasks[task_id]
             task.header.ttl = full_task_timeout
             task.header.subtask_timeout = subtask_timeout
             task.subtask_timeout = subtask_timeout
-            task.min_subtask_time = min_subtask_time
             task.full_task_timeout = full_task_timeout
             task.header.last_checking = time.time()
             ts = self.tasks_states[task_id]

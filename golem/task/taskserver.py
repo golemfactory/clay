@@ -230,8 +230,8 @@ class TaskServer(PendingConnectionsServer):
         self.task_computer.change_config()
         self.task_keeper.change_config(config_desc)
 
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
-        self.task_manager.change_timeouts(task_id, full_task_timeout, subtask_timeout, min_subtask_time)
+    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
+        self.task_manager.change_timeouts(task_id, full_task_timeout, subtask_timeout)
 
     def get_task_computer_root(self):
         return os.path.join(self.config_desc.root_path, "ComputerRes")
