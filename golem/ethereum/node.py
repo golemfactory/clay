@@ -58,14 +58,14 @@ class NodeProcess(object):
             if not path.exists(nodes_file):
                 json.dump(nodes, open(nodes_file, 'w'))
         self.datadir = datadir
-        self.__subprocess = None
+        self.__ps = None
         self.rpcport = None
 
     def is_running(self):
-        return self.__subprocess is not None
+        return self.__ps is not None
 
     def start(self, rpc, mining=False, nodekey=None, port=None):
-        if self.__subprocess:
+        if self.__ps:
             return
 
         assert not self.rpcport
@@ -109,7 +109,7 @@ class NodeProcess(object):
                 'js', mining_script,
             ]
 
-        self.__subprocess = psutil.Popen(args)
+        self.__ps = psutil.Popen(args)
         atexit.register(lambda: self.stop())
         WAIT_PERIOD = 0.01
         wait_time = 0
@@ -120,16 +120,16 @@ class NodeProcess(object):
             if not self.rpcport:
                 break
             if self.rpcport in set(c.laddr[1] for c
-                                   in self.__subprocess.connections('tcp')):
+                                   in self.__ps.connections('tcp')):
                 break
         log.info("Node started in {} s: `{}`".format(wait_time, " ".join(args)))
 
     def stop(self):
-        if self.__subprocess:
+        if self.__ps:
             start_time = time.clock()
-            self.__subprocess.terminate()
-            self.__subprocess.wait()
-            self.__subprocess = None
+            self.__ps.terminate()
+            self.__ps.wait()
+            self.__ps = None
             self.rpcport = None
             duration = time.clock() - start_time
             log.info("Node terminated in {:.2f} s".format(duration))
