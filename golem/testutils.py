@@ -5,12 +5,18 @@ import unittest
 from os import path, mkdir
 
 from golem.model import Database
+from golem.core.common import is_windows
 
 
 class TempDirFixture(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
-        root = path.join(tempfile.gettempdir(), 'golem')
+        if is_windows():
+            import win32api
+            tmppath = win32api.GetLongPathName(tempfile.gettempdir())
+        else:
+            tmppath = tempfile.gettempdir()
+        root = path.join(tmppath, 'golem')
         if not path.exists(root):
             mkdir(root)
         dir_name = self.id().rsplit('.', 1)[1]  # Use test method name
