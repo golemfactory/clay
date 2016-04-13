@@ -8,7 +8,7 @@ from golem.tools.testdirfixture import TestDirFixture
 from gnr.application import GNRGui
 from gnr.customizers.renderingadmmainwindowcustomizer import RenderingAdmMainWindowCustomizer
 from gnr.gnrapplicationlogic import GNRApplicationLogic
-from gnr.ui.administrationmainwindow import AdministrationMainWindow
+from gnr.ui.appmainwindow import AppMainWindow
 
 
 class TTask(Task):
@@ -63,7 +63,7 @@ class TestGNRApplicationLogic(TestDirFixture):
         logic = GNRApplicationLogic()
         logic.client = Mock()
         logic.client.get_root_path.return_value = self.path
-        gnrgui = GNRGui(Mock(), AdministrationMainWindow)
+        gnrgui = GNRGui(Mock(), AppMainWindow)
         logic.customizer = RenderingAdmMainWindowCustomizer(gnrgui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         ts = Mock()

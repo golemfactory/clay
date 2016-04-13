@@ -32,9 +32,17 @@ class GNRMainWindowCustomizer(Customizer):
         Customizer.__init__(self, gui, logic)
         self._set_error_label()
 
-    def set_options(self, cfg_desc):
+    def set_options(self, cfg_desc, id_, eth_address):
+        # Footer options
         self.gui.ui.appVer.setText(u"{} ({})".format(cfg_desc.app_name, cfg_desc.app_version))
-        self.gui.ui.nodeNameLabel.setText(u"Id: {}".format(cfg_desc.node_name))
+
+        # Status options
+        self.gui.ui.nodeNameLabel.setText(u"{}".format(cfg_desc.node_name))
+
+        # Account options
+        self.gui.ui.golemIdLabel.setText(u"{}".format(id_))
+        self.gui.ui.nameLabel.setText(u"{}".format(cfg_desc.node_name))
+        self.gui.ui.ethAddressLabel.setText(u"{}".format(eth_address))
 
     # Add new task to golem client
     def enqueue_new_task(self, ui_new_task_info):
@@ -112,7 +120,6 @@ class GNRMainWindowCustomizer(Customizer):
             current = previous
         self.gui.ui.stackedWidget.setCurrentIndex(self.gui.ui.listWidget.row(current))
 
-
     def _setup_connections(self):
         self._setup_basic_task_connections()
         self._setup_basic_app_connections()
@@ -129,7 +136,7 @@ class GNRMainWindowCustomizer(Customizer):
     def _setup_basic_app_connections(self):
         self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
         self.gui.ui.actionEdit.triggered.connect(self._show_configuration_dialog_clicked)
-        self.gui.ui.actionPayments.triggered.connect(self._show_payments_clicked)
+        self.gui.ui.paymentsButton.clicked.connect(self._show_payments_clicked)
         self.gui.ui.actionEnvironments.triggered.connect(self._show_environments)
         self.gui.ui.actionIdentity.triggered.connect(self._show_identity_dialog)
 

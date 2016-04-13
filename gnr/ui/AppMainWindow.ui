@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>976</width>
-    <height>650</height>
+    <width>975</width>
+    <height>606</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -48,6 +48,12 @@
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
+          <property name="minimumSize">
+           <size>
+            <width>96</width>
+            <height>0</height>
+           </size>
+          </property>
           <property name="maximumSize">
            <size>
             <width>96</width>
@@ -75,7 +81,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>task.png</normaloff>task.png</iconset>
+             <normaloff>img/task.png</normaloff>img/task.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -90,7 +96,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>eye.png</normaloff>eye.png</iconset>
+             <normaloff>img/eye.png</normaloff>img/eye.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -105,7 +111,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>settings.png</normaloff>settings.png</iconset>
+             <normaloff>img/settings.png</normaloff>img/settings.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
@@ -120,7 +126,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>user.png</normaloff>user.png</iconset>
+             <normaloff>img/user.png</normaloff>img/user.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsDragEnabled|ItemIsEnabled</set>
@@ -140,7 +146,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="taskPage">
            <property name="layoutDirection">
@@ -409,6 +415,12 @@
               </property>
               <item>
                <widget class="QLabel" name="label_6">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
                 <property name="text">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;Task Configuration&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
@@ -421,6 +433,15 @@
                <layout class="QFormLayout" name="taskConfGridLayout">
                 <property name="fieldGrowthPolicy">
                  <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+                </property>
+                <property name="rowWrapPolicy">
+                 <enum>QFormLayout::WrapLongRows</enum>
+                </property>
+                <property name="labelAlignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+                </property>
+                <property name="margin">
+                 <number>5</number>
                 </property>
                 <item row="0" column="0">
                  <widget class="QLabel" name="label_4">
@@ -496,6 +517,9 @@
                  <widget class="QLabel" name="label_14">
                   <property name="text">
                    <string>Task Resources</string>
+                  </property>
+                  <property name="margin">
+                   <number>0</number>
                   </property>
                  </widget>
                 </item>
@@ -587,7 +611,105 @@
            </layout>
           </widget>
           <widget class="QWidget" name="preferencePage"/>
-          <widget class="QWidget" name="accountPage"/>
+          <widget class="QWidget" name="accountPage">
+           <layout class="QGridLayout" name="gridLayout_4">
+            <item row="0" column="0">
+             <layout class="QFormLayout" name="formLayout_2">
+              <property name="fieldGrowthPolicy">
+               <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+              </property>
+              <property name="margin">
+               <number>10</number>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="golemIdConst">
+                <property name="text">
+                 <string>Golem Id</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLabel" name="golemIdLabel">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+                <property name="textInteractionFlags">
+                 <set>Qt::LinksAccessibleByKeyboard|Qt::LinksAccessibleByMouse|Qt::TextBrowserInteraction|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="nameConst">
+                <property name="text">
+                 <string>Name</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLabel" name="nameLabel">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="textInteractionFlags">
+                 <set>Qt::LinksAccessibleByKeyboard|Qt::LinksAccessibleByMouse|Qt::TextBrowserInteraction|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="ethAddressConst">
+                <property name="text">
+                 <string>Wallet address</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLabel" name="ethAddressLabel">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="textInteractionFlags">
+                 <set>Qt::LinksAccessibleByKeyboard|Qt::LinksAccessibleByMouse|Qt::TextBrowserInteraction|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="accountBalanceConst">
+                <property name="text">
+                 <string>Account balance</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QLabel" name="accountBalanceLabel">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="textInteractionFlags">
+                 <set>Qt::LinksAccessibleByKeyboard|Qt::LinksAccessibleByMouse|Qt::TextBrowserInteraction|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QLabel" name="paymentsConst">
+                <property name="text">
+                 <string>Payments</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QPushButton" name="paymentsButton">
+                <property name="text">
+                 <string>View Payments History</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
          </widget>
         </item>
        </layout>
@@ -650,7 +772,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>976</width>
+     <width>975</width>
      <height>21</height>
     </rect>
    </property>
@@ -676,15 +798,8 @@
     <addaction name="actionEnvironments"/>
     <addaction name="actionIdentity"/>
    </widget>
-   <widget class="QMenu" name="menuView">
-    <property name="title">
-     <string>View</string>
-    </property>
-    <addaction name="actionPayments"/>
-   </widget>
    <addaction name="menuTask"/>
    <addaction name="menuProperties"/>
-   <addaction name="menuView"/>
   </widget>
   <action name="actionNew">
    <property name="text">
