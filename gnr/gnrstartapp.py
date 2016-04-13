@@ -82,6 +82,7 @@ def start_and_configure_client(logic, environments):
     client.environments_manager.load_config(client.config_desc.node_name)
 
     logic.register_client(client)
+    logic.start()
     logic.check_network_state()
 
     return client

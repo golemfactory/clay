@@ -1,7 +1,9 @@
 import os
 import logging
 import cPickle
+
 from PyQt4 import QtCore
+from twisted.internet import task
 
 from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task
@@ -54,6 +56,10 @@ class GNRApplicationLogic(QtCore.QObject):
         self.progress_dialog = None
         self.progress_dialog_customizer = None
         self.add_new_nodes_function = lambda x: None
+
+    def start(self):
+        l = task.LoopingCall(self.get_status)
+        l.start(3.0)
 
     def register_gui(self, gui, customizer_class):
         self.customizer = customizer_class(gui, self)
@@ -113,7 +119,7 @@ class GNRApplicationLogic(QtCore.QObject):
         return self.task_types
 
     def get_status(self):
-        return self.client.get_status()
+        self.customizer.gui.ui.statusTextBrowser.setText(self.client.get_status())
 
     def get_config(self):
         return self.client.config_desc

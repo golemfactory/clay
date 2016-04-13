@@ -6,7 +6,7 @@ import appdirs
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
-from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, StatusWindow, \
+from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
                           ConfigurationDialog, EnvironmentsDialog, IdentityDialog, NewTaskDialog
 from gnr.ui.tasktableelem import TaskTableElem
 
@@ -16,7 +16,6 @@ from gnr.customizers.taskcontexmenucustomizer import TaskContextMenuCustomizer
 from gnr.customizers.taskdetailsdialogcustomizer import TaskDetailsDialogCustomizer
 from gnr.customizers.subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
 from gnr.customizers.changetaskdialogcustomizer import ChangeTaskDialogCustomizer
-from gnr.customizers.statuswindowcustomizer import StatusWindowCustomizer
 from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer
 from gnr.customizers.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
 from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer
@@ -130,7 +129,6 @@ class GNRMainWindowCustomizer(Customizer):
     def _setup_basic_app_connections(self):
         self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
         self.gui.ui.actionEdit.triggered.connect(self._show_configuration_dialog_clicked)
-        self.gui.ui.actionStatus.triggered.connect(self._show_status_clicked)
         self.gui.ui.actionPayments.triggered.connect(self._show_payments_clicked)
         self.gui.ui.actionEnvironments.triggered.connect(self._show_environments)
         self.gui.ui.actionIdentity.triggered.connect(self._show_identity_dialog)
@@ -197,12 +195,6 @@ class GNRMainWindowCustomizer(Customizer):
 
         self.gui.ui.taskTableWidget.setCurrentItem(self.gui.ui.taskTableWidget.item(current_row_count, 1))
         self.update_task_additional_info(self.logic.get_task(task_id))
-
-    def _show_status_clicked(self):
-
-        self.status_window_customizer = StatusWindowCustomizer(self.status_window, self.logic)
-        self.status_window_customizer.get_status()
-        self.status_window.show()
 
     def _show_payments_clicked(self):
         payments_window = PaymentsDialog(self.gui.window)
