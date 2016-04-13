@@ -25,9 +25,8 @@ class ConfigurationDialogCustomizer(Customizer):
     def load_data(self):
         config_desc = self.logic.get_config()
         self.__load_basic_config(config_desc)
-        self.__load_advance_config(config_desc)
-        self.__load_manager_config(config_desc)
-        self.__load_resource_config()
+#        self.__load_advance_config(config_desc)
+#        self.__load_resource_config()
         self.__load_payment_config(config_desc)
 
     @staticmethod
@@ -51,14 +50,15 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
         self.gui.ui.recountLuxButton.clicked.connect(self.__recount_lux_performance)
         self.gui.ui.recountBlenderButton.clicked.connect(self.__recount_blender_performance)
-        self.gui.ui.buttonBox.accepted.connect(self.__change_config)
+        self.gui.ui.settingsOkButton.clicked.connect(self.__change_config)
+        self.gui.ui.settingsCancelButton.clicked.connect(lambda: self.load_data())
 
         QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
                                self.__recount_performance)
 
-        self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
-        self.gui.ui.removeDistributedButton.clicked.connect(self.__remove_from_distributed)
-        self.gui.ui.removeReceivedButton.clicked.connect(self.__remove_from_received)
+        # self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
+        # self.gui.ui.removeDistributedButton.clicked.connect(self.__remove_from_distributed)
+        # self.gui.ui.removeReceivedButton.clicked.connect(self.__remove_from_received)
 
         QtCore.QObject.connect(self.gui.ui.requestingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
                                self.__requesting_trust_slider_changed)
@@ -74,7 +74,6 @@ class ConfigurationDialogCustomizer(Customizer):
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
         self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_port))
-        self.gui.ui.workingDirectoryLineEdit.setText(u"{}".format(config_desc.root_path))
         self.gui.ui.performanceLabel.setText(u"{}".format(config_desc.estimated_performance))
         self.gui.ui.luxPerformanceLabel.setText(u"{}".format(config_desc.estimated_lux_performance))
         self.gui.ui.blenderPerformanceLabel.setText(u"{}".format(config_desc.estimated_blender_performance))
@@ -172,10 +171,6 @@ class ConfigurationDialogCustomizer(Customizer):
             logger.error("Wrong configuration parameter {}: {}".format(param_name, param))
         check_box.setChecked(checked)
 
-    def __load_manager_config(self, config_desc):
-        self.gui.ui.managerAddressLineEdit.setText(u"{}".format(config_desc.manager_address))
-        self.gui.ui.managerPortLineEdit.setText(u"{}".format(config_desc.manager_port))
-
     def __load_payment_config(self, config_desc):
         self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.eth_account))
         self.__check_eth_account()
@@ -248,8 +243,7 @@ class ConfigurationDialogCustomizer(Customizer):
     def __change_config(self):
         cfg_desc = ClientConfigDescriptor()
         self.__read_basic_config(cfg_desc)
-        self.__read_advance_config(cfg_desc)
-        self.__read_manager_config(cfg_desc)
+#        self.__read_advance_config(cfg_desc)
         self.__read_payment_config(cfg_desc)
         self.logic.change_config(cfg_desc)
 
@@ -259,7 +253,6 @@ class ConfigurationDialogCustomizer(Customizer):
             cfg_desc.seed_port = int(self.gui.ui.hostIPLineEdit.text())
         except ValueError:
             cfg_desc.seed_port = u"{}".format(self.gui.ui.hostIPLineEdit.text())
-        cfg_desc.root_path = u"{}".format(self.gui.ui.workingDirectoryLineEdit.text())
 
         cfg_desc.num_cores = u"{}".format(self.gui.ui.numCoresSlider.value())
         cfg_desc.estimated_performance = u"{}".format(self.gui.ui.performanceLabel.text())
@@ -291,13 +284,6 @@ class ConfigurationDialogCustomizer(Customizer):
 
         if self.old_plugin_port != cfg_desc.plugin_port:
             self.__show_plugin_port_warning()
-
-    def __read_manager_config(self, cfg_desc):
-        cfg_desc.manager_address = u"{}".format(self.gui.ui.managerAddressLineEdit.text())
-        try:
-            cfg_desc.manager_port = int(self.gui.ui.managerPortLineEdit.text())
-        except ValueError:
-            cfg_desc.manager_port = u"{}".format(self.gui.ui.managerPortLineEdit.text())
 
     def __read_trust_config(self, cfg_desc):
         requesting_trust = self.__read_trust(self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)

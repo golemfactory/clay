@@ -67,6 +67,7 @@ class GNRApplicationLogic(QtCore.QObject):
     def register_client(self, client):
         self.client = client
         self.client.register_listener(GNRClientEventListener(self))
+        self.customizer.init_config()
         self.customizer.set_options(self.get_config(), client.keys_auth.get_key_id(),
                                     client.transaction_system.get_payment_address())
 
@@ -136,20 +137,20 @@ class GNRApplicationLogic(QtCore.QObject):
             assert False, "Task {} not registered".format(name)
 
     def change_config(self, cfg_desc):
-        old_cfg_desc = self.client.config_desc
-        if (old_cfg_desc.manager_address != cfg_desc.manager_address) or\
-                (old_cfg_desc.manager_port != cfg_desc.manager_port):
-            if self.nodes_manager_client is not None:
-                self.nodes_manager_client.dropConnection()
-                del self.nodes_manager_client
-            self.nodes_manager_client = NodesManagerUidClient(cfg_desc.node_name,
-                                                              cfg_desc.manager_address,
-                                                              cfg_desc.manager_port,
-                                                              None,
-                                                              self)
-
-            self.nodes_manager_client.start()
-            self.client.register_nodes_manager_client(self.nodes_manager_client)
+        # old_cfg_desc = self.client.config_desc
+        # if (old_cfg_desc.manager_address != cfg_desc.manager_address) or\
+        #         (old_cfg_desc.manager_port != cfg_desc.manager_port):
+        #     if self.nodes_manager_client is not None:
+        #         self.nodes_manager_client.dropConnection()
+        #         del self.nodes_manager_client
+        #     self.nodes_manager_client = NodesManagerUidClient(cfg_desc.node_name,
+        #                                                       cfg_desc.manager_address,
+        #                                                       cfg_desc.manager_port,
+        #                                                       None,
+        #                                                       self)
+        #
+        #     self.nodes_manager_client.start()
+        #     self.client.register_nodes_manager_client(self.nodes_manager_client)
         self.client.change_config(cfg_desc)
 
     def _get_new_task_state(self):

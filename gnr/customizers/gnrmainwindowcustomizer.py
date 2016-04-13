@@ -32,6 +32,9 @@ class GNRMainWindowCustomizer(Customizer):
         Customizer.__init__(self, gui, logic)
         self._set_error_label()
 
+    def init_config(self):
+        ConfigurationDialogCustomizer(self.gui, self.logic)
+
     def set_options(self, cfg_desc, id_, eth_address):
         # Footer options
         self.gui.ui.appVer.setText(u"{} ({})".format(cfg_desc.app_name, cfg_desc.app_version))
@@ -135,7 +138,6 @@ class GNRMainWindowCustomizer(Customizer):
 
     def _setup_basic_app_connections(self):
         self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
-        self.gui.ui.actionEdit.triggered.connect(self._show_configuration_dialog_clicked)
         self.gui.ui.paymentsButton.clicked.connect(self._show_payments_clicked)
         self.gui.ui.actionEnvironments.triggered.connect(self._show_environments)
         self.gui.ui.actionIdentity.triggered.connect(self._show_identity_dialog)
