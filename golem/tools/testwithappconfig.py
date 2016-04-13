@@ -1,13 +1,7 @@
-import unittest
 from mock import Mock
 from os import path
-from golem.appconfig import AppConfig, CommonConfig, NodeConfig
 from golem.core.keysauth import KeysAuth
 from golem.tools.testdirfixture import TestDirFixture
-
-
-class TestWithAppConfig(unittest.TestCase):
-    pass
 
 
 class TestWithKeysAuth(TestDirFixture):
