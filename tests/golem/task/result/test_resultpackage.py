@@ -10,7 +10,6 @@ from golem.task.taskbase import result_types
 from golem.tools.testdirfixture import TestDirFixture
 
 node_name = 'test_suite'
-task_id = 'deadbeef-deadbeef'
 
 
 class MockNode:
@@ -44,7 +43,7 @@ class MockTaskResult:
 class MockDirContents(object):
 
     @staticmethod
-    def populate(dest_obj, dir_manager):
+    def populate(dest_obj, dir_manager, task_id):
         res_dir = dir_manager.get_task_temporary_dir(task_id)
 
         out_file = os.path.join(res_dir, 'out_file')
@@ -80,8 +79,9 @@ class TestZipPackager(TestDirFixture):
     def setUp(self):
         TestDirFixture.setUp(self)
 
+        self.task_id = str(uuid.uuid4())
         self.dir_manager = DirManager(self.path, node_name)
-        MockDirContents.populate(self, self.dir_manager)
+        MockDirContents.populate(self, self.dir_manager, self.task_id)
 
     def testCreate(self):
         zp = ZipPackager()
@@ -104,9 +104,10 @@ class TestEncryptingPackager(TestDirFixture):
     def setUp(self):
         TestDirFixture.setUp(self)
 
+        self.task_id = str(uuid.uuid4())
         self.dir_manager = DirManager(self.path, node_name)
         self.secret = FileEncryptor.gen_secret(10, 20)
-        MockDirContents.populate(self, self.dir_manager)
+        MockDirContents.populate(self, self.dir_manager, self.task_id)
 
     def testCreate(self):
         ep = EncryptingPackager(self.secret)
@@ -129,22 +130,23 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
     def setUp(self):
         TestDirFixture.setUp(self)
 
+        self.task_id = str(uuid.uuid4())
         self.dir_manager = DirManager(self.path, node_name)
         self.secret = FileEncryptor.gen_secret(10, 20)
-        MockDirContents.populate(self, self.dir_manager)
+        MockDirContents.populate(self, self.dir_manager, self.task_id)
 
     def testCreate(self):
         etp = EncryptingTaskResultPackager(self.secret)
         node = MockNode(node_name)
 
-        tr = MockTaskResult(task_id, self.files)
+        tr = MockTaskResult(self.task_id, self.files)
         path = etp.create(self.out_path, node, tr,
                           pickle_files=self.pickle_files)
 
         self.assertTrue(os.path.exists(path))
         os.remove(path)
 
-        tr = MockTaskResult(task_id, "Result string data",
+        tr = MockTaskResult(self.task_id, "Result string data",
                             result_type=result_types["data"])
 
         path = etp.create(self.out_path, node, tr)
@@ -155,7 +157,7 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
     def testExtract(self):
         etp = EncryptingTaskResultPackager(self.secret)
         node = MockNode(node_name)
-        tr = MockTaskResult(task_id, self.files)
+        tr = MockTaskResult(self.task_id, self.files)
 
         path = etp.create(self.out_path, node, tr,
                           pickle_files=self.pickle_files)
@@ -173,14 +175,15 @@ class TestExtractedPackage(TestDirFixture):
     def setUp(self):
         TestDirFixture.setUp(self)
 
+        self.task_id = str(uuid.uuid4())
         self.dir_manager = DirManager(self.path, node_name)
         self.secret = FileEncryptor.gen_secret(10, 20)
-        MockDirContents.populate(self, self.dir_manager)
+        MockDirContents.populate(self, self.dir_manager, self.task_id)
 
     def testToExtraData(self):
         etp = EncryptingTaskResultPackager(self.secret)
         node = MockNode(node_name)
-        tr = MockTaskResult(task_id, self.files)
+        tr = MockTaskResult(self.task_id, self.files)
 
         path = etp.create(self.out_path, node, tr,
                           pickle_files=self.pickle_files)

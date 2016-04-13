@@ -209,13 +209,12 @@ class GNRApplicationLogic(QtCore.QObject):
     def get_keys_auth(self):
         return self.client.keys_auth
 
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
+    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
             task = self.tasks[task_id]
             task.definition.full_task_timeout = full_task_timeout
-            task.definition.min_subtask_time = min_subtask_time
             task.definition.subtask_timeout = subtask_timeout
-            self.client.change_timeouts(task_id, full_task_timeout, subtask_timeout, min_subtask_time)
+            self.client.change_timeouts(task_id, full_task_timeout, subtask_timeout)
             self.customizer.update_task_additional_info(task)
         else:
             logger.error("It's not my task: {} ", task_id)

@@ -1,9 +1,9 @@
 from mock import Mock
 
-from golem.tools.testdirfixture import TestDirFixture
-from golem.tools.assertlogs import LogTestCase
-from golem.task.taskmanager import TaskManager, logger
 from golem.network.p2p.node import Node
+from golem.task.taskmanager import TaskManager, logger
+from golem.tools.assertlogs import LogTestCase
+from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestTaskManager(LogTestCase, TestDirFixture):
@@ -82,3 +82,29 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.assertTrue(tm.use_distributed_resources)
         tm.change_config(self.path, False)
         self.assertFalse(tm.use_distributed_resources)
+
+    def test_get_resources(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        task_id = "xyz"
+
+        resources = ['first', 'second']
+        hash_resources = [['first', 'deadbeef01'], ['second', 'deadbeef02']]
+
+        def get_resources(*args):
+            return resources
+
+        task_mock = Mock()
+        task_mock.header.task_id = task_id
+        task_mock.header.resource_size = 2 * 1024
+        task_mock.header.estimated_memory = 3 * 1024
+        task_mock.header.max_price = 10000
+        task_mock.get_resources = get_resources
+        task_mock.query_extra_data.return_value.task_id = task_id
+
+        tm.add_new_task(task_mock)
+
+        assert tm.get_resources(task_id, task_mock.header) is resources
+        assert not tm.get_resources(task_id + "2", task_mock.header)
+
+
+
