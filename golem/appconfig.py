@@ -19,7 +19,7 @@ MAX_RESOURCE_SIZE = 250 * 1024
 MAX_MEMORY_SIZE = 250 * 1024
 DISTRIBUTED_RES_NUM = 2
 APP_NAME = "Brass Golem"
-APP_VERSION = "0.1"
+APP_VERSION = "1.022"
 
 logger = logging.getLogger(__name__)
 
