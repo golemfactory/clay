@@ -62,8 +62,8 @@ class TestGNRApplicationLogic(TestDirFixture):
     def test_run_test_task(self):
         logic = GNRApplicationLogic()
         logic.client = Mock()
-        logic.client.get_root_path.return_value = self.path
         gnrgui = GNRGui(Mock(), AppMainWindow)
+        logic.client.datadir = self.path
         logic.customizer = RenderingAdmMainWindowCustomizer(gnrgui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         ts = Mock()

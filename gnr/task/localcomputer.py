@@ -7,7 +7,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.task.taskbase import Task, resource_types
 from golem.resource.resource import TaskResourceHeader, decompress_dir
 
-from gnr.renderingdirmanager import get_test_task_path, get_test_task_directory, get_tmp_path, get_test_task_tmp_path
+from gnr.renderingdirmanager import get_test_task_path, get_test_task_tmp_path
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ class LocalComputer(object):
             shutil.rmtree(self.test_task_res_path, True)
             os.makedirs(self.test_task_res_path)
 
-        self.test_task_res_dir = get_test_task_directory()
+        self.test_task_res_dir = get_test_task_path(self.root_path)
         if self.use_task_resources:
             rh = TaskResourceHeader(self.test_task_res_dir)
             res_file = self.task.get_resources(self.task.header.task_id, rh, resource_types["zip"])
@@ -94,13 +94,10 @@ class LocalComputer(object):
         return True
 
     def __prepare_tmp_dir(self):
-
         self.tmp_dir = get_test_task_tmp_path(self.root_path)
-        if not os.path.exists(self.tmp_dir):
-            os.makedirs(self.tmp_dir)
-        else:
+        if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir, True)
-            os.makedirs(self.tmp_dir)
+        os.makedirs(self.tmp_dir)
 
     def _get_task_thread(self, ctd):
         return DockerTaskThread(self,

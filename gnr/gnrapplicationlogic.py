@@ -178,7 +178,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         return self.task_types[task_state.definition.task_type].task_builder_type(self.client.get_node_name(),
                                                                                   task_state.definition,
-                                                                                  self.client.get_root_path())
+                                                                                  self.client.datadir)
 
     def restart_task(self, task_id):
         self.client.restart_task(task_id)
@@ -214,13 +214,12 @@ class GNRApplicationLogic(QtCore.QObject):
     def get_keys_auth(self):
         return self.client.keys_auth
 
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
+    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
             task = self.tasks[task_id]
             task.definition.full_task_timeout = full_task_timeout
-            task.definition.min_subtask_time = min_subtask_time
             task.definition.subtask_timeout = subtask_timeout
-            self.client.change_timeouts(task_id, full_task_timeout, subtask_timeout, min_subtask_time)
+            self.client.change_timeouts(task_id, full_task_timeout, subtask_timeout)
             self.customizer.update_task_additional_info(task)
         else:
             logger.error("It's not my task: {} ", task_id)
@@ -275,22 +274,22 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def recount_lux_performance(self):
         cfg_filename = SimpleEnv.env_file_name("lux.ini")
-        
+
         cfg_file = open(cfg_filename, 'w')
         average = lux_performance()
         cfg_file.write("{0:.1f}".format(average))
         cfg_file.close()
-        
+
         return average
-    
+
     def recount_blender_performance(self):
         cfg_filename = SimpleEnv.env_file_name("blender.ini")
-        
+
         cfg_file = open(cfg_filename, 'w')
         average = blender_performance()
         cfg_file.write("{0:.1f}".format(average))
         cfg_file.close()
-        
+
         return average
 
     def run_test_task(self, task_state):
@@ -300,7 +299,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
             t = Task.build_task(tb)
 
-            self.tt = TaskTester(t, self.client.get_root_path(), self._test_task_computation_success,
+            self.tt = TaskTester(t, self.client.datadir, self._test_task_computation_success,
                                  self._test_task_computation_error)
 
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)

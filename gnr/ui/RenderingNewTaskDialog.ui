@@ -191,96 +191,13 @@
           </layout>
          </item>
          <item row="1" column="0">
-          <widget class="QLabel" name="label_6">
-           <property name="text">
-            <string>Min Subtask time</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout_13">
-           <item>
-            <widget class="QSpinBox" name="minSubtaskTimeHourSpinBox">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="maximum">
-              <number>1000</number>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="label_27">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string>h</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QSpinBox" name="minSubtaskTimeMinSpinBox">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="maximum">
-              <number>59</number>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="label_28">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string>min</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QSpinBox" name="minSubtaskTimeSecSpinBox">
-             <property name="maximum">
-              <number>59</number>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="label_29">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string>sec</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item row="2" column="0">
           <widget class="QLabel" name="label_7">
            <property name="text">
             <string>Subtask Timeout</string>
            </property>
           </widget>
          </item>
-         <item row="2" column="1">
+         <item row="1" column="1">
           <layout class="QHBoxLayout" name="horizontalLayout_12">
            <item>
             <widget class="QSpinBox" name="subtaskTimeoutHourSpinBox">
@@ -356,14 +273,14 @@
            </item>
           </layout>
          </item>
-         <item row="3" column="0">
+         <item row="2" column="0">
           <widget class="QLabel" name="label_8">
            <property name="text">
             <string>Total subtasks</string>
            </property>
           </widget>
          </item>
-         <item row="3" column="1">
+         <item row="2" column="1">
           <layout class="QHBoxLayout" name="horizontalLayout_10">
            <item>
             <widget class="QSpinBox" name="totalSpinBox"/>
@@ -383,48 +300,14 @@
            </item>
           </layout>
          </item>
-         <item row="7" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout_8">
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <spacer name="horizontalSpacer_7">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <widget class="QPushButton" name="addResourceButton">
-             <property name="text">
-              <string>Add Resources</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item row="5" column="0">
-          <widget class="QLabel" name="label_18">
-           <property name="text">
-            <string>Main Scene File</string>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="0">
+         <item row="3" column="0">
           <widget class="QLabel" name="label_14">
            <property name="text">
             <string>Main Program File</string>
            </property>
           </widget>
          </item>
-         <item row="4" column="1">
+         <item row="3" column="1">
           <layout class="QHBoxLayout" name="horizontalLayout_9">
            <item>
             <widget class="QLineEdit" name="mainProgramFileLineEdit">
@@ -463,7 +346,14 @@
            </item>
           </layout>
          </item>
-         <item row="5" column="1">
+         <item row="4" column="0">
+          <widget class="QLabel" name="label_18">
+           <property name="text">
+            <string>Main Scene File</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
           <layout class="QHBoxLayout" name="horizontalLayout_15">
            <item>
             <widget class="QLineEdit" name="mainSceneFileLineEdit">
@@ -497,6 +387,33 @@
              </property>
              <property name="text">
               <string>...</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="6" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout_8">
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <spacer name="horizontalSpacer_7">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QPushButton" name="addResourceButton">
+             <property name="text">
+              <string>Add Resources</string>
              </property>
             </widget>
            </item>

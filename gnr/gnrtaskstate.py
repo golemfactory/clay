@@ -7,7 +7,6 @@ class GNRTaskDefinition(object):
         self.task_id = ""
         self.full_task_timeout = 0
         self.subtask_timeout = 0
-        self.min_subtask_time = 0
 
         self.resources = set()
         self.estimated_memory = 0

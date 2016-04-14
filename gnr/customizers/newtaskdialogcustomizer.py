@@ -1,5 +1,4 @@
 import os
-import appdirs
 import logging
 
 from copy import deepcopy
@@ -14,6 +13,7 @@ from gnr.gnrtaskstate import GNRTaskDefinition
 from golem.task.taskstate import TaskStatus
 from gnr.customizers.timehelper import set_time_spin_boxes, get_time_values, get_subtask_hours
 from gnr.customizers.customizer import Customizer
+from gnr.customizers.common import get_save_dir
 
 logger = logging.getLogger(__name__)
 
@@ -98,11 +98,9 @@ class NewTaskDialogCustomizer(Customizer):
         self.add_task_resource_dialog.show()
 
     def _save_task_button_clicked(self):
-        dir_ = os.path.join(appdirs.user_data_dir("golem"), "save")
-        if not os.path.isdir(dir_):
-            dir_ = ""
+        save_dir = get_save_dir()
         file_name = QFileDialog.getSaveFileName(self.gui.window,
-                                                "Choose save file", dir_, "Golem Task (*.gt)")
+                                                "Choose save file", save_dir, "Golem Task (*.gt)")
 
         if file_name != "":
             self._save_task(file_name)
@@ -148,8 +146,7 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _load_basic_task_params(self, definition):
         self._load_task_type(definition)
-        set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout,
-                         definition.min_subtask_time)
+        set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout)
         self.gui.ui.mainProgramFileLineEdit.setText(definition.main_program_file)
         self.gui.ui.totalSpinBox.setValue(definition.total_subtasks)
 
@@ -209,7 +206,7 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _read_basic_task_params(self, definition):
         definition.task_id = u"{}".format(self.gui.ui.taskIdLabel.text())
-        definition.full_task_timeout, definition.subtask_timeout, definition.min_subtask_time = get_time_values(self.gui)
+        definition.full_task_timeout, definition.subtask_timeout = get_time_values(self.gui)
         definition.main_program_file = u"{}".format(self.gui.ui.mainProgramFileLineEdit.text())
         definition.optimize_total = self.gui.ui.optimizeTotalCheckBox.isChecked()
         if definition.optimize_total:

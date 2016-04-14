@@ -19,7 +19,6 @@ class RendererDefaults:
         self.output_format = ""
         self.main_program_file = ""
         self.full_task_timeout = 4 * 3600
-        self.min_subtask_time = 60
         self.subtask_timeout = 20 * 60
         self.resolution = [800, 600]
         self.min_subtasks = 1

@@ -53,7 +53,7 @@ class TaskManager(object):
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root(), self.node_name)
 
-        resource_manager = IPFSResourceManager(self.dir_manager, self.node_name,
+        resource_manager = IPFSResourceManager(self.dir_manager,
                                                resource_dir_method=self.dir_manager.get_task_temporary_dir)
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
@@ -427,13 +427,12 @@ class TaskManager(object):
         self.dir_manager = DirManager(root_path, self.node_name)
         self.use_distributed_resources = use_distributed_resource_management
 
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
+    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
             task = self.tasks[task_id]
             task.header.ttl = full_task_timeout
             task.header.subtask_timeout = subtask_timeout
             task.subtask_timeout = subtask_timeout
-            task.min_subtask_time = min_subtask_time
             task.full_task_timeout = full_task_timeout
             task.header.last_checking = time.time()
             ts = self.tasks_states[task_id]

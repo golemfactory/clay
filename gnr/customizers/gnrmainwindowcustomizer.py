@@ -1,7 +1,6 @@
 import logging
 import os
 import cPickle
-import appdirs
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
@@ -11,6 +10,7 @@ from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialo
 from gnr.ui.tasktableelem import TaskTableElem
 
 from gnr.customizers.customizer import Customizer
+from gnr.customizers.common import get_save_dir
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
 from gnr.customizers.taskcontexmenucustomizer import TaskContextMenuCustomizer
 from gnr.customizers.taskdetailsdialogcustomizer import TaskDetailsDialogCustomizer
@@ -165,15 +165,10 @@ class GNRMainWindowCustomizer(Customizer):
         self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.new_task_dialog, self.logic)
 
     def _load_task_button_clicked(self):
-        save_path = appdirs.user_data_dir("golem")
-        dir_ = ""
-        if save_path:
-            save_dir = os.path.join(save_path, "save")
-            if os.path.isdir(save_dir):
-                dir_ = save_dir
-
+        save_dir = get_save_dir()
         file_name = QFileDialog.getOpenFileName(self.gui.window,
-                                                "Choose task file", dir_, "Golem Task (*.gt)")
+                                                "Choose task file", save_dir,
+                                                "Golem Task (*.gt)")
         if os.path.exists(file_name):
             self._load_task(file_name)
 

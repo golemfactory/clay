@@ -4,14 +4,23 @@ import tempfile
 import unittest
 from os import path, mkdir
 
+from golem.model import Database
+from golem.core.common import is_windows
+
 
 class TempDirFixture(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
-        root = path.join(tempfile.gettempdir(), 'golem')
+        if is_windows():
+            import win32api
+            tmppath = win32api.GetLongPathName(tempfile.gettempdir())
+        else:
+            tmppath = tempfile.gettempdir()
+        root = path.join(tmppath, 'golem')
         if not path.exists(root):
             mkdir(root)
-        self.tempdir = tempfile.mkdtemp(prefix=self.id(), dir=root)
+        dir_name = self.id().rsplit('.', 1)[1]  # Use test method name
+        self.tempdir = tempfile.mkdtemp(prefix=dir_name, dir=root)
         self.path = self.tempdir  # Alias for legacy tests
 
     def tearDown(self):
@@ -44,3 +53,15 @@ class TempDirFixture(unittest.TestCase):
                 new_dir = tempfile.mkdtemp(dir=dir_)
                 self.additional_dir_content(el, new_dir, results)
         return results
+
+
+class DatabaseFixture(TempDirFixture):
+    """ Setups temporary database for tests."""
+
+    def setUp(self):
+        super(DatabaseFixture, self).setUp()
+        self.database = Database(self.tempdir)
+
+    def tearDown(self):
+        self.database.db.close()
+        super(DatabaseFixture, self).tearDown()
