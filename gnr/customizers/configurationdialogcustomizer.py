@@ -18,6 +18,8 @@ class ConfigurationDialogCustomizer(Customizer):
     """ Customizer for gui with all golem configuration option that can be changed by user
     """
 
+    SHOW_ADVANCE_BUTTON_MESSAGES = ["Show more", "Hide"]
+
     def __init__(self, gui, logic):
         self.old_plugin_port = None
         Customizer.__init__(self, gui, logic)
@@ -25,7 +27,7 @@ class ConfigurationDialogCustomizer(Customizer):
     def load_data(self):
         config_desc = self.logic.get_config()
         self.__load_basic_config(config_desc)
-#        self.__load_advance_config(config_desc)
+        self.__load_advance_config(config_desc)
 #        self.__load_resource_config()
         self.__load_payment_config(config_desc)
 
@@ -70,6 +72,8 @@ class ConfigurationDialogCustomizer(Customizer):
                                self.__computing_trust_edited)
         QtCore.QObject.connect(self.gui.ui.ethAccountLineEdit, QtCore.SIGNAL("textChanged(QString)"),
                                self.__check_eth_account)
+
+        self.gui.ui.showAdvanceButton.clicked.connect(self.__show_advance_clicked)
 
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
@@ -134,12 +138,10 @@ class ConfigurationDialogCustomizer(Customizer):
         slider.setValue(trust)
 
     def __load_advance_config(self, config_desc):
+        self.gui.ui.advanceSettingsWidget.hide()
+        self.gui.ui.showAdvanceButton.setText(ConfigurationDialogCustomizer.SHOW_ADVANCE_BUTTON_MESSAGES[0])
+
         self.gui.ui.optimalPeerNumLineEdit.setText(u"{}".format(config_desc.opt_peer_num))
-
-        self.__load_checkbox_param(config_desc.use_distributed_resource_management,
-                                   self.gui.ui.useDistributedResCheckBox, 'use distributed res')
-        self.gui.ui.distributedResNumLineEdit.setText(u"{}".format(config_desc.dist_res_num))
-
         self.__load_checkbox_param(config_desc.use_waiting_for_task_timeout,
                                    self.gui.ui.useWaitingForTaskTimeoutCheckBox, 'waiting for task timeout')
         self.gui.ui.waitingForTaskTimeoutLineEdit.setText(u"{}".format(config_desc.waiting_for_task_timeout))
@@ -149,15 +151,10 @@ class ConfigurationDialogCustomizer(Customizer):
 
         self.gui.ui.gettingPeersLineEdit.setText(u"{}".format(config_desc.getting_peers_interval))
         self.gui.ui.gettingTasksIntervalLineEdit.setText(u"{}".format(config_desc.getting_tasks_interval))
-        self.gui.ui.nodeSnapshotIntervalLineEdit.setText(u"{}".format(config_desc.node_snapshot_interval))
         self.gui.ui.maxSendingDelayLineEdit.setText(u"{}".format(config_desc.max_results_sending_delay))
 
         self.gui.ui.p2pSessionTimeoutLineEdit.setText(u"{}".format(config_desc.p2p_session_timeout))
         self.gui.ui.taskSessionTimeoutLineEdit.setText(u"{}".format(config_desc.task_session_timeout))
-        self.gui.ui.resourceSessionTimeoutLineEdit.setText(u"{}".format(config_desc.resource_session_timeout))
-
-        self.gui.ui.pluginPortLineEdit.setText(u"{}".format(config_desc.plugin_port))
-        self.old_plugin_port = u"{}".format(config_desc.plugin_port)
 
     def __load_checkbox_param(self, param, check_box, param_name=''):
         try:
@@ -243,7 +240,7 @@ class ConfigurationDialogCustomizer(Customizer):
     def __change_config(self):
         cfg_desc = ClientConfigDescriptor()
         self.__read_basic_config(cfg_desc)
-#        self.__read_advance_config(cfg_desc)
+        self.__read_advance_config(cfg_desc)
         self.__read_payment_config(cfg_desc)
         self.logic.change_config(cfg_desc)
 
@@ -267,23 +264,15 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __read_advance_config(self, cfg_desc):
         cfg_desc.opt_peer_num = u"{}".format(self.gui.ui.optimalPeerNumLineEdit.text())
-        cfg_desc.use_distributed_resource_management = int(self.gui.ui.useDistributedResCheckBox.isChecked())
-        cfg_desc.dist_res_num = u"{}".format(self.gui.ui.distributedResNumLineEdit.text())
         cfg_desc.use_waiting_for_task_timeout = int(self.gui.ui.useWaitingForTaskTimeoutCheckBox.isChecked())
         cfg_desc.waiting_for_task_timeout = u"{}".format(self.gui.ui.waitingForTaskTimeoutLineEdit.text())
         cfg_desc.p2p_session_timeout = u"{}".format(self.gui.ui.p2pSessionTimeoutLineEdit.text())
         cfg_desc.task_session_timeout = u"{}".format(self.gui.ui.taskSessionTimeoutLineEdit.text())
-        cfg_desc.resource_session_timeout = u"{}".format(self.gui.ui.resourceSessionTimeoutLineEdit.text())
         cfg_desc.send_pings = int(self.gui.ui.sendPingsCheckBox.isChecked())
         cfg_desc.pings_interval = u"{}".format(self.gui.ui.sendPingsLineEdit.text())
         cfg_desc.getting_peers_interval = u"{}".format(self.gui.ui.gettingPeersLineEdit.text())
         cfg_desc.getting_tasks_interval = u"{}".format(self.gui.ui.gettingTasksIntervalLineEdit.text())
-        cfg_desc.node_snapshot_interval = u"{}".format(self.gui.ui.nodeSnapshotIntervalLineEdit.text())
         cfg_desc.max_results_sending_delay = u"{}".format(self.gui.ui.maxSendingDelayLineEdit.text())
-        cfg_desc.plugin_port = u"{}".format(self.gui.ui.pluginPortLineEdit.text())
-
-        if self.old_plugin_port != cfg_desc.plugin_port:
-            self.__show_plugin_port_warning()
 
     def __read_trust_config(self, cfg_desc):
         requesting_trust = self.__read_trust(self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)
@@ -354,3 +343,9 @@ class ConfigurationDialogCustomizer(Customizer):
         else:
             self.__set_account_error()
             logger.warning("Wrong ethereum address: {}".format(text))
+
+    def __show_advance_clicked(self):
+        self.gui.ui.advanceSettingsWidget.setVisible(not self.gui.ui.advanceSettingsWidget.isVisible())
+        self.gui.ui.showAdvanceButton.setText(
+            ConfigurationDialogCustomizer.SHOW_ADVANCE_BUTTON_MESSAGES[self.gui.ui.advanceSettingsWidget.isVisible()])
+
