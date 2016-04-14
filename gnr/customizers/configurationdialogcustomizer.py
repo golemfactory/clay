@@ -19,6 +19,7 @@ class ConfigurationDialogCustomizer(Customizer):
     """
 
     SHOW_ADVANCE_BUTTON_MESSAGES = ["Show more", "Hide"]
+    SHOW_DISK_USAGE_BUTTON_MESSAGES = ["Show disk usage", "Hide"]
 
     def __init__(self, gui, logic):
         self.old_plugin_port = None
@@ -28,7 +29,7 @@ class ConfigurationDialogCustomizer(Customizer):
         config_desc = self.logic.get_config()
         self.__load_basic_config(config_desc)
         self.__load_advance_config(config_desc)
-#        self.__load_resource_config()
+        self.__load_resource_config()
         self.__load_payment_config(config_desc)
 
     @staticmethod
@@ -58,9 +59,11 @@ class ConfigurationDialogCustomizer(Customizer):
         QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
                                self.__recount_performance)
 
-        # self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
-        # self.gui.ui.removeDistributedButton.clicked.connect(self.__remove_from_distributed)
-        # self.gui.ui.removeReceivedButton.clicked.connect(self.__remove_from_received)
+        self.gui.ui.showDiskButton.clicked.connect(self.__show_disk_button_clicked)
+        self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
+        self.gui.ui.removeReceivedButton.clicked.connect(self.__remove_from_received)
+        self.gui.ui.refreshComputingButton.clicked.connect(self.__refresh_disk_computed)
+        self.gui.ui.refreshReceivedButton.clicked.connect(self.__refresh_disk_received)
 
         QtCore.QObject.connect(self.gui.ui.requestingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
                                self.__requesting_trust_slider_changed)
@@ -175,10 +178,18 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.maxPriceLineEdit.setText(u"{}".format(config_desc.max_price))
 
     def __load_resource_config(self):
+        self.gui.ui.diskWidget.hide()
+        self.gui.ui.showDiskButton.setText(self.SHOW_DISK_USAGE_BUTTON_MESSAGES[0])
+        self.__refresh_disk_computed()
+        self.__refresh_disk_received()
+
+    def __refresh_disk_received(self):
+        res_dirs = self.logic.get_res_dirs()
+        self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
+
+    def __refresh_disk_computed(self):
         res_dirs = self.logic.get_res_dirs()
         self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
-        self.gui.ui.distributedResSize.setText(self.du(res_dirs['distributed']))
-        self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
 
     def __remove_from_computing(self):
         reply = QMessageBox.question(self.gui.window, 'Golem Message',
@@ -347,5 +358,9 @@ class ConfigurationDialogCustomizer(Customizer):
     def __show_advance_clicked(self):
         self.gui.ui.advanceSettingsWidget.setVisible(not self.gui.ui.advanceSettingsWidget.isVisible())
         self.gui.ui.showAdvanceButton.setText(
-            ConfigurationDialogCustomizer.SHOW_ADVANCE_BUTTON_MESSAGES[self.gui.ui.advanceSettingsWidget.isVisible()])
+            self.SHOW_ADVANCE_BUTTON_MESSAGES[self.gui.ui.advanceSettingsWidget.isVisible()])
 
+    def __show_disk_button_clicked(self):
+        self.gui.ui.diskWidget.setVisible(not self.gui.ui.diskWidget.isVisible())
+        self.gui.ui.showDiskButton.setText(
+            self.SHOW_ADVANCE_BUTTON_MESSAGES[self.gui.ui.diskWidget.isVisible()])
