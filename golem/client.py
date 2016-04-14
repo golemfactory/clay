@@ -1,11 +1,11 @@
 import time
-import os
-import appdirs
 import logging
+from os import path
 
 from twisted.internet import task
 from threading import Lock
 
+from golem.tools import filelock
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.node import Node
 from golem.task.taskbase import resource_types
@@ -17,12 +17,12 @@ from golem.core.keysauth import EllipticalKeysAuth
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 
 from golem.appconfig import AppConfig
+from golem.core.simpleenv import _get_local_datadir
 
 from golem.model import Database
 from golem.network.transport.message import init_messages
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.environments.environmentsmanager import EnvironmentsManager
-#from golem.resource.resourceserver import ResourceServer
 from golem.resource.ipfs.resourceserver import IPFSResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.ranking.ranking import Ranking, RankingStats
@@ -32,14 +32,14 @@ from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransa
 logger = logging.getLogger(__name__)
 
 
-def empty_add_nodes(*args):
-    pass
-
-
-def create_client(**config_overrides):
+def create_client(datadir=None, **config_overrides):
+    # TODO: All these feature should be move to Client()
     init_messages()
 
-    app_config = AppConfig.load_config()
+    if not datadir:
+        datadir = _get_local_datadir('default')
+
+    app_config = AppConfig.load_config(datadir)
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
 
@@ -52,11 +52,11 @@ def create_client(**config_overrides):
 
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
-    return Client(config_desc, config=app_config)
+    return Client(config_desc, datadir=datadir, config=app_config)
 
 
-def start_client():
-    c = create_client()
+def start_client(datadir):
+    c = create_client(datadir)
     logger.info("Starting all asynchronous services")
     c.start_network()
     return c
@@ -86,7 +86,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 
 
 class Client:
-    def __init__(self, config_desc, root_path="", config=""):
+    def __init__(self, config_desc, datadir, config=""):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
@@ -96,6 +96,9 @@ class Client:
                          key=self.keys_auth.get_key_id(),
                          prv_addr=self.config_desc.node_address)
         self.node.collect_network_info(self.config_desc.seed_host, use_ipv6=self.config_desc.use_ipv6)
+        self.datadir = datadir
+        self.__lock_datadir()
+        logger.info('Client "{}", datadir: {}'.format(self.config_desc.node_name, datadir))
         logger.debug("Is super node? {}".format(self.node.is_super_node()))
         self.p2pservice = None
 
@@ -112,12 +115,11 @@ class Client:
 
         self.listeners = []
 
-        self.root_path = root_path
         self.cfg = config
         self.send_snapshot = False
         self.snapshot_lock = Lock()
 
-        self.db = Database(self.get_database_name())
+        self.db = Database(datadir)
 
         self.ranking = Ranking(self)
 
@@ -137,8 +139,6 @@ class Client:
         logger.info("Starting p2p server ...")
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth)
         time.sleep(1.0)
-
-        #self.resource_server = ResourceServer(self.config_desc, self.keys_auth, self, use_ipv6=self.config_desc.use_ipv6)
 
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
                                       use_ipv6=self.config_desc.use_ipv6)
@@ -226,9 +226,6 @@ class Client:
     def get_node_name(self):
         return self.config_desc.node_name
 
-    def get_root_path(self):
-        return self.config_desc.root_path
-
     def increase_trust(self, node_id, stat, mod=1.0):
         self.ranking.increase_trust(node_id, stat, mod)
 
@@ -275,7 +272,6 @@ class Client:
     def change_config(self, new_config_desc):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
-        self.resource_server.change_resource_dir(self.config_desc)
         self.p2pservice.change_config(self.config_desc)
         self.task_server.change_config(self.config_desc)
 
@@ -320,15 +316,15 @@ class Client:
         return self.resource_server.get_distributed_resource_root()
 
     def remove_computed_files(self):
-        dir_manager = DirManager(self.config_desc.root_path, self.config_desc.node_name)
+        dir_manager = DirManager(self.datadir, self.config_desc.node_name)
         dir_manager.clear_dir(self.get_computed_files_dir())
 
     def remove_distributed_files(self):
-        dir_manager = DirManager(self.config_desc.root_path, self.config_desc.node_name)
+        dir_manager = DirManager(self.datadir, self.config_desc.node_name)
         dir_manager.clear_dir(self.get_distributed_files_dir())
 
     def remove_received_files(self):
-        dir_manager = DirManager(self.config_desc.root_path, self.config_desc.node_name)
+        dir_manager = DirManager(self.datadir, self.config_desc.node_name)
         dir_manager.clear_dir(self.get_received_files_dir())
 
     def get_environments(self):
@@ -367,12 +363,6 @@ class Client:
     def task_finished(self, task_id):
         # FIXME: Remove. Not needed.
         pass
-
-    def get_database_name(self):
-        """ Return the database file name that this golem instance should use to save and load data.
-        :return str: path to the database file
-        """
-        return os.path.join(appdirs.user_data_dir('golem'), self.keys_auth.get_key_id()[-10:] + ".db")
 
     def check_payments(self):
         after_deadline_nodes = self.transaction_system.check_payments()
@@ -421,16 +411,16 @@ class Client:
             remote_tasks_progresses = self.task_server.task_computer.get_progresses()
             local_tasks_progresses = self.task_server.task_manager.get_progresses()
             last_task_messages = self.task_server.get_last_messages()
-            self.last_node_state_snapshot = NodeStateSnapshot(is_running
-                                                           , self.config_desc.node_name
-                                                           , peers_num
-                                                           , tasks_num
-                                                           , self.p2pservice.node.pub_addr
-                                                           , self.p2pservice.node.pub_port
-                                                           , last_network_messages
-                                                           , last_task_messages
-                                                           , remote_tasks_progresses
-                                                           , local_tasks_progresses)
+            self.last_node_state_snapshot = NodeStateSnapshot(is_running,
+                                                              self.config_desc.node_name,
+                                                              peers_num,
+                                                              tasks_num,
+                                                              self.p2pservice.node.pub_addr,
+                                                              self.p2pservice.node.pub_port,
+                                                              last_network_messages,
+                                                              last_task_messages,
+                                                              remote_tasks_progresses,
+                                                              local_tasks_progresses)
         else:
             self.last_node_state_snapshot = NodeStateSnapshot(self.config_desc.node_name, peers_num)
 
@@ -454,3 +444,16 @@ class Client:
 
     def get_about_info(self):
         return self.config_desc.app_name, self.config_desc.app_version
+
+    def __lock_datadir(self):
+        self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
+        flags = filelock.LOCK_EX | filelock.LOCK_NB
+        try:
+            filelock.lock(self.__datadir_lock, flags)
+        except IOError:
+            raise IOError("Data dir {} used by other Golem instance"
+                          .format(self.datadir))
+
+    def _unlock_datadir(self):
+        # FIXME: Client should have close() method?
+        self.__datadir_lock.close()  # Closing file unlocks it.

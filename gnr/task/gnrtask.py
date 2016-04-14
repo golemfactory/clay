@@ -312,4 +312,3 @@ class GNRTask(Task):
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
         return tmp_dir
-

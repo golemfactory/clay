@@ -1,37 +1,30 @@
-import os
 from datetime import datetime
 
 from peewee import IntegrityError
 from golem.model import Payment, PaymentStatus, ReceivedPayment, LocalRank, GlobalRank, \
-    NeighbourLocRank, NEUTRAL_TRUST, Database, DATABASE_NAME
-from golem.tools.testwithdatabase import TestWithDatabase, TestDirFixture
+    NeighbourLocRank, NEUTRAL_TRUST, Database
+from golem.testutils import DatabaseFixture, TempDirFixture
 
 
-class TestDatabase(TestDirFixture):
+class TestDatabase(TempDirFixture):
     def test_init(self):
-        db = Database(os.path.join(self.path, "abcdef.db"))
-        self.assertEqual(db.name, os.path.join(self.path, "abcdef.db"))
-        self.assertFalse(db.db.is_closed())
-        db.db.close()
-
-        db = Database()
-        self.assertEqual(db.name, DATABASE_NAME)
+        db = Database(self.path)
         self.assertFalse(db.db.is_closed())
         db.db.close()
 
     def test_schema_version(self):
-        db = Database(os.path.join(self.path, "version0.db"))
+        db = Database(self.path)
         assert db._get_user_version() == db.SCHEMA_VERSION
         assert db.SCHEMA_VERSION != 0
 
         db._set_user_version(0)
         assert db._get_user_version() == 0
-        db = Database(os.path.join(self.path, "version0.db"))
+        db = Database(self.path)
         assert db._get_user_version() == db.SCHEMA_VERSION
         db.db.close()
 
 
-class TestPayment(TestWithDatabase):
+class TestPayment(DatabaseFixture):
 
     def test_default_fields(self):
         p = Payment()
@@ -54,7 +47,7 @@ class TestPayment(TestWithDatabase):
             Payment.create(payee="XX", subtask="zz", value=5, status=1)
 
 
-class TestReceivedPayment(TestWithDatabase):
+class TestReceivedPayment(DatabaseFixture):
 
     def test_default_fields(self):
         r = ReceivedPayment()
@@ -76,7 +69,7 @@ class TestReceivedPayment(TestWithDatabase):
         self.assertEqual(3, len([payment for payment in ReceivedPayment.select()]))
 
 
-class TestLocalRank(TestWithDatabase):
+class TestLocalRank(DatabaseFixture):
 
     def test_default_fields(self):
         r = LocalRank()
@@ -93,7 +86,7 @@ class TestLocalRank(TestWithDatabase):
         self.assertEqual(0, r.negative_resource)
 
 
-class TestGlobalRank(TestWithDatabase):
+class TestGlobalRank(DatabaseFixture):
 
     def test_default_fields(self):
         r = GlobalRank()
@@ -105,7 +98,7 @@ class TestGlobalRank(TestWithDatabase):
         self.assertEqual(0, r.gossip_weight_requesting)
 
 
-class TestNeighbourRank(TestWithDatabase):
+class TestNeighbourRank(DatabaseFixture):
 
     def test_default_fields(self):
         r = NeighbourLocRank()
