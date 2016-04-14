@@ -85,7 +85,7 @@ class TestBlenderTaskDivision(TempDirFixture):
             self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
 
     def test_put_img_together_not_exr(self):
-        for output_format in ["TGA", "PNG", "JPEG", "BMP"]:
+        for output_format in ["PNG", "JPEG", "BMP"]:
             self.bt.output_format = output_format.lower()
             for chunks in [1, 5, 7, 11, 13, 31, 57, 100]:
                 res_y = 0

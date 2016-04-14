@@ -4,6 +4,7 @@ from random import random
 from golem.core.keysauth import KeysAuth, EllipticalKeysAuth
 from golem.tools.testwithappconfig import TestWithKeysAuth
 
+
 class KeysAuthTest(TestWithKeysAuth):
 
     def test_keys_dir_default(self):
@@ -60,4 +61,3 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         self.assertEqual(ek2.decrypt(ek.encrypt(data, ek2.key_id)), data)
         data2 = "23103"
         self.assertEqual(ek.decrypt(ek2.encrypt(data2, ek.key_id)), data2)
-

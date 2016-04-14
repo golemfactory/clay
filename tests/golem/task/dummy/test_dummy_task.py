@@ -1,8 +1,8 @@
 import runner
-from golem.tools.testwithappconfig import TestWithAppConfig
+import unittest
 
 
-class TestDummyTask(TestWithAppConfig):
+class TestDummyTask(unittest.TestCase):
     """Tests for the dummy task computation using the runner script"""
 
     @classmethod
