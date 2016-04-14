@@ -109,7 +109,6 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
         if self.task_definition.docker_images is None:
             self.task_definition.docker_images = BlenderEnvironment().docker_images
-        print self.task_definition.docker_images
 
         blender_task = BlenderRenderTask(self.node_name,
                                          self.task_definition.task_id,
