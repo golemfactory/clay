@@ -85,12 +85,10 @@ def common_dir(arr, plus_sep=None, ign_case=None):
             return unicode.strip(x)
         return str.strip(x)
 
-    def _case(v):
-        if v and v[-1] in seps:
-            r = v[:-1]
-        else:
-            r = v
-        return r.lower() if ign_case else r
+    def _format(v):
+        while v and v[-1] in seps:
+            v = v[:-1]
+        return v
 
     m = filter(_strip, arr[:])
     s = min(arr, key=len)
@@ -112,9 +110,9 @@ def common_dir(arr, plus_sep=None, ign_case=None):
             if c != cx and not (cx_sep and c_sep):
                 if ign_case:
                     if c.lower() != cx.lower():
-                        return _case(s[:si])
+                        return _format(s[:si])
                 else:
-                    return _case(s[:si])
+                    return _format(s[:si])
         if a_sep:
             si = i + 1
 
@@ -124,9 +122,9 @@ def common_dir(arr, plus_sep=None, ign_case=None):
         if _s and len(_s) > n:
             for _s in m:
                 if _s[n] not in seps:
-                    return _case(s[:si])
+                    return _format(s[:si])
         m.remove(_s)
-    return _case(s)
+    return _format(s)
 
 
 def find_file_with_ext(directory, extensions):

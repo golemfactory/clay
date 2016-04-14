@@ -53,52 +53,52 @@ class TestDirSize(unittest.TestCase):
     def testCommonDir(self):
         paths = {
             'win': [
-                (['C:/dir', "C:/"],  'c:'),
-                (['C:/dir', "C:\\"], "c:"),
-                (['C:/dir', 'C:\\'], "c:"),
-                (['C:/',    "C:\\"], 'c:'),
+                (['C:/dir', "C:/"],  'C:'),
+                (['C:/dir', "C:\\"], "C:"),
+                (['C:/dir', 'C:\\'], "C:"),
+                (['C:/',    "C:\\"], 'C:'),
                 (['Ł:/dir', "Ł:\\"], "Ł:"),
-                (['C:\\dirę', 'C:\\dirą', ], "c:"),
+                (['C:\\dirę', 'C:\\dirą', ], "C:"),
                 ([
                     'C:/dir/file.txt',
                     "C:\\dir\\subdir\\file.txt",
                  ],
-                 'c:/dir'),
+                 'C:/dir'),
                 ([
                     'C:\\dir\\file.txt',
                     'C:\\dir/subdir/file.txt',
                  ],
-                 "c:\\dir"),
+                 "C:\\dir"),
                 ([
                      'C:\\dir\\file.txt',
                      'C:/dir/subdir\\file.txt',
                  ],
-                 "c:\\dir"),
+                 "C:\\dir"),
                 ([
                      'C:/dir\\file.txt',
                      'C:\\dir/subdir\file.txt',
                  ],
-                 "c:/dir"),
+                 "C:/dir"),
                 ([
                      'C:/dir/subdir/file.txt',
                      'C:\\dir/subdir-d\\subdir/file.txt',
                  ],
-                 'c:/dir'),
+                 'C:/dir'),
                 ([
                      'C:/dir/subdir-d/file.txt',
                      'C:\\dir/subdir\\subdir/file.txt',
                  ],
-                 'c:/dir'),
+                 'C:/dir'),
                 ([
                      'C:/dir/subdir',
                      'C:\\dir/subdir\\subdir/file.txt',
                  ],
-                 'c:/dir/subdir'),
+                 'C:/dir/subdir'),
                 ([
                      'C:/dir/Subdir',
                      'C:\\dir/subdir\\subdir/file.txt',
                  ],
-                 'c:/dir/subdir')
+                 'C:/dir/Subdir')
             ],
             'other': [
                 (['/var/log/daemon.log'], ''),
