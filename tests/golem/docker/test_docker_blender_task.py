@@ -15,6 +15,7 @@ from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.tools.testdirfixture import TestDirFixture
+from golem.model import db
 from test_docker_image import DockerTestCase
 
 # Make peewee logging less verbose
@@ -30,9 +31,14 @@ class TestDockerBlenderTask(TestDirFixture, DockerTestCase):
         super(TestDockerBlenderTask, self).setUp()
         self.error_msg = None
         self.dirs_to_remove = []
+        self.node = None
         self.task_computer_send_task_failed = TaskServer.send_task_failed
 
     def tearDown(self):
+        if self.node:
+            self.node.client._unlock_datadir()
+        if not db.is_closed():
+            db.close()
         for dir in self.dirs_to_remove:
             shutil.rmtree(dir)
         TaskServer.send_task_failed = self.task_computer_send_task_failed
@@ -67,10 +73,10 @@ class TestDockerBlenderTask(TestDirFixture, DockerTestCase):
         ctd = render_task.query_extra_data(1.0)
 
         # Create the computing node
-        node = gnr.node.GNRNode(datadir=self.path)
-        node.initialize()
+        self.node = gnr.node.GNRNode(datadir=self.path)
+        self.node.initialize()
 
-        task_computer = node.client.task_server.task_computer
+        task_computer = self.node.client.task_server.task_computer
         resource_dir = task_computer.resource_manager.get_resource_dir(task_id)
         temp_dir = task_computer.resource_manager.get_temporary_dir(task_id)
         self.dirs_to_remove.append(resource_dir)

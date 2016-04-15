@@ -41,7 +41,6 @@ class TestBlenderDockerJob(TestDockerJob):
             "start_task": 42,
             "end_task": 42,
             "output_format": "EXR",
-            "engine": "CYCLES",
             "frames": [1]
         }
 

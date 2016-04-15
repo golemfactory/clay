@@ -16,7 +16,7 @@ class IPFSTransferStatus(object):
     failed = 4
 
 
-class DummyContext(object):
+class dummy_context(object):
     def __enter__(self):
         return None
 
@@ -27,20 +27,30 @@ class DummyContext(object):
 class IPFSResourceServer:
 
     lock = Lock()
-    dummy_lock = DummyContext()
+    dummy_lock = dummy_context()
 
-    def __init__(self, dir_manager, config_desc, keys_auth, client):
+    def __init__(self, dir_manager, keys_auth, client):
         self.client = client
         self.keys_auth = keys_auth
         self.dir_manager = dir_manager
 
         self.resource_dir = self.dir_manager.res
-        self.resource_manager = IPFSResourceManager(self.dir_manager,
-                                                    config_desc.node_name)
+        self.resource_manager = IPFSResourceManager(self.dir_manager)
 
         self.resources_to_get = []
         self.waiting_resources = {}
         self.waiting_tasks_to_compute = {}
+
+    def change_resource_dir(self, config_desc):
+        if self.dir_manager.root_path == config_desc.root_path:
+            return
+
+        old_resource_dir = self.resource_manager.get_resource_root_dir()
+
+        self.dir_manager.root_path = config_desc.root_path
+        self.dir_manager.node_name = config_desc.node_name
+
+        self.resource_manager.copy_resources(old_resource_dir)
 
     def start_accepting(self):
         try:
@@ -64,6 +74,14 @@ class IPFSResourceServer:
 
     def sync_network(self):
         self.get_resources()
+
+    def add_task(self, files, task_id):
+        self.resource_manager.add_task(files, task_id)
+        res = self.resource_manager.list_split_resources(task_id)
+        logger.debug("IPFS: resource list: %r" % res)
+
+    def remove_task(self, task_id):
+        self.resource_manager.remove_task(task_id)
 
     def add_files_to_get(self, files, task_id):
         num = 0

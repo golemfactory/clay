@@ -132,7 +132,6 @@ class IncomesKeeper(object):
         database_incomes = [{"task": income.task, "node": income.from_node_id, "value": income.val,
                              "expected_value": income.expected_val, "state": income.state} for income in
                             self.db.get_newest_incomes()]
-        print database_incomes
         return database_incomes
 
     def get_income(self, addr_info, value):

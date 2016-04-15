@@ -29,20 +29,28 @@ class TestDockerJob(DockerTestCase):
 
     def setUp(self):
         tmpdir = path.expandvars("$TMP")
-        if tmpdir != "$TMP":
+        self.cleanup_dir = None
+        if tmpdir == "$TMP":
             # $TMP should be set on Windows, e.g. to
             # "C:\Users\<user>\AppData\Local\Temp".
             # Without 'dir = tmpdir' we would get a dir inside $TMP,
             # but with a path converted to lowercase, e.g.
             # "c:\users\<user>\appdata\local\temp\golem-<random-string>".
             # This wouldn't work with Docker.
-            self.work_dir = tempfile.mkdtemp(prefix="golem-", dir=tmpdir)
-            self.resources_dir = tempfile.mkdtemp(prefix="golem-", dir=tmpdir)
-            self.output_dir = tempfile.mkdtemp(prefix="golem-", dir=tmpdir)
-        else:
-            self.work_dir = tempfile.mkdtemp(prefix="golem-")
-            self.resources_dir = tempfile.mkdtemp(prefix="golem-")
-            self.output_dir = tempfile.mkdtemp(prefix="golem-")
+
+            # In OS X only dirs under /Users are mounted automatically
+            user_dir = os.path.expanduser('~')
+            if user_dir:
+                tmpdir = os.path.join(user_dir, '.temp')
+                if not os.path.exists(tmpdir):
+                    os.makedirs(tmpdir)
+                    self.cleanup_dir = tmpdir
+            else:
+                tmpdir = None
+
+        self.work_dir = tempfile.mkdtemp(prefix="golem-", dir=tmpdir)
+        self.resources_dir = tempfile.mkdtemp(prefix="golem-", dir=tmpdir)
+        self.output_dir = tempfile.mkdtemp(prefix="golem-", dir=tmpdir)
 
         self.image = DockerImage(self._get_test_repository())
         self.test_job = None
@@ -58,6 +66,8 @@ class TestDockerJob(DockerTestCase):
         for d in [self.work_dir, self.resources_dir, self.output_dir]:
             if d:
                 shutil.rmtree(d)
+        if self.cleanup_dir:
+            shutil.rmtree(self.cleanup_dir)
 
     def _create_test_job(self, script=TEST_SCRIPT, params=None):
         self.test_job = DockerJob(

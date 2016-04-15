@@ -8,6 +8,7 @@ from threading import Lock
 from golem.tools import filelock
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.node import Node
+from golem.task.taskbase import resource_types
 from golem.task.taskserver import TaskServer
 from golem.task.taskmanager import TaskManagerEventListener
 
@@ -143,7 +144,7 @@ class Client:
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
                                       use_ipv6=self.config_desc.use_ipv6)
         self.resource_server = IPFSResourceServer(self.task_server.task_computer.dir_manager,
-                                                  self.config_desc, self.keys_auth, self)
+                                                  self.keys_auth, self)
 
         logger.info("Starting resource server...")
         self.resource_server.start_accepting()
@@ -186,12 +187,10 @@ class Client:
         self.nodes_manager_client = None
 
     def enqueue_new_task(self, task):
+        task_id = task.header.task_id
         self.task_server.task_manager.add_new_task(task)
-        if self.config_desc.use_distributed_resource_management:
-            self.get_resource_peers()
-            res_files = self.resource_server.add_files_to_send(task.task_resources, task.header.task_id,
-                                                               self.config_desc.dist_res_num)
-            task.add_resources(res_files)
+        files = self.task_server.task_manager.get_resources(task_id, None, resource_types["hashes"])
+        self.resource_server.add_task(files, task_id)
 
     def get_resource_peers(self):
         self.p2pservice.send_get_resource_peers()
@@ -280,8 +279,8 @@ class Client:
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
 
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
-        self.task_server.change_timeouts(task_id, full_task_timeout, subtask_timeout, min_subtask_time)
+    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
+        self.task_server.change_timeouts(task_id, full_task_timeout, subtask_timeout)
 
     def unregister_listener(self, listener):
         assert isinstance(listener, GolemClientEventListener)

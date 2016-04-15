@@ -1,10 +1,12 @@
-import unittest
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import os
 import shutil
+import unittest
 
-from golem.core.fileshelper import get_dir_size, find_file_with_ext
 from golem.core.common import get_golem_path, is_windows
-from golem.tools.testdirfixture import TestDirFixture
+from golem.core.fileshelper import get_dir_size, common_dir
 
 
 class TestDirSize(unittest.TestCase):
@@ -48,6 +50,144 @@ class TestDirSize(unittest.TestCase):
             self.assertEqual(len(errors), 1)
             self.assertIs(type(errors[0]), OSError)
 
+    def testCommonDir(self):
+        paths = {
+            'win': [
+                (['C:/dir', "C:/"],  'C:'),
+                (['C:/dir', "C:\\"], "C:"),
+                (['C:/dir', 'C:\\'], "C:"),
+                (['C:/',    "C:\\"], 'C:'),
+                (['Ł:/dir', "Ł:\\"], "Ł:"),
+                (['C:\\dirę', 'C:\\dirą', ], "C:"),
+                ([
+                    'C:/dir/file.txt',
+                    "C:\\dir\\subdir\\file.txt",
+                 ],
+                 'C:/dir'),
+                ([
+                    'C:\\dir\\file.txt',
+                    'C:\\dir/subdir/file.txt',
+                 ],
+                 "C:\\dir"),
+                ([
+                     'C:\\dir\\file.txt',
+                     'C:/dir/subdir\\file.txt',
+                 ],
+                 "C:\\dir"),
+                ([
+                     'C:/dir\\file.txt',
+                     'C:\\dir/subdir\file.txt',
+                 ],
+                 "C:/dir"),
+                ([
+                     'C:/dir/subdir/file.txt',
+                     'C:\\dir/subdir-d\\subdir/file.txt',
+                 ],
+                 'C:/dir'),
+                ([
+                     'C:/dir/subdir-d/file.txt',
+                     'C:\\dir/subdir\\subdir/file.txt',
+                 ],
+                 'C:/dir'),
+                ([
+                     'C:/dir/subdir',
+                     'C:\\dir/subdir\\subdir/file.txt',
+                 ],
+                 'C:/dir/subdir'),
+                ([
+                     'C:/dir/Subdir',
+                     'C:\\dir/subdir\\subdir/file.txt',
+                 ],
+                 'C:/dir/Subdir')
+            ],
+            'other': [
+                (['/var/log/daemon.log'], ''),
+                (['/', '/var'], ''),
+                ([], ''),
+                ([
+                    '/var/log/daemon/daemon.log',
+                    '/var/log/daemon.log',
+                 ],
+                 '/var/log'),
+                ([
+                    '/var/log-other/daemon/daemon.log',
+                    '/var/log/daemon.log',
+                 ],
+                 '/var'),
+                ([
+                    u'/var/log-other/daemon/daemon.log',
+                    '/var/log/daemon.log',
+                 ],
+                 '/var'),
+                ([
+                    u'/var/log-other/daemon/daemon.log',
+                    u'/var/log/daemon.log',
+                 ],
+                 '/var'),
+                ([
+                    '/var/log-other/daemon/daemon.log',
+                    '/var/log/daemon.log',
+                    '/var/run/daemon.sock'
+                 ],
+                 '/var'),
+                ([
+                    '/vąr/log/daęmon/daemon.log',
+                    '/vąr/log/daęmon/daęmon.log',
+                    '/vąr/lóg/daęmon/daęmon.log'
+                 ],
+                 '/vąr'),
+                ([
+                    '/vąr/log/daęmon/daemon.log',
+                    '/vąr/log/daęmon/daęmon.log'
+                 ],
+                 '/vąr/log/daęmon'),
+                ([
+                    '/vąr/log/daęmon',
+                    '/vąr/log/daęmon/subdir/daęmon.log'
+                 ],
+                 '/vąr/log/daęmon'),
+                ([
+                    '/vąr/log/daęmon',
+                    '/vąr/log/daęmon-d/subdir/daęmon.log'
+                 ],
+                 '/vąr/log'),
+                ([
+                    '/var/log/daemon/daemon.log',
+                    '/var/log/daemon/file.log',
+                    '/var/log/daemon/file3.log',
+                    '/var/log/daemon/other/file.log',
+                 ],
+                 '/var/log/daemon'),
+                ([
+                    '/var/log/daemon',
+                    '/var/log/daemon',
+                    '/var/log/daemon',
+                    '/var/log/daemon/other',
+                 ],
+                 '/var/log/daemon'),
+                ([
+                    '/var/log/daemon',
+                    '/var/log/Daemon',
+                    '/var/log/daemon'
+                 ],
+                 '/var/log'),
+                ([
+                     '/var/log/',
+                     '/var/log/'
+                 ],
+                 '/var/log')
+            ]
+        }
+
+        def check(key, ign_case, plus_sep=None):
+            for t in paths[key]:
+                r = common_dir(t[0], ign_case=ign_case, plus_sep=plus_sep)
+                if r != t[1]:
+                    self.fail("{} -> {} != {}".format(t[0], r, t[1]))
+
+        check('win', ign_case=True, plus_sep="\\")
+        check('other', ign_case=False)
+
     def tearDown(self):
         if not is_windows():
             if os.path.isdir(self.testdir3):
@@ -57,18 +197,3 @@ class TestDirSize(unittest.TestCase):
 
         if os.path.isdir(self.testdir):
             shutil.rmtree(self.testdir)
-
-
-class TestFindFileWithExt(TestDirFixture):
-    def test_ext(self):
-        files = self.additional_dir_content([3, [2], [0, [1]]])
-        print files
-        os.rename(files[0], files[0] + ".abc.def")
-        os.rename(files[4], files[4] + ".abc")
-        os.rename(files[5], files[5] + ".xyz")
-        dir_name = os.path.dirname(files[0])
-        assert find_file_with_ext(dir_name, [".abc"]) == files[4] + ".abc"
-        assert find_file_with_ext(dir_name, [".xyz"]) == files[5] + ".xyz"
-        assert find_file_with_ext(dir_name, [".def"]) == files[0] + ".abc.def"
-
-
