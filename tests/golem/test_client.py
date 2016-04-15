@@ -52,7 +52,7 @@ class TestClient(TestWithDatabase):
         self.assertEqual(incomes[0]["task"], "xyz")
         self.assertEqual(incomes[0]["value"], 0.0)
 
-        c.pay_for_task("xyz", [])
+        c.transaction_system.pay_for_task("xyz", [])
         c.check_payments()
         c.transaction_system.check_payments = Mock()
         c.transaction_system.check_payments.return_value = ["ABC", "DEF"]

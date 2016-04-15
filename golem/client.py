@@ -249,9 +249,6 @@ class Client:
 
     # TRANSACTION SYSTEM OPERATIONS
 
-    def pay_for_task(self, task_id, payments):
-        self.transaction_system.pay_for_task(task_id, payments)
-
     def get_payments(self):
         return self.transaction_system.get_payments_list()
 

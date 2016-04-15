@@ -9,7 +9,7 @@ from taskkeeper import TaskHeaderKeeper
 from golem.ranking.ranking import RankingStats
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcpserver import PendingConnectionsServer, PendingConnection, PenConnStatus
+from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
 
 logger = logging.getLogger(__name__)
 
@@ -287,12 +287,12 @@ class TaskServer(PendingConnectionsServer):
     def pay_for_task(self, task_id, payments):
         all_payments = {eth_account: desc.value for eth_account, desc in payments.items()}
         try:
-            self.client.pay_for_task(task_id, all_payments)
-            # TODO Maybe remove this print?
+            self.client.transaction_system.pay_for_task(task_id, all_payments)
+            # TODO: Maybe remove this print?
             for eth_account, v in all_payments.iteritems():
                 print "Paying {} to {}".format(v, eth_account)
         except Exception as err:
-            #FIXME Dealing with payments errors should be much more advance
+            # FIXME: Dealing with payments errors should be much more advance
             logger.error("Can't pay for task: {}".format(err))
 
     def reject_result(self, subtask_id, account_info):
