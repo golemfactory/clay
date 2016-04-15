@@ -48,9 +48,6 @@ def register_gui(logic, app, gui):
 
 
 def register_rendering_task_types(logic):
-    logic.register_new_renderer_type(build_pbrt_renderer_info(PbrtDialog, PbrtDialogCustomizer))
-    logic.register_new_renderer_type(build_3ds_max_renderer_info(ThreeDSMaxDialog, ThreeDSMaxDialogCustomizer))
-    logic.register_new_renderer_type(build_vray_renderer_info(VRayDialog, VRayDialogCustomizer))
     logic.register_new_renderer_type(build_lux_render_info(LuxRenderDialog, LuxRenderDialogCustomizer))
     logic.register_new_renderer_type(build_blender_renderer_info(BlenderRenderDialog, BlenderRenderDialogCustomizer))
 
@@ -65,10 +62,7 @@ def register_task_types(logic):
 
 
 def load_environments():
-    return [PBRTEnvironment(),
-            ThreeDSMaxEnvironment(),
-            VRayEnvironment(),
-            LuxRenderEnvironment(),
+    return [LuxRenderEnvironment(),
             BlenderEnvironment(),
             Environment()]
 

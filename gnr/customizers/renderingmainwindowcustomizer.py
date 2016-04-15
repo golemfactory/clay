@@ -57,6 +57,7 @@ class AbsRenderingMainWindowCustomizer(object):
         self.slider_previews = {}
         self.gui.ui.frameSlider.setVisible(False)
         self._set_icons()
+
       #   blender_widget = QWidget()
       #   blender_widget.ui = Ui_BlenderWidget()
       #   blender_widget.ui.setupUi(blender_widget)
@@ -323,3 +324,7 @@ class RenderingMainWindowCustomizer(AbsRenderingMainWindowCustomizer, GNRMainWin
         self._set_rendering_variables()
         self._setup_rendering_connections()
         self._setup_advance_task_connections()
+
+    def init_config(self):
+        GNRMainWindowCustomizer.init_config(self)
+        RenderingNewTaskDialogCustomizer(self.gui, self.logic)

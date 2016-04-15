@@ -34,13 +34,14 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         pass
 
     def _setup_renderers_connections(self):
-        self.gui.ui.rendererComboBox.currentIndexChanged[QString].connect(self.__renderer_combo_box_value_changed)
-        self.gui.ui.chooseMainSceneFileButton.clicked.connect(self._choose_main_scene_file_button_clicked)
+        self.gui.ui.rendererComboBox.currentIndexChanged[QString].connect(lambda x: self.__renderer_combo_box_value_changed(x))
+        # self.gui.ui.chooseMainSceneFileButton.clicked.connect(self._choose_main_scene_file_button_clicked)
 
     def _setup_output_connections(self):
-        self.gui.ui.chooseOutputFileButton.clicked.connect(self.__choose_output_file_button_clicked)
-        self.gui.ui.outputResXSpinBox.valueChanged.connect(self.__res_x_changed)
-        self.gui.ui.outputResYSpinBox.valueChanged.connect(self.__res_y_changed)
+        pass
+        # self.gui.ui.chooseOutputFileButton.clicked.connect(self.__choose_output_file_button_clicked)
+        # self.gui.ui.outputResXSpinBox.valueChanged.connect(self.__res_x_changed)
+        # self.gui.ui.outputResYSpinBox.valueChanged.connect(self.__res_y_changed)
 
     def _setup_advance_new_task_connections(self):
         NewTaskDialogCustomizer._setup_advance_new_task_connections(self)
@@ -49,21 +50,21 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.__connect_with_task_settings_changed([self.gui.ui.fullTaskTimeoutSecSpinBox.valueChanged,
                                                    self.gui.ui.fullTaskTimeoutMinSpinBox.valueChanged,
                                                    self.gui.ui.fullTaskTimeoutHourSpinBox.valueChanged,
-                                                   self.gui.ui.mainProgramFileLineEdit.textChanged,
-                                                   self.gui.ui.mainSceneFileLineEdit.textChanged,
-                                                   self.gui.ui.outputFormatsComboBox.currentIndexChanged,
-                                                   self.gui.ui.outputFileLineEdit.textChanged,
-                                                   self.gui.ui.outputFormatsComboBox.currentIndexChanged,
-                                                   self.gui.ui.outputFileLineEdit.textChanged,
-                                                   self.gui.ui.verificationSizeXSpinBox.valueChanged,
-                                                   self.gui.ui.verificationSizeYSpinBox.valueChanged,
-                                                   self.gui.ui.verificationForAllRadioButton.toggled,
-                                                   self.gui.ui.verificationForFirstRadioButton.toggled,
-                                                   self.gui.ui.probabilityLineEdit.textChanged
+                                                   # self.gui.ui.mainProgramFileLineEdit.textChanged,
+                                                   # self.gui.ui.mainSceneFileLineEdit.textChanged,
+                                                   # self.gui.ui.outputFormatsComboBox.currentIndexChanged,
+                                                   # self.gui.ui.outputFileLineEdit.textChanged,
+                                                   # self.gui.ui.outputFormatsComboBox.currentIndexChanged,
+                                                   # self.gui.ui.outputFileLineEdit.textChanged,
+                                                   # self.gui.ui.verificationSizeXSpinBox.valueChanged,
+                                                   # self.gui.ui.verificationSizeYSpinBox.valueChanged,
+                                                   # self.gui.ui.verificationForAllRadioButton.toggled,
+                                                   # self.gui.ui.verificationForFirstRadioButton.toggled,
+                                                   # self.gui.ui.probabilityLineEdit.textChanged
                                                    ])
 
     def _setup_verification_connections(self):
-        self.gui.ui.verificationRandomRadioButton.toggled.connect(self.__verification_random_changed)
+        # self.gui.ui.verificationRandomRadioButton.toggled.connect(self.__verification_random_changed)
         self.gui.ui.advanceVerificationCheckBox.stateChanged.connect(self.__advance_verification_changed)
 
     def _init(self):
@@ -87,10 +88,10 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.totalSpinBox.setRange(dr.defaults.min_subtasks, dr.defaults.max_subtasks)
         self.gui.ui.totalSpinBox.setValue(dr.defaults.default_subtasks)
 
-        self.gui.ui.outputResXSpinBox.setValue(dr.defaults.resolution[0])
-        self.gui.ui.outputResYSpinBox.setValue(dr.defaults.resolution[1])
-        self.gui.ui.verificationSizeXSpinBox.setMaximum(dr.defaults.resolution[0])
-        self.gui.ui.verificationSizeYSpinBox.setMaximum(dr.defaults.resolution[1])
+        # self.gui.ui.outputResXSpinBox.setValue(dr.defaults.resolution[0])
+        # self.gui.ui.outputResYSpinBox.setValue(dr.defaults.resolution[1])
+        # self.gui.ui.verificationSizeXSpinBox.setMaximum(dr.defaults.resolution[0])
+        # self.gui.ui.verificationSizeYSpinBox.setMaximum(dr.defaults.resolution[1])
 
     def _choose_main_scene_file_button_clicked(self):
         scene_file_ext = self.logic.get_current_renderer().scene_file_ext
@@ -117,14 +118,14 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             self.logic.set_current_renderer(name)
             self.renderer_options = r.renderer_options()
 
-            self.gui.ui.outputFormatsComboBox.clear()
-            self.gui.ui.outputFormatsComboBox.addItems(r.output_formats)
-
-            for i, output_format in enumerate(r.output_formats):
-                if output_format == r.defaults.output_format:
-                    self.gui.ui.outputFormatsComboBox.setCurrentIndex(i)
-
-            self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
+            # self.gui.ui.outputFormatsComboBox.clear()
+            # self.gui.ui.outputFormatsComboBox.addItems(r.output_formats)
+            #
+            # for i, output_format in enumerate(r.output_formats):
+            #     if output_format == r.defaults.output_format:
+            #         self.gui.ui.outputFormatsComboBox.setCurrentIndex(i)
+            #
+            # self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
 
             set_time_spin_boxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout)
 
@@ -173,6 +174,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     # SLOTS
 
     def __renderer_combo_box_value_changed(self, name):
+        print "RENDERER CHANGED"
         self.__update_renderer_options("{}".format(name))
 
     def __task_settings_changed(self, name=None):

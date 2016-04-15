@@ -46,10 +46,10 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _setup_basic_new_task_connections(self):
         self.gui.ui.saveButton.clicked.connect(self._save_task_button_clicked)
-        self.gui.ui.chooseMainProgramFileButton.clicked.connect(self._choose_main_program_file_button_clicked)
+        # self.gui.ui.chooseMainProgramFileButton.clicked.connect(self._choose_main_program_file_button_clicked)
         self.gui.ui.addResourceButton.clicked.connect(self._show_add_resource_dialog)
         self.gui.ui.finishButton.clicked.connect(self._finish_button_clicked)
-        self.gui.ui.cancelButton.clicked.connect(self._cancel_button_clicked)
+        # self.gui.ui.cancelButton.clicked.connect(self._cancel_button_clicked)
 
     def _setup_advance_new_task_connections(self):
         self.gui.ui.optimizeTotalCheckBox.stateChanged.connect(self._optimize_total_check_box_changed)
@@ -59,7 +59,8 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.totalSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
 
     def _setup_options_connections(self):
-        self.gui.ui.optionsButton.clicked.connect(self._open_options)
+        pass
+        # self.gui.ui.optionsButton.clicked.connect(self._open_options)
 
     def _setup_payment_connections(self):
         self.gui.ui.maxPriceLineEdit.textChanged.connect(self._set_new_pessimistic_cost)

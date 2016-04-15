@@ -161,7 +161,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>4</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -316,7 +316,7 @@
                    </widget>
                   </item>
                   <item row="5" column="1">
-                   <widget class="QLabel" name="label_58">
+                   <widget class="QLabel" name="pessimisticCostLabel">
                     <property name="text">
                      <string/>
                     </property>
@@ -364,14 +364,14 @@
                  <property name="fieldGrowthPolicy">
                   <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
                  </property>
-                 <item row="0" column="0">
+                 <item row="1" column="0">
                   <widget class="QLabel" name="label_51">
                    <property name="text">
                     <string>Subtask timeout</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="1">
+                 <item row="1" column="1">
                   <layout class="QHBoxLayout" name="horizontalLayout_19">
                    <item>
                     <widget class="QSpinBox" name="subtaskTimeoutHourSpinBox"/>
@@ -423,27 +423,41 @@
                    </item>
                   </layout>
                  </item>
-                 <item row="1" column="1">
+                 <item row="2" column="1">
                   <widget class="QCheckBox" name="advanceVerificationCheckBox">
                    <property name="text">
                     <string/>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="0">
+                 <item row="2" column="0">
                   <widget class="QLabel" name="label_59">
                    <property name="text">
                     <string>Advance verification</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="1">
+                 <item row="3" column="1">
                   <widget class="QWidget" name="advancVerificationWidget" native="true"/>
                  </item>
-                 <item row="3" column="1">
+                 <item row="4" column="1">
                   <widget class="QPushButton" name="resetToDefaultButton">
                    <property name="text">
                     <string>Reset to defaults</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_60">
+                   <property name="text">
+                    <string>Task Id</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLabel" name="taskIdLabel">
+                   <property name="text">
+                    <string>TextLabel</string>
                    </property>
                   </widget>
                  </item>
@@ -1849,6 +1863,15 @@
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
+                </property>
+                <property name="contextMenuPolicy">
+                 <enum>Qt::NoContextMenu</enum>
+                </property>
+                <property name="frame">
+                 <bool>false</bool>
+                </property>
+                <property name="cursorPosition">
+                 <number>0</number>
                 </property>
                 <property name="readOnly">
                  <bool>true</bool>
