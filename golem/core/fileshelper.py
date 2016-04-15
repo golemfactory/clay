@@ -89,10 +89,7 @@ def common_dir(arr, plus_sep=None, ign_case=None):
         while v and v[-1] in seps:
             v = v[:-1]
         return v
-    print "I'M AOBUT TO PRINT ARRAYS"
-    print arr
     m = filter(_strip, arr)
-    print m
     s = min(arr, key=len)
     n = len(s)
     si = 0
