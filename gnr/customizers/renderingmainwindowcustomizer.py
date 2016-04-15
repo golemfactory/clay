@@ -3,12 +3,13 @@ import datetime
 import time
 import logging
 from PyQt4 import QtCore
-from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox, QIcon
+from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox, QIcon, QWidget
 
 from golem.task.taskstate import SubtaskStatus
 from golem.core.common import get_golem_path
 
 from gnr.ui.dialog import RenderingNewTaskDialog, ShowTaskResourcesDialog
+from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
 
 from gnr.renderingdirmanager import get_preview_file
 from gnr.renderingtaskstate import RenderingTaskDefinition
@@ -56,9 +57,15 @@ class AbsRenderingMainWindowCustomizer(object):
         self.slider_previews = {}
         self.gui.ui.frameSlider.setVisible(False)
         self._set_icons()
+      #   blender_widget = QWidget()
+      #   blender_widget.ui = Ui_BlenderWidget()
+      #   blender_widget.ui.setupUi(blender_widget)
+      #
+      # #  blender_widget.ui.setupUi(self.gui.window)
+      #   self.gui.ui.taskSpecificLayout.addWidget(blender_widget, 0, 0, 1, 1)
 
     def _set_icons(self):
-        icons = ["task.png", "eye.png", "settings.png", "user.png"]
+        icons = ["new.png", "task.png", "eye.png", "settings.png", "user.png"]
         for i in range(len(icons)):
             item = self.gui.ui.listWidget.item(i)
             icon_path = os.path.join(get_golem_path(), "gnr", "ui", "img", icons[i])

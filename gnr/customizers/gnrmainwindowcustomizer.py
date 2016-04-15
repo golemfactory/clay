@@ -44,6 +44,7 @@ class GNRMainWindowCustomizer(Customizer):
 
         # Account options
         self.gui.ui.golemIdLabel.setText(u"{}".format(id_))
+        self.gui.ui.golemIdLabel.setCursorPosition(0)
         self.gui.ui.nameLabel.setText(u"{}".format(cfg_desc.node_name))
         self.gui.ui.ethAddressLabel.setText(u"{}".format(eth_address))
 

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>669</width>
+    <width>662</width>
     <height>611</height>
    </rect>
   </property>
@@ -43,7 +43,7 @@
         <attribute name="title">
          <string>payments</string>
         </attribute>
-        <layout class="QGridLayout" name="gridLayout_3">
+        <layout class="QGridLayout" name="gridLayout_3" columnstretch="0">
          <item row="0" column="0">
           <widget class="QTableWidget" name="paymentsTable">
            <property name="minimumSize">
@@ -61,6 +61,12 @@
            <property name="sortingEnabled">
             <bool>true</bool>
            </property>
+           <attribute name="horizontalHeaderCascadingSectionResizes">
+            <bool>true</bool>
+           </attribute>
+           <attribute name="horizontalHeaderStretchLastSection">
+            <bool>true</bool>
+           </attribute>
            <column>
             <property name="text">
              <string>Task</string>
@@ -94,7 +100,7 @@
         <attribute name="title">
          <string>incomes</string>
         </attribute>
-        <layout class="QGridLayout" name="gridLayout_2">
+        <layout class="QGridLayout" name="gridLayout_2" columnstretch="0">
          <item row="0" column="0">
           <widget class="QTableWidget" name="incomesTable">
            <property name="sizePolicy">
@@ -118,6 +124,12 @@
            <property name="sortingEnabled">
             <bool>true</bool>
            </property>
+           <attribute name="horizontalHeaderCascadingSectionResizes">
+            <bool>true</bool>
+           </attribute>
+           <attribute name="horizontalHeaderStretchLastSection">
+            <bool>true</bool>
+           </attribute>
            <column>
             <property name="text">
              <string>Task</string>
