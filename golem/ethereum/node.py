@@ -55,8 +55,7 @@ class NodeProcess(object):
         assert path.isdir(datadir)
         if nodes:
             nodes_file = path.join(datadir, 'static-nodes.json')
-            if not path.exists(nodes_file):
-                json.dump(nodes, open(nodes_file, 'w'))
+            json.dump(nodes, open(nodes_file, 'w'))
         self.datadir = datadir
         self.__ps = None
         self.rpcport = None
