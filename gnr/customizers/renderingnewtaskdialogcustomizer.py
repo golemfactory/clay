@@ -1,6 +1,6 @@
 import os
 from PyQt4.QtCore import QString
-from PyQt4.QtGui import QFileDialog
+from PyQt4.QtGui import QFileDialog, QWidget
 from copy import deepcopy
 
 
@@ -8,6 +8,8 @@ from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
 
 from gnr.renderingtaskstate import RenderingTaskState, RenderingTaskDefinition, \
     AdvanceRenderingVerificationOptions
+from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
+from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from golem.task.taskstate import TaskStatus
 from timehelper import set_time_spin_boxes
 from verificationparamshelper import read_advance_verification_params, set_verification_widgets_state, \
@@ -34,7 +36,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         pass
 
     def _setup_renderers_connections(self):
-        self.gui.ui.rendererComboBox.currentIndexChanged[QString].connect(lambda x: self.__renderer_combo_box_value_changed(x))
+        self.gui.ui.rendererComboBox.currentIndexChanged[QString].connect(
+            lambda x: self.__renderer_combo_box_value_changed(x))
         # self.gui.ui.chooseMainSceneFileButton.clicked.connect(self._choose_main_scene_file_button_clicked)
 
     def _setup_output_connections(self):
@@ -50,7 +53,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.__connect_with_task_settings_changed([self.gui.ui.fullTaskTimeoutSecSpinBox.valueChanged,
                                                    self.gui.ui.fullTaskTimeoutMinSpinBox.valueChanged,
                                                    self.gui.ui.fullTaskTimeoutHourSpinBox.valueChanged,
-                                                   # self.gui.ui.mainProgramFileLineEdit.textChanged,
+                                                   self.gui.ui.mainProgramFileLineEdit.textChanged,
                                                    # self.gui.ui.mainSceneFileLineEdit.textChanged,
                                                    # self.gui.ui.outputFormatsComboBox.currentIndexChanged,
                                                    # self.gui.ui.outputFileLineEdit.textChanged,
@@ -82,8 +85,10 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         renderer_item = self.gui.ui.rendererComboBox.findText(dr.name)
         if renderer_item >= 0:
             self.gui.ui.rendererComboBox.setCurrentIndex(renderer_item)
+            #self.__renderer_combo_box_value_changed(dr.name)
         else:
             logger.error("Cannot load task, wrong default renderer")
+        self.__renderer_combo_box_value_changed(dr.name)
 
         self.gui.ui.totalSpinBox.setRange(dr.defaults.min_subtasks, dr.defaults.max_subtasks)
         self.gui.ui.totalSpinBox.setValue(dr.defaults.default_subtasks)
@@ -111,9 +116,21 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         NewTaskDialogCustomizer._set_new_pessimistic_cost(self)
         self.__task_settings_changed()
 
+    def _change_task_widget(self, name):
+        for i in reversed(range(self.gui.ui.taskSpecificLayout.count())):
+            self.gui.ui.taskSpecificLayout.itemAt(i).widget().setParent(None)
+
+        widget = QWidget()
+        if name == "Blender":
+            widget.ui = Ui_BlenderWidget()
+        else:
+            widget.ui = Ui_LuxWidget()
+        widget.ui.setupUi(widget)
+        self.gui.ui.taskSpecificLayout.addWidget(widget, 0, 0, 1, 1)
+
     def __update_renderer_options(self, name):
         r = self.logic.get_renderer(name)
-
+        self._change_task_widget(name)
         if r:
             self.logic.set_current_renderer(name)
             self.renderer_options = r.renderer_options()
@@ -125,7 +142,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             #     if output_format == r.defaults.output_format:
             #         self.gui.ui.outputFormatsComboBox.setCurrentIndex(i)
             #
-            # self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
+            self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
 
             set_time_spin_boxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout)
 
@@ -174,7 +191,6 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     # SLOTS
 
     def __renderer_combo_box_value_changed(self, name):
-        print "RENDERER CHANGED"
         self.__update_renderer_options("{}".format(name))
 
     def __task_settings_changed(self, name=None):
@@ -240,20 +256,21 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def _load_renderer_params(self, definition):
         self.renderer_options = deepcopy(definition.renderer_options)
 
-        self.gui.ui.outputResXSpinBox.setValue(definition.resolution[0])
-        self.gui.ui.outputResYSpinBox.setValue(definition.resolution[1])
-        self.gui.ui.outputFileLineEdit.setText(definition.output_file)
 
-        output_format_item = self.gui.ui.outputFormatsComboBox.findText(definition.output_format)
+        # self.gui.ui.outputResXSpinBox.setValue(definition.resolution[0])
+        # self.gui.ui.outputResYSpinBox.setValue(definition.resolution[1])
+        # self.gui.ui.outputFileLineEdit.setText(definition.output_file)
 
-        if output_format_item >= 0:
-            self.gui.ui.outputFormatsComboBox.setCurrentIndex(output_format_item)
-        else:
-            logger.error("Cannot load task, wrong output format")
-            return
+        # output_format_item = self.gui.ui.outputFormatsComboBox.findText(definition.output_format)
 
-        if os.path.normpath(definition.main_scene_file) in definition.resources:
-            definition.resources.remove(os.path.normpath(definition.main_scene_file))
+        # if output_format_item >= 0:
+        #     self.gui.ui.outputFormatsComboBox.setCurrentIndex(output_format_item)
+        # else:
+        #     logger.error("Cannot load task, wrong output format")
+        #     return
+
+        # if os.path.normpath(definition.main_scene_file) in definition.resources:
+        #     definition.resources.remove(os.path.normpath(definition.main_scene_file))
         definition.resources = definition.renderer_options.remove_from_resources(definition.resources)
 
     def _load_basic_task_params(self, definition):
@@ -268,7 +285,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
         NewTaskDialogCustomizer._load_resources(self, definition)
 
-        self.gui.ui.mainSceneFileLineEdit.setText(definition.main_scene_file)
+        # self.gui.ui.mainSceneFileLineEdit.setText(definition.main_scene_file)
 
     def _load_verification_params(self, definition):
         load_verification_params(self.gui, definition)

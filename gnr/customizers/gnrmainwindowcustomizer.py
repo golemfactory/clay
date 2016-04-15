@@ -34,6 +34,7 @@ class GNRMainWindowCustomizer(Customizer):
 
     def init_config(self):
         ConfigurationDialogCustomizer(self.gui, self.logic)
+        self._set_new_task_dialog_customizer()
 
     def set_options(self, cfg_desc, id_, eth_address):
         # Footer options
@@ -130,7 +131,7 @@ class GNRMainWindowCustomizer(Customizer):
 
     def _setup_basic_task_connections(self):
         self.gui.ui.actionNew.triggered.connect(self._show_new_task_dialog_clicked)
-        self.gui.ui.actionLoadTask.triggered.connect(self._load_task_button_clicked)
+        self.gui.ui.loadButton.clicked.connect(self._load_task_button_clicked)
         QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("cellClicked(int, int)"),
                                self._task_table_row_clicked)
         QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("doubleClicked(const QModelIndex)"),
@@ -148,22 +149,17 @@ class GNRMainWindowCustomizer(Customizer):
         palette.setColor(QPalette.Foreground, QtCore.Qt.red)
         self.gui.ui.errorLabel.setPalette(palette)
 
-    def _show_new_task_dialog(self, definition):
-        self._set_new_task_dialog()
-        self._set_new_task_dialog_customizer()
+    def _load_new_task_from_definition(self, definition):
         self.new_task_dialog_customizer.load_task_definition(definition)
-        self.new_task_dialog.show()
 
     def _show_new_task_dialog_clicked(self):
         self._set_new_task_dialog()
         self._set_new_task_dialog_customizer()
         self.new_task_dialog.show()
 
-    def _set_new_task_dialog(self):
-        self.new_task_dialog = NewTaskDialog(self.gui.window)
-
     def _set_new_task_dialog_customizer(self):
-        self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.new_task_dialog, self.logic)
+        self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.gui, self.logic)
+
 
     def _load_task_button_clicked(self):
         save_dir = get_save_dir()
@@ -185,7 +181,7 @@ class GNRMainWindowCustomizer(Customizer):
             f.close()
 
         if definition:
-            self._show_new_task_dialog(definition)
+            self._load_new_task_from_definition(definition)
 
     def _add_task(self, task_id, status):
         current_row_count = self.gui.ui.taskTableWidget.rowCount()

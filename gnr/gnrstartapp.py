@@ -48,8 +48,9 @@ def register_gui(logic, app, gui):
 
 
 def register_rendering_task_types(logic):
-    logic.register_new_renderer_type(build_lux_render_info(LuxRenderDialog, LuxRenderDialogCustomizer))
     logic.register_new_renderer_type(build_blender_renderer_info(BlenderRenderDialog, BlenderRenderDialogCustomizer))
+    logic.register_new_renderer_type(build_lux_render_info(LuxRenderDialog, LuxRenderDialogCustomizer))
+
 
 
 def register_task_types(logic):

@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class NewTaskDialogCustomizer(Customizer):
+
+    SHOW_ADVANCE_BUTTON_MESSAGE = ["Show advance settings", "Hide advance settings"]
+
     def __init__(self, gui, logic):
         self.options = None
         self.add_task_resource_dialog = None
@@ -32,6 +35,7 @@ class NewTaskDialogCustomizer(Customizer):
 
     def load_data(self):
         self._set_uid()
+        self.gui.ui.advanceNewTaskWidget.hide()
         self._init()
 
     def _setup_connections(self):
@@ -52,6 +56,7 @@ class NewTaskDialogCustomizer(Customizer):
         # self.gui.ui.cancelButton.clicked.connect(self._cancel_button_clicked)
 
     def _setup_advance_new_task_connections(self):
+        self.gui.ui.showAdvanceNewTaskButton.clicked.connect(self._advance_settings_button_clicked)
         self.gui.ui.optimizeTotalCheckBox.stateChanged.connect(self._optimize_total_check_box_changed)
         self.gui.ui.subtaskTimeoutHourSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
         self.gui.ui.subtaskTimeoutMinSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
@@ -174,6 +179,7 @@ class NewTaskDialogCustomizer(Customizer):
     def _load_advance_task_params(self, definition):
         self.gui.ui.totalSpinBox.setEnabled(not definition.optimize_total)
         self.gui.ui.optimizeTotalCheckBox.setChecked(definition.optimize_total)
+        self.gui.ui.showAdvanceNewTaskButton.setText(self.SHOW_ADVANCE_BUTTON_MESSAGE[0])
 
     def _load_payment_params(self, definition):
         self.gui.ui.maxPriceLineEdit.setText(u"{}".format(definition.max_price))
@@ -266,3 +272,8 @@ class NewTaskDialogCustomizer(Customizer):
                 self.gui.ui.pessimisticCostLabel.setText(u"{}".format(price * time_))
         except ValueError:
             self.gui.ui.pessimisticCostLabel.setText("unknown")
+
+    def _advance_settings_button_clicked(self):
+        self.gui.ui.advanceNewTaskWidget.setVisible(not self.gui.ui.advanceNewTaskWidget.isVisible())
+        self.gui.ui.showAdvanceNewTaskButton.setText(
+            self.SHOW_ADVANCE_BUTTON_MESSAGE[self.gui.ui.advanceNewTaskWidget.isVisible()])

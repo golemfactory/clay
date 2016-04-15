@@ -3,13 +3,12 @@ import datetime
 import time
 import logging
 from PyQt4 import QtCore
-from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox, QIcon, QWidget
-
+from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox, QIcon
 from golem.task.taskstate import SubtaskStatus
 from golem.core.common import get_golem_path
 
 from gnr.ui.dialog import RenderingNewTaskDialog, ShowTaskResourcesDialog
-from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
+
 
 from gnr.renderingdirmanager import get_preview_file
 from gnr.renderingtaskstate import RenderingTaskDefinition
@@ -88,7 +87,7 @@ class AbsRenderingMainWindowCustomizer(object):
         self.gui.ui.showResourceButton.clicked.connect(self._show_task_resource_clicked)
 
     def _set_new_task_dialog_customizer(self):
-        self.new_task_dialog_customizer = RenderingNewTaskDialogCustomizer(self.new_task_dialog, self.logic)
+        self.new_task_dialog_customizer = RenderingNewTaskDialogCustomizer(self.gui, self.logic)
 
     def _set_new_task_dialog(self):
         self.new_task_dialog = RenderingNewTaskDialog(self.gui.window)
@@ -327,4 +326,3 @@ class RenderingMainWindowCustomizer(AbsRenderingMainWindowCustomizer, GNRMainWin
 
     def init_config(self):
         GNRMainWindowCustomizer.init_config(self)
-        RenderingNewTaskDialogCustomizer(self.gui, self.logic)

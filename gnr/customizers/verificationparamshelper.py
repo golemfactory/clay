@@ -35,13 +35,14 @@ def read_advance_verification_params(gui, definition):
 
 
 def set_verification_widgets_state(gui, state):
-    gui.ui.verificationForAllRadioButton.setEnabled(state)
-    gui.ui.verificationForFirstRadioButton.setEnabled(state)
-    gui.ui.verificationSizeXSpinBox.setEnabled(state)
-    gui.ui.verificationSizeYSpinBox.setEnabled(state)
-    gui.ui.verificationRandomRadioButton.setEnabled(state)
-    gui.ui.probabilityLabel.setEnabled(state and gui.ui.verificationRandomRadioButton.isChecked())
-    gui.ui.probabilityLineEdit.setEnabled(state and gui.ui.verificationRandomRadioButton.isChecked())
+    pass
+    # gui.ui.verificationForAllRadioButton.setEnabled(state)
+    # gui.ui.verificationForFirstRadioButton.setEnabled(state)
+    # gui.ui.verificationSizeXSpinBox.setEnabled(state)
+    # gui.ui.verificationSizeYSpinBox.setEnabled(state)
+    # gui.ui.verificationRandomRadioButton.setEnabled(state)
+    # gui.ui.probabilityLabel.setEnabled(state and gui.ui.verificationRandomRadioButton.isChecked())
+    # gui.ui.probabilityLineEdit.setEnabled(state and gui.ui.verificationRandomRadioButton.isChecked())
 
 
 def load_verification_params(gui, definition):
