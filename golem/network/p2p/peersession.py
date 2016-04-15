@@ -1,15 +1,15 @@
-import time
 import logging
+import time
 
 from devp2p.crypto import ECIESDecryptionError
 
-from golem.network.transport.message import MessageHello, MessagePing, MessagePong, MessageDisconnect, MessageGetPeers,\
+from golem.network.transport.message import MessageHello, MessagePing, MessagePong, MessageGetPeers,\
     MessagePeers, MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
     MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, MessageRandVal, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
     MessageInformAboutNatTraverseFailure, MessageChallengeSolution
-from golem.network.transport.tcpnetwork import SafeProtocol
 from golem.network.transport.session import BasicSafeSession
+from golem.network.transport.tcpnetwork import SafeProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -236,10 +236,11 @@ class PeerSession(BasicSafeSession):
     def _react_to_hello(self, msg):
         self.node_name = msg.node_name
         self.node_info = msg.node_info
+        self.listen_port = msg.port
+
         next_hello = self.key_id == msg.client_key_id
         self.key_id = msg.client_key_id
 
-        self.listen_port = msg.port
         solve_challenge = msg.solve_challenge
         challenge = msg.challenge
         difficulty = msg.difficulty
@@ -249,39 +250,42 @@ class PeerSession(BasicSafeSession):
             self.disconnect(PeerSession.DCRUnverified)
             return
 
-        enough_peers = self.p2p_service.enough_peers()
+        redundant_peers = self.p2p_service.redundant_peers()
         p = self.p2p_service.find_peer(self.key_id)
-
         self.p2p_service.add_to_peer_keeper(self.node_info)
 
-        if enough_peers:
-            logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.node_name, self.address, self.port)
+        if self.key_id in redundant_peers:
+            logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}" \
+                .format(self.node_name, self.address, self.port)
             logger.info(logger_msg)
             nodes_info = self.p2p_service.find_node(self.p2p_service.get_key_id())
             self.send(MessagePeers(nodes_info))
             self.disconnect(PeerSession.DCRTooManyPeers)
             return
 
-        if solve_challenge and not self.verified:
-            solution = self.p2p_service.solve_challenge(self.key_id, challenge, difficulty)
-            self.send(MessageChallengeSolution(solution), send_unverified=True)
+        if p:
+            if not next_hello and p != self and p.conn.opened:
+                # self.sendPing()
+                logger_msg = "PEER DUPLICATED: {} {} : {}".format(p.node_name, p.address, p.port)
+                logger.warning("{} AND {} : {}".format(logger_msg, msg.node_name, msg.port))
+                self.disconnect(PeerSession.DCRDuplicatePeers)
+                return
 
-        if not next_hello and p and p != self and p.conn.opened:
-            # self.sendPing()
-            logger_msg = "PEER DUPLICATED: {} {} : {}".format(p.node_name, p.address, p.port)
-            logger.warning("{} AND {} : {}".format(logger_msg, msg.node_name, msg.port))
-            self.disconnect(PeerSession.DCRDuplicatePeers)
-
-        if not p:
+            if solve_challenge and not self.verified:
+                self._solve_challenge(challenge, difficulty)
+        else:
             self.p2p_service.add_peer(self.key_id, self)
-            self.__send_hello()
             if solve_challenge:
-                solution = self.p2p_service.solve_challenge(self.key_id, challenge, difficulty)
-                self.send(MessageChallengeSolution(solution), send_unverified=True)
+                self._solve_challenge(challenge, difficulty)
             else:
                 self.send(MessageRandVal(msg.rand_val), send_unverified=True)
+            self.__send_hello()
 
         # print "Add peer to client uid:{} address:{} port:{}".format(self.node_name, self.address, self.port)
+
+    def _solve_challenge(self, challenge, difficulty):
+        solution = self.p2p_service.solve_challenge(self.key_id, challenge, difficulty)
+        self.send(MessageChallengeSolution(solution), send_unverified=True)
 
     def _react_to_get_peers(self, msg):
         self.__send_peers()
@@ -327,8 +331,8 @@ class PeerSession(BasicSafeSession):
         self.send(MessagePeers(nodes_info))
 
     def _react_to_rand_val(self, msg):
-        if self.solve_challenge:
-            return
+        #if self.solve_challenge:
+        #    return
         if self.rand_val == msg.rand_val:
             self.__set_verified_conn()
         else:
@@ -340,8 +344,8 @@ class PeerSession(BasicSafeSession):
             return
         good_solution = self.p2p_service.check_solution(msg.solution, self.challenge, self.difficulty)
         if good_solution:
-            self.solve_challenge = False
             self.__set_verified_conn()
+            self.solve_challenge = False
         else:
             self.disconnect(PeerSession.DCRUnverified)
 
@@ -359,6 +363,10 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_inform_about_nat_traverse_failure(self, msg):
         self.p2p_service.send_nat_traverse_failure(msg.key_id, msg.conn_id)
+
+    def _react_to_disconnect(self, msg):
+
+        super(PeerSession, self)._react_to_disconnect(msg)
 
     def _send_pong(self):
         self.send(MessagePong())

@@ -73,6 +73,7 @@ class PendingConnectionsServer(TCPServer):
         """
         # Pending connections
         self.pending_connections = {}  # Connections that should be accomplished
+        self.pending_sockets = {}  # Sockets for pending connections
         self.conn_established_for_type = {}  # Reactions for established connections of certain types
         self.conn_failure_for_type = {}  # Reactions for failed connection attempts of certain types
         self.conn_final_failure_for_type = {}  # Reactions for final connection attempts failure
@@ -103,6 +104,7 @@ class PendingConnectionsServer(TCPServer):
         :param uuid|None conn_id: id of verified connection
         """
         if conn_id in self.pending_connections:
+            self._remove_pending_sockets(self.pending_connections[conn_id])
             del self.pending_connections[conn_id]
 
     def final_conn_failure(self, conn_id):
@@ -113,19 +115,39 @@ class PendingConnectionsServer(TCPServer):
         conn = self.pending_connections.get(conn_id)
         if conn:
             self.conn_final_failure_for_type[conn.type](conn_id, **conn.args)
+            self._remove_pending_sockets(self.pending_connections[conn_id])
             del self.pending_connections[conn_id]
         else:
             logger.error("Connection {} is unknown".format(conn_id))
 
-    def _add_pending_request(self, type_, task_owner, port, key_id, args):
-        socket_addresses = self.get_socket_addresses(task_owner, port, key_id)
-        pc = PendingConnection(type_, socket_addresses, self.conn_established_for_type[type_],
-                               self.conn_failure_for_type[type_], args)
+    def _add_pending_sockets(self, pending_connection, sockets):
+        for s in sockets:
+            self.pending_sockets[str(s)] = pending_connection
+
+    def _remove_pending_sockets(self, pending_connection):
+        if pending_connection:
+            sockets = pending_connection.socket_addresses or []
+            for s in sockets:
+                self.pending_sockets.pop(str(s), None)
+
+    def _filter_pending_sockets(self, sockets):
+        return [s for s in sockets or [] if
+                str(s) not in self.pending_sockets]
+
+    def _add_pending_request(self, req_type, task_owner, port, key_id, args):
+        all_sockets = self.get_socket_addresses(task_owner, port, key_id)
+        sockets = self._filter_pending_sockets(all_sockets)
+
+        pc = PendingConnection(req_type, sockets,
+                               self.conn_established_for_type[req_type],
+                               self.conn_failure_for_type[req_type], args)
+
+        self._add_pending_sockets(pc, sockets)
         self.pending_connections[pc.id] = pc
 
-    def _add_pending_listening(self, type_, port, args):
-        pl = PendingListening(type_, port, self.listen_established_for_type[type_],
-                              self.listen_failure_for_type[type_], args)
+    def _add_pending_listening(self, req_type, port, args):
+        pl = PendingListening(req_type, port, self.listen_established_for_type[req_type],
+                              self.listen_failure_for_type[req_type], args)
         pl.args["listen_id"] = pl.id
         self.pending_listenings.append(pl)
 
@@ -142,13 +164,15 @@ class PendingConnectionsServer(TCPServer):
 
         conns = [pen for pen in self.pending_connections.itervalues() if
                  pen.status in PendingConnection.connect_statuses]
+
         # TODO Zmiany dla innych statusow
+
         for conn in conns:
             if len(conn.socket_addresses) == 0:
                 conn.status = PenConnStatus.WaitingAlt
                 conn.failure(conn.id, **conn.args)
                 # TODO Dalsze dzialanie w razie niepowodzenia
-            else:
+            elif conn.status not in [PenConnStatus.Connected, PenConnStatus.Failure, PenConnStatus.Waiting]:
                 conn.status = PenConnStatus.Waiting
                 conn.last_try_time = time.time()
 

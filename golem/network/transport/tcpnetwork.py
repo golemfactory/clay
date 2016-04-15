@@ -1,22 +1,21 @@
 import logging
-import time
 import os
 import re
 import struct
-
-from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
+import time
+from copy import copy
+from twisted.internet.defer import maybeDeferred
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
     TCP6ClientEndpoint
-from twisted.internet.defer import maybeDeferred
-from twisted.internet.protocol import connectionDone
 from twisted.internet.interfaces import IPullProducer
+from twisted.internet.protocol import connectionDone
 from zope.interface import implements
-from copy import copy
+
+from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 
 from golem.core.databuffer import DataBuffer
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
 from golem.network.transport.message import Message
-
 from network import Network, SessionProtocol
 
 logger = logging.getLogger(__name__)
@@ -71,6 +70,9 @@ class SocketAddress(object):
 
     def __eq__(self, other):
         return self.address == other.address and self.port == other.port
+
+    def __str__(self):
+        return self.address + ":" + str(self.port)
 
     @staticmethod
     def validate_hostname(hostname):
@@ -455,6 +457,8 @@ class BasicProtocol(SessionProtocol):
     def _interpret(self, data):
         self.db.append_string(data)
         mess = self._data_to_messages()
+        self.db.clear_buffer()
+
         if mess is None:
             logger.error("Deserialization message failed")
             return None
