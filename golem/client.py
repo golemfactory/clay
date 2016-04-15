@@ -86,7 +86,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 
 
 class Client:
-    def __init__(self, config_desc, datadir, config=""):
+    def __init__(self, config_desc, datadir, config="", transaction_system=True):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
@@ -123,8 +123,15 @@ class Client:
 
         self.ranking = Ranking(self)
 
-        self.transaction_system = EthereumTransactionSystem(
-            self.keys_auth.get_key_id(), self.keys_auth._private_key)
+        if transaction_system:
+            # Bootstrap transaction system if enabled.
+            # TODO: Transaction system (and possible other modules) should be
+            #       modeled as a Service that run independently.
+            #       The Client/Application should be a collection of services.
+            self.transaction_system = EthereumTransactionSystem(
+                self.keys_auth.get_key_id(), self.keys_auth._private_key)
+        else:
+            self.transaction_system = None
 
         self.environments_manager = EnvironmentsManager()
 
@@ -348,6 +355,8 @@ class Client:
         pass
 
     def check_payments(self):
+        if not self.transaction_system:
+            return
         after_deadline_nodes = self.transaction_system.check_payments()
         for node_id in after_deadline_nodes:
             self.decrease_trust(node_id, RankingStats.payment)
@@ -422,7 +431,8 @@ class Client:
         peers = self.p2pservice.get_peers()
 
         msg += "Active peers in network: {}\n".format(len(peers))
-        msg += "Budget: {}\n".format(self.transaction_system.budget)
+        if self.transaction_system:
+            msg += "Budget: {}\n".format(self.transaction_system.budget)
         return msg
 
     def get_about_info(self):

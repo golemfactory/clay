@@ -110,8 +110,9 @@ class TaskServer(PendingConnectionsServer):
 
         if subtask_id not in self.results_to_send:
             value = self.task_manager.comp_task_keeper.get_value(task_id, computing_time)
-            self.client.transaction_system.add_to_waiting_payments(
-                task_id, owner_key_id, value)
+            if self.client.transaction_system:
+                self.client.transaction_system.add_to_waiting_payments(
+                    task_id, owner_key_id, value)
             # TODO Add computing time
             self.results_to_send[subtask_id] = WaitingTaskResult(task_id, subtask_id, result['data'],
                                                                  result['result_type'], computing_time, 0.0, 0.0,
@@ -272,7 +273,7 @@ class TaskServer(PendingConnectionsServer):
     def accept_result(self, subtask_id, account_info):
         task_id = self.task_manager.get_task_id(subtask_id)
         value = self.task_manager.get_value(subtask_id)
-        if value:
+        if value and self.client.transaction_system:
             self.client.transaction_system.add_payment_info(task_id, subtask_id, value, account_info)
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
         self.client.increase_trust(account_info.key_id, RankingStats.computed, mod)
@@ -286,6 +287,9 @@ class TaskServer(PendingConnectionsServer):
         self.client.decrease_trust(node_id, RankingStats.payment, self.max_trust)
 
     def pay_for_task(self, task_id, payments):
+        if not self.client.transaction_system:
+            return
+
         all_payments = {eth_account: desc.value for eth_account, desc in payments.items()}
         try:
             self.client.transaction_system.pay_for_task(task_id, all_payments)
@@ -455,14 +459,17 @@ class TaskServer(PendingConnectionsServer):
         self.task_sessions[waiting_task_result.subtask_id] = session
 
         session.send_hello()
+        payment_addr = (self.client.transaction_system.get_payment_address()
+                        if self.client.transaction_system else None)
         session.send_report_computed_task(waiting_task_result, self.node.prv_addr, self.cur_port,
-                                          self.client.transaction_system.get_payment_address(),
+                                          payment_addr,
                                           self.node)
 
     def __connection_for_task_result_failure(self, conn_id, key_id, waiting_task_result):
 
-        response = lambda session: self.__connection_for_task_result_established(session, conn_id, key_id,
-                                                                                 waiting_task_result)
+        def response(session):
+            self.__connection_for_task_result_established(
+                session, conn_id, key_id, waiting_task_result)
 
         if key_id in self.response_list:
             self.response_list[key_id].append(response)

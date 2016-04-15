@@ -43,7 +43,8 @@ class TestCreateClient(TestDirFixture):
 class TestClient(TestWithDatabase):
 
     def test_payment_func(self):
-        c = Client(ClientConfigDescriptor(), datadir=self.path)
+        c = Client(ClientConfigDescriptor(), datadir=self.path,
+                   transaction_system=True)
         c.transaction_system.add_to_waiting_payments("xyz", "ABC", 10)
         incomes = c.transaction_system.get_incomes_list()
         self.assertEqual(len(incomes), 1)
