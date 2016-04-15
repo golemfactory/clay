@@ -344,10 +344,10 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.key_changed()
 
     def get_payments(self):
-        return self.client.get_payments()
+        return self.client.transaction_system.get_payments_list()
 
     def get_incomes(self):
-        return self.client.get_incomes()
+        return self.client.transaction_system.get_incomes_list()
 
     def get_max_price(self):
         """ Return suggested max price per hour of computation

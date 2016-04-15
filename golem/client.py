@@ -247,14 +247,6 @@ class Client:
     def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
         self.p2pservice.inform_about_nat_traverse_failure(key_id, res_key_id, conn_id)
 
-    # TRANSACTION SYSTEM OPERATIONS
-
-    def get_payments(self):
-        return self.transaction_system.get_payments_list()
-
-    def get_incomes(self):
-        return self.transaction_system.get_incomes_list()
-
     # CLIENT CONFIGURATION
     def register_listener(self, listener):
         assert isinstance(listener, GolemClientEventListener)
