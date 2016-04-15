@@ -68,16 +68,6 @@ class LuxRenderOptions(GNROptions):
         self.haltspp = 1
         self.luxconsole = self.environment.get_lux_console()
 
-    #def add_to_resources(self, resources):
-        #if self.send_binaries and os.path.isfile(self.luxconsole):
-            #resources.add(os.path.normpath(self.luxconsole))
-        #return resources
-
-    #def remove_from_resources(self, resources):
-        #if self.send_binaries and os.path.normpath(self.luxconsole) in resources:
-            #resources.remove(os.path.normpath(self.luxconsole))
-        #return resources
-
 
 class LuxRenderTaskBuilder(RenderingTaskBuilder):
     def build(self):
