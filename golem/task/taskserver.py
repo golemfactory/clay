@@ -110,7 +110,8 @@ class TaskServer(PendingConnectionsServer):
 
         if subtask_id not in self.results_to_send:
             value = self.task_manager.comp_task_keeper.get_value(task_id, computing_time)
-            self.client.add_to_waiting_payments(task_id, owner_key_id, value)
+            self.client.transaction_system.add_to_waiting_payments(
+                task_id, owner_key_id, value)
             # TODO Add computing time
             self.results_to_send[subtask_id] = WaitingTaskResult(task_id, subtask_id, result['data'],
                                                                  result['result_type'], computing_time, 0.0, 0.0,

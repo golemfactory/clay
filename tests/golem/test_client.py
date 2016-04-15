@@ -44,7 +44,7 @@ class TestClient(TestWithDatabase):
 
     def test_payment_func(self):
         c = Client(ClientConfigDescriptor(), datadir=self.path)
-        c.add_to_waiting_payments("xyz", "ABC", 10)
+        c.transaction_system.add_to_waiting_payments("xyz", "ABC", 10)
         incomes = c.transaction_system.get_incomes_list()
         self.assertEqual(len(incomes), 1)
         self.assertEqual(incomes[0]["node"], "ABC")
