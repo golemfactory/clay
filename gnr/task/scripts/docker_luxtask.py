@@ -34,7 +34,7 @@ def find_flm(directory):
     try:
         for root, dirs, files in os.walk(directory):
             for names in files:
-                if names[-4:] == ".flm":
+                if names.upper().endswith() == ".FLM":
                     return os.path.join(root,names)
     except:
         import traceback

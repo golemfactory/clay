@@ -93,11 +93,14 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.verificationSizeYSpinBox.setMaximum(dr.defaults.resolution[1])
 
     def _choose_main_scene_file_button_clicked(self):
-        scene_file_ext = self.logic.get_current_renderer().scene_file_ext
-
+        tmp_scene_file_ext = self.logic.get_current_renderer().scene_file_ext
+        scene_file_ext = []
+        for ext in tmp_scene_file_ext:
+            scene_file_ext.append(ext.upper())
+            scene_file_ext.append(ext.lower())
         output_file_types = " ".join([u"*.{}".format(ext) for ext in scene_file_ext])
         filter_ = u"Scene files ({})".format(output_file_types)
-
+        # Achtung - only formats like *.XYZ and *.xyz will be displayed: not *.Xyz, *xYZ etc.
         dir_ = os.path.dirname(u"{}".format(self.gui.ui.mainSceneFileLineEdit.text()))
 
         file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
