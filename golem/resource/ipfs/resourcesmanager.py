@@ -196,7 +196,12 @@ class IPFSResourceManager:
         if task_id in self.task_common_prefixes:
             return
 
-        self.task_common_prefixes[task_id] = common_dir(list(resource_coll))
+        if resource_coll and len(resource_coll) == 1:
+            common_prefix = os.path.dirname(resource_coll[0])
+        else:
+            common_prefix = common_dir(resource_coll)
+
+        self.task_common_prefixes[task_id] = common_prefix
         self.add_resources(resource_coll, task_id,
                            absolute_path=True,
                            client=client)

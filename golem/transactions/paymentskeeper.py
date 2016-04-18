@@ -85,6 +85,7 @@ class PaymentsKeeper(object):
     def load_from_database(self):
         # This data is used by UI.
         # TODO: Update the UI to reflect Payment changes.
+        # FIXME: Do not prepare data for UI. UI should do it itself.
         return [{"task": payment.subtask,
                  "node": payment.payee,
                  "value": payment.value,
