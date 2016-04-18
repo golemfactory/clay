@@ -443,6 +443,8 @@ class BasicProtocol(SessionProtocol):
         if self.session:
             self.session.dropped()
 
+        super(BasicProtocol, self).connectionLost(reason)
+
     # Protected functions
     def _prepare_msg_to_send(self, msg):
         ser_msg = msg.serialize()
