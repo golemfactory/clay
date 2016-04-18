@@ -5,23 +5,18 @@ from golem.client import start_client
 from golem.core.common import get_golem_path
 from golem.environments.environment import Environment
 
-from gnr.renderingenvironment import ThreeDSMaxEnvironment, PBRTEnvironment, VRayEnvironment
-from gnr.docker_environments import BlenderEnvironment, LuxRenderEnvironment
-from gnr.tasktype import build_pbrt_task_type, build_3ds_max_task_type, build_vray_task_type, \
-    build_python_gnr_task_type, build_luxrender_task_type, build_blender_render_task_type
-from gnr.task.pbrtgnrtask import build_pbrt_renderer_info
-from gnr.task.threedsmaxtask import build_3ds_max_renderer_info
-from gnr.task.vraytask import build_vray_renderer_info
-from gnr.task.luxrendertask import build_lux_render_info
-from gnr.task.blenderrendertask import build_blender_renderer_info
-
-from gnr.ui.dialog import BlenderRenderDialog, LuxRenderDialog, PbrtDialog, ThreeDSMaxDialog, VRayDialog
-
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
-from gnr.customizers.pbrtdialogcustomizer import PbrtDialogCustomizer
-from gnr.customizers.threedsmaxdialogcustomizer import ThreeDSMaxDialogCustomizer
-from gnr.customizers.vraydialogcustomizer import VRayDialogCustomizer
+from gnr.docker_environments import BlenderEnvironment, LuxRenderEnvironment
+from gnr.task.luxrendertask import build_lux_render_info
+from gnr.task.blenderrendertask import build_blender_renderer_info
+from gnr.tasktype import build_pbrt_task_type, build_3ds_max_task_type, build_vray_task_type, \
+    build_python_gnr_task_type, build_luxrender_task_type, build_blender_render_task_type
+from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
+from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
+from gnr.ui.widget import TaskWidget
+
+
 
 from examples.manager.gnrmanagerlogic import run_manager
 
@@ -48,9 +43,10 @@ def register_gui(logic, app, gui):
 
 
 def register_rendering_task_types(logic):
-    logic.register_new_renderer_type(build_blender_renderer_info(BlenderRenderDialog, BlenderRenderDialogCustomizer))
-    logic.register_new_renderer_type(build_lux_render_info(LuxRenderDialog, LuxRenderDialogCustomizer))
-
+    widget = TaskWidget(Ui_BlenderWidget)
+    logic.register_new_renderer_type(build_blender_renderer_info(widget, BlenderRenderDialogCustomizer(widget, logic)))
+    widget = TaskWidget(Ui_LuxWidget)
+    logic.register_new_renderer_type(build_lux_render_info(widget, LuxRenderDialogCustomizer(widget, logic)))
 
 
 def register_task_types(logic):

@@ -119,14 +119,9 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def _change_task_widget(self, name):
         for i in reversed(range(self.gui.ui.taskSpecificLayout.count())):
             self.gui.ui.taskSpecificLayout.itemAt(i).widget().setParent(None)
-
-        widget = QWidget()
-        if name == "Blender":
-            widget.ui = Ui_BlenderWidget()
-        else:
-            widget.ui = Ui_LuxWidget()
-        widget.ui.setupUi(widget)
-        self.gui.ui.taskSpecificLayout.addWidget(widget, 0, 0, 1, 1)
+        task = self.logic.get_renderer(u"{}".format(name))
+        self.task_customizer = task.dialog_customizer
+        self.gui.ui.taskSpecificLayout.addWidget(task.dialog, 0, 0, 1, 1)
 
     def __update_renderer_options(self, name):
         r = self.logic.get_renderer(name)
@@ -336,6 +331,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def _read_renderer_params(self, definition):
         definition.renderer = self.__get_current_renderer().name
         definition.renderer_options = deepcopy(self.renderer_options)
+        self._get_task_specific_options(definition)
         definition.resolution = [self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value()]
         definition.output_file = u"{}".format(self.gui.ui.outputFileLineEdit.text())
         definition.output_format = u"{}".format(
@@ -361,6 +357,9 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         renderer_dialog = dialog(self.gui.window)
         dialog_customizer(renderer_dialog, self.logic, self)
         renderer_dialog.show()
+
+    def _get_task_specific_options(self, definition):
+        self.task_customizer.get_task_specific_options(definition)
 
     def set_renderer_options(self, options):
         self.renderer_options = options
