@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 
 import time
@@ -6,6 +7,14 @@ import time
 from golem.resource.dirmanager import DirManager
 from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
 from golem.tools.testdirfixture import TestDirFixture
+
+
+def list_endswith(longer, shorter):
+    ll = len(longer) - 1
+    for i in reversed(range(len(shorter), 0)):
+        if longer[ll - i] != shorter[-i]:
+            return False
+    return True
 
 
 class TestResourcesManager(TestDirFixture):
@@ -133,7 +142,7 @@ class TestResourcesManager(TestDirFixture):
         rsl = rm.list_split_resources(self.task_id)
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
-        split_res_path = res_path.split(os.path.sep)
+        split_res_path = rm.split_path(res_path)
         split_res = [split_res_path + x for x in self.split_resources]
 
         self.assertTrue(len(rsl) == len(self.split_resources))
@@ -143,7 +152,8 @@ class TestResourcesManager(TestDirFixture):
 
     def testJoinSplitResources(self):
         rm = IPFSResourceManager(self.dir_manager)
-        rm.add_resources(self.target_resources, self.task_id)
+        resource_paths = [rm.get_resource_path(f, self.task_id) for f in self.target_resources]
+        rm.add_task(resource_paths, self.task_id)
 
         rsl = rm.list_split_resources(self.task_id)
         rl = rm.join_split_resources(rsl)
@@ -151,10 +161,10 @@ class TestResourcesManager(TestDirFixture):
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
         res_list = [os.path.join(res_path, x) for x in self.target_resources]
 
-        self.assertTrue(len(rsl) == len(self.target_resources))
+        assert len(rsl) == len(self.target_resources)
 
         for elem in rl:
-            self.assertTrue(os.path.join(os.path.sep, elem[0]) in res_list)
+            assert rm.get_resource_path(elem[0], self.task_id) in res_list
 
     def testId(self):
         rm = IPFSResourceManager(self.dir_manager)

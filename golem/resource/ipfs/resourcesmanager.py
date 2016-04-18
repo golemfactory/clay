@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import shutil
 import socket
 import time
@@ -82,11 +83,17 @@ class IPFSResourceManager:
         self.add_resource_dir(self.get_resource_root_dir())
 
     def make_relative_path(self, path, task_id):
+        norm_path = os.path.normpath(path)
         common_prefix = self.task_common_prefixes.get(task_id, '')
-        return path.replace(common_prefix, '', 1)
+        return norm_path.replace(common_prefix, '', 1)
+
+    @staticmethod
+    def split_path(path):
+        return re.split('/|\\\\', path) if path else path
 
     def copy_resources(self, from_dir):
         resource_dir = self.get_resource_root_dir()
+        from_dir = os.path.normpath(from_dir)
         if resource_dir == from_dir:
             return
 
@@ -99,7 +106,9 @@ class IPFSResourceManager:
         self.update_resource_dir()
 
     def _copy_resource(self, src_path, filename, multihash, task_id):
+        src_path = os.path.normpath(src_path)
         dst_path = self.get_resource_path(filename, task_id)
+        filename = os.path.normpath(filename)
 
         if not os.path.exists(src_path):
             logger.error("IPFS: cached file does not exist: {}"
@@ -133,11 +142,11 @@ class IPFSResourceManager:
         return self.get_resource_dir('')
 
     def get_resource_dir(self, task_id):
-        return self.resource_dir_method(task_id)
+        return os.path.normpath(self.resource_dir_method(task_id))
 
     def get_resource_path(self, resource, task_id):
         resource_dir = self.get_resource_dir(task_id)
-        return os.path.join(resource_dir, resource)
+        return os.path.join(resource_dir, os.path.normpath(resource))
 
     def new_ipfs_client(self):
         return IPFSClient(**self.client_config)
@@ -146,7 +155,7 @@ class IPFSResourceManager:
                        absolute_path=False, multihash=None):
 
         if absolute_path:
-            res_path = resource
+            res_path = os.path.normpath(resource)
         else:
             res_path = self.get_resource_path(resource, task_id)
 
@@ -168,10 +177,11 @@ class IPFSResourceManager:
         if task_id in self.task_id_to_files:
             files = self.task_id_to_files[task_id]
             if files:
-                return [[f[0].split(os.path.sep)] + f[1:] for f in files]
+                return [[self.split_path(f[0])] + f[1:] for f in files]
         return []
 
-    def join_split_resources(self, resources):
+    @staticmethod
+    def join_split_resources(resources):
         results = []
         for resource in resources:
             if resource:
@@ -185,6 +195,7 @@ class IPFSResourceManager:
         if not client:
             client = self.new_ipfs_client()
 
+        dir_name = os.path.normpath(dir_name)
         task_ids = self.dir_manager.list_task_ids_in_dir(dir_name)
 
         for task_id in task_ids:
@@ -201,7 +212,7 @@ class IPFSResourceManager:
         else:
             common_prefix = common_dir(resource_coll)
 
-        self.task_common_prefixes[task_id] = common_prefix
+        self.task_common_prefixes[task_id] = os.path.normpath(common_prefix)
         self.add_resources(resource_coll, task_id,
                            absolute_path=True,
                            client=client)
@@ -229,6 +240,8 @@ class IPFSResourceManager:
         if not client:
             client = self.new_ipfs_client()
 
+        resource = os.path.normpath(resource)
+
         if absolute_path:
             resource_path = resource
         else:
@@ -246,28 +259,35 @@ class IPFSResourceManager:
                                          resource_path,
                                          recursive=is_dir)
 
-        self._register_response(response, task_id)
+        self._register_response(resource, response, task_id)
 
-    def _register_response(self, response, task_id):
+    def _register_response(self, resource, response, task_id):
         if isinstance(response, list):
             for entry in response:
-                self._register_response(entry, task_id)
+                self._register_response(resource, entry, task_id)
         elif response and 'Hash' in response and 'Name' in response:
             path = to_unicode(response.get('Name'))
             multihash = to_unicode(response.get('Hash'))
-            self._register_resource(path, multihash, task_id)
+            self._register_resource(resource, path, multihash, task_id)
         else:
             logging.error("IPFS: Invalid response {}".format(response))
 
-    def _register_resource(self, file_path, multihash, task_id):
+    def _register_resource(self, resource, file_path, multihash, task_id):
         """
         Caches information on new file. Fails silently if a file does not exist.
+        :param resource: original resource name
         :param file_path: file's path
         :param multihash: file's multihash
         :param task_id:   current task identifier
         :return: file's path relative to current resource path
         """
         if not os.path.exists(file_path):
+            return
+
+        norm_file_path = os.path.normpath(file_path)
+        norm_resource = os.path.normpath(resource)
+
+        if not norm_file_path.endswith(norm_resource):
             return
 
         name = self.make_relative_path(file_path, task_id)
@@ -299,6 +319,8 @@ class IPFSResourceManager:
     def pull_resource(self, filename, multihash, task_id,
                       success, error, client=None, async=True):
 
+        filename = os.path.normpath(filename)
+
         if self.check_resource(filename, task_id, multihash=multihash):
             success(filename, multihash, task_id)
             return
@@ -318,7 +340,10 @@ class IPFSResourceManager:
                          (result_filename, result_multihash))
 
             self.__clear_retry(IPFSCommands.pull, result_multihash)
-            self._register_resource(result_path, result_multihash, task_id)
+            self._register_resource(result_filename,
+                                    result_path,
+                                    result_multihash,
+                                    task_id)
             self.pin_resource(result_multihash)
 
             success(filename, result_multihash, task_id)
@@ -472,6 +497,7 @@ class IPFSResourceManager:
         if params:
             self.pull_resource(*params)
 
-    def __ipfs_async_call(self, method, success, error, *args, **kwargs):
+    @staticmethod
+    def __ipfs_async_call(method, success, error, *args, **kwargs):
         call = IPFSAsyncCall(method, *args, **kwargs)
         IPFSAsyncExecutor.run(call, success, error)
