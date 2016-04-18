@@ -3,7 +3,6 @@
   "renderer_options":{
     "py/object":"gnr.task.luxrendertask.LuxRenderOptions",
     "luxconsole":"",
-    "send_binaries":false,
     "environment":{
 	"py/object":"gnr.docker_environments.LuxRenderEnvironment",
 	"docker_images":[

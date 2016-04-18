@@ -1,4 +1,3 @@
-import appdirs
 import jsonpickle
 import logging
 import shutil
@@ -10,11 +9,12 @@ import gnr.node
 
 from gnr.task.tasktester import TaskTester
 from golem.core.common import get_golem_path
+from golem.model import db
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
-from golem.tools.testwithappconfig import TestWithAppConfig
+from golem.tools.testdirfixture import TestDirFixture
 
 from test_docker_image import DockerTestCase
 
@@ -24,18 +24,23 @@ logging.getLogger("peewee").setLevel("INFO")
 
 # TODO: extract code common to this class and TestDockerBlenderTask to a superclass
 # TODO: test luxrender tasks with .flm file
-class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
+class TestDockerLuxrenderTask(TestDirFixture, DockerTestCase):
 
     TASK_FILE = "docker-luxrender-test-task.json"
 
     def setUp(self):
-        TestWithAppConfig.setUp(self)
+        super(TestDockerLuxrenderTask, self).setUp()
         self.error_msg = None
         self.dirs_to_remove = []
         self.files_to_remove = []
+        self.node = None
         self.task_computer_send_task_failed = TaskServer.send_task_failed
 
     def tearDown(self):
+        if self.node:
+            self.node.client._unlock_datadir()
+        if not db.is_closed():
+            db.close()
         for f in self.files_to_remove:
             if path.isfile(f):
                 remove(f)
@@ -43,7 +48,7 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
             if path.isdir(dir_):
                 shutil.rmtree(dir_)
         TaskServer.send_task_failed = self.task_computer_send_task_failed
-        TestWithAppConfig.tearDown(self)
+        super(TestDockerLuxrenderTask, self).tearDown()
 
     def _test_task_definition(self):
         task_file = path.join(path.dirname(__file__), self.TASK_FILE)
@@ -53,7 +58,8 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()
 
-        def set_root_dir(p): return p.replace("$GOLEM_DIR", golem_dir)
+        def set_root_dir(p):
+            return p.replace("$GOLEM_DIR", golem_dir)
 
         task_def.resources = set(set_root_dir(p) for p in task_def.resources)
         task_def.main_scene_file = set_root_dir(task_def.main_scene_file)
@@ -64,8 +70,7 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
     def _test_task(self):
         task_def = self._test_task_definition()
         node_name = "0123456789abcdef"
-        root_path = appdirs.user_data_dir("golem")
-        task_builder = LuxRenderTaskBuilder(node_name, task_def, root_path)
+        task_builder = LuxRenderTaskBuilder(node_name, task_def, self.tempdir)
         render_task = task_builder.build()
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
@@ -75,10 +80,10 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
         ctd = render_task.query_extra_data(1.0)
 
         # Create the computing node
-        node = gnr.node.GNRNode()
-        node.initialize()
+        self.node = gnr.node.GNRNode(datadir=self.path)
+        self.node.initialize()
 
-        task_computer = node.client.task_server.task_computer
+        task_computer = self.node.client.task_server.task_computer
         resource_dir = task_computer.resource_manager.get_resource_dir(task_id)
         temp_dir = task_computer.resource_manager.get_temporary_dir(task_id)
         self.dirs_to_remove.append(resource_dir)
@@ -119,7 +124,7 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
 
     def test_luxrender_test(self):
         task = self._test_task()
-        computer = TaskTester(task, appdirs.user_data_dir('golem'), Mock(), Mock())
+        computer = TaskTester(task, self.tempdir, Mock(), Mock())
         computer.run()
         computer.tt.join(60.0)
         test_file = task._LuxTask__get_test_flm()
@@ -184,6 +189,3 @@ class TestDockerLuxrenderTask(TestWithAppConfig, DockerTestCase):
             any([path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"]]))
         self.assertTrue(
             any([f.endswith(".flm") for f in result["data"]]))
-
-
-

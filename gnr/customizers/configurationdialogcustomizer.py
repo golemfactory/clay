@@ -74,7 +74,7 @@ class ConfigurationDialogCustomizer(Customizer):
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
         self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_port))
-        self.gui.ui.workingDirectoryLineEdit.setText(u"{}".format(config_desc.root_path))
+        # self.gui.ui.workingDirectoryLineEdit.setText(u"{}".format(config_desc.root_path))
         self.gui.ui.performanceLabel.setText(u"{}".format(config_desc.estimated_performance))
         self.gui.ui.luxPerformanceLabel.setText(u"{}".format(config_desc.estimated_lux_performance))
         self.gui.ui.blenderPerformanceLabel.setText(u"{}".format(config_desc.estimated_blender_performance))
@@ -259,7 +259,8 @@ class ConfigurationDialogCustomizer(Customizer):
             cfg_desc.seed_port = int(self.gui.ui.hostIPLineEdit.text())
         except ValueError:
             cfg_desc.seed_port = u"{}".format(self.gui.ui.hostIPLineEdit.text())
-        cfg_desc.root_path = u"{}".format(self.gui.ui.workingDirectoryLineEdit.text())
+        # TODO: datadir should not be changable after app has been started.
+        # cfg_desc.root_path = u"{}".format(self.gui.ui.workingDirectoryLineEdit.text())
 
         cfg_desc.num_cores = u"{}".format(self.gui.ui.numCoresSlider.value())
         cfg_desc.estimated_performance = u"{}".format(self.gui.ui.performanceLabel.text())

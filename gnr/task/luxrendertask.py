@@ -66,18 +66,7 @@ class LuxRenderOptions(GNROptions):
         self.environment = LuxRenderEnvironment()
         self.halttime = 600
         self.haltspp = 1
-        self.send_binaries = False
         self.luxconsole = self.environment.get_lux_console()
-
-    def add_to_resources(self, resources):
-        if self.send_binaries and os.path.isfile(self.luxconsole):
-            resources.add(os.path.normpath(self.luxconsole))
-        return resources
-
-    def remove_from_resources(self, resources):
-        if self.send_binaries and os.path.normpath(self.luxconsole) in resources:
-            resources.remove(os.path.normpath(self.luxconsole))
-        return resources
 
 
 class LuxRenderTaskBuilder(RenderingTaskBuilder):
@@ -105,8 +94,6 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                            self.task_definition.max_price,
                            self.task_definition.renderer_options.halttime,
                            self.task_definition.renderer_options.haltspp,
-                           self.task_definition.renderer_options.send_binaries,
-                           self.task_definition.renderer_options.luxconsole,
                            docker_images=self.task_definition.docker_images
                            )
 
@@ -139,8 +126,6 @@ class LuxTask(RenderingTask):
                  max_price,
                  halttime,
                  haltspp,
-                 own_binaries,
-                 luxconsole,
                  return_address="",
                  return_port=0,
                  key_id="",
@@ -156,8 +141,6 @@ class LuxTask(RenderingTask):
         self.undeletable.append(self.__get_test_flm())
         self.halttime = halttime
         self.haltspp = haltspp
-        self.own_binaries = own_binaries
-        self.luxconsole = luxconsole
         self.verification_error = False
 
         try:
@@ -172,8 +155,6 @@ class LuxTask(RenderingTask):
         self.numAdd = 0
 
         self.preview_exr = None
-        if self.own_binaries:
-            self.header.environment = Environment.get_id()
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
         if not self._accept_client(node_id):
@@ -199,11 +180,6 @@ class LuxTask(RenderingTask):
                                         write_interval, [0, 1, 0, 1], "png")
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
-        if self.own_binaries:
-            lux_console = self._get_lux_console_rel_path()
-        else:
-            lux_console = 'luxconsole.exe'
-
         num_threads = max(num_cores, 1)
 
         extra_data = {"path_root": self.main_scene_dir,
@@ -214,9 +190,7 @@ class LuxTask(RenderingTask):
                       "output_format": self.output_format,
                       "scene_file_src": scene_src,
                       "scene_dir": scene_dir,
-                      "num_threads": num_threads,
-                      "own_binaries": self.own_binaries,
-                      "lux_console": lux_console
+                      "num_threads": num_threads
                       }
 
         hash = "{}".format(random.getrandbits(128))
@@ -278,10 +252,6 @@ class LuxTask(RenderingTask):
         working_directory = self._get_working_directory()
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
-        if self.own_binaries:
-            lux_console = self._get_lux_console_rel_path()
-        else:
-            lux_console = 'luxconsole.exe'
 
         extra_data = {
             "path_root": self.main_scene_dir,
@@ -292,9 +262,7 @@ class LuxTask(RenderingTask):
             "output_format": self.output_format,
             "scene_file_src": scene_src,
             "scene_dir": scene_dir,
-            "num_threads": 1,
-            "own_binaries": self.own_binaries,
-            "lux_console": lux_console
+            "num_threads": 1
         }
 
         hash = "{}".format(random.getrandbits(128))
@@ -329,9 +297,7 @@ class LuxTask(RenderingTask):
                       "output_format": self.output_format,
                       "scene_file_src": scene_src,
                       "scene_dir": scene_dir,
-                      "num_threads": 4,
-                      "own_binaries": True,
-                      "lux_console": None}
+                      "num_threads": 4}
 
         return self._new_compute_task_def("FINALTASK", extra_data, scene_dir, 0)
 
@@ -411,11 +377,6 @@ class LuxTask(RenderingTask):
         self.numAdd = 0
         for f in preview_files:
             self._update_preview(f, None)
-
-    def _get_lux_console_rel_path(self):
-        luxconsole_rel = os.path.relpath(os.path.dirname(self.luxconsole), os.path.dirname(self.main_scene_file))
-        luxconsole_rel = os.path.join(luxconsole_rel, os.path.basename(self.luxconsole))
-        return luxconsole_rel
 
     def __update_preview_from_pil_file(self, new_chunk_file_path):
         img = Image.open(new_chunk_file_path)

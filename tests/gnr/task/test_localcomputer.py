@@ -30,6 +30,7 @@ class TestLocalComputer(TestDirFixture):
         lc = LocalComputer(task, self.path, self._success_callback, self._failure_callback, self._get_better_task_def,
                            use_task_resources=False, additional_resources=files)
         lc.run()
+        lc.tt.join(60.0)
         path_ = path.join(lc.test_task_res_path, path.basename(files[0]))
         assert path.isfile(path_)
 

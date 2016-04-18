@@ -27,7 +27,7 @@
     <rect>
      <x>20</x>
      <y>10</y>
-     <width>52</width>
+     <width>81</width>
      <height>16</height>
     </rect>
    </property>
@@ -52,7 +52,7 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>170</y>
+     <y>80</y>
      <width>251</width>
      <height>91</height>
     </rect>
@@ -66,7 +66,7 @@
       <x>10</x>
       <y>30</y>
       <width>231</width>
-      <height>51</height>
+      <height>62</height>
      </rect>
     </property>
     <layout class="QFormLayout" name="formLayout">
@@ -96,70 +96,6 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QGroupBox" name="groupBox_2">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>60</y>
-     <width>251</width>
-     <height>101</height>
-    </rect>
-   </property>
-   <property name="title">
-    <string>Binary files options</string>
-   </property>
-   <widget class="QWidget" name="gridLayoutWidget">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>60</y>
-      <width>231</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <layout class="QGridLayout" name="gridLayout">
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_4">
-       <property name="text">
-        <string>luxconsole</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="luxConsoleLineEdit"/>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QSplitter" name="splitter">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>20</y>
-      <width>216</width>
-      <height>34</height>
-     </rect>
-    </property>
-    <property name="orientation">
-     <enum>Qt::Vertical</enum>
-    </property>
-    <widget class="QRadioButton" name="sendLuxRadioButton">
-     <property name="text">
-      <string>Send LuxRender binary files</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">buttonGroup</string>
-     </attribute>
-    </widget>
-    <widget class="QRadioButton" name="useInstalledRadioButton">
-     <property name="text">
-      <string>Use only nodes with installed LuxRender</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">buttonGroup</string>
-     </attribute>
-    </widget>
-   </widget>
-  </widget>
   <widget class="Line" name="line_2">
    <property name="geometry">
     <rect>
@@ -179,7 +115,7 @@
      <x>10</x>
      <y>280</y>
      <width>251</width>
-     <height>25</height>
+     <height>29</height>
     </rect>
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout">
