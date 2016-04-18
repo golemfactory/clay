@@ -89,5 +89,7 @@ class AbsRenderingApplicationLogic(object):
 
 class RenderingApplicationLogic(AbsRenderingApplicationLogic, GNRApplicationLogic):
     def __init__(self):
+        self.renderer_options = None
         GNRApplicationLogic.__init__(self)
         AbsRenderingApplicationLogic.__init__(self)
+

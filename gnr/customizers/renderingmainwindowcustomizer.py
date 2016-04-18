@@ -57,13 +57,6 @@ class AbsRenderingMainWindowCustomizer(object):
         self.gui.ui.frameSlider.setVisible(False)
         self._set_icons()
 
-      #   blender_widget = QWidget()
-      #   blender_widget.ui = Ui_BlenderWidget()
-      #   blender_widget.ui.setupUi(blender_widget)
-      #
-      # #  blender_widget.ui.setupUi(self.gui.window)
-      #   self.gui.ui.taskSpecificLayout.addWidget(blender_widget, 0, 0, 1, 1)
-
     def _set_icons(self):
         icons = ["new.png", "task.png", "eye.png", "settings.png", "user.png"]
         for i in range(len(icons)):

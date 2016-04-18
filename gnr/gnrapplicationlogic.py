@@ -136,6 +136,9 @@ class GNRApplicationLogic(QtCore.QObject):
         else:
             assert False, "Task {} not registered".format(name)
 
+    def task_settings_changed(self):
+        self.customizer.new_task_dialog_customizer.task_settings_changed()
+
     def change_config(self, cfg_desc):
         # old_cfg_desc = self.client.config_desc
         # if (old_cfg_desc.manager_address != cfg_desc.manager_address) or\
@@ -248,6 +251,7 @@ class GNRApplicationLogic(QtCore.QObject):
                 self.tasks[t.definition.task_id] = t
 
         self.customizer.update_tasks(self.tasks)
+        self.customizer.gui.ui.listWidget.setCurrentItem(self.customizer.gui.ui.listWidget.item(1))
 
     def register_new_task_type(self, task_type):
         if task_type.name not in self.task_types:

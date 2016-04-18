@@ -43,10 +43,10 @@ def register_gui(logic, app, gui):
 
 
 def register_rendering_task_types(logic):
-    widget = TaskWidget(Ui_BlenderWidget)
-    logic.register_new_renderer_type(build_blender_renderer_info(widget, BlenderRenderDialogCustomizer(widget, logic)))
-    widget = TaskWidget(Ui_LuxWidget)
-    logic.register_new_renderer_type(build_lux_render_info(widget, LuxRenderDialogCustomizer(widget, logic)))
+    logic.register_new_renderer_type(build_blender_renderer_info(TaskWidget(Ui_BlenderWidget),
+                                                                 BlenderRenderDialogCustomizer))
+    logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
+                                                           LuxRenderDialogCustomizer))
 
 
 def register_task_types(logic):

@@ -50,10 +50,8 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _setup_basic_new_task_connections(self):
         self.gui.ui.saveButton.clicked.connect(self._save_task_button_clicked)
-        # self.gui.ui.chooseMainProgramFileButton.clicked.connect(self._choose_main_program_file_button_clicked)
         self.gui.ui.addResourceButton.clicked.connect(self._show_add_resource_dialog)
         self.gui.ui.finishButton.clicked.connect(self._finish_button_clicked)
-        # self.gui.ui.cancelButton.clicked.connect(self._cancel_button_clicked)
 
     def _setup_advance_new_task_connections(self):
         self.gui.ui.showAdvanceNewTaskButton.clicked.connect(self._advance_settings_button_clicked)
@@ -62,13 +60,13 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.subtaskTimeoutMinSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
         self.gui.ui.subtaskTimeoutSecSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
         self.gui.ui.totalSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
+        self.gui.ui.chooseMainProgramFileButton.clicked.connect(self._choose_main_program_file_button_clicked)
 
     def _setup_options_connections(self):
         pass
-        # self.gui.ui.optionsButton.clicked.connect(self._open_options)
 
     def _setup_payment_connections(self):
-        self.gui.ui.maxPriceLineEdit.textChanged.connect(self._set_new_pessimistic_cost)
+        self.gui.ui.taskMaxPriceLineEdit.textChanged.connect(self._set_new_pessimistic_cost)
 
     def _set_uid(self):
         self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())
@@ -82,18 +80,8 @@ class NewTaskDialogCustomizer(Customizer):
             self.gui.ui.taskTypeComboBox.addItem(t.name)
 
     def _set_max_price(self):
-        self.gui.ui.maxPriceLineEdit.setText(u"{}".format(self.logic.get_max_price()))
+        self.gui.ui.taskMaxPriceLineEdit.setText(u"{}".format(self.logic.get_max_price()))
         self._set_new_pessimistic_cost()
-
-    def _choose_main_program_file_button_clicked(self):
-
-        dir_ = os.path.dirname(u"{}".format(self.gui.ui.mainProgramFileLineEdit.text()))
-
-        file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
-                                                             "Choose main program file", dir_, "Python (*.py)"))
-
-        if file_name != "":
-            self.gui.ui.mainProgramFileLineEdit.setText(file_name)
 
     def _show_add_resource_dialog(self):
         if not self.add_task_resource_dialog:
@@ -182,7 +170,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.showAdvanceNewTaskButton.setText(self.SHOW_ADVANCE_BUTTON_MESSAGE[0])
 
     def _load_payment_params(self, definition):
-        self.gui.ui.maxPriceLineEdit.setText(u"{}".format(definition.max_price))
+        self.gui.ui.taskMaxPriceLineEdit.setText(u"{}".format(definition.max_price))
         self._set_new_pessimistic_cost()
 
     def _finish_button_clicked(self):
@@ -193,10 +181,18 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _add_current_task(self):
         self.logic.add_tasks([self.task_state])
-        self.gui.window.close()
 
-    def _cancel_button_clicked(self):
-        self.gui.window.close()
+    def _choose_main_program_file_button_clicked(self):
+
+        dir_ = os.path.dirname(u"{}".format(self.gui.ui.mainProgramFileLineEdit.text()))
+
+        file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
+                                                             "Choose main program file",
+                                                             dir_,
+                                                             "Python (*.py)"))
+
+        if file_name != "":
+            self.gui.ui.mainProgramFileLineEdit.setText(file_name)
 
     @staticmethod
     def _generate_new_task_uid():
@@ -233,7 +229,7 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _read_price_params(self, definition):
         try:
-            definition.max_price = int(self.gui.ui.maxPriceLineEdit.text())
+            definition.max_price = int(self.gui.ui.taskMaxPriceLineEdit.text())
         except ValueError:
             logger.warning("Wrong price value")
 
@@ -264,7 +260,7 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _set_new_pessimistic_cost(self):
         try:
-            price = float(self.gui.ui.maxPriceLineEdit.text())
+            price = float(self.gui.ui.taskMaxPriceLineEdit.text())
             if self.gui.ui.optimizeTotalCheckBox.isChecked():
                 self.gui.ui.pessimisticCostLabel.setText("unknown")
             else:
