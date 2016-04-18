@@ -6,6 +6,7 @@ from os import path, mkdir
 
 from golem.model import Database
 from golem.core.common import is_windows
+from golem.ethereum import Client
 
 
 class TempDirFixture(unittest.TestCase):
@@ -24,6 +25,10 @@ class TempDirFixture(unittest.TestCase):
         self.path = self.tempdir  # Alias for legacy tests
 
     def tearDown(self):
+        # Firstly kill Ethereum node to clean up after it later on.
+        # FIXME: This is temporary solution. Ethereum node should always be
+        #        the explicit dependency and users should close it correctly.
+        Client._kill_node()
         shutil.rmtree(self.tempdir)
 
     def temp_file_name(self, name):
