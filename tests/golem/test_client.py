@@ -43,8 +43,9 @@ class TestCreateClient(TestDirFixture):
 class TestClient(TestWithDatabase):
 
     def test_payment_func(self):
-        c = Client(ClientConfigDescriptor(), datadir=self.path)
-        c.add_to_waiting_payments("xyz", "ABC", 10)
+        c = Client(ClientConfigDescriptor(), datadir=self.path,
+                   transaction_system=True)
+        c.transaction_system.add_to_waiting_payments("xyz", "ABC", 10)
         incomes = c.transaction_system.get_incomes_list()
         self.assertEqual(len(incomes), 1)
         self.assertEqual(incomes[0]["node"], "ABC")
@@ -52,7 +53,7 @@ class TestClient(TestWithDatabase):
         self.assertEqual(incomes[0]["task"], "xyz")
         self.assertEqual(incomes[0]["value"], 0.0)
 
-        c.pay_for_task("xyz", [])
+        c.transaction_system.pay_for_task("xyz", [])
         c.check_payments()
         c.transaction_system.check_payments = Mock()
         c.transaction_system.check_payments.return_value = ["ABC", "DEF"]
