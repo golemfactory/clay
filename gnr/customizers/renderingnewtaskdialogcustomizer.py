@@ -32,7 +32,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         pass
 
     def _setup_renderers_connections(self):
-        self.gui.ui.rendererComboBox.currentIndexChanged[QString].connect(
+        self.gui.ui.taskTypeComboBox.currentIndexChanged[QString].connect(
             lambda x: self.__renderer_combo_box_value_changed(x))
 
     def _setup_advance_new_task_connections(self):
@@ -64,11 +64,11 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
         for k in renderers:
             r = renderers[k]
-            self.gui.ui.rendererComboBox.addItem(r.name)
+            self.gui.ui.taskTypeComboBox.addItem(r.name)
 
-        renderer_item = self.gui.ui.rendererComboBox.findText(dr.name)
+        renderer_item = self.gui.ui.taskTypeComboBox.findText(dr.name)
         if renderer_item >= 0:
-            self.gui.ui.rendererComboBox.setCurrentIndex(renderer_item)
+            self.gui.ui.taskTypeComboBox.setCurrentIndex(renderer_item)
         else:
             logger.error("Cannot load task, wrong default renderer")
         self.__renderer_combo_box_value_changed(dr.name)
@@ -175,9 +175,9 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         pass
 
     def _load_task_type(self, definition):
-        renderer_item = self.gui.ui.rendererComboBox.findText(definition.renderer)
+        renderer_item = self.gui.ui.taskTypeComboBox.findText(definition.renderer)
         if renderer_item >= 0:
-            self.gui.ui.rendererComboBox.setCurrentIndex(renderer_item)
+            self.gui.ui.taskTypeComboBox.setCurrentIndex(renderer_item)
         else:
             logger.error("Cannot load task, wrong renderer")
             return
@@ -224,8 +224,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.__reset_to_defaults()
 
     def __get_current_renderer(self):
-        index = self.gui.ui.rendererComboBox.currentIndex()
-        renderer_name = self.gui.ui.rendererComboBox.itemText(index)
+        index = self.gui.ui.taskTypeComboBox.currentIndex()
+        renderer_name = self.gui.ui.taskTypeComboBox.itemText(index)
         return self.logic.get_renderer(u"{}".format(renderer_name))
 
     def _query_task_definition(self):
@@ -258,7 +258,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.task_settings_changed()
 
     def _open_options(self):
-        renderer_name = self.gui.ui.rendererComboBox.itemText(self.gui.ui.rendererComboBox.currentIndex())
+        renderer_name = self.gui.ui.taskTypeComboBox.itemText(self.gui.ui.taskTypeComboBox.currentIndex())
         renderer = self.logic.get_renderer(u"{}".format(renderer_name))
         dialog = renderer.dialog
         dialog_customizer = renderer.dialog_customizer

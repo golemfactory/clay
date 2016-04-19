@@ -466,7 +466,7 @@
                 <item>
                  <layout class="QHBoxLayout" name="horizontalLayout_17">
                   <item>
-                   <widget class="QComboBox" name="rendererComboBox">
+                   <widget class="QComboBox" name="taskTypeComboBox">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
                       <horstretch>0</horstretch>
