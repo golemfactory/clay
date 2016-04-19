@@ -130,7 +130,6 @@ class GNRMainWindowCustomizer(Customizer):
         self._setup_basic_app_connections()
 
     def _setup_basic_task_connections(self):
-        self.gui.ui.actionNew.triggered.connect(self._show_new_task_dialog_clicked)
         self.gui.ui.loadButton.clicked.connect(self._load_task_button_clicked)
         QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("cellClicked(int, int)"),
                                self._task_table_row_clicked)
@@ -141,8 +140,8 @@ class GNRMainWindowCustomizer(Customizer):
     def _setup_basic_app_connections(self):
         self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
         self.gui.ui.paymentsButton.clicked.connect(self._show_payments_clicked)
-        self.gui.ui.actionEnvironments.triggered.connect(self._show_environments)
-        self.gui.ui.actionIdentity.triggered.connect(self._show_identity_dialog)
+        self.gui.ui.environmentsButton.clicked.connect(self._show_environments)
+        self.gui.ui.identityButton.clicked.connect(self._show_identity_dialog)
 
     def _set_error_label(self):
         palette = QPalette()

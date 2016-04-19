@@ -161,7 +161,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>3</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -1220,22 +1220,202 @@
                <attribute name="title">
                 <string>General</string>
                </attribute>
-               <layout class="QGridLayout" name="gridLayout_11" rowminimumheight="0,0,1">
+               <layout class="QGridLayout" name="gridLayout_11">
+                <item row="0" column="2">
+                 <widget class="QWidget" name="advanceSettingsWidget" native="true">
+                  <layout class="QFormLayout" name="formLayout_6">
+                   <property name="fieldGrowthPolicy">
+                    <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                   </property>
+                   <item row="0" column="0">
+                    <widget class="QLabel" name="label_37">
+                     <property name="text">
+                      <string>Listen on IPv6</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QCheckBox" name="useIp6CheckBox">
+                     <property name="text">
+                      <string/>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="0">
+                    <widget class="QLabel" name="label_28">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>Ethereum accont</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="1">
+                    <layout class="QHBoxLayout" name="horizontalLayout_13">
+                     <item>
+                      <widget class="QLineEdit" name="ethAccountLineEdit">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="accountStatusLabel">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
+                       <property name="text">
+                        <string>Wrong value</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="4" column="0">
+                    <widget class="QLabel" name="label_34">
+                     <property name="text">
+                      <string>Optimal peer num</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="4" column="1">
+                    <widget class="QLineEdit" name="optimalPeerNumLineEdit"/>
+                   </item>
+                   <item row="5" column="0">
+                    <widget class="QLabel" name="label_35">
+                     <property name="text">
+                      <string>Use &quot;Wait for task timeout&quot;</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="5" column="1">
+                    <widget class="QCheckBox" name="useWaitingForTaskTimeoutCheckBox">
+                     <property name="text">
+                      <string/>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="6" column="0">
+                    <widget class="QLabel" name="label_36">
+                     <property name="text">
+                      <string>Wait for task timeout</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="6" column="1">
+                    <widget class="QLineEdit" name="waitingForTaskTimeoutLineEdit"/>
+                   </item>
+                   <item row="7" column="0">
+                    <widget class="QLabel" name="label_38">
+                     <property name="text">
+                      <string>P2P session timeout</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="7" column="1">
+                    <widget class="QLineEdit" name="p2pSessionTimeoutLineEdit"/>
+                   </item>
+                   <item row="8" column="0">
+                    <widget class="QLabel" name="label_39">
+                     <property name="text">
+                      <string>Tasksession timeout</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="8" column="1">
+                    <widget class="QLineEdit" name="taskSessionTimeoutLineEdit"/>
+                   </item>
+                   <item row="9" column="0">
+                    <widget class="QLabel" name="label_40">
+                     <property name="text">
+                      <string>Send pings</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="9" column="1">
+                    <widget class="QCheckBox" name="sendPingsCheckBox">
+                     <property name="text">
+                      <string/>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="10" column="0">
+                    <widget class="QLabel" name="label_41">
+                     <property name="text">
+                      <string>Pings interval</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="10" column="1">
+                    <widget class="QLineEdit" name="sendPingsLineEdit"/>
+                   </item>
+                   <item row="11" column="0">
+                    <widget class="QLabel" name="label_42">
+                     <property name="text">
+                      <string>Get pings interval</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="11" column="1">
+                    <widget class="QLineEdit" name="gettingPeersLineEdit"/>
+                   </item>
+                   <item row="13" column="0">
+                    <widget class="QLabel" name="label_43">
+                     <property name="text">
+                      <string>Get tasks interval</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="13" column="1">
+                    <widget class="QLineEdit" name="gettingTasksIntervalLineEdit"/>
+                   </item>
+                   <item row="14" column="0">
+                    <widget class="QLabel" name="label_44">
+                     <property name="text">
+                      <string>Max result sending delay</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="14" column="1">
+                    <widget class="QLineEdit" name="maxSendingDelayLineEdit"/>
+                   </item>
+                   <item row="15" column="1">
+                    <widget class="QPushButton" name="environmentsButton">
+                     <property name="text">
+                      <string>Show environments</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="16" column="1">
+                    <widget class="QPushButton" name="identityButton">
+                     <property name="text">
+                      <string>Show identity</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="12" column="0">
+                    <widget class="Line" name="line_3">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="16" column="0">
+                    <widget class="Line" name="line_4">
+                     <property name="orientation">
+                      <enum>Qt::Vertical</enum>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
                 <item row="0" column="0">
                  <layout class="QGridLayout" name="gridLayout_7">
                   <property name="margin">
                    <number>5</number>
                   </property>
-                  <item row="0" column="1">
-                   <widget class="QLabel" name="label_15">
-                    <property name="text">
-                     <string/>
-                    </property>
-                    <property name="alignment">
-                     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-                    </property>
-                   </widget>
-                  </item>
                   <item row="0" column="0">
                    <layout class="QFormLayout" name="formLayout_4">
                     <property name="fieldGrowthPolicy">
@@ -1272,166 +1452,11 @@
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="0">
-                 <widget class="QWidget" name="advanceSettingsWidget" native="true">
-                  <layout class="QFormLayout" name="formLayout_6">
-                   <property name="fieldGrowthPolicy">
-                    <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                   </property>
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="label_37">
-                     <property name="text">
-                      <string>Listen on IPv6</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QCheckBox" name="useIp6CheckBox">
-                     <property name="text">
-                      <string/>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="3" column="1">
-                    <layout class="QHBoxLayout" name="horizontalLayout_13">
-                     <item>
-                      <widget class="QLineEdit" name="ethAccountLineEdit">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="accountStatusLabel">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>Wrong value</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="3" column="0">
-                    <widget class="QLabel" name="label_28">
-                     <property name="enabled">
-                      <bool>false</bool>
-                     </property>
-                     <property name="text">
-                      <string>Ethereum accont</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="4" column="0">
-                    <widget class="QLabel" name="label_34">
-                     <property name="text">
-                      <string>Optimal peer num</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="5" column="0">
-                    <widget class="QLabel" name="label_35">
-                     <property name="text">
-                      <string>Use &quot;Wait for task timeout&quot;</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="6" column="0">
-                    <widget class="QLabel" name="label_36">
-                     <property name="text">
-                      <string>Wait for task timeout</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="7" column="0">
-                    <widget class="QLabel" name="label_38">
-                     <property name="text">
-                      <string>P2P session timeout</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="8" column="0">
-                    <widget class="QLabel" name="label_39">
-                     <property name="text">
-                      <string>Tasksession timeout</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="9" column="0">
-                    <widget class="QLabel" name="label_40">
-                     <property name="text">
-                      <string>Send pings</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="10" column="0">
-                    <widget class="QLabel" name="label_41">
-                     <property name="text">
-                      <string>Pings interval</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="11" column="0">
-                    <widget class="QLabel" name="label_42">
-                     <property name="text">
-                      <string>Get pings interval</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="12" column="0">
-                    <widget class="QLabel" name="label_43">
-                     <property name="text">
-                      <string>Get tasks interval</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="13" column="0">
-                    <widget class="QLabel" name="label_44">
-                     <property name="text">
-                      <string>Max result sending delay</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="4" column="1">
-                    <widget class="QLineEdit" name="optimalPeerNumLineEdit"/>
-                   </item>
-                   <item row="5" column="1">
-                    <widget class="QCheckBox" name="useWaitingForTaskTimeoutCheckBox">
-                     <property name="text">
-                      <string/>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="9" column="1">
-                    <widget class="QCheckBox" name="sendPingsCheckBox">
-                     <property name="text">
-                      <string/>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="6" column="1">
-                    <widget class="QLineEdit" name="waitingForTaskTimeoutLineEdit"/>
-                   </item>
-                   <item row="7" column="1">
-                    <widget class="QLineEdit" name="p2pSessionTimeoutLineEdit"/>
-                   </item>
-                   <item row="8" column="1">
-                    <widget class="QLineEdit" name="taskSessionTimeoutLineEdit"/>
-                   </item>
-                   <item row="10" column="1">
-                    <widget class="QLineEdit" name="sendPingsLineEdit"/>
-                   </item>
-                   <item row="11" column="1">
-                    <widget class="QLineEdit" name="gettingPeersLineEdit"/>
-                   </item>
-                   <item row="12" column="1">
-                    <widget class="QLineEdit" name="gettingTasksIntervalLineEdit"/>
-                   </item>
-                   <item row="13" column="1">
-                    <widget class="QLineEdit" name="maxSendingDelayLineEdit"/>
-                   </item>
-                  </layout>
+                <item row="0" column="1">
+                 <widget class="Line" name="line_5">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
                  </widget>
                 </item>
                </layout>
@@ -2130,39 +2155,6 @@
      </layout>
     </item>
    </layout>
-  </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>800</width>
-     <height>21</height>
-    </rect>
-   </property>
-   <property name="defaultUp">
-    <bool>false</bool>
-   </property>
-   <property name="nativeMenuBar">
-    <bool>false</bool>
-   </property>
-   <widget class="QMenu" name="menuTask">
-    <property name="title">
-     <string>Task</string>
-    </property>
-    <addaction name="actionNew"/>
-    <addaction name="actionLoadTask"/>
-    <addaction name="separator"/>
-   </widget>
-   <widget class="QMenu" name="menuProperties">
-    <property name="title">
-     <string>Properties</string>
-    </property>
-    <addaction name="actionEnvironments"/>
-    <addaction name="actionIdentity"/>
-   </widget>
-   <addaction name="menuTask"/>
-   <addaction name="menuProperties"/>
   </widget>
   <action name="actionNew">
    <property name="text">
