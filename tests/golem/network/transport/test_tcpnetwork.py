@@ -14,11 +14,11 @@ from golem.network.transport.message import MessageDisconnect
 from golem.core.variables import BUFF_SIZE
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.tools.captureoutput import captured_output
-from golem.tools.testdirfixture import TestDirFixture
+from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.assertlogs import LogTestCase
 
 
-class TestDataProducerAndConsumer(unittest.TestCase):
+class TestDataProducerAndConsumer(TestWithKeysAuth):
 
     def test_progress(self):
 
@@ -35,6 +35,7 @@ class TestDataProducerAndConsumer(unittest.TestCase):
         for args in datas:
             self.__producer_consumer_test(*args, session=MagicMock())
 
+        EllipticalKeysAuth.set_keys_dir(self.path)
         self.ek = EllipticalKeysAuth()
         for args in datas:
             self.__producer_consumer_test(*args, data_producer_cls=EncryptDataProducer,
@@ -79,9 +80,9 @@ class TestDataProducerAndConsumer(unittest.TestCase):
         self.assertEqual(err.getvalue().strip(), "")
 
 
-class TestFileProducerAndConsumer(TestDirFixture):
+class TestFileProducerAndConsumer(TestWithKeysAuth):
     def setUp(self):
-        TestDirFixture.setUp(self)
+        TestWithKeysAuth.setUp(self)
         self.tmp_file1, self.tmp_file2, self.tmp_file3 = self.additional_dir_content([1, [2]])
 
         long_text = "abcdefghij\nklmn opqrstuvwxy\tz"
@@ -98,6 +99,7 @@ class TestFileProducerAndConsumer(TestDirFixture):
         self.__producer_consumer_test([self.tmp_file2], session=MagicMock())
         self.__producer_consumer_test([self.tmp_file1, self.tmp_file3], session=MagicMock())
         self.__producer_consumer_test([self.tmp_file1, self.tmp_file2, self.tmp_file3], 32, session=MagicMock())
+        EllipticalKeysAuth.set_keys_dir(self.path)
         self.ek = EllipticalKeysAuth()
         self.__producer_consumer_test([], file_producer_cls=EncryptFileProducer, file_consumer_cls=DecryptFileConsumer,
                                       session=self.__make_encrypted_session_mock())
