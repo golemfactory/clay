@@ -16,4 +16,4 @@ class TestWithKeysAuth(TestDirFixture):
         if hasattr(EllipticalKeysAuth, '_keys_dir'):
             del EllipticalKeysAuth._keys_dir
 
-        TestDirFixture.tearDown(self)
+        super(TestWithKeysAuth, self).tearDown()
