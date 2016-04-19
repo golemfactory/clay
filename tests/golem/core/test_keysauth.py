@@ -14,7 +14,6 @@ class KeysAuthTest(TestWithKeysAuth):
         self.assertEqual(d1, d2)
 
     def test_keys_dir_default2(self):
-        print KeysAuth().get_keys_dir()
         self.assertEqual(KeysAuth().get_keys_dir(), KeysAuth().get_keys_dir())
 
     def test_keys_dir_setter(self):
