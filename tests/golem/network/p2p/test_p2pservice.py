@@ -1,11 +1,13 @@
+import time
 import unittest
 
-from mock import MagicMock, patch
+from golem.network.transport.tcpnetwork import SocketAddress
+from mock import MagicMock
 
-from golem.network.p2p.p2pservice import P2PService
-from golem.network.p2p.node import Node
-from golem.core.keysauth import EllipticalKeysAuth
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.keysauth import EllipticalKeysAuth
+from golem.network.p2p.node import Node
+from golem.network.p2p.p2pservice import P2PService
 
 
 class TestP2PService(unittest.TestCase):
@@ -41,8 +43,55 @@ class TestP2PService(unittest.TestCase):
         m_test3.ping.assert_not_called()
         self.assertEqual(len(service.peers), 102)
 
+    def test_remove_old_peers(self):
+        keys_auth = EllipticalKeysAuth()
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        node = MagicMock()
+        node.key = EllipticalKeysAuth("TEST").get_key_id()
+        node.key_id = node.key
 
+        service.last_peers_request = time.time() + 10
+        service.add_peer(node.key, node)
+        assert len(service.peers) == 1
+        service.sync_network()
+        assert len(service.peers) == 0
 
+        service.add_peer(node.key, node)
+        service.peers[node.key].last_message_time = time.time() + 1000
+        assert len(service.peers) == 1
+        service.sync_network()
+        assert len(service.peers) == 1
 
+    def test_refresh_peers(self):
+        keys_auth = EllipticalKeysAuth()
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        sa = SocketAddress('127.0.0.1', 11111)
 
+        node = MagicMock()
+        node.key = EllipticalKeysAuth("TEST").get_key_id()
+        node.key_id = node.key
+        node.address = sa
 
+        node2 = MagicMock()
+        node2.key = EllipticalKeysAuth("TEST2").get_key_id()
+        node2.key_id = node2.key
+        node2.address = sa
+
+        service.add_peer(node.key, node)
+        service.add_peer(node2.key, node2)
+
+        service.peers[node.key].last_message_time = time.time() + 1000
+        service.peers[node2.key].last_message_time = time.time() + 1000
+
+        service.config_desc.opt_peer_num = 1000
+
+        assert len(service.peers) == 2
+        service.sync_network()
+        assert len(service.peers) == 2
+
+        service.last_refresh_peers = 0
+        with self.assertRaises(TypeError):
+            service.sync_network()
+
+        assert len(service.peers) == 1
+        assert len(service.peers_to_refresh) == 1

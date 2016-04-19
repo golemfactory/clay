@@ -380,9 +380,9 @@ class TCPNetwork(Network):
 class BasicProtocol(SessionProtocol):
     """ Connection-oriented basic protocol for twisted, support message serialization"""
     def __init__(self):
-        SessionProtocol.__init__(self)
         self.opened = False
         self.db = DataBuffer()
+        SessionProtocol.__init__(self)
 
     def send_message(self, msg):
         """
@@ -443,7 +443,7 @@ class BasicProtocol(SessionProtocol):
         if self.session:
             self.session.dropped()
 
-        super(BasicProtocol, self).connectionLost(reason)
+        SessionProtocol.connectionLost(self, reason)
 
     # Protected functions
     def _prepare_msg_to_send(self, msg):
