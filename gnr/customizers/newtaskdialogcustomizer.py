@@ -36,6 +36,7 @@ class NewTaskDialogCustomizer(Customizer):
     def load_data(self):
         self._set_uid()
         self.gui.ui.advanceNewTaskWidget.hide()
+        self.gui.ui.showAdvanceNewTaskButton.setText(self.SHOW_ADVANCE_BUTTON_MESSAGE[0])
         self._init()
 
     def _setup_connections(self):
@@ -167,7 +168,6 @@ class NewTaskDialogCustomizer(Customizer):
     def _load_advance_task_params(self, definition):
         self.gui.ui.totalSpinBox.setEnabled(not definition.optimize_total)
         self.gui.ui.optimizeTotalCheckBox.setChecked(definition.optimize_total)
-        self.gui.ui.showAdvanceNewTaskButton.setText(self.SHOW_ADVANCE_BUTTON_MESSAGE[0])
 
     def _load_payment_params(self, definition):
         self.gui.ui.taskMaxPriceLineEdit.setText(u"{}".format(definition.max_price))

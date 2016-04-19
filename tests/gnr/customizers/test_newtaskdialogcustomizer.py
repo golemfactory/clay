@@ -1,6 +1,8 @@
 from unittest import TestCase
 
 from mock import Mock
+from PyQt4.QtCore import Qt
+from PyQt4.QtTest import QTest
 
 from gnr.application import GNRGui
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
@@ -17,4 +19,9 @@ class TestNewTaskDialogCustomizer(TestCase):
         register_task_types(logic)
         customizer = NewTaskDialogCustomizer(gnrgui.main_window, logic)
         self.assertIsInstance(customizer, NewTaskDialogCustomizer)
+        assert customizer.gui.ui.showAdvanceNewTaskButton.text() == customizer.SHOW_ADVANCE_BUTTON_MESSAGE[0]
+        assert not customizer.gui.ui.advanceNewTaskWidget.isVisible()
+        customizer._advance_settings_button_clicked()
+        QTest.mouseClick(customizer.gui.ui.showAdvanceNewTaskButton, Qt.LeftButton)
+
         gnrgui.app.deleteLater()
