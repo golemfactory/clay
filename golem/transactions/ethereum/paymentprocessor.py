@@ -59,7 +59,7 @@ class PaymentProcessor(object):
         # TODO: Maybe it should not be the part of this class
         # TODO: Allow seting timeout
         # TODO: Defer a call only if payments waiting
-        scheduler = LoopingCall(lambda: self.run())
+        scheduler = LoopingCall(self.run)
         scheduler.start(self.SENDOUT_TIMEOUT)
 
         if faucet and self.balance() == 0:

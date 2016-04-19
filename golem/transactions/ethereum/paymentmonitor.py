@@ -20,7 +20,7 @@ class PaymentMonitor(object):
         self.__filter = None
         self.__payments = []
 
-        scheduler = LoopingCall(lambda: self.get_incoming_payments())
+        scheduler = LoopingCall(self.get_incoming_payments)
         scheduler.start(10)  # FIXME: Use single scheduler for all payments.
 
     def get_incoming_payments(self):
