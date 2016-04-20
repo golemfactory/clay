@@ -153,7 +153,7 @@ class AppConfig:
 
         node_config = NodeConfig(node_address="",
                                  seed_host="",
-                                 seed_port=0,
+                                 seed_port=START_PORT,
                                  num_cores=4,
                                  max_resource_size=MAX_RESOURCE_SIZE,
                                  max_memory_size=MAX_MEMORY_SIZE,
