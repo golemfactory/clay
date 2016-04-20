@@ -69,11 +69,11 @@ def regenerate_lux_file(scene_file_src, xres, yres, halttime, haltspp, writeinte
     exr = "false"
     png = "false"
     tga = "false"
-    if output_format == "exr":
+    if output_format.lower() == "exr":
         exr = "true"
-    elif output_format == "png":
+    elif output_format.lower() == "png":
         png = "true"
-    elif output_format == "tga":
+    elif output_format.lower() == "tga":
         tga = "true"
 
     next_line_add_halt = False
