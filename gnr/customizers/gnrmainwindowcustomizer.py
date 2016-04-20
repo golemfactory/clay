@@ -95,10 +95,11 @@ class GNRMainWindowCustomizer(Customizer):
                 self.gui.ui.taskTableWidget.removeRow(row)
                 return
 
-    def show_new_task_dialog(self, task_id):
+    def clone_task(self, task_id):
         ts = self.logic.get_task(task_id)
         if ts is not None:
-            self._show_new_task_dialog(ts.definition)
+            self._load_new_task_from_definition(ts.definition)
+            self.gui.ui.listWidget.setCurrentItem(self.gui.ui.listWidget.item(0))
         else:
             logger.error("Can't get task information for task {}".format(task_id))
 
@@ -151,14 +152,8 @@ class GNRMainWindowCustomizer(Customizer):
     def _load_new_task_from_definition(self, definition):
         self.new_task_dialog_customizer.load_task_definition(definition)
 
-    def _show_new_task_dialog_clicked(self):
-        self._set_new_task_dialog()
-        self._set_new_task_dialog_customizer()
-        self.new_task_dialog.show()
-
     def _set_new_task_dialog_customizer(self):
         self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.gui, self.logic)
-
 
     def _load_task_button_clicked(self):
         save_dir = get_save_dir()

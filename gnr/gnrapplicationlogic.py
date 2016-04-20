@@ -188,8 +188,8 @@ class GNRApplicationLogic(QtCore.QObject):
     def show_task_details(self, task_id):
         self.customizer.show_details_dialog(task_id)
 
-    def show_new_task_dialog(self, task_id):
-        self.customizer.show_new_task_dialog(task_id)
+    def clone_task(self, task_id):
+        self.customizer.clone_task(task_id)
 
     def restart_subtask(self, subtask_id):
         self.client.restart_subtask(subtask_id)
