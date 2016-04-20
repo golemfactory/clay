@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>615</height>
+    <width>811</width>
+    <height>608</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -49,7 +49,7 @@
         <item>
          <widget class="QListWidget" name="listWidget">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
+           <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -57,7 +57,7 @@
           <property name="minimumSize">
            <size>
             <width>96</width>
-            <height>0</height>
+            <height>540</height>
            </size>
           </property>
           <property name="maximumSize">
