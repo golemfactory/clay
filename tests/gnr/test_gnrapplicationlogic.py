@@ -88,4 +88,14 @@ class TestGNRApplicationLogic(TestDirFixture):
         time.sleep(0.5)
         success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
         self.assertEqual(success, False)
+
+        prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
+        logic.task_settings_changed()
+        assert logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count > prev_call_count
+
+        logic.tasks["xyz"] = ts
+        logic.clone_task("xyz")
+
+        assert logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0] == ts.definition
+
         gnrgui.app.deleteLater()
