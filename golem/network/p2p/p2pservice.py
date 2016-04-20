@@ -213,18 +213,12 @@ class P2PService(PendingConnectionsServer):
 
         self.__send_degree()
 
-    def refresh_peer(self, peer_or_id):
-        if isinstance(peer_or_id, basestring):
-            peer_id = peer_or_id
-            peer = self.peers[peer_id]
-        else:
-            peer = peer_or_id
-            peer_id = peer.key_id
-
-        self.remove_peer(peer)
-        self.incoming_peers.pop(peer_id, None)
+    def refresh_peer(self, peer):
+        peer_id = peer.key_id
         if peer_id in self.free_peers:
             self.free_peers.pop(peer_id)
+        self.incoming_peers.pop(peer_id, None)
+        self.remove_peer(peer)
 
     def enough_peers(self):
         """ Inform whether peer has optimal or more open connections with other peers

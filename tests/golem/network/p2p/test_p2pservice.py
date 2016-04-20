@@ -90,5 +90,48 @@ class TestP2PService(unittest.TestCase):
         assert len(service.peers) == 2
 
         service.last_refresh_peers = 0
+        service.last_peers_request = 0
+        service._peer_dbg_time_threshold = 0
         service.sync_network()
         assert len(service.peers) == 1
+
+    def test_redundant_peers(self):
+        keys_auth = EllipticalKeysAuth()
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        sa = SocketAddress('127.0.0.1', 11111)
+
+        node = MagicMock()
+        node.key = EllipticalKeysAuth("TEST").get_key_id()
+        node.key_id = node.key
+        node.address = sa
+
+        service.config_desc.opt_peer_num = 0
+        service.add_peer(node.key, node)
+
+        assert len(service.redundant_peers()) == 1
+        assert service.enough_peers()
+
+    def test_sync_free_peers(self):
+        keys_auth = EllipticalKeysAuth()
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+
+        node = MagicMock()
+        node.key = EllipticalKeysAuth("TEST").get_key_id()
+        node.key_id = node.key
+        node.pub_addr = '127.0.0.1'
+        node.pub_port = 10000
+
+        service.config_desc.opt_peer_num = 10
+        service.free_peers.append(node.key)
+        service.incoming_peers[node.key] = {
+            'address': '127.0.0.1',
+            'port': 10000,
+            'node': node,
+            'node_name': 'TEST',
+            'conn_trials': 0
+        }
+
+        service.sync_network()
+
+        assert not service.free_peers
+        assert len(service.pending_connections) == 1

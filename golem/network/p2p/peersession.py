@@ -372,12 +372,12 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_disconnect(self, msg):
         key_id = self.node_info.key
+        peer = self.p2p_service.peers.get(key_id)
 
-        if msg.reason == PeerSession.DCRRefresh:
-            self.p2p_service.refresh_peer(key_id)
-        else:
-            peer = self.p2p_service.peers.get(key_id)
-            if peer:
+        if peer:
+            if msg.reason == PeerSession.DCRRefresh:
+                self.p2p_service.refresh_peer(peer)
+            else:
                 self.p2p_service.remove_peer(peer)
 
         super(PeerSession, self)._react_to_disconnect(msg)
