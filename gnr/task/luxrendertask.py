@@ -64,7 +64,7 @@ def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200):
 class LuxRenderOptions(GNROptions):
     def __init__(self):
         self.environment = LuxRenderEnvironment()
-        self.halttime = 600
+        self.halttime = 0
         self.haltspp = 1
         self.luxconsole = self.environment.get_lux_console()
 

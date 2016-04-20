@@ -131,6 +131,9 @@
           <property name="text">
            <string>Halt time</string>
           </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
          </widget>
         </item>
         <item row="1" column="0">
@@ -138,13 +141,20 @@
           <property name="text">
            <string>Halt spp</string>
           </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="QLineEdit" name="haltTimeLineEdit"/>
+         <widget class="QLineEdit" name="haltTimeLineEdit">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
         </item>
         <item row="1" column="1">
-         <widget class="QLineEdit" name="haltsppLineEdit"/>
+         <widget class="QLineEdit" name="haltSppLineEdit"/>
         </item>
        </layout>
       </item>

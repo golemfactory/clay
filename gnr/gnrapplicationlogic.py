@@ -140,20 +140,6 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
 
     def change_config(self, cfg_desc):
-        # old_cfg_desc = self.client.config_desc
-        # if (old_cfg_desc.manager_address != cfg_desc.manager_address) or\
-        #         (old_cfg_desc.manager_port != cfg_desc.manager_port):
-        #     if self.nodes_manager_client is not None:
-        #         self.nodes_manager_client.dropConnection()
-        #         del self.nodes_manager_client
-        #     self.nodes_manager_client = NodesManagerUidClient(cfg_desc.node_name,
-        #                                                       cfg_desc.manager_address,
-        #                                                       cfg_desc.manager_port,
-        #                                                       None,
-        #                                                       self)
-        #
-        #     self.nodes_manager_client.start()
-        #     self.client.register_nodes_manager_client(self.nodes_manager_client)
         self.client.change_config(cfg_desc)
 
     def _get_new_task_state(self):

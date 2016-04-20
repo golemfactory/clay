@@ -57,6 +57,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def _init(self):
         self._set_uid()
         self._set_max_price()
+        self.gui.ui.resourceFilesLabel.setText("0")
 
         renderers = self.logic.get_renderers()
         dr = self.logic.get_default_renderer()
@@ -121,6 +122,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             self.add_task_resource_dialog_customizer.resources = set()
             self.add_task_resource_dialog.ui.folderTreeView.model().addStartFiles([])
             self.add_task_resource_dialog.ui.folderTreeView.model().checks = {}
+        self.gui.ui.resourceFilesLabel.setText("0")
 
         self._change_finish_state(False)
 
@@ -163,8 +165,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         definition = deepcopy(task_definition)
         self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())
 
-        self.task_customizer.load_task_definition(task_definition)
         self._load_basic_task_params(definition)
+        self.task_customizer.load_task_definition(task_definition)
         self._load_renderer_params(definition)
         self._load_advance_task_params(definition)
         self._load_resources(definition)

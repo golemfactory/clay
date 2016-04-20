@@ -13,15 +13,40 @@ class LuxRenderDialogCustomizer(RendererCustomizer):
 
     def load_data(self):
         super(LuxRenderDialogCustomizer, self).load_data()
+        self._change_halts_values()
+
+    def load_task_definition(self, definition):
+        super(LuxRenderDialogCustomizer, self).load_task_definition(definition)
+        self._change_halts_values()
+
+    def _setup_connections(self):
+        self.gui.ui.stopBySppRadioButton.toggled.connect(self._change_halts_state)
+
+    def _change_halts_values(self):
+        set_haltspp = self.renderer_options.haltspp > 0
         self.gui.ui.haltTimeLineEdit.setText(u"{}".format(self.renderer_options.halttime))
-        self.gui.ui.haltsppLineEdit.setText(u"{}".format(self.renderer_options.haltspp))
+        self.gui.ui.haltSppLineEdit.setText(u"{}".format(self.renderer_options.haltspp))
+        if self.gui.ui.stopBySppRadioButton.isChecked() and not set_haltspp:
+            self.gui.ui.stopByTimeRadioButton.setChecked(True)
+        if not self.gui.ui.stopBySppRadioButton.isChecked() and set_haltspp:
+            self.gui.ui.stopBySppRadioButton.setChecked(True)
+        self._change_halts_state()
+
+    def _change_halts_state(self):
+        spp_checked = self.gui.ui.stopBySppRadioButton.isChecked()
+        self.gui.ui.haltSppLineEdit.setEnabled(spp_checked)
+        self.gui.ui.haltTimeLineEdit.setEnabled(not spp_checked)
 
     def _change_renderer_options(self):
-        try:
-            self.renderer_options.halttime = int(self.gui.ui.haltTimeLineEdit.text())
-        except ValueError:
-            logger.error("{} is not proper halttime value".format(self.gui.ui.haltTimeLineEdit.text()))
-        try:
-            self.renderer_options.haltspp = int(self.gui.ui.haltsppLineEdit.text())
-        except ValueError:
-            logger.error("{} in not proper haltspp value".format(self.gui.ui.haltsppLineEdit.text()))
+        if self.gui.ui.stopByTimeRadioButton.isChecked():
+            self.renderer_options.haltspp = 0
+            try:
+                self.renderer_options.halttime = int(self.gui.ui.haltTimeLineEdit.text())
+            except ValueError:
+                logger.error("{} is not proper halttime value".format(self.gui.ui.haltTimeLineEdit.text()))
+        else:
+            self.renderer_options.halttime = 0
+            try:
+                self.renderer_options.haltspp = int(self.gui.ui.haltSppLineEdit.text())
+            except ValueError:
+                logger.error("{} in not proper haltspp value".format(self.gui.ui.haltSppLineEdit.text()))

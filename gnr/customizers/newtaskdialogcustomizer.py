@@ -75,7 +75,7 @@ class NewTaskDialogCustomizer(Customizer):
     def _init(self):
         self._set_uid()
         self._set_max_price()
-
+        self.gui.ui.resourceFilesLabel.setText("0")
         task_types = self.logic.get_task_types()
         for t in task_types.values():
             self.gui.ui.taskTypeComboBox.addItem(t.name)
@@ -136,6 +136,7 @@ class NewTaskDialogCustomizer(Customizer):
 
         # TODO
         self.add_task_resource_dialog_customizer.gui.ui.folderTreeView.model().addStartFiles(definition.resources)
+        self.gui.ui.resourceFilesLabel.setText(u"{}".format(len(self.add_task_resource_dialog_customizer.resources)))
         # for res in definition.resources:
         #     model.setData(model.index(res), QtCore.Qt.Checked, QtCore.Qt.CheckStateRole)
 

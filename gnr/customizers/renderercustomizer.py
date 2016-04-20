@@ -33,6 +33,7 @@ class RendererCustomizer(Customizer):
 
         self.gui.ui.mainSceneFileLineEdit.clear()
         self.gui.ui.outputFileLineEdit.clear()
+        self.renderer_options = self.logic.renderer_options
 
     def load_task_definition(self, definition):
         self.renderer_options = deepcopy(definition.renderer_options)
