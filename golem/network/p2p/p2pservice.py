@@ -105,20 +105,19 @@ class P2PService(PendingConnectionsServer):
         if self.task_server:
             self.__send_message_get_tasks()
 
+        self.__sync_free_peers()
         self.__remove_old_peers()
         self.__sync_peer_keeper()
         self._sync_pending()
         self.task_connections_helper.sync()
 
         self.__send_get_peers()
-        self.__sync_peer_refresh()
 
         if time.time() - self._peer_dbg_log_time >= self._peer_dbg_time_threshold:
             self._peer_dbg_log_time = time.time()
-            logger.debug("Peers P/O/I/F {}/{}/{}/{}".format(len(self.peers),
-                                                            len(self.peer_order),
-                                                            len(self.incoming_peers),
-                                                            len(self.free_peers)))
+            logger.debug("Peers P/I/F {}/{}/{}".format(len(self.peers),
+                                                       len(self.incoming_peers),
+                                                       len(self.free_peers)))
 
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection
@@ -171,15 +170,18 @@ class P2PService(PendingConnectionsServer):
         """ Add peer to inner peer information
         :param dict peer_info: dictionary with information about peer
         """
-        if self.__is_new_peer(peer_info["node"].key):
+        key_id = peer_info["node"].key
+        if self.__is_new_peer(key_id):
             logger.info("add peer to incoming {} {} {}".format(peer_info["node_name"],
                                                                peer_info["address"],
                                                                peer_info["port"]))
-            self.incoming_peers[peer_info["node"].key] = {"address": peer_info["address"],
-                                                          "port": peer_info["port"],
-                                                          "node": peer_info["node"],
-                                                          "conn_trials": 0}
-            self.free_peers.append(peer_info["node"].key)
+            self.incoming_peers[key_id] = {"address": peer_info["address"],
+                                           "port": peer_info["port"],
+                                           "node": peer_info["node"],
+                                           "node_name": peer_info["node_name"],
+                                           "conn_trials": 0}
+            if key_id not in self.free_peers:
+                self.free_peers.append(key_id)
             logger.debug(self.incoming_peers)
 
     def remove_peer(self, peer_session):
@@ -211,6 +213,19 @@ class P2PService(PendingConnectionsServer):
         self.peer_order.remove(peer_id)
 
         self.__send_degree()
+
+    def refresh_peer(self, peer_or_id):
+        if isinstance(peer_or_id, basestring):
+            peer_id = peer_or_id
+            peer = self.peers[peer_id]
+        else:
+            peer = peer_or_id
+            peer_id = peer.key_id
+
+        self.remove_peer(peer)
+        self.incoming_peers.pop(peer_id, None)
+        if peer_id in self.free_peers:
+            self.free_peers.pop(peer_id)
 
     def enough_peers(self):
         """ Inform whether peer has optimal or more open connections with other peers
@@ -432,8 +447,11 @@ class P2PService(PendingConnectionsServer):
         neighbours = self.peer_keeper.neighbours(node_key_id)
         peer_infos = []
         for peer in neighbours:
-            peer_infos.append({"address": peer.prv_addr, "port": peer.prv_port,
-                               "id": peer.key, "node": peer})
+            peer_infos.append({"address": peer.prv_addr,
+                               "port": peer.prv_port,
+                               "id": peer.key,
+                               "node": peer,
+                               "node_name": peer.node_name})
         return peer_infos
 
 
@@ -683,30 +701,10 @@ class P2PService(PendingConnectionsServer):
     #############################
 
     def __send_get_peers(self):
-        while len(self.peers) < self.config_desc.opt_peer_num:
-            if len(self.free_peers) == 0:
-                peer = None  # FIXME
-                #                peer = self.peer_keeper.get_random_known_peer()
-                if peer is None or peer.key_id in self.peers:
-                    if time.time() - self.last_peers_request > 2:
-                        self.last_peers_request = time.time()
-                        for p in self.peers.values():
-                            p.send_get_peers()
-                else:
-                    self.try_to_add_peer({"node_name": peer.node_name, "address": peer.ip, "port": peer.port,
-                                          "node": peer.node_info})
-                break
-
-            x = int(time.time()) % len(self.free_peers)  # get some random peer from free_peers
-            peer_id = self.free_peers[x]
-            self.incoming_peers[peer_id]["conn_trials"] += 1  # increment connection trials
-            args = {}
-            peer = self.incoming_peers[peer_id]
-
-            if peer_id not in self.peers:
-                logger.info("Connecting to peer {} / {}:{}".format(peer_id, peer['address'], peer['port']))
-                self._add_pending_request(P2PConnTypes.Start, peer['node'], peer['port'], peer['node'].key, args)
-            self.free_peers.remove(peer_id)
+        if time.time() - self.last_peers_request > 2:
+            self.last_peers_request = time.time()
+            for p in self.peers.values():
+                p.send_get_peers()
 
     def __send_message_get_tasks(self):
         if time.time() - self.last_tasks_request > 2:
@@ -730,41 +728,26 @@ class P2PService(PendingConnectionsServer):
         logger.info("Can't connect to peer {}.".format(conn_id))
 
     def __is_new_peer(self, id_):
-        if (id_ in self.incoming_peers or
-                id_ in self.peers or
-                long(id_, 16) == self.get_key_id()):
-            return False
-        else:
-            return True
+        return id_ not in self.incoming_peers and \
+               id_ not in self.peers and \
+               long(id_, 16) != self.get_key_id()
 
     def __remove_old_peers(self):
         cur_time = time.time()
-        peers_to_remove = []
 
         for peer_id in self.peers.keys():
-            if cur_time - self.peers[peer_id].last_message_time > self.last_message_time_threshold:
-                peers_to_remove.append((self.peers[peer_id], PeerSession.DCRTimeout))
+            peer = self.peers[peer_id]
+            if cur_time - peer.last_message_time > self.last_message_time_threshold:
+                self.remove_peer(peer)
+                peer.disconnect(PeerSession.DCRTimeout)
 
         if cur_time - self.last_refresh_peers > self.refresh_peers_timeout:
             self.last_refresh_peers = time.time()
             if len(self.peers) > 1:
                 peer_id = random.choice(self.peers.keys())
                 peer = self.peers[peer_id]
-                peers_to_remove.append((peer, PeerSession.DCRRefresh))
-                self.peers_to_refresh.append({
-                    "address": peer.address,
-                    "port": peer.listen_port,
-                    "node_name": peer.node_name,
-                    "node": peer.node_info,
-                    "conn_trials": 0,
-                    "drop_time": time.time()
-                })
-
-        for peer, reason in peers_to_remove:
-            if peer_id in self.free_peers:
-                self.free_peers.remove(peer_id)
-            self.remove_peer(peer)
-            peer.disconnect(reason)
+                self.refresh_peer(peer)
+                peer.disconnect(PeerSession.DCRRefresh)
 
     # TODO: throttle the tx rate of MessageDegree
     def __send_degree(self):
@@ -772,19 +755,19 @@ class P2PService(PendingConnectionsServer):
         for p in self.peers.values():
             p.send_degree(degree)
 
-    def __sync_peer_refresh(self):
-        _remove = []
+    def __sync_free_peers(self):
+        while self.free_peers and not self.enough_peers():
 
-        for peer in self.peers_to_refresh:
-            if not self.enough_peers() and time.time() - peer['drop_time'] >= 0:
-                logger.info("Refreshing peer connection {}:{}"
-                            .format(peer['address'], peer['port']))
+            x = int(time.time()) % len(self.free_peers)  # get some random peer from free_peers
+            peer_id = self.free_peers[x]
 
-                _remove.append(peer)
-                socket_address = SocketAddress(peer['address'], peer['port'])
-                self.connect(socket_address)
+            if peer_id not in self.peers:
+                peer = self.incoming_peers[peer_id]
+                logger.info("Connecting to peer {} / {}:{}".format(peer_id, peer['address'], peer['port']))
+                self.incoming_peers[peer_id]["conn_trials"] += 1  # increment connection trials
+                self._add_pending_request(P2PConnTypes.Start, peer['node'], peer['port'], peer['node'].key, args={})
 
-        [self.peers_to_refresh.remove(p) for p in _remove]
+            self.free_peers.remove(peer_id)
 
     def __sync_peer_keeper(self):
         self.__remove_sessions_to_end_from_peer_keeper()

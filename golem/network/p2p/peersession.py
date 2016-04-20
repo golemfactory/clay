@@ -261,6 +261,12 @@ class PeerSession(BasicSafeSession):
             nodes_info = self.p2p_service.find_node(self.p2p_service.get_key_id())
             self.send(MessagePeers(nodes_info))
             self.disconnect(PeerSession.DCRTooManyPeers)
+
+            self.p2p_service.try_to_add_peer({"address": self.address,
+                                              "port": msg.port,
+                                              "node": self.node_info,
+                                              "node_name": self.node_name,
+                                              "conn_trials": 0})
             return
 
         if p:
@@ -365,6 +371,14 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.send_nat_traverse_failure(msg.key_id, msg.conn_id)
 
     def _react_to_disconnect(self, msg):
+        key_id = self.node_info.key
+
+        if msg.reason == PeerSession.DCRRefresh:
+            self.p2p_service.refresh_peer(key_id)
+        else:
+            peer = self.p2p_service.peers.get(key_id)
+            if peer:
+                self.p2p_service.remove_peer(peer)
 
         super(PeerSession, self)._react_to_disconnect(msg)
 
