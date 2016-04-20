@@ -204,7 +204,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         dir_ = os.path.dirname(u"{}".format(self.gui.ui.mainProgramFileLineEdit.text()))
 
         file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
-                                                             "Choose main program file", dir_, "Python (*.py)"))
+                                                             "Choose main program file", dir_, "Python (*.py *.Py *.PY *.pY)"))
 
         if file_name != '':
             self.gui.ui.mainProgramFileLineEdit.setText(file_name)
