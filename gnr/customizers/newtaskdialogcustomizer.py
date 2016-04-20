@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class NewTaskDialogCustomizer(Customizer):
 
-    SHOW_ADVANCE_BUTTON_MESSAGE = ["Show advance settings", "Hide advance settings"]
+    SHOW_ADVANCE_BUTTON_MESSAGE = ["Show advanced settings", "Hide advanced settings"]
 
     def __init__(self, gui, logic):
         self.options = None

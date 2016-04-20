@@ -116,11 +116,12 @@ class RendererCustomizer(Customizer):
             self.logic.task_settings_changed()
 
     def _res_x_changed(self):
-        self.gui.ui.verificationSizeXSpinBox.setMaximum(self.gui.ui.outputResXSpinBox.value())
+        self.logic.change_verification_option(size_x_max=self.gui.ui.outputResXSpinBox.value())
+
         self.logic.task_settings_changed()
 
     def _res_y_changed(self):
-        self.gui.ui.verificationSizeYSpinBox.setMaximum(self.gui.ui.outputResYSpinBox.value())
+        self.logic.change_verification_option(size_y_max=self.gui.ui.outputResYSpinBox.value())
         self.logic.task_settings_changed()
 
 
