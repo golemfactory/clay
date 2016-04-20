@@ -34,7 +34,7 @@ def find_flm(directory):
     try:
         for root, dirs, files in os.walk(directory):
             for names in files:
-                if names[-4:] == ".flm":
+                if names.lower().endswith(".flm"):
                     return os.path.join(root,names)
     except:
         import traceback
@@ -49,7 +49,7 @@ def format_lux_renderer_cmd(start_task, output_basename, output_format, scene_fi
         cmd = [
             "{}".format(LUXRENDER_COMMAND),
             "{}".format(scene_file),
-            "-R", "{}".format(flm_file),
+            "-r", "{}".format(flm_file),
             "-t", "{}".format(num_cores)
         ]
     else:
@@ -97,7 +97,7 @@ def run_lux_renderer_task(start_task, outfilebasename, output_format, scene_file
         if not os.path.isfile(outfile):
             flm_file = find_flm(WORK_DIR)
             print(flm_file, file=sys.stdout)
-            img = flm_file[:-4] + "." + output_format
+            img = flm_file[:-4] + "." + output_format.lower()
             if not os.path.isfile(img):
                 print("No img produced", file=sys.stderr)
                 sys.exit(-1)
