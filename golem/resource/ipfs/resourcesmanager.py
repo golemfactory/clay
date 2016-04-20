@@ -35,16 +35,22 @@ except ImportError:
 class IPFSResourceManager:
 
     root_path = os.path.abspath(os.sep)
-    timeout_exceptions = urllib_exceptions + [socket.timeout,
-                                              requests.exceptions.Timeout,
-                                              requests.exceptions.ConnectionError,
-                                              twisted.internet.defer.TimeoutError]
+    timeout_exceptions = [requests.exceptions.ConnectionError,
+                          requests.exceptions.ConnectTimeout,
+                          requests.exceptions.ReadTimeout,
+                          requests.exceptions.RetryError,
+                          requests.exceptions.Timeout,
+                          requests.exceptions.HTTPError,
+                          requests.exceptions.StreamConsumedError,
+                          requests.exceptions.RequestException,
+                          twisted.internet.defer.TimeoutError,
+                          socket.timeout] + urllib_exceptions
 
     def __init__(self, dir_manager,
                  client_config=None,
                  resource_dir_method=None,
-                 max_concurrent_downloads=8,
-                 max_retries=10):
+                 max_concurrent_downloads=4,
+                 max_retries=16):
 
         self.lock = Lock()
 
@@ -55,9 +61,7 @@ class IPFSResourceManager:
         self.max_retries = max_retries
         self.max_concurrent_downloads = max_concurrent_downloads
 
-        self.client_config = {
-            'timeout': (10000, 10000)
-        }
+        self.client_config = {'timeout': (24000, 24000)}
 
         if client_config:
             self.client_config.update(client_config)
