@@ -90,8 +90,5 @@ class TestP2PService(unittest.TestCase):
         assert len(service.peers) == 2
 
         service.last_refresh_peers = 0
-        with self.assertRaises(TypeError):
-            service.sync_network()
-
+        service.sync_network()
         assert len(service.peers) == 1
-        assert len(service.peers_to_refresh) == 1

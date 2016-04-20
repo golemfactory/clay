@@ -59,7 +59,6 @@ class P2PService(PendingConnectionsServer):
         self.peer_order = []  # peer connection order
         self.incoming_peers = {}  # known peers with connections
         self.free_peers = []  # peers to which we're not connected
-        self.peers_to_refresh = []
         self.resource_peers = {}
 
         # Timers
