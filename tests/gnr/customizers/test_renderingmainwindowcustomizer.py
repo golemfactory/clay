@@ -1,7 +1,7 @@
 import os
 from mock import MagicMock, patch
 from gnr.application import GNRGui
-from gnr.ui.administrationmainwindow import AdministrationMainWindow
+from gnr.ui.appmainwindow import AppMainWindow
 
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from golem.tools.testdirfixture import TestDirFixture
@@ -17,7 +17,7 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
 
     def test_folderTreeView(self):
         tmp_files = self.additional_dir_content([4, [3], [2]])
-        gnrgui = GNRGui(MagicMock(), AdministrationMainWindow)
+        gnrgui = GNRGui(MagicMock(), AppMainWindow)
         customizer = RenderingMainWindowCustomizer(gnrgui.get_main_window(), MagicMock())
 
         customizer.gui.ui.showResourceButton.click()

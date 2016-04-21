@@ -1,7 +1,9 @@
 import os
 import logging
 import cPickle
+
 from PyQt4 import QtCore
+from twisted.internet import task
 
 from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task
@@ -55,13 +57,19 @@ class GNRApplicationLogic(QtCore.QObject):
         self.progress_dialog_customizer = None
         self.add_new_nodes_function = lambda x: None
 
+    def start(self):
+        l = task.LoopingCall(self.get_status)
+        l.start(3.0)
+
     def register_gui(self, gui, customizer_class):
         self.customizer = customizer_class(gui, self)
 
     def register_client(self, client):
         self.client = client
         self.client.register_listener(GNRClientEventListener(self))
-        self.customizer.set_options(self.get_config())
+        self.customizer.init_config()
+        self.customizer.set_options(self.get_config(), client.keys_auth.get_key_id(),
+                                    client.transaction_system.get_payment_address())
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
@@ -113,10 +121,7 @@ class GNRApplicationLogic(QtCore.QObject):
         return self.task_types
 
     def get_status(self):
-        return self.client.get_status()
-
-    def get_about_info(self):
-        return self.client.get_about_info()
+        self.customizer.gui.ui.statusTextBrowser.setText(self.client.get_status())
 
     def get_config(self):
         return self.client.config_desc
@@ -131,21 +136,10 @@ class GNRApplicationLogic(QtCore.QObject):
         else:
             assert False, "Task {} not registered".format(name)
 
-    def change_config(self, cfg_desc):
-        old_cfg_desc = self.client.config_desc
-        if (old_cfg_desc.manager_address != cfg_desc.manager_address) or\
-                (old_cfg_desc.manager_port != cfg_desc.manager_port):
-            if self.nodes_manager_client is not None:
-                self.nodes_manager_client.dropConnection()
-                del self.nodes_manager_client
-            self.nodes_manager_client = NodesManagerUidClient(cfg_desc.node_name,
-                                                              cfg_desc.manager_address,
-                                                              cfg_desc.manager_port,
-                                                              None,
-                                                              self)
+    def task_settings_changed(self):
+        self.customizer.new_task_dialog_customizer.task_settings_changed()
 
-            self.nodes_manager_client.start()
-            self.client.register_nodes_manager_client(self.nodes_manager_client)
+    def change_config(self, cfg_desc):
         self.client.change_config(cfg_desc)
 
     def _get_new_task_state(self):
@@ -194,8 +188,8 @@ class GNRApplicationLogic(QtCore.QObject):
     def show_task_details(self, task_id):
         self.customizer.show_details_dialog(task_id)
 
-    def show_new_task_dialog(self, task_id):
-        self.customizer.show_new_task_dialog(task_id)
+    def clone_task(self, task_id):
+        self.customizer.clone_task(task_id)
 
     def restart_subtask(self, subtask_id):
         self.client.restart_subtask(subtask_id)
@@ -243,6 +237,7 @@ class GNRApplicationLogic(QtCore.QObject):
                 self.tasks[t.definition.task_id] = t
 
         self.customizer.update_tasks(self.tasks)
+        self.customizer.gui.ui.listWidget.setCurrentItem(self.customizer.gui.ui.listWidget.item(1))
 
     def register_new_task_type(self, task_type):
         if task_type.name not in self.task_types:

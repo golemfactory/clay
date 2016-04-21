@@ -436,9 +436,6 @@ class Client:
             msg += "Budget: {}\n".format(self.transaction_system.budget)
         return msg
 
-    def get_about_info(self):
-        return APP_NAME, APP_VERSION
-
     def __lock_datadir(self):
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
         flags = filelock.LOCK_EX | filelock.LOCK_NB
