@@ -262,13 +262,17 @@ class TCPNetwork(Network):
             logger.warning("No addresses for connection given")
             TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
             return
+
         address = addresses[0].address
         port = addresses[0].port
 
-        self.__try_to_connect_to_address(address, port, self.__connection_to_address_established,
-                                         self.__connection_to_address_failure, addresses_to_arg=addresses,
+        self.__try_to_connect_to_address(address, port,
+                                         self.__connection_to_address_established,
+                                         self.__connection_to_address_failure,
+                                         addresses_to_arg=addresses,
                                          established_callback_to_arg=established_callback,
-                                         failure_callback_to_arg=failure_callback, **kwargs)
+                                         failure_callback_to_arg=failure_callback,
+                                         **kwargs)
 
     def __try_to_connect_to_address(self, address, port, established_callback, failure_callback, **kwargs):
         logger.debug("Connection to host {}: {}".format(address, port))
