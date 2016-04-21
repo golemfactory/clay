@@ -108,7 +108,6 @@ class AbsRenderingMainWindowCustomizer(object):
             self.__set_preview(t)
 
         self.__update_output_file_color()
-        self.current_task_highlighted = t
 
     def show_task_result(self, task_id):
         t = self.logic.get_task(task_id)
@@ -319,3 +318,7 @@ class RenderingMainWindowCustomizer(AbsRenderingMainWindowCustomizer, GNRMainWin
 
     def init_config(self):
         GNRMainWindowCustomizer.init_config(self)
+
+    def update_task_additional_info(self, t):
+        GNRMainWindowCustomizer.update_task_additional_info(self, t)
+        AbsRenderingMainWindowCustomizer.update_task_additional_info(self, t)

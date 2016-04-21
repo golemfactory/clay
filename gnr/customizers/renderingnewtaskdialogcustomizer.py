@@ -5,7 +5,6 @@ from copy import deepcopy
 
 
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
-
 from gnr.renderingtaskstate import RenderingTaskState, RenderingTaskDefinition
 from golem.task.taskstate import TaskStatus
 from timehelper import set_time_spin_boxes
@@ -217,6 +216,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
     def _finish_button_clicked(self):
         self._add_current_task()
+        self.load_task_definition(self.task_state.definition)
 
     def _cancel_button_clicked(self):
         self.__reset_to_defaults()

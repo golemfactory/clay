@@ -5,6 +5,8 @@ import cPickle
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
+
+from golem.task.taskstate import  TaskStatus
 from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
                           ConfigurationDialog, EnvironmentsDialog, IdentityDialog, NewTaskDialog
 from gnr.ui.tasktableelem import TaskTableElem
@@ -78,6 +80,7 @@ class GNRMainWindowCustomizer(Customizer):
 
     def update_task_additional_info(self, t):
         self.current_task_highlighted = t
+        self.gui.ui.startTaskButton.setEnabled(t.task_state.status == TaskStatus.notStarted)
 
     def show_task_result(self, task_id):
         t = self.logic.get_task(task_id)
@@ -138,6 +141,7 @@ class GNRMainWindowCustomizer(Customizer):
         QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("doubleClicked(const QModelIndex)"),
                                self._task_table_row_double_clicked)
         self.gui.ui.taskTableWidget.customContextMenuRequested.connect(self._context_menu_requested)
+        self.gui.ui.startTaskButton.clicked.connect(self._start_task_button_clicked)
 
     def _setup_basic_app_connections(self):
         self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
@@ -177,6 +181,11 @@ class GNRMainWindowCustomizer(Customizer):
 
         if definition:
             self._load_new_task_from_definition(definition)
+
+    def _start_task_button_clicked(self):
+        if self.current_task_highlighted is None:
+            return
+        self.logic.start_task(self.current_task_highlighted.definition.task_id)
 
     def _add_task(self, task_id, status):
         current_row_count = self.gui.ui.taskTableWidget.rowCount()

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>923</width>
-    <height>689</height>
+    <width>869</width>
+    <height>692</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -38,16 +38,7 @@
       <property name="sizeConstraint">
        <enum>QLayout::SetNoConstraint</enum>
       </property>
-      <property name="leftMargin">
-       <number>5</number>
-      </property>
-      <property name="topMargin">
-       <number>5</number>
-      </property>
-      <property name="rightMargin">
-       <number>5</number>
-      </property>
-      <property name="bottomMargin">
+      <property name="margin">
        <number>5</number>
       </property>
       <item>
@@ -99,11 +90,14 @@
             <string>New Task</string>
            </property>
            <property name="textAlignment">
-            <set>AlignCenter</set>
+            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
             <iconset>
              <normaloff>img/new.png</normaloff>img/new.png</iconset>
+           </property>
+           <property name="flags">
+            <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
            </property>
           </item>
           <item>
@@ -111,7 +105,7 @@
             <string>Tasks</string>
            </property>
            <property name="textAlignment">
-            <set>AlignCenter</set>
+            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
             <iconset>
@@ -126,7 +120,7 @@
             <string>Status</string>
            </property>
            <property name="textAlignment">
-            <set>AlignCenter</set>
+            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
             <iconset>
@@ -141,7 +135,7 @@
             <string>Preferences</string>
            </property>
            <property name="textAlignment">
-            <set>AlignCenter</set>
+            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
             <iconset>
@@ -156,7 +150,7 @@
             <string>Account</string>
            </property>
            <property name="textAlignment">
-            <set>AlignCenter</set>
+            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
             <iconset>
@@ -180,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -724,16 +718,7 @@
             <enum>Qt::LeftToRight</enum>
            </property>
            <layout class="QGridLayout" name="gridLayout_3" rowstretch="0,0" columnstretch="5,0">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
+            <property name="margin">
              <number>0</number>
             </property>
             <property name="spacing">
@@ -841,16 +826,7 @@
               <property name="sizeConstraint">
                <enum>QLayout::SetFixedSize</enum>
               </property>
-              <property name="leftMargin">
-               <number>5</number>
-              </property>
-              <property name="topMargin">
-               <number>5</number>
-              </property>
-              <property name="rightMargin">
-               <number>5</number>
-              </property>
-              <property name="bottomMargin">
+              <property name="margin">
                <number>5</number>
               </property>
               <item>
@@ -1020,6 +996,16 @@
               <property name="bottomMargin">
                <number>5</number>
               </property>
+              <item>
+               <widget class="QPushButton" name="startTaskButton">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
+                <property name="text">
+                 <string>Start task</string>
+                </property>
+               </widget>
+              </item>
               <item>
                <widget class="QLabel" name="label_6">
                 <property name="sizePolicy">
@@ -1499,16 +1485,7 @@
                 </item>
                 <item row="0" column="0">
                  <layout class="QGridLayout" name="gridLayout_7">
-                  <property name="leftMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="topMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="rightMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="bottomMargin">
+                  <property name="margin">
                    <number>5</number>
                   </property>
                   <item row="0" column="0">
@@ -1563,16 +1540,7 @@
                <layout class="QGridLayout" name="gridLayout_10">
                 <item row="0" column="0">
                  <layout class="QGridLayout" name="gridLayout_6">
-                  <property name="leftMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="topMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="rightMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="bottomMargin">
+                  <property name="margin">
                    <number>5</number>
                   </property>
                   <item row="0" column="0">
@@ -2102,16 +2070,7 @@
               <property name="fieldGrowthPolicy">
                <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
               </property>
-              <property name="leftMargin">
-               <number>10</number>
-              </property>
-              <property name="topMargin">
-               <number>10</number>
-              </property>
-              <property name="rightMargin">
-               <number>10</number>
-              </property>
-              <property name="bottomMargin">
+              <property name="margin">
                <number>10</number>
               </property>
               <item row="0" column="0">
@@ -2231,16 +2190,7 @@
       </item>
       <item>
        <layout class="QHBoxLayout" name="footerLayout">
-        <property name="leftMargin">
-         <number>5</number>
-        </property>
-        <property name="topMargin">
-         <number>5</number>
-        </property>
-        <property name="rightMargin">
-         <number>5</number>
-        </property>
-        <property name="bottomMargin">
+        <property name="margin">
          <number>5</number>
         </property>
         <item>
