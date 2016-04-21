@@ -1,13 +1,17 @@
 from mock import Mock
+from PyQt4.QtCore import Qt
+from PyQt4.QtTest import QTest
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.tools.testdirfixture import TestDirFixture
 
 from gnr.application import GNRGui
+
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.gnrstartapp import build_lux_render_info
+from gnr.renderingtaskstate import RenderingTaskDefinition
 from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
@@ -26,5 +30,13 @@ class TestLuxRenderDialogCustomizer(TestDirFixture):
         lux_customizer = logic.customizer.new_task_dialog_customizer.task_customizer
         assert isinstance(lux_customizer, LuxRenderDialogCustomizer)
         assert lux_customizer.get_task_name() == "LuxRender"
+
+        logic.customizer.gui.ui.resourceFilesLabel.setText("124")
+        QTest.mouseClick(logic.customizer.gui.ui.resetToDefaultButton, Qt.LeftButton)
+        assert logic.customizer.gui.ui.resourceFilesLabel.text() == "0"
+
+        definition = RenderingTaskDefinition()
+        lux_customizer.get_task_specific_options(definition)
+        lux_customizer.load_task_definition(definition)
 
         gnrgui.app.deleteLater()
