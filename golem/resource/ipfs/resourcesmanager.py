@@ -212,7 +212,7 @@ class IPFSResourceManager:
             return
 
         if resource_coll and len(resource_coll) == 1:
-            common_prefix = os.path.dirname(resource_coll[0])
+            common_prefix = os.path.dirname(next(iter(resource_coll)))
         else:
             common_prefix = common_dir(resource_coll)
 
