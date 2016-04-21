@@ -49,8 +49,6 @@ class ClientConfigDescriptor(object):
         self.requesting_trust = 0.0
         self.computing_trust = 0.0
 
-        self.app_name = ""
-        self.app_version = ""
         self.eth_account = ""
         self.min_price = 0
         self.max_price = 0

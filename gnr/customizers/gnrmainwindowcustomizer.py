@@ -5,6 +5,8 @@ import cPickle
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
+
+from golem.core.variables import APP_NAME, APP_VERSION
 from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, StatusWindow, \
                           AboutWindow, ConfigurationDialog, EnvironmentsDialog, IdentityDialog, NewTaskDialog
 from gnr.ui.tasktableelem import TaskTableElem
@@ -35,7 +37,7 @@ class GNRMainWindowCustomizer(Customizer):
         self._set_error_label()
 
     def set_options(self, cfg_desc):
-        self.gui.ui.appVer.setText(u"{} - {}".format(cfg_desc.app_name, cfg_desc.app_version))
+        self.gui.ui.appVer.setText(u"{} - {}".format(APP_NAME, APP_VERSION))
         self.gui.ui.nodeNameLabel.setText(u"Id: {}".format(cfg_desc.node_name))
 
     # Add new task to golem client
