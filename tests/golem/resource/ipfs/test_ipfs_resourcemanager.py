@@ -1,20 +1,10 @@
 import os
-import re
-import uuid
-
 import time
+import uuid
 
 from golem.resource.dirmanager import DirManager
 from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
 from golem.tools.testdirfixture import TestDirFixture
-
-
-def list_endswith(longer, shorter):
-    ll = len(longer) - 1
-    for i in reversed(range(len(shorter), 0)):
-        if longer[ll - i] != shorter[-i]:
-            return False
-    return True
 
 
 class TestResourcesManager(TestDirFixture):

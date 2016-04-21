@@ -12,7 +12,6 @@ import ipfsApi
 import requests
 from ipfsApi.commands import ArgCommand
 from ipfsApi.http import HTTPClient, pass_defaults
-from twisted.internet import reactor
 from twisted.internet import threads
 
 logger = logging.getLogger(__name__)
@@ -252,12 +251,20 @@ class IPFSAsyncCall(object):
 class IPFSAsyncExecutor(object):
 
     """ Execute a deferred job in a separate thread (Twisted) """
-    reactor.suggestThreadPoolSize(reactor.getThreadPool().max + 4)
+    bootstrapped = False
 
     @classmethod
     def run(cls, deferred_call, success, error):
+        if not cls.bootstrapped:
+            cls.__bootstrap()
+
         deferred = threads.deferToThread(deferred_call.method,
                                          *deferred_call.args,
                                          **deferred_call.kwargs)
         deferred.addCallbacks(success, error)
 
+    @classmethod
+    def __bootstrap(cls):
+        cls.bootstrapped = True
+        from twisted.internet import reactor
+        reactor.suggestThreadPoolSize(reactor.getThreadPool().max + 4)
