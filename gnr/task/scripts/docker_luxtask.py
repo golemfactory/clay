@@ -49,7 +49,7 @@ def format_lux_renderer_cmd(start_task, output_basename, output_format, scene_fi
         cmd = [
             "{}".format(LUXRENDER_COMMAND),
             "{}".format(scene_file),
-            "-r", "{}".format(flm_file),
+            "-R", "{}".format(flm_file),
             "-t", "{}".format(num_cores)
         ]
     else:
