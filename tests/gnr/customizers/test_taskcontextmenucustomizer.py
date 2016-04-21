@@ -16,5 +16,5 @@ class TestTaskContextMenuCustomizer(TestCase):
                     TaskStatus.finished, TaskStatus.aborted, TaskStatus.failure,
                     TaskStatus.paused]
         for st in status:
-            ts.status = st
+            ts.task_state.status = st
             menu = TaskContextMenuCustomizer(Mock(), Mock(), ts)

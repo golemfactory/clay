@@ -1,4 +1,5 @@
 import unittest
+
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 
 
@@ -18,7 +19,6 @@ class TestFramesConversion(unittest.TestCase):
         self.assertEqual(BlenderRenderDialogCustomizer.frames_to_string([2, 3, -1]), "")
         self.assertEqual(BlenderRenderDialogCustomizer.frames_to_string("ABC"), "")
 
-
     def test_string_to_frames(self):
         self.assertEqual(BlenderRenderDialogCustomizer.string_to_frames('1-4'), range(1, 5))
         self.assertEqual(BlenderRenderDialogCustomizer.string_to_frames('5-8;1-3'), [1, 2, 3, 5, 6, 7, 8])
@@ -30,4 +30,9 @@ class TestFramesConversion(unittest.TestCase):
         self.assertEqual(BlenderRenderDialogCustomizer.string_to_frames('abc'), [])
         self.assertEqual(BlenderRenderDialogCustomizer.string_to_frames('0-15,5;abc'), [])
         self.assertEqual(BlenderRenderDialogCustomizer.string_to_frames(0), [])
+        self.assertEqual(BlenderRenderDialogCustomizer.string_to_frames('5-8;1-2-3'), [])
+        self.assertEqual(BlenderRenderDialogCustomizer.string_to_frames('1-100,2,3'), [])
+
+
+
 
