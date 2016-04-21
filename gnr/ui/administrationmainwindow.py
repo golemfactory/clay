@@ -9,6 +9,9 @@ class MainWindow(QMainWindow):
 
         if reply == QMessageBox.Yes:
             event.accept()
+            from twisted.internet import reactor
+            if reactor.running:
+                reactor.stop()
         else:
             event.ignore()
 
