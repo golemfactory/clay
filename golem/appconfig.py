@@ -18,8 +18,8 @@ OPTIMAL_PEER_NUM = 10
 MAX_RESOURCE_SIZE = 250 * 1024
 MAX_MEMORY_SIZE = 250 * 1024
 DISTRIBUTED_RES_NUM = 2
-APP_NAME = "Golem App"
-APP_VERSION = "1.021"
+APP_NAME = "Brass Golem"
+APP_VERSION = "0.2"
 
 logger = logging.getLogger(__name__)
 
