@@ -1,4 +1,4 @@
-from mock import Mock
+from mock import Mock, patch
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 
@@ -18,7 +18,8 @@ from gnr.ui.widget import TaskWidget
 
 
 class TestLuxRenderDialogCustomizer(TestDirFixture):
-    def test_lux_customizer(self):
+    @patch("gnr.customizers.renderercustomizer.QFileDialog")
+    def test_lux_customizer(self, mock_file_dialog):
         gnrgui = GNRGui(Mock(), AppMainWindow)
         logic = RenderingApplicationLogic()
         logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget), LuxRenderDialogCustomizer))
@@ -38,5 +39,11 @@ class TestLuxRenderDialogCustomizer(TestDirFixture):
         definition = RenderingTaskDefinition()
         lux_customizer.get_task_specific_options(definition)
         lux_customizer.load_task_definition(definition)
+
+        QTest.mouseClick(lux_customizer.gui.ui.chooseMainSceneFileButton, Qt.LeftButton)
+        mock_file_dialog.getOpenFileName.assert_called_with(lux_customizer.gui,
+                                                            "Choose main scene file",
+                                                            u"",
+                                                            u"Scene files (*.LXS *.lxs)")
 
         gnrgui.app.deleteLater()

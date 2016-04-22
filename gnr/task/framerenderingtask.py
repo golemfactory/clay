@@ -131,7 +131,7 @@ class FrameRenderingTask(RenderingTask):
 
     def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
         num = self.frames.index(frame_num)
-        if new_chunk_file_path.endswith(".exr") or new_chunk_file_path.endswith(".EXR"):
+        if new_chunk_file_path.upper().endswith(".EXR"):
             img = exr_to_pil(new_chunk_file_path)
         else:
             img = Image.open(new_chunk_file_path)

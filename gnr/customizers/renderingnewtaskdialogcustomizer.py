@@ -76,8 +76,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.totalSpinBox.setRange(dr.defaults.min_subtasks, dr.defaults.max_subtasks)
         self.gui.ui.totalSpinBox.setValue(dr.defaults.default_subtasks)
 
-        self.gui.ui.verificationSizeXSpinBox.setMaximum(r.defaults.resolution[0])
-        self.gui.ui.verificationSizeYSpinBox.setMaximum(r.defaults.resolution[1])
+        self.gui.ui.verificationSizeXSpinBox.setMaximum(dr.defaults.resolution[0])
+        self.gui.ui.verificationSizeYSpinBox.setMaximum(dr.defaults.resolution[1])
 
     def _set_new_pessimistic_cost(self):
         NewTaskDialogCustomizer._set_new_pessimistic_cost(self)
@@ -148,7 +148,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         dir_ = os.path.dirname(u"{}".format(self.gui.ui.mainProgramFileLineEdit.text()))
 
         file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
-                                                             "Choose main program file", dir_, "Python (*.py)"))
+                                                             "Choose main program file", dir_,
+                                                             "Python (*.py *.Py *.PY *.pY)"))
 
         if file_name != '':
             self.gui.ui.mainProgramFileLineEdit.setText(file_name)
