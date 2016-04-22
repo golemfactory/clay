@@ -21,7 +21,7 @@ def main(datadir):
     app = GNRGui(logic, AppMainWindow)
     gui = RenderingMainWindowCustomizer
 
-    start_app(logic, app, gui, rendering=True, datadir=datadir)
+    start_app(logic, app, gui,  datadir=datadir, rendering=True,)
 
 if __name__ == "__main__":
     freeze_support()

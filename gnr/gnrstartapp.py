@@ -103,9 +103,9 @@ def run_add_task_server(client):
     #   server.start()
 
 
-def start_app(logic, app, gui, rendering=False, start_manager=False, start_manager_client=False,
-              start_info_server=False, start_ranking=True, start_add_task_client=False, start_add_task_server=False,
-              datadir=None):
+def start_app(logic, app, gui, datadir, rendering=False, start_manager=False, start_manager_client=False,
+              start_info_server=False, start_ranking=True, start_add_task_client=False, start_add_task_server=False
+              ):
     reactor = install_reactor()
     register_gui(logic, app, gui)
     if rendering:
