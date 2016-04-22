@@ -2,7 +2,10 @@ import json
 import logging
 import os
 import shutil
+import socket
 import tarfile
+import twisted
+import urllib2
 import uuid
 from functools import wraps
 from threading import Lock
@@ -18,6 +21,10 @@ import copy
 logger = logging.getLogger(__name__)
 
 __all__ = ['IPFSCommands', 'IPFSClient', 'IPFSAsyncCall', 'IPFSAsyncExecutor', 'StreamFileObject']
+
+BOOTSTRAP_NODES = [
+    '/ip4/52.37.205.43/tcp/4001/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB'
+]
 
 
 class StreamFileObject:
@@ -216,7 +223,6 @@ class IPFSClient(ipfsApi.Client):
     """ Class of ipfsApi.Client methods decorated with response wrapper """
 
     __metaclass__ = IPFSClientMetaClass
-
     _clientfactory = ChunkedHTTPClient
 
     def __init__(self,
@@ -244,6 +250,98 @@ class IPFSClient(ipfsApi.Client):
 
     def get(self, multihash, **kwargs):
         raise NotImplementedError("Please use the get_file method")
+
+
+class IPFSConfig:
+    def __init__(self, max_concurrent_downloads=4, max_retries=16,
+                 client_timeout=None, bootstrap_nodes=None):
+
+        self.max_retries = max_retries
+        self.max_concurrent_downloads = max_concurrent_downloads
+        self.bootstrap_nodes = bootstrap_nodes if bootstrap_nodes else BOOTSTRAP_NODES
+        self.client = {
+            'timeout': client_timeout or (24000, 24000)
+        }
+
+
+try:
+    from requests.packages.urllib3.exceptions import *
+    urllib_exceptions = [MaxRetryError, TimeoutError, ReadTimeoutError,
+                         ConnectTimeoutError, ConnectionError]
+except ImportError:
+    urllib_exceptions = [urllib2.URLError]
+
+
+class IPFSClientHandler(object):
+
+    timeout_exceptions = [requests.exceptions.ConnectionError,
+                          requests.exceptions.ConnectTimeout,
+                          requests.exceptions.ReadTimeout,
+                          requests.exceptions.RetryError,
+                          requests.exceptions.Timeout,
+                          requests.exceptions.HTTPError,
+                          requests.exceptions.StreamConsumedError,
+                          requests.exceptions.RequestException,
+                          twisted.internet.defer.TimeoutError,
+                          socket.timeout] + urllib_exceptions
+
+    def __init__(self, config=None):
+
+        self.command_retries = dict()
+        self.commands = dict()
+        self.config = config or IPFSConfig()
+
+        for name, val in IPFSCommands.__dict__.iteritems():
+            if not name.startswith('_'):
+                self.command_retries[val] = {}
+                self.commands[val] = name
+
+    def new_ipfs_client(self):
+        return IPFSClient(**self.config.client)
+
+    @staticmethod
+    def _ipfs_async_call(method, success, error, *args, **kwargs):
+        call = IPFSAsyncCall(method, *args, **kwargs)
+        IPFSAsyncExecutor.run(call, success, error)
+
+    def _handle_retries(self, method, cmd, *args, **kwargs):
+        working = True
+        result = None
+
+        if args:
+            obj_id = args[0]
+        else:
+            obj_id = kwargs.pop('obj_id', method)
+
+        while working:
+            try:
+                result = method(*args, **kwargs)
+                working = False
+            except Exception as exc:
+                if not self._can_retry(exc, cmd, obj_id):
+                    self._clear_retry(cmd, obj_id)
+                    raise
+
+        self._clear_retry(cmd, obj_id)
+        return result
+
+    def _can_retry(self, exc, cmd, obj_id):
+        if type(exc) in self.timeout_exceptions:
+            this_cmd = self.command_retries[cmd]
+
+            if obj_id not in this_cmd:
+                this_cmd[obj_id] = 0
+
+            if this_cmd[obj_id] < self.config['max_retries']:
+                this_cmd[obj_id] += 1
+                return True
+
+            this_cmd.pop(obj_id, None)
+
+        return False
+
+    def _clear_retry(self, cmd, obj_id):
+        self.command_retries[cmd].pop(obj_id, None)
 
 
 class IPFSAsyncCall(object):

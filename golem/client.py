@@ -6,6 +6,7 @@ from twisted.internet import task
 from threading import Lock
 
 from golem.core.variables import APP_NAME, APP_VERSION
+from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 from golem.tools import filelock
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.node import Node
@@ -136,6 +137,7 @@ class Client:
 
         self.environments_manager = EnvironmentsManager()
 
+        self.ipfs_manager = None
         self.resource_server = None
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
@@ -152,6 +154,8 @@ class Client:
                                       use_ipv6=self.config_desc.use_ipv6)
         self.resource_server = IPFSResourceServer(self.task_server.task_computer.dir_manager,
                                                   self.keys_auth, self)
+        self.ipfs_manager = IPFSDaemonManager()
+        self.ipfs_manager.id()
 
         logger.info("Starting resource server...")
         self.resource_server.start_accepting()
@@ -419,6 +423,11 @@ class Client:
 
         if self.nodes_manager_client:
             self.nodes_manager_client.send_client_state_snapshot(self.last_node_state_snapshot)
+
+    def get_metadata(self):
+        metadata = dict()
+        metadata.update(self.ipfs_manager.get_metadata())
+        return metadata
 
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()
