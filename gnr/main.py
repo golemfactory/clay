@@ -2,7 +2,7 @@ from multiprocessing import freeze_support
 
 import click
 
-from golem.core.simpleenv import _get_local_datadir
+from golem.core.simpleenv import get_local_datadir
 
 from gnrstartapp import start_app, config_logging
 from renderingapplicationlogic import RenderingApplicationLogic
@@ -12,8 +12,7 @@ from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCus
 
 
 @click.command()
-@click.option('--datadir', '-d', type=click.Path(),
-              default=_get_local_datadir('gnr'))
+@click.option('--datadir', '-d', type=click.Path())
 def main(datadir):
     config_logging()
 
