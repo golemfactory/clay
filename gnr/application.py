@@ -21,6 +21,8 @@ class GNRGui:
                 logger.error("{}".format(err))
             finally:
                 sys.exit(res)
+        else:
+            self.main_window.window.logic_quit_func = self.app_logic.quit
 
     def get_main_window(self):
         return self.main_window
