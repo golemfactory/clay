@@ -1,6 +1,8 @@
 import time
+import datetime
 import logging
 import random
+import peewee
 from ipaddress import AddressValueError
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -10,6 +12,7 @@ from golem.network.p2p.peersession import PeerSession
 from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
 from golem.ranking.gossipkeeper import GossipKeeper
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.model import KnownHosts, MAX_STORED_HOSTS
 
 from peerkeeper import PeerKeeper
 
@@ -75,11 +78,27 @@ class P2PService(PendingConnectionsServer):
     def connect_to_network(self):
         """ Start listening on the port from configuration and try to connect to the seed node """
         self.start_accepting()
+        logger.debug("I'M ALIVE!")
         try:
-            socket_address = SocketAddress(self.config_desc.seed_host, self.config_desc.seed_port)
-            self.connect(socket_address)
-        except AddressValueError, err:
-            logger.error("Invalid seed address: " + err.message)
+            hosts = KnownHosts.select() .order_by(KnownHosts.last_connected)
+            
+            if hosts.count() > MAX_STORED_HOSTS:
+                logger.debug("Too many hosts in db. Trying to delete the oldest one...")
+                try:
+                    to_delete = []
+                    for i in range(0, hosts.count() - MAX_STORED_HOSTS):
+                        to_delete.append(KnownHosts.select().order_by(KnownHosts.last_connected)[i])
+                    for to_del in to_delete:
+                        to_del.delete_instance()
+                except Exception as err:
+                    logger.warning("Couldn't delete host(s) from database: {}".format(err))
+            for seed in KnownHosts.select():
+                logger.debug("Trying to connect with " + str(seed.ip_address) + ":" + str(seed.port))
+                socket_address = SocketAddress(seed.ip_address, seed.port)
+                self.connect(socket_address)
+        except err:
+            logger.error("Something went wrong: " + err.message)
+        logger.debug("I'M STILL ALIVE!")
 
     def connect(self, socket_address):
         connect_info = TCPConnectInfo([socket_address], self.__connection_established,
@@ -689,11 +708,30 @@ class P2PService(PendingConnectionsServer):
                 p.send_get_tasks()
 
     def __connection_established(self, session, conn_id=None):
+        ip_address = session.conn.transport.getPeer().host
+        port = session.conn.transport.getPeer().port
+        try:
+            logger.debug("Trying to find the host in known hosts")
+            host = KnownHosts.get(ip_address=ip_address, port=port)
+            host.delete_instance()
+        except peewee.DoesNotExist:
+            pass
+        host = KnownHosts.create(ip_address=ip_address, port=port)
+            
+        if KnownHosts.select().count() > MAX_STORED_HOSTS:
+            logger.debug("Too many hosts in db. Trying to delete the oldest one...")
+            try:
+                oldest = KnownHosts.select().order_by(KnownHosts.last_connected)[0]
+                oldest.delete_instance()
+            except Exception as err:
+                logger.warning("Couldn't delete host from database: {}".format(err))
+
+        logger.debug("Known Hosts:")
+        for host in KnownHosts.select():
+            logger.debug(str(host.ip_address) + ":" + str(host.port))
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
-        logger.debug("Connection to peer established. {}: {}, conn_id {}".format(session.conn.transport.getPeer().host,
-                                                                                 session.conn.transport.getPeer().port,
-                                                                                 conn_id))
+        logger.debug("Connection to peer established. {}: {}, conn_id {}".format(ip_address, port, conn_id))
 
     @staticmethod
     def __connection_failure(conn_id=None):
