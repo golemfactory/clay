@@ -101,7 +101,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd = ClientConfigDescriptor()
         ccd.task_session_timeout = 40
         ccd.min_price = 1.0
-        ccd.use_distributed_resource_management = True
+        ccd.use_distributed_resource_management = 10
         ccd.task_request_interval = 10
         ccd.use_waiting_for_task_timeout = True
         ccd.waiting_for_task_timeout = 19
@@ -109,7 +109,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd2 = ClientConfigDescriptor()
         ccd2.task_session_timeout = 124
         ccd2.min_price = 0.0057
-        ccd2.use_distributed_resource_management = False
+        ccd2.use_distributed_resource_management = 0
         ccd2.task_request_interval = 31
         ccd2.use_waiting_for_task_timeout = False
         ccd2.waiting_for_task_timeout = 24
