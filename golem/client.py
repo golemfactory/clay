@@ -5,6 +5,7 @@ from os import path
 from twisted.internet import task
 from threading import Lock
 
+from golem.core.variables import APP_NAME, APP_VERSION
 from golem.tools import filelock
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.node import Node
