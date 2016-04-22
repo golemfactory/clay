@@ -96,8 +96,8 @@ class P2PService(PendingConnectionsServer):
                 logger.debug("Trying to connect with " + str(seed.ip_address) + ":" + str(seed.port))
                 socket_address = SocketAddress(seed.ip_address, seed.port)
                 self.connect(socket_address)
-        except err:
-            logger.error("Something went wrong: " + err.message)
+        except Exception as err:
+            logger.error("Something went wrong: {}".format(err))
         logger.debug("I'M STILL ALIVE!")
 
     def connect(self, socket_address):
