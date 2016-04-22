@@ -40,6 +40,7 @@ class SocketAddress(object):
         """
         self.address = address
         self.port = port
+        self.ipv6 = False
         try:
             self.__validate()
         except ValueError, err:
@@ -58,6 +59,7 @@ class SocketAddress(object):
         if self.address.find(':') != -1:
             # IPv6 address
             IPv6Address(self.address.decode('utf8'))
+            self.ipv6 = True
         else:
             # If it's all digits then guess it's an IPv4 address
             if self._all_numeric_pattern.match(self.address):

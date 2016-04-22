@@ -4,19 +4,21 @@ import re
 import shutil
 import socket
 import time
+import twisted
 import urllib2
 from collections import deque
 from threading import Lock
 
 import requests
-import twisted
 
 from golem.core.fileshelper import copy_file_tree, common_dir
+from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.ipfs.client import IPFSClient, IPFSAsyncCall, IPFSAsyncExecutor, IPFSCommands
 
 __all__ = ['IPFSResourceManager']
-
 logger = logging.getLogger(__name__)
+
+BOOTSTRAP_NODES = ['/ip4/52.37.205.43/tcp/4001/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB']
 
 
 def to_unicode(source):
@@ -47,11 +49,12 @@ class IPFSResourceManager:
                           socket.timeout] + urllib_exceptions
 
     def __init__(self, dir_manager,
-                 client_config=None,
+                 config=None,
                  resource_dir_method=None,
                  max_concurrent_downloads=4,
                  max_retries=16):
 
+        self.ID = None
         self.lock = Lock()
 
         self.dir_manager = dir_manager
@@ -60,11 +63,6 @@ class IPFSResourceManager:
         self.current_downloads = 0
         self.max_retries = max_retries
         self.max_concurrent_downloads = max_concurrent_downloads
-
-        self.client_config = {'timeout': (24000, 24000)}
-
-        if client_config:
-            self.client_config.update(client_config)
 
         self.file_to_hash = dict()
         self.hash_to_path = dict()
@@ -83,6 +81,16 @@ class IPFSResourceManager:
             self.resource_dir_method = dir_manager.get_task_resource_dir
         else:
             self.resource_dir_method = resource_dir_method
+
+        self.client_config = {
+            'timeout': (24000, 24000)
+        }
+        self.bootstrap_nodes = BOOTSTRAP_NODES
+
+        if config and 'ipfs' in config:
+            self.client_config.update(config.get('ipfs', {}))
+        for node in self.bootstrap_nodes:
+            self.add_bootstrap_node(node)
 
         self.add_resource_dir(self.get_resource_root_dir())
 
@@ -258,10 +266,10 @@ class IPFSResourceManager:
             return
 
         is_dir = os.path.isdir(resource_path)
-        response = self.__handle_retries(client.add,
-                                         IPFSCommands.add,
-                                         resource_path,
-                                         recursive=is_dir)
+        response = self._handle_retries(client.add,
+                                        IPFSCommands.add,
+                                        resource_path,
+                                        recursive=is_dir)
 
         self._register_response(resource, response, task_id)
 
@@ -306,19 +314,53 @@ class IPFSResourceManager:
         logging.debug("IPFS: Resource registered {} ({})".format(file_path, multihash))
         return name
 
+    @staticmethod
+    def build_node_address(address, node_id, port=4001):
+        pattern = '/{}/{}/tcp/{}/ipfs/{}'
+        ip4, ip6 = 'ip4', 'ip6'
+        sa = SocketAddress(address, port)
+        return pattern.format(ip6 if sa.ipv6 else ip4,
+                              address, port, node_id)
+
+    def add_bootstrap_node(self, url, client=None):
+        if not client:
+            client = self.new_ipfs_client()
+        return self._handle_retries(client.bootstrap_add,
+                                    IPFSCommands.bootstrap_add,
+                                    url) if url else None
+
+    def remove_bootstrap_node(self, url, client=None):
+        if not client:
+            client = self.new_ipfs_client()
+        return self._handle_retries(client.bootstrap_rm,
+                                    IPFSCommands.bootstrap_rm,
+                                    url) if url else None
+
+    def list_bootstrap_nodes(self, client=None):
+        if not client:
+            client = self.new_ipfs_client()
+
+        result = self._handle_retries(client.bootstrap_list,
+                                      IPFSCommands.bootstrap_list,
+                                      obj_id=IPFSCommands.bootstrap_list)
+
+        if result and result[0]:
+            return result[0].get('Peers', [])
+        return []
+
     def pin_resource(self, multihash, client=None):
         if not client:
             client = self.new_ipfs_client()
-        return self.__handle_retries(client.pin_add,
-                                     IPFSCommands.pin,
-                                     multihash)
+        return self._handle_retries(client.pin_add,
+                                    IPFSCommands.pin,
+                                    multihash)
 
     def unpin_resource(self, multihash, client=None):
         if not client:
             client = self.new_ipfs_client()
-        return self.__handle_retries(client.pin_rm,
-                                     IPFSCommands.unpin,
-                                     multihash)
+        return self._handle_retries(client.pin_rm,
+                                    IPFSCommands.unpin,
+                                    multihash)
 
     def pull_resource(self, filename, multihash, task_id,
                       success, error, client=None, async=True):
@@ -397,7 +439,10 @@ class IPFSResourceManager:
     def id(self, client=None):
         if not client:
             client = self.new_ipfs_client()
-        return self.__handle_retries(client.id, IPFSCommands.id, 'id')
+
+        response = self._handle_retries(client.id, IPFSCommands.id, 'id')
+        self.ID = response[0]['ID']
+        return self.ID
 
     def __copy_cached(self, filename, multihash, task_id):
         cached_path = self.get_cached(multihash)
@@ -470,10 +515,13 @@ class IPFSResourceManager:
     def __clear_retry(self, cmd, obj_id):
         self.command_retries[cmd].pop(obj_id, None)
 
-    def __handle_retries(self, method, cmd, *args, **kwargs):
+    def _handle_retries(self, method, cmd, *args, **kwargs):
         working = True
-        obj_id = args[0]
         result = None
+        if args:
+            obj_id = args[0]
+        else:
+            obj_id = kwargs.pop('obj_id', method)
 
         while working:
             try:

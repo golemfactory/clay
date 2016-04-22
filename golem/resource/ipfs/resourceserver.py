@@ -29,13 +29,14 @@ class IPFSResourceServer:
     lock = Lock()
     dummy_lock = dummy_context()
 
-    def __init__(self, dir_manager, keys_auth, client):
+    def __init__(self, dir_manager, keys_auth, client, client_config=None):
+
         self.client = client
         self.keys_auth = keys_auth
         self.dir_manager = dir_manager
 
         self.resource_dir = self.dir_manager.res
-        self.resource_manager = IPFSResourceManager(self.dir_manager)
+        self.resource_manager = IPFSResourceManager(self.dir_manager, config=client_config)
 
         self.resources_to_get = []
         self.waiting_resources = {}
