@@ -6,6 +6,8 @@ import Imath
 import os
 from PIL import Image, ImageChops
 
+from golem.core.common import is_windows
+
 logger = logging.getLogger(__name__)
 
 
@@ -115,7 +117,10 @@ def compose_final_image(open_exr_files):
 
 
 def get_exr_files(path):
-    return glob.glob(path + "/*.exr") + glob.glob(path + "/*.EXR")
+    if is_windows():
+        return glob.glob(path + "/*.exr")
+    else:
+        return glob.glob(path + "/*.exr") + glob.glob(path + "/*.EXR")
 
 
 def test_it():
