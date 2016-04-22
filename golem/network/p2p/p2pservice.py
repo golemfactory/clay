@@ -78,7 +78,6 @@ class P2PService(PendingConnectionsServer):
     def connect_to_network(self):
         """ Start listening on the port from configuration and try to connect to the seed node """
         self.start_accepting()
-        logger.debug("I'M ALIVE!")
         try:
             hosts = KnownHosts.select() .order_by(KnownHosts.last_connected)
             
@@ -98,7 +97,6 @@ class P2PService(PendingConnectionsServer):
                 self.connect(socket_address)
         except Exception as err:
             logger.error("Something went wrong: {}".format(err))
-        logger.debug("I'M STILL ALIVE!")
 
     def connect(self, socket_address):
         connect_info = TCPConnectInfo([socket_address], self.__connection_established,
