@@ -251,6 +251,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         if self.add_task_resource_dialog_customizer:
             definition.resources = self.logic.renderer_options.add_to_resources(definition.resources)
             definition.resources.add(os.path.normpath(definition.main_scene_file))
+            self.logic.customizer.gui.ui.resourceFilesLabel.setText(u"{}".format(len(definition.resources)))
 
     def _read_advance_verification_params(self, definition):
         read_advance_verification_params(self.gui, definition)

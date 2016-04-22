@@ -181,7 +181,7 @@ class NewTaskDialogCustomizer(Customizer):
         self._add_current_task()
 
     def _add_current_task(self):
-        self.logic.add_tasks([self.task_state])
+        self.logic.add_tasks([deepcopy(self.task_state)])
 
     def _choose_main_program_file_button_clicked(self):
 
