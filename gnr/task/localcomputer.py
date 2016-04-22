@@ -63,7 +63,7 @@ class LocalComputer(object):
         return None
 
     def task_computed(self, task_thread):
-        if task_thread.result and task_thread.result and task_thread.result.get("data"):
+        if task_thread.result and task_thread.result.get("data"):
             self.success_callback(task_thread.result)
         else:
             logger_msg = self.comp_failed_warning

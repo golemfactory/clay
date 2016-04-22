@@ -15,7 +15,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         ps = PeerSession(MagicMock())
         self.assertIsInstance(ps, PeerSession)
 
-    def test_encrypt_descrypt(self):
+    def test_encrypt_decrypt(self):
         ps = PeerSession(MagicMock())
         ps2 = PeerSession(MagicMock())
 

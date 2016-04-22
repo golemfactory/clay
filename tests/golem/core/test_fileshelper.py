@@ -179,13 +179,13 @@ class TestDirSize(unittest.TestCase):
             ]
         }
 
-        def check(key, ign_case, plus_sep=None):
+        def check(key, ign_case):
             for t in paths[key]:
-                r = common_dir(t[0], ign_case=ign_case, plus_sep=plus_sep)
+                r = common_dir(t[0], ign_case=ign_case)
                 if r != t[1]:
                     self.fail("{} -> {} != {}".format(t[0], r, t[1]))
 
-        check('win', ign_case=True, plus_sep="\\")
+        check('win', ign_case=True)
         check('other', ign_case=False)
 
     def tearDown(self):

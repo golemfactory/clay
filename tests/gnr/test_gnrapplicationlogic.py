@@ -8,7 +8,7 @@ from golem.tools.testdirfixture import TestDirFixture
 from gnr.application import GNRGui
 from gnr.customizers.renderingadmmainwindowcustomizer import RenderingAdmMainWindowCustomizer
 from gnr.gnrapplicationlogic import GNRApplicationLogic
-from gnr.ui.administrationmainwindow import AdministrationMainWindow
+from gnr.ui.appmainwindow import AppMainWindow
 
 
 class TTask(Task):
@@ -62,8 +62,8 @@ class TestGNRApplicationLogic(TestDirFixture):
     def test_run_test_task(self):
         logic = GNRApplicationLogic()
         logic.client = Mock()
+        gnrgui = GNRGui(Mock(), AppMainWindow)
         logic.client.datadir = self.path
-        gnrgui = GNRGui(Mock(), AdministrationMainWindow)
         logic.customizer = RenderingAdmMainWindowCustomizer(gnrgui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         ts = Mock()
@@ -88,4 +88,14 @@ class TestGNRApplicationLogic(TestDirFixture):
         time.sleep(0.5)
         success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
         self.assertEqual(success, False)
+
+        prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
+        logic.task_settings_changed()
+        assert logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count > prev_call_count
+
+        logic.tasks["xyz"] = ts
+        logic.clone_task("xyz")
+
+        assert logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0] == ts.definition
+
         gnrgui.app.deleteLater()

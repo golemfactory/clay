@@ -5,6 +5,7 @@ from os import path
 from twisted.internet import task
 from threading import Lock
 
+from golem.core.variables import APP_NAME, APP_VERSION
 from golem.tools import filelock
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.node import Node
@@ -86,7 +87,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 
 
 class Client:
-    def __init__(self, config_desc, datadir, config=""):
+    def __init__(self, config_desc, datadir, config="", transaction_system=True):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
@@ -123,8 +124,15 @@ class Client:
 
         self.ranking = Ranking(self)
 
-        self.transaction_system = EthereumTransactionSystem(
-            self.keys_auth.get_key_id(), self.keys_auth._private_key)
+        if transaction_system:
+            # Bootstrap transaction system if enabled.
+            # TODO: Transaction system (and possible other modules) should be
+            #       modeled as a Service that run independently.
+            #       The Client/Application should be a collection of services.
+            self.transaction_system = EthereumTransactionSystem(
+                self.keys_auth.get_key_id(), self.keys_auth._private_key)
+        else:
+            self.transaction_system = None
 
         self.environments_manager = EnvironmentsManager()
 
@@ -247,23 +255,6 @@ class Client:
     def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
         self.p2pservice.inform_about_nat_traverse_failure(key_id, res_key_id, conn_id)
 
-    # TRANSACTION SYSTEM OPERATIONS
-
-    def pay_for_task(self, task_id, payments):
-        self.transaction_system.pay_for_task(task_id, payments)
-
-    def get_payments(self):
-        return self.transaction_system.get_payments_list()
-
-    def get_incomes(self):
-        return self.transaction_system.get_incomes_list()
-
-    def add_to_waiting_payments(self, task_id, node_id, value):
-        self.transaction_system.add_to_waiting_payments(task_id, node_id, value)
-
-    def add_to_timeouted_payments(self, task_id):
-        self.transaction_system.add_to_timeouted_payments(task_id)
-
     # CLIENT CONFIGURATION
     def register_listener(self, listener):
         assert isinstance(listener, GolemClientEventListener)
@@ -365,6 +356,8 @@ class Client:
         pass
 
     def check_payments(self):
+        if not self.transaction_system:
+            return
         after_deadline_nodes = self.transaction_system.check_payments()
         for node_id in after_deadline_nodes:
             self.decrease_trust(node_id, RankingStats.payment)
@@ -439,11 +432,9 @@ class Client:
         peers = self.p2pservice.get_peers()
 
         msg += "Active peers in network: {}\n".format(len(peers))
-        msg += "Budget: {}\n".format(self.transaction_system.budget)
+        if self.transaction_system:
+            msg += "Budget: {}\n".format(self.transaction_system.budget)
         return msg
-
-    def get_about_info(self):
-        return self.config_desc.app_name, self.config_desc.app_version
 
     def __lock_datadir(self):
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')

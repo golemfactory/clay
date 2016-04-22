@@ -26,4 +26,6 @@ class AddResourcesDialogCustomizer(ShowTaskResourcesDialogCustomizer):
 
     def __ok_button_clicked(self):
         self.resources = self.gui.ui.folderTreeView.model().export_checked()
+        self.logic.customizer.gui.ui.resourceFilesLabel.setText(u"{}".format(
+            len(self.resources)))
         self.gui.window.close()
