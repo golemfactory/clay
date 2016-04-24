@@ -4,12 +4,14 @@ import os
 import shutil
 import tempfile
 import time
+import uuid
 from os import path
 
 import requests
 import docker.errors
 
 from golem.core.common import is_windows, nt_path_to_posix_path
+from golem.core.simpleenv import _get_local_datadir
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob, container_logger
 from test_docker_image import DockerTestCase
@@ -28,29 +30,14 @@ class TestDockerJob(DockerTestCase):
     TEST_SCRIPT = "print 'Adventure Time!'\n"
 
     def setUp(self):
-        tmpdir = path.expandvars("$TMP")
-        self.cleanup_dir = None
-        if tmpdir == "$TMP":
-            # $TMP should be set on Windows, e.g. to
-            # "C:\Users\<user>\AppData\Local\Temp".
-            # Without 'dir = tmpdir' we would get a dir inside $TMP,
-            # but with a path converted to lowercase, e.g.
-            # "c:\users\<user>\appdata\local\temp\golem-<random-string>".
-            # This wouldn't work with Docker.
+        main_dir = _get_local_datadir('tests-' + str(uuid.uuid4()))
+        if not os.path.exists(main_dir):
+            os.makedirs(main_dir)
 
-            # In OS X only dirs under /Users are mounted automatically
-            user_dir = os.path.expanduser('~')
-            if user_dir:
-                tmpdir = os.path.join(user_dir, '.temp')
-                if not os.path.exists(tmpdir):
-                    os.makedirs(tmpdir)
-                    self.cleanup_dir = tmpdir
-            else:
-                tmpdir = None
-
-        self.work_dir = tempfile.mkdtemp(prefix="golem-", dir=tmpdir)
-        self.resources_dir = tempfile.mkdtemp(prefix="golem-", dir=tmpdir)
-        self.output_dir = tempfile.mkdtemp(prefix="golem-", dir=tmpdir)
+        self.test_dir = tempfile.mkdtemp(dir=main_dir)
+        self.work_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
+        self.resources_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
+        self.output_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
 
         self.image = DockerImage(self._get_test_repository())
         self.test_job = None
@@ -63,11 +50,8 @@ class TestDockerJob(DockerTestCase):
             except docker.errors.APIError:
                 pass  # Already removed?
         self.test_job = None
-        for d in [self.work_dir, self.resources_dir, self.output_dir]:
-            if d:
-                shutil.rmtree(d)
-        if self.cleanup_dir:
-            shutil.rmtree(self.cleanup_dir)
+        if self.test_dir:
+            shutil.rmtree(self.test_dir)
 
     def _create_test_job(self, script=TEST_SCRIPT, params=None):
         self.test_job = DockerJob(

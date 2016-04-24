@@ -7,22 +7,22 @@ from mock import Mock
 
 import gnr.node
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
-from gnr.task.tasktester import TaskTester
 from gnr.task.localcomputer import LocalComputer
+from gnr.task.tasktester import TaskTester
 from golem.core.common import get_golem_path
 from golem.docker.image import DockerImage
+from golem.model import db
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
-from golem.tools.testdirfixture import TestDirFixture
-from golem.model import db
+from golem.testutils import UserTempDirFixture
 from test_docker_image import DockerTestCase
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")
 
 
-class TestDockerBlenderTask(TestDirFixture, DockerTestCase):
+class TestDockerBlenderTask(UserTempDirFixture, DockerTestCase):
 
     CYCLES_TASK_FILE = "docker-blender-cycles-task.json"
     BLENDER_TASK_FILE = "docker-blender-render-task.json"

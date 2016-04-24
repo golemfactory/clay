@@ -314,7 +314,9 @@ class GNRApplicationLogic(QtCore.QObject):
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)
 
     def _test_task_computation_error(self, error):
-        err_msg = "Task test computation failure. " + error
+        err_msg = "Task test computation failure. "
+        if error:
+            err_msg += error
         self.progress_dialog_customizer.show_message(err_msg)
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(False, 0)

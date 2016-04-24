@@ -1,11 +1,13 @@
 import logging
+import os
 import shutil
 import tempfile
 import unittest
 from os import path, mkdir
 
-from golem.model import Database
 from golem.core.common import is_windows
+from golem.core.simpleenv import _get_local_datadir
+from golem.model import Database
 
 
 class TempDirFixture(unittest.TestCase):
@@ -19,7 +21,7 @@ class TempDirFixture(unittest.TestCase):
         root = path.join(tmppath, 'golem')
         if not path.exists(root):
             mkdir(root)
-        dir_name = self.id().rsplit('.', 1)[1]  # Use test method name
+        dir_name = self._temp_dir_name()
         self.tempdir = tempfile.mkdtemp(prefix=dir_name, dir=root)
         self.path = self.tempdir  # Alias for legacy tests
 
@@ -53,6 +55,22 @@ class TempDirFixture(unittest.TestCase):
                 new_dir = tempfile.mkdtemp(dir=dir_)
                 self.additional_dir_content(el, new_dir, results)
         return results
+
+    def _temp_dir_name(self):
+        return self.id().rsplit('.', 1)[1]  # Use test method name
+
+
+class UserTempDirFixture(TempDirFixture):
+    def setUp(self):
+        logging.basicConfig(level=logging.DEBUG)
+
+        root = _get_local_datadir('.tests')
+        if not os.path.exists(root):
+            os.makedirs(root)
+
+        dir_name = self._temp_dir_name()
+        self.tempdir = tempfile.mkdtemp(prefix=dir_name, dir=root)
+        self.path = self.tempdir  # Alias for legacy tests
 
 
 class DatabaseFixture(TempDirFixture):
