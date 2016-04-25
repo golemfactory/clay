@@ -20,12 +20,13 @@ import copy
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['IPFSCommands', 'IPFSClient', 'IPFSAsyncCall', 'IPFSAsyncExecutor', 'StreamFileObject']
+__all__ = ['IPFSCommands', 'IPFSClient', 'IPFSAsyncCall', 'IPFSAsyncExecutor',
+           'StreamFileObject', 'IPFS_DEFAULT_PORT']
 
 BOOTSTRAP_NODES = [
     '/ip4/52.37.205.43/tcp/4001/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB'
 ]
-
+IPFS_DEFAULT_PORT = 4001
 
 class StreamFileObject:
 

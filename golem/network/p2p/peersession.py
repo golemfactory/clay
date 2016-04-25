@@ -240,6 +240,7 @@ class PeerSession(BasicSafeSession):
         self.key_id = msg.client_key_id
 
         self.listen_port = msg.port
+        metadata = msg.metadata
         solve_challenge = msg.solve_challenge
         challenge = msg.challenge
         difficulty = msg.difficulty
@@ -253,6 +254,10 @@ class PeerSession(BasicSafeSession):
         p = self.p2p_service.find_peer(self.key_id)
 
         self.p2p_service.add_to_peer_keeper(self.node_info)
+        self.p2p_service.interpret_metadata(self.address,
+                                            self.listen_port,
+                                            self.node_info,
+                                            metadata)
 
         if enough_peers:
             logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.node_name, self.address, self.port)
@@ -365,10 +370,10 @@ class PeerSession(BasicSafeSession):
 
     def __send_hello(self):
         listen_params = self.p2p_service.get_listen_params(self.key_id, self.rand_val)
-        self.solve_challenge = listen_params[5]
+        self.solve_challenge = listen_params[6]
         if self.solve_challenge:
-            self.challenge = listen_params[6]
-            self.difficulty = listen_params[7]
+            self.challenge = listen_params[7]
+            self.difficulty = listen_params[8]
         self.send(MessageHello(*listen_params), send_unverified=True)
 
     def __send_ping(self):

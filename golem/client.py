@@ -88,7 +88,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 
 
 class Client:
-    def __init__(self, config_desc, datadir, config="", transaction_system=True):
+    def __init__(self, config_desc, datadir, config="", transaction_system=False):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
@@ -155,12 +155,13 @@ class Client:
         self.resource_server = IPFSResourceServer(self.task_server.task_computer.dir_manager,
                                                   self.keys_auth, self)
         self.ipfs_manager = IPFSDaemonManager()
-        self.ipfs_manager.id()
+        self.ipfs_manager.store_info()
 
         logger.info("Starting resource server...")
         self.resource_server.start_accepting()
         time.sleep(1.0)
         self.p2pservice.set_resource_server(self.resource_server)
+        self.p2pservice.set_metadata_source(self)
 
         logger.info("Starting task server ...")
         self.task_server.start_accepting()
@@ -426,8 +427,23 @@ class Client:
 
     def get_metadata(self):
         metadata = dict()
-        metadata.update(self.ipfs_manager.get_metadata())
+        if self.ipfs_manager:
+            metadata.update(self.ipfs_manager.get_metadata())
         return metadata
+
+    def interpret_metadata(self, address, port, node_info, metadata):
+        if node_info and metadata:
+
+            addresses = [
+                (address, port),
+                (node_info.pub_addr, node_info.pub_port),
+                (node_info.prv_addr, node_info.prv_port)
+            ]
+
+            self.ipfs_manager.interpret_metadata(metadata,
+                                                 self.config_desc.seed_host,
+                                                 self.config_desc.seed_port,
+                                                 addresses)
 
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()
