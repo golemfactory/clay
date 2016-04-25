@@ -9,7 +9,7 @@ from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 from golem.core.variables import APP_NAME, APP_VERSION
 from golem.task.taskstate import TaskStatus
 from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
-                          ConfigurationDialog, EnvironmentsDialog, IdentityDialog
+                          EnvironmentsDialog, IdentityDialog
 
 from gnr.ui.tasktableelem import TaskTableElem
 
@@ -208,11 +208,6 @@ class GNRMainWindowCustomizer(Customizer):
         payments_window = PaymentsDialog(self.gui.window)
         PaymentsDialogCustomizer(payments_window, self.logic)
         payments_window.show()
-
-    def _show_configuration_dialog_clicked(self):
-        self.configuration_dialog = ConfigurationDialog(self.gui.window)
-        self.configuration_dialog_customizer = ConfigurationDialogCustomizer(self.configuration_dialog, self.logic)
-        self.configuration_dialog.show()
 
     def _show_identity_dialog(self):
         identity_dialog = IdentityDialog(self.gui.window)

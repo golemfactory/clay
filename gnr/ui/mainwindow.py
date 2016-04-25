@@ -1,5 +1,5 @@
 from PyQt4.QtGui import QMainWindow, QPixmap, QMessageBox
-from gnr.ui.gen.ui_MainWindow import Ui_MainWindow
+from gnr.ui.gen.ui_AppMainWindow import Ui_MainWindow
 
 
 class MainWindow(QMainWindow):

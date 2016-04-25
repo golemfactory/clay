@@ -13,7 +13,7 @@ from gnr.ui.appmainwindow import AppMainWindow
 
 class TestNewTaskDialogCustomizer(TestCase):
     def test_customizer(self):
-        gnrgui = GNRGui(Mock(), AppMainWindow)t
+        gnrgui = GNRGui(Mock(), AppMainWindow)
         logic = GNRApplicationLogic()
         logic.client = Mock()
         register_task_types(logic)
