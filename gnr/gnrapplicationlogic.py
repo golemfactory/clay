@@ -68,8 +68,11 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client = client
         self.client.register_listener(GNRClientEventListener(self))
         self.customizer.init_config()
+        payment_address = ""
+        if client.transaction_system:
+            payment_address = client.transaction_system.get_payment_address()
         self.customizer.set_options(self.get_config(), client.keys_auth.get_key_id(),
-                                    client.transaction_system.get_payment_address())
+                                    payment_address)
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
