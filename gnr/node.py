@@ -16,7 +16,6 @@ from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from golem.client import create_client
 from golem.core.common import get_golem_path
-from golem.core.simpleenv import get_local_datadir
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
 from golem.task.taskbase import Task
 

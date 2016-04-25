@@ -16,7 +16,19 @@ from gnr.customizers.common import get_save_dir
 logger = logging.getLogger(__name__)
 
 
-class GNRAdmApplicationLogic(GNRApplicationLogic):
+class AdmApplicationLogic(GNRApplicationLogic):
+    """ Developer logic version with a few additions:
+          - update other Golems task that replace Golem code with other files
+          - info task - that sends statistics
+          - send_test_tasks function that allows to send all tasks saved in subfolder of default save folder
+            without being tested
+          - connection with add_task_server - server which works on local machine and collect some tasks that should
+            be added to Golem from external applications
+          - possibility to start nodes manager that collects nodes stats
+
+        FIXME: All this functionality should be replaced with some better solutions in the future
+    """
+
     def __init__(self):
         GNRApplicationLogic.__init__(self)
         self.start_nodes_manager_function = lambda: None
