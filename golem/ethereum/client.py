@@ -21,8 +21,8 @@ class Client(EthereumRpcClient):
         if not Client.node:
             Client.node = NodeProcess(nodes, datadir)
         else:
-            assert (Client.node.datadir == datadir,
-                    "Ethereum node's datadir cannot be changed")
+            assert Client.node.datadir == datadir, \
+                   "Ethereum node's datadir cannot be changed"
         if not Client.node.is_running():
             Client.node.start(rpc=True)
         super(Client, self).__init__(port=Client.node.rpcport)
