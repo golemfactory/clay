@@ -145,7 +145,7 @@ class RenderingTask(GNRTask):
 
     def _update_preview(self, new_chunk_file_path):
 
-        if new_chunk_file_path.endswith(".exr"):
+        if new_chunk_file_path.upper().endswith(".EXR"):
             img = exr_to_pil(new_chunk_file_path)
         else:
             img = Image.open(new_chunk_file_path)
@@ -273,8 +273,8 @@ class RenderingTask(GNRTask):
         return Image.open(self.preview_file_path)
 
     def _use_outer_task_collector(self):
-        unsupported_formats = ['EXR', 'EPS', 'exr', 'eps']
-        if self.output_format in unsupported_formats:
+        unsupported_formats = ['EXR', 'EPS']
+        if self.output_format.upper() in unsupported_formats:
             return True
         return False
 

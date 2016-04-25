@@ -42,7 +42,7 @@ def run_requesting_node(datadir, num_subtasks=3):
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
-    client = golem.client.start_client(datadir)
+    client = golem.client.start_client(datadir, transaction_system=False)
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
@@ -72,7 +72,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
-    client = golem.client.start_client(datadir)
+    client = golem.client.start_client(datadir, transaction_system=False)
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     class DummyEnvironment(Environment):

@@ -34,7 +34,7 @@ from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransa
 logger = logging.getLogger(__name__)
 
 
-def create_client(datadir=None, **config_overrides):
+def create_client(datadir=None, transaction_system=False, **config_overrides):
     # TODO: All these feature should be move to Client()
     init_messages()
 
@@ -54,11 +54,12 @@ def create_client(datadir=None, **config_overrides):
 
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
-    return Client(config_desc, datadir=datadir, config=app_config)
+    return Client(config_desc, datadir=datadir, config=app_config,
+                  transaction_system=transaction_system)
 
 
-def start_client(datadir):
-    c = create_client(datadir)
+def start_client(datadir, transaction_system=False):
+    c = create_client(datadir, transaction_system)
     logger.info("Starting all asynchronous services")
     c.start_network()
     return c
@@ -131,7 +132,7 @@ class Client:
             #       modeled as a Service that run independently.
             #       The Client/Application should be a collection of services.
             self.transaction_system = EthereumTransactionSystem(
-                self.keys_auth.get_key_id(), self.keys_auth._private_key)
+                datadir, self.keys_auth._private_key)
         else:
             self.transaction_system = None
 

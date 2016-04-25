@@ -1,10 +1,11 @@
 import logging
 import random
 import time
+from math import ceil
 
 from golem.core.variables import APP_VERSION
 
-from taskbase import TaskHeader, ComputeTaskDef
+from .taskbase import TaskHeader, ComputeTaskDef
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,9 @@ class CompTaskKeeper(object):
 
     @react_to_key_error
     def get_value(self, task_id, computing_time):
-        return self.active_tasks[task_id].price * computing_time
+        price = self.active_tasks[task_id].price
+        assert type(price) in (int, long)
+        return int(ceil(price * computing_time))
 
     @react_to_key_error
     def remove_task(self, task_id):
@@ -237,4 +240,3 @@ class TaskHeaderKeeper(object):
 
     def request_failure(self, task_id):
         self.remove_task_header(task_id)
-
