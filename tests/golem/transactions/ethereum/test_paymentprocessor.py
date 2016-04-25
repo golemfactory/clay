@@ -1,4 +1,6 @@
 import logging
+import mock
+import random
 import time
 import unittest
 from os import path, urandom
@@ -33,6 +35,97 @@ class PaymentStatusTest(unittest.TestCase):
         assert s == PaymentStatus.awaiting
 
 
+class PaymentProcessorTest(TestWithDatabase):
+    RESERVATION = PaymentProcessor.GAS_PRICE * PaymentProcessor.GAS_RESERVATION
+
+    def setUp(self):
+        TestWithDatabase.setUp(self)
+        self.privkey = urandom(32)
+        self.addr = privtoaddr(self.privkey)
+        self.client = mock.MagicMock(spec=Client)
+        self.pp = PaymentProcessor(self.client, self.privkey)
+
+    def test_balance(self):
+        expected_balance = random.randint(0, 2**128 - 1)
+        self.client.get_balance.return_value = expected_balance
+        b = self.pp.balance()
+        assert b == expected_balance
+        b = self.pp.balance()
+        assert b == expected_balance
+        self.client.get_balance.assert_called_once_with(self.addr.encode('hex'))
+
+    def test_balance_refresh(self):
+        expected_balance = random.randint(0, 2**128 - 1)
+        self.client.get_balance.return_value = expected_balance
+        b = self.pp.balance()
+        assert b == expected_balance
+        self.client.get_balance.assert_called_once_with(self.addr.encode('hex'))
+        b = self.pp.balance(refresh=True)
+        assert b == expected_balance
+        assert self.client.get_balance.call_count == 2
+
+    def test_balance_refresh_increase(self):
+        expected_balance = random.randint(0, 2**127 - 1)
+        self.client.get_balance.return_value = expected_balance
+        b = self.pp.balance(refresh=True)
+        assert b == expected_balance
+        self.client.get_balance.assert_called_once_with(self.addr.encode('hex'))
+
+        expected_balance += random.randint(0, 2**127 - 1)
+        self.client.get_balance.return_value = expected_balance
+        b = self.pp.balance(refresh=True)
+        assert b == expected_balance
+        assert self.client.get_balance.call_count == 2
+
+    def test_balance_refresh_decrease(self):
+        expected_balance = random.randint(0, 2**127 - 1)
+        self.client.get_balance.return_value = expected_balance
+        b = self.pp.balance(refresh=True)
+        assert b == expected_balance
+        self.client.get_balance.assert_called_once_with(self.addr.encode('hex'))
+
+        expected_balance -= random.randint(0, expected_balance)
+        assert expected_balance >= 0
+        self.client.get_balance.return_value = expected_balance
+        b = self.pp.balance(refresh=True)
+        assert b == expected_balance
+        assert self.client.get_balance.call_count == 2
+
+    def test_available_balance_zero(self):
+        self.client.get_balance.return_value = 0
+        assert self.pp.available_balance() == 0
+
+    def test_available_balance_egde(self):
+        self.client.get_balance.return_value = self.RESERVATION
+        assert self.pp.available_balance() == 0
+
+    def test_available_balance_small(self):
+        small_balance = random.randint(0, self.RESERVATION)
+        self.client.get_balance.return_value = small_balance
+        assert self.pp.available_balance() == 0
+
+    def test_available_balance_one(self):
+        self.client.get_balance.return_value = self.RESERVATION + 1
+        assert self.pp.available_balance() == 1
+
+    def test_add_failure(self):
+        a1 = urandom(20)
+        a2 = urandom(20)
+        p1 = Payment.create(subtask="p1", payee=a1, value=1)
+        p2 = Payment.create(subtask="p2", payee=a2, value=2)
+
+        assert p1.status is PaymentStatus.awaiting
+        assert p2.status is PaymentStatus.awaiting
+
+        self.client.get_balance.return_value = 0
+        assert self.pp.add(p1) is False
+        assert self.pp.add(p2) is False
+        self.client.get_balance.assert_called_once_with(self.addr.encode('hex'))
+
+        assert p1.status is PaymentStatus.awaiting
+        assert p2.status is PaymentStatus.awaiting
+
+
 class EthereumNodeFixture(TestDirFixture):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
@@ -49,34 +142,13 @@ class EthereumNodeFixture(TestDirFixture):
         super(EthereumNodeFixture, self).tearDown()
 
 
-class PaymentProcessorTest(EthereumNodeFixture, TestWithDatabase):
-    def test_balance0(self):
-        b = self.proc.available_balance()
-        assert b == 0
-        b = self.proc.available_balance()
-        assert b == 0
-
+class PaymentProcessorNodeTest(EthereumNodeFixture, TestWithDatabase):
     def test_balance1(self):
         assert self.proc.available_balance() is 0
         value = 11 * 10**17
         Faucet.gimme_money(self.client, self.addr, value)
         assert self.proc.available_balance() is 0
         self.proc.available_balance(refresh=True) is 0
-
-    def test_add_failure(self):
-        a1 = urandom(20)
-        a2 = urandom(20)
-        p1 = Payment.create(subtask="p1", payee=a1, value=1)
-        p2 = Payment.create(subtask="p2", payee=a2, value=2)
-
-        assert p1.status is PaymentStatus.awaiting
-        assert p2.status is PaymentStatus.awaiting
-
-        assert self.proc.add(p1) is False
-        assert self.proc.add(p2) is False
-
-        assert p1.status is PaymentStatus.awaiting
-        assert p2.status is PaymentStatus.awaiting
 
     def test_double_kill(self):
         Client._kill_node()
