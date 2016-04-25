@@ -43,6 +43,8 @@ class PaymentProcessorTest(TestWithDatabase):
         self.privkey = urandom(32)
         self.addr = privtoaddr(self.privkey)
         self.client = mock.MagicMock(spec=Client)
+        self.client.send.side_effect = lambda tx: "0x" + tx.hash.encode('hex')
+        # FIXME: PaymentProcessor should be started and stopped!
         self.pp = PaymentProcessor(self.client, self.privkey)
 
     def test_balance(self):
@@ -73,6 +75,7 @@ class PaymentProcessorTest(TestWithDatabase):
 
         expected_balance += random.randint(0, 2**127 - 1)
         self.client.get_balance.return_value = expected_balance
+        assert self.pp.balance() == b
         b = self.pp.balance(refresh=True)
         assert b == expected_balance
         assert self.client.get_balance.call_count == 2
@@ -125,34 +128,15 @@ class PaymentProcessorTest(TestWithDatabase):
         assert p1.status is PaymentStatus.awaiting
         assert p2.status is PaymentStatus.awaiting
 
-
-class EthereumNodeFixture(TestDirFixture):
-    def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
-        super(EthereumNodeFixture, self).setUp()
-        self.privkey = urandom(32)
-        self.addr = privtoaddr(self.privkey)
-        # FIXME: Rename "client" to "node" or "eth_node"
-        Client._kill_node()  # Kill the node to use random datadir
-        self.client = Client(datadir=self.path)
-        self.proc = PaymentProcessor(self.client, self.privkey)
-
-    def tearDown(self):
-        Client._kill_node()  # Kill the node to allow temp files removal
-        super(EthereumNodeFixture, self).tearDown()
-
-
-class PaymentProcessorNodeTest(EthereumNodeFixture, TestWithDatabase):
-    def test_balance1(self):
-        assert self.proc.available_balance() is 0
-        value = 11 * 10**17
-        Faucet.gimme_money(self.client, self.addr, value)
-        assert self.proc.available_balance() is 0
-        self.proc.available_balance(refresh=True) is 0
-
-    def test_double_kill(self):
-        Client._kill_node()
-        Client._kill_node()
+    def test_faucet(self):
+        self.client.get_balance.return_value = 0
+        tx_nonce = random.randint(0, 999)
+        self.client.get_transaction_count.return_value = tx_nonce
+        PaymentProcessor(self.client, self.privkey, faucet=True)
+        assert self.client.send.call_count == 1
+        tx = self.client.send.call_args[0][0]
+        assert tx.nonce == tx_nonce
+        assert tx.value == 100 * 10**18
 
 
 class EthereumMiningNodeFixture(TestDirFixture):
