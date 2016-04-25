@@ -7,7 +7,7 @@ from golem.environments.environment import Environment
 
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
-from gnr.docker_environments import BlenderEnvironment, LuxRenderEnvironment
+from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
 from gnr.task.luxrendertask import build_lux_render_info
 from gnr.task.blenderrendertask import build_blender_renderer_info
 from gnr.tasktype import build_pbrt_task_type, build_3ds_max_task_type, build_vray_task_type, \

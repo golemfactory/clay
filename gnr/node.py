@@ -10,7 +10,7 @@ import click
 import jsonpickle
 from twisted.internet import reactor
 
-from gnr.docker_environments import BlenderEnvironment, \
+from gnr.renderingenvironment import BlenderEnvironment, \
     LuxRenderEnvironment
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder

@@ -8,7 +8,7 @@ from PIL import Image, ImageChops
 
 from golem.task.taskstate import SubtaskStatus
 
-from gnr.docker_environments import BlenderEnvironment
+from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper

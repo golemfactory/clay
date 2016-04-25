@@ -12,7 +12,7 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 from golem.environments.environment import Environment
 
-from gnr.docker_environments import LuxRenderEnvironment
+from gnr.renderingenvironment import LuxRenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
 from gnr.task.imgrepr import load_img, blend
@@ -66,7 +66,6 @@ class LuxRenderOptions(GNROptions):
         self.environment = LuxRenderEnvironment()
         self.halttime = 0
         self.haltspp = 1
-        self.luxconsole = self.environment.get_lux_console()
 
 
 class LuxRenderTaskBuilder(RenderingTaskBuilder):
