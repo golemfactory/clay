@@ -333,7 +333,7 @@ class IPFSClientHandler(object):
             if obj_id not in this_cmd:
                 this_cmd[obj_id] = 0
 
-            if this_cmd[obj_id] < self.config['max_retries']:
+            if this_cmd[obj_id] < self.config.max_retries:
                 this_cmd[obj_id] += 1
                 return True
 

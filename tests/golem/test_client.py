@@ -103,8 +103,6 @@ class TestClient(TestWithDatabase):
         meta = c.get_metadata()
         assert meta and meta['ipfs']
 
-        c.interpret_metadata()
-
         ip_1 = '127.0.0.1'
         port_1 = 40102
 
