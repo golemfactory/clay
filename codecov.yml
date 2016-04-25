@@ -1,0 +1,15 @@
+comment:
+  layout: header, changes, diff
+coverage:
+  notify:
+    gitter:
+      default:
+        threshold: 0
+        url: https://gitter.im/imapp-pl/golem
+  status:
+    patch:
+      default:
+        target: '80'
+    project:
+      default:
+        target: auto
