@@ -33,7 +33,7 @@ from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransa
 logger = logging.getLogger(__name__)
 
 
-def create_client(datadir=None, transaction_system=True, **config_overrides):
+def create_client(datadir=None, transaction_system=False, **config_overrides):
     # TODO: All these feature should be move to Client()
     init_messages()
 
@@ -57,7 +57,7 @@ def create_client(datadir=None, transaction_system=True, **config_overrides):
                   transaction_system=transaction_system)
 
 
-def start_client(datadir, transaction_system=True):
+def start_client(datadir, transaction_system=False):
     c = create_client(datadir, transaction_system)
     logger.info("Starting all asynchronous services")
     c.start_network()
@@ -88,7 +88,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 
 
 class Client:
-    def __init__(self, config_desc, datadir, config="", transaction_system=True):
+    def __init__(self, config_desc, datadir, config="", transaction_system=False):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
