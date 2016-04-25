@@ -1,6 +1,5 @@
-comment:
-  layout: header, changes, diff
 coverage:
+  range: 50...100
   notify:
     gitter:
       default:
@@ -9,7 +8,9 @@ coverage:
   status:
     patch:
       default:
-        target: '80'
+        target: 80
     project:
       default:
         target: auto
+comment:
+  layout: header, diff, changes, sunburst, uncovered
