@@ -64,7 +64,7 @@ def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200):
 class LuxRenderOptions(GNROptions):
     def __init__(self):
         self.environment = LuxRenderEnvironment()
-        self.halttime = 600
+        self.halttime = 0
         self.haltspp = 1
         self.luxconsole = self.environment.get_lux_console()
 
@@ -177,7 +177,7 @@ class LuxTask(RenderingTask):
         else:
             write_interval = 60
         scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, self.halttime, self.haltspp,
-                                        write_interval, [0, 1, 0, 1], "png")
+                                        write_interval, [0, 1, 0, 1], self.output_format)
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
         num_threads = max(num_cores, 1)
@@ -212,8 +212,7 @@ class LuxTask(RenderingTask):
             self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
             for tr_file in tr_files:
                 tr_file = os.path.normpath(tr_file)
-                _, ext = os.path.splitext(tr_file)
-                if ext == '.flm':
+                if tr_file.upper().endswith('.FLM'):
                     self.collected_file_names[num_start] = tr_file
                     self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
                     self.num_tasks_received += 1
@@ -228,7 +227,7 @@ class LuxTask(RenderingTask):
                                 self.num_tasks_received -= 1
                             else:
                                 logger.info("Subtask " + str(subtask_id) + " successfully verified.")
-                elif ext != '.log':
+                elif not tr_file.upper().endswith('.LOG'):
                     self.subtasks_given[subtask_id]['previewFile'] = tr_file
                     self._update_preview(tr_file, num_start)
         else:
@@ -248,7 +247,7 @@ class LuxTask(RenderingTask):
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
-        scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, 1, 0, 1, [0, 1, 0, 1], "png")
+        scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, 1, 0, 1, [0, 1, 0, 1], self.output_format)
         working_directory = self._get_working_directory()
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 

@@ -58,7 +58,7 @@ def get_dir_size(dir_, report_error=lambda _: ()):
     return size
 
 
-def common_dir(arr, plus_sep=None, ign_case=None):
+def common_dir(arr, ign_case=None):
     """
     Returns a common directory for paths
     :param arr: Array of paths
@@ -69,13 +69,7 @@ def common_dir(arr, plus_sep=None, ign_case=None):
     if not arr or len(arr) < 2:
         return ''
 
-    if plus_sep and plus_sep != os.path.sep:
-        seps = [os.path.sep, plus_sep]
-    else:
-        seps = [os.path.sep]
-
-    if os.path.sep != '/':
-        seps.append('/')
+    seps = '/\\'
 
     if ign_case is None:
         ign_case = is_windows()
@@ -119,8 +113,8 @@ def common_dir(arr, plus_sep=None, ign_case=None):
     while m:
         _s = min(m, key=len)
         if _s and len(_s) > n:
-            for _s in m:
-                if _s[n] not in seps:
+            for _ms in m:
+                if _ms[n] not in seps:
                     return _format(s[:si])
         m.remove(_s)
     return _format(s)

@@ -53,7 +53,7 @@ class PreviewUpdater(object):
             self.chunks[subtask_number] = subtask_path
         
         try:
-            if subtask_path.endswith(".exr"):
+            if subtask_path.upper().endswith(".EXR"):
                 img = exr_to_pil(subtask_path)
             else:
                 img = Image.open(subtask_path)

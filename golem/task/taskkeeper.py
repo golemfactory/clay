@@ -2,7 +2,10 @@ import logging
 import random
 import time
 from math import ceil
-from taskbase import TaskHeader, ComputeTaskDef
+
+from golem.core.variables import APP_VERSION
+
+from .taskbase import TaskHeader, ComputeTaskDef
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +96,7 @@ class TaskHeaderKeeper(object):
     to compute or will pass information to other nodes.
     """
 
-    def __init__(self, environments_manager, min_price=0.0, app_version=1.0, remove_task_timeout=240.0,
+    def __init__(self, environments_manager, min_price=0.0, app_version=APP_VERSION, remove_task_timeout=240.0,
                  verification_timeout=3600):
         self.task_headers = {}  # all computing tasks that this node now about
         self.supported_tasks = []  # ids of tasks that this node may try to compute

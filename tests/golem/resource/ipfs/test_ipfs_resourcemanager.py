@@ -1,7 +1,6 @@
 import os
-import uuid
-
 import time
+import uuid
 
 from golem.resource.dirmanager import DirManager
 from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
@@ -133,7 +132,7 @@ class TestResourcesManager(TestDirFixture):
         rsl = rm.list_split_resources(self.task_id)
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
-        split_res_path = res_path.split(os.path.sep)
+        split_res_path = rm.split_path(res_path)
         split_res = [split_res_path + x for x in self.split_resources]
 
         self.assertTrue(len(rsl) == len(self.split_resources))
@@ -143,7 +142,8 @@ class TestResourcesManager(TestDirFixture):
 
     def testJoinSplitResources(self):
         rm = IPFSResourceManager(self.dir_manager)
-        rm.add_resources(self.target_resources, self.task_id)
+        resource_paths = [rm.get_resource_path(f, self.task_id) for f in self.target_resources]
+        rm.add_task(resource_paths, self.task_id)
 
         rsl = rm.list_split_resources(self.task_id)
         rl = rm.join_split_resources(rsl)
@@ -151,17 +151,17 @@ class TestResourcesManager(TestDirFixture):
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
         res_list = [os.path.join(res_path, x) for x in self.target_resources]
 
-        self.assertTrue(len(rsl) == len(self.target_resources))
+        assert len(rsl) == len(self.target_resources)
 
         for elem in rl:
-            self.assertTrue(os.path.join(os.path.sep, elem[0]) in res_list)
+            assert rm.get_resource_path(elem[0], self.task_id) in res_list
 
     def testId(self):
         rm = IPFSResourceManager(self.dir_manager)
         ipfs_id = rm.id()
 
-        self.assertIsInstance(ipfs_id, list)
-        self.assertTrue('PublicKey' in ipfs_id[0])
+        self.assertIsInstance(ipfs_id, basestring)
+        assert ipfs_id
 
     def testAddResource(self):
         rm = IPFSResourceManager(self.dir_manager)
@@ -208,6 +208,30 @@ class TestResourcesManager(TestDirFixture):
 
         rm.pin_resource(resources[0][1])
         rm.unpin_resource(resources[0][1])
+
+    def testAddRemoveBootstrapNodes(self):
+        default_node = '/ip4/127.0.0.1/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ'
+        rm = IPFSResourceManager(self.dir_manager)
+        rm.remove_bootstrap_node(default_node)
+
+        nodes = rm.list_bootstrap_nodes()
+        assert nodes
+
+        rm.add_bootstrap_node(default_node)
+        assert len(rm.list_bootstrap_nodes()) > len(nodes)
+
+        rm.remove_bootstrap_node(default_node)
+        assert len(rm.list_bootstrap_nodes()) == len(nodes)
+
+    def testBuildNodeAddress(self):
+        expected_ipv4 = '/ip4/127.0.0.1/tcp/4001/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB'
+        expected_ipv6 = '/ip6/::1/tcp/14001/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB'
+
+        ipv4 = IPFSResourceManager.build_node_address('127.0.0.1', 'QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB')
+        ipv6 = IPFSResourceManager.build_node_address('::1', 'QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB', port=14001)
+
+        assert ipv4 == expected_ipv4
+        assert ipv6 == expected_ipv6
 
     def testPullResource(self):
 

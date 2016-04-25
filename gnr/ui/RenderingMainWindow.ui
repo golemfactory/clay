@@ -6,20 +6,26 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>808</width>
-    <height>690</height>
+    <width>800</width>
+    <height>600</height>
    </rect>
   </property>
-  <property name="maximumSize">
-   <size>
-    <width>900</width>
-    <height>690</height>
-   </size>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>Golem App</string>
   </property>
   <widget class="QWidget" name="centralwidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
      <widget class="QLabel" name="nodeNameLabel">
@@ -557,7 +563,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>808</width>
+     <width>800</width>
      <height>21</height>
     </rect>
    </property>
@@ -578,6 +584,7 @@
     </property>
     <addaction name="actionEdit"/>
     <addaction name="actionEnvironments"/>
+    <addaction name="actionIdentity"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -662,6 +669,11 @@
   <action name="actionPayments">
    <property name="text">
     <string>Payments</string>
+   </property>
+  </action>
+  <action name="actionIdentity">
+   <property name="text">
+    <string>Identity</string>
    </property>
   </action>
  </widget>

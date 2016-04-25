@@ -37,8 +37,6 @@ class DirManager(object):
         self.res = res
         self.output = output
         self.global_resource = global_resource
-        if is_windows():
-            self.__get_path = self.__get_path_windows
 
     def clear_dir(self, d, undeletable=None):
         """ Remove everything but undeletable from given directory
@@ -78,10 +76,10 @@ class DirManager(object):
         :return:
         """
         if os.path.isdir(full_path):
-            return self.__get_path(full_path)
+            return full_path
         elif create:
             self.create_dir(full_path)
-            return self.__get_path(full_path)
+            return full_path
         else:
             logger.error(err_msg)
             return ""
@@ -157,9 +155,3 @@ class DirManager(object):
 
     def __get_global_resource_path(self):
         return os.path.join(self.root_path, self.global_resource)
-
-    def __get_path(self, path):
-        return path
-
-    def __get_path_windows(self, path):
-        return path.replace("\\", "/")
