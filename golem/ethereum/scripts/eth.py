@@ -3,13 +3,13 @@ import logging
 import os
 from os import path
 
-import appdirs
 import click
 import gevent
 from ethereum import keys, abi
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms, int_to_big_endian, zpad
 
+from golem.core.simpleenv import _get_local_datadir
 from golem.ethereum import Client
 from golem.ethereum.contracts import BankOfDeposit
 from golem.ethereum.node import Faucet
@@ -38,7 +38,7 @@ BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
 @click.option('--name')
 def app(ctx, data_dir, name):
     if not data_dir:
-        data_dir = path.join(appdirs.user_data_dir("golem"), "ethereum9")
+        data_dir = path.join(_get_local_datadir("ethereum"))
 
     logging.basicConfig(level=logging.DEBUG)
     geth = Client(data_dir)
