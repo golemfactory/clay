@@ -4,6 +4,7 @@ import re
 import struct
 import time
 from copy import copy
+from threading import Lock
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
     TCP6ClientEndpoint
@@ -384,6 +385,8 @@ class TCPNetwork(Network):
 
 
 class BasicProtocol(SessionProtocol):
+    lock = Lock()
+
     """ Connection-oriented basic protocol for twisted, support message serialization"""
     def __init__(self):
         self.opened = False
@@ -463,9 +466,10 @@ class BasicProtocol(SessionProtocol):
         return self.opened and isinstance(self.db, DataBuffer)
 
     def _interpret(self, data):
-        self.db.append_string(data)
-        mess = self._data_to_messages()
-        self.db.clear_buffer()
+        with self.lock:
+            self.db.append_string(data)
+            mess = self._data_to_messages()
+            self.db.clear_buffer()
 
         if mess is None:
             logger.error("Deserialization message failed")
@@ -603,8 +607,12 @@ class MidAndFilesProtocol(FilesProtocol):
     def _interpret(self, data):
         if self.session.is_middleman:
             self.session.last_message_time = time.time()
-            self.db.append_string(data)
-            self.session.interpret(self.db.read_all())
+            with self.lock:
+                self.db.append_string(data)
+                messages = self.db.read_all()
+            self.session.interpret(messages)
+            with self.lock:
+                self.db.clear_buffer()
         else:
             FilesProtocol._interpret(self, data)
 

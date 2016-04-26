@@ -47,7 +47,7 @@ class P2PService(PendingConnectionsServer):
         self.node_name = self.config_desc.node_name
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
         self.last_message_buffer_len = LAST_MESSAGE_BUFFER_LEN
-        self.refresh_peers_timeout = 15#REFRESH_PEERS_TIMEOUT
+        self.refresh_peers_timeout = REFRESH_PEERS_TIMEOUT
         self.should_solve_challenge = SOLVE_CHALLENGE
         self.challenge_history = []
         self.last_challenge = ""
@@ -65,9 +65,6 @@ class P2PService(PendingConnectionsServer):
         self.last_peers_request = time.time()
         self.last_tasks_request = time.time()
         self.last_refresh_peers = time.time()
-
-        self._peer_dbg_log_time = time.time()
-        self._peer_dbg_time_threshold = 5
 
         self.last_messages = []
 
@@ -115,14 +112,6 @@ class P2PService(PendingConnectionsServer):
         self.task_connections_helper.sync()
 
         self.__send_get_peers()
-
-        if time.time() - self._peer_dbg_log_time >= self._peer_dbg_time_threshold:
-            self._peer_dbg_log_time = time.time()
-            logger.debug("Peers P/I/F {}/{}/{}".format(len(self.peers),
-                                                       len(self.incoming_peers),
-                                                       len(self.free_peers)))
-            logger.debug([(x.address, x.port, x.node_name) for x in self.peers.values()])
-            logger.debug(self.incoming_peers)
 
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection
