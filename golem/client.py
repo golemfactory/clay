@@ -437,6 +437,9 @@ class Client:
             msg += "Budget: {}\n".format(self.transaction_system.budget)
         return msg
 
+    def get_peers(self):
+        return self.p2pservice.peers.values()[:]
+
     def __lock_datadir(self):
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
         flags = filelock.LOCK_EX | filelock.LOCK_NB
