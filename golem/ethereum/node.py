@@ -14,7 +14,7 @@ from ethereum.utils import normalize_address
 
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
-from golem.core.simpleenv import _get_local_datadir
+from golem.core.simpleenv import get_local_datadir
 
 log = logging.getLogger('golem.ethereum')
 
@@ -138,7 +138,7 @@ class NodeProcess(object):
 class FullNode(object):
     def __init__(self, datadir=None):
         if not datadir:
-            datadir = path.join(_get_local_datadir('ethereum'), 'full_node')
+            datadir = path.join(get_local_datadir('ethereum'), 'full_node')
         self.proc = NodeProcess(nodes=[], datadir=datadir)
         self.proc.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY,
                         port=30900)
