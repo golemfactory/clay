@@ -6,13 +6,14 @@ import tarfile
 import uuid
 from functools import wraps
 from threading import Lock
-from twisted.internet import threads
 from types import FunctionType
 
 import ipfsApi
 import requests
 from ipfsApi.commands import ArgCommand
 from ipfsApi.http import HTTPClient, pass_defaults
+from twisted.internet import threads
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -176,11 +177,14 @@ def response_wrapper(func):
 
 
 class IPFSCommands(object):
-    pin = 0
-    unpin = 1
-    add = 2
-    pull = 3
-    id = 4
+    id = 0
+    pin = 1
+    unpin = 2
+    add = 3
+    pull = 4
+    bootstrap_add = 5
+    bootstrap_rm = 6
+    bootstrap_list = 7
 
 
 class IPFSClientMetaClass(type):
@@ -189,15 +193,15 @@ class IPFSClientMetaClass(type):
 
     def __new__(mcs, class_name, bases, class_dict):
         new_dict = {}
-        all_items = class_dict.items()
+        all_items = copy.copy(class_dict.items())
 
         for base in bases:
-            all_items.extend(base.__dict__.items())
+            all_items.extend(copy.copy(base.__dict__.items()))
 
         for name, attribute in all_items:
+            if name in class_dict:
+                attribute = class_dict.get(name)
             if type(attribute) == FunctionType and not name.startswith('_'):
-                if name in class_dict:
-                    attribute = class_dict.get(name)
                 attribute = response_wrapper(attribute)
             new_dict[name] = attribute
 
@@ -227,9 +231,13 @@ class IPFSClient(ipfsApi.Client):
                                          **defaults)
 
         self._refs_local = ArgCommand('/refs/local')
+        self._bootstrap_list = ArgCommand('/bootstrap/list')
 
     def refs_local(self, **kwargs):
         return self._refs_local.request(self._client, **kwargs)
+
+    def bootstrap_list(self, **kwargs):
+        return self._bootstrap_list.request(self._client, **kwargs)
 
     def get_file(self, multihash, **kwargs):
         return self._get.request(self._client, multihash, **kwargs)
@@ -251,10 +259,20 @@ class IPFSAsyncCall(object):
 class IPFSAsyncExecutor(object):
 
     """ Execute a deferred job in a separate thread (Twisted) """
+    initialized = False
 
     @classmethod
     def run(cls, deferred_call, success, error):
+        if not cls.initialized:
+            cls.__initialize()
+
         deferred = threads.deferToThread(deferred_call.method,
                                          *deferred_call.args,
                                          **deferred_call.kwargs)
         deferred.addCallbacks(success, error)
+
+    @classmethod
+    def __initialize(cls):
+        cls.initialized = True
+        from twisted.internet import reactor
+        reactor.suggestThreadPoolSize(reactor.getThreadPool().max + 4)

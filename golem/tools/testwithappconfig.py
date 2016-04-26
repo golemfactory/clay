@@ -1,6 +1,6 @@
 from mock import Mock
 from os import path
-from golem.core.keysauth import KeysAuth
+from golem.core.keysauth import KeysAuth, EllipticalKeysAuth
 from golem.tools.testdirfixture import TestDirFixture
 
 
@@ -13,5 +13,7 @@ class TestWithKeysAuth(TestDirFixture):
     def tearDown(self):
         if hasattr(KeysAuth, '_keys_dir'):
             del KeysAuth._keys_dir
+        if hasattr(EllipticalKeysAuth, '_keys_dir'):
+            del EllipticalKeysAuth._keys_dir
 
         super(TestWithKeysAuth, self).tearDown()

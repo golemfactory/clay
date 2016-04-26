@@ -53,4 +53,6 @@ class EnvironmentsConfig(object):
             SimpleConfig(self._cfg.get_common_config(),
                          self._cfg.get_node_config(),
                          self.cfg_file, refresh=True,
-                         check_uid=False))
+                         check_uid=False),
+            self.cfg_file
+        )

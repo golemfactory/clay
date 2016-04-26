@@ -96,7 +96,7 @@ class EthereumMiningNodeFixture(TestDirFixture):
         self.addr = privtoaddr(self.privkey)
         Client._kill_node()  # Kill the node to use random datadir
         self.client = Client(datadir=node_dir, nodes=[enode])
-        assert wait_for(lambda: self.client.get_peer_count() > 0, 20), "Cannot connect to miner"
+        assert wait_for(lambda: self.client.get_peer_count() > 0, 60), "Cannot connect to miner"
         self.proc = PaymentProcessor(self.client, self.privkey)
 
         self.bank_addr = Faucet.deploy_contract(self.client, BankOfDeposit.INIT_HEX.decode('hex'))

@@ -5,6 +5,7 @@ from os import path
 from twisted.internet import task
 from threading import Lock
 
+from golem.core.variables import APP_NAME, APP_VERSION
 from golem.tools import filelock
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.node import Node
@@ -32,7 +33,7 @@ from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransa
 logger = logging.getLogger(__name__)
 
 
-def create_client(datadir=None, **config_overrides):
+def create_client(datadir=None, transaction_system=False, **config_overrides):
     # TODO: All these feature should be move to Client()
     init_messages()
 
@@ -52,11 +53,12 @@ def create_client(datadir=None, **config_overrides):
 
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
-    return Client(config_desc, datadir=datadir, config=app_config)
+    return Client(config_desc, datadir=datadir, config=app_config,
+                  transaction_system=transaction_system)
 
 
-def start_client(datadir):
-    c = create_client(datadir)
+def start_client(datadir, transaction_system=False):
+    c = create_client(datadir, transaction_system)
     logger.info("Starting all asynchronous services")
     c.start_network()
     return c
@@ -86,7 +88,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 
 
 class Client:
-    def __init__(self, config_desc, datadir, config="", transaction_system=True):
+    def __init__(self, config_desc, datadir, config="", transaction_system=False):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
@@ -129,7 +131,7 @@ class Client:
             #       modeled as a Service that run independently.
             #       The Client/Application should be a collection of services.
             self.transaction_system = EthereumTransactionSystem(
-                self.keys_auth.get_key_id(), self.keys_auth._private_key)
+                datadir, self.keys_auth._private_key)
         else:
             self.transaction_system = None
 
@@ -434,9 +436,6 @@ class Client:
         if self.transaction_system:
             msg += "Budget: {}\n".format(self.transaction_system.budget)
         return msg
-
-    def get_about_info(self):
-        return self.config_desc.app_name, self.config_desc.app_version
 
     def __lock_datadir(self):
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')

@@ -80,7 +80,7 @@ class TaskDetailsDialogCustomizer(Customizer):
 
             self.gui.ui.nodeNameLabel.setText(node_name)
             self.gui.ui.nodeIpAddressLabel.setText(comp.ip_address)
-            self.gui.ui.performanceLabel.setText("{} rays per sec".format(comp.performance))
+            self.gui.ui.performanceLabel.setText("{}".format(comp.performance))
             self.gui.ui.subtaskDefinitionTextEdit.setPlainText(ss.subtask_definition)
 
     def __add_node(self, node_name, subtask_id, status):

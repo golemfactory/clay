@@ -23,10 +23,10 @@ class KeysAuthTest(TestWithKeysAuth):
         self.assertEqual(d, km.get_keys_dir())
 
     def test_keys_dir_file(self):
-        file = tempfile.NamedTemporaryFile()
+        file_ = self.additional_dir_content([1])[0]
         with self.assertRaises(AssertionError):
             km = KeysAuth()
-            km.set_keys_dir(file.name)
+            km.set_keys_dir(file_)
 
 
 class TestEllipticalKeysAuth(TestWithKeysAuth):

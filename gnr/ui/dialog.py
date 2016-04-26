@@ -1,6 +1,5 @@
 from PyQt4.QtGui import QDialog
 
-from gen.ui_AboutWindow import Ui_AboutWindow
 from gen.ui_AddTaskResourcesDialog import Ui_AddTaskResourcesDialog
 from gen.ui_BlenderRenderDialog import Ui_BlenderRenderDialog
 from gen.ui_ChangeTaskDialog import Ui_ChangeTaskDialog
@@ -17,7 +16,6 @@ from gen.ui_PbrtTaskDialog import Ui_PbrtTaskDialog
 from gen.ui_RenderingNewTaskDialog import Ui_RenderingNewTaskDialog
 from gen.ui_save_keys_dialog import Ui_save_keys_dialog
 from gen.ui_ShowTaskResourcesDialog import Ui_ShowTaskResourceDialog
-from gen.ui_StatusWindow import Ui_StatusWindow
 from gen.ui_SubtaskDetailsDialog import Ui_SubtaskDetailsDialog
 from gen.ui_TaskDetailsDialog import Ui_TaskDetailsDialog
 from gen.ui_TestingTaskProgressDialog import Ui_testingTaskProgressDialog
@@ -53,16 +51,6 @@ class SubtaskDetailsDialog(Dialog):
 
 
 # INFO DIALOGS
-
-class StatusWindow(Dialog):
-    def __init__(self, parent):
-
-        Dialog.__init__(self, parent, Ui_StatusWindow)
-
-
-class AboutWindow(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_AboutWindow)
 
 
 class PaymentsDialog(Dialog):

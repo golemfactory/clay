@@ -17,16 +17,16 @@ class TestTaskComputer(TestDirFixture):
 
     def test_run(self):
         task_server = MagicMock()
-        task_server.config_desc.task_request_interval = 1
+        task_server.config_desc.task_request_interval = 0.5
         task_server.config_desc.use_waiting_for_task_timeout = True
-        task_server.config_desc.waiting_for_task_timeout = 5
+        task_server.config_desc.waiting_for_task_timeout = 1
         task_server.get_task_computer_root.return_value = self.path
         tc = TaskComputer("ABC", task_server)
         self.assertFalse(tc.counting_task)
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.waiting_for_task)
         tc.run()
-        time.sleep(1.5)
+        time.sleep(1)
         tc.run()
         task_server.request_task.assert_called_with()
 

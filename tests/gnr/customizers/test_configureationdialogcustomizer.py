@@ -11,9 +11,8 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
 from gnr.application import GNRGui
-from gnr.ui.dialog import ConfigurationDialog
 from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer, logger
-from gnr.ui.administrationmainwindow import AdministrationMainWindow
+from gnr.ui.appmainwindow import AppMainWindow
 
 
 class TestDu(TestDirFixture):
@@ -55,14 +54,13 @@ class TestDu(TestDirFixture):
 class TestConfigurationDialogCustomizer(LogTestCase):
     def test_min_max_price(self):
         logic_mock = MagicMock()
-        gnrgui = GNRGui(MagicMock(), AdministrationMainWindow)
+        gnrgui = GNRGui(MagicMock(), AppMainWindow)
         logic_mock.get_res_dirs.return_value = {'computing': os.getcwd(),
                                                 'distributed': os.getcwd(),
                                                 'received': os.getcwd()}
         logic_mock.get_config.return_value.max_price = 10
         logic_mock.get_config.return_value.min_price = 2
-        cd = ConfigurationDialog(gnrgui.main_window.window)
-        customizer = ConfigurationDialogCustomizer(cd, logic_mock)
+        customizer = ConfigurationDialogCustomizer(gnrgui.main_window, logic_mock)
         self.assertIsInstance(customizer, ConfigurationDialogCustomizer)
         self.assertEqual(int(customizer.gui.ui.maxPriceLineEdit.text()), 10)
         self.assertEqual(int(customizer.gui.ui.minPriceLineEdit.text()), 2)
@@ -82,4 +80,4 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         gnrgui.app.deleteLater()
 
     def __click_ok(self, customizer):
-        QTest.mouseClick(customizer.gui.ui.buttonBox.button(customizer.gui.ui.buttonBox.Ok), Qt.LeftButton)
+        QTest.mouseClick(customizer.gui.ui.settingsOkButton, Qt.LeftButton)
