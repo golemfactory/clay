@@ -115,11 +115,6 @@ class TestPendingConnectionServer(unittest.TestCase):
 
         server._sync_pending()
 
-        assert network.connected
-
-        conn_id = server.pending_connections.keys()[0]
-        server.final_conn_failure(conn_id)
-
         assert len(server.pending_connections) == 0
         assert len(server.pending_sockets) == 0
 
