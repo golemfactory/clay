@@ -437,8 +437,7 @@ class Client:
 
             addresses = [
                 (address, port),
-                (node_info.pub_addr, node_info.pub_port),
-                (node_info.prv_addr, node_info.prv_port)
+                (node_info.pub_addr, node_info.pub_port)
             ]
 
             self.ipfs_manager.interpret_metadata(metadata,
