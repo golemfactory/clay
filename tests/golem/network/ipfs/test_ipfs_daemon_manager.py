@@ -65,8 +65,8 @@ class TestIPFSDaemonManager(unittest.TestCase):
         nodes = dm.list_bootstrap_nodes()
         assert nodes
 
-        assert not dm.interpret_metadata(meta, ip_2, port_2, addrs, async=False)
-        assert dm.interpret_metadata(meta, ip_1, port_1, addrs, async=False)
+        assert not dm.interpret_metadata(meta, [(ip_2, port_2)], addrs, async=False)
+        assert dm.interpret_metadata(meta, [(ip_1, port_1)], addrs, async=False)
         assert len(dm.list_bootstrap_nodes()) > len(nodes)
 
         dm.remove_bootstrap_node(default_node, async=False)

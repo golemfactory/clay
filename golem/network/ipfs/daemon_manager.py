@@ -63,7 +63,7 @@ class IPFSDaemonManager(IPFSClientHandler):
             }
         }
 
-    def interpret_metadata(self, metadata, seed_host, seed_port, addresses, async=True):
+    def interpret_metadata(self, metadata, seed_addresses, node_addresses, async=True):
         ipfs_meta = metadata.get('ipfs')
         if not ipfs_meta:
             return
@@ -74,12 +74,12 @@ class IPFSDaemonManager(IPFSClientHandler):
         if not ipfs_id:
             return
 
-        for a in addresses:
-            if seed_host == a[0] and seed_port == a[1]:
-                url = self.build_node_address(a[0], ipfs_id, port=ipfs_port)
-                self.add_bootstrap_node(url, async=async)
-                return True
-
+        for addr in node_addresses:
+            for seed_addr in seed_addresses:
+                if seed_addr[0] == addr[0] and seed_addr[1] == addr[1]:
+                    url = self.build_node_address(addr[0], ipfs_id, port=ipfs_port)
+                    self.add_bootstrap_node(url, async=async)
+                    return True
         return False
 
     def add_bootstrap_node(self, url, client=None, async=True):

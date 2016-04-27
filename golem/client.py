@@ -162,7 +162,7 @@ class Client:
         self.resource_server.start_accepting()
         time.sleep(1.0)
         self.p2pservice.set_resource_server(self.resource_server)
-        self.p2pservice.set_metadata_source(self)
+        self.p2pservice.set_metadata_manager(self)
 
         logger.info("Starting task server ...")
         self.task_server.start_accepting()
@@ -432,18 +432,19 @@ class Client:
             metadata.update(self.ipfs_manager.get_metadata())
         return metadata
 
-    def interpret_metadata(self, address, port, node_info, metadata):
+    def interpret_metadata(self, metadata, address, port, node_info):
         if node_info and metadata:
-
-            addresses = [
+            seed_addresses = [
+                (self.config_desc.seed_host, self.config_desc.seed_port)
+            ]
+            node_addresses = [
                 (address, port),
                 (node_info.pub_addr, node_info.pub_port)
             ]
 
             self.ipfs_manager.interpret_metadata(metadata,
-                                                 self.config_desc.seed_host,
-                                                 self.config_desc.seed_port,
-                                                 addresses)
+                                                 seed_addresses,
+                                                 node_addresses)
 
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()

@@ -254,10 +254,10 @@ class PeerSession(BasicSafeSession):
         p = self.p2p_service.find_peer(self.key_id)
 
         self.p2p_service.add_to_peer_keeper(self.node_info)
-        self.p2p_service.interpret_metadata(self.address,
+        self.p2p_service.interpret_metadata(metadata,
+                                            self.address,
                                             self.listen_port,
-                                            self.node_info,
-                                            metadata)
+                                            self.node_info)
 
         if enough_peers:
             logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}".format(self.node_name, self.address, self.port)

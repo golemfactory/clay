@@ -110,5 +110,5 @@ class TestClient(TestWithDatabase):
         node.prv_addr = ip_1
         node.prv_port = port_1
 
-        c.interpret_metadata(ip_1, port_1, node, meta)
+        c.interpret_metadata(meta, ip_1, port_1, node)
         c._unlock_datadir()
