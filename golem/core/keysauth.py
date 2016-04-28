@@ -10,7 +10,7 @@ from sha3 import sha3_256
 from hashlib import sha256
 
 from golem.core.variables import PRIVATE_KEY_PREF, PUBLIC_KEY_PREF
-from golem.core.simpleenv import _get_local_datadir
+from golem.core.simpleenv import get_local_datadir
 
 
 logger = logging.getLogger(__name__)
@@ -135,7 +135,7 @@ class KeysAuth(object):
         """ Path to the dir where keys files are stored."""
         if not hasattr(cls, '_keys_dir'):
             # TODO: Move keys to node's datadir.
-            cls._keys_dir = _get_local_datadir('keys')
+            cls._keys_dir = get_local_datadir('keys')
             if not os.path.isdir(cls._keys_dir):
                 os.makedirs(cls._keys_dir)
         return cls._keys_dir

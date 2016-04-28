@@ -7,7 +7,7 @@ from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessa
 from golem.task.taskstate import SubtaskStatus
 from golem.core.common import get_golem_path
 
-from gnr.ui.dialog import RenderingNewTaskDialog, ShowTaskResourcesDialog
+from gnr.ui.dialog import ShowTaskResourcesDialog
 
 
 from gnr.renderingdirmanager import get_preview_file
@@ -81,9 +81,6 @@ class AbsRenderingMainWindowCustomizer(object):
 
     def _set_new_task_dialog_customizer(self):
         self.new_task_dialog_customizer = RenderingNewTaskDialogCustomizer(self.gui, self.logic)
-
-    def _set_new_task_dialog(self):
-        self.new_task_dialog = RenderingNewTaskDialog(self.gui.window)
 
     def _set_show_task_resource_dialog(self):
         self.show_task_resources_dialog = ShowTaskResourcesDialog(self.gui.window)
