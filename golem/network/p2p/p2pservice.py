@@ -38,6 +38,7 @@ class P2PService(PendingConnectionsServer):
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_server = None
         self.resource_server = None
+        self.metadata_manager = None
         self.resource_port = 0
         self.suggested_address = {}
         self.gossip_keeper = GossipKeeper()
@@ -92,6 +93,12 @@ class P2PService(PendingConnectionsServer):
         """
         self.task_server = task_server
         self.task_connections_helper.task_server = task_server
+
+    def set_metadata_manager(self, metadata_manager):
+        self.metadata_manager = metadata_manager
+
+    def interpret_metadata(self, *args, **kwargs):
+        self.metadata_manager.interpret_metadata(*args, **kwargs)
 
     def sync_network(self):
         """ Get information about new tasks and new peers in the network. Remove excess information
@@ -276,11 +283,12 @@ class P2PService(PendingConnectionsServer):
             should_solve_challenge = self.should_solve_challenge
         else:
             should_solve_challenge = False
+
         listen_params = (self.cur_port, self.node_name, self.keys_auth.get_key_id(), self.node, rand_val,
-                         should_solve_challenge)
+                         self.metadata_manager.get_metadata(), should_solve_challenge)
+
         if should_solve_challenge:
             listen_params += (self._get_challenge(key_id), self._get_difficulty(key_id))
-
         return listen_params
 
     def check_solution(self, solution, challenge, difficulty):
