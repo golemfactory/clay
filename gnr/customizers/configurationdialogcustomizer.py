@@ -9,7 +9,10 @@ from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.fileshelper import get_dir_size
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
+from gnr.renderingtaskstate import RenderingTaskState
+from golem.task.taskstate import TaskStatus
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
+from gnr.benchmarks.luxrender.lux_benchmark import query_benchmark_task_definition
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +54,8 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def _setup_connections(self):
         self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
-        self.gui.ui.recountLuxButton.clicked.connect(self.__recount_lux_performance)
-        self.gui.ui.recountBlenderButton.clicked.connect(self.__recount_blender_performance)
+        self.gui.ui.recountLuxButton.clicked.connect(self.__run_lux_benchmark_button_clicked)
+        self.gui.ui.recountBlenderButton.clicked.connect(self.__run_blender_benchmark_button_clicked)
         self.gui.ui.settingsOkButton.clicked.connect(self.__change_config)
         self.gui.ui.settingsCancelButton.clicked.connect(lambda: self.load_data())
 
@@ -124,6 +127,22 @@ class ConfigurationDialogCustomizer(Customizer):
         max_memory_size, index = resource_size_to_display(max_memory_size)
         self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex(index)
         self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
+        
+    def __run_lux_benchmark_button_clicked(self):
+        self.task_state = RenderingTaskState()
+        self.task_state.status = TaskStatus.notStarted
+        self.task_state.definition = query_benchmark_task_definition()
+
+        if not self.logic.run_benchmark(self.task_state):
+            logger.error("Task not tested properly")
+            
+    def __run_blender_benchmark_button_clicked(self):
+        self.task_state = RenderingTaskState()
+        self.task_state.status = TaskStatus.notStarted
+        self.task_state.definition = query_benchmark_task_definition()
+
+        if not self.logic.run_benchmark(self.task_state):
+            logger.error("Task not tested properly")
 
     def __load_trust_config(self, config_desc):
         self.__load_trust(config_desc.computing_trust, self.gui.ui.computingTrustLineEdit,
@@ -313,12 +332,6 @@ class ConfigurationDialogCustomizer(Customizer):
         except ValueError:
             num_cores = 1
         self.gui.ui.performanceLabel.setText(str(self.logic.recount_performance(num_cores)))
-
-    def __recount_lux_performance(self):
-        self.gui.ui.luxPerformanceLabel.setText(str(self.logic.recount_lux_performance()))
-
-    def __recount_blender_performance(self):
-        self.gui.ui.blenderPerformanceLabel.setText(str(self.logic.recount_blender_performance()))
 
     def __read_payment_config(self, cfg_desc):
         cfg_desc.eth_account = u"{}".format(self.gui.ui.ethAccountLineEdit.text())

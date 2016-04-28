@@ -301,7 +301,23 @@ class GNRApplicationLogic(QtCore.QObject):
             return True
         else:
             return False
+        
+    def run_benchmark(self, task_state):
+        self._validate_task_state(task_state)
+        tb = self._get_builder(task_state)
 
+        t = Task.build_task(tb)
+
+        self.tt = TaskTester(t, self.client.datadir, self._test_task_computation_success,
+                                self._test_task_computation_error)
+
+        self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
+        self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
+        self.progress_dialog.show()
+
+        self.tt.run()
+        return True
+        
     def get_environments(self):
         return self.client.get_environments()
 
@@ -361,7 +377,6 @@ class GNRApplicationLogic(QtCore.QObject):
         ms_box.show()
 
     def _validate_task_state(self, task_state):
-
         td = task_state.definition
         if not os.path.exists(td.main_program_file):
             self.show_error_window("Main program file does not exist: {}".format(td.main_program_file))
