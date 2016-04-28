@@ -438,7 +438,7 @@ class Client:
         return msg
 
     def get_peers(self):
-        return self.p2pservice.peers.values()[:]
+        return self.p2pservice.peers.values()
 
     def __lock_datadir(self):
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
