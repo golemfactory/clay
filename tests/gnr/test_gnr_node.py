@@ -178,9 +178,10 @@ class TestNode(TestWithDatabase):
     @patch('gnr.node.GNRNode')
     def test_task(self, mock_node):
         a = A()
-        with open('testclassdump', 'w') as f:
+        dump = os.path.join(self.path, 'testcalssdump')
+        with open(dump, 'w') as f:
             cPickle.dump(a, f)
-        args = ['--task', 'testclassdump', '--task', 'testclassdump']
+        args = ['--task', dump, '--task', dump]
         return_value = CliRunner().invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
         mock_node.assert_has_calls([call().run()])
@@ -190,12 +191,10 @@ class TestNode(TestWithDatabase):
         task_arg = mock_node.mock_calls[task_num][1][0]
         self.assertEqual(len(task_arg), 2)
         self.assertIsInstance(task_arg[0], A)
-        if os.path.exists('testclassdump'):
-            os.remove('testclassdump')
 
     @patch('gnr.node.GNRNode')
     def test_task_from_json(self, mock_node):
-        test_json_file = 'task.json'
+        test_json_file = os.path.join(self.path, 'task.json')
         a1 = A()
         a1.name = 'Jake the Dog'
         a2 = A()
@@ -224,7 +223,7 @@ class TestNode(TestWithDatabase):
 
     @patch('gnr.node.GNRNode')
     def test_task_from_invalid_json(self, mock_node):
-        test_json_file = 'task.json'
+        test_json_file = os.path.join(self.path, 'task.json')
         with open(test_json_file, 'w') as f:
             f.write('Clearly this is not a valid json.')
 

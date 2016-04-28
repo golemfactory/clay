@@ -3,6 +3,7 @@ import logging
 import cPickle
 
 from PyQt4 import QtCore
+from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet import task
 
 from golem.task.taskstate import TaskStatus
@@ -58,8 +59,10 @@ class GNRApplicationLogic(QtCore.QObject):
         self.add_new_nodes_function = lambda x: None
 
     def start(self):
-        l = task.LoopingCall(self.get_status)
-        l.start(3.0)
+        task_status = task.LoopingCall(self.get_status)
+        task_peers = task.LoopingCall(self.get_peers)
+        task_status.start(3.0)
+        task_peers.start(3.0)
 
     def register_gui(self, gui, customizer_class):
         self.customizer = customizer_class(gui, self)
@@ -125,6 +128,26 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def get_status(self):
         self.customizer.gui.ui.statusTextBrowser.setText(self.client.get_status())
+
+    def get_peers(self):
+        table = self.customizer.gui.ui.connectedPeersTable
+        peers = self.client.get_peers()
+
+        row_count = table.rowCount()
+        new_row_count = len(peers)
+
+        if new_row_count < row_count:
+            for i in xrange(row_count, new_row_count, -1):
+                table.removeRow(i-1)
+        elif new_row_count > row_count:
+            for i in xrange(row_count, new_row_count):
+                table.insertRow(i)
+
+        for i, peer in enumerate(peers):
+            table.setItem(i, 0, QTableWidgetItem(peer.address))
+            table.setItem(i, 1, QTableWidgetItem(str(peer.port)))
+            table.setItem(i, 2, QTableWidgetItem(peer.key_id))
+            table.setItem(i, 3, QTableWidgetItem(peer.node_name))
 
     def get_config(self):
         return self.client.config_desc
