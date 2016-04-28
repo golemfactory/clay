@@ -1,14 +1,23 @@
 import logging
 
-from golem.network.ipfs.client import IPFSCommands, IPFSClientHandler, IPFS_DEFAULT_PORT
-from golem.network.transport.tcpnetwork import SocketAddress
+import ipaddress
+
+from golem.network.ipfs.client import IPFSCommands, IPFSClientHandler, IPFSAddress
 
 __all__ = ['IPFSDaemonManager']
 logger = logging.getLogger(__name__)
 
+MAX_IPFS_ADDRESSES_PER_NODE = 8
+
+
+def to_unicode(source):
+    if not isinstance(source, unicode):
+        return unicode(source)
+    return source
+
 
 class IPFSDaemonManager(IPFSClientHandler):
-    
+
     def __init__(self, config=None):
         super(IPFSDaemonManager, self).__init__(config)
 
@@ -18,11 +27,16 @@ class IPFSDaemonManager(IPFSClientHandler):
         self.addresses = None
         self.agent_version = None
         self.proto_version = None
+        self.meta_addresses = None
 
         for node in self.config.bootstrap_nodes:
-            self.add_bootstrap_node(node)
+            try:
+                self.add_bootstrap_node(node, async=False)
+            except Exception as e:
+                logger.error('IPFS: Error adding bootstrap node {}: {}'
+                             .format(node, e.message))
 
-    def store_info(self, client=None):
+    def store_client_info(self, client=None):
         if not client:
             client = self.new_ipfs_client()
 
@@ -32,33 +46,21 @@ class IPFSDaemonManager(IPFSClientHandler):
             data = response[0]
             self.node_id = data.get('ID')
             self.public_key = data.get('PublicKey')
-            self.addresses = data.get('Addresses')
+            self.addresses = [IPFSAddress.parse(a) for a in data.get('Addresses')]
             self.agent_version = data.get('AgentVersion')
             self.proto_version = data.get('ProtoVersion')
 
-            if self.addresses:
-                try:
-                    self.port = int(self.addresses[0].split('/')[3])
-                except:
-                    logger.warn("IPFS: cannot parse port; incompatible IPFS version?")
+            for ipfs_addr in self.addresses:
+                # filter out private addresses
+                if IPFSAddress.allowed_ip_address(ipfs_addr.ip_address):
+                    self.meta_addresses.append(str(ipfs_addr))
 
         return self.node_id
-
-    @staticmethod
-    def build_node_address(address, node_id, port=None, proto=None):
-        pattern = '/{}/{}/{}/{}/ipfs/{}'
-        ip4, ip6 = 'ip4', 'ip6'
-        proto = proto or 'tcp'
-        port = port or IPFS_DEFAULT_PORT
-        sa = SocketAddress(address, port)
-        return pattern.format(ip6 if sa.ipv6 else ip4,
-                              address, proto, port, node_id)
 
     def get_metadata(self):
         return {
             'ipfs': {
-                'id': self.node_id,
-                'port': self.port,
+                'addresses': self.meta_addresses,
                 'version': self.proto_version
             }
         }
@@ -66,30 +68,54 @@ class IPFSDaemonManager(IPFSClientHandler):
     def interpret_metadata(self, metadata, seed_addresses, node_addresses, async=True):
         ipfs_meta = metadata.get('ipfs')
         if not ipfs_meta:
-            return
+            return False
 
-        ipfs_id = ipfs_meta.get('id')
-        ipfs_port = ipfs_meta.get('port', IPFS_DEFAULT_PORT)
+        ipfs_addresses = ipfs_meta['addresses']
+        if not ipfs_addresses:
+            return False
 
-        if not ipfs_id:
-            return
+        added = False
 
-        for addr in node_addresses:
-            for seed_addr in seed_addresses:
-                if seed_addr[0] == addr[0] and seed_addr[1] == addr[1]:
-                    url = self.build_node_address(addr[0], ipfs_id, port=ipfs_port)
-                    self.add_bootstrap_node(url, async=async)
-                    return True
-        return False
+        for address in node_addresses:
+            for seed_address in seed_addresses:
+                if seed_address[0] == address[0] and seed_address[1] == address[1]:
+                    added = self._add_bootstrap_addresses(seed_address[0],
+                                                          ipfs_addresses,
+                                                          async=async) or added
+        return added
+
+    def _add_bootstrap_addresses(self, seed_ip_str, ipfs_address_strs, async=True):
+        seed_ip_addr = self._ip_from_str(seed_ip_str)
+        urls = set()
+
+        for ipfs_address_str in ipfs_address_strs:
+            ipfs_address = IPFSAddress.parse(ipfs_address_str)
+            ipfs_ip_addr = self._ip_from_str(ipfs_address.ip_address)
+
+            if type(seed_ip_addr) is type(ipfs_ip_addr):
+                ipfs_address.ip_address = seed_ip_str
+                urls.add(str(ipfs_address))
+
+        for url in urls:
+            self.add_bootstrap_node(url, async=async)
+        return len(urls) > 0
+
+    @staticmethod
+    def _ip_from_str(ip_address):
+        return ipaddress.ip_address(to_unicode(ip_address))
 
     def add_bootstrap_node(self, url, client=None, async=True):
         if not client:
             client = self.new_ipfs_client()
 
         def closure():
-            self._handle_retries(client.bootstrap_add,
-                                 IPFSCommands.bootstrap_add,
-                                 url) if url else None
+            try:
+                self._handle_retries(client.bootstrap_add,
+                                     IPFSCommands.bootstrap_add,
+                                     url) if url else None
+            except Exception as e:
+                logger.error("IPFS: error adding bootstrap node {}: {}"
+                             .format(url, e.message))
             return url
 
         if async:
