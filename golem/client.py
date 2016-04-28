@@ -6,6 +6,7 @@ from twisted.internet import task
 from threading import Lock
 
 from golem.core.variables import APP_NAME, APP_VERSION
+from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 from golem.tools import filelock
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.node import Node
@@ -137,6 +138,7 @@ class Client:
 
         self.environments_manager = EnvironmentsManager()
 
+        self.ipfs_manager = None
         self.resource_server = None
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
@@ -153,11 +155,14 @@ class Client:
                                       use_ipv6=self.config_desc.use_ipv6)
         self.resource_server = IPFSResourceServer(self.task_server.task_computer.dir_manager,
                                                   self.keys_auth, self)
+        self.ipfs_manager = IPFSDaemonManager()
+        self.ipfs_manager.store_info()
 
         logger.info("Starting resource server...")
         self.resource_server.start_accepting()
         time.sleep(1.0)
         self.p2pservice.set_resource_server(self.resource_server)
+        self.p2pservice.set_metadata_manager(self)
 
         logger.info("Starting task server ...")
         self.task_server.start_accepting()
@@ -421,6 +426,26 @@ class Client:
         if self.nodes_manager_client:
             self.nodes_manager_client.send_client_state_snapshot(self.last_node_state_snapshot)
 
+    def get_metadata(self):
+        metadata = dict()
+        if self.ipfs_manager:
+            metadata.update(self.ipfs_manager.get_metadata())
+        return metadata
+
+    def interpret_metadata(self, metadata, address, port, node_info):
+        if node_info and metadata:
+            seed_addresses = [
+                (self.config_desc.seed_host, self.config_desc.seed_port)
+            ]
+            node_addresses = [
+                (address, port),
+                (node_info.pub_addr, node_info.pub_port)
+            ]
+
+            self.ipfs_manager.interpret_metadata(metadata,
+                                                 seed_addresses,
+                                                 node_addresses)
+
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()
         if len(progress) > 0:
@@ -436,6 +461,9 @@ class Client:
         if self.transaction_system:
             msg += "Budget: {}\n".format(self.transaction_system.budget)
         return msg
+
+    def get_peers(self):
+        return self.p2pservice.peers.values()
 
     def __lock_datadir(self):
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')

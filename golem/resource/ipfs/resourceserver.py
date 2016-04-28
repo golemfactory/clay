@@ -54,12 +54,7 @@ class IPFSResourceServer:
         self.resource_manager.copy_resources(old_resource_dir)
 
     def start_accepting(self):
-        try:
-            ipfs_id = self.resource_manager.id()
-            logger.debug("IPFS: id %r" % ipfs_id)
-        except Exception as e:
-            logger.error("IPFS: daemon is not running "
-                         "or is not properly configured: %s" % e.message)
+        pass
 
     def set_resource_peers(self, *args, **kwargs):
         pass

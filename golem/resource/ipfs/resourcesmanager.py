@@ -2,23 +2,15 @@ import logging
 import os
 import re
 import shutil
-import socket
 import time
-import twisted
-import urllib2
 from collections import deque
 from threading import Lock
 
-import requests
-
 from golem.core.fileshelper import copy_file_tree, common_dir
-from golem.network.transport.tcpnetwork import SocketAddress
-from golem.resource.ipfs.client import IPFSClient, IPFSAsyncCall, IPFSAsyncExecutor, IPFSCommands
+from golem.network.ipfs.client import IPFSCommands, IPFSClientHandler
 
 __all__ = ['IPFSResourceManager']
 logger = logging.getLogger(__name__)
-
-BOOTSTRAP_NODES = ['/ip4/52.37.205.43/tcp/4001/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB']
 
 
 def to_unicode(source):
@@ -26,71 +18,32 @@ def to_unicode(source):
         return unicode(source)
     return source
 
-try:
-    from requests.packages.urllib3.exceptions import *
-    urllib_exceptions = [MaxRetryError, TimeoutError, ReadTimeoutError,
-                         ConnectTimeoutError, ConnectionError]
-except ImportError:
-    urllib_exceptions = [urllib2.URLError]
 
-
-class IPFSResourceManager:
+class IPFSResourceManager(IPFSClientHandler):
 
     root_path = os.path.abspath(os.sep)
-    timeout_exceptions = [requests.exceptions.ConnectionError,
-                          requests.exceptions.ConnectTimeout,
-                          requests.exceptions.ReadTimeout,
-                          requests.exceptions.RetryError,
-                          requests.exceptions.Timeout,
-                          requests.exceptions.HTTPError,
-                          requests.exceptions.StreamConsumedError,
-                          requests.exceptions.RequestException,
-                          twisted.internet.defer.TimeoutError,
-                          socket.timeout] + urllib_exceptions
+    lock = Lock()
 
     def __init__(self, dir_manager,
                  config=None,
-                 resource_dir_method=None,
-                 max_concurrent_downloads=4,
-                 max_retries=16):
+                 resource_dir_method=None):
 
-        self.ID = None
-        self.lock = Lock()
-
-        self.dir_manager = dir_manager
-        self.node_name = dir_manager.node_name
-
-        self.current_downloads = 0
-        self.max_retries = max_retries
-        self.max_concurrent_downloads = max_concurrent_downloads
+        super(IPFSResourceManager, self).__init__(config)
 
         self.file_to_hash = dict()
         self.hash_to_path = dict()
         self.task_id_to_files = dict()
         self.task_common_prefixes = dict()
         self.download_queue = deque()
-        self.command_retries = dict()
-        self.commands = dict()
 
-        for name, val in IPFSCommands.__dict__.iteritems():
-            if not name.startswith('_'):
-                self.command_retries[val] = {}
-                self.commands[val] = name
+        self.current_downloads = 0
+        self.dir_manager = dir_manager
+        self.node_name = dir_manager.node_name
 
         if not resource_dir_method:
             self.resource_dir_method = dir_manager.get_task_resource_dir
         else:
             self.resource_dir_method = resource_dir_method
-
-        self.client_config = {
-            'timeout': (24000, 24000)
-        }
-        self.bootstrap_nodes = BOOTSTRAP_NODES
-
-        if config and 'ipfs' in config:
-            self.client_config.update(config.get('ipfs', {}))
-        for node in self.bootstrap_nodes:
-            self.add_bootstrap_node(node)
 
         self.add_resource_dir(self.get_resource_root_dir())
 
@@ -146,9 +99,8 @@ class IPFSResourceManager:
 
     def update_resource_dir(self):
         self.__init__(self.dir_manager,
-                      self.client_config,
-                      self.resource_dir_method,
-                      self.max_concurrent_downloads)
+                      self.config,
+                      self.resource_dir_method)
 
     def get_resource_root_dir(self):
         return self.get_resource_dir('')
@@ -159,9 +111,6 @@ class IPFSResourceManager:
     def get_resource_path(self, resource, task_id):
         resource_dir = self.get_resource_dir(task_id)
         return os.path.join(resource_dir, os.path.normpath(resource))
-
-    def new_ipfs_client(self):
-        return IPFSClient(**self.client_config)
 
     def check_resource(self, resource, task_id,
                        absolute_path=False, multihash=None):
@@ -314,40 +263,6 @@ class IPFSResourceManager:
         logging.debug("IPFS: Resource registered {} ({})".format(file_path, multihash))
         return name
 
-    @staticmethod
-    def build_node_address(address, node_id, port=4001):
-        pattern = '/{}/{}/tcp/{}/ipfs/{}'
-        ip4, ip6 = 'ip4', 'ip6'
-        sa = SocketAddress(address, port)
-        return pattern.format(ip6 if sa.ipv6 else ip4,
-                              address, port, node_id)
-
-    def add_bootstrap_node(self, url, client=None):
-        if not client:
-            client = self.new_ipfs_client()
-        return self._handle_retries(client.bootstrap_add,
-                                    IPFSCommands.bootstrap_add,
-                                    url) if url else None
-
-    def remove_bootstrap_node(self, url, client=None):
-        if not client:
-            client = self.new_ipfs_client()
-        return self._handle_retries(client.bootstrap_rm,
-                                    IPFSCommands.bootstrap_rm,
-                                    url) if url else None
-
-    def list_bootstrap_nodes(self, client=None):
-        if not client:
-            client = self.new_ipfs_client()
-
-        result = self._handle_retries(client.bootstrap_list,
-                                      IPFSCommands.bootstrap_list,
-                                      obj_id=IPFSCommands.bootstrap_list)
-
-        if result and result[0]:
-            return result[0].get('Peers', [])
-        return []
-
     def pin_resource(self, multihash, client=None):
         if not client:
             client = self.new_ipfs_client()
@@ -385,7 +300,7 @@ class IPFSResourceManager:
             logger.debug("IPFS: %r (%r) downloaded" %
                          (result_filename, result_multihash))
 
-            self.__clear_retry(IPFSCommands.pull, result_multihash)
+            self._clear_retry(IPFSCommands.pull, result_multihash)
             self._register_resource(result_filename,
                                     result_path,
                                     result_multihash,
@@ -399,7 +314,7 @@ class IPFSResourceManager:
             with self.lock:
                 self.current_downloads -= 1
 
-            if self.__can_retry(exc, IPFSCommands.pull, multihash):
+            if self._can_retry(exc, IPFSCommands.pull, multihash):
                 self.pull_resource(filename,
                                    multihash,
                                    task_id,
@@ -436,14 +351,6 @@ class IPFSResourceManager:
                     async=async,
                     client=client)
 
-    def id(self, client=None):
-        if not client:
-            client = self.new_ipfs_client()
-
-        response = self._handle_retries(client.id, IPFSCommands.id, 'id')
-        self.ID = response[0]['ID']
-        return self.ID
-
     def __copy_cached(self, filename, multihash, task_id):
         cached_path = self.get_cached(multihash)
         if cached_path and os.path.exists(cached_path):
@@ -460,8 +367,8 @@ class IPFSResourceManager:
 
     def __can_download(self):
         with self.lock:
-            return self.max_concurrent_downloads < 1 or \
-                   self.current_downloads < self.max_concurrent_downloads
+            max_dl = self.config.max_concurrent_downloads
+            return max_dl < 1 or self.current_downloads < max_dl
 
     def __pull(self, filename, multihash, task_id,
                success_wrapper, error_wrapper,
@@ -482,12 +389,12 @@ class IPFSResourceManager:
             self.current_downloads += 1
 
         if async:
-            self.__ipfs_async_call(client.get_file,
-                                   success_wrapper,
-                                   error_wrapper,
-                                   multihash=multihash,
-                                   filename=filename,
-                                   filepath=res_dir)
+            self._ipfs_async_call(client.get_file,
+                                  success_wrapper,
+                                  error_wrapper,
+                                  multihash=multihash,
+                                  filename=filename,
+                                  filepath=res_dir)
         else:
             try:
                 data = client.get_file(multihash,
@@ -496,44 +403,6 @@ class IPFSResourceManager:
                 success_wrapper(data)
             except Exception as e:
                 error_wrapper(e)
-
-    def __can_retry(self, exc, cmd, obj_id):
-        if type(exc) in self.timeout_exceptions:
-            this_cmd = self.command_retries[cmd]
-
-            if obj_id not in this_cmd:
-                this_cmd[obj_id] = 0
-
-            if this_cmd[obj_id] < self.max_retries:
-                this_cmd[obj_id] += 1
-                return True
-
-            this_cmd.pop(obj_id, None)
-
-        return False
-
-    def __clear_retry(self, cmd, obj_id):
-        self.command_retries[cmd].pop(obj_id, None)
-
-    def _handle_retries(self, method, cmd, *args, **kwargs):
-        working = True
-        result = None
-        if args:
-            obj_id = args[0]
-        else:
-            obj_id = kwargs.pop('obj_id', method)
-
-        while working:
-            try:
-                result = method(*args, **kwargs)
-                working = False
-            except Exception as e:
-                if not self.__can_retry(e, cmd, obj_id):
-                    self.__clear_retry(cmd, obj_id)
-                    raise
-
-        self.__clear_retry(cmd, obj_id)
-        return result
 
     def __push_to_queue(self, *args):
         with self.lock:
@@ -548,8 +417,3 @@ class IPFSResourceManager:
 
         if params:
             self.pull_resource(*params)
-
-    @staticmethod
-    def __ipfs_async_call(method, success, error, *args, **kwargs):
-        call = IPFSAsyncCall(method, *args, **kwargs)
-        IPFSAsyncExecutor.run(call, success, error)

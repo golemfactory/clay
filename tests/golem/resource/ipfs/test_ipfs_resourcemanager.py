@@ -73,7 +73,7 @@ class TestResourcesManager(TestDirFixture):
 
     def testNewIpfsClient(self):
         rm = IPFSResourceManager(self.dir_manager)
-        from golem.resource.ipfs.client import IPFSClient
+        from golem.network.ipfs.client import IPFSClient
         self.assertIsInstance(rm.new_ipfs_client(), IPFSClient)
 
     def testInit(self):
@@ -156,13 +156,6 @@ class TestResourcesManager(TestDirFixture):
         for elem in rl:
             assert rm.get_resource_path(elem[0], self.task_id) in res_list
 
-    def testId(self):
-        rm = IPFSResourceManager(self.dir_manager)
-        ipfs_id = rm.id()
-
-        self.assertIsInstance(ipfs_id, basestring)
-        assert ipfs_id
-
     def testAddResource(self):
         rm = IPFSResourceManager(self.dir_manager)
 
@@ -208,30 +201,6 @@ class TestResourcesManager(TestDirFixture):
 
         rm.pin_resource(resources[0][1])
         rm.unpin_resource(resources[0][1])
-
-    def testAddRemoveBootstrapNodes(self):
-        default_node = '/ip4/127.0.0.1/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ'
-        rm = IPFSResourceManager(self.dir_manager)
-        rm.remove_bootstrap_node(default_node)
-
-        nodes = rm.list_bootstrap_nodes()
-        assert nodes
-
-        rm.add_bootstrap_node(default_node)
-        assert len(rm.list_bootstrap_nodes()) > len(nodes)
-
-        rm.remove_bootstrap_node(default_node)
-        assert len(rm.list_bootstrap_nodes()) == len(nodes)
-
-    def testBuildNodeAddress(self):
-        expected_ipv4 = '/ip4/127.0.0.1/tcp/4001/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB'
-        expected_ipv6 = '/ip6/::1/tcp/14001/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB'
-
-        ipv4 = IPFSResourceManager.build_node_address('127.0.0.1', 'QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB')
-        ipv6 = IPFSResourceManager.build_node_address('::1', 'QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB', port=14001)
-
-        assert ipv4 == expected_ipv4
-        assert ipv6 == expected_ipv6
 
     def testPullResource(self):
 

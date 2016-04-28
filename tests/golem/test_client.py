@@ -1,5 +1,5 @@
 import os
-from mock import patch, Mock
+from mock import patch, Mock, MagicMock
 
 from golem.client import create_client, Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -87,4 +87,28 @@ class TestClient(TestWithDatabase):
         c = Client(ClientConfigDescriptor(), datadir=self.path)
         with self.assertRaises(IOError):
             Client(ClientConfigDescriptor(), datadir=self.path)
+        c._unlock_datadir()
+
+    def test_metadata(self):
+        c = Client(ClientConfigDescriptor(), datadir=self.path)
+        meta = c.get_metadata()
+        assert meta is not None
+        assert not meta
+        c._unlock_datadir()
+
+    def test_interpret_metadata(self):
+        from golem.network.ipfs.daemon_manager import IPFSDaemonManager
+        c = Client(ClientConfigDescriptor(), datadir=self.path)
+        c.ipfs_manager = IPFSDaemonManager()
+        meta = c.get_metadata()
+        assert meta and meta['ipfs']
+
+        ip_1 = '127.0.0.1'
+        port_1 = 40102
+
+        node = MagicMock()
+        node.prv_addr = ip_1
+        node.prv_port = port_1
+
+        c.interpret_metadata(meta, ip_1, port_1, node)
         c._unlock_datadir()
