@@ -98,4 +98,5 @@ class TestGNRApplicationLogic(TestDirFixture):
 
         assert logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0] == ts.definition
 
+        gnrgui.app.quit()
         gnrgui.app.deleteLater()

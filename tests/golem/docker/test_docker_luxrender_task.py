@@ -13,7 +13,7 @@ from golem.model import db
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
-from golem.testutils import UserTempDirFixture
+from golem.testutils import TempDirFixture
 from test_docker_image import DockerTestCase
 
 # Make peewee logging less verbose
@@ -22,7 +22,7 @@ logging.getLogger("peewee").setLevel("INFO")
 
 # TODO: extract code common to this class and TestDockerBlenderTask to a superclass
 # TODO: test luxrender tasks with .flm file
-class TestDockerLuxrenderTask(UserTempDirFixture, DockerTestCase):
+class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
     TASK_FILE = "docker-luxrender-test-task.json"
 

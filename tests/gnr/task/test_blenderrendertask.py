@@ -9,7 +9,7 @@ from PIL import Image
 from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
                                         BlenderRendererOptions, PreviewUpdater)
 from gnr.renderingtaskstate import RenderingTaskDefinition
-from golem.testutils import UserTempDirFixture
+from golem.testutils import TempDirFixture
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestBlenderDefaults(unittest.TestCase):
         self.assertTrue(path.isfile(bd.main_program_file))
 
 
-class TestBlenderTaskDivision(UserTempDirFixture):
+class TestBlenderTaskDivision(TempDirFixture):
     def setUp(self):
         super(TestBlenderTaskDivision, self).setUp()
         program_file = self.temp_file_name('program')
@@ -105,7 +105,7 @@ class TestBlenderTaskDivision(UserTempDirFixture):
                 self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
 
 
-class TestPreviewUpdater(UserTempDirFixture):
+class TestPreviewUpdater(TempDirFixture):
     def test_update_preview(self):
         preview_file = self.temp_file_name('sample_img.png')
         res_x = 200
@@ -130,7 +130,7 @@ class TestPreviewUpdater(UserTempDirFixture):
             self.assertTrue(pu.perfect_match_area_y == res_y and pu.perfectly_placed_subtasks == chunks)
 
 
-class TestBlenderRenderTaskBuilder(UserTempDirFixture):
+class TestBlenderRenderTaskBuilder(TempDirFixture):
     def test_build(self):
         definition = RenderingTaskDefinition()
         definition.renderer_options = BlenderRendererOptions()

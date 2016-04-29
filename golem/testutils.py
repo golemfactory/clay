@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from os import path, mkdir
 
-from golem.core.common import is_windows
+from golem.core.common import is_windows, is_osx
 
 from golem.core.simpleenv import get_local_datadir
 from golem.model import Database
@@ -13,19 +13,36 @@ from golem.ethereum import Client
 
 
 class TempDirFixture(unittest.TestCase):
-    def setUp(self):
+    __root_dir = None
+
+    @classmethod
+    def setUpClass(cls):
         logging.basicConfig(level=logging.DEBUG)
+
         if is_windows():
             import win32api
             tmppath = win32api.GetLongPathName(tempfile.gettempdir())
+        elif is_osx():
+            tmppath = get_local_datadir('.tests')
         else:
             tmppath = tempfile.gettempdir()
-        root = path.join(tmppath, 'golem')
-        if not path.exists(root):
-            mkdir(root)
+
+        cls.__root_dir = path.join(tmppath, 'golem')
+        if not os.path.exists(cls.__root_dir):
+            os.makedirs(cls.__root_dir, mode=0770)
+
+    # Concurrent tests will fail
+    # @classmethod
+    # def tearDownClass(cls):
+    #     if os.path.exists(cls.__root_dir):
+    #         shutil.rmtree(cls.__root_dir)
+
+    def setUp(self):
         dir_name = self._temp_dir_name()
-        self.tempdir = tempfile.mkdtemp(prefix=dir_name, dir=root)
+        self.tempdir = tempfile.mkdtemp(prefix=dir_name, dir=self.__root_dir)
         self.path = self.tempdir  # Alias for legacy tests
+        if not is_windows():
+            os.chmod(self.tempdir, 0770)
 
     def tearDown(self):
         # Firstly kill Ethereum node to clean up after it later on.
@@ -64,19 +81,6 @@ class TempDirFixture(unittest.TestCase):
 
     def _temp_dir_name(self):
         return self.id().rsplit('.', 1)[1]  # Use test method name
-
-
-class UserTempDirFixture(TempDirFixture):
-    def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
-
-        root = get_local_datadir('.tests')
-        if not os.path.exists(root):
-            os.makedirs(root)
-
-        dir_name = self._temp_dir_name()
-        self.tempdir = tempfile.mkdtemp(prefix=dir_name, dir=root)
-        self.path = self.tempdir  # Alias for legacy tests
 
 
 class DatabaseFixture(TempDirFixture):

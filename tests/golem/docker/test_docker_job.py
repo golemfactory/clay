@@ -11,7 +11,7 @@ import requests
 import docker.errors
 
 from golem.core.common import is_windows, nt_path_to_posix_path
-from golem.core.simpleenv import _get_local_datadir
+from golem.core.simpleenv import get_local_datadir
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob, container_logger
 from test_docker_image import DockerTestCase
@@ -30,7 +30,7 @@ class TestDockerJob(DockerTestCase):
     TEST_SCRIPT = "print 'Adventure Time!'\n"
 
     def setUp(self):
-        main_dir = _get_local_datadir('tests-' + str(uuid.uuid4()))
+        main_dir = get_local_datadir('tests-' + str(uuid.uuid4()))
         if not os.path.exists(main_dir):
             os.makedirs(main_dir)
 
@@ -38,6 +38,9 @@ class TestDockerJob(DockerTestCase):
         self.work_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
         self.resources_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
         self.output_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
+
+        if not is_windows():
+            os.chmod(self.test_dir, 0770)
 
         self.image = DockerImage(self._get_test_repository())
         self.test_job = None

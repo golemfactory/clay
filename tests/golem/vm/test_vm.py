@@ -1,8 +1,7 @@
 from copy import copy
-from unittest import TestCase, skipIf
+from unittest import TestCase
 
 from golem.vm.vm import PythonVM, PythonProcVM, PythonTestVM, exec_code
-from golem.core.common import is_windows
 
 
 class TestPythonVM(TestCase):
