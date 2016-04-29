@@ -24,4 +24,5 @@ class TestNewTaskDialogCustomizer(TestCase):
         customizer._advance_settings_button_clicked()
         QTest.mouseClick(customizer.gui.ui.showAdvanceNewTaskButton, Qt.LeftButton)
 
+        gnrgui.app.quit()
         gnrgui.app.deleteLater()

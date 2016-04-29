@@ -45,5 +45,5 @@ class TestLuxRenderDialogCustomizer(TestDirFixture):
                                                             "Choose main scene file",
                                                             u"",
                                                             u"Scene files (*.LXS *.lxs)")
-
+        gnrgui.app.quit()
         gnrgui.app.deleteLater()

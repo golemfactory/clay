@@ -17,4 +17,5 @@ class TestRenderingNewTaskDialogCustomizer(TestCase):
         register_rendering_task_types(logic)
         customizer = RenderingNewTaskDialogCustomizer(gnrgui.main_window, logic)
         self.assertIsInstance(customizer, RenderingNewTaskDialogCustomizer)
+        gnrgui.app.quit()
         gnrgui.app.deleteLater()

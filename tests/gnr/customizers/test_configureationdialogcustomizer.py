@@ -77,6 +77,8 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         customizer.gui.ui.minPriceLineEdit.setText(u"XYZ")
         with self.assertLogs(logger, level=1):
             self.__click_ok(customizer)
+
+        gnrgui.app.quit()
         gnrgui.app.deleteLater()
 
     def __click_ok(self, customizer):

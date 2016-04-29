@@ -32,4 +32,6 @@ class TestAddResourcesDialogCustomizer(TestDirFixture):
             model.setData(model.index(f), Qt.Checked, Qt.CheckStateRole)
         QTest.mouseClick(ardc.gui.ui.okButton, Qt.LeftButton)
         logic.customizer.gui.ui.resourceFilesLabel.setText.assert_called_with("11")
+
+        gnrgui.app.quit()
         gnrgui.app.deleteLater()

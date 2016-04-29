@@ -28,7 +28,6 @@ class TestTaskComputer(TestDirFixture):
         tc.run()
         time.sleep(1)
         tc.run()
-        self.__wait_for_tasks(tc)
         task_server.request_task.assert_called_with()
 
     def test_computation(self):
