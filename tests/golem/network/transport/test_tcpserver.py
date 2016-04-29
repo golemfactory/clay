@@ -1,4 +1,9 @@
 import unittest
+
+from mock import Mock
+
+from golem.network.transport.tcpnetwork import SocketAddress
+
 from golem.network.transport.tcpserver import (TCPServer, PendingConnectionsServer, PendingConnection,
                                                PendingListening)
 from golem.network.p2p.node import Node
@@ -14,12 +19,16 @@ class Network(object):
     def __init__(self):
         self.stop_listening_called = False
         self.listen_called = False
+        self.connected = False
 
     def listen(self, _):
         self.listen_called = True
 
     def stop_listening(self, _):
         self.stop_listening_called = True
+
+    def connect(self, connect_info, conn_id, *args):
+        self.connected = True
 
 
 class TestTCPServer(unittest.TestCase):
@@ -82,6 +91,32 @@ class TestPendingConnectionServer(unittest.TestCase):
         for i in range(4):
             self.assertEqual(res[i].address, node.prv_addresses[i])
             self.assertEqual(res[i].port, port)
+
+    def test_pending_conn(self):
+        network = Network()
+        server = PendingConnectionsServer(None, network)
+
+        server.conn_established_for_type[0] = lambda x: x
+        server.conn_failure_for_type[0] = server.final_conn_failure
+        server.conn_final_failure_for_type[0] = lambda x: x
+
+        key_id = "d0d1d2"
+        port = 1234
+
+        node_info = Mock()
+        node_info.prv_addresses = ["10.10.10.2"]
+        node_info.pub_addr = "10.10.10.1"
+        node_info.pub_port = port
+
+        server._add_pending_request(0, node_info, port, key_id, args={})
+
+        assert len(server.pending_connections) == 1
+        assert len(server.pending_sockets) == 2
+
+        server._sync_pending()
+
+        assert len(server.pending_connections) == 0
+        assert len(server.pending_sockets) == 0
 
 
 class TestPendingConnection(unittest.TestCase):
