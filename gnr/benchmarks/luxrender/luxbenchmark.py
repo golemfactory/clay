@@ -11,28 +11,25 @@ logger = logging.getLogger(__name__)
 
 class LuxBenchmark(Benchmark):
     def __init__(self):
+        
+        Benchmark.__init__(self)
+        
         self.lux_task_path = os.path.join(get_benchmarks_path(), "luxrender", "lux_task")
-    
+        self.task_definition.output_file = "/tmp/out.png"
+        self.task_definition.tasktype = "LuxRender"
+        self.task_definition.renderer = "LuxRender"
+        self.task_definition.output_format = "png"
+        self.task_definition.renderer_options = LuxRenderOptions()
+        self.task_definition.renderer_options.haltspp = 5
+        self.task_definition.renderer_options.halttime = 0        
+        self.task_definition.task_id = u"{}".format("lux_benchmark")
+        self.task_definition.main_scene_file = os.path.join(self.lux_task_path, "schoolcorridor.lxs")
+        self.task_definition.main_program_file = u"{}".format(find_task_script("docker_luxtask.py"))
+        self.task_definition.resources = self.find_resources()
+        self.task_definition.resources.add(os.path.normpath(self.task_definition.main_program_file))
+        
     def query_benchmark_task_definition(self):
-        definition = RenderingTaskDefinition()
-        definition.tasktype = "LuxRender"
-        definition.max_price = 100
-        definition.renderer = "LuxRender"
-        definition.output_file = "/tmp/out.png"
-        definition.main_scene_file = os.path.join(self.lux_task_path, "schoolcorridor.lxs")
-        definition.resolution = [100, 100]
-        definition.output_format = "png"
-        definition.renderer_options = LuxRenderOptions()
-        definition.renderer_options.haltspp = 5
-        definition.renderer_options.halttime = 0
-        definition.task_id = u"{}".format("lux_benchmark")
-        definition.full_task_timeout = 10000
-        definition.subtask_timeout = 10000
-        definition.main_program_file = u"{}".format(find_task_script("docker_luxtask.py"))
-        definition.optimize_total = False
-        definition.resources = self.find_resources()
-        definition.resources.add(os.path.normpath(definition.main_program_file))
-        return definition
+        return self.task_definition
 
 
     def find_resources(self):
