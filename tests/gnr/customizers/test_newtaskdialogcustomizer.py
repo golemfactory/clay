@@ -1,6 +1,6 @@
+from mock import Mock
 from unittest import TestCase
 
-from mock import Mock
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 
@@ -24,4 +24,5 @@ class TestNewTaskDialogCustomizer(TestCase):
         customizer._advance_settings_button_clicked()
         QTest.mouseClick(customizer.gui.ui.showAdvanceNewTaskButton, Qt.LeftButton)
 
+        gnrgui.app.exit(0)
         gnrgui.app.deleteLater()

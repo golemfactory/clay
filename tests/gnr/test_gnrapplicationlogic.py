@@ -1,14 +1,13 @@
 import os
 import time
-
 from mock import Mock
 
-from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
-from golem.tools.testdirfixture import TestDirFixture
 from gnr.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.gnrapplicationlogic import GNRApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
+from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
+from golem.tools.testdirfixture import TestDirFixture
 
 
 class TTask(Task):
@@ -98,4 +97,5 @@ class TestGNRApplicationLogic(TestDirFixture):
 
         assert logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0] == ts.definition
 
+        gnrgui.app.exit(0)
         gnrgui.app.deleteLater()
