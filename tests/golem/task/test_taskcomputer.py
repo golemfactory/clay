@@ -25,8 +25,7 @@ class TestTaskComputer(TestDirFixture):
         self.assertFalse(tc.counting_task)
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.waiting_for_task)
-        tc.run()
-        time.sleep(1)
+        tc.last_task_request = 0
         tc.run()
         task_server.request_task.assert_called_with()
 
