@@ -50,7 +50,7 @@ class BenchmarkRunner(LocalComputer):
             if res and res.get("data"):
                 print res["data"]
                 if self.benchmark.verify_result(res["data"]):
-                    self.success_callback(self.end_time - self.start_time)
+                    self.success_callback(self.benchmark.normalization_constant / (self.end_time - self.start_time))
                     return
 
         logger_msg = self.comp_failed_warning

@@ -19,6 +19,9 @@ class Benchmark():
         self.task_definition.total_tasks = 1
         self.task_definition.start_task = 1
         self.task_definition.end_task = 1
+        
+        # magic constant obtained experimentally
+        self.normalization_constant = 9500
 
     def query_benchmark_task_definition(self):
         return self.task_definition

@@ -130,11 +130,11 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
         
     def __run_lux_benchmark_button_clicked(self):
-        if not self.logic.run_benchmark(LuxBenchmark()):
+        if not self.logic.run_benchmark(LuxBenchmark(), self.gui.ui.luxPerformanceLabel):
             logger.error("Benchmark not computed properly")
             
     def __run_blender_benchmark_button_clicked(self):
-        if not self.logic.run_benchmark(BlenderBenchmark()):
+        if not self.logic.run_benchmark(BlenderBenchmark(), self.gui.ui.blenderPerformanceLabel):
             logger.error("Benchmark not computed properly")
 
     def __load_trust_config(self, config_desc):

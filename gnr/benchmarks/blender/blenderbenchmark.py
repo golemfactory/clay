@@ -13,6 +13,8 @@ class BlenderBenchmark(Benchmark):
         
         Benchmark.__init__(self)
         
+        self.normalization_constant = 9360
+        
         self.blender_task_path = os.path.join(get_benchmarks_path(), "blender", "blender_task")
         
         self.task_definition.output_file = "/tmp/lux_benchmark.png"

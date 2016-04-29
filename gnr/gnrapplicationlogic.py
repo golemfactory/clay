@@ -283,7 +283,8 @@ class GNRApplicationLogic(QtCore.QObject):
         else:
             return False
         
-    def run_benchmark(self, benchmark):
+    # label param is the gui element to set text
+    def run_benchmark(self, benchmark, label):
         task_state = RenderingTaskState()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
@@ -296,7 +297,7 @@ class GNRApplicationLogic(QtCore.QObject):
         
         # Nie moglam rozgryzc dlaczego BlenderBenchmark i tak dzieli na 6 zadan mimo wszystkich zastosowanych do niego podchodow
         t.total_tasks = 1
-        self.br = BenchmarkRunner(t, self.client.datadir, self._benchmark_computation_success,
+        self.br = BenchmarkRunner(t, self.client.datadir, lambda p: self._benchmark_computation_success(performance=p, label=label),
                                 self._benchmark_computation_error, benchmark)
 
         self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
@@ -306,12 +307,13 @@ class GNRApplicationLogic(QtCore.QObject):
         self.br.run()
         return True
     
-    def _benchmark_computation_success(self, time):
+    def _benchmark_computation_success(self, performance, label):
+        self.progress_dialog_customizer.show_message("Recounted")
         #TODO calculate performance, act gui and config
-        self.progress_dialog_customizer.show_message("Benchmark computed in {}s".format(time))
+        label.setText("%.1f" % performance)
         
     def _benchmark_computation_error(self, error):
-        self.progress_dialog_customizer.show_message("Benchmark computation failure. " + error)
+        self.progress_dialog_customizer.show_message("Recounting failed: " + error)
         
     def get_environments(self):
         return self.client.get_environments()
