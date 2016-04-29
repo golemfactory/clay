@@ -24,6 +24,7 @@ class Benchmark():
 
 
     # result is a list of files produced in computation (logs and imgs)
+    # if img has a different format, you need to implement this method in a subclass
     def verify_result(self, result):
         logger.debug("in verify_result")
         for f in result:

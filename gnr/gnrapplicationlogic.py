@@ -305,10 +305,9 @@ class GNRApplicationLogic(QtCore.QObject):
         else:
             return False
         
-    def run_benchmark(self, task_state):
+    def run_benchmark(self, benchmark):
         task_state = RenderingTaskState()
         task_state.status = TaskStatus.notStarted
-        benchmark = LuxBenchmark()
         task_state.definition = benchmark.query_benchmark_task_definition()
         self._validate_task_state(task_state)
         tb = self._get_builder(task_state)
@@ -323,10 +322,10 @@ class GNRApplicationLogic(QtCore.QObject):
         self.progress_dialog.show()
 
         self.br.run()
-        self.progress_dialog_customizer.show_message("Benchmark computed in {}s".format(self.br.get_time()))
         return True
     
     def _benchmark_computation_success(self, time):
+        #TODO calculate performance, act gui and config
         self.progress_dialog_customizer.show_message("Benchmark computed in {}s".format(time))
         
     def _benchmark_computation_error(self, error):

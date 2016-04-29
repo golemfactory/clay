@@ -13,6 +13,7 @@ from gnr.renderingtaskstate import RenderingTaskState
 from golem.task.taskstate import TaskStatus
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
 from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
+from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 
 logger = logging.getLogger(__name__)
 
@@ -129,15 +130,11 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
         
     def __run_lux_benchmark_button_clicked(self):
-        if not self.logic.run_benchmark(LuxBenchmark().query_benchmark_task_definition()):
+        if not self.logic.run_benchmark(LuxBenchmark()):
             logger.error("Benchmark not computed properly")
             
     def __run_blender_benchmark_button_clicked(self):
-        self.task_state = RenderingTaskState()
-        self.task_state.status = TaskStatus.notStarted
-        self.task_state.definition = LuxBenchmark.query_benchmark_task_definition()
-
-        if not self.logic.run_benchmark(self.task_state):
+        if not self.logic.run_benchmark(BlenderBenchmark()):
             logger.error("Benchmark not computed properly")
 
     def __load_trust_config(self, config_desc):
