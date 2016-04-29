@@ -3,6 +3,8 @@ import logging
 import cPickle
 
 from PyQt4 import QtCore
+
+from PyQt4.QtCore import QObject
 from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet import task
 
@@ -49,6 +51,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.tasks = {}
         self.test_tasks = {}
         self.task_types = {}
+        self.looping_calls = []
         self.customizer = None
         self.root_path = os.path.normpath(os.path.join(get_golem_path(), 'gnr'))
         self.nodes_manager_client = None
@@ -63,6 +66,11 @@ class GNRApplicationLogic(QtCore.QObject):
         task_peers = task.LoopingCall(self.get_peers)
         task_status.start(3.0)
         task_peers.start(3.0)
+        self.looping_calls += [task_peers, task_status]
+
+    def stop(self):
+        for looping_call in self.looping_calls:
+            looping_call.stop()
 
     def register_gui(self, gui, customizer_class):
         self.customizer = customizer_class(gui, self)
@@ -133,7 +141,7 @@ class GNRApplicationLogic(QtCore.QObject):
         table = self.customizer.gui.ui.connectedPeersTable
         peers = self.client.get_peers()
 
-        row_count = table.rowCount()
+        row_count = table.rowCount() if isinstance(table, QObject) else 0
         new_row_count = len(peers)
 
         if new_row_count < row_count:
