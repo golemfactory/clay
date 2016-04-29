@@ -323,10 +323,11 @@ class GNRApplicationLogic(QtCore.QObject):
         self.progress_dialog.show()
 
         self.br.run()
+        self.progress_dialog_customizer.show_message("Benchmark computed in {}s".format(self.br.get_time()))
         return True
     
-    def _benchmark_computation_success(self):
-        self.progress_dialog_customizer.show_message("Benchmark computation success!")
+    def _benchmark_computation_success(self, time):
+        self.progress_dialog_customizer.show_message("Benchmark computed in {}s".format(time))
         
     def _benchmark_computation_error(self, error):
         self.progress_dialog_customizer.show_message("Benchmark computation failure. " + error)
