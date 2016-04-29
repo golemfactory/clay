@@ -287,11 +287,12 @@ class TaskManager(object):
             if self.tasks_states[th.task_id].status not in self.activeStatus:
                 continue
             cur_time = time.time()
-            th.ttl = th.ttl - (cur_time - th.last_checking)
             th.last_checking = cur_time
-            if th.ttl <= 0:
+            if cur_time > th.ttl:
                 logger.info("Task {} dies".format(th.task_id))
-                del self.tasks[th.task_id]
+                t.task_status = TaskStatus.failure
+                self.tasks_states[th.task_id].status = TaskStatus.failure
+                self.__notice_task_updated(th.task_id)
                 continue
             ts = self.tasks_states[th.task_id]
             for s in ts.subtask_states.values():
@@ -432,7 +433,7 @@ class TaskManager(object):
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
             task = self.tasks[task_id]
-            task.header.ttl = full_task_timeout
+            task.header.ttl = time.time() + full_task_timeout
             task.header.subtask_timeout = subtask_timeout
             task.subtask_timeout = subtask_timeout
             task.full_task_timeout = full_task_timeout

@@ -142,7 +142,7 @@ class GNRTask(Task):
 
         self.num_failed_subtasks = 0
         self.header.last_checking = time.time()
-        self.header.ttl = self.full_task_timeout
+        self.header.ttl = time.time() + self.full_task_timeout
 
     @check_subtask_id_wrapper
     def restart_subtask(self, subtask_id):

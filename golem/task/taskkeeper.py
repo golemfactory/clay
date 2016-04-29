@@ -15,7 +15,7 @@ class CompTaskInfo(object):
         self.header = header
         self.price = price
         self.requests = 1
-        self.timeout = time.time() + header.ttl
+        self.timeout = header.ttl
         self.subtasks = {}
 
 
@@ -227,9 +227,8 @@ class TaskHeaderKeeper(object):
     def remove_old_tasks(self):
         for t in self.task_headers.values():
             cur_time = time.time()
-            t.ttl = t.ttl - (cur_time - t.last_checking)
             t.last_checking = cur_time
-            if t.ttl <= 0:
+            if cur_time > t.ttl:
                 logger.warning("Task {} dies".format(t.task_id))
                 self.remove_task_header(t.task_id)
 

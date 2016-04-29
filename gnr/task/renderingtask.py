@@ -2,6 +2,7 @@ import logging
 import math
 import os
 import random
+import time
 import uuid
 from copy import deepcopy, copy
 
@@ -74,7 +75,7 @@ class RenderingTask(GNRTask):
                          ttl, subtask_ttl, resource_size, estimated_memory, max_price, docker_images)
 
         self.full_task_timeout = ttl
-        self.header.ttl = self.full_task_timeout
+        self.header.ttl = time.time() + self.full_task_timeout
         self.header.subtask_timeout = subtask_ttl
 
         self.main_program_file = main_program_file

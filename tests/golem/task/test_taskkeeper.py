@@ -157,7 +157,7 @@ class TestCompTaskKeeper(LogTestCase):
             ctk.remove_task("xyz")
         self.assertIsNone(ctk.active_tasks.get("xyz"))
 
-        header.ttl = -1
+        header.ttl = time.time() - 1
         ctk.add_request(header, 23)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
         ctk.remove_old_tasks()
