@@ -50,3 +50,4 @@ class ManagerConnState(ServerProtocol):
             logger.error("Session for connection is None")
 
         logger.warning("Connection lost: {}".format(reason))
+        super(ManagerConnState, self).connectionLost(reason)
