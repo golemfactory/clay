@@ -12,7 +12,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
 from gnr.renderingtaskstate import RenderingTaskState
 from golem.task.taskstate import TaskStatus
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
-from gnr.benchmarks.luxrender.lux_benchmark import query_benchmark_task_definition
+from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 
 logger = logging.getLogger(__name__)
 
@@ -129,20 +129,16 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
         
     def __run_lux_benchmark_button_clicked(self):
-        self.task_state = RenderingTaskState()
-        self.task_state.status = TaskStatus.notStarted
-        self.task_state.definition = query_benchmark_task_definition()
-
-        if not self.logic.run_benchmark(self.task_state):
-            logger.error("Task not tested properly")
+        if not self.logic.run_benchmark(LuxBenchmark().query_benchmark_task_definition()):
+            logger.error("Benchmark not computed properly")
             
     def __run_blender_benchmark_button_clicked(self):
         self.task_state = RenderingTaskState()
         self.task_state.status = TaskStatus.notStarted
-        self.task_state.definition = query_benchmark_task_definition()
+        self.task_state.definition = LuxBenchmark.query_benchmark_task_definition()
 
         if not self.logic.run_benchmark(self.task_state):
-            logger.error("Task not tested properly")
+            logger.error("Benchmark not computed properly")
 
     def __load_trust_config(self, config_desc):
         self.__load_trust(config_desc.computing_trust, self.gui.ui.computingTrustLineEdit,

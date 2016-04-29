@@ -18,7 +18,10 @@ from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDia
 from gnr.renderingdirmanager import get_benchmarks_path
 from gnr.gnrtaskstate import GNRTaskState
 from gnr.task.tasktester import TaskTester
+from gnr.renderingtaskstate import RenderingTaskState
 
+from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
+from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.benchmarks.luxrender.lux_test import lux_performance
 from gnr.benchmarks.blender.blender_test import blender_performance
 
@@ -303,20 +306,29 @@ class GNRApplicationLogic(QtCore.QObject):
             return False
         
     def run_benchmark(self, task_state):
+        task_state = RenderingTaskState()
+        task_state.status = TaskStatus.notStarted
+        task_state.definition = LuxBenchmark().query_benchmark_task_definition()
         self._validate_task_state(task_state)
         tb = self._get_builder(task_state)
 
         t = Task.build_task(tb)
-
-        self.tt = TaskTester(t, self.client.datadir, self._test_task_computation_success,
-                                self._test_task_computation_error)
+        logger.debug("run_benchmark client_datadir {}".format(self.client.datadir))
+        self.br = BenchmarkRunner(t, self.client.datadir, self._benchmark_computation_success,
+                                self._benchmark_computation_error)
 
         self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
         self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
         self.progress_dialog.show()
 
-        self.tt.run()
+        self.br.run()
         return True
+    
+    def _benchmark_computation_success(self):
+        self.progress_dialog_customizer.show_message("Benchmark computation success!")
+        
+    def _benchmark_computation_error(self, error):
+        self.progress_dialog_customizer.show_message("Benchmark computation failure. " + error)
         
     def get_environments(self):
         return self.client.get_environments()
