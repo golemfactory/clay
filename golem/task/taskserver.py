@@ -167,6 +167,7 @@ class TaskServer(PendingConnectionsServer):
         pc = self.pending_connections.get(task_session.conn_id)
         if pc:
             pc.status = PenConnStatus.Failure
+            self._remove_pending_sockets(pc)
 
         for tsk in self.task_sessions.keys():
             if self.task_sessions[tsk] == task_session:

@@ -1,22 +1,22 @@
 import logging
-import time
 import os
 import re
 import struct
-
-from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
+import time
+from copy import copy
+from threading import Lock
+from twisted.internet.defer import maybeDeferred
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
     TCP6ClientEndpoint
-from twisted.internet.defer import maybeDeferred
-from twisted.internet.protocol import connectionDone
 from twisted.internet.interfaces import IPullProducer
+from twisted.internet.protocol import connectionDone
 from zope.interface import implements
-from copy import copy
+
+from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 
 from golem.core.databuffer import DataBuffer
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
 from golem.network.transport.message import Message
-
 from network import Network, SessionProtocol
 
 logger = logging.getLogger(__name__)
@@ -73,6 +73,9 @@ class SocketAddress(object):
 
     def __eq__(self, other):
         return self.address == other.address and self.port == other.port
+
+    def __str__(self):
+        return self.address + ":" + str(self.port)
 
     @staticmethod
     def validate_hostname(hostname):
@@ -262,13 +265,17 @@ class TCPNetwork(Network):
             logger.warning("No addresses for connection given")
             TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
             return
+
         address = addresses[0].address
         port = addresses[0].port
 
-        self.__try_to_connect_to_address(address, port, self.__connection_to_address_established,
-                                         self.__connection_to_address_failure, addresses_to_arg=addresses,
+        self.__try_to_connect_to_address(address, port,
+                                         self.__connection_to_address_established,
+                                         self.__connection_to_address_failure,
+                                         addresses_to_arg=addresses,
                                          established_callback_to_arg=established_callback,
-                                         failure_callback_to_arg=failure_callback, **kwargs)
+                                         failure_callback_to_arg=failure_callback,
+                                         **kwargs)
 
     def __try_to_connect_to_address(self, address, port, established_callback, failure_callback, **kwargs):
         logger.debug("Connection to host {}: {}".format(address, port))
@@ -378,11 +385,13 @@ class TCPNetwork(Network):
 
 
 class BasicProtocol(SessionProtocol):
+    lock = Lock()
+
     """ Connection-oriented basic protocol for twisted, support message serialization"""
     def __init__(self):
-        SessionProtocol.__init__(self)
         self.opened = False
         self.db = DataBuffer()
+        SessionProtocol.__init__(self)
 
     def send_message(self, msg):
         """
@@ -443,6 +452,8 @@ class BasicProtocol(SessionProtocol):
         if self.session:
             self.session.dropped()
 
+        SessionProtocol.connectionLost(self, reason)
+
     # Protected functions
     def _prepare_msg_to_send(self, msg):
         ser_msg = msg.serialize()
@@ -455,8 +466,11 @@ class BasicProtocol(SessionProtocol):
         return self.opened and isinstance(self.db, DataBuffer)
 
     def _interpret(self, data):
-        self.db.append_string(data)
-        mess = self._data_to_messages()
+        with self.lock:
+            self.db.append_string(data)
+            mess = self._data_to_messages()
+            self.db.clear_buffer()
+
         if mess is None:
             logger.error("Deserialization message failed")
             return None
@@ -593,8 +607,12 @@ class MidAndFilesProtocol(FilesProtocol):
     def _interpret(self, data):
         if self.session.is_middleman:
             self.session.last_message_time = time.time()
-            self.db.append_string(data)
-            self.session.interpret(self.db.read_all())
+            with self.lock:
+                self.db.append_string(data)
+                messages = self.db.read_all()
+            self.session.interpret(messages)
+            with self.lock:
+                self.db.clear_buffer()
         else:
             FilesProtocol._interpret(self, data)
 
