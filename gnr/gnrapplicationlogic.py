@@ -309,11 +309,15 @@ class GNRApplicationLogic(QtCore.QObject):
         task_state = RenderingTaskState()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
+        # task_state.total_subtasks = 1
+        # task_state.total_tasks = 1
         self._validate_task_state(task_state)
         tb = self._get_builder(task_state)
 
         t = Task.build_task(tb)
-        logger.debug("run_benchmark client_datadir {}".format(self.client.datadir))
+        
+        # Nie moglam rozgryzc dlaczego BlenderBenchmark i tak dzieli na 6 zadan mimo wszystkich zastosowanych do niego podchodow
+        t.total_tasks = 1
         self.br = BenchmarkRunner(t, self.client.datadir, self._benchmark_computation_success,
                                 self._benchmark_computation_error, benchmark)
 

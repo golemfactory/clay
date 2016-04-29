@@ -15,6 +15,9 @@ class Benchmark():
         self.task_definition.subtask_timeout = 10000
         self.task_definition.optimize_total = False
         self.task_definition.resources = set()
+        self.task_definition.total_tasks = 1
+        self.task_definition.start_task = 1
+        self.task_definition.end_task = 1
 
     def query_benchmark_task_definition(self):
         return self.task_definition
