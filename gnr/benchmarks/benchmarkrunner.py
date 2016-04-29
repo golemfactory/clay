@@ -2,7 +2,6 @@ import logging
 import time
 
 from gnr.task.localcomputer import LocalComputer
-from gnr.benchmarks.benchmark import Benchmark
 
 from golem.task.taskcomputer import PyTestTaskThread
 

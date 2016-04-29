@@ -21,9 +21,6 @@ from gnr.task.tasktester import TaskTester
 from gnr.renderingtaskstate import RenderingTaskState
 
 from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
-from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
-from gnr.benchmarks.luxrender.lux_test import lux_performance
-from gnr.benchmarks.blender.blender_test import blender_performance
 
 from gnr.benchmarks.minilight.src.minilight import makePerfTest
 
@@ -265,25 +262,6 @@ class GNRApplicationLogic(QtCore.QObject):
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
 
-    def recount_lux_performance(self):
-        cfg_filename = SimpleEnv.env_file_name("lux.ini")
-
-        cfg_file = open(cfg_filename, 'w')
-        average = lux_performance()
-        cfg_file.write("{0:.1f}".format(average))
-        cfg_file.close()
-
-        return average
-
-    def recount_blender_performance(self):
-        cfg_filename = SimpleEnv.env_file_name("blender.ini")
-
-        cfg_file = open(cfg_filename, 'w')
-        average = blender_performance()
-        cfg_file.write("{0:.1f}".format(average))
-        cfg_file.close()
-
-        return average
 
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):

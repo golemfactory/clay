@@ -5,7 +5,6 @@ import os
 from gnr.benchmarks.benchmark import Benchmark
 from gnr.renderingdirmanager import get_benchmarks_path, find_task_script
 from gnr.task.luxrendertask import LuxRenderOptions
-from gnr.renderingtaskstate import RenderingTaskDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +14,7 @@ class LuxBenchmark(Benchmark):
         Benchmark.__init__(self)
         
         self.lux_task_path = os.path.join(get_benchmarks_path(), "luxrender", "lux_task")
+        
         self.task_definition.output_file = "/tmp/lux_benchmark.png"
         self.task_definition.tasktype = "LuxRender"
         self.task_definition.renderer = "LuxRender"

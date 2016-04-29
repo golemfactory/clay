@@ -5,7 +5,6 @@ import os
 from gnr.benchmarks.benchmark import Benchmark
 from gnr.renderingdirmanager import get_benchmarks_path, find_task_script
 from gnr.task.blenderrendertask import BlenderRendererOptions
-from gnr.renderingtaskstate import RenderingTaskDefinition
 
 logger = logging.getLogger(__name__)
 

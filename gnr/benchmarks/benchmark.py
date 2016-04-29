@@ -1,4 +1,5 @@
 import logging
+
 import os
 from PIL import Image
 
@@ -29,9 +30,7 @@ class Benchmark():
     # result is a list of files produced in computation (logs and imgs)
     # if img has a different format, you need to implement this method in a subclass
     def verify_result(self, result):
-        logger.debug("in verify_result")
         for f in result:
-            logger.debug("Checking file " + f)
             if f.lower().endswith(".png") and not self.verify_img(f):
                 return False
             elif f.lower().endswith(".log") and not self.verify_log(f):
@@ -40,33 +39,27 @@ class Benchmark():
                 
         
     def verify_img(self, filename):
-        logger.debug("in verify_img")
         try:
             image = Image.open(filename)
         except:
-            logger.debug("Failed to open img file: " + filename)
             import traceback
             # Print the stack traceback
             traceback.print_exc()
             return False
-        logger.debug("Successfully opened img file: " + filename)
         img_size = image.size
         expected = self.task_definition.resolution
         if(img_size[0] == expected[0] and img_size[1] == expected[1]):
-            logger.debug("Resolution matches! Hurray!")
             return True
-        logger.debug("Bad resolution")
-        logger.debug("Expected {}x{}, but got {}x{}".format(expected[0], expected[1],
+        logger.warning("Bad resolution")
+        logger.warning("Expected {}x{}, but got {}x{}".format(expected[0], expected[1],
                                                             img_size[0], img_size[1]))
         return False
     
     def verify_log(self, filename):
-        logger.debug("in verify_log")
         fd = open(filename, "r")
         content = fd.read()
         fd.close()
         if "error" in content.lower():
-            logger.debug("Found error in " + filename)
+            logger.warning("Found error in " + filename)
             return False
-        logger.debug("Errors not found in {}. Hurray!".format(filename))
         return True
