@@ -285,6 +285,7 @@ class GNRApplicationLogic(QtCore.QObject):
         
     # label param is the gui element to set text
     def run_benchmark(self, benchmark, label):
+        # TODO consider number of cores
         task_state = RenderingTaskState()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
@@ -309,7 +310,7 @@ class GNRApplicationLogic(QtCore.QObject):
     
     def _benchmark_computation_success(self, performance, label):
         self.progress_dialog_customizer.show_message("Recounted")
-        #TODO calculate performance, act gui and config
+        #TODO save in config
         label.setText("%.1f" % performance)
         
     def _benchmark_computation_error(self, error):
