@@ -2,7 +2,7 @@ import logging
 import os
 import random
 import shutil
-import subprocess
+import time
 
 from collections import OrderedDict
 from PIL import Image, ImageChops
@@ -351,6 +351,7 @@ class LuxTask(RenderingTask):
         ctd.src_code = src_code
         ctd.working_directory = "."
         ctd.docker_images = self.header.docker_images
+        ctd.timeout = time.time() + 20 * 60 * 60
         return ctd
 
     def _short_extra_data_repr(self, perf_index, extra_data):

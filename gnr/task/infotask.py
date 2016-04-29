@@ -87,6 +87,7 @@ class InfoTask(GNRTask):
         ctd.short_description = "Standard info Task"
         ctd.src_code = self.src_code
         ctd.performance = perf_index
+        ctd.timeout = time.time() + self.header.subtask_timeout
         if self.last_task + 1 <= self.total_tasks:
             self.last_task += 1
 

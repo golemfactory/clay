@@ -31,7 +31,7 @@ class TaskThread(Thread):
         self.start_time = time.time()
         self.end_time = None
         self.use_timeout = timeout != 0
-        self.task_timeout = timeout
+        self.task_timeout = time.time() - timeout
         self.last_time_checking = time.time()
 
     def check_timeout(self):

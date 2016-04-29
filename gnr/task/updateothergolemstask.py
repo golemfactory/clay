@@ -108,6 +108,7 @@ class UpdateOtherGolemsTask(GNRTask):
         ctd.short_description = "Golem update"
         ctd.src_code = self.src_code
         ctd.performance = perf_index
+        ctd.timeout = time.time() + self.header.subtask_timeout
         if self.last_task + 1 <= self.total_tasks:
             self.last_task += 1
         self.updated[node_id] = True

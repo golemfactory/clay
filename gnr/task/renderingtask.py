@@ -211,6 +211,7 @@ class RenderingTask(GNRTask):
         ctd.performance = perf_index
         ctd.working_directory = working_directory
         ctd.docker_images = self.header.docker_images
+        ctd.timeout = time.time() + self.header.subtask_timeout
         return ctd
 
     def _get_next_task(self):

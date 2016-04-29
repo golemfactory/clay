@@ -102,7 +102,7 @@ class TestDockerBlenderTask(TestDirFixture, DockerTestCase):
         TaskServer.send_task_failed = send_task_failed
 
         # Start task computation
-        task_computer.task_given(ctd, timeout)
+        task_computer.task_given(ctd)
         result = task_computer.resource_given(ctd.task_id)
         self.assertTrue(result)
 

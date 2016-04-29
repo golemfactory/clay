@@ -48,10 +48,10 @@ class TaskComputer(object):
         self.task_timeout = None
         self.last_task_timeout_checking = None
 
-    def task_given(self, ctd, subtask_timeout):
+    def task_given(self, ctd):
         if ctd.subtask_id not in self.assigned_subtasks:
             self.assigned_subtasks[ctd.subtask_id] = ctd
-            self.assigned_subtasks[ctd.subtask_id].timeout = subtask_timeout
+            self.assigned_subtasks[ctd.subtask_id].timeout = ctd.timeout
             self.task_to_subtask_mapping[ctd.task_id] = ctd.subtask_id
             self.__request_resource(ctd.task_id, self.resource_manager.get_resource_header(ctd.task_id),
                                     ctd.return_address, ctd.return_port, ctd.key_id, ctd.task_owner)

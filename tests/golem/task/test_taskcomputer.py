@@ -44,8 +44,9 @@ class TestTaskComputer(TestDirFixture):
         ctd.src_code = "cnt=0\nfor i in range(10000):\n\tcnt += 1\noutput={'data': cnt, 'result_type': 0}"
         ctd.extra_data = {}
         ctd.short_description = "add cnt"
+        ctd.timeout = 10
         self.assertEqual(len(tc.assigned_subtasks), 0)
-        tc.task_given(ctd, 10)
+        tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtasks["xxyyzz"], ctd)
         self.assertEqual(tc.assigned_subtasks["xxyyzz"].timeout, 10)
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
@@ -75,7 +76,8 @@ class TestTaskComputer(TestDirFixture):
 
         ctd.subtask_id = "aabbcc"
         ctd.src_code = "raise Exception('some exception')"
-        tc.task_given(ctd, 5)
+        ctd.timeout = 5
+        tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtasks["aabbcc"], ctd)
         self.assertEqual(tc.assigned_subtasks["aabbcc"].timeout, 5)
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "aabbcc")
@@ -91,14 +93,16 @@ class TestTaskComputer(TestDirFixture):
 
         ctd.subtask_id = "aabbcc2"
         ctd.src_code = "print 'Hello world'"
-        tc.task_given(ctd, 5)
+        ctd.timeout = 5
+        tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
         time.sleep(0.5)
         task_server.send_task_failed.assert_called_with("aabbcc2", "xyz", "Wrong result format", "10.10.10.10", 10203,
                                                         "key", "owner", "ABC")
 
         ctd.subtask_id = "xxyyzz2"
-        tc.task_given(ctd, 1)
+        ctd.timeout = 1
+        tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
         tt = tc.current_computations[0]
         tc.task_computed(tc.current_computations[0])

@@ -1,9 +1,12 @@
+import logging
+import random
+import time
+
 from gnr.task.gnrtask import GNRTaskBuilder, GNRTask, check_subtask_id_wrapper
 from golem.environments.environment import Environment
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
-import logging
-import random
+
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +60,7 @@ class PythonGNRTask(GNRTask):
         ctd.short_description = "Golem update"
         ctd.src_code = self.src_code
         ctd.performance = perf_index
+        ctd.timeout = time.time() + self.header.subtask_timeout
         if self.last_task + 1 <= self.total_tasks:
             self.last_task += 1
 
