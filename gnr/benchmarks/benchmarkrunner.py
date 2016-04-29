@@ -12,12 +12,13 @@ class BenchmarkRunner(LocalComputer):
     RUNNER_WARNING = "Failed to compute benchmark"
     RUNNER_SUCCESS = "Benchmark computed successfully"
 
-    def __init__(self, task, root_path, success_callback, error_callback):
+    def __init__(self, task, root_path, success_callback, error_callback, benchmark):
         LocalComputer.__init__(self, task, root_path, success_callback, error_callback,
                                # ugly lambda, should think of something prettier
                                lambda: task.query_extra_data(10000), 
                                True, BenchmarkRunner.RUNNER_WARNING,
                                BenchmarkRunner.RUNNER_SUCCESS)
+        self.benchmark = benchmark
         
     def _get_task_thread(self, ctd):
         if ctd.docker_images:
@@ -38,8 +39,9 @@ class BenchmarkRunner(LocalComputer):
             res, _ = task_thread.result
             if res and res.get("data"):
                 print res["data"]
-                self.success_callback()
-                return
+                if self.benchmark.verify_result(res["data"]):
+                    self.success_callback()
+                    return
 
         logger_msg = self.comp_failed_warning
         if task_thread.error_msg:

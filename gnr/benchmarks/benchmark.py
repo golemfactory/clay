@@ -10,7 +10,7 @@ class Benchmark():
     def __init__(self):
         self.task_definition = RenderingTaskDefinition()
         self.task_definition.max_price = 100
-        self.task_definition.resolution = [100, 100]
+        self.task_definition.resolution = [200, 100]
         self.task_definition.full_task_timeout = 10000
         self.task_definition.subtask_timeout = 10000
         self.task_definition.optimize_total = False
@@ -46,10 +46,14 @@ class Benchmark():
             traceback.print_exc()
             return False
         logger.debug("Successfully opened img file: " + filename)
-        if(image.size == self.task_definition.resolution):
+        img_size = image.size
+        expected = self.task_definition.resolution
+        if(img_size[0] == expected[0] and img_size[1] == expected[1]):
             logger.debug("Resolution matches! Hurray!")
             return True
         logger.debug("Bad resolution")
+        logger.debug("Expected {}x{}, but got {}x{}".format(expected[0], expected[1],
+                                                            img_size[0], img_size[1]))
         return False
     
     def verify_log(self, filename):

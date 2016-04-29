@@ -308,14 +308,15 @@ class GNRApplicationLogic(QtCore.QObject):
     def run_benchmark(self, task_state):
         task_state = RenderingTaskState()
         task_state.status = TaskStatus.notStarted
-        task_state.definition = LuxBenchmark().query_benchmark_task_definition()
+        benchmark = LuxBenchmark()
+        task_state.definition = benchmark.query_benchmark_task_definition()
         self._validate_task_state(task_state)
         tb = self._get_builder(task_state)
 
         t = Task.build_task(tb)
         logger.debug("run_benchmark client_datadir {}".format(self.client.datadir))
         self.br = BenchmarkRunner(t, self.client.datadir, self._benchmark_computation_success,
-                                self._benchmark_computation_error)
+                                self._benchmark_computation_error, benchmark)
 
         self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
         self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
