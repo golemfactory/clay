@@ -433,7 +433,7 @@ class Client:
         return metadata
 
     def interpret_metadata(self, metadata, address, port, node_info):
-        if node_info and metadata:
+        if self.config_desc and node_info and metadata:
             seed_addresses = [
                 (self.config_desc.seed_host, self.config_desc.seed_port)
             ]

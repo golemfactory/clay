@@ -23,11 +23,10 @@ class IPFSDaemonManager(IPFSClientHandler):
 
         self.node_id = None
         self.public_key = None
-        self.port = None
-        self.addresses = None
         self.agent_version = None
         self.proto_version = None
-        self.meta_addresses = None
+        self.addresses = []
+        self.meta_addresses = []
 
         for node in self.config.bootstrap_nodes:
             try:

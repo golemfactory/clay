@@ -20,7 +20,6 @@ class TestIPFSDaemonManager(unittest.TestCase):
         dm = IPFSDaemonManager()
         dm.remove_bootstrap_node(default_node, async=False)
         nodes = dm.list_bootstrap_nodes()
-        assert nodes
 
         dm.add_bootstrap_node(default_node, async=False)
         assert len(dm.list_bootstrap_nodes()) > len(nodes)
@@ -50,7 +49,6 @@ class TestIPFSDaemonManager(unittest.TestCase):
         ipv4 = '127.0.0.1'
         ipv6 = '2001:0db8:85a3:0000:0000:8a2e:0370:7334'
         port = 40102
-
 
         meta['ipfs']['addresses'] = [
             str(IPFSAddress(ipv4, node_id)),
