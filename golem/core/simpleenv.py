@@ -2,7 +2,7 @@ import os
 import appdirs
 
 
-def _get_local_datadir(name):
+def get_local_datadir(name):
     """ Helper function for datadir transition.
 
         It returns path to a data directory of given name in 'data' dir.
@@ -23,7 +23,7 @@ class SimpleEnv(object):
         """
         # FIXME: Deprecated!
 
-        datadir = _get_local_datadir('SimpleEnv')
+        datadir = get_local_datadir('SimpleEnv')
         if not os.path.exists(datadir):
             os.makedirs(datadir)
 

@@ -7,12 +7,12 @@ from gnr.ui.administrationmainwindow import AdministrationMainWindow
 from gnr.application import GNRGui
 from gnr.customizers.renderingadmmainwindowcustomizer import RenderingAdmMainWindowCustomizer
 
-from golem.core.simpleenv import _get_local_datadir
+from golem.core.simpleenv import get_local_datadir
 
 
 @click.command()
 @click.option('--datadir', '-d', type=click.Path(),
-              default=_get_local_datadir('gnr'))
+              default=get_local_datadir('gnr'))
 def main(datadir):
     config_logging()
 

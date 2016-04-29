@@ -19,7 +19,7 @@ from golem.core.keysauth import EllipticalKeysAuth
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 
 from golem.appconfig import AppConfig
-from golem.core.simpleenv import _get_local_datadir
+from golem.core.simpleenv import get_local_datadir
 
 from golem.model import Database
 from golem.network.transport.message import init_messages
@@ -39,7 +39,7 @@ def create_client(datadir=None, transaction_system=False, **config_overrides):
     init_messages()
 
     if not datadir:
-        datadir = _get_local_datadir('default')
+        datadir = get_local_datadir('default')
 
     app_config = AppConfig.load_config(datadir)
     config_desc = ClientConfigDescriptor()
