@@ -6,8 +6,10 @@ import unittest
 from os import path, mkdir
 
 from golem.core.common import is_windows
-from golem.core.simpleenv import _get_local_datadir
+
+from golem.core.simpleenv import get_local_datadir
 from golem.model import Database
+from golem.ethereum import Client
 
 
 class TempDirFixture(unittest.TestCase):
@@ -26,6 +28,10 @@ class TempDirFixture(unittest.TestCase):
         self.path = self.tempdir  # Alias for legacy tests
 
     def tearDown(self):
+        # Firstly kill Ethereum node to clean up after it later on.
+        # FIXME: This is temporary solution. Ethereum node should always be
+        #        the explicit dependency and users should close it correctly.
+        Client._kill_node()
         shutil.rmtree(self.tempdir)
 
     def temp_file_name(self, name):
@@ -64,7 +70,7 @@ class UserTempDirFixture(TempDirFixture):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
 
-        root = _get_local_datadir('.tests')
+        root = get_local_datadir('.tests')
         if not os.path.exists(root):
             os.makedirs(root)
 

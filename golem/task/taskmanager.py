@@ -1,5 +1,6 @@
 import time
 import logging
+from math import ceil
 
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
@@ -193,6 +194,7 @@ class TaskManager(object):
             return None
 
     def set_value(self, task_id, subtask_id, value):
+        assert type(value) in (int, long)
         task_state = self.tasks_states.get(task_id)
         if task_state is None:
             logger.warning("This is not my task {}".format(task_id))
@@ -462,7 +464,7 @@ class TaskManager(object):
 
     @staticmethod
     def compute_subtask_value(price, computation_time):
-        return price * computation_time
+        return int(ceil(price * computation_time))
 
     def add_comp_task_request(self, theader, price):
         """ Add a header of a task which this node may try to compute """

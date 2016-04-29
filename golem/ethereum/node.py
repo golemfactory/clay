@@ -4,9 +4,7 @@ import logging
 import os
 import time
 from os import path
-from subprocess import Popen
 
-import appdirs
 import psutil
 
 from devp2p.crypto import privtopub
@@ -16,6 +14,7 @@ from ethereum.utils import normalize_address
 
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
+from golem.core.simpleenv import get_local_datadir
 
 log = logging.getLogger('golem.ethereum')
 
@@ -50,25 +49,22 @@ class Faucet(object):
 
 class NodeProcess(object):
 
-    DEFAULT_DATADIR = path.join(appdirs.user_data_dir('golem'), 'ethereum9')
-
-    def __init__(self, nodes, datadir=DEFAULT_DATADIR):
+    def __init__(self, nodes, datadir):
         if not path.exists(datadir):
             os.makedirs(datadir)
         assert path.isdir(datadir)
         if nodes:
             nodes_file = path.join(datadir, 'static-nodes.json')
-            if not path.exists(nodes_file):
-                json.dump(nodes, open(nodes_file, 'w'))
+            json.dump(nodes, open(nodes_file, 'w'))
         self.datadir = datadir
-        self.__subprocess = None
+        self.__ps = None
         self.rpcport = None
 
     def is_running(self):
-        return self.__subprocess is not None
+        return self.__ps is not None
 
-    def start(self, rpc, mining=False, nodekey=None):
-        if self.__subprocess:
+    def start(self, rpc, mining=False, nodekey=None, port=None):
+        if self.__ps:
             return
 
         assert not self.rpcport
@@ -77,7 +73,9 @@ class NodeProcess(object):
         # Data dir must be set the class user to allow multiple nodes running
         basedir = path.dirname(__file__)
         genesis_file = path.join(basedir, 'genesis_golem.json')
-        self.port = find_free_net_port()
+        if not port:
+            port = find_free_net_port()
+        self.port = port
         args = [
             program,
             '--datadir', self.datadir,
@@ -87,7 +85,7 @@ class NodeProcess(object):
             '--nodiscover',
             '--ipcdisable',  # Disable IPC transport - conflicts on Windows.
             '--gasprice', '0',
-            '--verbosity', '6',
+            '--verbosity', '3',
         ]
 
         if rpc:
@@ -110,10 +108,8 @@ class NodeProcess(object):
                 'js', mining_script,
             ]
 
-        self.__subprocess = Popen(args)
+        self.__ps = psutil.Popen(args)
         atexit.register(lambda: self.stop())
-        # FIXME: We should check if the process was started.
-        ps = psutil.Process(self.__subprocess.pid)
         WAIT_PERIOD = 0.01
         wait_time = 0
         while True:
@@ -122,16 +118,17 @@ class NodeProcess(object):
             wait_time += WAIT_PERIOD
             if not self.rpcport:
                 break
-            if self.rpcport in set(c.laddr[1] for c in ps.connections('tcp')):
+            if self.rpcport in set(c.laddr[1] for c
+                                   in self.__ps.connections('tcp')):
                 break
         log.info("Node started in {} s: `{}`".format(wait_time, " ".join(args)))
 
     def stop(self):
-        if self.__subprocess:
+        if self.__ps:
             start_time = time.clock()
-            self.__subprocess.terminate()
-            self.__subprocess.wait()
-            self.__subprocess = None
+            self.__ps.terminate()
+            self.__ps.wait()
+            self.__ps = None
             self.rpcport = None
             duration = time.clock() - start_time
             log.info("Node terminated in {:.2f} s".format(duration))
@@ -141,9 +138,10 @@ class NodeProcess(object):
 class FullNode(object):
     def __init__(self, datadir=None):
         if not datadir:
-            datadir = path.join(NodeProcess.DEFAULT_DATADIR, 'full_node')
+            datadir = path.join(get_local_datadir('ethereum'), 'full_node')
         self.proc = NodeProcess(nodes=[], datadir=datadir)
-        self.proc.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY)
+        self.proc.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY,
+                        port=30900)
 
 if __name__ == "__main__":
     import signal
@@ -153,7 +151,8 @@ if __name__ == "__main__":
     FullNode()
 
     # The best I have to make the node running untill interrupted.
-    handler = lambda *unused: sys.exit()
+    def handler(*unused):
+        sys.exit()
     signal.signal(signal.SIGINT, handler)
     signal.signal(signal.SIGTERM, handler)
     while True:

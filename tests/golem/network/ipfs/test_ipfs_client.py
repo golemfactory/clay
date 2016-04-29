@@ -3,8 +3,8 @@ import unittest
 import uuid
 from types import FunctionType
 
+from golem.network.ipfs.client import IPFSClient, parse_response_entry, StreamFileObject, parse_response
 from golem.resource.dirmanager import DirManager
-from golem.resource.ipfs.client import IPFSClient, parse_response_entry, StreamFileObject, parse_response
 from golem.tools.testdirfixture import TestDirFixture
 
 

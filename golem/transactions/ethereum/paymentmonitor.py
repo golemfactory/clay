@@ -1,6 +1,8 @@
+from twisted.internet.task import LoopingCall
+
 from golem.model import PaymentStatus
 
-from .paymentprocessor import PaymentProcessor
+from .paymentprocessor import PaymentProcessor, log
 
 
 class IncomingPayment(object):
@@ -17,6 +19,9 @@ class PaymentMonitor(object):
         self.__addr = addr
         self.__filter = None
         self.__payments = []
+
+        scheduler = LoopingCall(self.get_incoming_payments)
+        scheduler.start(10)  # FIXME: Use single scheduler for all payments.
 
     def get_incoming_payments(self):
         if not self.__filter:
@@ -49,5 +54,7 @@ class PaymentMonitor(object):
                              'block_hash': block_hash,
                              'tx_hash': tx_hash}
             self.__payments.append(payment)
+            log.info("Incoming payment: {} -> ({} ETH)".format(
+                     payer.encode('hex'), value / float(10**18)))
 
         return self.__payments

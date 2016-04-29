@@ -10,7 +10,7 @@ import sys
 from os import path
 
 from gnr.renderingtaskstate import RenderingTaskDefinition
-from gnr.docker_environments import BlenderEnvironment
+from gnr.renderingenvironment import BlenderEnvironment
 
 output_file = None
 task_def = None
