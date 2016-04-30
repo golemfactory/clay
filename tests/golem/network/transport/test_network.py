@@ -240,22 +240,34 @@ class TestNetwork(unittest.TestCase):
                 async_ready[idx] = True
             return fn
 
-        listen_info = TCPListenInfo(1111, established_callback=self.__listen_success,
-                                    failure_callback=self.__listen_failure)
-        self.network.listen(listen_info)
+        def _listen_success(*args, **kwargs):
+            self.__listen_success(*args, **kwargs)
+            async_ready[0] = True
 
-        listen_info = TCPListenInfo(1112, established_callback=self.__listen_success,
-                                    failure_callback=self.__listen_failure)
-        self.network.listen(listen_info)
+        def _listen_failure(*args, **kwargs):
+            self.__listen_failure(*args, **kwargs)
+            async_ready[0] = True
 
-        address = SocketAddress('127.0.0.1', 1111)
+        listen_info = TCPListenInfo(21111,
+                                    established_callback=_listen_success,
+                                    failure_callback=_listen_failure)
+        with async_scope(async_ready):
+            self.network.listen(listen_info)
+
+        listen_info = TCPListenInfo(21112,
+                                    established_callback=_listen_success,
+                                    failure_callback=_listen_failure)
+        with async_scope(async_ready):
+            self.network.listen(listen_info)
+
+        address = SocketAddress('127.0.0.1', 21111)
         connect_info = TCPConnectInfo([address], _success_fn(0), _failure_fn(0))
 
         with async_scope(async_ready, 0):
             self.network.connect(connect_info)
         self.assertTrue(self.connect_success)
 
-        address2 = SocketAddress('127.0.0.1', 1112)
+        address2 = SocketAddress('127.0.0.1', 21112)
         connect_info_2 = TCPConnectInfo([address2], _success_fn(1), _failure_fn(1))
 
         with async_scope(async_ready, 1):
@@ -267,7 +279,6 @@ class TestNetwork(unittest.TestCase):
         with async_scope(async_ready, 2):
             self.network.connect(connect_info_3)
         self.assertTrue(self.connect_success)
-
 
     def __listen_success(self, port, **kwargs):
         self.listen_success = True

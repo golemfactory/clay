@@ -1,9 +1,10 @@
 import os
-from mock import MagicMock, patch
-from gnr.application import GNRGui
-from gnr.ui.appmainwindow import AppMainWindow
 
+from mock import MagicMock, patch
+
+from gnr.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from gnr.ui.appmainwindow import AppMainWindow
 from golem.tools.testdirfixture import TestDirFixture
 
 
@@ -25,5 +26,6 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         customizer.current_task_highlighted.definition.main_scene_file = tmp_files[0]
         customizer.current_task_highlighted.definition.resources = tmp_files
         customizer.gui.ui.showResourceButton.click()
-        gnrgui.app.quit()
+
+        gnrgui.app.exit(0)
         gnrgui.app.deleteLater()

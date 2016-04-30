@@ -1,20 +1,18 @@
-from mock import Mock, patch
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
-
-from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.tools.testdirfixture import TestDirFixture
+from mock import Mock, patch
 
 from gnr.application import GNRGui
-
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.gnrstartapp import build_lux_render_info
+from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.renderingtaskstate import RenderingTaskDefinition
 from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
+from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestLuxRenderDialogCustomizer(TestDirFixture):
@@ -45,5 +43,5 @@ class TestLuxRenderDialogCustomizer(TestDirFixture):
                                                             "Choose main scene file",
                                                             u"",
                                                             u"Scene files (*.LXS *.lxs)")
-        gnrgui.app.quit()
+        gnrgui.app.exit(0)
         gnrgui.app.deleteLater()
