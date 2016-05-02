@@ -284,8 +284,7 @@ class GNRApplicationLogic(QtCore.QObject):
             return False
         
     # label param is the gui element to set text
-    def run_benchmark(self, benchmark, label):
-        # TODO consider number of cores
+    def run_benchmark(self, benchmark, label, config_file_name):
         task_state = RenderingTaskState()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
@@ -298,7 +297,7 @@ class GNRApplicationLogic(QtCore.QObject):
         
         # Nie moglam rozgryzc dlaczego BlenderBenchmark i tak dzieli na 6 zadan mimo wszystkich zastosowanych do niego podchodow
         t.total_tasks = 1
-        self.br = BenchmarkRunner(t, self.client.datadir, lambda p: self._benchmark_computation_success(performance=p, label=label),
+        self.br = BenchmarkRunner(t, self.client.datadir, lambda p: self._benchmark_computation_success(performance=p, label=label, config_file_name=config_file_name),
                                 self._benchmark_computation_error, benchmark)
 
         self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
@@ -306,11 +305,13 @@ class GNRApplicationLogic(QtCore.QObject):
         self.progress_dialog.show()
 
         self.br.run()
-        return True
     
-    def _benchmark_computation_success(self, performance, label):
+    def _benchmark_computation_success(self, performance, label, config_file_name):
         self.progress_dialog_customizer.show_message("Recounted")
-        #TODO save in config
+        config_file = SimpleEnv.env_file_name(config_file_name)
+        cfg_desc = open(config_file, "w")
+        cfg_desc.write("%.1f" % performance)
+        cfg_desc.close()
         label.setText("%.1f" % performance)
         
     def _benchmark_computation_error(self, error):
