@@ -229,7 +229,7 @@ class TaskServer(PendingConnectionsServer):
         self.last_message_time_threshold = config_desc.task_session_timeout
         self.task_manager.change_config(self.__get_task_manager_root(self.client.datadir),
                                         config_desc.use_distributed_resource_management)
-        self.task_computer.change_config()
+        self.task_computer.change_config(config_desc)
         self.task_keeper.change_config(config_desc)
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):

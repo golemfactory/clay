@@ -4,13 +4,16 @@ from contextlib import contextmanager
 from threading import Thread
 
 import subprocess
+
 from virtualbox import VirtualBox
 from virtualbox.library import IMachine, ISession
+
+from golem.docker.config_manager import DockerConfigManager
 
 logger = logging.getLogger(__name__)
 
 
-class DockerVirtualBoxManager(object):
+class DockerVirtualBoxManager(DockerConfigManager):
 
     docker_vm_list_commands = [
         ['docker_machine', 'ls', '-q']
@@ -49,19 +52,24 @@ class DockerVirtualBoxManager(object):
         'OnlineSnapshotting',
     ]
 
+    constraint_keys = [
+        'memory_size', 'cpu_count', 'cpu_execution_cap'
+    ]
+
     def __init__(self,
                  default_memory_size=1024,
                  default_cpu_execution_cap=100,
                  default_cpu_count=1,
                  min_memory_size=1024,
-                 min_cpu_execution_cap=10,
+                 min_cpu_execution_cap=1,
                  min_cpu_count=1):
 
         self.api = VirtualBox()
         self.__vm_api_dict = IMachine.__dict__
 
-        self.available = False
+        self.virtual_box_available = False
         self.docker_images = []
+        self.config_thread = None
         self.check_environment()
 
         self.min_constraints = dict(
@@ -76,23 +84,28 @@ class DockerVirtualBoxManager(object):
             cpu_execution_cap=default_cpu_execution_cap
         )
 
+        self.virtualbox_config = self.defaults
+
     def check_environment(self):
         try:
             # check virtualbox availability
-            self.api.version()
+            _ = self.api.version
             # check docker image availability
             for command in self.docker_vm_list_commands:
                 try:
                     output = subprocess.check_output(command)
                     self.docker_images = [i.strip() for i in output.split("\n")]
-                    self.available = True
+                    self.virtual_box_available = True
                     return
                 except:
                     pass
         except Exception as e:
             logger.warn("VirtualBox: not available - {}"
                         .format(e.message))
-        self.available = False
+        self.virtual_box_available = False
+
+        logger.debug("VirtualBox: available = {}, images = {}"
+                     .format(self.virtual_box_available, self.docker_images))
 
     def find_machine(self, name_or_id):
         return self.api.find_machine(name_or_id)
@@ -118,56 +131,36 @@ class DockerVirtualBoxManager(object):
             vm = self.__machine_from_arg(name_or_id_or_machine)
             if not vm:
                 return
-            return dict(
-                memory_size=vm.memory_size(),
-                cpu_count=vm.cpu_count(),
-                cpu_execution_cap=vm.cpu_execution_cap()
-            )
+
+            result = {}
+            for constraint_key in self.constraint_keys:
+                result[constraint_key] = getattr(vm, constraint_key)
+            return result
         except Exception as e:
             logger.error("Virtualbox: error reading VM's constraints: {}"
                          .format(e.message))
 
-    def threaded_constrain_all(self, success, failure, **kwargs):
-        total = len(self.docker_images)
-        successes = [0]
-        failures = [0]
-        last_exc = [None]
-
-        def check_total():
-            if successes[0] >= total:
-                success(self.docker_images)
-            elif successes[0] + failures[0] >= total:
-                failure(last_exc[0])
-
-        def group_success(*args):
-            successes[0] += 1
-            check_total()
-
-        def group_failure(exc, *args):
-            failures[0] += 1
-            last_exc[0] = exc
-            check_total()
-
-        return [self.threaded_constrain(image, group_success, group_failure, **kwargs)
-                for image in self.docker_images]
-
-    def threaded_constrain(self, name_or_id_or_machine,
-                           success, failure, **kwargs):
-        def method():
-            try:
-                self.constrain(name_or_id_or_machine, **kwargs)
-                success(name_or_id_or_machine)
-            except Exception as e:
-                failure(e, name_or_id_or_machine)
-
-        return Thread(target=method)
-
     def constrain(self, name_or_id_or_machine, **kwargs):
+        logger.debug("VirtualBox: reconfiguring {} with {}"
+                     .format(name_or_id_or_machine, kwargs))
+
+        if not kwargs:
+            kwargs = self.virtualbox_config
+
         try:
             self.__constrain(name_or_id_or_machine, **kwargs)
         except Exception as e:
-            logger.error("VirtualBox: error setting VM's constraints: {}"
-                         .format(e.message))
+            logger.error("VirtualBox: error setting {} VM's constraints: {}"
+                         .format(name_or_id_or_machine, e.message))
+
+    def constrain_in_background(self, success, failure, **kwargs):
+        if self.config_thread:
+            self.config_thread.join()
+
+        self.__constrain_thread(self.docker_images,
+                                success=success,
+                                failure=failure,
+                                kwargs=kwargs).run()
 
     def defaults(self, name_or_id_or_machine):
         try:
@@ -175,6 +168,13 @@ class DockerVirtualBoxManager(object):
         except Exception as e:
             logger.error("VirtualBox: error setting VM's defaults: {}"
                          .format(e.message))
+
+    def build_config(self, config_desc):
+        super(DockerVirtualBoxManager, self).build_config(config_desc)
+        self.virtualbox_config = dict(
+            memory_size=config_desc.max_memory_size,
+            cpu_count=config_desc.num_cores
+        )
 
     @contextmanager
     def __restart_ctx(self, name_or_id_or_machine, restart=True):
@@ -208,7 +208,7 @@ class DockerVirtualBoxManager(object):
         return None
 
     def __stop_vm(self, vm_or_session):
-        logger.debug('Virtualbox: stopping {}'.format())
+        logger.debug('VirtualBox: stopping {}'.format(vm_or_session))
         try:
             session = self.__session_from_arg(vm_or_session)
             session.console.power_down()
@@ -235,8 +235,45 @@ class DockerVirtualBoxManager(object):
         restart = kwargs.pop('restart', False)
         force = kwargs.pop('force', False)
 
+        constraints = self.constraints(vm)
+        constraint_diff = self.__constraint_diff(constraints, kwargs)
+
+        if not constraint_diff:
+            logger.debug("VirtualBox: {} VM's configuration unchanged"
+                         .format(vm.name))
+            return
+
         with self.__restart_ctx(vm, restart=restart):
-            self.__apply_constraints(vm, kwargs, force=force)
+            self.__apply_constraints(vm, constraint_diff, force=force)
+
+    def __constraint_diff(self, old_values, new_values):
+        result = {}
+
+        for constraint_key in self.constraint_keys:
+            old_value = old_values.get(constraint_key)
+            new_value = new_values.get(constraint_key)
+
+            if new_value != old_value and new_value is not None:
+                result[constraint_key] = new_value
+
+        return result
+
+    def __constrain_thread(self, images, success, failure, **kwargs):
+
+        def method():
+            exc = None
+            for image_name in images:
+                try:
+                    self.constrain(image_name, **kwargs)
+                except Exception as e:
+                    exc = e
+            if exc:
+                failure(exc, images)
+            else:
+                success(images)
+            self.config_thread = None
+
+        return Thread(target=method)
 
     def __apply_constraints(self, vm, params, force=False):
         for name, value in params:
@@ -249,7 +286,7 @@ class DockerVirtualBoxManager(object):
                     cur_val = max(min_val, value)
 
                 try:
-                    vm[name](cur_val)
+                    setattr(vm, name, cur_val)
                 except Exception as e:
                     logger.error('VirtualBox: error constraining VM {}: {}'
                                  .format(name, e.message))

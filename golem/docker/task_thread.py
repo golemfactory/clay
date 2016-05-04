@@ -17,13 +17,10 @@ class DockerTaskThread(TaskThread):
     STDOUT_FILE = "stdout.log"
     STDERR_FILE = "stderr.log"
 
-    docker_cont_create_conf = None
-    docker_cont_run_conf = None
-
     def __init__(self, task_computer, subtask_id, docker_images,
                  orig_script_dir, src_code, extra_data, short_desc,
                  res_path, tmp_path, timeout, check_mem=False,
-                 cont_create_conf=None, cont_run_conf=None):
+                 job_create_config=None, job_run_config=None):
 
         super(DockerTaskThread, self).__init__(
             task_computer, subtask_id, orig_script_dir, src_code, extra_data,
@@ -36,10 +33,12 @@ class DockerTaskThread(TaskThread):
             if img.is_available():
                 self.image = img
                 break
+
         self.job = None
         self.check_mem = check_mem
-        self.cont_create_conf = cont_create_conf or self.docker_cont_create_conf
-        self.cont_run_conf = cont_run_conf or self.docker_cont_run_conf
+
+        self.job_create_conf = job_create_config
+        self.job_run_conf = job_run_config
 
     def _fail(self, error_obj):
         logger.error("Task computing error: {}".format(error_obj))
@@ -63,8 +62,8 @@ class DockerTaskThread(TaskThread):
 
             with DockerJob(self.image, self.src_code, self.extra_data,
                            self.res_path, work_dir, output_dir,
-                           create_conf=self.cont_create_conf,
-                           run_conf=self.cont_run_conf) as job:
+                           create_conf=self.job_create_conf,
+                           run_conf=self.job_run_conf) as job:
                 self.job = job
                 if self.check_mem:
                     mc = MemoryChecker()
