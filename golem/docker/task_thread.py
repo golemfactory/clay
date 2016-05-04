@@ -10,6 +10,9 @@ from golem.vm.memorychecker import MemoryChecker
 logger = logging.getLogger(__name__)
 
 
+class TimeoutException(Exception):
+    pass
+
 class DockerTaskThread(TaskThread):
 
     # These files will be placed in the output dir (self.tmp_path)
@@ -46,6 +49,9 @@ class DockerTaskThread(TaskThread):
             self._fail("None of the Docker images is available")
             return
         try:
+            if self.use_timeout and self.task_timeout < 0:
+                raise TimeoutException
+
             work_dir = os.path.join(self.tmp_path, "work")
             output_dir = os.path.join(self.tmp_path, "output")
 
@@ -87,10 +93,10 @@ class DockerTaskThread(TaskThread):
                 else:
                     self._fail("Subtask computation failed " +
                                "with exit code {}".format(exit_code))
-        except requests.exceptions.ReadTimeout as exc:
+        except (requests.exceptions.ReadTimeout, TimeoutException) as exc:
             if self.use_timeout:
                 self._fail("Task timed out after {:.1f}s".
-                           format(self.task_timeout))
+                           format(self.time_to_compute))
             else:
                 self._fail(exc)
         except Exception as exc:

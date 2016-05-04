@@ -169,7 +169,7 @@ class TestDockerBlenderTask(TestDirFixture, DockerTestCase):
     def test_blender_subtask_timeout(self):
         task = self._create_test_task()
         task_thread, error_msg, out_dir = \
-            self._run_docker_task(task, timeout=5)
+            self._run_docker_task(task, timeout=3)
         self.assertIsInstance(task_thread, DockerTaskThread)
         self.assertIsInstance(error_msg, str)
         self.assertTrue(error_msg.startswith("Task timed out"))
