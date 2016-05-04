@@ -194,7 +194,7 @@ class BlenderRenderTask(FrameRenderingTask):
         for frame in frames:
             self.frames_given[frame] = {}
         
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+        tmp_dir = self._get_tmp_dir()
         self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
         expected_offsets = {}
         
@@ -212,6 +212,9 @@ class BlenderRenderTask(FrameRenderingTask):
             return None
 
         start_task, end_task = self._get_next_task()
+        if start_task is None or end_task is None:
+            logger.error("Task doesn't have more subtasks.")
+            return None
 
         working_directory = self._get_working_directory()
         scene_file = self._get_scene_file_rel_path()
@@ -382,6 +385,7 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
+
 
 class CustomCollector(RenderingTaskCollector):
     def __init__(self, paste=False, width=1, height=1):

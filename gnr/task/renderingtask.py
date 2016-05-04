@@ -98,7 +98,7 @@ class RenderingTask(GNRTask):
         self.collected_file_names = {}
 
         self.advanceVerification = False
-        self.verifided_clients = set()
+        self.verified_clients = set()
 
         if is_windows():
             self.__get_path = self.__get_path_windows
@@ -319,7 +319,7 @@ class RenderingTask(GNRTask):
                                           cmp_file, cmp_start_box):
                     return False
                 else:
-                    self.verifided_clients.add(self.subtasks_given[subtask_id]['node_id'])
+                    self.verified_clients.add(self.subtasks_given[subtask_id]['node_id'])
             if not self._verify_img(tr_file, res_x, res_y):
                 return False
 
@@ -358,7 +358,7 @@ class RenderingTask(GNRTask):
         if self.verification_options.type == 'forAll':
             return True
         if self.verification_options.type == 'forFirst':
-            if self.subtasks_given[subtask_id]['node_id'] not in self.verifided_clients:
+            if self.subtasks_given[subtask_id]['node_id'] not in self.verified_clients:
                 return True
         if self.verification_options.type == 'random' and random.random() < self.verification_options.probability:
             return True

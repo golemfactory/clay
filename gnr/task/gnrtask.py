@@ -163,7 +163,7 @@ class GNRTask(Task):
     def get_resources(self, task_id, resource_header, resource_type=0):
 
         dir_name = self._get_resources_root_dir()
-        tmp_dir = self.__get_tmp_dir()
+        tmp_dir = self._get_tmp_dir()
 
         if resource_type == resource_types["zip"] and not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
@@ -306,7 +306,7 @@ class GNRTask(Task):
         prefix = os.path.commonprefix(self.task_resources)
         return os.path.dirname(prefix)
 
-    def __get_tmp_dir(self):
+    def _get_tmp_dir(self):
         tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id,
                                self.root_path)
         if not os.path.exists(tmp_dir):
