@@ -1,6 +1,7 @@
 import jsonpickle
 import logging
 import shutil
+import time
 from os import makedirs, path, remove
 
 from mock import Mock
@@ -75,9 +76,10 @@ class TestDockerLuxrenderTask(TestDirFixture, DockerTestCase):
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
 
-    def _run_docker_task(self, render_task, timeout=0):
+    def _run_docker_task(self, render_task, timeout=60*5):
         task_id = render_task.header.task_id
         ctd = render_task.query_extra_data(1.0)
+        ctd.timeout = time.time() + timeout
 
         # Create the computing node
         self.node = gnr.node.GNRNode(datadir=self.path)
