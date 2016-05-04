@@ -1,6 +1,5 @@
-from unittest import TestCase
-
 from mock import Mock
+from unittest import TestCase
 
 from gnr.application import GNRGui
 from gnr.customizers.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
@@ -17,4 +16,6 @@ class TestRenderingNewTaskDialogCustomizer(TestCase):
         register_rendering_task_types(logic)
         customizer = RenderingNewTaskDialogCustomizer(gnrgui.main_window, logic)
         self.assertIsInstance(customizer, RenderingNewTaskDialogCustomizer)
+        gnrgui.app.exit(0)
         gnrgui.app.deleteLater()
+

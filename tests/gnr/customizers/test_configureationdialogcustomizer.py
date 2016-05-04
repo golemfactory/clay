@@ -1,18 +1,15 @@
-import unittest
 import os
 import re
-
-from PyQt4.QtTest import QTest
-from PyQt4.QtCore import Qt
-
 from mock import MagicMock
 
-from golem.tools.assertlogs import LogTestCase
-from golem.tools.testdirfixture import TestDirFixture
+from PyQt4.QtCore import Qt
+from PyQt4.QtTest import QTest
 
 from gnr.application import GNRGui
 from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer, logger
 from gnr.ui.appmainwindow import AppMainWindow
+from golem.tools.assertlogs import LogTestCase
+from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestDu(TestDirFixture):
@@ -77,6 +74,7 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         customizer.gui.ui.minPriceLineEdit.setText(u"XYZ")
         with self.assertLogs(logger, level=1):
             self.__click_ok(customizer)
+        gnrgui.app.exit(0)
         gnrgui.app.deleteLater()
 
     def __click_ok(self, customizer):

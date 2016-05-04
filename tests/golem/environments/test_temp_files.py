@@ -1,14 +1,15 @@
 import os.path
 import subprocess
 import tempfile
-import unittest
+
+from golem.tools.testdirfixture import TestDirFixture
 
 
-class TestTempFiles(unittest.TestCase):
+class TestTempFiles(TestDirFixture):
 
     def test_running_script_from_temp_file(self):
         """Creates a temporary file, writes a python code into it and runs it"""
-        test_dir = "testdata"
+        test_dir = os.path.join(self.path, "testdata")
         test_dir_created = False
         if not os.path.isdir(test_dir):
             test_dir_created = True
@@ -19,7 +20,7 @@ class TestTempFiles(unittest.TestCase):
             self.assertTrue(os.path.exists(name))
             tmp_file.write("print 'hello!'")
         cmd = ['python', name]
-        proc = subprocess.Popen(cmd, stdout = subprocess.PIPE)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         proc.wait()
         out = proc.stdout.read()
         self.assertEquals(out.rstrip(), 'hello!')

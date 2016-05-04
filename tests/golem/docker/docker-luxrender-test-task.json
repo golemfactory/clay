@@ -2,9 +2,8 @@
   "py/object":"gnr.renderingtaskstate.RenderingTaskDefinition",
   "renderer_options":{
     "py/object":"gnr.task.luxrendertask.LuxRenderOptions",
-    "luxconsole":"",
     "environment":{
-	"py/object":"gnr.docker_environments.LuxRenderEnvironment",
+	"py/object":"gnr.renderingenvironment.LuxRenderEnvironment",
 	"docker_images":[
 	    {
 		"py/object": "golem.docker.image.DockerImage",

@@ -1,7 +1,7 @@
 from mock import patch
 from gnr.node import start, GNRNode
 from click.testing import CliRunner
-from gnr.docker_environments import BlenderEnvironment
+from gnr.renderingenvironment import BlenderEnvironment
 from golem.testutils import DatabaseFixture
 
 
