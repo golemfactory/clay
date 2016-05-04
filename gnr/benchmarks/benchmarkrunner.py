@@ -26,16 +26,8 @@ class BenchmarkRunner(LocalComputer):
         if ctd.docker_images:
             return LocalComputer._get_task_thread(self, ctd)
         else:
-            #TODO not allow running tasks outside docker?
-            return PyTestTaskThread(self,
-                                    ctd.subtask_id,
-                                    ctd.working_directory,
-                                    ctd.src_code,
-                                    ctd.extra_data,
-                                    ctd.short_description,
-                                    self.test_task_res_path,
-                                    self.tmp_dir,
-                                    0)
+            raise Exception("No docker container found")
+            return None
     
     def run(self):
         self.start_time = time.time()
