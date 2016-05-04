@@ -3,24 +3,21 @@
 
 import os
 import shutil
-import unittest
 
 from golem.core.common import get_golem_path, is_windows
 from golem.core.fileshelper import get_dir_size, common_dir
+from golem.tools.testdirfixture import TestDirFixture
 
 
-class TestDirSize(unittest.TestCase):
-    testdir = "testdir"
-    testfile1 = os.path.join(testdir, "testfile1")
-    testdir2 = os.path.join(testdir, "testdir2")
-    testfile2 = os.path.join(testdir2, "testfile2")
-    testdir3 = os.path.join(testdir, "testdir3")
-    testfile3 = os.path.join(testdir3, "testfile3")
-
+class TestDirSize(TestDirFixture):
     def setUp(self):
-        self.tearDown()
-        self.assertFalse(os.path.exists(self.testdir))
-        os.makedirs(self.testdir)
+        TestDirFixture.setUp(self)
+        self.testdir = self.path
+        self.testfile1 = os.path.join(self.testdir, "testfile1")
+        self.testdir2 = os.path.join(self.testdir, "testdir2")
+        self.testfile2 = os.path.join(self.testdir2, "testfile2")
+        self.testdir3 = os.path.join(self.testdir, "testdir3")
+        self.testfile3 = os.path.join(self.testdir3, "testfile3")
 
     def test_dir_size(self):
         with self.assertRaises(OSError):
