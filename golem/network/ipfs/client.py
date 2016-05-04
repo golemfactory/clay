@@ -389,17 +389,16 @@ class IPFSAsyncExecutor(object):
 
 class IPFSAddress(object):
 
+    private_nets_172 = ['172.' + str(s) + '.' for s in range(16, 32)]
+    private_nets_172_ip6 = ['::' + a for a in private_nets_172]
     private_ip_prefixes = [
         # local
         '127.0.0.',
         # private nets
         '10.', '::10.'
-        '172.16.', '::172.16.',
         '192.168.', '::192.168.',
         'fc00:',
-        # docker
-        '172.17.', '::172.17.'
-    ]
+    ] + private_nets_172 + private_nets_172_ip6
 
     def __init__(self, ip_address, node_id, port=IPFS_DEFAULT_TCP_PORT,
                  proto=None, encap_proto=None):
