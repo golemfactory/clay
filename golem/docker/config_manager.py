@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 __all__ = ['DockerConfigManager']
 
 
@@ -15,18 +17,19 @@ class DockerConfigManager(object):
             max_memory_size = config_desc.max_memory_size
             max_resource_size = config_desc.max_resource_size
 
-            if num_cores:
-                try:
-                    cores = [str(c) for c in range(0, int(num_cores))]
-                    run_config['cpuset'] = ','.join(cores)
-                except:
-                    pass
+            with self._try():
+                cores = [str(c) for c in range(0, int(num_cores))]
+                run_config['cpuset'] = ','.join(cores)
 
-            if max_memory_size:
-                try:
-                    run_config['mem_limit'] = int(max_memory_size) or None
-                except:
-                    pass
+            with self._try():
+                run_config['mem_limit'] = int(max_memory_size) or None
 
         self.container_run_config = run_config
         self.container_create_config = self.container_run_config
+
+    @contextmanager
+    def _try(self):
+        try:
+            yield
+        except:
+            pass

@@ -1,8 +1,8 @@
 import logging
 import time
-from threading import Lock, Thread
+from threading import Lock
 # sys.path.append('../manager')
-from golem.docker.virtualbox.virtualbox_manager import DockerVirtualBoxManager
+from golem.docker.machine.machine_manager import DockerMachineManager
 from golem.vm.vm import PythonProcVM, PythonTestVM
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.resourcesmanager import ResourcesManager
@@ -42,8 +42,9 @@ class TaskComputer(object):
         self.use_waiting_ttl = None
         self.waiting_for_task_timeout = None
 
-        self.docker_manager = DockerVirtualBoxManager()
-        self.change_config(task_server.config_desc)
+        self.docker_manager = DockerMachineManager()
+        self.change_config(task_server.config_desc,
+                           in_background=False)
 
         self.assigned_subtasks = {}
         self.task_to_subtask_mapping = {}
@@ -182,32 +183,32 @@ class TaskComputer(object):
 
         return ret
 
-    def change_config(self, config_desc):
+    def change_config(self, config_desc, in_background=True):
         self.dir_manager = DirManager(self.task_server.get_task_computer_root(), self.node_name)
         self.resource_manager = ResourcesManager(self.dir_manager, self)
         self.task_request_frequency = config_desc.task_request_interval
         self.use_waiting_ttl = config_desc.use_waiting_for_task_timeout
         self.waiting_for_task_timeout = config_desc.waiting_for_task_timeout
-        self.change_docker_config(config_desc)
+        self.change_docker_config(config_desc, in_background)
 
-    def change_docker_config(self, config_desc):
+    def change_docker_config(self, config_desc, in_background=True):
         dm = self.docker_manager
         dm.build_config(config_desc)
-
-        if not dm.virtual_box_available:
+        if not dm.docker_machine_available:
             return
 
-        def resume_tasks(*args):
+        def status_callback():
+            return self.counting_task
+
+        def done_callback():
+            logger.debug("Resuming future task computation")
             self.runnable = True
 
-        def wait_for_tasks():
-            while self.counting_task:
-                time.sleep(0.5)
-            dm.constrain_in_background(success=resume_tasks,
-                                       failure=resume_tasks)
-
+        logger.debug("Pausing future task computation")
         self.runnable = False
-        Thread(target=wait_for_tasks).run()
+        dm.update_config(status_callback,
+                         done_callback,
+                         in_background)
 
     def session_timeout(self):
         if self.counting_task:
