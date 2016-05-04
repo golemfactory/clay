@@ -29,7 +29,8 @@ class TempDirFixture(unittest.TestCase):
         # FIXME: This is temporary solution. Ethereum node should always be
         #        the explicit dependency and users should close it correctly.
         Client._kill_node()
-        shutil.rmtree(self.tempdir)
+        if path.isdir(self.tempdir):
+            shutil.rmtree(self.tempdir)
 
     def temp_file_name(self, name):
         return path.join(self.tempdir, name)
