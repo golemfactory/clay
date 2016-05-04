@@ -284,20 +284,16 @@ class GNRApplicationLogic(QtCore.QObject):
             return False
         
     # label param is the gui element to set text
-    def run_benchmark(self, benchmark, label, config_file_name):
+    def run_benchmark(self, benchmark, label, config_entry_name):
         task_state = RenderingTaskState()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
-        # task_state.total_subtasks = 1
-        # task_state.total_tasks = 1
         self._validate_task_state(task_state)
         tb = self._get_builder(task_state)
 
         t = Task.build_task(tb)
         
-        # Nie moglam rozgryzc dlaczego BlenderBenchmark i tak dzieli na 6 zadan mimo wszystkich zastosowanych do niego podchodow
-        t.total_tasks = 1
-        self.br = BenchmarkRunner(t, self.client.datadir, lambda p: self._benchmark_computation_success(performance=p, label=label, config_file_name=config_file_name),
+        self.br = BenchmarkRunner(t, self.client.datadir, lambda p: self._benchmark_computation_success(performance=p, label=label, config_entry_name=config_entry_name),
                                 self._benchmark_computation_error, benchmark)
 
         self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
@@ -306,13 +302,18 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.br.run()
     
-    def _benchmark_computation_success(self, performance, label, config_file_name):
+    def _benchmark_computation_success(self, performance, label, config_entry_name):
         self.progress_dialog_customizer.show_message("Recounted")
-        config_file = SimpleEnv.env_file_name(config_file_name)
-        cfg_desc = open(config_file, "w")
-        cfg_desc.write("%.1f" % performance)
-        cfg_desc.close()
-        label.setText("%.1f" % performance)
+        
+        #rounding
+        perf = int((performance * 10) + 0.5) / 10.0
+        
+        config_desc = self.client.config_desc
+        getter = 'get_' + config_entry_name
+        setattr(config_desc, config_entry_name, perf)
+        self.change_config(config_desc)
+        
+        label.setText(str(perf))
         
     def _benchmark_computation_error(self, error):
         self.progress_dialog_customizer.show_message("Recounting failed: " + error)

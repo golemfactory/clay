@@ -17,6 +17,7 @@ class Benchmark():
         self.task_definition.optimize_total = False
         self.task_definition.resources = set()
         self.task_definition.total_tasks = 1
+        self.task_definition.total_subtasks = 1
         self.task_definition.start_task = 1
         self.task_definition.end_task = 1
         

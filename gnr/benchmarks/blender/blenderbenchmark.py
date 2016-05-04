@@ -23,10 +23,6 @@ class BlenderBenchmark(Benchmark):
         self.task_definition.output_format = "png"
         self.task_definition.renderer_options = BlenderRendererOptions()
         self.task_definition.renderer_options.frames = [1]
-        self.task_definition.renderer_options.default_subtasks = 1
-        self.task_definition.total_tasks = 1
-        self.task_definition.start_task = 1
-        self.task_definition.end_task = 1
         
         self.task_definition.task_id = u"{}".format("blender_benchmark")
         self.task_definition.main_scene_file = os.path.join(self.blender_task_path, "scene-Helicopter-27-cycles.blend")
