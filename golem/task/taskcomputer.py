@@ -194,6 +194,7 @@ class TaskComputer(object):
     def change_docker_config(self, config_desc, in_background=True):
         dm = self.docker_manager
         dm.build_config(config_desc)
+
         if not dm.docker_machine_available:
             return
 
@@ -242,9 +243,7 @@ class TaskComputer(object):
         if docker_images:
             tt = DockerTaskThread(self, subtask_id, docker_images, working_dir,
                                   src_code, extra_data, short_desc,
-                                  resource_dir, temp_dir, task_timeout,
-                                  job_create_config=self.docker_manager.container_create_config,
-                                  job_run_config=self.docker_manager.container_run_config)
+                                  resource_dir, temp_dir, task_timeout)
         else:
             tt = PyTaskThread(self, subtask_id, working_dir, src_code,
                               extra_data, short_desc, resource_dir, temp_dir,

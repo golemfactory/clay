@@ -74,21 +74,12 @@ class DockerMachineManager(DockerConfigManager):
                 raise EnvironmentError("unknown version")
 
             # check docker image availability
-            command = self.docker_machine_commands['list']
-            output = subprocess.check_output(command, shell=True)
-
-            self.docker_images = [i.strip() for i in output.split("\n") if i]
+            self.docker_images = self.__docker_machine_images()
             self.docker_machine_available = True
-            return
 
         except Exception as e:
-            logger.warn("VirtualBox: not available - {}"
-                        .format(e.message))
-        self.docker_machine_available = False
-
-        logger.debug("VirtualBox: available = {}, images = {}"
-                     .format(self.docker_machine_available,
-                             self.docker_images))
+            logger.warn("DockerMachine: not available".format(e.message))
+            self.docker_machine_available = False
 
     def update_config(self, status_callback, done_callback, in_background=True):
 
@@ -193,27 +184,27 @@ class DockerMachineManager(DockerConfigManager):
 
     @contextmanager
     def __restart_ctx(self, name_or_id_or_machine, restart=True):
-        vm = self.__machine_from_arg(name_or_id_or_machine)
-        if not vm:
+        immutable_vm = self.__machine_from_arg(name_or_id_or_machine)
+        if not immutable_vm:
             return
 
         running = self.__docker_machine_running()
-        if restart and running:
+        if running and restart:
             self.__stop_docker_machine()
 
-        session = vm.create_session(LockType.write)
-        mutable_vm = session.machine
+        session = immutable_vm.create_session(LockType.write)
+        vm = session.machine
         exception = None
 
         if str(vm.state) in self.power_down_states:
             self.stop_vm(session)
 
         try:
-            yield mutable_vm
+            yield vm
         except Exception as e:
             exception = e
 
-        mutable_vm.save_settings()
+        vm.save_settings()
 
         with self._try():
             session.unlock_machine()
@@ -221,13 +212,22 @@ class DockerMachineManager(DockerConfigManager):
 
         if restart or not running:
             self.__start_docker_machine()
+
         if exception:
             logger.error("DockerMachine: restart context error: {}"
                          .format(exception.message))
 
+    def docker_machine_command(self, key, check_output=True, shell=False):
+        command = self.docker_machine_commands.get(key)
+        if command:
+            if check_output:
+                return subprocess.check_output(command, shell=shell)
+            return subprocess.check_call(command, shell=shell)
+        return ''
+
     def __docker_machine_running(self):
         try:
-            status = subprocess.check_output(self.docker_machine_commands['status'])
+            status = self.docker_machine_command('status')
             status = status.strip().replace("\n", "")
             return status == 'Running'
         except Exception as e:
@@ -235,12 +235,26 @@ class DockerMachineManager(DockerConfigManager):
                          .format(e.message))
         return False
 
+    def __docker_machine_images(self):
+        try:
+            command = self.docker_machine_command('list')
+            output = subprocess.check_output(command, shell=True)
+            if output:
+                return [i.strip() for i in output.split("\n") if i]
+        except:
+            logger.error("DockerMachine: no images available")
+        return []
+
     def __start_docker_machine(self):
         logger.debug("DockerMachine: starting")
         try:
-            subprocess.check_output(self.docker_machine_commands['start'])
-            subprocess.check_output(self.docker_machine_commands['env'],
-                                    shell=True)
+            self.docker_machine_command('start')
+            self.docker_machine_command('env', shell=True)
+
+            docker_images = self.__docker_machine_images()
+            if docker_images:
+                self.docker_images = docker_images
+
         except Exception as e:
             logger.error("DockerMachine: failed to start the VM: {}"
                          .format(e.message))
@@ -248,8 +262,7 @@ class DockerMachineManager(DockerConfigManager):
     def __stop_docker_machine(self):
         logger.debug("DockerMachine: stopping")
         try:
-            command = self.docker_machine_commands['stop']
-            subprocess.check_call(command)
+            self.docker_machine_command('stop', check_output=False)
             return True
         except Exception as e:
             logger.warn("DockerMachine: failed to stop the VM: {}"
@@ -294,12 +307,10 @@ class DockerMachineManager(DockerConfigManager):
 
         constraints = self.constraints(vm)
         diff = self.__diff_constraints(constraints, kwargs)
-
-        restart = kwargs.pop('restart', True)
         force = kwargs.pop('force', False)
 
         if diff:
-            with self.__restart_ctx(vm, restart=restart) as mutable_vm:
+            with self.__restart_ctx(vm) as mutable_vm:
                 self.__apply_constraints(mutable_vm, diff, force=force)
         else:
             if not self.__docker_machine_running():

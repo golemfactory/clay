@@ -18,21 +18,6 @@ The logger used for logging std streams of the process running in container.
 """
 container_logger = logging.getLogger(__name__ + ".container")
 
-DEFAULT_CREATE_CONF = dict(
-    network_disabled=True
-)
-
-DEFAULT_RUN_CONF = dict(
-    cap_drop=['setgid', 'setuid', 'setpcap', 'setfcap',
-              'net_admin', 'net_bind_service', 'net_raw',
-              'mknod', 'audit_control', 'audit_write',
-              'mac_admin', 'mac_override',
-              'sys_chroot', 'sys_admin', 'sys_boot',
-              'sys_module', 'sys_nice', 'sys_pacct',
-              'sys_rawio', 'sys_resource', 'sys_time',
-              'sys_tty_config']
-)
-
 
 class DockerJob(object):
 
@@ -64,7 +49,7 @@ class DockerJob(object):
 
     def __init__(self, image, script_src, parameters,
                  resources_dir, work_dir, output_dir,
-                 create_conf=None, run_conf=None):
+                 host_config=None):
         """
         :param DockerImage image: Docker image to use
         :param str script_src: source of the task script file
@@ -76,14 +61,7 @@ class DockerJob(object):
         self.image = image
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
-
-        self.create_conf = dict(DEFAULT_CREATE_CONF)
-        self.run_conf = dict(DEFAULT_RUN_CONF)
-
-        if create_conf:
-            self.create_conf.update(create_conf)
-        if run_conf:
-            self.run_conf.update(run_conf)
+        self.host_config = host_config or {}
 
         self.resources_dir = resources_dir
         self.work_dir = work_dir
@@ -145,6 +123,7 @@ class DockerJob(object):
                 }
             }
         )
+        host_cfg.update(self.host_config)
 
         # The location of the task script when mounted in the container
         container_script_path = self._get_container_script_path()
@@ -153,8 +132,7 @@ class DockerJob(object):
             volumes=[self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR],
             host_config=host_cfg,
             command=[container_script_path],
-            working_dir=self.WORK_DIR,
-            **self.create_conf
+            working_dir=self.WORK_DIR
         )
         self.container_id = self.container["Id"]
         logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
@@ -239,7 +217,7 @@ class DockerJob(object):
     def start(self):
         if self.get_status() == self.STATE_CREATED:
             client = local_client()
-            client.start(self.container_id, **self.run_conf)
+            client.start(self.container_id)
             result = client.inspect_container(self.container_id)
             self.state = result["State"]["Status"]
             logger.debug("Container {} started".format(self.container_id))
