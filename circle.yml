@@ -22,6 +22,7 @@ test:
   pre:
     - pip install coverage codecov
   override:
-    - coverage run --branch --source=. setup.py test
+    - mkdir -p $CIRCLE_TEST_REPORTS
+    - coverage run --branch --source=. setup.py test -a "--junitxml=$CIRCLE_TEST_REPORTS/test_result.xml"
   post:
     - codecov

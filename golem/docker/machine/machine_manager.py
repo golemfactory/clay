@@ -41,8 +41,6 @@ class DockerMachineManager(DockerConfigManager):
                  min_cpu_execution_cap=1,
                  min_cpu_count=1):
 
-        self.api = VirtualBox()
-
         self.docker_machine_available = False
         self.docker_images = []
         self.config_thread = None
@@ -60,6 +58,7 @@ class DockerMachineManager(DockerConfigManager):
             cpu_execution_cap=default_cpu_execution_cap
         )
 
+        self.virtualbox = VirtualBox()
         self.virtualbox_config = self.defaults
         self._threads = []
 
@@ -70,7 +69,7 @@ class DockerMachineManager(DockerConfigManager):
     def check_environment(self):
         try:
             # check machine availability
-            if not self.api.version:
+            if not self.virtualbox.version:
                 raise EnvironmentError("unknown version")
 
             # check docker image availability
@@ -100,7 +99,7 @@ class DockerMachineManager(DockerConfigManager):
             thread.run()
 
     def find_vm(self, name_or_id):
-        return self.api.find_machine(name_or_id)
+        return self.virtualbox.find_machine(name_or_id)
 
     def start_vm(self, mixed):
         """
@@ -236,28 +235,27 @@ class DockerMachineManager(DockerConfigManager):
         return False
 
     def __docker_machine_images(self):
-        try:
-            command = self.docker_machine_command('list')
-            output = subprocess.check_output(command, shell=True)
-            if output:
-                return [i.strip() for i in output.split("\n") if i]
-        except:
-            logger.error("DockerMachine: no images available")
-        return []
+        command = self.docker_machine_command('list')
+        output = subprocess.check_output(command, shell=True)
+        if output:
+            return [i.strip() for i in output.split("\n") if i]
 
     def __start_docker_machine(self):
         logger.debug("DockerMachine: starting")
+
         try:
             self.docker_machine_command('start')
             self.docker_machine_command('env', shell=True)
-
-            docker_images = self.__docker_machine_images()
-            if docker_images:
-                self.docker_images = docker_images
-
         except Exception as e:
             logger.error("DockerMachine: failed to start the VM: {}"
                          .format(e.message))
+        else:
+            try:
+                docker_images = self.__docker_machine_images()
+                if docker_images:
+                    self.docker_images = docker_images
+            except:
+                logger.error("DockerMachine: failed to update VM list")
 
     def __stop_docker_machine(self):
         logger.debug("DockerMachine: stopping")
