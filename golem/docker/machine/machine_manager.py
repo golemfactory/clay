@@ -67,18 +67,23 @@ class DockerMachineManager(DockerConfigManager):
 
     def wait_for_completion(self):
         for t in self._threads:
-            t.join()
+            try:
+                t.join()
+            except:
+                pass
 
     def check_environment(self):
         try:
             # check VirtualBox availability
             try:
+
                 from virtualbox import VirtualBox
                 from virtualbox.library import ISession, LockType
 
                 self.virtual_box = VirtualBox()
                 self.ISession = ISession
                 self.LockType = LockType
+
             except ImportError as e:
                 raise EnvironmentError("Couldn't import VirtualBox libs: {}"
                                        .format(e.message))
@@ -163,19 +168,13 @@ class DockerMachineManager(DockerConfigManager):
                          .format(name_or_id_or_machine, e.message))
 
     def constrain_all(self, images=None, **kwargs):
+        self.wait_for_completion()
         try:
             for image_name in images or self.docker_images:
                 self.constrain(image_name, **kwargs)
         except Exception as e:
             logger.error("VirtualBox: error constraining images: {}"
                          .format(e.message))
-
-    def constrain_in_background(self, success, failure, **kwargs):
-        self.wait_for_completion()
-        self.constrain_all(self.docker_images,
-                           success=success,
-                           failure=failure,
-                           **kwargs).run()
 
     def build_config(self, config_desc):
         super(DockerMachineManager, self).build_config(config_desc)
