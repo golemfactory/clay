@@ -24,7 +24,7 @@ test:
   override:
     - mkdir -p $CIRCLE_ARTIFACTS
     - mkdir -p $CIRCLE_TEST_REPORTS/junit/
-    - coverage run --branch --source=. setup.py test -a "--junit-xml=$CIRCLE_ARTIFACTS/junit.xml"
+    - coverage run --branch --source=. setup.py test -a "--junit-xml=$CIRCLE_ARTIFACTS/junit.xml -s"
     - cp $CIRCLE_ARTIFACTS/junit.xml $CIRCLE_TEST_REPORTS/junit/result.xml
   post:
     - codecov
