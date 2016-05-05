@@ -1,21 +1,18 @@
 import logging
 import subprocess
-from contextlib import contextmanager
-
 import time
+from contextlib import contextmanager
 from threading import Thread
-
-from virtualbox import VirtualBox
-from virtualbox.library import ISession, LockType
 
 from golem.docker.config_manager import DockerConfigManager
 
+__all__ = ['DockerMachineManager']
 logger = logging.getLogger(__name__)
 
 
 class DockerMachineManager(DockerConfigManager):
 
-    POWER_UP_DOWN_TIMEOUT = 60 * 1000
+    POWER_UP_DOWN_TIMEOUT = 30 * 1000  # milliseconds
 
     docker_machine_commands = dict(
         list=['docker-machine', 'ls', '-q'],
@@ -41,10 +38,11 @@ class DockerMachineManager(DockerConfigManager):
                  min_cpu_execution_cap=1,
                  min_cpu_count=1):
 
+        self.ISession = None
+        self.LockType = None
+
         self.docker_machine_available = False
         self.docker_images = []
-        self.config_thread = None
-        self.check_environment()
 
         self.min_constraints = dict(
             memory_size=min_memory_size,
@@ -58,26 +56,42 @@ class DockerMachineManager(DockerConfigManager):
             cpu_execution_cap=default_cpu_execution_cap
         )
 
-        self.virtualbox = VirtualBox()
-        self.virtualbox_config = self.defaults
+        self.virtual_box = None
+        self.virtual_box_config = self.defaults
         self._threads = []
 
+        self.check_environment()
+
     def shutdown(self):
+        self.wait_for_completion()
+
+    def wait_for_completion(self):
         for t in self._threads:
             t.join()
 
     def check_environment(self):
         try:
-            # check machine availability
-            if not self.virtualbox.version:
-                raise EnvironmentError("unknown version")
+            # check VirtualBox availability
+            try:
+                from virtualbox import VirtualBox
+                from virtualbox.library import ISession, LockType
+
+                self.virtual_box = VirtualBox()
+                self.ISession = ISession
+                self.LockType = LockType
+            except ImportError as e:
+                raise EnvironmentError("Couldn't import VirtualBox libs: {}"
+                                       .format(e.message))
+
+            if not self.virtual_box.version:
+                raise EnvironmentError("Cannot connect to VirtualBox")
 
             # check docker image availability
             self.docker_images = self.__docker_machine_images()
             self.docker_machine_available = True
 
         except Exception as e:
-            logger.warn("DockerMachine: not available".format(e.message))
+            logger.warn("DockerMachine: not available: {}".format(e.message))
             self.docker_machine_available = False
 
     def update_config(self, status_callback, done_callback, in_background=True):
@@ -99,7 +113,10 @@ class DockerMachineManager(DockerConfigManager):
             thread.run()
 
     def find_vm(self, name_or_id):
-        return self.virtualbox.find_machine(name_or_id)
+        try:
+            return self.virtual_box.find_machine(name_or_id)
+        except Exception as e:
+            logger.warn("VirtualBox: not available: {}".format(e.message))
 
     def start_vm(self, mixed):
         """
@@ -134,7 +151,7 @@ class DockerMachineManager(DockerConfigManager):
                          .format(e.message))
 
     def constrain(self, name_or_id_or_machine, **kwargs):
-        constraints = kwargs or self.virtualbox_config
+        constraints = kwargs or self.virtual_box_config
 
         logger.debug("VirtualBox: reconfiguring '{}' with {}"
                      .format(name_or_id_or_machine, constraints))
@@ -146,19 +163,15 @@ class DockerMachineManager(DockerConfigManager):
                          .format(name_or_id_or_machine, e.message))
 
     def constrain_all(self, images=None, **kwargs):
-        exception = None
-        for image_name in images or self.docker_images:
-            try:
+        try:
+            for image_name in images or self.docker_images:
                 self.constrain(image_name, **kwargs)
-            except Exception as exc:
-                exception = exc
-        if exception:
-            raise exception
+        except Exception as e:
+            logger.error("VirtualBox: error constraining images: {}"
+                         .format(e.message))
 
     def constrain_in_background(self, success, failure, **kwargs):
-        if self.config_thread:
-            self.config_thread.join()
-
+        self.wait_for_completion()
         self.constrain_all(self.docker_images,
                            success=success,
                            failure=failure,
@@ -176,7 +189,7 @@ class DockerMachineManager(DockerConfigManager):
         with self._try():
             memory_size += int(config_desc.max_memory_size) / 1000
 
-        self.virtualbox_config = dict(
+        self.virtual_box_config = dict(
             memory_size=memory_size,
             cpu_count=cpu_count
         )
@@ -191,7 +204,7 @@ class DockerMachineManager(DockerConfigManager):
         if running and restart:
             self.__stop_docker_machine()
 
-        session = immutable_vm.create_session(LockType.write)
+        session = immutable_vm.create_session(self.LockType.write)
         vm = session.machine
         exception = None
 
@@ -277,6 +290,7 @@ class DockerMachineManager(DockerConfigManager):
             progress = session.console.power_up()
             progress.wait_for_completion(timeout=self.POWER_UP_DOWN_TIMEOUT)
             return session
+
         except Exception as e:
             logger.error("VirtualBox: error starting a VM: '{}'"
                          .format(e.message))
@@ -332,6 +346,8 @@ class DockerMachineManager(DockerConfigManager):
         if not params:
             return
 
+        success = True
+
         for name, value in params.iteritems():
             min_val = self.min_constraints.get(name)
 
@@ -342,17 +358,19 @@ class DockerMachineManager(DockerConfigManager):
 
             try:
                 setattr(vm, name, cur_val)
-            except:
-                logger.error('VirtualBox: error setting {} to {}'
-                             .format(name, value))
+            except Exception as e:
+                logger.error('VirtualBox: error setting {} to {}: {}'
+                             .format(name, value, e.message))
+                success = False
 
-        logger.debug('VirtualBox: VM {} reconfigured successfully'
-                     .format(vm.name))
+        if success:
+            logger.debug('VirtualBox: VM {} reconfigured successfully'
+                         .format(vm.name))
 
     def __session_from_arg(self, session_obj, lock_type=None):
-        if not isinstance(session_obj, ISession):
+        if not isinstance(session_obj, self.ISession):
             vm = self.__machine_from_arg(session_obj)
-            lock_type = lock_type or LockType.null
+            lock_type = lock_type or self.LockType.null
             if vm:
                 return vm.create_session(lock_type)
             return None
