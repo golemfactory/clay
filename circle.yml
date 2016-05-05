@@ -22,10 +22,9 @@ test:
   pre:
     - pip install coverage codecov
   override:
-    - coverage run --branch --source=. setup.py test -a "--junit-xml=junit.xml"
-    - mkdir -p $CIRCLE_TEST_REPORTS/junit/
     - mkdir -p $CIRCLE_ARTIFACTS
-    - cp junit.xml $CIRCLE_TEST_REPORTS/junit/result.xml
-    - cp junit.xml $CIRCLE_ARTIFACTS/result.xml
+    - mkdir -p $CIRCLE_TEST_REPORTS/junit/
+    - coverage run --branch --source=. setup.py test -a "--junit-xml=$CIRCLE_ARTIFACTS/junit.xml"
+    - cp $CIRCLE_ARTIFACTS/junit.xml $CIRCLE_TEST_REPORTS/junit/result.xml
   post:
     - codecov
