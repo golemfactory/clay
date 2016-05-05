@@ -66,8 +66,8 @@ class TCPServer(Server):
         logger.info("Port {} opened - listening.".format(self.cur_port))
 
     def _listening_failure(self):
-        logger.error("Listening on ports {} to {} failure.").format(self.config_desc.start_port,
-                                                                    self.config_desc.end_port)
+        logger.error("Listening on ports {} to {} failure.".format(self.config_desc.start_port,
+                                                                   self.config_desc.end_port))
 
 
 class PendingConnectionsServer(TCPServer):

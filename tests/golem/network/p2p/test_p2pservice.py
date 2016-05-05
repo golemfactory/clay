@@ -53,6 +53,7 @@ class TestP2PService(unittest.TestCase):
         service.last_peers_request = time.time() + 10
         service.add_peer(node.key, node)
         assert len(service.peers) == 1
+        node.last_message_time = 0
         service.sync_network()
         assert len(service.peers) == 0
 
