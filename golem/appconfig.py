@@ -18,8 +18,6 @@ OPTIMAL_PEER_NUM = 10
 MAX_RESOURCE_SIZE = 250 * 1024
 MAX_MEMORY_SIZE = 250 * 1024
 DISTRIBUTED_RES_NUM = 2
-APP_NAME = "Brass Golem"
-APP_VERSION = "1.022"
 
 logger = logging.getLogger(__name__)
 
@@ -147,9 +145,7 @@ class AppConfig:
                                      start_port=START_PORT,
                                      end_port=END_PORT,
                                      opt_peer_num=OPTIMAL_PEER_NUM,
-                                     dist_res_num=DISTRIBUTED_RES_NUM,
-                                     app_name=APP_NAME,
-                                     app_version=APP_VERSION)
+                                     dist_res_num=DISTRIBUTED_RES_NUM)
 
         node_config = NodeConfig(node_address="",
                                  seed_host="",

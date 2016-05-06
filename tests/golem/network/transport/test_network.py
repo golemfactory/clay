@@ -1,15 +1,21 @@
-import unittest
+import imp
 import logging
 import os
+import sys
 import time
+import unittest
+from contextlib import contextmanager
+from threading import Thread
 
+import twisted
+from twisted.internet.selectreactor import SelectReactor
+from twisted.internet.task import Clock
+
+from golem.core.databuffer import DataBuffer
+from golem.network.transport.message import Message, MessageHello
+from golem.network.transport.network import ProtocolFactory, SessionFactory, SessionProtocol
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, TCPListeningInfo, TCPConnectInfo, \
     SocketAddress, BasicProtocol, ServerProtocol, SafeProtocol
-from golem.network.transport.network import ProtocolFactory, SessionFactory, SessionProtocol
-from golem.network.transport.message import Message, MessageHello
-from golem.core.databuffer import DataBuffer
-
-from threading import Thread
 
 
 class ASession(object):
@@ -43,9 +49,97 @@ class AProtocol(object, SessionProtocol):
         self.server = server
 
 
+class MockReactor(SelectReactor):
+    def stop(self):
+        result = super(MockReactor, self).stop()
+        self._startedBefore = False
+        self.running = False
+        return result
+
+    def mainLoop(self):
+        pass
+
+
+def replace_reactor():
+    try:
+        _prev_reactor = imp.find_module('reactor', 'twisted.internet')
+    except:
+        _prev_reactor = Clock()
+
+    _reactor = MockReactor()
+    reinstall_reactor(_reactor)
+    return _reactor, _prev_reactor
+
+
+def reinstall_reactor(_reactor):
+    twisted.internet.reactor = _reactor
+    sys.modules['twisted.internet.reactor'] = _reactor
+
+
+def uninstall_reactor():
+    del twisted.internet.reactor
+    del sys.modules['twisted.internet.reactor']
+
+class MockReactorThread(Thread):
+    running = False
+
+    def __init__(self, _reactor, group=None, name=None, args=(), kwargs=None, verbose=None):
+
+        super(MockReactorThread, self).__init__(group, self.__reactor_loop,
+                                                name, args, kwargs, verbose)
+        self._reactor = _reactor
+
+    def start(self):
+        self.running = True
+        self._reactor.run()
+        return super(MockReactorThread, self).start()
+
+    def stop(self):
+        self.running = False
+
+    def __reactor_loop(self):
+        while self.running:
+            try:
+                self._reactor.runUntilCurrent()
+                self._reactor.doIteration(self._reactor.timeout() or 0)
+            except Exception as e:
+                print "Unexpected error in main loop:", e.message
+
+timeout = 10
+
+@contextmanager
+def async_scope(a, idx=0):
+    a[idx] = False
+    started = time.time()
+
+    yield
+
+    while not a[idx]:
+        if time.time() - started >= timeout:
+            raise RuntimeError('Operation timed out')
+        time.sleep(0.5)
+
+
 class TestNetwork(unittest.TestCase):
-    reactor_running = False
-    stop_reactor = False
+    reactor_thread = None
+    prev_reactor = None
+    timeout = 10
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            _reactor, cls.prev_reactor = replace_reactor()
+            _reactor.installed = True
+            cls.reactor_thread = MockReactorThread(_reactor)
+            cls.reactor_thread.start()
+        except Exception as e:
+            print "Reactor exception: ", e
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.reactor_thread:
+            cls.reactor_thread.stop()
+            uninstall_reactor()
 
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
@@ -57,83 +151,134 @@ class TestNetwork(unittest.TestCase):
         session_factory = SessionFactory(ASession)
         protocol_factory = ProtocolFactory(SafeProtocol, Server(), session_factory)
         self.network = TCPNetwork(protocol_factory)
-        if not TestNetwork.reactor_running:
-            TestNetwork.reactor_running = True
-            th = Thread(target=self.network.reactor.run, args=(False,))
-            th.deamon = True
-            th.start()
 
-    def tearDown(self):
-        if TestNetwork.stop_reactor:
-            self.network.reactor.stop()
+    def test_listen(self):
 
-    @unittest.skip("Fix me (testing takes too long)")
-    def test1__listen(self):
-        listen_info = TCPListenInfo(1111, established_callback=self.__listen_success,
-                                    failure_callback=self.__listen_failure)
-        self.network.listen(listen_info)
-        time.sleep(5)
-        self.assertTrue(self.listen_success)
-        self.assertEquals(self.port, 1111)
+        async_ready = [False]
 
-        self.network.listen(listen_info)
-        time.sleep(5)
-        self.assertFalse(self.listen_success)
+        def _conn_success(*args, **kwargs):
+            self.__listen_success(*args, **kwargs)
+            async_ready[0] = True
 
-        listen_info = TCPListenInfo(1111, 1115, established_callback=self.__listen_success,
-                                    failure_callback=self.__listen_failure)
-        self.network.listen(listen_info)
-        time.sleep(5)
-        self.assertTrue(self.listen_success)
-        self.assertEquals(self.port, 1112)
+        def _conn_failure(**kwargs):
+            self.__listen_failure(**kwargs)
+            async_ready[0] = True
 
-        self.network.listen(listen_info, a=1, b=2, c=3, d=4, e=5)
-        time.sleep(5)
-        self.assertEquals(self.port, 1113)
+        def _stop_success(*args, **kwargs):
+            self.__stop_listening_success(*args, **kwargs)
+            async_ready[0] = True
+
+        def _stop_failure(**kwargs):
+            self.__stop_listening_failure(**kwargs)
+            async_ready[0] = True
+
+        listen_info = TCPListenInfo(11101,
+                                    established_callback=_conn_success,
+                                    failure_callback=_conn_failure)
+        with async_scope(async_ready):
+            self.network.listen(listen_info)
+        self.assertEquals(self.port, 11101)
+
+        listen_info = TCPListenInfo(11101,
+                                    established_callback=_conn_success,
+                                    failure_callback=_conn_failure)
+        with async_scope(async_ready):
+            self.network.listen(listen_info)
+        self.assertEquals(self.port, None)
+
+        listen_info = TCPListenInfo(11101, 11111,
+                                    established_callback=_conn_success,
+                                    failure_callback=_conn_failure)
+        with async_scope(async_ready):
+            self.network.listen(listen_info)
+        self.assertEquals(self.port, 11102)
+
+        with async_scope(async_ready):
+            self.network.listen(listen_info, a=1, b=2, c=3, d=4, e=5)
+        self.assertEquals(self.port, 11103)
         self.assertEquals(len(self.network.active_listeners), 3)
         self.assertEquals(self.kwargs_len, 5)
 
-        listening_info = TCPListeningInfo(1112, self.__stop_listening_success, self.__stop_listening_failure)
-        d = self.network.stop_listening(listening_info)
-        time.sleep(5)
+        listening_info = TCPListeningInfo(11102,
+                                          stopped_callback=_stop_success,
+                                          stopped_errback=_stop_failure)
+        with async_scope(async_ready):
+            d = self.network.stop_listening(listening_info)
+            time.sleep(5)
         self.assertEquals(len(self.network.active_listeners), 2)
         self.assertTrue(d.called)
         self.assertTrue(self.stop_listening_success)
 
-        listening_info = TCPListeningInfo(1112, self.__stop_listening_success, self.__stop_listening_failure)
-        d = self.network.stop_listening(listening_info)
-        time.sleep(5)
+        listening_info = TCPListeningInfo(11102,
+                                          stopped_callback=_stop_success,
+                                          stopped_errback=_stop_failure)
+        with async_scope(async_ready):
+            self.network.stop_listening(listening_info)
         self.assertEquals(len(self.network.active_listeners), 2)
         self.assertFalse(self.stop_listening_success)
 
-        listen_info = TCPListenInfo(1111, 1115, established_callback=self.__listen_success,
-                                    failure_callback=self.__listen_failure)
-        self.network.listen(listen_info)
-        time.sleep(5)
-        self.assertEquals(self.port, 1112)
+        listen_info = TCPListenInfo(11101, 11105,
+                                    established_callback=_conn_success,
+                                    failure_callback=_conn_failure)
+        with async_scope(async_ready):
+            self.network.listen(listen_info)
+        self.assertEquals(self.port, 11102)
 
-    @unittest.skip("Fix me (testing takes too long)")
-    def test2_connect(self):
-        try:
-            address = SocketAddress('127.0.0.1', 1111)
-            connect_info = TCPConnectInfo([address], self.__connection_success, self.__connection_failure)
-            self.network.connect(connect_info)
-            time.sleep(5)
-            self.assertTrue(self.connect_success)
+    def test_connect(self):
 
-            address2 = SocketAddress('127.0.0.1', 2)
-            connect_info = TCPConnectInfo([address2], self.__connection_success, self.__connection_failure)
-            self.network.connect(connect_info)
-            time.sleep(5)
-            self.assertFalse(self.connect_success)
+        async_ready = [False, False, False]
 
-            connect_info.socket_addresses.append(address2)
-            connect_info.socket_addresses.append(address)
+        def _success_fn(idx):
+            def fn(*args, **kwargs):
+                self.__connection_success(*args, **kwargs)
+                async_ready[idx] = True
+            return fn
+
+        def _failure_fn(idx):
+            def fn(**kwargs):
+                self.__connection_failure(**kwargs)
+                async_ready[idx] = True
+            return fn
+
+        def _listen_success(*args, **kwargs):
+            self.__listen_success(*args, **kwargs)
+            async_ready[0] = True
+
+        def _listen_failure(*args, **kwargs):
+            self.__listen_failure(*args, **kwargs)
+            async_ready[0] = True
+
+        listen_info = TCPListenInfo(21111,
+                                    established_callback=_listen_success,
+                                    failure_callback=_listen_failure)
+        with async_scope(async_ready):
+            self.network.listen(listen_info)
+
+        listen_info = TCPListenInfo(21112,
+                                    established_callback=_listen_success,
+                                    failure_callback=_listen_failure)
+        with async_scope(async_ready):
+            self.network.listen(listen_info)
+
+        address = SocketAddress('127.0.0.1', 21111)
+        connect_info = TCPConnectInfo([address], _success_fn(0), _failure_fn(0))
+
+        with async_scope(async_ready, 0):
             self.network.connect(connect_info)
-            time.sleep(15)
-            self.assertTrue(self.connect_success)
-        finally:
-            TestNetwork.stop_reactor = True
+        self.assertTrue(self.connect_success)
+
+        address2 = SocketAddress('127.0.0.1', 21112)
+        connect_info_2 = TCPConnectInfo([address2], _success_fn(1), _failure_fn(1))
+
+        with async_scope(async_ready, 1):
+            self.network.connect(connect_info_2)
+        self.assertTrue(self.connect_success)
+
+        connect_info_3 = TCPConnectInfo([address, address2], _success_fn(2), _failure_fn(2))
+
+        with async_scope(async_ready, 2):
+            self.network.connect(connect_info_3)
+        self.assertTrue(self.connect_success)
 
     def __listen_success(self, port, **kwargs):
         self.listen_success = True
@@ -141,6 +286,7 @@ class TestNetwork(unittest.TestCase):
         self.kwargs_len = len(kwargs)
 
     def __listen_failure(self, **kwargs):
+        self.port = None
         self.listen_success = False
 
     def __connection_success(self, result, **kwargs):
@@ -186,7 +332,6 @@ class Transport:
 
 
 class TestProtocols(unittest.TestCase):
-    @unittest.skip("Fix me (testing takes too long)")
     def test_init(self):
         prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
         for p in prt:
@@ -197,7 +342,6 @@ class TestProtocols(unittest.TestCase):
         for p in prt[1:]:
             self.assertIsNotNone(p.server)
 
-    @unittest.skip("Fix me (testing takes too long)")
     def test_close(self):
         prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
         for p in prt:
@@ -206,7 +350,6 @@ class TestProtocols(unittest.TestCase):
             p.close()
             self.assertTrue(p.transport.lose_connection_called)
 
-    @unittest.skip("Fix me (testing takes too long)")
     def test_close_now(self):
         prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
         for p in prt:
@@ -216,7 +359,6 @@ class TestProtocols(unittest.TestCase):
             self.assertFalse(p.opened)
             self.assertTrue(p.transport.abort_connection_called)
 
-    @unittest.skip("Fix me (testing takes too long)")
     def test_connection_made(self):
         prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
         for p in prt:
@@ -229,9 +371,8 @@ class TestProtocols(unittest.TestCase):
             self.assertFalse(p.session.dropped_called)
             p.connectionLost()
             self.assertFalse(p.opened)
-            self.assertTrue(p.session.dropped_called)
+            assert 'session' not in p.__dict__
 
-    @unittest.skip("Fix me (testing takes too long)")
     def test_connection_lost(self):
         prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
         for p in prt:
@@ -243,14 +384,14 @@ class TestProtocols(unittest.TestCase):
             self.assertFalse(p.opened)
             p.connectionMade()
             self.assertTrue(p.opened)
+            self.assertIsNotNone(p.session)
             self.assertFalse(p.session.dropped_called)
             p.connectionLost()
             self.assertFalse(p.opened)
-            self.assertTrue(p.session.dropped_called)
+            assert 'session' not in p.__dict__
 
 
 class TestBasicProtocol(unittest.TestCase):
-    @unittest.skip("Fix me (testing takes too long)")
     def test_send_and_receive_message(self):
         p = BasicProtocol()
         p.transport = Transport()
@@ -274,20 +415,22 @@ class TestBasicProtocol(unittest.TestCase):
         db.append_string(p.transport.buff[1])
         m = Message.deserialize(db)[0]
         self.assertEqual(m.timestamp, msg.timestamp)
+        p.connectionLost()
+        assert 'session' not in p.__dict__
 
 
 class TestServerProtocol(unittest.TestCase):
-    @unittest.skip("Fix me (testing takes too long)")
     def test_connection_made(self):
         p = ServerProtocol(Server())
         session_factory = SessionFactory(ASession)
         p.set_session_factory(session_factory)
         p.connectionMade()
         self.assertEquals(len(p.server.sessions), 1)
+        p.connectionLost()
+        assert 'session' not in p.__dict__
 
 
 class TestSaferProtocol(unittest.TestCase):
-    @unittest.skip("Fix me (testing takes too long)")
     def test_send_and_receive_message(self):
         p = SafeProtocol(Server())
         p.transport = Transport()
@@ -304,3 +447,5 @@ class TestSaferProtocol(unittest.TestCase):
         self.assertIsInstance(p.session.msgs[0], MessageHello)
         self.assertEquals(msg.timestamp, p.session.msgs[0].timestamp)
         self.assertEqual(msg.sig, "ASessionSign")
+        p.connectionLost()
+        assert 'session' not in p.__dict__

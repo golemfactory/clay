@@ -6,9 +6,11 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
 
-from golem.task.taskstate import  TaskStatus
+from golem.core.variables import APP_NAME, APP_VERSION
+from golem.task.taskstate import TaskStatus
 from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
-                          ConfigurationDialog, EnvironmentsDialog, IdentityDialog, NewTaskDialog
+                          EnvironmentsDialog, IdentityDialog
+
 from gnr.ui.tasktableelem import TaskTableElem
 
 from gnr.customizers.customizer import Customizer
@@ -41,7 +43,7 @@ class GNRMainWindowCustomizer(Customizer):
 
     def set_options(self, cfg_desc, id_, eth_address):
         # Footer options
-        self.gui.ui.appVer.setText(u"{} ({})".format(cfg_desc.app_name, cfg_desc.app_version))
+        self.gui.ui.appVer.setText(u"{} ({})".format(APP_NAME, APP_VERSION))
 
         # Status options
         self.gui.ui.nodeNameLabel.setText(u"{}".format(cfg_desc.node_name))
@@ -51,6 +53,7 @@ class GNRMainWindowCustomizer(Customizer):
         self.gui.ui.golemIdLabel.setCursorPosition(0)
         self.gui.ui.nameLabel.setText(u"{}".format(cfg_desc.node_name))
         self.gui.ui.ethAddressLabel.setText(u"{}".format(eth_address))
+
 
     # Add new task to golem client
     def enqueue_new_task(self, ui_new_task_info):
@@ -205,11 +208,6 @@ class GNRMainWindowCustomizer(Customizer):
         payments_window = PaymentsDialog(self.gui.window)
         PaymentsDialogCustomizer(payments_window, self.logic)
         payments_window.show()
-
-    def _show_configuration_dialog_clicked(self):
-        self.configuration_dialog = ConfigurationDialog(self.gui.window)
-        self.configuration_dialog_customizer = ConfigurationDialogCustomizer(self.configuration_dialog, self.logic)
-        self.configuration_dialog.show()
 
     def _show_identity_dialog(self):
         identity_dialog = IdentityDialog(self.gui.window)

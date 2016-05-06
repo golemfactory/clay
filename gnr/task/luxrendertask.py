@@ -12,7 +12,7 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 from golem.environments.environment import Environment
 
-from gnr.docker_environments import LuxRenderEnvironment
+from gnr.renderingenvironment import LuxRenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
 from gnr.task.imgrepr import load_img, blend
@@ -66,7 +66,6 @@ class LuxRenderOptions(GNROptions):
         self.environment = LuxRenderEnvironment()
         self.halttime = 0
         self.haltspp = 1
-        self.luxconsole = self.environment.get_lux_console()
 
 
 class LuxRenderTaskBuilder(RenderingTaskBuilder):
@@ -212,8 +211,7 @@ class LuxTask(RenderingTask):
             self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
             for tr_file in tr_files:
                 tr_file = os.path.normpath(tr_file)
-                _, ext = os.path.splitext(tr_file)
-                if ext == '.flm':
+                if tr_file.upper().endswith('.FLM'):
                     self.collected_file_names[num_start] = tr_file
                     self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
                     self.num_tasks_received += 1
@@ -228,7 +226,7 @@ class LuxTask(RenderingTask):
                                 self.num_tasks_received -= 1
                             else:
                                 logger.info("Subtask " + str(subtask_id) + " successfully verified.")
-                elif ext != '.log':
+                elif not tr_file.upper().endswith('.LOG'):
                     self.subtasks_given[subtask_id]['previewFile'] = tr_file
                     self._update_preview(tr_file, num_start)
         else:

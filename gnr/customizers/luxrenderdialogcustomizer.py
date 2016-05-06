@@ -20,6 +20,7 @@ class LuxRenderDialogCustomizer(RendererCustomizer):
         self._change_halts_values()
 
     def _setup_connections(self):
+        super(LuxRenderDialogCustomizer, self)._setup_connections()
         self.gui.ui.stopBySppRadioButton.toggled.connect(self._change_halts_state)
 
     def _change_halts_values(self):

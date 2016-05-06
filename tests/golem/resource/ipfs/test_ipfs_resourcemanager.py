@@ -73,7 +73,7 @@ class TestResourcesManager(TestDirFixture):
 
     def testNewIpfsClient(self):
         rm = IPFSResourceManager(self.dir_manager)
-        from golem.resource.ipfs.client import IPFSClient
+        from golem.network.ipfs.client import IPFSClient
         self.assertIsInstance(rm.new_ipfs_client(), IPFSClient)
 
     def testInit(self):
@@ -155,13 +155,6 @@ class TestResourcesManager(TestDirFixture):
 
         for elem in rl:
             assert rm.get_resource_path(elem[0], self.task_id) in res_list
-
-    def testId(self):
-        rm = IPFSResourceManager(self.dir_manager)
-        ipfs_id = rm.id()
-
-        self.assertIsInstance(ipfs_id, list)
-        self.assertTrue('PublicKey' in ipfs_id[0])
 
     def testAddResource(self):
         rm = IPFSResourceManager(self.dir_manager)

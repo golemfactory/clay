@@ -21,8 +21,7 @@ class TaskServer(PendingConnectionsServer):
         self.config_desc = config_desc
 
         self.node = node
-        self.task_keeper = TaskHeaderKeeper(client.environments_manager, min_price=config_desc.min_price,
-                                            app_version=config_desc.app_version)
+        self.task_keeper = TaskHeaderKeeper(client.environments_manager, min_price=config_desc.min_price)
         self.task_manager = TaskManager(config_desc.node_name, self.node,
                                         key_id=self.keys_auth.get_key_id(),
                                         root_path=TaskServer.__get_task_manager_root(client.datadir),
@@ -168,6 +167,7 @@ class TaskServer(PendingConnectionsServer):
         pc = self.pending_connections.get(task_session.conn_id)
         if pc:
             pc.status = PenConnStatus.Failure
+            self._remove_pending_sockets(pc)
 
         for tsk in self.task_sessions.keys():
             if self.task_sessions[tsk] == task_session:

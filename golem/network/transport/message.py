@@ -160,9 +160,10 @@ class MessageHello(Message):
     SOLVE_CHALLENGE_STR = u"SOLVE_CHALLENGE"
     CHALLENGE_STR = u"CHALLENGE"
     DIFFICULTY_STR = u"DIFFICULTY"
+    METADATA_STR = u"METADATA"
 
     def __init__(self, port=0, node_name=None, client_key_id=None, node_info=None,
-                 rand_val=0, solve_challenge=False, challenge=None, difficulty=0, proto_id=0, client_ver=0, sig="",
+                 rand_val=0, metadata=None, solve_challenge=False, challenge=None, difficulty=0, proto_id=0, client_ver=0, sig="",
                  timestamp=None, dict_repr=None):
         """
         Create new introduction message
@@ -171,6 +172,7 @@ class MessageHello(Message):
         :param str client_key_id: public key
         :param NodeInfo node_info: information about node
         :param float rand_val: random value that should be signed by other site
+        :param metadata dict_repr: metadata
         :param boolean solve_challenge: should other client solve given challenge
         :param str challenge: challenge to solve
         :param int difficulty: difficulty of a challenge
@@ -192,6 +194,7 @@ class MessageHello(Message):
         self.solve_challenge = solve_challenge
         self.challenge = challenge
         self.difficulty = difficulty
+        self.metadata = metadata
 
         if dict_repr:
             self.proto_id = dict_repr[MessageHello.PROTO_ID_STR]
@@ -204,6 +207,7 @@ class MessageHello(Message):
             self.challenge = dict_repr[MessageHello.CHALLENGE_STR]
             self.solve_challenge = dict_repr[MessageHello.SOLVE_CHALLENGE_STR]
             self.difficulty = dict_repr[MessageHello.DIFFICULTY_STR]
+            self.metadata = dict_repr[MessageHello.METADATA_STR]
 
     def dict_repr(self):
         return {MessageHello.PROTO_ID_STR: self.proto_id,
@@ -215,7 +219,8 @@ class MessageHello(Message):
                 MessageHello.NODE_INFO_STR: self.node_info,
                 MessageHello.SOLVE_CHALLENGE_STR: self.solve_challenge,
                 MessageHello.CHALLENGE_STR: self.challenge,
-                MessageHello.DIFFICULTY_STR: self.difficulty
+                MessageHello.DIFFICULTY_STR: self.difficulty,
+                MessageHello.METADATA_STR: self.metadata
                 }
 
 

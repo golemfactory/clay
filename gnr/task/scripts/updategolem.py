@@ -17,7 +17,7 @@ def update_golem():
             os.mkdir(dst_dir)
         for file_ in files:
             name, ext = os.path.splitext(file_)
-            if ext == '.ini' or name == 'update_golem':
+            if ext.upper() == '.INI' or name == 'update_golem':
                 continue
             src_file = os.path.join(src_dir, file_)
             dst_file = os.path.join(dst_dir, file_)
