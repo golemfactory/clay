@@ -1,15 +1,16 @@
 import unittest
 
-import time
-
+from golem.network.ipfs.client import IPFSAddress
 from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 
 
 class TestIPFSDaemonManager(unittest.TestCase):
 
-    def testId(self):
+    def testStoreInfo(self):
         dm = IPFSDaemonManager()
-        ipfs_id = dm.store_info()
+        dm.store_client_info()
+
+        ipfs_id = dm.node_id
 
         self.assertIsInstance(ipfs_id, basestring)
         assert ipfs_id
@@ -19,7 +20,6 @@ class TestIPFSDaemonManager(unittest.TestCase):
         dm = IPFSDaemonManager()
         dm.remove_bootstrap_node(default_node, async=False)
         nodes = dm.list_bootstrap_nodes()
-        assert nodes
 
         dm.add_bootstrap_node(default_node, async=False)
         assert len(dm.list_bootstrap_nodes()) > len(nodes)
@@ -27,48 +27,51 @@ class TestIPFSDaemonManager(unittest.TestCase):
         dm.remove_bootstrap_node(default_node, async=False)
         assert len(dm.list_bootstrap_nodes()) == len(nodes)
 
-    def testBuildNodeAddress(self):
-        expected_ipv4 = '/ip4/127.0.0.1/tcp/4001/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB'
-        expected_ipv6 = '/ip6/::1/tcp/14001/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB'
-
-        ipv4 = IPFSDaemonManager.build_node_address('127.0.0.1', 'QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB')
-        ipv6 = IPFSDaemonManager.build_node_address('::1', 'QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB',
-                                                    port=14001)
-
-        assert ipv4 == expected_ipv4
-        assert ipv6 == expected_ipv6
-
     def testMetadata(self):
         dm = IPFSDaemonManager()
+        dm.store_client_info()
         metadata = dm.get_metadata()
 
+        assert dm.addresses is not None
         assert dm.get_metadata() is not None
-        assert len(metadata['ipfs']) >= 3
-        assert metadata['ipfs']['id'] == dm.node_id
+        assert len(metadata['ipfs']) >= 2
+
+        for ipfs_addr in dm.addresses:
+            if IPFSAddress.allowed_ip_address(ipfs_addr.ip_address):
+                assert metadata['ipfs']['addresses']
 
     def testInterpretMetadata(self):
         dm = IPFSDaemonManager()
-        dm.store_info()
+        dm.store_client_info()
         meta = dm.get_metadata()
+        node_id = dm.addresses[0].node_id
 
-        ip_1 = '127.0.0.1'
-        port_1 = 40102
+        ipv4 = '127.0.0.1'
+        ipv6 = '2001:0db8:85a3:0000:0000:8a2e:0370:7334'
+        port = 40102
 
-        ip_2 = '1.2.3.4'
-        port_2 = 40102
+        meta['ipfs']['addresses'] = [
+            str(IPFSAddress(ipv4, node_id)),
+            str(IPFSAddress('::1', node_id))
+        ]
+        addrs = [(ipv4, port), (ipv6, port)]
 
-        addrs = [(ip_1, port_1)]
+        ip4_node = '/ip4/{}/tcp/{}/ipfs/{}'.format(ipv4, 4001, node_id)
+        ip6_node = '/ip6/{}/tcp/{}/ipfs/{}'.format(ipv6, 4001, node_id)
 
-        default_node = '/ip4/{}/tcp/{}/ipfs/{}'.format(ip_1, 4001, meta['ipfs']['id'])
-        dm.remove_bootstrap_node(default_node, async=False)
+        dm.remove_bootstrap_node(ip4_node, async=False)
+        dm.remove_bootstrap_node(ip6_node, async=False)
 
         nodes = dm.list_bootstrap_nodes()
-        assert nodes
 
-        assert not dm.interpret_metadata(meta, [(ip_2, port_2)], addrs, async=False)
-        assert dm.interpret_metadata(meta, [(ip_1, port_1)], addrs, async=False)
-        assert len(dm.list_bootstrap_nodes()) > len(nodes)
+        assert not dm.interpret_metadata(meta, [('1.2.3.4', port)], addrs, async=False)
 
-        dm.remove_bootstrap_node(default_node, async=False)
+        assert dm.interpret_metadata(meta, [(ipv4, port)], addrs, async=False)
+        assert len(dm.list_bootstrap_nodes()) == len(nodes) + 1
 
+        assert dm.interpret_metadata(meta, [(ipv6, port)], addrs, async=False)
+        assert len(dm.list_bootstrap_nodes()) == len(nodes) + 2
+
+        dm.remove_bootstrap_node(ip4_node, async=False)
+        dm.remove_bootstrap_node(ip6_node, async=False)
         assert len(dm.list_bootstrap_nodes()) == len(nodes)

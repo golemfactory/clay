@@ -1,8 +1,8 @@
-from mock import Mock
 from unittest import TestCase
 
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
+from mock import Mock
 
 from gnr.application import GNRGui
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer

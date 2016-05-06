@@ -1,5 +1,6 @@
-from mock import Mock
 from unittest import TestCase
+
+from mock import Mock
 
 from gnr.application import GNRGui
 from gnr.customizers.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
