@@ -5,7 +5,7 @@ from enum import Enum
 from os import path
 
 from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
-                    DateTimeField, TextField, CompositeKey)
+                    DateTimeField, TextField, CompositeKey, BooleanField)
 
 
 log = logging.getLogger('golem.db')
@@ -171,11 +171,16 @@ class NeighbourLocRank(BaseModel):
         database = db
         primary_key = CompositeKey('node_id', 'about_node_id')
 
+
 class KnownHosts(BaseModel):
     ip_address = CharField()
     port = IntegerField()
     last_connected = DateTimeField(default=datetime.datetime.now)
+    is_seed = BooleanField(default=False)
     
     class Meta:
         database = db
-        primary_key = CompositeKey('ip_address', 'port')
+        indexes = (
+            # a unique index instead of pkey (let 'id' be the pkey)
+            (('ip_address', 'port'), True),
+        )

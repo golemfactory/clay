@@ -1,19 +1,17 @@
-import time
-import datetime
 import logging
 import random
-import peewee
+import time
+
 from ipaddress import AddressValueError
 
+from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
+from golem.model import KnownHosts, MAX_STORED_HOSTS, db
+from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, SafeProtocol
 from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer, PenConnStatus
-from golem.network.p2p.peersession import PeerSession
-from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
 from golem.ranking.gossipkeeper import GossipKeeper
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
-from golem.model import KnownHosts, MAX_STORED_HOSTS
-
 from peerkeeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
@@ -72,29 +70,35 @@ class P2PService(PendingConnectionsServer):
 
         self.connect_to_network()
 
+        try:
+            with db.transaction():
+                hosts = KnownHosts.select()
+        except Exception as err:
+            logger.error("Couldn't fetch hosts: {}".format(err))
+            hosts = []
+
+        logger.debug("Known Hosts:")
+        for host in hosts:
+            logger.debug("{}".format(host.__dict__))
+
     def new_connection(self, session):
         session.start()
 
     def connect_to_network(self):
         """ Start listening on the port from configuration and try to connect to the seed node """
         self.start_accepting()
+
         try:
-            hosts = KnownHosts.select() .order_by(KnownHosts.last_connected)
-            
-            if hosts.count() > MAX_STORED_HOSTS:
-                logger.debug("Too many hosts in db. Trying to delete the oldest one...")
-                try:
-                    to_delete = []
-                    for i in range(0, hosts.count() - MAX_STORED_HOSTS):
-                        to_delete.append(KnownHosts.select().order_by(KnownHosts.last_connected)[i])
-                    for to_del in to_delete:
-                        to_del.delete_instance()
-                except Exception as err:
-                    logger.warning("Couldn't delete host(s) from database: {}".format(err))
-            for seed in KnownHosts.select():
-                logger.debug("Trying to connect with " + str(seed.ip_address) + ":" + str(seed.port))
-                socket_address = SocketAddress(seed.ip_address, seed.port)
+            self.__remove_redundant_hosts_from_db()
+
+            with db.transaction():
+                hosts = KnownHosts.select()
+
+            for host in hosts:
+                logger.debug("Trying to connect with " + str(host.ip_address) + ":" + str(host.port))
+                socket_address = SocketAddress(host.ip_address, host.port)
                 self.connect(socket_address)
+
         except Exception as err:
             logger.error("Something went wrong: {}".format(err))
 
@@ -102,6 +106,38 @@ class P2PService(PendingConnectionsServer):
         connect_info = TCPConnectInfo([socket_address], self.__connection_established,
                                       P2PService.__connection_failure)
         self.network.connect(connect_info)
+
+    def add_known_peer(self, node, ip_address, port):
+        logger.debug("Add known peer")
+        is_seed = node.is_super_node() if node else False
+
+        try:
+            with db.transaction():
+                KnownHosts.delete().where(
+                    (KnownHosts.ip_address == ip_address) &
+                    (KnownHosts.port == port)
+                ).execute()
+                KnownHosts.insert(ip_address=ip_address, port=port,
+                                  last_connected=time.time(),
+                                  is_seed=is_seed).execute()
+        except Exception as err:
+            logger.error("Couldn't upsert host {}:{} : {}".format(ip_address, port, err))
+
+        try:
+            self.__remove_redundant_hosts_from_db()
+        except Exception as err:
+            logger.warning("Couldn't delete redundant hosts from database: {}".format(err))
+
+        try:
+            with db.transaction():
+                hosts = KnownHosts.select()
+        except Exception as err:
+            logger.error("Couldn't fetch hosts: {}".format(err))
+            hosts = []
+
+        logger.debug("Known Hosts:")
+        for host in hosts:
+            logger.debug(str(host.ip_address) + ":" + str(host.port))
 
     def set_task_server(self, task_server):
         """ Set task server
@@ -706,30 +742,15 @@ class P2PService(PendingConnectionsServer):
                 p.send_get_tasks()
 
     def __connection_established(self, session, conn_id=None):
-        ip_address = session.conn.transport.getPeer().host
-        port = session.conn.transport.getPeer().port
-        try:
-            logger.debug("Trying to find the host in known hosts")
-            host = KnownHosts.get(ip_address=ip_address, port=port)
-            host.delete_instance()
-        except peewee.DoesNotExist:
-            pass
-        host = KnownHosts.create(ip_address=ip_address, port=port)
-            
-        if KnownHosts.select().count() > MAX_STORED_HOSTS:
-            logger.debug("Too many hosts in db. Trying to delete the oldest one...")
-            try:
-                oldest = KnownHosts.select().order_by(KnownHosts.last_connected)[0]
-                oldest.delete_instance()
-            except Exception as err:
-                logger.warning("Couldn't delete host from database: {}".format(err))
+        peer_conn = session.conn.transport.getPeer()
+        ip_address = peer_conn.host
+        port = peer_conn.port
 
-        logger.debug("Known Hosts:")
-        for host in KnownHosts.select():
-            logger.debug(str(host.ip_address) + ":" + str(host.port))
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
-        logger.debug("Connection to peer established. {}: {}, conn_id {}".format(ip_address, port, conn_id))
+
+        logger.debug("Connection to peer established. {}: {}, conn_id {}"
+                     .format(ip_address, port, conn_id))
 
     @staticmethod
     def __connection_failure(conn_id=None):
@@ -775,6 +796,17 @@ class P2PService(PendingConnectionsServer):
         for peer_id in self.peer_keeper.sessions_to_end:
             self.remove_peer_by_id(peer_id)
         self.peer_keeper.sessions_to_end = []
+
+    @staticmethod
+    def __remove_redundant_hosts_from_db():
+        with db.transaction():
+            to_delete = KnownHosts.select() \
+                .order_by(KnownHosts.last_connected.desc()) \
+                .offset(MAX_STORED_HOSTS)
+            KnownHosts.delete() \
+                .where(KnownHosts.id << to_delete) \
+                .execute()
+
 
 class P2PConnTypes(object):
     """ P2P Connection Types that allows to choose right reaction  """
