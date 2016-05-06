@@ -1,21 +1,19 @@
-import jsonpickle
 import logging
 import shutil
 from os import makedirs, path, remove
 
+import jsonpickle
 from mock import Mock
 
 import gnr.node
-
+from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.task.tasktester import TaskTester
 from golem.core.common import get_golem_path
 from golem.model import db
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
-from gnr.task.luxrendertask import LuxRenderTaskBuilder
-from golem.tools.testdirfixture import TestDirFixture
-
+from golem.testutils import TempDirFixture
 from test_docker_image import DockerTestCase
 
 # Make peewee logging less verbose
@@ -24,7 +22,7 @@ logging.getLogger("peewee").setLevel("INFO")
 
 # TODO: extract code common to this class and TestDockerBlenderTask to a superclass
 # TODO: test luxrender tasks with .flm file
-class TestDockerLuxrenderTask(TestDirFixture, DockerTestCase):
+class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
     TASK_FILE = "docker-luxrender-test-task.json"
 
