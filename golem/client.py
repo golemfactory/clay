@@ -156,7 +156,7 @@ class Client:
         self.resource_server = IPFSResourceServer(self.task_server.task_computer.dir_manager,
                                                   self.keys_auth, self)
         self.ipfs_manager = IPFSDaemonManager()
-        self.ipfs_manager.store_info()
+        self.ipfs_manager.store_client_info()
 
         logger.info("Starting resource server...")
         self.resource_server.start_accepting()
@@ -433,7 +433,7 @@ class Client:
         return metadata
 
     def interpret_metadata(self, metadata, address, port, node_info):
-        if node_info and metadata:
+        if self.config_desc and node_info and metadata:
             seed_addresses = [
                 (self.config_desc.seed_host, self.config_desc.seed_port)
             ]
