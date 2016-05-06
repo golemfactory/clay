@@ -181,6 +181,5 @@ class KnownHosts(BaseModel):
     class Meta:
         database = db
         indexes = (
-            # a unique index instead of pkey (let 'id' be the pkey)
-            (('ip_address', 'port'), True),
+            (('ip_address', 'port'), True),  # unique index
         )

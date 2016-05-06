@@ -435,14 +435,11 @@ class Client:
 
     def interpret_metadata(self, metadata, address, port, node_info):
         if node_info and metadata:
-            seed_addresses = [
-                (self.config_desc.seed_host, self.config_desc.seed_port)
-            ]
+            seed_addresses = self.p2pservice.get_seeds()
             node_addresses = [
                 (address, port),
                 (node_info.pub_addr, node_info.pub_port)
             ]
-
             self.ipfs_manager.interpret_metadata(metadata,
                                                  seed_addresses,
                                                  node_addresses)

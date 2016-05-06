@@ -1,10 +1,12 @@
 import os
+
 from mock import patch, Mock, MagicMock
 
 from golem.client import create_client, Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.tools.testwithdatabase import TestWithDatabase
+from golem.network.p2p.p2pservice import P2PService
 from golem.tools.testdirfixture import TestDirFixture
+from golem.tools.testwithdatabase import TestWithDatabase
 
 
 class TestCreateClient(TestDirFixture):
@@ -99,6 +101,7 @@ class TestClient(TestWithDatabase):
     def test_interpret_metadata(self):
         from golem.network.ipfs.daemon_manager import IPFSDaemonManager
         c = Client(ClientConfigDescriptor(), datadir=self.path)
+        c.p2pservice = P2PService(MagicMock(), c.config_desc, c.keys_auth)
         c.ipfs_manager = IPFSDaemonManager()
         meta = c.get_metadata()
         assert meta and meta['ipfs']

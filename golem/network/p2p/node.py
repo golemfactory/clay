@@ -1,4 +1,5 @@
 import logging
+
 from golem.core.hostaddress import get_host_address, get_external_address, get_host_addresses
 
 logger = logging.getLogger(__name__)
