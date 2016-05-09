@@ -66,9 +66,11 @@ class DockerMachineManager(DockerConfigManager):
         self.wait_for_completion()
 
     def wait_for_completion(self):
+        logger.debug("DockerManager: waiting for previous reconfiguration completion")
         for t in self._threads:
             try:
-                t.join()
+                if t.isAlive():
+                    t.join()
             except:
                 pass
 
