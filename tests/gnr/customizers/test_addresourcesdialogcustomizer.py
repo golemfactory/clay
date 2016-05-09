@@ -1,7 +1,6 @@
-from mock import Mock
-
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
+from mock import Mock
 
 from gnr.application import GNRGui
 from gnr.customizers.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
@@ -33,5 +32,6 @@ class TestAddResourcesDialogCustomizer(TestDirFixture):
             model.setData(model.index(f), Qt.Checked, Qt.CheckStateRole)
         QTest.mouseClick(ardc.gui.ui.okButton, Qt.LeftButton)
         logic.customizer.gui.ui.resourceFilesLabel.setText.assert_called_with("11")
+
         gnrgui.app.exit(0)
         gnrgui.app.deleteLater()
