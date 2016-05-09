@@ -28,6 +28,7 @@ def check_subtask_id_wrapper(func):
 
 class GNRTaskBuilder(TaskBuilder):
     def __init__(self, node_name, task_definition, root_path):
+        super(GNRTaskBuilder, self).__init__()
         self.task_definition = task_definition
         self.node_name = node_name
         self.root_path = root_path
@@ -86,7 +87,8 @@ class GNRTask(Task):
 
         self.task_resources = set()
 
-        self.total_tasks = 0
+        self.num_subtasks = 0
+        self.redundancy = 1
         self.last_task = 0
 
         self.num_tasks_received = 0
@@ -103,6 +105,10 @@ class GNRTask(Task):
         self.results = {}  # for each subtask keep information about files containing results
 
         self.res_files = {}
+
+    @property
+    def total_tasks(self):
+        return self.num_subtasks * self.redundancy
 
     def is_docker_task(self):
         return self.header.docker_images is not None

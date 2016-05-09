@@ -57,7 +57,7 @@ class TestBlenderTaskDivision(TempDirFixture):
                                     main_scene_dir=self.tempdir,
                                     main_scene_file="example.blend",
                                     main_program_file=program_file,
-                                    total_tasks=7,
+                                    num_subtasks=7,
                                     res_x=2,
                                     res_y=300,
                                     outfilebasename="example_out",
@@ -75,6 +75,9 @@ class TestBlenderTaskDivision(TempDirFixture):
     def test_blender_task(self):
         self.assertIsInstance(self.bt, BlenderRenderTask)
         self.assertTrue(self.bt.main_scene_file == "example.blend")
+
+    def test_total_tasks(self):
+        assert self.bt.total_tasks == 7
 
     def test_get_min_max_y(self):
         self.assertTrue(self.bt.res_x == 2)

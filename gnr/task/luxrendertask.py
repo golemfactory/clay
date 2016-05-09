@@ -111,7 +111,7 @@ class LuxTask(RenderingTask):
                  main_scene_dir,
                  main_scene_file,
                  main_program_file,
-                 total_tasks,
+                 num_subtasks,
                  res_x,
                  res_y,
                  outfilebasename,
@@ -133,7 +133,7 @@ class LuxTask(RenderingTask):
         RenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                LuxRenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                main_program_file, task_resources, main_scene_dir, main_scene_file,
-                               total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
+                               num_subtasks, res_x, res_y, outfilebasename, output_file, output_format,
                                root_path, estimated_memory, max_price, docker_images)
 
         self.tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)

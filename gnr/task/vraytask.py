@@ -62,7 +62,7 @@ class VRayTaskBuilder(FrameRenderingTaskBuilder):
                              main_scene_dir,
                              self.task_definition.main_scene_file,
                              self.task_definition.main_program_file,
-                             self._calculate_total(VRayDefaults(), self.task_definition),
+                             self._calculate_total(VrayDefaults(), self.task_definition),
                              self.task_definition.resolution[0],
                              self.task_definition.resolution[1],
                              os.path.splitext(os.path.basename(self.task_definition.output_file))[0],
@@ -92,7 +92,7 @@ class VRayTask(FrameRenderingTask):
                  main_scene_dir,
                  main_scene_file,
                  main_program_file,
-                 total_tasks,
+                 num_subtasks,
                  res_x,
                  res_y,
                  outfilebasename,
@@ -113,7 +113,7 @@ class VRayTask(FrameRenderingTask):
         FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                     VRayEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                     main_program_file, task_resources, main_scene_dir, main_scene_file,
-                                    total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
+                                    num_subtasks, res_x, res_y, outfilebasename, output_file, output_format,
                                     root_path, estimated_memory, use_frames, frames)
 
         self.rt_engine = rt_engine

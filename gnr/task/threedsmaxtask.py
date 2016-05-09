@@ -102,7 +102,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
                  main_scene_dir,
                  main_scene_file,
                  main_program_file,
-                 total_tasks,
+                 num_subtasks,
                  res_x,
                  res_y,
                  outfilebasename,
@@ -125,7 +125,7 @@ class ThreeDSMaxTask(FrameRenderingTask):
         FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port,
                                     ThreeDSMaxEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                     main_program_file, task_resources, main_scene_dir, main_scene_file,
-                                    total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
+                                    num_subtasks, res_x, res_y, outfilebasename, output_file, output_format,
                                     root_path, estimated_memory, use_frames, frames, max_price)
 
         self.preset_file = preset_file

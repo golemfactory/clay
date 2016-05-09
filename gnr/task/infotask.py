@@ -65,7 +65,7 @@ class InfoTask(GNRTask):
         GNRTask.__init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
                          ttl, subtask_ttl, resource_size, estimated_memory, max_price)
 
-        self.total_tasks = iterations
+        self.num_subtasks = iterations
 
         self.nodes_manager_client = NodesManagerClient(nodes_manager_address, int(nodes_manager_port))
         self.nodes_manager_client.start()

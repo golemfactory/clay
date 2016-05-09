@@ -18,6 +18,20 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         self.assertIsInstance(task, GNRTask)
         self.assertEqual(task.header.max_price, 100)
 
+        assert task.total_tasks == 0
+        task.num_subtasks = 11
+        assert task.total_tasks == 11
+        task.redundancy = 2
+        assert task.total_tasks == 22
+        task.num_subtasks = 7
+        assert task.total_tasks == 14
+
+        assert task.needs_computation()
+        task.last_task = 14
+        assert not task.needs_computation()
+        task.num_subtasks = 0
+        task.redundancy = 1
+
         subtask_id = "xxyyzz"
         with self.assertLogs(logger, level=0) as l:
             self.assertEqual(task.get_stdout(subtask_id), False)

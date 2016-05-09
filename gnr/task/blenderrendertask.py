@@ -156,7 +156,7 @@ class BlenderRenderTask(FrameRenderingTask):
                  main_scene_dir,
                  main_scene_file,
                  main_program_file,
-                 total_tasks,
+                 num_subtasks,
                  res_x,
                  res_y,
                  outfilebasename,
@@ -178,7 +178,7 @@ class BlenderRenderTask(FrameRenderingTask):
         FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                     BlenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                     main_program_file, task_resources, main_scene_dir, main_scene_file,
-                                    total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
+                                    num_subtasks, res_x, res_y, outfilebasename, output_file, output_format,
                                     root_path, estimated_memory, use_frames, frames, max_price, docker_images)
 
         crop_task = find_task_script("blendercrop.py")
@@ -204,7 +204,7 @@ class BlenderRenderTask(FrameRenderingTask):
         
         for i in range(1, self.total_tasks):
             _, expected_offset = self._get_min_max_y(i)
-            expected_offset =  self.res_y - int(expected_offset * float(self.res_y))
+            expected_offset = self.res_y - int(expected_offset * float(self.res_y))
             expected_offsets[i] = expected_offset
         
         self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
