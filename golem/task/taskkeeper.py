@@ -1,7 +1,11 @@
 import logging
 import random
 import time
-from taskbase import TaskHeader, ComputeTaskDef
+from math import ceil
+
+from golem.core.variables import APP_VERSION
+
+from .taskbase import TaskHeader, ComputeTaskDef
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +72,9 @@ class CompTaskKeeper(object):
 
     @react_to_key_error
     def get_value(self, task_id, computing_time):
-        return self.active_tasks[task_id].price * computing_time
+        price = self.active_tasks[task_id].price
+        assert type(price) in (int, long)
+        return int(ceil(price * computing_time))
 
     @react_to_key_error
     def remove_task(self, task_id):
@@ -90,7 +96,7 @@ class TaskHeaderKeeper(object):
     to compute or will pass information to other nodes.
     """
 
-    def __init__(self, environments_manager, min_price=0.0, app_version=1.0, remove_task_timeout=240.0,
+    def __init__(self, environments_manager, min_price=0.0, app_version=APP_VERSION, remove_task_timeout=240.0,
                  verification_timeout=3600):
         self.task_headers = {}  # all computing tasks that this node now about
         self.supported_tasks = []  # ids of tasks that this node may try to compute
@@ -234,4 +240,3 @@ class TaskHeaderKeeper(object):
 
     def request_failure(self, task_id):
         self.remove_task_header(task_id)
-

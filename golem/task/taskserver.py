@@ -9,7 +9,7 @@ from taskkeeper import TaskHeaderKeeper
 from golem.ranking.ranking import RankingStats
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcpserver import PendingConnectionsServer, PendingConnection, PenConnStatus
+from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +21,10 @@ class TaskServer(PendingConnectionsServer):
         self.config_desc = config_desc
 
         self.node = node
-        self.task_keeper = TaskHeaderKeeper(client.environments_manager, min_price=config_desc.min_price,
-                                            app_version=config_desc.app_version)
+        self.task_keeper = TaskHeaderKeeper(client.environments_manager, min_price=config_desc.min_price)
         self.task_manager = TaskManager(config_desc.node_name, self.node,
                                         key_id=self.keys_auth.get_key_id(),
-                                        root_path=TaskServer.__get_task_manager_root(config_desc),
+                                        root_path=TaskServer.__get_task_manager_root(client.datadir),
                                         use_distributed_resources=config_desc.use_distributed_resource_management)
         self.task_computer = TaskComputer(config_desc.node_name, self)
         self.task_sessions = {}
@@ -110,7 +109,9 @@ class TaskServer(PendingConnectionsServer):
 
         if subtask_id not in self.results_to_send:
             value = self.task_manager.comp_task_keeper.get_value(task_id, computing_time)
-            self.client.add_to_waiting_payments(task_id, owner_key_id, value)
+            if self.client.transaction_system:
+                self.client.transaction_system.add_to_waiting_payments(
+                    task_id, owner_key_id, value)
             # TODO Add computing time
             self.results_to_send[subtask_id] = WaitingTaskResult(task_id, subtask_id, result['data'],
                                                                  result['result_type'], computing_time, 0.0, 0.0,
@@ -166,6 +167,7 @@ class TaskServer(PendingConnectionsServer):
         pc = self.pending_connections.get(task_session.conn_id)
         if pc:
             pc.status = PenConnStatus.Failure
+            self._remove_pending_sockets(pc)
 
         for tsk in self.task_sessions.keys():
             if self.task_sessions[tsk] == task_session:
@@ -225,16 +227,16 @@ class TaskServer(PendingConnectionsServer):
         PendingConnectionsServer.change_config(self, config_desc)
         self.config_desc = config_desc
         self.last_message_time_threshold = config_desc.task_session_timeout
-        self.task_manager.change_config(self.__get_task_manager_root(config_desc),
+        self.task_manager.change_config(self.__get_task_manager_root(self.client.datadir),
                                         config_desc.use_distributed_resource_management)
         self.task_computer.change_config()
         self.task_keeper.change_config(config_desc)
 
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
-        self.task_manager.change_timeouts(task_id, full_task_timeout, subtask_timeout, min_subtask_time)
+    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
+        self.task_manager.change_timeouts(task_id, full_task_timeout, subtask_timeout)
 
     def get_task_computer_root(self):
-        return os.path.join(self.config_desc.root_path, "ComputerRes")
+        return os.path.join(self.client.datadir, "ComputerRes")
 
     def subtask_rejected(self, subtask_id):
         logger.debug("Subtask {} result rejected".format(subtask_id))
@@ -271,7 +273,7 @@ class TaskServer(PendingConnectionsServer):
     def accept_result(self, subtask_id, account_info):
         task_id = self.task_manager.get_task_id(subtask_id)
         value = self.task_manager.get_value(subtask_id)
-        if value:
+        if value and self.client.transaction_system:
             self.client.transaction_system.add_payment_info(task_id, subtask_id, value, account_info)
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
         self.client.increase_trust(account_info.key_id, RankingStats.computed, mod)
@@ -285,14 +287,17 @@ class TaskServer(PendingConnectionsServer):
         self.client.decrease_trust(node_id, RankingStats.payment, self.max_trust)
 
     def pay_for_task(self, task_id, payments):
+        if not self.client.transaction_system:
+            return
+
         all_payments = {eth_account: desc.value for eth_account, desc in payments.items()}
         try:
-            self.client.pay_for_task(task_id, all_payments)
-            # TODO Maybe remove this print?
+            self.client.transaction_system.pay_for_task(task_id, all_payments)
+            # TODO: Maybe remove this print?
             for eth_account, v in all_payments.iteritems():
                 print "Paying {} to {}".format(v, eth_account)
         except Exception as err:
-            #FIXME Dealing with payments errors should be much more advance
+            # FIXME: Dealing with payments errors should be much more advance
             logger.error("Can't pay for task: {}".format(err))
 
     def reject_result(self, subtask_id, account_info):
@@ -454,14 +459,17 @@ class TaskServer(PendingConnectionsServer):
         self.task_sessions[waiting_task_result.subtask_id] = session
 
         session.send_hello()
+        payment_addr = (self.client.transaction_system.get_payment_address()
+                        if self.client.transaction_system else None)
         session.send_report_computed_task(waiting_task_result, self.node.prv_addr, self.cur_port,
-                                          self.client.transaction_system.get_payment_address(),
+                                          payment_addr,
                                           self.node)
 
     def __connection_for_task_result_failure(self, conn_id, key_id, waiting_task_result):
 
-        response = lambda session: self.__connection_for_task_result_established(session, conn_id, key_id,
-                                                                                 waiting_task_result)
+        def response(session):
+            self.__connection_for_task_result_established(
+                session, conn_id, key_id, waiting_task_result)
 
         if key_id in self.response_list:
             self.response_list[key_id].append(response)
@@ -712,8 +720,8 @@ class TaskServer(PendingConnectionsServer):
     # CONFIGURATION METHODS
     #############################
     @staticmethod
-    def __get_task_manager_root(config_desc):
-        return os.path.join(config_desc.root_path, "res")
+    def __get_task_manager_root(datadir):
+        return os.path.join(datadir, "res")
 
     def _set_conn_established(self):
         self.conn_established_for_type.update({

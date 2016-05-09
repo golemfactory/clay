@@ -25,7 +25,6 @@ def build_pbrt_task_type():
     options.output_format = renderer.defaults.output_format
     options.main_program_file = renderer.defaults.main_program_file
     options.full_task_timeout = renderer.defaults.full_task_timeout
-    options.min_subtask_time = renderer.defaults.min_subtask_time
     options.min_subtasks = renderer.defaults.min_subtasks
     options.max_subtasks = renderer.defaults.max_subtasks
     options.default_subtasks = renderer.defaults.default_subtasks

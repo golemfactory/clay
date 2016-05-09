@@ -106,7 +106,7 @@ def exec_code(src_code, scope_manager):
         exec src_code in scope
     except Exception as err:
         scope_manager["error"] = str(err)
-    scope_manager["output"] = scope["output"]
+    scope_manager["output"] = scope.get("output")
 
 
 class PythonTestVM(GolemVM):

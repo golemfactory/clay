@@ -48,7 +48,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                      success, error, async=True):
 
         filename = str(uuid.uuid4())
-        path = self.resource_manager.get_temporary_path(filename, task_id)
+        path = self.resource_manager.get_resource_path(filename, task_id)
 
         def success_wrapper(*args, **kwargs):
             extracted_pkg = self.extract(path, key_or_secret)

@@ -1,21 +1,17 @@
-import logging
+from golem.model import Payment
 
-from paymentskeeper import PaymentInfo, PaymentsKeeper
+from paymentskeeper import PaymentsKeeper
 from incomeskeeper import IncomesKeeper
-
-logger = logging.getLogger(__name__)
 
 
 class TransactionSystem(object):
     """ Transaction system. Keeps information about budget, expected payments, etc. """
 
-    def __init__(self, node_id, payments_keeper_class=PaymentsKeeper, incomes_keeper_class=IncomesKeeper):
-        """ Create new transaction system instance for node with given id
-        :param node_id: id of a node that has this transaction system
+    def __init__(self, payments_keeper_class=PaymentsKeeper, incomes_keeper_class=IncomesKeeper):
+        """ Create new transaction system instance.
         :param payments_keeper_class: default PaymentsKeeper, payment keeper class, an instance of this class
         while be used as a payment keeper
         """
-        self.node_id = node_id
         self.payments_keeper = payments_keeper_class()  # Keeps information about payments to send
         self.incomes_keeper = incomes_keeper_class()  # Keeps information about received payments
         self.budget = 10000  # TODO Add method that set proper budget value
@@ -29,14 +25,16 @@ class TransactionSystem(object):
         self.incomes_keeper.get_income(addr_info, value)
 
     def add_payment_info(self, task_id, subtask_id, value, account_info):
-        """ Add to payment keeper information about new payment for subtask
-        :param str task_id: id of a task that this payment is apply to
-        :param str subtask_id: if of a subtask that this payment is apply to (node finished computation for that subtask)
-        :param int value: valuation of a given subtask
-        :param AccountInfo account_info: billing account for a node that has computed a task
+        """ Add to payment keeper information about new payment for subtask.
+        :param str task_id:    ID if a task the payment is related to.
+        :param str subtask_id: the id of the compleated
+                               subtask this payment is for.
+        :param int value:      Aggreed value of the computed subtask.
+        :param AccountInfo account_info: Billing account.
         """
-        payment_info = PaymentInfo(task_id, subtask_id, value, account_info)
-        self.payments_keeper.finished_subtasks(payment_info)
+        payee = account_info.eth_account.address
+        assert len(payee) == 20
+        return Payment.create(subtask=subtask_id, payee=payee, value=value)
 
     def get_payments_list(self):
         """ Return list of all planned and made payments
@@ -52,9 +50,6 @@ class TransactionSystem(object):
 
     def add_to_waiting_payments(self, task_id, node_id, value):
         return self.incomes_keeper.add_waiting_payment(task_id, node_id, expected_value=value)
-
-    def add_to_timeouted_payments(self, task_id):
-        return self.incomes_keeper.add_timeouted_payment(task_id)
 
     def pay_for_task(self, task_id, payments):
         """ Pay for task using specific system. This method should be implemented in derived classes

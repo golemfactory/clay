@@ -1,14 +1,13 @@
 import os
 import time
-
 from mock import Mock
 
+from gnr.application import GNRGui
+from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from gnr.gnrapplicationlogic import GNRApplicationLogic
+from gnr.ui.appmainwindow import AppMainWindow
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.tools.testdirfixture import TestDirFixture
-from gnr.application import GNRGui
-from gnr.customizers.renderingadmmainwindowcustomizer import RenderingAdmMainWindowCustomizer
-from gnr.gnrapplicationlogic import GNRApplicationLogic
-from gnr.ui.administrationmainwindow import AdministrationMainWindow
 
 
 class TTask(Task):
@@ -16,6 +15,9 @@ class TTask(Task):
         Task.__init__(self, Mock(), Mock())
         self.src_code = ""
         self.extra_data = {}
+        self.test_finished = False
+        self.results = None
+        self.tmp_dir = None
 
     def query_extra_data_for_test_task(self):
         ctd = ComputeTaskDef()
@@ -26,6 +28,11 @@ class TTask(Task):
         ctd.extra_data = self.extra_data
         ctd.short_description = ""
         return ctd
+
+    def after_test(self, results, tmp_dir):
+        self.test_finished = True
+        self.results = results
+        self.tmp_dir = tmp_dir
 
 
 class TTaskBuilder(TaskBuilder):
@@ -54,9 +61,9 @@ class TestGNRApplicationLogic(TestDirFixture):
     def test_run_test_task(self):
         logic = GNRApplicationLogic()
         logic.client = Mock()
-        logic.client.get_root_path.return_value = self.path
-        gnrgui = GNRGui(Mock(), AdministrationMainWindow)
-        logic.customizer = RenderingAdmMainWindowCustomizer(gnrgui.main_window, logic)
+        gnrgui = GNRGui(Mock(), AppMainWindow)
+        logic.client.datadir = self.path
+        logic.customizer = RenderingMainWindowCustomizer(gnrgui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         ts = Mock()
         files = self.additional_dir_content([1])
@@ -80,4 +87,15 @@ class TestGNRApplicationLogic(TestDirFixture):
         time.sleep(0.5)
         success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
         self.assertEqual(success, False)
+
+        prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
+        logic.task_settings_changed()
+        assert logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count > prev_call_count
+
+        logic.tasks["xyz"] = ts
+        logic.clone_task("xyz")
+
+        assert logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0] == ts.definition
+
+        gnrgui.app.exit(0)
         gnrgui.app.deleteLater()

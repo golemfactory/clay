@@ -4,7 +4,7 @@
     "py/object":"gnr.task.blenderrendertask.BlenderRendererOptions",
     "use_frames":false,
     "environment":{
-      "py/object":"gnr.docker_environments.BlenderEnvironment",
+      "py/object":"gnr.renderingenvironment.BlenderEnvironment",
       "accept_tasks":false,
       "docker_images":[
         {
@@ -66,7 +66,6 @@
   "max_price": 10.23,
   "renderer":"Blender",
   "main_program_file":"$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py",
-  "min_subtask_time":60,
   "options":{
     "py/type":"gnr.gnrtaskstate.GNROptions"
   },

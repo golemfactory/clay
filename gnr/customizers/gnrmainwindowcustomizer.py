@@ -1,23 +1,25 @@
 import logging
 import os
 import cPickle
-import appdirs
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
-from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, StatusWindow, \
-                          AboutWindow, ConfigurationDialog, EnvironmentsDialog, IdentityDialog, NewTaskDialog
+
+from golem.core.variables import APP_NAME, APP_VERSION
+from golem.task.taskstate import TaskStatus
+from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
+                          EnvironmentsDialog, IdentityDialog
+
 from gnr.ui.tasktableelem import TaskTableElem
 
 from gnr.customizers.customizer import Customizer
+from gnr.customizers.common import get_save_dir
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
 from gnr.customizers.taskcontexmenucustomizer import TaskContextMenuCustomizer
 from gnr.customizers.taskdetailsdialogcustomizer import TaskDetailsDialogCustomizer
 from gnr.customizers.subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
 from gnr.customizers.changetaskdialogcustomizer import ChangeTaskDialogCustomizer
-from gnr.customizers.statuswindowcustomizer import StatusWindowCustomizer
-from gnr.customizers.aboutwindowcustomizer import AboutWindowCustomizer
 from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer
 from gnr.customizers.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
 from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer
@@ -33,10 +35,25 @@ class GNRMainWindowCustomizer(Customizer):
         self.task_details_dialog_customizer = None
         Customizer.__init__(self, gui, logic)
         self._set_error_label()
+        self.gui.ui.listWidget.setCurrentItem(self.gui.ui.listWidget.item(1))
 
-    def set_options(self, cfg_desc):
-        self.gui.ui.appVer.setText(u"{} - {}".format(cfg_desc.app_name, cfg_desc.app_version))
-        self.gui.ui.nodeNameLabel.setText(u"Id: {}".format(cfg_desc.node_name))
+    def init_config(self):
+        ConfigurationDialogCustomizer(self.gui, self.logic)
+        self._set_new_task_dialog_customizer()
+
+    def set_options(self, cfg_desc, id_, eth_address):
+        # Footer options
+        self.gui.ui.appVer.setText(u"{} ({})".format(APP_NAME, APP_VERSION))
+
+        # Status options
+        self.gui.ui.nodeNameLabel.setText(u"{}".format(cfg_desc.node_name))
+
+        # Account options
+        self.gui.ui.golemIdLabel.setText(u"{}".format(id_))
+        self.gui.ui.golemIdLabel.setCursorPosition(0)
+        self.gui.ui.nameLabel.setText(u"{}".format(cfg_desc.node_name))
+        self.gui.ui.ethAddressLabel.setText(u"{}".format(eth_address))
+
 
     # Add new task to golem client
     def enqueue_new_task(self, ui_new_task_info):
@@ -66,6 +83,7 @@ class GNRMainWindowCustomizer(Customizer):
 
     def update_task_additional_info(self, t):
         self.current_task_highlighted = t
+        self.gui.ui.startTaskButton.setEnabled(t.task_state.status == TaskStatus.notStarted)
 
     def show_task_result(self, task_id):
         t = self.logic.get_task(task_id)
@@ -84,10 +102,11 @@ class GNRMainWindowCustomizer(Customizer):
                 self.gui.ui.taskTableWidget.removeRow(row)
                 return
 
-    def show_new_task_dialog(self, task_id):
+    def clone_task(self, task_id):
         ts = self.logic.get_task(task_id)
         if ts is not None:
-            self._show_new_task_dialog(ts.definition)
+            self._load_new_task_from_definition(ts.definition)
+            self.gui.ui.listWidget.setCurrentItem(self.gui.ui.listWidget.item(0))
         else:
             logger.error("Can't get task information for task {}".format(task_id))
 
@@ -109,59 +128,46 @@ class GNRMainWindowCustomizer(Customizer):
         change_task_dialog_customizer.load_task_definition(ts.definition)
         change_task_dialog.show()
 
+    def change_page(self, current, previous):
+        if not current:
+            current = previous
+        self.gui.ui.stackedWidget.setCurrentIndex(self.gui.ui.listWidget.row(current))
+
     def _setup_connections(self):
         self._setup_basic_task_connections()
         self._setup_basic_app_connections()
 
     def _setup_basic_task_connections(self):
-        self.gui.ui.actionNew.triggered.connect(self._show_new_task_dialog_clicked)
-        self.gui.ui.actionLoadTask.triggered.connect(self._load_task_button_clicked)
+        self.gui.ui.loadButton.clicked.connect(self._load_task_button_clicked)
         QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("cellClicked(int, int)"),
                                self._task_table_row_clicked)
         QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("doubleClicked(const QModelIndex)"),
                                self._task_table_row_double_clicked)
         self.gui.ui.taskTableWidget.customContextMenuRequested.connect(self._context_menu_requested)
+        self.gui.ui.startTaskButton.clicked.connect(self._start_task_button_clicked)
 
     def _setup_basic_app_connections(self):
-        self.gui.ui.actionEdit.triggered.connect(self._show_configuration_dialog_clicked)
-        self.gui.ui.actionStatus.triggered.connect(self._show_status_clicked)
-        self.gui.ui.actionAbout.triggered.connect(self._show_about_clicked)
-        self.gui.ui.actionPayments.triggered.connect(self._show_payments_clicked)
-        self.gui.ui.actionEnvironments.triggered.connect(self._show_environments)
-        self.gui.ui.action_identity.triggered.connect(self._show_identity_dialog)
+        self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
+        self.gui.ui.paymentsButton.clicked.connect(self._show_payments_clicked)
+        self.gui.ui.environmentsButton.clicked.connect(self._show_environments)
+        self.gui.ui.identityButton.clicked.connect(self._show_identity_dialog)
 
     def _set_error_label(self):
         palette = QPalette()
         palette.setColor(QPalette.Foreground, QtCore.Qt.red)
         self.gui.ui.errorLabel.setPalette(palette)
 
-    def _show_new_task_dialog(self, definition):
-        self._set_new_task_dialog()
-        self._set_new_task_dialog_customizer()
+    def _load_new_task_from_definition(self, definition):
         self.new_task_dialog_customizer.load_task_definition(definition)
-        self.new_task_dialog.show()
-
-    def _show_new_task_dialog_clicked(self):
-        self._set_new_task_dialog()
-        self._set_new_task_dialog_customizer()
-        self.new_task_dialog.show()
-
-    def _set_new_task_dialog(self):
-        self.new_task_dialog = NewTaskDialog(self.gui.window)
 
     def _set_new_task_dialog_customizer(self):
-        self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.new_task_dialog, self.logic)
+        self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.gui, self.logic)
 
     def _load_task_button_clicked(self):
-        save_path = appdirs.user_data_dir("golem")
-        dir_ = ""
-        if save_path:
-            save_dir = os.path.join(save_path, "save")
-            if os.path.isdir(save_dir):
-                dir_ = save_dir
-
+        save_dir = get_save_dir()
         file_name = QFileDialog.getOpenFileName(self.gui.window,
-                                                "Choose task file", dir_, "Golem Task (*.gt)")
+                                                "Choose task file", save_dir,
+                                                "Golem Task (*.gt)")
         if os.path.exists(file_name):
             self._load_task(file_name)
 
@@ -177,7 +183,12 @@ class GNRMainWindowCustomizer(Customizer):
             f.close()
 
         if definition:
-            self._show_new_task_dialog(definition)
+            self._load_new_task_from_definition(definition)
+
+    def _start_task_button_clicked(self):
+        if self.current_task_highlighted is None:
+            return
+        self.logic.start_task(self.current_task_highlighted.definition.task_id)
 
     def _add_task(self, task_id, status):
         current_row_count = self.gui.ui.taskTableWidget.rowCount()
@@ -193,27 +204,10 @@ class GNRMainWindowCustomizer(Customizer):
         self.gui.ui.taskTableWidget.setCurrentItem(self.gui.ui.taskTableWidget.item(current_row_count, 1))
         self.update_task_additional_info(self.logic.get_task(task_id))
 
-    def _show_status_clicked(self):
-        self.status_window = StatusWindow(self.gui.window)
-
-        self.status_window_customizer = StatusWindowCustomizer(self.status_window, self.logic)
-        self.status_window_customizer.get_status()
-        self.status_window.show()
-
-    def _show_about_clicked(self):
-        about_window = AboutWindow(self.gui.window)
-        AboutWindowCustomizer(about_window, self.logic)
-        about_window.show()
-
     def _show_payments_clicked(self):
         payments_window = PaymentsDialog(self.gui.window)
         PaymentsDialogCustomizer(payments_window, self.logic)
         payments_window.show()
-
-    def _show_configuration_dialog_clicked(self):
-        self.configuration_dialog = ConfigurationDialog(self.gui.window)
-        self.configuration_dialog_customizer = ConfigurationDialogCustomizer(self.configuration_dialog, self.logic)
-        self.configuration_dialog.show()
 
     def _show_identity_dialog(self):
         identity_dialog = IdentityDialog(self.gui.window)

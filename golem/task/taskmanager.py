@@ -1,5 +1,6 @@
 import time
 import logging
+from math import ceil
 
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
@@ -53,7 +54,7 @@ class TaskManager(object):
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root(), self.node_name)
 
-        resource_manager = IPFSResourceManager(self.dir_manager, self.node_name,
+        resource_manager = IPFSResourceManager(self.dir_manager,
                                                resource_dir_method=self.dir_manager.get_task_temporary_dir)
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
@@ -94,6 +95,7 @@ class TaskManager(object):
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
 
         task.initialize(self.dir_manager)
+        task.notify_update_task = self.__notice_task_updated
         self.tasks[task.header.task_id] = task
 
         ts = TaskState()
@@ -192,6 +194,7 @@ class TaskManager(object):
             return None
 
     def set_value(self, task_id, subtask_id, value):
+        assert type(value) in (int, long)
         task_state = self.tasks_states.get(task_id)
         if task_state is None:
             logger.warning("This is not my task {}".format(task_id))
@@ -395,6 +398,7 @@ class TaskManager(object):
                 del self.subtask2task_mapping[sub.subtask_id]
             self.tasks_states[task_id].subtask_states.clear()
 
+            self.tasks[task_id].notify_update_task = None
             del self.tasks[task_id]
             del self.tasks_states[task_id]
 
@@ -425,13 +429,12 @@ class TaskManager(object):
         self.dir_manager = DirManager(root_path, self.node_name)
         self.use_distributed_resources = use_distributed_resource_management
 
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout, min_subtask_time):
+    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
             task = self.tasks[task_id]
             task.header.ttl = full_task_timeout
             task.header.subtask_timeout = subtask_timeout
             task.subtask_timeout = subtask_timeout
-            task.min_subtask_time = min_subtask_time
             task.full_task_timeout = full_task_timeout
             task.header.last_checking = time.time()
             ts = self.tasks_states[task_id]
@@ -461,7 +464,7 @@ class TaskManager(object):
 
     @staticmethod
     def compute_subtask_value(price, computation_time):
-        return price * computation_time
+        return int(ceil(price * computation_time))
 
     def add_comp_task_request(self, theader, price):
         """ Add a header of a task which this node may try to compute """

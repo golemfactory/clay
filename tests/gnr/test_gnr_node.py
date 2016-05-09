@@ -6,7 +6,6 @@ from gnr.node import start
 from click.testing import CliRunner
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.tools.testwithappconfig import TestWithAppConfig
 
 
 class A(object):
@@ -15,20 +14,18 @@ class A(object):
         self.b = "abc"
 
 
-class TestNode(TestWithDatabase, TestWithAppConfig):
+class TestNode(TestWithDatabase):
 
     def setUp(self):
-        TestWithAppConfig.setUp(self)
-        TestWithDatabase.setUp(self)
+        super(TestNode, self).setUp()
 
     def tearDown(self):
-        TestWithAppConfig.tearDown(self)
-        TestWithDatabase.tearDown(self)
+        super(TestNode, self).tearDown()
 
     @patch('gnr.node.reactor')
     def test_help(self, mock_reactor):
         runner = CliRunner()
-        return_value = runner.invoke(start, ['--help'])
+        return_value = runner.invoke(start, ['--help'], catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
         self.assertTrue(return_value.output.startswith('Usage'))
         mock_reactor.run.assert_not_called()
@@ -36,7 +33,7 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
     @patch('gnr.node.reactor')
     def test_wrong_option(self, mock_reactor):
         runner = CliRunner()
-        return_value = runner.invoke(start, ['--blargh'])
+        return_value = runner.invoke(start, ['--blargh'], catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue(return_value.output.startswith('Error'))
         mock_reactor.run.assert_not_called()
@@ -44,7 +41,7 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
     @patch('gnr.node.reactor')
     def test_no_args(self, mock_reactor):
         runner = CliRunner()
-        return_value = runner.invoke(start)
+        return_value = runner.invoke(start, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
         mock_reactor.run.assert_called_with()
 
@@ -54,11 +51,12 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
         """Test that without '--node-address' arg the client is started with
         a 'config_desc' arg such that 'config_desc.node_address' is ''.
         """
+
         runner = CliRunner()
-        return_value = runner.invoke(start)
+        return_value = runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
 
-        self.assertGreater(len(mock_client.mock_calls), 0)
+        assert len(mock_client.mock_calls) > 0
         init_call = mock_client.mock_calls[0]
         self.assertEqual(init_call[0], '')  # call name == '' for __init__ call
         (config_desc, ) = init_call[1]
@@ -70,7 +68,7 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
         node_address = '1.2.3.4'
 
         runner = CliRunner()
-        return_value = runner.invoke(start, ['--node-address', node_address])
+        return_value = runner.invoke(start, ['--node-address', node_address], catch_exceptions=False)
         self.assertEquals(return_value.exit_code, 0)
 
         self.assertGreater(len(mock_node.mock_calls), 0)
@@ -90,7 +88,7 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
         node_address = '1.2.3.4'
 
         runner = CliRunner()
-        return_value = runner.invoke(start, ['--node-address', node_address])
+        return_value = runner.invoke(start, ['-d', self.path, '--node-address', node_address], catch_exceptions=False)
         self.assertEquals(return_value.exit_code, 0)
 
         self.assertGreater(len(mock_client.mock_calls), 0)
@@ -103,7 +101,7 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
     @patch('gnr.node.GNRNode')
     def test_node_address_invalid(self, mock_node):
         runner = CliRunner()
-        return_value = runner.invoke(start, ['--node-address', '10.30.10.2555'])
+        return_value = runner.invoke(start, ['--node-address', '10.30.10.2555'], catch_exceptions=False)
         self.assertEquals(return_value.exit_code, 2)
         self.assertTrue('Invalid value for "--node-address"' in
                         return_value.output)
@@ -119,7 +117,7 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
     def test_single_peer(self, mock_node):
         addr1 = '10.30.10.216:40111'
         runner = CliRunner()
-        return_value = runner.invoke(start, ['--peer', addr1])
+        return_value = runner.invoke(start, ['--peer', addr1], catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
         mock_node.assert_has_calls([call().run(), call().add_tasks([])], any_order=True)
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
@@ -134,7 +132,7 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
         addr1 = '10.30.10.216:40111'
         addr2 = '10.30.10.214:3333'
         runner = CliRunner()
-        return_value = runner.invoke(start, ['--peer', addr1, '--peer', addr2])
+        return_value = runner.invoke(start, ['--peer', addr1, '--peer', addr2], catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
         mock_node.assert_has_calls([call().run(), call().add_tasks([])], any_order=True)
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
@@ -149,7 +147,7 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
     def test_bad_peer(self, mock_node):
         addr1 = '10.30.10.216:40111'
         runner = CliRunner()
-        return_value = runner.invoke(start, ['--peer', addr1, '--peer', 'bla'])
+        return_value = runner.invoke(start, ['--peer', addr1, '--peer', 'bla'], catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Invalid peer address' in return_value.output)
 
@@ -158,7 +156,7 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--peer', u'10.30.10.216:40111',
                                              u'--peer', u'[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
-                                             '--peer', '[::ffff:0:0:0]:96'])
+                                             '--peer', '[::ffff:0:0:0]:96'], catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
         mock_node.assert_has_calls([call().run(), call().add_tasks([])], any_order=True)
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
@@ -173,18 +171,18 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
     @patch('gnr.node.GNRNode')
     def test_wrong_task(self, mock_node):
         runner = CliRunner()
-        return_value = runner.invoke(start, ['--task', 'testtask.gt'])
+        return_value = runner.invoke(start, ['--task', 'testtask.gt'], catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Error' in return_value.output and 'Usage' in return_value.output)
 
     @patch('gnr.node.GNRNode')
     def test_task(self, mock_node):
-        runner = CliRunner()
-
         a = A()
-        with open('testclassdump', 'w') as f:
+        dump = os.path.join(self.path, 'testcalssdump')
+        with open(dump, 'w') as f:
             cPickle.dump(a, f)
-        return_value = runner.invoke(start, ['--task', 'testclassdump', '--task', 'testclassdump'])
+        args = ['--task', dump, '--task', dump]
+        return_value = CliRunner().invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
         mock_node.assert_has_calls([call().run()])
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
@@ -193,12 +191,10 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
         task_arg = mock_node.mock_calls[task_num][1][0]
         self.assertEqual(len(task_arg), 2)
         self.assertIsInstance(task_arg[0], A)
-        if os.path.exists('testclassdump'):
-            os.remove('testclassdump')
 
     @patch('gnr.node.GNRNode')
     def test_task_from_json(self, mock_node):
-        test_json_file = 'task.json'
+        test_json_file = os.path.join(self.path, 'task.json')
         a1 = A()
         a1.name = 'Jake the Dog'
         a2 = A()
@@ -210,7 +206,7 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
 
         try:
             runner = CliRunner()
-            return_value = runner.invoke(start, ['--task', test_json_file])
+            return_value = runner.invoke(start, ['--task', test_json_file], catch_exceptions=False)
             self.assertEqual(return_value.exit_code, 0)
 
             mock_node.assert_has_calls([call().run()])
@@ -227,13 +223,13 @@ class TestNode(TestWithDatabase, TestWithAppConfig):
 
     @patch('gnr.node.GNRNode')
     def test_task_from_invalid_json(self, mock_node):
-        test_json_file = 'task.json'
+        test_json_file = os.path.join(self.path, 'task.json')
         with open(test_json_file, 'w') as f:
             f.write('Clearly this is not a valid json.')
 
         try:
             runner = CliRunner()
-            return_value = runner.invoke(start, ['--task', test_json_file])
+            return_value = runner.invoke(start, ['--task', test_json_file], catch_exceptions=False)
             self.assertEqual(return_value.exit_code, 2)
             self.assertIn('Invalid value for "--task"', return_value.output)
 

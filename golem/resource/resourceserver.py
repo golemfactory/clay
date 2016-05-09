@@ -5,12 +5,11 @@ import time
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpserver import PendingConnectionsServer
-from golem.network.transport.tcpnetwork import TCPConnectInfo, SocketAddress, TCPListenInfo, TCPNetwork, FilesProtocol
+from golem.network.transport.tcpnetwork import SocketAddress, TCPNetwork, FilesProtocol, DecryptFileConsumer
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import DistributedResourceManager
 from golem.resource.resourcesession import ResourceSession
 from golem.ranking.ranking import RankingStats
-from golem.network.transport.tcpnetwork import FilesProtocol, EncryptFileProducer, DecryptFileConsumer
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class ResourceServer(PendingConnectionsServer):
         self.resources_to_get = []
         self.res_send_it = 0
         self.peers_it = 0
-        self.dir_manager = DirManager(config_desc.root_path, config_desc.node_name)
+        self.dir_manager = DirManager(client.datadir, config_desc.node_name)
         self.resource_manager = DistributedResourceManager(self.dir_manager.get_resource_dir())
         self.use_ipv6 = use_ipv6
         network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(ResourceSession)), use_ipv6)
@@ -42,13 +41,6 @@ class ResourceServer(PendingConnectionsServer):
 
     def start_accepting(self):
         PendingConnectionsServer.start_accepting(self)
-
-    def change_resource_dir(self, config_desc):
-        if self.dir_manager.root_path == config_desc.root_path:
-            return
-        self.dir_manager.root_path = config_desc.root_path
-        self.dir_manager.node_name = config_desc.node_name
-        self.resource_manager.change_resource_dir(self.dir_manager.get_resource_dir())
 
     def get_distributed_resource_root(self):
         return self.dir_manager.get_resource_dir()

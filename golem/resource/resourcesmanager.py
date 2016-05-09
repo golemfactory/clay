@@ -1,8 +1,6 @@
-from resource import TaskResource, TaskResourceHeader, prepare_delta_zip, decompress_dir
+from resource import TaskResource, TaskResourceHeader, prepare_delta_zip
 
 import os
-from os.path import join, isdir, isfile
-import struct
 import logging
 
 from golem.core.databuffer import DataBuffer
@@ -17,13 +15,6 @@ class DistributedResourceManager:
         self.resources = set()
         self.resource_dir = resource_dir
         self.resource_hash = ResourceHash(self.resource_dir)
-        self.add_resources()
-
-    def change_resource_dir(self, resource_dir):
-        self.resource_hash.set_resource_dir(resource_dir)
-        self.copy_resources(resource_dir)
-        self.resources = set()
-        self.resource_dir = resource_dir
         self.add_resources()
 
     def copy_resources(self, new_resource_dir):
@@ -56,7 +47,6 @@ class DistributedResourceManager:
 
     def get_resource_path(self, resource):
         return os.path.join(self.resource_dir, resource)
-
 
 
 class ResourcesManager:

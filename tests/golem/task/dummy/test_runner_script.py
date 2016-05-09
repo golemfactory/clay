@@ -1,13 +1,13 @@
 import mock
 
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.tools.testwithappconfig import TestWithAppConfig
+from golem.testutils import DatabaseFixture
 
 import runner
 import task
 
 
-class TestDummyTaskRunnerScript(TestWithAppConfig):
+class TestDummyTaskRunnerScript(DatabaseFixture):
     """Tests for the runner script"""
 
     @mock.patch("runner.run_requesting_node")
@@ -16,10 +16,10 @@ class TestDummyTaskRunnerScript(TestWithAppConfig):
     def test_runner_dispatch_requesting(
             self, mock_run_simulation, mock_run_computing_node,
             mock_run_requesting_node):
-        args = ["runner.py", runner.REQUESTING_NODE_KIND, "7"]
+        args = ["runner.py", runner.REQUESTING_NODE_KIND, self.path, "7"]
         runner.dispatch(args)
         self.assertTrue(mock_run_requesting_node.called)
-        self.assertEqual(mock_run_requesting_node.call_args[0], (7,))
+        self.assertEqual(mock_run_requesting_node.call_args[0], (self.path, 7))
         self.assertFalse(mock_run_computing_node.called)
         self.assertFalse(mock_run_simulation.called)
 
@@ -29,12 +29,13 @@ class TestDummyTaskRunnerScript(TestWithAppConfig):
     def test_runner_dispatch_computing(
             self, mock_run_simulation, mock_run_computing_node,
             mock_run_requesting_node):
-        args = ["runner.py", runner.COMPUTING_NODE_KIND, "1.2.3.4:5678"]
+        args = ["runner.py", runner.COMPUTING_NODE_KIND,
+                self.path, "1.2.3.4:5678"]
         runner.dispatch(args)
         self.assertFalse(mock_run_requesting_node.called)
         self.assertTrue(mock_run_computing_node.called)
         self.assertEqual(mock_run_computing_node.call_args[0],
-                         (SocketAddress("1.2.3.4", 5678),))
+                         (self.path, SocketAddress("1.2.3.4", 5678)))
         self.assertEqual(mock_run_computing_node.call_args[1],
                          {"fail_after": None})
         self.assertFalse(mock_run_simulation.called)
@@ -45,12 +46,13 @@ class TestDummyTaskRunnerScript(TestWithAppConfig):
     def test_runner_dispatch_computing_with_failure(
             self, mock_run_simulation, mock_run_computing_node,
             mock_run_requesting_node):
-        args = ["runner.py", runner.COMPUTING_NODE_KIND, "1.2.3.4:5678", "25"]
+        args = ["runner.py", runner.COMPUTING_NODE_KIND,
+                self.path, "10.0.255.127:16000", "25"]
         runner.dispatch(args)
         self.assertFalse(mock_run_requesting_node.called)
         self.assertTrue(mock_run_computing_node.called)
         self.assertEqual(mock_run_computing_node.call_args[0],
-                         (SocketAddress("1.2.3.4", 5678),))
+                         (self.path, SocketAddress("10.0.255.127", 16000)))
         self.assertEqual(mock_run_computing_node.call_args[1],
                          {"fail_after": 25.0})
         self.assertFalse(mock_run_simulation.called)
@@ -70,17 +72,20 @@ class TestDummyTaskRunnerScript(TestWithAppConfig):
 
     @mock.patch("runner.reactor")
     def test_run_requesting_node(self, mock_reactor):
-        client = runner.run_requesting_node(3)
+        client = runner.run_requesting_node(self.path, 3)
         tasks = client.task_server.task_manager.tasks
         self.assertEqual(len(tasks), 1)
         self.assertIsInstance(tasks.values()[0], task.DummyTask)
+        client._unlock_datadir()
 
     @mock.patch("runner.reactor")
     def test_run_computing_node(self, mock_reactor):
-        client = runner.run_computing_node(SocketAddress("127.0.0.1", 40102))
+        client = runner.run_computing_node(self.path,
+                                           SocketAddress("127.0.0.1", 40102))
         environments = list(client.environments_manager.environments)
         self.assertTrue(any(env.get_id() == task.DummyTask.ENVIRONMENT_NAME
                             for env in environments))
+        client._unlock_datadir()
 
     @mock.patch("subprocess.Popen")
     def test_run_simulation(self, mock_popen):

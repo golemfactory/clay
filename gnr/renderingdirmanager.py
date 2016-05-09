@@ -1,41 +1,42 @@
-import os
+from os import path, listdir
+import logging
 
 from golem.core.common import get_golem_path
 
-TEST_RES_DIRECTORY = "testing_task_resources"
-TEST_TMP_DIRECTORY = "testing_task_tmp"
-RES_DIRECTORY = "res"
-TMP_DIRECTORY = "tmp"
+logger = logging.getLogger(__name__)
+
 PREV_FILE = "ui/nopreview.png"
 
 
-def get_test_task_directory():
-    return TEST_RES_DIRECTORY
-
-
 def get_preview_file():
-    return os.path.normpath(PREV_FILE)
+    return path.normpath(PREV_FILE)
 
 
 def get_task_scripts_path():
-    return os.path.normpath(os.path.join(get_golem_path(), "gnr/task/scripts"))
+    return path.join(get_golem_path(), "gnr", "task", "scripts")
 
 
 def find_task_script(script_name):
-    return os.path.join(get_task_scripts_path(), script_name)
+    scripts_path = get_task_scripts_path()
+    files = listdir(scripts_path)
+    for f in files:
+        if f.lower() == script_name.lower():
+            return path.join(get_task_scripts_path(), f)
+    logger.error("Script file does not exist!")
 
 
 def get_benchmarks_path():
-    return os.path.normpath(os.path.join(get_golem_path(), "gnr/benchmarks"))
+    return path.join(get_golem_path(), "gnr", "benchmarks")
 
 
 def get_test_task_path(root_path):
-    return os.path.join(root_path, TEST_RES_DIRECTORY)
+    return path.join(root_path, "task_test")
 
 
 def get_test_task_tmp_path(root_path):
-    return os.path.join(root_path, TEST_TMP_DIRECTORY)
+    return path.join(root_path, "task_tmp")
 
 
 def get_tmp_path(node_name, task_id, root_path):
-    return os.path.join(root_path, RES_DIRECTORY, node_name, task_id, TMP_DIRECTORY)
+    # TODO: Is node name still needed?
+    return path.join(root_path, "task", node_name, task_id, "tmp")

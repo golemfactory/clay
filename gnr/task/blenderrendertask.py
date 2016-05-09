@@ -8,7 +8,7 @@ from PIL import Image, ImageChops
 
 from golem.task.taskstate import SubtaskStatus
 
-from gnr.docker_environments import BlenderEnvironment
+from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
@@ -53,7 +53,7 @@ class PreviewUpdater(object):
             self.chunks[subtask_number] = subtask_path
         
         try:
-            if subtask_path.endswith(".exr"):
+            if subtask_path.upper().endswith(".EXR"):
                 img = exr_to_pil(subtask_path)
             else:
                 img = Image.open(subtask_path)
@@ -109,7 +109,6 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
         if self.task_definition.docker_images is None:
             self.task_definition.docker_images = BlenderEnvironment().docker_images
-        print self.task_definition.docker_images
 
         blender_task = BlenderRenderTask(self.node_name,
                                          self.task_definition.task_id,

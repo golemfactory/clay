@@ -1,52 +1,53 @@
 import logging
-from PyQt4 import QtCore
 
 from renderercustomizer import RendererCustomizer
-from golem.environments.environment import Environment
 
-from gnr.docker_environments import LuxRenderEnvironment
 
 logger = logging.getLogger(__name__)
 
 
 class LuxRenderDialogCustomizer(RendererCustomizer):
 
+    def get_task_name(self):
+        return "LuxRender"
+
     def load_data(self):
-        renderer = self.logic.get_renderer(u"LuxRender")
-        self.gui.ui.haltTimeLineEdit.setText(u"{}".format(self.renderer_options.halttime))
-        self.gui.ui.haltsppLineEdit.setText(u"{}".format(self.renderer_options.haltspp))
-        if self.renderer_options.send_binaries:
-            self.gui.ui.sendLuxRadioButton.toggle()
-        else:
-            self.gui.ui.useInstalledRadioButton.toggle()
-        self.gui.ui.luxConsoleLineEdit.setEnabled(self.renderer_options.send_binaries)
-        self.gui.ui.luxConsoleLineEdit.setText(u"{}".format(self.renderer_options.luxconsole))
+        super(LuxRenderDialogCustomizer, self).load_data()
+        self._change_halts_values()
+
+    def load_task_definition(self, definition):
+        super(LuxRenderDialogCustomizer, self).load_task_definition(definition)
+        self._change_halts_values()
 
     def _setup_connections(self):
-        self.gui.ui.cancelButton.clicked.connect(self.gui.close)
-        self.gui.ui.okButton.clicked.connect(lambda: self.__change_renderer_options())
-        QtCore.QObject.connect(self.gui.ui.sendLuxRadioButton, QtCore.SIGNAL("toggled(bool)"), self.__send_lux_settings_changed)
+        super(LuxRenderDialogCustomizer, self)._setup_connections()
+        self.gui.ui.stopBySppRadioButton.toggled.connect(self._change_halts_state)
 
-    def __change_renderer_options(self):
-        try:
-            self.renderer_options.halttime = int(self.gui.ui.haltTimeLineEdit.text())
-        except ValueError:
-            logger.error("{} is not proper halttime value".format(self.gui.ui.haltTimeLineEdit.text()))
-        try:
-            self.renderer_options.haltspp = int(self.gui.ui.haltsppLineEdit.text())
-        except ValueError:
-            logger.error("{} in not proper haltspp value".format(self.gui.ui.haltsppLineEdit.text()))
+    def _change_halts_values(self):
+        set_haltspp = self.renderer_options.haltspp > 0
+        self.gui.ui.haltTimeLineEdit.setText(u"{}".format(self.renderer_options.halttime))
+        self.gui.ui.haltSppLineEdit.setText(u"{}".format(self.renderer_options.haltspp))
+        if self.gui.ui.stopBySppRadioButton.isChecked() and not set_haltspp:
+            self.gui.ui.stopByTimeRadioButton.setChecked(True)
+        if not self.gui.ui.stopBySppRadioButton.isChecked() and set_haltspp:
+            self.gui.ui.stopBySppRadioButton.setChecked(True)
+        self._change_halts_state()
 
-        self.renderer_options.send_binaries = self.gui.ui.sendLuxRadioButton.isChecked()
-        self.renderer_options.luxconsole = u"{}".format(self.gui.ui.luxConsoleLineEdit.text())
+    def _change_halts_state(self):
+        spp_checked = self.gui.ui.stopBySppRadioButton.isChecked()
+        self.gui.ui.haltSppLineEdit.setEnabled(spp_checked)
+        self.gui.ui.haltTimeLineEdit.setEnabled(not spp_checked)
 
-        if self.renderer_options.send_binaries:
-            self.renderer_options.environment = Environment()
+    def _change_renderer_options(self):
+        if self.gui.ui.stopByTimeRadioButton.isChecked():
+            self.renderer_options.haltspp = 0
+            try:
+                self.renderer_options.halttime = int(self.gui.ui.haltTimeLineEdit.text())
+            except ValueError:
+                logger.error("{} is not proper halttime value".format(self.gui.ui.haltTimeLineEdit.text()))
         else:
-            self.renderer_options.environment = LuxRenderEnvironment()
-
-        self.new_task_dialog.set_renderer_options(self.renderer_options)
-        self.gui.window.close()
-
-    def __send_lux_settings_changed(self):
-        self.gui.ui.luxConsoleLineEdit.setEnabled(self.gui.ui.sendLuxRadioButton.isChecked())
+            self.renderer_options.halttime = 0
+            try:
+                self.renderer_options.haltspp = int(self.gui.ui.haltSppLineEdit.text())
+            except ValueError:
+                logger.error("{} in not proper haltspp value".format(self.gui.ui.haltSppLineEdit.text()))

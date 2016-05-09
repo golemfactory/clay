@@ -3,12 +3,12 @@ import datetime
 import time
 import logging
 from PyQt4 import QtCore
-from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox
-
+from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox, QIcon
 from golem.task.taskstate import SubtaskStatus
 from golem.core.common import get_golem_path
 
-from gnr.ui.dialog import RenderingNewTaskDialog, ShowTaskResourcesDialog
+from gnr.ui.dialog import ShowTaskResourcesDialog
+
 
 from gnr.renderingdirmanager import get_preview_file
 from gnr.renderingtaskstate import RenderingTaskDefinition
@@ -55,6 +55,16 @@ class AbsRenderingMainWindowCustomizer(object):
         self.last_preview_path = self.preview_path
         self.slider_previews = {}
         self.gui.ui.frameSlider.setVisible(False)
+        self._set_icons()
+
+    def _set_icons(self):
+        icons = ["new.png", "task.png", "eye.png", "settings.png", "user.png"]
+        for i in range(len(icons)):
+            item = self.gui.ui.listWidget.item(i)
+            icon_path = os.path.join(get_golem_path(), "gnr", "ui", "img", icons[i])
+            icon = QIcon()
+            icon.addPixmap(QPixmap(icon_path), QIcon.Normal, QIcon.Off)
+            item.setIcon(icon)
 
     def _setup_rendering_connections(self):
         QtCore.QObject.connect(self.gui.ui.frameSlider, QtCore.SIGNAL("valueChanged(int)"), self.__update_slider_preview)
@@ -70,10 +80,7 @@ class AbsRenderingMainWindowCustomizer(object):
         self.gui.ui.showResourceButton.clicked.connect(self._show_task_resource_clicked)
 
     def _set_new_task_dialog_customizer(self):
-        self.new_task_dialog_customizer = RenderingNewTaskDialogCustomizer(self.new_task_dialog, self.logic)
-
-    def _set_new_task_dialog(self):
-        self.new_task_dialog = RenderingNewTaskDialog(self.gui.window)
+        self.new_task_dialog_customizer = RenderingNewTaskDialogCustomizer(self.gui, self.logic)
 
     def _set_show_task_resource_dialog(self):
         self.show_task_resources_dialog = ShowTaskResourcesDialog(self.gui.window)
@@ -98,7 +105,6 @@ class AbsRenderingMainWindowCustomizer(object):
             self.__set_preview(t)
 
         self.__update_output_file_color()
-        self.current_task_highlighted = t
 
     def show_task_result(self, task_id):
         t = self.logic.get_task(task_id)
@@ -124,8 +130,8 @@ class AbsRenderingMainWindowCustomizer(object):
     def __set_renderer_params(self, t):
         mem, index = resource_size_to_display(t.definition.estimated_memory / 1024)
         self.gui.ui.estimatedMemoryLabel.setText("{} {}".format(mem, translate_resource_index(index)))
-        self.gui.ui.resolution.setText("{} x {}".format(t.definition.resolution[0], t.definition.resolution[1]))
-        self.gui.ui.renderer.setText("{}".format(t.definition.renderer))
+        #self.gui.ui.resolution.setText("{} x {}".format(t.definition.resolution[0], t.definition.resolution[1]))
+        #self.gui.ui.renderer.setText("{}".format(t.definition.renderer))
 
     def __set_pbrt_params(self, t, is_pbrt=True):
         if is_pbrt:
@@ -133,12 +139,12 @@ class AbsRenderingMainWindowCustomizer(object):
             self.gui.ui.pixelFilter.setText("{}".format(t.definition.renderer_options.pixel_filter))
             self.gui.ui.samplesPerPixel.setText("{}".format(t.definition.renderer_options.samples_per_pixel_count))
 
-        self.gui.ui.algorithmType.setVisible(is_pbrt)
-        self.gui.ui.algorithmTypeLabel.setVisible(is_pbrt)
-        self.gui.ui.pixelFilter.setVisible(is_pbrt)
-        self.gui.ui.pixelFilterLabel.setVisible(is_pbrt)
-        self.gui.ui.samplesPerPixel.setVisible(is_pbrt)
-        self.gui.ui.samplesPerPixelLabel.setVisible(is_pbrt)
+        # self.gui.ui.algorithmType.setVisible(is_pbrt)
+        # self.gui.ui.algorithmTypeLabel.setVisible(is_pbrt)
+        # self.gui.ui.pixelFilter.setVisible(is_pbrt)
+        # self.gui.ui.pixelFilterLabel.setVisible(is_pbrt)
+        # self.gui.ui.samplesPerPixel.setVisible(is_pbrt)
+        # self.gui.ui.samplesPerPixelLabel.setVisible(is_pbrt)
 
     def __set_frame_preview(self, t):
         if "resultPreview" in t.task_state.extra_data:
@@ -306,3 +312,10 @@ class RenderingMainWindowCustomizer(AbsRenderingMainWindowCustomizer, GNRMainWin
         self._set_rendering_variables()
         self._setup_rendering_connections()
         self._setup_advance_task_connections()
+
+    def init_config(self):
+        GNRMainWindowCustomizer.init_config(self)
+
+    def update_task_additional_info(self, t):
+        GNRMainWindowCustomizer.update_task_additional_info(self, t)
+        AbsRenderingMainWindowCustomizer.update_task_additional_info(self, t)

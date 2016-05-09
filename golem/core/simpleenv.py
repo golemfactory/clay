@@ -2,40 +2,29 @@ import os
 import appdirs
 
 
+def get_local_datadir(name):
+    """ Helper function for datadir transition.
+
+        It returns path to a data directory of given name in 'data' dir.
+        Usage should be avoid at all costs. It is always better to ask for
+        a dir the upper layer (like Client instance).
+        """
+    return os.path.join(appdirs.user_data_dir('golem'), name)
+
+
 class SimpleEnv(object):
     """ Metaclass that keeps information about golem configuration files location. """
 
-    DATA_DIRECTORY = os.path.join(appdirs.user_data_dir("golem"), "node_data")
-
-    @classmethod
-    def open_env_file(cls, filename, options='a'):
-        """ Open configuration file with given option. Create file if it doesn"t exist.
-        :param str filename: name of configuration file. File should be placed in configuration files folder
-        :param str options: python open file mode options, eg. 'r', 'w' 'a'
-        :return:
-        """
-        f_name = cls.env_file_name(filename)
-
-        if not os.path.exists(f_name):
-            with open(f_name, 'a'):
-                os.utime(f_name, None)
-
-        return open(f_name, options)
-
-    @classmethod
-    def env_file_name(cls, filename):
+    @staticmethod
+    def env_file_name(filename):
         """ Return full configuration file name adding configuration files location to the filename
         :param str filename: name of a file
         :return str: name of a file connected with path
         """
-        cls.__env_dir_guard()
+        # FIXME: Deprecated!
 
-        if SimpleEnv.DATA_DIRECTORY in filename:
-            return filename
+        datadir = get_local_datadir('SimpleEnv')
+        if not os.path.exists(datadir):
+            os.makedirs(datadir)
 
-        return os.path.join(SimpleEnv.DATA_DIRECTORY, filename)
-
-    @classmethod
-    def __env_dir_guard(cls):
-        if not os.path.exists(SimpleEnv.DATA_DIRECTORY):
-            os.makedirs(SimpleEnv.DATA_DIRECTORY)
+        return os.path.join(datadir, filename)

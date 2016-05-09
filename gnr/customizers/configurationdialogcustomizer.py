@@ -18,6 +18,9 @@ class ConfigurationDialogCustomizer(Customizer):
     """ Customizer for gui with all golem configuration option that can be changed by user
     """
 
+    SHOW_ADVANCE_BUTTON_MESSAGES = ["Show more", "Hide"]
+    SHOW_DISK_USAGE_BUTTON_MESSAGES = ["Show disk usage", "Hide"]
+
     def __init__(self, gui, logic):
         self.old_plugin_port = None
         Customizer.__init__(self, gui, logic)
@@ -26,7 +29,6 @@ class ConfigurationDialogCustomizer(Customizer):
         config_desc = self.logic.get_config()
         self.__load_basic_config(config_desc)
         self.__load_advance_config(config_desc)
-        self.__load_manager_config(config_desc)
         self.__load_resource_config()
         self.__load_payment_config(config_desc)
 
@@ -51,14 +53,17 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
         self.gui.ui.recountLuxButton.clicked.connect(self.__recount_lux_performance)
         self.gui.ui.recountBlenderButton.clicked.connect(self.__recount_blender_performance)
-        self.gui.ui.buttonBox.accepted.connect(self.__change_config)
+        self.gui.ui.settingsOkButton.clicked.connect(self.__change_config)
+        self.gui.ui.settingsCancelButton.clicked.connect(lambda: self.load_data())
 
         QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
                                self.__recount_performance)
 
+        self.gui.ui.showDiskButton.clicked.connect(self.__show_disk_button_clicked)
         self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
-        self.gui.ui.removeDistributedButton.clicked.connect(self.__remove_from_distributed)
         self.gui.ui.removeReceivedButton.clicked.connect(self.__remove_from_received)
+        self.gui.ui.refreshComputingButton.clicked.connect(self.__refresh_disk_computed)
+        self.gui.ui.refreshReceivedButton.clicked.connect(self.__refresh_disk_received)
 
         QtCore.QObject.connect(self.gui.ui.requestingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
                                self.__requesting_trust_slider_changed)
@@ -71,10 +76,11 @@ class ConfigurationDialogCustomizer(Customizer):
         QtCore.QObject.connect(self.gui.ui.ethAccountLineEdit, QtCore.SIGNAL("textChanged(QString)"),
                                self.__check_eth_account)
 
+        self.gui.ui.showAdvanceButton.clicked.connect(self.__show_advance_clicked)
+
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
         self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_port))
-        self.gui.ui.workingDirectoryLineEdit.setText(u"{}".format(config_desc.root_path))
         self.gui.ui.performanceLabel.setText(u"{}".format(config_desc.estimated_performance))
         self.gui.ui.luxPerformanceLabel.setText(u"{}".format(config_desc.estimated_lux_performance))
         self.gui.ui.blenderPerformanceLabel.setText(u"{}".format(config_desc.estimated_blender_performance))
@@ -129,18 +135,16 @@ class ConfigurationDialogCustomizer(Customizer):
         try:
             trust = max(min(int(round(value * 100)), 100), -100)
         except TypeError:
-            logger.error("Wrong configuration trust value {}").format(value)
+            logger.error("Wrong configuration trust value {}".format(value))
             trust = -100
         line_edit.setText("{}".format(trust))
         slider.setValue(trust)
 
     def __load_advance_config(self, config_desc):
+        self.gui.ui.advanceSettingsWidget.hide()
+        self.gui.ui.showAdvanceButton.setText(ConfigurationDialogCustomizer.SHOW_ADVANCE_BUTTON_MESSAGES[0])
+
         self.gui.ui.optimalPeerNumLineEdit.setText(u"{}".format(config_desc.opt_peer_num))
-
-        self.__load_checkbox_param(config_desc.use_distributed_resource_management,
-                                   self.gui.ui.useDistributedResCheckBox, 'use distributed res')
-        self.gui.ui.distributedResNumLineEdit.setText(u"{}".format(config_desc.dist_res_num))
-
         self.__load_checkbox_param(config_desc.use_waiting_for_task_timeout,
                                    self.gui.ui.useWaitingForTaskTimeoutCheckBox, 'waiting for task timeout')
         self.gui.ui.waitingForTaskTimeoutLineEdit.setText(u"{}".format(config_desc.waiting_for_task_timeout))
@@ -150,15 +154,10 @@ class ConfigurationDialogCustomizer(Customizer):
 
         self.gui.ui.gettingPeersLineEdit.setText(u"{}".format(config_desc.getting_peers_interval))
         self.gui.ui.gettingTasksIntervalLineEdit.setText(u"{}".format(config_desc.getting_tasks_interval))
-        self.gui.ui.nodeSnapshotIntervalLineEdit.setText(u"{}".format(config_desc.node_snapshot_interval))
         self.gui.ui.maxSendingDelayLineEdit.setText(u"{}".format(config_desc.max_results_sending_delay))
 
         self.gui.ui.p2pSessionTimeoutLineEdit.setText(u"{}".format(config_desc.p2p_session_timeout))
         self.gui.ui.taskSessionTimeoutLineEdit.setText(u"{}".format(config_desc.task_session_timeout))
-        self.gui.ui.resourceSessionTimeoutLineEdit.setText(u"{}".format(config_desc.resource_session_timeout))
-
-        self.gui.ui.pluginPortLineEdit.setText(u"{}".format(config_desc.plugin_port))
-        self.old_plugin_port = u"{}".format(config_desc.plugin_port)
 
     def __load_checkbox_param(self, param, check_box, param_name=''):
         try:
@@ -172,10 +171,6 @@ class ConfigurationDialogCustomizer(Customizer):
             logger.error("Wrong configuration parameter {}: {}".format(param_name, param))
         check_box.setChecked(checked)
 
-    def __load_manager_config(self, config_desc):
-        self.gui.ui.managerAddressLineEdit.setText(u"{}".format(config_desc.manager_address))
-        self.gui.ui.managerPortLineEdit.setText(u"{}".format(config_desc.manager_port))
-
     def __load_payment_config(self, config_desc):
         self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.eth_account))
         self.__check_eth_account()
@@ -183,10 +178,18 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.maxPriceLineEdit.setText(u"{}".format(config_desc.max_price))
 
     def __load_resource_config(self):
+        self.gui.ui.diskWidget.hide()
+        self.gui.ui.showDiskButton.setText(self.SHOW_DISK_USAGE_BUTTON_MESSAGES[0])
+        self.__refresh_disk_computed()
+        self.__refresh_disk_received()
+
+    def __refresh_disk_received(self):
+        res_dirs = self.logic.get_res_dirs()
+        self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
+
+    def __refresh_disk_computed(self):
         res_dirs = self.logic.get_res_dirs()
         self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
-        self.gui.ui.distributedResSize.setText(self.du(res_dirs['distributed']))
-        self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
 
     def __remove_from_computing(self):
         reply = QMessageBox.question(self.gui.window, 'Golem Message',
@@ -249,7 +252,6 @@ class ConfigurationDialogCustomizer(Customizer):
         cfg_desc = ClientConfigDescriptor()
         self.__read_basic_config(cfg_desc)
         self.__read_advance_config(cfg_desc)
-        self.__read_manager_config(cfg_desc)
         self.__read_payment_config(cfg_desc)
         self.logic.change_config(cfg_desc)
 
@@ -259,7 +261,6 @@ class ConfigurationDialogCustomizer(Customizer):
             cfg_desc.seed_port = int(self.gui.ui.hostIPLineEdit.text())
         except ValueError:
             cfg_desc.seed_port = u"{}".format(self.gui.ui.hostIPLineEdit.text())
-        cfg_desc.root_path = u"{}".format(self.gui.ui.workingDirectoryLineEdit.text())
 
         cfg_desc.num_cores = u"{}".format(self.gui.ui.numCoresSlider.value())
         cfg_desc.estimated_performance = u"{}".format(self.gui.ui.performanceLabel.text())
@@ -274,30 +275,15 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __read_advance_config(self, cfg_desc):
         cfg_desc.opt_peer_num = u"{}".format(self.gui.ui.optimalPeerNumLineEdit.text())
-        cfg_desc.use_distributed_resource_management = int(self.gui.ui.useDistributedResCheckBox.isChecked())
-        cfg_desc.dist_res_num = u"{}".format(self.gui.ui.distributedResNumLineEdit.text())
         cfg_desc.use_waiting_for_task_timeout = int(self.gui.ui.useWaitingForTaskTimeoutCheckBox.isChecked())
         cfg_desc.waiting_for_task_timeout = u"{}".format(self.gui.ui.waitingForTaskTimeoutLineEdit.text())
         cfg_desc.p2p_session_timeout = u"{}".format(self.gui.ui.p2pSessionTimeoutLineEdit.text())
         cfg_desc.task_session_timeout = u"{}".format(self.gui.ui.taskSessionTimeoutLineEdit.text())
-        cfg_desc.resource_session_timeout = u"{}".format(self.gui.ui.resourceSessionTimeoutLineEdit.text())
         cfg_desc.send_pings = int(self.gui.ui.sendPingsCheckBox.isChecked())
         cfg_desc.pings_interval = u"{}".format(self.gui.ui.sendPingsLineEdit.text())
         cfg_desc.getting_peers_interval = u"{}".format(self.gui.ui.gettingPeersLineEdit.text())
         cfg_desc.getting_tasks_interval = u"{}".format(self.gui.ui.gettingTasksIntervalLineEdit.text())
-        cfg_desc.node_snapshot_interval = u"{}".format(self.gui.ui.nodeSnapshotIntervalLineEdit.text())
         cfg_desc.max_results_sending_delay = u"{}".format(self.gui.ui.maxSendingDelayLineEdit.text())
-        cfg_desc.plugin_port = u"{}".format(self.gui.ui.pluginPortLineEdit.text())
-
-        if self.old_plugin_port != cfg_desc.plugin_port:
-            self.__show_plugin_port_warning()
-
-    def __read_manager_config(self, cfg_desc):
-        cfg_desc.manager_address = u"{}".format(self.gui.ui.managerAddressLineEdit.text())
-        try:
-            cfg_desc.manager_port = int(self.gui.ui.managerPortLineEdit.text())
-        except ValueError:
-            cfg_desc.manager_port = u"{}".format(self.gui.ui.managerPortLineEdit.text())
 
     def __read_trust_config(self, cfg_desc):
         requesting_trust = self.__read_trust(self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)
@@ -309,7 +295,7 @@ class ConfigurationDialogCustomizer(Customizer):
         try:
             trust = max(min(float(trust) / 100.0, 1.0), -1.0)
         except ValueError:
-            logger.error("Wrong trust value {}").format(trust)
+            logger.error("Wrong trust value {}".format(trust))
             trust = -1
         return trust
 
@@ -317,7 +303,7 @@ class ConfigurationDialogCustomizer(Customizer):
         try:
             trust = int(line_edit.text())
         except ValueError:
-            logger.info("Wrong trust value {}").format(line_edit.text())
+            logger.info("Wrong trust value {}".format(line_edit.text()))
             trust = slider.value()
         return trust
 
@@ -368,3 +354,13 @@ class ConfigurationDialogCustomizer(Customizer):
         else:
             self.__set_account_error()
             logger.warning("Wrong ethereum address: {}".format(text))
+
+    def __show_advance_clicked(self):
+        self.gui.ui.advanceSettingsWidget.setVisible(not self.gui.ui.advanceSettingsWidget.isVisible())
+        self.gui.ui.showAdvanceButton.setText(
+            self.SHOW_ADVANCE_BUTTON_MESSAGES[self.gui.ui.advanceSettingsWidget.isVisible()])
+
+    def __show_disk_button_clicked(self):
+        self.gui.ui.diskWidget.setVisible(not self.gui.ui.diskWidget.isVisible())
+        self.gui.ui.showDiskButton.setText(
+            self.SHOW_ADVANCE_BUTTON_MESSAGES[self.gui.ui.diskWidget.isVisible()])

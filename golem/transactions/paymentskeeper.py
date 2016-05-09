@@ -26,11 +26,9 @@ class PaymentsDatabase(object):
         """ Add new payment to the database.
         :param payment_info:
         """
-        with db.transaction():
-            Payment.create(subtask=payment_info.subtask_id,
-                           status=PaymentStatus.awaiting,
-                           payee=payment_info.computer.key_id,
-                           value=payment_info.value)
+        Payment.create(subtask=payment_info.subtask_id,
+                       payee=payment_info.computer.eth_account.address,
+                       value=payment_info.value)
 
     def change_state(self, subtask_id, state):
         """ Change state for all payments for task_id
@@ -73,23 +71,20 @@ class PaymentsKeeper(object):
         self.db = PaymentsDatabase()
 
     def get_list_of_all_payments(self):
-        # FIXME: Used only in tests!
-        return self.load_from_database()
+        # This data is used by UI.
+        # TODO: Update the UI to reflect Payment changes.
+        # FIXME: Do not prepare data for UI. UI should do it itself.
+        return [{"task": payment.subtask,
+                 "node": payment.payee,
+                 "value": payment.value,
+                 "state": payment.status} for
+                payment in self.db.get_newest_payment()]
 
     def finished_subtasks(self, payment_info):
         """ Add new information about finished subtask
         :param PaymentInfo payment_info: full information about payment for given subtask
         """
         self.db.add_payment(payment_info)
-
-    def load_from_database(self):
-        # This data is used by UI.
-        # TODO: Update the UI to reflect Payment changes.
-        return [{"task": payment.subtask,
-                 "node": payment.payee,
-                 "value": payment.value,
-                 "state": payment.status} for
-                payment in self.db.get_newest_payment()]
 
 
 class PaymentInfo(object):

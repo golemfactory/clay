@@ -10,7 +10,7 @@ import click
 import jsonpickle
 from twisted.internet import reactor
 
-from gnr.docker_environments import BlenderEnvironment, \
+from gnr.renderingenvironment import BlenderEnvironment, \
     LuxRenderEnvironment
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
@@ -36,8 +36,8 @@ class Node(object):
     """
     default_environments = []
 
-    def __init__(self, **config_overrides):
-        self.client = create_client(**config_overrides)
+    def __init__(self, datadir=None, **config_overrides):
+        self.client = create_client(datadir, **config_overrides)
 
     def initialize(self):
         self.client.start_network()
@@ -56,7 +56,7 @@ class Node(object):
         for task_def in tasks:
             task_builder = self._get_task_builder(task_def)
             golem_task = Task.build_task(task_builder(self.client.get_node_name(), task_def,
-                                                      self.client.get_root_path()))
+                                                      self.client.datadir))
             self.client.enqueue_new_task(golem_task)
 
     def run(self):
@@ -79,7 +79,7 @@ class GNRNode(Node):
 
     @staticmethod
     def _get_task_builder(task_def):
-        #FIXME: temporary solution
+        # FIXME: temporary solution.
         if task_def.main_scene_file.endswith('.blend'):
             return BlenderRenderTaskBuilder
         else:
@@ -134,6 +134,7 @@ def node_cli():
 
 
 @node_cli.command()
+@click.option('--datadir', '-d', type=click.Path())
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=parse_node_addr,
               help="Network address to use for this node")
@@ -142,10 +143,10 @@ def node_cli():
 @click.option('--task', '-t', multiple=True, type=click.Path(exists=True),
               callback=parse_task_file,
               help="Request task from file")
-def start(node_address, peer, task, **extra_args):
-    del extra_args
+def start(datadir, node_address, peer, task, **extra_args):
+    del extra_args  # FIXME: What is this?
 
-    node = GNRNode(node_address=node_address)
+    node = GNRNode(datadir=datadir, node_address=node_address)
     node.initialize()
 
     node.connect_with_peers(peer)

@@ -6,16 +6,17 @@ from gnr.application import GNRGui
 from gnr.customizers.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
 from gnr.gnrstartapp import register_rendering_task_types
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
-from gnr.ui.administrationmainwindow import AdministrationMainWindow
-from gnr.ui.dialog import RenderingNewTaskDialog
+from gnr.ui.appmainwindow import AppMainWindow
 
 
 class TestRenderingNewTaskDialogCustomizer(TestCase):
     def test_customizer(self):
+        gnrgui = GNRGui(Mock(), AppMainWindow)
         logic = RenderingApplicationLogic()
         logic.client = Mock()
         register_rendering_task_types(logic)
-        gnrgui = GNRGui(Mock(), AdministrationMainWindow)
-        customizer = RenderingNewTaskDialogCustomizer(RenderingNewTaskDialog(gnrgui.main_window.window), logic)
+        customizer = RenderingNewTaskDialogCustomizer(gnrgui.main_window, logic)
         self.assertIsInstance(customizer, RenderingNewTaskDialogCustomizer)
+        gnrgui.app.exit(0)
         gnrgui.app.deleteLater()
+

@@ -48,7 +48,7 @@ class AbsRenderingApplicationLogic(object):
     def _get_builder(self, task_state):
         return self.renderers[task_state.definition.renderer].task_builder_type(self.client.get_node_name(),
                                                                                 task_state.definition,
-                                                                                self.client.get_root_path())
+                                                                                self.client.datadir)
 
     def _validate_task_state(self, task_state):
 
@@ -89,5 +89,13 @@ class AbsRenderingApplicationLogic(object):
 
 class RenderingApplicationLogic(AbsRenderingApplicationLogic, GNRApplicationLogic):
     def __init__(self):
+        self.renderer_options = None
         GNRApplicationLogic.__init__(self)
         AbsRenderingApplicationLogic.__init__(self)
+
+    def change_verification_option(self, size_x_max=None, size_y_max=None):
+        if size_x_max:
+            self.customizer.gui.ui.verificationSizeXSpinBox.setMaximum(size_x_max)
+        if size_y_max:
+            self.customizer.gui.ui.verificationSizeYSpinBox.setMaximum(size_y_max)
+

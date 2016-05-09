@@ -1,5 +1,5 @@
 import abc
-from twisted.internet.protocol import Factory, Protocol
+from twisted.internet.protocol import Factory, Protocol, connectionDone
 
 
 class Network(object):
@@ -53,6 +53,9 @@ class SessionProtocol(Protocol):
         """Called when new connection is successfully opened"""
         Protocol.connectionMade(self)
         self.session = self.session_factory.get_session(self)
+
+    def connectionLost(self, reason=connectionDone):
+        del self.session
 
 
 class Session(object):

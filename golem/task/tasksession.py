@@ -1,8 +1,9 @@
-import time
 import cPickle as pickle
-import struct
 import logging
 import os
+import struct
+import time
+
 from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, \
     MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, \
     MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
@@ -10,12 +11,11 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
     MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse, \
     MessageResourceHashList, MessageTaskResultHash
-
+from golem.network.transport.session import MiddlemanSafeSession
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
-from golem.network.transport.session import MiddlemanSafeSession
-from golem.task.taskbase import result_types, resource_types
 from golem.resource.resource import decompress_dir
+from golem.task.taskbase import result_types, resource_types
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
@@ -559,15 +559,8 @@ class TaskSession(MiddlemanSafeSession):
                   )
 
     def __send_resource_list(self, msg):
-
-        files = self.task_manager.get_resources(msg.task_id, None, resource_types["hashes"])
-
         resource_manager = self.task_server.client.resource_server.resource_manager
-        resource_manager.add_task(files, msg.task_id)
         res = resource_manager.list_split_resources(msg.task_id)
-
-        logger.debug("IPFS: resource list: %r" % res)
-
         self.send(MessageResourceHashList(res))
 
     def __send_resource_format(self, use_distributed_resource):
