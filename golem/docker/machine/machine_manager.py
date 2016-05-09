@@ -247,10 +247,10 @@ class DockerMachineManager(DockerConfigManager):
         return False
 
     def __docker_machine_images(self):
-        command = self.docker_machine_command('list')
-        output = subprocess.check_output(command, shell=True)
+        output = self.docker_machine_command('list')
         if output:
             return [i.strip() for i in output.split("\n") if i]
+        raise EnvironmentError("Docker machine images not available")
 
     def __start_docker_machine(self):
         logger.debug("DockerMachine: starting")
