@@ -1,12 +1,8 @@
-import logging
-
 import os
 
 from gnr.benchmarks.benchmark import Benchmark
 from gnr.renderingdirmanager import get_benchmarks_path, find_task_script
 from gnr.task.luxrendertask import LuxRenderOptions
-
-logger = logging.getLogger(__name__)
 
 class LuxBenchmark(Benchmark):
     def __init__(self):
