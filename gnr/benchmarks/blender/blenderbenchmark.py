@@ -1,12 +1,9 @@
-import logging
-
 import os
 
 from gnr.benchmarks.benchmark import Benchmark
 from gnr.renderingdirmanager import get_benchmarks_path, find_task_script
 from gnr.task.blenderrendertask import BlenderRendererOptions
 
-logger = logging.getLogger(__name__)
 
 class BlenderBenchmark(Benchmark):
     def __init__(self):
@@ -17,7 +14,7 @@ class BlenderBenchmark(Benchmark):
         
         self.blender_task_path = os.path.join(get_benchmarks_path(), "blender", "blender_task")
         
-        self.task_definition.output_file = "/tmp/lux_benchmark.png"
+        self.task_definition.output_file = "/tmp/blender_benchmark.png"
         self.task_definition.tasktype = "Blender"
         self.task_definition.renderer = "Blender"
         self.task_definition.output_format = "png"
