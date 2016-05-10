@@ -239,6 +239,7 @@ class BlenderRenderTask(FrameRenderingTask):
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
                       "end_task": end_task,
+                      "num_subtasks": self.num_subtasks,
                       "total_tasks": self.total_tasks,
                       "outfilebasename": self.outfilebasename,
                       "scene_file": scene_file,
@@ -273,11 +274,6 @@ class BlenderRenderTask(FrameRenderingTask):
         if self.use_frames:
             frames = [self.frames[0]]
         else:
-            frames = []
-
-        if self.use_frames:
-            frames = [self.frames[0]]
-        else:
             frames = [1]
 
         script_src = regenerate_blender_crop_file(self.script_src, 8, 8, 0.0, 1.0, 0.0, 1.0)
@@ -286,6 +282,7 @@ class BlenderRenderTask(FrameRenderingTask):
                       "start_task": 1,
                       "end_task": 1,
                       "total_tasks": self.total_tasks,
+                      "num_subtasks": self.num_subtasks,
                       "outfilebasename": self.outfilebasename,
                       "scene_file": scene_file,
                       "script_src": script_src,
@@ -303,41 +300,41 @@ class BlenderRenderTask(FrameRenderingTask):
         return self._new_compute_task_def(hash, extra_data, working_directory, 0)
 
     def _get_min_max_y(self, start_task):
-        if self.res_y % self.total_tasks == 0:
-            min_y = (self.total_tasks - start_task) * (1.0 / float(self.total_tasks))
-            max_y = (self.total_tasks - start_task + 1) * (1.0 / float(self.total_tasks))
+        part_num = self.get_part_num(start_task)
+        if self.res_y % self.num_subtasks == 0:
+            min_y = (self.num_subtasks - part_num) * (1.0 / float(self.num_subtasks))
+            max_y = (self.num_subtasks - part_num + 1) * (1.0 / float(self.num_subtasks))
         else:
-            ceiling_height = int(math.ceil(float(self.res_y) / float(self.total_tasks)))
-            ceiling_subtasks = self.total_tasks - (ceiling_height * self.total_tasks - self.res_y)
-            if start_task > ceiling_subtasks:
-                min_y = float(self.total_tasks - start_task) * float(ceiling_height - 1) / float(self.res_y)
-                max_y = float(self.total_tasks - start_task + 1) * float(ceiling_height - 1) / float(self.res_y)
+            ceiling_height = int(math.ceil(float(self.res_y) / float(self.num_subtasks)))
+            ceiling_subtasks = self.num_subtasks - (ceiling_height * self.num_subtasks - self.res_y)
+            if part_num > ceiling_subtasks:
+                min_y = float(self.num_subtasks - part_num) * float(ceiling_height - 1) / float(self.res_y)
+                max_y = float(self.num_subtasks - part_num + 1) * float(ceiling_height - 1) / float(self.res_y)
             else:
-                min_y = float((self.total_tasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task) * (ceiling_height)) / float(self.res_y)
-                max_y = float((self.total_tasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task + 1) * (ceiling_height)) / float(self.res_y)
-        return (min_y, max_y)
-        
-    
+                min_y = float((self.num_subtasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - part_num) * (ceiling_height)) / float(self.res_y)
+                max_y = float((self.num_subtasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - part_num + 1) * (ceiling_height)) / float(self.res_y)
+        return min_y, max_y
+
     def _get_part_size(self, subtask_id):
         start_task = self.subtasks_given[subtask_id]['start_task']
         if not self.use_frames:
             res_y = self._get_part_size_from_subtask_number(start_task)
-        elif len(self.frames) >= self.total_tasks:
+        elif len(self.frames) >= self.num_subtasks:
             res_y = self.res_y
         else:
-            parts = self.total_tasks / len(self.frames)
+            parts = self.num_subtasks / len(self.frames)
             res_y = int(math.floor(float(self.res_y) / float(parts)))
         return self.res_x, res_y
 
     def _get_part_size_from_subtask_number(self, subtask_number):
         
-        if self.res_y % self.total_tasks == 0:
-            res_y = self.res_y / self.total_tasks
+        if self.res_y % self.num_subtasks == 0:
+            res_y = self.res_y / self.num_subtasks
         else:
-            # in this case task will be divided into not equal parts: floor or ceil of (res_y/total_tasks)
+            # in this case task will be divided into not equal parts: floor or ceil of (res_y/num_subtasks)
             # ceiling will be height of subtasks with smaller num
-            ceiling_height = int(math.ceil(float(self.res_y) / float(self.total_tasks)))
-            ceiling_subtasks = self.total_tasks - (ceiling_height * self.total_tasks - self.res_y)
+            ceiling_height = int(math.ceil(float(self.res_y) / float(self.num_subtasks)))
+            ceiling_subtasks = self.num_subtasks - (ceiling_height * self.num_subtasks - self.res_y)
             if subtask_number > ceiling_subtasks:
                 res_y = ceiling_height - 1
             else:
@@ -354,7 +351,8 @@ class BlenderRenderTask(FrameRenderingTask):
         extra_data, _ = FrameRenderingTask._change_scope(self, subtask_id, start_box, tr_file)
         min_x = start_box[0] / float(self.res_x)
         max_x = (start_box[0] + self.verification_options.box_size[0] + 1) / float(self.res_x)
-        start_y = start_box[1] + (extra_data['start_task'] - 1) * (self.res_y / float(extra_data['total_tasks']))
+        part_num = self.get_part_num(extra_data['start_task'])
+        start_y = start_box[1] + (part_num - 1) * (self.res_y / float(extra_data['num_subtasks']))
         max_y = float(self.res_y - start_y) / self.res_y
         min_y = max(float(self.res_y - start_y - self.verification_options.box_size[1] - 1) / self.res_y, 0.0)
         script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, min_x, max_x, min_y, max_y)
@@ -386,6 +384,7 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
+
 
 class CustomCollector(RenderingTaskCollector):
     def __init__(self, paste=False, width=1, height=1):

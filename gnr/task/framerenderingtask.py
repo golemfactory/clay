@@ -88,7 +88,7 @@ class FrameRenderingTask(RenderingTask):
             self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
             frames_list = []
 
-            if self.use_frames and self.total_tasks <= len(self.frames):
+            if self.use_frames and self.num_subtasks <= len(self.frames):
                 frames_list = self.subtasks_given[subtask_id]['frames']
                 if len(tr_files) < len(frames_list):
                     self._mark_subtask_failed(subtask_id)
@@ -112,7 +112,7 @@ class FrameRenderingTask(RenderingTask):
 
                 if not self.use_frames:
                     self._collect_image_part(num_start, tr_file)
-                elif self.total_tasks <= len(self.frames):
+                elif self.num_subtasks <= len(self.frames):
                     frames_list = self._collect_frames(num_start, tr_file, frames_list, tmp_dir)
                 else:
                     self._collect_frame_part(num_start, tr_file, parts, tmp_dir)

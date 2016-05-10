@@ -29,6 +29,23 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         assert task.needs_computation()
         task.last_task = 14
         assert not task.needs_computation()
+
+        assert task.get_part_num(3) == 2
+        assert task.get_part_num(4) == 2
+        assert task.get_part_num(1) == 1
+        assert task.get_part_num(14) == 7
+        assert task.get_part_num(2) == 1
+        assert task.get_part_num(8) == 4
+
+        task.redundancy = 3
+        assert task.get_part_num(1) == 1
+        assert task.get_part_num(2) == 1
+        assert task.get_part_num(3) == 1
+        assert task.get_part_num(4) == 2
+        assert task.get_part_num(8) == 3
+        assert task.get_part_num(14) == 5
+        assert task.get_part_num(21) == 7
+
         task.num_subtasks = 0
         task.redundancy = 1
 

@@ -98,6 +98,7 @@ class RenderingTask(GNRTask):
 
         self.advanceVerification = False
         self.verifided_clients = set()
+        self.verification_options = None
 
         if is_windows():
             self.__get_path = self.__get_path_windows
@@ -139,9 +140,10 @@ class RenderingTask(GNRTask):
 
     @check_subtask_id_wrapper
     def _get_part_img_size(self, subtask_id, adv_test_file):
-        num_task = self.subtasks_given[subtask_id]['start_task']
-        img_height = int(math.floor(float(self.res_y) / float(self.total_tasks)))
-        return 0, (num_task - 1) * img_height, self.res_x, num_task * img_height
+        task_num = self.subtasks_given[subtask_id]['start_task']
+        part_num = self.get_part_num(task_num)
+        img_height = int(math.floor(float(self.res_y) / float(self.num_subtasks)))
+        return 0, (part_num - 1) * img_height, self.res_x, part_num * img_height
 
     def _update_preview(self, new_chunk_file_path):
 
@@ -181,9 +183,10 @@ class RenderingTask(GNRTask):
         img_task.save(self.preview_task_file_path, "BMP")
 
     def _mark_task_area(self, subtask, img_task, color):
-        upper = int(math.floor(float(self.res_y) / float(self.total_tasks) * (subtask['start_task'] - 1)))
-        lower = int(math.floor(float(self.res_y) / float(self.total_tasks) * (subtask['end_task'])))
-        for i in range(0, self.res_x):
+        height = float(self.res_y) / float(self.num_subtasks)
+        upper = int(math.floor(height * (self.get_part_num(subtask['start_task']) - 1)))
+        lower = int(math.floor(height * (self.get_part_num(subtask['start_task']))))
+        for i in range(self.res_x):
             for j in range(upper, lower):
                 img_task.putpixel((i, j), color)
 
@@ -339,7 +342,8 @@ class RenderingTask(GNRTask):
     def _change_scope(self, subtask_id, start_box, tr_file):
         extra_data = copy(self.subtasks_given[subtask_id])
         extra_data['outfilebasename'] = str(uuid.uuid4())
-        extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(self.subtasks_given[subtask_id]['start_task']))
+        part_num = self.get_part_num(self.subtasks_given[subtask_id]['start_task'])
+        extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(part_num))
         if not os.path.isdir(extra_data['tmp_path']):
             os.mkdir(extra_data['tmp_path'])
         return extra_data, start_box

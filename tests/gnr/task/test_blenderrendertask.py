@@ -84,7 +84,7 @@ class TestBlenderTaskDivision(TempDirFixture):
         self.assertTrue(self.bt.res_y == 300)
         self.assertTrue(self.bt.total_tasks == 7)
         for tasks in [1, 6, 7, 20, 60]:
-            self.bt.total_tasks = tasks
+            self.bt.num_subtasks = tasks
             for yres in range(1, 100):
                 self.bt.res_y = yres
                 cur_max_y = self.bt.res_y

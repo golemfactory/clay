@@ -166,10 +166,6 @@ class LuxTask(RenderingTask):
             return None
 
         working_directory = self._get_working_directory()
-        min_x = 0
-        max_x = 1
-        min_y = (start_task - 1) * (1.0 / float(self.total_tasks))
-        max_y = (end_task) * (1.0 / float(self.total_tasks))
 
         if self.halttime > 0:
             write_interval = int(self.halttime / 2)
