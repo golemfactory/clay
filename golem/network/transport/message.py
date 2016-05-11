@@ -100,11 +100,11 @@ class Message:
         while msg_:
             m = cls.deserialize_message(msg_)
 
-            if m is None:
+            if m:
+                messages_.append(m)
+            else:
                 logger.error("Failed to deserialize message {}".format(msg_))
-                assert False
 
-            messages_.append(m)
             msg_ = db_.read_len_prefixed_string()
 
         return messages_
