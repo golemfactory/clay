@@ -12,7 +12,7 @@ class TestFrameRenderingTask(TestDirFixture):
 
     def _get_init_params(self):
         return ("NODE_ABC", "XYZ", "10.10.10.10", 40102, "KEY", "ENV", time.time() + 60 * 5,
-                60,  self.files[0], [], self.path, self.files, 7, 30, 30, "out", "out2", ".png",
+                60,  self.files[0], [], self.path, self.files, 7, 1, 30, 30, "out", "out2", ".png",
                 self.path, 1000, True, range(1, 11), 30, None)
 
     def test_total_tasks(self):

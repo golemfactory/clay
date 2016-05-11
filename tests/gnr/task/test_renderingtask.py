@@ -12,7 +12,7 @@ class TestRenderingTask(TestDirFixture):
     def test_total_tasks(self):
         files_ = self.additional_dir_content([2])
         task = RenderingTask("NODE_ABC", "XYZ", "10.10.10.10", 40102, "KEY", "ENV", time.time() + 60 * 5,
-                             60,  files_[0], [], self.path, files_[1], 7, 30, 30, "out", "out2", ".png",
+                             60,  files_[0], [], self.path, files_[1], 7, 1, 30, 30, "out", "out2", ".png",
                              self.path, 1000, 30, None)
         assert isinstance(task, RenderingTask)
         assert task.total_tasks == 7

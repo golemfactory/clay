@@ -58,6 +58,7 @@ class TestBlenderTaskDivision(TempDirFixture):
                                     main_scene_file="example.blend",
                                     main_program_file=program_file,
                                     num_subtasks=7,
+                                    redundancy=1,
                                     res_x=2,
                                     res_y=300,
                                     outfilebasename="example_out",

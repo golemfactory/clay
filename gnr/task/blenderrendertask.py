@@ -51,6 +51,8 @@ class PreviewUpdater(object):
     def update_preview(self, subtask_path, subtask_number):
         if subtask_number not in self.chunks:
             self.chunks[subtask_number] = subtask_path
+        else:
+            return
         
         try:
             if subtask_path.upper().endswith(".EXR"):
@@ -324,8 +326,9 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def _get_part_size(self, subtask_id):
         start_task = self.subtasks_given[subtask_id]['start_task']
+        part_num = self.get_part_num(start_task)
         if not self.use_frames:
-            res_y = self._get_part_size_from_subtask_number(start_task)
+            res_y = self._get_part_size_from_subtask_number(part_num)
         elif len(self.frames) >= self.num_subtasks:
             res_y = self.res_y
         else:
@@ -374,6 +377,7 @@ class BlenderRenderTask(FrameRenderingTask):
         return int(file_name[idx + len(self.outfilebasename):])
 
     def _update_preview(self, new_chunk_file_path, chunk_num):
+        print "Update preview called {}".format(chunk_num)
         self.preview_updater.update_preview(new_chunk_file_path, chunk_num)
 
     def _get_output_name(self, frame_num, num_start):

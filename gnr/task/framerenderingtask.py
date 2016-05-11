@@ -262,8 +262,10 @@ class FrameRenderingTask(RenderingTask):
 
     def _collect_image_part(self, num_start, tr_file):
         self.collected_file_names[num_start] = tr_file
-        self._update_preview(tr_file, num_start)
+        print "collect image part {}".format(num_start)
+        self._update_preview(tr_file, self.get_part_num(num_start))
         self._update_task_preview()
+
 
     def _collect_frames(self, num_start, tr_file, frames_list, tmp_dir):
         self.frames_given[frames_list[0]][0] = tr_file
