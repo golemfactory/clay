@@ -46,7 +46,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
                                                    self.gui.ui.verificationSizeYSpinBox.valueChanged,
                                                    self.gui.ui.verificationForAllRadioButton.toggled,
                                                    self.gui.ui.verificationForFirstRadioButton.toggled,
-                                                   self.gui.ui.probabilityLineEdit.textChanged
+                                                   self.gui.ui.probabilityLineEdit.textChanged,
+                                                   self.gui.ui.redundancySpinBox.valueChanged,
                                                    ])
 
     def _setup_verification_connections(self):
@@ -199,6 +200,9 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         NewTaskDialogCustomizer._load_resources(self, definition)
 
     def _load_verification_params(self, definition):
+        if definition.redundancy > 1:
+            self.gui.ui.redundancyCheckBox.setChecked(True)
+        self.gui.ui.redundancySpinBox.setValue(definition.redundancy)
         load_verification_params(self.gui, definition)
 
     def __set_verification_widgets_state(self, state):
@@ -257,6 +261,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             self.logic.customizer.gui.ui.resourceFilesLabel.setText(u"{}".format(len(definition.resources)))
 
     def _read_advance_verification_params(self, definition):
+        if self.gui.ui.redundancyCheckBox.isChecked():
+            definition.redundancy = self.gui.ui.redundancySpinBox.value()
         read_advance_verification_params(self.gui, definition)
 
     def _optimize_total_check_box_changed(self):

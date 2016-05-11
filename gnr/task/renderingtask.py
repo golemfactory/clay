@@ -55,7 +55,7 @@ class RenderingTask(GNRTask):
 
     def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
-                 num_subtasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
+                 num_subtasks, redundancy, res_x, res_y, outfilebasename, output_file, output_format, root_path,
                  estimated_memory, max_price, docker_images=None):
 
         try:
@@ -85,6 +85,7 @@ class RenderingTask(GNRTask):
         self.output_format = output_format
 
         self.num_subtasks = num_subtasks
+        self.redundancy = redundancy
         self.res_x = res_x
         self.res_y = res_y
 

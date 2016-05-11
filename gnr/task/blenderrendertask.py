@@ -116,6 +116,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.main_scene_file,
                                          self.task_definition.main_program_file,
                                          self._calculate_total(BlenderDefaults(), self.task_definition),
+                                         self.task_definition.redundancy,
                                          self.task_definition.resolution[0],
                                          self.task_definition.resolution[1],
                                          os.path.splitext(os.path.basename(self.task_definition.output_file))[0],
@@ -157,6 +158,7 @@ class BlenderRenderTask(FrameRenderingTask):
                  main_scene_file,
                  main_program_file,
                  num_subtasks,
+                 redundancy,
                  res_x,
                  res_y,
                  outfilebasename,
@@ -178,8 +180,9 @@ class BlenderRenderTask(FrameRenderingTask):
         FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                     BlenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                     main_program_file, task_resources, main_scene_dir, main_scene_file,
-                                    num_subtasks, res_x, res_y, outfilebasename, output_file, output_format,
-                                    root_path, estimated_memory, use_frames, frames, max_price, docker_images)
+                                    num_subtasks, redundancy, res_x, res_y, outfilebasename, output_file,
+                                    output_format, root_path, estimated_memory, use_frames, frames, max_price,
+                                    docker_images)
 
         crop_task = find_task_script("blendercrop.py")
         try:

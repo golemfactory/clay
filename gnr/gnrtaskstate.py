@@ -12,6 +12,7 @@ class GNRTaskDefinition(object):
         self.estimated_memory = 0
 
         self.total_subtasks = 0
+        self.redundancy = 1
         self.optimize_total = False
         self.main_program_file = ""
         self.task_type = None

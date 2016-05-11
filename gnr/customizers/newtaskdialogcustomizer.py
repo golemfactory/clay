@@ -62,6 +62,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.subtaskTimeoutSecSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
         self.gui.ui.totalSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
         self.gui.ui.chooseMainProgramFileButton.clicked.connect(self._choose_main_program_file_button_clicked)
+        self.gui.ui.redundancyCheckBox.stateChanged.connect(self._redundancy_check_box_changed)
 
     def _setup_options_connections(self):
         pass
@@ -274,3 +275,8 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.advanceNewTaskWidget.setVisible(not self.gui.ui.advanceNewTaskWidget.isVisible())
         self.gui.ui.showAdvanceNewTaskButton.setText(
             self.SHOW_ADVANCE_BUTTON_MESSAGE[self.gui.ui.advanceNewTaskWidget.isVisible()])
+
+    def _redundancy_check_box_changed(self):
+        self.gui.ui.redundancySpinBox.setEnabled(self.gui.ui.redundancyCheckBox.isChecked())
+        if not self.gui.ui.redundancyCheckBox.isChecked():
+            self.gui.ui.redundancySpinBox.setValue(1)
