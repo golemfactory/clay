@@ -9,10 +9,10 @@ import win32process
 import shutil
 
 
-def format_3ds_max_cmd(cmd_file, start_task, end_task, total_tasks, output_file, outfilebasename, scenefile, width,
+def format_3ds_max_cmd(cmd_file, start_part, end_part, num_subtasks, output_file, outfilebasename, scenefile, width,
                        height, preset_file, overlap):
     cmd = '{} -outputName:{}\\{}.exr -strip:{},{},{} "{}" -frames:0 -stillFrame -rfw:0 -width={} -height={} -rps:"{}"'.format(
-        cmd_file, output_file, outfilebasename, total_tasks, overlap, start_task, scenefile, width, height, preset_file)
+        cmd_file, output_file, outfilebasename, num_subtasks, overlap, start_part, scenefile, width, height, preset_file)
     return cmd
 
 
@@ -27,9 +27,9 @@ def format_3ds_max_cmd_with_frames(cmd_file, frames, output_file, outfilebasenam
     return cmd
 
 
-def format_3ds_max_cmd_with_parts(cmd_file, frames, parts, start_task, output_file, outfilebasename, scene_file, width,
+def format_3ds_max_cmd_with_parts(cmd_file, frames, parts, start_part, output_file, outfilebasename, scene_file, width,
                                   height, preset_file, overlap):
-    part = ((start_task - 1) % parts) + 1
+    part = ((start_part - 1) % parts) + 1
     cmd = '{} -outputName:{}\\{}.exr -frames:{} -strip:{},{},{} "{}" -rfw:0 -width={} -height={} -rps:"{}"'.format(
         cmd_file, output_file, outfilebasename, frames, parts, overlap, part, scene_file, width, height, preset_file)
     return cmd
@@ -71,7 +71,7 @@ def return_files(files):
     return {'data': files, 'result_type': 1}
 
 
-def run_3ds_max_task(path_root, start_task, end_task, total_tasks, outfilebasename, scene_file, width, height, preset,
+def run_3ds_max_task(path_root, start_part, end_part, num_subtasks, outfilebasename, scene_file, width, height, preset,
                      cmd_file, use_frames, frames, parts, num_cores, overlap):
     output_files = tmp_path
 
@@ -98,10 +98,10 @@ def run_3ds_max_task(path_root, start_task, end_task, total_tasks, outfilebasena
                 cmd = format_3ds_max_cmd_with_frames(cmd_file, frames, output_files, outfilebasename, scene_file, width,
                                                      height, preset_file)
             else:
-                cmd = format_3ds_max_cmd_with_parts(cmd_file, frames, parts, start_task, output_files, outfilebasename,
+                cmd = format_3ds_max_cmd_with_parts(cmd_file, frames, parts, start_part, output_files, outfilebasename,
                                                     scene_file, width, height, preset_file, overlap)
         else:
-            cmd = format_3ds_max_cmd(cmd_file, start_task, end_task, total_tasks, output_files, outfilebasename,
+            cmd = format_3ds_max_cmd(cmd_file, start_part, end_part, num_subtasks, output_files, outfilebasename,
                                      scene_file, width, height, preset_file, overlap)
 
     else:
@@ -123,5 +123,5 @@ def parse_frames(frames):
     return ",".join([u"{}".format(frame) for frame in frames])
 
 
-output = run_3ds_max_task(path_root, start_task, end_task, total_tasks, outfilebasename, scene_file, width, height,
+output = run_3ds_max_task(path_root, start_part, end_part, num_subtasks, outfilebasename, scene_file, width, height,
                           preset_file, cmd_file, use_frames, frames, parts, num_cores, overlap)

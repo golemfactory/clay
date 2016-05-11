@@ -9,12 +9,14 @@ import psutil
 import math
 import shutil
 
+
 def format_test_vray_cmd(cmd_file, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
     cmd = ["{}".format(cmd_file), "-imgFile={}/{}.exr".format(output_file, outfilebasename),
            "-sceneFile={}".format(scenefile), "-imgWidth={}".format(width), "-imgHeight={}".format(height),
            "-region={};{};{};{}".format(start_box[0], start_box[1], start_box[0] + box[0], start_box[1] + box[1]),
            "-autoClose=1", "-display=0", "-rt_engine={}".format(rt_engine), "-numThreads={}".format(num_threads) ]
     return cmd
+
 
 def format_test_vray_cmd_with_parts(cmd_file, frames,  output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
     cmd = ["{}".format(cmd_file), "-imgFile={}/{}.exr".format(output_file, outfilebasename),
@@ -23,21 +25,24 @@ def format_test_vray_cmd_with_parts(cmd_file, frames,  output_file, outfilebasen
            "-autoClose=1", "-display=0", "-rtEngine={}".format(rt_engine), "-numThreads={}".format(num_threads)]
     return cmd
 
-def format_vray_cmd(cmd_file, start_task, end_task, h_tasks, total_tasks, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
+
+def format_vray_cmd(cmd_file, start_task, start_part, h_tasks, total_tasks, output_file, outfilebasename, scenefile,
+                    width, height, rt_engine, num_threads):
     if 'generateStartBox' in globals():
         return format_test_vray_cmd(cmd_file, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads)
     w_tasks = total_tasks / h_tasks
     part_width = width / w_tasks
     part_height = height / h_tasks
-    left = ((int(start_task) - 1) / int(h_tasks)) * part_width
+    left = ((int(start_part) - 1) / int(h_tasks)) * part_width
     right = left + part_width
-    upper = ((start_task - 1) % h_tasks) * part_height
+    upper = ((start_part - 1) % h_tasks) * part_height
     lower = upper + part_height
     cmd = ["{}".format(cmd_file), "-imgFile={}/{}{}.exr".format(output_file, outfilebasename, start_task),
            "-sceneFile={}".format(scenefile), "-imgWidth={}".format(width),  "-imgHeight={}".format(height),
            "-region={};{};{};{}".format(left, upper, right, lower), "-autoClose=1", "-display=0",
-           "-rtEngine={}".format(rt_engine), "-numThreads={}".format(num_threads) ]
+           "-rtEngine={}".format(rt_engine), "-numThreads={}".format(num_threads)]
     return cmd
+
 
 def format_vray_cmd_with_frames(cmd_file, frames, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
     cmd = ["{}".format(cmd_file), "-imgFile={}/{}.exr".format(output_file, outfilebasename),
@@ -46,11 +51,12 @@ def format_vray_cmd_with_frames(cmd_file, frames, output_file, outfilebasename, 
            "-autoClose=1", "-display=0", "-rtEngine={}".format(rt_engine), "-numThreads={}".format(num_threads) ]
     return cmd
 
-def format_vray_cmd_with_parts(cmd_file, frames, parts, start_task, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
+
+def format_vray_cmd_with_parts(cmd_file, frames, parts, start_part, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads):
     if 'generateStartBox' in globals():
         return format_test_vray_cmd_with_parts(cmd_file, frames, output_file, outfilebasename, scenefile, width, height, rt_engine, num_threads)
-    part = ((start_task - 1) % parts) + 1
-    upper = int(math.floor((part  - 1) * (float(height) / float(parts))))
+    part = ((start_part - 1) % parts) + 1
+    upper = int(math.floor((part - 1) * (float(height) / float(parts))))
     lower = int(math.floor(part * (float(height) / float(parts))))
     cmd = ["{}".format(cmd_file), "-imgFile={}/{}.{}.exr".format(output_file, outfilebasename, part),
            "-sceneFile={}".format(scenefile), "-imgWidth={}".format(width), "-imgHeight={}".format(height),
@@ -122,8 +128,8 @@ def return_files(files):
     return {'data': files, 'result_type': 1 }
 
 ############################
-def run_vray_task(path_root, start_task, end_task, h_task, total_tasks, outfilebasename, scene_file, width, height, rt_engine, use_frames, frames, parts, num_threads):
-    print 'runVray Taskk'
+def run_vray_task(path_root, start_task, start_part, end_task, h_task, total_tasks, outfilebasename, scene_file, width,
+                  height, rt_engine, use_frames, frames, parts, num_threads):
     print frames
 
     output_files = tmp_path
@@ -151,9 +157,11 @@ def run_vray_task(path_root, start_task, end_task, h_task, total_tasks, outfileb
                 cmd = format_vray_cmd_with_frames(cmd_file, frames, output_files, outfilebasename, scene_file, width, height, rt_engine, num_threads)
             else:
                 outfilebasename = "{}.{}".format(outfilebasename, output_number(frames[0]))
-                cmd = format_vray_cmd_with_parts(cmd_file, frames, parts, start_task, output_files, outfilebasename, scene_file, width, height, rt_engine, num_threads)
+                cmd = format_vray_cmd_with_parts(cmd_file, frames, parts, start_part, output_files, outfilebasename,
+                                                 scene_file, width, height, rt_engine, num_threads)
         else:
-            cmd = format_vray_cmd(cmd_file, start_task, end_task, h_task, total_tasks, output_files,outfilebasename,  scene_file, width, height, rt_engine, num_threads)
+            cmd = format_vray_cmd(cmd_file, start_task, start_part, h_task, total_tasks, output_files,outfilebasename,
+                                  scene_file, width, height, rt_engine, num_threads)
     else:
         print "Scene file does not exist"
         return {'data': [], 'result_type': 0 }
@@ -169,4 +177,5 @@ def run_vray_task(path_root, start_task, end_task, h_task, total_tasks, outfileb
 def parse_frames(frames):
     return ";".join([ u"{}".format(frame) for frame in frames ])
 
-output = run_vray_task (path_root, start_task, end_task, h_task, total_tasks, outfilebasename, scene_file, width, height, rt_engine, use_frames, frames, parts, num_threads)
+output = run_vray_task(path_root, start_task, start_part, end_task, h_task, total_tasks, outfilebasename, scene_file,
+                       width, height, rt_engine, use_frames, frames, parts, num_threads)
