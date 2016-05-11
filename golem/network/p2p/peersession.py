@@ -379,7 +379,7 @@ class PeerSession(BasicSafeSession):
         key_id = self.node_info.key
         peer = self.p2p_service.peers.get(key_id)
 
-        if peer:
+        if peer and msg.reason != PeerSession.DCRDuplicatePeers:
             self.p2p_service.remove_peer(peer)
         super(PeerSession, self)._react_to_disconnect(msg)
 
