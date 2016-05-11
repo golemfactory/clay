@@ -7,7 +7,7 @@ from golem.environments.environment import Environment
 
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
-from gnr.docker_environments import BlenderEnvironment, LuxRenderEnvironment
+from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
 from gnr.task.luxrendertask import build_lux_render_info
 from gnr.task.blenderrendertask import build_blender_renderer_info
 from gnr.tasktype import build_pbrt_task_type, build_3ds_max_task_type, build_vray_task_type, \
@@ -103,9 +103,9 @@ def run_add_task_server(client):
     #   server.start()
 
 
-def start_app(logic, app, gui, rendering=False, start_manager=False, start_manager_client=False,
-              start_info_server=False, start_ranking=True, start_add_task_client=False, start_add_task_server=False,
-              datadir=None):
+def start_app(logic, app, gui, datadir=None, rendering=False, start_manager=False, start_manager_client=False,
+              start_info_server=False, start_ranking=True, start_add_task_client=False, start_add_task_server=False
+              ):
     reactor = install_reactor()
     register_gui(logic, app, gui)
     if rendering:

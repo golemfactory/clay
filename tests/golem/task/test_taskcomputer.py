@@ -25,8 +25,7 @@ class TestTaskComputer(TestDirFixture):
         self.assertFalse(tc.counting_task)
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.waiting_for_task)
-        tc.run()
-        time.sleep(1)
+        tc.last_task_request = 0
         tc.run()
         task_server.request_task.assert_called_with()
 
@@ -55,7 +54,8 @@ class TestTaskComputer(TestDirFixture):
         tc.task_server.unpack_delta.assert_called_with(tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
         self.assertIsNone(tc.waiting_for_task)
         self.assertEqual(len(tc.current_computations), 1)
-        time.sleep(0.5)
+        self.__wait_for_tasks(tc)
+
         self.assertFalse(tc.counting_task)
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.assigned_subtasks.get("xxyyzz"))
@@ -82,7 +82,8 @@ class TestTaskComputer(TestDirFixture):
         tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
                                                            "10.10.10.10", 10203, "key", "owner")
         self.assertTrue(tc.task_resource_collected("xyz"))
-        time.sleep(0.5)
+        self.__wait_for_tasks(tc)
+
         self.assertFalse(tc.counting_task)
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.assigned_subtasks.get("aabbcc"))
@@ -93,7 +94,8 @@ class TestTaskComputer(TestDirFixture):
         ctd.src_code = "print 'Hello world'"
         tc.task_given(ctd, 5)
         self.assertTrue(tc.task_resource_collected("xyz"))
-        time.sleep(0.5)
+        self.__wait_for_tasks(tc)
+
         task_server.send_task_failed.assert_called_with("aabbcc2", "xyz", "Wrong result format", "10.10.10.10", 10203,
                                                         "key", "owner", "ABC")
 
@@ -107,6 +109,10 @@ class TestTaskComputer(TestDirFixture):
                                                         "key", "owner", "ABC")
         tt.end_comp()
         time.sleep(0.5)
+
+    @staticmethod
+    def __wait_for_tasks(tc):
+        [t.join() for t in tc.current_computations]
 
 
 class TestTaskThread(TestDirFixture):

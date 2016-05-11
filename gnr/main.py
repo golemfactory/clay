@@ -12,8 +12,7 @@ from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCus
 
 
 @click.command()
-@click.option('--datadir', '-d', type=click.Path(),
-              default=get_local_datadir('gnr'))
+@click.option('--datadir', '-d', type=click.Path())
 def main(datadir):
     config_logging()
 
@@ -21,7 +20,7 @@ def main(datadir):
     app = GNRGui(logic, AppMainWindow)
     gui = RenderingMainWindowCustomizer
 
-    start_app(logic, app, gui, rendering=True, datadir=datadir)
+    start_app(logic, app, gui,  datadir=datadir, rendering=True,)
 
 if __name__ == "__main__":
     freeze_support()

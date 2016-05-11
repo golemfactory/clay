@@ -1,4 +1,4 @@
-from gnr.docker_environments import BlenderEnvironment
+from gnr.renderingenvironment import BlenderEnvironment
 from golem.docker.image import DockerImage
 
 from test_docker_image import DockerTestCase

@@ -394,14 +394,17 @@ class TaskSession(MiddlemanSafeSession):
         task_id = self.task_manager.subtask2task_mapping.get(subtask_id)
         task_result_manager = self.task_manager.task_result_manager
 
-        logger.debug("IPFS: Task result hash received: %s" % multihash)
+        logger.debug("IPFS: Task result hash received: {}".format(multihash))
 
         def on_success(extracted_pkg, *args, **kwargs):
             extra_data = extracted_pkg.to_extra_data()
-            logger.debug("IPFS: Task result extracted %r" % extracted_pkg.__dict__)
+            logger.debug("IPFS: Task result extracted {}"
+                         .format(extracted_pkg.__dict__))
             self.result_received(extra_data, decrypt=False)
 
         def on_error(*args, **kwargs):
+            logger.error("IPFS: Task result error: {} ({})"
+                         .format(subtask_id, args or "unspecified"))
             self.send(MessageSubtaskResultRejected(subtask_id))
 
         task_result_manager.pull_package(multihash,
