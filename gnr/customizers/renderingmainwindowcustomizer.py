@@ -238,14 +238,14 @@ class AbsRenderingMainWindowCustomizer(object):
             task = self.logic.get_task(task_id)
             renderer = self.logic.get_renderer(definition.renderer)
             if len(task.task_state.subtask_states) > 0:
-                total_tasks = task.task_state.subtask_states.values()[0].extra_data['total_tasks']
+                num_subtasks = task.task_state.subtask_states.values()[0].extra_data['num_subtasks']
                 if definition.renderer in frame_renderers and definition.renderer_options.use_frames:
                     frames = len(definition.renderer_options.frames)
                     frame_num = self.gui.ui.frameSlider.value()
-                    num = renderer.get_task_num_from_pixels(x, y, total_tasks, use_frames=True, frames=frames,
+                    num = renderer.get_task_num_from_pixels(x, y, num_subtasks, use_frames=True, frames=frames,
                                                             frame_num=frame_num)
                 else:
-                    num = renderer.get_task_num_from_pixels(x, y, total_tasks)
+                    num = renderer.get_task_num_from_pixels(x, y, num_subtasks)
         return num
 
     def __get_subtask(self, num):
@@ -276,18 +276,18 @@ class AbsRenderingMainWindowCustomizer(object):
                 if definition.renderer in frame_renderers and definition.renderer_options.use_frames:
                     frames = len(definition.renderer_options.frames)
                     frame_num = self.gui.ui.frameSlider.value()
-                    border = renderer.get_task_boarder(subtask.extra_data['start_task'],
-                                                       subtask.extra_data['end_task'],
-                                                       subtask.extra_data['total_tasks'],
+                    border = renderer.get_task_boarder(subtask.extra_data['start_part'],
+                                                       subtask.extra_data['end_part'],
+                                                       subtask.extra_data['num_subtasks'],
                                                        self.current_task_highlighted.definition.resolution[0],
                                                        self.current_task_highlighted.definition.resolution[1],
                                                        use_frames=True,
                                                        frames=frames,
                                                        frame_num=frame_num)
                 else:
-                    border = renderer.get_task_boarder(subtask.extra_data['start_task'],
-                                                       subtask.extra_data['end_task'],
-                                                       subtask.extra_data['total_tasks'],
+                    border = renderer.get_task_boarder(subtask.extra_data['start_part'],
+                                                       subtask.extra_data['end_part'],
+                                                       subtask.extra_data['num_subtasks'],
                                                        self.current_task_highlighted.definition.resolution[0],
                                                        self.current_task_highlighted.definition.resolution[1])
 

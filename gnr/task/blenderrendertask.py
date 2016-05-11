@@ -221,7 +221,7 @@ class BlenderRenderTask(FrameRenderingTask):
         scene_file = self._get_scene_file_rel_path()
 
         if self.use_frames:
-            frames, parts = self._choose_frames(self.frames, start_task, self.total_tasks)
+            frames, parts = self._choose_frames(start_task)
         else:
             frames = [1]
             parts = 1
@@ -239,6 +239,8 @@ class BlenderRenderTask(FrameRenderingTask):
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
                       "end_task": end_task,
+                      "start_part": self.get_part_num(start_task),
+                      "end_part": self.get_part_num(end_task),
                       "num_subtasks": self.num_subtasks,
                       "total_tasks": self.total_tasks,
                       "outfilebasename": self.outfilebasename,
@@ -281,6 +283,8 @@ class BlenderRenderTask(FrameRenderingTask):
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": 1,
                       "end_task": 1,
+                      "start_part": 1,
+                      "end_part": 1,
                       "total_tasks": self.total_tasks,
                       "num_subtasks": self.num_subtasks,
                       "outfilebasename": self.outfilebasename,

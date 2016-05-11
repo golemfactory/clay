@@ -50,7 +50,9 @@ class PythonGNRTask(GNRTask):
         hash = "{}".format(random.getrandbits(128))
         ctd.subtask_id = hash
         ctd.extra_data = {"start_task": self.last_task,
-                          "end_task": self.last_task + 1}
+                          "end_task": self.last_task + 1,
+                          "start_part": self.last_task,
+                          "end_part": self.last_task + 1}
         ctd.return_address = self.header.task_owner_address
         ctd.return_port = self.header.task_owner_port
         ctd.task_owner = self.header.task_owner

@@ -46,7 +46,7 @@ def build_lux_render_info(dialog, customizer):
     return renderer
 
 
-def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, num_subtasks=20):
+def get_task_boarder(start_part, end_part, num_subtasks, res_x=300, res_y=200, num_thread_subtasks=20):
     boarder = []
     for i in range(0, res_y):
         boarder.append((0, i))
@@ -57,7 +57,7 @@ def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, nu
     return boarder
 
 
-def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200):
+def get_task_num_from_pixels(p_x, p_y, num_subtasks, res_x=300, res_y=200):
     return 1
 
 
@@ -180,6 +180,8 @@ class LuxTask(RenderingTask):
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
                       "end_task": end_task,
+                      "start_part": self.get_part_num(start_task),
+                      "end_part": self.get_part_num(end_task),
                       "total_tasks": self.total_tasks,
                       "outfilebasename": self.outfilebasename,
                       "output_format": self.output_format,

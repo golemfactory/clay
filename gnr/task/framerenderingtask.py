@@ -217,15 +217,16 @@ class FrameRenderingTask(RenderingTask):
             img_height = int(math.floor(float(self.res_y) / float(parts)))
             return 1, (num_task - 1) * img_height + 1, self.res_x - 1, num_task * img_height - 1
 
-    def _choose_frames(self, frames, start_task, total_tasks):
-        if total_tasks <= len(frames):
-            subtasks_frames = int(math.ceil(float(len(frames)) / float(total_tasks)))
-            start_frame = (start_task - 1) * subtasks_frames
-            end_frame = min(start_task * subtasks_frames, len(frames))
-            return frames[start_frame:end_frame], 1
+    def _choose_frames(self, start_task):
+        part_num = self.get_part_num(start_task)
+        if self.num_subtasks <= len(self.frames):
+            subtasks_frames = int(math.ceil(float(len(self.frames)) / float(self.num_subtasks)))
+            start_frame = (part_num - 1) * subtasks_frames
+            end_frame = min(part_num * subtasks_frames, len(self.frames))
+            return self.frames[start_frame:end_frame], 1
         else:
-            parts = total_tasks / len(frames)
-            return [frames[(start_task - 1) / parts]], parts
+            parts = self.num_subtasks / len(self.frames)
+            return [self.frames[(part_num - 1) / parts]], parts
 
     def _put_image_together(self, tmp_dir):
         output_file_name = u"{}".format(self.output_file, self.output_format)
@@ -297,36 +298,36 @@ class FrameRenderingTask(RenderingTask):
         self.preview_task_file_path[idx] = preview_task_file_path
 
 
-def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
+def get_task_boarder(start_part, end_part, num_subtasks, res_x=300, res_y=200, use_frames=False, frames=100,
                      frame_num=1):
     if not use_frames:
-        boarder = __get_boarder(start_task, end_task, total_tasks, res_x, res_y)
-    elif total_tasks > frames:
-        parts = total_tasks / frames
-        boarder = __get_boarder((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
+        boarder = __get_boarder(start_part, end_part, num_subtasks, res_x, res_y)
+    elif num_subtasks > frames:
+        parts = num_subtasks / frames
+        boarder = __get_boarder((start_part - 1) % parts + 1, (end_part - 1) % parts + 1, parts, res_x, res_y)
     else:
         boarder = []
 
     return boarder
 
 
-def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100, frame_num=1):
+def get_task_num_from_pixels(p_x, p_y, num_subtasks, res_x=300, res_y=200, use_frames=False, frames=100, frame_num=1):
     if not use_frames:
-        num = __num_from_pixel(p_y, res_y, total_tasks)
+        num = __num_from_pixel(p_y, res_y, num_subtasks)
     else:
-        if total_tasks <= frames:
-            subtask_frames = int(math.ceil(float(frames) / float(total_tasks)))
+        if num_subtasks <= frames:
+            subtask_frames = int(math.ceil(float(frames) / float(num_subtasks)))
             num = int(math.ceil(float(frame_num) / subtask_frames))
         else:
-            parts = total_tasks / frames
+            parts = num_subtasks / frames
             num = (frame_num - 1) * parts + __num_from_pixel(p_y, res_y, parts)
     return num
 
 
-def __get_boarder(start_task, end_task, parts, res_x, res_y):
+def __get_boarder(start_part, end_part, parts, res_x, res_y):
     boarder = []
-    upper = int(math.floor(float(res_y) / float(parts) * (start_task - 1)))
-    lower = int(math.floor(float(res_y) / float(parts) * end_task))
+    upper = int(math.floor(float(res_y) / float(parts) * (start_part - 1)))
+    lower = int(math.floor(float(res_y) / float(parts) * end_part))
     for i in range(upper, lower):
         boarder.append((0, i))
         boarder.append((res_x, i))

@@ -244,8 +244,11 @@ class PbrtRenderTask(RenderingTask):
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
                       "end_task": end_task,
+                      "start_part": self.get_part_num(start_task),
+                      "end_part": self.get_part_num(end_task),
                       "total_tasks": self.total_tasks,
-                      "num_subtasks": self.num_pbrt_subtasks,
+                      "num_subtasks": self.num_subtasks,
+                      "num_pbrt_subtasks": self.num_pbrt_subtasks,
                       "num_cores": num_cores,
                       "outfilebasename": self.outfilebasename,
                       "scene_file_src": scene_src,
@@ -329,8 +332,11 @@ class PbrtRenderTask(RenderingTask):
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": 0,
                       "end_task": 1,
+                      "start_part": 0,
+                      "end_part": 1,
                       "total_tasks": self.total_tasks,
-                      "num_subtasks": self.num_pbrt_subtasks,
+                      "num_subtasks": self.num_subtasks,
+                      "num_pbrt_subtasks": self.num_pbrt_subtasks,
                       "num_cores": self.num_cores,
                       "outfilebasename": self.outfilebasename,
                       "scene_file_src": scene_src,
@@ -346,8 +352,6 @@ class PbrtRenderTask(RenderingTask):
             os.makedirs(self.test_task_res_path)
 
         return self._new_compute_task_def(hash, extra_data, working_directory, 0)
-
-
 
     def _get_next_task(self, perf_index):
         if self.last_task != self.total_tasks:
@@ -404,11 +408,11 @@ class PbrtRenderTask(RenderingTask):
         extra_data["outfilebasename"] = str(extra_data["outfilebasename"])
         extra_data["resourcePath"] = os.path.dirname(self.main_program_file)
         extra_data["tmp_path"] = self.tmp_dir
-        extra_data["total_tasks"] = self.total_tasks * self.num_pbrt_subtasks
-        extra_data["num_subtasks"] = 1
-        extra_data["start_task"] = get_task_num_from_pixels(start_box[0], start_box[1], extra_data["total_tasks"],
+        extra_data["num_subtasks"] = self.num_subtasks * self.num_pbrt_subtasks
+        extra_data["num_pbrt_subtasks"] = 1
+        extra_data["start_part"] = get_task_num_from_pixels(start_box[0], start_box[1], extra_data["num_subtasks"],
                                                             self.res_x, self.res_y, 1) - 1
-        extra_data["end_task"] = extra_data["start_task"] + 1
+        extra_data["end_part"] = extra_data["start_part"] + 1
 
         return extra_data, start_box
 
@@ -431,22 +435,22 @@ class PbrtRenderTask(RenderingTask):
 BASENAME = "temp"
 
 
-def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, subtasks=20):
-    nx, ny, task_res_x, task_res_y = count_subtask_reg(total_tasks, subtasks, res_x, res_y)
+def get_task_num_from_pixels(p_x, p_y, num_subtasks, res_x=300, res_y=200, subtasks=20):
+    nx, ny, task_res_x, task_res_y = count_subtask_reg(num_subtasks, subtasks, res_x, res_y)
     num_x = int(math.floor(p_x / task_res_x))
     num_y = int(math.floor(p_y / task_res_y))
     num = (num_y * nx + num_x) / subtasks + 1
     return num
 
 
-def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, num_pbrt_subtasks=20):
+def get_task_boarder(start_part, end_part, num_subtasks, res_x=300, res_y=200, num_pbrt_subtasks=20):
     boarder = []
     new_left = True
     last_right = None
-    for num_task in range(start_task, end_task):
+    for num_task in range(start_part, end_part):
         for sb in range(num_pbrt_subtasks):
             num = num_pbrt_subtasks * num_task + sb
-            nx, ny, task_res_x, task_res_y = count_subtask_reg(total_tasks, num_pbrt_subtasks, res_x, res_y)
+            nx, ny, task_res_x, task_res_y = count_subtask_reg(num_subtasks, num_pbrt_subtasks, res_x, res_y)
             tx = num % nx
             ty = num / nx
             x_l = int(round(tx * task_res_x))

@@ -134,7 +134,7 @@ class VRayTask(FrameRenderingTask):
         scene_file = self._get_scene_file_rel_path()
 
         if self.use_frames:
-            frames, parts = self._choose_frames(self.frames, start_task, self.total_tasks)
+            frames, parts = self._choose_frames(start_task)
         else:
             frames = []
             parts = 1
@@ -142,6 +142,8 @@ class VRayTask(FrameRenderingTask):
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
                       "end_task": end_task,
+                      "start_part": self.get_part_num(start_task),
+                      "end_part": self.get_part_num(end_task),
                       "h_task": self.total_tasks,
                       "total_tasks": self.total_tasks,
                       "outfilebasename": self.outfilebasename,
@@ -249,6 +251,8 @@ class VRayTask(FrameRenderingTask):
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": 0,
                       "end_task": 1,
+                      "start_part": 0,
+                      "end_part": 1,
                       "h_task": self.total_tasks,
                       "total_tasks": self.total_tasks,
                       "outfilebasename": self.outfilebasename,
