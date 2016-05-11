@@ -147,7 +147,7 @@ class P2PService(PendingConnectionsServer):
         """
         logger.info("Adding peer {}, key id difficulty: {}".format(key_id, self.keys_auth.get_difficulty(peer.key_id)))
         self.peers[key_id] = peer
-        self.peer_order.append(peer.key_id)
+        self.peer_order.append(key_id)
         self.__send_degree()
 
     def add_to_peer_keeper(self, peer_info):
@@ -174,9 +174,10 @@ class P2PService(PendingConnectionsServer):
         """
         key_id = peer_info["node"].key
         if force or self.__is_new_peer(key_id):
-            logger.info("add peer to incoming {} {} {}".format(peer_info["node_name"],
-                                                               peer_info["address"],
-                                                               peer_info["port"]))
+            logger.info("add peer to incoming {} {} {} ({})".format(peer_info["node_name"],
+                                                                    peer_info["address"],
+                                                                    peer_info["port"],
+                                                                    key_id))
 
             self.incoming_peers[key_id] = {"address": peer_info["address"],
                                            "port": peer_info["port"],
@@ -763,8 +764,7 @@ class P2PService(PendingConnectionsServer):
     def __sync_free_peers(self):
         while self.free_peers and not self.enough_peers():
 
-            x = int(time.time()) % len(self.free_peers)  # get some random peer from free_peers
-            peer_id = self.free_peers[x]
+            peer_id = random.choice(self.free_peers)
 
             if peer_id not in self.peers:
                 peer = self.incoming_peers[peer_id]
