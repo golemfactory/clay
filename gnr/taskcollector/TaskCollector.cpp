@@ -109,7 +109,7 @@ public:
 	}
 	~TaskCollector() = default;
 
-	bool addImgFile(const std::string pathName, int flag = 0)  {
+	bool addImgFile(std::string pathName, int flag = 0)  {
 		if (pathName.empty())
 			return false;
 		auto img = GenericLoader(pathName, flag);
@@ -119,7 +119,7 @@ public:
 		return true;
 	};
 
-	bool addAlphaFile(const std::string pathName, int flag = 0) {
+	bool addAlphaFile(std::string pathName, int flag = 0) {
 		if (pathName.empty())
 			return false;
 		auto img = GenericLoader(pathName, flag);
@@ -131,7 +131,7 @@ public:
 
 	virtual bitmap_ptr finalize(bool showProgress = false) = 0;
 
-	bool finalizeAndSave(const std::string outputPath) {
+	bool finalizeAndSave(std::string outputPath) {
 		if (outputPath.empty())
 			return false;
 		std::cout << "finalize & save " << outputPath << std::endl;
