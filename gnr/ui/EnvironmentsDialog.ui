@@ -54,6 +54,9 @@
      </item>
      <item row="0" column="0">
       <widget class="QTableWidget" name="tableWidget">
+       <property name="toolTip">
+        <string/>
+       </property>
        <property name="selectionMode">
         <enum>QAbstractItemView::SingleSelection</enum>
        </property>
@@ -67,20 +70,32 @@
         <property name="text">
          <string>Name</string>
         </property>
+        <property name="toolTip">
+         <string>Environment's name</string>
+        </property>
        </column>
        <column>
         <property name="text">
          <string>Status</string>
+        </property>
+        <property name="toolTip">
+         <string>Whether the environment is supported on your machine</string>
         </property>
        </column>
        <column>
         <property name="text">
          <string>Accept Tasks</string>
         </property>
+        <property name="toolTip">
+         <string>Check this if you want to accept tasks using this environment</string>
+        </property>
        </column>
        <column>
         <property name="text">
          <string>Description</string>
+        </property>
+        <property name="toolTip">
+         <string>Environment's details</string>
         </property>
        </column>
       </widget>
