@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>789</width>
-    <height>623</height>
+    <width>973</width>
+    <height>689</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>2</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -234,6 +234,9 @@
                    <verstretch>0</verstretch>
                   </sizepolicy>
                  </property>
+                 <property name="toolTip">
+                  <string>For which subtasks want you perform advanced verification</string>
+                 </property>
                  <property name="title">
                   <string>Frequency</string>
                  </property>
@@ -242,6 +245,9 @@
                    <widget class="QRadioButton" name="verificationForAllRadioButton">
                     <property name="enabled">
                      <bool>false</bool>
+                    </property>
+                    <property name="toolTip">
+                     <string>Perform advanced verification for all subtasks</string>
                     </property>
                     <property name="text">
                      <string>For all subtasks</string>
@@ -252,6 +258,9 @@
                    <widget class="QRadioButton" name="verificationForFirstRadioButton">
                     <property name="enabled">
                      <bool>false</bool>
+                    </property>
+                    <property name="toolTip">
+                     <string>Perform advanced verification only for the first subtask</string>
                     </property>
                     <property name="text">
                      <string>For the first subtask</string>
@@ -270,6 +279,9 @@
                         <horstretch>0</horstretch>
                         <verstretch>0</verstretch>
                        </sizepolicy>
+                      </property>
+                      <property name="toolTip">
+                       <string>Perform advanced verification for randomly chosen subtasks</string>
                       </property>
                       <property name="text">
                        <string>Random</string>
@@ -299,6 +311,9 @@
                         <horstretch>0</horstretch>
                         <verstretch>0</verstretch>
                        </sizepolicy>
+                      </property>
+                      <property name="toolTip">
+                       <string>Probability of choosing a subtask to advanced verification</string>
                       </property>
                       <property name="text">
                        <string>Probability</string>
@@ -339,6 +354,9 @@
                  </property>
                  <item row="0" column="0">
                   <widget class="QLabel" name="label_60">
+                   <property name="toolTip">
+                    <string>Identificator of this task</string>
+                   </property>
                    <property name="text">
                     <string>Task Id</string>
                    </property>
@@ -356,6 +374,9 @@
                  </item>
                  <item row="1" column="0">
                   <widget class="QLabel" name="label_58">
+                   <property name="toolTip">
+                    <string>Select main program/script defining the task</string>
+                   </property>
                    <property name="text">
                     <string>Main program file</string>
                    </property>
@@ -429,6 +450,9 @@
                  </item>
                  <item row="2" column="0">
                   <widget class="QLabel" name="label_51">
+                   <property name="toolTip">
+                    <string>How long can a single subtask be computed pesimistically</string>
+                   </property>
                    <property name="text">
                     <string>Subtask timeout</string>
                    </property>
@@ -436,6 +460,9 @@
                  </item>
                  <item row="3" column="0">
                   <widget class="QLabel" name="label_59">
+                   <property name="toolTip">
+                    <string>Check this if you want to enable advanced subtask verification</string>
+                   </property>
                    <property name="text">
                     <string>Advanced verification</string>
                    </property>
@@ -452,6 +479,9 @@
                </item>
                <item row="4" column="1">
                 <widget class="QPushButton" name="resetToDefaultButton">
+                 <property name="toolTip">
+                  <string>Restore default task settings. Warning: you will loose current task definition if it is not saved!</string>
+                 </property>
                  <property name="text">
                   <string>Reset to defaults</string>
                  </property>
@@ -477,6 +507,9 @@
              <layout class="QHBoxLayout" name="horizontalLayout_21">
               <item>
                <widget class="QPushButton" name="testTaskButton">
+                <property name="toolTip">
+                 <string>Run task test. Required to push the task to network</string>
+                </property>
                 <property name="text">
                  <string>Test task</string>
                 </property>
@@ -486,6 +519,9 @@
                <widget class="QPushButton" name="finishButton">
                 <property name="enabled">
                  <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>Add this task</string>
                 </property>
                 <property name="text">
                  <string>Start task</string>
@@ -508,10 +544,16 @@
                       <verstretch>0</verstretch>
                      </sizepolicy>
                     </property>
+                    <property name="toolTip">
+                     <string>Type of the task</string>
+                    </property>
                    </widget>
                   </item>
                   <item>
                    <widget class="QPushButton" name="saveButton">
+                    <property name="toolTip">
+                     <string>Save this task</string>
+                    </property>
                     <property name="text">
                      <string>Save</string>
                     </property>
@@ -519,6 +561,9 @@
                   </item>
                   <item>
                    <widget class="QPushButton" name="loadButton">
+                    <property name="toolTip">
+                     <string>Read task from file</string>
+                    </property>
                     <property name="text">
                      <string>Load</string>
                     </property>
@@ -533,6 +578,9 @@
                   </property>
                   <item row="2" column="0">
                    <widget class="QLabel" name="label_46">
+                    <property name="toolTip">
+                     <string>How long can you wait for a final result</string>
+                    </property>
                     <property name="text">
                      <string>Task timeout</string>
                     </property>
@@ -599,6 +647,9 @@
                   </item>
                   <item row="3" column="0">
                    <widget class="QLabel" name="label_55">
+                    <property name="toolTip">
+                     <string>Into how many subtasks want you to split the task</string>
+                    </property>
                     <property name="text">
                      <string>Total subtasks</string>
                     </property>
@@ -617,6 +668,9 @@
                         <verstretch>0</verstretch>
                        </sizepolicy>
                       </property>
+                      <property name="toolTip">
+                       <string>Let Golem calculate optimal task division</string>
+                      </property>
                       <property name="text">
                        <string>optimize</string>
                       </property>
@@ -626,6 +680,9 @@
                   </item>
                   <item row="4" column="0">
                    <widget class="QLabel" name="label_56">
+                    <property name="toolTip">
+                     <string>Maximal price of a single subtask you are ready to pay</string>
+                    </property>
                     <property name="text">
                      <string>Max price</string>
                     </property>
@@ -636,6 +693,9 @@
                   </item>
                   <item row="5" column="0">
                    <widget class="QLabel" name="label_57">
+                    <property name="toolTip">
+                     <string>How much will the whole task cost pesimistically</string>
+                    </property>
                     <property name="text">
                      <string>Pessimistic cost</string>
                     </property>
@@ -668,6 +728,9 @@
                   </item>
                   <item row="6" column="0">
                    <widget class="QLabel" name="label_15">
+                    <property name="toolTip">
+                     <string>Data needed to compute the task</string>
+                    </property>
                     <property name="text">
                      <string>Resources</string>
                     </property>
@@ -696,7 +759,7 @@
                 <item>
                  <widget class="QPushButton" name="showAdvanceNewTaskButton">
                   <property name="text">
-                   <string>Show advance options</string>
+                   <string>Show advanced options</string>
                   </property>
                  </widget>
                 </item>
@@ -740,6 +803,9 @@
               </property>
               <property name="contextMenuPolicy">
                <enum>Qt::CustomContextMenu</enum>
+              </property>
+              <property name="toolTip">
+               <string>Your tasks in the current session. Rightclick a task of choice to manage it</string>
               </property>
               <property name="layoutDirection">
                <enum>Qt::LeftToRight</enum>
@@ -1001,6 +1067,9 @@
                 <property name="enabled">
                  <bool>false</bool>
                 </property>
+                <property name="toolTip">
+                 <string>Start the highlighted task</string>
+                </property>
                 <property name="text">
                  <string>Start task</string>
                 </property>
@@ -1013,6 +1082,9 @@
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
+                </property>
+                <property name="toolTip">
+                 <string>Highlighted task's settings</string>
                 </property>
                 <property name="text">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;Task Configuration&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -1158,6 +1230,9 @@
               <layout class="QGridLayout" name="gridLayout_13">
                <item row="0" column="0">
                 <widget class="QLabel" name="label_45">
+                 <property name="toolTip">
+                  <string>Size of provider-related resources</string>
+                 </property>
                  <property name="text">
                   <string>Provider data</string>
                  </property>
@@ -1165,6 +1240,9 @@
                </item>
                <item row="2" column="0">
                 <widget class="QLabel" name="label_47">
+                 <property name="toolTip">
+                  <string>Size of requestor-related resources</string>
+                 </property>
                  <property name="text">
                   <string>Requestor data</string>
                  </property>
@@ -1260,6 +1338,9 @@
                 </item>
                 <item row="1" column="0">
                  <widget class="QLabel" name="statusLabel">
+                  <property name="toolTip">
+                   <string>Network status</string>
+                  </property>
                   <property name="text">
                    <string>Status:</string>
                   </property>
@@ -1270,6 +1351,9 @@
                 </item>
                 <item row="2" column="0">
                  <widget class="QLabel" name="label_61">
+                  <property name="toolTip">
+                   <string>Current connections</string>
+                  </property>
                   <property name="text">
                    <string>Network:</string>
                   </property>
@@ -1338,6 +1422,9 @@
             </item>
             <item row="1" column="0">
              <widget class="QPushButton" name="showDiskButton">
+              <property name="toolTip">
+               <string>How much resources are stored on your computer</string>
+              </property>
               <property name="text">
                <string>Show disk usage</string>
               </property>
@@ -1349,8 +1436,11 @@
            <layout class="QGridLayout" name="gridLayout_5">
             <item row="0" column="0">
              <widget class="QTabWidget" name="settingsTab">
+              <property name="toolTip">
+               <string/>
+              </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="generalTab">
                <attribute name="title">
@@ -1365,6 +1455,9 @@
                    </property>
                    <item row="0" column="0">
                     <widget class="QLabel" name="label_37">
+                     <property name="toolTip">
+                      <string>Check this if you want to use IPv6 protocol</string>
+                     </property>
                      <property name="text">
                       <string>Listen on IPv6</string>
                      </property>
@@ -1382,8 +1475,11 @@
                      <property name="enabled">
                       <bool>false</bool>
                      </property>
+                     <property name="toolTip">
+                      <string>Your ethereum address</string>
+                     </property>
                      <property name="text">
-                      <string>Ethereum accont</string>
+                      <string>Ethereum account</string>
                      </property>
                     </widget>
                    </item>
@@ -1410,6 +1506,9 @@
                    </item>
                    <item row="4" column="0">
                     <widget class="QLabel" name="label_34">
+                     <property name="toolTip">
+                      <string>How many direct connections you want to have at a moment</string>
+                     </property>
                      <property name="text">
                       <string>Optimal peer num</string>
                      </property>
@@ -1518,6 +1617,9 @@
                    </item>
                    <item row="15" column="1">
                     <widget class="QPushButton" name="environmentsButton">
+                     <property name="toolTip">
+                      <string>Environments manager</string>
+                     </property>
                      <property name="text">
                       <string>Show environments</string>
                      </property>
@@ -1525,6 +1627,9 @@
                    </item>
                    <item row="16" column="1">
                     <widget class="QPushButton" name="identityButton">
+                     <property name="toolTip">
+                      <string>Your Golem account details</string>
+                     </property>
                      <property name="text">
                       <string>Show identity</string>
                      </property>
@@ -1559,6 +1664,9 @@
                     </property>
                     <item row="0" column="0">
                      <widget class="QLabel" name="label_10">
+                      <property name="toolTip">
+                       <string>IP address of a node to try to connect to</string>
+                      </property>
                       <property name="text">
                        <string>Seed address:</string>
                       </property>
@@ -1569,6 +1677,9 @@
                     </item>
                     <item row="1" column="0">
                      <widget class="QLabel" name="label_11">
+                      <property name="toolTip">
+                       <string>Port number to try to connect to</string>
+                      </property>
                       <property name="text">
                        <string>Seed port:</string>
                       </property>
@@ -1583,6 +1694,9 @@
                 </item>
                 <item row="1" column="0">
                  <widget class="QPushButton" name="showAdvanceButton">
+                  <property name="toolTip">
+                   <string>Advanced options</string>
+                  </property>
                   <property name="text">
                    <string>Show more</string>
                   </property>
@@ -1614,6 +1728,9 @@
                     </property>
                     <item row="1" column="0">
                      <widget class="QLabel" name="label_7">
+                      <property name="toolTip">
+                       <string>Maximal size of resources for a task to accept it</string>
+                      </property>
                       <property name="text">
                        <string>Max resources size:</string>
                       </property>
@@ -1635,6 +1752,9 @@
                     </item>
                     <item row="2" column="0">
                      <widget class="QLabel" name="label_8">
+                      <property name="toolTip">
+                       <string>Maximal memory usage for a task to accept it</string>
+                      </property>
                       <property name="text">
                        <string>Max memory usage:</string>
                       </property>
@@ -1656,6 +1776,9 @@
                     </item>
                     <item row="3" column="0">
                      <widget class="QLabel" name="label_9">
+                      <property name="toolTip">
+                       <string>How many processor cores should Golem use</string>
+                      </property>
                       <property name="text">
                        <string>Number of cores:</string>
                       </property>
@@ -1723,6 +1846,9 @@
                     </item>
                     <item row="4" column="0">
                      <widget class="QLabel" name="label_25">
+                      <property name="toolTip">
+                       <string>Minimal reputation of a requestor to accept tasks from</string>
+                      </property>
                       <property name="text">
                        <string>Min trust for requestor node:</string>
                       </property>
@@ -1818,6 +1944,9 @@
                     </item>
                     <item row="5" column="0">
                      <widget class="QLabel" name="label_24">
+                      <property name="toolTip">
+                       <string>Overall performance of your computer</string>
+                      </property>
                       <property name="text">
                        <string>Estimated performance:</string>
                       </property>
@@ -1825,6 +1954,9 @@
                     </item>
                     <item row="6" column="0">
                      <widget class="QLabel" name="label_26">
+                      <property name="toolTip">
+                       <string>How effective LuxRender is on your computer</string>
+                      </property>
                       <property name="text">
                        <string>Estimated Lux performance:</string>
                       </property>
@@ -1832,6 +1964,9 @@
                     </item>
                     <item row="7" column="0">
                      <widget class="QLabel" name="label_27">
+                      <property name="toolTip">
+                       <string>How effective Blender Cycles is on your computer</string>
+                      </property>
                       <property name="text">
                        <string>Estimated Blender performance:</string>
                       </property>
@@ -1911,6 +2046,9 @@
                     </item>
                     <item row="0" column="0">
                      <widget class="QLabel" name="label_29">
+                      <property name="toolTip">
+                       <string>Minimal price of task you agree to compute</string>
+                      </property>
                       <property name="text">
                        <string>Min price(ask)</string>
                       </property>
@@ -1967,6 +2105,9 @@
                    <layout class="QFormLayout" name="formLayout_5">
                     <item row="1" column="0">
                      <widget class="QLabel" name="label_17">
+                      <property name="toolTip">
+                       <string>What is the maximal reputation of nodes you want to cooperate with as a requestor</string>
+                      </property>
                       <property name="text">
                        <string>Max trust for computing node:</string>
                       </property>
@@ -2055,6 +2196,9 @@
                     </item>
                     <item row="0" column="0">
                      <widget class="QLabel" name="label_30">
+                      <property name="toolTip">
+                       <string>How much are you willing to pay for a single subtask</string>
+                      </property>
                       <property name="text">
                        <string>Max price (bid) </string>
                       </property>
@@ -2105,6 +2249,9 @@
                   <verstretch>0</verstretch>
                  </sizepolicy>
                 </property>
+                <property name="toolTip">
+                 <string>Save new settings</string>
+                </property>
                 <property name="text">
                  <string>Change</string>
                 </property>
@@ -2117,6 +2264,9 @@
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
+                </property>
+                <property name="toolTip">
+                 <string>Proceed without saving</string>
                 </property>
                 <property name="text">
                  <string>Cancel</string>
@@ -2139,6 +2289,9 @@
               </property>
               <item row="0" column="0">
                <widget class="QLabel" name="golemIdConst">
+                <property name="toolTip">
+                 <string>Identificator of this node</string>
+                </property>
                 <property name="text">
                  <string>Golem Id</string>
                 </property>
@@ -2146,6 +2299,9 @@
               </item>
               <item row="1" column="0">
                <widget class="QLabel" name="nameConst">
+                <property name="toolTip">
+                 <string>This node's name</string>
+                </property>
                 <property name="text">
                  <string>Name</string>
                 </property>
@@ -2163,6 +2319,9 @@
               </item>
               <item row="2" column="0">
                <widget class="QLabel" name="ethAddressConst">
+                <property name="toolTip">
+                 <string>Ethereum address</string>
+                </property>
                 <property name="text">
                  <string>Wallet address</string>
                 </property>
@@ -2180,6 +2339,9 @@
               </item>
               <item row="3" column="0">
                <widget class="QLabel" name="accountBalanceConst">
+                <property name="toolTip">
+                 <string>Associated ethereum balance</string>
+                </property>
                 <property name="text">
                  <string>Account balance</string>
                 </property>
@@ -2197,6 +2359,9 @@
               </item>
               <item row="4" column="0">
                <widget class="QLabel" name="paymentsConst">
+                <property name="toolTip">
+                 <string>Your incomes and payments history</string>
+                </property>
                 <property name="text">
                  <string>Payments</string>
                 </property>

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>378</width>
-    <height>156</height>
+    <width>397</width>
+    <height>185</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,16 +21,26 @@
      </property>
      <item row="1" column="0">
       <widget class="QCheckBox" name="framesCheckBox">
+       <property name="toolTip">
+        <string>Render few frames</string>
+       </property>
        <property name="text">
         <string>Frames</string>
        </property>
       </widget>
      </item>
      <item row="1" column="1">
-      <widget class="QLineEdit" name="framesLineEdit"/>
+      <widget class="QLineEdit" name="framesLineEdit">
+       <property name="toolTip">
+        <string>Select frame numbers to render</string>
+       </property>
+      </widget>
      </item>
      <item row="0" column="0">
       <widget class="QLabel" name="label">
+       <property name="toolTip">
+        <string>Select your main *.blend file</string>
+       </property>
        <property name="text">
         <string>Main scene file</string>
        </property>
@@ -52,6 +62,9 @@
      </item>
      <item row="2" column="0">
       <widget class="QLabel" name="label_2">
+       <property name="toolTip">
+        <string>Resolution (width x height) of a final image/animation</string>
+       </property>
        <property name="text">
         <string>Output resolution</string>
        </property>
@@ -59,6 +72,9 @@
      </item>
      <item row="3" column="0">
       <widget class="QLabel" name="label_3">
+       <property name="toolTip">
+        <string>In which format would you like to recieve the result</string>
+       </property>
        <property name="text">
         <string>Output format</string>
        </property>
@@ -66,6 +82,9 @@
      </item>
      <item row="4" column="0">
       <widget class="QLabel" name="label_4">
+       <property name="toolTip">
+        <string>Where to save the result</string>
+       </property>
        <property name="text">
         <string>Output file</string>
        </property>
