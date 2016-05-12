@@ -775,7 +775,7 @@ class P2PService(PendingConnectionsServer):
                 else:
                     port = node.p2p_prv_port
 
-                logger.info("Connecting to peer {} / {}:{}".format(peer_id, peer['address'], port))
+                logger.info("Connecting to peer {}:{}".format(peer['address'], port))
                 self.incoming_peers[peer_id]["conn_trials"] += 1  # increment connection trials
                 self._add_pending_request(P2PConnTypes.Start, node, port, node.key, args={})
 

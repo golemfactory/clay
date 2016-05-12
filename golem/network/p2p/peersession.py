@@ -42,6 +42,7 @@ class PeerSession(BasicSafeSession):
         self.conn_id = None
 
         self.solve_challenge = False  # Verification by challenge not a random value
+        self.remove_on_disconnect = True
         self.challenge = None
         self.difficulty = 0
 
@@ -59,7 +60,8 @@ class PeerSession(BasicSafeSession):
         Close connection and inform p2p service about disconnection
         """
         BasicSafeSession.dropped(self)
-        self.p2p_service.remove_peer(self)
+        if self.remove_on_disconnect:
+            self.p2p_service.remove_peer(self)
 
     def interpret(self, msg):
         """
@@ -279,6 +281,7 @@ class PeerSession(BasicSafeSession):
                 # self.sendPing()
                 logger_msg = "PEER DUPLICATED: {} {} : {}".format(p.node_name, p.address, p.port)
                 logger.warning("{} AND {} : {}".format(logger_msg, msg.node_name, msg.port))
+                self.remove_on_disconnect = False
                 self.disconnect(PeerSession.DCRDuplicatePeers)
                 return
 
@@ -376,11 +379,7 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.send_nat_traverse_failure(msg.key_id, msg.conn_id)
 
     def _react_to_disconnect(self, msg):
-        key_id = self.node_info.key
-        peer = self.p2p_service.peers.get(key_id)
-
-        if peer and msg.reason != PeerSession.DCRDuplicatePeers:
-            self.p2p_service.remove_peer(peer)
+        self.remove_on_disconnect = msg.reason != PeerSession.DCRDuplicatePeers
         super(PeerSession, self)._react_to_disconnect(msg)
 
     def _send_pong(self):
