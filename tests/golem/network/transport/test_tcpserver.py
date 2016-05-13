@@ -111,12 +111,8 @@ class TestPendingConnectionServer(unittest.TestCase):
         server._add_pending_request(0, node_info, port, key_id, args={})
 
         assert len(server.pending_connections) == 1
-        assert len(server.pending_sockets) == 2
-
         server._sync_pending()
-
         assert len(server.pending_connections) == 0
-        assert len(server.pending_sockets) == 0
 
 
 class TestPendingConnection(unittest.TestCase):
