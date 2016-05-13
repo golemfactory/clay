@@ -23,9 +23,9 @@ dependencies:
     - if [[ -e ~/docker/golem_luxrender.tar ]]; then docker load -i ~/docker/golem_luxrender.tar; fi
   post:
     - mkdir -p ~/docker
-    - if [[ ! -e ~/docker/golem_base.tar ]]; docker save golem/base > ~/docker/golem_base.tar; fi
-    - if [[ ! -e ~/docker/golem_blender.tar ]]; docker save golem/blender > ~/docker/golem_blender.tar; fi
-    - if [[ ! -e ~/docker/golem_luxrender.tar ]]; docker save golem/luxrender > ~/docker/golem_luxrender.tar; fi
+    - if [[ ! -e ~/docker/golem_base.tar ]]; then docker save golem/base > ~/docker/golem_base.tar; fi
+    - if [[ ! -e ~/docker/golem_blender.tar ]]; then docker save golem/blender > ~/docker/golem_blender.tar; fi
+    - if [[ ! -e ~/docker/golem_luxrender.tar ]]; then docker save golem/luxrender > ~/docker/golem_luxrender.tar; fi
   cache_directories:
     - ~/.ethash
     - ~/docker
