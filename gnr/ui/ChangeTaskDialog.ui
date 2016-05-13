@@ -21,6 +21,9 @@
     <layout class="QHBoxLayout" name="horizontalLayout_5">
      <item>
       <widget class="QLabel" name="label_2">
+       <property name="toolTip">
+        <string>ID of the task you are about to edit</string>
+       </property>
        <property name="text">
         <string>TaskId:</string>
        </property>
