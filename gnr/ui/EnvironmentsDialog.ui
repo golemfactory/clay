@@ -87,7 +87,7 @@
          <string>Accept Tasks</string>
         </property>
         <property name="toolTip">
-         <string>Check this if you want to accept tasks using this environment</string>
+         <string>Check this if you want to accept tasks that use this environment</string>
         </property>
        </column>
        <column>

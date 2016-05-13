@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>3</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -238,7 +238,7 @@
                   </sizepolicy>
                  </property>
                  <property name="toolTip">
-                  <string>For which subtasks want you perform advanced verification</string>
+                  <string>For which subtasks you want to perform advanced verification</string>
                  </property>
                  <property name="title">
                   <string>Frequency</string>
@@ -316,7 +316,7 @@
                        </sizepolicy>
                       </property>
                       <property name="toolTip">
-                       <string>Probability of choosing a subtask to advanced verification</string>
+                       <string>Probability of choosing a subtask for advanced verification</string>
                       </property>
                       <property name="text">
                        <string>Probability</string>
@@ -651,7 +651,7 @@
                   <item row="3" column="0">
                    <widget class="QLabel" name="label_55">
                     <property name="toolTip">
-                     <string>Into how many subtasks want you to split the task</string>
+                     <string>Into how many subtasks you want to split the task</string>
                     </property>
                     <property name="text">
                      <string>Total subtasks</string>
@@ -697,7 +697,7 @@
                   <item row="5" column="0">
                    <widget class="QLabel" name="label_57">
                     <property name="toolTip">
-                     <string>How much will the whole task cost pesimistically</string>
+                     <string>How much will the whole task cost pesimistically. This can't be estimated if &quot;optimize&quot; is checked.</string>
                     </property>
                     <property name="text">
                      <string>Pessimistic cost</string>
@@ -1446,7 +1446,7 @@
                <string/>
               </property>
               <property name="currentIndex">
-               <number>2</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="generalTab">
                <attribute name="title">
@@ -1543,7 +1543,7 @@
                    <item row="6" column="0">
                     <widget class="QLabel" name="label_36">
                      <property name="toolTip">
-                      <string>How long to wait (seconds)</string>
+                      <string>How long to wait for a full task definition as a provider(seconds)</string>
                      </property>
                      <property name="text">
                       <string>Wait for task timeout</string>
@@ -2299,7 +2299,7 @@
                  </sizepolicy>
                 </property>
                 <property name="toolTip">
-                 <string>Proceed without saving</string>
+                 <string>Restore previous values</string>
                 </property>
                 <property name="text">
                  <string>Cancel</string>

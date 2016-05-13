@@ -32,7 +32,7 @@
      <item row="1" column="1">
       <widget class="QLineEdit" name="framesLineEdit">
        <property name="toolTip">
-        <string>Select frame numbers to render</string>
+        <string>Select frame numbers to render (i.e. &quot;1-4, 10-20;2&quot;)</string>
        </property>
       </widget>
      </item>
