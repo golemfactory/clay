@@ -93,8 +93,9 @@ class P2PService(PendingConnectionsServer):
 
         addrs = SEEDS
         for host in hosts:
-            if host not in addrs:
-                addrs.append((host.ip_address, host.port))
+            data = (host.ip_address, host.port)
+            if data not in addrs:
+                addrs.append(data)
 
         for ip_address, port in addrs:
             logger.debug("Connecting to {}:{}".format(ip_address, port))
