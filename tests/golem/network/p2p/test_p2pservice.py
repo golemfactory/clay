@@ -127,8 +127,6 @@ class TestP2PService(DatabaseFixture):
         )
         node.prv_addresses = [node.prv_addr, '172.1.2.3']
 
-        print node.is_super_node()
-
         assert Node.is_super_node(node)
 
         KnownHosts.delete().execute()
@@ -151,8 +149,10 @@ class TestP2PService(DatabaseFixture):
         assert len_2 == len_1
         assert select_2[0].last_connected > last_conn_1
 
+        assert len(service.seeds) == 1
+
         # try to add more than max, we already have at least 1
-        pub_prefix = '1.2.3.'
+        pub_prefix = '2.2.3.'
         prv_prefix = '172.1.2.'
         for i in xrange(1, MAX_STORED_HOSTS + 6):
             i_str = str(i)
@@ -165,10 +165,10 @@ class TestP2PService(DatabaseFixture):
                 pub_port=10000,
                 prv_port=10000
             )
-            service.add_known_peer(n, pub, n.pub_port)
+            service.add_known_peer(n, pub, n.prv_port)
 
         assert len(KnownHosts.select()) == MAX_STORED_HOSTS
-        assert len(service.seeds) == 1
+        assert len(service.seeds) == 0
 
     def test_sync_free_peers(self):
         keys_auth = EllipticalKeysAuth()

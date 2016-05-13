@@ -177,7 +177,7 @@ class KnownHosts(BaseModel):
     port = IntegerField()
     last_connected = DateTimeField(default=datetime.datetime.now)
     is_seed = BooleanField(default=False)
-    
+
     class Meta:
         database = db
         indexes = (

@@ -840,7 +840,7 @@ class P2PService(PendingConnectionsServer):
         if hosts:
             self.seeds = filter(lambda x: x.is_seed, hosts)
         else:
-            self.seeds = KnownHosts.select().where(KnownHosts.is_seed)
+            self.seeds = list(KnownHosts.select().where(KnownHosts.is_seed))
 
     def __remove_sessions_to_end_from_peer_keeper(self):
         for peer_id in self.peer_keeper.sessions_to_end:
