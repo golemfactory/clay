@@ -122,9 +122,10 @@ class PendingConnectionsServer(TCPServer):
         method and then remove it from pending connections list.
         :param uuid|None conn_id: id of verified connection
         """
-        conn = self.remove_pending_conn(conn_id)
+        conn = self.pending_connections.get(conn_id)
         if conn:
             self.conn_final_failure_for_type[conn.type](conn_id, **conn.args)
+            self.remove_pending_conn(conn_id)
         else:
             logger.error("Connection {} is unknown".format(conn_id))
 
@@ -163,13 +164,11 @@ class PendingConnectionsServer(TCPServer):
                 conn.status = PenConnStatus.WaitingAlt
                 conn.failure(conn.id, **conn.args)
                 # TODO Dalsze dzialanie w razie niepowodzenia
-            elif conn.status in [PenConnStatus.Inactive, None]:
+            else:
                 conn.status = PenConnStatus.Waiting
                 conn.last_try_time = time.time()
                 connect_info = TCPConnectInfo(conn.socket_addresses, conn.established, conn.failure)
-                # TODO: remove the pending connection on success / failure
                 self.network.connect(connect_info, conn_id=conn.id, **conn.args)
-                self.remove_pending_conn(conn.id)
 
     def _remove_old_listenings(self):
         cnt_time = time.time()
@@ -207,8 +206,7 @@ class PendingConnectionsServer(TCPServer):
         if pc is not None:
             pc.status = PenConnStatus.Connected
             try:
-                idx = pc.socket_addresses.index(ad)
-                pc.socket_addresses = pc.socket_addresses[idx + 1:]
+                pc.socket_addresses.remove(ad)
             except ValueError:
                 logger.warning("{}:{} not in connection socket_addresses".format(addr, port))
 
