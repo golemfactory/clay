@@ -144,25 +144,40 @@
        <property name="text">
         <string>Node Name</string>
        </property>
+       <property name="toolTip">
+        <string>Provider's name</string>
+       </property>
       </column>
       <column>
        <property name="text">
         <string>Subtask ID</string>
+       </property>
+       <property name="toolTip">
+        <string>Identificator of the subtask</string>
        </property>
       </column>
       <column>
        <property name="text">
         <string>Remaining Time</string>
        </property>
+       <property name="toolTip">
+        <string>How long estimately will it take to finish this subtask</string>
+       </property>
       </column>
       <column>
        <property name="text">
         <string>Status</string>
        </property>
+       <property name="toolTip">
+        <string>Subtask's current status</string>
+       </property>
       </column>
       <column>
        <property name="text">
         <string>Progress</string>
+       </property>
+       <property name="toolTip">
+        <string>Subtask's computation progress</string>
        </property>
       </column>
      </widget>
@@ -174,6 +189,9 @@
       </property>
       <item row="0" column="0">
        <widget class="QLabel" name="label_6">
+        <property name="toolTip">
+         <string>Computing node's name</string>
+        </property>
         <property name="text">
          <string>Node Name</string>
         </property>
@@ -181,6 +199,9 @@
       </item>
       <item row="1" column="0">
        <widget class="QLabel" name="label_7">
+        <property name="toolTip">
+         <string>Computing node's estimated performance</string>
+        </property>
         <property name="text">
          <string>Performance</string>
         </property>
@@ -195,6 +216,9 @@
       </item>
       <item row="2" column="0">
        <widget class="QLabel" name="label_9">
+        <property name="toolTip">
+         <string>Computing node's address</string>
+        </property>
         <property name="text">
          <string>IP Address</string>
         </property>
@@ -209,6 +233,9 @@
       </item>
       <item row="3" column="0">
        <widget class="QLabel" name="label_11">
+        <property name="toolTip">
+         <string>Subtask details</string>
+        </property>
         <property name="text">
          <string>Subtask Definition</string>
         </property>
