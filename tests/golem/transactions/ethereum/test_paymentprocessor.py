@@ -8,9 +8,9 @@ from ethereum.keys import privtoaddr
 
 from golem.ethereum import Client
 from golem.ethereum.node import Faucet
+from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
-from golem.transactions.ethereum.paymentprocessor import PaymentProcessor
 
 
 def wait_for(condition, timeout, step=0.1):

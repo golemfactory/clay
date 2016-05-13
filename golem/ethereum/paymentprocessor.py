@@ -4,9 +4,10 @@ from ethereum import abi, keys, utils
 from ethereum.transactions import Transaction
 from twisted.internet.task import LoopingCall
 
-from golem.ethereum.contracts import BankOfDeposit
-from golem.ethereum.node import Faucet
 from golem.model import Payment, PaymentStatus
+
+from .contracts import BankOfDeposit
+from .node import Faucet
 
 
 log = logging.getLogger("golem.pay")
