@@ -297,7 +297,6 @@ class FrameRenderingTask(RenderingTask):
         self.preview_task_file_path[idx] = preview_task_file_path
 
 
-
 def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
                      frame_num=1):
     if not use_frames:
