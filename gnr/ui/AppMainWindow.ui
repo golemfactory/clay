@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -185,6 +185,9 @@
                 <widget class="QGroupBox" name="groupBox_2">
                  <property name="enabled">
                   <bool>true</bool>
+                 </property>
+                 <property name="toolTip">
+                  <string>Width and height of a sample box used in advanced verification. A random part of a subtask will be rendered locally and compared with the result sent by a provider</string>
                  </property>
                  <property name="title">
                   <string>Box size</string>
