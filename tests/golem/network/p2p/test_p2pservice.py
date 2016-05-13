@@ -135,4 +135,4 @@ class TestP2PService(unittest.TestCase):
         service.sync_network()
 
         assert not service.free_peers
-        assert len(service.pending_connections) == 0
+        assert len(service.pending_connections) == 1
