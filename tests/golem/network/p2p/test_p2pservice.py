@@ -1,16 +1,17 @@
 import time
-import unittest
 
-from golem.network.transport.tcpnetwork import SocketAddress
 from mock import MagicMock
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.model import KnownHosts, MAX_STORED_HOSTS
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
+from golem.network.transport.tcpnetwork import SocketAddress
+from golem.testutils import DatabaseFixture
 
 
-class TestP2PService(unittest.TestCase):
+class TestP2PService(DatabaseFixture):
     def test_add_to_peer_keeper(self):
         keys_auth = EllipticalKeysAuth()
         service = P2PService(None, ClientConfigDescriptor(), keys_auth)
@@ -111,6 +112,63 @@ class TestP2PService(unittest.TestCase):
 
         assert len(service.redundant_peers()) == 1
         assert service.enough_peers()
+
+    def test_add_known_peer(self):
+        keys_auth = EllipticalKeysAuth()
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        key_id = EllipticalKeysAuth("TEST").get_key_id()
+
+        node = Node(
+            'super_node', key_id,
+            pub_addr='1.2.3.4',
+            prv_addr='1.2.3.4',
+            pub_port=10000,
+            prv_port=10000
+        )
+        node.prv_addresses = [node.prv_addr, '172.1.2.3']
+
+        print node.is_super_node()
+
+        assert Node.is_super_node(node)
+
+        KnownHosts.delete().execute()
+        len_start = len(KnownHosts.select())
+
+        # insert one
+        service.add_known_peer(node, node.pub_addr, node.pub_port)
+        select_1 = KnownHosts.select()
+        len_1 = len(select_1)
+        last_conn_1 = select_1[0].last_connected
+        assert len_1 > len_start
+
+        # advance time
+        time.sleep(0.1)
+
+        # insert duplicate
+        service.add_known_peer(node, node.pub_addr, node.pub_port)
+        select_2 = KnownHosts.select()
+        len_2 = len(select_2)
+        assert len_2 == len_1
+        assert select_2[0].last_connected > last_conn_1
+
+        # try to add more than max, we already have at least 1
+        pub_prefix = '1.2.3.'
+        prv_prefix = '172.1.2.'
+        for i in xrange(1, MAX_STORED_HOSTS + 6):
+            i_str = str(i)
+            pub = pub_prefix + i_str
+            prv = prv_prefix + i_str
+            n = Node(
+                i_str, key_id + i_str,
+                pub_addr=pub,
+                prv_addr=prv,
+                pub_port=10000,
+                prv_port=10000
+            )
+            service.add_known_peer(n, pub, n.pub_port)
+
+        assert len(KnownHosts.select()) == MAX_STORED_HOSTS
+        assert len(service.seeds) == 1
 
     def test_sync_free_peers(self):
         keys_auth = EllipticalKeysAuth()

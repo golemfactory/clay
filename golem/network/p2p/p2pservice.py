@@ -21,6 +21,8 @@ REFRESH_PEERS_TIMEOUT = 1200  # How often should we disconnect with a random nod
 SOLVE_CHALLENGE = True  # Should nodes that connects with us solve hashcash challenge?
 BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 
+SEEDS = [('52.37.205.43', 40102)]
+
 
 class P2PService(PendingConnectionsServer):
     def __init__(self, node, config_desc, keys_auth):
@@ -84,19 +86,24 @@ class P2PService(PendingConnectionsServer):
             with db.transaction():
                 self.__remove_redundant_hosts_from_db()
                 hosts = KnownHosts.select()
-                self.__sync_seeds(hosts)
+            self.__sync_seeds(hosts)
         except Exception as exc:
             logger.error("Error reading known hosts: {}".format(exc.message))
             hosts = []
 
+        addrs = SEEDS
         for host in hosts:
-            logger.debug("Connecting to {}:{}".format(host.ip_address, host.port))
+            if host not in addrs:
+                addrs.append((host.ip_address, host.port))
+
+        for ip_address, port in addrs:
+            logger.debug("Connecting to {}:{}".format(ip_address, port))
             try:
-                socket_address = SocketAddress(host.ip_address, host.port)
+                socket_address = SocketAddress(ip_address, port)
                 self.connect(socket_address)
             except Exception as exc:
                 logger.error("Cannot connect to host {}:{}: {}"
-                             .format(host.ip_address, host.port, exc))
+                             .format(ip_address, port, exc))
 
     def _listening_established(self, port):
         self.cur_port = port
@@ -833,8 +840,7 @@ class P2PService(PendingConnectionsServer):
         if hosts:
             self.seeds = filter(lambda x: x.is_seed, hosts)
         else:
-            with db.transaction():
-                self.seeds = KnownHosts.select().where(KnownHosts.is_seed)
+            self.seeds = KnownHosts.select().where(KnownHosts.is_seed)
 
     def __remove_sessions_to_end_from_peer_keeper(self):
         for peer_id in self.peer_keeper.sessions_to_end:
