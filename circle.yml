@@ -18,8 +18,18 @@ dependencies:
         background: true
     - sudo add-apt-repository -y ppa:ethereum/ethereum && sudo apt-get update && sudo apt-get install geth
     - geth --nodiscover --maxpeers 0 --exec "miner.makeDAG(0)" console
+    - if [[ -e ~/docker/golem_base.tar ]]; then docker load -i ~/docker/golem_base.tar; fi
+    - if [[ -e ~/docker/golem_blender.tar ]]; then docker load -i ~/docker/golem_blender.tar; fi
+    - if [[ -e ~/docker/golem_luxrender.tar ]]; then docker load -i ~/docker/golem_luxrender.tar; fi
+  post:
+    - mkdir -p ~/docker
+    - if [[ ! -e ~/docker/golem_base.tar ]]; docker save golem/base > ~/docker/golem_base.tar; fi
+    - if [[ ! -e ~/docker/golem_blender.tar ]]; docker save golem/blender > ~/docker/golem_blender.tar; fi
+    - if [[ ! -e ~/docker/golem_luxrender.tar ]]; docker save golem/luxrender > ~/docker/golem_luxrender.tar; fi
   cache_directories:
     - ~/.ethash
+    - ~/docker
+
 
 test:
   pre:
