@@ -44,6 +44,7 @@ class P2PService(PendingConnectionsServer):
         self.metadata_manager = None
         self.resource_port = 0
         self.suggested_address = {}
+        self.suggested_conn_reverse = {}
         self.gossip_keeper = GossipKeeper()
         self.manager_session = None
 
@@ -198,7 +199,7 @@ class P2PService(PendingConnectionsServer):
         """
         logger.info("Adding peer {}, key id difficulty: {}".format(key_id, self.keys_auth.get_difficulty(peer.key_id)))
         self.peers[key_id] = peer
-        self.peer_order.append(peer.key_id)
+        self.peer_order.append(key_id)
         self.__send_degree()
 
     def add_to_peer_keeper(self, peer_info):
@@ -225,9 +226,10 @@ class P2PService(PendingConnectionsServer):
         """
         key_id = peer_info["node"].key
         if force or self.__is_new_peer(key_id):
-            logger.info("add peer to incoming {} {} {}".format(peer_info["node_name"],
-                                                               peer_info["address"],
-                                                               peer_info["port"]))
+            logger.info("add peer to incoming {} {} {} ({})".format(peer_info["node_name"],
+                                                                    peer_info["address"],
+                                                                    peer_info["port"],
+                                                                    key_id))
 
             self.incoming_peers[key_id] = {"address": peer_info["address"],
                                            "port": peer_info["port"],
@@ -245,13 +247,16 @@ class P2PService(PendingConnectionsServer):
         pc = self.pending_connections.get(peer_session.conn_id)
         if pc:
             pc.status = PenConnStatus.Failure
-            self._remove_pending_sockets(pc)
 
-        for key_id in self.peers.keys():
-            if self.peers[key_id] == peer_session:
-                del self.peers[key_id]
-                self.peer_order.remove(key_id)
-                self.suggested_address.pop(key_id, None)
+        for p in self.peers.keys():
+            if self.peers[p] == peer_session:
+                del self.peers[p]
+                self.peer_order.remove(p)
+                self.incoming_peers.pop(p, None)
+                self.suggested_address.pop(p, None)
+                self.suggested_conn_reverse.pop(p, None)
+                if p in self.free_peers:
+                    self.free_peers.remove(p)
                 break
 
         self.__send_degree()
@@ -261,13 +266,11 @@ class P2PService(PendingConnectionsServer):
         :param str peer_id:
         """
         peer = self.peers.get(peer_id)
-        if not peer:
+        if peer:
+            self.remove_peer(peer)
+            self.__send_degree()
+        else:
             logger.info("Can't remove peer {}, unknown peer".format(peer_id))
-            return
-        del self.peers[peer_id]
-        self.peer_order.remove(peer_id)
-
-        self.__send_degree()
 
     def refresh_peer(self, peer):
         self.remove_peer(peer)
@@ -462,6 +465,12 @@ class P2PService(PendingConnectionsServer):
         """
         self.suggested_address[client_key_id] = addr
 
+    def get_suggested_conn_reverse(self, client_key_id):
+        return self.suggested_conn_reverse.get(client_key_id, False)
+
+    def set_suggested_conn_reverse(self, client_key_id, value=True):
+        self.suggested_conn_reverse[client_key_id] = value
+
     def get_socket_addresses(self, node_info, port, key_id):
         """ Change node info into tcp addresses. Add suggested address
         :param Node node_info: node information
@@ -470,7 +479,7 @@ class P2PService(PendingConnectionsServer):
         :return:
         """
         socket_addresses = PendingConnectionsServer.get_socket_addresses(self, node_info, port, key_id)
-        addr = self.suggested_address.get(key_id)
+        addr = self.suggested_address.get(key_id, None)
         if addr:
             socket_addresses = [SocketAddress(addr, port)] + socket_addresses
         return socket_addresses
@@ -602,6 +611,7 @@ class P2PService(PendingConnectionsServer):
         msg_snd = False
         for peer in self.peers.itervalues():
             if peer.key_id == key_id:
+                self.set_suggested_conn_reverse(key_id)
                 peer.send_want_to_start_task_session(node_info, conn_id, super_node_info)
                 return
 
@@ -783,9 +793,12 @@ class P2PService(PendingConnectionsServer):
         logger.info("Can't connect to peer {}.".format(conn_id))
 
     def __is_new_peer(self, id_):
-        # id_ not in self.incoming_peers and \
-        return id_ not in self.peers and \
-               long(id_, 16) != self.get_key_id()
+        return id_ not in self.incoming_peers and \
+               not self.__is_connected_peer(id_)
+
+    def __is_connected_peer(self, id_):
+        return id_ in self.peers or \
+               long(id_, 16) == self.get_key_id()
 
     def __remove_old_peers(self):
         cur_time = time.time()
@@ -814,8 +827,9 @@ class P2PService(PendingConnectionsServer):
         while self.free_peers and not self.enough_peers():
 
             peer_id = random.choice(self.free_peers)
+            self.free_peers.remove(peer_id)
 
-            if peer_id not in self.peers:
+            if not self.__is_connected_peer(peer_id):
                 peer = self.incoming_peers[peer_id]
                 node = peer['node']
 
@@ -824,11 +838,9 @@ class P2PService(PendingConnectionsServer):
                 else:
                     port = node.p2p_prv_port
 
-                logger.info("Connecting to peer {} / {}:{}".format(peer_id, peer['address'], port))
+                logger.info("Connecting to peer {}:{}".format(peer['address'], port))
                 self.incoming_peers[peer_id]["conn_trials"] += 1  # increment connection trials
                 self._add_pending_request(P2PConnTypes.Start, node, port, node.key, args={})
-
-            self.free_peers.remove(peer_id)
 
     def __sync_peer_keeper(self):
         self.__remove_sessions_to_end_from_peer_keeper()

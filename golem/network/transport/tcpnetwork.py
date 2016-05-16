@@ -5,6 +5,8 @@ import struct
 import time
 from copy import copy
 from threading import Lock
+
+from golem.core.hostaddress import get_host_addresses
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
     TCP6ClientEndpoint
@@ -218,6 +220,7 @@ class TCPNetwork(Network):
         self.use_ipv6 = use_ipv6
         self.timeout = timeout
         self.active_listeners = {}
+        self.host_addresses = get_host_addresses()
 
     def connect(self, connect_info, **kwargs):
         """
@@ -260,7 +263,17 @@ class TCPNetwork(Network):
             logger.warning("Can't stop listening on port {}, wasn't listening.".format(port))
             TCPNetwork.__stop_listening_failure(None, listening_info.stopped_errback, **kwargs)
 
+    def __filter_host_addresses(self, addresses):
+        result = []
+
+        for sa in addresses:
+            if not (sa.address in self.host_addresses and sa.port in self.active_listeners):
+                result.append(sa)
+        return result
+
     def __try_to_connect_to_addresses(self, addresses, established_callback, failure_callback, **kwargs):
+        addresses = self.__filter_host_addresses(addresses)
+
         if len(addresses) == 0:
             logger.warning("No addresses for connection given")
             TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
@@ -469,7 +482,6 @@ class BasicProtocol(SessionProtocol):
         with self.lock:
             self.db.append_string(data)
             mess = self._data_to_messages()
-            self.db.clear_buffer()
 
         if mess is None:
             logger.error("Deserialization message failed")
@@ -532,18 +544,22 @@ class SafeProtocol(ServerProtocol):
 
     def _data_to_messages(self):
         assert isinstance(self.db, DataBuffer)
-        msgs = [msg for msg in self.db.get_len_prefixed_string()]
         messages = []
-        for msg in msgs:
+
+        for msg in self.db.get_len_prefixed_string():
             dec_msg = self.session.decrypt(msg)
-            if dec_msg is None:
+            if not dec_msg:
                 logger.warning("Decryption of message failed")
-                return None
+                break
+
             m = Message.deserialize_message(dec_msg)
-            if m is None:
-                return None
+            if not m:
+                logger.warning("Deserialization of message failed")
+                break
+
             m.encrypted = dec_msg != msg
             messages.append(m)
+
         return messages
 
 
@@ -608,11 +624,9 @@ class MidAndFilesProtocol(FilesProtocol):
         if self.session.is_middleman:
             self.session.last_message_time = time.time()
             with self.lock:
-                self.db.append_string(data)
+                self.db.append_string(data, check_size=False)
                 messages = self.db.read_all()
             self.session.interpret(messages)
-            with self.lock:
-                self.db.clear_buffer()
         else:
             FilesProtocol._interpret(self, data)
 

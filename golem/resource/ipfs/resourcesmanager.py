@@ -173,7 +173,11 @@ class IPFSResourceManager(IPFSClientHandler):
         else:
             common_prefix = common_dir(resource_coll)
 
-        self.task_common_prefixes[task_id] = os.path.normpath(common_prefix)
+        normpath = os.path.normpath(common_prefix)
+        if normpath in ['.', '..']:
+            normpath = ''
+
+        self.task_common_prefixes[task_id] = normpath
         self.add_resources(resource_coll, task_id,
                            absolute_path=True,
                            client=client)
@@ -231,7 +235,7 @@ class IPFSResourceManager(IPFSClientHandler):
             multihash = to_unicode(response.get('Hash'))
             self._register_resource(resource, path, multihash, task_id)
         else:
-            logging.error("IPFS: Invalid response {}".format(response))
+            logger.error("IPFS: Invalid response {}".format(response))
 
     def _register_resource(self, resource, file_path, multihash, task_id):
         """
@@ -260,7 +264,7 @@ class IPFSResourceManager(IPFSClientHandler):
         self.hash_to_path[multihash] = file_path
         self.task_id_to_files[task_id].append([name, multihash])
 
-        logging.debug("IPFS: Resource registered {} ({})".format(file_path, multihash))
+        logger.debug("IPFS: Resource registered {} ({})".format(file_path, multihash))
         return name
 
     def pin_resource(self, multihash, client=None):

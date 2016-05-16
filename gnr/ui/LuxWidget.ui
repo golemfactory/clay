@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>378</width>
-    <height>227</height>
+    <width>397</width>
+    <height>256</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,6 +21,9 @@
      </property>
      <item row="0" column="0">
       <widget class="QLabel" name="label">
+       <property name="toolTip">
+        <string>Select your main *.lxs file</string>
+       </property>
        <property name="text">
         <string>Main scene file</string>
        </property>
@@ -42,6 +45,9 @@
      </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_2">
+       <property name="toolTip">
+        <string>Resolution (width x height) of a final image</string>
+       </property>
        <property name="text">
         <string>Output resolution</string>
        </property>
@@ -80,6 +86,9 @@
      </item>
      <item row="2" column="0">
       <widget class="QLabel" name="label_3">
+       <property name="toolTip">
+        <string>In which format would you like to recieve the result</string>
+       </property>
        <property name="text">
         <string>Output format</string>
        </property>
@@ -97,6 +106,9 @@
      </item>
      <item row="3" column="0">
       <widget class="QLabel" name="label_4">
+       <property name="toolTip">
+        <string>Where to save the result</string>
+       </property>
        <property name="text">
         <string>Output file</string>
        </property>
@@ -128,6 +140,9 @@
        <layout class="QFormLayout" name="formLayout_2">
         <item row="0" column="0">
          <widget class="QRadioButton" name="stopByTimeRadioButton">
+          <property name="toolTip">
+           <string>Stop subtask computation after the given number of seconds</string>
+          </property>
           <property name="text">
            <string>Halt time</string>
           </property>
@@ -138,6 +153,9 @@
         </item>
         <item row="1" column="0">
          <widget class="QRadioButton" name="stopBySppRadioButton">
+          <property name="toolTip">
+           <string>Stop subtask computation when average number of samples per pixel is higher or equal than the given value</string>
+          </property>
           <property name="text">
            <string>Halt spp</string>
           </property>

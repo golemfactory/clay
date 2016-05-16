@@ -189,13 +189,17 @@ class BlenderRenderTask(FrameRenderingTask):
             logger.error("Wrong script file: {}".format(err))
             self.script_src = ""
 
-
         self.frames_given = {}
         for frame in frames:
             self.frames_given[frame] = {}
         
         tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-        self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
+        if not self.use_frames:
+            self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
+        else:
+            self.preview_file_path = []
+            for i in range(len(self.frames)):
+                self.preview_file_path.append("{}".format(os.path.join(tmp_dir, "current_preview{}".format(i))))
         expected_offsets = {}
         
         for i in range(1, self.total_tasks):
