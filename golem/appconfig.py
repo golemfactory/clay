@@ -57,6 +57,7 @@ ETH_ACCOUNT_NAME = ""
 USE_IP6 = 0
 MIN_PRICE = 1
 MAX_PRICE = 1000
+ACCEPT_TASKS = 1
 
 
 class NodeConfig:
@@ -174,6 +175,7 @@ class AppConfig:
                                  min_price=MIN_PRICE,
                                  max_price=MAX_PRICE,
                                  use_ipv6=USE_IP6,
+                                 accept_tasks=ACCEPT_TASKS,
                                  node_name="",
                                  public_address="")
 
