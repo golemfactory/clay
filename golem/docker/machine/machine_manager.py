@@ -330,7 +330,7 @@ class DockerMachineManager(DockerConfigManager):
 
         try:
             self.docker_machine_command('start', self.docker_machine,
-                                        check_output=True)
+                                        check_output=False)
         except Exception as e:
             logger.error("DockerMachine: failed to start the VM: {}"
                          .format(e.message))
@@ -347,7 +347,7 @@ class DockerMachineManager(DockerConfigManager):
         logger.debug("DockerMachine: stopping '{}'".format(self.docker_machine))
         try:
             self.docker_machine_command('stop', self.docker_machine,
-                                        check_output=True)
+                                        check_output=False)
             return True
         except Exception as e:
             logger.warn("DockerMachine: failed to stop the VM: {}"
