@@ -128,12 +128,6 @@ class MockDockerMachineManager(DockerMachineManager):
     def docker_machine_command(self, key, check_output=True, shell=False, *args):
         return MACHINE_NAME
 
-    def _apply_constraints(self, vm, params, force=False):
-        return True
-
-    def _restart_ctx(self, name_or_id_or_machine, restart=True):
-        yield True
-
 
 class TestThread(Thread):
 
