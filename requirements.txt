@@ -21,4 +21,4 @@ Twisted>=15.4
 ethereum-rpc-client
 devp2p>=0.5.1
 cffi>=1.1.2
-ethereum==1.0.8
+ethereum>=1.2.0
