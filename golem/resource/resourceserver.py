@@ -230,8 +230,10 @@ class ResourceServer(PendingConnectionsServer):
         return self.keys_auth.get_key_id()
 
     def get_socket_addresses(self, node_info, port, key_id):
-        socket_addresses = PendingConnectionsServer.get_socket_addresses(self, node_info, port, key_id)
+        if self.client.get_suggested_conn_reverse(key_id):
+            return []
         addr = self.client.get_suggested_addr(key_id)
+        socket_addresses = PendingConnectionsServer.get_socket_addresses(self, node_info, port, key_id)
         if addr:
             socket_addresses = [SocketAddress(addr, port)] + socket_addresses
         return socket_addresses
