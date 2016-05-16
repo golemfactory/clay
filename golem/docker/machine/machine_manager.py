@@ -1,13 +1,63 @@
 import logging
 import subprocess
 import time
+from collections import deque
 from contextlib import contextmanager
 from threading import Thread
 
 from golem.docker.config_manager import DockerConfigManager
 
-__all__ = ['DockerMachineManager']
+__all__ = ['DockerMachineManager', 'ThreadExecutor']
 logger = logging.getLogger(__name__)
+
+FALLBACK_MACHINE_NAME = 'default'
+
+
+class ThreadExecutor(Thread):
+    def __init__(self, group=None, name=None,
+                 args=(), kwargs=None, verbose=None):
+
+        super(ThreadExecutor, self).__init__(group, self.loop, name,
+                                             args, kwargs, verbose)
+        self._threads = deque()
+        self.working = True
+
+    def start(self):
+        result = super(ThreadExecutor, self).start()
+
+        try:
+            from twisted.internet import reactor
+            reactor.addSystemEventTrigger("before", "shutdown", self.shutdown)
+        except Exception as e:
+            logger.warn("Cannot add a shutdown handler: {}"
+                        .format(e.message))
+
+        return result
+
+    def loop(self):
+        while self.working:
+            sleep = 1
+            try:
+                if self._threads:
+                    t = self._threads.popleft()
+                    if not t.isAlive():
+                        t.start()
+                    t.join()
+                    sleep = 0.1
+            except Exception as e:
+                logger.debug("Error executing thread: {}"
+                             .format(e.message))
+            time.sleep(sleep)
+
+    def push(self, thread):
+        total = len(self._threads)
+        if total > 1:
+            self._threads[-1] = thread
+        else:
+            self._threads.append(thread)
+
+    def shutdown(self):
+        self.working = False
 
 
 class DockerMachineManager(DockerConfigManager):
@@ -15,6 +65,7 @@ class DockerMachineManager(DockerConfigManager):
     POWER_UP_DOWN_TIMEOUT = 30 * 1000  # milliseconds
 
     docker_machine_commands = dict(
+        active=['docker-machine', 'active'],
         list=['docker-machine', 'ls', '-q'],
         stop=['docker-machine', 'stop'],
         start=['docker-machine', 'start'],
@@ -31,6 +82,7 @@ class DockerMachineManager(DockerConfigManager):
     ]
 
     def __init__(self,
+                 machine_name=None,
                  default_memory_size=1024,
                  default_cpu_execution_cap=100,
                  default_cpu_count=1,
@@ -41,7 +93,8 @@ class DockerMachineManager(DockerConfigManager):
         self.ISession = None
         self.LockType = None
 
-        self.docker_machine_available = False
+        self.docker_machine_available = True
+        self.docker_machine = machine_name
         self.docker_images = []
 
         self.min_constraints = dict(
@@ -58,25 +111,25 @@ class DockerMachineManager(DockerConfigManager):
 
         self.virtual_box = None
         self.virtual_box_config = self.defaults
-        self._threads = []
 
-        self.check_environment()
+        self._env_checked = False
+        self._threads = ThreadExecutor()
 
-    def shutdown(self):
-        self.wait_for_completion()
-
-    def wait_for_completion(self):
-        logger.debug("DockerManager: waiting for previous reconfiguration completion")
-        for t in self._threads:
-            try:
-                if t.isAlive():
-                    t.join()
-            except:
-                pass
+        if self.docker_machine:
+            self.check_environment()
 
     def check_environment(self):
+        logger.debug("DockerManager: checking VM availability")
+
         try:
             # check VirtualBox availability
+            if not self.docker_machine:
+                output = self.docker_machine_command('active')
+                self.docker_machine = output.strip().replace("\n", "") or \
+                                      FALLBACK_MACHINE_NAME
+            if not self.docker_machine:
+                raise EnvironmentError("Unknown Docker VM name")
+
             try:
 
                 from virtualbox import VirtualBox
@@ -101,21 +154,30 @@ class DockerMachineManager(DockerConfigManager):
             logger.warn("DockerMachine: not available: {}".format(e.message))
             self.docker_machine_available = False
 
+        if self.docker_machine_available:
+            if self.docker_machine not in self.docker_images:
+                logger.warn("DockerMachine: Docker VM {} not available"
+                            .format(self.docker_machine))
+            elif not self._threads.isAlive():
+                self._threads.start()
+
+        self._env_checked = True
+
     def update_config(self, status_callback, done_callback, in_background=True):
+        if not self._env_checked:
+            self.check_environment()
 
         def wait_for_tasks():
+            logger.debug("DockerMachine: updating configuration")
             while status_callback():
                 time.sleep(0.5)
-            self.constrain_all()
+            self.constrain(self.docker_machine)
             done_callback()
-            if thread in self._threads:
-                self._threads.remove(thread)
 
         thread = Thread(target=wait_for_tasks)
 
         if in_background:
-            self._threads.append(thread)
-            thread.start()
+            self._threads.push(thread)
         else:
             thread.run()
 
@@ -154,14 +216,14 @@ class DockerMachineManager(DockerConfigManager):
             return result
 
         except Exception as e:
-            logger.error("Virtualbox: error reading VM's constraints: {}"
+            logger.error("VirtualBox: error reading VM's constraints: {}"
                          .format(e.message))
 
     def constrain(self, name_or_id_or_machine, **kwargs):
         constraints = kwargs or self.virtual_box_config
 
-        logger.debug("VirtualBox: reconfiguring '{}' with {}"
-                     .format(name_or_id_or_machine, constraints))
+        logger.debug("VirtualBox: starting reconfiguration of '{}'"
+                     .format(name_or_id_or_machine))
 
         try:
             self.__constrain(name_or_id_or_machine, **constraints)
@@ -170,7 +232,6 @@ class DockerMachineManager(DockerConfigManager):
                          .format(name_or_id_or_machine, e.message))
 
     def constrain_all(self, images=None, **kwargs):
-        self.wait_for_completion()
         try:
             for image_name in images or self.docker_images:
                 self.constrain(image_name, **kwargs)
@@ -190,13 +251,18 @@ class DockerMachineManager(DockerConfigManager):
         with self._try():
             memory_size += int(config_desc.max_memory_size) / 1000
 
+        with self._try():
+            if config_desc.docker_machine_name:
+                self.docker_machine = config_desc.docker_machine_name
+                self._env_checked = False
+
         self.virtual_box_config = dict(
             memory_size=memory_size,
             cpu_count=cpu_count
         )
 
     @contextmanager
-    def __restart_ctx(self, name_or_id_or_machine, restart=True):
+    def _restart_ctx(self, name_or_id_or_machine, restart=True):
         immutable_vm = self.__machine_from_arg(name_or_id_or_machine)
         if not immutable_vm:
             return
@@ -230,17 +296,22 @@ class DockerMachineManager(DockerConfigManager):
             logger.error("DockerMachine: restart context error: {}"
                          .format(exception.message))
 
-    def docker_machine_command(self, key, check_output=True, shell=False):
-        command = self.docker_machine_commands.get(key)
+    def docker_machine_command(self, key, machine_name=None, check_output=True, shell=False):
+        command = self.docker_machine_commands.get(key)[:]
         if command:
+            if machine_name:
+                command += [machine_name]
             if check_output:
                 return subprocess.check_output(command, shell=shell)
             return subprocess.check_call(command, shell=shell)
         return ''
 
     def __docker_machine_running(self):
+        if not self.docker_machine:
+            raise EnvironmentError("No Docker VM available")
+
         try:
-            status = self.docker_machine_command('status')
+            status = self.docker_machine_command('status', self.docker_machine)
             status = status.strip().replace("\n", "")
             return status == 'Running'
         except Exception as e:
@@ -255,11 +326,11 @@ class DockerMachineManager(DockerConfigManager):
         raise EnvironmentError("Docker machine images not available")
 
     def __start_docker_machine(self):
-        logger.debug("DockerMachine: starting")
+        logger.debug("DockerMachine: starting {}".format(self.docker_machine))
 
         try:
-            self.docker_machine_command('start')
-            self.docker_machine_command('env', shell=True)
+            self.docker_machine_command('start', self.docker_machine,
+                                        check_output=True)
         except Exception as e:
             logger.error("DockerMachine: failed to start the VM: {}"
                          .format(e.message))
@@ -268,13 +339,15 @@ class DockerMachineManager(DockerConfigManager):
                 docker_images = self.__docker_machine_images()
                 if docker_images:
                     self.docker_images = docker_images
-            except:
-                logger.error("DockerMachine: failed to update VM list")
+            except Exception as e:
+                logger.error("DockerMachine: failed to update VM list: {}"
+                             .format(e.message))
 
     def __stop_docker_machine(self):
-        logger.debug("DockerMachine: stopping")
+        logger.debug("DockerMachine: stopping '{}'".format(self.docker_machine))
         try:
-            self.docker_machine_command('stop', check_output=False)
+            self.docker_machine_command('stop', self.docker_machine,
+                                        check_output=True)
             return True
         except Exception as e:
             logger.warn("DockerMachine: failed to stop the VM: {}"
@@ -323,8 +396,10 @@ class DockerMachineManager(DockerConfigManager):
         force = kwargs.pop('force', False)
 
         if diff:
-            with self.__restart_ctx(vm) as mutable_vm:
-                self.__apply_constraints(mutable_vm, diff, force=force)
+            logger.debug("VirtualBox: applying {}".format(diff))
+
+            with self._restart_ctx(vm) as mutable_vm:
+                self._apply_constraints(mutable_vm, diff, force=force)
         else:
             if not self.__docker_machine_running():
                 self.__start_docker_machine()
@@ -343,7 +418,7 @@ class DockerMachineManager(DockerConfigManager):
 
         return result
 
-    def __apply_constraints(self, vm, params, force=False):
+    def _apply_constraints(self, vm, params, force=False):
         if not params:
             return
 

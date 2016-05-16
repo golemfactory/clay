@@ -202,10 +202,9 @@ class TaskComputer(object):
             return self.counting_task
 
         def done_callback():
-            logger.debug("Resuming future task computation")
+            logger.debug("Resuming new task computation")
             self.runnable = True
 
-        logger.debug("Pausing future task computation")
         self.runnable = False
         dm.update_config(status_callback,
                          done_callback,
