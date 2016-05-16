@@ -141,10 +141,7 @@ class Client:
     def start_network(self):
         logger.info("Starting network ...")
 
-        logger.info("Starting p2p server ...")
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth)
-        time.sleep(1.0)
-
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
                                       use_ipv6=self.config_desc.use_ipv6)
         self.resource_server = IPFSResourceServer(self.task_server.task_computer.dir_manager,
@@ -152,9 +149,14 @@ class Client:
         self.ipfs_manager = IPFSDaemonManager()
         self.ipfs_manager.store_client_info()
 
+        logger.info("Starting p2p server ...")
+        self.p2pservice.start_accepting()
+        time.sleep(1.0)
+
         logger.info("Starting resource server...")
         self.resource_server.start_accepting()
         time.sleep(1.0)
+
         self.p2pservice.set_resource_server(self.resource_server)
         self.p2pservice.set_metadata_manager(self)
 
@@ -162,9 +164,9 @@ class Client:
         self.task_server.start_accepting()
 
         self.p2pservice.set_task_server(self.task_server)
-
-        time.sleep(0.5)
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
+
+        self.p2pservice.connect_to_network()
 
     def connect(self, socket_address):
         logger.debug("P2pservice connecting to {} on port {}".format(socket_address.address, socket_address.port))

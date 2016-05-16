@@ -74,15 +74,16 @@ class P2PService(PendingConnectionsServer):
 
         self.last_messages = []
 
-        self.connect_to_network()
-
     def new_connection(self, session):
         session.start()
 
-    def connect_to_network(self):
-        """ Start listening on the port from configuration and try to connect to the seed node """
-        self.start_accepting(listening_established=self._listening_established)
+    def start_accepting(self, listening_established=None, listening_failure=None):
+        def success(port):
+            self.cur_port = port
+            self.node.p2p_prv_port = port
+        super(P2PService, self).start_accepting(listening_established=success)
 
+    def connect_to_network(self):
         try:
             with db.transaction():
                 self.__remove_redundant_hosts_from_db()
@@ -106,10 +107,6 @@ class P2PService(PendingConnectionsServer):
             except Exception as exc:
                 logger.error("Cannot connect to host {}:{}: {}"
                              .format(ip_address, port, exc))
-
-    def _listening_established(self, port):
-        self.cur_port = port
-        self.node.p2p_prv_port = port
 
     def connect(self, socket_address):
         connect_info = TCPConnectInfo([socket_address], self.__connection_established,
