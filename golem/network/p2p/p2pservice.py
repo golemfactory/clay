@@ -428,7 +428,7 @@ class P2PService(PendingConnectionsServer):
         :return:
         """
         socket_addresses = PendingConnectionsServer.get_socket_addresses(self, node_info, port, key_id)
-        conn_type, addr = self.suggested_address.get(key_id, (None, None))
+        addr = self.suggested_address.get(key_id, None)
         if addr:
             socket_addresses = [SocketAddress(addr, port)] + socket_addresses
         return socket_addresses
