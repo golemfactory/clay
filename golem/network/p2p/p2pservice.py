@@ -67,6 +67,12 @@ class P2PService(PendingConnectionsServer):
         self.resource_peers = {}
         self.seeds = []
 
+        try:
+            self.__remove_redundant_hosts_from_db()
+            self.__sync_seeds()
+        except Exception as exc:
+            logger.error("Error reading seed addresses: {}".format(exc.message))
+
         # Timers
         self.last_peers_request = time.time()
         self.last_tasks_request = time.time()
@@ -78,28 +84,17 @@ class P2PService(PendingConnectionsServer):
         session.start()
 
     def start_accepting(self, listening_established=None, listening_failure=None):
-        def success(port):
+        def established(port):
             self.cur_port = port
             self.node.p2p_prv_port = port
-        super(P2PService, self).start_accepting(listening_established=success)
+        super(P2PService, self).start_accepting(listening_established=established)
 
     def connect_to_network(self):
-        try:
-            with db.transaction():
-                self.__remove_redundant_hosts_from_db()
-                hosts = KnownHosts.select()
-            self.__sync_seeds(hosts)
-        except Exception as exc:
-            logger.error("Error reading known hosts: {}".format(exc.message))
-            hosts = []
+        addresses = set(SEEDS)
+        for host in KnownHosts.select():
+            addresses.add((host.ip_address, host.port))
 
-        addrs = SEEDS
-        for host in hosts:
-            data = (host.ip_address, host.port)
-            if data not in addrs:
-                addrs.append(data)
-
-        for ip_address, port in addrs:
+        for ip_address, port in addresses:
             logger.debug("Connecting to {}:{}".format(ip_address, port))
             try:
                 socket_address = SocketAddress(ip_address, port)

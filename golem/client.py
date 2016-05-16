@@ -27,7 +27,7 @@ from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransa
 logger = logging.getLogger(__name__)
 
 
-def create_client(datadir=None, transaction_system=False, **config_overrides):
+def create_client(datadir=None, transaction_system=False, connect_to_known_hosts=True, **config_overrides):
     # TODO: All these feature should be move to Client()
     init_messages()
 
@@ -48,11 +48,13 @@ def create_client(datadir=None, transaction_system=False, **config_overrides):
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
     return Client(config_desc, datadir=datadir, config=app_config,
-                  transaction_system=transaction_system)
+                  transaction_system=transaction_system,
+                  connect_to_known_hosts=connect_to_known_hosts)
 
 
-def start_client(datadir, transaction_system=False):
-    c = create_client(datadir, transaction_system)
+def start_client(datadir, transaction_system=False, connect_to_known_hosts=True):
+    c = create_client(datadir, transaction_system=transaction_system,
+                      connect_to_known_hosts=connect_to_known_hosts)
     logger.info("Starting all asynchronous services")
     c.start_network()
     return c
@@ -82,7 +84,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 
 
 class Client:
-    def __init__(self, config_desc, datadir, config="", transaction_system=False):
+    def __init__(self, config_desc, datadir, config="", transaction_system=False, connect_to_known_hosts=True):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
@@ -130,6 +132,7 @@ class Client:
         else:
             self.transaction_system = None
 
+        self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
 
         self.ipfs_manager = None
@@ -166,7 +169,8 @@ class Client:
         self.p2pservice.set_task_server(self.task_server)
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
 
-        self.p2pservice.connect_to_network()
+        if self.connect_to_known_hosts:
+            self.p2pservice.connect_to_network()
 
     def connect(self, socket_address):
         logger.debug("P2pservice connecting to {} on port {}".format(socket_address.address, socket_address.port))
