@@ -284,7 +284,7 @@ class GNRApplicationLogic(QtCore.QObject):
             return False
         
     # label param is the gui element to set text
-    def run_benchmark(self, benchmark, label, config_entry_name):
+    def run_benchmark(self, benchmark, label):
         task_state = RenderingTaskState()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
@@ -293,7 +293,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         t = Task.build_task(tb)
         
-        self.br = BenchmarkRunner(t, self.client.datadir, lambda p: self._benchmark_computation_success(performance=p, label=label, config_entry_name=config_entry_name),
+        self.br = BenchmarkRunner(t, self.client.datadir, lambda p: self._benchmark_computation_success(performance=p, label=label),
                                 self._benchmark_computation_error, benchmark)
 
         self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
@@ -302,16 +302,11 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.br.run()
     
-    def _benchmark_computation_success(self, performance, label, config_entry_name):
+    def _benchmark_computation_success(self, performance, label):
         self.progress_dialog_customizer.show_message("Recounted")
         
         #rounding
         perf = int((performance * 10) + 0.5) / 10.0
-        
-        config_desc = self.client.config_desc
-        getter = 'get_' + config_entry_name
-        setattr(config_desc, config_entry_name, perf)
-        self.change_config(config_desc)
         
         label.setText(str(perf))
         

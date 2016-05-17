@@ -130,10 +130,10 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
         
     def __run_lux_benchmark_button_clicked(self):
-        self.logic.run_benchmark(LuxBenchmark(), self.gui.ui.luxPerformanceLabel, "estimated_lux_performance")
+        self.logic.run_benchmark(LuxBenchmark(), self.gui.ui.luxPerformanceLabel)
             
     def __run_blender_benchmark_button_clicked(self):
-        self.logic.run_benchmark(BlenderBenchmark(), self.gui.ui.blenderPerformanceLabel, "estimated_blender_performance")
+        self.logic.run_benchmark(BlenderBenchmark(), self.gui.ui.blenderPerformanceLabel)
 
     def __load_trust_config(self, config_desc):
         self.__load_trust(config_desc.computing_trust, self.gui.ui.computingTrustLineEdit,
@@ -274,6 +274,8 @@ class ConfigurationDialogCustomizer(Customizer):
 
         cfg_desc.num_cores = u"{}".format(self.gui.ui.numCoresSlider.value())
         cfg_desc.estimated_performance = u"{}".format(self.gui.ui.performanceLabel.text())
+        cfg_desc.estimated_lux_performance = u"{}".format(self.gui.ui.luxPerformanceLabel.text())
+        cfg_desc.estimated_blender_performance = u"{}".format(self.gui.ui.blenderPerformanceLabel.text())
         max_resource_size = int(self.gui.ui.maxResourceSizeSpinBox.value())
         index = self.gui.ui.maxResourceSizeComboBox.currentIndex()
         cfg_desc.max_resource_size = u"{}".format(self.__count_resource_size(max_resource_size, index))
