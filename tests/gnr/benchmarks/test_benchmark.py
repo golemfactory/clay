@@ -1,26 +1,22 @@
 import unittest
 import os
-import tempfile
 from PIL import Image
 
-from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
+from golem.testutils import TempDirFixture
 from gnr.benchmarks.benchmark import Benchmark
 from gnr.renderingtaskstate import RenderingTaskDefinition
-from gnr.task.blenderrendertask import BlenderRendererOptions
 
 from gnr.renderingdirmanager import get_benchmarks_path
 
-class TestBlenderBenchmark(unittest.TestCase):
-    def setUp(self):
-        self.benchmark = Benchmark()
+class TestBlenderBenchmark(TempDirFixture):
+    benchmark = Benchmark()
     
     def verify_log_helper(self, file_content):
-        with tempfile.NamedTemporaryFile() as file_:
-            name = file_.name
-            fd = open(name, "w")
-            fd.write(file_content)
-            fd.close()
-            return self.benchmark.verify_log(name)
+        file_ = self.temp_file_name("log.log")
+        fd = open(file_, "w")
+        fd.write(file_content)
+        fd.close()
+        return self.benchmark.verify_log(file_)
     
     def test_is_instance(self):
         self.assertIsInstance(self.benchmark, Benchmark)
@@ -42,13 +38,13 @@ class TestBlenderBenchmark(unittest.TestCase):
         
     def test_verify_img(self):
         img = Image.new("RGB", (200, 100))
-        with tempfile.NamedTemporaryFile() as file_:
-            img.save(file_, "PNG")
-            self.assertTrue(self.benchmark.verify_img(file_.name))
+        file_ = self.temp_file_name("img.png")
+        fd = open(file_, "w")
+        img.save(fd, "PNG")
+        self.assertTrue(self.benchmark.verify_img(file_))
         img = Image.new("RGB", (201, 100))
-        with tempfile.NamedTemporaryFile() as file_:
-            img.save(file_, "PNG")
-            self.assertFalse(self.benchmark.verify_img(file_.name))
+        img.save(fd, "PNG")
+        self.assertFalse(self.benchmark.verify_img(file_))
     
     def test_verify_log(self):
         for fc in ["Error", "ERROR", "error", "blaErRor", "bla ERRor bla"]:
