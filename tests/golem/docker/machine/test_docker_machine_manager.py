@@ -45,6 +45,8 @@ class MockConsole(mock.MagicMock):
 class MockSession(mock.MagicMock):
     def __init__(self, *args, **kw):
         super(MockSession, self).__init__(*args, **kw)
+        self.console = MockConsole()
+        self.machine = kw.pop('machine', None)
 
 
 class MockLockType(mock.MagicMock):
@@ -73,11 +75,8 @@ class MockMachine(mock.MagicMock):
     def __init__(self, *args, **kw):
         super(MockMachine, self).__init__(*args, **kw)
         self.state = MockState()
-
-    def create_session(self, lock_type=MockLockType.null):
-        session = MockSession()
-        session.console = MockConsole()
-        session.machine = self
+        self.name = kw.pop('name', None)
+        self.session = MockSession(machine=self)
 
 
 class MockState(mock.MagicMock):
@@ -123,10 +122,14 @@ class MockDockerMachineManager(DockerMachineManager):
         self.ISession = MockSession
         self.LockType = MockLockType
         self.docker_images = [MACHINE_NAME]
+        self.docker_machine = MACHINE_NAME
         self.docker_machine_available = True
 
     def docker_machine_command(self, key, check_output=True, shell=False, *args):
         return MACHINE_NAME
+
+    def find_vm(self, name_or_id):
+        return MockMachine(name=MACHINE_NAME)
 
 
 class TestThread(Thread):
@@ -162,17 +165,17 @@ class TestThreadExecutor(unittest.TestCase):
         j3 = TestThread(30)
 
         executor.push(j1)
-        assert len(executor._threads) == 1
+        assert len(executor._queue) == 1
         executor.push(j2)
-        assert len(executor._threads) == 2
+        assert len(executor._queue) == 2
         executor.push(j3)
-        assert len(executor._threads) == 2
-        assert j2 not in executor._threads
+        assert len(executor._queue) == 2
+        assert j2 not in executor._queue
 
         j1.working = False
         j2.working = False
         j3.working = False
-        executor.working = False
+        executor.shutdown()
 
     def test_order(self):
         executor = ThreadExecutor()
@@ -191,7 +194,7 @@ class TestThreadExecutor(unittest.TestCase):
 
         j1.working = False
         j2.working = False
-        executor.working = False
+        executor.shutdown()
 
 
 class TestDockerMachineManager(unittest.TestCase):
@@ -211,13 +214,13 @@ class TestDockerMachineManager(unittest.TestCase):
 
         return dmm.container_host_config, dmm.virtual_box_config
 
-    def start_vm(self):
+    def test_start_vm(self):
         dmm = MockDockerMachineManager()
-        assert dmm.start_vm()
+        assert dmm.start_vm(MACHINE_NAME)
 
-    def stop_vm(self):
+    def test_stop_vm(self):
         dmm = MockDockerMachineManager()
-        assert dmm.stop_vm()
+        assert dmm.stop_vm(MACHINE_NAME)
 
     def test_update_config(self):
         status_switch = [True]
@@ -238,7 +241,7 @@ class TestDockerMachineManager(unittest.TestCase):
         dmm.container_host_config = host_config
         dmm.virtual_box_config = virtualbox_config
 
-        dmm._env_checked = True
+        dmm.check_environment()
         dmm.docker_machine = 'default'
         dmm.update_config(status_cb, done_cb, in_background=False)
         dmm.update_config(status_cb, done_cb, in_background=True)

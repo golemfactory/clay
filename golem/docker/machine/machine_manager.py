@@ -3,7 +3,7 @@ import subprocess
 import time
 from collections import deque
 from contextlib import contextmanager
-from threading import Thread
+from threading import Thread, Lock
 
 from golem.docker.config_manager import DockerConfigManager
 
@@ -14,50 +14,62 @@ FALLBACK_MACHINE_NAME = 'default'
 
 
 class ThreadExecutor(Thread):
+
+    lock = Lock()
+
     def __init__(self, group=None, name=None,
                  args=(), kwargs=None, verbose=None):
 
         super(ThreadExecutor, self).__init__(group, self.loop, name,
                                              args, kwargs, verbose)
-        self._threads = deque()
         self.working = True
+        self.sleep_loop = 1.0
+        self.sleep_short = 0.1
+        self.n_threads = 2
+        self._queue = deque()
 
     def start(self):
         result = super(ThreadExecutor, self).start()
-
-        try:
-            from twisted.internet import reactor
-            reactor.addSystemEventTrigger("before", "shutdown", self.shutdown)
-        except Exception as e:
-            logger.warn("Cannot add a shutdown handler: {}"
-                        .format(e.message))
-
+        self._register_shutdown_handler()
         return result
 
     def loop(self):
         while self.working:
-            sleep = 1
+            sleep = self.sleep_loop
             try:
-                if self._threads:
-                    t = self._threads.popleft()
-                    if not t.isAlive():
-                        t.start()
-                    t.join()
-                    sleep = 0.1
+                if self._queue:
+                    self._join_thread()
+                    sleep = self.sleep_short
             except Exception as e:
                 logger.debug("Error executing thread: {}"
                              .format(e.message))
             time.sleep(sleep)
 
     def push(self, thread):
-        total = len(self._threads)
-        if total > 1:
-            self._threads[-1] = thread
-        else:
-            self._threads.append(thread)
+        with self.lock:
+            total = len(self._queue)
+            if total >= self.n_threads:
+                self._queue[-1] = thread
+            else:
+                self._queue.append(thread)
 
     def shutdown(self):
         self.working = False
+
+    def _join_thread(self):
+        with self.lock:
+            t = self._queue.popleft()
+        if not t.isAlive():
+            t.start()
+        t.join()
+
+    def _register_shutdown_handler(self):
+        try:
+            from twisted.internet import reactor
+            reactor.addSystemEventTrigger("before", "shutdown", self.shutdown)
+        except Exception as e:
+            logger.warn("Cannot add a shutdown handler: {}"
+                        .format(e.message))
 
 
 class DockerMachineManager(DockerConfigManager):
@@ -115,6 +127,7 @@ class DockerMachineManager(DockerConfigManager):
         self._env_checked = False
         self._threads = ThreadExecutor()
 
+        self.__import_virtualbox()
         if self.docker_machine:
             self.check_environment()
 
@@ -130,26 +143,12 @@ class DockerMachineManager(DockerConfigManager):
             if not self.docker_machine:
                 raise EnvironmentError("Unknown Docker VM name")
 
-            try:
-
-                from virtualbox import VirtualBox
-                from virtualbox.library import ISession, LockType
-
-                self.virtual_box = VirtualBox()
-                self.ISession = ISession
-                self.LockType = LockType
-
-            except ImportError as e:
-                raise EnvironmentError("Couldn't import VirtualBox libs: {}"
-                                       .format(e.message))
-
             if not self.virtual_box.version:
                 raise EnvironmentError("Cannot connect to VirtualBox")
 
             # check docker image availability
             self.docker_images = self.__docker_machine_images()
             self.docker_machine_available = True
-
         except Exception as e:
             logger.warn("DockerMachine: not available: {}".format(e.message))
             self.docker_machine_available = False
@@ -461,3 +460,17 @@ class DockerMachineManager(DockerConfigManager):
                              .format(machine_obj, e.message))
                 return None
         return machine_obj
+
+    def __import_virtualbox(self):
+        try:
+            from virtualbox import VirtualBox
+            from virtualbox.library import ISession, LockType
+
+            self.virtual_box = VirtualBox()
+            self.ISession = ISession
+            self.LockType = LockType
+
+        except ImportError as e:
+
+            self.docker_machine_available = False
+            logger.warn("Couldn't import virtualbox: {}".format(e.message))
