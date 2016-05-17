@@ -18,6 +18,35 @@ class TestBlenderDefaults(unittest.TestCase):
         self.assertTrue(path.isfile(bd.main_program_file))
 
 
+class TestBlenderFrameTask(TempDirFixture):
+    def test_init_preview(self):
+        program_file = self.temp_file_name('program')
+        output_file = self.temp_file_name('output')
+        bt = BlenderRenderTask(node_name="example-node-name",
+                               task_id="example-task-id",
+                               main_scene_dir=self.tempdir,
+                               main_scene_file="example.blend",
+                               main_program_file=program_file,
+                               total_tasks=7,
+                               res_x=2,
+                               res_y=300,
+                               outfilebasename="example_out",
+                               output_file=output_file,
+                               output_format="PNG",
+                               full_task_timeout=1,
+                               subtask_timeout=1,
+                               task_resources=[],
+                               estimated_memory=123,
+                               root_path=self.tempdir,
+                               use_frames=True,
+                               frames=[10],
+                               max_price=10)
+
+        assert len(bt.preview_file_path) == len(bt.frames)
+        assert len(bt.preview_task_file_path) == len(bt.frames)
+
+
+
 class TestBlenderTaskDivision(TempDirFixture):
     def setUp(self):
         super(TestBlenderTaskDivision, self).setUp()

@@ -17,8 +17,8 @@ class TestResourcesManager(TestDirFixture):
         self.dir_manager = DirManager(self.path, self.node_name)
 
         self.split_resources = [
-            ['test_file'],
-            ['test_dir', 'dir_file']
+            ['test_file.one.two'],
+            ['test_dir.one.two', 'dir_file.one.two']
         ]
 
         self.target_resources = [
@@ -27,9 +27,9 @@ class TestResourcesManager(TestDirFixture):
         ]
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
-        test_file = os.path.join(res_path, 'test_file')
-        test_dir = os.path.join(res_path, 'test_dir')
-        test_dir_file = os.path.join(test_dir, 'dir_file')
+        test_file = os.path.join(res_path, 'test_file.one.two')
+        test_dir = os.path.join(res_path, 'test_dir.one.two')
+        test_dir_file = os.path.join(test_dir, 'dir_file.one.two')
 
         open(test_file, 'w').close()
 
@@ -160,8 +160,8 @@ class TestResourcesManager(TestDirFixture):
         rm = IPFSResourceManager(self.dir_manager)
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
-        test_dir = os.path.join(res_path, 'test_dir')
-        test_dir_file = os.path.join(test_dir, 'dir_file')
+        test_dir = os.path.join(res_path, 'test_dir.one.two')
+        test_dir_file = os.path.join(test_dir, 'dir_file.one.two')
 
         rm.add_resource(test_dir_file, self.task_id)
 
@@ -171,8 +171,8 @@ class TestResourcesManager(TestDirFixture):
         rm = IPFSResourceManager(self.dir_manager)
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
-        test_dir = os.path.join(res_path, 'test_dir')
-        test_dir_file = os.path.join(test_dir, 'dir_file')
+        test_dir = os.path.join(res_path, 'test_dir.one.two')
+        test_dir_file = os.path.join(test_dir, 'dir_file.one.two')
 
         rm.add_resources([test_dir_file], self.task_id)
 

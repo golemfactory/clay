@@ -12,5 +12,6 @@ coverage:
     project:
       default:
         target: auto
+    changes: false
 comment:
   layout: header, diff, changes, sunburst, uncovered
