@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 LAST_MESSAGE_BUFFER_LEN = 5  # How many last messages should we keep
 REFRESH_PEERS_TIMEOUT = 1200  # How often should we disconnect with a random node
+RECONNECT_WITH_SEED_THRESHOLD = 30  # After how many seconds from the last try should we try to connect with seed?
 SOLVE_CHALLENGE = True  # Should nodes that connects with us solve hashcash challenge?
 BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 
@@ -49,6 +50,8 @@ class P2PService(PendingConnectionsServer):
         self.node_name = self.config_desc.node_name
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
         self.last_message_buffer_len = LAST_MESSAGE_BUFFER_LEN
+        self.last_time_tried_connect_with_seed = None
+        self.reconnect_with_seed_threshold = RECONNECT_WITH_SEED_THRESHOLD
         self.refresh_peers_timeout = REFRESH_PEERS_TIMEOUT
         self.should_solve_challenge = SOLVE_CHALLENGE
         self.challenge_history = []
@@ -78,6 +81,10 @@ class P2PService(PendingConnectionsServer):
     def connect_to_network(self):
         """ Start listening on the port from configuration and try to connect to the seed node """
         self.start_accepting(listening_established=self._listening_established)
+        self.connect_to_seed()
+
+    def connect_to_seed(self):
+        self.last_time_tried_connect_with_seed = time.time()
         try:
             socket_address = SocketAddress(self.config_desc.seed_host, self.config_desc.seed_port)
             self.connect(socket_address)
@@ -120,6 +127,9 @@ class P2PService(PendingConnectionsServer):
         self.task_connections_helper.sync()
 
         self.__send_get_peers()
+        if len(self.peers) == 0:
+            if time.time() - self.last_time_tried_connect_with_seed > self.reconnect_with_seed_threshold:
+                self.connect_to_seed()
 
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection

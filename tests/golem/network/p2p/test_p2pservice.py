@@ -136,3 +136,20 @@ class TestP2PService(unittest.TestCase):
 
         assert not service.free_peers
         assert len(service.pending_connections) == 1
+
+    def test_reconnect_with_seed(self):
+        keys_auth = EllipticalKeysAuth()
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        time_ = time.time()
+        last_time = service.last_time_tried_connect_with_seed
+        assert service.last_time_tried_connect_with_seed <= time_
+        assert time_ - service.last_time_tried_connect_with_seed < service.reconnect_with_seed_threshold
+        assert len(service.peers) == 0
+        service.sync_network()
+        assert last_time == service.last_time_tried_connect_with_seed
+        service.reconnect_with_seed_threshold = 0.1
+        time.sleep(0.1)
+        service.sync_network()
+        assert last_time < service.last_time_tried_connect_with_seed
+
+
