@@ -157,7 +157,7 @@
              <normaloff>img/user.png</normaloff>img/user.png</iconset>
            </property>
            <property name="flags">
-            <set>ItemIsSelectable|ItemIsDragEnabled|ItemIsEnabled</set>
+            <set>ItemIsSelectable|ItemIsEnabled</set>
            </property>
           </item>
          </widget>
