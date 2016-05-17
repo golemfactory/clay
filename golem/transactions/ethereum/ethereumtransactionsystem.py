@@ -4,8 +4,8 @@ from os import path
 from ethereum import keys
 
 from golem.ethereum import Client
-from golem.transactions.ethereum.paymentprocessor import PaymentProcessor
-from golem.transactions.ethereum.paymentmonitor import PaymentMonitor
+from golem.ethereum.paymentprocessor import PaymentProcessor
+from golem.ethereum.paymentmonitor import PaymentMonitor
 from golem.transactions.transactionsystem import TransactionSystem
 
 log = logging.getLogger('golem.pay')
