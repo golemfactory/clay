@@ -1,10 +1,8 @@
 import unittest
-from threading import Thread
 
 import mock
-import time
 
-from golem.docker.machine.machine_manager import DockerMachineManager, ThreadExecutor
+from golem.docker.machine.machine_manager import DockerMachineManager
 
 MACHINE_NAME = 'default'
 
@@ -31,9 +29,7 @@ class MockVirtualBox(mock.MagicMock):
     @staticmethod
     def find_machine(name):
         if name == MACHINE_NAME:
-            machine = MockMachine()
-            machine.name = MACHINE_NAME
-            return machine
+            return MockMachine(name=MACHINE_NAME)
         return None
 
 
@@ -121,6 +117,9 @@ class MockDockerMachineManager(DockerMachineManager):
         self.virtual_box = MockVirtualBox()
         self.ISession = MockSession
         self.LockType = MockLockType
+        self.set_defaults()
+
+    def set_defaults(self):
         self.docker_images = [MACHINE_NAME]
         self.docker_machine = MACHINE_NAME
         self.docker_machine_available = True
@@ -128,73 +127,8 @@ class MockDockerMachineManager(DockerMachineManager):
     def docker_machine_command(self, key, check_output=True, shell=False, *args):
         return MACHINE_NAME
 
-    def find_vm(self, name_or_id):
-        return MockMachine(name=MACHINE_NAME)
-
-
-class TestThread(Thread):
-
-    def __init__(self, secs, sleep=0.5, group=None,
-                 target=None, name=None, args=(),
-                 kwargs=None, verbose=None):
-
-        super(TestThread, self).__init__(group, target, name,
-                                         args, kwargs, verbose)
-        self.working = True
-        self.sleep = sleep
-        self.secs = secs
-        self.called = False
-
-    def run(self):
-        self.called = True
-        start = time.time()
-        while self.working:
-            time.sleep(self.sleep)
-            if time.time() - start >= self.secs:
-                break
-
-
-class TestThreadExecutor(unittest.TestCase):
-
-    def test_queue(self):
-        executor = ThreadExecutor()
-        executor.start()
-
-        j1 = TestThread(30)
-        j2 = TestThread(30)
-        j3 = TestThread(30)
-
-        executor.push(j1)
-        assert len(executor._queue) == 1
-        executor.push(j2)
-        assert len(executor._queue) == 2
-        executor.push(j3)
-        assert len(executor._queue) == 2
-        assert j2 not in executor._queue
-
-        j1.working = False
-        j2.working = False
-        j3.working = False
-        executor.shutdown()
-
-    def test_order(self):
-        executor = ThreadExecutor()
-        executor.start()
-
-        j1 = TestThread(0)
-        j2 = TestThread(0)
-
-        executor.push(j1)
-        executor.push(j2)
-
-        time.sleep(2)
-
-        assert j1.called
-        assert j2.called
-
-        j1.working = False
-        j2.working = False
-        executor.shutdown()
+    def docker_machine_images(self):
+        return super(MockDockerMachineManager, self).docker_machine_images()
 
 
 class TestDockerMachineManager(unittest.TestCase):
@@ -222,6 +156,25 @@ class TestDockerMachineManager(unittest.TestCase):
         dmm = MockDockerMachineManager()
         assert dmm.stop_vm(MACHINE_NAME)
 
+    def test_check_environment(self):
+        dmm = MockDockerMachineManager()
+
+        dmm.check_environment()
+        assert dmm.docker_machine_available
+
+        get_images = dmm.docker_machine_images
+        dmm.docker_machine_images = lambda x: []
+
+        dmm.check_environment()
+        assert not dmm.docker_machine_available
+
+        dmm.docker_machine_images = get_images
+        dmm.docker_machine = MACHINE_NAME
+        dmm.virtual_box.version = None
+
+        dmm.check_environment()
+        assert not dmm.docker_machine_available
+
     def test_update_config(self):
         status_switch = [True]
 
@@ -240,9 +193,9 @@ class TestDockerMachineManager(unittest.TestCase):
         dmm = MockDockerMachineManager()
         dmm.container_host_config = host_config
         dmm.virtual_box_config = virtualbox_config
-
         dmm.check_environment()
-        dmm.docker_machine = 'default'
+        dmm.set_defaults()
+
         dmm.update_config(status_cb, done_cb, in_background=False)
         dmm.update_config(status_cb, done_cb, in_background=True)
 

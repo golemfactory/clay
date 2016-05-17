@@ -1,75 +1,16 @@
 import logging
 import subprocess
 import time
-from collections import deque
 from contextlib import contextmanager
-from threading import Thread, Lock
+from threading import Thread
 
+from golem.core.threads import ThreadQueueExecutor
 from golem.docker.config_manager import DockerConfigManager
 
-__all__ = ['DockerMachineManager', 'ThreadExecutor']
+__all__ = ['DockerMachineManager', 'FALLBACK_DOCKER_MACHINE_NAME']
 logger = logging.getLogger(__name__)
 
-FALLBACK_MACHINE_NAME = 'default'
-
-
-class ThreadExecutor(Thread):
-
-    lock = Lock()
-
-    def __init__(self, group=None, name=None,
-                 args=(), kwargs=None, verbose=None):
-
-        super(ThreadExecutor, self).__init__(group, self.loop, name,
-                                             args, kwargs, verbose)
-        self.working = True
-        self.sleep_loop = 1.0
-        self.sleep_short = 0.1
-        self.n_threads = 2
-        self._queue = deque()
-
-    def start(self):
-        result = super(ThreadExecutor, self).start()
-        self._register_shutdown_handler()
-        return result
-
-    def loop(self):
-        while self.working:
-            sleep = self.sleep_loop
-            try:
-                if self._queue:
-                    self._join_thread()
-                    sleep = self.sleep_short
-            except Exception as e:
-                logger.debug("Error executing thread: {}"
-                             .format(e.message))
-            time.sleep(sleep)
-
-    def push(self, thread):
-        with self.lock:
-            total = len(self._queue)
-            if total >= self.n_threads:
-                self._queue[-1] = thread
-            else:
-                self._queue.append(thread)
-
-    def shutdown(self):
-        self.working = False
-
-    def _join_thread(self):
-        with self.lock:
-            t = self._queue.popleft()
-        if not t.isAlive():
-            t.start()
-        t.join()
-
-    def _register_shutdown_handler(self):
-        try:
-            from twisted.internet import reactor
-            reactor.addSystemEventTrigger("before", "shutdown", self.shutdown)
-        except Exception as e:
-            logger.warn("Cannot add a shutdown handler: {}"
-                        .format(e.message))
+FALLBACK_DOCKER_MACHINE_NAME = 'default'
 
 
 class DockerMachineManager(DockerConfigManager):
@@ -125,7 +66,7 @@ class DockerMachineManager(DockerConfigManager):
         self.virtual_box_config = self.defaults
 
         self._env_checked = False
-        self._threads = ThreadExecutor()
+        self._threads = ThreadQueueExecutor(name='docker-machine')
 
         self.__import_virtualbox()
         if self.docker_machine:
@@ -135,31 +76,28 @@ class DockerMachineManager(DockerConfigManager):
         logger.debug("DockerManager: checking VM availability")
 
         try:
-            # check VirtualBox availability
             if not self.docker_machine:
-                output = self.docker_machine_command('active')
-                self.docker_machine = output.strip().replace("\n", "") or \
-                                      FALLBACK_MACHINE_NAME
-            if not self.docker_machine:
-                raise EnvironmentError("Unknown Docker VM name")
+                active = self.docker_machine_command('active')
+                self.docker_machine = active.strip().replace("\n", "") or \
+                                      FALLBACK_DOCKER_MACHINE_NAME
 
+            # VirtualBox availability check
             if not self.virtual_box.version:
                 raise EnvironmentError("Cannot connect to VirtualBox")
 
-            # check docker image availability
-            self.docker_images = self.__docker_machine_images()
+            # Docker Machine VM availability check
+            self.docker_images = self.docker_machine_images()
+            if self.docker_machine not in self.docker_images:
+                raise EnvironmentError("VM {} not present"
+                                       .format(self.docker_machine))
+
             self.docker_machine_available = True
         except Exception as e:
             logger.warn("DockerMachine: not available: {}".format(e.message))
             self.docker_machine_available = False
 
-        if self.docker_machine_available:
-            if self.docker_machine not in self.docker_images:
-                logger.warn("DockerMachine: Docker VM {} not available"
-                            .format(self.docker_machine))
-            elif not self._threads.isAlive():
-                self._threads.start()
-
+        if self.docker_machine_available and not self._threads.isAlive():
+            self._threads.start()
         self._env_checked = True
 
     def update_config(self, status_callback, done_callback, in_background=True):
@@ -305,6 +243,12 @@ class DockerMachineManager(DockerConfigManager):
             return subprocess.check_call(command, shell=shell)
         return ''
 
+    def docker_machine_images(self):
+        output = self.docker_machine_command('list')
+        if output:
+            return [i.strip() for i in output.split("\n") if i]
+        raise EnvironmentError("Docker machine images not available")
+
     def __docker_machine_running(self):
         if not self.docker_machine:
             raise EnvironmentError("No Docker VM available")
@@ -318,12 +262,6 @@ class DockerMachineManager(DockerConfigManager):
                          .format(e.message))
         return False
 
-    def __docker_machine_images(self):
-        output = self.docker_machine_command('list')
-        if output:
-            return [i.strip() for i in output.split("\n") if i]
-        raise EnvironmentError("Docker machine images not available")
-
     def __start_docker_machine(self):
         logger.debug("DockerMachine: starting {}".format(self.docker_machine))
 
@@ -335,7 +273,7 @@ class DockerMachineManager(DockerConfigManager):
                          .format(e.message))
         else:
             try:
-                docker_images = self.__docker_machine_images()
+                docker_images = self.docker_machine_images()
                 if docker_images:
                     self.docker_images = docker_images
             except Exception as e:
