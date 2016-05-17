@@ -30,7 +30,6 @@ dependencies:
     - ~/.ethash
     - ~/docker
 
-
 test:
   pre:
     - pip install coverage codecov
