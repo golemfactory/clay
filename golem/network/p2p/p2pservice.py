@@ -5,6 +5,7 @@ import time
 from ipaddress import AddressValueError
 
 from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
+from golem.diag.service import DiagnosticsProvider
 from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, SafeProtocol
@@ -22,7 +23,7 @@ SOLVE_CHALLENGE = True  # Should nodes that connects with us solve hashcash chal
 BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 
 
-class P2PService(PendingConnectionsServer):
+class P2PService(PendingConnectionsServer, DiagnosticsProvider):
     def __init__(self, node, config_desc, keys_auth):
         """ Create new P2P Server. Listen on port for connections and connect to other peers. Keeps
         up-to-date list of peers information and optimal number of open connections.
@@ -130,6 +131,12 @@ class P2PService(PendingConnectionsServer):
         if len(self.peers) == 0:
             if time.time() - self.last_time_tried_connect_with_seed > self.reconnect_with_seed_threshold:
                 self.connect_to_seed()
+
+    def get_diagnostics(self, output_format):
+        data = dict(
+            peers=self.peers
+        )
+        return self._format_diagnostics(data, output_format)
 
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection

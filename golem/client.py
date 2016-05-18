@@ -6,6 +6,8 @@ from twisted.internet import task
 from threading import Lock
 
 from golem.core.variables import APP_NAME, APP_VERSION
+from golem.diag.service import DiagnosticsService
+from golem.diag.vm import VMDiagnosticsProvider
 from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 from golem.tools import filelock
 from golem.network.p2p.p2pservice import P2PService
@@ -104,6 +106,7 @@ class Client:
         logger.info('Client "{}", datadir: {}'.format(self.config_desc.node_name, datadir))
         logger.debug("Is super node? {}".format(self.node.is_super_node()))
         self.p2pservice = None
+        self.diag_service = None
 
         self.task_server = None
         self.task_adder_server = None
@@ -171,6 +174,11 @@ class Client:
 
         time.sleep(0.5)
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
+
+        self.diag_service = DiagnosticsService()
+        self.diag_service.register(VMDiagnosticsProvider())
+        self.diag_service.register(self.p2pservice)
+        self.diag_service.start_looping_call()
 
     def connect(self, socket_address):
         logger.debug("P2pservice connecting to {} on port {}".format(socket_address.address, socket_address.port))
