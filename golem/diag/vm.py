@@ -1,6 +1,7 @@
 import os
 
 import psutil
+from golem.core.common import is_windows
 
 from golem.diag.service import DiagnosticsProvider
 
@@ -11,9 +12,14 @@ class VMDiagnosticsProvider(DiagnosticsProvider, object):
         self.attrs = [
             'connections', 'cpu_affinity', 'cpu_percent', 'cpu_times', 'create_time',
             'memory_full_info', 'memory_info', 'memory_info_ex', 'memory_percent',
-            'nice', 'num_ctx_switches', 'num_fds', 'num_threads', 'status', 'uids',
+            'nice', 'num_ctx_switches', 'num_threads', 'status',
             'username', 'cwd', 'io_counters', 'nice'
         ]
+
+        if is_windows():
+            self.attrs += ['num_handles']
+        else:
+            self.attrs += ['uids', 'num_fds']
 
     def get_diagnostics(self, output_format):
         data = self.process.as_dict(attrs=self.attrs)
