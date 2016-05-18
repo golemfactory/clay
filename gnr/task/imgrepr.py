@@ -116,7 +116,6 @@ def verify_img(file_, res_x, res_y):
     if img is None:
         return False
     img_x, img_y = img.get_size()
-    print "IMG X {} IMG Y {} RES X {} RESY {}".format(img_x, img_y, res_x, res_y)
     return (img_x == res_x) and (abs(img_y - res_y) <= 1)
 
 
