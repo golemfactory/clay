@@ -51,30 +51,7 @@ class SimpleSerializerRelease(object):
         """
         return cPickle.loads(data)
 
-
-class SimpleDiagnosticsSerializer(SimpleSerializerRelease):
-
-    threshold = 5000  # log if size / len is greater than threshold
-
-    @classmethod
-    def dumps(cls, obj):
-        size = sys.getsizeof(obj)
-        if size >= cls.threshold:
-            logger.debug("dumps: {}".format(size))
-            logger.debug("trace: {}".format(traceback.format_stack()[0]))
-        return super(SimpleDiagnosticsSerializer, cls).dumps(obj)
-
-    @classmethod
-    def loads(cls, data):
-        size = len(data)
-        if size >= cls.threshold:
-            logger.debug("loads: {}".format(size))
-            logger.debug("trace: {}".format(traceback.format_stack()[0]))
-            logger.debug("source: {}".format(data))
-        return super(SimpleDiagnosticsSerializer, cls).loads(data)
-
-
 if IS_DEBUG:
     SimpleSerializer = SimpleSerializerDebug
 else:
-    SimpleSerializer = SimpleDiagnosticsSerializer  # SimpleSerializerRelease
+    SimpleSerializer = SimpleSerializerRelease
