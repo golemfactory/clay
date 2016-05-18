@@ -168,7 +168,6 @@ class TaskServer(PendingConnectionsServer):
         pc = self.pending_connections.get(task_session.conn_id)
         if pc:
             pc.status = PenConnStatus.Failure
-            self._remove_pending_sockets(pc)
 
         for tsk in self.task_sessions.keys():
             if self.task_sessions[tsk] == task_session:
@@ -374,6 +373,8 @@ class TaskServer(PendingConnectionsServer):
             pc.failure(conn_id, *pc.args)
 
     def get_socket_addresses(self, node_info, port, key_id):
+        if self.client.get_suggested_conn_reverse(key_id):
+            return []
         socket_addresses = PendingConnectionsServer.get_socket_addresses(self, node_info, port, key_id)
         addr = self.client.get_suggested_addr(key_id)
         if addr:

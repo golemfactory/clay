@@ -252,6 +252,9 @@ class Client:
     def get_suggested_addr(self, key_id):
         return self.p2pservice.suggested_address.get(key_id)
 
+    def get_suggested_conn_reverse(self, key_id):
+        return self.p2pservice.get_suggested_conn_reverse(key_id)
+
     def want_to_start_task_session(self, key_id, node_id, conn_id):
         self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
 
