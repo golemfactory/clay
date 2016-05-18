@@ -11,7 +11,7 @@ class VMDiagnosticsProvider(DiagnosticsProvider, object):
         self.process = psutil.Process(os.getpid())
         self.attrs = [
             'connections', 'cpu_affinity', 'cpu_percent', 'cpu_times', 'create_time',
-            'memory_full_info', 'memory_info', 'memory_info_ex', 'memory_percent',
+            'memory_info', 'memory_percent',
             'nice', 'num_ctx_switches', 'num_threads', 'status',
             'username', 'cwd', 'io_counters', 'nice'
         ]
@@ -19,7 +19,7 @@ class VMDiagnosticsProvider(DiagnosticsProvider, object):
         if is_windows():
             self.attrs += ['num_handles']
         else:
-            self.attrs += ['uids', 'num_fds']
+            self.attrs += ['uids', 'num_fds', 'memory_full_info', 'memory_info_ex']
 
     def get_diagnostics(self, output_format):
         data = self.process.as_dict(attrs=self.attrs)
