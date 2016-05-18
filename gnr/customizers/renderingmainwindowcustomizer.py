@@ -239,13 +239,15 @@ class AbsRenderingMainWindowCustomizer(object):
             renderer = self.logic.get_renderer(definition.renderer)
             if len(task.task_state.subtask_states) > 0:
                 num_subtasks = task.task_state.subtask_states.values()[0].extra_data['num_subtasks']
+                total_subtasks = task.task_state.subtask_states.values()[0].extra_data['total_tasks']
+                redundancy = total_subtasks / num_subtasks
                 if definition.renderer in frame_renderers and definition.renderer_options.use_frames:
                     frames = len(definition.renderer_options.frames)
                     frame_num = self.gui.ui.frameSlider.value()
-                    num = renderer.get_task_num_from_pixels(x, y, num_subtasks, use_frames=True, frames=frames,
-                                                            frame_num=frame_num)
+                    num = renderer.get_task_num_from_pixels(x, y, num_subtasks, redundancy, use_frames=True,
+                                                            frames=frames, frame_num=frame_num)
                 else:
-                    num = renderer.get_task_num_from_pixels(x, y, num_subtasks)
+                    num = renderer.get_task_num_from_pixels(x, y, num_subtasks, redundancy)
         return num
 
     def __get_subtask(self, num):

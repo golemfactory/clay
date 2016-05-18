@@ -314,7 +314,8 @@ def get_task_boarder(start_part, end_part, num_subtasks, res_x=300, res_y=200, u
     return boarder
 
 
-def get_task_num_from_pixels(p_x, p_y, num_subtasks, res_x=300, res_y=200, use_frames=False, frames=100, frame_num=1):
+def get_task_num_from_pixels(p_x, p_y, num_subtasks, redundancy=1, res_x=300, res_y=200, use_frames=False, frames=100,
+                             frame_num=1):
     if not use_frames:
         num = __num_from_pixel(p_y, res_y, num_subtasks)
     else:
@@ -324,7 +325,7 @@ def get_task_num_from_pixels(p_x, p_y, num_subtasks, res_x=300, res_y=200, use_f
         else:
             parts = num_subtasks / frames
             num = (frame_num - 1) * parts + __num_from_pixel(p_y, res_y, parts)
-    return num
+    return redundancy * (num - 1) + 1
 
 
 def __get_boarder(start_part, end_part, parts, res_x, res_y):

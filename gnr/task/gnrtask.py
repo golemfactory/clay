@@ -217,6 +217,9 @@ class GNRTask(Task):
     def get_part_num(self, subtask_num):
         return (subtask_num - 1) / self.redundancy + 1
 
+    def task_num_from_part(self, part_num):
+        return self.redundancy * (part_num - 1) + 1
+
     def interpret_task_results(self, subtask_id, task_results, result_type, tmp_dir):
         """ Change received results into a list of image files, filter out ".log" files that should
         represents stdout and stderr from computing machine.

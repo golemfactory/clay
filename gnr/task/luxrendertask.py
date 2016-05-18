@@ -57,7 +57,7 @@ def get_task_boarder(start_part, end_part, num_subtasks, res_x=300, res_y=200, n
     return boarder
 
 
-def get_task_num_from_pixels(p_x, p_y, num_subtasks, res_x=300, res_y=200):
+def get_task_num_from_pixels(p_x, p_y, num_subtasks, redundancy=1, res_x=300, res_y=200):
     return 1
 
 

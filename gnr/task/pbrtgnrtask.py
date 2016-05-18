@@ -435,12 +435,12 @@ class PbrtRenderTask(RenderingTask):
 BASENAME = "temp"
 
 
-def get_task_num_from_pixels(p_x, p_y, num_subtasks, res_x=300, res_y=200, subtasks=20):
+def get_task_num_from_pixels(p_x, p_y, num_subtasks, redundancy=1, res_x=300, res_y=200, subtasks=20):
     nx, ny, task_res_x, task_res_y = count_subtask_reg(num_subtasks, subtasks, res_x, res_y)
     num_x = int(math.floor(p_x / task_res_x))
     num_y = int(math.floor(p_y / task_res_y))
     num = (num_y * nx + num_x) / subtasks + 1
-    return num
+    return redundancy * (num - 1) + 1
 
 
 def get_task_boarder(start_part, end_part, num_subtasks, res_x=300, res_y=200, num_pbrt_subtasks=20):
