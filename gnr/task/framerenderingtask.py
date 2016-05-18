@@ -143,7 +143,7 @@ class FrameRenderingTask(RenderingTask):
             self.preview_task_file_path[num] = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), num)
 
         if not final:
-            img = self._paste_new_chunk(img, self.preview_file_path[num], part, self.total_tasks / len(self.frames))
+            img = self._paste_new_chunk(img, self.preview_file_path[num], part, self.num_subtasks / len(self.frames))
 
         if img:
             img.save(self.preview_file_path[num], "BMP")
@@ -199,9 +199,10 @@ class FrameRenderingTask(RenderingTask):
                 for j in range(0, self.res_y):
                     img_task.putpixel((i, j), color)
         else:
-            parts = self.total_tasks / len(self.frames)
-            upper = int(math.floor(float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts))
-            lower = int(math.floor(float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts + 1))
+            parts = self.num_subtasks / len(self.frames)
+            height = math.floor(self.res_y) / float(parts)
+            upper = int(height * (self.get_part_num(subtask['start_task'] - 1) % parts))
+            lower = int(height * (self.get_part_num(subtask['start_task'] - 1) % parts + 1))
             for i in range(0, self.res_x):
                 for j in range(upper, lower):
                     img_task.putpixel((i, j), color)
@@ -287,7 +288,7 @@ class FrameRenderingTask(RenderingTask):
         return ((start_num - 1) % parts) + 1
 
     def __full_frames(self):
-        return self.total_tasks <= len(self.frames)
+        return self.num_subtasks <= len(self.frames)
 
     def __mark_sub_frame(self, sub, frame, color):
         tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
