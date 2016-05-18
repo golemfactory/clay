@@ -144,7 +144,8 @@ class Client:
     def start_network(self):
         logger.info("Starting network ...")
 
-        self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth)
+        self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
+                                     connect_to_known_hosts=self.connect_to_known_hosts)
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
                                       use_ipv6=self.config_desc.use_ipv6)
         self.resource_server = IPFSResourceServer(self.task_server.task_computer.dir_manager,
@@ -168,9 +169,7 @@ class Client:
 
         self.p2pservice.set_task_server(self.task_server)
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
-
-        if self.connect_to_known_hosts:
-            self.p2pservice.connect_to_network()
+        self.p2pservice.connect_to_network()
 
     def connect(self, socket_address):
         logger.debug("P2pservice connecting to {} on port {}".format(socket_address.address, socket_address.port))

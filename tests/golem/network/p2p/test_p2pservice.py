@@ -149,7 +149,7 @@ class TestP2PService(DatabaseFixture):
         assert len_2 == len_1
         assert select_2[0].last_connected > last_conn_1
 
-        assert len(service.seeds) == 1
+        assert len(service.seeds) >= 1
 
         # try to add more than max, we already have at least 1
         pub_prefix = '2.2.3.'
@@ -168,7 +168,7 @@ class TestP2PService(DatabaseFixture):
             service.add_known_peer(n, pub, n.prv_port)
 
         assert len(KnownHosts.select()) == MAX_STORED_HOSTS
-        assert len(service.seeds) == 0
+        assert len(service.seeds) <= 1
 
     def test_sync_free_peers(self):
         keys_auth = EllipticalKeysAuth()
@@ -198,6 +198,7 @@ class TestP2PService(DatabaseFixture):
     def test_reconnect_with_seed(self):
         keys_auth = EllipticalKeysAuth()
         service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        service.connect_to_seeds()
         time_ = time.time()
         last_time = service.last_time_tried_connect_with_seed
         assert service.last_time_tried_connect_with_seed <= time_
