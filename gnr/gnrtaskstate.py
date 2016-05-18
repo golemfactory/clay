@@ -24,6 +24,10 @@ class GNRTaskDefinition(object):
         self.docker_images = None
 
 
+class TaskDefaults(object):
+    def __init__(self):
+        self.support_redundancy = False
+
 advanceVerificationTypes = ['forAll', 'forFirst', 'random']
 
 

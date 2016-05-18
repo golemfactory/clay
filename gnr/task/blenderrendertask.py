@@ -30,6 +30,7 @@ class BlenderDefaults(RendererDefaults):
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
+        self.support_redundancy = True
 
 
 class PreviewUpdater(object):

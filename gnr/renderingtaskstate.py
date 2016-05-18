@@ -1,5 +1,5 @@
 from golem.task.taskstate import TaskState
-from gnr.gnrtaskstate import GNRTaskDefinition, AdvanceVerificationOptions
+from gnr.gnrtaskstate import GNRTaskDefinition, AdvanceVerificationOptions, TaskDefaults
 
 
 class RendererInfo:
@@ -14,8 +14,9 @@ class RendererInfo:
         self.renderer_options = renderer_options
 
 
-class RendererDefaults:
+class RendererDefaults(TaskDefaults):
     def __init__(self):
+        super(RendererDefaults, self).__init__()
         self.output_format = ""
         self.main_program_file = ""
         self.full_task_timeout = 4 * 3600

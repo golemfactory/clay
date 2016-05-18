@@ -79,6 +79,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
         self.gui.ui.verificationSizeXSpinBox.setMaximum(dr.defaults.resolution[0])
         self.gui.ui.verificationSizeYSpinBox.setMaximum(dr.defaults.resolution[1])
+        self.gui.ui.redundancyCheckBox.setChecked(False)
+        self.gui.ui.redundancyCheckBox.setEnabled(dr.defaults.support_redundancy)
 
     def _set_new_pessimistic_cost(self):
         NewTaskDialogCustomizer._set_new_pessimistic_cost(self)
@@ -101,7 +103,9 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             set_time_spin_boxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout)
             self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
             self._clear_resources()
-
+            self.gui.ui.redundancyCheckBox.setEnabled(r.defaults.support_redundancy)
+            if not r.defaults.support_redundancy:
+                self.gui.ui.redundancyCheckBox.setChecked(False)
         else:
             assert False, "Unreachable"
 
@@ -125,6 +129,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.totalSpinBox.setValue(dr.defaults.default_subtasks)
         self.gui.ui.totalSpinBox.setEnabled(True)
         self.gui.ui.optimizeTotalCheckBox.setChecked(False)
+        self.gui.ui.redundancyCheckBox.setChecked(False)
         self._set_max_price()
 
     def _clear_resources(self):
