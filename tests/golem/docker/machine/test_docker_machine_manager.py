@@ -95,6 +95,7 @@ class MockThreadExecutor(mock.Mock):
 class MockDockerMachineManager(DockerMachineManager):
 
     def __init__(self,
+                 use_parent_methods=False,
                  machine_name=None,
                  default_memory_size=1024,
                  default_cpu_execution_cap=100,
@@ -118,17 +119,18 @@ class MockDockerMachineManager(DockerMachineManager):
         self.ISession = MockSession
         self.LockType = MockLockType
         self.set_defaults()
+        self.use_parent_methods = use_parent_methods
 
     def set_defaults(self):
         self.docker_images = [MACHINE_NAME]
         self.docker_machine = MACHINE_NAME
         self.docker_machine_available = True
 
-    def docker_machine_command(self, key, check_output=True, shell=False, *args):
+    def docker_machine_command(self, key, machine_name=None, check_output=True, shell=False):
+        if self.use_parent_methods:
+            return super(MockDockerMachineManager, self).docker_machine_command(
+                key, machine_name, check_output, shell)
         return MACHINE_NAME
-
-    def docker_machine_images(self):
-        return super(MockDockerMachineManager, self).docker_machine_images()
 
 
 class TestDockerMachineManager(unittest.TestCase):
@@ -199,6 +201,26 @@ class TestDockerMachineManager(unittest.TestCase):
         dmm.update_config(status_cb, done_cb, in_background=False)
         dmm.update_config(status_cb, done_cb, in_background=True)
 
+    def test_docker_machine_command(self):
+        dmm = MockDockerMachineManager(use_parent_methods=True)
+        dmm.docker_machine_commands['test'] = ['echo', MACHINE_NAME]
+
+        assert dmm.docker_machine_command('test')
+        assert dmm.docker_machine_command('test', check_output=False) == 0
+        assert not dmm.docker_machine_command('deadbeef')
+
+    def test_start_stop_methods(self):
+        dmm = MockDockerMachineManager()
+
+        dmm.docker_machine_commands['start'] = ['echo']
+        dmm.docker_machine_commands['stop'] = ['echo']
+
+        dmm._start_docker_machine()
+        dmm._stop_docker_machine()
+
+    def test_constrain_all(self):
+        dmm = MockDockerMachineManager()
+        dmm.constrain_all([MACHINE_NAME])
 
 
 

@@ -130,7 +130,7 @@ class DockerMachineManager(DockerConfigManager):
         :param mixed: Machine id, name, Machine object or Session object
         :return: Session object
         """
-        return self.__power_up_vm(mixed)
+        return self._power_up_vm(mixed)
 
     def stop_vm(self, mixed, lock_type=None):
         """
@@ -139,7 +139,7 @@ class DockerMachineManager(DockerConfigManager):
         :param lock_type: Session lock type
         :return: Session object
         """
-        return self.__power_down_vm(mixed, lock_type=lock_type)
+        return self._power_down_vm(mixed, lock_type=lock_type)
 
     def constraints(self, name_or_id_or_machine):
         try:
@@ -204,9 +204,9 @@ class DockerMachineManager(DockerConfigManager):
         if not immutable_vm:
             return
 
-        running = self.__docker_machine_running()
+        running = self._docker_machine_running()
         if running and restart:
-            self.__stop_docker_machine()
+            self._stop_docker_machine()
 
         session = immutable_vm.create_session(self.LockType.write)
         vm = session.machine
@@ -227,21 +227,23 @@ class DockerMachineManager(DockerConfigManager):
             session.disconnect()
 
         if restart or not running:
-            self.__start_docker_machine()
+            self._start_docker_machine()
 
         if exception:
             logger.error("DockerMachine: restart context error: {}"
                          .format(exception.message))
 
     def docker_machine_command(self, key, machine_name=None, check_output=True, shell=False):
-        command = self.docker_machine_commands.get(key)[:]
-        if command:
-            if machine_name:
-                command += [machine_name]
-            if check_output:
-                return subprocess.check_output(command, shell=shell)
-            return subprocess.check_call(command, shell=shell)
-        return ''
+        command = self.docker_machine_commands.get(key, None)
+        if not command:
+            return ''
+
+        command = command[:]
+        if machine_name:
+            command += [machine_name]
+        if check_output:
+            return subprocess.check_output(command, shell=shell)
+        return subprocess.check_call(command)
 
     def docker_machine_images(self):
         output = self.docker_machine_command('list')
@@ -249,7 +251,7 @@ class DockerMachineManager(DockerConfigManager):
             return [i.strip() for i in output.split("\n") if i]
         raise EnvironmentError("Docker machine images not available")
 
-    def __docker_machine_running(self):
+    def _docker_machine_running(self):
         if not self.docker_machine:
             raise EnvironmentError("No Docker VM available")
 
@@ -262,7 +264,7 @@ class DockerMachineManager(DockerConfigManager):
                          .format(e.message))
         return False
 
-    def __start_docker_machine(self):
+    def _start_docker_machine(self):
         logger.debug("DockerMachine: starting {}".format(self.docker_machine))
 
         try:
@@ -280,7 +282,7 @@ class DockerMachineManager(DockerConfigManager):
                 logger.error("DockerMachine: failed to update VM list: {}"
                              .format(e.message))
 
-    def __stop_docker_machine(self):
+    def _stop_docker_machine(self):
         logger.debug("DockerMachine: stopping '{}'".format(self.docker_machine))
         try:
             self.docker_machine_command('stop', self.docker_machine,
@@ -291,7 +293,7 @@ class DockerMachineManager(DockerConfigManager):
                         .format(e.message))
         return False
 
-    def __power_up_vm(self, vm_or_session, lock_type=None):
+    def _power_up_vm(self, vm_or_session, lock_type=None):
         try:
             session = self.__session_from_arg(vm_or_session,
                                               lock_type=lock_type)
@@ -307,7 +309,7 @@ class DockerMachineManager(DockerConfigManager):
                          .format(e.message))
         return None
 
-    def __power_down_vm(self, vm_or_session, lock_type=None):
+    def _power_down_vm(self, vm_or_session, lock_type=None):
         try:
             session = self.__session_from_arg(vm_or_session,
                                               lock_type=lock_type)
@@ -338,8 +340,8 @@ class DockerMachineManager(DockerConfigManager):
             with self._restart_ctx(vm) as mutable_vm:
                 self._apply_constraints(mutable_vm, diff, force=force)
         else:
-            if not self.__docker_machine_running():
-                self.__start_docker_machine()
+            if not self._docker_machine_running():
+                self._start_docker_machine()
             logger.debug("VirtualBox: '{}' VM's configuration unchanged"
                          .format(vm.name))
 
