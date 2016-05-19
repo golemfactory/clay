@@ -53,10 +53,17 @@ class PreviewUpdater(object):
             self.chunks[subtask_number] = subtask_path
         
         try:
+            logger.error("In update_preview")
             if subtask_path.upper().endswith(".EXR"):
                 img = exr_to_pil(subtask_path)
             else:
                 img = Image.open(subtask_path)
+                
+            logger.error("Part {}".format(subtask_number))
+            logger.error("File {}".format(subtask_path))
+            
+            logger.error("Match area {}".format(self.perfect_match_area_y))
+            logger.error("Expected offset {}".format(self.expected_offsets[subtask_number]))
             if subtask_number == self.perfectly_placed_subtasks + 1:
                 offset = self.perfect_match_area_y
                 _, img_y = img.size
@@ -64,6 +71,10 @@ class PreviewUpdater(object):
                 self.perfectly_placed_subtasks += 1
             else:
                 offset = self.expected_offsets[subtask_number]
+            
+            logger.error("Offset {}".format(offset))
+            logger.error("IMG y {}".format(img.size[1]))
+
             
             if os.path.exists(self.preview_file_path):
                 img_current = Image.open(self.preview_file_path)
@@ -76,12 +87,12 @@ class PreviewUpdater(object):
 
         except Exception as err:
             logger.error("Can't generate preview {}".format(err))
-            logger.debug("IN update_preview")
-            logger.debug("{}".format(self.preview_file_path))
-            logger.debug("{}".format(subtask_path))
-            logger.debug("{}".format(subtask_number))
+            logger.error("IN update_preview")
+            logger.error("{}".format(self.preview_file_path))
+            logger.error("{}".format(subtask_path))
+            logger.error("{}".format(subtask_number))
             for k in self.expected_offsets.keys():
-                logger.debug("{} : {}".format(k, self.expected_offsets[k]))
+                logger.error("{} : {}".format(k, self.expected_offsets[k]))
             import traceback
             # Print the stack traceback
             traceback.print_exc()
@@ -216,15 +227,15 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             parts = self.total_tasks
         expected_offsets = {}
-        for i in range(1, parts):
+        for i in range(1, parts + 1):
             _, expected_offset = self._get_min_max_y(i)
             expected_offset =  self.res_y - int(expected_offset * float(self.res_y))
             expected_offsets[i] = expected_offset
         
         if self.use_frames:
             self.preview_updaters = []
-            for f in self.frames:
-                preview_path = self.preview_file_path[frames.index(f)]
+            for i in range(0, len(self.frames)):
+                preview_path = self.preview_file_path[i]
                 self.preview_updaters.append(PreviewUpdater(preview_path, self.res_x, self.res_y, expected_offsets))
         else:
             self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
@@ -324,18 +335,22 @@ class BlenderRenderTask(FrameRenderingTask):
         return self._new_compute_task_def(hash, extra_data, working_directory, 0)
 
     def _get_min_max_y(self, start_task):
-        if self.res_y % self.total_tasks == 0:
-            min_y = (self.total_tasks - start_task) * (1.0 / float(self.total_tasks))
-            max_y = (self.total_tasks - start_task + 1) * (1.0 / float(self.total_tasks))
+        if self.use_frames:
+            parts = self.total_tasks / len(self.frames)
         else:
-            ceiling_height = int(math.ceil(float(self.res_y) / float(self.total_tasks)))
-            ceiling_subtasks = self.total_tasks - (ceiling_height * self.total_tasks - self.res_y)
+            parts = self.total_tasks
+        if self.res_y % parts == 0:
+            min_y = (parts - start_task) * (1.0 / float(parts))
+            max_y = (parts - start_task + 1) * (1.0 / float(parts))
+        else:
+            ceiling_height = int(math.ceil(float(self.res_y) / float(parts)))
+            ceiling_subtasks = parts - (ceiling_height * parts - self.res_y)
             if start_task > ceiling_subtasks:
-                min_y = float(self.total_tasks - start_task) * float(ceiling_height - 1) / float(self.res_y)
-                max_y = float(self.total_tasks - start_task + 1) * float(ceiling_height - 1) / float(self.res_y)
+                min_y = float(parts - start_task) * float(ceiling_height - 1) / float(self.res_y)
+                max_y = float(parts - start_task + 1) * float(ceiling_height - 1) / float(self.res_y)
             else:
-                min_y = float((self.total_tasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task) * (ceiling_height)) / float(self.res_y)
-                max_y = float((self.total_tasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task + 1) * (ceiling_height)) / float(self.res_y)
+                min_y = float((parts - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task) * (ceiling_height)) / float(self.res_y)
+                max_y = float((parts - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task + 1) * (ceiling_height)) / float(self.res_y)
         return (min_y, max_y)
         
     
@@ -393,7 +408,16 @@ class BlenderRenderTask(FrameRenderingTask):
         self.preview_updater.update_preview(new_chunk_file_path, chunk_num)
 
     def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
-        self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
+        logger.error("FRAME NUMBER {}".format(frame_num))
+        logger.error("preview updater {}".format(self.preview_updaters[self.frames.index(frame_num)]))
+        if final:
+            if new_chunk_file_path.upper().endswith(".EXR"):
+                img = exr_to_pil(new_chunk_file_path)
+            else:   
+                img = Image.open(new_chunk_file_path)
+            img.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
+        else:
+            self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
 
     def _get_output_name(self, frame_num, num_start):
         num = str(frame_num)
