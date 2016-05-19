@@ -318,7 +318,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         return average
 
-    def run_test_task(self, task_state):
+    def run_test_task(self, task_state, async=True):
         if self._validate_task_state(task_state):
 
             tb = self._get_builder(task_state)
@@ -332,7 +332,10 @@ class GNRApplicationLogic(QtCore.QObject):
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
             self.progress_dialog.show()
 
-            threads.deferToThread(self.tt.run)
+            if async:
+                threads.deferToThread(self.tt.run)
+            else:
+                self.tt.run()
 
             return True
         else:
