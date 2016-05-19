@@ -6,7 +6,7 @@ from PyQt4 import QtCore
 
 from PyQt4.QtCore import QObject
 from PyQt4.QtGui import QTableWidgetItem
-from twisted.internet import task
+from twisted.internet import task, threads
 
 from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task
@@ -190,9 +190,11 @@ class GNRApplicationLogic(QtCore.QObject):
 
         tb = self._get_builder(ts)
 
-        t = Task.build_task(tb)
+        def async_build_task():
+            t = Task.build_task(tb)
+            self.client.enqueue_new_task(t)
 
-        self.client.enqueue_new_task(t)
+        threads.deferToThread(async_build_task)
 
     def _get_builder(self, task_state):
         # FIXME Bardzo tymczasowe rozwiazanie dla zapewnienia zgodnosci
@@ -330,7 +332,7 @@ class GNRApplicationLogic(QtCore.QObject):
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
             self.progress_dialog.show()
 
-            self.tt.run()
+            threads.deferToThread(self.tt.run)
 
             return True
         else:
