@@ -677,10 +677,10 @@ class TaskServer(PendingConnectionsServer):
     def __connection_for_start_session_final_failure(self, conn_id, key_id, node_info, super_node_info, ans_conn_id):
         logger.warning("Starting session for {} impossible".format(key_id))
 
-    def __connection_for_middleman_final_failure(self, *args):
+    def __connection_for_middleman_final_failure(self, *args, **kwargs):
         pass
 
-    def __connection_for_nat_punch_final_failure(self, *args):
+    def __connection_for_nat_punch_final_failure(self, *args, **kwargs):
         pass
 
     # SYNC METHODS
