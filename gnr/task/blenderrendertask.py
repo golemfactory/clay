@@ -105,7 +105,7 @@ class BlenderRendererOptions(GNROptions):
 
 
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
-    """ Build new Blender tasks using RenderingTaskDefintions and BlenderRendererOptions as taskdefinition
+    """ Build new Blender tasks using RenderingTaskDefinitions and BlenderRendererOptions as taskdefinition
     renderer options
     """
     def build(self):
@@ -214,6 +214,7 @@ class BlenderRenderTask(FrameRenderingTask):
             expected_offsets[i] = expected_offset
         
         self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
+        self.parts_to_compute = [[] for _ in range(self.num_subtasks)]
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
@@ -221,7 +222,7 @@ class BlenderRenderTask(FrameRenderingTask):
             logger.warning("Client {} banned from this task ".format(node_name))
             return None
 
-        start_task, end_task = self._get_next_task()
+        start_task, end_task = self._get_next_task(node_id=node_id)
 
         working_directory = self._get_working_directory()
         scene_file = self._get_scene_file_rel_path()
@@ -308,6 +309,23 @@ class BlenderRenderTask(FrameRenderingTask):
             os.makedirs(self.test_task_res_path)
 
         return self._new_compute_task_def(hash, extra_data, working_directory, 0)
+
+    def _get_next_task(self, node_id):
+        if self.redundancy == 1:
+            return super(BlenderRenderTask, self)._get_next_task()
+        for i, part in enumerate(self.parts_to_compute):
+            if len(part) < self.redundancy and node_id not in part:
+                part.append(node_id)
+                task_num = i * self.redundancy + len(part)
+                self.last_task += 1
+                return task_num, task_num
+        for sub in self.subtasks_given.values():
+            if sub['status'] == SubtaskStatus.failure and node_id not in self.parts_to_compute[sub['start_part']]:
+                sub['status'] = SubtaskStatus.resent
+                self.num_failed_subtasks -= 1
+                self.last_task += 1
+                return sub['start_part'], sub['end_part']
+        return None, None
 
     def _get_min_max_y(self, start_task):
         part_num = self.get_part_num(start_task)
