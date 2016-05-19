@@ -378,7 +378,6 @@ class BlenderRenderTask(FrameRenderingTask):
         return int(file_name[idx + len(self.outfilebasename):])
 
     def _update_preview(self, new_chunk_file_path, chunk_num):
-        print "Update preview called {}".format(chunk_num)
         self.preview_updater.update_preview(new_chunk_file_path, chunk_num)
 
     def _get_output_name(self, frame_num, num_start):
