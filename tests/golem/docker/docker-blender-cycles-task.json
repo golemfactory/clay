@@ -62,6 +62,7 @@
   },
   "subtask_timeout":1200,
   "total_subtasks":6,
+  "redundancy": 1,
   "max_price": 10.2,
   "docker_images":[
     {

@@ -52,8 +52,6 @@ class PreviewUpdater(object):
     def update_preview(self, subtask_path, subtask_number):
         if subtask_number not in self.chunks:
             self.chunks[subtask_number] = subtask_path
-        else:
-            return
         
         try:
             if subtask_path.upper().endswith(".EXR"):
