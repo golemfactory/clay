@@ -864,18 +864,17 @@ class P2PService(PendingConnectionsServer):
         if peers_to_find:
             self.send_find_nodes(peers_to_find)
 
-    def __sync_seeds(self, hosts=None):
-        if hosts:
-            self.seeds = set(filter(lambda x: x.is_seed, hosts))
-        else:
-            self.seeds = set(KnownHosts.select().where(KnownHosts.is_seed))
+    def __sync_seeds(self, known_hosts=None):
+        if not known_hosts:
+            known_hosts = KnownHosts.select().where(KnownHosts.is_seed)
+
+        self.seeds = set([(x.ip_address, x.port) for x in known_hosts if x.is_seed])
+        self.seeds.update(SEEDS)
 
         ip_address = self.config_desc.seed_host
         port = self.config_desc.seed_port
-
         if ip_address and port:
             self.seeds.add((ip_address, port))
-        self.seeds.update(SEEDS)
 
     def __remove_sessions_to_end_from_peer_keeper(self):
         for peer_id in self.peer_keeper.sessions_to_end:
