@@ -94,7 +94,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>img/new.png</normaloff>img/new.png</iconset>
+             <normaloff>ui/img/new.png</normaloff>ui/img/new.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
@@ -109,7 +109,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>img/task.png</normaloff>img/task.png</iconset>
+             <normaloff>ui/img/task.png</normaloff>ui/img/task.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -124,7 +124,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>img/eye.png</normaloff>img/eye.png</iconset>
+             <normaloff>ui/img/eye.png</normaloff>ui/img/eye.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -139,7 +139,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>img/settings.png</normaloff>img/settings.png</iconset>
+             <normaloff>ui/img/settings.png</normaloff>ui/img/settings.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
@@ -154,7 +154,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>img/user.png</normaloff>img/user.png</iconset>
+             <normaloff>ui/img/user.png</normaloff>ui/img/user.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
