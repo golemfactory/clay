@@ -68,13 +68,23 @@ class PreviewUpdater(object):
             if os.path.exists(self.preview_file_path):
                 img_current = Image.open(self.preview_file_path)
                 img_current.paste(img, (0, offset))
-                img_current.save(self.preview_file_path, "BMP")            
+                img_current.save(self.preview_file_path, "BMP")
             else:
                 img_offset = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
                 img_offset.paste(img, (0, offset))
                 img_offset.save(self.preview_file_path, "BMP")
+
         except Exception as err:
             logger.error("Can't generate preview {}".format(err))
+            logger.debug("IN update_preview")
+            logger.debug("{}".format(self.preview_file_path))
+            logger.debug("{}".format(subtask_path))
+            logger.debug("{}".format(subtask_number))
+            for k in self.expected_offsets.keys():
+                logger.debug("{} : {}".format(k, self.expected_offsets[k]))
+            import traceback
+            # Print the stack traceback
+            traceback.print_exc()
             return
         
         if subtask_number == self.perfectly_placed_subtasks and (subtask_number + 1) in self.chunks:
@@ -200,14 +210,25 @@ class BlenderRenderTask(FrameRenderingTask):
             self.preview_file_path = []
             for i in range(len(self.frames)):
                 self.preview_file_path.append("{}".format(os.path.join(tmp_dir, "current_preview{}".format(i))))
-        expected_offsets = {}
         
-        for i in range(1, self.total_tasks):
+        if self.use_frames:
+            parts = self.total_tasks / len(self.frames)
+        else:
+            parts = self.total_tasks
+        expected_offsets = {}
+        for i in range(1, parts):
             _, expected_offset = self._get_min_max_y(i)
             expected_offset =  self.res_y - int(expected_offset * float(self.res_y))
             expected_offsets[i] = expected_offset
         
-        self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
+        if self.use_frames:
+            self.preview_updaters = []
+            for f in self.frames:
+                preview_path = self.preview_file_path[frames.index(f)]
+                self.preview_updaters.append(PreviewUpdater(preview_path, self.res_x, self.res_y, expected_offsets))
+        else:
+            self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
+        
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
@@ -371,6 +392,9 @@ class BlenderRenderTask(FrameRenderingTask):
     def _update_preview(self, new_chunk_file_path, chunk_num):
         self.preview_updater.update_preview(new_chunk_file_path, chunk_num)
 
+    def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
+        self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
+
     def _get_output_name(self, frame_num, num_start):
         num = str(frame_num)
         return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
@@ -386,6 +410,21 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
+
+    def _put_frame_together(self, tmp_dir, frame_num, num_start):
+        output_file_name = os.path.join(tmp_dir, self._get_output_name(frame_num, num_start))
+        collected = self.frames_given[frame_num]
+        collected = OrderedDict(sorted(collected.items()))
+        if not self._use_outer_task_collector():
+            collector = CustomCollector(paste=True, width=self.res_x, height=self.res_y)
+            for file in collected.values():
+                collector.add_img_file(file)
+            collector.finalize().save(output_file_name, self.output_format)
+        else:
+            self._put_collected_files_together(output_file_name, collected.values(), "paste")
+        self.collected_file_names[frame_num] = output_file_name
+        self._update_frame_preview(output_file_name, frame_num, final=True)
+        self._update_frame_task_preview()
 
 class CustomCollector(RenderingTaskCollector):
     def __init__(self, paste=False, width=1, height=1):
