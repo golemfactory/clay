@@ -9,23 +9,23 @@ from golem.network.p2p.node import Node
 
 class TestTransactionSystem(TestWithDatabase):
     def test_init(self):
-        e = TransactionSystem("ABC")
+        e = TransactionSystem()
         self.assertIsInstance(e, TransactionSystem)
 
     def test_add_payment_info(self):
-        e = TransactionSystem("ABC")
+        e = TransactionSystem()
         ai = EthAccountInfo("DEF", 2010, "10.0.0.1", "node1", Node(), urandom(20))
         e.add_payment_info("xyz", "xxyyzz", 10, ai)
 
     def test_pay_for_task(self):
-        e = TransactionSystem("ABC")
+        e = TransactionSystem()
         with self.assertRaises(NotImplementedError):
             e.pay_for_task("xyz", [])
 
         iter(e.check_payments())
 
     def test_get_income(self):
-        e = TransactionSystem("ABC")
+        e = TransactionSystem()
         old_budget = e.budget
         e.add_to_waiting_payments("xyz", "DEF", 15)
         income = e.get_incomes_list()[0]

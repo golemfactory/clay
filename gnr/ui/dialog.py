@@ -1,20 +1,15 @@
 from PyQt4.QtGui import QDialog
 
 from gen.ui_AddTaskResourcesDialog import Ui_AddTaskResourcesDialog
-from gen.ui_BlenderRenderDialog import Ui_BlenderRenderDialog
 from gen.ui_ChangeTaskDialog import Ui_ChangeTaskDialog
-from gen.ui_ConfigurationDialog import Ui_ConfigurationDialog
 from gen.ui_EnvironmentsDialog import Ui_EnvironmentsDialog
 from gen.ui_GeneratingKeyWindow import Ui_generating_key_window
 from gen.ui_IdentityDialog import Ui_identity_dialog
 from gen.ui_InfoTaskDialog import Ui_InfoTaskDialog
-from gen.ui_LuxRenderDialog import Ui_LuxRenderDialog
-from gen.ui_NewTaskDialog import Ui_NewTaskDialog
-from gen.ui_payments_dialog import Ui_PaymentsDialog
+from gen.ui_PaymentsDialog import Ui_PaymentsDialog
 from gen.ui_PbrtDialog import Ui_PbrtDialog
 from gen.ui_PbrtTaskDialog import Ui_PbrtTaskDialog
-from gen.ui_RenderingNewTaskDialog import Ui_RenderingNewTaskDialog
-from gen.ui_save_keys_dialog import Ui_save_keys_dialog
+from gen.ui_SaveKeysDialog import Ui_SaveKeysDialog
 from gen.ui_ShowTaskResourcesDialog import Ui_ShowTaskResourceDialog
 from gen.ui_SubtaskDetailsDialog import Ui_SubtaskDetailsDialog
 from gen.ui_TaskDetailsDialog import Ui_TaskDetailsDialog
@@ -25,7 +20,7 @@ from gen.ui_VRayDialog import Ui_VRayDialog
 
 
 class Dialog(object):
-    """ Basic dialog window extenstion, save specific given class as ui """
+    """ Basic dialog window extension, save specific given class as ui """
     def __init__(self, parent, ui_class):
         self.window = QDialog(parent)
         self.ui = ui_class()
@@ -60,11 +55,6 @@ class PaymentsDialog(Dialog):
 
 # CONFIGURATION DIALOGS
 
-class ConfigurationDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_ConfigurationDialog)
-
-
 class EnvironmentsDialog(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_EnvironmentsDialog)
@@ -82,19 +72,10 @@ class GeneratingKeyWindow(Dialog):
 
 class SaveKeysDialog(Dialog):
     def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_save_keys_dialog)
+        Dialog.__init__(self, parent, Ui_SaveKeysDialog)
 
 
 # ADDING TASK DIALOGS
-
-class RenderingNewTaskDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_RenderingNewTaskDialog)
-
-
-class NewTaskDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_NewTaskDialog)
 
 
 class TestingTaskProgressDialog(Dialog):
@@ -130,15 +111,6 @@ class UpdateOtherGolemsDialog(Dialog):
 
 
 # RENDERER DIALOGS
-
-class BlenderRenderDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_BlenderRenderDialog)
-
-
-class LuxRenderDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_LuxRenderDialog)
 
 
 class PbrtDialog(Dialog):

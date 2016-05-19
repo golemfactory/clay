@@ -1,29 +1,40 @@
 import logging
+from os import path
 
 from ethereum import keys
 
+from golem.ethereum import Client
+from golem.ethereum.paymentprocessor import PaymentProcessor
+from golem.ethereum.paymentmonitor import PaymentMonitor
 from golem.transactions.transactionsystem import TransactionSystem
-from .ethereumpaymentskeeper import EthereumPaymentsKeeper
-from .ethereumincomeskeeper import EthereumIncomesKeeper
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger('golem.pay')
 
 
 class EthereumTransactionSystem(TransactionSystem):
     """ Transaction system connected with Ethereum """
-    def __init__(self, node_id, node_priv_key):
+
+    def __init__(self, datadir, node_priv_key):
         """ Create new transaction system instance for node with given id
-        :param node_id: id of a node that has this transaction system.
         :param node_priv_key str: node's private key for Ethereum account (32b)
         """
-        TransactionSystem.__init__(self, node_id, EthereumPaymentsKeeper, EthereumIncomesKeeper)
+        super(EthereumTransactionSystem, self).__init__()
 
         # FIXME: Passing private key all around might be a security issue.
         #        Proper account managment is needed.
         assert type(node_priv_key) is str and len(node_priv_key) is 32
-        self.__node_priv_key = node_priv_key
         self.__node_address = keys.privtoaddr(node_priv_key)
-        logger.info("Node Ethereum address: " + self.get_payment_address())
+        log.info("Node Ethereum address: " + self.get_payment_address())
+
+        datadir = path.join(datadir, "ethereum")
+        eth_node = Client(datadir=datadir)
+        self.__proc = PaymentProcessor(eth_node, node_priv_key, faucet=True)
+        self.__monitor = PaymentMonitor(eth_node, self.__node_address)
+        # TODO: We can keep address in PaymentMonitor only
+
+    def add_payment_info(self, *args, **kwargs):
+        payment = super(EthereumTransactionSystem, self).add_payment_info(*args, **kwargs)
+        self.__proc.add(payment)
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""

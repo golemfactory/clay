@@ -131,7 +131,7 @@ class FrameRenderingTask(RenderingTask):
 
     def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
         num = self.frames.index(frame_num)
-        if new_chunk_file_path.endswith(".exr") or new_chunk_file_path.endswith(".EXR"):
+        if new_chunk_file_path.upper().endswith(".EXR"):
             img = exr_to_pil(new_chunk_file_path)
         else:
             img = Image.open(new_chunk_file_path)
@@ -295,7 +295,6 @@ class FrameRenderingTask(RenderingTask):
         self._mark_task_area(sub, img_task, color)
         img_task.save(preview_task_file_path, "BMP")
         self.preview_task_file_path[idx] = preview_task_file_path
-
 
 
 def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,

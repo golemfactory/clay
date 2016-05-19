@@ -4,7 +4,7 @@
     "py/object":"gnr.task.blenderrendertask.BlenderRendererOptions",
     "use_frames":false,
     "environment":{
-      "py/object":"gnr.docker_environments.BlenderEnvironment",
+      "py/object":"gnr.renderingenvironment.BlenderEnvironment",
       "docker_images":[
         {
           "py/object": "golem.docker.image.DockerImage",

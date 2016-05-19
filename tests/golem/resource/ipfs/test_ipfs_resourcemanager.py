@@ -17,8 +17,8 @@ class TestResourcesManager(TestDirFixture):
         self.dir_manager = DirManager(self.path, self.node_name)
 
         self.split_resources = [
-            ['test_file'],
-            ['test_dir', 'dir_file']
+            ['test_file.one.two'],
+            ['test_dir.one.two', 'dir_file.one.two']
         ]
 
         self.target_resources = [
@@ -27,9 +27,9 @@ class TestResourcesManager(TestDirFixture):
         ]
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
-        test_file = os.path.join(res_path, 'test_file')
-        test_dir = os.path.join(res_path, 'test_dir')
-        test_dir_file = os.path.join(test_dir, 'dir_file')
+        test_file = os.path.join(res_path, 'test_file.one.two')
+        test_dir = os.path.join(res_path, 'test_dir.one.two')
+        test_dir_file = os.path.join(test_dir, 'dir_file.one.two')
 
         open(test_file, 'w').close()
 
@@ -73,7 +73,7 @@ class TestResourcesManager(TestDirFixture):
 
     def testNewIpfsClient(self):
         rm = IPFSResourceManager(self.dir_manager)
-        from golem.resource.ipfs.client import IPFSClient
+        from golem.network.ipfs.client import IPFSClient
         self.assertIsInstance(rm.new_ipfs_client(), IPFSClient)
 
     def testInit(self):
@@ -156,19 +156,12 @@ class TestResourcesManager(TestDirFixture):
         for elem in rl:
             assert rm.get_resource_path(elem[0], self.task_id) in res_list
 
-    def testId(self):
-        rm = IPFSResourceManager(self.dir_manager)
-        ipfs_id = rm.id()
-
-        self.assertIsInstance(ipfs_id, list)
-        self.assertTrue('PublicKey' in ipfs_id[0])
-
     def testAddResource(self):
         rm = IPFSResourceManager(self.dir_manager)
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
-        test_dir = os.path.join(res_path, 'test_dir')
-        test_dir_file = os.path.join(test_dir, 'dir_file')
+        test_dir = os.path.join(res_path, 'test_dir.one.two')
+        test_dir_file = os.path.join(test_dir, 'dir_file.one.two')
 
         rm.add_resource(test_dir_file, self.task_id)
 
@@ -178,8 +171,8 @@ class TestResourcesManager(TestDirFixture):
         rm = IPFSResourceManager(self.dir_manager)
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
-        test_dir = os.path.join(res_path, 'test_dir')
-        test_dir_file = os.path.join(test_dir, 'dir_file')
+        test_dir = os.path.join(res_path, 'test_dir.one.two')
+        test_dir_file = os.path.join(test_dir, 'dir_file.one.two')
 
         rm.add_resources([test_dir_file], self.task_id)
 

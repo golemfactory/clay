@@ -1,9 +1,9 @@
 from mock import patch, Mock
 
-from golem.tools.testdirfixture import TestDirFixture
-from golem.environments.environment import Environment
 from gnr.gnrstartapp import config_logging, load_environments, start_and_configure_client
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
+from golem.environments.environment import Environment
+from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestStartAppFunc(TestDirFixture):
@@ -20,3 +20,6 @@ class TestStartAppFunc(TestDirFixture):
         logic = RenderingApplicationLogic()
         logic.customizer = Mock()
         start_and_configure_client(logic, envs, self.path)
+        logic.stop()
+
+

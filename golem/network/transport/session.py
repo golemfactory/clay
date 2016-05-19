@@ -1,10 +1,10 @@
 import abc
+import logging
 import random
 import time
-import logging
 
-from golem.network.transport.message import MessageDisconnect, Message
 from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
+from golem.network.transport.message import MessageDisconnect, Message
 
 logger = logging.getLogger(__name__)
 
@@ -204,14 +204,19 @@ class BasicSafeSession(BasicSession, SafeSession):
         :param Message message: message to be sent.
         :param boolean send_unverified: should message be sent even if the connection hasn't been verified yet?
         """
-        if not self.verified and not send_unverified:
-            logger.info("Connection hasn't been verified yet, not sending message")
+        if not self._can_send(message, send_unverified):
+            logger.info("Connection hasn't been verified yet, not sending message {} to {} {}"
+                        .format(message, self.address, self.port))
             self.unverified_cnt -= 1
             if self.unverified_cnt <= 0:
                 self.disconnect(BasicSafeSession.DCRUnverified)
             return
 
         BasicSession.send(self, message)
+
+    def _can_send(self, msg, send_unverified):
+        return self.verified or send_unverified or \
+               msg.__class__ in self.can_be_unverified
 
     def _check_msg(self, msg):
         if not BasicSession._check_msg(self, msg):

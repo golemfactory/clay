@@ -3,34 +3,9 @@ from rlp.utils import encode_hex
 
 from ethereum.utils import normalize_address
 
-from golem.transactions.paymentskeeper import AccountInfo, PaymentsKeeper
+from golem.transactions.paymentskeeper import AccountInfo
 
 logger = logging.getLogger(__name__)
-
-
-class EthereumPaymentsKeeper(PaymentsKeeper):
-    """ Keeps information about payments for tasks that should be processed and send or received via Ethereum. """
-
-
-class EthereumPaymentInfo(object):
-    """ Full information about payment for a subtask. Include task id, subtask payment information and
-    account information about node that has computed this task. Group information by Ethereum account info. """
-    def __init__(self):
-        self.value = 0
-        self.accounts = []
-        self.accountsPayments = []
-
-    def add_subtask_payment(self, subtask):
-        """ Add information about payment for given subtask to this payment information
-        :param SubtaskPaymentInfo subtask: information about payment for a subtask
-        """
-        self.value += subtask.value
-        if subtask.computer in self.accounts:
-            idx = self.accounts.index(subtask.computer)
-            self.accountsPayments[idx] += subtask.value
-        else:
-            self.accounts.append(subtask.computer)
-            self.accountsPayments.append(subtask.value)
 
 
 class EthAccountInfo(AccountInfo):

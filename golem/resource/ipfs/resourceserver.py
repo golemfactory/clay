@@ -29,13 +29,14 @@ class IPFSResourceServer:
     lock = Lock()
     dummy_lock = dummy_context()
 
-    def __init__(self, dir_manager, keys_auth, client):
+    def __init__(self, dir_manager, keys_auth, client, client_config=None):
+
         self.client = client
         self.keys_auth = keys_auth
         self.dir_manager = dir_manager
 
         self.resource_dir = self.dir_manager.res
-        self.resource_manager = IPFSResourceManager(self.dir_manager)
+        self.resource_manager = IPFSResourceManager(self.dir_manager, config=client_config)
 
         self.resources_to_get = []
         self.waiting_resources = {}
@@ -53,12 +54,7 @@ class IPFSResourceServer:
         self.resource_manager.copy_resources(old_resource_dir)
 
     def start_accepting(self):
-        try:
-            ipfs_id = self.resource_manager.id()
-            logger.debug("IPFS: id %r" % ipfs_id)
-        except Exception as e:
-            logger.error("IPFS: daemon is not running "
-                         "or is not properly configured: %s" % e.message)
+        pass
 
     def set_resource_peers(self, *args, **kwargs):
         pass

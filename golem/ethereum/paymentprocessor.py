@@ -4,8 +4,10 @@ from ethereum import abi, keys, utils
 from ethereum.transactions import Transaction
 from twisted.internet.task import LoopingCall
 
-from golem.ethereum.contracts import BankOfDeposit
 from golem.model import Payment, PaymentStatus
+
+from .contracts import BankOfDeposit
+from .node import Faucet
 
 
 log = logging.getLogger("golem.pay")
@@ -44,9 +46,9 @@ class PaymentProcessor(object):
 
     BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
 
-    SENDOUT_TIMEOUT = 1
+    SENDOUT_TIMEOUT = 1 * 60
 
-    def __init__(self, client, privkey):
+    def __init__(self, client, privkey, faucet=False):
         self.__client = client
         self.__privkey = privkey
         self.__balance = None
@@ -58,28 +60,45 @@ class PaymentProcessor(object):
         # TODO: Maybe it should not be the part of this class
         # TODO: Allow seting timeout
         # TODO: Defer a call only if payments waiting
-        scheduler = LoopingCall(lambda: self.sendout())
+        scheduler = LoopingCall(self.run)
         scheduler.start(self.SENDOUT_TIMEOUT)
 
-    def available_balance(self, refresh=False):
+        if faucet and self.balance() == 0:
+            value = 100
+            log.info("Requesting {} ETH from Golem Faucet".format(value))
+            addr = keys.privtoaddr(self.__privkey)
+            Faucet.gimme_money(client, addr, value * 10**18)
+
+    def balance(self, refresh=False):
+        # FIXME: The balance must be actively monitored!
         if self.__balance is None or refresh:
             addr = keys.privtoaddr(self.__privkey)
             # TODO: Hack RPC client to allow using raw address.
             self.__balance = self.__client.get_balance(addr.encode('hex'))
+            log.info("Balance: {}".format(self.__balance / float(10**18)))
+        return self.__balance
+
+    def available_balance(self, refresh=False):
         fee_reservation = self.GAS_RESERVATION * self.GAS_PRICE
-        available = self.__balance - self.__reserved - fee_reservation
+        available = self.balance(refresh) - self.__reserved - fee_reservation
         return max(available, 0)
 
     def add(self, payment):
         assert payment.status is PaymentStatus.awaiting
-        if payment.value > self.available_balance():
+        value = payment.value
+        assert type(value) in (int, long)
+        balance = self.available_balance()
+        log.info("Payment to {} ({})".format(payment.payee, value))
+        if value > balance:
+            log.warning("Not enough money: {}".format(balance))
             return False
         self.__awaiting.append(payment)
-        self.__reserved += payment.value
+        self.__reserved += value
+        log.info("Balance: {}, reserved {}".format(balance, self.__reserved))
         return True
 
     def sendout(self):
-        log.info("Sendout")
+        log.debug("Sendout ping")
         if not self.__awaiting:
             return
 
@@ -111,3 +130,29 @@ class PaymentProcessor(object):
             assert tx_hash[2:].decode('hex') == h  # FIXME: Improve Client.
 
             self.__inprogress[h] = payments
+
+    def monitor_progress(self):
+        confirmed = []
+        for h, payments in self.__inprogress.iteritems():
+            hstr = h.encode('hex')
+            log.info("Checking {} transaction".format(hstr))
+            info = self.__client.get_transaction_by_hash(hstr)
+            assert info, "Transaction has been lost"
+            if info['blockHash']:
+                block_hash = info['blockHash'][2:]
+                assert len(block_hash) == 2 * 32
+                block_number = int(info['blockNumber'], 16)
+                log.info("{}: block {} ({})".format(hstr, block_hash, block_number))
+                with Payment._meta.database.transaction():
+                    for p in payments:
+                        p.status = PaymentStatus.confirmed
+                        p.details['block_number'] = block_number
+                        p.details['block_hash'] = block_hash
+                        p.save()
+                confirmed.append(h)
+        for h in confirmed:
+            del self.__inprogress[h]
+
+    def run(self):
+        self.sendout()
+        self.monitor_progress()

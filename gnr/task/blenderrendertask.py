@@ -8,7 +8,7 @@ from PIL import Image, ImageChops
 
 from golem.task.taskstate import SubtaskStatus
 
-from gnr.docker_environments import BlenderEnvironment
+from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
@@ -53,7 +53,7 @@ class PreviewUpdater(object):
             self.chunks[subtask_number] = subtask_path
         
         try:
-            if subtask_path.endswith(".exr"):
+            if subtask_path.upper().endswith(".EXR"):
                 img = exr_to_pil(subtask_path)
             else:
                 img = Image.open(subtask_path)
@@ -189,13 +189,17 @@ class BlenderRenderTask(FrameRenderingTask):
             logger.error("Wrong script file: {}".format(err))
             self.script_src = ""
 
-
         self.frames_given = {}
         for frame in frames:
             self.frames_given[frame] = {}
         
         tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-        self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
+        if not self.use_frames:
+            self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
+        else:
+            self.preview_file_path = []
+            for i in range(len(self.frames)):
+                self.preview_file_path.append("{}".format(os.path.join(tmp_dir, "current_preview{}".format(i))))
         expected_offsets = {}
         
         for i in range(1, self.total_tasks):

@@ -76,8 +76,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.totalSpinBox.setRange(dr.defaults.min_subtasks, dr.defaults.max_subtasks)
         self.gui.ui.totalSpinBox.setValue(dr.defaults.default_subtasks)
 
-        self.gui.ui.verificationSizeXSpinBox.setMaximum(r.defaults.resolution[0])
-        self.gui.ui.verificationSizeYSpinBox.setMaximum(r.defaults.resolution[1])
+        self.gui.ui.verificationSizeXSpinBox.setMaximum(dr.defaults.resolution[0])
+        self.gui.ui.verificationSizeYSpinBox.setMaximum(dr.defaults.resolution[1])
 
     def _set_new_pessimistic_cost(self):
         NewTaskDialogCustomizer._set_new_pessimistic_cost(self)
@@ -97,10 +97,9 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             self.logic.renderer_options = r.renderer_options()
             self._change_task_widget(name)
             self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
-
             set_time_spin_boxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout)
-
             self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
+            self._clear_resources()
 
         else:
             assert False, "Unreachable"
@@ -117,11 +116,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
         set_time_spin_boxes(self.gui, dr.defaults.full_task_timeout, dr.defaults.subtask_timeout)
 
-        if self.add_task_resource_dialog:
-            self.add_task_resource_dialog_customizer.resources = set()
-            self.add_task_resource_dialog.ui.folderTreeView.model().addStartFiles([])
-            self.add_task_resource_dialog.ui.folderTreeView.model().checks = {}
-        self.gui.ui.resourceFilesLabel.setText("0")
+        self._clear_resources()
 
         self._change_finish_state(False)
 
@@ -130,6 +125,13 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.totalSpinBox.setEnabled(True)
         self.gui.ui.optimizeTotalCheckBox.setChecked(False)
         self._set_max_price()
+
+    def _clear_resources(self):
+        if self.add_task_resource_dialog:
+            self.add_task_resource_dialog_customizer.resources = set()
+            self.add_task_resource_dialog.ui.folderTreeView.model().addStartFiles([])
+            self.add_task_resource_dialog.ui.folderTreeView.model().checks = {}
+        self.gui.ui.resourceFilesLabel.setText("0")
 
     # SLOTS
 
@@ -148,7 +150,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         dir_ = os.path.dirname(u"{}".format(self.gui.ui.mainProgramFileLineEdit.text()))
 
         file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
-                                                             "Choose main program file", dir_, "Python (*.py)"))
+                                                             "Choose main program file", dir_,
+                                                             "Python (*.py *.Py *.PY *.pY)"))
 
         if file_name != '':
             self.gui.ui.mainProgramFileLineEdit.setText(file_name)

@@ -3,9 +3,10 @@ import unittest
 from rlp.utils import decode_hex
 from sha3 import sha3_256
 
-from golem.transactions.ethereum.ethereumpaymentskeeper import (EthAccountInfo, EthereumPaymentsKeeper, EthereumAddress,
+from golem.transactions.paymentskeeper import PaymentsKeeper
+from golem.transactions.ethereum.ethereumpaymentskeeper import (EthAccountInfo, EthereumAddress,
                                                                 logger)
-from golem.transactions.transactionsystem import PaymentInfo
+from golem.transactions.paymentskeeper import PaymentInfo
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -14,7 +15,7 @@ from golem.network.p2p.node import Node
 
 class TestEthereumPaymentsKeeper(TestWithDatabase):
     def test_get_list_of_payment(self):
-        e = EthereumPaymentsKeeper()
+        e = PaymentsKeeper()
 
         addr1 = "0x09197b95a57ad20ee68b53e0843fb1d218db6a78"
         ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "node1", Node(), addr1)

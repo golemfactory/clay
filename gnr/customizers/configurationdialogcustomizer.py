@@ -145,7 +145,7 @@ class ConfigurationDialogCustomizer(Customizer):
         try:
             trust = max(min(int(round(value * 100)), 100), -100)
         except TypeError:
-            logger.error("Wrong configuration trust value {}").format(value)
+            logger.error("Wrong configuration trust value {}".format(value))
             trust = -100
         line_edit.setText("{}".format(trust))
         slider.setValue(trust)
@@ -307,7 +307,7 @@ class ConfigurationDialogCustomizer(Customizer):
         try:
             trust = max(min(float(trust) / 100.0, 1.0), -1.0)
         except ValueError:
-            logger.error("Wrong trust value {}").format(trust)
+            logger.error("Wrong trust value {}".format(trust))
             trust = -1
         return trust
 
@@ -315,7 +315,7 @@ class ConfigurationDialogCustomizer(Customizer):
         try:
             trust = int(line_edit.text())
         except ValueError:
-            logger.info("Wrong trust value {}").format(line_edit.text())
+            logger.info("Wrong trust value {}".format(line_edit.text()))
             trust = slider.value()
         return trust
 

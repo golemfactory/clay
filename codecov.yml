@@ -1,0 +1,17 @@
+coverage:
+  range: 50...100
+  notify:
+    gitter:
+      default:
+        threshold: 0
+        url: https://gitter.im/imapp-pl/golem
+  status:
+    patch:
+      default:
+        target: 80
+    project:
+      default:
+        target: auto
+    changes: false
+comment:
+  layout: header, diff, changes, sunburst, uncovered

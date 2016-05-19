@@ -6,6 +6,7 @@ from twisted.internet import task
 from threading import Lock
 
 from golem.core.variables import APP_NAME, APP_VERSION
+from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 from golem.tools import filelock
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.node import Node
@@ -18,7 +19,7 @@ from golem.core.keysauth import EllipticalKeysAuth
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 
 from golem.appconfig import AppConfig
-from golem.core.simpleenv import _get_local_datadir
+from golem.core.simpleenv import get_local_datadir
 
 from golem.model import Database
 from golem.network.transport.message import init_messages
@@ -33,12 +34,12 @@ from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransa
 logger = logging.getLogger(__name__)
 
 
-def create_client(datadir=None, **config_overrides):
+def create_client(datadir=None, transaction_system=False, **config_overrides):
     # TODO: All these feature should be move to Client()
     init_messages()
 
     if not datadir:
-        datadir = _get_local_datadir('default')
+        datadir = get_local_datadir('default')
 
     app_config = AppConfig.load_config(datadir)
     config_desc = ClientConfigDescriptor()
@@ -53,11 +54,12 @@ def create_client(datadir=None, **config_overrides):
 
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
-    return Client(config_desc, datadir=datadir, config=app_config)
+    return Client(config_desc, datadir=datadir, config=app_config,
+                  transaction_system=transaction_system)
 
 
-def start_client(datadir):
-    c = create_client(datadir)
+def start_client(datadir, transaction_system=False):
+    c = create_client(datadir, transaction_system)
     logger.info("Starting all asynchronous services")
     c.start_network()
     return c
@@ -87,7 +89,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 
 
 class Client:
-    def __init__(self, config_desc, datadir, config="", transaction_system=True):
+    def __init__(self, config_desc, datadir, config="", transaction_system=False):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
@@ -130,12 +132,13 @@ class Client:
             #       modeled as a Service that run independently.
             #       The Client/Application should be a collection of services.
             self.transaction_system = EthereumTransactionSystem(
-                self.keys_auth.get_key_id(), self.keys_auth._private_key)
+                datadir, self.keys_auth._private_key)
         else:
             self.transaction_system = None
 
         self.environments_manager = EnvironmentsManager()
 
+        self.ipfs_manager = None
         self.resource_server = None
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
@@ -152,11 +155,14 @@ class Client:
                                       use_ipv6=self.config_desc.use_ipv6)
         self.resource_server = IPFSResourceServer(self.task_server.task_computer.dir_manager,
                                                   self.keys_auth, self)
+        self.ipfs_manager = IPFSDaemonManager()
+        self.ipfs_manager.store_client_info()
 
         logger.info("Starting resource server...")
         self.resource_server.start_accepting()
         time.sleep(1.0)
         self.p2pservice.set_resource_server(self.resource_server)
+        self.p2pservice.set_metadata_manager(self)
 
         logger.info("Starting task server ...")
         self.task_server.start_accepting()
@@ -245,6 +251,9 @@ class Client:
 
     def get_suggested_addr(self, key_id):
         return self.p2pservice.suggested_address.get(key_id)
+
+    def get_suggested_conn_reverse(self, key_id):
+        return self.p2pservice.get_suggested_conn_reverse(key_id)
 
     def want_to_start_task_session(self, key_id, node_id, conn_id):
         self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
@@ -420,6 +429,26 @@ class Client:
         if self.nodes_manager_client:
             self.nodes_manager_client.send_client_state_snapshot(self.last_node_state_snapshot)
 
+    def get_metadata(self):
+        metadata = dict()
+        if self.ipfs_manager:
+            metadata.update(self.ipfs_manager.get_metadata())
+        return metadata
+
+    def interpret_metadata(self, metadata, address, port, node_info):
+        if self.config_desc and node_info and metadata:
+            seed_addresses = [
+                (self.config_desc.seed_host, self.config_desc.seed_port)
+            ]
+            node_addresses = [
+                (address, port),
+                (node_info.pub_addr, node_info.pub_port)
+            ]
+
+            self.ipfs_manager.interpret_metadata(metadata,
+                                                 seed_addresses,
+                                                 node_addresses)
+
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()
         if len(progress) > 0:
@@ -435,6 +464,9 @@ class Client:
         if self.transaction_system:
             msg += "Budget: {}\n".format(self.transaction_system.budget)
         return msg
+
+    def get_peers(self):
+        return self.p2pservice.peers.values()
 
     def __lock_datadir(self):
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
