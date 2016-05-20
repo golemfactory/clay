@@ -17,10 +17,6 @@ from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
 
 
-
-from examples.manager.gnrmanagerlogic import run_manager
-
-
 def config_logging():
     """Config logger"""
     config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
@@ -103,8 +99,9 @@ def run_add_task_server(client):
     #   server.start()
 
 
-def start_app(logic, app, gui, datadir=None, rendering=False, start_manager=False, start_manager_client=False,
-              start_info_server=False, start_ranking=True, start_add_task_client=False, start_add_task_server=False
+def start_app(logic, app, gui, datadir=None, rendering=False, start_manager_client=False,
+              start_info_server=False, start_ranking=True, start_add_task_client=False,
+              start_add_task_server=False
               ):
     reactor = install_reactor()
     register_gui(logic, app, gui)
@@ -116,8 +113,6 @@ def start_app(logic, app, gui, datadir=None, rendering=False, start_manager=Fals
 
     client = start_and_configure_client(logic, environments, datadir)
 
-    if start_manager:
-        run_manager(logic, client)
     if start_manager_client:
         run_manager_client(logic)
     if start_info_server:
