@@ -13,6 +13,8 @@ from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnS
 
 logger = logging.getLogger(__name__)
 
+FORWARDED_TASK_SESSION_TIMEOUT = 30
+
 
 class TaskServer(PendingConnectionsServer):
     def __init__(self, node, config_desc, keys_auth, client, use_ipv6=False):
@@ -36,11 +38,17 @@ class TaskServer(PendingConnectionsServer):
         self.last_messages = []
         self.last_message_time_threshold = config_desc.task_session_timeout
 
+        if hasattr(config_desc, 'forwarded_task_session_timeout'):
+            self.forwarded_session_timeout = config_desc.forwarded_task_session_timeout
+        else:
+            self.forwarded_session_timeout = FORWARDED_TASK_SESSION_TIMEOUT
+
         self.results_to_send = {}
         self.failures_to_send = {}
 
         self.use_ipv6 = use_ipv6
 
+        self.forwarded_sessions = {}
         self.response_list = {}
 
         network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
@@ -56,6 +64,7 @@ class TaskServer(PendingConnectionsServer):
     def sync_network(self):
         self.task_computer.run()
         self._sync_pending()
+        self._sync_forwarded_sessions()
         self.__remove_old_tasks()
         self.__send_waiting_results()
         self.__remove_old_sessions()
@@ -386,6 +395,25 @@ class TaskServer(PendingConnectionsServer):
     def receive_subtask_computation_time(self, subtask_id, computation_time):
         self.task_manager.set_computation_time(subtask_id, computation_time)
 
+    def add_forwarded_session(self, key_id, conn_id):
+        self.forwarded_sessions[key_id] = dict(
+            conn_id=conn_id,
+            time=time.time()
+        )
+
+    def remove_forwarded_session(self, key_id):
+        return self.forwarded_sessions.pop(key_id, None)
+
+    def _sync_forwarded_sessions(self):
+        now = time.time()
+        for key_id, data in self.forwarded_sessions.items():
+            if data:
+                if now - data['time'] >= self.forwarded_session_timeout:
+                    self.final_conn_failure(data['conn_id'])
+                    self.remove_forwarded_session(key_id)
+            else:
+                self.forwarded_sessions.pop(key_id)
+
     def _get_factory(self):
         return self.factory(self)
 
@@ -425,7 +453,7 @@ class TaskServer(PendingConnectionsServer):
     def __connection_for_task_request_established(self, session, conn_id, node_name, key_id, task_id,
                                                   estimated_performance, price, max_resource_size, max_memory_size,
                                                   num_cores):
-
+        self.remove_forwarded_session(key_id)
         session.task_id = task_id
         session.key_id = key_id
         session.conn_id = conn_id
@@ -485,6 +513,7 @@ class TaskServer(PendingConnectionsServer):
             pc.time = time.time()
 
     def __connection_for_task_failure_established(self, session, conn_id, key_id, subtask_id, err_msg):
+        self.remove_forwarded_session(key_id)
         session.key_id = key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
