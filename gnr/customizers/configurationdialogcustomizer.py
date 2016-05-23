@@ -158,8 +158,11 @@ class ConfigurationDialogCustomizer(Customizer):
 
         self.gui.ui.p2pSessionTimeoutLineEdit.setText(u"{}".format(config_desc.p2p_session_timeout))
         self.gui.ui.taskSessionTimeoutLineEdit.setText(u"{}".format(config_desc.task_session_timeout))
+        self.__load_checkbox_param(not config_desc.accept_tasks, self.gui.ui.dontAcceptTasksCheckBox,
+                                   "don't accept tasks")
 
-    def __load_checkbox_param(self, param, check_box, param_name=''):
+    @staticmethod
+    def __load_checkbox_param(param, check_box, param_name=''):
         try:
             param = int(param)
             if param == 0:
@@ -284,6 +287,7 @@ class ConfigurationDialogCustomizer(Customizer):
         cfg_desc.getting_peers_interval = u"{}".format(self.gui.ui.gettingPeersLineEdit.text())
         cfg_desc.getting_tasks_interval = u"{}".format(self.gui.ui.gettingTasksIntervalLineEdit.text())
         cfg_desc.max_results_sending_delay = u"{}".format(self.gui.ui.maxSendingDelayLineEdit.text())
+        cfg_desc.accept_tasks = int(not self.gui.ui.dontAcceptTasksCheckBox.isChecked())
 
     def __read_trust_config(self, cfg_desc):
         requesting_trust = self.__read_trust(self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)
