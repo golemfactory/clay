@@ -98,7 +98,7 @@ class P2PService(PendingConnectionsServer):
         if not self.connect_to_known_hosts:
             return
 
-        for host in KnownHosts.select(KnownHosts.is_seed == False):
+        for host in KnownHosts.select().where(KnownHosts.is_seed == False):
             ip_address = host.ip_address
             port = host.port
 
