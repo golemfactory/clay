@@ -417,6 +417,7 @@ class PeerSession(BasicSafeSession):
     def __set_verified_conn(self):
         self.verified = True
         self.p2p_service.verified_conn(self.conn_id)
+        self.p2p_service.add_known_peer(self.node_info, self.address, self.port)
         self.p2p_service.set_suggested_address(self.key_id, self.address, self.port)
 
     def __set_msg_interpretations(self):
