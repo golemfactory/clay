@@ -194,8 +194,8 @@ public:
 		{
 			auto chunkHeight = FreeImage_GetHeight(el.get());
 			for (unsigned int y = 0; y < chunkHeight; ++y) {
-				const auto srcbits = reinterpret_cast<FIRGBF *>(FreeImage_GetScanLine(el.get(), y));
-				auto dstbits = reinterpret_cast<FIRGBF *>(FreeImage_GetScanLine(finalImage.get(), y));
+				const auto srcbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(el.get(), y));
+				auto dstbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(finalImage.get(), y));
 
 				for (unsigned int x = 0; x < width; ++x) {
 					dstbits[x].alpha += srcbits[x].red + srcbits[x].blue + srcbits[x].green;
