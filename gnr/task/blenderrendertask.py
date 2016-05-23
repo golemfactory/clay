@@ -421,7 +421,7 @@ class BlenderRenderTask(FrameRenderingTask):
             self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
                        
-    def _mark_task_area(self, subtask, img_task, color):
+    def _mark_task_area(self, subtask, img_task, color, frame_index):
         if not self.use_frames:
             RenderingTask._mark_task_area(self, subtask, img_task, color)
         elif self.total_tasks <= len(self.frames):
@@ -430,8 +430,7 @@ class BlenderRenderTask(FrameRenderingTask):
                     img_task.putpixel((i, j), color)
         else:
             parts = self.total_tasks / len(self.frames)
-            frame = self.frames.index((subtask['start_task'] - 1) / parts + 1)
-            pu = self.preview_updaters[frame]
+            pu = self.preview_updaters[frame_index]
             part = (subtask['start_task'] - 1) % parts + 1
             lower = pu.get_offset(part)
             if part == parts:

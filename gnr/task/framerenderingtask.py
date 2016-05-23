@@ -191,7 +191,7 @@ class FrameRenderingTask(RenderingTask):
 
         return Image.open(preview_file_path)
 
-    def _mark_task_area(self, subtask, img_task, color):
+    def _mark_task_area(self, subtask, img_task, color, frame_index=0):
         if not self.use_frames:
             RenderingTask._mark_task_area(self, subtask, img_task, color)
         elif self.__full_frames():
@@ -292,7 +292,7 @@ class FrameRenderingTask(RenderingTask):
         preview_task_file_path = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), idx)
         preview_file_path = "{}{}".format(os.path.join(tmp_dir, "current_preview"), idx)
         img_task = self._open_frame_preview(preview_file_path)
-        self._mark_task_area(sub, img_task, color)
+        self._mark_task_area(sub, img_task, color, idx)
         img_task.save(preview_task_file_path, "BMP")
         self.preview_task_file_path[idx] = preview_task_file_path
 
