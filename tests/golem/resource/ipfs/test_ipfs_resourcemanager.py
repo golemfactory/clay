@@ -212,7 +212,10 @@ class TestResourcesManager(TestDirFixture):
 
         # working, downloaded
         status = [True, False]
-        async = False
+
+        def reset_status():
+            status[0] = True
+            status[1] = False
 
         def success(*args, **kwargs):
             status[0] = False
@@ -223,24 +226,24 @@ class TestResourcesManager(TestDirFixture):
             status[1] = False
             raise ValueError("Invalid value downloaded %r" % args)
 
-        def wait():
+        def check():
             while status[0]:
                 time.sleep(0.25)
             self.assertTrue(status[1])
 
-        rm.pull_resource('other_resource',
-                         multihash,
-                         self.task_id,
-                         success, error,
-                         async=async)
-        wait()
+        for async in [True, False]:
+            reset_status()
+            rm.pull_resource('other_resource',
+                             multihash,
+                             self.task_id,
+                             success, error,
+                             async=async)
+            check()
 
-        status[0] = True
-        status[1] = False
-
-        rm.pull_resource('other_resource',
-                         multihash,
-                         self.task_id,
-                         success, error,
-                         async=async)
-        wait()
+            reset_status()
+            rm.pull_resource('other_resource',
+                             multihash,
+                             self.task_id,
+                             success, error,
+                             async=async)
+            check()

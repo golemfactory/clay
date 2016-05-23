@@ -298,7 +298,6 @@ class GNRApplicationLogic(QtCore.QObject):
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
 
-
     def run_test_task(self, task_state, async=True):
         if self._validate_task_state(task_state):
 

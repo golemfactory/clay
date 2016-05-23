@@ -133,9 +133,11 @@ class TestEncryptedResultPackageManager(TestDirFixture):
                                                resource_dir_method=dir_manager.get_task_temporary_dir)
 
         new_manager = EncryptedResultPackageManager(resource_manager)
-        new_manager.pull_package(multihash,
-                                 self.task_id, self.task_id,
-                                 secret,
-                                 success=success,
-                                 error=error,
-                                 async=False)
+
+        for async in [False, True]:
+            new_manager.pull_package(multihash,
+                                     self.task_id, self.task_id,
+                                     secret,
+                                     success=success,
+                                     error=error,
+                                     async=async)

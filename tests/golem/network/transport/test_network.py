@@ -16,6 +16,7 @@ from golem.network.transport.message import Message, MessageHello
 from golem.network.transport.network import ProtocolFactory, SessionFactory, SessionProtocol
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, TCPListeningInfo, TCPConnectInfo, \
     SocketAddress, BasicProtocol, ServerProtocol, SafeProtocol
+from golem.tools.testwithreactor import TestWithReactor
 
 
 class ASession(object):
@@ -49,63 +50,7 @@ class AProtocol(object, SessionProtocol):
         self.server = server
 
 
-class MockReactor(SelectReactor):
-    def stop(self):
-        result = super(MockReactor, self).stop()
-        self._startedBefore = False
-        self.running = False
-        return result
-
-    def mainLoop(self):
-        pass
-
-
-def replace_reactor():
-    try:
-        _prev_reactor = imp.find_module('reactor', 'twisted.internet')
-    except:
-        _prev_reactor = Clock()
-
-    _reactor = MockReactor()
-    reinstall_reactor(_reactor)
-    return _reactor, _prev_reactor
-
-
-def reinstall_reactor(_reactor):
-    twisted.internet.reactor = _reactor
-    sys.modules['twisted.internet.reactor'] = _reactor
-
-
-def uninstall_reactor():
-    del twisted.internet.reactor
-    del sys.modules['twisted.internet.reactor']
-
-class MockReactorThread(Thread):
-    running = False
-
-    def __init__(self, _reactor, group=None, name=None, args=(), kwargs=None, verbose=None):
-
-        super(MockReactorThread, self).__init__(group, self.__reactor_loop,
-                                                name, args, kwargs, verbose)
-        self._reactor = _reactor
-
-    def start(self):
-        self.running = True
-        self._reactor.run()
-        return super(MockReactorThread, self).start()
-
-    def stop(self):
-        self.running = False
-
-    def __reactor_loop(self):
-        while self.running:
-            try:
-                self._reactor.runUntilCurrent()
-                self._reactor.doIteration(self._reactor.timeout() or 0)
-            except Exception as e:
-                print "Unexpected error in main loop:", e.message
-
-timeout = 10
+timeout = 20
 
 @contextmanager
 def async_scope(a, idx=0):
@@ -120,26 +65,10 @@ def async_scope(a, idx=0):
         time.sleep(0.5)
 
 
-class TestNetwork(unittest.TestCase):
+class TestNetwork(TestWithReactor):
     reactor_thread = None
     prev_reactor = None
     timeout = 10
-
-    @classmethod
-    def setUpClass(cls):
-        try:
-            _reactor, cls.prev_reactor = replace_reactor()
-            _reactor.installed = True
-            cls.reactor_thread = MockReactorThread(_reactor)
-            cls.reactor_thread.start()
-        except Exception as e:
-            print "Reactor exception: ", e
-
-    @classmethod
-    def tearDownClass(cls):
-        if cls.reactor_thread:
-            cls.reactor_thread.stop()
-            uninstall_reactor()
 
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
