@@ -5,6 +5,7 @@ import time
 from ipaddress import AddressValueError
 
 from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
+from golem.model import KnownHosts, MAX_STORED_HOSTS, db
 from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, SafeProtocol
@@ -21,9 +22,11 @@ RECONNECT_WITH_SEED_THRESHOLD = 30  # After how many seconds from the last try s
 SOLVE_CHALLENGE = True  # Should nodes that connects with us solve hashcash challenge?
 BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 
+SEEDS = [('52.37.205.43', 40102)]
+
 
 class P2PService(PendingConnectionsServer):
-    def __init__(self, node, config_desc, keys_auth):
+    def __init__(self, node, config_desc, keys_auth, connect_to_known_hosts=True):
         """ Create new P2P Server. Listen on port for connections and connect to other peers. Keeps
         up-to-date list of peers information and optimal number of open connections.
         :param Node node: Information about this node
@@ -50,13 +53,14 @@ class P2PService(PendingConnectionsServer):
         self.node_name = self.config_desc.node_name
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
         self.last_message_buffer_len = LAST_MESSAGE_BUFFER_LEN
-        self.last_time_tried_connect_with_seed = None
+        self.last_time_tried_connect_with_seed = 0
         self.reconnect_with_seed_threshold = RECONNECT_WITH_SEED_THRESHOLD
         self.refresh_peers_timeout = REFRESH_PEERS_TIMEOUT
         self.should_solve_challenge = SOLVE_CHALLENGE
         self.challenge_history = []
         self.last_challenge = ""
         self.base_difficulty = BASE_DIFFICULTY
+        self.connect_to_known_hosts = connect_to_known_hosts
 
         # TODO: all peers powinno zostac przeniesione do peer keepera
         # Peers options
@@ -65,6 +69,13 @@ class P2PService(PendingConnectionsServer):
         self.incoming_peers = {}  # known peers with connections
         self.free_peers = []  # peers to which we're not connected
         self.resource_peers = {}
+        self.seeds = set()
+
+        try:
+            self.__remove_redundant_hosts_from_db()
+            self.__sync_seeds()
+        except Exception as exc:
+            logger.error("Error reading seed addresses: {}".format(exc.message))
 
         # Timers
         self.last_peers_request = time.time()
@@ -73,32 +84,71 @@ class P2PService(PendingConnectionsServer):
 
         self.last_messages = []
 
-        self.connect_to_network()
-
     def new_connection(self, session):
         session.start()
 
+    def start_accepting(self, listening_established=None, listening_failure=None):
+        def established(port):
+            self.cur_port = port
+            self.node.p2p_prv_port = port
+        super(P2PService, self).start_accepting(listening_established=established)
+
     def connect_to_network(self):
-        """ Start listening on the port from configuration and try to connect to the seed node """
-        self.start_accepting(listening_established=self._listening_established)
-        self.connect_to_seed()
+        self.connect_to_seeds()
+        if not self.connect_to_known_hosts:
+            return
 
-    def connect_to_seed(self):
+        for host in KnownHosts.select(KnownHosts.is_seed == False):
+            ip_address = host.ip_address
+            port = host.port
+
+            logger.debug("Connecting to {}:{}".format(ip_address, port))
+            try:
+                socket_address = SocketAddress(ip_address, port)
+                self.connect(socket_address)
+            except Exception as exc:
+                logger.error("Cannot connect to host {}:{}: {}"
+                             .format(ip_address, port, exc))
+
+    def connect_to_seeds(self):
         self.last_time_tried_connect_with_seed = time.time()
-        try:
-            socket_address = SocketAddress(self.config_desc.seed_host, self.config_desc.seed_port)
-            self.connect(socket_address)
-        except AddressValueError, err:
-            logger.error("Invalid seed address: " + err.message)
+        if not self.connect_to_known_hosts:
+            return
 
-    def _listening_established(self, port):
-        self.cur_port = port
-        self.node.p2p_prv_port = port
+        for ip_address, port in self.seeds:
+            try:
+                socket_address = SocketAddress(ip_address, port)
+                self.connect(socket_address)
+            except Exception as exc:
+                logger.error("Cannot connect to seed {}:{}: {}"
+                             .format(ip_address, port, exc))
 
     def connect(self, socket_address):
         connect_info = TCPConnectInfo([socket_address], self.__connection_established,
                                       P2PService.__connection_failure)
         self.network.connect(connect_info)
+
+    def add_known_peer(self, node, ip_address, port):
+        is_seed = node.is_super_node() if node else False
+
+        try:
+            with db.transaction():
+                KnownHosts.delete().where(
+                    (KnownHosts.ip_address == ip_address) & (KnownHosts.port == port)
+                ).execute()
+
+                KnownHosts.insert(
+                    ip_address=ip_address,
+                    port=port,
+                    last_connected=time.time(),
+                    is_seed=is_seed
+                ).execute()
+
+            self.__remove_redundant_hosts_from_db()
+            self.__sync_seeds()
+
+        except Exception as err:
+            logger.error("Couldn't add known peer {}:{} : {}".format(ip_address, port, err))
 
     def set_task_server(self, task_server):
         """ Set task server
@@ -129,7 +179,7 @@ class P2PService(PendingConnectionsServer):
         self.__send_get_peers()
         if len(self.peers) == 0:
             if time.time() - self.last_time_tried_connect_with_seed > self.reconnect_with_seed_threshold:
-                self.connect_to_seed()
+                self.connect_to_seeds()
 
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection
@@ -150,6 +200,12 @@ class P2PService(PendingConnectionsServer):
         :return dict: dictionary of peers sessions
         """
         return self.peers
+
+    def get_seeds(self):
+        """ Return all known seed peers
+        :return dict: a list of (address, port) tuples
+        """
+        return self.seeds
 
     def add_peer(self, key_id, peer):
         """ Add a new open connection with a peer to the list of peers
@@ -289,7 +345,7 @@ class P2PService(PendingConnectionsServer):
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
 
         for peer in self.peers.values():
-            if (peer.port == self.config_desc.seed_port) and (peer.address == self.config_desc.seed_host):
+            if peer.port == self.config_desc.seed_port and peer.address == self.config_desc.seed_host:
                 return
 
         try:
@@ -734,11 +790,15 @@ class P2PService(PendingConnectionsServer):
                 p.send_get_tasks()
 
     def __connection_established(self, session, conn_id=None):
+        peer_conn = session.conn.transport.getPeer()
+        ip_address = peer_conn.host
+        port = peer_conn.port
+
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
-        logger.debug("Connection to peer established. {}: {}, conn_id {}".format(session.conn.transport.getPeer().host,
-                                                                                 session.conn.transport.getPeer().port,
-                                                                                 conn_id))
+
+        logger.debug("Connection to peer established. {}: {}, conn_id {}"
+                     .format(ip_address, port, conn_id))
 
     @staticmethod
     def __connection_failure(conn_id=None):
@@ -805,10 +865,31 @@ class P2PService(PendingConnectionsServer):
         if peers_to_find:
             self.send_find_nodes(peers_to_find)
 
+    def __sync_seeds(self, known_hosts=None):
+        if not known_hosts:
+            known_hosts = KnownHosts.select().where(KnownHosts.is_seed)
+
+        self.seeds = set([(x.ip_address, x.port) for x in known_hosts if x.is_seed])
+        self.seeds.update(SEEDS)
+
+        ip_address = self.config_desc.seed_host
+        port = self.config_desc.seed_port
+        if ip_address and port:
+            self.seeds.add((ip_address, port))
+
     def __remove_sessions_to_end_from_peer_keeper(self):
         for peer_id in self.peer_keeper.sessions_to_end:
             self.remove_peer_by_id(peer_id)
         self.peer_keeper.sessions_to_end = []
+
+    @staticmethod
+    def __remove_redundant_hosts_from_db():
+        to_delete = KnownHosts.select() \
+            .order_by(KnownHosts.last_connected.desc()) \
+            .offset(MAX_STORED_HOSTS)
+        KnownHosts.delete() \
+            .where(KnownHosts.id << to_delete) \
+            .execute()
 
 
 class P2PConnTypes(object):

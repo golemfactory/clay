@@ -5,12 +5,15 @@ from enum import Enum
 from os import path
 
 from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
-                    DateTimeField, TextField, CompositeKey)
+                    DateTimeField, TextField, CompositeKey, BooleanField)
 
 
 log = logging.getLogger('golem.db')
 
 NEUTRAL_TRUST = 0.0
+
+# Indicates how many KnownHosts can be stored in the DB
+MAX_STORED_HOSTS = 4
 
 
 db = SqliteDatabase(None, threadlocals=True,
@@ -38,7 +41,7 @@ class Database:
 
     @staticmethod
     def create_database():
-        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment]
+        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment, KnownHosts]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
             log.info("New database version {}, previous {}".format(Database.SCHEMA_VERSION, version))
@@ -167,3 +170,16 @@ class NeighbourLocRank(BaseModel):
     class Meta:
         database = db
         primary_key = CompositeKey('node_id', 'about_node_id')
+
+
+class KnownHosts(BaseModel):
+    ip_address = CharField()
+    port = IntegerField()
+    last_connected = DateTimeField(default=datetime.datetime.now)
+    is_seed = BooleanField(default=False)
+
+    class Meta:
+        database = db
+        indexes = (
+            (('ip_address', 'port'), True),  # unique index
+        )
