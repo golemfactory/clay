@@ -12,6 +12,7 @@ from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
+from gnr.task.renderingtask import RenderingTask
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
@@ -48,34 +49,27 @@ class PreviewUpdater(object):
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
         
+    def get_offset(self, subtask_number):
+        if subtask_number == self.perfectly_placed_subtasks + 1:
+            return self.perfect_match_area_y
+        return self.expected_offsets[subtask_number]
+        
     def update_preview(self, subtask_path, subtask_number):
         if subtask_number not in self.chunks:
             self.chunks[subtask_number] = subtask_path
         
         try:
-            logger.error("In update_preview")
             if subtask_path.upper().endswith(".EXR"):
                 img = exr_to_pil(subtask_path)
             else:
                 img = Image.open(subtask_path)
                 
-            logger.error("Part {}".format(subtask_number))
-            logger.error("File {}".format(subtask_path))
-            
-            logger.error("Match area {}".format(self.perfect_match_area_y))
-            logger.error("Expected offset {}".format(self.expected_offsets[subtask_number]))
+            offset = self.get_offset(subtask_number)
             if subtask_number == self.perfectly_placed_subtasks + 1:
-                offset = self.perfect_match_area_y
                 _, img_y = img.size
                 self.perfect_match_area_y += img_y
                 self.perfectly_placed_subtasks += 1
-            else:
-                offset = self.expected_offsets[subtask_number]
-            
-            logger.error("Offset {}".format(offset))
-            logger.error("IMG y {}".format(img.size[1]))
 
-            
             if os.path.exists(self.preview_file_path):
                 img_current = Image.open(self.preview_file_path)
                 img_current.paste(img, (0, offset))
@@ -86,13 +80,6 @@ class PreviewUpdater(object):
                 img_offset.save(self.preview_file_path, "BMP")
 
         except Exception as err:
-            logger.error("Can't generate preview {}".format(err))
-            logger.error("IN update_preview")
-            logger.error("{}".format(self.preview_file_path))
-            logger.error("{}".format(subtask_path))
-            logger.error("{}".format(subtask_number))
-            for k in self.expected_offsets.keys():
-                logger.error("{} : {}".format(k, self.expected_offsets[k]))
             import traceback
             # Print the stack traceback
             traceback.print_exc()
@@ -408,14 +395,13 @@ class BlenderRenderTask(FrameRenderingTask):
         self.preview_updater.update_preview(new_chunk_file_path, chunk_num)
 
     def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
-        logger.error("FRAME NUMBER {}".format(frame_num))
-        logger.error("preview updater {}".format(self.preview_updaters[self.frames.index(frame_num)]))
         if final:
             if new_chunk_file_path.upper().endswith(".EXR"):
                 img = exr_to_pil(new_chunk_file_path)
             else:   
                 img = Image.open(new_chunk_file_path)
             img.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
+            img.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
         else:
             self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
 
@@ -434,7 +420,28 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
-
+                       
+    def _mark_task_area(self, subtask, img_task, color):
+        if not self.use_frames:
+            RenderingTask._mark_task_area(self, subtask, img_task, color)
+        elif self.total_tasks <= len(self.frames):
+            for i in range(0, self.res_x):
+                for j in range(0, self.res_y):
+                    img_task.putpixel((i, j), color)
+        else:
+            parts = self.total_tasks / len(self.frames)
+            frame = self.frames.index((subtask['start_task'] - 1) / parts + 1)
+            pu = self.preview_updaters[frame]
+            part = (subtask['start_task'] - 1) % parts + 1
+            lower = pu.get_offset(part)
+            if part == parts:
+                upper = self.res_y
+            else:
+                upper = pu.get_offset(part + 1)
+            for i in range(0, self.res_x):
+                for j in range(lower, upper):
+                    img_task.putpixel((i, j), color)
+                    
     def _put_frame_together(self, tmp_dir, frame_num, num_start):
         output_file_name = os.path.join(tmp_dir, self._get_output_name(frame_num, num_start))
         collected = self.frames_given[frame_num]
