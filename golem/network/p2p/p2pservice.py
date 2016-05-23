@@ -626,7 +626,8 @@ class P2PService(PendingConnectionsServer):
         msg_snd = False
         for peer in self.peers.itervalues():
             if peer.key_id == key_id:
-                self.set_suggested_conn_reverse(key_id)
+                if node_info.key == self.node.key:
+                    self.set_suggested_conn_reverse(key_id)
                 peer.send_want_to_start_task_session(node_info, conn_id, super_node_info)
                 return
 

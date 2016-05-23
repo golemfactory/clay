@@ -451,8 +451,10 @@ class Client:
             msg = "Counting {} subtask(s):".format(len(progress))
             for k, v in progress.iteritems():
                 msg = "{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
-        else:
+        elif self.config_desc.accept_tasks:
             msg = "Waiting for tasks...\n"
+        else:
+            msg = "Not accepting tasks\n"
 
         peers = self.p2pservice.get_peers()
 
