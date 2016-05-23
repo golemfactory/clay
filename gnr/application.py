@@ -16,6 +16,8 @@ class GNRGui:
         app_icon = QIcon()
         icon_path = path.join(get_golem_path(), "gnr", "ui", "img")
         app_icon.addFile(path.join(icon_path, "favicon-32x32.png"), QSize(32, 32))
+        app_icon.addFile(path.join(icon_path, "favicon-48x48.png"), QSize(48, 48))
+        app_icon.addFile(path.join(icon_path, "favicon-256x256.png"), QSize(256, 256))
         self.app.setWindowIcon(app_icon)
 
         self.main_window = mainWindowClass()

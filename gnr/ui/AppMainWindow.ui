@@ -94,7 +94,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>img/new.png</normaloff>img/new.png</iconset>
+             <normaloff>ui/img/new.png</normaloff>ui/img/new.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
@@ -109,7 +109,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>img/task.png</normaloff>img/task.png</iconset>
+             <normaloff>ui/img/task.png</normaloff>ui/img/task.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -124,7 +124,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>img/eye.png</normaloff>img/eye.png</iconset>
+             <normaloff>ui/img/eye.png</normaloff>ui/img/eye.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -139,7 +139,7 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>img/settings.png</normaloff>img/settings.png</iconset>
+             <normaloff>ui/img/settings.png</normaloff>ui/img/settings.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
@@ -154,10 +154,10 @@
            </property>
            <property name="icon">
             <iconset>
-             <normaloff>img/user.png</normaloff>img/user.png</iconset>
+             <normaloff>ui/img/user.png</normaloff>ui/img/user.png</iconset>
            </property>
            <property name="flags">
-            <set>ItemIsSelectable|ItemIsDragEnabled|ItemIsEnabled</set>
+            <set>ItemIsSelectable|ItemIsEnabled</set>
            </property>
           </item>
          </widget>
@@ -1446,7 +1446,7 @@
                <string/>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <widget class="QWidget" name="generalTab">
                <attribute name="title">
@@ -1759,6 +1759,30 @@
                     <property name="fieldGrowthPolicy">
                      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
                     </property>
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="label_29">
+                      <property name="toolTip">
+                       <string>Minimal price of task you agree to compute</string>
+                      </property>
+                      <property name="text">
+                       <string>Min price(ask)</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <layout class="QHBoxLayout" name="horizontalLayout_14">
+                      <item>
+                       <widget class="QLineEdit" name="minPriceLineEdit"/>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="label_31">
+                        <property name="text">
+                         <string>WEI / ETH</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
                     <item row="1" column="0">
                      <widget class="QLabel" name="label_7">
                       <property name="toolTip">
@@ -1985,26 +2009,6 @@
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="0">
-                     <widget class="QLabel" name="label_26">
-                      <property name="toolTip">
-                       <string>How effective LuxRender is on your computer</string>
-                      </property>
-                      <property name="text">
-                       <string>Estimated Lux performance:</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="7" column="0">
-                     <widget class="QLabel" name="label_27">
-                      <property name="toolTip">
-                       <string>How effective Blender Cycles is on your computer</string>
-                      </property>
-                      <property name="text">
-                       <string>Estimated Blender performance:</string>
-                      </property>
-                     </widget>
-                    </item>
                     <item row="5" column="1">
                      <layout class="QHBoxLayout" name="horizontalLayout_10">
                       <property name="leftMargin">
@@ -2028,6 +2032,16 @@
                        </widget>
                       </item>
                      </layout>
+                    </item>
+                    <item row="6" column="0">
+                     <widget class="QLabel" name="label_26">
+                      <property name="toolTip">
+                       <string>How effective LuxRender is on your computer</string>
+                      </property>
+                      <property name="text">
+                       <string>Estimated Lux performance:</string>
+                      </property>
+                     </widget>
                     </item>
                     <item row="6" column="1">
                      <layout class="QHBoxLayout" name="horizontalLayout_11">
@@ -2053,6 +2067,16 @@
                       </item>
                      </layout>
                     </item>
+                    <item row="7" column="0">
+                     <widget class="QLabel" name="label_27">
+                      <property name="toolTip">
+                       <string>How effective Blender Cycles is on your computer</string>
+                      </property>
+                      <property name="text">
+                       <string>Estimated Blender performance:</string>
+                      </property>
+                     </widget>
+                    </item>
                     <item row="7" column="1">
                      <layout class="QHBoxLayout" name="horizontalLayout_12">
                       <property name="leftMargin">
@@ -2077,29 +2101,22 @@
                       </item>
                      </layout>
                     </item>
-                    <item row="0" column="0">
-                     <widget class="QLabel" name="label_29">
-                      <property name="toolTip">
-                       <string>Minimal price of task you agree to compute</string>
-                      </property>
+                    <item row="8" column="1">
+                     <widget class="QCheckBox" name="dontAcceptTasksCheckBox">
                       <property name="text">
-                       <string>Min price(ask)</string>
+                       <string/>
                       </property>
                      </widget>
                     </item>
-                    <item row="0" column="1">
-                     <layout class="QHBoxLayout" name="horizontalLayout_14">
-                      <item>
-                       <widget class="QLineEdit" name="minPriceLineEdit"/>
-                      </item>
-                      <item>
-                       <widget class="QLabel" name="label_31">
-                        <property name="text">
-                         <string>WEI / ETH</string>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
+                    <item row="8" column="0">
+                     <widget class="QLabel" name="dontAcceptTasksLabel">
+                      <property name="toolTip">
+                       <string extracomment="If you choose this option that your app won't compute anything"/>
+                      </property>
+                      <property name="text">
+                       <string>Don't accept any tasks</string>
+                      </property>
+                     </widget>
                     </item>
                    </layout>
                   </item>

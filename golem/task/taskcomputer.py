@@ -53,6 +53,7 @@ class TaskComputer(object):
         self.delta = None
         self.task_timeout = None
         self.last_task_timeout_checking = None
+        self.compute_tasks = task_server.config_desc.accept_tasks
 
     def task_given(self, ctd, subtask_timeout):
         if ctd.subtask_id not in self.assigned_subtasks:
@@ -162,6 +163,8 @@ class TaskComputer(object):
             return
 
         if self.waiting_for_task == 0 or self.waiting_for_task is None:
+            if not self.compute_tasks:
+                return
             if time.time() - self.last_task_request > self.task_request_frequency:
                 if len(self.current_computations) == 0:
                     self.last_task_request = time.time()
@@ -189,6 +192,7 @@ class TaskComputer(object):
         self.task_request_frequency = config_desc.task_request_interval
         self.use_waiting_ttl = config_desc.use_waiting_for_task_timeout
         self.waiting_for_task_timeout = config_desc.waiting_for_task_timeout
+        self.compute_tasks = config_desc.accept_tasks
         self.change_docker_config(config_desc, in_background)
 
     def change_docker_config(self, config_desc, in_background=True):
