@@ -2,7 +2,7 @@ import logging
 import time
 from threading import Lock
 # sys.path.append('../manager')
-
+from golem.docker.machine.machine_manager import DockerMachineManager
 from golem.vm.vm import PythonProcVM, PythonTestVM
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.resourcesmanager import ResourcesManager
@@ -28,17 +28,23 @@ class TaskComputer(object):
         self.task_server = task_server
         self.waiting_for_task = None
         self.counting_task = False
+        self.runnable = True
         self.current_computations = []
         self.lock = Lock()
         self.last_task_request = time.time()
-        self.task_request_frequency = task_server.config_desc.task_request_interval
-        self.use_waiting_ttl = task_server.config_desc.use_waiting_for_task_timeout
-        self.waiting_for_task_timeout = task_server.config_desc.waiting_for_task_timeout
+
         self.waiting_ttl = 0
         self.last_checking = time.time()
-        self.dir_manager = DirManager(task_server.get_task_computer_root(), self.node_name)
 
-        self.resource_manager = ResourcesManager(self.dir_manager, self)
+        self.dir_manager = None
+        self.resource_manager = None
+        self.task_request_frequency = None
+        self.use_waiting_ttl = None
+        self.waiting_for_task_timeout = None
+
+        self.docker_manager = DockerMachineManager()
+        self.change_config(task_server.config_desc,
+                           in_background=False)
 
         self.assigned_subtasks = {}
         self.task_to_subtask_mapping = {}
@@ -48,6 +54,8 @@ class TaskComputer(object):
         self.task_timeout = None
         self.last_task_timeout_checking = None
         self.support_direct_computation = False
+        self.compute_tasks = task_server.config_desc.accept_tasks
+
 
     def task_given(self, ctd, subtask_timeout):
         if ctd.subtask_id not in self.assigned_subtasks:
@@ -148,6 +156,8 @@ class TaskComputer(object):
                                                   subtask.task_owner, self.node_name)
 
     def run(self):
+        if not self.runnable:
+            return
 
         if self.counting_task:
             for task_thread in self.current_computations:
@@ -155,6 +165,8 @@ class TaskComputer(object):
             return
 
         if self.waiting_for_task == 0 or self.waiting_for_task is None:
+            if not self.compute_tasks:
+                return
             if time.time() - self.last_task_request > self.task_request_frequency:
                 if len(self.current_computations) == 0:
                     self.last_task_request = time.time()
@@ -176,12 +188,33 @@ class TaskComputer(object):
 
         return ret
 
-    def change_config(self):
+    def change_config(self, config_desc, in_background=True):
         self.dir_manager = DirManager(self.task_server.get_task_computer_root(), self.node_name)
         self.resource_manager = ResourcesManager(self.dir_manager, self)
-        self.task_request_frequency = self.task_server.config_desc.task_request_interval
-        self.use_waiting_ttl = self.task_server.config_desc.use_waiting_for_task_timeout
-        self.waiting_for_task_timeout = self.task_server.config_desc.waiting_for_task_timeout
+        self.task_request_frequency = config_desc.task_request_interval
+        self.use_waiting_ttl = config_desc.use_waiting_for_task_timeout
+        self.waiting_for_task_timeout = config_desc.waiting_for_task_timeout
+        self.compute_tasks = config_desc.accept_tasks
+        self.change_docker_config(config_desc, in_background)
+
+    def change_docker_config(self, config_desc, in_background=True):
+        dm = self.docker_manager
+        dm.build_config(config_desc)
+
+        if not dm.docker_machine_available:
+            return
+
+        def status_callback():
+            return self.counting_task
+
+        def done_callback():
+            logger.debug("Resuming new task computation")
+            self.runnable = True
+
+        self.runnable = False
+        dm.update_config(status_callback,
+                         done_callback,
+                         in_background)
 
     def session_timeout(self):
         if self.counting_task:
@@ -207,9 +240,11 @@ class TaskComputer(object):
                        src_code, extra_data, short_desc, task_timeout):
         task_id = self.assigned_subtasks[subtask_id].task_id
         self.dir_manager.clear_temporary(task_id)
+
         working_dir = self.assigned_subtasks[subtask_id].working_directory
         resource_dir = self.resource_manager.get_resource_dir(task_id)
         temp_dir = self.resource_manager.get_temporary_dir(task_id)
+
         if docker_images:
             tt = DockerTaskThread(self, subtask_id, docker_images, working_dir,
                                   src_code, extra_data, short_desc,

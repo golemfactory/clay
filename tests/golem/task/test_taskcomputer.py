@@ -21,6 +21,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         task_server.config_desc.task_request_interval = 0.5
         task_server.config_desc.use_waiting_for_task_timeout = True
         task_server.config_desc.waiting_for_task_timeout = 1
+        task_server.config_desc.accept_tasks = True
         task_server.get_task_computer_root.return_value = self.path
         tc = TaskComputer("ABC", task_server)
         self.assertFalse(tc.counting_task)
@@ -29,6 +30,16 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc.last_task_request = 0
         tc.run()
         task_server.request_task.assert_called_with()
+        task_server.request_task = MagicMock()
+        task_server.config_desc.accept_tasks = False
+        tc2 = TaskComputer("DEF", task_server)
+        tc2.counting_task = False
+        tc2.current_computations = []
+        tc2.waiting_for_task = None
+        tc2.last_task_request = 0
+
+        tc2.run()
+        task_server.request_task.assert_not_called()
 
     def test_computation(self):
         task_server = MagicMock()

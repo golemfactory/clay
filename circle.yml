@@ -25,6 +25,7 @@ test:
   pre:
     - pip install coverage codecov
   override:
-    - coverage run --branch --source=. setup.py test
+    - coverage run --branch --source=. setup.py test -a "--junitxml=$CIRCLE_TEST_REPORTS/test_result.xml":
+        timeout: 1200
   post:
     - codecov

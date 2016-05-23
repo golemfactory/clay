@@ -168,7 +168,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())
 
         self._load_basic_task_params(definition)
-        self.task_customizer.load_task_definition(task_definition)
+        self.task_customizer.load_task_definition(definition)
         self._load_renderer_params(definition)
         self._load_advance_task_params(definition)
         self._load_resources(definition)
