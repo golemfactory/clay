@@ -77,21 +77,8 @@ def run_ranking(client, reactor):
     client.ranking.run(reactor)
 
 
-def run_add_task_client(logic):
-    logic.start_add_task_client()
-
-
-def run_add_task_server(client):
-    client.run_add_task_server()
-    #   from PluginServer import TaskAdderServer
-    #   server =  TaskAdderServer(client.get_plugin_port())
-    #   server.start()
-
-
 def start_app(logic, app, gui, datadir=None, rendering=False, start_manager_client=False,
-              start_info_server=False, start_ranking=True, start_add_task_client=False,
-              start_add_task_server=False
-              ):
+              start_info_server=False, start_ranking=True):
     reactor = install_reactor()
     register_gui(logic, app, gui)
     if rendering:
@@ -106,10 +93,6 @@ def start_app(logic, app, gui, datadir=None, rendering=False, start_manager_clie
         run_info_server(client)
     if start_ranking:
         run_ranking(client, reactor)
-    if start_add_task_client:
-        run_add_task_client(logic)
-    if start_add_task_server:
-        run_add_task_server(client)
 
     app.execute(True)
 

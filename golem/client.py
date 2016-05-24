@@ -84,7 +84,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 
 
 class Client:
-    def __init__(self, config_desc, datadir, config="", transaction_system=False, connect_to_known_hosts=True):
+    def __init__(self, config_desc, datadir, config=None, transaction_system=False, connect_to_known_hosts=True):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
@@ -102,7 +102,6 @@ class Client:
         self.p2pservice = None
 
         self.task_server = None
-        self.task_adder_server = None
         self.last_nss_time = time.time()
 
         self.last_node_state_snapshot = None
@@ -175,17 +174,8 @@ class Client:
         logger.debug("P2pservice connecting to {} on port {}".format(socket_address.address, socket_address.port))
         self.p2pservice.connect(socket_address)
 
-    def run_add_task_server(self):
-        from PluginServer import start_task_adder_server
-        from multiprocessing import Process, freeze_support
-        freeze_support()
-        self.task_adder_server = Process(target=start_task_adder_server, args=(self.get_plugin_port(),))
-        self.task_adder_server.start()
-
     def quit(self):
         self.task_server.quit()
-        if self.task_adder_server:
-            self.task_adder_server.terminate()
 
     def key_changed(self):
         self.node.key = self.keys_auth.get_key_id()
@@ -355,9 +345,6 @@ class Client:
 
     def push_local_rank(self, node_id, loc_rank):
         self.p2pservice.push_local_rank(node_id, loc_rank)
-
-    def get_plugin_port(self):
-        return self.config_desc.plugin_port
 
     def task_finished(self, task_id):
         # FIXME: Remove. Not needed.
