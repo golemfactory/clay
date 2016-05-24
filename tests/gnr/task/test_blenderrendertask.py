@@ -132,6 +132,50 @@ class TestBlenderTaskDivision(TempDirFixture):
                 img = Image.open(self.bt.output_file)
                 img_x, img_y = img.size
                 self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
+                
+    def test_update_frame_preview(self):
+        file1 = self.temp_file_name('preview1.exr')
+        file2 = self.temp_file_name('preview2.exr')
+        file3 = self.temp_file_name('preview3.bmp')
+        file4 = self.temp_file_name('preview4.bmp')
+        
+        self.bt.total_tasks = 2
+        self.bt.frames = [1]
+        self.bt.use_frames = True
+        self.bt.res_x = 10
+        self.bt.res_y = 11
+        self.bt.preview_updaters = [PreviewUpdater(file1, self.bt.res_x, self.bt.res_y, {1:0, 2:5})]
+        
+        img1 = OpenEXR.OutputFile(file1, OpenEXR.Header(self.bt.res_x, 5))
+        data = array.array('f', [1.0] * (self.bt.res_x * 5)).tostring()
+        img1.writePixels({'R': data, 'G': data, 'B': data, 'F': data, 'A': data})
+        img1.close()
+        
+        img2 = OpenEXR.OutputFile(file2, OpenEXR.Header(self.bt.res_x, 6))
+        data = array.array('f', [1.0] * (self.bt.res_x * 6)).tostring()
+        img2.writePixels({'R': data, 'G': data, 'B': data, 'F': data, 'A': data})
+        img2.close()        
+        
+        self.bt._update_frame_preview(file1, 1, part=1)
+        self.assertTrue(self.bt.preview_updaters[0].perfect_match_area_y == 5)
+        self.assertTrue(self.bt.preview_updaters[0].perfectly_placed_subtasks == 1)
+        
+        self.bt._update_frame_preview(file2, 1, part=2)
+        self.assertTrue(self.bt.preview_updaters[0].perfect_match_area_y == 11)
+        self.assertTrue(self.bt.preview_updaters[0].perfectly_placed_subtasks == 2)
+        
+        self.bt.preview_file_path = []
+        self.bt.preview_file_path.append(file3)
+        self.bt.preview_task_file_path = []
+        self.bt.preview_task_file_path.append(file4)
+        
+        self.bt._update_frame_preview(file1, 1, part=1, final=True)
+        img = Image.open(file3)
+        self.assertTrue(img.size == (10, 5))
+        img = Image.open(file4)
+        self.assertTrue(img.size == (10, 5))
+        
+        
 
     def test_mark_task_area(self):
         self.bt.use_frames = True
