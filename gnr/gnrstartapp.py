@@ -10,8 +10,6 @@ from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
 from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
 from gnr.task.luxrendertask import build_lux_render_info
 from gnr.task.blenderrendertask import build_blender_renderer_info
-from gnr.tasktype import build_pbrt_task_type, build_3ds_max_task_type, build_vray_task_type, \
-    build_python_gnr_task_type, build_luxrender_task_type, build_blender_render_task_type
 from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
 from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
@@ -43,15 +41,6 @@ def register_rendering_task_types(logic):
                                                                  BlenderRenderDialogCustomizer))
     logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
                                                            LuxRenderDialogCustomizer))
-
-
-def register_task_types(logic):
-    logic.register_new_task_type(build_pbrt_task_type())
-    logic.register_new_task_type(build_3ds_max_task_type())
-    logic.register_new_task_type(build_vray_task_type())
-    logic.register_new_task_type(build_python_gnr_task_type())
-    logic.register_new_task_type(build_luxrender_task_type())
-    logic.register_new_task_type(build_blender_render_task_type())
 
 
 def load_environments():
@@ -107,8 +96,6 @@ def start_app(logic, app, gui, datadir=None, rendering=False, start_manager_clie
     register_gui(logic, app, gui)
     if rendering:
         register_rendering_task_types(logic)
-    else:
-        register_task_types(logic)
     environments = load_environments()
 
     client = start_and_configure_client(logic, environments, datadir)
