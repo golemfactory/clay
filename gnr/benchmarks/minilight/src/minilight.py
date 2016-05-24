@@ -1,3 +1,4 @@
+# Original file, modified by Golem Team:
 #  MiniLight Python : minimal global illumination renderer
 #
 #  Harrison Ainsworth / HXA7241 and Juraj Sukop : 2007-2008, 2013.
@@ -183,9 +184,12 @@ def main():
         print "\nSummary:"
         print "    Rendering scene with {} rays took {} seconds".format(numSamples, duration)
         print "    giving an average speed of {} rays/s".format(float(numSamples) / duration)
-        # cfg_file = open('minilight.ini', 'w')
-        cfg_file = open('..\\..\\..\\examples\\gnr\\node_data\\minilight.ini', 'w')
+        cfg_file = open('minilight.ini', 'w')
         average = float(numSamples) / duration
         average = average * multiprocessing.cpu_count()
         cfg_file.write("{0:.1f}".format(average))
         cfg_file.close()
+
+
+if __name__ == "__main__":
+    main()
