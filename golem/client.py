@@ -448,7 +448,7 @@ class Client:
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()
         if len(progress) > 0:
-            msg = "Counting {} subtask(s):".format(len(progress))
+            msg = "Computing {} subtask(s):".format(len(progress))
             for k, v in progress.iteritems():
                 msg = "{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
         elif self.config_desc.accept_tasks:
