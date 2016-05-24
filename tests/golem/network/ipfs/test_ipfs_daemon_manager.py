@@ -1,6 +1,6 @@
 import unittest
 
-from golem.network.ipfs.client import IPFSAddress
+from golem.network.ipfs.client import IPFSAddress, IPFSCommands
 from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 
 
@@ -75,3 +75,53 @@ class TestIPFSDaemonManager(unittest.TestCase):
         dm.remove_bootstrap_node(ip4_node, async=False)
         dm.remove_bootstrap_node(ip6_node, async=False)
         assert len(dm.list_bootstrap_nodes()) == len(nodes)
+
+    def testSwarm(self):
+        dm = IPFSDaemonManager()
+        dm.store_client_info()
+
+        err_node = '/ip4/127.0.0.1/tcp/4001/ipfs/badhash'
+
+        assert not dm.swarm_connect(err_node, async=False)
+        assert not dm.swarm_disconnect(err_node, async=False)
+        assert dm.swarm_peers() is not None
+
+    def testNodeAction(self):
+        dm = IPFSDaemonManager()
+        status = [True]
+
+        def success(*args, **kwargs):
+            status[0] = True
+
+        def error(*args, **kwargs):
+            status[0] = False
+
+        def method(*args, **kwargs):
+            pass
+
+        def raise_method(*args, **kwargs):
+            raise Exception("Error")
+
+        status[0] = True
+        dm._node_action(
+            "test",
+            method=method,
+            command=-1,
+            success=success,
+            error=error,
+            async=False
+        )
+
+        assert not status[0]
+
+        status[0] = True
+        dm._node_action(
+            '/ip4/127.0.0.1/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ',
+            method=raise_method,
+            command=IPFSCommands.add,
+            success=success,
+            error=error,
+            async=False
+        )
+
+        assert not status[0]

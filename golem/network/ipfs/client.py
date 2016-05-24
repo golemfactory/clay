@@ -203,6 +203,9 @@ class IPFSCommands(object):
     bootstrap_add = 5
     bootstrap_rm = 6
     bootstrap_list = 7
+    swarm_connect = 8
+    swarm_disconnect = 9
+    swarm_peers = 10
 
 
 class IPFSClientMetaClass(type):
