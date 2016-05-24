@@ -97,7 +97,6 @@ class AbsRenderingMainWindowCustomizer(object):
             return
 
         self.__set_renderer_params(t)
-        self.__set_pbrt_params(t, is_pbrt=(t.definition.renderer == u"PBRT"))
 
         if t.definition.renderer in frame_renderers and t.definition.renderer_options.use_frames:
             self.__set_frame_preview(t)
@@ -132,19 +131,6 @@ class AbsRenderingMainWindowCustomizer(object):
         self.gui.ui.estimatedMemoryLabel.setText("{} {}".format(mem, translate_resource_index(index)))
         #self.gui.ui.resolution.setText("{} x {}".format(t.definition.resolution[0], t.definition.resolution[1]))
         #self.gui.ui.renderer.setText("{}".format(t.definition.renderer))
-
-    def __set_pbrt_params(self, t, is_pbrt=True):
-        if is_pbrt:
-            self.gui.ui.algorithmType.setText("{}".format(t.definition.renderer_options.algorithm_type))
-            self.gui.ui.pixelFilter.setText("{}".format(t.definition.renderer_options.pixel_filter))
-            self.gui.ui.samplesPerPixel.setText("{}".format(t.definition.renderer_options.samples_per_pixel_count))
-
-        # self.gui.ui.algorithmType.setVisible(is_pbrt)
-        # self.gui.ui.algorithmTypeLabel.setVisible(is_pbrt)
-        # self.gui.ui.pixelFilter.setVisible(is_pbrt)
-        # self.gui.ui.pixelFilterLabel.setVisible(is_pbrt)
-        # self.gui.ui.samplesPerPixel.setVisible(is_pbrt)
-        # self.gui.ui.samplesPerPixelLabel.setVisible(is_pbrt)
 
     def __set_frame_preview(self, t):
         if "resultPreview" in t.task_state.extra_data:
