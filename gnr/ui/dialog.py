@@ -6,8 +6,6 @@ from gen.ui_EnvironmentsDialog import Ui_EnvironmentsDialog
 from gen.ui_GeneratingKeyWindow import Ui_generating_key_window
 from gen.ui_IdentityDialog import Ui_identity_dialog
 from gen.ui_PaymentsDialog import Ui_PaymentsDialog
-from gen.ui_PbrtDialog import Ui_PbrtDialog
-from gen.ui_PbrtTaskDialog import Ui_PbrtTaskDialog
 from gen.ui_SaveKeysDialog import Ui_SaveKeysDialog
 from gen.ui_ShowTaskResourcesDialog import Ui_ShowTaskResourceDialog
 from gen.ui_SubtaskDetailsDialog import Ui_SubtaskDetailsDialog
@@ -93,19 +91,6 @@ class ShowTaskResourcesDialog(Dialog):
 class ChangeTaskDialog(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_ChangeTaskDialog)
-
-
-# RENDERER DIALOGS
-
-
-class PbrtDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_PbrtDialog)
-
-
-class PbrtTaskDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_PbrtTaskDialog)
 
 
 class ThreeDSMaxDialog(Dialog):
