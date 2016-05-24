@@ -2553,11 +2553,6 @@
     <string>Send Test Tasks</string>
    </property>
   </action>
-  <action name="actionUpdateOtherGolems">
-   <property name="text">
-    <string>Update Other Golems</string>
-   </property>
-  </action>
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
