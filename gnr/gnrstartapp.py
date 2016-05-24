@@ -63,16 +63,11 @@ def start_and_configure_client(logic, environments, datadir):
     return client
 
 
-def run_manager_client(logic):
-    logic.start_nodes_manager_client()
-
-
 def run_ranking(client, reactor):
     client.ranking.run(reactor)
 
 
-def start_app(logic, app, gui, datadir=None, rendering=False, start_manager_client=False,
-              start_ranking=True):
+def start_app(logic, app, gui, datadir=None, rendering=False, start_ranking=True):
     reactor = install_reactor()
     register_gui(logic, app, gui)
     if rendering:
@@ -81,8 +76,6 @@ def start_app(logic, app, gui, datadir=None, rendering=False, start_manager_clie
 
     client = start_and_configure_client(logic, environments, datadir)
 
-    if start_manager_client:
-        run_manager_client(logic)
     if start_ranking:
         run_ranking(client, reactor)
 
