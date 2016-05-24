@@ -1,34 +1,6 @@
 import re
 
 
-def regenerate_pbrt_file(scene_file_src, xres, yres, pixel_filter, sampler, samples_per_pixel):
-    out = ""
-
-    pixel_samples_samplers = ['bestcandidate', 'lowdiscrepancy', 'halton', 'random']
-    min_max_samples_samplers = ['adaptive']
-    jitter_samplers = ['stratified']
-
-    for l in scene_file_src.splitlines():
-        line = re.sub(r'("integer\s+xresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(xres), l)
-        line = re.sub(r'("integer\s+yresolution"\s*)(\[\s*\d*\s*\])', r'\1[{}]'.format(yres), line)
-        if sampler in pixel_samples_samplers:
-            line = re.sub(r'(Sampler\s+)([\s*\d*\w*\"*\[*\]*]*)',
-                          r'\1"{}" "integer pixelsamples" [{}]'.format(sampler, samples_per_pixel), line)
-        if sampler in min_max_samples_samplers:
-            line = re.sub(r'(Sampler\s+)([\s*\d*\w*\"*\[*\]*]*)',
-                          r'\1"{}" "integer minsamples" [{}] "integer maxsamples" [{}]'.format(sampler,
-                                                                                               samples_per_pixel,
-                                                                                               samples_per_pixel), line)
-        if sampler in jitter_samplers:
-            line = re.sub(r'(Sampler\s+)([\s*\d*\w*\"*\[*\]*]*)',
-                          r'\1"{}" "integer xsamples" [{}] "integer ysamples" [{}]'.format(sampler, samples_per_pixel,
-                                                                                           samples_per_pixel), line)
-        line = re.sub(r'(PixelFilter\s+)("\w*")', r'\1"{}"'.format(pixel_filter), line)
-        out += line + "\n"
-
-    return out
-
-
 def regenerate_blender_crop_file(crop_file_src, xres, yres, min_x, max_x, min_y, max_y):
     out = ""
 
@@ -139,7 +111,3 @@ def regenerate_lux_file(scene_file_src, xres, yres, halttime, haltspp, writeinte
             next_line_add_tga = True
 
     return out
-
-
-if __name__ == "__main__":
-    print regenerate_pbrt_file(open("d:/test_run/resources/scene.pbrt").read(), 3, 2, "michell", "dupa22", 60)
