@@ -1,10 +1,12 @@
 import os
+
 from mock import patch, Mock, MagicMock
 
 from golem.client import create_client, Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.tools.testwithdatabase import TestWithDatabase
+from golem.network.p2p.p2pservice import P2PService
 from golem.tools.testdirfixture import TestDirFixture
+from golem.tools.testwithdatabase import TestWithDatabase
 
 
 class TestCreateClient(TestDirFixture):
@@ -99,6 +101,7 @@ class TestClient(TestWithDatabase):
     def test_interpret_metadata(self):
         from golem.network.ipfs.daemon_manager import IPFSDaemonManager
         c = Client(ClientConfigDescriptor(), datadir=self.path)
+        c.p2pservice = P2PService(MagicMock(), c.config_desc, c.keys_auth)
         c.ipfs_manager = IPFSDaemonManager()
         meta = c.get_metadata()
         assert meta and meta['ipfs']
@@ -112,3 +115,36 @@ class TestClient(TestWithDatabase):
 
         c.interpret_metadata(meta, ip_1, port_1, node)
         c._unlock_datadir()
+
+    def test_get_status(self):
+        ccd = ClientConfigDescriptor()
+        c = Client(ccd, datadir=self.path)
+        c.task_server = MagicMock()
+        c.task_server.task_computer.get_progresses.return_value = {}
+        c.p2pservice = MagicMock()
+        c.p2pservice.get_peers.return_value = ["ABC", "DEF"]
+        c.transaction_system = MagicMock()
+        c.transaction_system.budget = "1341"
+        status = c.get_status()
+        assert "Waiting for tasks" in status
+        assert "Active peers in network: 2" in status
+        assert "1341" in status
+        mock1 = MagicMock()
+        mock1.get_progress.return_value = 0.25
+        mock2 = MagicMock()
+        mock2.get_progress.return_value = 0.33
+        c.task_server.task_computer.get_progresses.return_value = {"id1": mock1, "id2": mock2}
+        c.p2pservice.get_peers.return_value = []
+        c.transaction_system.budget = 31
+        status = c.get_status()
+        assert "Computing 2 subtask(s)" in status
+        assert "id1 (25.0%)" in status
+        assert "id2 (33.0%)" in status
+        assert "Active peers in network: 0" in status
+        assert "31" in status
+        c.config_desc.accept_tasks = 0
+        status = c.get_status()
+        assert "Computing 2 subtask(s)" in status
+        c.task_server.task_computer.get_progresses.return_value = {}
+        status = c.get_status()
+        assert "Not accepting tasks" in status

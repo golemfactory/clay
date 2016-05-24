@@ -21,9 +21,9 @@ from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDia
 from gnr.renderingdirmanager import get_benchmarks_path
 from gnr.gnrtaskstate import GNRTaskState
 from gnr.task.tasktester import TaskTester
+from gnr.renderingtaskstate import RenderingTaskState
 
-from gnr.benchmarks.luxrender.lux_test import lux_performance
-from gnr.benchmarks.blender.blender_test import blender_performance
+from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
 
 from gnr.benchmarks.minilight.src.minilight import makePerfTest
 
@@ -296,25 +296,6 @@ class GNRApplicationLogic(QtCore.QObject):
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
 
-    def recount_lux_performance(self):
-        cfg_filename = SimpleEnv.env_file_name("lux.ini")
-
-        cfg_file = open(cfg_filename, 'w')
-        average = lux_performance()
-        cfg_file.write("{0:.1f}".format(average))
-        cfg_file.close()
-
-        return average
-
-    def recount_blender_performance(self):
-        cfg_filename = SimpleEnv.env_file_name("blender.ini")
-
-        cfg_file = open(cfg_filename, 'w')
-        average = blender_performance()
-        cfg_file.write("{0:.1f}".format(average))
-        cfg_file.close()
-
-        return average
 
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):
@@ -335,7 +316,37 @@ class GNRApplicationLogic(QtCore.QObject):
             return True
         else:
             return False
+        
+    # label param is the gui element to set text
+    def run_benchmark(self, benchmark, label):
+        task_state = RenderingTaskState()
+        task_state.status = TaskStatus.notStarted
+        task_state.definition = benchmark.query_benchmark_task_definition()
+        self._validate_task_state(task_state)
+        tb = self._get_builder(task_state)
 
+        t = Task.build_task(tb)
+        
+        self.br = BenchmarkRunner(t, self.client.datadir, lambda p: self._benchmark_computation_success(performance=p, label=label),
+                                self._benchmark_computation_error, benchmark)
+
+        self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
+        self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
+        self.progress_dialog.show()
+
+        self.br.run()
+    
+    def _benchmark_computation_success(self, performance, label):
+        self.progress_dialog_customizer.show_message("Recounted")
+        
+        #rounding
+        perf = int((performance * 10) + 0.5) / 10.0
+        
+        label.setText(str(perf))
+        
+    def _benchmark_computation_error(self, error):
+        self.progress_dialog_customizer.show_message("Recounting failed: " + error)
+        
     def get_environments(self):
         return self.client.get_environments()
 
@@ -397,7 +408,6 @@ class GNRApplicationLogic(QtCore.QObject):
         ms_box.show()
 
     def _validate_task_state(self, task_state):
-
         td = task_state.definition
         if not os.path.exists(td.main_program_file):
             self.show_error_window("Main program file does not exist: {}".format(td.main_program_file))

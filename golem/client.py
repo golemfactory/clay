@@ -1,40 +1,33 @@
-import time
 import logging
+import time
 from os import path
-
-from twisted.internet import task
 from threading import Lock
-
-from golem.core.variables import APP_NAME, APP_VERSION
-from golem.network.ipfs.daemon_manager import IPFSDaemonManager
-from golem.tools import filelock
-from golem.network.p2p.p2pservice import P2PService
-from golem.network.p2p.node import Node
-from golem.task.taskbase import resource_types
-from golem.task.taskserver import TaskServer
-from golem.task.taskmanager import TaskManagerEventListener
-
-from golem.core.keysauth import EllipticalKeysAuth
-
-from golem.manager.nodestatesnapshot import NodeStateSnapshot
+from twisted.internet import task
 
 from golem.appconfig import AppConfig
-from golem.core.simpleenv import get_local_datadir
-
-from golem.model import Database
-from golem.network.transport.message import init_messages
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
+from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.simpleenv import get_local_datadir
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.resource.ipfs.resourceserver import IPFSResourceServer
-from golem.resource.dirmanager import DirManager
+from golem.manager.nodestatesnapshot import NodeStateSnapshot
+from golem.model import Database
+from golem.network.ipfs.daemon_manager import IPFSDaemonManager
+from golem.network.p2p.node import Node
+from golem.network.p2p.p2pservice import P2PService
+from golem.network.transport.message import init_messages
 from golem.ranking.ranking import Ranking, RankingStats
-
+from golem.resource.dirmanager import DirManager
+from golem.resource.ipfs.resourceserver import IPFSResourceServer
+from golem.task.taskbase import resource_types
+from golem.task.taskmanager import TaskManagerEventListener
+from golem.task.taskserver import TaskServer
+from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
 logger = logging.getLogger(__name__)
 
 
-def create_client(datadir=None, transaction_system=False, **config_overrides):
+def create_client(datadir=None, transaction_system=False, connect_to_known_hosts=True, **config_overrides):
     # TODO: All these feature should be move to Client()
     init_messages()
 
@@ -55,11 +48,13 @@ def create_client(datadir=None, transaction_system=False, **config_overrides):
     logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
     return Client(config_desc, datadir=datadir, config=app_config,
-                  transaction_system=transaction_system)
+                  transaction_system=transaction_system,
+                  connect_to_known_hosts=connect_to_known_hosts)
 
 
-def start_client(datadir, transaction_system=False):
-    c = create_client(datadir, transaction_system)
+def start_client(datadir, transaction_system=False, connect_to_known_hosts=True):
+    c = create_client(datadir, transaction_system=transaction_system,
+                      connect_to_known_hosts=connect_to_known_hosts)
     logger.info("Starting all asynchronous services")
     c.start_network()
     return c
@@ -89,7 +84,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 
 
 class Client:
-    def __init__(self, config_desc, datadir, config="", transaction_system=False):
+    def __init__(self, config_desc, datadir, config="", transaction_system=False, connect_to_known_hosts=True):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
@@ -98,6 +93,7 @@ class Client:
         self.node = Node(node_name=self.config_desc.node_name,
                          key=self.keys_auth.get_key_id(),
                          prv_addr=self.config_desc.node_address)
+
         self.node.collect_network_info(self.config_desc.seed_host, use_ipv6=self.config_desc.use_ipv6)
         self.datadir = datadir
         self.__lock_datadir()
@@ -136,6 +132,7 @@ class Client:
         else:
             self.transaction_system = None
 
+        self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
 
         self.ipfs_manager = None
@@ -147,10 +144,8 @@ class Client:
     def start_network(self):
         logger.info("Starting network ...")
 
-        logger.info("Starting p2p server ...")
-        self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth)
-        time.sleep(1.0)
-
+        self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
+                                     connect_to_known_hosts=self.connect_to_known_hosts)
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
                                       use_ipv6=self.config_desc.use_ipv6)
         self.resource_server = IPFSResourceServer(self.task_server.task_computer.dir_manager,
@@ -158,9 +153,14 @@ class Client:
         self.ipfs_manager = IPFSDaemonManager()
         self.ipfs_manager.store_client_info()
 
+        logger.info("Starting p2p server ...")
+        self.p2pservice.start_accepting()
+        time.sleep(1.0)
+
         logger.info("Starting resource server...")
         self.resource_server.start_accepting()
         time.sleep(1.0)
+
         self.p2pservice.set_resource_server(self.resource_server)
         self.p2pservice.set_metadata_manager(self)
 
@@ -168,9 +168,8 @@ class Client:
         self.task_server.start_accepting()
 
         self.p2pservice.set_task_server(self.task_server)
-
-        time.sleep(0.5)
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
+        self.p2pservice.connect_to_network()
 
     def connect(self, socket_address):
         logger.debug("P2pservice connecting to {} on port {}".format(socket_address.address, socket_address.port))
@@ -437,14 +436,11 @@ class Client:
 
     def interpret_metadata(self, metadata, address, port, node_info):
         if self.config_desc and node_info and metadata:
-            seed_addresses = [
-                (self.config_desc.seed_host, self.config_desc.seed_port)
-            ]
+            seed_addresses = self.p2pservice.get_seeds()
             node_addresses = [
                 (address, port),
                 (node_info.pub_addr, node_info.pub_port)
             ]
-
             self.ipfs_manager.interpret_metadata(metadata,
                                                  seed_addresses,
                                                  node_addresses)
@@ -452,11 +448,13 @@ class Client:
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()
         if len(progress) > 0:
-            msg = "Counting {} subtask(s):".format(len(progress))
+            msg = "Computing {} subtask(s):".format(len(progress))
             for k, v in progress.iteritems():
                 msg = "{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
-        else:
+        elif self.config_desc.accept_tasks:
             msg = "Waiting for tasks...\n"
+        else:
+            msg = "Not accepting tasks\n"
 
         peers = self.p2pservice.get_peers()
 
