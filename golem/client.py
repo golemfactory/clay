@@ -45,7 +45,6 @@ def create_client(datadir=None, transaction_system=False, connect_to_known_hosts
             raise AttributeError(
                 "Can't override nonexistent config attribute '{}'".format(key))
 
-    logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
     return Client(config_desc, datadir=datadir, config=app_config,
                   transaction_system=transaction_system,
