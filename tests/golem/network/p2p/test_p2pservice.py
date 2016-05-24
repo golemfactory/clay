@@ -1,4 +1,5 @@
 import time
+import uuid
 
 from mock import MagicMock
 
@@ -210,5 +211,33 @@ class TestP2PService(DatabaseFixture):
         time.sleep(0.1)
         service.sync_network()
         assert last_time < service.last_time_tried_connect_with_seed
+
+    def test_want_to_start_task_session(self):
+        keys_auth = EllipticalKeysAuth()
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        service.task_server = MagicMock()
+
+        def true_method(*args):
+            return True
+
+        key_id = str(uuid.uuid4())
+        conn_id = str(uuid.uuid4())
+        peer_id = str(uuid.uuid4())
+
+        node_info = MagicMock()
+        node_info.key = key_id
+        node_info.is_super_node = true_method
+
+        peer = MagicMock()
+        peer.key_id = str(uuid.uuid4())
+
+        service.peers[peer_id] = peer
+        service.node = node_info
+
+        service.want_to_start_task_session(key_id, node_info, conn_id)
+
+
+
+
 
 

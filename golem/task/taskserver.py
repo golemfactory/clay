@@ -39,16 +39,12 @@ class TaskServer(PendingConnectionsServer):
         self.last_messages = []
         self.last_message_time_threshold = config_desc.task_session_timeout
 
-        if hasattr(config_desc, 'forwarded_task_session_timeout'):
-            self.forwarded_session_timeout = config_desc.forwarded_task_session_timeout
-        else:
-            self.forwarded_session_timeout = FORWARDED_TASK_SESSION_TIMEOUT
-
         self.results_to_send = {}
         self.failures_to_send = {}
 
         self.use_ipv6 = use_ipv6
 
+        self.forwarded_session_timeout = FORWARDED_TASK_SESSION_TIMEOUT
         self.forwarded_sessions = {}
         self.response_list = {}
 

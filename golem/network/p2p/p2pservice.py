@@ -635,8 +635,9 @@ class P2PService(PendingConnectionsServer):
             if peer.key_id != node_info.key:
                 peer.send_set_task_session(key_id, node_info, conn_id, super_node_info)
                 msg_snd = True
-            if node_info.key == self.node.key:
-                self.task_server.add_forwarded_session(key_id, conn_id)
+
+        if msg_snd and node_info.key == self.node.key:
+            self.task_server.add_forwarded_session(key_id, conn_id)
 
         # TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
 
