@@ -14,7 +14,6 @@ from gen.ui_SubtaskDetailsDialog import Ui_SubtaskDetailsDialog
 from gen.ui_TaskDetailsDialog import Ui_TaskDetailsDialog
 from gen.ui_TestingTaskProgressDialog import Ui_testingTaskProgressDialog
 from gen.ui_ThreeDSMaxDialog import Ui_ThreeDSMaxDialog
-from gen.ui_VRayDialog import Ui_VRayDialog
 
 
 class Dialog(object):
@@ -113,7 +112,3 @@ class ThreeDSMaxDialog(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_ThreeDSMaxDialog)
 
-
-class VRayDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_VRayDialog)
