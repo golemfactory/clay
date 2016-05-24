@@ -5,7 +5,6 @@ from gen.ui_ChangeTaskDialog import Ui_ChangeTaskDialog
 from gen.ui_EnvironmentsDialog import Ui_EnvironmentsDialog
 from gen.ui_GeneratingKeyWindow import Ui_generating_key_window
 from gen.ui_IdentityDialog import Ui_identity_dialog
-from gen.ui_InfoTaskDialog import Ui_InfoTaskDialog
 from gen.ui_PaymentsDialog import Ui_PaymentsDialog
 from gen.ui_PbrtDialog import Ui_PbrtDialog
 from gen.ui_PbrtTaskDialog import Ui_PbrtTaskDialog
@@ -99,11 +98,6 @@ class ChangeTaskDialog(Dialog):
 
 
 # TEST TASK DIALOGS
-
-class InfoTaskDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_InfoTaskDialog)
-
 
 class UpdateOtherGolemsDialog(Dialog):
     def __init__(self, parent):
