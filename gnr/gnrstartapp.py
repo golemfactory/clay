@@ -63,12 +63,6 @@ def start_and_configure_client(logic, environments, datadir):
     return client
 
 
-def run_info_server(client, start_port=55555, next_port=55556, end_port=59999):
-    from gnr.InfoServer import InfoServer
-    info_server = InfoServer(client, start_port, next_port, end_port)
-    info_server.start()
-
-
 def run_manager_client(logic):
     logic.start_nodes_manager_client()
 
@@ -78,7 +72,7 @@ def run_ranking(client, reactor):
 
 
 def start_app(logic, app, gui, datadir=None, rendering=False, start_manager_client=False,
-              start_info_server=False, start_ranking=True):
+              start_ranking=True):
     reactor = install_reactor()
     register_gui(logic, app, gui)
     if rendering:
@@ -89,8 +83,6 @@ def start_app(logic, app, gui, datadir=None, rendering=False, start_manager_clie
 
     if start_manager_client:
         run_manager_client(logic)
-    if start_info_server:
-        run_info_server(client)
     if start_ranking:
         run_ranking(client, reactor)
 
