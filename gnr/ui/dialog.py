@@ -11,7 +11,6 @@ from gen.ui_ShowTaskResourcesDialog import Ui_ShowTaskResourceDialog
 from gen.ui_SubtaskDetailsDialog import Ui_SubtaskDetailsDialog
 from gen.ui_TaskDetailsDialog import Ui_TaskDetailsDialog
 from gen.ui_TestingTaskProgressDialog import Ui_testingTaskProgressDialog
-from gen.ui_ThreeDSMaxDialog import Ui_ThreeDSMaxDialog
 
 
 class Dialog(object):
@@ -91,9 +90,4 @@ class ShowTaskResourcesDialog(Dialog):
 class ChangeTaskDialog(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_ChangeTaskDialog)
-
-
-class ThreeDSMaxDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_ThreeDSMaxDialog)
 
