@@ -407,6 +407,7 @@ class TaskSession(MiddlemanSafeSession):
                          .format(subtask_id, args or "unspecified"))
             self.send(MessageSubtaskResultRejected(subtask_id))
 
+        self.dropped()
         task_result_manager.pull_package(multihash,
                                          task_id,
                                          subtask_id,
@@ -457,6 +458,7 @@ class TaskSession(MiddlemanSafeSession):
 
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources)
+        self.dropped()
 
     def _react_to_resource_format(self, msg):
         if not msg.use_distributed_resource:
@@ -565,6 +567,7 @@ class TaskSession(MiddlemanSafeSession):
         resource_manager = self.task_server.client.resource_server.resource_manager
         res = resource_manager.list_split_resources(msg.task_id)
         self.send(MessageResourceHashList(res))
+        self.dropped()
 
     def __send_resource_format(self, use_distributed_resource):
         self.send(MessageResourceFormat(use_distributed_resource))
@@ -593,7 +596,7 @@ class TaskSession(MiddlemanSafeSession):
             self.send(MessageTaskResultHash(res.subtask_id, multihash, secret))
         else:
             logger.error("Couldn't create a task result package for subtask {}".format(res.subtask_id))
-            self.dropped()
+        self.dropped()
 
     def __receive_data_result(self, msg):
         extra_data = {"subtask_id": msg.subtask_id, "result_type": msg.result_type, "data_type": "result"}
