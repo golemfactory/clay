@@ -636,10 +636,13 @@ class P2PService(PendingConnectionsServer):
                 peer.send_set_task_session(key_id, node_info, conn_id, super_node_info)
                 msg_snd = True
 
+        if msg_snd and node_info.key == self.node.key:
+            self.task_server.add_forwarded_session(key_id, conn_id)
+
         # TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
 
         if not msg_snd and node_info.key == self.get_key_id():
-            self.task_connections_helper.final_conn_failure(conn_id)
+            self.task_connections_helper.cannot_pass_conn_request(conn_id)
 
     def inform_about_task_nat_hole(self, key_id, rv_key_id, addr, port, ans_conn_id):
         """
