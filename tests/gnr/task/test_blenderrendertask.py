@@ -133,6 +133,60 @@ class TestBlenderTaskDivision(TempDirFixture):
                 img_x, img_y = img.size
                 self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
 
+    def test_mark_task_area(self):
+        self.bt.use_frames = True
+        self.bt.res_y = 200
+        self.bt.res_x = 300
+        color = (0, 0, 255)
+        
+        file1 = self.temp_file_name('preview1.bmp')
+        img_task = Image.new("RGB", (self.bt.res_x, self.bt.res_y))
+        img_task.save(file1, "BMP")
+        
+        # test the case in which a single subtask is a whole frame
+        
+        self.bt.frames = [1, 2]
+        self.bt.total_tasks = 2
+        
+        self.bt._mark_task_area(None, img_task, color, 0)
+        
+        for i in range(0, self.bt.res_x):
+            for j in range(0, self.bt.res_y):
+                pixel = img_task.getpixel((i, j))
+                self.assertTrue(pixel == color)
+        
+        
+        
+        # test the case with frames divided into multiple subtasks
+        
+        file2 = self.temp_file_name('preview2.bmp')
+        img_task2 = Image.new("RGB", (self.bt.res_x, self.bt.res_y))
+        img_task2.save(file2, "BMP")
+        
+        file3 = self.temp_file_name('preview3.bmp')
+        img_task3 = Image.new("RGB", (self.bt.res_x, self.bt.res_y))
+        img_task3.save(file3, "BMP")
+        
+        self.bt.frames = [2, 3]
+        self.bt.total_tasks = 6
+        expected_offsets = {1:0, 2:66, 3:133}
+        self.bt.preview_updaters = [PreviewUpdater(file2, self.bt.res_x, self.bt.res_y, expected_offsets),
+                                    PreviewUpdater(file3, self.bt.res_x, self.bt.res_y, expected_offsets)
+                                   ]                
+        self.bt.preview_updaters[0].perfect_match_area_y = 34
+        self.bt.preview_updaters[0].perfectly_placed_subtasks = 1
+        subtask = {"start_task" : 2}
+        self.bt._mark_task_area(subtask, img_task2, color, 0)
+        for i in range(0, self.bt.res_x):
+            pixel = img_task2.getpixel((i, 33))
+            self.assertTrue(pixel == (0, 0, 0))
+            pixel = img_task2.getpixel((i, 133))
+            self.assertTrue(pixel == (0, 0, 0))
+            for j in range(34, 133):
+                pixel = img_task2.getpixel((i, j))
+                self.assertTrue(pixel == color)
+        
+
 
 class TestPreviewUpdater(TempDirFixture):
     def test_update_preview(self):
