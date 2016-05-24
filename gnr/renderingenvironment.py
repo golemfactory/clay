@@ -108,20 +108,6 @@ class ThreeDSMaxEnvironment(Environment):
         return ""
 
 
-class PBRTEnvironment(Environment):
-    @classmethod
-    def get_id(cls):
-        return "PBRT"
-
-    def __init__(self):
-        Environment.__init__(self)
-        self.software.append('Windows')
-        self.short_description = "PBRT renderer (http://www.pbrt.org/)  "
-
-    def supported(self):
-        return self.is_windows()
-
-
 class VRayEnvironment(Environment):
     @classmethod
     def get_id(cls):
