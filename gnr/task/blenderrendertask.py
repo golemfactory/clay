@@ -421,7 +421,7 @@ class BlenderRenderTask(FrameRenderingTask):
             self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
                        
-    def _mark_task_area(self, subtask, img_task, color, frame_index):
+    def _mark_task_area(self, subtask, img_task, color, frame_index=0):
         if not self.use_frames:
             RenderingTask._mark_task_area(self, subtask, img_task, color)
         elif self.total_tasks <= len(self.frames):
