@@ -53,7 +53,9 @@ class TaskComputer(object):
         self.delta = None
         self.task_timeout = None
         self.last_task_timeout_checking = None
+        self.support_direct_computation = False
         self.compute_tasks = task_server.config_desc.accept_tasks
+
 
     def task_given(self, ctd, subtask_timeout):
         if ctd.subtask_id not in self.assigned_subtasks:
@@ -247,10 +249,20 @@ class TaskComputer(object):
             tt = DockerTaskThread(self, subtask_id, docker_images, working_dir,
                                   src_code, extra_data, short_desc,
                                   resource_dir, temp_dir, task_timeout)
-        else:
+        elif self.support_direct_computation:
             tt = PyTaskThread(self, subtask_id, working_dir, src_code,
                               extra_data, short_desc, resource_dir, temp_dir,
                               task_timeout)
+        else:
+            logger.error("Cannot run PyTaskThread in this version")
+            subtask = self.assigned_subtasks.get(subtask_id)
+            if subtask:
+                del self.assigned_subtasks[subtask_id]
+            self.task_server.send_task_failed(subtask_id, subtask.task_id, "Host direct task not supported",
+                                              subtask.return_address, subtask.return_port, subtask.key_id,
+                                              subtask.task_owner, self.node_name)
+            return
+
         tt.setDaemon(True)
         self.current_computations.append(tt)
         tt.start()
