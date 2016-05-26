@@ -6,17 +6,17 @@ from mock import Mock
 
 from gnr.application import GNRGui
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
-from gnr.gnrapplicationlogic import GNRApplicationLogic
-from gnr.gnrstartapp import register_task_types
+from gnr.renderingapplicationlogic import RenderingApplicationLogic
+from gnr.gnrstartapp import register_rendering_task_types
 from gnr.ui.appmainwindow import AppMainWindow
 
 
 class TestNewTaskDialogCustomizer(TestCase):
     def test_customizer(self):
         gnrgui = GNRGui(Mock(), AppMainWindow)
-        logic = GNRApplicationLogic()
+        logic = RenderingApplicationLogic()
         logic.client = Mock()
-        register_task_types(logic)
+        register_rendering_task_types(logic)
         customizer = NewTaskDialogCustomizer(gnrgui.main_window, logic)
         self.assertIsInstance(customizer, NewTaskDialogCustomizer)
         assert customizer.gui.ui.showAdvanceNewTaskButton.text() == customizer.SHOW_ADVANCE_BUTTON_MESSAGE[0]

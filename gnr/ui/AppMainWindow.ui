@@ -2540,11 +2540,6 @@
     <string>Start Node Manager</string>
    </property>
   </action>
-  <action name="actionSendInfoTask">
-   <property name="text">
-    <string>Send Info Task</string>
-   </property>
-  </action>
   <action name="actionEnvironments">
    <property name="text">
     <string>Environments</string>
@@ -2556,11 +2551,6 @@
    </property>
    <property name="text">
     <string>Send Test Tasks</string>
-   </property>
-  </action>
-  <action name="actionUpdateOtherGolems">
-   <property name="text">
-    <string>Update Other Golems</string>
    </property>
   </action>
   <action name="actionAbout">

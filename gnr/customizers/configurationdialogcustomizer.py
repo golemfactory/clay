@@ -26,7 +26,6 @@ class ConfigurationDialogCustomizer(Customizer):
     SHOW_DISK_USAGE_BUTTON_MESSAGES = ["Show disk usage", "Hide"]
 
     def __init__(self, gui, logic):
-        self.old_plugin_port = None
         Customizer.__init__(self, gui, logic)
 
     def load_data(self):
@@ -341,9 +340,6 @@ class ConfigurationDialogCustomizer(Customizer):
         except ValueError as err:
             logger.warning("Wrong max_payment value: {}".format(err))
         self.__check_eth_account()
-
-    def __show_plugin_port_warning(self):
-        QMessageBox.warning(self.gui.window, 'Golem Message', "Restart application to change plugin port")
 
     def __set_account_error(self):
         palette = QPalette()

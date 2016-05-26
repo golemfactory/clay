@@ -14,7 +14,6 @@ from golem.task.taskstate import TaskState
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.client import GolemClientEventListener
-from golem.manager.client.nodesmanagerclient import NodesManagerUidClient, NodesManagerClient
 
 from gnr.ui.dialog import TestingTaskProgressDialog
 from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
@@ -112,19 +111,6 @@ class GNRApplicationLogic(QtCore.QObject):
             return
 
         self.customizer.gui.ui.errorLabel.setText("")
-
-    def start_nodes_manager_client(self):
-        if self.client:
-            config_desc = self.client.config_desc
-            self.nodes_manager_client = NodesManagerUidClient(config_desc.node_name,
-                                                              config_desc.manager_address,
-                                                              config_desc.manager_port,
-                                                              None,
-                                                              self)
-            self.nodes_manager_client.start()
-            self.client.register_nodes_manager_client(self.nodes_manager_client)
-        else:
-            logger.error("Can't register nodes manager client. No client instance.")
 
     def get_task(self, task_id):
         assert task_id in self.tasks, "GNRApplicationLogic: task {} not added".format(task_id)
