@@ -79,7 +79,7 @@ class TestDockerImage(DockerTestCase):
                           image_id=self.TEST_IMAGE_ID)
         self.assertTrue(img.is_available())
 
-        nimg = DockerImage(self.TEST_REPOSITORY, tag = "bogus",
+        nimg = DockerImage(self.TEST_REPOSITORY, tag="bogus",
                            image_id=self.TEST_IMAGE_ID)
         self.assertFalse(nimg.is_available())
 

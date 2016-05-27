@@ -80,6 +80,7 @@ def uninstall_reactor():
     del twisted.internet.reactor
     del sys.modules['twisted.internet.reactor']
 
+
 class MockReactorThread(Thread):
     running = False
 
@@ -106,6 +107,7 @@ class MockReactorThread(Thread):
                 print "Unexpected error in main loop:", e.message
 
 timeout = 10
+
 
 @contextmanager
 def async_scope(a, idx=0):

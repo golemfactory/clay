@@ -104,7 +104,7 @@ def __execute(container, cmd, background=False, print_output=True):
             if output:
                 output = output[:-1]
                 if print_output:
-                     print output
+                    print output
 
             return output
 

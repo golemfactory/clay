@@ -8,7 +8,7 @@ class TestFramesConversion(unittest.TestCase):
         self.assertEqual(BlenderRenderDialogCustomizer.frames_to_string([1, 4, 3, 2]), "1-4")
         self.assertEqual(BlenderRenderDialogCustomizer.frames_to_string([1]), "1")
         self.assertEqual(BlenderRenderDialogCustomizer.frames_to_string(range(10)), "0-9")
-        self.assertEqual(BlenderRenderDialogCustomizer.frames_to_string( range(13, 16) + range(10)), "0-9;13-15")
+        self.assertEqual(BlenderRenderDialogCustomizer.frames_to_string(range(13, 16) + range(10)), "0-9;13-15")
         self.assertEqual(BlenderRenderDialogCustomizer.frames_to_string([1, 3, 4, 5, 10, 11]), '1;3-5;10-11')
         self.assertEqual(BlenderRenderDialogCustomizer.frames_to_string([0, 5, 10, 15]), '0;5;10;15')
         self.assertEqual(BlenderRenderDialogCustomizer.frames_to_string([]), "")

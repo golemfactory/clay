@@ -62,7 +62,6 @@ def common_dir(arr, ign_case=None):
     """
     Returns a common directory for paths
     :param arr: Array of paths
-    :param plus_sep: Extra path separator to include
     :param ign_case: Ignore case in paths
     :return: Common directory prefix as unicode string
     """

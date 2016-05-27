@@ -5,11 +5,9 @@ import time
 
 from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
 from golem.network.transport.message import MessageDisconnect, Message
+from network import Session
 
 logger = logging.getLogger(__name__)
-
-
-from network import Session
 
 
 class SafeSession(Session):

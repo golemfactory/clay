@@ -56,7 +56,6 @@ class TaskComputer(object):
         self.support_direct_computation = False
         self.compute_tasks = task_server.config_desc.accept_tasks
 
-
     def task_given(self, ctd, subtask_timeout):
         if ctd.subtask_id not in self.assigned_subtasks:
             self.assigned_subtasks[ctd.subtask_id] = ctd
@@ -148,8 +147,9 @@ class TaskComputer(object):
                                                   subtask.task_owner, self.node_name)
             elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
                 logger.info("Task {} computed".format(subtask_id))
-                self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_, subtask.return_address,
-                                              subtask.return_port, subtask.key_id, subtask.task_owner, self.node_name)
+                self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_,
+                                              subtask.return_address, subtask.return_port, subtask.key_id,
+                                              subtask.task_owner, self.node_name)
             else:
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",
                                                   subtask.return_address, subtask.return_port, subtask.key_id,

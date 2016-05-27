@@ -32,7 +32,7 @@ class PaymentsDatabase(object):
 
     def change_state(self, subtask_id, state):
         """ Change state for all payments for task_id
-        :param str task_id: change state of all payments that should be done for computing this task
+        :param str subtask_id: change state of all payments that should be done for computing this task
         :param state: new state
         :return:
         """

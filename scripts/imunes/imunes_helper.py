@@ -1002,8 +1002,7 @@ class SimulatorNodesCommand(Command):
         """
 
         super(SimulatorNodesCommand, self).__init__("nodes", desc,
-                                                         None,
-                                                         cmd_required)
+                                                    None, cmd_required)
 
     def execute(self, context, n_calls=None):
 

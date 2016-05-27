@@ -529,7 +529,6 @@ class P2PService(PendingConnectionsServer):
                                "node_name": peer.node_name})
         return peer_infos
 
-
     # Resource functions
     #############################
     def set_resource_server(self, resource_server):

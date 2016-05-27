@@ -6,8 +6,8 @@ logger = logging.getLogger(__name__)
 
 
 class Node(object):
-    def __init__(self, node_name=None, key=None, prv_addr=None, prv_port=None, pub_addr=None, pub_port=None, nat_type=None,
-                 p2p_prv_port=None, p2p_pub_port=None):
+    def __init__(self, node_name=None, key=None, prv_addr=None, prv_port=None, pub_addr=None, pub_port=None,
+                 nat_type=None, p2p_prv_port=None, p2p_pub_port=None):
         self.node_name = node_name
         self.key = key
         # task server ports

@@ -46,7 +46,6 @@ class TestBlenderFrameTask(TempDirFixture):
         assert len(bt.preview_task_file_path) == len(bt.frames)
 
 
-
 class TestBlenderTaskDivision(TempDirFixture):
     def setUp(self):
         super(TestBlenderTaskDivision, self).setUp()
@@ -87,8 +86,8 @@ class TestBlenderTaskDivision(TempDirFixture):
                 cur_max_y = self.bt.res_y
                 for i in range(1, self.bt.total_tasks + 1):
                     min_y, max_y = self.bt._get_min_max_y(i)
-                    min_y = int(float(self.bt.res_y) * (min_y))
-                    max_y = int(float(self.bt.res_y) * (max_y))
+                    min_y = int(float(self.bt.res_y) * min_y)
+                    max_y = int(float(self.bt.res_y) * max_y)
                     self.assertTrue(max_y == cur_max_y)
                     cur_max_y = min_y
                 self.assertTrue(cur_max_y == 0)
@@ -144,7 +143,7 @@ class TestBlenderTaskDivision(TempDirFixture):
         self.bt.use_frames = True
         self.bt.res_x = 10
         self.bt.res_y = 11
-        self.bt.preview_updaters = [PreviewUpdater(file1, self.bt.res_x, self.bt.res_y, {1:0, 2:5})]
+        self.bt.preview_updaters = [PreviewUpdater(file1, self.bt.res_x, self.bt.res_y, {1: 0, 2: 5})]
         
         img1 = OpenEXR.OutputFile(file1, OpenEXR.Header(self.bt.res_x, 5))
         data = array.array('f', [1.0] * (self.bt.res_x * 5)).tostring()
@@ -175,7 +174,6 @@ class TestBlenderTaskDivision(TempDirFixture):
         img = Image.open(file4)
         self.assertTrue(img.size == (10, 5))
         
-        
 
     def test_mark_task_area(self):
         self.bt.use_frames = True
@@ -199,8 +197,7 @@ class TestBlenderTaskDivision(TempDirFixture):
                 pixel = img_task.getpixel((i, j))
                 self.assertTrue(pixel == color)
         
-        
-        
+
         # test the case with frames divided into multiple subtasks
         
         file2 = self.temp_file_name('preview2.bmp')
@@ -213,13 +210,13 @@ class TestBlenderTaskDivision(TempDirFixture):
         
         self.bt.frames = [2, 3]
         self.bt.total_tasks = 6
-        expected_offsets = {1:0, 2:66, 3:133}
+        expected_offsets = {1: 0, 2: 66, 3: 133}
         self.bt.preview_updaters = [PreviewUpdater(file2, self.bt.res_x, self.bt.res_y, expected_offsets),
                                     PreviewUpdater(file3, self.bt.res_x, self.bt.res_y, expected_offsets)
                                    ]                
         self.bt.preview_updaters[0].perfect_match_area_y = 34
         self.bt.preview_updaters[0].perfectly_placed_subtasks = 1
-        subtask = {"start_task" : 2}
+        subtask = {"start_task": 2}
         self.bt._mark_task_area(subtask, img_task2, color, 0)
         for i in range(0, self.bt.res_x):
             pixel = img_task2.getpixel((i, 33))

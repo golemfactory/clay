@@ -8,6 +8,7 @@ from gnr.task.luxrendertask import LuxRenderOptions
 
 from gnr.renderingdirmanager import get_benchmarks_path
 
+
 class TestLuxBenchmark(unittest.TestCase):
     def setUp(self):
         self.lb = LuxBenchmark()
@@ -29,5 +30,3 @@ class TestLuxBenchmark(unittest.TestCase):
         self.assertTrue(self.lb.task_definition.task_id == u"{}".format("lux_benchmark"))
         self.assertTrue(os.path.isfile(self.lb.task_definition.main_scene_file))
         self.assertTrue(os.path.isfile(self.lb.task_definition.main_program_file))
-        
-        

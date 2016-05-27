@@ -70,8 +70,8 @@ class DifferentialGossipTrustSimulator(RankSimulator):
         self.ranking[cnt_node].delegating.inc_node_negative(dnt_node)
 
     def ask_for_node_computing(self, cnt_node, dnt_node):
-        if self.ranking[dnt_node].computing.get_node_positive(cnt_node) is None and self.ranking[
-            dnt_node].computing.get_node_negative(cnt_node) is None:
+        if (self.ranking[dnt_node].computing.get_node_positive(cnt_node) is None) and \
+           (self.ranking[dnt_node].computing.get_node_negative(cnt_node) is None):
             opinion = self.get_global_computing_opinion(cnt_node, dnt_node)
         else:
             opinion = self.self_computing_opinion(cnt_node, dnt_node)
@@ -93,8 +93,8 @@ class DifferentialGossipTrustSimulator(RankSimulator):
         return self.ranking[dnt_node].computing.get_node_trust(cnt_node) > self.computing_trust_threshold
 
     def ask_for_node_delegating(self, cnt_node, dnt_node):
-        if self.ranking[cnt_node].delegating.get_node_positive(cnt_node) is None and self.ranking[
-            cnt_node].delegating.get_node_negative(dnt_node) is None:
+        if (self.ranking[cnt_node].delegating.get_node_positive(cnt_node) is None) and \
+           (self.ranking[cnt_node].delegating.get_node_negative(dnt_node) is None):
             opinion = self.get_global_delegating_opinion(dnt_node, cnt_node)
         else:
             opinion = self.self_delegating_opinion(cnt_node, dnt_node)

@@ -1,10 +1,12 @@
 import logging
+import os
+import string
+import unicodedata
+import zipfile
 
 from golem.core.simplehash import SimpleHash
 from golem.resource.dirmanager import split_path
 
-import os
-import zipfile
 
 logger = logging.getLogger(__name__)
 
@@ -409,9 +411,6 @@ class TaskResource(object):
     def __str__(self):
         return self.to_string()
 
-
-import unicodedata
-import string
 
 valid_filename_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
 

@@ -140,7 +140,7 @@ class TestIPFSClientMetaclass(unittest.TestCase):
         parent = super(IPFSClient, client)
 
         for name, attribute in client.__dict__.iteritems():
-            if parent.__dict__.has_key(name):
+            if name in parent.__dict__:
                 if type(attribute) == FunctionType and not name.startswith('_'):
                     assert client.__getattribute__(name) is not \
                            parent.__getattribute__(name)

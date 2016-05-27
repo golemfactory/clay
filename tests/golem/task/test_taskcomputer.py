@@ -74,7 +74,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc.task_given(ctd, 10)
         assert tc.task_resource_collected("xyz")
         assert tc.waiting_for_task is None
-        assert len(tc.current_computations) ==  1
+        assert len(tc.current_computations) == 1
         self.__wait_for_tasks(tc)
 
         prev_task_failed_count = task_server.send_task_failed.call_count
