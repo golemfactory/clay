@@ -457,7 +457,8 @@ class TaskServer(PendingConnectionsServer):
         self._mark_connected(conn_id, session.address, session.port)
         self.task_sessions[task_id] = session
         session.send_hello()
-        session.request_task(node_name, task_id, estimated_performance, price, max_resource_size, max_memory_size, num_cores)
+        session.request_task(node_name, task_id, estimated_performance, price, max_resource_size, max_memory_size,
+                             num_cores)
 
     def __connection_for_task_request_failure(self, conn_id, node_name, key_id, task_id, estimated_performance, price,
                                               max_resource_size, max_memory_size, num_cores, *args):
@@ -798,8 +799,8 @@ class TaskServer(PendingConnectionsServer):
 
 
 class WaitingTaskResult(object):
-    def __init__(self, task_id, subtask_id, result, result_type, computing_time, last_sending_trial, delay_time, owner_address,
-                 owner_port, owner_key_id, owner):
+    def __init__(self, task_id, subtask_id, result, result_type, computing_time, last_sending_trial, delay_time,
+                 owner_address, owner_port, owner_key_id, owner):
         self.task_id = task_id
         self.subtask_id = subtask_id
         self.result = result

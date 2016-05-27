@@ -54,7 +54,6 @@ class TaskConnectionsHelper(object):
         self.conn_to_start = dict(filter(lambda(y, z): cur_time - z[2] < self.remove_old_interval,
                                          self.conn_to_start.items()))
 
-
     def cannot_pass_conn_request(self, conn_id):
         """ Inform task server that cannot pass request with given conn id
         :param conn_id: id of a connection that can't be established

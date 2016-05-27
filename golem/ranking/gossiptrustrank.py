@@ -61,7 +61,7 @@ class GossipTrustTest:
 
     def do_aggregation(self):
         self.start_new_cycle()
-        while (True):
+        while True:
             self.aggregation_cycle()
             if self.stop_aggregation():
                 break

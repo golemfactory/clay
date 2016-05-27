@@ -553,7 +553,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def __send_resource_parts_list(self, msg):
         res = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),
-                                                                   resource_types["parts"])
+                                              resource_types["parts"])
         if res is None:
             return
         delta_header, parts_list = res

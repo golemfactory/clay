@@ -336,11 +336,15 @@ class BlenderRenderTask(FrameRenderingTask):
                 min_y = float(parts - start_task) * float(ceiling_height - 1) / float(self.res_y)
                 max_y = float(parts - start_task + 1) * float(ceiling_height - 1) / float(self.res_y)
             else:
-                min_y = float((parts - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task) * (ceiling_height)) / float(self.res_y)
-                max_y = float((parts - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task + 1) * (ceiling_height)) / float(self.res_y)
-        return (min_y, max_y)
-        
-    
+                min_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
+                min_y += (ceiling_subtasks - start_task) * ceiling_height
+                min_y = float(min_y) / float(self.res_y)
+
+                max_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
+                max_y += (ceiling_subtasks - start_task + 1) * ceiling_height
+                max_y = float(max_y) / float(self.res_y)
+        return min_y, max_y
+
     def _get_part_size(self, subtask_id):
         start_task = self.subtasks_given[subtask_id]['start_task']
         if not self.use_frames:

@@ -127,6 +127,7 @@ def make_outer_blend(n, m, res_x, res_y, scene, docker, tmp_dir, output, results
             out, err = run_cmd(cmd)
             results.append(out.splitlines()[-4])
 
+
 def run_cmd(cmd):
     print cmd
     pc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -136,7 +137,7 @@ def run_cmd(cmd):
 
 
 def regenerate_blender_crop_file(crop_file_src, xres, yres, min_x=None, max_x=None, min_y=None, max_y=None,
-                                      filepath=None, n=None, m=None):
+                                 filepath=None, n=None, m=None):
     out = ""
 
     for l in crop_file_src.splitlines():

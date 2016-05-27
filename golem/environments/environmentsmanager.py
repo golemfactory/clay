@@ -13,7 +13,7 @@ class EnvironmentsManager(object):
 
     def load_config(self, datadir):
         """ Load acceptance of environments from the config file
-        :param node_name:
+        :param datadir:
         """
         self.env_config = EnvironmentsConfig.load_config(self.get_environments_to_config(), datadir)
         config_entries = self.env_config.get_config_entries()

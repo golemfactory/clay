@@ -48,7 +48,6 @@ class TestDirManager(TestDirFixture):
         self.assertFalse(os.path.isfile(file1))
         self.assertFalse(os.path.isfile(file3))
         self.assertFalse(os.path.isdir(dir1))
-        
 
     def testGetTaskTemporaryDir(self):
         dm = DirManager(self.path, self.node1)

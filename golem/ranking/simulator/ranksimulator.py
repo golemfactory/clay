@@ -83,10 +83,9 @@ class RankSimulator:
         pass
 
 
-
 class SimpleRankSimulator(RankSimulator):
-    def __init__(self, opt_peers = 3, trust_threshold  = 0.2, nodes_for_task = 2, good_task_reward = 0.1,
-                  bad_task_punishment = 0.2, payment_reward = 0.2, bad_payment_punishment = 0.3):
+    def __init__(self, opt_peers=3, trust_threshold=0.2, nodes_for_task=2, good_task_reward=0.1,
+                 bad_task_punishment=0.2, payment_reward=0.2, bad_payment_punishment=0.3):
         RankSimulator.__init__(self, SimpleRank, opt_peers)
         self.trust_threshold = trust_threshold
         self.nodes_for_task = nodes_for_task

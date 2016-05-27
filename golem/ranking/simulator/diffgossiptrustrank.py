@@ -134,7 +134,7 @@ class DiffGossipTrustRank:
 
         vec_to_send = {}
         for node_id, val in self.working_vec.iteritems():
-            vec_to_send[node_id] = [val[0] / (self.gossip_num), val[1] / (self.gossip_num), val[2] / (self.gossip_num)]
+            vec_to_send[node_id] = [val[0] / self.gossip_num, val[1] / self.gossip_num, val[2] / self.gossip_num]
 
         return [vec_to_send, self.node_id]
 

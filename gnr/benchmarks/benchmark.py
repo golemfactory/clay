@@ -7,7 +7,8 @@ from gnr.renderingtaskstate import RenderingTaskDefinition
 
 logger = logging.getLogger(__name__)
 
-class Benchmark():
+
+class Benchmark(object):
     def __init__(self):
         self.task_definition = RenderingTaskDefinition()
         self.task_definition.max_price = 100
@@ -52,7 +53,7 @@ class Benchmark():
             return False
         img_size = image.size
         expected = self.task_definition.resolution
-        if(img_size[0] == expected[0] and img_size[1] == expected[1]):
+        if img_size[0] == expected[0] and img_size[1] == expected[1]:
             return True
         logger.warning("Bad resolution")
         logger.warning("Expected {}x{}, but got {}x{}".format(expected[0], expected[1],

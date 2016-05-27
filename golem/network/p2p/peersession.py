@@ -345,7 +345,7 @@ class PeerSession(BasicSafeSession):
         self.send(MessagePeers(nodes_info))
 
     def _react_to_rand_val(self, msg):
-        #if self.solve_challenge:
+        # if self.solve_challenge:
         #    return
         if self.rand_val == msg.rand_val:
             self.__set_verified_conn()

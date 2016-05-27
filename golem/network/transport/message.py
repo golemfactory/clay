@@ -163,8 +163,8 @@ class MessageHello(Message):
     METADATA_STR = u"METADATA"
 
     def __init__(self, port=0, node_name=None, client_key_id=None, node_info=None,
-                 rand_val=0, metadata=None, solve_challenge=False, challenge=None, difficulty=0, proto_id=0, client_ver=0, sig="",
-                 timestamp=None, dict_repr=None):
+                 rand_val=0, metadata=None, solve_challenge=False, challenge=None, difficulty=0, proto_id=0,
+                 client_ver=0, sig="", timestamp=None, dict_repr=None):
         """
         Create new introduction message
         :param int port: listening port
@@ -523,7 +523,8 @@ class MessageResourcePeers(Message):
         return {MessageResourcePeers.RESOURCE_PEERS_STR: self.resource_peers}
 
     def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer['node'].__dict__.values()) for peer in self.resource_peers]))
+        return SimpleHash.hash(SimpleSerializer.dumps(
+            [sorted(peer['node'].__dict__.values()) for peer in self.resource_peers]))
 
 
 class MessageDegree(Message):
@@ -1896,6 +1897,7 @@ class MessageNewNodes(Message):
     def dict_repr(self):
         return {MessageNewNodes.NUM_STR: self.num}
 
+
 def init_manager_messages():
     """Add manager messages to registered messages list"""
     MessagePeerStatus()
@@ -1903,6 +1905,7 @@ def init_manager_messages():
     MessageKillAllNodes()
     MessageNewTask()
     MessageNewNodes()
+
 
 def init_messages():
     """Add supported messages to register messages list"""

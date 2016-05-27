@@ -75,5 +75,5 @@ class TestTaskConnectionsHelper(unittest.TestCase):
         time.sleep(1.5)
         tch.sync()
         self.assertEqual(len(tch.conn_to_start), 0)
-      #  self.assertEqual(len(tch.conn_to_set), 0)
+        # self.assertEqual(len(tch.conn_to_set), 0)
 
