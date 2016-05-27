@@ -65,13 +65,15 @@ class ChunkedHTTPClient(HTTPClient):
     """
 
     @pass_defaults
-    def download(self, path, args=[], opts={},
+    def download(self, path, args, opts=None,
                  filepath=None, filename=None,
                  compress=False, archive=True, **kwargs):
         """
         Downloads a file from IPFS to the directory given by :filepath:
         Support for :filename: was added (which replaces file's hash)
         """
+        if opts is None:
+            opts = {}
         method = 'get'
         multihash = args[0]
 
