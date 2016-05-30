@@ -90,7 +90,6 @@ class TestTaskSession(LogTestCase):
         self.assertEqual(ms.task_id, mt.task_id)
 
     def test_send_report_computed_task(self):
-        # FIXME We should make this message simple
         ts = TaskSession(Mock())
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"

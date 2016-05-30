@@ -51,7 +51,7 @@ class SimpleHash(object):
     def hash_file_base64(cls, filename, block_size=2 ** 20):
         """Return sha1 of data from given file encoded with base64
         :param str filename: name of a file that should be read
-        :param int block_size: *Default: 2**20* data will be readen from file in chunks of this size
+        :param int block_size: *Default: 2**20* data will be read from file in chunks of this size
         :return str: base64 encoded sha1 of data from file <filename>
         """
         with open(filename, "r") as f:

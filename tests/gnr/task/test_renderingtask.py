@@ -1,6 +1,9 @@
+from os import makedirs
+
 from golem.tools.testdirfixture import TestDirFixture
 
 from gnr.task.renderingtask import RenderingTask
+from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
 
 
@@ -22,4 +25,24 @@ class TestRenderingTask(TestDirFixture):
                 x, y = rt._get_box_start(*size)
                 assert size[0] <= x <= size[2]
                 assert size[1] <= y <= size[3]
+
+    def test_remove_from_preview(self):
+        rt = self._init_task()
+        rt.subtasks_given["xxyyzz"] = {"start_task": 2, "end_task": 2}
+        tmp_dir = get_tmp_path(rt.header.node_name, rt.header.task_id, rt.root_path)
+        makedirs(tmp_dir)
+        img = rt._open_preview()
+        for i in range(rt.res_x):
+            for j in range(rt.res_y):
+                img.putpixel((i, j), (1, 255, 255))
+        img.save(rt.preview_file_path, "BMP")
+        img.close()
+        rt._remove_from_preview("xxyyzz")
+        img = rt._open_preview()
+        assert img.getpixel((0, 0)) == (1, 255, 255)
+        assert img.getpixel((0, 6)) == (0, 0, 0)
+        assert img.getpixel((412, 11)) == (0, 0, 0)
+        assert img.getpixel((799, 12)) == (1, 255, 255)
+        assert img.getpixel((400, 16)) == (1, 255, 255)
+        img.close()
 

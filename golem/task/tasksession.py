@@ -207,7 +207,6 @@ class TaskSession(MiddlemanSafeSession):
             logger.error("No task_id value in extra_data for received data ")
         self.dropped()
 
-    # TODO Wszystkie parametry klienta powinny zostac zapisane w jednej spojnej klasie
     def request_task(self, node_name, task_id, performance_index, price, max_resource_size, max_memory_size, num_cores):
         """ Inform that node wants to compute given task
         :param str node_name: name of that node
@@ -231,7 +230,7 @@ class TaskSession(MiddlemanSafeSession):
         """
         self.send(MessageGetResource(task_id, pickle.dumps(resource_header)))
 
-    # TODO address, port oraz eth_account powinny byc w node_info (albo w ogole niepotrzebne)
+    # TODO address, port and eth_account should be in node_info (or shouldn't be here at all)
     def send_report_computed_task(self, task_result, address, port, eth_account, node_info):
         """ Send task results after finished computations
         :param WaitingTaskResult task_result: finished computations result with additional information
@@ -267,7 +266,6 @@ class TaskSession(MiddlemanSafeSession):
         """
         self.send(MessageSubtaskResultRejected(subtask_id))
 
-    # TODO: change this method and use it
     def send_message_subtask_accepted(self, subtask_id, reward):
         """ Inform that results pass verification and confirm reward
         :param str subtask_id:
@@ -286,7 +284,7 @@ class TaskSession(MiddlemanSafeSession):
         """
         self.send(MessageStartSessionResponse(conn_id))
 
-    # TODO Moze dest_node nie jest potrzebne i mozna je pobierac z polaczenia?
+    # TODO Maybe dest_node is not necessary?
     def send_middleman(self, asking_node, dest_node, ask_conn_id):
         """ Ask node to become middleman in the communication with other node
         :param Node asking_node: other node information. Middleman should connect with that node.
@@ -529,7 +527,7 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.wait_for_nat_traverse(msg.port, self)
 
     def _react_to_nat_punch_failure(self, msg):
-        pass  # TODO Powiadomienie drugiego wierzcholka o nieudanym rendezvous
+        pass
 
     def send(self, msg, send_unverified=False):
         if not self.is_middleman and not self.verified and not send_unverified:

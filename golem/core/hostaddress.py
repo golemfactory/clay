@@ -8,7 +8,7 @@ from variables import DEFAULT_CONNECT_TO, DEFAULT_CONNECT_TO_PORT
 
 logger = logging.getLogger(__name__)
 
-# Stara metoda, dziala dobrze pod windowsem, ale nie pod linuxem (zwraca glownie 127.0.0.1)
+# Old method that works on Windows, but not on Linux (usually resturn only 127.0.0.1)
 # def ip4_addresses():
 #   return [i[4][0] for i in socket.getaddrinfo(socket.gethostname(), 0, socket.AF_INET)]
 

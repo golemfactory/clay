@@ -180,7 +180,7 @@ class ResourceServer(PendingConnectionsServer):
                 self.client.decrease_trust(key_id, RankingStats.resource)
             return
         if key_id is not None:
-            # Uaktualniamy ranking co 100 zasobow, zeby specjalnie nie zasmiecac sieci
+            # We update ranking after 100 chunks
             self.resource_peers[key_id]['pos_resource'] += 1
             if (self.resource_peers[key_id]['pos_resource'] % 50) == 0:
                 self.client.increase_trust(key_id, RankingStats.resource, 50)

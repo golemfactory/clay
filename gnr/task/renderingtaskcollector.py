@@ -226,6 +226,7 @@ class RenderingTaskCollector:
             final_img.putalpha(final_alpha)
 
         return final_img
+
     def finalize_exr(self, show_progress=False):
         if self.lightest == self.darkest:
             self.lightest = self.darkest + 0.1
@@ -281,16 +282,9 @@ class RenderingTaskCollector:
             if show_progress:
                 print_progress(i, len(self.accepted_img_files))        
         return final_img
+
     def _paste_image(self, final_img, new_part, num):
         img_offset = Image.new("RGB", (self.width, self.height))
         offset = int(math.floor(num * float(self.height) / float(len(self.accepted_img_files))))
         img_offset.paste(new_part, (0, offset))
         return ImageChops.add(final_img, img_offset)
-
-
-# klasa powinna miec add task (ktore otwiera i liczy min/max oraz update na tej podstawie swojego stanu)
-#  oraz dodaje chunk do listy i tyle - potem usuwa
-# finalize - czyli po ostatnim chunku konwertuje na bazie min/max po kolei wszystkie chunki (ale nie otwiera
-# wszystkich, bo na to jest za malo miejsca)
-# kazdy skonwertowany dodaje od razu do final image i tylko ten final jest trzymany w pamieci - troche wolniej bedzie,
-# ale za to nie zabraknie RAMU teraz obrazek fullhd podzielony na 1000-2000 chunkow wywali manager pamieci

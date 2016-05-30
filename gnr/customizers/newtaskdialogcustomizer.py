@@ -134,7 +134,7 @@ class NewTaskDialogCustomizer(Customizer):
                 self.add_task_resource_dialog_customizer.gui.ui.folderTreeView.setExpanded(model.index(path_head), True)
                 path_head, path_tail = os.path.split(path_head)
 
-        # TODO
+        # TODO Better model management would be nice
         self.add_task_resource_dialog_customizer.gui.ui.folderTreeView.model().addStartFiles(definition.resources)
         self.gui.ui.resourceFilesLabel.setText(u"{}".format(len(self.add_task_resource_dialog_customizer.resources)))
         # for res in definition.resources:
