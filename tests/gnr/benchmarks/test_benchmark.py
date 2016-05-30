@@ -8,6 +8,7 @@ from gnr.renderingtaskstate import RenderingTaskDefinition
 
 from gnr.renderingdirmanager import get_benchmarks_path
 
+
 class TestBlenderBenchmark(TempDirFixture):
     benchmark = Benchmark()
     
@@ -51,4 +52,3 @@ class TestBlenderBenchmark(TempDirFixture):
             self.assertFalse(self.verify_log_helper(fc))
         for fc in ["123", "erro r", "asd sda", "sad 12 sad;"]:
             self.assertTrue(self.verify_log_helper(fc))
-            

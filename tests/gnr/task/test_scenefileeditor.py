@@ -45,13 +45,3 @@ class TestSceneFileEditor(TestDirFixture):
         assert len(re.findall('"bool write_exr" \["false"\]', out)) == 1
         out = regenerate_lux_file(scene_file_src2, xres, yres, halttime, haltspp, writeinterval, crop, "exr")
         assert len(re.findall('"bool write_exr" \["true"\]', out)) == 1
-
-
-
-
-        
-        
-        
-        
-        
-        

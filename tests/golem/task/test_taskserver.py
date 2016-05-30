@@ -1,4 +1,7 @@
-from mock import Mock
+import uuid
+
+import time
+from mock import Mock, MagicMock
 from golem.task.taskserver import TaskServer, WaitingTaskResult, TaskConnTypes, logger
 from golem.task.taskbase import ComputeTaskDef
 from golem.network.p2p.node import Node
@@ -159,6 +162,36 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.traverse_nat("ABC", "10.10.10.10", 1312, 310319041904, "DEF")
         self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].address,  "10.10.10.10")
         self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].port,  1312)
+
+    def test_forwarded_sessions(self):
+        ccd = ClientConfigDescriptor()
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
+        ts.network = Mock()
+
+        key_id = str(uuid.uuid4())
+        conn_id = str(uuid.uuid4())
+        subtask_id = str(uuid.uuid4())
+
+        ts.add_forwarded_session(key_id, conn_id)
+        assert len(ts.forwarded_sessions) == 1
+
+        ts.forwarded_sessions[key_id]['time'] = 0
+        ts._sync_forwarded_sessions()
+        assert len(ts.forwarded_sessions) == 0
+
+        ts.add_forwarded_session(key_id, conn_id)
+        ts.forwarded_sessions[key_id] = None
+        ts._sync_forwarded_sessions()
+        assert len(ts.forwarded_sessions) == 0
+
+        session = MagicMock()
+        session.address = '127.0.0.1'
+        session.port = 65535
+
+        ts.conn_established_for_type[TaskConnTypes.TaskFailure](
+            session, conn_id, key_id, subtask_id, "None"
+        )
+        assert ts.task_sessions[subtask_id] == session
 
     @staticmethod
     def __get_example_task_header():

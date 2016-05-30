@@ -45,7 +45,6 @@ def create_client(datadir=None, transaction_system=False, connect_to_known_hosts
             raise AttributeError(
                 "Can't override nonexistent config attribute '{}'".format(key))
 
-    logger.info("Adding tasks {}".format(app_config.get_add_tasks()))
     logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
     return Client(config_desc, datadir=datadir, config=app_config,
                   transaction_system=transaction_system,
@@ -79,12 +78,8 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
         for l in self.client.listeners:
             l.task_updated(task_id)
 
-    def task_finished(self, task_id):
-        self.client.task_finished(task_id)
-
-
 class Client:
-    def __init__(self, config_desc, datadir, config="", transaction_system=False, connect_to_known_hosts=True):
+    def __init__(self, config_desc, datadir, config=None, transaction_system=False, connect_to_known_hosts=True):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
@@ -102,7 +97,6 @@ class Client:
         self.p2pservice = None
 
         self.task_server = None
-        self.task_adder_server = None
         self.last_nss_time = time.time()
 
         self.last_node_state_snapshot = None
@@ -175,17 +169,8 @@ class Client:
         logger.debug("P2pservice connecting to {} on port {}".format(socket_address.address, socket_address.port))
         self.p2pservice.connect(socket_address)
 
-    def run_add_task_server(self):
-        from PluginServer import start_task_adder_server
-        from multiprocessing import Process, freeze_support
-        freeze_support()
-        self.task_adder_server = Process(target=start_task_adder_server, args=(self.get_plugin_port(),))
-        self.task_adder_server.start()
-
     def quit(self):
         self.task_server.quit()
-        if self.task_adder_server:
-            self.task_adder_server.terminate()
 
     def key_changed(self):
         self.node.key = self.keys_auth.get_key_id()
@@ -193,7 +178,7 @@ class Client:
         self.p2pservice.key_changed()
 
     def stop_network(self):
-        # FIXME: Pewnie cos tu trzeba jeszcze dodac. Zamykanie serwera i wysylanie DisconnectPackege
+        # FIXME: Implement this method proberly - send disconnect package, close connections etc.
         self.p2pservice = None
         self.task_server = None
         self.nodes_manager_client = None
@@ -356,13 +341,6 @@ class Client:
     def push_local_rank(self, node_id, loc_rank):
         self.p2pservice.push_local_rank(node_id, loc_rank)
 
-    def get_plugin_port(self):
-        return self.config_desc.plugin_port
-
-    def task_finished(self, task_id):
-        # FIXME: Remove. Not needed.
-        pass
-
     def check_payments(self):
         if not self.transaction_system:
             return
@@ -448,7 +426,7 @@ class Client:
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()
         if len(progress) > 0:
-            msg = "Counting {} subtask(s):".format(len(progress))
+            msg = "Computing {} subtask(s):".format(len(progress))
             for k, v in progress.iteritems():
                 msg = "{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
         elif self.config_desc.accept_tasks:
@@ -476,5 +454,5 @@ class Client:
                           .format(self.datadir))
 
     def _unlock_datadir(self):
-        # FIXME: Client should have close() method?
+        # FIXME: Client should have close() method
         self.__datadir_lock.close()  # Closing file unlocks it.

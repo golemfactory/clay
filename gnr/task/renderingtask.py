@@ -157,7 +157,7 @@ class RenderingTask(GNRTask):
     @check_subtask_id_wrapper
     def _remove_from_preview(self, subtask_id):
         empty_color = (0, 0, 0)
-        if isinstance(self.preview_file_path, list):  # FIXME
+        if isinstance(self.preview_file_path, list):  # FIXME Add possibility to remove subtask from frame
             return
         img = self._open_preview()
         self._mark_task_area(self.subtasks_given[subtask_id], img, empty_color)
@@ -329,11 +329,11 @@ class RenderingTask(GNRTask):
         return cmp_file, new_start_box
 
     def _get_box_start(self, x0, y0, x1, y1):
-        ver_x = min(self.verification_options.box_size[0], x1)
-        ver_y = min(self.verification_options.box_size[1], y1)
+        ver_x = min(self.verification_options.box_size[0], x1 - x0)
+        ver_y = min(self.verification_options.box_size[1], y1 - y0)
         start_x = random.randint(x0, x1 - ver_x)
         start_y = random.randint(y0, y1 - ver_y)
-        return (start_x, start_y)
+        return start_x, start_y
 
     @check_subtask_id_wrapper
     def _change_scope(self, subtask_id, start_box, tr_file):

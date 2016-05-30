@@ -75,6 +75,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     report("Starting in {}".format(datadir))
     client = golem.client.start_client(datadir, transaction_system=False,
                                        connect_to_known_hosts=False)
+    client.task_server.task_computer.support_direct_computation = True
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     class DummyEnvironment(Environment):

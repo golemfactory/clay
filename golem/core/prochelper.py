@@ -50,7 +50,7 @@ class ProcessService(object):
     def register_self(self, extra_data=None):
         """ Register new application instance in process control file. Remove inactive process and get earliest
         available number
-        :param extra_data: additional informations thath should be saved
+        :param extra_data: additional information that should be saved
         :return int: process number
         """
         spid = int(os.getpid())

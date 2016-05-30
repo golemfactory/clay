@@ -152,18 +152,16 @@ class PendingConnectionsServer(TCPServer):
             listen_info = TCPListenInfo(pl.port, established_callback=pl.established, failure_callback=pl.failure)
             self.network.listen(listen_info, **pl.args)
             # self._listenOnPort(pl.port, pl.established, pl.failure, pl.args)
-            self.open_listenings[pl.id] = pl  # TODO Powinny umierac jesli zbyt dlugo sa aktywne
+            self.open_listenings[pl.id] = pl  # TODO They should die after some time
 
         conns = [pen for pen in self.pending_connections.itervalues() if
                  pen.status in PendingConnection.connect_statuses]
-
-        # TODO Zmiany dla innych statusow
 
         for conn in conns:
             if len(conn.socket_addresses) == 0:
                 conn.status = PenConnStatus.WaitingAlt
                 conn.failure(conn.id, **conn.args)
-                # TODO Dalsze dzialanie w razie niepowodzenia
+                # TODO Implement proper way to deal with failures
             else:
                 conn.status = PenConnStatus.Waiting
                 conn.last_try_time = time.time()

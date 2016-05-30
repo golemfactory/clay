@@ -54,7 +54,7 @@ class DirManager(object):
                     os.remove(path)
                 if os.path.isdir(path):
                     self.clear_dir(path, undeletable)
-                    if os.listdir(path) == []:
+                    if not os.listdir(path):
                         shutil.rmtree(path, ignore_errors=True)
 
     def create_dir(self, full_path):
@@ -94,6 +94,7 @@ class DirManager(object):
 
     def get_task_temporary_dir(self, task_id, create=True):
         """ Get temporary directory
+        :param task_id:
         :param bool create: *Default: True* should directory be created if it doesn't exist
         :return str: path to directory
         """
@@ -102,6 +103,7 @@ class DirManager(object):
 
     def get_task_resource_dir(self, task_id, create=True):
         """ Get task resource directory
+        :param task_id:
         :param bool create: *Default: True* should directory be created if it doesn't exist
         :return str: path to directory
         """
@@ -110,6 +112,7 @@ class DirManager(object):
 
     def get_task_output_dir(self, task_id, create=True):
         """ Get task output directory
+        :param task_id:
         :param bool create: *Default: True* should directory be created if it doesn't exist
         :return str: path to directory
         """
@@ -125,11 +128,13 @@ class DirManager(object):
             return next(os.walk(task_dir))[1]
         return []
 
-    def clear_temporary(self, task_id, undeletable=[]):
+    def clear_temporary(self, task_id, undeletable=None):
         """ Remove everything from temporary directory for given task
         :param task_id: temporary directory of a task with that id should be cleared
         :param undeletable is list of files/directories which shouldn't be removed
         """
+        if undeletable is None:
+            undeletable = []
         self.clear_dir(self.__get_tmp_path(task_id), undeletable)
 
     def clear_resource(self, task_id):

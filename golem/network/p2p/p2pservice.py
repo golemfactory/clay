@@ -62,7 +62,6 @@ class P2PService(PendingConnectionsServer):
         self.base_difficulty = BASE_DIFFICULTY
         self.connect_to_known_hosts = connect_to_known_hosts
 
-        # TODO: all peers powinno zostac przeniesione do peer keepera
         # Peers options
         self.peers = {}  # active peers
         self.peer_order = []  # peer connection order
@@ -98,7 +97,7 @@ class P2PService(PendingConnectionsServer):
         if not self.connect_to_known_hosts:
             return
 
-        for host in KnownHosts.select(KnownHosts.is_seed == False):
+        for host in KnownHosts.select().where(KnownHosts.is_seed == False):
             ip_address = host.ip_address
             port = host.port
 
@@ -529,7 +528,6 @@ class P2PService(PendingConnectionsServer):
                                "node_name": peer.node_name})
         return peer_infos
 
-
     # Resource functions
     #############################
     def set_resource_server(self, resource_server):
@@ -636,10 +634,13 @@ class P2PService(PendingConnectionsServer):
                 peer.send_set_task_session(key_id, node_info, conn_id, super_node_info)
                 msg_snd = True
 
-        # TODO Tylko do wierzcholkow blizej supernode'ow / blizszych / lepszych wzgledem topologii sieci
+        if msg_snd and node_info.key == self.node.key:
+            self.task_server.add_forwarded_session(key_id, conn_id)
+
+        # TODO This method should be only sent to supernodes or nodes that are closer to the target node
 
         if not msg_snd and node_info.key == self.get_key_id():
-            self.task_connections_helper.final_conn_failure(conn_id)
+            self.task_connections_helper.cannot_pass_conn_request(conn_id)
 
     def inform_about_task_nat_hole(self, key_id, rv_key_id, addr, port, ans_conn_id):
         """
@@ -663,13 +664,11 @@ class P2PService(PendingConnectionsServer):
         for peer in self.peers.itervalues():
             if peer.key_id == key_id:
                 peer.send_inform_about_nat_traverse_failure(res_key_id, conn_id)
-                # TODO CO jak juz nie ma polaczenia?
 
     def send_nat_traverse_failure(self, key_id, conn_id):
         for peer in self.peers.itervalues():
             if peer.key_id == key_id:
                 peer.send_nat_traverse_failure(conn_id)
-                # TODO Co jak nie ma tego polaczenia
 
     def traverse_nat_failure(self, conn_id):
         self.task_server.traverse_nat_failure(conn_id)

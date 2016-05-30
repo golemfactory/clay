@@ -8,6 +8,7 @@ from gnr.task.blenderrendertask import BlenderRendererOptions
 
 from gnr.renderingdirmanager import get_benchmarks_path
 
+
 class TestBlenderBenchmark(unittest.TestCase):
     def setUp(self):
         self.bb = BlenderBenchmark()
@@ -29,5 +30,3 @@ class TestBlenderBenchmark(unittest.TestCase):
         self.assertTrue(self.bb.task_definition.task_id == u"{}".format("blender_benchmark"))
         self.assertTrue(os.path.isfile(self.bb.task_definition.main_scene_file))
         self.assertTrue(os.path.isfile(self.bb.task_definition.main_program_file))
-        
-        

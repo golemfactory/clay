@@ -1,15 +1,8 @@
-import imp
 import logging
 import os
-import sys
 import time
 import unittest
 from contextlib import contextmanager
-from threading import Thread
-
-import twisted
-from twisted.internet.selectreactor import SelectReactor
-from twisted.internet.task import Clock
 
 from golem.core.databuffer import DataBuffer
 from golem.network.transport.message import Message, MessageHello
@@ -51,6 +44,7 @@ class AProtocol(object, SessionProtocol):
 
 
 timeout = 20
+
 
 @contextmanager
 def async_scope(a, idx=0):

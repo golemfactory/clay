@@ -163,8 +163,8 @@ class MessageHello(Message):
     METADATA_STR = u"METADATA"
 
     def __init__(self, port=0, node_name=None, client_key_id=None, node_info=None,
-                 rand_val=0, metadata=None, solve_challenge=False, challenge=None, difficulty=0, proto_id=0, client_ver=0, sig="",
-                 timestamp=None, dict_repr=None):
+                 rand_val=0, metadata=None, solve_challenge=False, challenge=None, difficulty=0, proto_id=0,
+                 client_ver=0, sig="", timestamp=None, dict_repr=None):
         """
         Create new introduction message
         :param int port: listening port
@@ -523,7 +523,8 @@ class MessageResourcePeers(Message):
         return {MessageResourcePeers.RESOURCE_PEERS_STR: self.resource_peers}
 
     def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(peer['node'].__dict__.values()) for peer in self.resource_peers]))
+        return SimpleHash.hash(SimpleSerializer.dumps(
+            [sorted(peer['node'].__dict__.values()) for peer in self.resource_peers]))
 
 
 class MessageDegree(Message):
@@ -940,6 +941,7 @@ class MessageCannotAssignTask(Message):
 
 
 class MessageReportComputedTask(Message):
+    # FIXME this message should be simpler
     Type = TASK_MSG_BASE + 4
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
@@ -1770,140 +1772,6 @@ class MessageResourceHashList(Message):
         return {MessageResourceHashList.RESOURCES_STR: self.resources}
 
 
-MANAGER_MSG_BASE = 5000
-
-
-class MessagePeerStatus(Message):
-    Type = MANAGER_MSG_BASE + 1
-
-    ID_STR = u"ID"
-    DATA_STR = u"DATA"
-
-    def __init__(self, id_="", data="", sig="", timestamp=None, dict_repr=None):
-        """
-        Create message with peer status
-        :param uuid id_: peer id
-        :param str data: serialized status snapshot
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        Message.__init__(self, MessagePeerStatus.Type, sig, timestamp)
-
-        self.id = id_
-        self.data = data
-
-        if dict_repr:
-            self.id = dict_repr[self.ID_STR]
-            self.data = dict_repr[self.DATA_STR]
-
-    def dict_repr(self):
-        return {self.ID_STR: self.id, self.DATA_STR: self.data}
-
-    def __str__(self):
-        return "{} {}".format(self.id, self.data)
-
-
-class MessageNewTask(Message):
-    Type = MANAGER_MSG_BASE + 2
-
-    DATA_STR = u"DATA"
-
-    def __init__(self, data="", sig="", timestamp=None, dict_repr=None):
-        """
-        Create message that adds new task to network
-        :param str data: serialized Task
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        Message.__init__(self, MessageNewTask.Type, sig, timestamp)
-
-        self.data = data
-
-        if dict_repr:
-            self.data = dict_repr[self.DATA_STR]
-
-    def dict_repr(self):
-        return {self.DATA_STR: self.data}
-
-    def __str__(self):
-        return "{}".format(self.data)
-
-
-class MessageKillNode(Message):
-    Type = MANAGER_MSG_BASE + 3
-
-    KILL_STR = u"KILL"
-
-    def __init__(self, sig="", timestamp=None, dict_repr=None):
-        """
-        Create message with information that this node should be killed
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        Message.__init__(self, MessageKillNode.Type, sig, timestamp)
-
-        if dict_repr:
-            assert dict_repr.get(MessageKillNode.KILL_STR)
-
-    def dict_repr(self):
-        return {MessageKillNode.KILL_STR: True}
-
-
-class MessageKillAllNodes(Message):
-    Type = MANAGER_MSG_BASE + 4
-
-    KILLALL_STR = u"KILLALL"
-
-    def __init__(self, sig="", timestamp=None, dict_repr=None):
-        """
-        Create message with information that all nodes on this machine should be killed
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        Message.__init__(self, MessageKillAllNodes.Type, sig, timestamp)
-
-        if dict_repr:
-            assert dict_repr.get(MessageKillAllNodes.KILLALL_STR)
-
-    def dict_repr(self):
-        return {MessageKillAllNodes.KILLALL_STR: True}
-
-
-class MessageNewNodes(Message):
-    Type = MANAGER_MSG_BASE + 5
-
-    NUM_STR = u"NUM"
-
-    def __init__(self, num=0, sig="", timestamp=None, dict_repr=None):
-        """
-        Create request to start new nodes on this machine
-        :param int num: how many nodes should be started
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        Message.__init__(self, MessageNewNodes.Type, sig, timestamp)
-
-        self.num = num
-
-        if dict_repr:
-            self.num = dict_repr[self.NUM_STR]
-
-    def dict_repr(self):
-        return {MessageNewNodes.NUM_STR: self.num}
-
-def init_manager_messages():
-    """Add manager messages to registered messages list"""
-    MessagePeerStatus()
-    MessageKillNode()
-    MessageKillAllNodes()
-    MessageNewTask()
-    MessageNewNodes()
-
 def init_messages():
     """Add supported messages to register messages list"""
     # Basic messages
@@ -1968,36 +1836,3 @@ def init_messages():
     MessagePullAnswer()
     MessageSendResource()
     MessageResourceHashList()
-
-    # Manager messages
-    init_manager_messages()
-
-
-if __name__ == "__main__":
-
-    hem = MessageHello(1, "id2")
-    pim = MessagePing()
-    pom = MessagePong()
-    dcm = MessageDisconnect(3)
-
-    print hem
-    print pim
-    print pom
-    print dcm
-
-    db = DataBuffer()
-    db.append_len_prefixed_string(hem.serialize())
-    db.append_len_prefixed_string(pim.serialize())
-    db.append_len_prefixed_string(pom.serialize())
-    db.append_len_prefixed_string(dcm.serialize())
-
-    print db.data_size()
-    streamedData = db.read_all()
-    print len(streamedData)
-
-    db.append_string(streamedData)
-
-    messages = Message.deserialize(db)
-
-    for msg in messages:
-        print msg

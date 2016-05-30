@@ -53,6 +53,7 @@ class TaskComputer(object):
         self.delta = None
         self.task_timeout = None
         self.last_task_timeout_checking = None
+        self.support_direct_computation = False
         self.compute_tasks = task_server.config_desc.accept_tasks
 
     def task_given(self, ctd, subtask_timeout):
@@ -146,8 +147,9 @@ class TaskComputer(object):
                                                   subtask.task_owner, self.node_name)
             elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
                 logger.info("Task {} computed".format(subtask_id))
-                self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_, subtask.return_address,
-                                              subtask.return_port, subtask.key_id, subtask.task_owner, self.node_name)
+                self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_,
+                                              subtask.return_address, subtask.return_port, subtask.key_id,
+                                              subtask.task_owner, self.node_name)
             else:
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",
                                                   subtask.return_address, subtask.return_port, subtask.key_id,
@@ -247,10 +249,20 @@ class TaskComputer(object):
             tt = DockerTaskThread(self, subtask_id, docker_images, working_dir,
                                   src_code, extra_data, short_desc,
                                   resource_dir, temp_dir, task_timeout)
-        else:
+        elif self.support_direct_computation:
             tt = PyTaskThread(self, subtask_id, working_dir, src_code,
                               extra_data, short_desc, resource_dir, temp_dir,
                               task_timeout)
+        else:
+            logger.error("Cannot run PyTaskThread in this version")
+            subtask = self.assigned_subtasks.get(subtask_id)
+            if subtask:
+                del self.assigned_subtasks[subtask_id]
+            self.task_server.send_task_failed(subtask_id, subtask.task_id, "Host direct task not supported",
+                                              subtask.return_address, subtask.return_port, subtask.key_id,
+                                              subtask.task_owner, self.node_name)
+            return
+
         tt.setDaemon(True)
         self.current_computations.append(tt)
         tt.start()

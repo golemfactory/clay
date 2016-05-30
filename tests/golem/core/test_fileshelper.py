@@ -43,7 +43,7 @@ class TestDirSize(TestDirFixture):
             self.assertGreaterEqual(new_size, size)
 
             errors = []
-            get_dir_size(self.testdir, report_error = errors.append)
+            get_dir_size(self.testdir, report_error=errors.append)
             self.assertEqual(len(errors), 1)
             self.assertIs(type(errors[0]), OSError)
 

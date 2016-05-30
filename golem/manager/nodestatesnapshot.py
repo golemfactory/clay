@@ -49,8 +49,6 @@ class LocalTaskStateSnapshot:
         return self.task_short_desc
 
 
-# FIXME: REGISTER number of local and remote tasks processed by current node (and number of successes and failures as well) - and show it in this manager
-# FIXME: also add a boolean flag indicating whether there is any active local/rempote task being calculated
 class NodeStateSnapshot:
     def __init__(self, running=True, uid=0, peers_num=0, tasks_num=0, endpoint_addr="", endpoint_port="",
                  last_network_messages=None, last_task_messages=None, tcss=None, ltss=None):
@@ -110,18 +108,8 @@ class NodeStateSnapshot:
         return self.local_task_state
 
     def __str__(self):
-        return "Nothing here"
-        # ret = str(self.get_uid())+ " ----- \n" + "peers count: " + str(self.get_peers_num()) + "\n" + "tasks count: " + str(self.get_tasks_num()) + "\n"
-        # ret += "remote progress: " + str(self.getRemoteProgress()) + "\n" + "lockal progress: " + str(self.getLocalProgress()) + "\n"
-        # ret += "last net comunication: " + str(self.get_last_network_messages()) + "\n"
-        # ret += "last task comunication: " + str(self.get_last_task_messages())
-        # return ret
-
-
-if __name__ == "__main__":
-    ns = NodeStateSnapshot("some uiid", 0.2, 0.7)
-
-    print ns.get_uid()
-    print ns.get_formatted_timestamp()
-    print ns.getLocalProgress()
-    print ns.getRemoteProgress()
+        ret = str(self.get_uid()) + " ----- \n" + "peers count: " + str(self.get_peers_num()) + "\n"
+        ret += "tasks count: " + str(self.get_tasks_num()) + "\n"
+        ret += "last net communication: " + str(self.get_last_network_messages()) + "\n"
+        ret += "last task communication: " + str(self.get_last_task_messages())
+        return ret

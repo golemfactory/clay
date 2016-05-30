@@ -4,11 +4,12 @@ import time
 from mock import MagicMock
 
 from golem.task.taskbase import ComputeTaskDef
-from golem.task.taskcomputer import TaskComputer, PyTaskThread
+from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
+from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
 
-class TestTaskComputer(TestDirFixture):
+class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_init(self):
         task_server = MagicMock()
         task_server.get_task_computer_root.return_value = self.path
@@ -44,6 +45,7 @@ class TestTaskComputer(TestDirFixture):
         task_server = MagicMock()
         task_server.get_task_computer_root.return_value = self.path
         tc = TaskComputer("ABC", task_server)
+
         ctd = ComputeTaskDef()
         ctd.task_id = "xyz"
         ctd.subtask_id = "xxyyzz"
@@ -61,16 +63,25 @@ class TestTaskComputer(TestDirFixture):
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
         tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
                                                            "10.10.10.10", 10203, "key", "owner")
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        assert tc.task_resource_collected("xyz")
         tc.task_server.unpack_delta.assert_called_with(tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
-        self.assertIsNone(tc.waiting_for_task)
-        self.assertEqual(len(tc.current_computations), 1)
+        assert len(tc.current_computations) == 0
+        assert tc.assigned_subtasks.get("xxyyzz") is None
+        task_server.send_task_failed.assert_called_with("xxyyzz", "xyz", "Host direct task not supported",
+                                                        "10.10.10.10", 10203, "key", "owner", "ABC")
+
+        tc.support_direct_computation = True
+        tc.task_given(ctd, 10)
+        assert tc.task_resource_collected("xyz")
+        assert tc.waiting_for_task is None
+        assert len(tc.current_computations) == 1
         self.__wait_for_tasks(tc)
 
+        prev_task_failed_count = task_server.send_task_failed.call_count
         self.assertFalse(tc.counting_task)
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.assigned_subtasks.get("xxyyzz"))
-        task_server.send_task_failed.assert_not_called()
+        assert task_server.send_task_failed.call_count == prev_task_failed_count
         self.assertTrue(task_server.send_results.called)
         args = task_server.send_results.call_args[0]
         self.assertEqual(args[0], "xxyyzz")
