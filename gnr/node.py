@@ -79,7 +79,7 @@ class GNRNode(Node):
 
     @staticmethod
     def _get_task_builder(task_def):
-        # FIXME: temporary solution.
+        # FIXME: Add information about builder in task_def
         if task_def.main_scene_file.endswith('.blend'):
             return BlenderRenderTaskBuilder
         else:
@@ -144,7 +144,7 @@ def node_cli():
               callback=parse_task_file,
               help="Request task from file")
 def start(datadir, node_address, peer, task, **extra_args):
-    del extra_args  # FIXME: What is this?
+    del extra_args
 
     node = GNRNode(datadir=datadir, node_address=node_address)
     node.initialize()

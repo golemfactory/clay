@@ -62,7 +62,6 @@ class P2PService(PendingConnectionsServer):
         self.base_difficulty = BASE_DIFFICULTY
         self.connect_to_known_hosts = connect_to_known_hosts
 
-        # TODO: all peers powinno zostac przeniesione do peer keepera
         # Peers options
         self.peers = {}  # active peers
         self.peer_order = []  # peer connection order
@@ -665,13 +664,11 @@ class P2PService(PendingConnectionsServer):
         for peer in self.peers.itervalues():
             if peer.key_id == key_id:
                 peer.send_inform_about_nat_traverse_failure(res_key_id, conn_id)
-                # TODO CO jak juz nie ma polaczenia?
 
     def send_nat_traverse_failure(self, key_id, conn_id):
         for peer in self.peers.itervalues():
             if peer.key_id == key_id:
                 peer.send_nat_traverse_failure(conn_id)
-                # TODO Co jak nie ma tego polaczenia
 
     def traverse_nat_failure(self, conn_id):
         self.task_server.traverse_nat_failure(conn_id)

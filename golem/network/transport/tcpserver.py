@@ -157,8 +157,6 @@ class PendingConnectionsServer(TCPServer):
         conns = [pen for pen in self.pending_connections.itervalues() if
                  pen.status in PendingConnection.connect_statuses]
 
-        # TODO Zmiany dla innych statusow
-
         for conn in conns:
             if len(conn.socket_addresses) == 0:
                 conn.status = PenConnStatus.WaitingAlt

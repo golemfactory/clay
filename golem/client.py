@@ -78,10 +78,6 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
         for l in self.client.listeners:
             l.task_updated(task_id)
 
-    def task_finished(self, task_id):
-        self.client.task_finished(task_id)
-
-
 class Client:
     def __init__(self, config_desc, datadir, config=None, transaction_system=False, connect_to_known_hosts=True):
         self.config_desc = config_desc
@@ -182,7 +178,7 @@ class Client:
         self.p2pservice.key_changed()
 
     def stop_network(self):
-        # FIXME: Pewnie cos tu trzeba jeszcze dodac. Zamykanie serwera i wysylanie DisconnectPackege
+        # FIXME: Implement this method proberly - send disconnect package, close connections etc.
         self.p2pservice = None
         self.task_server = None
         self.nodes_manager_client = None
@@ -345,10 +341,6 @@ class Client:
     def push_local_rank(self, node_id, loc_rank):
         self.p2pservice.push_local_rank(node_id, loc_rank)
 
-    def task_finished(self, task_id):
-        # FIXME: Remove. Not needed.
-        pass
-
     def check_payments(self):
         if not self.transaction_system:
             return
@@ -462,5 +454,5 @@ class Client:
                           .format(self.datadir))
 
     def _unlock_datadir(self):
-        # FIXME: Client should have close() method?
+        # FIXME: Client should have close() method
         self.__datadir_lock.close()  # Closing file unlocks it.

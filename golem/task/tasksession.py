@@ -207,7 +207,6 @@ class TaskSession(MiddlemanSafeSession):
             logger.error("No task_id value in extra_data for received data ")
         self.dropped()
 
-    # TODO Wszystkie parametry klienta powinny zostac zapisane w jednej spojnej klasie
     def request_task(self, node_name, task_id, performance_index, price, max_resource_size, max_memory_size, num_cores):
         """ Inform that node wants to compute given task
         :param str node_name: name of that node
@@ -267,7 +266,6 @@ class TaskSession(MiddlemanSafeSession):
         """
         self.send(MessageSubtaskResultRejected(subtask_id))
 
-    # TODO: change this method and use it
     def send_message_subtask_accepted(self, subtask_id, reward):
         """ Inform that results pass verification and confirm reward
         :param str subtask_id:
@@ -529,7 +527,7 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.wait_for_nat_traverse(msg.port, self)
 
     def _react_to_nat_punch_failure(self, msg):
-        pass  # TODO Powiadomienie drugiego wierzcholka o nieudanym rendezvous
+        pass
 
     def send(self, msg, send_unverified=False):
         if not self.is_middleman and not self.verified and not send_unverified:

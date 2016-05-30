@@ -941,6 +941,7 @@ class MessageCannotAssignTask(Message):
 
 
 class MessageReportComputedTask(Message):
+    # FIXME this message should be simpler
     Type = TASK_MSG_BASE + 4
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"

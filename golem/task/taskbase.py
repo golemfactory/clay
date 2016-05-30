@@ -17,7 +17,7 @@ class TaskHeader(object):
         self.task_owner_address = task_owner_address
         self.task_owner_port = task_owner_port
         self.task_owner = task_owner
-        # TODO change somehow last_checking param
+        # TODO change last_checking param
         self.last_checking = time.time()
         self.ttl = ttl
         self.subtask_timeout = subtask_timeout
