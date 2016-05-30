@@ -21,7 +21,7 @@ class TestTaskChunkStateSnapshot(TestCase):
         assert tcss.get_chunk_short_descr() == "some work"
 
 
-class TestLocalTaskStateSnaphot(TestCase):
+class TestLocalTaskStateSnapshot(TestCase):
     def test_state(self):
         ltss = LocalTaskStateSnapshot("xyz", 1000, 200, 0.8, "very big task")
         assert isinstance(ltss, LocalTaskStateSnapshot)

@@ -230,7 +230,7 @@ class TaskSession(MiddlemanSafeSession):
         """
         self.send(MessageGetResource(task_id, pickle.dumps(resource_header)))
 
-    # TODO address, port oraz eth_account powinny byc w node_info (albo w ogole niepotrzebne)
+    # TODO address, port and eth_account should be in node_info (or shouldn't be here at all)
     def send_report_computed_task(self, task_result, address, port, eth_account, node_info):
         """ Send task results after finished computations
         :param WaitingTaskResult task_result: finished computations result with additional information
@@ -284,7 +284,7 @@ class TaskSession(MiddlemanSafeSession):
         """
         self.send(MessageStartSessionResponse(conn_id))
 
-    # TODO Moze dest_node nie jest potrzebne i mozna je pobierac z polaczenia?
+    # TODO Maybe dest_node is not necessary?
     def send_middleman(self, asking_node, dest_node, ask_conn_id):
         """ Ask node to become middleman in the communication with other node
         :param Node asking_node: other node information. Middleman should connect with that node.

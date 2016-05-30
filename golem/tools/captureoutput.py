@@ -5,7 +5,7 @@ from StringIO import StringIO
 
 @contextmanager
 def captured_output():
-    # caputre output function for tests
+    # capture output function for tests
     new_out, new_err = StringIO(), StringIO()
     old_out, old_err = sys.stdout, sys.stderr
     try:

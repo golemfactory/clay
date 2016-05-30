@@ -51,7 +51,7 @@ class IncomesDatabase(object):
                 self.__change_income(task_id, node_id, value, expected_value, state)
 
     def change_state(self, task_id, from_node, state):
-        """ Change state of payment that node <from_node> should have made for computin task <task_id>
+        """ Change state of payment that node <from_node> should have made for computing task <task_id>
         :param str task_id: computed task
         :param str from_node: node whose payment's state we want to change
         :param state: new state

@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>3</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -358,7 +358,7 @@
                  <item row="0" column="0">
                   <widget class="QLabel" name="label_60">
                    <property name="toolTip">
-                    <string>Identificator of this task</string>
+                    <string>Identifier of this task</string>
                    </property>
                    <property name="text">
                     <string>Task Id</string>
@@ -368,7 +368,7 @@
                  <item row="0" column="1">
                   <widget class="QLabel" name="taskIdLabel">
                    <property name="text">
-                    <string>TextLabel</string>
+                    <string/>
                    </property>
                   </widget>
                  </item>
@@ -695,9 +695,9 @@
                    <widget class="QLineEdit" name="taskMaxPriceLineEdit"/>
                   </item>
                   <item row="5" column="0">
-                   <widget class="QLabel" name="label_57">
+                   <widget class="QLabel" name="pessimisticCostConst">
                     <property name="toolTip">
-                     <string>How much will the whole task cost pesimistically. This can't be estimated if &quot;optimize&quot; is checked.</string>
+                     <string>How much will the whole task cost pessimistically. This can't be estimated if &quot;optimize&quot; is checked.</string>
                     </property>
                     <property name="text">
                      <string>Pessimistic cost</string>
@@ -811,7 +811,7 @@
                <enum>Qt::CustomContextMenu</enum>
               </property>
               <property name="toolTip">
-               <string>Your tasks in the current session. Rightclick a task of choice to manage it</string>
+               <string>Your tasks in the current session. Right click on a task of choice to manage it</string>
               </property>
               <property name="layoutDirection">
                <enum>Qt::LeftToRight</enum>
@@ -1446,7 +1446,7 @@
                <string/>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>2</number>
               </property>
               <widget class="QWidget" name="generalTab">
                <attribute name="title">
@@ -1567,12 +1567,12 @@
                     <widget class="QLineEdit" name="p2pSessionTimeoutLineEdit"/>
                    </item>
                    <item row="8" column="0">
-                    <widget class="QLabel" name="label_39">
+                    <widget class="QLabel" name="taskSessionTimeoutConst">
                      <property name="toolTip">
                       <string>How long should Golem wait to end inactive task session (seconds)</string>
                      </property>
                      <property name="text">
-                      <string>Tasksession timeout</string>
+                      <string>Task session timeout</string>
                      </property>
                     </widget>
                    </item>
@@ -2247,7 +2247,7 @@
                     <item row="0" column="0">
                      <widget class="QLabel" name="label_30">
                       <property name="toolTip">
-                       <string>How much can you pay for a single subtask pesimistically</string>
+                       <string>How much can you usually pay for a single subtask pessimistically.</string>
                       </property>
                       <property name="text">
                        <string>Max price (bid) </string>
@@ -2340,7 +2340,7 @@
               <item row="0" column="0">
                <widget class="QLabel" name="golemIdConst">
                 <property name="toolTip">
-                 <string>Identificator of this node</string>
+                 <string>Identifier of this node</string>
                 </property>
                 <property name="text">
                  <string>Golem Id</string>
@@ -2507,65 +2507,9 @@
     </item>
    </layout>
   </widget>
-  <action name="actionNew">
-   <property name="text">
-    <string>New</string>
-   </property>
-  </action>
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
-   </property>
-  </action>
-  <action name="actionLoadTask">
-   <property name="text">
-    <string>Load Task</string>
-   </property>
-   <property name="toolTip">
-    <string>Load task</string>
-   </property>
-  </action>
-  <action name="actionEdit">
-   <property name="text">
-    <string>Edit</string>
-   </property>
-  </action>
-  <action name="actionStatus">
-   <property name="text">
-    <string>Status</string>
-   </property>
-  </action>
-  <action name="actionStartNodesManager">
-   <property name="text">
-    <string>Start Node Manager</string>
-   </property>
-  </action>
-  <action name="actionEnvironments">
-   <property name="text">
-    <string>Environments</string>
-   </property>
-  </action>
-  <action name="actionSendTestTasks">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Send Test Tasks</string>
-   </property>
-  </action>
-  <action name="actionAbout">
-   <property name="text">
-    <string>About</string>
-   </property>
-  </action>
-  <action name="actionPayments">
-   <property name="text">
-    <string>Payments</string>
-   </property>
-  </action>
-  <action name="actionIdentity">
-   <property name="text">
-    <string>Identity</string>
    </property>
   </action>
  </widget>

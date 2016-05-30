@@ -9,10 +9,10 @@ between both roles).
 
 ## Running Golem Network Renderer (GNR) in Ubuntu 15.04
 
-### Installing Depedencies:
+### Installing Dependencies:
 
 * Run pip install -r requirements.txt
-* Qt4 bingings for Python: `sudo apt-get install python-qt4`
+* Qt4 bindings for Python: `sudo apt-get install python-qt4`
 * Twisted Qt4 integration: `sudo apt-get install python-qt4reactor`
 * OpenEXR bindings for Python: download and unpack http://excamera.com/files/OpenEXR-1.2.0.tar.gz, then use `setup.py` inside
 * ...
