@@ -43,6 +43,7 @@ class ClientConfigDescriptor(object):
         self.num_cores = 0
         self.max_resource_size = 0
         self.max_memory_size = 0
+        self.trading_ratio = 0
 
         self.use_distributed_resource_management = 1
 

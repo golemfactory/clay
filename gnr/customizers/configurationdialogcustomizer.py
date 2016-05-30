@@ -91,6 +91,10 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__load_num_cores(config_desc)
         self.__load_memory_config(config_desc)
         self.__load_trust_config(config_desc)
+        self.__load_trading_ratio(config_desc)
+
+    def __load_trading_ratio(self, config):
+        self.gui.ui.tradingStrategySlider.setValue(config.trading_ratio)
 
     def __load_num_cores(self, config_desc):
         max_num_cores = multiprocessing.cpu_count()
@@ -127,10 +131,10 @@ class ConfigurationDialogCustomizer(Customizer):
         max_memory_size, index = resource_size_to_display(max_memory_size)
         self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex(index)
         self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
-        
+
     def __run_lux_benchmark_button_clicked(self):
         self.logic.run_benchmark(LuxBenchmark(), self.gui.ui.luxPerformanceLabel)
-            
+
     def __run_blender_benchmark_button_clicked(self):
         self.logic.run_benchmark(BlenderBenchmark(), self.gui.ui.blenderPerformanceLabel)
 
@@ -282,6 +286,7 @@ class ConfigurationDialogCustomizer(Customizer):
         index = self.gui.ui.maxResourceSizeComboBox.currentIndex()
         cfg_desc.max_resource_size = u"{}".format(self.__count_resource_size(max_resource_size, index))
         max_memory_size = int(self.gui.ui.maxMemoryUsageSpinBox.value())
+        cfg_desc.trading_ratio = self.gui.ui.tradingStrategySlider.value()
         index = self.gui.ui.maxMemoryUsageComboBox.currentIndex()
         cfg_desc.max_memory_size = u"{}".format(self.__count_resource_size(max_memory_size, index))
         self.__read_trust_config(cfg_desc)
