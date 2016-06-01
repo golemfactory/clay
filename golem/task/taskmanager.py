@@ -318,9 +318,16 @@ class TaskManager(object):
         return tasks_progresses
 
     def get_resources(self, task_id, resource_header, resource_type=0):
-        if task_id in self.tasks:
-            task = self.tasks[task_id]
+        return self.get_resources_from_task(self.tasks.get(task_id, None),
+                                            resource_header,
+                                            resource_type)
+
+    @staticmethod
+    def get_resources_from_task(task, resource_header, resource_type=0):
+        if task:
+            task_id = task.header.task_id
             return task.get_resources(task_id, resource_header, resource_type)
+        return []
 
     def accept_results_delay(self, task_id):
         if task_id in self.tasks:
