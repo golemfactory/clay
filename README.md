@@ -13,7 +13,7 @@ between both roles).
 Follow the installation instruction from 
 [here](https://github.com/imapp-pl/golem/wiki/Installation#runing-from-the-source).
  
-Than run 
+Then run
 
 `cd gnr`
 `python main.py` 
@@ -29,7 +29,7 @@ To run more complicated test with imunes follow instruction from
 
 ## Warning
 
- Golem Project is a work in progress. Current version is an alpha stage of Brass Golem and it's not fully secured.
+Golem Project is a work in progress. Current version is an alpha stage of Brass Golem and it's not fully secured.
 Please be sure that you understand the risk before installing the software. 
  
 ## Contact  
@@ -37,6 +37,6 @@ Please be sure that you understand the risk before installing the software.
 Help us develop the application by submitting issues and bugs. See instruction 
 [here](https://github.com/imapp-pl/golem/wiki/Testing). 
 
-You can also send us an email to `contact@golemproject.net` or talk to us on slack `golemproject.slack.com`. Get
-an invitation [here](golemproject.org:3000). 
+You can also send us an email to `contact@golemproject.net` or talk to us on slack `golemproject.slack.com`.
+Get an invitation [here](golemproject.org:3000).
 
