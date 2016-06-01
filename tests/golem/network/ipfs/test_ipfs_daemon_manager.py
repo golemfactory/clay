@@ -1,10 +1,9 @@
-import unittest
-
 from golem.network.ipfs.client import IPFSAddress
 from golem.network.ipfs.daemon_manager import IPFSDaemonManager
+from golem.tools.testwithreactor import TestWithReactor
 
 
-class TestIPFSDaemonManager(unittest.TestCase):
+class TestIPFSDaemonManager(TestWithReactor):
 
     def testStoreInfo(self):
         dm = IPFSDaemonManager()
@@ -18,14 +17,19 @@ class TestIPFSDaemonManager(unittest.TestCase):
     def testAddRemoveBootstrapNodes(self):
         default_node = '/ip4/127.0.0.1/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ'
         dm = IPFSDaemonManager()
-        dm.remove_bootstrap_node(default_node, async=False)
-        nodes = dm.list_bootstrap_nodes()
 
-        dm.add_bootstrap_node(default_node, async=False)
-        assert len(dm.list_bootstrap_nodes()) > len(nodes)
+        for async in [True, False]:
+            dm.remove_bootstrap_node(default_node, async=async)
+            self._sleep(async)
+            nodes = dm.list_bootstrap_nodes()
 
-        dm.remove_bootstrap_node(default_node, async=False)
-        assert len(dm.list_bootstrap_nodes()) == len(nodes)
+            dm.add_bootstrap_node(default_node, async=async)
+            self._sleep(async)
+            assert len(dm.list_bootstrap_nodes()) > len(nodes)
+
+            dm.remove_bootstrap_node(default_node, async=async)
+            self._sleep(async)
+            assert len(dm.list_bootstrap_nodes()) == len(nodes)
 
     def testMetadata(self):
         dm = IPFSDaemonManager()
@@ -59,19 +63,26 @@ class TestIPFSDaemonManager(unittest.TestCase):
         ip4_node = '/ip4/{}/tcp/{}/ipfs/{}'.format(ipv4, 4001, node_id)
         ip6_node = '/ip6/{}/tcp/{}/ipfs/{}'.format(ipv6, 4001, node_id)
 
-        dm.remove_bootstrap_node(ip4_node, async=False)
-        dm.remove_bootstrap_node(ip6_node, async=False)
+        for async in [True, False]:
+            dm.remove_bootstrap_node(ip4_node, async=async)
+            self._sleep(async)
+            dm.remove_bootstrap_node(ip6_node, async=async)
+            self._sleep(async)
+            nodes = dm.list_bootstrap_nodes()
 
-        nodes = dm.list_bootstrap_nodes()
+            assert not dm.interpret_metadata(meta, [('1.2.3.4', port)], addrs, async=async)
+            self._sleep(async)
 
-        assert not dm.interpret_metadata(meta, [('1.2.3.4', port)], addrs, async=False)
+            assert dm.interpret_metadata(meta, [(ipv4, port)], addrs, async=async)
+            self._sleep(async)
+            assert len(dm.list_bootstrap_nodes()) == len(nodes) + 1
 
-        assert dm.interpret_metadata(meta, [(ipv4, port)], addrs, async=False)
-        assert len(dm.list_bootstrap_nodes()) == len(nodes) + 1
+            assert dm.interpret_metadata(meta, [(ipv6, port)], addrs, async=async)
+            self._sleep(async)
+            assert len(dm.list_bootstrap_nodes()) == len(nodes) + 2
 
-        assert dm.interpret_metadata(meta, [(ipv6, port)], addrs, async=False)
-        assert len(dm.list_bootstrap_nodes()) == len(nodes) + 2
-
-        dm.remove_bootstrap_node(ip4_node, async=False)
-        dm.remove_bootstrap_node(ip6_node, async=False)
-        assert len(dm.list_bootstrap_nodes()) == len(nodes)
+            dm.remove_bootstrap_node(ip4_node, async=async)
+            self._sleep(async)
+            dm.remove_bootstrap_node(ip6_node, async=async)
+            self._sleep(async)
+            assert len(dm.list_bootstrap_nodes()) == len(nodes)

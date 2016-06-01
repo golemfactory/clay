@@ -6,7 +6,7 @@ from PyQt4 import QtCore
 
 from PyQt4.QtCore import QObject
 from PyQt4.QtGui import QTableWidgetItem
-from twisted.internet import task
+from twisted.internet import task, threads
 
 from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task
@@ -176,9 +176,11 @@ class GNRApplicationLogic(QtCore.QObject):
 
         tb = self._get_builder(ts)
 
-        t = Task.build_task(tb)
+        def async_build_task():
+            t = Task.build_task(tb)
+            self.client.enqueue_new_task(t)
 
-        self.client.enqueue_new_task(t)
+        threads.deferToThread(async_build_task)
 
     def _get_builder(self, task_state):
         # FIXME This is just temporary for solution for Brass
@@ -282,8 +284,7 @@ class GNRApplicationLogic(QtCore.QObject):
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
 
-
-    def run_test_task(self, task_state):
+    def run_test_task(self, task_state, async=True):
         if self._validate_task_state(task_state):
 
             tb = self._get_builder(task_state)
@@ -297,7 +298,10 @@ class GNRApplicationLogic(QtCore.QObject):
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
             self.progress_dialog.show()
 
-            self.tt.run()
+            if async:
+                threads.deferToThread(self.tt.run)
+            else:
+                self.tt.run()
 
             return True
         else:

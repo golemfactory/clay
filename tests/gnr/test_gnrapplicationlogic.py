@@ -8,6 +8,7 @@ from gnr.gnrapplicationlogic import GNRApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.tools.testdirfixture import TestDirFixture
+from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
 
 class TTask(Task):
@@ -52,7 +53,7 @@ class TTaskBuilder(TaskBuilder):
         return t
 
 
-class TestGNRApplicationLogic(TestDirFixture):
+class TestGNRApplicationLogic(TestDirFixtureWithReactor):
 
     def test_root_path(self):
         logic = GNRApplicationLogic()
@@ -73,20 +74,30 @@ class TestGNRApplicationLogic(TestDirFixture):
         ttb = TTaskBuilder(self.path)
         task_type.task_builder_type.return_value = ttb
         logic.task_types["TESTTASK"] = task_type
-        logic.run_test_task(ts)
-        time.sleep(0.5)
-        success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
-        self.assertEqual(success, True)
+
+        for async in [True, False]:
+            logic.customizer.new_task_dialog_customizer = Mock()
+            logic.customizer.new_task_dialog_customizer.test_task_computation_finished = Mock()
+            logic.run_test_task(ts, async=async)
+            time.sleep(0.5)
+            success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
+            self.assertEqual(success, True)
+
         ttb.src_code = "raise Exception('some error')"
-        logic.run_test_task(ts)
-        time.sleep(0.5)
-        success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
-        self.assertEqual(success, False)
+
+        for async in [False, True]:
+            logic.run_test_task(ts, async=async)
+            time.sleep(0.5)
+            success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
+            self.assertEqual(success, False)
+
         ttb.src_code = "print 'hello'"
-        logic.run_test_task(ts)
-        time.sleep(0.5)
-        success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
-        self.assertEqual(success, False)
+
+        for async in [False, True]:
+            logic.run_test_task(ts, async=async)
+            time.sleep(0.5)
+            success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
+            self.assertEqual(success, False)
 
         prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
         logic.task_settings_changed()

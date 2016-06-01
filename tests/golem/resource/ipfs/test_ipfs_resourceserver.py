@@ -7,6 +7,7 @@ from golem.core.keysauth import EllipticalKeysAuth
 from golem.resource.dirmanager import DirManager
 from golem.resource.ipfs.resourceserver import IPFSResourceServer, dummy_context, IPFSTransferStatus
 from golem.tools.testdirfixture import TestDirFixture
+from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
 node_name = 'test_suite'
 
@@ -30,7 +31,7 @@ class MockConfig:
         self.root_path = root_path
 
 
-class TestResourceServer(TestDirFixture):
+class TestResourceServer(TestDirFixtureWithReactor):
 
     def setUp(self):
 
@@ -172,7 +173,8 @@ class TestResourceServer(TestDirFixture):
         rs_aux.add_files_to_get(relative_resources, self.task_id)
         assert len(rs_aux.waiting_resources) == resources_len
 
-        rs_aux.get_resources(async=False)
+        for async in [False, True]:
+            rs_aux.get_resources(async=async)
         rm_aux = rs_aux.resource_manager
 
         for entry in relative_resources:

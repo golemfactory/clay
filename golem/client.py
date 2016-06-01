@@ -185,9 +185,9 @@ class Client:
 
     def enqueue_new_task(self, task):
         task_id = task.header.task_id
-        self.task_server.task_manager.add_new_task(task)
-        files = self.task_server.task_manager.get_resources(task_id, None, resource_types["hashes"])
+        files = self.task_server.task_manager.get_resources_from_task(task, None, resource_types["hashes"])
         self.resource_server.add_task(files, task_id)
+        self.task_server.task_manager.add_new_task(task)
 
     def get_resource_peers(self):
         self.p2pservice.send_get_resource_peers()
