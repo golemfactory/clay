@@ -48,6 +48,7 @@ class PaymentProcessor(object):
     BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
 
     SENDOUT_TIMEOUT = 1 * 60
+    SYNC_CHECK_INTERVAL = 10
 
     def __init__(self, client, privkey, faucet=False):
         self.__client = client
@@ -72,7 +73,7 @@ class PaymentProcessor(object):
     def synchronized(self):
         """ Checks if the Ethereum node is in sync with the network."""
 
-        if time.time() - self.__last_sync_check <= 10.0:
+        if time.time() - self.__last_sync_check <= self.SYNC_CHECK_INTERVAL:
             # When checking again within 10 s return previous status.
             # This also handles geth issue where synchronization starts after
             # 10 s since the node was started.
