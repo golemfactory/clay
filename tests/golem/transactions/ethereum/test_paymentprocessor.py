@@ -127,7 +127,8 @@ class PaymentProcessorTest(DatabaseFixture):
         assert p2.status is PaymentStatus.awaiting
 
     def test_faucet(self):
-        PaymentProcessor(self.client, self.privkey, faucet=True)
+        pp = PaymentProcessor(self.client, self.privkey, faucet=True)
+        pp.get_ethers_from_faucet()
         assert self.client.send.call_count == 1
         tx = self.client.send.call_args[0][0]
         assert tx.nonce == self.nonce

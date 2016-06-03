@@ -59,6 +59,8 @@ class PaymentProcessor(object):
         self.__last_sync_check = time.time()
         self.__sync = False
         self.__temp_sync = False
+        self.__faucet = faucet
+        self.__faucet_request_ttl = 0
 
         # Very simple sendout scheduler.
         # TODO: Maybe it should not be the part of this class
@@ -66,12 +68,6 @@ class PaymentProcessor(object):
         # TODO: Defer a call only if payments waiting
         scheduler = LoopingCall(self.run)
         scheduler.start(self.SENDOUT_TIMEOUT)
-
-        if faucet and self.balance() == 0:
-            value = 100
-            log.info("Requesting {} ETH from Golem Faucet".format(value))
-            addr = keys.privtoaddr(self.__privkey)
-            Faucet.gimme_money(client, addr, value * 10**18)
 
     def synchronized(self):
         """ Checks if the Ethereum node is in sync with the network."""
@@ -187,7 +183,21 @@ class PaymentProcessor(object):
         for h in confirmed:
             del self.__inprogress[h]
 
+    def get_ethers_from_faucet(self):
+        if self.__faucet and self.balance(True) == 0:
+            if self.__faucet_request_ttl > 0:
+                # Waiting for transfer from the faucet
+                self.__faucet_request_ttl -= 1
+                return False
+            value = 100
+            log.info("Requesting {} ETH from Golem Faucet".format(value))
+            addr = keys.privtoaddr(self.__privkey)
+            Faucet.gimme_money(self.__client, addr, value * 10**18)
+            self.__faucet_request_ttl = 10
+            return False
+        return True
+
     def run(self):
-        if self.synchronized():
+        if self.synchronized() and self.get_ethers_from_faucet():
             self.sendout()
             self.monitor_progress()
