@@ -39,9 +39,11 @@ def try_building_docker_images():
         if f.startswith("Dockerfile."):
             try:
                 name = "golem/{}".format(f.split(".", 1)[-1])
-                cmd = "docker build -t {} -f scripts/{} .".format(name, f)
-                print "\nRunning '{}' ...\n".format(cmd)
-                subprocess.check_call(cmd.split(" "))
+                img_id = subprocess.check_output(['docker', 'images', '-q', name]).strip()
+                if not img_id:
+                    cmd = "docker build -t {} -f scripts/{} .".format(name, f)
+                    print "\nRunning '{}' ...\n".format(cmd)
+                    subprocess.check_call(cmd.split(" "))
             except ValueError:
                 print "Skipping file scripts/{}".format(f)
             except subprocess.CalledProcessError as err:
