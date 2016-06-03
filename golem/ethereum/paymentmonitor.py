@@ -1,3 +1,4 @@
+from ethereum.utils import zpad
 from twisted.internet.task import LoopingCall
 
 from golem.model import PaymentStatus
@@ -31,13 +32,16 @@ class PaymentMonitor(object):
             # Search for logs Transfer(..., my address)
             # TODO: We can safe some gas by not indexing "from" address
             bank_addr = PaymentProcessor.BANK_ADDR.encode('hex')
-            topics = [log_id, None, self.__addr.encode('hex')]
+            topics = [log_id, None, zpad(self.__addr, 32).encode('hex')]
             self.__filter = self.__client.new_filter(from_block='earliest',
                                                      to_block='latest',
                                                      address=bank_addr,
                                                      topics=topics)
 
         new_logs = self.__client.get_filter_changes(self.__filter)
+        if not new_logs:
+            return self.__payments
+
         for l in new_logs:
             payer = l['topics'][1][26:].decode('hex')
             assert len(payer) == 20
