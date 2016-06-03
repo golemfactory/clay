@@ -24,7 +24,6 @@ class LuxBenchmark(Benchmark):
         self.task_definition.main_scene_file = os.path.join(self.lux_task_path, "schoolcorridor.lxs")
         self.task_definition.main_program_file = u"{}".format(find_task_script("docker_luxtask.py"))
         self.task_definition.resources = self.find_resources()
-        self.task_definition.resources.add(os.path.normpath(self.task_definition.main_program_file))
 
 
     def find_resources(self):
