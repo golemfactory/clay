@@ -2,6 +2,7 @@ import atexit
 import json
 import logging
 import os
+import subprocess
 import time
 from os import path
 
@@ -56,6 +57,15 @@ class NodeProcess(object):
         if nodes:
             nodes_file = path.join(datadir, 'static-nodes.json')
             json.dump(nodes, open(nodes_file, 'w'))
+
+        # Init the ethereum node with genesis block information
+        if not path.exists(path.join(datadir, 'chaindata')):
+            program = find_program('geth')
+            genesis_file = path.join(path.dirname(__file__),
+                                     'genesis_golem.json')
+            subprocess.check_call([program, '--datadir', datadir,
+                                   'init', genesis_file])
+
         self.datadir = datadir
         self.__ps = None
         self.rpcport = None
@@ -70,9 +80,7 @@ class NodeProcess(object):
         assert not self.rpcport
         program = find_program('geth')
         assert program  # TODO: Replace with a nice exception
-        # Data dir must be set the class user to allow multiple nodes running
-        basedir = path.dirname(__file__)
-        genesis_file = path.join(basedir, 'genesis_golem.json')
+
         if not port:
             port = find_free_net_port()
         self.port = port
@@ -81,7 +89,6 @@ class NodeProcess(object):
             '--datadir', self.datadir,
             '--networkid', '9',
             '--port', str(self.port),
-            '--genesis', genesis_file,
             '--nodiscover',
             '--ipcdisable',  # Disable IPC transport - conflicts on Windows.
             '--gasprice', '0',
@@ -102,7 +109,8 @@ class NodeProcess(object):
             ]
 
         if mining:
-            mining_script = path.join(basedir, 'mine_pending_transactions.js')
+            mining_script = path.join(path.dirname(__file__),
+                                      'mine_pending_transactions.js')
             args += [
                 '--etherbase', Faucet.ADDR.encode('hex'),
                 'js', mining_script,
