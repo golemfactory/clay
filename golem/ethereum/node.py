@@ -2,9 +2,11 @@ import atexit
 import json
 import logging
 import os
+import re
 import subprocess
 import time
 from os import path
+from distutils.version import StrictVersion
 
 import psutil
 
@@ -49,8 +51,15 @@ class Faucet(object):
 
 
 class NodeProcess(object):
+    MINIMAL_GETH_VERSION_REQUIRED = '1.4.5'
 
     def __init__(self, nodes, datadir):
+        program = find_program('geth')
+        output, _ = subprocess.Popen(['geth', 'version'],
+                                     stdout=subprocess.PIPE).communicate()
+        ver = StrictVersion(re.search("Version: (\d\.\d\.\d)", output).group(1))
+        assert ver >= self.MINIMAL_GETH_VERSION_REQUIRED
+
         if not path.exists(datadir):
             os.makedirs(datadir)
         assert path.isdir(datadir)
@@ -60,7 +69,6 @@ class NodeProcess(object):
 
         # Init the ethereum node with genesis block information
         if not path.exists(path.join(datadir, 'chaindata')):
-            program = find_program('geth')
             genesis_file = path.join(path.dirname(__file__),
                                      'genesis_golem.json')
             subprocess.check_call([program, '--datadir', datadir,
