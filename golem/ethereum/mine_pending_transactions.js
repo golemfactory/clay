@@ -7,7 +7,7 @@ function checkWork() {
         miner.start(mining_threads);
     } else {
         if (!eth.mining) return;
-        miner.stop(0);  // This param means nothing
+        miner.stop();
         console.log("== No transactions! Mining stopped.");
     }
 }

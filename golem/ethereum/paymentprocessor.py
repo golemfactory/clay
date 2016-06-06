@@ -1,4 +1,5 @@
 import logging
+import time
 
 from ethereum import abi, keys, utils
 from ethereum.transactions import Transaction
@@ -47,6 +48,7 @@ class PaymentProcessor(object):
     BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
 
     SENDOUT_TIMEOUT = 1 * 60
+    SYNC_CHECK_INTERVAL = 10
 
     def __init__(self, client, privkey, faucet=False):
         self.__client = client
@@ -55,6 +57,11 @@ class PaymentProcessor(object):
         self.__reserved = 0
         self.__awaiting = []    # Awaiting individual payments
         self.__inprogress = {}  # Sent transactions.
+        self.__last_sync_check = time.time()
+        self.__sync = False
+        self.__temp_sync = False
+        self.__faucet = faucet
+        self.__faucet_request_ttl = 0
 
         # Very simple sendout scheduler.
         # TODO: Maybe it should not be the part of this class
@@ -63,11 +70,35 @@ class PaymentProcessor(object):
         scheduler = LoopingCall(self.run)
         scheduler.start(self.SENDOUT_TIMEOUT)
 
-        if faucet and self.balance() == 0:
-            value = 100
-            log.info("Requesting {} ETH from Golem Faucet".format(value))
-            addr = keys.privtoaddr(self.__privkey)
-            Faucet.gimme_money(client, addr, value * 10**18)
+    def synchronized(self):
+        """ Checks if the Ethereum node is in sync with the network."""
+
+        if time.time() - self.__last_sync_check <= self.SYNC_CHECK_INTERVAL:
+            # When checking again within 10 s return previous status.
+            # This also handles geth issue where synchronization starts after
+            # 10 s since the node was started.
+            return self.__sync
+
+        def check():
+            peers = self.__client.get_peer_count()
+            log.info("Peer count: {}".format(peers))
+            if peers == 0:
+                return False
+            if self.__client.is_syncing():
+                log.info("Node is syncing...")
+                return False
+            return True
+
+        # Normally we should check the time of latest block, but Golem testnet
+        # does not produce block regularly. The workaround is to wait for 2
+        # confirmations.
+        prev = self.__temp_sync
+        # Remember current check as a temporary status.
+        self.__temp_sync = check()
+        # Mark as synchronized only if previous and current status are true.
+        self.__sync = prev and self.__temp_sync
+        log.info("Synchronized: {}".format(self.__sync))
+        return self.__sync
 
     def balance(self, refresh=False):
         # FIXME: The balance must be actively monitored!
@@ -153,6 +184,21 @@ class PaymentProcessor(object):
         for h in confirmed:
             del self.__inprogress[h]
 
+    def get_ethers_from_faucet(self):
+        if self.__faucet and self.balance(True) == 0:
+            if self.__faucet_request_ttl > 0:
+                # Waiting for transfer from the faucet
+                self.__faucet_request_ttl -= 1
+                return False
+            value = 100
+            log.info("Requesting {} ETH from Golem Faucet".format(value))
+            addr = keys.privtoaddr(self.__privkey)
+            Faucet.gimme_money(self.__client, addr, value * 10**18)
+            self.__faucet_request_ttl = 10
+            return False
+        return True
+
     def run(self):
-        self.sendout()
-        self.monitor_progress()
+        if self.synchronized() and self.get_ethers_from_faucet():
+            self.sendout()
+            self.monitor_progress()

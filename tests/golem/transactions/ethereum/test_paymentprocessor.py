@@ -127,7 +127,8 @@ class PaymentProcessorTest(DatabaseFixture):
         assert p2.status is PaymentStatus.awaiting
 
     def test_faucet(self):
-        PaymentProcessor(self.client, self.privkey, faucet=True)
+        pp = PaymentProcessor(self.client, self.privkey, faucet=True)
+        pp.get_ethers_from_faucet()
         assert self.client.send.call_count == 1
         tx = self.client.send.call_args[0][0]
         assert tx.nonce == self.nonce
@@ -157,3 +158,69 @@ class PaymentProcessorTest(DatabaseFixture):
         tx = self.client.send.call_args[0][0]
         assert tx.value == 6
         assert len(tx.data) == 4 + 2*32 + 3*32  # Id + array abi + bytes32[3]
+
+    def test_synchronized(self):
+        interval = 0.01
+        PaymentProcessor.SYNC_CHECK_INTERVAL = interval
+        pp = PaymentProcessor(self.client, self.privkey, faucet=False)
+        syncing_status = {'startingBlock': '0x384',
+                          'currentBlock': '0x386',
+                          'highestBlock': '0x454'}
+        combinations = ((0, False),
+                        (0, syncing_status),
+                        (1, False),
+                        (1, syncing_status),
+                        (65, syncing_status),
+                        (65, False))
+
+        for c in combinations:
+            print("Subtest {}".format(c))
+            self.client.get_peer_count.return_value = 0
+            self.client.is_syncing.return_value = False
+            assert not pp.synchronized()
+            time.sleep(interval)
+            self.client.get_peer_count.return_value = c[0]
+            self.client.is_syncing.return_value = c[1]
+            assert not pp.synchronized()  # First time is always no.
+            time.sleep(interval)
+            assert pp.synchronized() == (c[0] and not c[1])
+
+    def test_synchronized_unstable(self):
+        interval = 0.01
+        PaymentProcessor.SYNC_CHECK_INTERVAL = interval
+        pp = PaymentProcessor(self.client, self.privkey, faucet=False)
+        syncing_status = {'startingBlock': '0x0',
+                          'currentBlock': '0x1',
+                          'highestBlock': '0x4096'}
+
+        self.client.get_peer_count.return_value = 1
+        self.client.is_syncing.return_value = False
+        assert not pp.synchronized()
+        time.sleep(interval)
+        self.client.get_peer_count.return_value = 1
+        self.client.is_syncing.return_value = syncing_status
+        assert not pp.synchronized()
+        time.sleep(interval)
+        assert not pp.synchronized()
+
+        self.client.get_peer_count.return_value = 1
+        self.client.is_syncing.return_value = False
+        assert not pp.synchronized()
+        time.sleep(interval)
+        assert pp.synchronized()
+        time.sleep(interval)
+        assert pp.synchronized()
+        time.sleep(interval)
+        self.client.get_peer_count.return_value = 0
+        self.client.is_syncing.return_value = False
+        assert not pp.synchronized()
+        time.sleep(interval)
+        self.client.get_peer_count.return_value = 2
+        self.client.is_syncing.return_value = False
+        assert not pp.synchronized()
+        time.sleep(interval)
+        assert pp.synchronized()
+        time.sleep(interval)
+        self.client.get_peer_count.return_value = 2
+        self.client.is_syncing.return_value = syncing_status
+        assert not pp.synchronized()
