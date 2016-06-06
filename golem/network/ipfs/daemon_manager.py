@@ -83,6 +83,84 @@ class IPFSDaemonManager(IPFSClientHandler):
                                                           async=async) or added
         return added
 
+    def add_bootstrap_node(self, url, client=None, async=True):
+        if not client:
+            client = self.new_ipfs_client()
+        return self._node_action(url,
+                                 async=async,
+                                 method=client.bootstrap_add,
+                                 command=IPFSCommands.bootstrap_add,
+                                 success=self.__add_bootstrap_node_success,
+                                 error=self.__add_bootstrap_node_error)
+
+    def remove_bootstrap_node(self, url, client=None, async=True):
+        if not client:
+            client = self.new_ipfs_client()
+        return self._node_action(url,
+                                 async=async,
+                                 method=client.bootstrap_rm,
+                                 command=IPFSCommands.bootstrap_rm,
+                                 success=self.__remove_bootstrap_node_success,
+                                 error=self.__remove_bootstrap_node_error)
+
+    def swarm_connect(self, url, client=None, async=True):
+        if not client:
+            client = self.new_ipfs_client()
+        return self._node_action(url,
+                                 async=async,
+                                 method=client.swarm_connect,
+                                 command=IPFSCommands.swarm_connect,
+                                 success=self.__swarm_connect_success,
+                                 error=self.__swarm_connect_error)
+
+    def swarm_disconnect(self, url, client=None, async=True):
+        if not client:
+            client = self.new_ipfs_client()
+        return self._node_action(url,
+                                 async=async,
+                                 method=client.swarm_disconnect,
+                                 command=IPFSCommands.swarm_disconnect,
+                                 success=self.__swarm_disconnect_success,
+                                 error=self.__swarm_disconnect_error)
+
+    def swarm_peers(self, client=None):
+        if not client:
+            client = self.new_ipfs_client()
+        try:
+            return self._handle_retries(
+                client.swarm_peers,
+                IPFSCommands.swarm_peers
+            )
+        except Exception as exc:
+            logger.error("IPFS: Cannot list swarm peers: {}".format(exc.message))
+        return []
+
+    def list_bootstrap_nodes(self, client=None):
+        if not client:
+            client = self.new_ipfs_client()
+
+        result = self._handle_retries(client.bootstrap_list,
+                                      IPFSCommands.bootstrap_list,
+                                      obj_id=IPFSCommands.bootstrap_list)
+
+        if result and result[0]:
+            return result[0].get('Peers', [])
+        return []
+
+    def _node_action(self, url, method, command, success, error, async=True):
+        def closure():
+            self._handle_retries(method, command, url)
+            return url
+
+        if async:
+            self._ipfs_async_call(closure, success, error)
+        else:
+            try:
+                return closure()
+            except Exception as exc:
+                error(exc)
+        return None
+
     def _add_bootstrap_addresses(self, seed_ip_str, ipfs_address_strs, async=True):
         seed_ip_addr = self._ip_from_str(seed_ip_str)
         urls = set()
@@ -103,44 +181,6 @@ class IPFSDaemonManager(IPFSClientHandler):
     def _ip_from_str(ip_address):
         return ipaddress.ip_address(to_unicode(ip_address))
 
-    def add_bootstrap_node(self, url, client=None, async=True):
-        if not client:
-            client = self.new_ipfs_client()
-
-        def closure():
-            try:
-                self._handle_retries(client.bootstrap_add,
-                                     IPFSCommands.bootstrap_add,
-                                     url) if url else None
-            except Exception as e:
-                logger.error("IPFS: error adding bootstrap node {}: {}"
-                             .format(url, e.message))
-            return url
-
-        if async:
-            self._ipfs_async_call(closure,
-                                  self.__add_bootstrap_node_success,
-                                  self.__add_bootstrap_node_error)
-        else:
-            return closure()
-
-    def remove_bootstrap_node(self, url, client=None, async=True):
-        if not client:
-            client = self.new_ipfs_client()
-
-        def closure():
-            self._handle_retries(client.bootstrap_rm,
-                                 IPFSCommands.bootstrap_rm,
-                                 url) if url else None
-            return url
-
-        if async:
-            self._ipfs_async_call(closure,
-                                  self.__remove_bootstrap_node_success,
-                                  self.__remove_bootstrap_node_error)
-        else:
-            return closure()
-
     @staticmethod
     def __add_bootstrap_node_success(url):
         logger.debug("IPFS: Added bootstrap node {}".format(url))
@@ -157,14 +197,18 @@ class IPFSDaemonManager(IPFSClientHandler):
     def __remove_bootstrap_node_error(exc, *args):
         logger.error("IPFS: Error removing bootstrap node: {}".format(exc))
 
-    def list_bootstrap_nodes(self, client=None):
-        if not client:
-            client = self.new_ipfs_client()
+    @staticmethod
+    def __swarm_connect_success(url):
+        logger.debug("IPFS: Connected to node {}".format(url))
 
-        result = self._handle_retries(client.bootstrap_list,
-                                      IPFSCommands.bootstrap_list,
-                                      obj_id=IPFSCommands.bootstrap_list)
+    @staticmethod
+    def __swarm_connect_error(exc, *args):
+        logger.debug("IPFS: Error connecting to node {}".format(exc))
 
-        if result and result[0]:
-            return result[0].get('Peers', [])
-        return []
+    @staticmethod
+    def __swarm_disconnect_success(url):
+        logger.debug("IPFS: Disconnecting from node {}".format(url))
+
+    @staticmethod
+    def __swarm_disconnect_error(exc, *args):
+        logger.debug("IPFS: Error disconnecting from node {}".format(exc))
