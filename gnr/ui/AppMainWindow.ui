@@ -93,8 +93,8 @@
             <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>ui/img/new.png</normaloff>ui/img/new.png</iconset>
+            <iconset resource="icons.qrc">
+             <normaloff>:/img/new.png</normaloff>:/img/new.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
@@ -108,8 +108,8 @@
             <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>ui/img/task.png</normaloff>ui/img/task.png</iconset>
+            <iconset resource="icons.qrc">
+             <normaloff>:/img/task.png</normaloff>:/img/task.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -123,8 +123,8 @@
             <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>ui/img/eye.png</normaloff>ui/img/eye.png</iconset>
+            <iconset resource="icons.qrc">
+             <normaloff>:/img/eye.png</normaloff>:/img/eye.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -138,8 +138,8 @@
             <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>ui/img/settings.png</normaloff>ui/img/settings.png</iconset>
+            <iconset resource="icons.qrc">
+             <normaloff>:/img/settings.png</normaloff>:/img/settings.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
@@ -153,8 +153,8 @@
             <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>ui/img/user.png</normaloff>ui/img/user.png</iconset>
+            <iconset resource="icons.qrc">
+             <normaloff>:/img/user.png</normaloff>:/img/user.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -2520,6 +2520,8 @@
    <header>clickableqlabel.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="icons.qrc"/>
+ </resources>
  <connections/>
 </ui>

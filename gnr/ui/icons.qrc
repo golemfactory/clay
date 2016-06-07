@@ -1,0 +1,9 @@
+<!DOCTYPE RCC><RCC version="1.0">
+    <qresource>
+        <file>img/new.png</file>
+        <file>img/settings.png</file>
+        <file>img/task.png</file>
+        <file>img/user.png</file>
+        <file>img/eye.png</file>
+    </qresource>
+</RCC>
