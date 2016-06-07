@@ -295,6 +295,8 @@ class GNRApplicationLogic(QtCore.QObject):
 
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
+            self.progress_dialog_customizer.gui.window.setWindowFlags(QtCore.Qt.Dialog | QtCore.Qt.FramelessWindowHint)
+            self.progress_dialog_customizer.button_enable(False)    # disable 'ok' button
             self.progress_dialog.show()
 
             self.tt.run()
@@ -341,6 +343,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def _test_task_computation_success(self, results, est_mem):
         self.progress_dialog_customizer.show_message("Test task computation success!")
+        self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)
 
@@ -349,6 +352,7 @@ class GNRApplicationLogic(QtCore.QObject):
         if error:
             err_msg += error
         self.progress_dialog_customizer.show_message(err_msg)
+        self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(False, 0)
 
