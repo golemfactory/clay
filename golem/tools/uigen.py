@@ -2,6 +2,10 @@ import os
 
 PYUIC_PATH = "pyuic.py"  # Path to Python User Interface Compiler
 
+def call_pyrcc(py_file, qrc_file):
+    cmd = "pyrcc4 -o " + py_file + " " + qrc_file
+    print cmd
+    os.system(cmd)
 
 def regenerate_ui_files(root_path):
     """ Find all files in given directory that ends with ".ui" and have later date than generated user interfaces python
@@ -17,6 +21,10 @@ def regenerate_ui_files(root_path):
 
     pth, filename = os.path.split(os.path.realpath(__file__))
     pyuic_path = os.path.join(pth, pyuic_path)
+    for file_ in files:
+        if file_.endswith(".qrc"):
+            out_file = os.path.join(root_path, "gen", file_[:-4] + "_rc.py")
+            call_pyrcc(out_file, os.path.join(root_path, file_), )
 
     for file_ in files:
         if file_.endswith(".ui"):
@@ -34,6 +42,7 @@ def regenerate_ui_files(root_path):
                                                                                                            out_file))
 
 
+
 def gen_ui_files(path):
     """ If path doesn't exist throw assert error. Otherwise regenerate all user interface python files that may be
     needed. Find all files in given path that ends with ui and compare their date with generated python user interface
@@ -42,6 +51,7 @@ def gen_ui_files(path):
     :param str path: path to directory where ui files are placed
     """
     if os.path.exists(path):
+
         regenerate_ui_files(path)
     else:
         cwd = os.getcwd()
