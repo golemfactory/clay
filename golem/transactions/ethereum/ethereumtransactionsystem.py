@@ -40,6 +40,11 @@ class EthereumTransactionSystem(TransactionSystem):
         """ Human readable Ethereum address for incoming payments."""
         return '0x' + self.__node_address.encode('hex')
 
+    def get_balance(self):
+        b = self.__proc.balance()
+        ab = self.__proc.available_balance()
+        return b, ab
+
     def pay_for_task(self, task_id, payments):
         """ Pay for task using Ethereum connector
         :param task_id: pay for task with given id

@@ -1,4 +1,4 @@
-from mock import patch, Mock
+from mock import patch, Mock, MagicMock
 
 from gnr.gnrstartapp import config_logging, load_environments, start_and_configure_client
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
@@ -17,9 +17,11 @@ class TestStartAppFunc(TestDirFixture):
             assert isinstance(el, Environment)
         assert len(envs) > 2
 
+        client = MagicMock()
+        client.transaction_system = None
+        mock_start.return_value = client
+
         logic = RenderingApplicationLogic()
         logic.customizer = Mock()
         start_and_configure_client(logic, envs, self.path)
         logic.stop()
-
-
