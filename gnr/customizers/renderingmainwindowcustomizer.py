@@ -21,11 +21,12 @@ from gnr.customizers.memoryhelper import resource_size_to_display, translate_res
 
 logger = logging.getLogger(__name__)
 
-frame_renderers = [u"3ds Max Renderer", u"VRay Standalone", u"Blender"]
+frame_renderers = [u"Blender"]
 
 
 def subtasks_priority(sub):
     priority = {
+        SubtaskStatus.restarted: 6,
         SubtaskStatus.failure: 5,
         SubtaskStatus.resent: 4,
         SubtaskStatus.finished: 3,

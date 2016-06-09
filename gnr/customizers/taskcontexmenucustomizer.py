@@ -78,7 +78,7 @@ class TaskContextMenuCustomizer:
         enabled["Delete"] = True
 
         if task_status == TaskStatus.notStarted:
-            enabled["Abort Task"] = True
+            enabled["Abort Task"] = False
             enabled["Restart"] = False
             enabled["Start Task"] = True
             enabled["Pause"] = False

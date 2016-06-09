@@ -214,68 +214,62 @@ class TaskManager(object):
         task_id = self.subtask2task_mapping[subtask_id]
         return self.tasks_states[task_id].subtask_states[subtask_id].value
 
+    @react_to_key_error
     def computed_task_received(self, subtask_id, result, result_type):
-        if subtask_id in self.subtask2task_mapping:
-            task_id = self.subtask2task_mapping[subtask_id]
+        task_id = self.subtask2task_mapping[subtask_id]
 
-            subtask_status = self.tasks_states[task_id].subtask_states[subtask_id].subtask_status
-            if subtask_status != SubtaskStatus.starting:
-                logger.warning("Result for subtask {} when subtask state is {}".format(subtask_id, subtask_status))
-                self.__notice_task_updated(task_id)
-                return False
-
-            self.tasks[task_id].computation_finished(subtask_id, result, self.dir_manager, result_type)
-            ss = self.tasks_states[task_id].subtask_states[subtask_id]
-            ss.subtask_progress = 1.0
-            ss.subtask_rem_time = 0.0
-            ss.subtask_status = SubtaskStatus.finished
-            ss.stdout = self.tasks[task_id].get_stdout(subtask_id)
-            ss.stderr = self.tasks[task_id].get_stderr(subtask_id)
-            ss.results = self.tasks[task_id].get_results(subtask_id)
-
-            if not self.tasks[task_id].verify_subtask(subtask_id):
-                logger.debug("Subtask {} not accepted\n".format(subtask_id))
-                ss.subtask_status = SubtaskStatus.failure
-                self.__notice_task_updated(task_id)
-                return False
-
-            if self.tasks_states[task_id].status in self.activeStatus:
-                if not self.tasks[task_id].finished_computation():
-                    self.tasks_states[task_id].status = TaskStatus.computing
-                else:
-                    if self.tasks[task_id].verify_task():
-                        logger.debug("Task {} accepted".format(task_id))
-                        self.tasks_states[task_id].status = TaskStatus.finished
-                    else:
-                        logger.debug("Task {} not accepted".format(task_id))
+        subtask_status = self.tasks_states[task_id].subtask_states[subtask_id].subtask_status
+        if subtask_status != SubtaskStatus.starting:
+            logger.warning("Result for subtask {} when subtask state is {}".format(subtask_id, subtask_status))
             self.__notice_task_updated(task_id)
-
-            return True
-        else:
-            logger.error("It is not my task id {}".format(subtask_id))
             return False
 
-    def task_computation_failure(self, subtask_id, err):
-        if subtask_id in self.subtask2task_mapping:
-            task_id = self.subtask2task_mapping[subtask_id]
-            subtask_status = self.tasks_states[task_id].subtask_states[subtask_id].subtask_status
-            if subtask_status != SubtaskStatus.starting:
-                logger.warning("Result for subtask {} when subtask state is {}".format(subtask_id, subtask_status))
-                self.__notice_task_updated(task_id)
-                return False
+        self.tasks[task_id].computation_finished(subtask_id, result, self.dir_manager, result_type)
+        ss = self.tasks_states[task_id].subtask_states[subtask_id]
+        ss.subtask_progress = 1.0
+        ss.subtask_rem_time = 0.0
+        ss.subtask_status = SubtaskStatus.finished
+        ss.stdout = self.tasks[task_id].get_stdout(subtask_id)
+        ss.stderr = self.tasks[task_id].get_stderr(subtask_id)
+        ss.results = self.tasks[task_id].get_results(subtask_id)
 
-            self.tasks[task_id].computation_failed(subtask_id)
-            ss = self.tasks_states[task_id].subtask_states[subtask_id]
-            ss.subtask_progress = 1.0
-            ss.subtask_rem_time = 0.0
+        if not self.tasks[task_id].verify_subtask(subtask_id):
+            logger.debug("Subtask {} not accepted\n".format(subtask_id))
             ss.subtask_status = SubtaskStatus.failure
-            ss.stderr = str(err)
-
             self.__notice_task_updated(task_id)
-            return True
-        else:
-            logger.error("It is not my task id {}".format(subtask_id))
             return False
+
+        if self.tasks_states[task_id].status in self.activeStatus:
+            if not self.tasks[task_id].finished_computation():
+                self.tasks_states[task_id].status = TaskStatus.computing
+            else:
+                if self.tasks[task_id].verify_task():
+                    logger.debug("Task {} accepted".format(task_id))
+                    self.tasks_states[task_id].status = TaskStatus.finished
+                else:
+                    logger.debug("Task {} not accepted".format(task_id))
+        self.__notice_task_updated(task_id)
+
+        return True
+
+    @react_to_key_error
+    def task_computation_failure(self, subtask_id, err):
+        task_id = self.subtask2task_mapping[subtask_id]
+        subtask_status = self.tasks_states[task_id].subtask_states[subtask_id].subtask_status
+        if subtask_status != SubtaskStatus.starting:
+            logger.warning("Result for subtask {} when subtask state is {}".format(subtask_id, subtask_status))
+            self.__notice_task_updated(task_id)
+            return False
+
+        self.tasks[task_id].computation_failed(subtask_id)
+        ss = self.tasks_states[task_id].subtask_states[subtask_id]
+        ss.subtask_progress = 1.0
+        ss.subtask_rem_time = 0.0
+        ss.subtask_status = SubtaskStatus.failure
+        ss.stderr = str(err)
+
+        self.__notice_task_updated(task_id)
+        return True
 
     # CHANGE TO RETURN KEY_ID (check IF SUBTASK COMPUTER HAS KEY_ID
     def remove_old_tasks(self):
@@ -346,15 +340,13 @@ class TaskManager(object):
         else:
             logger.error("Task {} not in the active tasks queue ".format(task_id))
 
+    @react_to_key_error
     def restart_subtask(self, subtask_id):
-        if subtask_id not in self.subtask2task_mapping:
-            logger.error("Subtask {} not in subtasks queue".format(subtask_id))
-            return
 
         task_id = self.subtask2task_mapping[subtask_id]
         self.tasks[task_id].restart_subtask(subtask_id)
         self.tasks_states[task_id].status = TaskStatus.computing
-        self.tasks_states[task_id].subtask_states[subtask_id].subtask_status = SubtaskStatus.failure
+        self.tasks_states[task_id].subtask_states[subtask_id].subtask_status = SubtaskStatus.restarted
         self.tasks_states[task_id].subtask_states[subtask_id].stderr = "[GOLEM] Restarted"
 
         self.__notice_task_updated(task_id)
