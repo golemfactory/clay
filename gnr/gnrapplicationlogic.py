@@ -295,7 +295,6 @@ class GNRApplicationLogic(QtCore.QObject):
 
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
-            self.progress_dialog_customizer.gui.window.setWindowFlags(QtCore.Qt.Dialog | QtCore.Qt.FramelessWindowHint)
             self.progress_dialog_customizer.button_enable(False)    # disable 'ok' button
             self.progress_dialog.show()
 
