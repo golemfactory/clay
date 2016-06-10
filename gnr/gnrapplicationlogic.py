@@ -50,7 +50,6 @@ class GNRApplicationLogic(QtCore.QObject):
         self.tasks = {}
         self.test_tasks = {}
         self.task_types = {}
-        self.looping_calls = []
         self.customizer = None
         self.root_path = os.path.normpath(os.path.join(get_golem_path(), 'gnr'))
         self.nodes_manager_client = None
@@ -63,12 +62,14 @@ class GNRApplicationLogic(QtCore.QObject):
     def start(self):
         task_status = task.LoopingCall(self.get_status)
         task_peers = task.LoopingCall(self.get_peers)
+        task_payments = task.LoopingCall(self.update_payments_view)
         task_status.start(3.0)
         task_peers.start(3.0)
-        self.looping_calls += [task_peers, task_status]
+        task_payments.start(5.0)
+        self.__looping_calls = (task_peers, task_status, task_payments)
 
     def stop(self):
-        for looping_call in self.looping_calls:
+        for looping_call in self.__looping_calls:
             looping_call.stop()
 
     def register_gui(self, gui, customizer_class):
@@ -142,6 +143,22 @@ class GNRApplicationLogic(QtCore.QObject):
             table.setItem(i, 1, QTableWidgetItem(str(peer.port)))
             table.setItem(i, 2, QTableWidgetItem(peer.key_id))
             table.setItem(i, 3, QTableWidgetItem(peer.node_name))
+
+    def update_payments_view(self):
+        ts = self.client.transaction_system
+        if ts:
+            b, ab = ts.get_balance()
+            rb = b - ab
+            deposit = 0  # TODO: Get current deposit value.
+            total = deposit + b
+            ether = 1.0 / 10**18
+            fmt = "{:.6f} ETH"
+            ui = self.customizer.gui.ui
+            ui.localBalanceLabel.setText(fmt.format(b * ether))
+            ui.availableBalanceLabel.setText(fmt.format(ab * ether))
+            ui.reservedBalanceLabel.setText(fmt.format(rb * ether))
+            ui.depositBalanceLabel.setText(fmt.format(deposit * ether))
+            ui.totalBalanceLabel.setText(fmt.format(total * ether))
 
     def get_config(self):
         return self.client.config_desc
@@ -302,7 +319,7 @@ class GNRApplicationLogic(QtCore.QObject):
             return True
         else:
             return False
-        
+
     # label param is the gui element to set text
     def run_benchmark(self, benchmark, label):
         task_state = RenderingTaskState()
@@ -312,7 +329,7 @@ class GNRApplicationLogic(QtCore.QObject):
         tb = self._get_builder(task_state)
 
         t = Task.build_task(tb)
-        
+
         self.br = BenchmarkRunner(t, self.client.datadir, lambda p: self._benchmark_computation_success(performance=p, label=label),
                                 self._benchmark_computation_error, benchmark)
 
@@ -321,18 +338,18 @@ class GNRApplicationLogic(QtCore.QObject):
         self.progress_dialog.show()
 
         self.br.run()
-    
+
     def _benchmark_computation_success(self, performance, label):
         self.progress_dialog_customizer.show_message("Recounted")
-        
+
         #rounding
         perf = int((performance * 10) + 0.5) / 10.0
-        
+
         label.setText(str(perf))
-        
+
     def _benchmark_computation_error(self, error):
         self.progress_dialog_customizer.show_message("Recounting failed: " + error)
-        
+
     def get_environments(self):
         return self.client.get_environments()
 
