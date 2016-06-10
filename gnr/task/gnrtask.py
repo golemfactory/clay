@@ -20,7 +20,7 @@ def react_to_key_error(func):
             return func(*args, **kwargs)
         except KeyError:
             logger.warning("This is not my subtask {}".format(args[1]))
-            return None
+            return False
 
     return func_wrapper
 
@@ -203,17 +203,14 @@ class GNRTask(Task):
     def add_resources(self, res_files):
         self.res_files = res_files
 
-    @react_to_key_error
     def get_stderr(self, subtask_id):
         err = self.stderr.get(subtask_id)
         return self._interpret_log(err)
 
-    @react_to_key_error
     def get_stdout(self, subtask_id):
         out = self.stdout.get(subtask_id)
         return self._interpret_log(out)
 
-    @react_to_key_error
     def get_results(self, subtask_id):
         return self.results.get(subtask_id, [])
 
