@@ -319,12 +319,14 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
         self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
+        self.progress_dialog_customizer.button_enable(False)    # disable 'ok' button
         self.progress_dialog.show()
 
         self.br.run()
     
     def _benchmark_computation_success(self, performance, label):
         self.progress_dialog_customizer.show_message("Recounted")
+        self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         
         #rounding
         perf = int((performance * 10) + 0.5) / 10.0
@@ -333,6 +335,7 @@ class GNRApplicationLogic(QtCore.QObject):
         
     def _benchmark_computation_error(self, error):
         self.progress_dialog_customizer.show_message("Recounting failed: " + error)
+        self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         
     def get_environments(self):
         return self.client.get_environments()
