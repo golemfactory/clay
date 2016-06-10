@@ -11,7 +11,7 @@ from golem.task.taskstate import SubtaskStatus
 from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
-from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
+from gnr.task.gnrtask import GNROptions, react_to_key_error
 from gnr.task.renderingtask import RenderingTask
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
@@ -272,6 +272,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[hash]['perf'] = perf_index
         self.subtasks_given[hash]['node_id'] = node_id
         self.subtasks_given[hash]['parts'] = parts
+        self.subtasks_given[hash]['verified'] = False
 
         if not self.use_frames:
             self._update_task_preview()
@@ -288,11 +289,6 @@ class BlenderRenderTask(FrameRenderingTask):
 
         working_directory = self._get_working_directory()
         scene_file = self._get_scene_file_rel_path()
-
-        if self.use_frames:
-            frames = [self.frames[0]]
-        else:
-            frames = []
 
         if self.use_frames:
             frames = [self.frames[0]]
@@ -371,12 +367,12 @@ class BlenderRenderTask(FrameRenderingTask):
                 res_y = ceiling_height
         return res_y
 
-    @check_subtask_id_wrapper
+    @react_to_key_error
     def _get_part_img_size(self, subtask_id, adv_test_file):
         x, y = self._get_part_size(subtask_id)
         return 0, 0, x, y
 
-    @check_subtask_id_wrapper
+    @react_to_key_error
     def _change_scope(self, subtask_id, start_box, tr_file):
         extra_data, _ = FrameRenderingTask._change_scope(self, subtask_id, start_box, tr_file)
         min_x = start_box[0] / float(self.res_x)

@@ -4,7 +4,7 @@ import math
 import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
-from gnr.task.gnrtask import check_subtask_id_wrapper
+from gnr.task.gnrtask import react_to_key_error
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from gnr.renderingdirmanager import get_tmp_path
@@ -70,60 +70,48 @@ class FrameRenderingTask(RenderingTask):
             self.preview_file_path = [None] * len(self.frames)
             self.preview_task_file_path = [None] * len(self.frames)
 
-    @check_subtask_id_wrapper
-    def computation_finished(self, subtask_id, task_results, dir_manager=None, result_type=0):        
-        if not self.should_accept(subtask_id):
-            return
+    def verify_results(self, subtask_id, task_results, dir_manager, result_type):
+        tr_files = super(FrameRenderingTask, self).verify_results(subtask_id, task_results, dir_manager,
+                                                                  result_type)
+        if not self.subtasks_given[subtask_id]['verified']:
+            return tr_files
+        frames_list = []
+        if self.use_frames and self.total_tasks <= len(self.frames):
+            frames_list = self.subtasks_given[subtask_id]['frames']
+            if len(tr_files) < len(frames_list):
+                self.subtasks_given[subtask_id]['verified'] = False
+                return tr_files
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
+        return tr_files
 
-        tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
-        self.tmp_dir = tmp_dir
+    def accept_results(self, subtask_id, tr_files):
+        super(FrameRenderingTask, self).accept_results(subtask_id, tr_files)
+        num_start = self.subtasks_given[subtask_id]['start_task']
+        parts = self.subtasks_given[subtask_id]['parts']
+        num_end = self.subtasks_given[subtask_id]['end_task']
+        for tr_file in tr_files:
+            if not self.use_frames:
+                self._collect_image_part(num_start, tr_file)
+            elif self.total_tasks <= len(self.frames):
+                frames_list = self._collect_frames(num_start, tr_file, frames_list, self.tmp_dir)
+            else:
+                self._collect_frame_part(num_start, tr_file, parts, self.tmp_dir)
 
-        self.interpret_task_results(subtask_id, task_results, result_type, tmp_dir)
-        tr_files = self.results[subtask_id]
-
-        if len(tr_files) > 0:
-            num_start = self.subtasks_given[subtask_id]['start_task']
-            parts = self.subtasks_given[subtask_id]['parts']
-            num_end = self.subtasks_given[subtask_id]['end_task']
-            self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
-            frames_list = []
-
-            if self.use_frames and self.total_tasks <= len(self.frames):
-                frames_list = self.subtasks_given[subtask_id]['frames']
-                if len(tr_files) < len(frames_list):
-                    self._mark_subtask_failed(subtask_id)
-                    if not self.use_frames:
-                        self._update_task_preview()
-                    else:
-                        self._update_frame_task_preview()
-                    return
-
-            if not self._verify_imgs(subtask_id, tr_files):
-                self._mark_subtask_failed(subtask_id)
-                if not self.use_frames:
-                    self._update_task_preview()
-                else:
-                    self._update_frame_task_preview()
-                return
-
-            self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
-
-            for tr_file in tr_files:
-
-                if not self.use_frames:
-                    self._collect_image_part(num_start, tr_file)
-                elif self.total_tasks <= len(self.frames):
-                    frames_list = self._collect_frames(num_start, tr_file, frames_list, tmp_dir)
-                else:
-                    self._collect_frame_part(num_start, tr_file, parts, tmp_dir)
-
-            self.num_tasks_received += num_end - num_start + 1
+        self.num_tasks_received += num_end - num_start + 1
 
         if self.num_tasks_received == self.total_tasks:
             if self.use_frames:
                 self._copy_frames()
             else:
-                self._put_image_together(tmp_dir)
+                self._put_image_together(self.tmp_dir)
+
+    def reject_results(self, subtask_id):
+        super(FrameRenderingTask, self).reject_results(subtask_id)
+        if not self.use_frames:
+            self._update_task_preview()
+        else:
+            self._update_frame_task_preview()
+
 
     #########################
     # Specific task methods #
@@ -206,7 +194,7 @@ class FrameRenderingTask(RenderingTask):
                 for j in range(upper, lower):
                     img_task.putpixel((i, j), color)
 
-    @check_subtask_id_wrapper
+    @react_to_key_error
     def _get_part_img_size(self, subtask_id, adv_test_file):
         if not self.use_frames or self.__full_frames():
             return RenderingTask._get_part_img_size(self, subtask_id, adv_test_file)

@@ -56,7 +56,7 @@ class ComputeTaskDef(object):
         self.docker_images = None
 
 
-class Task:
+class Task(object):
 
     @classmethod
     def build_task(cls, task_builder):

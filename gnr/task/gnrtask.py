@@ -14,16 +14,15 @@ import copy
 logger = logging.getLogger(__name__)
 
 
-def check_subtask_id_wrapper(func):
-    def check_subtask_id(*args, **kwargs):
-        task = args[0]
-        subtask_id = args[1]
-        if subtask_id not in task.subtasks_given:
-            logger.error("This is not my subtask {}".format(subtask_id))
-            return False
-        return func(*args, **kwargs)
+def react_to_key_error(func):
+    def func_wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except KeyError:
+            logger.warning("This is not my subtask {}".format(args[1]))
+            return None
 
-    return check_subtask_id
+    return func_wrapper
 
 
 class GNRTaskBuilder(TaskBuilder):
@@ -119,9 +118,9 @@ class GNRTask(Task):
     def computation_failed(self, subtask_id):
         self._mark_subtask_failed(subtask_id)
 
-    @check_subtask_id_wrapper
+    @react_to_key_error
     def verify_subtask(self, subtask_id):
-        return self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished
+        return self.subtasks_given[subtask_id]['verified']
 
     def verify_task(self):
         return self.finished_computation()
@@ -144,7 +143,7 @@ class GNRTask(Task):
         self.header.last_checking = time.time()
         self.header.ttl = self.full_task_timeout
 
-    @check_subtask_id_wrapper
+    @react_to_key_error
     def restart_subtask(self, subtask_id):
         if subtask_id in self.subtasks_given:
             if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.starting:
@@ -153,9 +152,23 @@ class GNRTask(Task):
                 self._mark_subtask_failed(subtask_id)
                 tasks = self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task'] + 1
                 self.num_tasks_received -= tasks
+            self.subtasks_given[subtask_id]['status'] = SubtaskStatus.restarted
 
     def abort(self):
         pass
+
+    @react_to_key_error
+    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+        if not self.should_accept(subtask_id):
+            if self.should_verify(subtask_id):
+                self.verify_results(subtask_id, task_result, dir_manager, result_type)
+            return
+
+        result_files = self.verify_results(subtask_id, task_result, dir_manager, result_type)
+        if self.subtasks_given[subtask_id]['verified']:
+            self.accept_results(subtask_id, result_files)
+        else:
+            self.reject_results()
 
     def get_progress(self):
         return float(self.num_tasks_received) / self.total_tasks
@@ -183,24 +196,24 @@ class GNRTask(Task):
     def update_task_state(self, task_state):
         pass
 
-    @check_subtask_id_wrapper
+    @react_to_key_error
     def get_trust_mod(self, subtask_id):
         return 1.0
 
     def add_resources(self, res_files):
         self.res_files = res_files
 
-    @check_subtask_id_wrapper
+    @react_to_key_error
     def get_stderr(self, subtask_id):
         err = self.stderr.get(subtask_id)
         return self._interpret_log(err)
 
-    @check_subtask_id_wrapper
+    @react_to_key_error
     def get_stdout(self, subtask_id):
         out = self.stdout.get(subtask_id)
         return self._interpret_log(out)
 
-    @check_subtask_id_wrapper
+    @react_to_key_error
     def get_results(self, subtask_id):
         return self.results.get(subtask_id, [])
 
@@ -270,11 +283,31 @@ class GNRTask(Task):
     def after_test(self, results, tmp_dir):
         pass
 
-    @check_subtask_id_wrapper
+    @react_to_key_error
     def should_accept(self, subtask_id):
         if self.subtasks_given[subtask_id]['status'] != SubtaskStatus.starting:
             return False
         return True
+
+    @react_to_key_error
+    def should_verify(self, subtask_id):
+        return self.subtasks_given[subtask_id]['status'] == SubtaskStatus.restarted
+
+    def verify_results(self, subtask_id, task_results, dir_manager, result_type):
+        self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
+        self.interpret_task_results(subtask_id, task_results, result_type, self.tmp_dir)
+        tr_files = self.results[subtask_id]
+        if len(tr_files) == 0:
+            return tr_files
+
+        self.subtasks_given[subtask_id]['verified'] = True
+        return tr_files
+
+    def accept_results(self, subtask_id, tr_files):
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
+
+    def reject_results(self, subtask_id):
+        self._mark_subtask_failed(subtask_id)
 
     @staticmethod
     def _interpret_log(log):
@@ -290,7 +323,7 @@ class GNRTask(Task):
             logger.error("Can't read file {}: {}".format(f, err))
             return ""
 
-    @check_subtask_id_wrapper
+    @react_to_key_error
     def _mark_subtask_failed(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
         self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = -1

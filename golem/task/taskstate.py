@@ -73,4 +73,4 @@ class SubtaskStatus(object):
     resent = "Failed - Resent"
     finished = "Finished"
     failure = "Failure"
-    restarted = "Waiting for restart"
+    restarted = "Restart"
