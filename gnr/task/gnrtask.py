@@ -168,7 +168,7 @@ class GNRTask(Task):
         if self.subtasks_given[subtask_id]['verified']:
             self.accept_results(subtask_id, result_files)
         else:
-            self.reject_results()
+            self.reject_results(subtask_id)
 
     def get_progress(self):
         return float(self.num_tasks_received) / self.total_tasks
