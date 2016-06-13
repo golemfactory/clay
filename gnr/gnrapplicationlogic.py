@@ -296,6 +296,7 @@ class GNRApplicationLogic(QtCore.QObject):
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
             self.progress_dialog_customizer.button_enable(False)    # disable 'ok' button
+            self.customizer.gui.setEnabled('new_task', False)       # disable everything on 'new task' tab
             self.progress_dialog.show()
 
             self.tt.run()
@@ -320,6 +321,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
         self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
         self.progress_dialog_customizer.button_enable(False)    # disable 'ok' button
+        self.customizer.gui.setEnabled('recount', False)        # disable all 'recount' buttons
         self.progress_dialog.show()
 
         self.br.run()
@@ -327,16 +329,17 @@ class GNRApplicationLogic(QtCore.QObject):
     def _benchmark_computation_success(self, performance, label):
         self.progress_dialog_customizer.show_message("Recounted")
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
-        
+        self.customizer.gui.setEnabled('recount', True)  # enable all 'recount' buttons
         #rounding
         perf = int((performance * 10) + 0.5) / 10.0
         
         label.setText(str(perf))
-        
+
     def _benchmark_computation_error(self, error):
         self.progress_dialog_customizer.show_message("Recounting failed: " + error)
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
-        
+        self.customizer.gui.setEnabled('recount', True)  # enable all 'recount' buttons
+
     def get_environments(self):
         return self.client.get_environments()
 
@@ -346,6 +349,7 @@ class GNRApplicationLogic(QtCore.QObject):
     def _test_task_computation_success(self, results, est_mem):
         self.progress_dialog_customizer.show_message("Test task computation success!")
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
+        self.customizer.gui.setEnabled('new_task', True)  # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)
 
@@ -355,6 +359,7 @@ class GNRApplicationLogic(QtCore.QObject):
             err_msg += error
         self.progress_dialog_customizer.show_message(err_msg)
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
+        self.customizer.gui.setEnabled('new_task', True)  # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(False, 0)
 
