@@ -88,6 +88,11 @@ class PreviewUpdater(object):
         if subtask_number == self.perfectly_placed_subtasks and (subtask_number + 1) in self.chunks:
             self.update_preview(self.chunks[subtask_number + 1], subtask_number + 1)
 
+    def restart(self):
+        self.chunks = {}
+        self.perfect_match_area_y = 0
+        self.perfectly_placed_subtasks = 0
+
 
 def build_blender_renderer_info(dialog, customizer):
     defaults = BlenderDefaults()
@@ -208,7 +213,7 @@ class BlenderRenderTask(FrameRenderingTask):
             self.preview_file_path = []
             for i in range(len(self.frames)):
                 self.preview_file_path.append("{}".format(os.path.join(tmp_dir, "current_preview{}".format(i))))
-        
+
         if self.use_frames:
             parts = self.total_tasks / len(self.frames)
         else:
@@ -216,9 +221,9 @@ class BlenderRenderTask(FrameRenderingTask):
         expected_offsets = {}
         for i in range(1, parts + 1):
             _, expected_offset = self._get_min_max_y(i)
-            expected_offset =  self.res_y - int(expected_offset * float(self.res_y))
+            expected_offset = self.res_y - int(expected_offset * float(self.res_y))
             expected_offsets[i] = expected_offset
-        
+
         if self.use_frames:
             self.preview_updaters = []
             for i in range(0, len(self.frames)):
@@ -226,7 +231,6 @@ class BlenderRenderTask(FrameRenderingTask):
                 self.preview_updaters.append(PreviewUpdater(preview_path, self.res_x, self.res_y, expected_offsets))
         else:
             self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
-        
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
@@ -280,6 +284,15 @@ class BlenderRenderTask(FrameRenderingTask):
             self._update_frame_task_preview()
 
         return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+
+    def restart(self):
+        super(BlenderRenderTask, self).restart()
+        if self.use_frames:
+            for preview in self.preview_updaters:
+                preview.restart()
+        else:
+            self.preview_updater.restart()
+
 
     ###################
     # GNRTask methods #

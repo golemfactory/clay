@@ -330,16 +330,16 @@ class TaskManager(object):
     def restart_task(self, task_id):
         if task_id in self.tasks:
             logger.info("restarting task")
-            self.dir_manager.clear_temporary(task_id, undeletable=self.tasks[task_id].undeletable)
 
             self.tasks[task_id].restart()
             self.tasks[task_id].task_status = TaskStatus.waiting
             self.tasks_states[task_id].status = TaskStatus.waiting
             self.tasks_states[task_id].time_started = time.time()
 
-            for sub in self.tasks_states[task_id].subtask_states.values():
-                del self.subtask2task_mapping[sub.subtask_id]
-            self.tasks_states[task_id].subtask_states.clear()
+            self.dir_manager.clear_temporary(task_id, undeletable=self.tasks[task_id].undeletable)
+            for ss in self.tasks_states[task_id].subtask_states.values():
+                if ss.subtask_status != SubtaskStatus.failure:
+                    ss.subtask_status = SubtaskStatus.restarted
 
             self.__notice_task_updated(task_id)
         else:

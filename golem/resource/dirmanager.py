@@ -50,12 +50,15 @@ class DirManager(object):
         for i in os.listdir(d):
             path = os.path.join(d, i)
             if path not in undeletable:
-                if os.path.isfile(path):
-                    os.remove(path)
-                if os.path.isdir(path):
-                    self.clear_dir(path, undeletable)
-                    if not os.listdir(path):
-                        shutil.rmtree(path, ignore_errors=True)
+                try:
+                    if os.path.isfile(path):
+                        os.remove(path)
+                    if os.path.isdir(path):
+                        self.clear_dir(path, undeletable)
+                        if not os.listdir(path):
+                            shutil.rmtree(path, ignore_errors=True)
+                except (OSError, IOError) as err:
+                    logger.error("Cannot remove {}: {}".format(path, err))
 
     def create_dir(self, full_path):
         """ Create new directory, remove old directory if it exists.
