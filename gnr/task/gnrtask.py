@@ -147,7 +147,8 @@ class GNRTask(Task):
                 self._mark_subtask_failed(subtask_id)
                 tasks = self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task'] + 1
                 self.num_tasks_received -= tasks
-            self.subtasks_given[subtask_id]['status'] = SubtaskStatus.restarted
+            if self.subtasks_given[subtask_id]['status'] != SubtaskStatus.failure:
+                self.subtasks_given[subtask_id]['status'] = SubtaskStatus.restarted
 
     def abort(self):
         pass

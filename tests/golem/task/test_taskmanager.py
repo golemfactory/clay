@@ -162,6 +162,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert ss.subtask_status == SubtaskStatus.finished
         assert tm.tasks_states["xyz"].status == TaskStatus.finished
         th.task_id = "abc"
+
         t2 = TestTask(th, "print 'Hello world'", ["aabbcc"])
         tm.add_new_task(t2)
         ctd, wrong_task = tm.get_next_subtask("DEF", "DEF", "abc", 1030, 10, 10000, 10000, 10000)
@@ -179,6 +180,21 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert ss.subtask_progress == 0.0
         assert ss.subtask_status == SubtaskStatus.restarted
         assert t2.finished
+
+        th.task_id = "qwe"
+        t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"])
+        tm.add_new_task(t3)
+        ctd, wrong_task = tm.get_next_subtask("DEF", "DEF", "qwe", 1030, 10, 10000, 10000, 10000)
+        assert not wrong_task
+        assert ctd.subtask_id == "qqwwee"
+        tm.task_computation_failure("qqwwee", "something went wrong")
+        ss = tm.tasks_states["qwe"].subtask_states["qqwwee"]
+        assert ss.subtask_status == SubtaskStatus.failure
+        assert ss.subtask_progress == 1.0
+        assert ss.subtask_rem_time == 0.0
+        assert ss.stderr == "something went wrong"
+        with self.assertLogs(logger, level="WARNING"):
+            assert not tm.computed_task_received("qqwwee", [], 0)
 
 
 
