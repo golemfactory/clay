@@ -146,6 +146,7 @@ class TaskManager(object):
             ts = self.tasks_states[task_id]
             th = task.header
             if th.max_price < price:
+                logger.info("Cannot get next task for this node - price too high.")
                 return None, False
 
             if self.__has_subtasks(ts, task, max_resource_size, max_memory_size):
@@ -494,11 +495,15 @@ class TaskManager(object):
 
     def __has_subtasks(self, task_state, task, max_resource_size, max_memory_size):
         if task_state.status not in self.activeStatus:
+            logger.info("Task doesn't have more subtask for this node - task not active.")
             return False
         if not task.needs_computation():
+            logger.info("Task doesn't have more subtask for this node - task doesn't need computation.")
             return False
         if task.header.resource_size > (long(max_resource_size) * 1024):
+            logger.info("Task doesn't have more subtask for this node - resource size limits too small.")
             return False
         if task.header.estimated_memory > (long(max_memory_size) * 1024):
+            logger.info("Task doesn't have more subtask for this node -  memory limits too small. ")
             return False
         return True
