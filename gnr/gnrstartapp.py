@@ -49,8 +49,9 @@ def load_environments():
             Environment()]
 
 
-def start_and_configure_client(logic, environments, datadir):
-    client = start_client(datadir)
+def start_and_configure_client(logic, environments, datadir,
+                               transaction_system=False):
+    client = start_client(datadir, transaction_system)
     for env in environments:
         client.environments_manager.add_environment(env)
 
@@ -67,14 +68,16 @@ def run_ranking(client, reactor):
     client.ranking.run(reactor)
 
 
-def start_app(logic, app, gui, datadir=None, rendering=False, start_ranking=True):
+def start_app(logic, app, gui, datadir=None, rendering=False,
+              start_ranking=True, transaction_system=False):
     reactor = install_reactor()
     register_gui(logic, app, gui)
     if rendering:
         register_rendering_task_types(logic)
     environments = load_environments()
 
-    client = start_and_configure_client(logic, environments, datadir)
+    client = start_and_configure_client(logic, environments, datadir,
+                                        transaction_system)
 
     if start_ranking:
         run_ranking(client, reactor)

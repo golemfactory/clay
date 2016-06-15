@@ -30,9 +30,11 @@ def start(gui, payments, datadir, node_address, peer, task):
         app = GNRGui(logic, AppMainWindow)
         gui = RenderingMainWindowCustomizer
 
-        start_app(logic, app, gui, datadir=datadir, rendering=True)
+        start_app(logic, app, gui, datadir=datadir, rendering=True,
+                  transaction_system=payments)
     else:
-        node = GNRNode(datadir=datadir, node_address=node_address)
+        node = GNRNode(datadir=datadir, node_address=node_address,
+                       transaction_system=payments)
         node.initialize()
 
         node.connect_with_peers(peer)
