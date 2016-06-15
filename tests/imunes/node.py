@@ -1,6 +1,7 @@
 import click
 
-from gnr.node import start, GNRNode, node_cli, parse_node_addr
+from golemapp import start
+from gnr.node import GNRNode, node_cli, parse_node_addr
 
 
 def disable_blender(ctx, param, value):
