@@ -21,12 +21,12 @@ def try_building_docker_images():
     try:
         subprocess.check_call(["docker", "info"])
     except Exception as err:
-        print ""
-        print "***************************************************************"
-        print "Docker not available, not building images."
-        print "Command 'docker info' returned {}".format(err)
-        print "***************************************************************"
-        print ""
+        print("""
+              ***************************************************************"
+              Docker not available, not building images."
+              Command 'docker info' returned {}"
+              ***************************************************************"
+              """.format(err))
         return
 
     basecontainer = "Dockerfile.base"
@@ -112,6 +112,7 @@ setup(
     author_email='contact@golemproject.net',
     url='http://golemproject.net',
     packages=find_packages(include=['golem*', 'gnr*']),
+    entry_points={'console_scripts': ['golemapp = golemapp:start']},
     install_requires=requirements,
     include_package_data=True,
     dependency_links=dependency_links,
