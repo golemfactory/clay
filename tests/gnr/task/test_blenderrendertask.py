@@ -112,6 +112,11 @@ class TestBlenderTaskDivision(TempDirFixture):
             img_x, img_y = img.size
             self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
 
+        self.bt.restart()
+        assert self.bt.preview_updater.chunks == {}
+        assert self.bt.preview_updater.perfectly_placed_subtasks == 0
+        assert self.bt.preview_updater.perfect_match_area_y == 0
+
     def test_put_img_together_not_exr(self):
         for output_format in ["PNG", "JPEG", "BMP"]:
             self.bt.output_format = output_format.lower()
@@ -173,7 +178,12 @@ class TestBlenderTaskDivision(TempDirFixture):
         self.assertTrue(img.size == (10, 5))
         img = Image.open(file4)
         self.assertTrue(img.size == (10, 5))
-        
+
+        self.bt.restart()
+        for preview in self.bt.preview_updaters:
+            assert preview.chunks == {}
+            assert preview.perfect_match_area_y == 0
+            assert preview.perfectly_placed_subtasks == 0
 
     def test_mark_task_area(self):
         self.bt.use_frames = True

@@ -60,6 +60,10 @@ class FrameRenderingTask(RenderingTask):
         self.use_frames = use_frames
         self.frames = frames
 
+        self.frames_given = {}
+        for frame in frames:
+            self.frames_given[frame] = {}
+
         if use_frames:
             self.preview_file_path = [None] * len(frames)
             self.preview_task_file_path = [None] * len(frames)
@@ -75,7 +79,6 @@ class FrameRenderingTask(RenderingTask):
                                                                   result_type)
         if not self.subtasks_given[subtask_id]['verified']:
             return tr_files
-        frames_list = []
         if self.use_frames and self.total_tasks <= len(self.frames):
             frames_list = self.subtasks_given[subtask_id]['frames']
             if len(tr_files) < len(frames_list):
@@ -93,7 +96,7 @@ class FrameRenderingTask(RenderingTask):
             if not self.use_frames:
                 self._collect_image_part(num_start, tr_file)
             elif self.total_tasks <= len(self.frames):
-                frames_list = self._collect_frames(num_start, tr_file, frames_list, self.tmp_dir)
+                self._collect_frames(num_start, tr_file, self.subtasks_given[subtask_id]['frames'], self.tmp_dir)
             else:
                 self._collect_frame_part(num_start, tr_file, parts, self.tmp_dir)
 
@@ -284,6 +287,9 @@ class FrameRenderingTask(RenderingTask):
         img_task.save(preview_task_file_path, "BMP")
         self.preview_task_file_path[idx] = preview_task_file_path
 
+    def _get_output_name(self, frame_num, num_start):
+        num = str(frame_num)
+        return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
 
 def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
                      frame_num=1):

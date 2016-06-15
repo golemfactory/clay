@@ -136,7 +136,6 @@ class LuxTask(RenderingTask):
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                root_path, estimated_memory, max_price, docker_images)
 
-        self.tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         self.undeletable.append(self.__get_test_flm())
         self.halttime = halttime
         self.haltspp = haltspp

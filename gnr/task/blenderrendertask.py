@@ -202,17 +202,12 @@ class BlenderRenderTask(FrameRenderingTask):
             logger.error("Wrong script file: {}".format(err))
             self.script_src = ""
 
-        self.frames_given = {}
-        for frame in frames:
-            self.frames_given[frame] = {}
-        
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         if not self.use_frames:
-            self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
+            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
         else:
             self.preview_file_path = []
             for i in range(len(self.frames)):
-                self.preview_file_path.append("{}".format(os.path.join(tmp_dir, "current_preview{}".format(i))))
+                self.preview_file_path.append("{}".format(os.path.join(self.tmp_dir, "current_preview{}".format(i))))
 
         if self.use_frames:
             parts = self.total_tasks / len(self.frames)
@@ -417,10 +412,6 @@ class BlenderRenderTask(FrameRenderingTask):
             img.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
         else:
             self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
-
-    def _get_output_name(self, frame_num, num_start):
-        num = str(frame_num)
-        return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
     
     def _put_image_together(self, tmp_dir):
         output_file_name = u"{}".format(self.output_file, self.output_format)
