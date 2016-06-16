@@ -37,7 +37,10 @@ def try_building_docker_images():
                     print "\n Image {} exists - skipping".format(image)
                     continue
                 docker_file = path.join(images_dir, path.normpath(docker_file))
-                cmd = "docker build -t {}:{} -f {} .".format(image, docker_file)
+                cmd = "docker build -t {} -f {} .".format(image, docker_file)
+                print "\nRunning '{}' ...\n".format(cmd)
+                subprocess.check_call(cmd.split(" "))
+                cmd = "docker tag -f {} {}:{}".format(image, image, tag)
                 print "\nRunning '{}' ...\n".format(cmd)
                 subprocess.check_call(cmd.split(" "))
             except ValueError:
