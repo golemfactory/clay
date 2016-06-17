@@ -146,7 +146,7 @@ class TaskServer(PendingConnectionsServer):
                         "port": th.task_owner_port,
                         "key_id": th.task_owner_key_id,
                         "task_owner": th.task_owner,
-                        "ttl": th.ttl,
+                        "deadline": th.deadline,
                         "subtask_timeout": th.subtask_timeout,
                         "node_name": th.node_name,
                         "environment": th.environment,

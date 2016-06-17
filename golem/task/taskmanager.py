@@ -1,14 +1,17 @@
 import time
 import logging
+from datetime import datetime
 from math import ceil
 
+from golem.core.common import timeout_to_deadline
+from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 from golem.resource.dirmanager import DirManager
-from golem.core.hostaddress import get_external_address
+
 
 logger = logging.getLogger(__name__)
 
@@ -280,14 +283,12 @@ class TaskManager(object):
     # CHANGE TO RETURN KEY_ID (check IF SUBTASK COMPUTER HAS KEY_ID
     def remove_old_tasks(self):
         nodes_with_timeouts = []
-        self.comp_task_keeper.remove_old_tasks()
         for t in self.tasks.values():
             th = t.header
             if self.tasks_states[th.task_id].status not in self.activeStatus:
                 continue
-            cur_time = time.time()
-            th.last_checking = cur_time
-            if cur_time > th.ttl:
+            cur_time = datetime.utcnow()
+            if cur_time > th.deadline:
                 logger.info("Task {} dies".format(th.task_id))
                 t.task_status = TaskStatus.failure
                 self.tasks_states[th.task_id].status = TaskStatus.failure
@@ -296,9 +297,7 @@ class TaskManager(object):
             ts = self.tasks_states[th.task_id]
             for s in ts.subtask_states.values():
                 if s.subtask_status == SubtaskStatus.starting:
-                    s.ttl = s.ttl - (cur_time - s.last_checking)
-                    s.last_checking = cur_time
-                    if s.ttl <= 0:
+                    if cur_time > s.deadline:
                         logger.info("Subtask {} dies".format(s.subtask_id))
                         s.subtask_status = SubtaskStatus.failure
                         nodes_with_timeouts.append(s.computer.node_id)
@@ -432,15 +431,10 @@ class TaskManager(object):
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
             task = self.tasks[task_id]
-            task.header.ttl = time.time() + full_task_timeout
+            task.header.deadline = timeout_to_deadline(full_task_timeout)
             task.header.subtask_timeout = subtask_timeout
             task.subtask_timeout = subtask_timeout
             task.full_task_timeout = full_task_timeout
-            task.header.last_checking = time.time()
-            ts = self.tasks_states[task_id]
-            for s in ts.subtask_states.values():
-                s.ttl = subtask_timeout
-                s.last_checking = time.time()
             return True
         else:
             logger.info("Cannot find task {} in my tasks".format(task_id))
@@ -484,7 +478,7 @@ class TaskManager(object):
             ss.computer.ip_address = address
             ss.computer.price = price
             ss.time_started = time.time()
-            ss.ttl = self.tasks[ctd.task_id].header.subtask_timeout
+            ss.deadline = ctd.deadline
             # TODO: read node ip address
             ss.subtask_definition = ctd.short_description
             ss.subtask_id = ctd.subtask_id

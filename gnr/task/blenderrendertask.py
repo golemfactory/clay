@@ -226,7 +226,6 @@ class BlenderRenderTask(FrameRenderingTask):
                 self.preview_updaters.append(PreviewUpdater(preview_path, self.res_x, self.res_y, expected_offsets))
         else:
             self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
-        
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
@@ -291,11 +290,6 @@ class BlenderRenderTask(FrameRenderingTask):
 
         working_directory = self._get_working_directory()
         scene_file = self._get_scene_file_rel_path()
-
-        if self.use_frames:
-            frames = [self.frames[0]]
-        else:
-            frames = []
 
         if self.use_frames:
             frames = [self.frames[0]]

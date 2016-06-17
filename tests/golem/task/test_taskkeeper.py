@@ -1,8 +1,9 @@
-import time
+from datetime import datetime, timedelta
 from unittest import TestCase
 
 from mock import Mock
 
+from golem.core.common import timeout_to_deadline
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.task.taskbase import TaskHeader, ComputeTaskDef
@@ -108,7 +109,7 @@ def get_task_header():
             "key_id": "kkkk",
             "environment": "DEFAULT",
             "task_owner": "task_owner",
-            "ttl": 1201,
+            "deadline": timeout_to_deadline(1201),
             "subtask_timeout": 120,
             "max_price": 10
             }
@@ -125,7 +126,7 @@ class TestCompTaskKeeper(LogTestCase):
         ctk = CompTaskKeeper()
         header = get_task_header()
         header = TaskHeader(header["node_name"], header["id"], header["address"], header["port"], header["key_id"],
-                            header["environment"], header["task_owner"], header["ttl"], header["subtask_timeout"],
+                            header["environment"], header["task_owner"], header["deadline"], header["subtask_timeout"],
                             1024, 1.0, 1000)
         header.task_id = "xyz"
         ctk.add_request(header, 5)
@@ -157,7 +158,7 @@ class TestCompTaskKeeper(LogTestCase):
             ctk.remove_task("xyz")
         self.assertIsNone(ctk.active_tasks.get("xyz"))
 
-        header.ttl = time.time() - 1
+        header.deadline = datetime.utcnow() - timedelta(seconds=1)
         ctk.add_request(header, 23)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
         ctk.remove_old_tasks()

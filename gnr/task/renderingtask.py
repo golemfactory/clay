@@ -56,8 +56,8 @@ class RenderingTask(GNRTask):
     # Task methods #
     ################
 
-    def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
-                 subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
+    def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment, timeout,
+                 subtask_timeout, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
                  estimated_memory, max_price, docker_images=None):
 
@@ -74,11 +74,7 @@ class RenderingTask(GNRTask):
             resource_size += os.stat(resource).st_size
 
         GNRTask.__init__(self, src_code, node_id, task_id, owner_address, owner_port, owner_key_id, environment,
-                         ttl, subtask_ttl, resource_size, estimated_memory, max_price, docker_images)
-
-        self.full_task_timeout = ttl
-        self.header.ttl = time.time() + self.full_task_timeout
-        self.header.subtask_timeout = subtask_ttl
+                         timeout, subtask_timeout, resource_size, estimated_memory, max_price, docker_images)
 
         self.main_program_file = main_program_file
         self.main_scene_file = main_scene_file

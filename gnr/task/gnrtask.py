@@ -1,15 +1,19 @@
-from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
-from golem.task.taskstate import SubtaskStatus
-from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
+import copy
+import logging
+import os
+import pickle
+import time
+
+from golem.core.common import timeout_to_deadline
+from golem.core.compress import decompress
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
-from golem.core.compress import decompress
+from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
+from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
+from golem.task.taskstate import SubtaskStatus
+
 from gnr.renderingdirmanager import get_tmp_path
-import os
-import logging
-import time
-import pickle
-import copy
+
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +65,7 @@ class GNRTask(Task):
     ################
 
     def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                 ttl, subtask_ttl, resource_size, estimated_memory, max_price, docker_images=None):
+                 task_timeout, subtask_timeout, resource_size, estimated_memory, max_price, docker_images=None):
 
         """ Create more specific task implementation
         :param src_code:
@@ -71,15 +75,16 @@ class GNRTask(Task):
         :param owner_port:
         :param owner_key_id:
         :param environment:
-        :param ttl:
-        :param subtask_ttl:
+        :param task_timeout:
+        :param subtask_timeout:
         :param resource_size:
         :param estimated_memory:
         :param float max_price: maximum price that this node may par for an hour of computation
         :param docker_images: docker image specification
         """
+        deadline = timeout_to_deadline(task_timeout)
         th = TaskHeader(node_name, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
-                        ttl, subtask_ttl, resource_size, estimated_memory, max_price=max_price,
+                        deadline, subtask_timeout, resource_size, estimated_memory, max_price=max_price,
                         docker_images=docker_images)
 
         Task.__init__(self, th, src_code)
@@ -93,7 +98,7 @@ class GNRTask(Task):
         self.subtasks_given = {}
         self.num_failed_subtasks = 0
 
-        self.full_task_timeout = 2200
+        self.full_task_timeout = task_timeout
         self.counting_nodes = {}
 
         self.root_path = None
@@ -141,8 +146,7 @@ class GNRTask(Task):
         self.subtasks_given.clear()
 
         self.num_failed_subtasks = 0
-        self.header.last_checking = time.time()
-        self.header.ttl = time.time() + self.full_task_timeout
+        self.header.deadline = timeout_to_deadline(self.full_task_timeout)
 
     @check_subtask_id_wrapper
     def restart_subtask(self, subtask_id):
