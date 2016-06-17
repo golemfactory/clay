@@ -28,22 +28,23 @@ def try_building_docker_images():
         print "***************************************************************"
         print ""
         return
-
-    basecontainer = "Dockerfile.base"
-
-    dockerfiles_dir = path.join("scripts")
-    dockerfiles_list = os.listdir(dockerfiles_dir)
-    dockerfiles_list.remove(basecontainer)
-    dockerfiles_list = [basecontainer] + dockerfiles_list
-    for f in dockerfiles_list:
-        if f.startswith("Dockerfile."):
+    images_dir = path.join('gnr', 'task')
+    with open(path.join(images_dir,  'images.ini')) as f:
+        for line in f:
             try:
-                name = "golem/{}".format(f.split(".", 1)[-1])
-                cmd = "docker build -t {} -f scripts/{} .".format(name, f)
+                image, docker_file, tag = line.split()
+                if subprocess.check_output(["docker", "images", "-q", image + ":" + tag]):
+                    print "\n Image {} exists - skipping".format(image)
+                    continue
+                docker_file = path.join(images_dir, path.normpath(docker_file))
+                cmd = "docker build -t {} -f {} .".format(image, docker_file)
+                print "\nRunning '{}' ...\n".format(cmd)
+                subprocess.check_call(cmd.split(" "))
+                cmd = "docker tag -f {} {}:{}".format(image, image, tag)
                 print "\nRunning '{}' ...\n".format(cmd)
                 subprocess.check_call(cmd.split(" "))
             except ValueError:
-                print "Skipping file scripts/{}".format(f)
+                print "Skipping line {}".format(line)
             except subprocess.CalledProcessError as err:
                 print "Docker build failed: {}".format(err)
                 sys.exit(1)
