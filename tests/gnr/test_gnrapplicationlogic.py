@@ -8,6 +8,10 @@ from gnr.gnrapplicationlogic import GNRApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.tools.testdirfixture import TestDirFixture
+from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
+from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
+from gnr.ui.dialog import TestingTaskProgressDialog
+from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
 
 
 class TTask(Task):
@@ -74,6 +78,8 @@ class TestGNRApplicationLogic(TestDirFixture):
         task_type.task_builder_type.return_value = ttb
         logic.task_types["TESTTASK"] = task_type
         logic.run_test_task(ts)
+        time.sleep(0.2)     # just to be sure, that everything has been initialized
+        self.assertEquals(logic.progress_dialog_customizer.is_enable(), False)
         time.sleep(0.5)
         success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
         self.assertEqual(success, True)
@@ -96,6 +102,15 @@ class TestGNRApplicationLogic(TestDirFixture):
         logic.clone_task("xyz")
 
         assert logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0] == ts.definition
+
+        logic.run_benchmark(BlenderBenchmark(), Mock())
+        time.sleep(0.2)
+        self.assertEquals(logic.progress_dialog_customizer.is_enable(), False)
+        time.sleep(10)
+        logic.run_benchmark(LuxBenchmark(), Mock())
+        time.sleep(0.2)
+        self.assertEquals(logic.progress_dialog_customizer.is_enable(), False)
+        time.sleep(10)
 
         gnrgui.app.exit(0)
         gnrgui.app.deleteLater()
