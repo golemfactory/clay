@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>973</width>
+    <width>983</width>
     <height>689</height>
    </rect>
   </property>
@@ -93,8 +93,8 @@
             <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>ui/img/new.png</normaloff>ui/img/new.png</iconset>
+            <iconset resource="icons.qrc">
+             <normaloff>:/img/new.png</normaloff>:/img/new.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
@@ -108,8 +108,8 @@
             <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>ui/img/task.png</normaloff>ui/img/task.png</iconset>
+            <iconset resource="icons.qrc">
+             <normaloff>:/img/task.png</normaloff>:/img/task.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -123,8 +123,8 @@
             <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>ui/img/eye.png</normaloff>ui/img/eye.png</iconset>
+            <iconset resource="icons.qrc">
+             <normaloff>:/img/eye.png</normaloff>:/img/eye.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -138,8 +138,8 @@
             <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>ui/img/settings.png</normaloff>ui/img/settings.png</iconset>
+            <iconset resource="icons.qrc">
+             <normaloff>:/img/settings.png</normaloff>:/img/settings.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
@@ -153,8 +153,8 @@
             <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>ui/img/user.png</normaloff>ui/img/user.png</iconset>
+            <iconset resource="icons.qrc">
+             <normaloff>:/img/user.png</normaloff>:/img/user.png</iconset>
            </property>
            <property name="flags">
             <set>ItemIsSelectable|ItemIsEnabled</set>
@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>4</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -2347,6 +2347,28 @@
                 </property>
                </widget>
               </item>
+              <item row="0" column="1">
+               <widget class="QLineEdit" name="golemIdLabel">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="contextMenuPolicy">
+                 <enum>Qt::NoContextMenu</enum>
+                </property>
+                <property name="frame">
+                 <bool>false</bool>
+                </property>
+                <property name="cursorPosition">
+                 <number>0</number>
+                </property>
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
               <item row="1" column="0">
                <widget class="QLabel" name="nameConst">
                 <property name="toolTip">
@@ -2367,17 +2389,17 @@
                 </property>
                </widget>
               </item>
-              <item row="2" column="0">
+              <item row="3" column="0">
                <widget class="QLabel" name="ethAddressConst">
                 <property name="toolTip">
-                 <string>Ethereum address</string>
+                 <string>The Ethereum address used privately by the Golem App</string>
                 </property>
                 <property name="text">
-                 <string>Wallet address</string>
+                 <string>Local Ethereum address</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="1">
+              <item row="3" column="1">
                <widget class="QLabel" name="ethAddressLabel">
                 <property name="text">
                  <string/>
@@ -2387,27 +2409,40 @@
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
-               <widget class="QLabel" name="accountBalanceConst">
+              <item row="4" column="0">
+               <widget class="QLabel" name="localBalanceConst">
                 <property name="toolTip">
-                 <string>Associated ethereum balance</string>
+                 <string>The balance of the local Ethereum address. Can be spent directly on tasks.</string>
                 </property>
                 <property name="text">
-                 <string>Account balance</string>
+                 <string>Local balance</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="1">
-               <widget class="QLabel" name="accountBalanceLabel">
+              <item row="4" column="1">
+               <widget class="QLabel" name="localBalanceLabel">
                 <property name="text">
                  <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                 </property>
                 <property name="textInteractionFlags">
                  <set>Qt::LinksAccessibleByKeyboard|Qt::LinksAccessibleByMouse|Qt::TextBrowserInteraction|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
                 </property>
                </widget>
               </item>
-              <item row="4" column="0">
+              <item row="5" column="0">
+               <widget class="QLabel" name="availableBalanceConst">
+                <property name="toolTip">
+                 <string>Balance available for spending</string>
+                </property>
+                <property name="text">
+                 <string>- available</string>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="0">
                <widget class="QLabel" name="paymentsConst">
                 <property name="toolTip">
                  <string>Your incomes and payments history</string>
@@ -2417,32 +2452,94 @@
                 </property>
                </widget>
               </item>
-              <item row="4" column="1">
+              <item row="9" column="1">
                <widget class="QPushButton" name="paymentsButton">
                 <property name="text">
                  <string>View Payments History</string>
                 </property>
                </widget>
               </item>
-              <item row="0" column="1">
-               <widget class="QLineEdit" name="golemIdLabel">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
+              <item row="5" column="1">
+               <widget class="QLabel" name="availableBalanceLabel">
+                <property name="text">
+                 <string/>
                 </property>
-                <property name="contextMenuPolicy">
-                 <enum>Qt::NoContextMenu</enum>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                 </property>
-                <property name="frame">
-                 <bool>false</bool>
+               </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QLabel" name="reservedBalanceConst">
+                <property name="toolTip">
+                 <string>Balance reserved for planned payments and maintenance</string>
                 </property>
-                <property name="cursorPosition">
-                 <number>0</number>
+                <property name="text">
+                 <string>- reserved</string>
                 </property>
-                <property name="readOnly">
-                 <bool>true</bool>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QLabel" name="reservedBalanceLabel">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="Line" name="line_6">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="0">
+               <widget class="QLabel" name="depositBalanceConst">
+                <property name="toolTip">
+                 <string>The amount of ethers kept in the Deposit contract. Can be withdrawn at any time.</string>
+                </property>
+                <property name="text">
+                 <string>Deposit</string>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="1">
+               <widget class="QLabel" name="depositBalanceLabel">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="0">
+               <widget class="QLabel" name="totalBalanceConst">
+                <property name="toolTip">
+                 <string>Total amount of ethers owned by this Golem App</string>
+                </property>
+                <property name="text">
+                 <string>Total balance</string>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="1">
+               <widget class="QLabel" name="totalBalanceLabel">
+                <property name="font">
+                 <font>
+                  <pointsize>15</pointsize>
+                  <weight>75</weight>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                 </property>
                </widget>
               </item>
@@ -2520,6 +2617,8 @@
    <header>clickableqlabel.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="icons.qrc"/>
+ </resources>
  <connections/>
 </ui>
