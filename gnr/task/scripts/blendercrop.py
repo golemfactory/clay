@@ -13,6 +13,7 @@ for scene in bpy.data.scenes:
     scene.render.border_min_x = 0.0
     scene.render.border_min_y = 0.0
     scene.render.border_max_y = 1.0
+    scene.render.use_compositing = False
 
 #then render:
 bpy.ops.render.render()
