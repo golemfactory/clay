@@ -5,11 +5,9 @@ import time
 
 from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
 from golem.network.transport.message import MessageDisconnect, Message
+from network import Session
 
 logger = logging.getLogger(__name__)
-
-
-from network import Session
 
 
 class SafeSession(Session):
@@ -113,10 +111,11 @@ class BasicSession(FileSession):
         """
         logger.info("Disconnecting {} : {} reason: {}".format(self.address, self.port, reason))
         if self.conn.opened:
-            if not self.last_disconnect_time:
+            if self.last_disconnect_time:
+                self.dropped()
+            else:
                 self.last_disconnect_time = time.time()
                 self._send_disconnect(reason)
-            self.dropped()
 
     def send(self, message):
         """ Send given message.

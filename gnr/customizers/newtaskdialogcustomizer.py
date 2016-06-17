@@ -108,7 +108,7 @@ class NewTaskDialogCustomizer(Customizer):
         assert isinstance(task_definition, GNRTaskDefinition)
 
         definition = deepcopy(task_definition)
-
+        definition.resources = set([os.path.normpath(res) for res in definition.resources])
         self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())
         self._load_basic_task_params(definition)
         self._load_advance_task_params(definition)
@@ -134,7 +134,7 @@ class NewTaskDialogCustomizer(Customizer):
                 self.add_task_resource_dialog_customizer.gui.ui.folderTreeView.setExpanded(model.index(path_head), True)
                 path_head, path_tail = os.path.split(path_head)
 
-        # TODO
+        # TODO Better model management would be nice
         self.add_task_resource_dialog_customizer.gui.ui.folderTreeView.model().addStartFiles(definition.resources)
         self.gui.ui.resourceFilesLabel.setText(u"{}".format(len(self.add_task_resource_dialog_customizer.resources)))
         # for res in definition.resources:
@@ -145,9 +145,6 @@ class NewTaskDialogCustomizer(Customizer):
         set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout)
         self.gui.ui.mainProgramFileLineEdit.setText(definition.main_program_file)
         self.gui.ui.totalSpinBox.setValue(definition.total_subtasks)
-
-        if os.path.normpath(definition.main_program_file) in definition.resources:
-            definition.resources.remove(os.path.normpath(definition.main_program_file))
 
         self._load_options(definition)
 
@@ -222,8 +219,6 @@ class NewTaskDialogCustomizer(Customizer):
             definition.resources = self.add_task_resource_dialog_customizer.resources
         else:
             definition.resources = set()
-
-        definition.resources.add(os.path.normpath(definition.main_program_file))
 
     def _read_task_type(self, definition):
         definition.task_type = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())

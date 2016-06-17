@@ -6,7 +6,7 @@ def find_program(program):
 
     :returns: The path to the executable or None if not found.
 
-    Implemenetation based on
+    Implementation based on
     http://stackoverflow.com/q/377017/test-if-executable-exists-in-python
     """
     def isexe(fpath):

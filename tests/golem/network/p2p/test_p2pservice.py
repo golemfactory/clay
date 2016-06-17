@@ -1,16 +1,18 @@
 import time
-import unittest
+import uuid
 
-from golem.network.transport.tcpnetwork import SocketAddress
 from mock import MagicMock
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.model import KnownHosts, MAX_STORED_HOSTS
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
+from golem.network.transport.tcpnetwork import SocketAddress
+from golem.testutils import DatabaseFixture
 
 
-class TestP2PService(unittest.TestCase):
+class TestP2PService(DatabaseFixture):
     def test_add_to_peer_keeper(self):
         keys_auth = EllipticalKeysAuth()
         service = P2PService(None, ClientConfigDescriptor(), keys_auth)
@@ -53,6 +55,7 @@ class TestP2PService(unittest.TestCase):
         service.last_peers_request = time.time() + 10
         service.add_peer(node.key, node)
         assert len(service.peers) == 1
+        node.last_message_time = 0
         service.sync_network()
         assert len(service.peers) == 0
 
@@ -111,6 +114,63 @@ class TestP2PService(unittest.TestCase):
         assert len(service.redundant_peers()) == 1
         assert service.enough_peers()
 
+    def test_add_known_peer(self):
+        keys_auth = EllipticalKeysAuth()
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        key_id = EllipticalKeysAuth("TEST").get_key_id()
+
+        node = Node(
+            'super_node', key_id,
+            pub_addr='1.2.3.4',
+            prv_addr='1.2.3.4',
+            pub_port=10000,
+            prv_port=10000
+        )
+        node.prv_addresses = [node.prv_addr, '172.1.2.3']
+
+        assert Node.is_super_node(node)
+
+        KnownHosts.delete().execute()
+        len_start = len(KnownHosts.select())
+
+        # insert one
+        service.add_known_peer(node, node.pub_addr, node.pub_port)
+        select_1 = KnownHosts.select()
+        len_1 = len(select_1)
+        last_conn_1 = select_1[0].last_connected
+        assert len_1 > len_start
+
+        # advance time
+        time.sleep(0.1)
+
+        # insert duplicate
+        service.add_known_peer(node, node.pub_addr, node.pub_port)
+        select_2 = KnownHosts.select()
+        len_2 = len(select_2)
+        assert len_2 == len_1
+        assert select_2[0].last_connected > last_conn_1
+
+        assert len(service.seeds) >= 1
+
+        # try to add more than max, we already have at least 1
+        pub_prefix = '2.2.3.'
+        prv_prefix = '172.1.2.'
+        for i in xrange(1, MAX_STORED_HOSTS + 6):
+            i_str = str(i)
+            pub = pub_prefix + i_str
+            prv = prv_prefix + i_str
+            n = Node(
+                i_str, key_id + i_str,
+                pub_addr=pub,
+                prv_addr=prv,
+                pub_port=10000,
+                prv_port=10000
+            )
+            service.add_known_peer(n, pub, n.prv_port)
+
+        assert len(KnownHosts.select()) == MAX_STORED_HOSTS
+        assert len(service.seeds) <= 1
+
     def test_sync_free_peers(self):
         keys_auth = EllipticalKeysAuth()
         service = P2PService(None, ClientConfigDescriptor(), keys_auth)
@@ -134,4 +194,50 @@ class TestP2PService(unittest.TestCase):
         service.sync_network()
 
         assert not service.free_peers
-        assert len(service.pending_connections) == 0
+        assert len(service.pending_connections) == 1
+
+    def test_reconnect_with_seed(self):
+        keys_auth = EllipticalKeysAuth()
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        service.connect_to_seeds()
+        time_ = time.time()
+        last_time = service.last_time_tried_connect_with_seed
+        assert service.last_time_tried_connect_with_seed <= time_
+        assert time_ - service.last_time_tried_connect_with_seed < service.reconnect_with_seed_threshold
+        assert len(service.peers) == 0
+        service.sync_network()
+        assert last_time == service.last_time_tried_connect_with_seed
+        service.reconnect_with_seed_threshold = 0.1
+        time.sleep(0.1)
+        service.sync_network()
+        assert last_time < service.last_time_tried_connect_with_seed
+
+    def test_want_to_start_task_session(self):
+        keys_auth = EllipticalKeysAuth()
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        service.task_server = MagicMock()
+
+        def true_method(*args):
+            return True
+
+        key_id = str(uuid.uuid4())
+        conn_id = str(uuid.uuid4())
+        peer_id = str(uuid.uuid4())
+
+        node_info = MagicMock()
+        node_info.key = key_id
+        node_info.is_super_node = true_method
+
+        peer = MagicMock()
+        peer.key_id = str(uuid.uuid4())
+
+        service.peers[peer_id] = peer
+        service.node = node_info
+
+        service.want_to_start_task_session(key_id, node_info, conn_id)
+
+
+
+
+
+

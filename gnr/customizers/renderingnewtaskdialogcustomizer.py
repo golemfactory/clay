@@ -97,10 +97,9 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             self.logic.renderer_options = r.renderer_options()
             self._change_task_widget(name)
             self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
-
             set_time_spin_boxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout)
-
             self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
+            self._clear_resources()
 
         else:
             assert False, "Unreachable"
@@ -117,11 +116,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
         set_time_spin_boxes(self.gui, dr.defaults.full_task_timeout, dr.defaults.subtask_timeout)
 
-        if self.add_task_resource_dialog:
-            self.add_task_resource_dialog_customizer.resources = set()
-            self.add_task_resource_dialog.ui.folderTreeView.model().addStartFiles([])
-            self.add_task_resource_dialog.ui.folderTreeView.model().checks = {}
-        self.gui.ui.resourceFilesLabel.setText("0")
+        self._clear_resources()
 
         self._change_finish_state(False)
 
@@ -130,6 +125,13 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.totalSpinBox.setEnabled(True)
         self.gui.ui.optimizeTotalCheckBox.setChecked(False)
         self._set_max_price()
+
+    def _clear_resources(self):
+        if self.add_task_resource_dialog:
+            self.add_task_resource_dialog_customizer.resources = set()
+            self.add_task_resource_dialog.ui.folderTreeView.model().addStartFiles([])
+            self.add_task_resource_dialog.ui.folderTreeView.model().checks = {}
+        self.gui.ui.resourceFilesLabel.setText("0")
 
     # SLOTS
 
@@ -166,7 +168,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())
 
         self._load_basic_task_params(definition)
-        self.task_customizer.load_task_definition(task_definition)
+        self.task_customizer.load_task_definition(definition)
         self._load_renderer_params(definition)
         self._load_advance_task_params(definition)
         self._load_resources(definition)

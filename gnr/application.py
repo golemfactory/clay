@@ -1,6 +1,11 @@
-import sys
 import logging
-from PyQt4.QtGui import QApplication
+import sys
+from os import path
+
+from PyQt4.QtCore import QSize
+from PyQt4.QtGui import QApplication, QIcon
+
+from golem.core.common import get_golem_path
 
 logger = logging.getLogger(__name__)
 
@@ -8,6 +13,13 @@ logger = logging.getLogger(__name__)
 class GNRGui:
     def __init__(self, app_logic, mainWindowClass):
         self.app = QApplication(sys.argv)
+        app_icon = QIcon()
+        icon_path = path.join(get_golem_path(), "gnr", "ui", "img")
+        app_icon.addFile(path.join(icon_path, "favicon-32x32.png"), QSize(32, 32))
+        app_icon.addFile(path.join(icon_path, "favicon-48x48.png"), QSize(48, 48))
+        app_icon.addFile(path.join(icon_path, "favicon-256x256.png"), QSize(256, 256))
+        self.app.setWindowIcon(app_icon)
+
         self.main_window = mainWindowClass()
         self.app_logic = app_logic
 

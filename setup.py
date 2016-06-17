@@ -29,8 +29,13 @@ def try_building_docker_images():
         print ""
         return
 
+    basecontainer = "Dockerfile.base"
+
     dockerfiles_dir = path.join("scripts")
-    for f in os.listdir(dockerfiles_dir):
+    dockerfiles_list = os.listdir(dockerfiles_dir)
+    dockerfiles_list.remove(basecontainer)
+    dockerfiles_list = [basecontainer] + dockerfiles_list
+    for f in dockerfiles_list:
         if f.startswith("Dockerfile."):
             try:
                 name = "golem/{}".format(f.split(".", 1)[-1])

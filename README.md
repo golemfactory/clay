@@ -1,4 +1,5 @@
 # Golem
+
 The aim of the Golem project is to create a global prosumer market for computing power, in which
 producers may sell spare CPU time of their personal computers and consumers may acquire resources
 for computation-intensive tasks. In technical terms, Golem is designed as a decentralised peer-to-peer
@@ -7,28 +8,35 @@ that there are two types of nodes in the Golem network: requester nodes that ann
 tasks and compute nodes that perform computations (in the actual implementation nodes may switch
 between both roles).
 
-## Running Golem Network Renderer (GNR) in Ubuntu 15.04
+## Installing and testing 
 
-### Installing Depedencies:
-
-* Run pip install -r requirements.txt
-* Qt4 bingings for Python: `sudo apt-get install python-qt4`
-* Twisted Qt4 integration: `sudo apt-get install python-qt4reactor`
-* OpenEXR bindings for Python: download and unpack http://excamera.com/files/OpenEXR-1.2.0.tar.gz, then use `setup.py` inside
-* ...
+Follow the installation instruction from 
+[here](https://github.com/imapp-pl/golem/wiki/Installation#runing-from-the-source).
  
-### Starting GNR
+Then run
 
-* Set environment variable `GOLEM` to `<path-to-golem-repo>/poc/golemPy` 
-* Go to `$GOLEM/examples/gnr` and run `admMain.py`.
+`cd gnr`
+`python main.py` 
 
-If the GUI does not look good at all and you see the following error in console:
-```
-QNativeImage: Unable to attach to shared memory segment. 
 
-X Error: BadDrawable (invalid Pixmap or Window parameter) 9
-  Major opcode: 62 (X_CopyArea)
-  Resource id:  0x0
-```
-then set `QT_GRAPHICSSYSTEM=native` (see https://bbs.archlinux.org/viewtopic.php?id=200167).
+To run unittest run:
+
+`python setup.py test`
+
+To run more complicated test with imunes follow instruction from 
+[here](https://github.com/imapp-pl/golem/wiki/Testing-with-IMUNES).
+
+
+## Warning
+
+Golem Project is a work in progress. Current version is an alpha stage of Brass Golem and it's not fully secured.
+Please be sure that you understand the risk before installing the software. 
+ 
+## Contact  
+
+Help us develop the application by submitting issues and bugs. See instruction 
+[here](https://github.com/imapp-pl/golem/wiki/Testing). 
+
+You can also send us an email to `contact@golemproject.net` or talk to us on slack `golemproject.slack.com`.
+Get an invitation [here](golemproject.org:3000).
 

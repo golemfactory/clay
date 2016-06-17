@@ -218,7 +218,11 @@ class RSAKeysAuth(KeysAuth):
         """
         if public_key is None:
             public_key = self.public_key
-        return public_key.verify(data, sig)
+        try:
+            return public_key.verify(data, sig)
+        except Exception as exc:
+            logger.error("Cannot verify signature: {}".format(exc.message))
+        return False
 
     def generate_new(self, difficulty):
         """ Generate new pair of keys with given difficulty
@@ -393,7 +397,9 @@ class EllipticalKeysAuth(KeysAuth):
             return ecc.verify(sig, sha3(data))
         except AssertionError:
             logger.info("Wrong key format")
-            return False
+        except Exception as exc:
+            logger.error("Cannot verify signature: {}".format(exc.message))
+        return False
 
     def generate_new(self, difficulty):
         """ Generate new pair of keys with given difficulty

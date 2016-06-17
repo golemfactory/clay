@@ -9,6 +9,8 @@ import docker.errors
 from golem.core.common import is_windows, nt_path_to_posix_path
 from client import local_client
 
+__all__ = ['DockerJob']
+
 logger = logging.getLogger(__name__)
 
 """
@@ -46,7 +48,8 @@ class DockerJob(object):
     PARAMS_FILE = "params.py"
 
     def __init__(self, image, script_src, parameters,
-                 resources_dir, work_dir, output_dir):
+                 resources_dir, work_dir, output_dir,
+                 host_config=None):
         """
         :param DockerImage image: Docker image to use
         :param str script_src: source of the task script file
@@ -58,6 +61,7 @@ class DockerJob(object):
         self.image = image
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
+        self.host_config = host_config or {}
 
         self.resources_dir = resources_dir
         self.work_dir = work_dir
@@ -119,6 +123,7 @@ class DockerJob(object):
                 }
             }
         )
+        host_cfg.update(self.host_config)
 
         # The location of the task script when mounted in the container
         container_script_path = self._get_container_script_path()
@@ -129,7 +134,6 @@ class DockerJob(object):
             command=[container_script_path],
             working_dir=self.WORK_DIR
         )
-
         self.container_id = self.container["Id"]
         logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
                      .format(self.container_id, self.image.name, 

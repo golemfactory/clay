@@ -4,8 +4,8 @@ from os import path
 from ethereum import keys
 
 from golem.ethereum import Client
-from golem.transactions.ethereum.paymentprocessor import PaymentProcessor
-from golem.transactions.ethereum.paymentmonitor import PaymentMonitor
+from golem.ethereum.paymentprocessor import PaymentProcessor
+from golem.ethereum.paymentmonitor import PaymentMonitor
 from golem.transactions.transactionsystem import TransactionSystem
 
 log = logging.getLogger('golem.pay')
@@ -39,6 +39,11 @@ class EthereumTransactionSystem(TransactionSystem):
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
         return '0x' + self.__node_address.encode('hex')
+
+    def get_balance(self):
+        b = self.__proc.balance()
+        ab = self.__proc.available_balance()
+        return b, ab
 
     def pay_for_task(self, task_id, payments):
         """ Pay for task using Ethereum connector

@@ -114,7 +114,6 @@ class IPFSResourceManager(IPFSClientHandler):
 
     def check_resource(self, resource, task_id,
                        absolute_path=False, multihash=None):
-
         if absolute_path:
             res_path = os.path.normpath(resource)
         else:
@@ -122,11 +121,16 @@ class IPFSResourceManager(IPFSClientHandler):
 
         uni_path = to_unicode(res_path)
         if uni_path in self.file_to_hash:
-            local_hash = self.file_to_hash[uni_path]
-            if multihash and local_hash != unicode(multihash):
-                return False
-            return os.path.exists(res_path)
-        return False
+            uni_multihash = self.file_to_hash[uni_path]
+            if multihash and uni_multihash != unicode(multihash):
+                return None
+            if os.path.exists(res_path):
+                return uni_path, uni_multihash
+        return None
+
+    def check_task_entry(self, entry, task_id):
+        return task_id in self.task_id_to_files and \
+            entry in self.task_id_to_files[task_id]
 
     def get_cached(self, multihash):
         return self.hash_to_path.get(multihash, None)
@@ -173,7 +177,11 @@ class IPFSResourceManager(IPFSClientHandler):
         else:
             common_prefix = common_dir(resource_coll)
 
-        self.task_common_prefixes[task_id] = os.path.normpath(common_prefix)
+        normpath = os.path.normpath(common_prefix)
+        if normpath in ['.', '..']:
+            normpath = ''
+
+        self.task_common_prefixes[task_id] = normpath
         self.add_resources(resource_coll, task_id,
                            absolute_path=True,
                            client=client)
@@ -209,9 +217,18 @@ class IPFSResourceManager(IPFSClientHandler):
             resource_path = self.get_resource_path(resource, task_id)
 
         if not os.path.exists(resource_path):
-            logger.error("IPFS: resource '%s' does not exist" % resource_path)
+            logger.error("IPFS: resource {} does not exist"
+                         .format(resource_path))
             return
-        elif self.check_resource(resource, task_id):
+
+        existing_entry = self.check_resource(resource, task_id)
+        if existing_entry:
+            if not self.check_task_entry(existing_entry, task_id):
+                file_path, multihash = existing_entry
+                self._register_resource(resource, file_path, multihash, task_id)
+            else:
+                logger.debug("IPFS: resource {} already exists in task {}"
+                             .format(resource, task_id))
             return
 
         is_dir = os.path.isdir(resource_path)
@@ -231,7 +248,7 @@ class IPFSResourceManager(IPFSClientHandler):
             multihash = to_unicode(response.get('Hash'))
             self._register_resource(resource, path, multihash, task_id)
         else:
-            logging.error("IPFS: Invalid response {}".format(response))
+            logger.error("IPFS: Invalid response {}".format(response))
 
     def _register_resource(self, resource, file_path, multihash, task_id):
         """
@@ -243,12 +260,14 @@ class IPFSResourceManager(IPFSClientHandler):
         :return: file's path relative to current resource path
         """
         if not os.path.exists(file_path):
+            logger.error("IPFS: File not found {} ({})".format(file_path, multihash))
             return
 
         norm_file_path = os.path.normpath(file_path)
         norm_resource = os.path.normpath(resource)
 
         if not norm_file_path.endswith(norm_resource):
+            logger.error("IPFS: Invalid resource path {} ({})".format(file_path, multihash))
             return
 
         name = self.make_relative_path(file_path, task_id)
@@ -260,7 +279,7 @@ class IPFSResourceManager(IPFSClientHandler):
         self.hash_to_path[multihash] = file_path
         self.task_id_to_files[task_id].append([name, multihash])
 
-        logging.debug("IPFS: Resource registered {} ({})".format(file_path, multihash))
+        logger.debug("IPFS: Resource registered {} ({})".format(file_path, multihash))
         return name
 
     def pin_resource(self, multihash, client=None):

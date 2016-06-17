@@ -1,10 +1,12 @@
 import logging
+import os
+import string
+import unicodedata
+import zipfile
 
 from golem.core.simplehash import SimpleHash
 from golem.resource.dirmanager import split_path
 
-import os
-import zipfile
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +138,7 @@ class TaskResourceHeader(object):
 
         return cur_th, delta_parts
 
-    # Dodaje tylko te pola, ktorych nie ma w headerze (i/lub nie zgadzaj? si? hasze)
+    # Add only the fields that are not in header (or which hashes are different)
     @classmethod
     def build_header_delta_from_header(cls, header, absolute_root, chosen_files):
         assert isinstance(header, TaskResourceHeader)
@@ -338,7 +340,7 @@ class TaskResource(object):
 
         return cur_tr
 
-    # Dodaje tylko te pola, ktorych nie ma w headerze (i/lub nie zgadzaj? si? hasze)
+    # Add only the fields that are not in header (or which hashes are different)
     @classmethod
     def build_delta_from_header(cls, header, absolute_root):
         assert isinstance(header, TaskResourceHeader)
@@ -409,9 +411,6 @@ class TaskResource(object):
     def __str__(self):
         return self.to_string()
 
-
-import unicodedata
-import string
 
 valid_filename_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
 

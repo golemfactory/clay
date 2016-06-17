@@ -1,7 +1,6 @@
-from mock import Mock, patch
-
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
+from mock import Mock, patch
 
 from gnr.application import GNRGui
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer

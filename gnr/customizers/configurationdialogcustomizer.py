@@ -9,7 +9,11 @@ from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.fileshelper import get_dir_size
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
+from gnr.renderingtaskstate import RenderingTaskState
+from golem.task.taskstate import TaskStatus
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
+from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
+from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +26,6 @@ class ConfigurationDialogCustomizer(Customizer):
     SHOW_DISK_USAGE_BUTTON_MESSAGES = ["Show disk usage", "Hide"]
 
     def __init__(self, gui, logic):
-        self.old_plugin_port = None
         Customizer.__init__(self, gui, logic)
 
     def load_data(self):
@@ -51,8 +54,8 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def _setup_connections(self):
         self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
-        self.gui.ui.recountLuxButton.clicked.connect(self.__recount_lux_performance)
-        self.gui.ui.recountBlenderButton.clicked.connect(self.__recount_blender_performance)
+        self.gui.ui.recountLuxButton.clicked.connect(self.__run_lux_benchmark_button_clicked)
+        self.gui.ui.recountBlenderButton.clicked.connect(self.__run_blender_benchmark_button_clicked)
         self.gui.ui.settingsOkButton.clicked.connect(self.__change_config)
         self.gui.ui.settingsCancelButton.clicked.connect(lambda: self.load_data())
 
@@ -124,6 +127,12 @@ class ConfigurationDialogCustomizer(Customizer):
         max_memory_size, index = resource_size_to_display(max_memory_size)
         self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex(index)
         self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
+        
+    def __run_lux_benchmark_button_clicked(self):
+        self.logic.run_benchmark(LuxBenchmark(), self.gui.ui.luxPerformanceLabel)
+            
+    def __run_blender_benchmark_button_clicked(self):
+        self.logic.run_benchmark(BlenderBenchmark(), self.gui.ui.blenderPerformanceLabel)
 
     def __load_trust_config(self, config_desc):
         self.__load_trust(config_desc.computing_trust, self.gui.ui.computingTrustLineEdit,
@@ -135,7 +144,7 @@ class ConfigurationDialogCustomizer(Customizer):
         try:
             trust = max(min(int(round(value * 100)), 100), -100)
         except TypeError:
-            logger.error("Wrong configuration trust value {}").format(value)
+            logger.error("Wrong configuration trust value {}".format(value))
             trust = -100
         line_edit.setText("{}".format(trust))
         slider.setValue(trust)
@@ -158,8 +167,11 @@ class ConfigurationDialogCustomizer(Customizer):
 
         self.gui.ui.p2pSessionTimeoutLineEdit.setText(u"{}".format(config_desc.p2p_session_timeout))
         self.gui.ui.taskSessionTimeoutLineEdit.setText(u"{}".format(config_desc.task_session_timeout))
+        self.__load_checkbox_param(not config_desc.accept_tasks, self.gui.ui.dontAcceptTasksCheckBox,
+                                   "don't accept tasks")
 
-    def __load_checkbox_param(self, param, check_box, param_name=''):
+    @staticmethod
+    def __load_checkbox_param(param, check_box, param_name=''):
         try:
             param = int(param)
             if param == 0:
@@ -264,6 +276,8 @@ class ConfigurationDialogCustomizer(Customizer):
 
         cfg_desc.num_cores = u"{}".format(self.gui.ui.numCoresSlider.value())
         cfg_desc.estimated_performance = u"{}".format(self.gui.ui.performanceLabel.text())
+        cfg_desc.estimated_lux_performance = u"{}".format(self.gui.ui.luxPerformanceLabel.text())
+        cfg_desc.estimated_blender_performance = u"{}".format(self.gui.ui.blenderPerformanceLabel.text())
         max_resource_size = int(self.gui.ui.maxResourceSizeSpinBox.value())
         index = self.gui.ui.maxResourceSizeComboBox.currentIndex()
         cfg_desc.max_resource_size = u"{}".format(self.__count_resource_size(max_resource_size, index))
@@ -284,6 +298,7 @@ class ConfigurationDialogCustomizer(Customizer):
         cfg_desc.getting_peers_interval = u"{}".format(self.gui.ui.gettingPeersLineEdit.text())
         cfg_desc.getting_tasks_interval = u"{}".format(self.gui.ui.gettingTasksIntervalLineEdit.text())
         cfg_desc.max_results_sending_delay = u"{}".format(self.gui.ui.maxSendingDelayLineEdit.text())
+        cfg_desc.accept_tasks = int(not self.gui.ui.dontAcceptTasksCheckBox.isChecked())
 
     def __read_trust_config(self, cfg_desc):
         requesting_trust = self.__read_trust(self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)
@@ -295,7 +310,7 @@ class ConfigurationDialogCustomizer(Customizer):
         try:
             trust = max(min(float(trust) / 100.0, 1.0), -1.0)
         except ValueError:
-            logger.error("Wrong trust value {}").format(trust)
+            logger.error("Wrong trust value {}".format(trust))
             trust = -1
         return trust
 
@@ -303,7 +318,7 @@ class ConfigurationDialogCustomizer(Customizer):
         try:
             trust = int(line_edit.text())
         except ValueError:
-            logger.info("Wrong trust value {}").format(line_edit.text())
+            logger.info("Wrong trust value {}".format(line_edit.text()))
             trust = slider.value()
         return trust
 
@@ -313,12 +328,6 @@ class ConfigurationDialogCustomizer(Customizer):
         except ValueError:
             num_cores = 1
         self.gui.ui.performanceLabel.setText(str(self.logic.recount_performance(num_cores)))
-
-    def __recount_lux_performance(self):
-        self.gui.ui.luxPerformanceLabel.setText(str(self.logic.recount_lux_performance()))
-
-    def __recount_blender_performance(self):
-        self.gui.ui.blenderPerformanceLabel.setText(str(self.logic.recount_blender_performance()))
 
     def __read_payment_config(self, cfg_desc):
         cfg_desc.eth_account = u"{}".format(self.gui.ui.ethAccountLineEdit.text())
@@ -331,9 +340,6 @@ class ConfigurationDialogCustomizer(Customizer):
         except ValueError as err:
             logger.warning("Wrong max_payment value: {}".format(err))
         self.__check_eth_account()
-
-    def __show_plugin_port_warning(self):
-        QMessageBox.warning(self.gui.window, 'Golem Message', "Restart application to change plugin port")
 
     def __set_account_error(self):
         palette = QPalette()

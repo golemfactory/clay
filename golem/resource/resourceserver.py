@@ -180,7 +180,7 @@ class ResourceServer(PendingConnectionsServer):
                 self.client.decrease_trust(key_id, RankingStats.resource)
             return
         if key_id is not None:
-            # Uaktualniamy ranking co 100 zasobow, zeby specjalnie nie zasmiecac sieci
+            # We update ranking after 100 chunks
             self.resource_peers[key_id]['pos_resource'] += 1
             if (self.resource_peers[key_id]['pos_resource'] % 50) == 0:
                 self.client.increase_trust(key_id, RankingStats.resource, 50)
@@ -230,8 +230,10 @@ class ResourceServer(PendingConnectionsServer):
         return self.keys_auth.get_key_id()
 
     def get_socket_addresses(self, node_info, port, key_id):
-        socket_addresses = PendingConnectionsServer.get_socket_addresses(self, node_info, port, key_id)
+        if self.client.get_suggested_conn_reverse(key_id):
+            return []
         addr = self.client.get_suggested_addr(key_id)
+        socket_addresses = PendingConnectionsServer.get_socket_addresses(self, node_info, port, key_id)
         if addr:
             socket_addresses = [SocketAddress(addr, port)] + socket_addresses
         return socket_addresses
@@ -280,8 +282,8 @@ class ResourceServer(PendingConnectionsServer):
                 self.resource_peers[key_id]['state'] = 'free'
                 return key_id
 
-    def __connection_push_resource_established(self, session, conn_id, resource, copies, resource_address, resource_port,
-                                               key_id):
+    def __connection_push_resource_established(self, session, conn_id, resource, copies, resource_address,
+                                               resource_port, key_id):
         session.key_id = key_id
         session.conn_id = conn_id
         session.send_hello()
@@ -292,7 +294,8 @@ class ResourceServer(PendingConnectionsServer):
         self.__remove_client(resource_address, resource_port)
         logger.error("Connection to resource server failed")
 
-    def __connection_pull_resource_established(self, session, conn_id, resource, resource_address, resource_port, key_id):
+    def __connection_pull_resource_established(self, session, conn_id, resource, resource_address, resource_port,
+                                               key_id):
         session.key_id = key_id
         session.conn_id = conn_id
         session.send_hello()
@@ -303,7 +306,8 @@ class ResourceServer(PendingConnectionsServer):
         self.__remove_client(resource_address, resource_port)
         logger.error("Connection to resource server failed")
 
-    def __connection_for_resource_established(self, session, conn_id, resource, resource_address, resource_port, key_id):
+    def __connection_for_resource_established(self, session, conn_id, resource, resource_address, resource_port,
+                                              key_id):
         session.key_id = key_id
         session.conn_id = conn_id
         session.send_hello()

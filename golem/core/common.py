@@ -10,6 +10,14 @@ def is_windows():
     return sys.platform == "win32"
 
 
+def is_osx():
+    """
+    Check if this system is OS X
+    :return bool: True if current system is OS X, False otherwise
+    """
+    return sys.platform == "darwin"
+
+
 def get_golem_path():
     """
     Return path to main golem directory

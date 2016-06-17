@@ -12,6 +12,7 @@ from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
+from gnr.task.renderingtask import RenderingTask
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
@@ -48,6 +49,11 @@ class PreviewUpdater(object):
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
         
+    def get_offset(self, subtask_number):
+        if subtask_number == self.perfectly_placed_subtasks + 1:
+            return self.perfect_match_area_y
+        return self.expected_offsets[subtask_number]
+        
     def update_preview(self, subtask_path, subtask_number):
         if subtask_number not in self.chunks:
             self.chunks[subtask_number] = subtask_path
@@ -57,24 +63,26 @@ class PreviewUpdater(object):
                 img = exr_to_pil(subtask_path)
             else:
                 img = Image.open(subtask_path)
+                
+            offset = self.get_offset(subtask_number)
             if subtask_number == self.perfectly_placed_subtasks + 1:
-                offset = self.perfect_match_area_y
                 _, img_y = img.size
                 self.perfect_match_area_y += img_y
                 self.perfectly_placed_subtasks += 1
-            else:
-                offset = self.expected_offsets[subtask_number]
-            
+
             if os.path.exists(self.preview_file_path):
                 img_current = Image.open(self.preview_file_path)
                 img_current.paste(img, (0, offset))
-                img_current.save(self.preview_file_path, "BMP")            
+                img_current.save(self.preview_file_path, "BMP")
             else:
                 img_offset = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
                 img_offset.paste(img, (0, offset))
                 img_offset.save(self.preview_file_path, "BMP")
+
         except Exception as err:
-            logger.error("Can't generate preview {}".format(err))
+            import traceback
+            # Print the stack traceback
+            traceback.print_exc()
             return
         
         if subtask_number == self.perfectly_placed_subtasks and (subtask_number + 1) in self.chunks:
@@ -189,21 +197,36 @@ class BlenderRenderTask(FrameRenderingTask):
             logger.error("Wrong script file: {}".format(err))
             self.script_src = ""
 
-
         self.frames_given = {}
         for frame in frames:
             self.frames_given[frame] = {}
-        
+
         tmp_dir = self._get_tmp_dir()
-        self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
-        expected_offsets = {}
+        if not self.use_frames:
+            self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
+        else:
+            self.preview_file_path = []
+            for i in range(len(self.frames)):
+                self.preview_file_path.append("{}".format(os.path.join(tmp_dir, "current_preview{}".format(i))))
         
-        for i in range(1, self.total_tasks):
+        if self.use_frames:
+            parts = self.total_tasks / len(self.frames)
+        else:
+            parts = self.total_tasks
+        expected_offsets = {}
+        for i in range(1, parts + 1):
             _, expected_offset = self._get_min_max_y(i)
             expected_offset =  self.res_y - int(expected_offset * float(self.res_y))
             expected_offsets[i] = expected_offset
         
-        self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
+        if self.use_frames:
+            self.preview_updaters = []
+            for i in range(0, len(self.frames)):
+                preview_path = self.preview_file_path[i]
+                self.preview_updaters.append(PreviewUpdater(preview_path, self.res_x, self.res_y, expected_offsets))
+        else:
+            self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
+        
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
@@ -302,21 +325,29 @@ class BlenderRenderTask(FrameRenderingTask):
         return self._new_compute_task_def(hash, extra_data, working_directory, 0)
 
     def _get_min_max_y(self, start_task):
-        if self.res_y % self.total_tasks == 0:
-            min_y = (self.total_tasks - start_task) * (1.0 / float(self.total_tasks))
-            max_y = (self.total_tasks - start_task + 1) * (1.0 / float(self.total_tasks))
+        if self.use_frames:
+            parts = self.total_tasks / len(self.frames)
         else:
-            ceiling_height = int(math.ceil(float(self.res_y) / float(self.total_tasks)))
-            ceiling_subtasks = self.total_tasks - (ceiling_height * self.total_tasks - self.res_y)
+            parts = self.total_tasks
+        if self.res_y % parts == 0:
+            min_y = (parts - start_task) * (1.0 / float(parts))
+            max_y = (parts - start_task + 1) * (1.0 / float(parts))
+        else:
+            ceiling_height = int(math.ceil(float(self.res_y) / float(parts)))
+            ceiling_subtasks = parts - (ceiling_height * parts - self.res_y)
             if start_task > ceiling_subtasks:
-                min_y = float(self.total_tasks - start_task) * float(ceiling_height - 1) / float(self.res_y)
-                max_y = float(self.total_tasks - start_task + 1) * float(ceiling_height - 1) / float(self.res_y)
+                min_y = float(parts - start_task) * float(ceiling_height - 1) / float(self.res_y)
+                max_y = float(parts - start_task + 1) * float(ceiling_height - 1) / float(self.res_y)
             else:
-                min_y = float((self.total_tasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task) * (ceiling_height)) / float(self.res_y)
-                max_y = float((self.total_tasks - ceiling_subtasks) * (ceiling_height - 1) + (ceiling_subtasks - start_task + 1) * (ceiling_height)) / float(self.res_y)
-        return (min_y, max_y)
-        
-    
+                min_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
+                min_y += (ceiling_subtasks - start_task) * ceiling_height
+                min_y = float(min_y) / float(self.res_y)
+
+                max_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
+                max_y += (ceiling_subtasks - start_task + 1) * ceiling_height
+                max_y = float(max_y) / float(self.res_y)
+        return min_y, max_y
+
     def _get_part_size(self, subtask_id):
         start_task = self.subtasks_given[subtask_id]['start_task']
         if not self.use_frames:
@@ -370,6 +401,17 @@ class BlenderRenderTask(FrameRenderingTask):
     def _update_preview(self, new_chunk_file_path, chunk_num):
         self.preview_updater.update_preview(new_chunk_file_path, chunk_num)
 
+    def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
+        if final:
+            if new_chunk_file_path.upper().endswith(".EXR"):
+                img = exr_to_pil(new_chunk_file_path)
+            else:   
+                img = Image.open(new_chunk_file_path)
+            img.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
+            img.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
+        else:
+            self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
+
     def _get_output_name(self, frame_num, num_start):
         num = str(frame_num)
         return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
@@ -385,6 +427,41 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
+                       
+    def _mark_task_area(self, subtask, img_task, color, frame_index=0):
+        if not self.use_frames:
+            RenderingTask._mark_task_area(self, subtask, img_task, color)
+        elif self.total_tasks <= len(self.frames):
+            for i in range(0, self.res_x):
+                for j in range(0, self.res_y):
+                    img_task.putpixel((i, j), color)
+        else:
+            parts = self.total_tasks / len(self.frames)
+            pu = self.preview_updaters[frame_index]
+            part = (subtask['start_task'] - 1) % parts + 1
+            lower = pu.get_offset(part)
+            if part == parts:
+                upper = self.res_y
+            else:
+                upper = pu.get_offset(part + 1)
+            for i in range(0, self.res_x):
+                for j in range(lower, upper):
+                    img_task.putpixel((i, j), color)
+                    
+    def _put_frame_together(self, tmp_dir, frame_num, num_start):
+        output_file_name = os.path.join(tmp_dir, self._get_output_name(frame_num, num_start))
+        collected = self.frames_given[frame_num]
+        collected = OrderedDict(sorted(collected.items()))
+        if not self._use_outer_task_collector():
+            collector = CustomCollector(paste=True, width=self.res_x, height=self.res_y)
+            for file in collected.values():
+                collector.add_img_file(file)
+            collector.finalize().save(output_file_name, self.output_format)
+        else:
+            self._put_collected_files_together(output_file_name, collected.values(), "paste")
+        self.collected_file_names[frame_num] = output_file_name
+        self._update_frame_preview(output_file_name, frame_num, final=True)
+        self._update_frame_task_preview()
 
 
 class CustomCollector(RenderingTaskCollector):

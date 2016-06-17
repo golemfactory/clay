@@ -14,8 +14,9 @@ class TaskableRenderer:
         self.preferredTaskTime = preferredTaskTimeSlice 
         self.start_time = time()
 
-        #FIXME: validate scene data here
-        #FIXME: this should be a bit more sophisticated structure (to collect more than one result per pixel and to calc some stats using this data)
+        # TODO: validate scene data here
+        # TODO: collect more than one result per pixel
+        # TODO: calc some stats using this data
         self.data = [0.0] * w * h * 3
         self.pixelsCalculated = 0
 

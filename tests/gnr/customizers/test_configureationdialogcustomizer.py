@@ -1,9 +1,9 @@
 import os
 import re
-from mock import MagicMock
 
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
+from mock import MagicMock
 
 from gnr.application import GNRGui
 from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer, logger

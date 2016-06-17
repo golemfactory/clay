@@ -1,4 +1,5 @@
 import os
+
 from mock import MagicMock, patch
 
 from gnr.application import GNRGui
@@ -25,5 +26,6 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         customizer.current_task_highlighted.definition.main_scene_file = tmp_files[0]
         customizer.current_task_highlighted.definition.resources = tmp_files
         customizer.gui.ui.showResourceButton.click()
+
         gnrgui.app.exit(0)
         gnrgui.app.deleteLater()

@@ -1,4 +1,5 @@
 import logging
+from psutil import virtual_memory
 from os import path
 
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
@@ -7,8 +8,6 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 CONFIG_FILENAME = "app_cfg.ini"
 ESTM_FILENAME = "minilight.ini"
-ESTM_LUX_FILENAME = "lux.ini"
-ESTM_BLENDER_FILENAME = "blender.ini"
 MANAGER_PORT = 20301
 MANAGER_ADDRESS = "127.0.0.1"
 ESTIMATED_DEFAULT = 2220.0
@@ -16,7 +15,7 @@ START_PORT = 40102
 END_PORT = 60102
 OPTIMAL_PEER_NUM = 10
 MAX_RESOURCE_SIZE = 250 * 1024
-MAX_MEMORY_SIZE = 250 * 1024
+MAX_MEMORY_SIZE = int(virtual_memory().total * 0.75) / 1024
 DISTRIBUTED_RES_NUM = 2
 
 logger = logging.getLogger(__name__)
@@ -57,6 +56,7 @@ ETH_ACCOUNT_NAME = ""
 USE_IP6 = 0
 MIN_PRICE = 1
 MAX_PRICE = 1000
+ACCEPT_TASKS = 1
 
 
 class NodeConfig:
@@ -74,30 +74,6 @@ class NodeConfig:
             logger.warning("Can't change {} to float: {}".format(val, str(err)))
         return res
 
-    @classmethod
-    def read_estimated_lux_performance(cls):
-        estm_file = SimpleEnv.env_file_name(ESTM_LUX_FILENAME)
-        res = 0
-        if path.isfile(estm_file):
-            try:
-                with open(estm_file, 'r') as file_:
-                    res = "{0:.1f}".format(float(file_.read()))
-            except:
-                return 0
-        return res
-
-    @classmethod
-    def read_estimated_blender_performance(cls):
-        estm_file = SimpleEnv.env_file_name(ESTM_BLENDER_FILENAME)
-        res = 0
-        if path.isfile(estm_file):
-            try:
-                with open(estm_file, 'r') as file_:
-                    res = "{0:.1f}".format(float(file_.read()))
-            except:
-                return 0
-        return res
-
     def __init__(self, **kwargs):
         self._section = "Node"
 
@@ -105,16 +81,6 @@ class NodeConfig:
         if estimated_performance == 0:
             estimated_performance = ESTIMATED_DEFAULT
         kwargs["estimated_performance"] = estimated_performance
-
-        estimated_lux = NodeConfig.read_estimated_lux_performance()
-        if estimated_lux <= 0:
-            estimated_lux = ESTIMATED_DEFAULT
-        kwargs["estimated_lux_performance"] = estimated_lux
-
-        estimated_blender = NodeConfig.read_estimated_blender_performance()
-        if estimated_blender <= 0:
-            estimated_blender = ESTIMATED_DEFAULT
-        kwargs["estimated_blender_performance"] = estimated_blender
 
         for k, v in kwargs.iteritems():
             ConfigEntry.create_property(self.section(), k.replace("_", " "), v, self, k)
@@ -174,8 +140,12 @@ class AppConfig:
                                  min_price=MIN_PRICE,
                                  max_price=MAX_PRICE,
                                  use_ipv6=USE_IP6,
+                                 accept_tasks=ACCEPT_TASKS,
                                  node_name="",
-                                 public_address="")
+                                 public_address="",
+                                 estimated_lux_performance="0",
+                                 estimated_blender_performance="0",
+                                 )
 
         cfg = SimpleConfig(common_config, node_config, cfg_file)
         return AppConfig(cfg, cfg_file)

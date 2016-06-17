@@ -54,6 +54,8 @@ class ClientConfigDescriptor(object):
         self.max_price = 0
         self.public_address = ""
 
+        self.accept_tasks = 1
+
     def init_from_app_config(self, app_config):
         """Initializes config parameters based on the specified AppConfig
         :param app_config: instance of AppConfig
@@ -93,7 +95,7 @@ class ConfigApprover(object):
     def _init_actions(self):
         dont_change_opt = ['seed_host', 'max_resource_size', 'max_memory_size',
                            'use_distributed_resource_management', 'use_waiting_for_task_timeout', 'send_pings',
-                           'use_ipv6', 'eth_account']
+                           'use_ipv6', 'eth_account', 'accept_tasks']
         to_int_opt = ['seed_port', 'manager_port', 'num_cores', 'opt_peer_num', 'dist_res_num',
                       'waiting_for_task_timeout', 'p2p_session_timeout', 'task_session_timeout',
                       'resource_session_timeout', 'pings_interval', 'max_results_sending_delay', 'min_price',

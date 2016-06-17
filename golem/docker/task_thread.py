@@ -20,9 +20,12 @@ class DockerTaskThread(TaskThread):
     STDOUT_FILE = "stdout.log"
     STDERR_FILE = "stderr.log"
 
+    container_host_config = None
+
     def __init__(self, task_computer, subtask_id, docker_images,
                  orig_script_dir, src_code, extra_data, short_desc,
                  res_path, tmp_path, timeout, check_mem=False):
+
         super(DockerTaskThread, self).__init__(
             task_computer, subtask_id, orig_script_dir, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
@@ -34,6 +37,7 @@ class DockerTaskThread(TaskThread):
             if img.is_available():
                 self.image = img
                 break
+
         self.job = None
         self.check_mem = check_mem
 
@@ -61,7 +65,8 @@ class DockerTaskThread(TaskThread):
                 os.mkdir(output_dir)
 
             with DockerJob(self.image, self.src_code, self.extra_data,
-                           self.res_path, work_dir, output_dir) as job:
+                           self.res_path, work_dir, output_dir,
+                           host_config=self.container_host_config) as job:
                 self.job = job
                 if self.check_mem:
                     mc = MemoryChecker()

@@ -17,8 +17,8 @@ class TestResourcesManager(TestDirFixture):
         self.dir_manager = DirManager(self.path, self.node_name)
 
         self.split_resources = [
-            ['test_file'],
-            ['test_dir', 'dir_file']
+            ['test_file.one.two'],
+            ['test_dir.one.two', 'dir_file.one.two']
         ]
 
         self.target_resources = [
@@ -27,9 +27,9 @@ class TestResourcesManager(TestDirFixture):
         ]
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
-        test_file = os.path.join(res_path, 'test_file')
-        test_dir = os.path.join(res_path, 'test_dir')
-        test_dir_file = os.path.join(test_dir, 'dir_file')
+        test_file = os.path.join(res_path, 'test_file.one.two')
+        test_dir = os.path.join(res_path, 'test_dir.one.two')
+        test_dir_file = os.path.join(test_dir, 'dir_file.one.two')
 
         open(test_file, 'w').close()
 
@@ -104,11 +104,26 @@ class TestResourcesManager(TestDirFixture):
     def testAddTask(self):
         rm = IPFSResourceManager(self.dir_manager)
         resource_paths = [rm.get_resource_path(f, self.task_id) for f in self.target_resources]
+
         rm.add_task(resource_paths, self.task_id)
         resources = rm.list_resources(self.task_id)
 
-        self.assertTrue(self.task_id in rm.task_common_prefixes)
-        self.assertEqual(len(resources), len(self.target_resources))
+        assert self.task_id in rm.task_common_prefixes
+        assert len(resources) == len(self.target_resources)
+
+        task_files = rm.task_id_to_files[self.task_id]
+        assert task_files
+
+        new_task = str(uuid.uuid4())
+        rm.add_task(resource_paths, new_task)
+        assert len(resources) == len(rm.list_resources(new_task))
+
+        rm.add_task(resource_paths, new_task)
+        assert len(rm.list_resources(new_task)) == len(resources)
+
+        assert rm.check_task_entry(task_files[0], self.task_id)
+        assert not rm.check_task_entry((u'File path', u'Multihash'), self.task_id)
+        assert not rm.check_task_entry(task_files[0], str(uuid.uuid4()))
 
     def testRemoveTask(self):
         rm = IPFSResourceManager(self.dir_manager)
@@ -160,23 +175,27 @@ class TestResourcesManager(TestDirFixture):
         rm = IPFSResourceManager(self.dir_manager)
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
-        test_dir = os.path.join(res_path, 'test_dir')
-        test_dir_file = os.path.join(test_dir, 'dir_file')
+        test_dir = os.path.join(res_path, 'test_dir.one.two')
+        test_dir_file = os.path.join(test_dir, 'dir_file.one.two')
 
         rm.add_resource(test_dir_file, self.task_id)
+        assert len(rm.list_resources(self.task_id)) == 1
 
-        self.assertEqual(len(rm.list_resources(self.task_id)), 1)
+        rm.add_resource('/.!&^%', self.task_id)
+        assert len(rm.list_resources(self.task_id)) == 1
 
     def testAddResources(self):
         rm = IPFSResourceManager(self.dir_manager)
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
-        test_dir = os.path.join(res_path, 'test_dir')
-        test_dir_file = os.path.join(test_dir, 'dir_file')
+        test_dir = os.path.join(res_path, 'test_dir.one.two')
+        test_dir_file = os.path.join(test_dir, 'dir_file.one.two')
 
         rm.add_resources([test_dir_file], self.task_id)
+        assert len(rm.list_resources(self.task_id)) == 1
 
-        self.assertEqual(len(rm.list_resources(self.task_id)), 1)
+        rm.add_resources(['/.!&^%'], self.task_id)
+        assert len(rm.list_resources(self.task_id)) == 1
 
     def testGetCached(self):
         rm = IPFSResourceManager(self.dir_manager)

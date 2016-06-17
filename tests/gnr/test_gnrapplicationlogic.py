@@ -99,3 +99,16 @@ class TestGNRApplicationLogic(TestDirFixture):
 
         gnrgui.app.exit(0)
         gnrgui.app.deleteLater()
+
+    def test_update_payments_view(self):
+        logic = GNRApplicationLogic()
+        logic.client = Mock()
+        logic.customizer = Mock()
+        eth = 10**18
+        logic.client.transaction_system.get_balance.return_value = (3 * eth, 1 * eth)
+        logic.update_payments_view()
+
+        ui = logic.customizer.gui.ui
+        ui.localBalanceLabel.setText.assert_called_once_with("3.000000 ETH")
+        ui.reservedBalanceLabel.setText.assert_called_once_with("2.000000 ETH")
+        ui.availableBalanceLabel.setText.assert_called_once_with("1.000000 ETH")

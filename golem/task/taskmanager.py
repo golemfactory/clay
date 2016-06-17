@@ -248,7 +248,6 @@ class TaskManager(object):
                         self.tasks_states[task_id].status = TaskStatus.finished
                     else:
                         logger.debug("Task {} not accepted".format(task_id))
-                    self.__notice_task_finished(task_id)
             self.__notice_task_updated(task_id)
 
             return True
@@ -498,10 +497,6 @@ class TaskManager(object):
     def __notice_task_updated(self, task_id):
         for l in self.listeners:
             l.task_status_updated(task_id)
-
-    def __notice_task_finished(self, task_id):
-        for l in self.listeners:
-            l.task_finished(task_id)
 
     def __has_subtasks(self, task_state, task, max_resource_size, max_memory_size):
         if task_state.status not in self.activeStatus:

@@ -3,7 +3,7 @@ import unittest
 import uuid
 from types import FunctionType
 
-from golem.network.ipfs.client import IPFSClient, parse_response_entry, StreamFileObject, parse_response
+from golem.network.ipfs.client import IPFSClient, parse_response_entry, StreamFileObject, parse_response, IPFSAddress
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -140,7 +140,7 @@ class TestIPFSClientMetaclass(unittest.TestCase):
         parent = super(IPFSClient, client)
 
         for name, attribute in client.__dict__.iteritems():
-            if parent.__dict__.has_key(name):
+            if name in parent.__dict__:
                 if type(attribute) == FunctionType and not name.startswith('_'):
                     assert client.__getattribute__(name) is not \
                            parent.__getattribute__(name)
@@ -226,3 +226,37 @@ class TestChunkedHttpClient(TestDirFixture):
                                    filename, str(uuid.uuid4()))
 
         assert os.path.exists(expected_path)
+
+
+class TestIPFSAddress(unittest.TestCase):
+
+    def testAllowedIPAddress(self):
+        assert not IPFSAddress.allowed_ip_address('127.0.0.1')
+        assert not IPFSAddress.allowed_ip_address('10.10.10.10')
+        assert IPFSAddress.allowed_ip_address('8.8.8.8')
+
+    def testBuildIPFSAddress(self):
+        hash = 'QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB'
+        expected_ipv4 = '/ip4/127.0.0.1/tcp/4001/ipfs/' + hash
+        expected_ipv6 = '/ip6/::1/tcp/14001/ipfs/' + hash
+
+        ipv4 = str(IPFSAddress('127.0.0.1', hash))
+        ipv6 = str(IPFSAddress('::1', hash, port=14001))
+
+        assert ipv4 == expected_ipv4
+        assert ipv6 == expected_ipv6
+
+        expected_utp_ipv4 = '/ip4/0.0.0.0/udp/4002/utp/ipfs/' + hash
+
+        utp_ipv4 = IPFSAddress('0.0.0.0', hash,
+                               port=4002,
+                               proto='udp',
+                               encap_proto='utp')
+
+        assert str(utp_ipv4) == expected_utp_ipv4
+
+    def testParseIPFSAddress(self):
+        ipfs_addr_str = '/ip4/127.0.0.1/tcp/4001/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB'
+        assert str(IPFSAddress.parse(ipfs_addr_str)) == ipfs_addr_str
+        ipfs_addr_str_2 = '/ip4/127.0.0.1/udp/4002/utp/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB'
+        assert str(IPFSAddress.parse(ipfs_addr_str_2)) == ipfs_addr_str_2

@@ -1,17 +1,20 @@
-import time
-import os
 import logging
+import os
+import time
 from collections import deque
-from taskmanager import TaskManager
-from taskcomputer import TaskComputer
-from tasksession import TaskSession
-from taskkeeper import TaskHeaderKeeper
-from golem.ranking.ranking import RankingStats
-from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
+
 from golem.network.transport.network import ProtocolFactory, SessionFactory
+from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
+from golem.ranking.ranking import RankingStats
+from taskcomputer import TaskComputer
+from taskkeeper import TaskHeaderKeeper
+from taskmanager import TaskManager
+from tasksession import TaskSession
 
 logger = logging.getLogger(__name__)
+
+FORWARDED_TASK_SESSION_TIMEOUT = 30
 
 
 class TaskServer(PendingConnectionsServer):
@@ -41,6 +44,8 @@ class TaskServer(PendingConnectionsServer):
 
         self.use_ipv6 = use_ipv6
 
+        self.forwarded_session_timeout = FORWARDED_TASK_SESSION_TIMEOUT
+        self.forwarded_sessions = {}
         self.response_list = {}
 
         network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
@@ -56,6 +61,7 @@ class TaskServer(PendingConnectionsServer):
     def sync_network(self):
         self.task_computer.run()
         self._sync_pending()
+        self._sync_forwarded_sessions()
         self.__remove_old_tasks()
         self.__send_waiting_results()
         self.__remove_old_sessions()
@@ -112,7 +118,6 @@ class TaskServer(PendingConnectionsServer):
             if self.client.transaction_system:
                 self.client.transaction_system.add_to_waiting_payments(
                     task_id, owner_key_id, value)
-            # TODO Add computing time
             self.results_to_send[subtask_id] = WaitingTaskResult(task_id, subtask_id, result['data'],
                                                                  result['result_type'], computing_time, 0.0, 0.0,
                                                                  owner_address, owner_port, owner_key_id, owner)
@@ -167,7 +172,6 @@ class TaskServer(PendingConnectionsServer):
         pc = self.pending_connections.get(task_session.conn_id)
         if pc:
             pc.status = PenConnStatus.Failure
-            self._remove_pending_sockets(pc)
 
         for tsk in self.task_sessions.keys():
             if self.task_sessions[tsk] == task_session:
@@ -229,7 +233,7 @@ class TaskServer(PendingConnectionsServer):
         self.last_message_time_threshold = config_desc.task_session_timeout
         self.task_manager.change_config(self.__get_task_manager_root(self.client.datadir),
                                         config_desc.use_distributed_resource_management)
-        self.task_computer.change_config()
+        self.task_computer.change_config(config_desc)
         self.task_keeper.change_config(config_desc)
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
@@ -259,7 +263,6 @@ class TaskServer(PendingConnectionsServer):
             logger.warning("Unknown node try to make a payment for task {}".format(task_id))
             return
         self.client.increase_trust(node_id, RankingStats.payment, self.max_trust)
-        # TODO Inform task manager about payment (if it's possible)
 
     def subtask_accepted(self, subtask_id, reward):
         logger.debug("Subtask {} result accepted".format(subtask_id))
@@ -293,11 +296,8 @@ class TaskServer(PendingConnectionsServer):
         all_payments = {eth_account: desc.value for eth_account, desc in payments.items()}
         try:
             self.client.transaction_system.pay_for_task(task_id, all_payments)
-            # TODO: Maybe remove this print?
-            for eth_account, v in all_payments.iteritems():
-                print "Paying {} to {}".format(v, eth_account)
         except Exception as err:
-            # FIXME: Dealing with payments errors should be much more advance
+            # FIXME: Decide what to do when payment failed
             logger.error("Can't pay for task: {}".format(err))
 
     def reject_result(self, subtask_id, account_info):
@@ -314,7 +314,6 @@ class TaskServer(PendingConnectionsServer):
         return self.client.get_computing_trust(node_id)
 
     def start_task_session(self, node_info, super_node_info, conn_id):
-        # FIXME Jaki port i adres startowy?
         args = {'key_id': node_info.key, 'node_info': node_info, 'super_node_info': super_node_info,
                 'ans_conn_id': conn_id}
         self._add_pending_request(TaskConnTypes.StartSession, node_info, node_info.prv_port, node_info.key, args)
@@ -373,6 +372,8 @@ class TaskServer(PendingConnectionsServer):
             pc.failure(conn_id, *pc.args)
 
     def get_socket_addresses(self, node_info, port, key_id):
+        if self.client.get_suggested_conn_reverse(key_id):
+            return []
         socket_addresses = PendingConnectionsServer.get_socket_addresses(self, node_info, port, key_id)
         addr = self.client.get_suggested_addr(key_id)
         if addr:
@@ -384,6 +385,25 @@ class TaskServer(PendingConnectionsServer):
 
     def receive_subtask_computation_time(self, subtask_id, computation_time):
         self.task_manager.set_computation_time(subtask_id, computation_time)
+
+    def add_forwarded_session(self, key_id, conn_id):
+        self.forwarded_sessions[key_id] = dict(
+            conn_id=conn_id,
+            time=time.time()
+        )
+
+    def remove_forwarded_session(self, key_id):
+        return self.forwarded_sessions.pop(key_id, None)
+
+    def _sync_forwarded_sessions(self):
+        now = time.time()
+        for key_id, data in self.forwarded_sessions.items():
+            if data:
+                if now - data['time'] >= self.forwarded_session_timeout:
+                    self.final_conn_failure(data['conn_id'])
+                    self.remove_forwarded_session(key_id)
+            else:
+                self.forwarded_sessions.pop(key_id)
 
     def _get_factory(self):
         return self.factory(self)
@@ -424,14 +444,15 @@ class TaskServer(PendingConnectionsServer):
     def __connection_for_task_request_established(self, session, conn_id, node_name, key_id, task_id,
                                                   estimated_performance, price, max_resource_size, max_memory_size,
                                                   num_cores):
-
+        self.remove_forwarded_session(key_id)
         session.task_id = task_id
         session.key_id = key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
         self.task_sessions[task_id] = session
         session.send_hello()
-        session.request_task(node_name, task_id, estimated_performance, price, max_resource_size, max_memory_size, num_cores)
+        session.request_task(node_name, task_id, estimated_performance, price, max_resource_size, max_memory_size,
+                             num_cores)
 
     def __connection_for_task_request_failure(self, conn_id, node_name, key_id, task_id, estimated_performance, price,
                                               max_resource_size, max_memory_size, num_cores, *args):
@@ -484,6 +505,7 @@ class TaskServer(PendingConnectionsServer):
             pc.time = time.time()
 
     def __connection_for_task_failure_established(self, session, conn_id, key_id, subtask_id, err_msg):
+        self.remove_forwarded_session(key_id)
         session.key_id = key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
@@ -573,7 +595,6 @@ class TaskServer(PendingConnectionsServer):
             logger.info("Permanently can't connect to node {}".format(key_id))
             return
 
-        # FIXME To powinno zostac przeniesione do jakiejs wyzszej polaczeniowej instalncji
         if self.node.nat_type in TaskServer.supported_nat_types:
             args = {
                 'super_node': super_node_info,
@@ -594,7 +615,6 @@ class TaskServer(PendingConnectionsServer):
             self._add_pending_request(TaskConnTypes.Middleman, super_node_info, super_node_info.prv_port,
                                       super_node_info.key,
                                       args)
-            # TODO Dodatkowe usuniecie tego zadania (bo zastapione innym)
 
     def __connection_for_nat_punch_established(self, session, conn_id, super_node, asking_node, dest_node, ans_conn_id):
         session.key_id = super_node.key
@@ -621,7 +641,6 @@ class TaskServer(PendingConnectionsServer):
     def __connection_for_traverse_nat_failure(self, client_key_id, conn_id, super_key_id):
         logger.error("Connection for traverse nat failure")
         self.client.inform_about_nat_traverse_failure(super_key_id, client_key_id, conn_id)
-        pass  # TODO Powinnismy powiadomic serwer o nieudanej probie polaczenia
 
     def __connection_for_middleman_established(self, session, conn_id, key_id, asking_node_info, self_node_info,
                                                ans_conn_id):
@@ -676,10 +695,10 @@ class TaskServer(PendingConnectionsServer):
     def __connection_for_start_session_final_failure(self, conn_id, key_id, node_info, super_node_info, ans_conn_id):
         logger.warning("Starting session for {} impossible".format(key_id))
 
-    def __connection_for_middleman_final_failure(self, *args):
+    def __connection_for_middleman_final_failure(self, *args, **kwargs):
         pass
 
-    def __connection_for_nat_punch_final_failure(self, *args):
+    def __connection_for_nat_punch_final_failure(self, *args, **kwargs):
         pass
 
     # SYNC METHODS
@@ -771,8 +790,8 @@ class TaskServer(PendingConnectionsServer):
 
 
 class WaitingTaskResult(object):
-    def __init__(self, task_id, subtask_id, result, result_type, computing_time, last_sending_trial, delay_time, owner_address,
-                 owner_port, owner_key_id, owner):
+    def __init__(self, task_id, subtask_id, result, result_type, computing_time, last_sending_trial, delay_time,
+                 owner_address,owner_port, owner_key_id, owner):
         self.task_id = task_id
         self.subtask_id = subtask_id
         self.result = result
