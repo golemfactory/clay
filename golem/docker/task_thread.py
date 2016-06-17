@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 class TimeoutException(Exception):
     pass
 
+
 class DockerTaskThread(TaskThread):
 
     # These files will be placed in the output dir (self.tmp_path)

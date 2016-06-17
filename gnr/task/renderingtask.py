@@ -8,16 +8,18 @@ from copy import deepcopy, copy
 
 from PIL import Image, ImageChops
 
+from golem.core.common import get_golem_path, timeout_to_deadline
+from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.docker.job import DockerJob
+from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskstate import SubtaskStatus
+
 from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
 from gnr.task.gnrtask import GNRTask, GNRTaskBuilder, check_subtask_id_wrapper
 from gnr.task.imgrepr import verify_img, advance_verify_img
 from gnr.task.renderingtaskcollector import exr_to_pil
-from golem.core.common import get_golem_path
-from golem.core.simpleexccmd import is_windows, exec_cmd
-from golem.docker.job import DockerJob
-from golem.task.taskbase import ComputeTaskDef
-from golem.task.taskstate import SubtaskStatus
+
 
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
@@ -211,7 +213,7 @@ class RenderingTask(GNRTask):
         ctd.performance = perf_index
         ctd.working_directory = working_directory
         ctd.docker_images = self.header.docker_images
-        ctd.timeout = time.time() + self.header.subtask_timeout
+        ctd.deadline = timeout_to_deadline(self.header.subtask_timeout)
         return ctd
 
     def _get_next_task(self):

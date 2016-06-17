@@ -9,7 +9,7 @@ from mock import Mock
 import gnr.node
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.task.tasktester import TaskTester
-from golem.core.common import get_golem_path
+from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.model import db
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
@@ -77,7 +77,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
     def _run_docker_task(self, render_task, timeout=60*5):
         task_id = render_task.header.task_id
         ctd = render_task.query_extra_data(1.0)
-        ctd.timeout = time.time() + timeout
+        ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node
         self.node = gnr.node.GNRNode(datadir=self.path)

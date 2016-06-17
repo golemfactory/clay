@@ -2,6 +2,7 @@ import random
 import time
 from os import path
 
+from golem.core.common import timeout_to_deadline
 from golem.core.simpleauth import SimpleAuth
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef
@@ -150,7 +151,7 @@ class DummyTask(Task):
         subtask_def.environment = self.header.environment
         subtask_def.return_address = self.header.task_owner_address
         subtask_def.return_port = self.header.task_owner_port
-        subtask_def.timeout = time.time() + 5 * 60
+        subtask_def.deadline = timeout_to_deadline(5 * 60)
         return subtask_def
 
     def verify_task(self):

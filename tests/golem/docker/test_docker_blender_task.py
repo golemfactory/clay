@@ -10,7 +10,7 @@ import gnr.node
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.localcomputer import LocalComputer
 from gnr.task.tasktester import TaskTester
-from golem.core.common import get_golem_path
+from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.docker.image import DockerImage
 from golem.model import db
 from golem.task.taskbase import result_types
@@ -72,7 +72,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
     def _run_docker_task(self, render_task, timeout=60*5):
         task_id = render_task.header.task_id
         ctd = render_task.query_extra_data(1.0)
-        ctd.timeout = time.time() + timeout
+        ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node
         self.node = gnr.node.GNRNode(datadir=self.path)
@@ -120,14 +120,14 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         return task_thread, self.error_msg, temp_dir
 
     def _run_docker_test_task(self, render_task, timeout=60*5):
-        render_task.timeout = time.time() + timeout
+        render_task.deadline = timeout_to_deadline(timeout)
         task_computer = TaskTester(render_task, self.path, Mock(), Mock())
         task_computer.run()
         task_computer.tt.join(60.0)
         return task_computer.tt
 
     def _run_docker_local_comp_task(self, render_task, timeout=60*5):
-        render_task.timeout = time.time() + timeout
+        render_task.deadline = timeout_to_deadline(timeout)
         local_computer = LocalComputer(render_task, self.tempdir, Mock(), Mock(),
                                        render_task.query_extra_data_for_test_task)
         local_computer.run()
