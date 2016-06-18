@@ -21,6 +21,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
     cmd = [
         "{}".format(BLENDER_COMMAND),
         "-b", "{}".format(scene_file),
+        "-y", # enable scripting by default
         "-P", "{}".format(script_file),
         "-o", "{}/{}{}".format(OUTPUT_DIR, outfilebasename, start_task),
         "-F", "{}".format(output_format.upper()),
